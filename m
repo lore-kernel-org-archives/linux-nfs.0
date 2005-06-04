@@ -1,23 +1,26 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Re: Help: nfs not able to mount large (loopback) directory
-Date: Fri, 03 Jun 2005 22:28:30 -0700
-Message-ID: <1117862910.19354.172.camel@seki.nac.uci.edu>
-References: <20050604031908.D58E8198C8@medulla.enet.sharplabs.com>
+From: Christoph Bartoschek <bartoschek@or.uni-bonn.de>
+Subject: Unknown error 525 from getdents from a connection to an AIX nfs server
+Date: Sat, 4 Jun 2005 13:41:11 +0200
+Message-ID: <200506041341.11421.bartoschek@or.uni-bonn.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-6ymLm02C5Wsv0N8iJnRo"
-Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DeRD8-0002I2-DJ
-	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 22:28:42 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DeRD5-0003s0-Kb
-	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 22:28:42 -0700
-To: "Dean S. Messing" <deanm@sharplabs.com>
-In-Reply-To: <20050604031908.D58E8198C8@medulla.enet.sharplabs.com>
+	id 1DeX1i-0002m7-5o
+	for nfs@lists.sourceforge.net; Sat, 04 Jun 2005 04:41:18 -0700
+Received: from [131.220.141.99] (helo=brical.or.uni-bonn.de)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DeX1f-0007Ec-Dz
+	for nfs@lists.sourceforge.net; Sat, 04 Jun 2005 04:41:18 -0700
+Received: from wse04.or.uni-bonn.de (unknown [131.220.141.100])
+	by brical.or.uni-bonn.de (Postfix) with ESMTP id 9A5FD2AA1
+	for <nfs@lists.sourceforge.net>; Sat,  4 Jun 2005 14:47:18 +0200 (CEST)
+Received: from certa.vlsi.uni-bonn.de (certa-en0.vlsi.uni-bonn.de [192.168.143.187])
+	by wse04.or.uni-bonn.de (Postfix) with ESMTP id 06CAEE98F
+	for <nfs@lists.sourceforge.net>; Sat,  4 Jun 2005 13:41:21 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,103 +34,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
 
---=-6ymLm02C5Wsv0N8iJnRo
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I have the problem that rm does not work reliable over the nfs connection to 
+our AIX nfs server. If one deletes a whole directoy recursively one gets an 
+"Unknown error 525". All files but the directory itself are deleted. 
+
+The error can be reproduced as follows:
+
+bartosch@feiler:/fs/data/bartosch/temp> mkdir testdir
+bartosch@feiler:/fs/data/bartosch/temp> touch testdir/a
+bartosch@feiler:/fs/data/bartosch/temp> rm -rf testdir
+rm: reading directory `testdir': Unknown error 525
+bartosch@feiler:/fs/data/bartosch/temp> rm -rf testdir
+bartosch@feiler:/fs/data/bartosch/temp>
+
+strace says that the error message comes from getdents. 
+
+This is the output of strace on rm showing the important parts:
+
+..
+lstat(".", {st_mode=S_IFDIR|S_ISGID|0755, st_size=288, ...}) = 0
+open(".", O_RDONLY|O_NONBLOCK|O_DIRECTORY) = 4
+fstat(4, {st_mode=S_IFDIR|S_ISGID|0755, st_size=288, ...}) = 0
+fcntl(4, F_SETFD, FD_CLOEXEC)           = 0
+getdents64(4, /* 3 entries */, 512)     = 72
+unlink("a")                             = 0
+getdents64(4, 0x50e1c8, 512)            = -1 ETOOSMALL (Unknown error 525)
+close(4)                                = 0
+open("/usr/share/locale/en_US/LC_MESSAGES/coreutils.mo", O_RDONLY) = -1 ENOENT 
+(No such file or directory)
+open("/usr/share/locale/en/LC_MESSAGES/coreutils.mo", O_RDONLY) = -1 ENOENT 
+(No such file or directory)
+write(2, "rm: ", 4rm: )                     = 4
+write(2, "reading directory `testdir\'", 27reading directory `testdir') = 27
+...
+write(2, ": Unknown error 525", 19: Unknown error 525)     = 19
+...
+
+You can see that  getdents returns ETOOSMALL which is the error.
+
+The client machine feiler is has an AMD opteron 64bit  CPU runnning  Linux 
+kernel:
+
+Linux feiler 2.4.21-286-smp #1 SMP Sun Apr 3 05:18:39 UTC 2005 x86_64 x86_64 
+x86_64 GNU/Linux
+
+We get the same error from a machine with a newer kernel:
+
+Linux maximator 2.6.4-52-smp #1 SMP Wed Apr 7 01:58:54 UTC 2004 x86_64 x86_64 
+x86_64 GNU/Linux
+
+Or one with a very new one:
+
+Linux castell.vlsi.uni-bonn.de 2.6.11-APIC-ID #1 SMP Tue May 24 11:31:43 CEST 
+2005 x86_64 x86_64 x86_64 GNU/Linux
+
+Even on 32bit machines this error occurs
+
+Linux inzadi-en0 2.4.21-231-smp #1 SMP Mon Jun 28 15:04:14 UTC 2004 i686 
+unknown
+
+The Server is an AIX 4.3.3 machine: AIX cook 3 4 0045B0AA4C00
 
 
-I also have found that even small ISO images will lead to problems if
-you loopback mount them and NFS export them - EG via NFS v3.
+How can I get rid of this problem?  If you need more information I will 
+provide it for you.
 
-However, if I loopback mount the ISO image, copy it to an ext3 directory
-with a tar | tar pipeline, and then NFS export that ext3 directory in
-the same way, things work fine.
-
-I'm finding that often userspace->kernel and kernel->userspace work well
-in linux, but kernel->kernel interfaces seem to have  codepaths that
-aren't always tested that much.
-
-On Fri, 2005-06-03 at 20:19 -0700, Dean S. Messing wrote:
->=20
-> I have a large .iso image (4GB) on machine B which I have loopback
-> mounted to directory /mnt/disk.
->=20
-> When I try to nfs mount B:/mnt/disk to machine A I get a "permission
-> denied" error.
->=20
-> If I replace the 4GB image on machine B with, say, a 700MB .iso image, I =
-have
-> no problem with the NFS mount on machine A.
->=20
-> I'm running the latest version of MandrivaLinux (2005LE =3D=3D Mandrake 1=
-0.2)
-> on machine B and MandrakeLinux 10.0 on machine A so the nfs utilites
-> on machine B (the server) should be nearly current.
-> In fact:
->=20
-> [root@neuron ~]# rpcinfo -p
->    program vers proto   port
->     100000    2   tcp    111  portmapper
->     100000    2   udp    111  portmapper
->     100003    2   udp   2049  nfs
->     100003    3   udp   2049  nfs
->     100003    4   udp   2049  nfs
->     100003    2   tcp   2049  nfs
->     100003    3   tcp   2049  nfs
->     100003    4   tcp   2049  nfs
->     100021    1   udp  34593  nlockmgr
->     100021    3   udp  34593  nlockmgr
->     100021    4   udp  34593  nlockmgr
->     100021    1   tcp  33635  nlockmgr
->     100021    3   tcp  33635  nlockmgr
->     100021    4   tcp  33635  nlockmgr
->     100005    1   udp    846  mountd
->     100005    1   tcp    849  mountd
->     100005    2   udp    846  mountd
->     100005    2   tcp    849  mountd
->     100005    3   udp    846  mountd
->     100005    3   tcp    849  mountd
->     100024    1   udp    888  status
->     100024    1   tcp    891  status
->=20
->=20
-> Is it the case that nfs (mountd?) can't handle "large" files?
->=20
-> Any help will be much appreciated.
->=20
-> Dean S. Messing
-> Sr. Scientist
-> Display Algorithms & Visual Optimization Lab
-> Sharp Laboratories of America
->=20
->=20
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: NEC IT Guy Games.  How far can you sho=
-tput
-> a projector? How fast can you ride your desk chair down the office luge t=
-rack?
-> If you want to score the big prize, get to know the little guy. =20
-> Play to win an NEC 61" plasma display: http://www.necitguy.com/?r=3D20
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
-
---=-6ymLm02C5Wsv0N8iJnRo
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.6 (GNU/Linux)
-
-iD8DBQBCoTv+o0feVm00f/8RAtk8AJ0dOgHbZofc2Kaxa6iscnO0h2cOqACgijoV
-B0IYtSZkdLXwDb1djwbA6dk=
-=sSCV
------END PGP SIGNATURE-----
-
---=-6ymLm02C5Wsv0N8iJnRo--
-
+Greets,
+Christoph Bartoschek
 
 
 -------------------------------------------------------
