@@ -1,21 +1,19 @@
-From: vadivel vadi <svadivelmsc@gmail.com>
-Subject: nfs problem
-Date: Fri, 3 Jun 2005 20:57:48 +0530
-Message-ID: <4023a21405060308274757e2b0@mail.gmail.com>
-Reply-To: vadivel vadi <svadivelmsc@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+From: "Dean S. Messing" <deanm@sharplabs.com>
+Subject: Help: nfs not able to mount large (loopback) directory
+Date: Fri,  3 Jun 2005 20:19:08 -0700 (PDT)
+Message-ID: <20050604031908.D58E8198C8@medulla.enet.sharplabs.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DeE5Q-0001ej-2O
-	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 08:27:52 -0700
-Received: from rproxy.gmail.com ([64.233.170.205])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DeE5N-0002CT-BF
-	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 08:27:51 -0700
-Received: by rproxy.gmail.com with SMTP id f1so686833rne
-        for <nfs@lists.sourceforge.net>; Fri, 03 Jun 2005 08:27:48 -0700 (PDT)
+	id 1DePBr-0008Nl-AT
+	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 20:19:15 -0700
+Received: from keymaster.sharplabs.com ([216.65.151.107] helo=sharplabs.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DePBq-0004ls-Ff
+	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 20:19:15 -0700
+Received: from admsrvnt02.enet.sharplabs.com (admsrvnt02.enet.sharplabs.com [172.29.225.253])
+	by sharplabs.com (8.13.1/8.13.1) with ESMTP id j543J7mP027294
+	for <nfs@lists.sourceforge.net>; Fri, 3 Jun 2005 20:19:07 -0700 (PDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,22 +28,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-hai
 
-    in my nfs server the rpc mountd service is stopped every 1 hour
-what is the proper can u solve it.and also i want t know how many
-system can connect thro nfs if a data is about 200GB i want to know it
-immediately.i thick u can solve my problem.
 
-             regards
-            vadivel
+I have a large .iso image (4GB) on machine B which I have loopback
+mounted to directory /mnt/disk.
+
+When I try to nfs mount B:/mnt/disk to machine A I get a "permission
+denied" error.
+
+If I replace the 4GB image on machine B with, say, a 700MB .iso image, I have
+no problem with the NFS mount on machine A.
+
+I'm running the latest version of MandrivaLinux (2005LE == Mandrake 10.2)
+on machine B and MandrakeLinux 10.0 on machine A so the nfs utilites
+on machine B (the server) should be nearly current.
+In fact:
+
+[root@neuron ~]# rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100021    1   udp  34593  nlockmgr
+    100021    3   udp  34593  nlockmgr
+    100021    4   udp  34593  nlockmgr
+    100021    1   tcp  33635  nlockmgr
+    100021    3   tcp  33635  nlockmgr
+    100021    4   tcp  33635  nlockmgr
+    100005    1   udp    846  mountd
+    100005    1   tcp    849  mountd
+    100005    2   udp    846  mountd
+    100005    2   tcp    849  mountd
+    100005    3   udp    846  mountd
+    100005    3   tcp    849  mountd
+    100024    1   udp    888  status
+    100024    1   tcp    891  status
+
+
+Is it the case that nfs (mountd?) can't handle "large" files?
+
+Any help will be much appreciated.
+
+Dean S. Messing
+Sr. Scientist
+Display Algorithms & Visual Optimization Lab
+Sharp Laboratories of America
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by Yahoo.
-Introducing Yahoo! Search Developer Network - Create apps using Yahoo!
-Search APIs Find out how you can build Yahoo! directly into your own
-Applications - visit http://developer.yahoo.net/?fr=offad-ysdn-ostg-q22005
+This SF.Net email is sponsored by: NEC IT Guy Games.  How far can you shotput
+a projector? How fast can you ride your desk chair down the office luge track?
+If you want to score the big prize, get to know the little guy.  
+Play to win an NEC 61" plasma display: http://www.necitguy.com/?r=20
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
