@@ -1,21 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
 Subject: Re: Help: nfs not able to mount large (loopback) directory
-Date: Sat, 04 Jun 2005 00:26:20 -0400
-Message-ID: <1117859180.11099.12.camel@lade.trondhjem.org>
+Date: Fri, 03 Jun 2005 22:28:30 -0700
+Message-ID: <1117862910.19354.172.camel@seki.nac.uci.edu>
 References: <20050604031908.D58E8198C8@medulla.enet.sharplabs.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-6ymLm02C5Wsv0N8iJnRo"
+Cc: strombrg@dcs.nac.uci.edu, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DeQF9-0005wB-Fx
-	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 21:26:43 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DeRD8-0002I2-DJ
+	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 22:28:42 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DeQF7-0002bO-Ly
-	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 21:26:43 -0700
+	id 1DeRD5-0003s0-Kb
+	for nfs@lists.sourceforge.net; Fri, 03 Jun 2005 22:28:42 -0700
 To: "Dean S. Messing" <deanm@sharplabs.com>
 In-Reply-To: <20050604031908.D58E8198C8@medulla.enet.sharplabs.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -31,22 +31,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 03.06.2005 Klokka 20:19 (-0700) skreiv Dean S. Messing:
-> 
+
+--=-6ymLm02C5Wsv0N8iJnRo
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+
+I also have found that even small ISO images will lead to problems if
+you loopback mount them and NFS export them - EG via NFS v3.
+
+However, if I loopback mount the ISO image, copy it to an ext3 directory
+with a tar | tar pipeline, and then NFS export that ext3 directory in
+the same way, things work fine.
+
+I'm finding that often userspace->kernel and kernel->userspace work well
+in linux, but kernel->kernel interfaces seem to have  codepaths that
+aren't always tested that much.
+
+On Fri, 2005-06-03 at 20:19 -0700, Dean S. Messing wrote:
+>=20
 > I have a large .iso image (4GB) on machine B which I have loopback
 > mounted to directory /mnt/disk.
-> 
+>=20
 > When I try to nfs mount B:/mnt/disk to machine A I get a "permission
 > denied" error.
-> 
-> If I replace the 4GB image on machine B with, say, a 700MB .iso image, I have
+>=20
+> If I replace the 4GB image on machine B with, say, a 700MB .iso image, I =
+have
 > no problem with the NFS mount on machine A.
-> 
-> I'm running the latest version of MandrivaLinux (2005LE == Mandrake 10.2)
+>=20
+> I'm running the latest version of MandrivaLinux (2005LE =3D=3D Mandrake 1=
+0.2)
 > on machine B and MandrakeLinux 10.0 on machine A so the nfs utilites
 > on machine B (the server) should be nearly current.
 > In fact:
-> 
+>=20
 > [root@neuron ~]# rpcinfo -p
 >    program vers proto   port
 >     100000    2   tcp    111  portmapper
@@ -71,19 +90,43 @@ fr den 03.06.2005 Klokka 20:19 (-0700) skreiv Dean S. Messing:
 >     100005    3   tcp    849  mountd
 >     100024    1   udp    888  status
 >     100024    1   tcp    891  status
-> 
-> 
+>=20
+>=20
 > Is it the case that nfs (mountd?) can't handle "large" files?
+>=20
+> Any help will be much appreciated.
+>=20
+> Dean S. Messing
+> Sr. Scientist
+> Display Algorithms & Visual Optimization Lab
+> Sharp Laboratories of America
+>=20
+>=20
+> -------------------------------------------------------
+> This SF.Net email is sponsored by: NEC IT Guy Games.  How far can you sho=
+tput
+> a projector? How fast can you ride your desk chair down the office luge t=
+rack?
+> If you want to score the big prize, get to know the little guy. =20
+> Play to win an NEC 61" plasma display: http://www.necitguy.com/?r=3D20
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
-It is true that NFS version 2 cannot handle files > 2GB, but as far as I
-gathered you are not exporting the ISO as a single file. Besides, NFSv3
-and NFSv4 should be quite capable of dealing with a 4GB file.
+--=-6ymLm02C5Wsv0N8iJnRo
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
-This therefore sounds more like it might be some strange interaction
-between the loopback driver and nfsd or mountd.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.6 (GNU/Linux)
 
-Cheers,
-  Trond
+iD8DBQBCoTv+o0feVm00f/8RAtk8AJ0dOgHbZofc2Kaxa6iscnO0h2cOqACgijoV
+B0IYtSZkdLXwDb1djwbA6dk=
+=sSCV
+-----END PGP SIGNATURE-----
+
+--=-6ymLm02C5Wsv0N8iJnRo--
 
 
 
