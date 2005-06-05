@@ -1,24 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Unknown error 525 from getdents from a connection to an
-	AIX nfs server
-Date: Sat, 04 Jun 2005 11:19:15 -0400
-Message-ID: <1117898355.11012.6.camel@lade.trondhjem.org>
-References: <200506041341.11421.bartoschek@or.uni-bonn.de>
-Mime-Version: 1.0
-Content-Type: text/plain
+From: "Dean S. Messing" <deanm@sharplabs.com>
+Subject: Re: Help: nfs not able to mount large (loopback) directory
+Date: Sat,  4 Jun 2005 23:00:00 -0700 (PDT)
+Message-ID: <20050605060000.61C2C112D0@pons>
+References: <20050604031908.D58E8198C8@medulla.enet.sharplabs.com> <1117859180.11099.12.camel@lade.trondhjem.org>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DeaQt-00020p-KS
-	for nfs@lists.sourceforge.net; Sat, 04 Jun 2005 08:19:31 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DeaQs-0000Wr-L7
-	for nfs@lists.sourceforge.net; Sat, 04 Jun 2005 08:19:31 -0700
-To: Christoph Bartoschek <bartoschek@or.uni-bonn.de>
-In-Reply-To: <200506041341.11421.bartoschek@or.uni-bonn.de>
+	id 1DeoBU-0004Gx-8Y
+	for nfs@lists.sourceforge.net; Sat, 04 Jun 2005 23:00:32 -0700
+Received: from keymaster.sharplabs.com ([216.65.151.107] helo=sharplabs.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DeoBS-0005wE-GE
+	for nfs@lists.sourceforge.net; Sat, 04 Jun 2005 23:00:32 -0700
+To: trond.myklebust@fys.uio.no
+In-reply-to: <1117859180.11099.12.camel@lade.trondhjem.org> (message from
+	Trond Myklebust on Sat, 04 Jun 2005 00:26:20 -0400)
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,33 +29,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-lau den 04.06.2005 Klokka 13:41 (+0200) skreiv Christoph Bartoschek:
-> Hi,
-> 
-> I have the problem that rm does not work reliable over the nfs connection to 
-> our AIX nfs server. If one deletes a whole directoy recursively one gets an 
-> "Unknown error 525". All files but the directory itself are deleted. 
-> 
-> The error can be reproduced as follows:
-> 
-> bartosch@feiler:/fs/data/bartosch/temp> mkdir testdir
-> bartosch@feiler:/fs/data/bartosch/temp> touch testdir/a
-> bartosch@feiler:/fs/data/bartosch/temp> rm -rf testdir
-> rm: reading directory `testdir': Unknown error 525
-> bartosch@feiler:/fs/data/bartosch/temp> rm -rf testdir
-> bartosch@feiler:/fs/data/bartosch/temp>
-> 
-> strace says that the error message comes from getdents. 
 
-Sounds like a server bug. 525 is the translations of NFSERR_TOOSMALL,
-which means "buffer is too small".
-i.e. the server is claiming that it suddenly is incapable of fitting the
-result of the readdir operation into the same buffer that apparently had
-no problems fitting the 3 entry case.
+Trond Myklebust wrote:
+: fr den 03.06.2005 Klokka 20:19 (-0700) skreiv Dean S. Messing:
+: > 
+: > I have a large .iso image (4GB) on machine B which I have loopback
+: > mounted to directory /mnt/disk.
+: > 
+: > When I try to nfs mount B:/mnt/disk to machine A I get a "permission
+: > denied" error.
+: > 
+: > If I replace the 4GB image on machine B with, say, a 700MB .iso image, I have
+: > no problem with the NFS mount on machine A.
+: > 
+: > I'm running the latest version of MandrivaLinux (2005LE == Mandrake 10.2)
+: > on machine B and MandrakeLinux 10.0 on machine A so the nfs utilites
+: > on machine B (the server) should be nearly current.
+: > In fact:
+: > 
+: > [root@neuron ~]# rpcinfo -p
+: >    program vers proto   port
+: >     100000    2   tcp    111  portmapper
+: >     100000    2   udp    111  portmapper
+: >     100003    2   udp   2049  nfs
+: >     100003    3   udp   2049  nfs
+: >     100003    4   udp   2049  nfs
+: >     100003    2   tcp   2049  nfs
+: >     100003    3   tcp   2049  nfs
+: >     100003    4   tcp   2049  nfs
+: >     100021    1   udp  34593  nlockmgr
+: >     100021    3   udp  34593  nlockmgr
+: >     100021    4   udp  34593  nlockmgr
+: >     100021    1   tcp  33635  nlockmgr
+: >     100021    3   tcp  33635  nlockmgr
+: >     100021    4   tcp  33635  nlockmgr
+: >     100005    1   udp    846  mountd
+: >     100005    1   tcp    849  mountd
+: >     100005    2   udp    846  mountd
+: >     100005    2   tcp    849  mountd
+: >     100005    3   udp    846  mountd
+: >     100005    3   tcp    849  mountd
+: >     100024    1   udp    888  status
+: >     100024    1   tcp    891  status
+: > 
+: > 
+: > Is it the case that nfs (mountd?) can't handle "large" files?
+: 
+: It is true that NFS version 2 cannot handle files > 2GB, but as far as I
+: gathered you are not exporting the ISO as a single file. Besides, NFSv3
+: and NFSv4 should be quite capable of dealing with a 4GB file.
+: 
+: This therefore sounds more like it might be some strange interaction
+: between the loopback driver and nfsd or mountd.
 
-Cheers,
-  Trond
+>From my reading your remarks sound correct.  I wonder  how I can
+fix this problem.  Loopback mounting a DVD .iso image and making
+it available via NFS has got to be something that is fairly commonly
+done.
 
+Dean
 
 
 -------------------------------------------------------
