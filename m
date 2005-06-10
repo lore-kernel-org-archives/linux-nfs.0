@@ -1,7 +1,7 @@
 From: "Roger Heflin" <rheflin@atipa.com>
 Subject: RE: NFS crash on Suse, any ideas on which normal nfs patch could be a cause/fix?
-Date: Fri, 10 Jun 2005 08:15:08 -0500
-Message-ID: <EXCHG2003PNXRPmcarc00000406@EXCHG2003.microtech-ks.com>
+Date: Fri, 10 Jun 2005 15:53:14 -0500
+Message-ID: <EXCHG2003xf4yp8ARf30000046f@EXCHG2003.microtech-ks.com>
 References: <20050610075637.GB5534@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain;
@@ -10,12 +10,12 @@ Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DgjKq-0001w5-TX
-	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 06:14:08 -0700
+	id 1DgqU4-0006ru-VG
+	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 13:52:08 -0700
 Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DgjKo-0003uz-1k
-	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 06:14:07 -0700
+	id 1DgqU2-00044d-Oc
+	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 13:52:08 -0700
 To: "'Olaf Kirch'" <okir@suse.de>
 In-Reply-To: <20050610075637.GB5534@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
@@ -31,22 +31,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+We have looked at this more carefully, the customer has
+got me more information and details.   It looks like some
+way nfs exercises a network bug and causes the network driver
+to crash.    The machine/os has survived a full kickstart
+(with a several hundred MB install by 100 plus identical
+machines without that exercising the bug) and a quite a
+bit of light nfs usage, but heavier nfs usage, including
+using bonnie will make the machines fall over fairly quick.
 
-The other three don't do this, so there may just be something
-about this machine that is otherwise wrong, so this error may
-not be from this problem, though it is odd given that the machine
-does not exhibit this message with any other tests.
+We are checking for what sort of issues there could be with
+the network driver/network firmware/bmc card.   
 
-We know what bad ram/bad cpu looks like, the machines all have ECC,
-and are getting no ecc errors, and they pass several days of running
-a intensive memory/cpu program with no ecc errors, no crashes outside
-of using NFS.
+For information this is a Quad Tyan 4882 with 32GB of ram
+(16 have 64GB of ram) with the customer having over 100
+of the Quads.
 
-We also have never seen a MCE with a actual kernel routine listed
-off to the side like that, and we have seen at least 100+ MCE's of
-other sorts, and have fixed them by replacing ram or cpus.
+There is also a large number of duals, but after further
+examination we don't believe those have the issue.
 
-                               Roger 
+                         Roger
 
 > -----Original Message-----
 > From: Olaf Kirch [mailto:okir@suse.de] 
