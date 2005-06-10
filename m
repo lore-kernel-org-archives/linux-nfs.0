@@ -1,19 +1,24 @@
-From: Rolf Adelsberger <rolfad@student.ethz.ch>
-Subject: "nfs warning: mount version older than kernel"
-Date: Mon, 27 Jun 2005 15:32:14 +0200
-Message-ID: <42BFFFDE.6060004@student.ethz.ch>
+From: Ryan Sweet <rsweet@aoes.com>
+Subject: Re: 2.4 -> 2.6 transition major performance issues
+Date: Fri, 10 Jun 2005 13:32:13 +0200 (CEST)
+Message-ID: <Pine.LNX.4.61.0506101330330.17693@lapp-0>
+References: <20050607143720.GA26081@geggus.net>
+Reply-To: Ryan Sweet <rsweet@aoes.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.92] (helo=sc8-sf-mx2-new.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DmtjL-0005fM-5k
-	for nfs@lists.sourceforge.net; Mon, 27 Jun 2005 06:32:55 -0700
-Received: from xsmtp1.ethz.ch ([82.130.70.13])
-	by sc8-sf-mx2-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1DmtjJ-000421-Cj
-	for nfs@lists.sourceforge.net; Mon, 27 Jun 2005 06:32:55 -0700
-To: nfs@lists.sourceforge.net
+	id 1DghkZ-0005tW-O6
+	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 04:32:35 -0700
+Received: from mx0.aoes.nl ([62.58.73.24] helo=ats-mail-0.aoes.nl)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DghkY-0000C7-3q
+	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 04:32:35 -0700
+To: Sven Geggus <sven@geggus.net>
+In-Reply-To: <20050607143720.GA26081@geggus.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,23 +32,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi!
 
-I receive this message since I decided to mount some parts of my home
-folder (via autofs) from a server.
-Although I searched during several months for a solution and reviewed my
-configs several times, I was not able to resolve this issue.
-Could anybody tell me, where the problem lies - or, if you need more
-information, tell me what I should further reveal...
+> B10 in the FAQ is exactly the Problem I seem to have, but the solutions 
+> proposed do net seem to match my case :(
+> I neighter have some ancient Kernel (<= 2.4.20) nor do I have a complex
+> network setup (just one single switch between the client and the Server 
+> machine).
 
-My kernel (2.6 series - currently 2.6.11) on the client machine has the
-nfs v3 support and the server the apropriate server support.
-Nevertheless, my logfile is full of the messages mentioned in the
-subject. I have the most recent (stable) version of mount installed...
+What are your exports (cat /etc/exports on server) and mount (cat /etc/mtab 
+on client) settings?
 
-Any help is apreciated :-)
+-ryan
 
-Cheers, R.
+-- 
+Ryan Sweet             <ryan.sweet@aoes.com>
+Advanced Operations and Engineering Services
+AOES Group BV            http://www.aoes.com
+Phone +31(0)71 5795521  Fax +31(0)71572 1277
 
 
 -------------------------------------------------------
