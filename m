@@ -1,22 +1,22 @@
 From: Gandalf <gandalf@siemens-mobiles.org>
 Subject: can't read superblock, can't mount anything from server
-Date: Sun, 12 Jun 2005 18:26:55 +0200
-Message-ID: <42AC624F.4070809@siemens-mobiles.org>
+Date: Sat, 11 Jun 2005 05:13:26 +0200
+Message-ID: <42AA56D6.7000206@siemens-mobiles.org>
 Reply-To: gandalf@siemens-mobiles.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DhVId-0005kV-Ew
-	for nfs@lists.sourceforge.net; Sun, 12 Jun 2005 09:27:03 -0700
+	id 1DgwRH-0007NX-5x
+	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 20:13:39 -0700
 Received: from mal35-2-82-225-70-234.fbx.proxad.net ([82.225.70.234] helo=server.local)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DhVIc-00054a-HZ
-	for nfs@lists.sourceforge.net; Sun, 12 Jun 2005 09:27:03 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DgwRG-0003Q9-E6
+	for nfs@lists.sourceforge.net; Fri, 10 Jun 2005 20:13:39 -0700
 Received: from [192.168.2.3] (unknown [192.168.2.1])
-	by server.local (Postfix) with ESMTP id 801F1A3853
-	for <nfs@lists.sourceforge.net>; Sun, 12 Jun 2005 18:26:55 +0200 (CEST)
+	by server.local (Postfix) with ESMTP id 3239DA32DE
+	for <nfs@lists.sourceforge.net>; Sat, 11 Jun 2005 05:13:26 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -129,7 +129,6 @@ using NFS :o
 
 
 Thanks in advance
-
 
 
 
