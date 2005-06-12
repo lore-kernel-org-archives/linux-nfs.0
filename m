@@ -1,22 +1,23 @@
-From: "Bill Rugolsky Jr." <bill@rugolsky.com>
-Subject: Re: NFS tuning - high performance throughput.
-Date: Tue, 14 Jun 2005 16:41:38 -0400
-Message-ID: <20050614204138.GG1175@ti64.telemetry-investments.com>
-References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net> <42AF3B6C.6070901@sohovfx.com>
+From: Gandalf <gandalf@siemens-mobiles.org>
+Subject: can't read superblock, can't mount anything from server
+Date: Sun, 12 Jun 2005 18:26:55 +0200
+Message-ID: <42AC624F.4070809@siemens-mobiles.org>
+Reply-To: gandalf@siemens-mobiles.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiIEF-0006eV-VW
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:41:47 -0700
-Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti41.telemetry-investments.com)
+	id 1DhVId-0005kV-Ew
+	for nfs@lists.sourceforge.net; Sun, 12 Jun 2005 09:27:03 -0700
+Received: from mal35-2-82-225-70-234.fbx.proxad.net ([82.225.70.234] helo=server.local)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DiIED-00079q-Lr
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:41:47 -0700
-To: "M. Todd Smith" <todd@sohovfx.com>
-In-Reply-To: <42AF3B6C.6070901@sohovfx.com>
+	id 1DhVIc-00054a-HZ
+	for nfs@lists.sourceforge.net; Sun, 12 Jun 2005 09:27:03 -0700
+Received: from [192.168.2.3] (unknown [192.168.2.1])
+	by server.local (Postfix) with ESMTP id 801F1A3853
+	for <nfs@lists.sourceforge.net>; Sun, 12 Jun 2005 18:26:55 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,65 +31,106 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jun 14, 2005 at 04:17:48PM -0400, M. Todd Smith wrote:
-> We've recently upgraded our NFS server machine to a dual 3.2ghz Xeon 
-> running Fedora Core 3 (kernel 2.6.11-1.14_FC3smp) w/ 4Gb RAM.  Coupled 
-> with this machine we have a 2 Broadcom NetExtreme 2 Port PCI-X NIC on 
-> its own PCI-X bus (133Mhz).  Attached to this machine is our fibre 
-> channel SAN, using Seagate fibre-channel drives and an LSI dual channel 
-> 2gigabit fibre adapter on its own PCI-X bus.  Local RW is ~135Mbytes/sec.
+Hey guys,
 
-...
- 
-> I have read most of the tuning guides I can find on the net and 
-> attempted just about everything I can get my hands on (I have not tried 
-> jumbo frames yet, still waiting for some downtime to attempt that).  My 
-> problem is that no matter how I tune the machines I can get at max 
-> 45Mb/ps throughput on NFS.  This was the same throughput we were getting 
-> with our old server with PCI cards, moreover this throughput is roughly 
-> the same for every machine on our network.  Theoretically we should be 
-> able to get much higher values.
+Problem:
 
-I assume that you mean 45 MiB/s?  Reading or writing?  What are you
-using for testing?  What are the file sizes?
- 
-Have you validated network throughput using ttcp or netperf?
+i don't know why, but NFS suddenly stop working yesterday night, i
+wanted to unmount my shared USB HDD so i stoped manually
+nfs-kernel-server, and portmap, after i plug it (even after
+server-client restarting) i keep getting the message
 
-You say that you've read the tuning guides, but you haven't told us what
-you have touched.  Please tell us:
+    wael@nasreddine:~$ sudo mount /media/WAEL_FAT/
+    mount: 192.168.3.2:/media/WAEL_FAT: can't read superblock
+    wael@nasreddine:~$ sudo mount -t nfs 192.168.3.2:/ /media/SERVER/
+    mount: 192.168.3.2:/: can't read superblock
 
-   o client-side NFS mount options
 
-   o RAID configuration (level, stripe size, etc.)
 
-   o I/O scheduler
+Information:
+client:
 
-   o queue depths (/sys/block/*/queue/nr_requests)
 
-   o readahead (/sbin/blockdev --getra <device>)
+    wael@nasreddine:~$ rpcinfo -p 192.168.3.2
+       program vers proto   port
+        100000    2   tcp    111  portmapper
+        100000    2   udp    111  portmapper
+        100003    2   udp   2049  nfs
+        100003    3   udp   2049  nfs
+        100003    4   udp   2049  nfs
+        100003    2   tcp   2049  nfs
+        100003    3   tcp   2049  nfs
+        100003    4   tcp   2049  nfs
+        100021    1   udp  32770  nlockmgr
+        100021    3   udp  32770  nlockmgr
+        100021    4   udp  32770  nlockmgr
+        100021    1   tcp  32768  nlockmgr
+        100021    3   tcp  32768  nlockmgr
+        100021    4   tcp  32768  nlockmgr
+        100005    1   udp    865  mountd
+        100005    1   tcp    868  mountd
+        100005    2   udp    865  mountd
+        100005    2   tcp    868  mountd
+        100005    3   udp    865  mountd
+        100005    3   tcp    868  mountd
+        100024    1   udp    603  status
+        100024    1   tcp    606  status
+    wael@nasreddine:~$
+    wael@nasreddine:~$ ps -edf |grep po
+    daemon    6543     1  0 13:51 ?        00:00:00 /sbin/portmap
+    wael@nasreddine:~$ cat /etc/fstab
+    192.168.3.2:/media/WAEL_FAT     /media/WAEL_FAT nfs
+rw,hard,intr,noauto     0       0
+    192.168.3.2:/   /media/SERVER   nfs     rw,hard,noauto  0       0
+    192.168.3.2:/media/REDOUANE     /media/REDOUANE nfs
+rw,hard,intr,noauto     0       0
+    wael@nasreddine:~$ showmount -e 192.168.3.2
+    Export list for 192.168.3.2:
+    /               192.168.2.0/255.255.255.0,192.168.1.0/255.255.255.0
+    /media/REDOUANE 192.168.2.0/255.255.255.0,192.168.1.0/255.255.255.0
+    /media/WAEL_FAT
+192.168.1.0/255.255.255.0,server.local,192.168.2.0/255.255.255.0
 
-   o mount options (e.g., are you using noatime)
 
-   o filesystem type
 
-   o journaling mode, if Ext3 or Reiserfs
+server:
 
-   o journal size
+    server:/etc# cat /etc/exports
+    /       192.168.1.0/255.255.255.0(rw,sync)
+192.168.2.0/255.255.255.0(rw,sync)
 
-   o internal or external journal
+    /media/WAEL_FAT 192.168.1.0/255.255.255.0(rw,sync)
+192.168.2.0/255.255.255.0(rw,sync)
 
-   o vm tunables:
+    /media/REDOUANE 192.168.1.0/255.255.255.0(rw,sync)
+192.168.2.0/255.255.255.0(rw,sync)
+    server:/etc# cat hosts.allow
+    portmap: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
+    mountd: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
+    rquotad: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
+    statd: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
+    server:/etc# cat hosts.deny
+    portmap: ALL
+    mountd: ALL
+    rquotad: ALL
+    statd: ALL
+    server:/etc# cat fstab
+    ### adding external Hard disks
+    /dev/sda2       /media/WAEL_FAT vfat
+defaults,auto,uid=1000,gid=1000,iocharset=utf8  0       0
+    server:/etc# ls /media/WAEL_FAT/
+    AuthorizationForm.doc  ClickHere.exe  ClickHere.ini  CRAZY FROG Axel
+F .wma  gdiplus.dll  mmc  Redouane_merci wael  server.zip  wael  yvon
 
-      vm.dirty_writeback_centisecs
-      vm.dirty_expire_centisecs
-      vm.dirty_ratio
-      vm.dirty_background_ratio
-      vm.nr_pdflush_threads
-      vm.vfs_cache_pressure
 
-Regards,
+Question
+what's going on, i tried almost everything, i can't get into the HDD
+using NFS :o
 
-	Bill Rugolsky
+
+Thanks in advance
+
+
 
 
 -------------------------------------------------------
