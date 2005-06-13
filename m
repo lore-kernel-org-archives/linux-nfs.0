@@ -1,22 +1,20 @@
-From: Gandalf <nfs_lists_sourceforge_net@siemens-mobiles.org>
-Subject: can't read superblock, can't mount anything from server
-Date: Sun, 12 Jun 2005 18:35:24 +0200
-Message-ID: <42AC644C.4060001@siemens-mobiles.org>
-Reply-To: nfs_lists_sourceforge_net@siemens-mobiles.org
+From: Oded Maimon <oded.maimon@gmail.com>
+Subject: NFS High Availability Cluster
+Date: Mon, 13 Jun 2005 11:55:44 +0200
+Message-ID: <42AD5820.4060109@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DhVQs-00063M-1g
-	for nfs@lists.sourceforge.net; Sun, 12 Jun 2005 09:35:34 -0700
-Received: from mal35-2-82-225-70-234.fbx.proxad.net ([82.225.70.234] helo=server.local)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DhVQp-0005yZ-IO
-	for nfs@lists.sourceforge.net; Sun, 12 Jun 2005 09:35:33 -0700
-Received: from [192.168.2.3] (unknown [192.168.2.1])
-	by server.local (Postfix) with ESMTP id 93CF2A3856
-	for <nfs@lists.sourceforge.net>; Sun, 12 Jun 2005 18:35:24 +0200 (CEST)
+	id 1DhkjQ-0003yQ-Bk
+	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 01:55:44 -0700
+Received: from wproxy.gmail.com ([64.233.184.200])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DhkjP-0008D9-VK
+	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 01:55:44 -0700
+Received: by wproxy.gmail.com with SMTP id 69so934477wra
+        for <nfs@lists.sourceforge.net>; Mon, 13 Jun 2005 01:55:43 -0700 (PDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -31,105 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hey guys,
+Hi,
 
-Problem:
+Is it possible to set an NFS HA cluster?
 
-i don't know why, but NFS suddenly stop working yesterday night, i
-wanted to unmount my shared USB HDD so i stoped manually
-nfs-kernel-server, and portmap, after i plug it (even after
-server-client restarting) i keep getting the message
+That means, that several servers will share the same disks in a SAN and 
+will provide an NFS service for
 
-    wael@nasreddine:~$ sudo mount /media/WAEL_FAT/
-    mount: 192.168.3.2:/media/WAEL_FAT: can't read superblock
-    wael@nasreddine:~$ sudo mount -t nfs 192.168.3.2:/ /media/SERVER/
-    mount: 192.168.3.2:/: can't read superblock
+all my other servers?
 
 
+I need that when one NFS server will fail (or the network connection to 
+it)  then no server using the NFS will be affected and will continue to
 
-Information:
-client:
-
-
-    wael@nasreddine:~$ rpcinfo -p 192.168.3.2
-       program vers proto   port
-        100000    2   tcp    111  portmapper
-        100000    2   udp    111  portmapper
-        100003    2   udp   2049  nfs
-        100003    3   udp   2049  nfs
-        100003    4   udp   2049  nfs
-        100003    2   tcp   2049  nfs
-        100003    3   tcp   2049  nfs
-        100003    4   tcp   2049  nfs
-        100021    1   udp  32770  nlockmgr
-        100021    3   udp  32770  nlockmgr
-        100021    4   udp  32770  nlockmgr
-        100021    1   tcp  32768  nlockmgr
-        100021    3   tcp  32768  nlockmgr
-        100021    4   tcp  32768  nlockmgr
-        100005    1   udp    865  mountd
-        100005    1   tcp    868  mountd
-        100005    2   udp    865  mountd
-        100005    2   tcp    868  mountd
-        100005    3   udp    865  mountd
-        100005    3   tcp    868  mountd
-        100024    1   udp    603  status
-        100024    1   tcp    606  status
-    wael@nasreddine:~$
-    wael@nasreddine:~$ ps -edf |grep po
-    daemon    6543     1  0 13:51 ?        00:00:00 /sbin/portmap
-    wael@nasreddine:~$ cat /etc/fstab
-    192.168.3.2:/media/WAEL_FAT     /media/WAEL_FAT nfs
-rw,hard,intr,noauto     0       0
-    192.168.3.2:/   /media/SERVER   nfs     rw,hard,noauto  0       0
-    192.168.3.2:/media/REDOUANE     /media/REDOUANE nfs
-rw,hard,intr,noauto     0       0
-    wael@nasreddine:~$ showmount -e 192.168.3.2
-    Export list for 192.168.3.2:
-    /               192.168.2.0/255.255.255.0,192.168.1.0/255.255.255.0
-    /media/REDOUANE 192.168.2.0/255.255.255.0,192.168.1.0/255.255.255.0
-    /media/WAEL_FAT
-192.168.1.0/255.255.255.0,server.local,192.168.2.0/255.255.255.0
+work with one of the other NFS servers.
 
 
-
-server:
-
-    server:/etc# cat /etc/exports
-    /       192.168.1.0/255.255.255.0(rw,sync)
-192.168.2.0/255.255.255.0(rw,sync)
-
-    /media/WAEL_FAT 192.168.1.0/255.255.255.0(rw,sync)
-192.168.2.0/255.255.255.0(rw,sync)
-
-    /media/REDOUANE 192.168.1.0/255.255.255.0(rw,sync)
-192.168.2.0/255.255.255.0(rw,sync)
-    server:/etc# cat hosts.allow
-    portmap: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-    mountd: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-    rquotad: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-    statd: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-    server:/etc# cat hosts.deny
-    portmap: ALL
-    mountd: ALL
-    rquotad: ALL
-    statd: ALL
-    server:/etc# cat fstab
-    ### adding external Hard disks
-    /dev/sda2       /media/WAEL_FAT vfat
-defaults,auto,uid=1000,gid=1000,iocharset=utf8  0       0
-    server:/etc# ls /media/WAEL_FAT/
-    AuthorizationForm.doc  ClickHere.exe  ClickHere.ini  CRAZY FROG Axel
-F .wma  gdiplus.dll  mmc  Redouane_merci wael  server.zip  wael  yvon
+Is it possible?
 
 
-Question
-what's going on, i tried almost everything, i can't get into the HDD
-using NFS :o
+Thanks,
 
-
-Thanks in advance
-
+Oded.
 
 
 
