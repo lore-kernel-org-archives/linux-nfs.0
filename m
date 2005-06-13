@@ -1,18 +1,18 @@
-From: "Wael Nasreddine" <wael_nasreddine@hotmail.com>
-Subject: can't read superblock, can't mount anything from server
-Date: Fri, 10 Jun 2005 02:48:18 +0300
-Message-ID: <BAY24-F24BD20425C67ECA953663A86FC0@phx.gbl>
+From: konzapa miller <konzapa_miller@yahoo.fr>
+Subject: information
+Date: Mon, 13 Jun 2005 12:36:24 +0200 (CEST)
+Message-ID: <20050613103625.54034.qmail@web26208.mail.ukl.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DgWl7-0006uE-R8
-	for nfs@lists.sourceforge.net; Thu, 09 Jun 2005 16:48:25 -0700
-Received: from bay24-f24.bay24.hotmail.com ([64.4.18.74] helo=hotmail.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DgWl6-0000wV-2c
-	for nfs@lists.sourceforge.net; Thu, 09 Jun 2005 16:48:25 -0700
+	id 1DhmIz-00087z-1X
+	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 03:36:33 -0700
+Received: from web26208.mail.ukl.yahoo.com ([217.12.10.245])
+	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.41)
+	id 1DhmIx-0000OO-DY
+	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 03:36:32 -0700
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,116 +27,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hey guys,
-
-Problem:
-
-i don't know why, but NFS suddenly stop working yesterday night, i
-wanted to unmount my shared USB HDD so i stoped manually
-nfs-kernel-server, and portmap, after i plug it (even after
-server-client restarting) i keep getting the message
-
-   wael@nasreddine:~$ sudo mount /media/WAEL_FAT/
-   mount: 192.168.3.2:/media/WAEL_FAT: can't read superblock
-   wael@nasreddine:~$ sudo mount -t nfs 192.168.3.2:/ /media/SERVER/
-   mount: 192.168.3.2:/: can't read superblock
+Hello Sir/Madam,
+I have on my computer Mandrake 10.1 like operating
+system. I want to install and configure nfs so, I can
+get updates I have done on the servor from the
+clients. I look forward from hearing you.
+Sincerely yours,
+Miller!
 
 
+=09
 
-Information:
-client:
-
-
-   wael@nasreddine:~$ rpcinfo -p 192.168.3.2
-      program vers proto   port
-       100000    2   tcp    111  portmapper
-       100000    2   udp    111  portmapper
-       100003    2   udp   2049  nfs
-       100003    3   udp   2049  nfs
-       100003    4   udp   2049  nfs
-       100003    2   tcp   2049  nfs
-       100003    3   tcp   2049  nfs
-       100003    4   tcp   2049  nfs
-       100021    1   udp  32770  nlockmgr
-       100021    3   udp  32770  nlockmgr
-       100021    4   udp  32770  nlockmgr
-       100021    1   tcp  32768  nlockmgr
-       100021    3   tcp  32768  nlockmgr
-       100021    4   tcp  32768  nlockmgr
-       100005    1   udp    865  mountd
-       100005    1   tcp    868  mountd
-       100005    2   udp    865  mountd
-       100005    2   tcp    868  mountd
-       100005    3   udp    865  mountd
-       100005    3   tcp    868  mountd
-       100024    1   udp    603  status
-       100024    1   tcp    606  status
-   wael@nasreddine:~$
-   wael@nasreddine:~$ ps -edf |grep po
-   daemon    6543     1  0 13:51 ?        00:00:00 /sbin/portmap
-   wael@nasreddine:~$ cat /etc/fstab
-   192.168.3.2:/media/WAEL_FAT     /media/WAEL_FAT nfs
-rw,hard,intr,noauto     0       0
-   192.168.3.2:/   /media/SERVER   nfs     rw,hard,noauto  0       0
-   192.168.3.2:/media/REDOUANE     /media/REDOUANE nfs
-rw,hard,intr,noauto     0       0
-   wael@nasreddine:~$ showmount -e 192.168.3.2
-   Export list for 192.168.3.2:
-   /               192.168.2.0/255.255.255.0,192.168.1.0/255.255.255.0
-   /media/REDOUANE 192.168.2.0/255.255.255.0,192.168.1.0/255.255.255.0
-   /media/WAEL_FAT
-192.168.1.0/255.255.255.0,server.local,192.168.2.0/255.255.255.0
-
-
-
-server:
-
-   server:/etc# cat /etc/exports
-   /       192.168.1.0/255.255.255.0(rw,sync)
-192.168.2.0/255.255.255.0(rw,sync)
-
-   /media/WAEL_FAT 192.168.1.0/255.255.255.0(rw,sync)
-192.168.2.0/255.255.255.0(rw,sync)
-
-   /media/REDOUANE 192.168.1.0/255.255.255.0(rw,sync)
-192.168.2.0/255.255.255.0(rw,sync)
-   server:/etc# cat hosts.allow
-   portmap: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-   mountd: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-   rquotad: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-   statd: 192.168.2.0/255.255.255.0 192.168.1.0/255.255.255.0
-   server:/etc# cat hosts.deny
-   portmap: ALL
-   mountd: ALL
-   rquotad: ALL
-   statd: ALL
-   server:/etc# cat fstab
-   ### adding external Hard disks
-   /dev/sda2       /media/WAEL_FAT vfat
-defaults,auto,uid=1000,gid=1000,iocharset=utf8  0       0
-   server:/etc# ls /media/WAEL_FAT/
-   AuthorizationForm.doc  ClickHere.exe  ClickHere.ini  CRAZY FROG Axel
-F .wma  gdiplus.dll  mmc  Redouane_merci wael  server.zip  wael  yvon
-
-
-Question
-what's going on, i tried almost everything, i can't get into the HDD
-using NFS :o
-
-
-Thanks in advance
-
-_________________________________________________________________
-Don't just search. Find. Check out the new MSN Search! 
-http://search.msn.click-url.com/go/onm00200636ave/direct/01/
-
+=09
+	=09
+_________________________________________________________________________=
+__=20
+Appel audio GRATUIT partout dans le monde avec le nouveau Yahoo! Messenge=
+r=20
+T=E9l=E9chargez cette version sur http://fr.messenger.yahoo.com
 
 
 -------------------------------------------------------
 SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
 from IBM. Find simple to follow Roadmaps, straightforward articles,
 informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
+speed, fast. http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclic=
+k
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
