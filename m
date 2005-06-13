@@ -1,23 +1,22 @@
-From: Larry Alkoff <labradley@mindspring.com>
-Subject: Exportfs does not accept Knoppix /ramdisk/home
-Date: Mon, 13 Jun 2005 18:19:42 -0500
-Message-ID: <42AE148E.80904@mindspring.com>
+From: Neil Brown <neilb@cse.unsw.edu.au>
+Subject: Re: Exportfs does not accept Knoppix /ramdisk/home
+Date: Tue, 14 Jun 2005 09:28:33 +1000
+Message-ID: <17070.5793.185404.226427@cse.unsw.edu.au>
+References: <42AE148E.80904@mindspring.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DhyD6-0001Vw-2U
-	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 16:19:16 -0700
-Received: from smtpauth03.mail.atl.earthlink.net ([209.86.89.63])
+	id 1DhyMH-0001tG-4J
+	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 16:28:45 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DhyD3-0002bO-EZ
-	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 16:19:15 -0700
-Received: from [69.91.95.238] (helo=[192.168.0.5])
-	by smtpauth03.mail.atl.earthlink.net with asmtp (Exim 4.34)
-	id 1DhyD2-0000V4-Fi
-	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 19:19:12 -0400
-To: nfs@lists.sourceforge.net
+	id 1DhyMF-00041V-Kt
+	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 16:28:45 -0700
+To: Larry Alkoff <labradley@mindspring.com>
+In-Reply-To: message from Larry Alkoff on Monday June 13
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,71 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Please forgive me for bothering you but I and other Knoppix users have a
-vexing problem trying to export the Knoppix home directory which is on a
-ram disk.
+On Monday June 13, labradley@mindspring.com wrote:
+> 
+> Can you tell me why exportfs isn't working with the home ramdisk and
+> suggest any workarounds?
 
-Each time I try to issue
-exportfs -rav
-an "invalid argument" error message is produced.
-However the root / directory is exported without error.
+I assume it is actually a tmpfs rather than a regular filesystem on a
+true ramdisk ? (what does 'cat /proc/mounts' show?)
 
-Some background on Knoppix:
-Knoppix boots entirely from a cdrom and, in my case, does not use a hard
-disk at all.  In fact, there is no hard disk in the Knoppix machine I'm
-using now.
+A tmpfs doesn't have a stable identifier (like a device number) to use
+to identify the filesystem.  You need to give it one.
+Try adding
+   fsid=27
+to the export options for the problematic filesystem. e.g.
 
-Knoppix creates a ram disk when it boots with soft links to the cdrom.
-You can delete a soft line to a file and write your own.   In this case
-I deleted the soft link to /etc/exports and wrote one for my exports.
+/ramdisk/home/knoppix   knoppix(sync,rw,no_root_squash,fsid=27)
 
-Once everything is running satisfactorily you can save the entire /etc
-and subdirectories to a thumb drive.
+NeilBrown
 
-Knoppix boots with a user "knoppix" and its home is mounted as
-/ramdisk/home/knoppix
-with a symlink
-/home -> /ramdisk/home
-
-Tried several variations on below but keep getting an error message.
-I suspect that /ramdisk is not considered a file system by exportfs.
-
-This is a portion of /etc/exports:
-/       knoppix(sync,rw,no_root_squash)
-/ramdisk/home/knoppix   knoppix(sync,rw,no_root_squash)
-#/home  knoppix(sync,rw,no_root_squash)
-
-This is the result of exportfs:
-
-root@Knoppix etc # exportfs -rav
-exporting knoppix:/ramdisk/home/knoppix
-exporting knoppix:/
-exporting knoppix:/ramdisk/home/knoppix to kernel
-knoppix:/ramdisk/home/knoppix: Invalid argument
-reexporting knoppix:/ to kernel
-
-In searching the Knoppix mailing list it appears that others are having
-the same trouble trying to mount the Knoppix home directory for NFS.
-Some have said that the owner of Knoppix is not interested in NFS, only
-Samba.
-
-If I cannot mount using NFS I'll have to go to Samba but am not sure yet
-how to go about mounting a Linux share on Samba or whether Samba would
-accept the ramdisk part.
-
-Can you tell me why exportfs isn't working with the home ramdisk and
-suggest any workarounds?
-
-I have experience with NFS on several Linux machines and have portmap,
-nfsd and rpc.mountd running.
-
-I hope the knowledgable people on this list can help solve this puzzle.
-Thank you.
-
-
--- 
-Larry Alkoff N2LA - Austin TX
-Using Thunderbird on Slackware Linux
 
 
 -------------------------------------------------------
