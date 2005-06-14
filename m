@@ -1,23 +1,22 @@
-From: Marten Lehmann <lehmann@cnm.de>
-Subject: RPC Error: 15 ( Program not registered )
-Date: Tue, 14 Jun 2005 22:50:09 +0200
-Message-ID: <42AF4301.9020208@cnm.de>
+From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+Subject: Re: NFS tuning - high performance throughput.
+Date: Tue, 14 Jun 2005 16:50:19 -0400
+Message-ID: <20050614205019.GA6358@ti64.telemetry-investments.com>
+References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net> <42AF3B6C.6070901@sohovfx.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiIMH-0006w8-R7
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:05 -0700
-Received: from relay1.mail.vrmd.de ([81.28.232.18])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DiIMH-00005v-46
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:05 -0700
-Received: from [84.59.51.139] (helo=[192.168.33.66])
-	by vm8.bln2.vrmd.de with asmtp (Exim 4.41)
-	id 1DiIMH-0000y5-C4
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 22:50:05 +0200
-To: nfs@lists.sourceforge.net
+	id 1DiIMd-0006xK-7y
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:27 -0700
+Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti41.telemetry-investments.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DiIMb-00005X-Iu
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:27 -0700
+To: "M. Todd Smith" <todd@sohovfx.com>
+In-Reply-To: <42AF3B6C.6070901@sohovfx.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,75 +30,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+[Apologies for the resend; mutt chose the wrong From address the first time.]
 
-I'm experiencing exactly the problem as described at 
-http://nfs.sourceforge.net/nfs-howto/troubleshooting.html
+On Tue, Jun 14, 2005 at 04:17:48PM -0400, M. Todd Smith wrote:
+> We've recently upgraded our NFS server machine to a dual 3.2ghz Xeon 
+> running Fedora Core 3 (kernel 2.6.11-1.14_FC3smp) w/ 4Gb RAM.  Coupled 
+> with this machine we have a 2 Broadcom NetExtreme 2 Port PCI-X NIC on 
+> its own PCI-X bus (133Mhz).  Attached to this machine is our fibre 
+> channel SAN, using Seagate fibre-channel drives and an LSI dual channel 
+> 2gigabit fibre adapter on its own PCI-X bus.  Local RW is ~135Mbytes/sec.
 
-7.3b:  RPC: Program Not Registered: (or another "RPC" error)
+...
+ 
+> I have read most of the tuning guides I can find on the net and 
+> attempted just about everything I can get my hands on (I have not tried 
+> jumbo frames yet, still waiting for some downtime to attempt that).  My 
+> problem is that no matter how I tune the machines I can get at max 
+> 45Mb/ps throughput on NFS.  This was the same throughput we were getting 
+> with our old server with PCI cards, moreover this throughput is roughly 
+> the same for every machine on our network.  Theoretically we should be 
+> able to get much higher values.
 
-The nfs server is running with version 3, the client has version 4.
+I assume that you mean 45 MiB/s?  Reading or writing?  What are you
+using for testing?  What are the file sizes?
+ 
+Have you validated network throughput using ttcp or netperf?
 
-rpcinfo -p on the server gives:
+You say that you've read the tuning guides, but you haven't told us what
+you have touched.  Please tell us:
 
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100011    1   udp    604  rquotad
-     100011    2   udp    604  rquotad
-     100011    1   tcp    607  rquotad
-     100011    2   tcp    607  rquotad
-     100021    1   udp  32770  nlockmgr
-     100021    3   udp  32770  nlockmgr
-     100021    4   udp  32770  nlockmgr
-     100021    1   tcp  33302  nlockmgr
-     100021    3   tcp  33302  nlockmgr
-     100021    4   tcp  33302  nlockmgr
-     100005    1   udp    620  mountd
-     100005    1   tcp    623  mountd
-     100005    2   udp    620  mountd
-     100005    2   tcp    623  mountd
-     100005    3   udp    620  mountd
-     100005    3   tcp    623  mountd
+   o client-side NFS mount options
 
-rpcinfo -p 192.168.33.53 from the client gives:
+   o RAID configuration (level, stripe size, etc.)
 
-    program vers proto   port
-     100000    2   tcp    111  portmapper
-     100000    2   udp    111  portmapper
-     100011    1   udp    604  rquotad
-     100011    2   udp    604  rquotad
-     100011    1   tcp    607  rquotad
-     100011    2   tcp    607  rquotad
-     100021    1   udp  32770  nlockmgr
-     100021    3   udp  32770  nlockmgr
-     100021    4   udp  32770  nlockmgr
-     100021    1   tcp  33302  nlockmgr
-     100021    3   tcp  33302  nlockmgr
-     100021    4   tcp  33302  nlockmgr
-     100005    1   udp    620  mountd
-     100005    1   tcp    623  mountd
-     100005    2   udp    620  mountd
-     100005    2   tcp    623  mountd
-     100005    3   udp    620  mountd
-     100005    3   tcp    623  mountd
+   o I/O scheduler
 
-For debugging, I disabled all firewalls. However, mounting is not 
-successful:
+   o queue depths (/sys/block/*/queue/nr_requests)
 
-# mount -t nfs 192.168.33.53:/vrmd/rhel4 /mnt -v
-mount to NFS server '192.168.33.53' failed.
-RPC Error: 15 ( Program not registered )
+   o readahead (/sbin/blockdev --getra <device>)
 
-# mount -t nfs -o vers=3 192.168.33.53:/vrmd/rhel4 /mnt -v
-mount to NFS server '192.168.33.53' failed.
-RPC Error: 15 ( Program not registered )
+   o mount options (e.g., are you using noatime)
 
-What can I do? The Troubleshooting-Page reports the problem, but does 
-explain how to solve the issue. Any ideas, what causes this problem?
+   o filesystem type
 
-Regards
-Marten
+   o journaling mode, if Ext3 or Reiserfs
+
+   o journal size
+
+   o internal or external journal
+
+   o vm tunables:
+
+      vm.dirty_writeback_centisecs
+      vm.dirty_expire_centisecs
+      vm.dirty_ratio
+      vm.dirty_background_ratio
+      vm.nr_pdflush_threads
+      vm.vfs_cache_pressure
+
+Regards,
+
+	Bill Rugolsky
+
 
 
 -------------------------------------------------------
