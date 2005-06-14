@@ -1,25 +1,21 @@
-From: Chris Penney <cpenney@gmail.com>
-Subject: Re: NFS tuning - high performance throughput.
-Date: Tue, 14 Jun 2005 17:04:16 -0400
-Message-ID: <111aefd050614140472f81157@mail.gmail.com>
-References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net>
-	 <42AF3B6C.6070901@sohovfx.com>
-Reply-To: penney@msu.edu
+From: "Roger Heflin" <rheflin@atipa.com>
+Subject: RE: NFS tuning - high performance throughput.
+Date: Tue, 14 Jun 2005 16:11:24 -0500
+Message-ID: <EXCHG2003z3u92o0Ndq0000058f@EXCHG2003.microtech-ks.com>
+References: <42AF3B6C.6070901@sohovfx.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiIa4-0007pO-QZ
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 14:04:20 -0700
-Received: from wproxy.gmail.com ([64.233.184.192])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DiIa2-0002cS-90
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 14:04:20 -0700
-Received: by wproxy.gmail.com with SMTP id 71so98132wra
-        for <nfs@lists.sourceforge.net>; Tue, 14 Jun 2005 14:04:16 -0700 (PDT)
-To: "M. Todd Smith" <todd@sohovfx.com>
+	id 1DiIfc-00089Y-TH
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 14:10:04 -0700
+Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DiIfa-0003G8-BE
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 14:10:04 -0700
+To: "'M. Todd Smith'" <todd@sohovfx.com>, <nfs@lists.sourceforge.net>
 In-Reply-To: <42AF3B6C.6070901@sohovfx.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,47 +30,112 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->  Local RW is ~135Mbytes/sec
 
-That seems slow for LSI disks.  I use LSI disk (STK rebrand) and have
-one HBA connected to controller A and the other HBA to controller B.=20
-I then have two 1TB luns primary on A and B (so a total of 4 TB).  I
-get ~300MB/s.  I'm wondering if you are striping across controllers
-and what file system you use (I use JFS).
+Using Suse Enterprise 9.0 single CPU Opteron server, with single
+broadcom network interface, to a single test machine I can 
+get 95MiB writes, 115Mib/second reads.    The test machine
+is dual cpu, the server is single cpu, and has 2GB of ram.
 
-How are you chaining the luns into one volume?  I use the device
-mapper (4 multipath devices =3D> 1 linear).
+If you are getting 45MB/second you don't need trunking.
 
-> I have read most of the tuning guides I can find on the net and
-> attempted just about everything I can get my hands on (I have not tried
-> jumbo frames yet, still waiting for some downtime to attempt that).  My
-> problem is that no matter how I tune the machines I can get at max
-> 45Mb/ps throughput on NFS.=20
+The local IO speed of our setup was around your 135MB/second
+on the writes, more like 185MB/second on the reads.
 
-That is pretty low, esp. if you are talking about reads, which I can
-get >100MB/s with only a single e1000 card.  I use the following mount
-options:
+32kb block size was the best, no other significant changes
+where made to nfs or to the kernel to get this number, the
+network is clean.
 
-Client: nosuid,rw,bg,hard,intr,vers=3D3,proto=3Dtcp,rsize=3D32768,wsize=3D3=
-2768
-Server: rw,sync,no_subtree_check,no_root_squash
+I have seen a SAN slow down from what I believe is overloading.
 
-I use 128 NFS threads (which in SuSE is set in /etc/sysconfig/nfs).
+How big of test did you run to get the 135MB/second local
+speed?   My test above were done with many many TB of IO such
+that the cache was a non-issue.    NFS normally runs sync so
+cache is a non-issue, and sustained local performance is 
+the real issue.
 
-In /etc/sysctl.conf I have (can't say how well tuned these are):
-net.core.rmem_default =3D 262144
-net.core.wmem_default =3D 262144
-net.core.rmem_max =3D 8388608
-net.core.wmem_max =3D 8388608
-net.ipv4.tcp_rmem =3D 4096 87380 8388608
-net.ipv4.tcp_wmem =3D 4096 65536 8388608
-net.ipv4.tcp_mem =3D 8388608 8388608 8388608
+What is your actual local SAN disk setup like?
 
-I've also found that enabling hyperthreading is a good thing for NFS.=20
-Under load using etheral I show an improvement in write/read/commit
-latency using HT.  I'm also using SLES 9.
+                        Roger
+				Atipa Technologies
 
-   Chris
+
+
+
+> -----Original Message-----
+> From: nfs-admin@lists.sourceforge.net 
+> [mailto:nfs-admin@lists.sourceforge.net] On Behalf Of M. Todd Smith
+> Sent: Tuesday, June 14, 2005 3:18 PM
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] NFS tuning - high performance throughput.
+> 
+> Hello all,
+> 
+> I've been attempting to get a better hold over our NFS 
+> performance as our network grows and grows.
+> 
+> We've recently upgraded our NFS server machine to a dual 
+> 3.2ghz Xeon running Fedora Core 3 (kernel 2.6.11-1.14_FC3smp) 
+> w/ 4Gb RAM.  Coupled with this machine we have a 2 Broadcom 
+> NetExtreme 2 Port PCI-X NIC on its own PCI-X bus (133Mhz).  
+> Attached to this machine is our fibre channel SAN, using 
+> Seagate fibre-channel drives and an LSI dual channel 2gigabit 
+> fibre adapter on its own PCI-X bus.  Local RW is ~135Mbytes/sec.
+>  
+> The 4 ports are trunked together using bonding (balanced 
+> round robin mode), and trunked together on our Extreme 
+> Networks Summit 400i switch.  
+> All the test machines are attached to this switch, making 
+> everything within one hop and ping times of less than a 200 
+> nanoseconds.
+> 
+> Current test machine is running Suse 9.2 and has an Intel 
+> 100/1000 XT server adapter (e1000 driver) on a shared but not 
+> high traffic PCI bus.  
+> Other test machines include some Dell PowerEdge 1850's with 
+> onboard Intel NICs, and some Apple G4, G5 and Xserves.
+> 
+> I have read most of the tuning guides I can find on the net 
+> and attempted just about everything I can get my hands on (I 
+> have not tried jumbo frames yet, still waiting for some 
+> downtime to attempt that).  My problem is that no matter how 
+> I tune the machines I can get at max 45Mb/ps throughput on 
+> NFS.  This was the same throughput we were getting with our 
+> old server with PCI cards, moreover this throughput is 
+> roughly the same for every machine on our network.  
+> Theoretically we should be able to get much higher values.
+> 
+> Any idea as to why this is?  I can provide config files and 
+> such if needed, but I'm really at a loss as to where to start.
+> 
+> Cheers
+> Todd
+> 
+> --
+> Systems Administrator
+> ----------------------------------
+> Soho VFX - Visual Effects Studio
+> 99 Atlantic Avenue, Suite 303
+> Toronto, Ontario, M6K 3J8
+> (416) 516-7863
+> http://www.sohovfx.com
+> ----------------------------------
+> 
+> 
+>  
+> 
+> 
+> 
+> -------------------------------------------------------
+> SF.Net email is sponsored by: Discover Easy Linux Migration 
+> Strategies from IBM. Find simple to follow Roadmaps, 
+> straightforward articles, informative Webcasts and more! Get 
+> everything you need to get up to speed, fast. 
+> http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net 
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+
 
 
 -------------------------------------------------------
