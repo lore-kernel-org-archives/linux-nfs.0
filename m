@@ -1,25 +1,27 @@
 From: Chris Penney <cpenney@gmail.com>
 Subject: Re: NFS tuning - high performance throughput.
-Date: Wed, 15 Jun 2005 16:33:08 -0400
-Message-ID: <111aefd0506151333415a4655@mail.gmail.com>
-References: <EXCHG2003QtpfTYSl1q000005f2@EXCHG2003.microtech-ks.com>
-	 <1118866263.22484.21.camel@seki.nac.uci.edu>
+Date: Tue, 14 Jun 2005 17:06:15 -0400
+Message-ID: <111aefd050614140652112f53@mail.gmail.com>
+References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net>
+	 <42AF3B6C.6070901@sohovfx.com>
+	 <111aefd050614140472f81157@mail.gmail.com>
 Reply-To: penney@msu.edu
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DieZZ-00014b-Qz
-	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 13:33:17 -0700
-Received: from wproxy.gmail.com ([64.233.184.197])
+	id 1Diel9-0001Xs-FS
+	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 13:45:15 -0700
+Received: from wproxy.gmail.com ([64.233.184.194])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DieZT-0005oS-IP
-	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 13:33:17 -0700
-Received: by wproxy.gmail.com with SMTP id 69so44977wra
-        for <nfs@lists.sourceforge.net>; Wed, 15 Jun 2005 13:33:08 -0700 (PDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1118866263.22484.21.camel@seki.nac.uci.edu>
+	id 1Diel9-0007rN-32
+	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 13:45:15 -0700
+Received: by wproxy.gmail.com with SMTP id 57so52303wri
+        for <nfs@lists.sourceforge.net>; Wed, 15 Jun 2005 13:45:14 -0700 (PDT)
+To: "M. Todd Smith" <todd@sohovfx.com>
+In-Reply-To: <111aefd050614140472f81157@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,26 +35,10 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 6/15/05, Dan Stromberg <strombrg@dcs.nac.uci.edu> wrote:
-> On Wed, 2005-06-15 at 14:52 -0500, Roger Heflin wrote:
-> > The mount/remount (unless you time how long it takes to unmount),
-> > will potentially still skew the write test, and the writes
-> > will still be happening for quite a while after the dd completes.
->=20
-> Or unless you sync twice?  Or write synchronously.
->=20
+> How are you chaining the luns into one volume?  I use the device
+> mapper (4 multipath devices =3D> 1 linear).
 
-You can optionally use iozone (www.iozone.org) you can use '-c -e' to
-include fsync() and close() times.  It also has an option to umount
-the volume between iterations.
-
-Also, I missed that he was using a 4k stripe size before.  That's got
-to be his issue.  My luns are 8+1 h/w raid 5 using a 64k segment size
-per disk and I use 512k (8*64) as the stripe size.  As was
-intelligently noted, you really want your writes to fill a whole
-stripe if you can.  If they do not my understanding is that you should
-lower both your segment size and stripe width.  I think you always
-want your stripe width to match the width of your raid 5 lun.
+Sorry, that should be 4 multipath =3D> 1 striped.
 
    Chris
 
