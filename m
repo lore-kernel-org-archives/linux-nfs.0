@@ -1,22 +1,25 @@
-From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
-Subject: Re: NFS tuning - high performance throughput.
-Date: Tue, 14 Jun 2005 16:50:19 -0400
-Message-ID: <20050614205019.GA6358@ti64.telemetry-investments.com>
-References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net> <42AF3B6C.6070901@sohovfx.com>
+From: Marten Lehmann <lehmann@cnm.de>
+Subject: Re: RPC Error: 15 ( Program not registered )
+Date: Tue, 14 Jun 2005 22:54:35 +0200
+Message-ID: <42AF440B.1030306@cnm.de>
+References: <42AF4301.9020208@cnm.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiIMd-0006xK-7y
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:27 -0700
-Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti41.telemetry-investments.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DiIMb-00005X-Iu
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:27 -0700
-To: "M. Todd Smith" <todd@sohovfx.com>
-In-Reply-To: <42AF3B6C.6070901@sohovfx.com>
+	id 1DiIQa-0007Hp-9w
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:54:32 -0700
+Received: from relay1.mail.vrmd.de ([81.28.232.18])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DiIQY-0000sA-QC
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:54:32 -0700
+Received: from [84.59.51.139] (helo=[192.168.33.66])
+	by vm8.bln2.vrmd.de with asmtp (Exim 4.41)
+	id 1DiIQZ-00013N-5i
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 22:54:31 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <42AF4301.9020208@cnm.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,68 +33,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-[Apologies for the resend; mutt chose the wrong From address the first time.]
+Btw.:
 
-On Tue, Jun 14, 2005 at 04:17:48PM -0400, M. Todd Smith wrote:
-> We've recently upgraded our NFS server machine to a dual 3.2ghz Xeon 
-> running Fedora Core 3 (kernel 2.6.11-1.14_FC3smp) w/ 4Gb RAM.  Coupled 
-> with this machine we have a 2 Broadcom NetExtreme 2 Port PCI-X NIC on 
-> its own PCI-X bus (133Mhz).  Attached to this machine is our fibre 
-> channel SAN, using Seagate fibre-channel drives and an LSI dual channel 
-> 2gigabit fibre adapter on its own PCI-X bus.  Local RW is ~135Mbytes/sec.
+on the server, I can see several lines like
 
-...
- 
-> I have read most of the tuning guides I can find on the net and 
-> attempted just about everything I can get my hands on (I have not tried 
-> jumbo frames yet, still waiting for some downtime to attempt that).  My 
-> problem is that no matter how I tune the machines I can get at max 
-> 45Mb/ps throughput on NFS.  This was the same throughput we were getting 
-> with our old server with PCI cards, moreover this throughput is roughly 
-> the same for every machine on our network.  Theoretically we should be 
-> able to get much higher values.
+Jun 14 22:02:16 vm3 rpc.mountd: authenticated mount request from 
+192.168.33.56:792 for /vrmd/rhel4 (/vrmd/rhel4)
 
-I assume that you mean 45 MiB/s?  Reading or writing?  What are you
-using for testing?  What are the file sizes?
- 
-Have you validated network throughput using ttcp or netperf?
+in /var/log/messages.
 
-You say that you've read the tuning guides, but you haven't told us what
-you have touched.  Please tell us:
-
-   o client-side NFS mount options
-
-   o RAID configuration (level, stripe size, etc.)
-
-   o I/O scheduler
-
-   o queue depths (/sys/block/*/queue/nr_requests)
-
-   o readahead (/sbin/blockdev --getra <device>)
-
-   o mount options (e.g., are you using noatime)
-
-   o filesystem type
-
-   o journaling mode, if Ext3 or Reiserfs
-
-   o journal size
-
-   o internal or external journal
-
-   o vm tunables:
-
-      vm.dirty_writeback_centisecs
-      vm.dirty_expire_centisecs
-      vm.dirty_ratio
-      vm.dirty_background_ratio
-      vm.nr_pdflush_threads
-      vm.vfs_cache_pressure
-
-Regards,
-
-	Bill Rugolsky
-
+Regards
+Marten
 
 
 -------------------------------------------------------
