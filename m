@@ -1,23 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: NFS crash on Suse, any ideas on which normal nfs patch could be a cause/fix?
-Date: Tue, 14 Jun 2005 13:06:14 +0200
-Message-ID: <20050614110614.GH5155@suse.de>
-References: <20050610075637.GB5534@suse.de> <EXCHG2003xf4yp8ARf30000046f@EXCHG2003.microtech-ks.com>
+From: "Roger Heflin" <rheflin@atipa.com>
+Subject: RE: Flushing of cached data on NFS server
+Date: Tue, 14 Jun 2005 08:02:13 -0500
+Message-ID: <EXCHG2003w0m25q8awY00000521@EXCHG2003.microtech-ks.com>
+References: <9E621559095AA746B22B21CD4FAF99A521A642@EDINMAIL1.ad.datcon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Di9FT-0001dI-Ti
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 04:06:27 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Di9FT-00089C-5x
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 04:06:27 -0700
-To: Roger Heflin <rheflin@atipa.com>
-In-Reply-To: <EXCHG2003xf4yp8ARf30000046f@EXCHG2003.microtech-ks.com>
+	id 1DiB2D-00072F-A5
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 06:00:53 -0700
+Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DiB2B-0002WE-Sq
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 06:00:52 -0700
+To: "'Edward Hibbert'" <Edward.Hibbert@dataconnection.com>,
+	<nfs@lists.sourceforge.net>
+In-Reply-To: <9E621559095AA746B22B21CD4FAF99A521A642@EDINMAIL1.ad.datcon.co.uk>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,78 +31,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Andi Kleen mentioned that this may be a BIOS or driver problem.
-Drivers accessing incorrect memory mappings may cause a watchdog to
-trigger, which will elicit an MCE.
 
-The address is just over 2GB; the BIOS may have created the
-memory hole there. Can you disable memory remapping in the
-BIOS?
+A dirty trick that I have used on local filesystems that was running
+into response time issues when flushes happened was to run sync
+and sleep for n seconds and then run it again in a loop, this
+used to be the default on all unixes but at some point either
+was taken over by the kernel, or no longer worried about, on 
+the local machine we were able to confirm that almost all of
+memory was filled with dirty write caches, of course this won't
+happen on a nfs server with sync set on the export, it may well
+be that it will happens on certain filer as they are not exporting
+sync.
 
-Olaf
+The problem with the local machine we were having was that when
+all 64GB of ram filled up, the IO speed went down by quite a bit,
+adding in the sync every 30 seconds make this slow down go away.
 
+                                Roger 
 
-On Fri, Jun 10, 2005 at 03:53:14PM -0500, Roger Heflin wrote:
-> We have looked at this more carefully, the customer has
-> got me more information and details.   It looks like some
-> way nfs exercises a network bug and causes the network driver
-> to crash.    The machine/os has survived a full kickstart
-> (with a several hundred MB install by 100 plus identical
-> machines without that exercising the bug) and a quite a
-> bit of light nfs usage, but heavier nfs usage, including
-> using bonnie will make the machines fall over fairly quick.
+> -----Original Message-----
+> From: nfs-admin@lists.sourceforge.net 
+> [mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Edward Hibbert
+> Sent: Tuesday, June 14, 2005 5:35 AM
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] Flushing of cached data on NFS server
 > 
-> We are checking for what sort of issues there could be with
-> the network driver/network firmware/bmc card.   
+> We're running against a Linux-based NFS server (actually a 
+> SNAP filer).  What we see is that when its cache gets full, 
+> it flushes out the data using bdflush, as you'd expect.  This 
+> may take several seconds, and during this time responsiveness 
+> dives - NFS operations take several seconds, RPC 
+> retransmissions start happening, and so on.
 > 
-> For information this is a Quad Tyan 4882 with 32GB of ram
-> (16 have 64GB of ram) with the customer having over 100
-> of the Quads.
+> What I'd like is a way of tuning the server to remain 
+> responsive at all times (e.g. by more regular flushing).  
+> I've had a play with bdflush parameters, but it's kind of 
+> stabbing in the dark and I'm not, erm, drawing blood.
 > 
-> There is also a large number of duals, but after further
-> examination we don't believe those have the issue.
+> Does anyone have any experience at tuning NFS servers for 
+> consistently low latency?
 > 
->                          Roger
+> Regards,
 > 
-> > -----Original Message-----
-> > From: Olaf Kirch [mailto:okir@suse.de] 
-> > Sent: Friday, June 10, 2005 2:57 AM
-> > To: Roger Heflin
-> > Cc: nfs@lists.sourceforge.net
-> > Subject: Re: [NFS] NFS crash on Suse, any ideas on which 
-> > normal nfs patch could be a cause/fix?
-> > 
-> > On Thu, Jun 09, 2005 at 01:50:13PM -0500, Roger Heflin wrote:
-> > > The kernel crash message was:
-> > > 
-> > > CPU 0: Machine Check Exception:          4 Bank 4: f60da00100000813
-> > >   RIP !INEXACT!  10:<ffffffff8022fae2> {copy_user_generic_c0x8/0x26}
-> > >   TSC 3d101af6bf756 ADDR 4304010
-> > >   Kernel panic: Machine check
-> > 
-> > This is not an NFS bug, it's a machine check exception. Your 
-> > machines have bad RAM it seems.
-> > 
-> > Olaf
-> > -- 
-> > Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-> > okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
-> > 
-> 
+> Edward.
 > 
 > 
 > -------------------------------------------------------
-> This SF.Net email is sponsored by: NEC IT Guy Games.  How far can you shotput
-> a projector? How fast can you ride your desk chair down the office luge track?
+> This SF.Net email is sponsored by: NEC IT Guy Games.  How far 
+> can you shotput a projector? How fast can you ride your desk 
+> chair down the office luge track?
 > If you want to score the big prize, get to know the little guy.  
-> Play to win an NEC 61" plasma display: http://www.necitguy.com/?r=20
+> Play to win an NEC 61" plasma display: 
+> http://www.necitguy.com/?r 
 > _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
+> NFS maillist  -  NFS@lists.sourceforge.net 
 > https://lists.sourceforge.net/lists/listinfo/nfs
+> 
 
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
