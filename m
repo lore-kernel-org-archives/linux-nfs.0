@@ -1,23 +1,25 @@
-From: "Roger Heflin" <rheflin@atipa.com>
-Subject: RE: Flushing of cached data on NFS server
-Date: Tue, 14 Jun 2005 08:02:13 -0500
-Message-ID: <EXCHG2003w0m25q8awY00000521@EXCHG2003.microtech-ks.com>
-References: <9E621559095AA746B22B21CD4FAF99A521A642@EDINMAIL1.ad.datcon.co.uk>
+From: "M. Todd Smith" <todd@sohovfx.com>
+Subject: NFS tuning - high performance throughput.
+Date: Tue, 14 Jun 2005 16:17:48 -0400
+Message-ID: <42AF3B6C.6070901@sohovfx.com>
+References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiB2D-00072F-A5
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 06:00:53 -0700
-Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DiB2B-0002WE-Sq
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 06:00:52 -0700
-To: "'Edward Hibbert'" <Edward.Hibbert@dataconnection.com>,
-	<nfs@lists.sourceforge.net>
-In-Reply-To: <9E621559095AA746B22B21CD4FAF99A521A642@EDINMAIL1.ad.datcon.co.uk>
+	id 1DiHrC-0005Tt-2P
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:17:58 -0700
+Received: from smtp1.beanfield.com ([66.207.192.6] helo=smtp1.beanfield.net)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DiHrA-0003ZO-Eu
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:17:57 -0700
+Received: from [192.168.1.26] ([66.207.206.227])
+	by smtp1.beanfield.net (8.13.4/8.12.11) with ESMTP id j5EKHdvj001534
+	for <nfs@lists.sourceforge.net>; Tue, 14 Jun 2005 16:17:39 -0400 (EDT)
+	(envelope-from todd@sohovfx.com)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,70 +33,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello all,
 
-A dirty trick that I have used on local filesystems that was running
-into response time issues when flushes happened was to run sync
-and sleep for n seconds and then run it again in a loop, this
-used to be the default on all unixes but at some point either
-was taken over by the kernel, or no longer worried about, on 
-the local machine we were able to confirm that almost all of
-memory was filled with dirty write caches, of course this won't
-happen on a nfs server with sync set on the export, it may well
-be that it will happens on certain filer as they are not exporting
-sync.
+I've been attempting to get a better hold over our NFS performance as 
+our network grows and grows.
 
-The problem with the local machine we were having was that when
-all 64GB of ram filled up, the IO speed went down by quite a bit,
-adding in the sync every 30 seconds make this slow down go away.
+We've recently upgraded our NFS server machine to a dual 3.2ghz Xeon 
+running Fedora Core 3 (kernel 2.6.11-1.14_FC3smp) w/ 4Gb RAM.  Coupled 
+with this machine we have a 2 Broadcom NetExtreme 2 Port PCI-X NIC on 
+its own PCI-X bus (133Mhz).  Attached to this machine is our fibre 
+channel SAN, using Seagate fibre-channel drives and an LSI dual channel 
+2gigabit fibre adapter on its own PCI-X bus.  Local RW is ~135Mbytes/sec.
+ 
+The 4 ports are trunked together using bonding (balanced round robin 
+mode), and trunked together on our Extreme Networks Summit 400i switch.  
+All the test machines are attached to this switch, making everything 
+within one hop and ping times of less than a 200 nanoseconds.
 
-                                Roger 
+Current test machine is running Suse 9.2 and has an Intel 100/1000 XT 
+server adapter (e1000 driver) on a shared but not high traffic PCI bus.  
+Other test machines include some Dell PowerEdge 1850's with onboard 
+Intel NICs, and some Apple G4, G5 and Xserves.
 
-> -----Original Message-----
-> From: nfs-admin@lists.sourceforge.net 
-> [mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Edward Hibbert
-> Sent: Tuesday, June 14, 2005 5:35 AM
-> To: nfs@lists.sourceforge.net
-> Subject: [NFS] Flushing of cached data on NFS server
-> 
-> We're running against a Linux-based NFS server (actually a 
-> SNAP filer).  What we see is that when its cache gets full, 
-> it flushes out the data using bdflush, as you'd expect.  This 
-> may take several seconds, and during this time responsiveness 
-> dives - NFS operations take several seconds, RPC 
-> retransmissions start happening, and so on.
-> 
-> What I'd like is a way of tuning the server to remain 
-> responsive at all times (e.g. by more regular flushing).  
-> I've had a play with bdflush parameters, but it's kind of 
-> stabbing in the dark and I'm not, erm, drawing blood.
-> 
-> Does anyone have any experience at tuning NFS servers for 
-> consistently low latency?
-> 
-> Regards,
-> 
-> Edward.
-> 
-> 
-> -------------------------------------------------------
-> This SF.Net email is sponsored by: NEC IT Guy Games.  How far 
-> can you shotput a projector? How fast can you ride your desk 
-> chair down the office luge track?
-> If you want to score the big prize, get to know the little guy.  
-> Play to win an NEC 61" plasma display: 
-> http://www.necitguy.com/?r 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net 
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+I have read most of the tuning guides I can find on the net and 
+attempted just about everything I can get my hands on (I have not tried 
+jumbo frames yet, still waiting for some downtime to attempt that).  My 
+problem is that no matter how I tune the machines I can get at max 
+45Mb/ps throughput on NFS.  This was the same throughput we were getting 
+with our old server with PCI cards, moreover this throughput is roughly 
+the same for every machine on our network.  Theoretically we should be 
+able to get much higher values.
+
+Any idea as to why this is?  I can provide config files and such if 
+needed, but I'm really at a loss as to where to start.
+
+Cheers
+Todd
+
+-- 
+Systems Administrator
+----------------------------------
+Soho VFX - Visual Effects Studio
+99 Atlantic Avenue, Suite 303
+Toronto, Ontario, M6K 3J8
+(416) 516-7863 
+http://www.sohovfx.com
+----------------------------------
+
+
+ 
 
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by: NEC IT Guy Games.  How far can you shotput
-a projector? How fast can you ride your desk chair down the office luge track?
-If you want to score the big prize, get to know the little guy.  
-Play to win an NEC 61" plasma display: http://www.necitguy.com/?r=20
+SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
+from IBM. Find simple to follow Roadmaps, straightforward articles,
+informative Webcasts and more! Get everything you need to get up to
+speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
