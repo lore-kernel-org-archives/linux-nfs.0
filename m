@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: Exportfs does not accept Knoppix /ramdisk/home
-Date: Tue, 14 Jun 2005 15:29:33 +1000
-Message-ID: <17070.27453.148353.381340@cse.unsw.edu.au>
-References: <42AE148E.80904@mindspring.com>
-	<17070.5793.185404.226427@cse.unsw.edu.au>
-	<42AE6611.4000709@mindspring.com>
+From: "Edward Hibbert" <Edward.Hibbert@dataconnection.com>
+Subject: Flushing of cached data on NFS server
+Date: Tue, 14 Jun 2005 11:35:03 +0100
+Message-ID: <9E621559095AA746B22B21CD4FAF99A521A642@EDINMAIL1.ad.datcon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Di3zc-0003At-GE
-	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 22:29:44 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1Di8lG-0008Sp-0E
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 03:35:14 -0700
+Received: from smtp.dataconnection.com ([192.91.191.4])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Di3za-0004eK-Pl
-	for nfs@lists.sourceforge.net; Mon, 13 Jun 2005 22:29:44 -0700
-To: Larry Alkoff <labradley@mindspring.com>
-In-Reply-To: message from Larry Alkoff on Tuesday June 14
+	id 1Di8lE-00072Y-Gm
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 03:35:13 -0700
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,41 +28,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday June 14, labradley@mindspring.com wrote:
-> 
-> 
-> The good news - I tried your line exactly as above and
-> exportfs -rav
-> worked as expected.
+We're running against a Linux-based NFS server (actually a SNAP filer).  =
+What we see is that when its cache gets full, it flushes out the data =
+using bdflush, as you'd expect.  This may take several seconds, and =
+during this time responsiveness dives - NFS operations take several =
+seconds, RPC retransmissions start happening, and so on.
 
-Excellent.
+What I'd like is a way of tuning the server to remain responsive at all =
+times (e.g. by more regular flushing).  I've had a play with bdflush =
+parameters, but it's kind of stabbing in the dark and I'm not, erm, =
+drawing blood.
 
-> 
-> Bad news - for some reason I'm getting the error message:
-> Mounting knoppix
-> mount: RPC: Remote system error - No route to host
-> 
+Does anyone have any experience at tuning NFS servers for consistently =
+low latency?
 
-maybe portmap is being run with "-i 127.0.0.1", meaning "only listen
-on the loopback interface".
-If so, try running as just plain "portmap".
+Regards,
 
-> I've seen that before but it was always fixed by making sure
-> portmap, nfsd, mountd and statd were running.
-> 
-> They are running on both machines except that on knoppix it's
-> just "portmap" and on my normal Slackware machine it's "RPC.portmap" 
-> plus a new one "RPC.quotad".
-
-The name differences are purely cosmetic.
-
-> 
-> It's been a while since I fooled with nfs.  Do I need entries in
-> fstab?
-
-No.
-
-NeilBrown
+Edward.
 
 
 -------------------------------------------------------
