@@ -1,21 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NFS tuning - high performance throughput.
-Date: Tue, 14 Jun 2005 13:40:46 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539C8A@lavender-fe.eng.netapp.com>
+From: Marten Lehmann <lehmann@cnm.de>
+Subject: RPC Error: 15 ( Program not registered )
+Date: Tue, 14 Jun 2005 22:50:09 +0200
+Message-ID: <42AF4301.9020208@cnm.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiIDN-0006U9-Lw
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:40:53 -0700
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DiIDM-00071s-5b
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:40:53 -0700
-To: "M. Todd Smith" <todd@sohovfx.com>
+	id 1DiIMH-0006w8-R7
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:05 -0700
+Received: from relay1.mail.vrmd.de ([81.28.232.18])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DiIMH-00005v-46
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 13:50:05 -0700
+Received: from [84.59.51.139] (helo=[192.168.33.66])
+	by vm8.bln2.vrmd.de with asmtp (Exim 4.41)
+	id 1DiIMH-0000y5-C4
+	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 22:50:05 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,161 +31,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-have you run any network tests, like iperf or ttcp, to determine if you
-are getting adequate network throughput?
+Hello,
 
-what are the export options you're using on the server?
+I'm experiencing exactly the problem as described at 
+http://nfs.sourceforge.net/nfs-howto/troubleshooting.html
 
-> -----Original Message-----
-> From: M. Todd Smith [mailto:todd@sohovfx.com]=20
-> Sent: Tuesday, June 14, 2005 4:38 PM
-> To: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS tuning - high performance throughput.
->=20
->=20
-> Charles,
->=20
-> I've tried mounting both TCP and UDP and with rwsizes varying=20
-> from 8k to=20
-> 32k, 32k rwsizes are giving us the best performance thus far.
->=20
-> Indeed I did skip a level with the ping times didn't I, 200=20
-> microseconds=20
-> it is.
->=20
-> Cheers
-> Todd
->=20
->=20
-> Lever, Charles wrote:
->=20
-> >first place i would look is mount options on the client.  are you
-> >mounting with NFS over TCP, or NFS over UDP?
-> >
-> >(btw, your ping time should be 200 microseconds, not 200=20
-> nanoseconds).
-> >
-> > =20
-> >
-> >>-----Original Message-----
-> >>From: M. Todd Smith [mailto:todd@sohovfx.com]=20
-> >>Sent: Tuesday, June 14, 2005 4:18 PM
-> >>To: nfs@lists.sourceforge.net
-> >>Subject: [NFS] NFS tuning - high performance throughput.
-> >>
-> >>
-> >>Hello all,
-> >>
-> >>I've been attempting to get a better hold over our NFS=20
-> performance as=20
-> >>our network grows and grows.
-> >>
-> >>We've recently upgraded our NFS server machine to a dual=20
-> 3.2ghz Xeon=20
-> >>running Fedora Core 3 (kernel 2.6.11-1.14_FC3smp) w/ 4Gb RAM.=20
-> >> Coupled=20
-> >>with this machine we have a 2 Broadcom NetExtreme 2 Port=20
-> PCI-X NIC on=20
-> >>its own PCI-X bus (133Mhz).  Attached to this machine is our fibre=20
-> >>channel SAN, using Seagate fibre-channel drives and an LSI=20
-> >>dual channel=20
-> >>2gigabit fibre adapter on its own PCI-X bus.  Local RW is=20
-> >>~135Mbytes/sec.
-> >>=20
-> >>The 4 ports are trunked together using bonding (balanced=20
-> round robin=20
-> >>mode), and trunked together on our Extreme Networks Summit=20
-> >>400i switch. =20
-> >>All the test machines are attached to this switch, making=20
-> everything=20
-> >>within one hop and ping times of less than a 200 nanoseconds.
-> >>
-> >>Current test machine is running Suse 9.2 and has an Intel=20
-> 100/1000 XT=20
-> >>server adapter (e1000 driver) on a shared but not high=20
-> >>traffic PCI bus. =20
-> >>Other test machines include some Dell PowerEdge 1850's with onboard=20
-> >>Intel NICs, and some Apple G4, G5 and Xserves.
-> >>
-> >>I have read most of the tuning guides I can find on the net and=20
-> >>attempted just about everything I can get my hands on (I have=20
-> >>not tried=20
-> >>jumbo frames yet, still waiting for some downtime to attempt=20
-> >>that).  My=20
-> >>problem is that no matter how I tune the machines I can get at max=20
-> >>45Mb/ps throughput on NFS.  This was the same throughput we=20
-> >>were getting=20
-> >>with our old server with PCI cards, moreover this throughput=20
-> >>is roughly=20
-> >>the same for every machine on our network.  Theoretically we=20
-> >>should be=20
-> >>able to get much higher values.
-> >>
-> >>Any idea as to why this is?  I can provide config files and such if=20
-> >>needed, but I'm really at a loss as to where to start.
-> >>
-> >>Cheers
-> >>Todd
-> >>
-> >>--=20
-> >>Systems Administrator
-> >>----------------------------------
-> >>Soho VFX - Visual Effects Studio
-> >>99 Atlantic Avenue, Suite 303
-> >>Toronto, Ontario, M6K 3J8
-> >>(416) 516-7863=20
-> >>http://www.sohovfx.com
-> >>----------------------------------
-> >>
-> >>
-> >>=20
-> >>
-> >>
-> >>
-> >>-------------------------------------------------------
-> >>SF.Net email is sponsored by: Discover Easy Linux Migration=20
-> Strategies
-> >>from IBM. Find simple to follow Roadmaps, straightforward articles,
-> >>informative Webcasts and more! Get everything you need to get up to
-> >>speed, fast. =
-http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclick
-> >>_______________________________________________
-> >>NFS maillist  -  NFS@lists.sourceforge.net
-> >>https://lists.sourceforge.net/lists/listinfo/nfs
-> >>
-> >>   =20
-> >>
-> >
-> >
-> > =20
-> >
->=20
->=20
-> --=20
-> Systems Administrator
-> ----------------------------------
-> Soho VFX - Visual Effects Studio
-> 99 Atlantic Avenue, Suite 303
-> Toronto, Ontario, M6K 3J8
-> (416) 516-7863=20
-> http://www.sohovfx.com
-> ----------------------------------
->=20
->=20
-> =20
->=20
->=20
->=20
-> -------------------------------------------------------
-> SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
-> from IBM. Find simple to follow Roadmaps, straightforward articles,
-> informative Webcasts and more! Get everything you need to get up to
-> speed, fast. =
-http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclick
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+7.3b:  RPC: Program Not Registered: (or another "RPC" error)
+
+The nfs server is running with version 3, the client has version 4.
+
+rpcinfo -p on the server gives:
+
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100011    1   udp    604  rquotad
+     100011    2   udp    604  rquotad
+     100011    1   tcp    607  rquotad
+     100011    2   tcp    607  rquotad
+     100021    1   udp  32770  nlockmgr
+     100021    3   udp  32770  nlockmgr
+     100021    4   udp  32770  nlockmgr
+     100021    1   tcp  33302  nlockmgr
+     100021    3   tcp  33302  nlockmgr
+     100021    4   tcp  33302  nlockmgr
+     100005    1   udp    620  mountd
+     100005    1   tcp    623  mountd
+     100005    2   udp    620  mountd
+     100005    2   tcp    623  mountd
+     100005    3   udp    620  mountd
+     100005    3   tcp    623  mountd
+
+rpcinfo -p 192.168.33.53 from the client gives:
+
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100011    1   udp    604  rquotad
+     100011    2   udp    604  rquotad
+     100011    1   tcp    607  rquotad
+     100011    2   tcp    607  rquotad
+     100021    1   udp  32770  nlockmgr
+     100021    3   udp  32770  nlockmgr
+     100021    4   udp  32770  nlockmgr
+     100021    1   tcp  33302  nlockmgr
+     100021    3   tcp  33302  nlockmgr
+     100021    4   tcp  33302  nlockmgr
+     100005    1   udp    620  mountd
+     100005    1   tcp    623  mountd
+     100005    2   udp    620  mountd
+     100005    2   tcp    623  mountd
+     100005    3   udp    620  mountd
+     100005    3   tcp    623  mountd
+
+For debugging, I disabled all firewalls. However, mounting is not 
+successful:
+
+# mount -t nfs 192.168.33.53:/vrmd/rhel4 /mnt -v
+mount to NFS server '192.168.33.53' failed.
+RPC Error: 15 ( Program not registered )
+
+# mount -t nfs -o vers=3 192.168.33.53:/vrmd/rhel4 /mnt -v
+mount to NFS server '192.168.33.53' failed.
+RPC Error: 15 ( Program not registered )
+
+What can I do? The Troubleshooting-Page reports the problem, but does 
+explain how to solve the issue. Any ideas, what causes this problem?
+
+Regards
+Marten
 
 
 -------------------------------------------------------
