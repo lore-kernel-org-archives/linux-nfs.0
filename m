@@ -1,19 +1,23 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Kernel panic :  Redhat 4 GA nfs client
-Date: Tue, 14 Jun 2005 23:10:52 -0700 (PDT)
-Message-ID: <20050615061052.83674.qmail@web51602.mail.yahoo.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Kernel panic :  Redhat 4 GA nfs client
+Date: Wed, 15 Jun 2005 07:47:32 -0400
+Message-ID: <42B01554.2090103@RedHat.com>
+References: <20050615061052.83674.qmail@web51602.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DiR76-0001No-CR
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 23:11:00 -0700
-Received: from web51602.mail.yahoo.com ([206.190.38.207])
-	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
-	id 1DiR74-0007iw-Si
-	for nfs@lists.sourceforge.net; Tue, 14 Jun 2005 23:11:00 -0700
-To: nfs@lists.sourceforge.net
+	id 1DiWMu-0007hY-0E
+	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 04:47:40 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DiWMt-00085u-Iw
+	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 04:47:39 -0700
+To: mehta kiran <kiranmehta1981@yahoo.com>
+In-Reply-To: <20050615061052.83674.qmail@web51602.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,45 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi ,=20
-    I get following error messages on nfs client=20
-    side when RHEL4 U1 nfs server talks to nfs=20
-    client RHEL4 GA.This is reproducible (though=20
-    not easily.Exact situation not known)
-   =20
-    nfs ""server"" machine  =20
-    #uname -a
-    Linux vcslinux118.vxindia.veritas.com 2.6.9-
-   6.37.ELsmp #1 SMP Tue Mar 29 15:46:31 EST 2005=20
-   x86_64 x86_64 x86_64 GNU/Linux
-
-   nfs_mon_unmon : rpc failed , status =3D -13
-   lockd : cannot monitor  10.212.98.131
-   lockd : failed to monitor 10.212.98.131
-
-    kernel panic -- not syncing
-    Attempting to free lock with active block list
-
-thanks,
- kiran
 
 
+mehta kiran wrote:
+>     I get following error messages on nfs client 
+>     side when RHEL4 U1 nfs server talks to nfs 
+>     client RHEL4 GA.This is reproducible (though 
+>     not easily.Exact situation not known)
+Please try the nfs-utils in http://people.redhat.com/steved/bz140385/
+to see if that helps...
 
-
-	=09
-__________________________________=20
-Yahoo! Mail=20
-Stay connected, organized, and protected. Take the tour:=20
-http://tour.mail.yahoo.com/mailtour.html=20
-
+steved.
 
 
 -------------------------------------------------------
 SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
 from IBM. Find simple to follow Roadmaps, straightforward articles,
 informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclic=
-k
+speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
