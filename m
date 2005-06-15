@@ -1,22 +1,22 @@
-From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+From: Greg Banks <gnb@sgi.com>
 Subject: Re: NFS tuning - high performance throughput.
-Date: Wed, 15 Jun 2005 18:43:52 -0400
-Message-ID: <20050615224352.GD31465@ti64.telemetry-investments.com>
-References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net> <42AF3B6C.6070901@sohovfx.com> <20050614204138.GG1175@ti64.telemetry-investments.com> <42AF5F0A.3080601@sohovfx.com> <20050615174701.GC31465@ti64.telemetry-investments.com> <42B09081.50405@sohovfx.com>
+Date: Thu, 16 Jun 2005 08:47:52 +1000
+Message-ID: <20050615224752.GA18915@sgi.com>
+References: <20050610031144.4B9CA12F8C@sc8-sf-spam2.sourceforge.net> <42AF3B6C.6070901@sohovfx.com> <20050614204138.GG1175@ti64.telemetry-investments.com> <42AF5F0A.3080601@sohovfx.com> <20050615174701.GC31465@ti64.telemetry-investments.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Cc: "M. Todd Smith" <todd@sohovfx.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Digc4-00076H-Nx
-	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 15:44:00 -0700
-Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti41.telemetry-investments.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Digc3-0007iR-1d
-	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 15:44:00 -0700
-To: "M. Todd Smith" <todd@sohovfx.com>
-In-Reply-To: <42B09081.50405@sohovfx.com>
+	id 1Digfx-0007G6-SY
+	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 15:48:01 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1Digfv-0006hY-Ez
+	for nfs@lists.sourceforge.net; Wed, 15 Jun 2005 15:48:01 -0700
+To: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+In-Reply-To: <20050615174701.GC31465@ti64.telemetry-investments.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,71 +30,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Jun 15, 2005 at 04:33:05PM -0400, M. Todd Smith wrote:
-> I'll try out the new core-utils when I can (*hoping next week I can get 
-> this server out of production*).
+On Wed, Jun 15, 2005 at 01:47:01PM -0400, Bill Rugolsky Jr. wrote:
+> These days, I'd use TCP.
 
-As someone else noted, iozone is a good benchmark, and it also
-has a command-line switch for O_DIRECT.
+Agreed.
 
-> I'm  sorry what would writing to a virtual FS tell me in regards to
-> my SAN, perhaps you can explain in more  detail?
+> Additionally, modern NICs like e1000 support
+> TSO (TCP Segmentation Offload), and though TSO has had its share of bugs,
+> it is the better path forward.
 
-It wouldn't tell you anything about your RAID storage, but it would give
-you a good idea of the upper limit on knfsd write performance for small
-files, since you'd be storing to RAM.  Read tests are as readily done just
-by ensuring that the file is in the page cache; write tests with the real
-fs are a bit harder.  Another "good-enough" option for estimating knfsd
-performance limits may be to set the NFS export option to the unsafe
-"async" mode, use a small ext2 filesystem, and look at small file write
-throughput.  [After all, /tmp on ext2 was for many years about as fast
-as Solaris tmpfs. :-)] Having done that, you'll know whether the storage
-configuration is the proximate cause of the lousy performance.
+Please don't tell him about TSO, it doesn't quite work yet ;-)
 
-> Ip:
->    446801331 total packets received
->    0 forwarded
->    0 incoming packets discarded
->    314401713 incoming packets delivered
->    256822806 requests sent out
->    5800 fragments dropped after timeout
->    143422528 reassemblies required
->    11022911 packets reassembled ok
->    246950 packet reassembles failed
->    48736566 fragments received ok
+> > RAID 5, 4k strip size, XFS file system.
+>  
+> 4K?  That's pretty tiny.
 
-That's a fair number of reassembly failures.  In light of your
-next point, you may want to look at the stats on the client side ...
+It's extremely small.  We don't use anything less than 64KiB.  Use a
+larger stripe size, and tell XFS what stripe size you're using so it
+can align IOs correctly: RTFM about the options -d sunit, -d swidth,
+-l sunit, and -l version to mkfs.xfs.  Also, make sure you align the
+start of the XFS filesystem to a RAID stripe width; this may require
+futzing with your volume manager config.
 
-> Regarding the bonding .. Writes to the SAN happen on a single port of 
-> the NIC so in writing there are very few reorderings needed.  Reading 
-> from the SAN breaks the read up on the four ports and so the most 
-> reordering would be done client side (even worse most of our clients are 
-> still RH 7.2).
+> OTOH, using too large a stripe with NFS over RAID5
+> can be no good either, if it results in partial writes that require a
+> read/modify/write cycle, so it is perhaps best not to go very large.
 
-OK, I just went and re-read bonding.txt. Thanks. :-)
+It depends on your workload; for pure streaming workloads larger stripe
+is generally better up to a point determined by your filesystem, amount
+of cache in your RAID controller, and other limitations.  We have
+customer sites with 2MiB stripe sizes for local XFS fileystems, (*not*
+for NFS service) and it works just fine.  But beware, on an NFS server
+it's easier to get into the partial write case than with local IO.
 
-> If I mix TCP and UDP NFS connections will speed be 
-> slower than if I used just straight TCP conns?  I'll do some testing 
-> next week and report my findings.
+> You might want to compare a local sequential read test with
+> 
+> 	/sbin/blockdev --setra {...,4096,8192,16384,...} <device>
+> 
+> Traffic on the linux-lvm list suggests increasing the readahead on the
+> logical device, and decreasing it on the underlying physical devices,
+> but your mileage may vary.
 
-Well, as I said, I'm disinclined to run over UDP with such a large
-r/wsize of 32K; we did that once-upon-a-time with Linux and Solaris
-hosts talking to a NetApp, and the results were unpleasant; we had to
-use r/wsize=8K until we were able to switch to TCP.  Things might look
-fine with a single client running a benchmark, and look very different
-on a congested network.  Also, I'm not sure about fairness with respect
-to a mix of TCP and UDP clients; if the network is loaded and UDP starts
-to timeout, will the UDP clients recover if the TCP clients are active?
+Agreed, I would try tuning upwards the logical block device's readahead.
 
-> This as my first recommendation when I began here .. Is TSO stable
-> enough for production level usage now?  Suse still turns it off by default.
+> Experience with Ext3 data journaling indicates that dropping expire/writeback
+> can help to smooth out I/O:
+> 
+>    vm.dirty_expire_centisecs = {300-1000}
+>    vm.dirty_writeback_centisecs = {50-100}
+> 
 
-As a general proposition, I'd say no to blindly using it without a good bit
-of testing.  David S. Miller has been posting his rewritten TSO framework
-to netdev in the last few weeks; perhaps by 2.6.13 ...
+The performance limitation which is helped by tuning the VM to push
+dirty pages earlier is in NFS not the underlying filesystem, so this
+technique is useful with XFS too.
 
-	-Bill
+> Again, I have no experience with XFS.  Since it only does meta-data journaling,
+> (equivalent of Ext3 data=writeback), its performance characteristics are probably
+> quite different.
+
+XFS also does a bunch of clever things (which I don't really understand)
+to group IO going to disk and to limit metadata traffic for allocation.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
