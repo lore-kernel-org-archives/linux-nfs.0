@@ -1,23 +1,24 @@
 From: Casey Allen Shobe <lists@seattleserver.com>
 Subject: Re: NFS projects that you use
-Date: Fri, 17 Jun 2005 19:26:43 +0000
-Message-ID: <200506171926.43758.lists@seattleserver.com>
-References: <42B30037.9080601@gmail.com>
+Date: Fri, 17 Jun 2005 20:15:03 +0000
+Message-ID: <200506172015.03840.lists@seattleserver.com>
+References: <42B30037.9080601@gmail.com> <200506171926.43758.lists@seattleserver.com> <42B3340C.1040408@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
   charset="utf-8"
+Cc: Oded Maimon <oded.maimon@gmail.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DjMUK-00033U-EX
-	for nfs@lists.sourceforge.net; Fri, 17 Jun 2005 12:26:48 -0700
+	id 1DjNF5-0005UL-DN
+	for nfs@lists.sourceforge.net; Fri, 17 Jun 2005 13:15:07 -0700
 Received: from spieden.seattleserver.com ([216.57.201.54])
 	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DjMUI-0003nX-24
-	for nfs@lists.sourceforge.net; Fri, 17 Jun 2005 12:26:48 -0700
+	id 1DjNF4-0002VL-29
+	for nfs@lists.sourceforge.net; Fri, 17 Jun 2005 13:15:07 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <42B30037.9080601@gmail.com>
+In-Reply-To: <42B3340C.1040408@gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,31 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday 17 June 2005 16:54, Oded Maimon wrote:
-> I'm going to use NFS in my organization and I would like to know
-> about other apps that you use with NFS, things like iozone and or
-> tools for security and encryption and so on. any tool that you
-> use with NFS.
+On Friday 17 June 2005 20:35, you wrote:
+> I usually change the mail format before i send it, forgat to do
+> it this time.
 
-Your mail client is broken.  Please configure it to *not* send 
-HTML-only mail.  Text-only would be much appreciated, but at 
-*least* send both in multipart form.  Many of us do not have mail 
-clients capable of reading HTML mail.  Many others of us, including 
-myself, disable HTML support in our mail clients intentionally (I 
-think it's actually the default setting in mine, but I'd turn it 
-off regardless).
+Why not change the default to something sensible?
 
-We use NFS to share a Portage tree (Gentoo Linux) between multiple 
-servers to save disk space and CPU time (tree only has to be 
-updated from NFS server).  We also use rsync+NFS for our backups, 
-and distribution of scripts and configuration files between all the 
-servers (cron jobs periodically copy things from an NFS share to 
-corresponding directories on the root filesystems).  We have 10 
-machines in one datacenter, and 1 in a remote datacenter.  They all 
-have at least 5 NFS shares from other machines mounted.
+> What i wanted to know is if you are using any other tools for
+> performance/high avbailability/security/managing or what ever
+> sepcially for NFS.
 
-All of the NFS shares are on reiserfs partitions, in case that makes 
-any difference.
+Okay, probably nothing that would really interest you then.  We do 
+use DRBD (a form of network-based RAID) between our two mail 
+servers along with heartbeat, each which export 5 shares, which I 
+presume gives high availability.
 
 Cheers,
 -- 
