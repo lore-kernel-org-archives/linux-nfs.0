@@ -1,14 +1,23 @@
-From: Oded Maimon <oded.maimon@gmail.com>
+From: Casey Allen Shobe <lists@seattleserver.com>
 Subject: Re: nfs break
-Date: Sun, 19 Jun 2005 23:08:48 +0200
-Message-ID: <42B5DEE0.5070600@gmail.com>
-References: <42B5BB6F.9030104@gmail.com> <1119208054.11291.21.camel@lade.trondhjem.org>
+Date: Sun, 19 Jun 2005 21:15:30 +0000
+Message-ID: <200506192115.30933.lists@seattleserver.com>
+References: <42B5BB6F.9030104@gmail.com> <1119208054.11291.21.camel@lade.trondhjem.org> <42B5DEE0.5070600@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/html; charset=UTF-8
-Cc: NFS@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="utf-8"
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1119208054.11291.21.camel@lade.trondhjem.org>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Dk78j-0004mT-M0
+	for nfs@lists.sourceforge.net; Sun, 19 Jun 2005 14:15:37 -0700
+Received: from spieden.seattleserver.com ([216.57.201.54])
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Dk78i-00034h-BZ
+	for nfs@lists.sourceforge.net; Sun, 19 Jun 2005 14:15:37 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <42B5DEE0.5070600@gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,47 +31,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-  <meta content="text/html;charset=UTF-8" http-equiv="Content-Type">
-</head>
-<body bgcolor="#ffffff" dir="ltr" text="#000000">
-<p style="margin-top: 0cm; margin-bottom: 0cm;" dir="ltr"><br>
-</p>
-<br>
-Trond Myklebust wrote:
-<blockquote cite="mid1119208054.11291.21.camel@lade.trondhjem.org"
- type="cite" dir="ltr">
-  <pre wrap="">su den 19.06.2005 Klokka 20:37 (+0200) skreiv Oded Maimon:
-  </pre>
-  <blockquote type="cite">
-    <pre wrap="">Hi,
+On Sunday 19 June 2005 21:08, Oded Maimon wrote:
+> <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 
-is there any way to make nfs-client create more informative logs?
-
-somthing like levels of logs?
-    </pre>
-  </blockquote>
-  <pre wrap=""><!---->
-The only logging that the current NFS client supports is the information
-provided by "nfsstat".
-
-It is also possible to enable selective debug tracing in the case of
-client bugs, but those traces were not designed with system
-administration in mind, and so are unlikely to be very useful.
+Please don't send HTML-only E-mail.
 
 Cheers,
-  Trond
-
-
-  </pre>
-</blockquote>
-thanks, that will be very helpful, <br>
-can you please tell me how can i enable the debug tracing, just to see
-what i can get from that?<br>
-</body>
-</html>
+-- 
+Casey Allen Shobe | http://casey.shobe.info
+cshobe@seattleserver.com | cell 425-443-4653
+AIM & Yahoo:  SomeLinuxGuy | ICQ:  1494523
+SeattleServer.com, Inc. | http://www.seattleserver.com
 
 
 -------------------------------------------------------
