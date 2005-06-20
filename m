@@ -1,22 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: Exportfs and rpc.mountd optimalization
-Date: Mon, 20 Jun 2005 14:16:45 -0400
-Message-ID: <1119291405.10757.33.camel@lade.trondhjem.org>
-References: <59a4169b050617155461156389@mail.gmail.com>
-	 <59a4169b05062010341629f27b@mail.gmail.com>
+Date: Mon, 20 Jun 2005 14:19:06 -0400
+Message-ID: <20050620181906.GD9639@fieldses.org>
+References: <59a4169b050617155461156389@mail.gmail.com> <59a4169b05062010341629f27b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DkQpR-0005HM-0e
-	for nfs@lists.sourceforge.net; Mon, 20 Jun 2005 11:17:01 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	id 1DkQrW-0005OP-Kn
+	for nfs@lists.sourceforge.net; Mon, 20 Jun 2005 11:19:10 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DkQpQ-0001DP-C3
-	for nfs@lists.sourceforge.net; Mon, 20 Jun 2005 11:17:00 -0700
+	id 1DkQrU-0000I8-3B
+	for nfs@lists.sourceforge.net; Mon, 20 Jun 2005 11:19:10 -0700
 To: Tomas Richter <krik3t@gmail.com>
 In-Reply-To: <59a4169b05062010341629f27b@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -32,22 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=C3=A5 den 20.06.2005 Klokka 19:34 (+0200) skreiv Tomas Richter:
+On Mon, Jun 20, 2005 at 07:34:38PM +0200, Tomas Richter wrote:
 > I did some optimalization of exportfs and rpc.mountd (linked
 > exportlist replaced by hash table). It has good results (I think) -
 > computing of exportfs and mountd (after running exportfs) is quicker.
 > Especially for long exportlists - about hundred thousand exports and
 > more.
+
+It'd be interesting to see whether you could reproduce (and improve on)
+Vincent Rouqueta's results:
+
+http://nfsv4.bullopensource.org/tools/tests/page17.php
+
 > Can someone look on it?
 
-If you would like to propose changes to the nfs-utils package, then
-please repost them in the form of a standard patch against the current
-nfs-utils CVS tree (see http://sourceforge.net/projects/nfs) so that
-they may be reviewed.
+Could you send your changes in the form of patches?  (See, e.g.,
+http://www.zip.com.au/~akpm/linux/patches/stuff/tpp.txt).
 
-Cheers,
-  Trond
-
+--b.
 
 
 -------------------------------------------------------
