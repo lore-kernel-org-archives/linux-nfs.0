@@ -1,20 +1,28 @@
-From: "Barriuso Maicas, Rafael" <rbarriuso@indra.es>
-Subject: Multiple NICs server, strange NFS mount problem
-Date: Wed, 22 Jun 2005 17:29:17 +0200
-Message-ID: <7A9F5FB5F868FC45BA5A4C12361AB169A64AE6@MADTORMAIL.indra.es>
+From: Christian Volkmann <CVolkmann@orga-systems.com>
+Subject: [solved]Trouble with lockf on Tru64 client and linux NFS server
+Date: Tue, 21 Jun 2005 13:31:34 +0200
+Message-ID: <42B7FA96.7090809@orga-systems.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C5773F.271A3ACD"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dl7AO-0002D6-39
-	for nfs@lists.sourceforge.net; Wed, 22 Jun 2005 08:29:28 -0700
-Received: from [213.170.46.108] (helo=madarrsmtp2.indra.es)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1Dl7AM-0004BC-9j
-	for nfs@lists.sourceforge.net; Wed, 22 Jun 2005 08:29:28 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1DknRC-00041C-8f
+	for nfs@lists.sourceforge.net; Tue, 21 Jun 2005 11:25:30 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DknQw-0004Yg-KX
+	for nfs@lists.sourceforge.net; Tue, 21 Jun 2005 11:25:30 -0700
+Received: from bakterius.eggenet.de ([80.66.0.67])
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1Dkh14-0006HG-Lp
+	for nfs@lists.sourceforge.net; Tue, 21 Jun 2005 04:34:07 -0700
+Received: from mailrelay2.eggenet.de (mailrelay2.eggenet.de [80.66.0.50])
+	by bakterius.eggenet.de (8.13.4/8.12.8) with ESMTP id j5LBVWP4022363
+	for <nfs@lists.sourceforge.net>; Tue, 21 Jun 2005 13:31:32 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,146 +36,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Solution => no_subtree_check
 
-------_=_NextPart_001_01C5773F.271A3ACD
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Hi to everybody,
 
-Hello,
+I had some trouble with locks on a Tru64-NFS client.
+"lockf(fd, F_TLOCK, 0)" did not work proper.
 
-I have a machine running Debian Linux as router and NFS server, with two =
-network interfaces, one connected to a big switched LAN (called eth1) =
-and the other to an isolated LAN (called eth0). The problem is that =
-since the day one interface (eth1) changed it's IP address (due to DHCP) =
-the NFS clients in the isolated LAN (therefore accesing via eth0 to the =
-server) began to have problems mounting the exported directories. The =
-NFS clients sometimes succeed in mounting the directory after a long =
-delay and sometimes they fail due to a RPC timeout. I have captured the =
-network traffic and it seems to be the server which is not responding to =
-the mount call (RPC v.2 MNT v.1 CALL).
-There are several strange things I've tested:
-- When I take down eth1 (the interface which changed IP address) the =
-clients can mount the NFS server perfectly without any delay. However if =
-I unplug the network cable without doing an "ifdown", it doesn't work. =
-What's more, if I force the old IP address which eth1 had, it works =
-perfectly (!!).
-- I've changed the NICs from two Intel 82540EM Gigabit Ethernet to two =
-3Com 3c905B (and therefore the kernel modules) but the behaviour remains =
-the same.
-- I've tested it with other kernel versions (from 2.6.11 to 2.4.25 and a =
-default 2.6.11) and it remains the same.
-- I've stopped all non-nfs-related daemons and it remains the same.
-- I've looked for that old IP address inside all configuration files, =
-but it doesn't appear.
-- Finally I've tested in another machine, the same model as the other =
-server, but running a RedHat FC4 with it's NFS server, and neither it =
-works!!.
+no_subtree_check was required for the /etc/exports.
 
-I give a software and hardware description:
-- Machine: Dell Optiplex GX 270 with two Intel network interfaces (both =
-Intel 82540EM Gigabit Ethernet), one PCI and the other integrated in the =
-motherboard.
-- O.S.: Debian Testing with Linux 2.6.11 kernel, with nfs-common package =
-(from apt) version 1:1.0.7-3 and nfs-kernel server package (from apt) =
-version 1:1.0.7-3.
+NFS-server: Linux with kernel 2.6.11 ( regular SuSE 9.3 )
+NFS-client: Tru64 4.0G
 
-I can't understand what's happening!. Does anyone know where's the =
-problem?.
+/mountpoint  => Mountpoint
+/mountpoint/my => permission 770, owner "my"
+/mountpoint/my/subdir => permission 770, owner "my"
+/mountpoint/my/subdir/mylock => permission 770, owner "my"
 
-Thank you in advance,
-  Rafael.
+The User "my" was not able to lock the file.
+
+After "chmod 777 /mountpoint/my /mountpoint/my/subdir" the lock worked.
+
+Please see below for a script to reproduce bahavior.
+
+Best regards,
+
+Christian
+
+PS: Linux,AIX and Sun as client worked without no_subtree_check
 
 
+================cut here for the script============
+#!/bin/ksh
 
+# Strange behavior of NFS-lock/permission
 
+MYNAME=${0##*/}
 
-------_=_NextPart_001_01C5773F.271A3ACD
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+howto()
+{
+        echo "Syntax: $MYNAME DIRECTORY-TO-CHECK" 1>&2
+        exit 99
+}
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Diso-8859-1">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.5.7226.0">
-<TITLE>Multiple NICs server, strange NFS mount problem</TITLE>
-</HEAD>
-<BODY>
-<!-- Converted from text/rtf format -->
+if [ $# -ne 1 ]
+then
+        howto
+fi
 
-<P><FONT SIZE=3D2 FACE=3D"Arial">Hello,</FONT>
-</P>
+TOCHECK=$1
+if [ ! -d $TOCHECK ]
+then
+        echo
+        echo "Create directory $TOCHECK"
+        mkdir $TOCHECK
+        if [ ! -d $TOCHECK ]
+        then
+                echo "can not create $TOCHECK"
+        fi
+fi
+echo
+echo "Create directory $TOCHECK/subdir , chmod 777 for $TOCHECK and $TOCHECK/subdir "
+echo
+chmod 777 $TOCHECK
+mkdir $TOCHECK/subdir
+chmod 777 $TOCHECK/subdir
+echo "compile c-program"
+export CC=gcc
+cat > /tmp/$MYNAME.$$.c <<EOP
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
 
-<P><FONT SIZE=3D2 FACE=3D"Arial">I have a machine running Debian Linux =
-as router and NFS server, with two network interfaces, one connected to =
-a big switched LAN (called eth1) and the other to an isolated LAN =
-(called eth0). The problem is that since the day one interface (eth1) =
-changed it's IP address (due to DHCP) the NFS clients in the isolated =
-LAN (therefore accesing via eth0 to the server) began to have problems =
-mounting the exported directories. The NFS clients sometimes succeed in =
-mounting the directory after a long delay and sometimes they fail due to =
-a RPC timeout. I have captured the network traffic and it seems to be =
-the server which is not responding to the mount call (RPC v.2 MNT v.1 =
-CALL).</FONT></P>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-<P><FONT SIZE=3D2 FACE=3D"Arial">There are several strange things I've =
-tested:</FONT>
+#include <unistd.h>
 
-<BR><FONT SIZE=3D2 FACE=3D"Arial">- When I take down eth1 (the interface =
-which changed IP address) the clients can mount the NFS server perfectly =
-without any delay. However if I unplug the network cable without doing =
-an &quot;ifdown&quot;, it doesn't work. What's more, if I force the old =
-IP address which eth1 had, it works perfectly (!!).</FONT></P>
+put_err(const char *point)
+{
+perror(point);
+}
+main()
+{
+int fd,lock;
+char b[100] = "$TOCHECK/subdir" ;
+        strcat (b, "/");
+        strcat(b,"mylock");
+        unlink(b);
+        fd = open (b, O_CREAT | O_RDWR, 0777);
+        if ( fd <= 0 )
+        {
+                printf("Internal error: errno %d %s\n",errno,strerror(errno));
+                exit(0);
+        }
+        errno=0;
+        lock=lockf (fd, F_TLOCK, 0) ;
+        if ( lock != 0 )
+                printf("Error from lock:%d %d %s\n",lock,errno,strerror(errno));
+        else
+                printf("Lock OK: %d %d %s\n",lock,errno,strerror(errno));
+        exit(lock);
+}
+EOP
+${CC} -o /tmp/$MYNAME.$$.bin /tmp/$MYNAME.$$.c
+if [ ! -x /tmp/$MYNAME.$$.bin ]
+then
+        echo "missing compiled program" 1>&2
+        exit 1
+fi
+/tmp/$MYNAME.$$.bin
 
-<P><FONT SIZE=3D2 FACE=3D"Arial">- I've changed the NICs from two Intel =
-82540EM Gigabit Ethernet to two 3Com 3c905B (and therefore the kernel =
-modules) but the behaviour remains the same.</FONT></P>
+echo
+echo "Try with no world rwx, chmod 770 for $TOCHECK and $TOCHECK/subdir "
+echo
+chmod 770 $TOCHECK/subdir
+chmod 770 $TOCHECK
+/tmp/$MYNAME.$$.bin
+if [ $? -ne 0 ]
+then
+        echo "Fehler aufgetreten !"
+fi
 
-<P><FONT SIZE=3D2 FACE=3D"Arial">- I've tested it with other kernel =
-versions (from 2.6.11 to 2.4.25 and a default 2.6.11) and it remains the =
-same.</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">- I've stopped all non-nfs-related =
-daemons and it remains the same.</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">- I've looked for that old IP address =
-inside all configuration files, but it doesn't appear.</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">- Finally I've tested in another =
-machine, the same model as the other server, but running a RedHat FC4 =
-with it's NFS server, and neither it works!!.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">I give a software and hardware =
-description:</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">- Machine: Dell Optiplex GX 270 with =
-two Intel network interfaces (both Intel 82540EM Gigabit Ethernet), one =
-PCI and the other integrated in the motherboard.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">- O.S.: Debian Testing with Linux =
-2.6.11 kernel, with nfs-common package (from apt) version 1:1.0.7-3 and =
-nfs-kernel server package (from apt) version 1:1.0.7-3.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">I can't understand what's happening!. =
-Does anyone know where's the problem?.</FONT>
-</P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">Thank you in advance,</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">&nbsp; Rafael.</FONT>
-</P>
-<BR>
-<BR>
-<BR>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C5773F.271A3ACD--
+rm $TOCHECK/subdir/lockfile
+rmdir $TOCHECK/subdir
+rmdir $TOCHECK 2>/dev/null
+rm /tmp/$MYNAME.$$.bin /tmp/$MYNAME.$$.c
 
 
 -------------------------------------------------------
