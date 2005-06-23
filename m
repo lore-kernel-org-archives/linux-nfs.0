@@ -1,23 +1,20 @@
-From: "Roger Heflin" <rheflin@atipa.com>
+From: "Barriuso Maicas, Rafael" <rbarriuso@indra.es>
 Subject: RE: Multiple NICs server and NFS mount problem
-Date: Thu, 23 Jun 2005 10:19:03 -0500
-Message-ID: <EXCHG2003jQHtMFauky00000282@EXCHG2003.microtech-ks.com>
-References: <7A9F5FB5F868FC45BA5A4C12361AB169A64AF3@MADTORMAIL.indra.es>
+Date: Thu, 23 Jun 2005 17:24:05 +0200
+Message-ID: <7A9F5FB5F868FC45BA5A4C12361AB169A64AF4@MADTORMAIL.indra.es>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0481_01C577DC.FAFAFB70"
+	boundary="----_=_NextPart_001_01C57807.97A41535"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DlTSC-0005Q1-BF
-	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 08:17:20 -0700
-Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
+	id 1DlTYr-0005rC-Gk
+	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 08:24:13 -0700
+Received: from [213.170.46.108] (helo=madarrsmtp1.indra.es)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DlTSB-0002Lr-Kl
-	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 08:17:20 -0700
-To: "'Barriuso Maicas, Rafael'" <rbarriuso@indra.es>,
-	<nfs@lists.sourceforge.net>
-In-Reply-To: <7A9F5FB5F868FC45BA5A4C12361AB169A64AF3@MADTORMAIL.indra.es>
+	id 1DlTYq-0003cj-LZ
+	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 08:24:13 -0700
+To: "Roger Heflin" <rheflin@atipa.com>, <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,31 +30,45 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0481_01C577DC.FAFAFB70
+------_=_NextPart_001_01C57807.97A41535
 Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
- 
-The only thing that comes to mind is check the dns setup ie
-(/etc/resolv.conf) and 
+Thank you very much for the hint, but I've tested it emptying the =
+resolv.conf file and it still doesn't work.
+=20
+Rafael.
+=20
+
+-----Mensaje original-----
+De: Roger Heflin [mailto:rheflin@atipa.com]
+Enviado el: jueves, 23 de junio de 2005 17:19
+Para: Barriuso Maicas, Rafael; nfs@lists.sourceforge.net
+Asunto: RE: [NFS] Multiple NICs server and NFS mount problem
+
+
+=20
+The only thing that comes to mind is check the dns setup ie =
+(/etc/resolv.conf) and=20
 see what it is doing.
- 
-If dns is slow lots of things get rather messy, and also make sure that the
-addresses
-you are using on the internal network is a proper public network, and not
-one that
-is owned by someone else, as if it is someone elses you machine will attempt
+=20
+If dns is slow lots of things get rather messy, and also make sure that =
+the addresses
+you are using on the internal network is a proper public network, and =
+not one that
+is owned by someone else, as if it is someone elses you machine will =
+attempt
 to hit their dns server every time.
- 
-                                      Roger 
+=20
+                                      Roger=20
                                       Atipa Technologies
 
 
-  _____  
+  _____ =20
 
-From: nfs-admin@lists.sourceforge.net
-[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Barriuso Maicas,
+From: nfs-admin@lists.sourceforge.net =
+[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Barriuso Maicas, =
 Rafael
 Sent: Thursday, June 23, 2005 10:00 AM
 To: nfs@lists.sourceforge.net
@@ -65,208 +76,237 @@ Subject: [NFS] Multiple NICs server and NFS mount problem
 
 
 
-Hello, 
+Hello,=20
 
-I have a machine running Debian Linux as router and NFS server, with two
-network interfaces, one connected to a big switched LAN (called eth1) and
-the other to an isolated LAN (called eth0). The problem is that since the
-day one interface (eth1) changed it's IP address (due to DHCP) the NFS
-clients in the isolated LAN (therefore accesing via eth0 to the server)
-began to have problems mounting the exported directories. The NFS clients
-sometimes succeed in mounting the directory after a long delay and sometimes
-they fail due to a RPC timeout. I have captured the network traffic and it
-seems to be the server which is not responding to the mount call (RPC v.2
-MNT v.1 CALL).
+I have a machine running Debian Linux as router and NFS server, with two =
+network interfaces, one connected to a big switched LAN (called eth1) =
+and the other to an isolated LAN (called eth0). The problem is that =
+since the day one interface (eth1) changed it's IP address (due to DHCP) =
+the NFS clients in the isolated LAN (therefore accesing via eth0 to the =
+server) began to have problems mounting the exported directories. The =
+NFS clients sometimes succeed in mounting the directory after a long =
+delay and sometimes they fail due to a RPC timeout. I have captured the =
+network traffic and it seems to be the server which is not responding to =
+the mount call (RPC v.2 MNT v.1 CALL).
 
-There are several strange things I've tested: 
+There are several strange things I've tested:=20
 
-- When I take down eth1 (the interface which changed IP address) the clients
-can mount the NFS server perfectly without any delay. However if I unplug
-the network cable without doing an "ifdown", it doesn't work. What's more,
-if I force the old IP address which eth1 had, it works perfectly (!!).
+- When I take down eth1 (the interface which changed IP address) the =
+clients can mount the NFS server perfectly without any delay. However if =
+I unplug the network cable without doing an "ifdown", it doesn't work. =
+What's more, if I force the old IP address which eth1 had, it works =
+perfectly (!!).
 
-- I've changed the NICs from two Intel 82540EM Gigabit Ethernet to two 3Com
-3c905B (and therefore the kernel modules) but the behaviour remains the
-same.
+- I've changed the NICs from two Intel 82540EM Gigabit Ethernet to two =
+3Com 3c905B (and therefore the kernel modules) but the behaviour remains =
+the same.
 
-- I've tested it with other kernel versions (from 2.6.11 to 2.4.25 and a
-default 2.6.11) and it remains the same. 
+- I've tested it with other kernel versions (from 2.6.11 to 2.4.25 and a =
+default 2.6.11) and it remains the same.=20
 
-- I've stopped all non-nfs-related daemons and it remains the same. 
+- I've stopped all non-nfs-related daemons and it remains the same.=20
 
-- I've looked for that old IP address inside all configuration files, but it
-doesn't appear. 
+- I've looked for that old IP address inside all configuration files, =
+but it doesn't appear.=20
 
-- Finally I've tested in another machine, the same model as the other
-server, but running a RedHat FC4 with it's NFS server, and neither it
+- Finally I've tested in another machine, the same model as the other =
+server, but running a RedHat FC4 with it's NFS server, and neither it =
 works!!.
 
-Here'sI a software and hardware description: 
+Here'sI a software and hardware description:=20
 
-- Machine: Dell Optiplex GX 270 with two Intel network interfaces (both
-Intel 82540EM Gigabit Ethernet), one PCI and the other integrated in the
+- Machine: Dell Optiplex GX 270 with two Intel network interfaces (both =
+Intel 82540EM Gigabit Ethernet), one PCI and the other integrated in the =
 motherboard.
 
-- O.S.: Debian Testing with Linux 2.6.11 kernel, with nfs-common package
-(from apt) version 1:1.0.7-3 and nfs-kernel server package (from apt)
+- O.S.: Debian Testing with Linux 2.6.11 kernel, with nfs-common package =
+(from apt) version 1:1.0.7-3 and nfs-kernel server package (from apt) =
 version 1:1.0.7-3.
 
-I can't understand what's happening!. Does anyone know where's the problem?.
+I can't understand what's happening!. Does anyone know where's the =
+problem?.=20
+
+Thank you in advance,=20
+  Rafael.=20
 
 
-Thank you in advance, 
-  Rafael. 
 
-
-
-------=_NextPart_000_0481_01C577DC.FAFAFB70
+------_=_NextPart_001_01C57807.97A41535
 Content-Type: text/html;
-	charset="us-ascii"
+	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE>Multiple NICs server and NFS mount problem</TITLE>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dus-ascii">
-<META content=3D"MSHTML 6.00.2800.1400" name=3DGENERATOR></HEAD>
+<HTML><HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Diso-8859-1">
+<TITLE>Multiple NICs server and NFS mount problem</TITLE>
+
+<META content=3D"MSHTML 6.00.2800.1479" name=3DGENERATOR></HEAD>
 <BODY>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#0000ff=20
-size=3D2></FONT>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+<DIV><SPAN class=3D839512215-23062005><FONT face=3DArial color=3D#0000ff =
+size=3D2>Thank=20
+you very much for the hint, but I've tested it emptying the resolv.conf =
+file and=20
+it still doesn't work.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D839512215-23062005><FONT face=3DArial color=3D#0000ff =
+
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D839512215-23062005><FONT face=3DArial color=3D#0000ff =
+
+size=3D2>Rafael.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D839512215-23062005><FONT face=3DArial color=3D#0000ff =
+
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<BLOCKQUOTE dir=3Dltr style=3D"MARGIN-RIGHT: 0px">
+  <DIV class=3DOutlookMessageHeader dir=3Dltr align=3Dleft><FONT =
+face=3DTahoma=20
+  size=3D2>-----Mensaje original-----<BR><B>De:</B> Roger Heflin=20
+  [mailto:rheflin@atipa.com]<BR><B>Enviado el:</B> jueves, 23 de junio =
+de 2005=20
+  17:19<BR><B>Para:</B> Barriuso Maicas, Rafael;=20
+  nfs@lists.sourceforge.net<BR><B>Asunto:</B> RE: [NFS] Multiple NICs =
+server and=20
+  NFS mount problem<BR><BR></FONT></DIV>
+  <DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#0000ff=20
+  size=3D2></FONT>&nbsp;</DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2>The only thing that comes to mind is check the =
-dns setup ie=20
-(/etc/resolv.conf) and </FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  color=3D#0000ff size=3D2>The only thing that comes to mind is check =
+the dns setup=20
+  ie (/etc/resolv.conf) and </FONT></SPAN></DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2>see what it is doing.</FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  color=3D#0000ff size=3D2>see what it is doing.</FONT></SPAN></DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  color=3D#0000ff size=3D2></FONT></SPAN>&nbsp;</DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2>If dns is slow lots of things get rather messy, =
-and also=20
-make sure that the addresses</FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  color=3D#0000ff size=3D2>If dns is slow lots of things get rather =
+messy, and also=20
+  make sure that the addresses</FONT></SPAN></DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2>you are using on the internal network is a =
+  color=3D#0000ff size=3D2>you are using on the internal network is a =
 proper public=20
-network, and not one that</FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  network, and not one that</FONT></SPAN></DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2>is owned by someone else, as if it is someone =
+  color=3D#0000ff size=3D2>is owned by someone else, as if it is someone =
 elses you=20
-machine will attempt</FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  machine will attempt</FONT></SPAN></DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2>to hit their dns server every =
+  color=3D#0000ff size=3D2>to hit their dns server every =
 time.</FONT></SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff size=3D2></FONT></SPAN>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
+  color=3D#0000ff size=3D2></FONT></SPAN>&nbsp;</DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN class=3D457431615-23062005><FONT =
 face=3DArial=20
-color=3D#0000ff=20
+  color=3D#0000ff=20
+  =
 size=3D2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
 p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
 ;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
 &nbsp;&nbsp;=20
-Roger</FONT>&nbsp;</SPAN></DIV>
-<DIV dir=3Dltr align=3Dleft><SPAN=20
+  Roger</FONT>&nbsp;</SPAN></DIV>
+  <DIV dir=3Dltr align=3Dleft><SPAN=20
+  =
 class=3D457431615-23062005>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
 p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
 ;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
 &nbsp;&nbsp;&nbsp;<FONT=20
-face=3DArial color=3D#0000ff size=3D2>&nbsp;&nbsp; Atipa=20
-Technologies</FONT></SPAN></DIV><BR>
-<BLOCKQUOTE=20
-style=3D"PADDING-LEFT: 5px; MARGIN-LEFT: 5px; BORDER-LEFT: #0000ff 2px =
+  face=3DArial color=3D#0000ff size=3D2>&nbsp;&nbsp; Atipa=20
+  Technologies</FONT></SPAN></DIV><BR>
+  <BLOCKQUOTE=20
+  style=3D"PADDING-LEFT: 5px; MARGIN-LEFT: 5px; BORDER-LEFT: #0000ff 2px =
 solid; MARGIN-RIGHT: 0px">
-  <DIV class=3DOutlookMessageHeader lang=3Den-us dir=3Dltr align=3Dleft>
-  <HR tabIndex=3D-1>
-  <FONT face=3DTahoma size=3D2><B>From:</B> =
+    <DIV class=3DOutlookMessageHeader lang=3Den-us dir=3Dltr =
+align=3Dleft>
+    <HR tabIndex=3D-1>
+    <FONT face=3DTahoma size=3D2><B>From:</B> =
 nfs-admin@lists.sourceforge.net=20
-  [mailto:nfs-admin@lists.sourceforge.net] <B>On Behalf Of </B>Barriuso =
-Maicas,=20
-  Rafael<BR><B>Sent:</B> Thursday, June 23, 2005 10:00 AM<BR><B>To:</B>=20
-  nfs@lists.sourceforge.net<BR><B>Subject:</B> [NFS] Multiple NICs =
-server and=20
-  NFS mount problem<BR></FONT><BR></DIV>
-  <DIV></DIV><!-- Converted from text/rtf format -->
-  <P><FONT face=3DArial size=3D2>Hello,</FONT> </P>
-  <P><FONT face=3DArial size=3D2>I have a machine running Debian Linux =
-as router and=20
-  NFS server, with two network interfaces, one connected to a big =
-switched LAN=20
-  (called eth1) and the other to an isolated LAN (called eth0). The =
-problem is=20
-  that since the day one interface (eth1) changed it's IP address (due =
-to DHCP)=20
-  the NFS clients in the isolated LAN (therefore accesing via eth0 to =
-the=20
-  server) began to have problems mounting the exported directories. The =
-NFS=20
-  clients sometimes succeed in mounting the directory after a long delay =
-and=20
-  sometimes they fail due to a RPC timeout. I have captured the network =
-traffic=20
-  and it seems to be the server which is not responding to the mount =
-call (RPC=20
-  v.2 MNT v.1 CALL).</FONT></P>
-  <P><FONT face=3DArial size=3D2>There are several strange things I've=20
-  tested:</FONT> </P>
-  <P><FONT face=3DArial size=3D2>- When I take down eth1 (the interface =
-which=20
-  changed IP address) the clients can mount the NFS server perfectly =
-without any=20
-  delay. However if I unplug the network cable without doing an =
-"ifdown", it=20
-  doesn't work. What's more, if I force the old IP address which eth1 =
-had, it=20
-  works perfectly (!!).</FONT></P>
-  <P><FONT face=3DArial size=3D2>- I've changed the NICs from two Intel =
-82540EM=20
-  Gigabit Ethernet to two 3Com 3c905B (and therefore the kernel modules) =
-but the=20
-  behaviour remains the same.</FONT></P>
-  <P><FONT face=3DArial size=3D2>- I've tested it with other kernel =
+    [mailto:nfs-admin@lists.sourceforge.net] <B>On Behalf Of =
+</B>Barriuso=20
+    Maicas, Rafael<BR><B>Sent:</B> Thursday, June 23, 2005 10:00=20
+    AM<BR><B>To:</B> nfs@lists.sourceforge.net<BR><B>Subject:</B> [NFS] =
+Multiple=20
+    NICs server and NFS mount problem<BR></FONT><BR></DIV>
+    <DIV></DIV><!-- Converted from text/rtf format -->
+    <P><FONT face=3DArial size=3D2>Hello,</FONT> </P>
+    <P><FONT face=3DArial size=3D2>I have a machine running Debian Linux =
+as router=20
+    and NFS server, with two network interfaces, one connected to a big =
+switched=20
+    LAN (called eth1) and the other to an isolated LAN (called eth0). =
+The=20
+    problem is that since the day one interface (eth1) changed it's IP =
+address=20
+    (due to DHCP) the NFS clients in the isolated LAN (therefore =
+accesing via=20
+    eth0 to the server) began to have problems mounting the exported=20
+    directories. The NFS clients sometimes succeed in mounting the =
+directory=20
+    after a long delay and sometimes they fail due to a RPC timeout. I =
+have=20
+    captured the network traffic and it seems to be the server which is =
+not=20
+    responding to the mount call (RPC v.2 MNT v.1 CALL).</FONT></P>
+    <P><FONT face=3DArial size=3D2>There are several strange things I've =
+
+    tested:</FONT> </P>
+    <P><FONT face=3DArial size=3D2>- When I take down eth1 (the =
+interface which=20
+    changed IP address) the clients can mount the NFS server perfectly =
+without=20
+    any delay. However if I unplug the network cable without doing an =
+"ifdown",=20
+    it doesn't work. What's more, if I force the old IP address which =
+eth1 had,=20
+    it works perfectly (!!).</FONT></P>
+    <P><FONT face=3DArial size=3D2>- I've changed the NICs from two =
+Intel 82540EM=20
+    Gigabit Ethernet to two 3Com 3c905B (and therefore the kernel =
+modules) but=20
+    the behaviour remains the same.</FONT></P>
+    <P><FONT face=3DArial size=3D2>- I've tested it with other kernel =
 versions (from=20
-  2.6.11 to 2.4.25 and a default 2.6.11) and it remains the same.</FONT> =
-</P>
-  <P><FONT face=3DArial size=3D2>- I've stopped all non-nfs-related =
+    2.6.11 to 2.4.25 and a default 2.6.11) and it remains the =
+same.</FONT> </P>
+    <P><FONT face=3DArial size=3D2>- I've stopped all non-nfs-related =
 daemons and it=20
-  remains the same.</FONT> </P>
-  <P><FONT face=3DArial size=3D2>- I've looked for that old IP address =
+    remains the same.</FONT> </P>
+    <P><FONT face=3DArial size=3D2>- I've looked for that old IP address =
 inside all=20
-  configuration files, but it doesn't appear.</FONT> </P>
-  <P><FONT face=3DArial size=3D2>- Finally I've tested in another =
-machine, the same=20
-  model as the other server, but running a RedHat FC4 with it's NFS =
-server, and=20
-  neither it works!!.</FONT></P>
-  <P><FONT face=3DArial size=3D2>Here'sI a software and hardware =
-description:</FONT>=20
-  </P>
-  <P><FONT face=3DArial size=3D2>- Machine: Dell Optiplex GX 270 with =
+    configuration files, but it doesn't appear.</FONT> </P>
+    <P><FONT face=3DArial size=3D2>- Finally I've tested in another =
+machine, the=20
+    same model as the other server, but running a RedHat FC4 with it's =
+NFS=20
+    server, and neither it works!!.</FONT></P>
+    <P><FONT face=3DArial size=3D2>Here'sI a software and hardware=20
+    description:</FONT> </P>
+    <P><FONT face=3DArial size=3D2>- Machine: Dell Optiplex GX 270 with =
 two Intel=20
-  network interfaces (both Intel 82540EM Gigabit Ethernet), one PCI and =
-the=20
-  other integrated in the motherboard.</FONT></P>
-  <P><FONT face=3DArial size=3D2>- O.S.: Debian Testing with Linux =
+    network interfaces (both Intel 82540EM Gigabit Ethernet), one PCI =
+and the=20
+    other integrated in the motherboard.</FONT></P>
+    <P><FONT face=3DArial size=3D2>- O.S.: Debian Testing with Linux =
 2.6.11 kernel,=20
-  with nfs-common package (from apt) version 1:1.0.7-3 and nfs-kernel =
+    with nfs-common package (from apt) version 1:1.0.7-3 and nfs-kernel =
 server=20
-  package (from apt) version 1:1.0.7-3.</FONT></P>
-  <P><FONT face=3DArial size=3D2>I can't understand what's happening!. =
+    package (from apt) version 1:1.0.7-3.</FONT></P>
+    <P><FONT face=3DArial size=3D2>I can't understand what's happening!. =
 Does anyone=20
-  know where's the problem?.</FONT> </P>
-  <P><FONT face=3DArial size=3D2>Thank you in advance,</FONT> <BR><FONT =
-face=3DArial=20
-  size=3D2>&nbsp; Rafael.</FONT> </P><BR></BLOCKQUOTE></BODY></HTML>
+    know where's the problem?.</FONT> </P>
+    <P><FONT face=3DArial size=3D2>Thank you in advance,</FONT> =
+<BR><FONT face=3DArial=20
+    size=3D2>&nbsp; Rafael.</FONT> =
+</P><BR></BLOCKQUOTE></BLOCKQUOTE></BODY></HTML>
 
-------=_NextPart_000_0481_01C577DC.FAFAFB70--
-
+------_=_NextPart_001_01C57807.97A41535--
 
 
 -------------------------------------------------------
