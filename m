@@ -1,24 +1,22 @@
-From: Neil Brown <neilb@cse.unsw.edu.au>
-Subject: Re: How many nfsd's can I run?
-Date: Fri, 24 Jun 2005 11:48:27 +1000
-Message-ID: <17083.26219.859400.874299@cse.unsw.edu.au>
-References: <42B8C69C.6010302@affymetrix.com>
-	<17080.52358.24058.797844@cse.unsw.edu.au>
-	<42B9B819.5030900@affymetrix.com>
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: More Stale NFS handles
+Date: Fri, 24 Jun 2005 07:48:16 +0200
+Message-ID: <42BB9EA0.3040804@bio.ifi.lmu.de>
+References: <449CA531-2B73-458E-B632-B1E159637115@jhu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DldJD-0003o2-Kl
-	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 18:48:43 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DldJC-0005aS-5w
-	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 18:48:43 -0700
-To: Hugh Caley <Hugh_Caley@affymetrix.com>
-In-Reply-To: message from Hugh Caley on Wednesday June 22
+	id 1Dlh38-00062U-I5
+	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 22:48:22 -0700
+Received: from acheron.ifi.lmu.de ([129.187.214.135])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1Dlh37-0004pR-1t
+	for nfs@lists.sourceforge.net; Thu, 23 Jun 2005 22:48:22 -0700
+To: Eiwe Lingefors <eiwe@jhu.edu>
+In-Reply-To: <449CA531-2B73-458E-B632-B1E159637115@jhu.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,22 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday June 22, Hugh_Caley@affymetrix.com wrote:
-> Thanks for the advice.  So, if I run "nfsd 256", it will increase the 
-> currently running 125 daemons to 256?
+Eiwe Lingefors wrote
 
-Yes.
+> I have trawled the nfs mailing list archives a bit and judging by  
+> recent posts there is undoubtedly several others with the same  
+> problem.   The problems started happening when I installed a new  
+> Fedora Core 3 server and migrated home directories to it. Like Jim  
+> Farley mentioned in a recent thread on the list, our environment has  
+> been stable for years prior.
 
-> 
-> Filesystem is reiser, and the disk device is a Nexsan Atabeast. 
-> 
+There seem to be at least two problem that can cause these. One coming
+from the server side, maybe journaling related. Read the "Stale File
+handles keep coming back" thread. The other one is caused by the client
+and can be fixed by a thread Trond sent on this list. It's also
+referenced in this thread. This one solved the problem at our site.
 
-I don't know of any particular performance issues or tuning
-possibilities with reiserfs, and I've never heard of an Atabeast..
+cu,
+Frank
 
-So I don't think I can be any more helpful.
 
-NeilBrown
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
