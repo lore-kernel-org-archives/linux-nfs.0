@@ -1,20 +1,21 @@
-From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: More Stale NFS handles
-Date: Wed, 29 Jun 2005 16:50:56 -0400
-Message-ID: <20050629205056.GB29952@ti64.telemetry-investments.com>
-References: <449CA531-2B73-458E-B632-B1E159637115@jhu.edu> <1120076887.8751.34.camel@localhost.localdomain>
+Date: Wed, 29 Jun 2005 17:04:47 -0400
+Message-ID: <1120079087.8521.53.camel@lade.trondhjem.org>
+References: <449CA531-2B73-458E-B632-B1E159637115@jhu.edu>
+	 <1120076887.8751.34.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: Eiwe Lingefors <eiwe@jhu.edu>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DnjWT-0003c7-1V
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 13:51:05 -0700
-Received: from 209-166-240-202.cust.walrus.com ([209.166.240.202] helo=ti41.telemetry-investments.com)
+	id 1DnjkD-0004Pm-Mp
+	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 14:05:17 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1DnjWR-0006qS-Ud
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 13:51:05 -0700
+	id 1DnjkB-0007nv-9w
+	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 14:05:17 -0700
 To: Kris Vassallo <kris@linuxcertified.com>
 In-Reply-To: <1120076887.8751.34.camel@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
@@ -30,30 +31,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Jun 29, 2005 at 01:28:07PM -0700, Kris Vassallo wrote:
-> I was using ext3, upgraded to core 3 from core 1 and had the exact same
-> problems. What did it for me, until someone fixes this problem, was to
-> turn off journaling (so basically its back to ext2). Since reverting
-> back to ext 2 the problem has gone away. Now this is going to be a huge
-> problem if the machine crashes because fscking a 1.5 TB disk array is
-> going to suck! I experimented with the way the journaling gets done
-> (data goes to disk first or journal first) and I wasn't able to fix the
-> problem. 
-> 
-> Aaaaaaargh! 
-> I just thought I would share my ongoing battle story, hopefully someone
-> will figure out what's causing this and will come up with a fix.
+on den 29.06.2005 Klokka 13:28 (-0700) skreiv Kris Vassallo:
 
-We're you using ext3 directory indexing? [Look for feature "dir_index" on
-the "Filesystem features:" line in "/sbin/tune2fs -l <device>" output.]
+> > I'm not sure what additional information might be helpful. The  
+> > problems I'm having essentially mirror those of others who have  
+> > posted regarding stale NFS handles in the past few months on this  
+> > list. I'm at my wits end after having fought with this problem for  
+> > weeks.
+> YES YES YES!!! It almost brings a state of insanity with it!! Plus,
+> atop my insanity I have a group of 30 developers who are complaining
+> about not being able to do work because of stale file handles. 
 
-If so, was the following patch in the kernel that you were using?
+So have you all tried any of the newer server kernels?
 
-   http://marc.theaimsgroup.com/?l=ext2-devel&m=111568753527230&w=2
+There were some important fixes for the server ESTALE problems that went
+into 2.6.10 IIRC 
 
-Regards,
+http://linux.bkbits.net:8080/linux-2.6/cset@415b3380pxf4sB97gM8ujLqDxi6GfQ
 
-	Bill Rugolsky
+and
+
+http://linux.bkbits.net:8080/linux-2.6/cset@41997cc5nwxi8SY_jN4yhIPUSu_yVA?nav=index.html|src/|src/fs|related/fs/dcache.c
+
+Do the kernels you've tested have these two patches?
+
+Trond
+
 
 
 -------------------------------------------------------
