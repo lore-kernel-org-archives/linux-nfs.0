@@ -1,29 +1,22 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: [PATCH] make NFS client side WRITE more defensive
-Date: Wed, 29 Jun 2005 12:09:16 -0400
-Message-ID: <42C2C7AC.5070405@redhat.com>
+From: Kris Vassallo <kris@linuxcertified.com>
+Subject: Re: More Stale NFS handles
+Date: Wed, 29 Jun 2005 13:28:07 -0700
+Message-ID: <1120076887.8751.34.camel@localhost.localdomain>
+References: <449CA531-2B73-458E-B632-B1E159637115@jhu.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------070302060901050709040906"
+Content-Type: multipart/alternative; boundary="=-YHHejnLFPd0Pbh0ZNyeC"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DnfBU-0006rT-DK
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 09:13:08 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1DnjAN-0002bo-Pz
+	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 13:28:15 -0700
+Received: from meteor.hosting4less.com ([63.99.109.5])
 	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1DnfBS-00027A-V4
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 09:13:08 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j5TGCwx3010210
-	for <nfs@lists.sourceforge.net>; Wed, 29 Jun 2005 12:12:58 -0400
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j5TGCwu24816
-	for <nfs@lists.sourceforge.net>; Wed, 29 Jun 2005 12:12:58 -0400
-Received: from [172.16.80.198] (IDENT:U2FsdGVkX18u4a9d8XtsoWVuFgLZRqWLy9N8CUIStzo@nyday.boston.redhat.com [172.16.80.198])
-	by lacrosse.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j5TGCvs20441
-	for <nfs@lists.sourceforge.net>; Wed, 29 Jun 2005 12:12:57 -0400
-To: nfs@lists.sourceforge.net
+	id 1DnjAN-00055R-Hn
+	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 13:28:15 -0700
+To: Eiwe Lingefors <eiwe@jhu.edu>
+In-Reply-To: <449CA531-2B73-458E-B632-B1E159637115@jhu.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,135 +30,118 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------070302060901050709040906
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+
+--=-YHHejnLFPd0Pbh0ZNyeC
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-Hi.
+On Thu, 2005-06-23 at 13:55, Eiwe Lingefors wrote:
 
-Attached are same changes to make the NFS client side WRITE processing a 
-little
-more defensive.  Currently, a response which indicates that the server wrote
-more data than actually requested could cause bad things to happen.  Such a
-response could come from a broken or malicious server or from network 
-corruption
-that the normal checksumming fails to catch.
+> The server:
+> Dell PowerEdge 2850
+> 1 x PowerVault 220S 14x300GB SCSI
+> Fedora Core 3
+> Kernel 2.6.9-1.667smp
+> Several exported LVM volumes all formatted with reiserfs v3.6
+> So far nothing I have done has helped reduce the amount of stale NFS  
+> file handles.
 
-    Thanx...
+Bah! I have the same problem, I've had it for months now. I was about to
+build yet another server and use reiserfs but thanks to you I am spared
+the agony of finding out it wont work. 
 
-       ps
+> 
+> I'm not sure what additional information might be helpful. The  
+> problems I'm having essentially mirror those of others who have  
+> posted regarding stale NFS handles in the past few months on this  
+> list. I'm at my wits end after having fought with this problem for  
+> weeks.
 
---------------070302060901050709040906
-Content-Type: text/plain;
- name="nfswrite.devel"
+YES YES YES!!! It almost brings a state of insanity with it!! Plus, atop
+my insanity I have a group of 30 developers who are complaining about
+not being able to do work because of stale file handles. 
+
+>  Any insight or pointers would be deeply appreciated. I'll be  
+> happy to provide additional information if needed.
+
+I was using ext3, upgraded to core 3 from core 1 and had the exact same
+problems. What did it for me, until someone fixes this problem, was to
+turn off journaling (so basically its back to ext2). Since reverting
+back to ext 2 the problem has gone away. Now this is going to be a huge
+problem if the machine crashes because fscking a 1.5 TB disk array is
+going to suck! I experimented with the way the journaling gets done
+(data goes to disk first or journal first) and I wasn't able to fix the
+problem. 
+
+Aaaaaaargh! 
+I just thought I would share my ongoing battle story, hopefully someone
+will figure out what's causing this and will come up with a fix.
+
+-Kris
+
+
+> 
+> Thanks,
+> Eiwe Lingefors
+> 
+
+
+
+--=-YHHejnLFPd0Pbh0ZNyeC
+Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="nfswrite.devel"
 
---- write.c.org	2005-06-27 16:20:02.591244320 -0400
-+++ write.c	2005-06-27 17:07:52.890892448 -0400
-@@ -197,15 +197,21 @@ static int nfs_writepage_sync(struct nfs
- 
- 		result = NFS_PROTO(inode)->write(wdata);
- 
--		if (result < 0) {
-+		if (result <= 0) {
- 			/* Must mark the page invalid after I/O error */
- 			ClearPageUptodate(page);
- 			goto io_error;
- 		}
--		if (result < wdata->args.count)
--			printk(KERN_WARNING "NFS: short write, count=%u, result=%d\n",
--					wdata->args.count, result);
--
-+		if (result > wdata->args.count) {
-+			dprintk("NFS: faulty NFS server %s:"
-+				" (requested = %u) != (result = %d)\n",
-+				NFS_SERVER(inode)->hostname,
-+				wdata->args.count, result);
-+			/* Treat as I/O error */
-+			ClearPageUptodate(page);
-+			result = -EIO;
-+			goto io_error;
-+		}
- 		wdata->args.offset += result;
- 	        wdata->args.pgbase += result;
- 		written += result;
-@@ -1165,32 +1171,50 @@ void nfs_writeback_done(struct rpc_task 
- 		}
- 	}
- #endif
--	/* Is this a short write? */
--	if (task->tk_status >= 0 && resp->count < argp->count) {
-+	if (task->tk_status >= 0 && resp->count != argp->count) {
- 		static unsigned long    complain;
- 
--		/* Has the server at least made some progress? */
--		if (resp->count != 0) {
--			/* Was this an NFSv2 write or an NFSv3 stable write? */
--			if (resp->verf->committed != NFS_UNSTABLE) {
--				/* Resend from where the server left off */
--				argp->offset += resp->count;
--				argp->pgbase += resp->count;
--				argp->count -= resp->count;
--			} else {
--				/* Resend as a stable write in order to avoid
--				 * headaches in the case of a server crash.
-+		/* Is this a short write? */
-+		if (resp->count < argp->count) {
-+			/* Has the server at least made some progress? */
-+			if (resp->count != 0) {
-+				/*
-+				 * Was this an NFSv2 write or an NFSv3
-+				 * stable write?
- 				 */
--				argp->stable = NFS_FILE_SYNC;
-+				if (resp->verf->committed != NFS_UNSTABLE) {
-+					/*
-+					 * Resend from where the server
-+					 * left off
-+					 */
-+					argp->offset += resp->count;
-+					argp->pgbase += resp->count;
-+					argp->count -= resp->count;
-+				} else {
-+					/*
-+					 * Resend as a stable write in
-+					 * order to avoid headaches in
-+					 * the case of a server crash.
-+					 */
-+					argp->stable = NFS_FILE_SYNC;
-+				}
-+				rpc_restart_call(task);
-+				return;
- 			}
--			rpc_restart_call(task);
--			return;
--		}
--		if (time_before(complain, jiffies)) {
--			printk(KERN_WARNING
--			       "NFS: Server wrote zero bytes, expected %u.\n",
-+			if (time_before(complain, jiffies)) {
-+				dprintk("NFS: Server wrote zero bytes,"
-+				       " expected %u.\n",
- 					argp->count);
--			complain = jiffies + 300 * HZ;
-+				complain = jiffies + 300 * HZ;
-+			}
-+		} else {
-+		/* Or an oversized write? */
-+			if (time_before(complain, jiffies)) {
-+				dprintk("NFS: Server wrote more than requested,"
-+				       " expected %u.\n",
-+					argp->count);
-+				complain = jiffies + 300 * HZ;
-+			}
- 		}
- 		/* Can't do anything about it except throw an error. */
- 		task->tk_status = -EIO;
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 TRANSITIONAL//EN">
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=UTF-8">
+  <META NAME="GENERATOR" CONTENT="GtkHTML/3.0.10">
+</HEAD>
+<BODY>
+On Thu, 2005-06-23 at 13:55, Eiwe Lingefors wrote:
+<BLOCKQUOTE TYPE=CITE>
+<PRE><FONT COLOR="#737373"><I>The server:
+Dell PowerEdge 2850
+1 x PowerVault 220S 14x300GB SCSI
+Fedora Core 3
+Kernel 2.6.9-1.667smp
+Several exported LVM volumes all formatted with reiserfs v3.6
+So far nothing I have done has helped reduce the amount of stale NFS  
+file handles.</I></FONT></PRE>
+</BLOCKQUOTE>
+Bah! I have the same problem, I've had it for months now. I was about to build yet another server and use reiserfs but thanks to you I am spared the agony of finding out it wont work. 
+<BLOCKQUOTE TYPE=CITE>
+<PRE><FONT COLOR="#737373"><I>
+I'm not sure what additional information might be helpful. The  
+problems I'm having essentially mirror those of others who have  
+posted regarding stale NFS handles in the past few months on this  
+list. I'm at my wits end after having fought with this problem for  
+weeks.</I></FONT></PRE>
+</BLOCKQUOTE>
+YES YES YES!!! It almost brings a state of insanity with it!! Plus, atop my insanity I have a group of 30 developers who are complaining about not being able to do work because of stale file handles. 
+<BLOCKQUOTE TYPE=CITE>
+<PRE><FONT COLOR="#737373"><I> Any insight or pointers would be deeply appreciated. I'll be&nbsp; 
+happy to provide additional information if needed.</I></FONT></PRE>
+</BLOCKQUOTE>
+I was using ext3, upgraded to core 3 from core 1 and had the exact same problems. What did it for me, until someone fixes this problem, was to turn off journaling (so basically its back to ext2). Since reverting back to ext 2 the problem has gone away. Now this is going to be a huge problem if the machine crashes because fscking a 1.5 TB disk array is going to suck! I experimented with the way the journaling gets done (data goes to disk first or journal first) and I wasn't able to fix the problem. <BR>
+<BR>
+Aaaaaaargh! <BR>
+I just thought I would share my ongoing battle story, hopefully someone will figure out what's causing this and will come up with a fix.<BR>
+<BR>
+-Kris<BR>
+<BR>
+<BLOCKQUOTE TYPE=CITE>
+<PRE><FONT COLOR="#737373"><I>
+Thanks,
+Eiwe Lingefors
+</I></FONT></PRE>
+</BLOCKQUOTE>
+<BR>
+</BODY>
+</HTML>
 
---------------070302060901050709040906--
+--=-YHHejnLFPd0Pbh0ZNyeC--
+
 
 
 -------------------------------------------------------
