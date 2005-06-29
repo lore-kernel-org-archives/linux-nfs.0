@@ -1,25 +1,29 @@
 From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Re: [PATCH] Smooth out NFS client writeback
-Date: Wed, 29 Jun 2005 11:50:21 -0400
-Message-ID: <42C2C33D.8000308@redhat.com>
-References: <482A3FA0050D21419C269D13989C611307CF4CE7@lavender-fe.eng.netapp.com>
+Subject: [PATCH] make NFS client side WRITE more defensive
+Date: Wed, 29 Jun 2005 12:09:16 -0400
+Message-ID: <42C2C7AC.5070405@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Shantanu Goel <sgoel01@yahoo.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+ boundary="------------070302060901050709040906"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dnet9-00064Z-8h
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 08:54:11 -0700
+	id 1DnfBU-0006rT-DK
+	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 09:13:08 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Dnet8-0001qQ-Gw
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 08:54:11 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611307CF4CE7@lavender-fe.eng.netapp.com>
+	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
+	id 1DnfBS-00027A-V4
+	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 09:13:08 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j5TGCwx3010210
+	for <nfs@lists.sourceforge.net>; Wed, 29 Jun 2005 12:12:58 -0400
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j5TGCwu24816
+	for <nfs@lists.sourceforge.net>; Wed, 29 Jun 2005 12:12:58 -0400
+Received: from [172.16.80.198] (IDENT:U2FsdGVkX18u4a9d8XtsoWVuFgLZRqWLy9N8CUIStzo@nyday.boston.redhat.com [172.16.80.198])
+	by lacrosse.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j5TGCvs20441
+	for <nfs@lists.sourceforge.net>; Wed, 29 Jun 2005 12:12:57 -0400
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,88 +37,135 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles wrote:
+This is a multi-part message in MIME format.
+--------------070302060901050709040906
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
->>I don't think that there will be more over the wire 
->>operations generated
->>when using the range versus always specifying the entire 
->>file.
->>    
->>
->
->committing the whole file at once is simply more efficient from a
->network perspective when an application is performing random writes
->(unless it is using O_SYNC).  there are some cases where it won't make a
->difference whether a range or a whole file commit is used, but i think
->it would be really hard to figure out a client-side heuristic to decide
->which is better.
->
->  
->
+Hi.
 
-The network perspective is important, to be sure.  However, so is disk
-i/o.
+Attached are same changes to make the NFS client side WRITE processing a 
+little
+more defensive.  Currently, a response which indicates that the server wrote
+more data than actually requested could cause bad things to happen.  Such a
+response could come from a broken or malicious server or from network 
+corruption
+that the normal checksumming fails to catch.
 
-Having done an implementation, it isn't so hard to develop the heuristics,
-actually.
-
-Please keep in mind that COMMIT operations are very expensive.  They are
-to be avoided whenever possible.  Clients should delay as long as possible
-to commit data because they may be able to avoid committing it at all.
-These benefits can include data which is repeatedly overwritten, small
-writes to the same file system block on the server, temporary files, etc.
-The list goes on and on.  Not going to stable storage on the server is a
-huge win in performance all that way around.
-
->>I would claim that a client,
->>which simply issues a blanket COMMIT(0,0), without already 
->>having gathered
->>up the buffers/pages/whatever that need committing, is 
->>broken.  It will be
->>unsafe because it will be subject to races like more data 
->>getting written
->>with UNSTABLE while the COMMIT is happening.  This new data 
->>may or may not
->>have been committed by the COMMIT.
->>    
->>
->
->the linux client already keeps track of the order of writes and commits
->well enough that this isn't an issue.
->
->  
->
-
-Good to hear!
-
->>Bottom line for me -- if the client can do something to help 
->>the server to
->>help the client and it is an overall win, then I think that 
->>it should do so...
->>    
->>
->
->we're talking about potentially adding complexity to the client and
->increasing the number of write and commit operations on the wire, which
->could have a negative performance impact in other environments (think
->WAN).  all this to optimize a particular workload against a particular
->server implementation.
->
->i'm not saying this type of work shouldn't be explored, but as we
->consider the change, we should be very careful especially since we don't
->have adequate performance regression test coverage yet.
->  
->
-
-I think that there may be more server implementations out there that
-could benefit from the client strategy than just the Solaris with UFS
-NFS server.  I would guess that most, if not all, would benefit.  I
-even suspect that we could make the Linux server go faster if it paid
-attention to the byte range specified, instead of always sync'ing the
-entire file.  The cost of looking at clean pages/buffers is small, but
-adds up quickly...  :-)
+    Thanx...
 
        ps
+
+--------------070302060901050709040906
+Content-Type: text/plain;
+ name="nfswrite.devel"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfswrite.devel"
+
+--- write.c.org	2005-06-27 16:20:02.591244320 -0400
++++ write.c	2005-06-27 17:07:52.890892448 -0400
+@@ -197,15 +197,21 @@ static int nfs_writepage_sync(struct nfs
+ 
+ 		result = NFS_PROTO(inode)->write(wdata);
+ 
+-		if (result < 0) {
++		if (result <= 0) {
+ 			/* Must mark the page invalid after I/O error */
+ 			ClearPageUptodate(page);
+ 			goto io_error;
+ 		}
+-		if (result < wdata->args.count)
+-			printk(KERN_WARNING "NFS: short write, count=%u, result=%d\n",
+-					wdata->args.count, result);
+-
++		if (result > wdata->args.count) {
++			dprintk("NFS: faulty NFS server %s:"
++				" (requested = %u) != (result = %d)\n",
++				NFS_SERVER(inode)->hostname,
++				wdata->args.count, result);
++			/* Treat as I/O error */
++			ClearPageUptodate(page);
++			result = -EIO;
++			goto io_error;
++		}
+ 		wdata->args.offset += result;
+ 	        wdata->args.pgbase += result;
+ 		written += result;
+@@ -1165,32 +1171,50 @@ void nfs_writeback_done(struct rpc_task 
+ 		}
+ 	}
+ #endif
+-	/* Is this a short write? */
+-	if (task->tk_status >= 0 && resp->count < argp->count) {
++	if (task->tk_status >= 0 && resp->count != argp->count) {
+ 		static unsigned long    complain;
+ 
+-		/* Has the server at least made some progress? */
+-		if (resp->count != 0) {
+-			/* Was this an NFSv2 write or an NFSv3 stable write? */
+-			if (resp->verf->committed != NFS_UNSTABLE) {
+-				/* Resend from where the server left off */
+-				argp->offset += resp->count;
+-				argp->pgbase += resp->count;
+-				argp->count -= resp->count;
+-			} else {
+-				/* Resend as a stable write in order to avoid
+-				 * headaches in the case of a server crash.
++		/* Is this a short write? */
++		if (resp->count < argp->count) {
++			/* Has the server at least made some progress? */
++			if (resp->count != 0) {
++				/*
++				 * Was this an NFSv2 write or an NFSv3
++				 * stable write?
+ 				 */
+-				argp->stable = NFS_FILE_SYNC;
++				if (resp->verf->committed != NFS_UNSTABLE) {
++					/*
++					 * Resend from where the server
++					 * left off
++					 */
++					argp->offset += resp->count;
++					argp->pgbase += resp->count;
++					argp->count -= resp->count;
++				} else {
++					/*
++					 * Resend as a stable write in
++					 * order to avoid headaches in
++					 * the case of a server crash.
++					 */
++					argp->stable = NFS_FILE_SYNC;
++				}
++				rpc_restart_call(task);
++				return;
+ 			}
+-			rpc_restart_call(task);
+-			return;
+-		}
+-		if (time_before(complain, jiffies)) {
+-			printk(KERN_WARNING
+-			       "NFS: Server wrote zero bytes, expected %u.\n",
++			if (time_before(complain, jiffies)) {
++				dprintk("NFS: Server wrote zero bytes,"
++				       " expected %u.\n",
+ 					argp->count);
+-			complain = jiffies + 300 * HZ;
++				complain = jiffies + 300 * HZ;
++			}
++		} else {
++		/* Or an oversized write? */
++			if (time_before(complain, jiffies)) {
++				dprintk("NFS: Server wrote more than requested,"
++				       " expected %u.\n",
++					argp->count);
++				complain = jiffies + 300 * HZ;
++			}
+ 		}
+ 		/* Can't do anything about it except throw an error. */
+ 		task->tk_status = -EIO;
+
+--------------070302060901050709040906--
 
 
 -------------------------------------------------------
