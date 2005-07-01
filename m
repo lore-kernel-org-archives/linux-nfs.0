@@ -1,25 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Strange problem with ACL over NFS
-Date: Sat, 02 Jul 2005 00:51:56 +0200
-Message-ID: <1120258316.8246.0.camel@lade.trondhjem.org>
-References: <42C3DBDC.5050803@bio.ifi.lmu.de>
-	 <1120157929.8922.14.camel@lade.trondhjem.org>
-	 <42C4DA08.8070202@bio.ifi.lmu.de>
+Subject: Re: SuSE 9 sp1 GA : Busy mounts.
+Date: Sat, 02 Jul 2005 01:50:22 +0200
+Message-ID: <1120261822.8246.28.camel@lade.trondhjem.org>
+References: <20050701104415.91141.qmail@web51601.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: NFS NFS <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DoUMp-0002Sg-5y
-	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 15:52:15 -0700
+	id 1DoVHP-00053B-5z
+	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 16:50:43 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
 	(Exim 4.41)
-	id 1DoUMn-0005Ev-KL
-	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 15:52:15 -0700
-To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
-In-Reply-To: <42C4DA08.8070202@bio.ifi.lmu.de>
+	id 1DoVHO-0006p0-Bo
+	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 16:50:42 -0700
+To: mehta kiran <kiranmehta1981@yahoo.com>
+In-Reply-To: <20050701104415.91141.qmail@web51601.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,17 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 01.07.2005 Klokka 07:52 (+0200) skreiv Frank Steiner:
+fr den 01.07.2005 Klokka 03:44 (-0700) skreiv mehta kiran:
+> Hi , 
+>       I exported a filesystem.
+>       Client took lock on a file.
+>       Then i stopped all nfs daemons
+>       including lockd .I have also 
+>       unexported all filesystem. but
+>       still filesystems cannot be
+>       unmounted.It gives "device busy" error
+>       
+>       vcslinux4:~ # uname -a
+>       Linux vcslinux4 2.6.5-7.139-smp #1 SMP Fri Jan 
+>       14 15:41:33 UTC 2005 i686 i686 i3
+>       86 GNU/Linux
+>      
+>       This is rarely reproducible.
+>       Please let me nkow if this is a known issue.
 
-> So this looks more like a client bug to me, because it is not always
-> the first mount from the same server that does not have ACL, but the
-> first overall NFS mount. Like the client was not able to initialize
-> ACLs for NFS before the first mount is done...
+A lot of water has been passed under the bridge since 2.6.5. Please
+retry with a more recent kernel.
 
-I won't buy that argument until I see a tcpdump to prove it ;-)
-
-Cheers,
-  Trond
+Trond
 
 
 
