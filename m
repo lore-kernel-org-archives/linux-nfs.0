@@ -1,23 +1,25 @@
-From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Strange problem with ACL over NFS
-Date: Fri, 01 Jul 2005 17:03:11 +0200
-Message-ID: <42C55B2F.4060301@bio.ifi.lmu.de>
-References: <42C3DBDC.5050803@bio.ifi.lmu.de> <1120157929.8922.14.camel@lade.trondhjem.org> <42C4DA08.8070202@bio.ifi.lmu.de> <20050701134307.GC13619@hmsendeavour.rdu.redhat.com>
+Date: Sat, 02 Jul 2005 00:51:56 +0200
+Message-ID: <1120258316.8246.0.camel@lade.trondhjem.org>
+References: <42C3DBDC.5050803@bio.ifi.lmu.de>
+	 <1120157929.8922.14.camel@lade.trondhjem.org>
+	 <42C4DA08.8070202@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	NFS NFS <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: NFS NFS <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DoN2y-0005Tt-24
-	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 08:03:16 -0700
-Received: from acheron.ifi.lmu.de ([129.187.214.135])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DoN2v-0006tP-HQ
-	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 08:03:15 -0700
-To: Neil Horman <nhorman@redhat.com>
-In-Reply-To: <20050701134307.GC13619@hmsendeavour.rdu.redhat.com>
+	id 1DoUMp-0002Sg-5y
+	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 15:52:15 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DoUMn-0005Ev-KL
+	for nfs@lists.sourceforge.net; Fri, 01 Jul 2005 15:52:15 -0700
+To: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+In-Reply-To: <42C4DA08.8070202@bio.ifi.lmu.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +33,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Horman wrote
+fr den 01.07.2005 Klokka 07:52 (+0200) skreiv Frank Steiner:
 
-> Just out of curiosity what kind of file system are the NFS servers export to
-> NFS?  Is it a shared cluster fs, like vxfs, or ocfs, or the like, or is it just
-> plain old ext3?
-> Neil
+> So this looks more like a client bug to me, because it is not always
+> the first mount from the same server that does not have ACL, but the
+> first overall NFS mount. Like the client was not able to initialize
+> ACLs for NFS before the first mount is done...
 
-Plain old reiserfs :-)
+I won't buy that argument until I see a tcpdump to prove it ;-)
 
+Cheers,
+  Trond
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
