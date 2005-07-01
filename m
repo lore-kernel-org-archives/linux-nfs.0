@@ -1,25 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: making the 'addr=' mount option an address hint
-Date: Mon, 18 Jul 2005 14:37:50 -0400
-Message-ID: <1121711870.8707.5.camel@lade.trondhjem.org>
-References: <1121614708.6713.41.camel@localhost.localdomain>
-	 <1121700961.8780.13.camel@lade.trondhjem.org>
-	 <1121711065.23863.31.camel@barsoom.rdu.redhat.com>
+From: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>
+Subject: Re: Strange problem with ACL over NFS
+Date: Fri, 01 Jul 2005 07:52:08 +0200
+Message-ID: <42C4DA08.8070202@bio.ifi.lmu.de>
+References: <42C3DBDC.5050803@bio.ifi.lmu.de> <1120157929.8922.14.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: nfs@lists.sourceforge.net, autofs@linux.kernel.org
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Cc: NFS NFS <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DuaXv-0007rn-2V
-	for nfs@lists.sourceforge.net; Mon, 18 Jul 2005 11:40:55 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1DuaXt-0001Gn-Nb
-	for nfs@lists.sourceforge.net; Mon, 18 Jul 2005 11:40:55 -0700
-To: Jeff Layton <jtlayton@poochiereds.net>
-In-Reply-To: <1121711065.23863.31.camel@barsoom.rdu.redhat.com>
+	id 1DoERn-0004qr-Ak
+	for nfs@lists.sourceforge.net; Thu, 30 Jun 2005 22:52:19 -0700
+Received: from acheron.ifi.lmu.de ([129.187.214.135])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DoERl-0007kt-Bi
+	for nfs@lists.sourceforge.net; Thu, 30 Jun 2005 22:52:18 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1120157929.8922.14.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,23 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=C3=A5 den 18.07.2005 Klokka 14:24 (-0400) skreiv Jeff Layton:
-> On Mon, 2005-07-18 at 11:36 -0400, Trond Myklebust wrote:
-> > There's nothing preventing it from working, but what is stopping you
-> > from developing a fully automatic version?
->=20
-> Nothing is stopping that, but if we're going to do so much in the mount
-> program, there's probably no point in doing all of this in autofs. Why
-> do RPC pings at all in autofs if we're going to turn right around and do
-> them again in the mount program? For mounting over a WAN (for instance)
-> the ping checks could really add up to a substantial delay in mounting.
+Trond Myklebust wrote
 
-I would not at all support doing this sort of thing in autofs. If it is
-to be done, it should be done by the mount program.
+> to den 30.06.2005 Klokka 13:47 (+0200) skreiv Frank Steiner:
+> 
+>>Any ideas what could go wrong here?
+> 
+> There is no client side NFS ACL support for NFSv2. Have you tried a
+> 'cat /proc/mounts' to check that the partition is indeed mounted as
+> NFSv3 when reading the ACLs fails?
 
-Cheers,
- Trond
+Yes, it definitely is mounted with v3.
 
+Here's sth. new I found out this morning: It looks like the _first_
+NFS mount from the server does not get ACLs. I.e., when I switch the
+order of the entries so that /rpm is mounted first, /home second, then
+the ACLs are visible on /home but not on rpm.
+I added a second NFS server with one export and activated ACLs there,
+and it's still the same: Whichever of the three mounts comes first
+does not have ACLs until it is unmounted and remounted. So if the
+new NFS mount entry comes first on the client, both /rpm and /home
+will have ACLs.
+
+So this looks more like a client bug to me, because it is not always
+the first mount from the same server that does not have ACL, but the
+first overall NFS mount. Like the client was not able to initialize
+ACLs for NFS before the first mount is done...
+
+I will check a recent kernel on the client side.
+
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 
 -------------------------------------------------------
