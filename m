@@ -1,17 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 017 of 19] nfsd4: clean up nfs4_preprocess_seqid_op
+Subject: [PATCH kNFSd 018 of 19] nfsd4: check lock type against openmode.
 Date: Mon, 04 Jul 2005 11:01:44 +1000
-Message-ID: <E1DpFLE-0007H6-EU@notabene.cse.unsw.edu.au>
+Message-ID: <E1DpFLE-0007HA-HF@notabene.cse.unsw.edu.au>
 References: <20050704110022.27753.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpFMA-0001lc-EG
+	id 1DpFMA-0001li-OW
 	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:42 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
-	id 1DpFM9-0006NA-MT
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
+	id 1DpFMA-0007aU-0Y
 	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:42 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
@@ -28,139 +28,145 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-As long as we're here, do some miscellaneous cleanup.
+We shouldn't be allowing, e.g., write locks on files not open for read.
+To enforce this, we add a pointer from the lock stateid back to the
+open stateid it came from, so that the check will continue to be correct
+even after the open is upgraded or downgraded.
 
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   58 +++++++++++++++++++-------------------------------
- 1 files changed, 23 insertions(+), 35 deletions(-)
+ ./fs/nfsd/nfs4state.c        |   49 ++++++++++++++++++++++++++++---------------
+ ./include/linux/nfsd/state.h |    5 ++++
+ 2 files changed, 38 insertions(+), 16 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
 --- ./fs/nfsd/nfs4state.c~current~	2005-07-04 10:57:53.000000000 +1000
 +++ ./fs/nfsd/nfs4state.c	2005-07-04 10:57:53.000000000 +1000
-@@ -2165,7 +2165,6 @@ out:
+@@ -1160,6 +1160,7 @@ init_stateid(struct nfs4_stateid *stp, s
+ 	stp->st_deny_bmap = 0;
+ 	__set_bit(open->op_share_access, &stp->st_access_bmap);
+ 	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
++	stp->st_openstp = NULL;
+ }
+ 
+ static void
+@@ -2158,12 +2159,18 @@ out:
+ 	return status;
+ }
+ 
++static inline int
++setlkflg (int type)
++{
++	return (type == NFS4_READW_LT || type == NFS4_READ_LT) ?
++		RD_STATE : WR_STATE;
++}
+ 
+ /* 
+  * Checks for sequence id mutating operations. 
+  */
  static int
- nfs4_preprocess_seqid_op(struct svc_fh *current_fh, u32 seqid, stateid_t *stateid, int flags, struct nfs4_stateowner **sopp, struct nfs4_stateid **stpp, clientid_t *lockclid)
+-nfs4_preprocess_seqid_op(struct svc_fh *current_fh, u32 seqid, stateid_t *stateid, int flags, struct nfs4_stateowner **sopp, struct nfs4_stateid **stpp, clientid_t *lockclid)
++nfs4_preprocess_seqid_op(struct svc_fh *current_fh, u32 seqid, stateid_t *stateid, int flags, struct nfs4_stateowner **sopp, struct nfs4_stateid **stpp, struct nfsd4_lock *lock)
  {
--	int status;
  	struct nfs4_stateid *stp;
  	struct nfs4_stateowner *sop;
- 
-@@ -2173,19 +2172,17 @@ nfs4_preprocess_seqid_op(struct svc_fh *
- 			"stateid = (%08x/%08x/%08x/%08x)\n", seqid,
- 		stateid->si_boot, stateid->si_stateownerid, stateid->si_fileid,
- 		stateid->si_generation);
--			        
-+
- 	*stpp = NULL;
- 	*sopp = NULL;
- 
--	status = nfserr_bad_stateid;
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid)) {
- 		printk("NFSD: preprocess_seqid_op: magic stateid!\n");
--		goto out;
-+		return nfserr_bad_stateid;
- 	}
- 
--	status = nfserr_stale_stateid;
- 	if (STALE_STATEID(stateid))
--		goto out;
-+		return nfserr_stale_stateid;
- 	/*
- 	* We return BAD_STATEID if filehandle doesn't match stateid, 
- 	* the confirmed flag is incorrecly set, or the generation 
-@@ -2204,8 +2201,6 @@ nfs4_preprocess_seqid_op(struct svc_fh *
+@@ -2201,21 +2208,31 @@ nfs4_preprocess_seqid_op(struct svc_fh *
  		goto check_replay;
  	}
  
--	status = nfserr_bad_stateid;
--
- 	/* for new lock stateowners:
- 	 * check that the lock->v.new.open_stateid
- 	 * refers to an open stateowner
-@@ -2218,14 +2213,14 @@ nfs4_preprocess_seqid_op(struct svc_fh *
+-	/* for new lock stateowners:
+-	 * check that the lock->v.new.open_stateid
+-	 * refers to an open stateowner
+-	 *
+-	 * check that the lockclid (nfs4_lock->v.new.clientid) is the same
+-	 * as the open_stateid->st_stateowner->so_client->clientid
+-	 */
+-	if (lockclid) {
++	if (lock) {
+ 		struct nfs4_stateowner *sop = stp->st_stateowner;
++		clientid_t *lockclid = &lock->v.new.clientid;
  		struct nfs4_client *clp = sop->so_client;
++		int lkflg = 0;
++		int status;
++
++		lkflg = setlkflg(lock->lk_type);
++
++		if (lock->lk_is_new) {
++                       if (!sop->so_is_open_owner)
++			       return nfserr_bad_stateid;
++                       if (!cmp_clid(&clp->cl_clientid, lockclid))
++			       return nfserr_bad_stateid;
++                       /* stp is the open stateid */
++                       status = nfs4_check_openmode(stp, lkflg);
++                       if (status)
++			       return status;
++               } else {
++                       /* stp is the lock stateid */
++                       status = nfs4_check_openmode(stp->st_openstp, lkflg);
++                       if (status)
++			       return status;
++               }
  
- 		if (!sop->so_is_open_owner)
--			goto out;
-+			return nfserr_bad_stateid;
- 		if (!cmp_clid(&clp->cl_clientid, lockclid))
--			goto out;
-+			return nfserr_bad_stateid;
+-		if (!sop->so_is_open_owner)
+-			return nfserr_bad_stateid;
+-		if (!cmp_clid(&clp->cl_clientid, lockclid))
+-			return nfserr_bad_stateid;
  	}
  
  	if ((flags & CHECK_FH) && nfs4_check_fh(current_fh, stp)) {
- 		printk("NFSD: preprocess_seqid_op: fh-stateid mismatch!\n");
--		goto out;
-+		return nfserr_bad_stateid;
- 	}
+@@ -2642,6 +2659,7 @@ alloc_init_lock_stateid(struct nfs4_stat
+ 	stp->st_vfs_file = open_stp->st_vfs_file; /* FIXME refcount?? */
+ 	stp->st_access_bmap = open_stp->st_access_bmap;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
++	stp->st_openstp = open_stp;
  
- 	*stpp = stp;
-@@ -2239,45 +2234,38 @@ nfs4_preprocess_seqid_op(struct svc_fh *
- 	if (seqid != sop->so_seqid)
- 		goto check_replay;
- 
--	if (sop->so_confirmed) {
--		if (flags & CONFIRM) {
--			printk("NFSD: preprocess_seqid_op: expected unconfirmed stateowner!\n");
--			goto out;
--		}
--	}
--	else {
--		if (!(flags & CONFIRM)) {
--			printk("NFSD: preprocess_seqid_op: stateowner not confirmed yet!\n");
--			goto out;
--		}
-+	if (sop->so_confirmed && flags & CONFIRM) {
-+		printk("NFSD: preprocess_seqid_op: expected"
-+				" unconfirmed stateowner!\n");
-+		return nfserr_bad_stateid;
-+	}
-+	if (!sop->so_confirmed && !(flags & CONFIRM)) {
-+		printk("NFSD: preprocess_seqid_op: stateowner not"
-+				" confirmed yet!\n");
-+		return nfserr_bad_stateid;
+ out:
+ 	return stp;
+@@ -2697,8 +2715,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 				        lock->lk_new_open_seqid,
+ 		                        &lock->lk_new_open_stateid,
+ 		                        CHECK_FH | OPEN_STATE,
+-		                        &open_sop, &open_stp,
+-					&lock->v.new.clientid);
++		                        &open_sop, &open_stp, lock);
+ 		if (status)
+ 			goto out;
+ 		/* create lockowner and lock stateid */
+@@ -2726,7 +2743,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 				       lock->lk_old_lock_seqid, 
+ 				       &lock->lk_old_lock_stateid, 
+ 				       CHECK_FH | LOCK_STATE, 
+-				       &lock->lk_stateowner, &lock_stp, NULL);
++				       &lock->lk_stateowner, &lock_stp, lock);
+ 		if (status)
+ 			goto out;
  	}
- 	if (stateid->si_generation > stp->st_stateid.si_generation) {
- 		printk("NFSD: preprocess_seqid_op: future stateid?!\n");
--		goto out;
-+		return nfserr_bad_stateid;
- 	}
+
+diff ./include/linux/nfsd/state.h~current~ ./include/linux/nfsd/state.h
+--- ./include/linux/nfsd/state.h~current~	2005-07-04 10:57:52.000000000 +1000
++++ ./include/linux/nfsd/state.h	2005-07-04 10:57:53.000000000 +1000
+@@ -237,6 +237,10 @@ struct nfs4_file {
+ *       st_perlockowner: (open stateid) list of lock nfs4_stateowners
+ * 	st_access_bmap: used only for open stateid
+ * 	st_deny_bmap: used only for open stateid
++*	st_openstp: open stateid lock stateid was derived from
++*
++* XXX: open stateids and lock stateids have diverged sufficiently that
++* we should consider defining separate structs for the two cases.
+ */
  
--	status = nfserr_old_stateid;
- 	if (stateid->si_generation < stp->st_stateid.si_generation) {
- 		printk("NFSD: preprocess_seqid_op: old stateid!\n");
--		goto out;
-+		return nfserr_old_stateid;
- 	}
- 	renew_client(sop->so_client);
--	status = nfs_ok;
-+	return nfs_ok;
+ struct nfs4_stateid {
+@@ -250,6 +254,7 @@ struct nfs4_stateid {
+ 	struct file                 * st_vfs_file;
+ 	unsigned long                 st_access_bmap;
+ 	unsigned long                 st_deny_bmap;
++	struct nfs4_stateid         * st_openstp;
+ };
  
--out:
--	return status;
- check_replay:
- 	if (seqid == sop->so_seqid - 1) {
- 		printk("NFSD: preprocess_seqid_op: retransmission?\n");
- 		/* indicate replay to calling function */
--		status = NFSERR_REPLAY_ME;
--	} else  {
--		printk("NFSD: preprocess_seqid_op: bad seqid (expected %d, got %d\n", sop->so_seqid, seqid);
--
--		*sopp = NULL;
--		status = nfserr_bad_seqid;
-+		return NFSERR_REPLAY_ME;
- 	}
--	goto out;
-+	printk("NFSD: preprocess_seqid_op: bad seqid (expected %d, got %d)\n",
-+			sop->so_seqid, seqid);
-+	*sopp = NULL;
-+	return nfserr_bad_seqid;
- }
- 
- int
+ /* flags for preprocess_seqid_op() */
 
 
 -------------------------------------------------------
