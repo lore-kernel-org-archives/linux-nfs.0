@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 006 of 19] nfsd4: ERR_GRACE should bump seqid on open
-Date: Mon, 04 Jul 2005 11:01:43 +1000
-Message-ID: <E1DpFLD-0007GO-9A@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 003 of 19] nfsd4: lookup_one_len takes i_sem
+Date: Mon, 04 Jul 2005 11:01:42 +1000
+Message-ID: <E1DpFLC-0007GC-H5@notabene.cse.unsw.edu.au>
 References: <20050704110022.27753.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpFLh-0001jz-Eq
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:13 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DpFLe-0007TB-Sd
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:13 -0700
+	id 1DpFM8-0001l0-0q
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:40 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
+	id 1DpFM6-00070m-IV
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:40 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,51 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The GRACE and NOGRACE errors should bump the sequence id on open.  So we delay
-the handling of these errors until nfsd4_process_open2, at which point we've
-set the open owner, so the encode routine will be able to bump the sequence id.
+Oops, this lookup_one_len needs the i_sem.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c  |    6 ------
- ./fs/nfsd/nfs4state.c |    6 ++++++
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ ./fs/nfsd/nfs4recover.c |    2 ++
+ 1 files changed, 2 insertions(+)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2005-07-04 10:57:52.000000000 +1000
-+++ ./fs/nfsd/nfs4proc.c	2005-07-04 10:57:52.000000000 +1000
-@@ -169,12 +169,6 @@ nfsd4_open(struct svc_rqst *rqstp, struc
- 		(int)open->op_fname.len, open->op_fname.data,
- 		open->op_stateowner);
+diff ./fs/nfsd/nfs4recover.c~current~ ./fs/nfsd/nfs4recover.c
+--- ./fs/nfsd/nfs4recover.c~current~	2005-07-04 10:57:51.000000000 +1000
++++ ./fs/nfsd/nfs4recover.c	2005-07-04 10:57:52.000000000 +1000
+@@ -289,7 +289,9 @@ nfsd4_unlink_clid_dir(char *name, int na
  
--	if (nfs4_in_grace() && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
--		return nfserr_grace;
--
--	if (!nfs4_in_grace() && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
--		return nfserr_no_grace;
--
- 	/* This check required by spec. */
- 	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
- 		return nfserr_inval;
-
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-07-04 10:57:52.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-07-04 10:57:52.000000000 +1000
-@@ -1790,6 +1790,12 @@ nfsd4_process_open2(struct svc_rqst *rqs
- 	struct nfs4_delegation *dp = NULL;
- 	int status;
+ 	dprintk("NFSD: nfsd4_unlink_clid_dir. name %.*s\n", namlen, name);
  
-+	if (nfs4_in_grace() && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-+		return nfserr_grace;
-+
-+	if (!nfs4_in_grace() && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
-+		return nfserr_no_grace;
-+
- 	status = nfserr_inval;
- 	if (!TEST_ACCESS(open->op_share_access) || !TEST_DENY(open->op_share_deny))
- 		goto out;
++	down(&rec_dir.dentry->d_inode->i_sem);
+ 	dentry = lookup_one_len(name, rec_dir.dentry, namlen);
++	up(&rec_dir.dentry->d_inode->i_sem);
+ 	if (IS_ERR(dentry)) {
+ 		status = PTR_ERR(dentry);
+ 		return status;
 
 
 -------------------------------------------------------
