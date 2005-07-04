@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 011 of 19] nfsd4: seqid comments
-Date: Mon, 04 Jul 2005 11:01:43 +1000
-Message-ID: <E1DpFLD-0007Gi-U2@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 014 of 19] nfsd4: return better error on io incompatible with open mode
+Date: Mon, 04 Jul 2005 11:01:44 +1000
+Message-ID: <E1DpFLE-0007Gu-42@notabene.cse.unsw.edu.au>
 References: <20050704110022.27753.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpFM7-0001kp-GG
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:39 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1DpFLk-0001kE-Cw
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:16 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DpFM5-0007Zh-WB
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:39 -0700
+	id 1DpFLh-0007TL-6R
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:16 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,50 +28,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Add some comments on the use of so_seqid, in an attempt to avoid some of
-the confusion outlined in the previous patch....
+from RFC 3530:
+"Share reservations are established by OPEN operations and by their
+nature are mandatory in that when the OPEN denies READ or WRITE
+operations, that denial results in such operations being rejected
+with error NFS4ERR_LOCKED."
 
+(Note that share_denied is really only a legal error for OPEN.)
+
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4xdr.c          |    8 ++++----
- ./include/linux/nfsd/state.h |    4 +++-
- 2 files changed, 7 insertions(+), 5 deletions(-)
+ ./fs/nfsd/nfs4state.c       |    2 +-
+ ./include/linux/nfsd/nfsd.h |    1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfs4xdr.c~current~ ./fs/nfsd/nfs4xdr.c
---- ./fs/nfsd/nfs4xdr.c~current~	2005-07-04 10:57:52.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2005-07-04 10:57:52.000000000 +1000
-@@ -1210,10 +1210,10 @@ nfsd4_decode_compound(struct nfsd4_compo
- 	save = resp->p;
- 
- /*
-- * Routine for encoding the result of a
-- * "seqid-mutating" NFSv4 operation.  This is
-- * where seqids are incremented, and the
-- * replay cache is filled.
-+ * Routine for encoding the result of a "seqid-mutating" NFSv4 operation.  This
-+ * is where sequence id's are incremented, and the replay cache is filled.
-+ * Note that we increment sequence id's here, at the last moment, so we're sure
-+ * we know whether the error to be returned is a sequence id mutating error.
-  */
- 
- #define ENCODE_SEQID_OP_TAIL(stateowner) do {			\
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-07-04 10:57:53.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-07-04 10:57:53.000000000 +1000
+@@ -1295,7 +1295,7 @@ nfs4_share_conflict(struct svc_fh *curre
+ 	fp = find_file(ino);
+ 	if (!fp)
+ 		return nfs_ok;
+-	ret = nfserr_share_denied;
++	ret = nfserr_locked;
+ 	/* Search for conflicting share reservations */
+ 	list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
+ 		if (test_bit(deny_type, &stp->st_deny_bmap) ||
 
-diff ./include/linux/nfsd/state.h~current~ ./include/linux/nfsd/state.h
---- ./include/linux/nfsd/state.h~current~	2005-07-04 10:57:52.000000000 +1000
-+++ ./include/linux/nfsd/state.h	2005-07-04 10:57:52.000000000 +1000
-@@ -203,7 +203,9 @@ struct nfs4_stateowner {
- 	int			so_is_open_owner; /* 1=openowner,0=lockowner */
- 	u32                     so_id;
- 	struct nfs4_client *    so_client;
--	u32                     so_seqid;    
-+	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
-+	 * sequence id expected from the client: */
-+	u32                     so_seqid;
- 	struct xdr_netobj       so_owner;     /* open owner name */
- 	int                     so_confirmed; /* successful OPEN_CONFIRM? */
- 	struct nfs4_replay	so_replay;
+diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
+--- ./include/linux/nfsd/nfsd.h~current~	2005-07-04 10:57:51.000000000 +1000
++++ ./include/linux/nfsd/nfsd.h	2005-07-04 10:57:53.000000000 +1000
+@@ -231,6 +231,7 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_reclaim_bad	__constant_htonl(NFSERR_RECLAIM_BAD)
+ #define	nfserr_badname		__constant_htonl(NFSERR_BADNAME)
+ #define	nfserr_cb_path_down	__constant_htonl(NFSERR_CB_PATH_DOWN)
++#define	nfserr_locked		__constant_htonl(NFSERR_LOCKED)
+ 
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
 
 
 -------------------------------------------------------
