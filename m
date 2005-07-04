@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 012 of 19] nfsd4: relax new lock seqid check
-Date: Mon, 04 Jul 2005 11:01:44 +1000
-Message-ID: <E1DpFLE-0007Gm-03@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 002 of 19] nfsd4: fix sync'ing of recovery directory
+Date: Mon, 04 Jul 2005 11:01:41 +1000
+Message-ID: <E1DpFLB-0007G8-Q9@notabene.cse.unsw.edu.au>
 References: <20050704110022.27753.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpFM8-0001lE-Ec
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:40 -0700
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DpFM7-0007Zq-0C
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:40 -0700
+	id 1DpFM9-0001lS-OU
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:41 -0700
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.41)
+	id 1DpFM9-0006N6-2f
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:41 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,40 +28,107 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-We're insisting that the lock sequence id field passed in the open_to_lockowner
-struct always be zero.  This is probably thanks to the sentence in rfc3530:
-"The first request issued for any given lock_owner is issued with a sequence
-number of zero."
+We need to fsync the recovery directory after writing to it, but we weren't
+doing this correctly.  (For example, we weren't taking the i_sem when calling
+->fsync().)
 
-But there doesn't seem to be any problem with allowing initial sequence numbers
-other than zero.  And currently this is causing lock reclaims from the Linux
-client to fail.
-
-In the spirit of "be liberal in what you accept, conservative in what you
-send", we'll relax the check (and patch the Linux client as well).
+Just reuse the existing nfsd fsync code instead.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    5 -----
- 1 files changed, 5 deletions(-)
+ ./fs/nfsd/nfs4recover.c     |   29 ++++++++---------------------
+ ./fs/nfsd/vfs.c             |    2 +-
+ ./include/linux/nfsd/nfsd.h |    1 +
+ 3 files changed, 10 insertions(+), 22 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-07-04 10:57:52.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-07-04 10:57:53.000000000 +1000
-@@ -2715,11 +2715,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 			goto out;
- 		}
+diff ./fs/nfsd/nfs4recover.c~current~ ./fs/nfsd/nfs4recover.c
+--- ./fs/nfsd/nfs4recover.c~current~	2005-07-04 10:57:51.000000000 +1000
++++ ./fs/nfsd/nfs4recover.c	2005-07-04 10:57:51.000000000 +1000
+@@ -119,25 +119,12 @@ out:
+ 	return status;
+ }
  
--		/* is the new lock seqid presented by the client zero? */
--		status = nfserr_bad_seqid;
--		if (lock->v.new.lock_seqid != 0)
--			goto out;
+-static int
+-nfsd4_rec_fsync(struct dentry *dentry)
++static void
++nfsd4_sync_rec_dir(void)
+ {
+-	struct file *filp;
+-	int status = nfs_ok;
 -
- 		/* validate and update open stateid and open seqid */
- 		status = nfs4_preprocess_seqid_op(current_fh, 
- 				        lock->lk_new_open_seqid,
+-	dprintk("NFSD: nfs4_fsync_rec_dir\n");
+-	filp = dentry_open(dget(dentry), mntget(rec_dir.mnt), O_RDWR);
+-	if (IS_ERR(filp)) {
+-		status = PTR_ERR(filp);
+-		goto out;
+-	}
+-	if (filp->f_op && filp->f_op->fsync)
+-		status = filp->f_op->fsync(filp, filp->f_dentry, 0);
+-	fput(filp);
+-out:
+-	if (status)
+-		printk("nfsd4: unable to sync recovery directory\n");
+-	return status;
++	down(&rec_dir.dentry->d_inode->i_sem);
++	nfsd_sync_dir(rec_dir.dentry);
++	up(&rec_dir.dentry->d_inode->i_sem);
+ }
+ 
+ int
+@@ -176,7 +163,7 @@ out_unlock:
+ 	up(&rec_dir.dentry->d_inode->i_sem);
+ 	if (status == 0) {
+ 		clp->cl_firststate = 1;
+-		status = nfsd4_rec_fsync(rec_dir.dentry);
++		nfsd4_sync_rec_dir();
+ 	}
+ 	nfs4_reset_user(uid, gid);
+ 	dprintk("NFSD: nfsd4_create_clid_dir returns %d\n", status);
+@@ -331,7 +318,7 @@ nfsd4_remove_clid_dir(struct nfs4_client
+ 	status = nfsd4_unlink_clid_dir(clp->cl_recdir, HEXDIR_LEN-1);
+ 	nfs4_reset_user(uid, gid);
+ 	if (status == 0)
+-		status = nfsd4_rec_fsync(rec_dir.dentry);
++		nfsd4_sync_rec_dir();
+ 	if (status)
+ 		printk("NFSD: Failed to remove expired client state directory"
+ 				" %.*s\n", HEXDIR_LEN, clp->cl_recdir);
+@@ -362,7 +349,7 @@ nfsd4_recdir_purge_old(void) {
+ 		return;
+ 	status = nfsd4_list_rec_dir(rec_dir.dentry, purge_old);
+ 	if (status == 0)
+-		status = nfsd4_rec_fsync(rec_dir.dentry);
++		nfsd4_sync_rec_dir();
+ 	if (status)
+ 		printk("nfsd4: failed to purge old clients from recovery"
+ 			" directory %s\n", rec_dir.dentry->d_name.name);
+
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2005-07-04 10:57:51.000000000 +1000
++++ ./fs/nfsd/vfs.c	2005-07-04 10:57:51.000000000 +1000
+@@ -733,7 +733,7 @@ nfsd_sync(struct file *filp)
+ 	up(&inode->i_sem);
+ }
+ 
+-static void
++void
+ nfsd_sync_dir(struct dentry *dp)
+ {
+ 	nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
+
+diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
+--- ./include/linux/nfsd/nfsd.h~current~	2005-07-04 10:57:51.000000000 +1000
++++ ./include/linux/nfsd/nfsd.h	2005-07-04 10:57:51.000000000 +1000
+@@ -124,6 +124,7 @@ int		nfsd_statfs(struct svc_rqst *, stru
+ 
+ int		nfsd_notify_change(struct inode *, struct iattr *);
+ int		nfsd_permission(struct svc_export *, struct dentry *, int);
++void		nfsd_sync_dir(struct dentry *dp);
+ 
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ #ifdef CONFIG_NFSD_V2_ACL
 
 
 -------------------------------------------------------
