@@ -1,18 +1,17 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 004 of 19] nfsd4: prevent multiple unlinks of recovery directories
-Date: Mon, 04 Jul 2005 11:01:43 +1000
-Message-ID: <E1DpFLD-0007GF-0f@notabene.cse.unsw.edu.au>
-References: <20050704110022.27753.patches@notabene>
+Subject: [PATCH kNFSd 000 of 19] Introduction
+Date: Mon, 04 Jul 2005 11:01:41 +1000
+Message-ID: <20050704110022.27753.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpFLk-0001kF-Cx
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:16 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1DpFLh-0001k0-Fb
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:13 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.41)
-	id 1DpFLg-0007TD-LH
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:16 -0700
+	id 1DpFLe-0007TC-Re
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:13 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,27 +27,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Make sure we don't try to delete client recovery directories multiple times;
-fixes some spurious error messages.
+Following are 19 assorted nfsv4 server patches for 2.6-latest.
+Mostly tidy-ups and minor bug fixes.
+They would all be suitable for 2.6.13.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
+Thanks,
+NeilBrown
 
-### Diffstat output
- ./fs/nfsd/nfs4recover.c |    1 +
- 1 files changed, 1 insertion(+)
 
-diff ./fs/nfsd/nfs4recover.c~current~ ./fs/nfsd/nfs4recover.c
---- ./fs/nfsd/nfs4recover.c~current~	2005-07-04 10:57:52.000000000 +1000
-+++ ./fs/nfsd/nfs4recover.c	2005-07-04 10:57:52.000000000 +1000
-@@ -316,6 +316,7 @@ nfsd4_remove_clid_dir(struct nfs4_client
- 	if (!rec_dir_init || !clp->cl_firststate)
- 		return;
- 
-+	clp->cl_firststate = 0;
- 	nfs4_save_user(&uid, &gid);
- 	status = nfsd4_unlink_clid_dir(clp->cl_recdir, HEXDIR_LEN-1);
- 	nfs4_reset_user(uid, gid);
+ [PATCH kNFSd 001 of 19] nfsd4: reboot recovery fix
+ [PATCH kNFSd 002 of 19] nfsd4: fix sync'ing of recovery directory
+ [PATCH kNFSd 003 of 19] nfsd4: lookup_one_len takes i_sem
+ [PATCH kNFSd 004 of 19] nfsd4: prevent multiple unlinks of recovery directories
+ [PATCH kNFSd 005 of 19] nfsd4: fix release_lockowner
+ [PATCH kNFSd 006 of 19] nfsd4: ERR_GRACE should bump seqid on open
+ [PATCH kNFSd 007 of 19] nfsd4: ERR_GRACE should bump seqid on lock
+ [PATCH kNFSd 008 of 19] nfsd4: stop overusing RECLAIM_BAD
+ [PATCH kNFSd 009 of 19] nfsd4: comment indentation
+ [PATCH kNFSd 010 of 19] nfsd4: fix open_reclaim seqid
+ [PATCH kNFSd 011 of 19] nfsd4: seqid comments
+ [PATCH kNFSd 012 of 19] nfsd4: relax new lock seqid check
+ [PATCH kNFSd 013 of 19] nfsd4: always update stateid on open
+ [PATCH kNFSd 014 of 19] nfsd4: return better error on io incompatible with open mode
+ [PATCH kNFSd 015 of 19] nfsd4: renew lease on seqid modifying operations
+ [PATCH kNFSd 016 of 19] nfsd4: clarify close_lru handling
+ [PATCH kNFSd 017 of 19] nfsd4: clean up nfs4_preprocess_seqid_op
+ [PATCH kNFSd 018 of 19] nfsd4: check lock type against openmode.
+ [PATCH kNFSd 019 of 19] nfsd4: fix fh_expire_type
 
 
 -------------------------------------------------------
