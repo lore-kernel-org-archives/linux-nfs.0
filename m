@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 003 of 19] nfsd4: lookup_one_len takes i_sem
-Date: Mon, 04 Jul 2005 11:01:42 +1000
-Message-ID: <E1DpFLC-0007GC-H5@notabene.cse.unsw.edu.au>
+Subject: [PATCH kNFSd 013 of 19] nfsd4: always update stateid on open
+Date: Mon, 04 Jul 2005 11:01:44 +1000
+Message-ID: <E1DpFLE-0007Gq-1g@notabene.cse.unsw.edu.au>
 References: <20050704110022.27753.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpFM8-0001l0-0q
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:40 -0700
+	id 1DpFLk-0001kG-Lz
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:16 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1DpFM6-00070m-IV
-	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:40 -0700
+	id 1DpFLk-0006yq-62
+	for nfs@lists.sourceforge.net; Sun, 03 Jul 2005 18:02:16 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,28 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Oops, this lookup_one_len needs the i_sem.
+An OPEN from the same client/open stateowner requires a stateid update because
+of the share/deny access update.
 
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
 
 ### Diffstat output
- ./fs/nfsd/nfs4recover.c |    2 ++
- 1 files changed, 2 insertions(+)
+ ./fs/nfsd/nfs4state.c |    1 +
+ 1 files changed, 1 insertion(+)
 
-diff ./fs/nfsd/nfs4recover.c~current~ ./fs/nfsd/nfs4recover.c
---- ./fs/nfsd/nfs4recover.c~current~	2005-07-04 10:57:51.000000000 +1000
-+++ ./fs/nfsd/nfs4recover.c	2005-07-04 10:57:52.000000000 +1000
-@@ -289,7 +289,9 @@ nfsd4_unlink_clid_dir(char *name, int na
- 
- 	dprintk("NFSD: nfsd4_unlink_clid_dir. name %.*s\n", namlen, name);
- 
-+	down(&rec_dir.dentry->d_inode->i_sem);
- 	dentry = lookup_one_len(name, rec_dir.dentry, namlen);
-+	up(&rec_dir.dentry->d_inode->i_sem);
- 	if (IS_ERR(dentry)) {
- 		status = PTR_ERR(dentry);
- 		return status;
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2005-07-04 10:57:53.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2005-07-04 10:57:53.000000000 +1000
+@@ -1820,6 +1820,7 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 		status = nfs4_upgrade_open(rqstp, current_fh, stp, open);
+ 		if (status)
+ 			goto out;
++		update_stateid(&stp->st_stateid);
+ 	} else {
+ 		/* Stateid was not found, this is a new OPEN */
+ 		int flags = 0;
 
 
 -------------------------------------------------------
