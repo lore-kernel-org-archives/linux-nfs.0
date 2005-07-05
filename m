@@ -1,21 +1,23 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Linux client with MS SFU server
-Date: Tue, 5 Jul 2005 20:42:17 +0200 (CEST)
-Message-ID: <Pine.LNX.4.61.0507052031450.30139@maggie.lkpg.cendio.se>
+Date: Tue, 05 Jul 2005 14:43:31 -0400
+Message-ID: <1120589011.8093.49.camel@lade.trondhjem.org>
 References: <Pine.LNX.4.61.0507051838180.28175@maggie.lkpg.cendio.se>
- <42CACE6A.6090005@redhat.com>
+	 <42CACE6A.6090005@redhat.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1704289037-1120588937=:30139"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Peter =?ISO-8859-1?Q?=C5strand?= <astrand@cendio.se>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.92] (helo=sc8-sf-mx2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpsNH-0004X3-RM
-	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:42:27 -0700
-Received: from mail.cendio.se ([193.12.253.69])
-	by sc8-sf-mx2-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1DpsNF-0003OY-IQ
-	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:42:27 -0700
+	id 1DpsOW-0004am-Gn
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:43:44 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41)
+	id 1DpsOV-0006gQ-0c
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:43:44 -0700
 To: Peter Staubach <staubach@redhat.com>
 In-Reply-To: <42CACE6A.6090005@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -31,47 +33,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+ty den 05.07.2005 Klokka 14:16 (-0400) skreiv Peter Staubach:
 
---789237761-1704289037-1120588937=:30139
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+> Does this server need to be configured with the uid and maybe gid of the 
+> user to
+> be accessing files on the file system?  I have seen some situations, 
+> typically
+> with Microsoft servers, that need to be accessed using a specific uid/gid
+> combination.  Since these systems don't have the concept of uid and gid 
+> anyway,
+> perhaps this is required here.
+> 
+> At Connectathon, it seems like some of the servers need to be accessed using
+> magic uids and gids...
 
-On Tue, 5 Jul 2005, Peter Staubach wrote:
+It seems strange, though, that a GETATTR should succeed but that a
+READDIR with the same credential should fail with an RPC error of
+AUTH_REJECTEDCRED.
 
->> I'm trying to use the Linux NFS client with a Microsoft "Services For =
-UNIX"=20
->> (SFU) server. The SFU version if 2.2. The server is actually a HP=20
->> Storageworks 1000s NAS server.
+It looks as if they rather want to be returning NFSERR_ACCES here.
 
-> Does this server need to be configured with the uid and maybe gid of th=
-e=20
-> user to be accessing files on the file system?  I have seen some=20
-> situations, typically with Microsoft servers, that need to be accessed=20
-> using a specific uid/gid combination.  Since these systems don't have=20
-> the concept of uid and gid anyway, perhaps this is required here.
+Cheers,
+  Trond
 
-Well, yes. The server has a "User Name Mapping" feature. It can build map=
-s=20
-based on a NIS server source, for example. This is what I'm using. This i=
-s=20
-all documented in the NAS 1000s administration guide.
-
-There's a component called "NFS Authentication Software" (sfucustom.msi)=20
-that, according to the guide, needs to be installed on all PDCs and BDCs.=
-=20
-First, I didn't think this was necessary, but perhaps it is. I wonder wha=
-t=20
-this software actually does...
-
-
---=20
-Peter =C5strand		Chief Developer
-Cendio			www.thinlinc.com
-Teknikringen 3		www.cendio.se
-583 30 Link=F6ping        Phone: +46-13-21 46 00
---789237761-1704289037-1120588937=:30139--
 
 
 -------------------------------------------------------
