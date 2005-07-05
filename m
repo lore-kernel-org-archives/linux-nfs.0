@@ -1,25 +1,19 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: Strange problem with ACL over NFS
-Date: Mon, 4 Jul 2005 14:24:00 +0200
-Message-ID: <200507041424.01319.agruen@suse.de>
-References: <42C3DBDC.5050803@bio.ifi.lmu.de> <42C4DA08.8070202@bio.ifi.lmu.de> <42C8FB96.60806@bio.ifi.lmu.de>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: time after which statd gives up
+Date: Tue, 5 Jul 2005 04:50:35 -0700 (PDT)
+Message-ID: <20050705115035.78035.qmail@web51608.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Cc: Frank Steiner <fsteiner-mail@bio.ifi.lmu.de>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	NFS NFS <nfs@lists.sourceforge.net>, Olaf Kirch <okir@suse.de>
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpPzf-00025G-Jb
-	for nfs@lists.sourceforge.net; Mon, 04 Jul 2005 05:24:11 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1DpPze-0001Ov-7p
-	for nfs@lists.sourceforge.net; Mon, 04 Jul 2005 05:24:11 -0700
-To: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
-In-Reply-To: <42C8FB96.60806@bio.ifi.lmu.de>
+	id 1Dplwq-000114-1m
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 04:50:44 -0700
+Received: from web51608.mail.yahoo.com ([206.190.38.213])
+	by sc8-sf-mx2.sourceforge.net with smtp (Exim 4.41)
+	id 1Dplwn-00024i-Hx
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 04:50:43 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,28 +27,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+Hi ,=20
+      On RHEL4 U1 i have observed that statd
+      sends notification only till the=20
+      max(if cannot notify) time 30 seconds.
+      Then statd gives
+      up and no files are there in sm.bak.
 
-On Monday 04 July 2005 11:04, Frank Steiner wrote:
-> Olaf/Andreas: If you want to take a look at this bug, let me know if
-> I can provide some logs/debugging info etc. With the server running
-> the 2.6.8 from 9.2, the bug occurs on the client side with 2.6.8
-> and the 2.6.5 from SLES9 up to SP2-RC, but not with 2.6.11.4-21.7
-> from 9.3.
+      Is this the expected behavior ?
+      Should statd try notifying indefinitely ?
+      If this is the behavior , what is use of sm.bak
+      dir ?
 
-I'll have a look, thanks.
+thanks,
+ kiran
+     =20
+=20
 
-Regards,
--- 
-Andreas Gruenbacher <agruen@suse.de>
-SUSE Labs, SUSE LINUX PRODUCTS GMBH
+    =20
+    =20
+
+
+	=09
+__________________________________=20
+Yahoo! Mail=20
+Stay connected, organized, and protected. Take the tour:=20
+http://tour.mail.yahoo.com/mailtour.html=20
+
 
 
 -------------------------------------------------------
 SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
 from IBM. Find simple to follow Roadmaps, straightforward articles,
 informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
+speed, fast. http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclic=
+k
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
