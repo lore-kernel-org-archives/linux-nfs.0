@@ -1,23 +1,23 @@
-From: Peter Staubach <staubach@redhat.com>
+From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
 Subject: Re: Linux client with MS SFU server
-Date: Tue, 05 Jul 2005 14:16:10 -0400
-Message-ID: <42CACE6A.6090005@redhat.com>
+Date: Tue, 5 Jul 2005 20:42:17 +0200 (CEST)
+Message-ID: <Pine.LNX.4.61.0507052031450.30139@maggie.lkpg.cendio.se>
 References: <Pine.LNX.4.61.0507051838180.28175@maggie.lkpg.cendio.se>
+ <42CACE6A.6090005@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1704289037-1120588937=:30139"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.12] helo=sc8-sf-mx2.sourceforge.net)
+Received: from [10.3.1.92] (helo=sc8-sf-mx2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dps2l-0003aR-T4
-	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:21:15 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1Dps2j-0005GG-EB
-	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:21:15 -0700
-To: =?ISO-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
-In-Reply-To: <Pine.LNX.4.61.0507051838180.28175@maggie.lkpg.cendio.se>
+	id 1DpsNH-0004X3-RM
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:42:27 -0700
+Received: from mail.cendio.se ([193.12.253.69])
+	by sc8-sf-mx2-new.sourceforge.net with esmtp (Exim 4.44)
+	id 1DpsNF-0003OY-IQ
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 11:42:27 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <42CACE6A.6090005@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,41 +31,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Peter =C5strand wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
->
-> I'm trying to use the Linux NFS client with a Microsoft "Services For=20
-> UNIX" (SFU) server. The SFU version if 2.2. The server is actually a=20
-> HP Storageworks 1000s NAS server.
->
-> It's possible to mount, but then I'm stuck. Basically every operation=20
-> on /mnt, except ls/stat on the mount point itself, gives me=20
-> "permission denied". The permissions on /mnt is 050, so I'm not=20
-> surprised I cannot enter the directory. What's strange, though, is=20
-> that "chown", "chmod" etc also fails, even though I'm root, and the=20
-> server does not use root squashing.
->
-> I've captured a few packets with Ethereal. What's surprises me is that=20
-> the server is returning RPC-level AUTH_ERRORs. Is this really normal?
->
-> I've tried both UDP and TCP, and both v2 and v3. The packet capture is=20
-> available as http://www.cendio.se/~peter/tmp/sfu22-auth-error.cap.
+--789237761-1704289037-1120588937=:30139
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: quoted-printable
+
+On Tue, 5 Jul 2005, Peter Staubach wrote:
+
+>> I'm trying to use the Linux NFS client with a Microsoft "Services For =
+UNIX"=20
+>> (SFU) server. The SFU version if 2.2. The server is actually a HP=20
+>> Storageworks 1000s NAS server.
+
+> Does this server need to be configured with the uid and maybe gid of th=
+e=20
+> user to be accessing files on the file system?  I have seen some=20
+> situations, typically with Microsoft servers, that need to be accessed=20
+> using a specific uid/gid combination.  Since these systems don't have=20
+> the concept of uid and gid anyway, perhaps this is required here.
+
+Well, yes. The server has a "User Name Mapping" feature. It can build map=
+s=20
+based on a NIS server source, for example. This is what I'm using. This i=
+s=20
+all documented in the NAS 1000s administration guide.
+
+There's a component called "NFS Authentication Software" (sfucustom.msi)=20
+that, according to the guide, needs to be installed on all PDCs and BDCs.=
+=20
+First, I didn't think this was necessary, but perhaps it is. I wonder wha=
+t=20
+this software actually does...
 
 
-Does this server need to be configured with the uid and maybe gid of the=20
-user to
-be accessing files on the file system?  I have seen some situations,=20
-typically
-with Microsoft servers, that need to be accessed using a specific uid/gid
-combination.  Since these systems don't have the concept of uid and gid=20
-anyway,
-perhaps this is required here.
-
-At Connectathon, it seems like some of the servers need to be accessed us=
-ing
-magic uids and gids...
-
-       ps
+--=20
+Peter =C5strand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Link=F6ping        Phone: +46-13-21 46 00
+--789237761-1704289037-1120588937=:30139--
 
 
 -------------------------------------------------------
