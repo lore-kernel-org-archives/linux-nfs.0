@@ -1,22 +1,22 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: time after which statd gives up
-Date: Tue, 5 Jul 2005 07:41:03 -0700 (PDT)
-Message-ID: <20050705144103.58968.qmail@web51613.mail.yahoo.com>
-References: <42CA91E3.5070900@RedHat.com>
+From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+Subject: Linux client with MS SFU server
+Date: Tue, 5 Jul 2005 18:47:52 +0200 (CEST)
+Message-ID: <Pine.LNX.4.61.0507051838180.28175@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-264266249-1120582072=:28175"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.92] (helo=sc8-sf-mx2-new.sourceforge.net)
+Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DpocE-0000Vc-T0
-	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 07:41:38 -0700
-Received: from web51613.mail.yahoo.com ([68.142.224.86])
-	by sc8-sf-mx2-new.sourceforge.net with smtp (Exim 4.44)
-	id 1Dpobl-0007nn-Ke
-	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 07:41:39 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <42CA91E3.5070900@RedHat.com>
+	id 1Dpqad-0007KI-QB
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 09:48:07 -0700
+Received: from mail.cendio.se ([193.12.253.69])
+	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
+	id 1Dpqaa-0004Bz-FM
+	for nfs@lists.sourceforge.net; Tue, 05 Jul 2005 09:48:07 -0700
+Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
+	by mail.cendio.se (Postfix) with ESMTP id A20DF25DB1F
+	for <nfs@lists.sourceforge.net>; Tue,  5 Jul 2005 18:47:52 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,112 +30,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Steve ,=20
- These are the messages on server side.
- Shouldnt statd mv file from sm to sm.bak
- if its not able to notify client and later
- try to notify client(files in sm.bak) with
- low frequency.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-[root@vcslinux5 tmp]# uname -a
-Linux vcslinux5.vxindia.veritas.com 2.6.9-6.37.ELsmp
-#1 SMP Tue Mar 29 15:43:19
-EST 2005 i686 i686 i386 GNU/Linux
+--789237761-264266249-1120582072=:28175
+Content-Type: TEXT/PLAIN; charset=iso-8859-1; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
 
+I'm trying to use the Linux NFS client with a Microsoft "Services For=20
+UNIX" (SFU) server. The SFU version if 2.2. The server is actually a HP=20
+Storageworks 1000s NAS server.
 
+It's possible to mount, but then I'm stuck. Basically every operation on=20
+/mnt, except ls/stat on the mount point itself, gives me "permission=20
+denied". The permissions on /mnt is 050, so I'm not surprised I cannot=20
+enter the directory. What's strange, though, is that "chown", "chmod" etc=
+=20
+also fails, even though I'm root, and the server does not use root=20
+squashing.
 
-[root@vcslinux5 ~]# rpc.statd -d -F
-07/05/2005 20:03:10 rpc.statd[26896]: Version 1.0.6
-Starting
-07/05/2005 20:03:10 rpc.statd[26896]: Flags: No-Daemon
-Log-STDERR
-07/05/2005 20:03:10 rpc.statd[26896]: New state: 93
-07/05/2005 20:03:10 rpc.statd[26896]: Waiting for
-reply... (timeo 5)
-07/05/2005 20:03:16 rpc.statd[26896]: Waiting for
-reply... (timeo 5)
-07/05/2005 20:03:20 rpc.statd[26896]: Waiting for
-reply... (timeo 1)
-07/05/2005 20:03:22 rpc.statd[26896]: Waiting for
-reply... (timeo 5)
-07/05/2005 20:03:26 rpc.statd[26896]: Waiting for
-reply... (timeo 1)
-07/05/2005 20:03:28 rpc.statd[26896]: Waiting for
-reply... (timeo 5)
-07/05/2005 20:03:34 rpc.statd[26896]: Waiting for
-reply... (timeo 5)
-07/05/2005 20:03:38 rpc.statd[26896]: Waiting for
-reply... (timeo 1)
-07/05/2005 20:03:40 rpc.statd[26896]: Cannot notify
-10.212.99.95, giving up.
+I've captured a few packets with Ethereal. What's surprises me is that th=
+e=20
+server is returning RPC-level AUTH_ERRORs. Is this really normal?
 
-07/05/2005 20:03:40 rpc.statd[26896]: Can't notify
-10.212.99.95, giving up.
-07/05/2005 20:03:40 rpc.statd[26896]: Unlinked
-/var/lib/nfs/statd/sm.bak/10.212.99.95
-07/05/2005 20:03:40 rpc.statd[26896]: Waiting for
-client connections.
-07/05/2005 20:03:44 rpc.statd[26896]: Caught signal 2,
-un-registering and exitin
+I've tried both UDP and TCP, and both v2 and v3. The packet capture is=20
+available as http://www.cendio.se/~peter/tmp/sfu22-auth-error.cap.
 
-thanks,
- kiran
-
---- Steve Dickson <SteveD@redhat.com> wrote:
-
-> mehta kiran wrote:
-> > Hi ,=20
-> >       On RHEL4 U1 i have observed that statd
-> >       sends notification only till the=20
-> >       max(if cannot notify) time 30 seconds.
-> To be clear, you saying when rpc.statd is started
-> it sends out SM_NOTIFY messages notifying the
-> clients
-> this machine just rebooted and it seems to do this
-> for
-> 30 seconds?
->=20
-> >=20
-> >       Is this the expected behavior ?
-> Again not knowing the type of message you seeing,
-> its
-> hard to tell...
->=20
-> steved.
->=20
->=20
->
--------------------------------------------------------
-> SF.Net email is sponsored by: Discover Easy Linux
-> Migration Strategies
-> from IBM. Find simple to follow Roadmaps,
-> straightforward articles,
-> informative Webcasts and more! Get everything you
-> need to get up to
-> speed, fast.
->
-http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclick
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
-
-
-
-	=09
-____________________________________________________=20
-Yahoo! Sports=20
-Rekindle the Rivalries. Sign up for Fantasy Football=20
-http://football.fantasysports.yahoo.com
+--=20
+Peter =C5strand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Link=F6ping        Phone: +46-13-21 46 00
+--789237761-264266249-1120582072=:28175--
 
 
 -------------------------------------------------------
 SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
 from IBM. Find simple to follow Roadmaps, straightforward articles,
 informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclic=
-k
+speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
