@@ -1,21 +1,32 @@
-From: Maximus <john.maximus@gmail.com>
-Subject: Nfs Server not responding ?
-Date: Wed, 6 Jul 2005 07:32:46 -0400
-Message-ID: <3634de7405070604326a08bedd@mail.gmail.com>
-Reply-To: Maximus <john.maximus@gmail.com>
+From: Anthony Howe <ahowe_ca@yahoo.ca>
+Subject: RE: slow file opens on nfs mount across high-latency network
+Date: Wed, 06 Jul 2005 12:16:34 -0700
+Message-ID: <000301c5825f$39f92360$7101a8c0@orthanc>
+References: <42C2950C.2070705@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.92] (helo=sc8-sf-mx2-new.sourceforge.net)
+Received: from [10.3.1.91] (helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dq899-00089n-Jt
-	for nfs@lists.sourceforge.net; Wed, 06 Jul 2005 04:32:55 -0700
-Received: from zproxy.gmail.com ([64.233.162.207])
-	by sc8-sf-mx2-new.sourceforge.net with esmtp (Exim 4.44)
-	id 1Dq899-0006E3-Cv
-	for nfs@lists.sourceforge.net; Wed, 06 Jul 2005 04:32:55 -0700
-Received: by zproxy.gmail.com with SMTP id 9so541685nzo
-        for <nfs@lists.sourceforge.net>; Wed, 06 Jul 2005 04:32:46 -0700 (PDT)
+	id 1DqFOC-0005R0-7t
+	for nfs@lists.sourceforge.net; Wed, 06 Jul 2005 12:16:56 -0700
+Received: from shawidc-mo1.cg.shawcable.net ([24.71.223.10] helo=pd4mo3so.prod.shaw.ca)
+	by sc8-sf-mx1-new.sourceforge.net with esmtp (Exim 4.44)
+	id 1DqFOB-0004AY-Qb
+	for nfs@lists.sourceforge.net; Wed, 06 Jul 2005 12:16:56 -0700
+Received: from pd2mr8so.prod.shaw.ca (pd2mr8so-qfe3.prod.shaw.ca [10.0.141.11])
+ by l-daemon (Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15 2004))
+ with ESMTP id <0IJ8006RZ07PUQ00@l-daemon> for nfs@lists.sourceforge.net; Wed,
+ 06 Jul 2005 13:16:37 -0600 (MDT)
+Received: from pn2ml2so.prod.shaw.ca ([10.0.121.146])
+ by pd2mr8so.prod.shaw.ca (Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar
+ 15 2004)) with ESMTP id <0IJ800LBO07PRH50@pd2mr8so.prod.shaw.ca> for
+ nfs@lists.sourceforge.net; Wed, 06 Jul 2005 13:16:37 -0600 (MDT)
+Received: from orthanc (S010600055dfdd2ca.gv.shawcable.net [24.69.124.240])
+ by l-daemon (iPlanet Messaging Server 5.2 HotFix 1.18 (built Jul 28 2003))
+ with ESMTP id <0IJ8000Z007OJP@l-daemon> for nfs@lists.sourceforge.net; Wed,
+ 06 Jul 2005 13:16:37 -0600 (MDT)
+In-reply-to: <42C2950C.2070705@redhat.com>
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,92 +41,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-  I am getting the following error in my system
+> Neil Horman wrote:
+>=20
+> >On Tue, Jun 28, 2005 at 11:30:17AM -0400, Anthony Howe wrote:
+> > =20
+> >
+> >>I have searched through the mail lists and google and
+> >>have not found material describing the nfs file open=20
+> threshold effect=20
+> >>that I am experiencing.
+> >>
+> >>I have been experimenting with opening files on NFS
+> >>mounts over varying network latencies.  I notice that
+> >>there seems to be a threshold on the number of
+> >>concurrent nfs file opens as network latency
+> >>increases.  Up to and including the threshold, nfs
+> >>file open performance is fine.  After the threshold of concurrent=20
+> >>opens, performance degrades at a linear rate.
+> >>
+> >>For example, the graph in the attached files shows
+> >>this threshold effect for various network latencies:
+> >>- 0ms network latency - no max limit
+> >>- 20ms network latency - 40 maximum concurrent opens
+> >>- 40ms network latency - 20 maximum concurrent opens
+> >>- 80ms network latency - 15 maximum concurrent opens
+> >>- 120ms network latency - 5 maximum concurrent opens
+> >>
+> >>What would cause this "hockey stick" threshold effect
+> >>shown in the attached file?
+> >>Are there any settings that would change this effect?
+> >>
+> >>Here are the stats of my experiment:
+> >>- testing using Redhat Enterprise AS servers V3
+> >>connected via a 100Mbps switch
+> >>- inserting latency with nist net
+> >>- experiment process spawns X number of threads set to
+> >>each open a file on an NFS mount, the time taken for
+> >>each file open is recorded
+> >>- adjusting rsize, wsize does not affect "hockey
+> >>stick" threshold effect
+> >>- adjusting /proc/sys/net/core/rmem* does not affect
+> >>"hockey stick" threshold effect
+> >>- adjusting number of nfsd processes does not affect
+> >>"hockey stick" threshold effect
+> >>
+> >>Thanks in advance for any tips or directions where I
+> >>can look for more information on this topic.
+> >>
+> >>Regards,
+> >>
+> >>Anthony Howe
+> >>
+> >>__________________________________________________
+> >>Do You Yahoo!?
+> >>Tired of spam?  Yahoo! Mail has the best spam protection around
+> >>http://mail.yahoo.com=20
+> >>   =20
+> >>
+> >
+> >
+> >do you have tcpdumps taken at all these data points?  It=20
+> kind of sounds=20
+> >to me like your getting a geared slowdown from additional congestion=20
+> >caused by rpc retransmits (i.e., on a high latency link,=20
+> you'll wind up=20
+> >with more rpc retransmits, resulting in more congestion,=20
+> resulting in=20
+> >more lost packets, resulting in more retransmits, etc.).
+> >
+> Some questions --
+>=20
+> These are mounts done using the NFSv3 protocol?  Over TCP or over UDP?
+>=20
+> Each thread is opening an independent file?  In independent=20
+> directories or in a common directory?
+>=20
+>     Thanx...
+>=20
+>        ps
+>=20
 
-I have a root file system ar /home/rootfs
+I have found a solution (work around) to the latency problem that I
+described in the above posting.  The solution seems to be to add more =
+mounts
+to the same nfs share and spread the threads evenly among the mounts. =20
 
-I dont know what is the problem. please help.
+This solution is highlighted by the graph:
+http://ahowe_ca.tripod.com/nfsperformance2.pdf.  The graph shows the
+performance of 40 threads each performing file opens across an nfs =
+share.
+Each thread repeats 10 times opening a file for write and closing it 10
+times.  The x-axis is various roundtrip network latencies.  The y-axis =
+is
+the mean time to open a file across the nfs mount.  Each line represents =
+a
+different number of mount points.  The top line is one mount point, and =
+40
+threads concurrently calling file opens on this mount.  The bottom line
+represents 40 mounts to the same share, each thread with its own line.  =
+From
+this graph I can come to the following conclusions:
 
-The Kernel is getting copied on target ; But root file system is not
-getting mounted
-using NFS.
+1. Evenly distributing file access threads across many NFS mounts to the
+same share reduces the effects of latency.
 
-The Kernel and the root file system is in the same machine
-XX.YY.13.112.
+2. There seems to be resource limit per mount point.  The higher the =
+network
+latency the faster this limit is reached.  This explains the hockey =
+stick
+effect shown in graph: http://ahowe_ca.tripod.com/nfsperformance.pdf.
 
-IP-Config: Got DHCP answer from XX.YY.13.112, my address is XX.YY.13.65
-IP-Config: Complete:
-      device=3Deth0, addr=3DXX.YY.13.65, mask=3D255.255.255.0,
-gw=3D255.255.255.255,
-     host=3DXX.YY.13.65, domain=3D, nis-domain=3D(none),
-     bootserver=3DXX.YY.13.112, rootserver=3DXX.YY.13.112,
-rootpath=3D/home/rootfs
-Looking up port of RPC 100003/2 on XX.YY.13.112
-Looking up port of RPC 100005/1 on XX.YY.13.112
-Root-NFS: Server returned error -13 while mounting /home/rootfs
-VFS: Unable to mount root fs via NFS, trying floppy.
-VFS: No root yet, retrying to mount root on nfs (unknown-block(2,0))
-VFS: No root yet, retrying to mount root on nfs (unknown-block(2,0))
-VFS: No root yet, retrying to mount root on nfs (unknown-block(2,0))
-VFS: No root yet, retrying to mount root on nfs (unknown-block(2,0))
-VFS: No root yet, retrying to mount root on nfs (unknown-block(2,0))
-VFS: No root yet, retrying to mount root on nfs (unknown-block(2,0))
-VFS: Cannot open root device "nfs" or unknown-block(2,0)
-Please append a correct "root=3D" boot option
-Kernel panic: VFS: Unable to mount root fs on unknown-block(2,0)
+3. This resource limit is not related to the hard limit of 256 read or =
+write
+operations per mount point since we are only using 40 threads.
 
-File : /etc/exports looks like this
-/home/rootfs (rw,no_root_squash,no_all_squash)
+4. Removing all network latency eliminates this resource problem and 1 =
+mount
+or 40 mounts display the same performance.
 
-File:/etc/dhcpd.conf looks this this
+Does anyone know what would be causing this resource limit? And is there =
+any
+way to improve it so that I don't have to add more mounts to reduce the
+effects of latency?
 
-ddns-update-style ad-hoc;
-allow bootp;
-subnet XX.YY.13.0 netmask 255.255.255.0 {
-default-lease-time 1209600;
-max-lease-time 31557600;
-group {
-host hello.i2.com {
-hardware Ethernet 00:0E:99:XX:YY:ZZ;
-fixed-address XX.YY.13.65;
-option root-path "/home/rootfs";
-
-}
-}
-}
-
-
-I also face one more issue i am facing is:
-   i have 2 kernels (both of them 2.6.12) made out of the same
-defconfig but compiled using 2 different tool chains.
-
-For Kernel1:
-
-If I specify bootargs=20
-mem=3D30M console=3DttyS0,115200 rw root=3D/dev/nfs
-nfsroot=3DXX.YY.13.112:/home/rootfs ip=3DXX.YY.13.65:XX.YY.13.112
-
-it Works.
-
-Otherwise it does not work ?.
-
-For Kernel2:
-Does not work with the above bootargs
-
-Works Only if bootargs are mem=3D30M console=3DttyS0,115200 rw root=3D/dev/=
-nfs=20
-
-Please advice,
-
-I dont know what the problem is ?.
-
-How to analyse the problem and solve it ?.
+Anthony
 
 
 
-Regards,
-John
 
 
 -------------------------------------------------------
