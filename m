@@ -1,22 +1,12 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: strange caching behavior
-Date: Fri, 08 Jul 2005 16:34:17 -0400
-Message-ID: <42CEE349.6050204@redhat.com>
-References: <3C7A1801D550F14B96C2EB6D2C8B989B0835143B@seaex01.180solutions.com>
+From: Paulo Aboim Pinto <esqueleto@tusofona.com>
+Subject: mount NFS take so long....
+Date: Sat, 09 Jul 2005 05:02:25 +0100
+Message-ID: <1120881745.16846.2.camel@localhost.localdomain>
+Reply-To: esqueleto@tusofona.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=UTF-8
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DqzYT-0004bu-Hw
-	for nfs@lists.sourceforge.net; Fri, 08 Jul 2005 13:34:37 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1DqzYT-0007Fc-0K
-	for nfs@lists.sourceforge.net; Fri, 08 Jul 2005 13:34:37 -0700
-To: Mark Steele <mark@zango.com>
-In-Reply-To: <3C7A1801D550F14B96C2EB6D2C8B989B0835143B@seaex01.180solutions.com>
+To: NFS@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,42 +20,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Mark Steele wrote:
+Hello
 
->Hi Peter,
->
->The opcode cache is working as expected. It detects the changes
->in the php scripts and recompiles the new files into memory.
->
->Therefore it sees the change in the modification time of the files.
->
->I am using rsync to update the files on the server from a code 
->repository.
->
->I don't see how either of things things affect the behavior of the
->NFS.
->
->Using more caching/less bandwidth when 'freshly' mounted 
->without any file updates 
->
->VS. 
->
->Using lots of bandwidth when files are changed on the NFS server
->(which is done infrequently)
->
+I've try Fedora / Mandrake /Gentoo and now I have Ubuntu (for the 2=C2=BA
+time).
 
-My thinking that was the NFS client typically does not do things on its
-own, but does so based on application activity.  For a large enough
-working set, the more applications request from the file system, the
-more traffic that there will be over the wire.
+In every Distros to mount NFS mount point I had no problem and the
+operation was in a click.
 
-What does the increased traffic look like?  Is it metadata style operations
-such as GETATTR or LOOKUP or is it data movement like READ?  What is the
-typical working set size, in bytes and numbers of files, of these scripts?
+With Ubuntu, for each mount I have to wait, at least, 2 or 3 minutes.
+This is very odd and because of that I want to know if any one have the
+same problem and how did you resolve it.
 
-    Thanx...
+This is a Ubuntu of NFS version problem??
 
-       ps
+
+tkx in advance
+Paulo Aboim Pinto
+Odivelas - Portugal
+
 
 
 -------------------------------------------------------
