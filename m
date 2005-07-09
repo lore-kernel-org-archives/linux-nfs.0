@@ -1,7 +1,7 @@
 From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: [PATCH 2/3]: NFS: use atomic bitops to manipulate flags in nfsi->flags
-Date: Sat, 9 Jul 2005 08:33:06 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539D86@lavender-fe.eng.netapp.com>
+Subject: [PATCH 3/3]: NFS: Introduce the use of inode->i_lock to protect fields in nfsi
+Date: Sat, 9 Jul 2005 08:33:58 -0700
+Message-ID: <482A3FA0050D21419C269D13989C611308539D87@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
@@ -9,12 +9,12 @@ Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DrHKL-0001Qn-UU
-	for nfs@lists.sourceforge.net; Sat, 09 Jul 2005 08:33:13 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
+	id 1DrHLD-0001TQ-Qo
+	for nfs@lists.sourceforge.net; Sat, 09 Jul 2005 08:34:07 -0700
+Received: from mx1.netapp.com ([216.240.18.38])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1DrHKL-0006Ha-JD
-	for nfs@lists.sourceforge.net; Sat, 09 Jul 2005 08:33:14 -0700
+	id 1DrHLD-0006RJ-EA
+	for nfs@lists.sourceforge.net; Sat, 09 Jul 2005 08:34:07 -0700
 To: "Nick Wilson" <njw@osdl.org>,
 	"Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -30,316 +30,344 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
- Introduce atomic bitops to manipulate the bits in the nfs_inode
-structure's
- "flags" field.
+ Down the road we want to eliminate the use of the global kernel lock
+ entirely from the NFS client.  To do this, we need to protect the
+fields
+ in the nfs_inode structure adequately.  Start by serializing updates to
+ the "cache_validity" field.
 
- Using bitops means we can use a generic wait_on_bit call instead of an
-ad
- hoc locking scheme in fs/nfs/inode.c, so we can remove the "nfs_i_wait"
- field from nfs_inode at the same time.
-
- The other new flags field will continue to use bitmask and logic AND
-and
- OR.  This permits several flags to be set at the same time efficiently.
- The following patch adds a spin lock to protect these flags, and this
-spin
- lock will later cover other fields in the nfs_inode structure,
-amortizing
- the cost of using this type of serialization.
+ Note this change addresses an SMP hang found by njw@osdl.org, where
+ processes deadlock because nfs_end_data_update and
+nfs_revalidate_mapping
+ update the "cache_validity" field without proper serialization.
 
  Test plan:
- Millions of fsx ops on SMP clients.
+ Millions of fsx ops on SMP clients.  Run Nick Wilson's breaknfs program
+on
+ large SMP clients.
 
- Version: Fri, 08 Jul 2005 23:27:47 -0400
+ Version: Fri, 08 Jul 2005 23:27:59 -0400
 =20
  Signed-off-by: Chuck Lever <cel@netapp.com>
 ---
 =20
- fs/nfs/dir.c           |    4 +-
- fs/nfs/inode.c         |   69 +++++++++++++++++++++++++----------------
- include/linux/nfs_fs.h |   19 ++++-------
- 3 files changed, 53 insertions(+), 39 deletions(-)
+ fs/nfs/dir.c           |    6 ++++++
+ fs/nfs/inode.c         |   37 +++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs3acl.c       |    2 ++
+ fs/nfs/read.c          |    4 ++++
+ include/linux/nfs_fs.h |    5 ++++-
+ 5 files changed, 49 insertions(+), 5 deletions(-)
 =20
 =20
 diff -X /home/cel/src/linux/dont-diff --new-file --text --unified=3D4
---recursive --show-c-function 10-nfs-cache-state/fs/nfs/dir.c
-11-nfs-bitops/fs/nfs/dir.c
---- 10-nfs-cache-state/fs/nfs/dir.c	2005-07-08 22:30:24.555858000
--0400
-+++ 11-nfs-bitops/fs/nfs/dir.c	2005-07-08 22:50:07.807258000 -0400
-@@ -181,9 +181,9 @@ int nfs_readdir_filler(nfs_readdir_descr
- 	if (error < 0) {
- 		/* We requested READDIRPLUS, but the server doesn't grok
-it */
- 		if (error =3D=3D -ENOTSUPP && desc->plus) {
- 			NFS_SERVER(inode)->caps &=3D ~NFS_CAP_READDIRPLUS;
--			NFS_FLAGS(inode) &=3D ~NFS_INO_ADVISE_RDPLUS;
-+			clear_bit(NFS_INO_ADVISE_RDPLUS,
-&NFS_FLAGS(inode));
- 			desc->plus =3D 0;
- 			goto again;
+--recursive --show-c-function 11-nfs-bitops/fs/nfs/dir.c
+12-nfs-i_lock/fs/nfs/dir.c
+--- 11-nfs-bitops/fs/nfs/dir.c	2005-07-08 22:50:07.807258000 -0400
++++ 12-nfs-i_lock/fs/nfs/dir.c	2005-07-08 23:09:58.071448000 -0400
+@@ -188,9 +188,11 @@ int nfs_readdir_filler(nfs_readdir_descr
  		}
  		goto error;
-@@ -544,9 +544,9 @@ static int nfs_readdir(struct file *filp
- 			res =3D 0;
- 			break;
- 		}
- 		if (res =3D=3D -ETOOSMALL && desc->plus) {
--			NFS_FLAGS(inode) &=3D ~NFS_INO_ADVISE_RDPLUS;
-+			clear_bit(NFS_INO_ADVISE_RDPLUS,
-&NFS_FLAGS(inode));
- 			nfs_zap_caches(inode);
- 			desc->plus =3D 0;
- 			desc->entry->eof =3D 0;
- 			continue;
+ 	}
+ 	SetPageUptodate(page);
++	spin_lock(&inode->i_lock);
+ 	NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_ATIME;
++	spin_unlock(&inode->i_lock);
+ 	/* Ensure consistent page alignment of the data.
+ 	 * Note: assumes we have exclusive access to this mapping either
+ 	 *	 through inode->i_sem or some other mechanism.
+ 	 */
+@@ -461,9 +463,11 @@ int uncached_readdir(nfs_readdir_descrip
+ 	desc->error =3D NFS_PROTO(inode)->readdir(file->f_dentry, cred,
+*desc->dir_cookie,
+ 						page,
+=20
+NFS_SERVER(inode)->dtsize,
+ 						desc->plus);
++	spin_lock(&inode->i_lock);
+ 	NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_ATIME;
++	spin_unlock(&inode->i_lock);
+ 	desc->page =3D page;
+ 	desc->ptr =3D kmap(page);		/* matching kunmap in
+nfs_do_filldir */
+ 	if (desc->error >=3D 0) {
+ 		if ((status =3D dir_decode(desc)) =3D=3D 0)
+@@ -1595,9 +1599,11 @@ void nfs_access_add_cache(struct inode *
+ 		if (cache->cred)
+ 			put_rpccred(cache->cred);
+ 		cache->cred =3D get_rpccred(set->cred);
+ 	}
++	spin_lock(&inode->i_lock);
+ 	nfsi->cache_validity &=3D ~NFS_INO_INVALID_ACCESS;
++	spin_unlock(&inode->i_lock);
+ 	cache->jiffies =3D set->jiffies;
+ 	cache->mask =3D set->mask;
+ }
+=20
 diff -X /home/cel/src/linux/dont-diff --new-file --text --unified=3D4
---recursive --show-c-function 10-nfs-cache-state/fs/nfs/inode.c
-11-nfs-bitops/fs/nfs/inode.c
---- 10-nfs-cache-state/fs/nfs/inode.c	2005-07-08 22:46:36.162239000
+--recursive --show-c-function 11-nfs-bitops/fs/nfs/inode.c
+12-nfs-i_lock/fs/nfs/inode.c
+--- 11-nfs-bitops/fs/nfs/inode.c	2005-07-08 22:52:01.057431000
 -0400
-+++ 11-nfs-bitops/fs/nfs/inode.c	2005-07-08 22:52:01.057431000
++++ 12-nfs-i_lock/fs/nfs/inode.c	2005-07-08 23:11:53.639214000
 -0400
-@@ -738,9 +738,9 @@ nfs_fhget(struct super_block *sb, struct
- 			inode->i_op =3D
-NFS_SB(sb)->rpc_ops->dir_inode_ops;
- 			inode->i_fop =3D &nfs_dir_operations;
- 			if (nfs_server_capable(inode,
-NFS_CAP_READDIRPLUS)
- 			    && fattr->size <=3D NFS_LIMIT_READDIRPLUS)
--				NFS_FLAGS(inode) |=3D
-NFS_INO_ADVISE_RDPLUS;
-+				set_bit(NFS_INO_ADVISE_RDPLUS,
-&NFS_FLAGS(inode));
- 		} else if (S_ISLNK(inode->i_mode))
- 			inode->i_op =3D &nfs_symlink_inode_operations;
- 		else
- 			init_special_inode(inode, inode->i_mode,
-fattr->rdev);
-@@ -837,28 +837,45 @@ nfs_setattr(struct dentry *dentry, struc
+@@ -614,16 +614,20 @@ nfs_zap_caches(struct inode *inode)
+ {
+ 	struct nfs_inode *nfsi =3D NFS_I(inode);
+ 	int mode =3D inode->i_mode;
+=20
++	spin_lock(&inode->i_lock);
++
+ 	NFS_ATTRTIMEO(inode) =3D NFS_MINATTRTIMEO(inode);
+ 	NFS_ATTRTIMEO_UPDATE(inode) =3D jiffies;
+=20
+ 	memset(NFS_COOKIEVERF(inode), 0, sizeof(NFS_COOKIEVERF(inode)));
+ 	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode))
+ 		nfsi->cache_validity |=3D
+NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ACCESS|NFS_INO
+_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
+ 	else
+ 		nfsi->cache_validity |=3D
+NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_
+REVAL_PAGECACHE;
++
++	spin_unlock(&inode->i_lock);
+ }
+=20
+ static void nfs_zap_acl_cache(struct inode *inode)
+ {
+@@ -631,9 +635,11 @@ static void nfs_zap_acl_cache(struct ino
+=20
+ 	clear_acl_cache =3D NFS_PROTO(inode)->clear_acl_cache;
+ 	if (clear_acl_cache !=3D NULL)
+ 		clear_acl_cache(inode);
++	spin_lock(&inode->i_lock);
+ 	NFS_I(inode)->cache_validity &=3D ~NFS_INO_INVALID_ACL;
++	spin_unlock(&inode->i_lock);
+ }
+=20
+ /*
+  * Invalidate, but do not unhash, the inode
+@@ -830,10 +836,13 @@ nfs_setattr(struct dentry *dentry, struc
+ 			inode->i_size =3D attr->ia_size;
+ 			vmtruncate(inode, attr->ia_size);
+ 		}
+ 	}
+-	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) !=3D 0)
++	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) !=3D 0) {
++		spin_lock(&inode->i_lock);
+ 		NFS_I(inode)->cache_validity |=3D
+NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
++		spin_unlock(&inode->i_lock);
++	}
+ 	nfs_end_data_update(inode);
  	unlock_kernel();
  	return error;
  }
-=20
-+static int nfs_wait_schedule(void *word)
-+{
-+	if (signal_pending(current))
-+		return -ERESTARTSYS;
-+	schedule();
-+	return 0;
-+}
-+
- /*
-  * Wait for the inode to get unlocked.
-- * (Used for NFS_INO_LOCKED and NFS_INO_REVALIDATING).
-  */
--static int
--nfs_wait_on_inode(struct inode *inode, int flag)
-+static int nfs_wait_on_inode(struct inode *inode)
- {
- 	struct rpc_clnt	*clnt =3D NFS_CLIENT(inode);
- 	struct nfs_inode *nfsi =3D NFS_I(inode);
--
-+	sigset_t oldmask;
- 	int error;
--	if (!(NFS_FLAGS(inode) & flag))
--		return 0;
-+
- 	atomic_inc(&inode->i_count);
--	error =3D nfs_wait_event(clnt, nfsi->nfs_i_wait,
--				!(NFS_FLAGS(inode) & flag));
-+	rpc_clnt_sigmask(clnt, &oldmask);
-+	error =3D wait_on_bit_lock(&nfsi->flags, NFS_INO_REVALIDATING,
-+					nfs_wait_schedule,
-TASK_INTERRUPTIBLE);
-+	rpc_clnt_sigunmask(clnt, &oldmask);
- 	iput(inode);
-+
- 	return error;
- }
-=20
-+static void nfs_wake_up_inode(struct inode *inode)
-+{
-+	struct nfs_inode *nfsi =3D NFS_I(inode);
-+
-+	clear_bit(NFS_INO_REVALIDATING, &nfsi->flags);
-+	smp_mb__after_clear_bit();
-+	wake_up_bit(&nfsi->flags, NFS_INO_REVALIDATING);
-+}
-+
- int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct
-kstat *stat)
- {
- 	struct inode *inode =3D dentry->d_inode;
- 	int need_atime =3D NFS_I(inode)->cache_validity &
-NFS_INO_INVALID_ATIME;
-@@ -1017,20 +1034,21 @@ __nfs_revalidate_inode(struct nfs_server
-  		goto out_nowait;
- 	if (NFS_STALE(inode))
-  		goto out_nowait;
-=20
--	while (NFS_REVALIDATING(inode)) {
--		status =3D nfs_wait_on_inode(inode, NFS_INO_REVALIDATING);
--		if (status < 0)
--			goto out_nowait;
--		if (NFS_ATTRTIMEO(inode) =3D=3D 0)
--			continue;
--		if (nfsi->cache_validity &
-(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ATIME))
--			continue;
--		status =3D NFS_STALE(inode) ? -ESTALE : 0;
--		goto out_nowait;
-+	status =3D nfs_wait_on_inode(inode);
-+	if (status < 0)
-+		goto out;
-+	if (NFS_STALE(inode)) {
-+		status =3D -ESTALE;
-+		/* Do we trust the cached ESTALE? */
-+		if (NFS_ATTRTIMEO(inode) !=3D 0) {
-+			if (nfsi->cache_validity &
-(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ATIME)) {
-+				/* no */
-+			} else
-+				goto out;
-+		}
- 	}
--	NFS_FLAGS(inode) |=3D NFS_INO_REVALIDATING;
-=20
- 	/* Protect against RPC races by saving the change attribute */
- 	verifier =3D nfs_save_change_attribute(inode);
- 	status =3D NFS_PROTO(inode)->getattr(server, NFS_FH(inode),
-&fattr);
-@@ -1040,9 +1058,9 @@ __nfs_revalidate_inode(struct nfs_server
+@@ -1070,8 +1079,9 @@ __nfs_revalidate_inode(struct nfs_server
+ 			 inode->i_sb->s_id,
  			 (long long)NFS_FILEID(inode), status);
- 		if (status =3D=3D -ESTALE) {
- 			nfs_zap_caches(inode);
- 			if (!S_ISDIR(inode->i_mode))
--				NFS_FLAGS(inode) |=3D NFS_INO_STALE;
-+				set_bit(NFS_INO_STALE,
-&NFS_FLAGS(inode));
- 		}
  		goto out;
  	}
++	spin_lock(&inode->i_lock);
+ 	cache_validity =3D nfsi->cache_validity;
+ 	nfsi->cache_validity &=3D ~NFS_INO_REVAL_PAGECACHE;
 =20
-@@ -1071,11 +1089,11 @@ __nfs_revalidate_inode(struct nfs_server
- 	dfprintk(PAGECACHE, "NFS: (%s/%Ld) revalidation complete\n",
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode));
+ 	/*
+@@ -1079,8 +1089,9 @@ __nfs_revalidate_inode(struct nfs_server
+ 	 * we raced with nfs_end_attr_update().
+ 	 */
+ 	if (verifier =3D=3D nfsi->cache_change_attribute)
+ 		nfsi->cache_validity &=3D
+~(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ATIME);
++	spin_unlock(&inode->i_lock);
 =20
--out:
--	NFS_FLAGS(inode) &=3D ~NFS_INO_REVALIDATING;
--	wake_up(&nfsi->nfs_i_wait);
-+ out:
-+	nfs_wake_up_inode(inode);
+ 	nfs_revalidate_mapping(inode, inode->i_mapping);
+=20
+ 	if (cache_validity & NFS_INO_INVALID_ACL)
+@@ -1137,14 +1148,18 @@ void nfs_revalidate_mapping(struct inode
+ 				filemap_fdatawait(mapping);
+ 			nfs_wb_all(inode);
+ 		}
+ 		invalidate_inode_pages2(mapping);
 +
-  out_nowait:
- 	unlock_kernel();
- 	return status;
- }
-@@ -1392,9 +1410,9 @@ static int nfs_update_inode(struct inode
- 	 * (But we fall through to invalidate the caches.)
- 	 */
- 	nfs_invalidate_inode(inode);
-  out_err:
--	NFS_FLAGS(inode) |=3D NFS_INO_STALE;
-+	set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
- 	return -ESTALE;
- }
-=20
- /*
-@@ -1984,9 +2002,8 @@ static void init_once(void * foo, kmem_c
- 		atomic_set(&nfsi->data_updates, 0);
- 		nfsi->ndirty =3D 0;
- 		nfsi->ncommit =3D 0;
- 		nfsi->npages =3D 0;
--		init_waitqueue_head(&nfsi->nfs_i_wait);
- 		nfs4_init_once(nfsi);
++		spin_lock(&inode->i_lock);
+ 		nfsi->cache_validity &=3D ~NFS_INO_INVALID_DATA;
+ 		if (S_ISDIR(inode->i_mode)) {
+ 			memset(nfsi->cookieverf, 0,
+sizeof(nfsi->cookieverf));
+ 			/* This ensures we revalidate child dentries */
+ 			nfsi->cache_change_attribute++;
+ 		}
++		spin_unlock(&inode->i_lock);
++
+ 		dfprintk(PAGECACHE, "NFS: (%s/%Ld) data cache
+invalidated\n",
+ 				inode->i_sb->s_id,
+ 				(long long)NFS_FILEID(inode));
  	}
+@@ -1172,12 +1187,14 @@ void nfs_end_data_update(struct inode *i
+ 	struct nfs_inode *nfsi =3D NFS_I(inode);
+=20
+ 	if (!nfs_have_delegation(inode, FMODE_READ)) {
+ 		/* Mark the attribute cache for revalidation */
++		spin_lock(&inode->i_lock);
+ 		nfsi->cache_validity |=3D NFS_INO_INVALID_ATTR;
+ 		/* Directories and symlinks: invalidate page cache too
+*/
+ 		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+ 			nfsi->cache_validity |=3D NFS_INO_INVALID_DATA;
++		spin_unlock(&inode->i_lock);
+ 	}
+ 	nfsi->cache_change_attribute ++;
+ 	atomic_dec(&nfsi->data_updates);
  }
- =20
-diff -X /home/cel/src/linux/dont-diff --new-file --text --unified=3D4
---recursive --show-c-function 10-nfs-cache-state/include/linux/nfs_fs.h
-11-nfs-bitops/include/linux/nfs_fs.h
---- 10-nfs-cache-state/include/linux/nfs_fs.h	2005-07-08
-22:29:36.471730000 -0400
-+++ 11-nfs-bitops/include/linux/nfs_fs.h	2005-07-08
-22:52:57.387130000 -0400
-@@ -111,10 +111,10 @@ struct nfs_inode {
+@@ -1200,8 +1217,10 @@ int nfs_refresh_inode(struct inode *inod
+ 	/* Do we hold a delegation? */
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		return 0;
 =20
- 	/*
- 	 * Various flags
- 	 */
--	unsigned int		flags;
--	unsigned long		cache_validity;
-+	unsigned long		flags;			/* atomic bit
-ops */
-+	unsigned long		cache_validity;		/* bit mask */
++	spin_lock(&inode->i_lock);
++
+ 	/* Are we in the process of updating data on the server? */
+ 	data_unstable =3D nfs_caches_unstable(inode);
 =20
- 	/*
- 	 * read_cache_jiffies is when we started read-caching this
-inode,
- 	 * and read_cache_mtime is the mtime of the inode at that time.
-@@ -174,10 +174,8 @@ struct nfs_inode {
+ 	if (fattr->valid & NFS_ATTR_FATTR_V4) {
+@@ -1214,15 +1233,19 @@ int nfs_refresh_inode(struct inode *inod
+ 				nfsi->cache_validity |=3D
+NFS_INO_REVAL_PAGECACHE;
+ 		}
+ 	}
 =20
- 	/* Open contexts for shared mmap writes */
- 	struct list_head	open_files;
+-	if ((fattr->valid & NFS_ATTR_FATTR) =3D=3D 0)
++	if ((fattr->valid & NFS_ATTR_FATTR) =3D=3D 0) {
++		spin_unlock(&inode->i_lock);
+ 		return 0;
++	}
 =20
--	wait_queue_head_t	nfs_i_wait;
--
- #ifdef CONFIG_NFS_V4
- 	struct nfs4_cached_acl	*nfs4_acl;
-         /* NFSv4 state */
- 	struct list_head	open_states;
-@@ -198,13 +196,13 @@ struct nfs_inode {
- #define NFS_INO_INVALID_ACL	0x0010		/* cached acls are
-invalid */
- #define NFS_INO_REVAL_PAGECACHE	0x0020		/* must
-revalidate pagecache */
+ 	/* Has the inode gone and changed behind our back? */
+ 	if (nfsi->fileid !=3D fattr->fileid
+-			|| (inode->i_mode & S_IFMT) !=3D (fattr->mode &
+S_IFMT))
++			|| (inode->i_mode & S_IFMT) !=3D (fattr->mode &
+S_IFMT)) {
++		spin_unlock(&inode->i_lock);
+ 		return -EIO;
++	}
+=20
+ 	cur_size =3D i_size_read(inode);
+  	new_isize =3D nfs_size_to_loff_t(fattr->size);
+=20
+@@ -1259,8 +1282,9 @@ int nfs_refresh_inode(struct inode *inod
+ 	if (!timespec_equal(&inode->i_atime, &fattr->atime))
+ 		nfsi->cache_validity |=3D NFS_INO_INVALID_ATIME;
+=20
+ 	nfsi->read_cache_jiffies =3D fattr->timestamp;
++	spin_unlock(&inode->i_lock);
+ 	return 0;
+ }
 =20
  /*
-- * Legal values of flags field
-+ * Bit offsets in flags field
-  */
--#define NFS_INO_REVALIDATING	0x0001		/* revalidating attrs */
--#define NFS_INO_ADVISE_RDPLUS	0x0002		/* advise readdirplus */
--#define NFS_INO_STALE		0x0004		/* possible stale inode
-*/
-+#define NFS_INO_REVALIDATING	(0)		/* revalidating attrs */
-+#define NFS_INO_ADVISE_RDPLUS	(1)		/* advise readdirplus */
-+#define NFS_INO_STALE		(2)		/* possible stale inode
-*/
+@@ -1297,13 +1321,17 @@ static int nfs_update_inode(struct inode
+ 		       inode->i_sb->s_id, (long long)fattr->fileid);
+ 		goto out_err;
+ 	}
 =20
- static inline struct nfs_inode *NFS_I(struct inode *inode)
- {
- 	return container_of(inode, struct nfs_inode, vfs_inode);
-@@ -228,10 +226,9 @@ static inline struct nfs_inode *NFS_I(st
- 			       : NFS_SERVER(inode)->acregmax)
- #define NFS_ATTRTIMEO_UPDATE(inode)
-(NFS_I(inode)->attrtimeo_timestamp)
++	spin_lock(&inode->i_lock);
++
+ 	/*
+ 	 * Make sure the inode's type hasn't changed.
+ 	 */
+-	if ((inode->i_mode & S_IFMT) !=3D (fattr->mode & S_IFMT))
++	if ((inode->i_mode & S_IFMT) !=3D (fattr->mode & S_IFMT)) {
++		spin_unlock(&inode->i_lock);
+ 		goto out_changed;
++	}
 =20
- #define NFS_FLAGS(inode)		(NFS_I(inode)->flags)
--#define NFS_REVALIDATING(inode)		(NFS_FLAGS(inode) &
-NFS_INO_REVALIDATING)
--#define NFS_STALE(inode)		(NFS_FLAGS(inode) &
-NFS_INO_STALE)
-+#define NFS_STALE(inode)		(test_bit(NFS_INO_STALE,
-&NFS_FLAGS(inode)))
+ 	/*
+ 	 * Update the read time so we don't revalidate too often.
+ 	 */
+@@ -1394,8 +1422,9 @@ static int nfs_update_inode(struct inode
+ 		invalid &=3D ~NFS_INO_INVALID_DATA;
+ 	if (!nfs_have_delegation(inode, FMODE_READ))
+ 		nfsi->cache_validity |=3D invalid;
 =20
- #define NFS_FILEID(inode)		(NFS_I(inode)->fileid)
++	spin_unlock(&inode->i_lock);
+ 	return 0;
+  out_changed:
+ 	/*
+ 	 * Big trouble! The inode has become a different object.
+diff -X /home/cel/src/linux/dont-diff --new-file --text --unified=3D4
+--recursive --show-c-function 11-nfs-bitops/fs/nfs/nfs3acl.c
+12-nfs-i_lock/fs/nfs/nfs3acl.c
+--- 11-nfs-bitops/fs/nfs/nfs3acl.c	2005-07-08 22:27:51.880050000
+-0400
++++ 12-nfs-i_lock/fs/nfs/nfs3acl.c	2005-07-08 23:12:39.545920000
+-0400
+@@ -307,9 +307,11 @@ static int nfs3_proc_setacls(struct inod
+ 	dprintk("NFS call setacl\n");
+ 	nfs_begin_data_update(inode);
+ 	status =3D rpc_call(server->client_acl, ACLPROC3_SETACL,
+ 			  &args, &fattr, 0);
++	spin_lock(&inode->i_lock);
+ 	NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_ACCESS;
++	spin_unlock(&inode->i_lock);
+ 	nfs_end_data_update(inode);
+ 	dprintk("NFS reply setacl: %d\n", status);
 =20
- static inline int nfs_caches_unstable(struct inode *inode)
-@@ -251,9 +248,9 @@ static inline int nfs_server_capable(str
+ 	/* pages may have been allocated at the xdr layer. */
+diff -X /home/cel/src/linux/dont-diff --new-file --text --unified=3D4
+--recursive --show-c-function 11-nfs-bitops/fs/nfs/read.c
+12-nfs-i_lock/fs/nfs/read.c
+--- 11-nfs-bitops/fs/nfs/read.c	2005-07-08 22:28:45.368469000 -0400
++++ 12-nfs-i_lock/fs/nfs/read.c	2005-07-08 23:13:37.623157000 -0400
+@@ -139,9 +139,11 @@ static int nfs_readpage_sync(struct nfs_
+ 		 */
+ 		if (rdata->res.eof !=3D 0 || result =3D=3D 0)
+ 			break;
+ 	} while (count);
++	spin_lock(&inode->i_lock);
+ 	NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_ATIME;
++	spin_unlock(&inode->i_lock);
+=20
+ 	if (count)
+ 		memclear_highpage_flush(page, rdata->args.pgbase,
+count);
+ 	SetPageUptodate(page);
+@@ -472,9 +474,11 @@ void nfs_readpage_result(struct rpc_task
+ 			return;
+ 		}
+ 		task->tk_status =3D -EIO;
+ 	}
++	spin_lock(&data->inode->i_lock);
+ 	NFS_I(data->inode)->cache_validity |=3D NFS_INO_INVALID_ATIME;
++	spin_unlock(&data->inode->i_lock);
+ 	data->complete(data, status);
  }
 =20
- static inline int NFS_USE_READDIRPLUS(struct inode *inode)
- {
--	return NFS_FLAGS(inode) & NFS_INO_ADVISE_RDPLUS;
-+	return test_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
+ /*
+diff -X /home/cel/src/linux/dont-diff --new-file --text --unified=3D4
+--recursive --show-c-function 11-nfs-bitops/include/linux/nfs_fs.h
+12-nfs-i_lock/include/linux/nfs_fs.h
+--- 11-nfs-bitops/include/linux/nfs_fs.h	2005-07-08
+22:52:57.387130000 -0400
++++ 12-nfs-i_lock/include/linux/nfs_fs.h	2005-07-08
+23:07:58.220127000 -0400
+@@ -237,10 +237,13 @@ static inline int nfs_caches_unstable(st
  }
 =20
- /**
-  * nfs_save_change_attribute - Returns the inode attribute change
-cookie
+ static inline void NFS_CACHEINV(struct inode *inode)
+ {
+-	if (!nfs_caches_unstable(inode))
++	if (!nfs_caches_unstable(inode)) {
++		spin_lock(&inode->i_lock);
+ 		NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_ATTR |
+NFS_INO_INVALID_ACCESS;
++		spin_unlock(&inode->i_lock);
++	}
+ }
+=20
+ static inline int nfs_server_capable(struct inode *inode, int cap)
+ {
 
 
 -------------------------------------------------------
