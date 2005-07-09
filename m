@@ -1,12 +1,22 @@
-From: Paulo Aboim Pinto <esqueleto@tusofona.com>
-Subject: mount NFS take so long....
-Date: Sat, 09 Jul 2005 05:02:25 +0100
-Message-ID: <1120881745.16846.2.camel@localhost.localdomain>
-Reply-To: esqueleto@tusofona.com
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: [PATCH 0/3]: NFS: nfs_inode->flags is not SMP safe
+Date: Sat, 9 Jul 2005 08:31:41 -0700
+Message-ID: <482A3FA0050D21419C269D13989C611308539D84@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1DrHJL-0001OH-3u
+	for nfs@lists.sourceforge.net; Sat, 09 Jul 2005 08:32:11 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
+	id 1DrHJJ-00062Y-He
+	for nfs@lists.sourceforge.net; Sat, 09 Jul 2005 08:32:11 -0700
+To: "Nick Wilson" <njw@osdl.org>,
+	"Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -20,25 +30,8 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello
-
-I've try Fedora / Mandrake /Gentoo and now I have Ubuntu (for the 2=C2=BA
-time).
-
-In every Distros to mount NFS mount point I had no problem and the
-operation was in a click.
-
-With Ubuntu, for each mount I have to wait, at least, 2 or 3 minutes.
-This is very odd and because of that I want to know if any one have the
-same problem and how did you resolve it.
-
-This is a Ubuntu of NFS version problem??
-
-
-tkx in advance
-Paulo Aboim Pinto
-Odivelas - Portugal
-
+ The following three patches make updating the contents of the nfs_inode
+ structures "flags" field SMP safe without using the global kernel lock.
 
 
 -------------------------------------------------------
