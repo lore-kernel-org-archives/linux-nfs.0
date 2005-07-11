@@ -1,19 +1,27 @@
-From: Hugh Caley <hcaley@plasmabat.com>
-Subject: Performance Difference Between Linux NFS Server and Netapp
-Date: Mon, 11 Jul 2005 15:55:53 -0700
-Message-ID: <42D2F8F9.4010304@plasmabat.com>
+From: Daniel McNeil <daniel@osdl.org>
+Subject: RE: [PATCH 2/3]: NFS: use atomic bitops to manipulate flags
+	in nfsi->flags
+Date: Mon, 11 Jul 2005 16:13:36 -0700
+Message-ID: <1121123616.3150.22.camel@ibm-c.pdx.osdl.net>
+References: <482A3FA0050D21419C269D13989C611307CF4CF8@lavender-fe.eng.netapp.com>
+	 <1121121546.16899.1.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
+	"NIck Wilson (work)" <njw@osdl.org>,
+	"Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ds7CU-0003GB-TL
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 15:56:34 -0700
-Received: from scfw.affymetrix.com ([12.22.48.133] helo=msex02.affymetrix.com)
-	by sc8-sf-mx1.sourceforge.net with smtp (Exim 4.44)
-	id 1Ds7Bz-0005fS-RQ
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 15:56:35 -0700
-To: nfs@lists.sourceforge.net
+	id 1Ds7TC-00041N-IV
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 16:13:50 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
+	id 1Ds7TB-0007Vo-7a
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 16:13:50 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1121121546.16899.1.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,56 +35,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I've been doing a little limited benchmarking of NFS performance, and
-doing a comparison between Linux NFS servers and a Netapp.  All tests
-done over gigabit, clients are Linux (i386 and Opteron), OS is Fedora
-Core 2,
-kernel is 2.6.10-1.771_FC2smp, filesystem is Reiser.  I basically copy a
-205
-megabyte file to the server three times and average the results.  Sure,
-limited,
-but it seems to have real world relevance here.
+On Mon, 2005-07-11 at 15:39, Trond Myklebust wrote:
+> m=C3=A5 den 11.07.2005 Klokka 14:53 (-0700) skreiv Lever, Charles:
+> > > > +
+> > > >  	atomic_inc(&inode->i_count);
+> > > > -	error =3D nfs_wait_event(clnt, nfsi->nfs_i_wait,
+> > > > -				!(NFS_FLAGS(inode) & flag));
+> > > > +	rpc_clnt_sigmask(clnt, &oldmask);
+> > > > +	error =3D wait_on_bit_lock(&nfsi->flags, NFS_INO_REVALIDATING,
+> > > > +					nfs_wait_schedule,=20
+> > > TASK_INTERRUPTIBLE);
+> > >=20
+> > >                                                              =20
+> > >   ^^^^^^^^^^^^^
+> > > Shouldn't this depend on whether the client mounted with intr?
+> >=20
+> > roughly the same logic is used in net/sunrpc/sched.c:__rpc_execute, a=
+nd
+> > it doesn't observe the intr flag either.  perhaps it is an ommission
+> > there too?
+>=20
+> rpc_clnt_sigmask() should offer sufficient protection.
+>=20
 
-The difference in performance is kind of startling.  I had originally
-put the Linux-based servers (with a Nexsan Atabeast backend) in as a
-replacement for an older EMC Celerra and a few older Suns.  On both the
-Suns and Celerra I would see single-client performance topping out at
-between 120 and 150 megabits per second.
+This use to call nfs_wait_event() which checked clnt->cl_intr
+and called wait_event() or wait_event_interruptible().
+It looks like rpc_clnt_sigmask() will allow SIGKILL to
+wake up the task.  Is that ok if the client is not mounted
+with intr?
 
-The Linux setup (Supermicro Dual 2.6 Ghz Xeons with 4 gigabytes of RAM,
-recently boosted to 8 gigabytes of RAM) regularly returns about 300
-megabits per second.  Given the difference in price between the Linux
-boxes and the Celerra, everyone's pretty happy ;)
+Daniel
 
-However, recently I've been trying the same testing between Linux
-clients and a Netapp, and can achieve between 500 and 600 megabits per
-second!  Darned impressive.
-
-I realize that the disk subsystem of the Netapp is going to stomp on my
-Atabeast, but neither 300 nor 600 megabits is anywhere near the speed I
-can get if I run the same test locally on the Linux server boxes, which
-can regularly top 2000 megabits per second, so I really don't think that
-the differences in disk architecture should make this much difference.
-
-I guess my question is, are my Linux NFS servers seriously
-underperforming?  Could I expect to achieve better?  I realize that my
-"benchmark" is pretty limited, but the difference is pretty big.  Since
-the same client
-on all the Linux boxen gets these results, I'm guessing that the client end
-has little to do with it.
-
-How does Netapp do it?  Don't suppose they'd tell me ...
-
-Hugh
-
---
-Hugh Caley | Unix Systems Administrator | CIS
-AFFYMETRIX INC. | 6550 Vallejo St. Ste 100 | Emeryville, CA 94608
-Tel: 510-428-8537 | Hugh_Caley@affymetrix.com
-
--- 
-"Brain-eating mutants are bad for business" - Battle Angel
-Batmensch <hcaley@plasmabat.com>
 
 
 
