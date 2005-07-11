@@ -1,23 +1,12 @@
-From: Nick Wilson <njw@osdl.org>
-Subject: Re: [PATCH 2/3]: NFS: use atomic bitops to manipulate flags in nfsi->flags
-Date: Mon, 11 Jul 2005 13:08:30 -0700
-Message-ID: <20050711200830.GA5034@njw.pdx.osdl.net>
-References: <482A3FA0050D21419C269D13989C611308539D86@lavender-fe.eng.netapp.com>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: umount trick for NFS timeouts
+Date: Mon, 11 Jul 2005 13:45:46 -0700
+Message-ID: <1121114746.10126.38.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>,
-	nfs@lists.sourceforge.net, Daniel McNeil <daniel@osdl.org>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-tbaiisMb5ij787X4XUzQ"
+Cc: strombrg@dcs.nac.uci.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ds4XH-00047R-21
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 13:05:51 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ds4XG-0005yL-Ly
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 13:05:51 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611308539D86@lavender-fe.eng.netapp.com>
+To: NFS@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,51 +20,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, Jul 09, 2005 at 08:33:06AM -0700, Lever, Charles wrote:
->  Introduce atomic bitops to manipulate the bits in the nfs_inode structure's
->  "flags" field.
-> 
->  Using bitops means we can use a generic wait_on_bit call instead of an ad
->  hoc locking scheme in fs/nfs/inode.c, so we can remove the "nfs_i_wait"
->  field from nfs_inode at the same time.
-> 
->  The other new flags field will continue to use bitmask and logic AND and
->  OR.  This permits several flags to be set at the same time efficiently.
->  The following patch adds a spin lock to protect these flags, and this spin
->  lock will later cover other fields in the nfs_inode structure, amortizing
->  the cost of using this type of serialization.
 
-Is there some place to document exactly which fields are being protected by
-the spinlock?
+--=-tbaiisMb5ij787X4XUzQ
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-[ ... ]
->  /*
->   * Wait for the inode to get unlocked.
-> - * (Used for NFS_INO_LOCKED and NFS_INO_REVALIDATING).
->   */
-> -static int
-> -nfs_wait_on_inode(struct inode *inode, int flag)
-> +static int nfs_wait_on_inode(struct inode *inode)
->  {
->  	struct rpc_clnt	*clnt = NFS_CLIENT(inode);
->  	struct nfs_inode *nfsi = NFS_I(inode);
-> -
-> +	sigset_t oldmask;
->  	int error;
-> -	if (!(NFS_FLAGS(inode) & flag))
-> -		return 0;
-> +
->  	atomic_inc(&inode->i_count);
-> -	error = nfs_wait_event(clnt, nfsi->nfs_i_wait,
-> -				!(NFS_FLAGS(inode) & flag));
-> +	rpc_clnt_sigmask(clnt, &oldmask);
-> +	error = wait_on_bit_lock(&nfsi->flags, NFS_INO_REVALIDATING,
-> +					nfs_wait_schedule, TASK_INTERRUPTIBLE);
 
-                                                                ^^^^^^^^^^^^^
-Shouldn't this depend on whether the client mounted with intr?
+This may not be 100% on topic for linux, since contemporary versions
+have forced and lazy umounts, but I came up with a way of making it
+easier to umount a filesystem on an AIX box, when the NFS server was
+gone forever, and we didn't want to reboot the AIX box.
 
-Nick Wilson
+The trick was to create a virtual interface with the same IP address as
+the server that was gone forever.  It then became far easier to umount
+-f the filesystem.  :)
+
+Only thing is, the DNS resolution on the AIX box got semi-screwy due to
+that virtual interface somehow, so it was important to destroy the
+virtual interface after the umount had succeeded.
+
+HTH's someone.
+
+
+--=-tbaiisMb5ij787X4XUzQ
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQBC0tp6o0feVm00f/8RAv+8AJ9cyLMRoQgfOHpEUnRxh8nTXxJX/gCeNpg6
+VW2MioV/7+ZPNJ4iMC3BTlg=
+=I7L3
+-----END PGP SIGNATURE-----
+
+--=-tbaiisMb5ij787X4XUzQ--
+
 
 
 -------------------------------------------------------
