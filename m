@@ -1,22 +1,22 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH nfsd] ignore chmod calls on symlinks
-Date: Mon, 11 Jul 2005 08:46:55 -0400
-Message-ID: <42D26A3F.7030703@redhat.com>
-References: <20050711110635.GM27163@suse.de>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH fs/locks 2 of 3] Use proper tgid in locks_remove_posix
+Date: Mon, 11 Jul 2005 14:48:41 +0200
+Message-ID: <20050711124840.GR27163@suse.de>
+References: <20050711103250.GH27163@suse.de> <1121084217.8204.52.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net, akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DrxhS-0000GB-Fa
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:47:54 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1DrxiH-0000Iq-Mf
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:48:45 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DrxhR-0004qt-8S
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:47:54 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050711110635.GM27163@suse.de>
+	id 1DrxiH-00053m-BC
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:48:45 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1121084217.8204.52.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,18 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote:
+On Mon, Jul 11, 2005 at 08:16:57AM -0400, Trond Myklebust wrote:
+> m=E5 den 11.07.2005 Klokka 12:32 (+0200) skreiv Olaf Kirch:
+> > # Subject: [NFS] Use proper tgid in locks_remove_posix
+> > #=20
+> > # This patch fixes a problem with lost unlock calls in multithreaded
+> > # applications. locks_remove_posix would send a single unlock call wi=
+th
+> > # the task group ID of the current process, which may not be the same=
+ as
+> > # the tgid of the lock. This patch ensures that we send separate unlo=
+ck
+> > # calls for different fl_pid values.
+>=20
+> This doesn't look right. Why should a thread be killing locks that
+> belong to a different process?
 
->I submitted this before - this is a somewhat cosmetic fix to
->keep the SpecFS validation test from complaining.
->
+locks_remove_posix is called when we close a file, i.e. when it is remove=
+d
+from current->files. The problem arises when the files struct is shared
+by several threads with different tgid (which seems to be the default
+when using pthreads) - in this case we must make sure we send the
+unlock call with the right tgid. Previously we would send the unlock call
+using fl_pid =3D current->tgid.
 
-It seems to me that this test could/should considered to be broken and 
-hence,
-fixed, as opposed to cluttering up file system dependent code with checks
-like this that the upper layers are responsible for catching.
-
-       ps
+Olaf
+--=20
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
