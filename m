@@ -1,25 +1,22 @@
-From: Shantanu Goel <sgoel01@yahoo.com>
-Subject: Re: Re: [PATCH] Smooth out NFS client writeback
-Date: Wed, 29 Jun 2005 15:34:54 -0700 (PDT)
-Message-ID: <20050629223454.59273.qmail@web30708.mail.mud.yahoo.com>
-References: <42C2C33D.8000308@redhat.com>
+From: Michael Schroeder <mls@suse.de>
+Subject: Re: [PATCH NFSv2] Drop inode after rename
+Date: Mon, 11 Jul 2005 14:28:18 +0200
+Message-ID: <20050711122818.GA19562@suse.de>
+References: <20050711104611.GK27163@suse.de> <1121079942.8204.15.camel@lade.trondhjem.org> <20050711110733.GN27163@suse.de> <1121080460.8204.18.camel@lade.trondhjem.org> <20050711112431.GP27163@suse.de> <1121082965.8204.42.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Shantanu Goel <sgoel01@yahoo.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.91] (helo=sc8-sf-mx1-new.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dnl95-0000Gv-3N
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 15:35:03 -0700
-Received: from web30708.mail.mud.yahoo.com ([68.142.200.141])
-	by sc8-sf-mx1-new.sourceforge.net with smtp (Exim 4.44)
-	id 1Dnl92-00050K-R5
-	for nfs@lists.sourceforge.net; Wed, 29 Jun 2005 15:35:03 -0700
-To: Peter Staubach <staubach@redhat.com>,
-	"Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <42C2C33D.8000308@redhat.com>
+	id 1DrxOd-0007m8-6V
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:28:27 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
+	id 1DrxOb-0002Xo-BJ
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:28:27 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1121082965.8204.42.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,57 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Mon, Jul 11, 2005 at 07:56:05AM -0400, Trond Myklebust wrote:
+> ...but it should be unnecessary.
+> 
+> d_delete() is supposed to cause the inode to be dropped: if it cannot
+> immediately iput the inode, it will drop the dentry. So unless there
+> exists a hard link or an aliased dentry, the inode should get dropped
+> and freed pretty rapidly.
 
-> Lever, Charles wrote:
-> >committing the whole file at once is simply more
-> efficient from a
-> >network perspective when an application is
-> performing random writes
-> >(unless it is using O_SYNC).  there are some cases
-> where it won't make a
-> >difference whether a range or a whole file commit
-> is used, but i think
-> >it would be really hard to figure out a client-side
-> heuristic to decide
-> >which is better.
+AFAIR the problem is that i_nlink doesn't get decremented and
+therefore the inode doesn't get deleted.
 
-The patch I posted is actually much better in terms of
-the # commit requests it issues compared to the stock
-client.  There are some #'s for iozone -r4k -s256m -c:
+Cheers,
+  Michael.
 
-Proc            Stock         Patch
-write           16486         16384
-commit            518            80
-
-Here are the numbers for write throughput as seen by
-the children in KB/s in the iozone test above to see
-the difference that commit range makes.
-
-Stock    Patch w/o commit   Patch w/commit
-7064     6038               10226    =20
-
-When I get a chance I'll modify the Linux NFS server
-to honour the range as well and see what if any
-difference it makes.
-
-Thanks,
-Shantanu
-
-
-
-	=09
-____________________________________________________=20
-Yahoo! Sports=20
-Rekindle the Rivalries. Sign up for Fantasy Football=20
-http://football.fantasysports.yahoo.com
+-- 
+Michael Schroeder                                   mls@suse.de
+main(_){while(_=~getchar())putchar(~_-1/(~(_|32)/13*2-11)*13);}
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by the 'Do More With Dual!' webinar happen=
-ing
+This SF.Net email is sponsored by the 'Do More With Dual!' webinar happening
 July 14 at 8am PDT/11am EDT. We invite you to explore the latest in dual
-core and dual graphics technology at this free one hour event hosted by H=
-P,=20
+core and dual graphics technology at this free one hour event hosted by HP, 
 AMD, and NVIDIA.  To register visit http://www.hp.com/go/dualwebinar
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
