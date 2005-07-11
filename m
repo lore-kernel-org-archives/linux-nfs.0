@@ -1,26 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH NFSv2] Drop inode after rename
-Date: Mon, 11 Jul 2005 07:56:05 -0400
-Message-ID: <1121082965.8204.42.camel@lade.trondhjem.org>
-References: <20050711104611.GK27163@suse.de>
-	 <1121079942.8204.15.camel@lade.trondhjem.org>
-	 <20050711110733.GN27163@suse.de>
-	 <1121080460.8204.18.camel@lade.trondhjem.org>
-	 <20050711112431.GP27163@suse.de>
+Subject: Re: [PATCH]: Fix EJUKEBOX handling
+Date: Mon, 11 Jul 2005 08:09:40 -0400
+Message-ID: <1121083780.8204.44.camel@lade.trondhjem.org>
+References: <1109028596/rjf@maui.cs.washington.edu>
+	 <20050711093444.GA29922@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: nfs@lists.sourceforge.net, Michael Schroeder <mls@suse.de>
+Cc: "Richard J.Farnsworth" <rjf@maui.cs.washington.edu>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Drwtl-0006Sj-31
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 04:56:33 -0700
+	id 1Drx6m-0006zO-Ny
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:10:00 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1Drwtj-0001wn-St
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 04:56:33 -0700
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
+	id 1Drx6l-0006u9-97
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:10:00 -0700
 To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050711112431.GP27163@suse.de>
+In-Reply-To: <20050711093444.GA29922@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,39 +32,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-m=C3=A5 den 11.07.2005 Klokka 13:24 (+0200) skreiv Olaf Kirch:
-
-> unfsd definitely does it this way, unfortunately. I agree that
-> it's not a very good idea to continue to use unfsd, but...
-
-I still don't have a good idea about what kind of cache consistency
-guarantees a client should attempt to offer against a unfsd server.
-
-> I would still vote for merging this patch, as it just does
-> the same nlink accounting that other functions already do,
-> eg nfs_rmdir, nfs_safe_remove, etc. The latter even has a comment
-> preceding it that says
+m=C3=A5 den 11.07.2005 Klokka 11:34 (+0200) skreiv Olaf Kirch:
+> Hi all,
 >=20
-> * We invalidate the attribute cache and free the inode prior to the opera=
-tion
-> * to avoid possible races if the server reuses the inode.
->=20
-> So I think my patch isn't that absurd, is it? :)
+> this problem still seems to be present in 2.6.12, or am I
+> missing something?
 
-...but it should be unnecessary.
-
-d_delete() is supposed to cause the inode to be dropped: if it cannot
-immediately iput the inode, it will drop the dentry. So unless there
-exists a hard link or an aliased dentry, the inode should get dropped
-and freed pretty rapidly.
-
-The only case I can see that might cause a problem is if someone holds
-onto the dropped dentry for long enough to have a lookup() pick up the
-inode again. I cannot see how your patch would change matters there.
-
-I also have some trouble seeing why basic checks of mtime and size upon
-lookup/open would fail to catch most of the races. AFAICS you should
-almost always get a pagecache invalidation due to that.
+It should already be fixed in the 2.6.13-rcX series.
 
 Cheers,
   Trond
