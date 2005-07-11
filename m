@@ -1,22 +1,23 @@
-From: Michael Schroeder <mls@suse.de>
-Subject: Re: [PATCH NFSv2] Drop inode after rename
-Date: Mon, 11 Jul 2005 14:28:18 +0200
-Message-ID: <20050711122818.GA19562@suse.de>
-References: <20050711104611.GK27163@suse.de> <1121079942.8204.15.camel@lade.trondhjem.org> <20050711110733.GN27163@suse.de> <1121080460.8204.18.camel@lade.trondhjem.org> <20050711112431.GP27163@suse.de> <1121082965.8204.42.camel@lade.trondhjem.org>
+From: Nick Wilson <njw@osdl.org>
+Subject: Re: [PATCH 2/3]: NFS: use atomic bitops to manipulate flags in nfsi->flags
+Date: Mon, 11 Jul 2005 13:08:30 -0700
+Message-ID: <20050711200830.GA5034@njw.pdx.osdl.net>
+References: <482A3FA0050D21419C269D13989C611308539D86@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Cc: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>,
+	nfs@lists.sourceforge.net, Daniel McNeil <daniel@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DrxOd-0007m8-6V
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:28:27 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1Ds4XH-00047R-21
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 13:05:51 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1DrxOb-0002Xo-BJ
-	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 05:28:27 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1121082965.8204.42.camel@lade.trondhjem.org>
+	id 1Ds4XG-0005yL-Ly
+	for nfs@lists.sourceforge.net; Mon, 11 Jul 2005 13:05:51 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611308539D86@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,23 +31,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Jul 11, 2005 at 07:56:05AM -0400, Trond Myklebust wrote:
-> ...but it should be unnecessary.
+On Sat, Jul 09, 2005 at 08:33:06AM -0700, Lever, Charles wrote:
+>  Introduce atomic bitops to manipulate the bits in the nfs_inode structure's
+>  "flags" field.
 > 
-> d_delete() is supposed to cause the inode to be dropped: if it cannot
-> immediately iput the inode, it will drop the dentry. So unless there
-> exists a hard link or an aliased dentry, the inode should get dropped
-> and freed pretty rapidly.
+>  Using bitops means we can use a generic wait_on_bit call instead of an ad
+>  hoc locking scheme in fs/nfs/inode.c, so we can remove the "nfs_i_wait"
+>  field from nfs_inode at the same time.
+> 
+>  The other new flags field will continue to use bitmask and logic AND and
+>  OR.  This permits several flags to be set at the same time efficiently.
+>  The following patch adds a spin lock to protect these flags, and this spin
+>  lock will later cover other fields in the nfs_inode structure, amortizing
+>  the cost of using this type of serialization.
 
-AFAIR the problem is that i_nlink doesn't get decremented and
-therefore the inode doesn't get deleted.
+Is there some place to document exactly which fields are being protected by
+the spinlock?
 
-Cheers,
-  Michael.
+[ ... ]
+>  /*
+>   * Wait for the inode to get unlocked.
+> - * (Used for NFS_INO_LOCKED and NFS_INO_REVALIDATING).
+>   */
+> -static int
+> -nfs_wait_on_inode(struct inode *inode, int flag)
+> +static int nfs_wait_on_inode(struct inode *inode)
+>  {
+>  	struct rpc_clnt	*clnt = NFS_CLIENT(inode);
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+> -
+> +	sigset_t oldmask;
+>  	int error;
+> -	if (!(NFS_FLAGS(inode) & flag))
+> -		return 0;
+> +
+>  	atomic_inc(&inode->i_count);
+> -	error = nfs_wait_event(clnt, nfsi->nfs_i_wait,
+> -				!(NFS_FLAGS(inode) & flag));
+> +	rpc_clnt_sigmask(clnt, &oldmask);
+> +	error = wait_on_bit_lock(&nfsi->flags, NFS_INO_REVALIDATING,
+> +					nfs_wait_schedule, TASK_INTERRUPTIBLE);
 
--- 
-Michael Schroeder                                   mls@suse.de
-main(_){while(_=~getchar())putchar(~_-1/(~(_|32)/13*2-11)*13);}
+                                                                ^^^^^^^^^^^^^
+Shouldn't this depend on whether the client mounted with intr?
+
+Nick Wilson
 
 
 -------------------------------------------------------
