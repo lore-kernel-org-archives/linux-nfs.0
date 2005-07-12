@@ -1,23 +1,22 @@
-From: Sten Spans <sten@blinkenlights.nl>
+From: Hugh Caley <hcaley@plasmabat.com>
 Subject: Re: Performance Difference Between Linux NFS Server and Netapp
-Date: Thu, 14 Jul 2005 13:25:13 +0200 (CEST)
-Message-ID: <Pine.SOC.4.61.0507141312090.9294@tea.blinkenlights.nl>
-References: <42D2F8F9.4010304@plasmabat.com>
+Date: Tue, 12 Jul 2005 11:19:58 -0700
+Message-ID: <42D409CE.9020204@plasmabat.com>
+References: <EXCHG2003ZbLAX3cf3e00000023@EXCHG2003.microtech-ks.com> <Pine.LNX.4.58.0507121229150.4766@chaos.egr.duke.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Roger Heflin <rheflin@atipa.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dt1qG-0002xf-Mr
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 04:25:24 -0700
-Received: from ford.blinkenlights.nl ([213.204.211.2] ident=sten)
-	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Dt1qF-0001YR-6L
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 04:25:24 -0700
-To: Hugh Caley <hcaley@plasmabat.com>
-In-Reply-To: <42D2F8F9.4010304@plasmabat.com>
+	id 1DsPMn-0006jd-Bg
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 11:20:25 -0700
+Received: from firewall.neomorphic.com ([205.217.46.68] helo=roma.ev.affymetrix.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
+	id 1DsPMm-0007bV-1O
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 11:20:25 -0700
+To: Joshua Baker-LePain <jlb17@duke.edu>
+In-Reply-To: <Pine.LNX.4.58.0507121229150.4766@chaos.egr.duke.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,38 +30,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 11 Jul 2005, Hugh Caley wrote:
+The Atabeast is an ATA-raid array, but as far as the server knows it is 
+a 2 Gb fibre-attached SCSI disk.  I get 800-900 Mb/sec sequential writes 
+using ext3; with Reiser or JFS it is much faster.
 
-> How does Netapp do it?  Don't suppose they'd tell me ...
+Regardless, I don't think this is very relevant.   My only point was 
+that the disk subsystem is capable of much better performance than I'm 
+currently seeing over NFS.  300 Mb/sec seems slow to me when I have a 
+Dual-2.6 Ghz Linux box running kernel 2.6.10 (Fedora core 2) attached to 
+a 10 disk RAID5, and the box is doing nothing else but serving this 
+single NFS server.
 
-Quite simple really, you pay them loads of money, they
-give part of it to engineers doing work on nfs tuning.
+Hugh
 
-They generally have 3 performance advantages:
+Joshua Baker-LePain wrote:
 
-- battery backed cache with full os support,
-   which should make it perform better than battery backed
-   cache on normal raid cards. They use this cache for
-   journaling. I suppose one could try something similar
-   with pci-ram cards with battery and store the journal
-   on these.
+>On Tue, 12 Jul 2005 at 11:24am, Roger Heflin wrote
+>
+>  
+>
+>>2000mbit/second is a rate that no ide disk subsystem
+>>will obtain, so double check your local performance, 
+>>    
+>>
+>
+>I have a 3ware based server that begs to differ with you -- over 150MB/s 
+>writing, over 300MB/s reading.  That's on a software RAID0 stripe across 2 
+>12 port controllers, with each controller doing hardware RAID5.
+>
+>  
+>
+>>You will need to use a test larger than the ram size of 
+>>the machine to get a realistic rate, at least 2x, and
+>>probably 4x, and maybe both just to see how things fall
+>>over.
+>>    
+>>
+>
+>Absolutely.
+>
+>  
+>
 
-- special filesystem which allows writing data on any
-   disk, this allows distributing the workload across the
-   available disks, more disks more performance
-   ( if the fibrechannel can handle it ).
-
-- Highly tuned nfs inplementation with dedicated operating system.
-
-The bruteforce linux approach is quite good for the money spent,
-but don't expect the features/performance of a way more expensive
-enterprise solution.
 
 -- 
-Sten Spans
+"Take off your pants and get in the reptile tank." - Joe Rogan, Fear Factor 
+Hugh Caley hcaley@plasmabat.com
 
-"There is a crack in everything, that's how the light gets in."
-Leonard Cohen - Anthem
 
 
 -------------------------------------------------------
