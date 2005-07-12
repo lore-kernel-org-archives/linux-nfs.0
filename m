@@ -1,22 +1,23 @@
-From: Joshua Baker-LePain <jlb17@duke.edu>
-Subject: RE: Performance Difference Between Linux NFS Server and Netapp
-Date: Tue, 12 Jul 2005 12:34:16 -0400 (EDT)
-Message-ID: <Pine.LNX.4.58.0507121229150.4766@chaos.egr.duke.edu>
-References: <EXCHG2003ZbLAX3cf3e00000023@EXCHG2003.microtech-ks.com>
+From: Nick Wilson <njw@osdl.org>
+Subject: Re: [PATCH 3/3]: NFS: Introduce the use of inode->i_lock to protect fields in nfsi
+Date: Tue, 12 Jul 2005 09:52:47 -0700
+Message-ID: <20050712165247.GA9097@njw.pdx.osdl.net>
+References: <482A3FA0050D21419C269D13989C611308539D87@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "'Hugh Caley'" <hcaley@plasmabat.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DsNiI-0001c4-Dk
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:34:30 -0700
-Received: from chaos.egr.duke.edu ([152.3.195.82])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DsNiG-0001ve-Sp
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:34:30 -0700
-To: Roger Heflin <rheflin@atipa.com>
-In-Reply-To: <EXCHG2003ZbLAX3cf3e00000023@EXCHG2003.microtech-ks.com>
+	id 1DsNx8-0002Xj-Hf
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:49:50 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
+	id 1DsNx7-0008BD-Bs
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:49:50 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <482A3FA0050D21419C269D13989C611308539D87@lavender-fe.eng.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,26 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 12 Jul 2005 at 11:24am, Roger Heflin wrote
+On Sat, Jul 09, 2005 at 08:33:58AM -0700, Lever, Charles wrote:
+>  Down the road we want to eliminate the use of the global kernel lock
+>  entirely from the NFS client.  To do this, we need to protect the fields
+>  in the nfs_inode structure adequately.  Start by serializing updates to
+>  the "cache_validity" field.
+> 
+>  Note this change addresses an SMP hang found by njw@osdl.org, where
+>  processes deadlock because nfs_end_data_update and nfs_revalidate_mapping
+>  update the "cache_validity" field without proper serialization.
+> 
+>  Test plan:
+>  Millions of fsx ops on SMP clients.  Run Nick Wilson's breaknfs program on
+>  large SMP clients.
 
-> 2000mbit/second is a rate that no ide disk subsystem
-> will obtain, so double check your local performance, 
+breaknfs has been running fine on an 8-way for nearly 24 hours.
+Considering it locks up in minutes without these patches, I'd say that
+these fix my problem :)
 
-I have a 3ware based server that begs to differ with you -- over 150MB/s 
-writing, over 300MB/s reading.  That's on a software RAID0 stripe across 2 
-12 port controllers, with each controller doing hardware RAID5.
-
-> You will need to use a test larger than the ram size of 
-> the machine to get a realistic rate, at least 2x, and
-> probably 4x, and maybe both just to see how things fall
-> over.
-
-Absolutely.
-
--- 
-Joshua Baker-LePain
-Department of Biomedical Engineering
-Duke University
+Nick Wilson
 
 
 -------------------------------------------------------
