@@ -1,22 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Fill in rqstp->rq_daddr in svc_tcp_recvfrom
-Date: Tue, 12 Jul 2005 12:31:46 -0400
-Message-ID: <20050712163146.GC27938@fieldses.org>
-References: <20050712090455.GA9243@suse.de>
+From: Joshua Baker-LePain <jlb17@duke.edu>
+Subject: RE: Performance Difference Between Linux NFS Server and Netapp
+Date: Tue, 12 Jul 2005 12:34:16 -0400 (EDT)
+Message-ID: <Pine.LNX.4.58.0507121229150.4766@chaos.egr.duke.edu>
+References: <EXCHG2003ZbLAX3cf3e00000023@EXCHG2003.microtech-ks.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "'Hugh Caley'" <hcaley@plasmabat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DsNfr-0001W9-43
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:31:59 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1DsNiI-0001c4-Dk
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:34:30 -0700
+Received: from chaos.egr.duke.edu ([152.3.195.82])
 	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DsNfo-0001Ro-RD
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:31:59 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050712090455.GA9243@suse.de>
+	id 1DsNiG-0001ve-Sp
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:34:30 -0700
+To: Roger Heflin <rheflin@atipa.com>
+In-Reply-To: <EXCHG2003ZbLAX3cf3e00000023@EXCHG2003.microtech-ks.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Jul 12, 2005 at 11:04:56AM +0200, Olaf Kirch wrote:
-> Here's a patch we added to SLES in response to a customer bug report:
-> 
-> # Subject: Fill in rqstp->rq_daddr in svc_tcp_recvfrom
-> #
-> # This patch fills the daddr member of the rpc struct svc_rqst structure for  
-> # TCP-based sockets in the recvfrom proceedure.  Currently, the field is 
-> # not set thus leaving it with left over garbage from a previous allocation. 
-> #
-> # This makes the behavior consistent between UDP- and TCP-based RPC. 
-> #
-> # This patch enables HA software to failover TCP-based RPC services
-> # such as TCP-based NFS.
+On Tue, 12 Jul 2005 at 11:24am, Roger Heflin wrote
 
-Could you explain how this patch makes a difference?  I can only see the
-value of rq_daddr used in one place, in svc_sendto:
-        if (rqstp->rq_prot == IPPROTO_UDP) {
-...
-                pki->ipi_spec_dst.s_addr = rqstp->rq_daddr;
+> 2000mbit/second is a rate that no ide disk subsystem
+> will obtain, so double check your local performance, 
 
-                if (sock_sendmsg(sock, &msg, 0) < 0)
-                        goto out;
-        }
+I have a 3ware based server that begs to differ with you -- over 150MB/s 
+writing, over 300MB/s reading.  That's on a software RAID0 stripe across 2 
+12 port controllers, with each controller doing hardware RAID5.
 
-So it doesn't seem to be used at all in the TCP case.  Am I confused?
+> You will need to use a test larger than the ram size of 
+> the machine to get a realistic rate, at least 2x, and
+> probably 4x, and maybe both just to see how things fall
+> over.
 
---b.
+Absolutely.
+
+-- 
+Joshua Baker-LePain
+Department of Biomedical Engineering
+Duke University
 
 
 -------------------------------------------------------
