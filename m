@@ -1,23 +1,22 @@
-From: Nick Wilson <njw@osdl.org>
-Subject: Re: [PATCH 3/3]: NFS: Introduce the use of inode->i_lock to protect fields in nfsi
-Date: Tue, 12 Jul 2005 09:52:47 -0700
-Message-ID: <20050712165247.GA9097@njw.pdx.osdl.net>
-References: <482A3FA0050D21419C269D13989C611308539D87@lavender-fe.eng.netapp.com>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] Fill in rqstp->rq_daddr in svc_tcp_recvfrom
+Date: Wed, 13 Jul 2005 07:17:50 +0200
+Message-ID: <20050713051750.GA23673@suse.de>
+References: <20050712090455.GA9243@suse.de> <20050712163146.GC27938@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DsNx8-0002Xj-Hf
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:49:50 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
+	id 1DsZda-0004Rg-S1
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 22:18:26 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1DsNx7-0008BD-Bs
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:49:50 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611308539D87@lavender-fe.eng.netapp.com>
+	id 1DsZd5-0007dO-SQ
+	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 22:18:26 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20050712163146.GC27938@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, Jul 09, 2005 at 08:33:58AM -0700, Lever, Charles wrote:
->  Down the road we want to eliminate the use of the global kernel lock
->  entirely from the NFS client.  To do this, we need to protect the fields
->  in the nfs_inode structure adequately.  Start by serializing updates to
->  the "cache_validity" field.
-> 
->  Note this change addresses an SMP hang found by njw@osdl.org, where
->  processes deadlock because nfs_end_data_update and nfs_revalidate_mapping
->  update the "cache_validity" field without proper serialization.
-> 
->  Test plan:
->  Millions of fsx ops on SMP clients.  Run Nick Wilson's breaknfs program on
->  large SMP clients.
+Hi Bruce,
 
-breaknfs has been running fine on an 8-way for nearly 24 hours.
-Considering it locks up in minutes without these patches, I'd say that
-these fix my problem :)
+> Could you explain how this patch makes a difference?  I can only see the
+> value of rq_daddr used in one place, in svc_sendto:
 
-Nick Wilson
+It doesn't make a difference for the existing RPC users, but the customer
+had some kernel RPC code of their own (I think some HA capable nfsd)
+that needed this information for migration/failover.
+
+It's not strictly necessary, but it doesn't hurt either - and it makes
+sense in the way that UDP and TCP now fill in the same set of information.
+
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
