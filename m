@@ -1,23 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] Fix xprt_bindresvport
-Date: Thu, 14 Jul 2005 12:00:11 -0400
-Message-ID: <42D68C0B.9000106@RedHat.com>
-References: <20050711092556.GD27163@suse.de>
+From: Hugh Caley <hcaley@plasmabat.com>
+Subject: Re: Performance Difference Between Linux NFS Server and Netapp
+Date: Thu, 14 Jul 2005 11:21:28 -0700
+Message-ID: <42D6AD28.3030204@plasmabat.com>
+References: <42D2F8F9.4010304@plasmabat.com> <Pine.SOC.4.61.0507141312090.9294@tea.blinkenlights.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net, akpm@osdl.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dt68X-0006Ls-5V
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 09:00:33 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Dt68S-0002md-KX
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 09:00:30 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050711092556.GD27163@suse.de>
+	id 1Dt8L7-00047W-7O
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 11:21:41 -0700
+Received: from firewall.neomorphic.com ([205.217.46.68] helo=roma.ev.affymetrix.com)
+	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
+	id 1Dt8L5-0001jl-PS
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 11:21:41 -0700
+To: Sten Spans <sten@blinkenlights.nl>
+In-Reply-To: <Pine.SOC.4.61.0507141312090.9294@tea.blinkenlights.nl>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,37 +30,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote:
->
->  #endif /* _LINUX_SUNRPC_XPRT_H */
-> Index: linux-2.6.10/net/sunrpc/sysctl.c
-> ===================================================================
-> --- linux-2.6.10.orig/net/sunrpc/sysctl.c	2005-02-23 17:17:55.000000000 +0100
-> +++ linux-2.6.10/net/sunrpc/sysctl.c	2005-02-23 17:19:35.000000000 +0100
-> @@ -29,6 +29,10 @@ unsigned int	nfs_debug;
->  unsigned int	nfsd_debug;
->  unsigned int	nlm_debug;
->  
-> +unsigned int	xprt_min_resvport = 650;
-> +unsigned int	xprt_max_resvport = 1023;
-> +
-> +
->  #ifdef RPC_DEBUG
->  
->  static struct ctl_table_header *sunrpc_table_header;
-> @@ -121,6 +125,8 @@ done:
->  
->  static unsigned int min_slot_table_size = RPC_MIN_SLOT_TABLE;
->  static unsigned int max_slot_table_size = RPC_MAX_SLOT_TABLE;
-> +static unsigned int xprt_min_resvport_limit = 1;
-> +static unsigned int xprt_max_resvport_limit = 65535;
-Question, why is 65535 one being used here instead of something
-like 1023 (or PROT_SOCK-1)? Since since inet_bind() will only
-succeed with a source ports that are less than PROT_SOCK, so it
-may not make sense to allow the user to set the max reserver port
-to a value greater than PROT_SOCK-1, true?
+Sten Spans wrote:
 
-steved.
+> On Mon, 11 Jul 2005, Hugh Caley wrote:
+>
+>> How does Netapp do it?  Don't suppose they'd tell me ...
+>
+>
+> Quite simple really, you pay them loads of money, they
+> give part of it to engineers doing work on nfs tuning.
+>
+> They generally have 3 performance advantages:
+>
+> - battery backed cache with full os support,
+>   ...
+>
+> - special filesystem which allows writing data on any
+>   ...
+
+I actually don't think filesystem type is relevant to my question.  I 
+tested this out pretty thoroughly with all the journaling filesystems 
+available from the Fedora Core 2 kernels (Ext3, Reiser, XFS, JFS), and 
+although Ext3 had by far the worst local performance, it's performance 
+over NFS with my simple sequential write test was exactly the same as 
+the others.  I mean, I'm talking about a single sequential write to a 
+10-disk RAID5 attached with 2 Gb fibre channel; whichever file system I 
+use on the RAID should be a whole lot faster than over NFS, and indeed 
+they all are, Ext3 about 3 times, the others much more.
+
+So, unless there are hooks between the filesystem and the NFSd that are 
+not obvious to a user (and the fact that changing filesystems doesn't 
+seem to make much difference seems to rule that out) and the fact that 
+the NFS client seems capable of much better performance when used 
+against a Netapp, it makes me wonder what's going on with the server 
+portion.
+
+> - Highly tuned nfs inplementation with dedicated operating system.
+>
+> The bruteforce linux approach is quite good for the money spent,
+> but don't expect the features/performance of a way more expensive
+> enterprise solution.
+>
+A valid point, of course, but I don't think I'm actually expecting a 
+single NFSd to act like an expensive Netapp.  I do think that wondering 
+why the Netapp is twice as fast for a sequential write is a valid 
+question, even if the OS and NFS server subsystem are free.  I was kind 
+of hoping someone would just say "you're getting what you should expect 
+to get" or "wow, that's slow, try this and this and this".
+
+And I did mention that moving to the Linux/NFS/Atabeast solution was 
+quite a bit better than what we had before ;)  I'm not really 
+complaining, just wondering here.
+
+Hugh
+
+-- 
+Whatsoever hath no fins nor scales in the waters, that shall be an abomination unto you. - Leviticus 11:9-12 
+http://godhatesshrimp.com
+Hugh Caley hcaley@plasmabat.com
 
 
 
