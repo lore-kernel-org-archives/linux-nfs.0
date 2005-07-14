@@ -1,27 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: statd for NFSv4 does not create file
-Date: Thu, 14 Jul 2005 15:52:40 -0400
-Message-ID: <1121370760.8049.197.camel@lade.trondhjem.org>
-References: <20050714125536.788.qmail@web51609.mail.yahoo.com>
-	 <1121347282.8202.49.camel@lade.trondhjem.org>
-	 <1121368645.10126.193.camel@seki.nac.uci.edu>
-	 <1121369838.8049.185.camel@lade.trondhjem.org>
+From: Hugh Caley <hcaley@plasmabat.com>
+Subject: Re: Performance Difference Between Linux NFS Server and Netapp
+Date: Thu, 14 Jul 2005 13:41:02 -0700
+Message-ID: <42D6CDDE.90703@plasmabat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: mehta kiran <kiranmehta1981@yahoo.com>,
-	nfs@lists.sourceforge.net, steved@redhat.com
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dt9lS-0007wu-E6
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 12:52:58 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Dt9lR-00023Y-61
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 12:52:58 -0700
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1121369838.8049.185.camel@lade.trondhjem.org>
+	id 1DtAW0-0001jV-SW
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 13:41:04 -0700
+Received: from firewall.neomorphic.com ([205.217.46.68] helo=roma.ev.affymetrix.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
+	id 1DtAVz-0006ig-Iw
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 13:41:05 -0700
+Received: from [10.82.12.54] (puglia.ev.affymetrix.com [10.82.12.54])
+	by roma.ev.affymetrix.com (8.11.6/8.11.6) with ESMTP id j6EKf2H31746
+	for <nfs@lists.sourceforge.net>; Thu, 14 Jul 2005 13:41:02 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,28 +30,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 14.07.2005 Klokka 15:37 (-0400) skreiv Trond Myklebust:
-> to den 14.07.2005 Klokka 12:17 (-0700) skreiv Dan Stromberg: 
-> > > An NFSv4 client has no use for statd. The NFSv4 protocol has its own
-> > > methods for tracking client and server reboots.
-> > 
-> > lockd too, I hope?
-> 
-> Yes. Lockd is gone too.
-> 
-> The only daemons you need to run on a client in order to get NFSv4
-> working are
-> 
->   - idmapd (for translating names/groups <-> uid/gid)
->   - rpc.gssd (only if you are using RPCSEC_GSS)
+Thank you!  Just the sort of thing I'm looking for ...
 
-Oops. I forgot... You need to run the portmapper on the client too. The
-reason is that the v4 delegation code needs to set up a server for the
-callback channel, and the sunrpc code is still under the illusion that
-we want it to register every server with portmap.
+Hugh
 
-Cheers,
-  Trond
+>From: Chris Penney <cpenney@gmail.com>
+>Reply-To: penney@msu.edu
+>To: nfs@lists.sourceforge.net
+>Subject: Re: [NFS] Performance Difference Between Linux NFS Server and Netapp
+>
+>
+>On 7/14/05, Hugh Caley <hcaley@plasmabat.com> wrote:=20
+>  
+>
+>>>=20
+>>> A valid point, of course, but I don't think I'm actually expecting a
+>>> single NFSd to act like an expensive Netapp. I do think that wondering
+>>> why the Netapp is twice as fast for a sequential write is a valid
+>>> question, even if the OS and NFS server subsystem are free. I was kind
+>>> of hoping someone would just say "you're getting what you should expect
+>>> to get" or "wow, that's slow, try this and this and this".
+>>    
+>>
+>
+> You referenced that you were getting 300 megabits (or 37MB/s). I have=20
+>several SLES 9 nfs servers (using self compiled 2.6.11.5
+><http://2.6.11.5>kernel) running on IBM x345 hardware (dual cpu pentum
+>4, 2gb ram, dual
+>qlogic hbas) connected to a single LSI storage array that presents four lun=
+>s=20 ...
+>
+
+-- 
+Whatsoever hath no fins nor scales in the waters, that shall be an abomination unto you. - Leviticus 11:9-12 
+http://godhatesshrimp.com
+Hugh Caley hcaley@plasmabat.com
 
 
 
