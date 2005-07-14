@@ -1,22 +1,29 @@
-From: Marcelo Tosatti <marcelo.tosatti@cyclades.com>
-Subject: Re: [PATCH kNFSd 1 of 4] Fixed possibly xdr parsing error if write size exceed 2^31
-Date: Tue, 12 Jul 2005 03:42:43 -0300
-Message-ID: <20050712064243.GA15802@dmt.cnet>
-References: <20040816135256.9819.patches@notabene> <E1BwYdv-0002Zf-5L@notabene.cse.unsw.edu.au> <20050711095015.GA9650@suse.de>
+From: Haakon Riiser <hakonrk@student.matnat.uio.no>
+Subject: "Server not responding" after periods of client inactivity
+Date: Thu, 14 Jul 2005 14:34:30 +0200
+Message-ID: <20050714123430.GA18416@fox>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DsO5c-0002zH-Fd
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:58:36 -0700
-Received: from parcelfarce.linux.theplanet.co.uk ([195.92.249.252] ident=93)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DsO5b-000709-BZ
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 09:58:36 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050711095015.GA9650@suse.de>
+	id 1Dt2vS-0005Vr-Pf
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 05:34:50 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Dt2vR-0005p2-EL
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 05:34:50 -0700
+Received: from mail-mx3.uio.no ([129.240.10.44])
+	by pat.uio.no with esmtp (Exim 4.43)
+	id 1Dt2vH-0007mP-6o
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 14:34:39 +0200
+Received: from 231.80-203-47.nextgentel.com ([80.203.47.231] helo=fox.venod.com)
+	by mail-mx3.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.43)
+	id 1Dt2vE-0006f5-41
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 14:34:36 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,58 +37,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Olaf,
+(Trying to post this for the third time -- nothing appeared on the
+list the first two times.)
 
-On Mon, Jul 11, 2005 at 11:50:16AM +0200, Olaf Kirch wrote:
-> Hi all,
-> 
-> what happened to this patch? It never seems to have made it
-> upstream.
+I have noticed that after periods of inactivity on the client
+machine, the first NFS operation will always hang for around
+15 seconds.  My first guess was that the server had powered down
+its disk drives, and that it was the spin-up time that caused the
+delay, but when I had an ssh session open on the server at the
+same time as the client started complaining about not getting a
+reply, I saw that this was /not/ the case -- there is nothing
+on the server that would explain why the client is stalling.
+No load, and no delay when working directly on the server.
 
-I think it did, long ago:
+I did tcpdump (on the server side) while the client was hanging,
+and this is what I found:
 
-nfs3xdr.c  	1.10  	CSets  	11 months 	neilb 	Fixed possibly xdr parsing error if write size exceed 2^31
+Source  Time  Packets
+------  ----  -------
+client  0.00  V3 ACCESS Call, FH:0x02120000
+client  0.10  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  0.31  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  0.71  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  1.53  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  3.16  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  6.42  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  7.12  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  8.52  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client 11.32  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+server 15.30  V3 ACCESS Reply
 
-> 
-> Olaf
-> 
-> On Mon, Aug 16, 2004 at 01:58:43PM +1000, NeilBrown wrote:
-> > 
-> > xdr_argsize_check needs to cope with the possibility that the
-> > pointer has wrapped and could be below buf->base.
-> > 
-> > Signed-off-by: Neil Brown <neilb@cse.unsw.edu.au>
-> > 
-> > ### Diffstat output
-> >  ./fs/nfsd/nfs3xdr.c         |    2 +-
-> >  ./include/linux/nfsd/xdr3.h |    2 +-
-> >  2 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
-> > --- ./fs/nfsd/nfs3xdr.c~current~	2004-08-14 13:21:52.000000000 +1000
-> > +++ ./fs/nfsd/nfs3xdr.c	2004-08-14 13:23:06.000000000 +1000
-> > @@ -273,7 +273,7 @@ xdr_argsize_check(struct svc_rqst *rqstp
-> >  {
-> >  	struct svc_buf	*buf = &rqstp->rq_argbuf;
-> >  
-> > -	return p - buf->base <= buf->buflen;
-> > +	return p >= buf->base && p <= buf->base + buf->buflen ;
-> >  }
-> >  
-> >  static inline int
-> > 
-> > diff ./include/linux/nfsd/xdr3.h~current~ ./include/linux/nfsd/xdr3.h
-> > --- ./include/linux/nfsd/xdr3.h~current~	2004-08-14 13:17:07.000000000 +1000
-> > +++ ./include/linux/nfsd/xdr3.h	2004-08-16 09:48:43.000000000 +1000
-> > @@ -41,7 +41,7 @@ struct nfsd3_writeargs {
-> >  	__u32			count;
-> >  	int			stable;
-> >  	__u8 *			data;
-> > -	int			len;
-> > +	__u32			len;
-> >  };
-> >  
-> >  struct nfsd3_createargs {
+After this, there are no more delays for this shared file system;
+any file operation on the same file system will succeed instantly.
+However, the first operation on any /other/ NFS file system also
+mounted on the client will still hang just like the above example.
+I.e., the hang always happens exactly once for each mount point.
+
+I have tried setting rsize=1024,wsize=1024, and I have tried both
+tcp and udp, but nothing has helped so far.  Any ideas?  tcpdump
+clearly shows that all the requests arrive at the server, so why
+does the server wait 15 seconds before it replies?
+
+NFS server:
+  Pentium III 650 MHz, 256 MB RAM
+  Fedora Core 3 (fully updated)
+  nfs-utils 1.0.6-52
+  kernel 2.6.11-1.35_FC3
+
+NFS client:
+  Athlon XP2500+, 1 GB RAM
+  Slackware 10.1
+  nfs-utils 1.0.7
+  kernel 2.6.11.11
+
+-- 
+ Haakon
 
 
 -------------------------------------------------------
