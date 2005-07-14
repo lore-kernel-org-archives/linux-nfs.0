@@ -1,21 +1,28 @@
-From: Hugh Caley <hcaley@plasmabat.com>
-Subject: Re: Performance Difference Between Linux NFS Server and Netapp
-Date: Thu, 14 Jul 2005 13:41:02 -0700
-Message-ID: <42D6CDDE.90703@plasmabat.com>
+From: Haakon Riiser <haakon.riiser@fys.uio.no>
+Subject: "Server not responding" after periods of client inactivity
+Date: Thu, 14 Jul 2005 23:25:14 +0200
+Message-ID: <20050714212514.GA23867@fox>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DtAW0-0001jV-SW
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 13:41:04 -0700
-Received: from firewall.neomorphic.com ([205.217.46.68] helo=roma.ev.affymetrix.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DtAVz-0006ig-Iw
-	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 13:41:05 -0700
-Received: from [10.82.12.54] (puglia.ev.affymetrix.com [10.82.12.54])
-	by roma.ev.affymetrix.com (8.11.6/8.11.6) with ESMTP id j6EKf2H31746
-	for <nfs@lists.sourceforge.net>; Thu, 14 Jul 2005 13:41:02 -0700
+	id 1DtBD6-0003Xi-5n
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 14:25:36 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1DtBD5-0006In-Nw
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 14:25:36 -0700
+Received: from mail-mx5.uio.no ([129.240.10.46])
+	by pat.uio.no with esmtp (Exim 4.43)
+	id 1DtBCv-0004EL-Py
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 23:25:26 +0200
+Received: from 231.80-203-47.nextgentel.com ([80.203.47.231] helo=fox.venod.com)
+	by mail-mx5.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.43)
+	id 1DtBCp-0006Rx-M8
+	for nfs@lists.sourceforge.net; Thu, 14 Jul 2005 23:25:19 +0200
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,42 +37,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thank you!  Just the sort of thing I'm looking for ...
+(Trying to post this for the fourth time -- nothing appeared on the
+list the first three times.)
 
-Hugh
+I have noticed that after periods of inactivity on the client
+machine, the first NFS operation will always hang for around
+15 seconds.  My first guess was that the server had powered down
+its disk drives, and that it was the spin-up time that caused the
+delay, but when I had an ssh session open on the server at the
+same time as the client started complaining about not getting a
+reply, I saw that this was /not/ the case -- there is nothing
+on the server that would explain why the client is stalling.
+No load, and no delay when working directly on the server.
 
->From: Chris Penney <cpenney@gmail.com>
->Reply-To: penney@msu.edu
->To: nfs@lists.sourceforge.net
->Subject: Re: [NFS] Performance Difference Between Linux NFS Server and Netapp
->
->
->On 7/14/05, Hugh Caley <hcaley@plasmabat.com> wrote:=20
->  
->
->>>=20
->>> A valid point, of course, but I don't think I'm actually expecting a
->>> single NFSd to act like an expensive Netapp. I do think that wondering
->>> why the Netapp is twice as fast for a sequential write is a valid
->>> question, even if the OS and NFS server subsystem are free. I was kind
->>> of hoping someone would just say "you're getting what you should expect
->>> to get" or "wow, that's slow, try this and this and this".
->>    
->>
->
-> You referenced that you were getting 300 megabits (or 37MB/s). I have=20
->several SLES 9 nfs servers (using self compiled 2.6.11.5
-><http://2.6.11.5>kernel) running on IBM x345 hardware (dual cpu pentum
->4, 2gb ram, dual
->qlogic hbas) connected to a single LSI storage array that presents four lun=
->s=20 ...
->
+I did tcpdump (on the server side) while the client was hanging,
+and this is what I found:
+
+Source  Time  Packets
+------  ----  -------
+client  0.00  V3 ACCESS Call, FH:0x02120000
+client  0.10  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  0.31  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  0.71  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  1.53  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  3.16  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  6.42  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  7.12  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client  8.52  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+client 11.32  [Retransmission of #1] V3 ACCESS Call, FH:0x02120000
+server 15.30  V3 ACCESS Reply
+
+After this, there are no more delays for this shared file system;
+any file operation on the same file system will succeed instantly.
+However, the first operation on any /other/ NFS file system also
+mounted on the client will still hang just like the above example.
+I.e., the hang always happens exactly once for each mount point.
+
+I have tried setting rsize=1024,wsize=1024, and I have tried both
+tcp and udp, but nothing has helped so far.  Any ideas?  tcpdump
+clearly shows that all the requests arrive at the server, so why
+does the server wait 15 seconds before it replies?
+
+NFS server:
+  Pentium III 650 MHz, 256 MB RAM
+  Fedora Core 3 (fully updated)
+  nfs-utils 1.0.6-52
+  kernel 2.6.11-1.35_FC3
+
+NFS client:
+  Athlon XP2500+, 1 GB RAM
+  Slackware 10.1
+  nfs-utils 1.0.7
+  kernel 2.6.11.11
 
 -- 
-Whatsoever hath no fins nor scales in the waters, that shall be an abomination unto you. - Leviticus 11:9-12 
-http://godhatesshrimp.com
-Hugh Caley hcaley@plasmabat.com
-
+ Haakon
 
 
 -------------------------------------------------------
