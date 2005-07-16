@@ -1,23 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] Fix xprt_bindresvport
-Date: Sat, 16 Jul 2005 09:11:45 +0200
-Message-ID: <20050716071144.GA7451@suse.de>
-References: <20050711092556.GD27163@suse.de> <42D68C0B.9000106@RedHat.com>
+From: Olaf Hering <olh@suse.de>
+Subject: Re: [PATCH fs/locks 2 of 3] Use proper tgid in locks_remove_posix
+Date: Sat, 16 Jul 2005 17:15:27 +0200
+Message-ID: <20050716151527.GA7726@suse.de>
+References: <20050711103250.GH27163@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Cc: nfs@lists.sourceforge.net, akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dtgq7-00022g-6y
-	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 00:11:59 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1DtoO7-0001bZ-5I
+	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 08:15:35 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Dtgq5-00041W-PN
-	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 00:11:59 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <42D68C0B.9000106@RedHat.com>
+	id 1DtoO5-0006U7-Jm
+	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 08:15:35 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20050711103250.GH27163@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +31,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Jul 14, 2005 at 12:00:11PM -0400, Steve Dickson wrote:
-> Question, why is 65535 one being used here instead of something
-> like 1023 (or PROT_SOCK-1)? Since since inet_bind() will only
-> succeed with a source ports that are less than PROT_SOCK, so it
-> may not make sense to allow the user to set the max reserver port
-> to a value greater than PROT_SOCK-1, true?
+ On Mon, Jul 11, Olaf Kirch wrote:
 
-I don't understand. Of course you can bind to any socket up to 65535,
-not just 1023.
-And in an environment where the admin doesn't care for privileged
-vs unprivileged ports, it's good to give him the choice of allowing
-the kernel to bind to any port.
+> # Subject: [NFS] Use proper tgid in locks_remove_posix
+> # 
+> # This patch fixes a problem with lost unlock calls in multithreaded
+> # applications. locks_remove_posix would send a single unlock call with
+> # the task group ID of the current process, which may not be the same as
+> # the tgid of the lock. This patch ensures that we send separate unlock
+> # calls for different fl_pid values.
+> # 
+> # Signed-off-by: Olaf Kirch <okir@suse.de>
+> 
+> Index: linux-2.6.12/fs/locks.c
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+This leads to glibc make check errors on ppc64:
+
+cat /usr/src/packages/BUILD/glibc-2.3/cc-nptl/nptl/tst-cancel16.out
+Timed out: killed the child process
+1
+
+tested with 2.6.13-rc3 and 'powerpc32 make check'
 
 
 -------------------------------------------------------
