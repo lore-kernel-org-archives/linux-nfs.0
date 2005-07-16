@@ -1,22 +1,23 @@
-From: Hugh Caley <hcaley@plasmabat.com>
-Subject: Re: Performance Difference Between Linux NFS Server and Netapp
-Date: Tue, 12 Jul 2005 11:19:58 -0700
-Message-ID: <42D409CE.9020204@plasmabat.com>
-References: <EXCHG2003ZbLAX3cf3e00000023@EXCHG2003.microtech-ks.com> <Pine.LNX.4.58.0507121229150.4766@chaos.egr.duke.edu>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] Fix xprt_bindresvport
+Date: Sat, 16 Jul 2005 09:11:45 +0200
+Message-ID: <20050716071144.GA7451@suse.de>
+References: <20050711092556.GD27163@suse.de> <42D68C0B.9000106@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Roger Heflin <rheflin@atipa.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DsPMn-0006jd-Bg
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 11:20:25 -0700
-Received: from firewall.neomorphic.com ([205.217.46.68] helo=roma.ev.affymetrix.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DsPMm-0007bV-1O
-	for nfs@lists.sourceforge.net; Tue, 12 Jul 2005 11:20:25 -0700
-To: Joshua Baker-LePain <jlb17@duke.edu>
-In-Reply-To: <Pine.LNX.4.58.0507121229150.4766@chaos.egr.duke.edu>
+	id 1Dtgq7-00022g-6y
+	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 00:11:59 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Dtgq5-00041W-PN
+	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 00:11:59 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <42D68C0B.9000106@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,53 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The Atabeast is an ATA-raid array, but as far as the server knows it is 
-a 2 Gb fibre-attached SCSI disk.  I get 800-900 Mb/sec sequential writes 
-using ext3; with Reiser or JFS it is much faster.
+On Thu, Jul 14, 2005 at 12:00:11PM -0400, Steve Dickson wrote:
+> Question, why is 65535 one being used here instead of something
+> like 1023 (or PROT_SOCK-1)? Since since inet_bind() will only
+> succeed with a source ports that are less than PROT_SOCK, so it
+> may not make sense to allow the user to set the max reserver port
+> to a value greater than PROT_SOCK-1, true?
 
-Regardless, I don't think this is very relevant.   My only point was 
-that the disk subsystem is capable of much better performance than I'm 
-currently seeing over NFS.  300 Mb/sec seems slow to me when I have a 
-Dual-2.6 Ghz Linux box running kernel 2.6.10 (Fedora core 2) attached to 
-a 10 disk RAID5, and the box is doing nothing else but serving this 
-single NFS server.
+I don't understand. Of course you can bind to any socket up to 65535,
+not just 1023.
+And in an environment where the admin doesn't care for privileged
+vs unprivileged ports, it's good to give him the choice of allowing
+the kernel to bind to any port.
 
-Hugh
-
-Joshua Baker-LePain wrote:
-
->On Tue, 12 Jul 2005 at 11:24am, Roger Heflin wrote
->
->  
->
->>2000mbit/second is a rate that no ide disk subsystem
->>will obtain, so double check your local performance, 
->>    
->>
->
->I have a 3ware based server that begs to differ with you -- over 150MB/s 
->writing, over 300MB/s reading.  That's on a software RAID0 stripe across 2 
->12 port controllers, with each controller doing hardware RAID5.
->
->  
->
->>You will need to use a test larger than the ram size of 
->>the machine to get a realistic rate, at least 2x, and
->>probably 4x, and maybe both just to see how things fall
->>over.
->>    
->>
->
->Absolutely.
->
->  
->
-
-
+Olaf
 -- 
-"Take off your pants and get in the reptile tank." - Joe Rogan, Fear Factor 
-Hugh Caley hcaley@plasmabat.com
-
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
