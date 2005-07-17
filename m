@@ -1,24 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] Fix xprt_bindresvport
-Date: Sun, 17 Jul 2005 18:45:41 +0200
-Message-ID: <20050717164541.GC22503@suse.de>
-References: <482A3FA0050D21419C269D13989C611308539DC6@lavender-fe.eng.netapp.com>
+Subject: Re: making the 'addr=' mount option an address hint
+Date: Sun, 17 Jul 2005 18:51:44 +0200
+Message-ID: <20050717165143.GD22503@suse.de>
+References: <1121614708.6713.41.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>, nfs@lists.sourceforge.net,
-	akpm@osdl.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DuCGw-0006oG-EW
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:45:46 -0700
+	id 1DuCMr-00071N-IA
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:51:53 -0700
 Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1DuCGv-0004E3-0X
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:45:46 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <482A3FA0050D21419C269D13989C611308539DC6@lavender-fe.eng.netapp.com>
+	id 1DuCMp-00053Q-DR
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:51:53 -0700
+To: Jeff Layton <jtlayton@poochiereds.net>
+In-Reply-To: <1121614708.6713.41.camel@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,18 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Jul 17, 2005 at 09:02:20AM -0700, Lever, Charles wrote:
-> in addition, part of AUTH_SYS security (such as it is) is connecting via
-> a privileged port.
+On Sun, Jul 17, 2005 at 11:38:28AM -0400, Jeff Layton wrote:
+>   Unfortunately, I've found that when the mount program does a
+> gethostbyname() call to get the address of the host, it simply picks the
+> first address in the list, without regard for how "close" it is to the
+> client.
 > 
-> a better solution, which trond recently suggested, is to disable
-> xprt->resvport for AUTH_GSS-secured transports, but leave the other
-> security flavors as they are now.
+> The upshot of this is that if even autofs picks a replicated mount entry
+> that is on the same subnet as the client, we may end up mounting across
+> a router anyway.
 
-I'm fine with capping the max port at 1023. I just thought it was
-an elegant way to allow admins to dispense with the privport nonsense
-altogether, if they want. The alternative would have been a mount
-option "noprivports" or similar.
+Yes, I think this is why the am-utils automounter of old had all these
+weird syntax additions to give you control over which server a client
+ends up selecting.
+
+> So, what I'd like to do is roll a patch for mount to change the behavior
+> of the 'addr=' option. Instead of ignoring it, we'd treat it as an
+> address hint. If one of the addresses returned by gethostbyname()
+> matches this address, then we'd mount using that address. Otherwise, the
+> existing behavior would prevail (use the first address in the list).
+
+Why just use it as a hint? Why not override address resolution completely
+when addr= is given?
 
 Olaf
 -- 
