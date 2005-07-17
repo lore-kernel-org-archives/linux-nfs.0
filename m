@@ -1,23 +1,23 @@
-From: Olaf Hering <olh@suse.de>
-Subject: Re: [PATCH fs/locks 2 of 3] Use proper tgid in locks_remove_posix
-Date: Sat, 16 Jul 2005 17:15:27 +0200
-Message-ID: <20050716151527.GA7726@suse.de>
-References: <20050711103250.GH27163@suse.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] Fix xprt_bindresvport
+Date: Sun, 17 Jul 2005 07:36:38 -0400
+Message-ID: <42DA42C6.1020005@RedHat.com>
+References: <20050711092556.GD27163@suse.de> <42D68C0B.9000106@RedHat.com> <20050716071144.GA7451@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net, akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DtoO7-0001bZ-5I
-	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 08:15:35 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1Du7Ry-00062G-R8
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 04:36:50 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1DtoO5-0006U7-Jm
-	for nfs@lists.sourceforge.net; Sat, 16 Jul 2005 08:15:35 -0700
+	id 1Du7Ry-0007rA-E3
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 04:36:50 -0700
 To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050711103250.GH27163@suse.de>
+In-Reply-To: <20050716071144.GA7451@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,27 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
- On Mon, Jul 11, Olaf Kirch wrote:
-
-> # Subject: [NFS] Use proper tgid in locks_remove_posix
-> # 
-> # This patch fixes a problem with lost unlock calls in multithreaded
-> # applications. locks_remove_posix would send a single unlock call with
-> # the task group ID of the current process, which may not be the same as
-> # the tgid of the lock. This patch ensures that we send separate unlock
-> # calls for different fl_pid values.
-> # 
-> # Signed-off-by: Olaf Kirch <okir@suse.de>
+Olaf Kirch wrote:
+> On Thu, Jul 14, 2005 at 12:00:11PM -0400, Steve Dickson wrote:
 > 
-> Index: linux-2.6.12/fs/locks.c
+>>Question, why is 65535 one being used here instead of something
+>>like 1023 (or PROT_SOCK-1)? Since since inet_bind() will only
+>>succeed with a source ports that are less than PROT_SOCK, so it
+>>may not make sense to allow the user to set the max reserver port
+>>to a value greater than PROT_SOCK-1, true?
+> 
+> 
+> I don't understand. Of course you can bind to any socket up to 65535,
+> not just 1023.
+Understood... but ports > 1023 are not considered privileged and
+connections that are not using privilege ports will not be accepted
+by a number of RPC daemon..
 
-This leads to glibc make check errors on ppc64:
+> And in an environment where the admin doesn't care for privileged
+> vs unprivileged ports, it's good to give him the choice of allowing
+> the kernel to bind to any port.
+If such an environment exists, then I agree... but I don't think this
+is the norm... I'm pretty sure a lot of RPC daemons check for
+privileged port by default... Something I don't think admits can
+turn off...
 
-cat /usr/src/packages/BUILD/glibc-2.3/cc-nptl/nptl/tst-cancel16.out
-Timed out: killed the child process
-1
+Don't get me wrong, I really like the idea of being able to define
+the range of privileged ports the kernel can use (I think it will be
+very handy), but by definition a privileged port is between 1 and 1023
+and by setting the max port to 1023 we would be maintaining that
+definition...
 
-tested with 2.6.13-rc3 and 'powerpc32 make check'
+steved.
 
 
 -------------------------------------------------------
