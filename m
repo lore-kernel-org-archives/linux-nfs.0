@@ -1,32 +1,21 @@
-From: Jeff Layton <jtlayton@poochiereds.net>
-Subject: making the 'addr=' mount option an address hint
-Date: Sun, 17 Jul 2005 11:38:28 -0400
-Message-ID: <1121614708.6713.41.camel@localhost.localdomain>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: [PATCH] Fix xprt_bindresvport
+Date: Sun, 17 Jul 2005 09:02:20 -0700
+Message-ID: <482A3FA0050D21419C269D13989C611308539DC6@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>, <akpm@osdl.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DuBDs-0004OU-7w
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 08:38:32 -0700
-Received: from ms-smtp-04-lbl.southeast.rr.com ([24.25.9.103] helo=ms-smtp-04-eri0.southeast.rr.com)
-	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1DuBDr-0000RT-O2
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 08:38:32 -0700
-Received: from mail.poochiereds.net (cpe-065-190-221-104.nc.res.rr.com [65.190.221.104])
-	by ms-smtp-04-eri0.southeast.rr.com (8.12.10/8.12.7) with ESMTP id j6HFcSL4023389
-	for <nfs@lists.sourceforge.net>; Sun, 17 Jul 2005 11:38:28 -0400 (EDT)
-Received: from localhost (localhost [127.0.0.1])
-	by mail.poochiereds.net (Postfix) with ESMTP id DBCD93C122
-	for <nfs@lists.sourceforge.net>; Sun, 17 Jul 2005 11:38:27 -0400 (EDT)
-Received: from mail.poochiereds.net ([127.0.0.1])
-	by localhost (salusa [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 19526-04 for <nfs@lists.sourceforge.net>;
-	Sun, 17 Jul 2005 11:38:27 -0400 (EDT)
-Received: from tleilax.poochiereds.net (tleilax.poochiereds.net [192.168.1.3])
-	by mail.poochiereds.net (Postfix) with ESMTP id B1E583C05D
-	for <nfs@lists.sourceforge.net>; Sun, 17 Jul 2005 11:38:27 -0400 (EDT)
-To: nfs@lists.sourceforge.net
+	id 1DuBb1-0005Cj-89
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:02:27 -0700
+Received: from mx1.netapp.com ([216.240.18.38])
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
+	id 1DuBb1-0006Jz-2d
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:02:27 -0700
+To: "Steve Dickson" <SteveD@redhat.com>, "Olaf Kirch" <okir@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,40 +29,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-  I've been working on a fairly major overhaul of the autofs mount_nfs
-code. One of the things I've recently added is making it prefer to mount
-from server addresses that are on the same subnet as the client.
+> Olaf Kirch wrote:
+> > On Thu, Jul 14, 2005 at 12:00:11PM -0400, Steve Dickson wrote:
+> >=20
+> >>Question, why is 65535 one being used here instead of something
+> >>like 1023 (or PROT_SOCK-1)? Since since inet_bind() will only
+> >>succeed with a source ports that are less than PROT_SOCK, so it
+> >>may not make sense to allow the user to set the max reserver port
+> >>to a value greater than PROT_SOCK-1, true?
+> >=20
+> >=20
+> > I don't understand. Of course you can bind to any socket up=20
+> to 65535,
+> > not just 1023.
+> Understood... but ports > 1023 are not considered privileged and
+> connections that are not using privilege ports will not be accepted
+> by a number of RPC daemon..
 
-  Unfortunately, I've found that when the mount program does a
-gethostbyname() call to get the address of the host, it simply picks the
-first address in the list, without regard for how "close" it is to the
-client.
+in addition, part of AUTH_SYS security (such as it is) is connecting via
+a privileged port.
 
-The upshot of this is that if even autofs picks a replicated mount entry
-that is on the same subnet as the client, we may end up mounting across
-a router anyway.
-
-A simple way to correct this would be to make autofs pass the address
-instead of the hostname when calling "mount". However, that will make
-for an ugly /proc/mounts, especially if we have a lot of automounted NFS
-mounts (it's more human-friendly to keep the hostname info when looking
-at the list of mounts).
-
-So, what I'd like to do is roll a patch for mount to change the behavior
-of the 'addr=' option. Instead of ignoring it, we'd treat it as an
-address hint. If one of the addresses returned by gethostbyname()
-matches this address, then we'd mount using that address. Otherwise, the
-existing behavior would prevail (use the first address in the list).
-
-I'm writing this to solicit some feedback before I dive in and start
-working on it. Does this sound like a reasonable idea? Is there
-something I'm not considering that would prevent this from working?
-
-Thanks,
-Jeff
-
-
+a better solution, which trond recently suggested, is to disable
+xprt->resvport for AUTH_GSS-secured transports, but leave the other
+security flavors as they are now.
 
 
 -------------------------------------------------------
