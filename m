@@ -1,21 +1,23 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: [PATCH] Fix xprt_bindresvport
-Date: Sun, 17 Jul 2005 09:02:20 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539DC6@lavender-fe.eng.netapp.com>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH fs/locks 2 of 3] Use proper tgid in locks_remove_posix
+Date: Sun, 17 Jul 2005 18:42:09 +0200
+Message-ID: <20050717164209.GB22503@suse.de>
+References: <20050711103250.GH27163@suse.de> <20050716151527.GA7726@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>, <akpm@osdl.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DuBb1-0005Cj-89
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:02:27 -0700
-Received: from mx1.netapp.com ([216.240.18.38])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DuBb1-0006Jz-2d
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:02:27 -0700
-To: "Steve Dickson" <SteveD@redhat.com>, "Olaf Kirch" <okir@suse.de>
+	id 1DuCDb-0006em-Tc
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:42:19 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1DuCDa-0003jT-KM
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 09:42:20 -0700
+To: Olaf Hering <olh@suse.de>
+In-Reply-To: <20050716151527.GA7726@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,29 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> Olaf Kirch wrote:
-> > On Thu, Jul 14, 2005 at 12:00:11PM -0400, Steve Dickson wrote:
-> >=20
-> >>Question, why is 65535 one being used here instead of something
-> >>like 1023 (or PROT_SOCK-1)? Since since inet_bind() will only
-> >>succeed with a source ports that are less than PROT_SOCK, so it
-> >>may not make sense to allow the user to set the max reserver port
-> >>to a value greater than PROT_SOCK-1, true?
-> >=20
-> >=20
-> > I don't understand. Of course you can bind to any socket up=20
-> to 65535,
-> > not just 1023.
-> Understood... but ports > 1023 are not considered privileged and
-> connections that are not using privilege ports will not be accepted
-> by a number of RPC daemon..
+On Sat, Jul 16, 2005 at 05:15:27PM +0200, Olaf Hering wrote:
+> This leads to glibc make check errors on ppc64:
+> 
+> cat /usr/src/packages/BUILD/glibc-2.3/cc-nptl/nptl/tst-cancel16.out
+> Timed out: killed the child process
+> 1
+> 
+> tested with 2.6.13-rc3 and 'powerpc32 make check'
 
-in addition, part of AUTH_SYS security (such as it is) is connecting via
-a privileged port.
+I thought we had fixed those. 
 
-a better solution, which trond recently suggested, is to disable
-xprt->resvport for AUTH_GSS-secured transports, but leave the other
-security flavors as they are now.
+Anyway, as Trond pointed out, this patch is is irrelevant on 2.6.12.
+
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
