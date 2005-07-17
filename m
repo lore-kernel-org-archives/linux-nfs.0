@@ -1,23 +1,23 @@
-From: Jeff Layton <jtlayton@poochiereds.net>
-Subject: Re: making the 'addr=' mount option an address hint
-Date: Sun, 17 Jul 2005 13:40:14 -0400
-Message-ID: <1121622014.6713.56.camel@localhost.localdomain>
-References: <1121614708.6713.41.camel@localhost.localdomain>
-	 <20050717165143.GD22503@suse.de>
+From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+Subject: Re: [PATCH] Fix xprt_bindresvport
+Date: Sun, 17 Jul 2005 22:49:31 +0200 (CEST)
+Message-ID: <Pine.LNX.4.61.0507172244080.30548@maggie.lkpg.cendio.se>
+References: <20050711092556.GD27163@suse.de> <42D68C0B.9000106@RedHat.com>
+ <20050716071144.GA7451@suse.de> <42DA42C6.1020005@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1319272407-1121633256=:30548"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DuD7k-0000Ra-0p
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 10:40:20 -0700
-Received: from ms-smtp-01-lbl.southeast.rr.com ([24.25.9.100] helo=ms-smtp-01-eri0.southeast.rr.com)
+	id 1DuG5Z-00070c-M5
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 13:50:17 -0700
+Received: from mail.cendio.se ([193.12.253.69])
 	by sc8-sf-mx2.sourceforge.net with esmtp (Exim 4.44)
-	id 1DuD7i-0000m2-5d
-	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 10:40:20 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050717165143.GD22503@suse.de>
+	id 1DuG56-00042P-AX
+	for nfs@lists.sourceforge.net; Sun, 17 Jul 2005 13:50:17 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <42DA42C6.1020005@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +31,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, 2005-07-17 at 18:51 +0200, Olaf Kirch wrote:
-> Why just use it as a hint? Why not override address resolution completely
-> when addr= is given?
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-I suppose that's a possibility, but it might have security implications.
-My concern there would be that someone could then essentially pass an
-addr= option to a mount that actually doesn't match the hostname. Then
-you have a mount that appears at first glance to be from a hostname that
-you believe to be valid, but is actually a different host entirely.
+--789237761-1319272407-1121633256=:30548
+Content-Type: TEXT/PLAIN; CHARSET=iso-8859-1; format=flowed
+Content-ID: <Pine.LNX.4.61.0507172247571.30548@maggie.lkpg.cendio.se>
+Content-Transfer-Encoding: quoted-printable
 
-Then again, I suppose you can get the same effect by temporarily
-spoofing hosts resolution, so perhaps just allowing addr= to override it
-is the best bet.
+On Sun, 17 Jul 2005, Steve Dickson wrote:
 
--- Jeff
+>> And in an environment where the admin doesn't care for privileged
+>> vs unprivileged ports, it's good to give him the choice of allowing
+>> the kernel to bind to any port.
+> If such an environment exists, then I agree... but I don't think this
+> is the norm... I'm pretty sure a lot of RPC daemons check for
+> privileged port by default... Something I don't think admits can
+> turn off...
+
+Novell Netware is one system which does not check for privileged ports.=20
+Also, when using SSH tunnels, typically you do not use privileged ports.=20
+(With unfs3 this can actually be done in a secure way by using the one=20
+time password feature.)
 
 
+> Don't get me wrong, I really like the idea of being able to define
+> the range of privileged ports the kernel can use (I think it will be
+> very handy), but by definition a privileged port is between 1 and 1023
+> and by setting the max port to 1023 we would be maintaining that
+> definition...
+
+I agree with that definition, but I also agree with Olaf Kirch: Adding a=20
+"noprivports" option is not as elegant.
+
+--=20
+Peter =C5strand		Chief Developer
+Cendio			www.thinlinc.com
+Teknikringen 3		www.cendio.se
+583 30 Link=F6ping        Phone: +46-13-21 46 00
+--789237761-1319272407-1121633256=:30548--
 
 
 -------------------------------------------------------
