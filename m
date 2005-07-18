@@ -1,23 +1,28 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Smooth out NFS client writeback
-Date: Thu, 02 Jun 2005 00:38:30 -0400
-Message-ID: <1117687110.10822.114.camel@lade.trondhjem.org>
-References: <20050602032609.47381.qmail@web30715.mail.mud.yahoo.com>
+Subject: Re: making the 'addr=' mount option an address hint
+Date: Mon, 18 Jul 2005 14:45:45 -0400
+Message-ID: <1121712345.8707.12.camel@lade.trondhjem.org>
+References: <1121614708.6713.41.camel@localhost.localdomain>
+	 <20050717165143.GD22503@suse.de>
+	 <1121700179.8780.1.camel@lade.trondhjem.org>
+	 <1121709311.23863.14.camel@barsoom.rdu.redhat.com>
+	 <1121710145.4522.122.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=UTF-8
+Cc: Jeff Layton <jtlayton@poochiereds.net>,
+	Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.11] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DdhTp-0004Da-NN
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 21:38:53 -0700
+	id 1Duae4-00089U-S0
+	for nfs@lists.sourceforge.net; Mon, 18 Jul 2005 11:47:16 -0700
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by sc8-sf-mx1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41)
-	id 1DdhTn-0003nr-Pi
-	for nfs@lists.sourceforge.net; Wed, 01 Jun 2005 21:38:53 -0700
-To: Shantanu Goel <sgoel01@yahoo.com>
-In-Reply-To: <20050602032609.47381.qmail@web30715.mail.mud.yahoo.com>
+	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Duadc-0004j1-TM
+	for nfs@lists.sourceforge.net; Mon, 18 Jul 2005 11:47:17 -0700
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1121710145.4522.122.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +36,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 01.06.2005 Klokka 20:26 (-0700) skreiv Shantanu Goel:
-> Here are some numbers with iozone (avg of 3 runs). 
-> The command was run as: iozone -i0 -r4k -s64m -c -t4
-> I manually booted the client machine with mem=256M.
+m=C3=A5 den 18.07.2005 Klokka 11:09 (-0700) skreiv Dan Stromberg:
+> Another option would be to make programs that inspect the mount list
+> (like the mount command :) optionally do a reverse lookup on IP
+> addresses when listing mounts, or even have them do it by defauylt.
 
-What happens when you increase the file size to significantly beyond the
-memory size on a slow network. That is the interesting case.
-Try, for instance, booting with mem=32m and iozone -s 
-
-> I also ran iozone in mmap mode with same options as
-> above but specifying -B as well.  The machine hung
-> with the stock client so could not complete the test. 
-> Here are the numbers with the patched client.
-
-Where was the machine hanging?
+I fully agree, except on the last point: I'm not sure you want reverse
+lookup to be the default behaviour. Consider, for instance, the case
+where you have a multihomed server that runs different servers on
+different IP addresses.
 
 Cheers,
   Trond
 
-BTW: how did you determine the values for NFS_WRITE_CLUSTER and
-NFS_COMMIT_CLUSTER. they appear to be completely arbitrary AFAICS.
-
-Also, have you compared to the latest NFS_ALL kernels? They contain a
-bunch of extra latency fixes that came from Ingo's RT work.
-
-Finally, please explain _why_ have you removed the FLUSH_STABLE from
-nfs_writepage()? The reason for it in the existing code is to avoid the
-extra COMMIT call in situations where we know we are already very low on
-memory. I don't see anything new in your patches that avoids these low
-memory situations.
-
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by Yahoo.
-Introducing Yahoo! Search Developer Network - Create apps using Yahoo!
-Search APIs Find out how you can build Yahoo! directly into your own
-Applications - visit http://developer.yahoo.net/?fr=offad-ysdn-ostg-q22005
+SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
+from IBM. Find simple to follow Roadmaps, straightforward articles,
+informative Webcasts and more! Get everything you need to get up to
+speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
