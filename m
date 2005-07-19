@@ -1,22 +1,24 @@
-From: Nick I <clusterbuilder@gmail.com>
-Subject: NFS links
-Date: Mon, 18 Jul 2005 15:45:05 -0600
-Message-ID: <e073f91205071814459236e2e@mail.gmail.com>
-Reply-To: Nick I <clusterbuilder@gmail.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: making the 'addr=' mount option an address hint
+Date: Tue, 19 Jul 2005 20:03:46 +0800 (WST)
+Message-ID: <Pine.LNX.4.63.0507191953300.2061@donald.themaw.net>
+References: <1121614708.6713.41.camel@localhost.localdomain>
+ <1121700961.8780.13.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Jeff Layton <jtlayton@poochiereds.net>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DudRT-0007VT-4Y
-	for nfs@lists.sourceforge.net; Mon, 18 Jul 2005 14:46:27 -0700
-Received: from wproxy.gmail.com ([64.233.184.192])
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1DudRS-0006a1-0T
-	for nfs@lists.sourceforge.net; Mon, 18 Jul 2005 14:46:27 -0700
-Received: by wproxy.gmail.com with SMTP id i8so1098257wra
-        for <nfs@lists.sourceforge.net>; Mon, 18 Jul 2005 14:46:19 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1Duqwe-0000Oh-Qs
+	for nfs@lists.sourceforge.net; Tue, 19 Jul 2005 05:11:32 -0700
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44)
+	id 1Duqwc-0002bm-TS
+	for nfs@lists.sourceforge.net; Tue, 19 Jul 2005 05:11:32 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1121700961.8780.13.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,26 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Mon, 18 Jul 2005, Trond Myklebust wrote:
 
-I work on a Web site at www.clusterbuilder.org.  The site highlights a
-broad spectrum of high performance computing related technologies.  It
-has links to reviews, comparisons, pricing and other information
-related to the many HPC solutions available. The site also allows for
-you to complete one request-for-quote form and have multiple hardware
-vendors of your choice provide pricing quotes to you.
+> su den 17.07.2005 Klokka 11:38 (-0400) skreiv Jeff Layton:
+> > So, what I'd like to do is roll a patch for mount to change the behavior
+> > of the 'addr=' option. Instead of ignoring it, we'd treat it as an
+> > address hint. If one of the addresses returned by gethostbyname()
+> > matches this address, then we'd mount using that address. Otherwise, the
+> > existing behavior would prevail (use the first address in the list).
+> > 
+> > I'm writing this to solicit some feedback before I dive in and start
+> > working on it. Does this sound like a reasonable idea? Is there
+> > something I'm not considering that would prevent this from working?
+> 
+> There's nothing preventing it from working, but what is stopping you
+> from developing a fully automatic version?
+> 
+> If you see that the server has multiple addresses, you can, for
+> instance, try timing an RPC ping (null rpc call) to the NFS server. In
+> the version of "mount" that RedHat is using (which I still haven't
+> pushed to the utils-linux maintainer) we're already doing a ping in
+> order to test for service availability. It would be trivial to time
+> those pings.
 
-We need knowledgeable cluster users to submit sites that have proved a
-valuable resources to them.  One particular area that we want to make
-sure is complete are file systems, which NFS is listed under. Please
-take a minute and submit additional links associated with NFS, File
-systems or other areas that will benefit the HPC community. (To submit
-content for the site, click on the Submit Content section on
-www.clusterbuilder.org).
+That patch is present on Aurora (FC2 base , where I've been testing autofs 
+development. It effectively prevents mounting of any more than about 80 
+mounts before you have to wait for the sockets to close.
 
-Thank you for your help.
+Don't get me wrong I'm also guilty of probing in autofs.
 
-Nick
+Unfortunately, it really interferes with the ability to mount a healthy 
+number of filesystems quickly.
+
+Perhaps we should consider you old patch to multiplex RPC TCP connections 
+before pushing ahead with more probing in the utilities. I also plead 
+guilty to not any work on this. I wish I had more time.
+
+Ian
+
 
 
 -------------------------------------------------------
