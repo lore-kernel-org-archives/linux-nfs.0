@@ -1,24 +1,24 @@
-From: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Subject: rpc.mountd /home exported to both
-Date: Wed, 20 Jul 2005 12:47:02 -0400
-Message-ID: <1121878024.13990.52.camel@pc.ilinx>
+From: Brett Petrusek <brettp@aspsys.com>
+Subject: IA64 Server / IA32 Client Problem
+Date: Wed, 20 Jul 2005 16:37:18 -0600
+Message-ID: <42DED21E.4010608@aspsys.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-TYrAFLfkCepwMXRtgv9T"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DvHix-0004sd-KU
-	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 09:47:11 -0700
-Received: from linux.interlinx.bc.ca ([66.11.173.224])
-	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1DvHiw-0002oJ-EK
-	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 09:47:11 -0700
-Received: from pc.ilinx (pc.ilinx [10.75.22.1])
-	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
-	(No client certificate requested)
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id DBB08AB495
-	for <nfs@lists.sourceforge.net>; Wed, 20 Jul 2005 12:47:08 -0400 (EDT)
+	id 1DvN9T-0003rT-AD
+	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 15:34:55 -0700
+Received: from [216.150.199.16] (helo=mail.aspsys.com)
+	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
+	id 1DvN9T-0007bl-5n
+	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 15:34:55 -0700
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by mail.aspsys.com (Postfix) with ESMTP id B087869001B
+	for <nfs@lists.sourceforge.net>; Wed, 20 Jul 2005 16:34:54 -0600 (MDT)
+Received: from [192.168.0.38] (unknown [192.168.0.38])
+	by mail.aspsys.com (Postfix) with ESMTP id 0DC6B69000B
+	for <nfs@lists.sourceforge.net>; Wed, 20 Jul 2005 16:34:54 -0600 (MDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,53 +33,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I'm not sure if this is a bug or what, but I am experiencing severe 
+performace problems between an IA64 NFS server and IA32 NFS client. I 
+have tried every combination of socket buffer sizes as well as many 
+other nfs options, but none of them seem to have any effect. I have 
+tried RHEL21 to RHEL3U5 with all of these socket combos and still no 
+difference. The command I am running is:
 
---=-TYrAFLfkCepwMXRtgv9T
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+time dd if=/dev/zero of=/scratch_dir_across_nfs bs=1M count=128
 
-I am running nfs-utils-1.0.7 on Mandrake (er, I mean Mandriva) LE 2005
-successfully.
+Between two IA32 machines this takes 4-5 seconds. Between IA64 server 
+and IA32 client this takes on the order of minutes. Network performance 
+has been eliminated from the equation as after kernel tuning we have 
+achieved consistent 94% of peak tcp throughput and 95.7% of peak udp 
+throughput on our GigE network.  This is both between IA32 and IA64 
+systems.
 
-I am getting messages in my syslog however of the format:
+Let me know if there is an other info I should provide to help 
+troubleshoot this problem.
 
-08:04:49 rpc.mountd /home exported to both 10.75.22.0/24 and pc.ilinx in *,=
-10.75.22.0/24,pc.ilinx
-
-Which is not entirely inaccurate seeing as I have the following
-in /etc/exports:
-
-/home           pc(rw,no_root_squash,sync) pvr(rw,no_root_squash,sync) bria=
-n-vmware(rw,no_root_squash,sync) 10.75.22.0/24(rw,sync)
-
-Where essentially, I want the 10.75.22.0/24 subnet to have one set of
-options (rw,sync) but want a few selected hosts to have different
-options.  This is the syntax AFAICS.  Is there something wrong in the
-above specification?
-
-Everything seems to work well.  It's just an annoying message I would
-like to get rid of.
-
-Any ideas?
-
-Thanx,
-b.
-
-
---=-TYrAFLfkCepwMXRtgv9T
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.0 (GNU/Linux)
-
-iD8DBQBC3oAGl3EQlGLyuXARAn/HAKC50TOGZldLfYy/MPab8g5WAURHLgCgpB1o
-NexnYSZht1/Tfnc/v7fWeNk=
-=h6Ry
------END PGP SIGNATURE-----
-
---=-TYrAFLfkCepwMXRtgv9T--
-
+Any help is appreciated.
+Thanks, Brett P
 
 
 -------------------------------------------------------
