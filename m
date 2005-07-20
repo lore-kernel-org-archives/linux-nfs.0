@@ -1,24 +1,24 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: nfsd: rewrite performance problem
-Date: Wed, 20 Jul 2005 15:06:24 +0200
-Message-ID: <20050720130623.GA12537@suse.de>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: rpc.mountd /home exported to both
+Date: Wed, 20 Jul 2005 12:47:02 -0400
+Message-ID: <1121878024.13990.52.camel@pc.ilinx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-TYrAFLfkCepwMXRtgv9T"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DvEHP-0006RC-No
-	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 06:06:31 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	id 1DvHix-0004sd-KU
+	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 09:47:11 -0700
+Received: from linux.interlinx.bc.ca ([66.11.173.224])
+	by sc8-sf-mx1.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1DvEHP-0003fj-80
-	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 06:06:31 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	id 1DvHiw-0002oJ-EK
+	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 09:47:11 -0700
+Received: from pc.ilinx (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 557B81D743
-	for <nfs@lists.sourceforge.net>; Wed, 20 Jul 2005 15:06:24 +0200 (CEST)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id DBB08AB495
+	for <nfs@lists.sourceforge.net>; Wed, 20 Jul 2005 12:47:08 -0400 (EDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,48 +33,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
 
-we've just been investigating a performance problem at a customer of ours.
-On a machine of 4G RAM, they were running N iozone threads on one 1G file
-each. For 3 threads, where the working set fits into RAM, the rewrite
-numbers are reasonably, but when using 4 threads, rewrite performance is
-horrible.
+--=-TYrAFLfkCepwMXRtgv9T
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-vmstat shows that in this case, the number of block reads roughly equals
-the number of block writes. They reproduced this with our sles9 kernel as
-well as 2.6.12 vanilly, with both reiser and ext3.
+I am running nfs-utils-1.0.7 on Mandrake (er, I mean Mandriva) LE 2005
+successfully.
 
-Chris Mason and I looked into this, and we believe we've nailed down
-the problem, which is the use of writev in nfsd_write. nfsd receives
-the WRITE request from the client, broken up into page sized chunks.
-The default implementation of writev will simply call file->op->write
-for each of the fragments it's given, but the first fragment is
-PAGE_SIZE minus the RPC header and write_args. So we end up writing
-less than a full block, causing the block to be read first. All
-subsequent pages in the iovec are non block aligned either, so the
-same happens for these as well.
+I am getting messages in my syslog however of the format:
 
-Does that sound right?
+08:04:49 rpc.mountd /home exported to both 10.75.22.0/24 and pc.ilinx in *,=
+10.75.22.0/24,pc.ilinx
 
-In order to verify our theory, we've asked the customer to test with 8K
-wsize and jumbograms enabled. I'll keep you posted.
+Which is not entirely inaccurate seeing as I have the following
+in /etc/exports:
 
-Possible fixes that I can think of are to implement generic_file_writev
-that avoids calling write() for each chunk, but rather grabs all
-the pages, updates each and passes it to writepage. Another would be
-to use a large linear buffer in svc_recvfrom rather than the iovec,
-as the initial implementation used to do. Another (band-aid)
-hack would be to check in nfsd_write whether we're re-writing a multiple
-of PAGE_SIZE worth of data, and properly align the iovec in this case.
+/home           pc(rw,no_root_squash,sync) pvr(rw,no_root_squash,sync) bria=
+n-vmware(rw,no_root_squash,sync) 10.75.22.0/24(rw,sync)
 
-Any other suggestions?
+Where essentially, I want the 10.75.22.0/24 subnet to have one set of
+options (rw,sync) but want a few selected hosts to have different
+options.  This is the syntax AFAICS.  Is there something wrong in the
+above specification?
 
-Cheers,
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Everything seems to work well.  It's just an annoying message I would
+like to get rid of.
+
+Any ideas?
+
+Thanx,
+b.
+
+
+--=-TYrAFLfkCepwMXRtgv9T
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.0 (GNU/Linux)
+
+iD8DBQBC3oAGl3EQlGLyuXARAn/HAKC50TOGZldLfYy/MPab8g5WAURHLgCgpB1o
+NexnYSZht1/Tfnc/v7fWeNk=
+=h6Ry
+-----END PGP SIGNATURE-----
+
+--=-TYrAFLfkCepwMXRtgv9T--
+
 
 
 -------------------------------------------------------
