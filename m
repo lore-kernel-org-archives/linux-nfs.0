@@ -1,19 +1,25 @@
-From: Jeff Layton <jtlayton@poochiereds.net>
-Subject: [PATCH] addr= hint for mount program
-Date: Tue, 19 Jul 2005 17:53:02 -0400
-Message-ID: <1121809982.6739.7.camel@localhost.localdomain>
+From: Olaf Kirch <okir@suse.de>
+Subject: nfsd: rewrite performance problem
+Date: Wed, 20 Jul 2005 15:06:24 +0200
+Message-ID: <20050720130623.GA12537@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-sBrbCW7Nkirhcx/+5K9g"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=sc8-sf-mx1.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dv01i-0000it-Pd
-	for nfs@lists.sourceforge.net; Tue, 19 Jul 2005 14:53:22 -0700
-Received: from ms-smtp-04-lbl.southeast.rr.com ([24.25.9.103] helo=ms-smtp-04-eri0.southeast.rr.com)
-	by sc8-sf-mx1.sourceforge.net with esmtp (Exim 4.44)
-	id 1Dv01h-0000Wi-1I
-	for nfs@lists.sourceforge.net; Tue, 19 Jul 2005 14:53:23 -0700
-To: autofs@linux.kernel.org, nfs@lists.sourceforge.net
+	id 1DvEHP-0006RC-No
+	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 06:06:31 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1DvEHP-0003fj-80
+	for nfs@lists.sourceforge.net; Wed, 20 Jul 2005 06:06:31 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 557B81D743
+	for <nfs@lists.sourceforge.net>; Wed, 20 Jul 2005 15:06:24 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,220 +33,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi,
 
---=-sBrbCW7Nkirhcx/+5K9g
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+we've just been investigating a performance problem at a customer of ours.
+On a machine of 4G RAM, they were running N iozone threads on one 1G file
+each. For 3 threads, where the working set fits into RAM, the rewrite
+numbers are reasonably, but when using 4 threads, rewrite performance is
+horrible.
 
-Here's my first stab at a patch for mount to make it treat the addr=
-option as a hint. I've done some very basic testing and it seems to do
-the right thing, but I need to dredge up a multi-homed NFS server here
-soon to verify that all is working. If anyone has one and wants to test
-this out for me, I'd be appreciative :-)
+vmstat shows that in this case, the number of block reads roughly equals
+the number of block writes. They reproduced this with our sles9 kernel as
+well as 2.6.12 vanilly, with both reiser and ext3.
 
-The patch is a little larger than I had originally anticipated,
-primarily because I had to move a chunk of code that happened before the
-option parsing to after.
+Chris Mason and I looked into this, and we believe we've nailed down
+the problem, which is the use of writev in nfsd_write. nfsd receives
+the WRITE request from the client, broken up into page sized chunks.
+The default implementation of writev will simply call file->op->write
+for each of the fragments it's given, but the first fragment is
+PAGE_SIZE minus the RPC header and write_args. So we end up writing
+less than a full block, causing the block to be read first. All
+subsequent pages in the iovec are non block aligned either, so the
+same happens for these as well.
 
-Since the util-linux mailing list seems to be inactive, should I just
-submit this to the util-linux maintainer directly?
+Does that sound right?
 
--- Jeff
+In order to verify our theory, we've asked the customer to test with 8K
+wsize and jumbograms enabled. I'll keep you posted.
 
+Possible fixes that I can think of are to implement generic_file_writev
+that avoids calling write() for each chunk, but rather grabs all
+the pages, updates each and passes it to writepage. Another would be
+to use a large linear buffer in svc_recvfrom rather than the iovec,
+as the initial implementation used to do. Another (band-aid)
+hack would be to check in nfsd_write whether we're re-writing a multiple
+of PAGE_SIZE worth of data, and properly align the iovec in this case.
 
---=-sBrbCW7Nkirhcx/+5K9g
-Content-Disposition: attachment; filename=util-linux-2.12q-mount-preferred-address.patch
-Content-Type: text/x-patch; name=util-linux-2.12q-mount-preferred-address.patch; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Any other suggestions?
 
-Index: util-linux/mount/nfsmount.c
-===================================================================
---- util-linux/mount/nfsmount.c	(revision 170)
-+++ util-linux/mount/nfsmount.c	(working copy)
-@@ -195,7 +195,7 @@
- 	static char *prev_bg_host;
- 	char hostdir[1024];
- 	CLIENT *mclient;
--	char *hostname, *dirname, *old_opts, *mounthost = NULL;
-+	char *hostname, *dirname, *old_opts, *mounthost, *prefaddr_s = NULL;
- 	char new_opts[1024];
- 	struct timeval total_timeout;
- 	enum clnt_stat clnt_stat;
-@@ -207,6 +207,7 @@
- 	struct sockaddr_in server_addr;
- 	struct sockaddr_in mount_server_addr;
- 	struct pmap *pm_mnt;
-+	struct in_addr prefaddr;
- 	int msock, fsock;
- 	struct timeval retry_timeout;
- 	union {
-@@ -214,7 +215,7 @@
- 		struct mountres3 nfsv3;
- 	} status;
- 	struct stat statbuf;
--	char *s;
-+	char *s = NULL;
- 	int port, mountport, proto, bg, soft, intr;
- 	int posix, nocto, noac, nolock, broken_suid;
- 	int retry, tcp;
-@@ -258,43 +259,6 @@
- 		goto fail;
- 	}
- 
--	server_addr.sin_family = AF_INET;
--#ifdef HAVE_inet_aton
--	if (!inet_aton(hostname, &server_addr.sin_addr))
--#endif
--	{
--		if ((hp = gethostbyname(hostname)) == NULL) {
--			fprintf(stderr, _("mount: can't get address for %s\n"),
--				hostname);
--			goto fail;
--		} else {
--			if (hp->h_length > sizeof(struct in_addr)) {
--				fprintf(stderr,
--					_("mount: got bad hp->h_length\n"));
--				hp->h_length = sizeof(struct in_addr);
--			}
--			memcpy(&server_addr.sin_addr,
--			       hp->h_addr, hp->h_length);
--		}
--	}
--
--	memcpy (&mount_server_addr, &server_addr, sizeof (mount_server_addr));
--
--	/* add IP address to mtab options for use when unmounting */
--
--	s = inet_ntoa(server_addr.sin_addr);
--	old_opts = *extra_opts;
--	if (!old_opts)
--		old_opts = "";
--	if (strlen(old_opts) + strlen(s) + 10 >= sizeof(new_opts)) {
--		fprintf(stderr, _("mount: "
--				  "excessively long option argument\n"));
--		goto fail;
--	}
--	sprintf(new_opts, "%s%saddr=%s",
--		old_opts, *old_opts ? "," : "", s);
--	*extra_opts = xstrdup(new_opts);
--
- 	/* Set default options.
- 	 * rsize/wsize (and bsize, for ver >= 3) are left 0 in order to
- 	 * let the kernel decide.
-@@ -328,6 +292,7 @@
- 	nfsvers = 0;
- 
- 	/* parse options */
-+	old_opts = xstrdup(*extra_opts);
- 
- 	for (opt = strtok(old_opts, ","); opt; opt = strtok(NULL, ",")) {
- 		if ((opteq = strchr(opt, '='))) {
-@@ -388,10 +353,10 @@
- #endif
- 					printf(_("Warning: Option namlen is not supported.\n"));
- 			} else if (!strcmp(opt, "addr")) {
--				/* ignore */;
-+				prefaddr_s = opteq + 1;
- 			} else {
- 				printf(_("unknown nfs mount parameter: "
--					 "%s=%d\n"), opt, val);
-+					 "%s=%s\n"), opt, opteq+1);
- 				goto fail;
- 			}
- 		} else {
-@@ -477,8 +442,8 @@
- 	       data.rsize, data.wsize, data.timeo, data.retrans);
- 	printf("acreg (min, max) = (%d, %d), acdir (min, max) = (%d, %d)\n",
- 	       data.acregmin, data.acregmax, data.acdirmin, data.acdirmax);
--	printf("port = %d, bg = %d, retry = %d, flags = %.8x\n",
--	       port, bg, retry, data.flags);
-+	printf("port = %d, bg = %d, retry = %d, flags = %.8x, addr = %s\n",
-+	       port, bg, retry, data.flags, prefaddr_s);
- 	printf("mountprog = %d, mountvers = %d, nfsprog = %d, nfsvers = %d\n",
- 	       mountprog, mountvers, nfsprog, nfsvers);
- 	printf("soft = %d, intr = %d, posix = %d, nocto = %d, noac = %d\n",
-@@ -511,6 +476,78 @@
- 		return retval;
- 	}
- 
-+	s = NULL;
-+	server_addr.sin_family = AF_INET;
-+#ifdef HAVE_inet_aton
-+	if (!inet_aton(hostname, &server_addr.sin_addr))
-+#endif
-+	{
-+		if ((hp = gethostbyname(hostname)) == NULL) {
-+			fprintf(stderr, _("mount: can't get address for %s\n"),
-+				hostname);
-+			goto fail;
-+		} else {
-+			if (hp->h_length > sizeof(struct in_addr)) {
-+				fprintf(stderr,
-+					_("mount: got bad hp->h_length\n"));
-+				hp->h_length = sizeof(struct in_addr);
-+			}
-+
-+			val = 0;
-+			s = NULL;
-+
-+#ifdef HAVE_inet_aton
-+			/* if a preferred address is specified, then make sure
-+			 * it matches one of the host's addresses before using
-+			 * it. If it doesn't, just use first host in list.
-+			 */
-+			if (prefaddr_s) {
-+				inet_aton(prefaddr_s,&prefaddr);
-+				while(hp->h_addr_list[val]) {
-+					if (prefaddr.s_addr == *(ulong *)
-+						(hp->h_addr_list[val])) {
-+						s = hp->h_addr_list[val];
-+						break;
-+					}
-+					++val;
-+				}
-+
-+				if (!s)
-+					fprintf(stderr, _("mount: specified address doesn't match hostname. Ignoring it.\n"));
-+			}
-+#endif /* HAVE_inet_aton */
-+
-+			if (s) {
-+				memcpy(&server_addr.sin_addr,
-+			       		s, hp->h_length);
-+			} else {
-+				memcpy(&server_addr.sin_addr,
-+			       		hp->h_addr, hp->h_length);
-+			}
-+		}
-+	}
-+
-+	memcpy (&mount_server_addr, &server_addr, sizeof (mount_server_addr));
-+
-+	/* add IP address to mtab options for use when unmounting, if it
-+	 * wasn't specified or was ignored */
-+	if (!s) {
-+		s = inet_ntoa(server_addr.sin_addr);
-+		old_opts = *extra_opts;
-+
-+		if (!old_opts)
-+			old_opts = "";
-+
-+		if (strlen(old_opts) + strlen(s) + 10 >= sizeof(new_opts)) {
-+			fprintf(stderr, _("mount: "
-+				  "excessively long option argument\n"));
-+			goto fail;
-+		}
-+		sprintf(new_opts, "%s%saddr=%s",
-+			old_opts, *old_opts ? "," : "", s);
-+		*extra_opts = xstrdup(new_opts);
-+	}
-+
- 	/* create mount deamon client */
- 	/* See if the nfs host = mount host. */
- 	if (mounthost) {
-
---=-sBrbCW7Nkirhcx/+5K9g--
-
+Cheers,
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
