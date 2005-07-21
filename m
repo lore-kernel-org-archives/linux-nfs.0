@@ -1,30 +1,24 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: NFS in kernel 2.6 and Netapp: privileged ports problem
-Date: Thu, 21 Jul 2005 10:19:50 -0300
-Message-ID: <20050721100913.D93F.BRANDEN@terra.com.br>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: rpc.mountd /home exported to both
+Date: Thu, 21 Jul 2005 09:26:50 -0400
+Message-ID: <1121952412.13990.62.camel@pc.ilinx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-TSVQWJ0UBa8msBEC3Xit"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=sc8-sf-mx2.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dvazt-0005QO-4i
-	for nfs@lists.sourceforge.net; Thu, 21 Jul 2005 06:21:57 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1Dvb4p-0005b1-Pw
+	for nfs@lists.sourceforge.net; Thu, 21 Jul 2005 06:27:03 -0700
+Received: from linux.interlinx.bc.ca ([66.11.173.224])
 	by sc8-sf-mx2.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Dvazr-0003Np-Gj
-	for nfs@lists.sourceforge.net; Thu, 21 Jul 2005 06:21:57 -0700
-Received: from paramonga.terra.com.br ([200.154.55.230])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Dvazp-0005cA-WB
-	for nfs@lists.sourceforge.net; Thu, 21 Jul 2005 06:21:55 -0700
-Received: from moroto.terra.com.br (moroto.terra.com.br [200.176.10.5])
-	by paramonga.terra.com.br (Postfix) with ESMTP id A37375E6FC9
-	for <nfs@lists.sourceforge.net>; Thu, 21 Jul 2005 10:19:50 -0300 (BRT)
-Received: from [200.176.1.176] (dsk17134-vm.terra.com.br [200.176.1.176])
-	(authenticated user branden)
-	by moroto.terra.com.br (Postfix) with ESMTP id 8608A4001D
-	for <nfs@lists.sourceforge.net>; Thu, 21 Jul 2005 10:19:50 -0300 (BRT)
+	id 1Dvb4n-00056e-Ee
+	for nfs@lists.sourceforge.net; Thu, 21 Jul 2005 06:27:03 -0700
+Received: from pc.ilinx (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 80ABDA439D
+	for <nfs@lists.sourceforge.net>; Thu, 21 Jul 2005 09:26:57 -0400 (EDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -40,63 +34,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Hello, all.
+--=-TSVQWJ0UBa8msBEC3Xit
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-I'm having problems when mounting NFS in a Netapp FAS 740 filer on a
-Linux RHAS4 Kernel 2.6 client. The message I get is:
+[ Repost.  Originally sent yesterday but I have not seen it on the list
+despite a couple of postings subsequent to it showing up. ]
 
-[root@talara ~]# mount -a
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
-mount: RPC: Authentication error; why = Client credential too weak
+I am running nfs-utils-1.0.7 on Mandrake (er, I mean Mandriva) LE 2005
+successfully.
 
-Sometimes it works, most times it fails with the message above. If I use
-the same setup above but with RH7.3 Kernel 2.4, it works without a
-problem.
+I am getting messages in my syslog however of the format:
 
-I found out this page that says it can be related to the client not
-using privileged ports to do the mount:
-http://teaparty.mathworks.com:1999/toasters/7212.html
-(Or in Google's cache, only way I could open it:)
-http://64.233.161.104/search?q=cache:K78rCZz1UnMJ:teaparty.mathworks.com:1999/toasters/7212.html+%22mount:+RPC:+Authentication+error%3B+why+%3D+Client+credential+too+weak%22+%2BNetapp&hl=en&start=1
+08:04:49 rpc.mountd /home exported to both 10.75.22.0/24 and pc.ilinx in
+*,10.75.22.0/24,pc.ilinx
 
-This other post seems to confirm the issue:
-http://www.archivum.info/netfilter/2002-03/msg00591.html
+Which is not entirely inaccurate seeing as I have the following
+in /etc/exports:
 
-I also found a thread asking on how to force Linux to use privileged
-ports, but it seemed the problem of the guy was another one, related to
-MTU's, so that no solution to the unprivileged port was given.
+/home           pc(rw,no_root_squash,sync) pvr(rw,no_root_squash,sync)
+brian-vmware(rw,no_root_squash,sync) 10.75.22.0/24(rw,sync)
 
-So I ask:
+Where essentially, I want the 10.75.22.0/24 subnet to have one set of
+options (rw,sync) but want a few selected hosts to have different
+options.  This is the syntax AFAICS.  Is there something wrong in the
+above specification?
 
-- Anyone experienced this too?
-- Is there a way on kernel 2.6 to force it to use privileged ports to do
-the mount?
-- This one is not related to Linux, but anyone knows if it's possible to
-disable the privileged port restriction on the Netapp filer? This would
-be acceptable to me to solve this problem.
+Everything seems to work well.  It's just an annoying message I would
+like to get rid of.
 
-I have tcpdump of a failed mounting session, so that I can provide it to
-you upon request, if you think it could lead to some clue about what's
-happening.
+Any ideas?
 
-Thanks in advance!
-Branden
+Thanx,
+b.
+
+
+--=-TSVQWJ0UBa8msBEC3Xit
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.0 (GNU/Linux)
+
+iD8DBQBC36Kal3EQlGLyuXARAsIZAJ0W0AKJY82raNEgLz74+NTKgyJUbwCgsyA5
+iLXmieyrbOoBEaZS9oIVTIk=
+=kUQC
+-----END PGP SIGNATURE-----
+
+--=-TSVQWJ0UBa8msBEC3Xit--
 
 
 
