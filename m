@@ -1,20 +1,23 @@
-From: Jeff Layton <jtlayton@poochiereds.net>
-Subject: [PATCH] mount preferred address patch
-Date: Sat, 23 Jul 2005 07:21:26 -0400
-Message-ID: <1122117686.6995.18.camel@localhost.localdomain>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFS in kernel 2.6 and Netapp: privileged ports problem
+Date: Mon, 25 Jul 2005 03:03:19 -0400
+Message-ID: <42E48EB7.60400@RedHat.com>
+References: <20050721100913.D93F.BRANDEN@terra.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, autofs@linux.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DwI58-00031j-5I
-	for nfs@lists.sourceforge.net; Sat, 23 Jul 2005 04:22:14 -0700
-Received: from ms-smtp-01-lbl.southeast.rr.com ([24.25.9.100] helo=ms-smtp-01-eri0.southeast.rr.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1DwI57-00011m-KK
-	for nfs@lists.sourceforge.net; Sat, 23 Jul 2005 04:22:14 -0700
-To: Adrian Bunk <bunk@stusta.de>
+	id 1Dwwzt-0001Ut-TB
+	for nfs@lists.sourceforge.net; Mon, 25 Jul 2005 00:03:33 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Dwwzt-0000SH-HS
+	for nfs@lists.sourceforge.net; Mon, 25 Jul 2005 00:03:33 -0700
+To: Filipe Brandenburger <branden@terra.com.br>
+In-Reply-To: <20050721100913.D93F.BRANDEN@terra.com.br>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,239 +31,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Adrian,
+Filipe Brandenburger wrote:
+> I'm having problems when mounting NFS in a Netapp FAS 740 filer on a
+> Linux RHAS4 Kernel 2.6 client. The message I get is:
+> 
+> [root@talara ~]# mount -a
+> mount: RPC: Authentication error; why = Client credential too weak
+Your running out of privileged ports....
 
-Since the util-linux mailing list seems to be dead, I wasn't sure where
-to send this.
+The problem is the glibc pmap_getport() routine uses
+privileged ports to get ports from portmapper (when TCP
+is specified) which is wrong. So these ports end up in
+TIME_WAIT, which makes them (temporary) unusable for mounts.
+(Do a netstat -an | grep TIME_WAIT and notice all the ports are < 1024).
+Now, when a privileged port is not available, a normal port (i.e. >
+1023) will be used which will cause the above message.
 
-I've been working on an overhaul of the mount_nfs code for autofs. While
-working on this, I've fixed the code that makes autofs prefer to mount
-via addresses that are on the same subnet as the client machine.
-Unfortunately, when we call mount with a hostname, it simply picks the
-first address in the list, so even if we select a host on the same
-subnet, we might end up mounting across a router anyway. I considered
-just having autofs mount using the address, but when looking at a large
-list of mounts, that can be harder for humans to read.
+Note: the glibc is fixed in FC4 and in upcoming RHEL3 and RHEL4
+releases.
 
-So, instead, I've rolled the attached patch for mount. This changes the
-behavior of the 'addr=' option to be an address hint. If the address
-passed via this option mounts any of the addresses resolved by
-gethostbyname(), then we'll mount using that address. If it does not
-match, then the current behavior prevails (we use the first address in
-the list). I've done some basic testing on x86 and x86_64 and it seems
-to work as expected.
+> Sometimes it works, most times it fails with the message above. If I use
+> the same setup above but with RH7.3 Kernel 2.4, it works without a
+> problem.
+This is because UDP is the default protocol for mounts where as with
+later releases TCP is the default.
 
-I discussed this briefly on the CC'ed mailing lists here, and didn't get
-any major objections. This patch is against util-linux-2.12q. Please let
-me know if I should submit this for inclusion in util-linux in a
-different way.
+> 
+> So I ask:
+> 
+> - Anyone experienced this too?
+Yes... see https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=154678
 
-Thanks,
-Jeff
+> - Is there a way on kernel 2.6 to force it to use privileged ports to do
+> the mount?
+I don't think so...
 
+> - This one is not related to Linux, but anyone knows if it's possible to
+> disable the privileged port restriction on the Netapp filer? This would
+> be acceptable to me to solve this problem.
+You could try adding 'insecure' to your exports options... and
+you could also try using UDP mounts by specifying the '-o udp'
+mount option.
 
-
-Index: util-linux/mount/nfsmount.c
-===================================================================
---- util-linux/mount/nfsmount.c (revision 170)
-+++ util-linux/mount/nfsmount.c (working copy)
-@@ -195,7 +195,7 @@
-        static char *prev_bg_host;
-        char hostdir[1024];
-        CLIENT *mclient;
--       char *hostname, *dirname, *old_opts, *mounthost = NULL;
-+       char *hostname, *dirname, *old_opts, *mounthost, *prefaddr_s = NULL;
-        char new_opts[1024];
-        struct timeval total_timeout;
-        enum clnt_stat clnt_stat;
-@@ -207,6 +207,7 @@
-        struct sockaddr_in server_addr;
-        struct sockaddr_in mount_server_addr;
-        struct pmap *pm_mnt;
-+       struct in_addr prefaddr;
-        int msock, fsock;
-        struct timeval retry_timeout;
-        union {
-@@ -214,7 +215,7 @@
-                struct mountres3 nfsv3;
-        } status;
-        struct stat statbuf;
--       char *s;
-+       char *s = NULL;
-        int port, mountport, proto, bg, soft, intr;
-        int posix, nocto, noac, nolock, broken_suid;
-        int retry, tcp;
-@@ -258,43 +259,6 @@
-                goto fail;
-        }
-
--       server_addr.sin_family = AF_INET;
--#ifdef HAVE_inet_aton
--       if (!inet_aton(hostname, &server_addr.sin_addr))
--#endif
--       {
--               if ((hp = gethostbyname(hostname)) == NULL) {
--                       fprintf(stderr, _("mount: can't get address for %s\n"),
--                               hostname);
--                       goto fail;
--               } else {
--                       if (hp->h_length > sizeof(struct in_addr)) {
--                               fprintf(stderr,
--                                       _("mount: got bad hp->h_length\n"));
--                               hp->h_length = sizeof(struct in_addr);
--                       }
--                       memcpy(&server_addr.sin_addr,
--                              hp->h_addr, hp->h_length);
--               }
--       }
--
--       memcpy (&mount_server_addr, &server_addr, sizeof (mount_server_addr));
--
--       /* add IP address to mtab options for use when unmounting */
--
--       s = inet_ntoa(server_addr.sin_addr);
--       old_opts = *extra_opts;
--       if (!old_opts)
--               old_opts = "";
--       if (strlen(old_opts) + strlen(s) + 10 >= sizeof(new_opts)) {
--               fprintf(stderr, _("mount: "
--                                 "excessively long option argument\n"));
--               goto fail;
--       }
--       sprintf(new_opts, "%s%saddr=%s",
--               old_opts, *old_opts ? "," : "", s);
--       *extra_opts = xstrdup(new_opts);
--
-        /* Set default options.
-         * rsize/wsize (and bsize, for ver >= 3) are left 0 in order to
-         * let the kernel decide.
-@@ -328,6 +292,7 @@
-        nfsvers = 0;
-
-        /* parse options */
-+       old_opts = xstrdup(*extra_opts);
-
-        for (opt = strtok(old_opts, ","); opt; opt = strtok(NULL, ",")) {
-                if ((opteq = strchr(opt, '='))) {
-@@ -388,10 +353,10 @@
- #endif
-                                        printf(_("Warning: Option namlen is not supported.\n"));
-                        } else if (!strcmp(opt, "addr")) {
--                               /* ignore */;
-+                               prefaddr_s = opteq + 1;
-                        } else {
-                                printf(_("unknown nfs mount parameter: "
--                                        "%s=%d\n"), opt, val);
-+                                        "%s=%s\n"), opt, opteq+1);
-                                goto fail;
-                        }
-                } else {
-@@ -477,8 +442,8 @@
-               data.rsize, data.wsize, data.timeo, data.retrans);
-        printf("acreg (min, max) = (%d, %d), acdir (min, max) = (%d, %d)\n",
-               data.acregmin, data.acregmax, data.acdirmin, data.acdirmax);
--       printf("port = %d, bg = %d, retry = %d, flags = %.8x\n",
--              port, bg, retry, data.flags);
-+       printf("port = %d, bg = %d, retry = %d, flags = %.8x, addr = %s\n",
-+              port, bg, retry, data.flags, prefaddr_s);
-        printf("mountprog = %d, mountvers = %d, nfsprog = %d, nfsvers = %d\n",
-               mountprog, mountvers, nfsprog, nfsvers);
-        printf("soft = %d, intr = %d, posix = %d, nocto = %d, noac = %d\n",
-@@ -511,6 +476,78 @@
-                return retval;
-        }
-
-+       s = NULL;
-+       server_addr.sin_family = AF_INET;
-+#ifdef HAVE_inet_aton
-+       if (!inet_aton(hostname, &server_addr.sin_addr))
-+#endif
-+       {
-+               if ((hp = gethostbyname(hostname)) == NULL) {
-+                       fprintf(stderr, _("mount: can't get address for %s\n"),
-+                               hostname);
-+                       goto fail;
-+               } else {
-+                       if (hp->h_length > sizeof(struct in_addr)) {
-+                               fprintf(stderr,
-+                                       _("mount: got bad hp->h_length\n"));
-+                               hp->h_length = sizeof(struct in_addr);
-+                       }
-+
-+                       val = 0;
-+                       s = NULL;
-+
-+#ifdef HAVE_inet_aton
-+                       /* if a preferred address is specified, then make sure
-+                        * it matches one of the host's addresses before using
-+                        * it. If it doesn't, just use first host in list.
-+                        */
-+                       if (prefaddr_s) {
-+                               inet_aton(prefaddr_s,&prefaddr);
-+                               while(hp->h_addr_list[val]) {
-+                                       if (prefaddr.s_addr == *(in_addr_t *)
-+                                               (hp->h_addr_list[val])) {
-+                                               s = hp->h_addr_list[val];
-+                                               break;
-+                                       }
-+                                       ++val;
-+                               }
-+
-+                               if (!s)
-+                                       fprintf(stderr, _("mount: specified address doesn't match hostname. Ignoring it.\n"));
-+                       }
-+#endif /* HAVE_inet_aton */
-+
-+                       if (s) {
-+                               memcpy(&server_addr.sin_addr,
-+                                       s, hp->h_length);
-+                       } else {
-+                               memcpy(&server_addr.sin_addr,
-+                                       hp->h_addr, hp->h_length);
-+                       }
-+               }
-+       }
-+
-+       memcpy (&mount_server_addr, &server_addr, sizeof (mount_server_addr));
-+
-+       /* add IP address to mtab options for use when unmounting, if it
-+        * wasn't specified or was ignored */
-+       if (!s) {
-+               s = inet_ntoa(server_addr.sin_addr);
-+               old_opts = *extra_opts;
-+
-+               if (!old_opts)
-+                       old_opts = "";
-+
-+               if (strlen(old_opts) + strlen(s) + 10 >= sizeof(new_opts)) {
-+                       fprintf(stderr, _("mount: "
-+                                 "excessively long option argument\n"));
-+                       goto fail;
-+               }
-+               sprintf(new_opts, "%s%saddr=%s",
-+                       old_opts, *old_opts ? "," : "", s);
-+               *extra_opts = xstrdup(new_opts);
-+       }
-+
-        /* create mount deamon client */
-        /* See if the nfs host = mount host. */
-        if (mounthost) {
-Index: util-linux/mount/mount.8
-===================================================================
---- util-linux/mount/mount.8    (revision 170)
-+++ util-linux/mount/mount.8    (working copy)
-@@ -1317,7 +1317,10 @@
- .BI namlen= n.
- The option
- .BI addr= n
--is accepted but ignored.
-+acts as an address hint. If the address specified matches any of the addresses
-+in the list returned by the gethostbyname() call, then the mount will use that
-+address. If not specified or if it does not match, then the first address in
-+the list is used (with a warning message if was specified and didn't match).
- Also the following Boolean options, possibly preceded by
- .B no
- are recognized:
+steved.
 
 
 
