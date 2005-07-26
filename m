@@ -1,22 +1,22 @@
 From: Bill Johnstone <beejstone3@yahoo.com>
 Subject: Re: Configuration for NFSv3 only?
-Date: Tue, 26 Jul 2005 15:48:43 -0700 (PDT)
-Message-ID: <20050726224843.80670.qmail@web33906.mail.mud.yahoo.com>
-References: <42E631FF.3050005@redhat.com>
+Date: Tue, 26 Jul 2005 15:52:52 -0700 (PDT)
+Message-ID: <20050726225252.48745.qmail@web33914.mail.mud.yahoo.com>
+References: <1122391503.6894.5.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DxYEE-0000gj-L0
-	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 15:48:50 -0700
-Received: from web33906.mail.mud.yahoo.com ([66.163.178.70])
+	id 1DxYIK-0000nJ-7A
+	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 15:53:04 -0700
+Received: from web33914.mail.mud.yahoo.com ([66.163.178.78])
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1DxYED-0004dC-Dz
-	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 15:48:50 -0700
-To: Peter Staubach <staubach@redhat.com>
-In-Reply-To: <42E631FF.3050005@redhat.com>
+	id 1DxYIJ-0001iI-3C
+	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 15:53:04 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1122391503.6894.5.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,41 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello.
 
---- Peter Staubach <staubach@redhat.com> wrote:
+--- Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-> Yes, version 1 for the status protocol is also fine and is not
-> related=20
-> to the
-> version of NFS, either 2 or 3, being used.  The NFS version 4
-> protocol is
-> self contained and does not use either the nlockmgr (network lock
-> manager),
-> the mount, or the status protocols as part of the support required
-> for it.
+> m=E5 den 25.07.2005 Klokka 20:55 (-0700) skreiv Bill Johnstone:
+> > However, now, when I run "umount", I get the message:
+> >=20
+> > Bad UMNT RPC: RPC: Program/version mismatch; low version =3D 3, high
+> > version =3D 3
 >=20
-> A little bit of information --
-
-[Excellent info snipped]
-
+> That error can be ignored. Both client and server will continue to
+> work
+> fine even if the umount RPC call fails.
 >=20
-> I hope that this is helpful.
->=20
->        ps
+> The reason for the error is that the standard umount program
+> incorrectly
+> always uses mount version 2 (i.e. the NFSv2 mount protocol)
+> since /etc/mtab doesn't record the mount version used. There is, btw,
+> a
+> fix for this in the mount program carried by Redhat/Fedora.
 
-Yes, absolutely, that was very informative and helpful!  Again, may I
-please suggest that the information in your message, which I'm replying
-to, be added to the FAQ on the Linux-NFS homepage on
-nfs.sourceforge.net?  If I need to file a request to have this done,
-just tell me where to go.
+I will file a bug report with my distribution/vendor .  Is there any
+point in filing a bug report with the maintainers of util-linux ?
 
-Thanks for all the help and information, Peter and Trond.
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
+	=09
+____________________________________________________
+Start your day with Yahoo! - make it your home page=20
+http://www.yahoo.com/r/hs=20
+=20
 
 
 -------------------------------------------------------
