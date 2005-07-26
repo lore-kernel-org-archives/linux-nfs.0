@@ -1,22 +1,28 @@
-From: Bill Johnstone <beejstone3@yahoo.com>
-Subject: Re: Configuration for NFSv3 only?
-Date: Tue, 26 Jul 2005 15:52:52 -0700 (PDT)
-Message-ID: <20050726225252.48745.qmail@web33914.mail.mud.yahoo.com>
-References: <1122391503.6894.5.camel@lade.trondhjem.org>
+From: Filipe Brandenburger <branden@terra.com.br>
+Subject: Re: Kernel 2.6 vs. Kernel 2.4: higher NFS traffic
+Date: Tue, 26 Jul 2005 20:18:48 -0300
+Message-ID: <20050726201432.22AA.BRANDEN@terra.com.br>
+References: <20050726093038.FD8E.BRANDEN@terra.com.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="US-ASCII"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DxYIK-0000nJ-7A
-	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 15:53:04 -0700
-Received: from web33914.mail.mud.yahoo.com ([66.163.178.78])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1DxYIJ-0001iI-3C
-	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 15:53:04 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1122391503.6894.5.camel@lade.trondhjem.org>
+	id 1DxYhJ-0001nD-12
+	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 16:18:53 -0700
+Received: from linares.terra.com.br ([200.154.55.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1DxYhH-0002nO-J6
+	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 16:18:53 -0700
+Received: from congo.terra.com.br (congo.terra.com.br [200.176.10.2])
+	by linares.terra.com.br (Postfix) with ESMTP id D94764DC031
+	for <nfs@lists.sourceforge.net>; Tue, 26 Jul 2005 20:18:45 -0300 (BRT)
+Received: from [200.176.1.176] (dsk17134-vm.terra.com.br [200.176.1.176])
+	(authenticated user branden)
+	by congo.terra.com.br (Postfix) with ESMTP id C98B74006C
+	for <nfs@lists.sourceforge.net>; Tue, 26 Jul 2005 20:18:45 -0300 (BRT)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20050726093038.FD8E.BRANDEN@terra.com.br>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,42 +37,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---- Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+Hi,
 
-> m=E5 den 25.07.2005 Klokka 20:55 (-0700) skreiv Bill Johnstone:
-> > However, now, when I run "umount", I get the message:
-> >=20
-> > Bad UMNT RPC: RPC: Program/version mismatch; low version =3D 3, high
-> > version =3D 3
->=20
-> That error can be ignored. Both client and server will continue to
-> work
-> fine even if the umount RPC call fails.
->=20
-> The reason for the error is that the standard umount program
-> incorrectly
-> always uses mount version 2 (i.e. the NFSv2 mount protocol)
-> since /etc/mtab doesn't record the mount version used. There is, btw,
-> a
-> fix for this in the mount program carried by Redhat/Fedora.
-
-I will file a bug report with my distribution/vendor .  Is there any
-point in filing a bug report with the maintainers of util-linux ?
+Regarding my net traffic problem, I noticed with tcpdump that a lot of
+operations are RPC calls to the ACCESS function, then I read the FAQ and
+found out the following:
 
 
-	=09
-____________________________________________________
-Start your day with Yahoo! - make it your home page=20
-http://www.yahoo.com/r/hs=20
-=20
+http://nfs.sourceforge.net/#faq_b11
+"The Linux NFS client should cache the results of these ACCESS
+operations. In fact, in the new 2.6.x kernels, it does this and it
+extends ACCESS checking to all users to allow for generic uid/gid
+mapping on the server. This also enables proper support for Access
+Control Lists in the server's local file system. In pre-2.6 kernels, the
+stock NFS client does not cache the results of ACCESS operations."
+
+
+Is there a way to disable this behaviour? To disable the ACCESS calls
+for non-root users on kernel 2.6? I run all my applications as non-root
+user, and one of the reasons for that is the lots of RPC calls to
+v3access that begun to appear when upgrading from NFSv2 to NFSv3, so
+that I actually see this behaviour on 2.6 a little as a negative factor
+for upgrading from 2.4 to 2.6...
+
+Thanks,
+Filipe
+
 
 
 -------------------------------------------------------
 SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
 from IBM. Find simple to follow Roadmaps, straightforward articles,
 informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=3D7477&alloc_id=3D16492&op=3Dclic=
-k
+speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
