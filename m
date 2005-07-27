@@ -1,28 +1,23 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: Re: Kernel 2.6 vs. Kernel 2.4: higher NFS traffic
-Date: Tue, 26 Jul 2005 20:18:48 -0300
-Message-ID: <20050726201432.22AA.BRANDEN@terra.com.br>
-References: <20050726093038.FD8E.BRANDEN@terra.com.br>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Configuration for NFSv3 only?
+Date: Tue, 26 Jul 2005 20:32:22 -0400
+Message-ID: <1122424342.6894.110.camel@lade.trondhjem.org>
+References: <20050726225252.48745.qmail@web33914.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DxYhJ-0001nD-12
-	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 16:18:53 -0700
-Received: from linares.terra.com.br ([200.154.55.228])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1DxYhH-0002nO-J6
-	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 16:18:53 -0700
-Received: from congo.terra.com.br (congo.terra.com.br [200.176.10.2])
-	by linares.terra.com.br (Postfix) with ESMTP id D94764DC031
-	for <nfs@lists.sourceforge.net>; Tue, 26 Jul 2005 20:18:45 -0300 (BRT)
-Received: from [200.176.1.176] (dsk17134-vm.terra.com.br [200.176.1.176])
-	(authenticated user branden)
-	by congo.terra.com.br (Postfix) with ESMTP id C98B74006C
-	for <nfs@lists.sourceforge.net>; Tue, 26 Jul 2005 20:18:45 -0300 (BRT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20050726093038.FD8E.BRANDEN@terra.com.br>
+	id 1DxZqv-0006Dn-Ts
+	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 17:32:53 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1DxZqt-0008Io-HY
+	for nfs@lists.sourceforge.net; Tue, 26 Jul 2005 17:32:54 -0700
+To: Bill Johnstone <beejstone3@yahoo.com>
+In-Reply-To: <20050726225252.48745.qmail@web33914.mail.mud.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,32 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+ty den 26.07.2005 Klokka 15:52 (-0700) skreiv Bill Johnstone:
+> > The reason for the error is that the standard umount program
+> > incorrectly
+> > always uses mount version 2 (i.e. the NFSv2 mount protocol)
+> > since /etc/mtab doesn't record the mount version used. There is, btw,
+> > a
+> > fix for this in the mount program carried by Redhat/Fedora.
+> 
+> I will file a bug report with my distribution/vendor .  Is there any
+> point in filing a bug report with the maintainers of util-linux ?
 
-Hi,
+It is really my fault for not pushing the changes upstream, so it is
+probably not reasonable to annoy Andries any more than necessary. Just
+keep bugging me every now and then until they appear...
 
-Regarding my net traffic problem, I noticed with tcpdump that a lot of
-operations are RPC calls to the ACCESS function, then I read the FAQ and
-found out the following:
-
-
-http://nfs.sourceforge.net/#faq_b11
-"The Linux NFS client should cache the results of these ACCESS
-operations. In fact, in the new 2.6.x kernels, it does this and it
-extends ACCESS checking to all users to allow for generic uid/gid
-mapping on the server. This also enables proper support for Access
-Control Lists in the server's local file system. In pre-2.6 kernels, the
-stock NFS client does not cache the results of ACCESS operations."
-
-
-Is there a way to disable this behaviour? To disable the ACCESS calls
-for non-root users on kernel 2.6? I run all my applications as non-root
-user, and one of the reasons for that is the lots of RPC calls to
-v3access that begun to appear when upgrading from NFSv2 to NFSv3, so
-that I actually see this behaviour on 2.6 a little as a negative factor
-for upgrading from 2.4 to 2.6...
-
-Thanks,
-Filipe
+Cheers,
+  Trond
 
 
 
