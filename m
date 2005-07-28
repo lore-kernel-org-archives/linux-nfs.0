@@ -1,25 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Kernel 2.6 vs. Kernel 2.4: higher NFS traffic
-Date: Wed, 27 Jul 2005 13:28:11 -0400
-Message-ID: <1122485291.8068.14.camel@lade.trondhjem.org>
-References: <20050727112639.22B1.BRANDEN@terra.com.br>
-	 <1122484635.8068.8.camel@lade.trondhjem.org>
-	 <20050727142031.22BF.BRANDEN@terra.com.br>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: nfsd filesystem
+Date: Thu, 28 Jul 2005 03:30:13 -0700 (PDT)
+Message-ID: <20050728103013.96091.qmail@web51603.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Dxphl-0002vi-P8
-	for nfs@lists.sourceforge.net; Wed, 27 Jul 2005 10:28:29 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Dxphk-0008HM-9G
-	for nfs@lists.sourceforge.net; Wed, 27 Jul 2005 10:28:29 -0700
-To: Filipe Brandenburger <branden@terra.com.br>
-In-Reply-To: <20050727142031.22BF.BRANDEN@terra.com.br>
+	id 1Dy5ef-0003wE-2a
+	for nfs@lists.sourceforge.net; Thu, 28 Jul 2005 03:30:21 -0700
+Received: from web51603.mail.yahoo.com ([206.190.38.208])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1Dy5ed-0001eo-B5
+	for nfs@lists.sourceforge.net; Thu, 28 Jul 2005 03:30:21 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,25 +27,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-on den 27.07.2005 Klokka 14:25 (-0300) skreiv Filipe Brandenburger:
+Hi ,
+Man page for nfsd FS says that absence of nfsd FS will
+make nfs function as it worked on 2.4 kernel
+Does this mean that with 2.4 kernel transparent nfs
+server failover(along with exports)  cannot be
+achieved.Or does it mean that there was mechanisn
+different than "nfs upcall to mountd" to generate
+handle for client
 
-> Why is there so much difference? Why does 2.6 make 21% getattr while 2.4
-> does less then 1%?
+thanks,
+ kiran
 
-We no longer allow post-op attributes to update the attribute cache. It
-leads to some nasty races.
 
-> Are there any mount options that I can use to do some tuning on this?
 
-No.
-
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
-SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
-from IBM. Find simple to follow Roadmaps, straightforward articles,
-informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
+SF.Net email is Sponsored by the Better Software Conference & EXPO Septem=
+ber
+19-22, 2005 * San Francisco, CA * Development Lifecycle Practices
+Agile & Plan-Driven Development * Managing Projects & Teams * Testing & Q=
+A
+Security * Process Improvement & Measurement * http://www.sqe.com/bsce5sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
