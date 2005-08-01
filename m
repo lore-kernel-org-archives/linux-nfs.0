@@ -1,25 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH] Fix nfsd rewrite performance
-Date: Mon, 1 Aug 2005 13:39:54 +0200
-Message-ID: <20050801113954.GA8698@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Fix nfsd rewrite performance
+Date: Mon, 1 Aug 2005 07:53:19 -0400
+Message-ID: <20050801115319.GD6497@fieldses.org>
+References: <20050801113954.GA8698@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DzYeH-0006uq-VZ
-	for nfs@lists.sourceforge.net; Mon, 01 Aug 2005 04:40:01 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1DzYrO-0007Oe-3p
+	for nfs@lists.sourceforge.net; Mon, 01 Aug 2005 04:53:34 -0700
+Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1DzYeH-0004RX-GP
-	for nfs@lists.sourceforge.net; Mon, 01 Aug 2005 04:40:02 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id A1D0BEC12
-	for <nfs@lists.sourceforge.net>; Mon,  1 Aug 2005 13:39:54 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1DzYrM-0006gw-SG
+	for nfs@lists.sourceforge.net; Mon, 01 Aug 2005 04:53:34 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20050801113954.GA8698@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,97 +31,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Since no-one commented on the previous versions of the patch, I'm
-submitting it almost unchanged now. This patch is relative to 2.6.12-rc3,
-and has undergone some iozone testing, which showed write and rewrite
-performance coming out almost the same.
+I haven't had the chance to read carefully; just one quick question:
 
-------------------------------------------------------------------
-Subject: NFS: Fix rewrite performance
+On Mon, Aug 01, 2005 at 01:39:54PM +0200, Olaf Kirch wrote:
+> +	this_page = (unsigned char *) vec[vlen-1].iov_base;
+> +	for (i = vlen-1; i; --i) {
+> +		prev_page = (unsigned char *) vec[i-1].iov_base;
+> +
+> +		/* Push trailing partial page so it's
+> +		 * aligned with the end of the page, then
+> +		 * pull up the missing chunk from the previous
+> +		 * page */
+> +		memmove(this_page + chunk0, this_page, chunk1);
+> +		memcpy(this_page, prev_page + chunk1, chunk0);
+> +		vec[i].iov_len = PAGE_CACHE_SIZE;
+> +		this_page = prev_page;
+> +	}
 
-This patch fixes an nfsd performance issue with rewrite. Most of the time,
-the iovecs passed to nfsd_vfs_write are unaligned. As the default writev
-implementation will just call write() on each chunk in the iovec, this
-will cause partial blocks to be dirtied, triggering a read-modify-write
-cycle for each block.
+If there's stuff after the write data (as there could be in the NFSv4
+case at least), does this overwrite it?
 
-The short-term fix is to make sure nfsd aligns the data properly.
-The long term fix would be to make the VFS smarter about writev requests.
-
-Signed-off-by: Olaf Kirch <okir@suse.de>
-
-Index: linux-2.6.12.new/fs/nfsd/vfs.c
-===================================================================
---- linux-2.6.12.new.orig/fs/nfsd/vfs.c
-+++ linux-2.6.12.new/fs/nfsd/vfs.c
-@@ -874,6 +874,46 @@ out:
- 	return err;
- }
- 
-+/*
-+ * Helper function to page-align the write payload.
-+ */
-+static inline int
-+nfsd_page_align_payload(struct kvec *vec, int vlen)
-+{
-+	unsigned char *this_page, *prev_page;
-+	int i, chunk0, chunk1;
-+
-+	/* The following checks are just paranoia */
-+	if (vlen < 2)
-+		return 0;
-+
-+	if (vec[0].iov_len + vec[vlen-1].iov_len != PAGE_CACHE_SIZE)
-+		return 0;
-+	for (i = 1; i < vlen - 1; ++i) {
-+		if (vec[i].iov_len != PAGE_CACHE_SIZE)
-+			return 0;
-+	}
-+
-+	chunk0 = vec[0].iov_len;
-+	chunk1 = PAGE_CACHE_SIZE - chunk0;
-+
-+	this_page = (unsigned char *) vec[vlen-1].iov_base;
-+	for (i = vlen-1; i; --i) {
-+		prev_page = (unsigned char *) vec[i-1].iov_base;
-+
-+		/* Push trailing partial page so it's
-+		 * aligned with the end of the page, then
-+		 * pull up the missing chunk from the previous
-+		 * page */
-+		memmove(this_page + chunk0, this_page, chunk1);
-+		memcpy(this_page, prev_page + chunk1, chunk0);
-+		vec[i].iov_len = PAGE_CACHE_SIZE;
-+		this_page = prev_page;
-+	}
-+
-+	return 1;
-+}
-+
- static inline int
- nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 				loff_t offset, struct kvec *vec, int vlen,
-@@ -917,6 +957,17 @@ nfsd_vfs_write(struct svc_rqst *rqstp, s
- 	if (stable && !EX_WGATHER(exp))
- 		file->f_flags |= O_SYNC;
- 
-+	/* Hack: if we're rewriting the file, make sure
-+	 * we align the iovec properly to avoid costly
-+	 * read-modify-write operations on the block devices.
-+	 * This hack can go away once we have generic_file_writev.
-+	 */
-+	if ((offset < inode->i_size)
-+	 && (cnt % PAGE_CACHE_SIZE) == 0
-+	 && vec->iov_len != PAGE_CACHE_SIZE
-+	 && nfsd_page_align_payload(vec, vlen))
-+		vec++, vlen--;
-+
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
- 	err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+--b.
 
 
 -------------------------------------------------------
