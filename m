@@ -1,23 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: [PATCH] Fix nfsd rewrite performance
-Date: Mon, 1 Aug 2005 08:58:32 -0400
-Message-ID: <20050801125832.GB8598@fieldses.org>
-References: <20050801113954.GA8698@suse.de> <20050801115319.GD6497@fieldses.org> <20050801115922.GE8698@suse.de> <20050801121053.GA8238@fieldses.org> <20050801121422.GH8698@suse.de>
+Date: Tue, 2 Aug 2005 11:49:50 +0200
+Message-ID: <20050802094950.GB29054@suse.de>
+References: <20050801113954.GA8698@suse.de> <20050801115319.GD6497@fieldses.org> <20050801115922.GE8698@suse.de> <20050801121053.GA8238@fieldses.org> <20050801121422.GH8698@suse.de> <20050801125832.GB8598@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DzZsI-0001C5-Sb
-	for nfs@lists.sourceforge.net; Mon, 01 Aug 2005 05:58:34 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1DztPI-0001ID-D8
+	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 02:49:56 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1DzZsI-0006up-Mw
-	for nfs@lists.sourceforge.net; Mon, 01 Aug 2005 05:58:35 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050801121422.GH8698@suse.de>
+	id 1DztPH-0000LZ-6j
+	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 02:49:56 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20050801125832.GB8598@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,42 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Aug 01, 2005 at 02:14:22PM +0200, Olaf Kirch wrote:
-> On Mon, Aug 01, 2005 at 08:10:53AM -0400, J. Bruce Fields wrote:
-> > > Alternatively, we could pull in everything and align it with the beginning
-> > > of the message. This would clobber the RPC header etc.  I don't see us
-> > > doing doing any in-place decodes of strings etc in the svcauth code,
-> > > so that may be a safer choice. I would like to avoid allocating an extra
-> > > page just for aligning things.
-> > 
-> > Yeah.  We'd also need to check, though, that we aren't taking pointers
-> > to data before the write (when decoding a previous compound op).  I
-> > think we might be....
-> 
-> Can we assume that the previous op inside the compound op has been
-> dealt with completely?
+On Mon, Aug 01, 2005 at 08:58:32AM -0400, J. Bruce Fields wrote:
+> There's a different problem, though, with the request deferral stuff.
+> It waits for upcalls by aborting request processing, saving a copy of
+> the raw request data, then processing it from scratch again when the
+> upcall response comes.
 
-Yeah, you're right, that's not a problem.
+I just looked at the code, and there are two types of deferrals.
+One is for authentication stuff - this will actually use svc_defer and
+svc_revisit, which goes back to look at the entire request.
 
-There's a different problem, though, with the request deferral stuff.
-It waits for upcalls by aborting request processing, saving a copy of
-the raw request data, then processing it from scratch again when the
-upcall response comes.
+The other type is what hte nfs4idmap stuff does, which uses its own
+defer/revisit routines, which just make the nfsd thread wait.
 
-This is already unfortunate for writes since nfsd will try to kmalloc()
-enough memory to store the whole request. (See the "FIXME" in
-svcsock.c:svc_defer().)
+So neither poses a problem to munging the iovec in nfsd_write: The
+authentication stuff will happen when we parse the RPC header, which is
+way before we decide to call nfsd_write.  The idmap stuff may be called
+after processing a write call, but it will not go back to revisit the
+entire request, it will just stall briefly while idmapd is doing its job.
+Correct?
 
-But moving the data around in the pages will cause weird corruption if
-we decide to wait on an upcall after a write, because it's no longer to
-reprocess the request from scratch.  It can only happen with v4, and
-probably only in fairly weird cases, but we can't guarantee it won't
-happen.
+In general, I believe it does not make sense to call svc_defer once we've
+started to process a request, because the request may not be idempotent.
+It sounds like a reasonable assumption to me that deferring and revisiting
+an entire requests is only done before we hit the RPC program handler.
 
-So I think we need to fix that upcall deferral mechanism before doing
-this shifting of data.
-
---b.
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
