@@ -1,23 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: lockd todo item
-Date: Tue, 2 Aug 2005 06:04:25 -0400
-Message-ID: <20050802100425.GB1940@fieldses.org>
-References: <20050801214537.GA30924@infradead.org>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH] Fix nfsd rewrite performance
+Date: Tue, 2 Aug 2005 12:49:04 +0200
+Message-ID: <20050802104904.GC29054@suse.de>
+References: <20050801113954.GA8698@suse.de> <20050801115319.GD6497@fieldses.org> <20050801115922.GE8698@suse.de> <20050801121053.GA8238@fieldses.org> <20050801121422.GH8698@suse.de> <20050801125832.GB8598@fieldses.org> <20050802094950.GB29054@suse.de> <20050802100222.GA1940@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DztdU-0001nl-HP
-	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 03:04:36 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1DzuKd-0003LM-9M
+	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 03:49:11 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1DztdT-0001Ha-A3
-	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 03:04:36 -0700
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20050801214537.GA30924@infradead.org>
+	id 1DzuKc-00040r-2g
+	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 03:49:11 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20050802100222.GA1940@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,13 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Aug 01, 2005 at 10:45:37PM +0100, Christoph Hellwig wrote:
-> the client-side lockd still pokes into file_lock_list, despite having
-> an XXX comment to remove this during 2.5.  Given that the NFS team seems
-> to be rewriting parts of the locking code constantlt it would be nice
-> if someone could fix this layering violation while they're at it.
+On Tue, Aug 02, 2005 at 06:02:22AM -0400, J. Bruce Fields wrote:
+> Yeah.  So the simplest solution might be to make the other upcalls use
+> the same sort of deferral as the idmap upcalls, at least in the v4 case.
+> In the v3 case fh_verify always happens early enough not to be a
+> problem, I believe.
+> 
+> Though I still think it's unfortunate even for v3 that it will try to
+> copy (and allocate space for) the entire write request in the case of an
+> authentication- or export- related upcall.
 
-OK, we'll take a look at that, thanks.--b.
+I just looked at svc_defer in 2.6.12 and it seems it cannot handle
+more than one page of data anyway, and ditches anything else.
+
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
