@@ -1,23 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Fix nfsd rewrite performance
-Date: Tue, 2 Aug 2005 08:07:21 -0400
-Message-ID: <20050802120721.GA5228@fieldses.org>
-References: <20050801113954.GA8698@suse.de> <20050801115319.GD6497@fieldses.org> <20050801115922.GE8698@suse.de> <20050801121053.GA8238@fieldses.org> <20050801121422.GH8698@suse.de> <20050801125832.GB8598@fieldses.org> <20050802094950.GB29054@suse.de> <20050802100222.GA1940@fieldses.org> <20050802104904.GC29054@suse.de>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: RE: IA64 Server / IA32 Client problem
+Date: Tue, 2 Aug 2005 07:36:17 -0700
+Message-ID: <482A3FA0050D21419C269D13989C611308539E55@lavender-fe.eng.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1DzvYa-00067j-Q0
-	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 05:07:40 -0700
-Received: from dsl093-002-214.det1.dsl.speakeasy.net ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1DzvYa-0006Vd-FT
-	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 05:07:40 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20050802104904.GC29054@suse.de>
+	id 1Dzxsd-0003SL-Ro
+	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 07:36:31 -0700
+Received: from mx1.netapp.com ([216.240.18.38])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Dzxsc-00081o-OY
+	for nfs@lists.sourceforge.net; Tue, 02 Aug 2005 07:36:31 -0700
+To: "Brett Petrusek" <brettp@aspsys.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +29,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Aug 02, 2005 at 12:49:04PM +0200, Olaf Kirch wrote:
-> On Tue, Aug 02, 2005 at 06:02:22AM -0400, J. Bruce Fields wrote:
-> > Yeah.  So the simplest solution might be to make the other upcalls use
-> > the same sort of deferral as the idmap upcalls, at least in the v4 case.
-> > In the v3 case fh_verify always happens early enough not to be a
-> > problem, I believe.
-> > 
-> > Though I still think it's unfortunate even for v3 that it will try to
-> > copy (and allocate space for) the entire write request in the case of an
-> > authentication- or export- related upcall.
-> 
-> I just looked at svc_defer in 2.6.12 and it seems it cannot handle
-> more than one page of data anyway, and ditches anything else.
+> I'm not sure if this is a bug or what, but I am experiencing severe=20
+> performace problems between an IA64 NFS server and IA32 NFS client. I=20
+> have tried every combination of socket buffer sizes as well as many=20
+> other nfs options, but none of them seem to have any effect. I have=20
+> tried RHEL21 to RHEL3U5 with all of these socket combos and still no=20
+> difference. The command I am running is:
+>=20
+> time dd if=3D/dev/zero of=3D/scratch_dir_across_nfs bs=3D1M =
+count=3D128
+>=20
+> Between two IA32 machines this takes 4-5 seconds. Between=20
+> IA64 server and IA32 client this takes on the order of=20
+> minutes. Network performance has been eliminated from the=20
+> equation as after kernel tuning we have achieved consistent=20
+> 94% of peak tcp throughput and 95.7% of peak udp throughput=20
+> on our GigE network.  This is both between IA32 and IA64 systems.
 
-Oops, you're right.  Forcing the client to time out and retry there is
-kind of unfortunate too, though.  A half hour of activity (to expire
-entries from the export cache) followed by a write could trigger this.
+can you tell us about the file system on the ia64 server.  block size,
+fstype, etc?
 
---b.
+what's the page size on that system?
+
+have you run local performance tests on the server?
 
 
 -------------------------------------------------------
