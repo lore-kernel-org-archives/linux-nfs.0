@@ -1,21 +1,20 @@
-From: "UNIREA Sannicolau Mare" <credsantm1@rdslink.ro>
-Subject: NFS wierd problem
-Date: Wed, 3 Aug 2005 09:07:51 +0300
-Message-ID: <000001c59804$9da11d40$0101a8c0@credsantm>
+From: Bruce Guenter <lists-nfs@bruce-guenter.dyndns.org>
+Subject: NFSv3 and exporting bind mounts
+Date: Wed, 3 Aug 2005 16:39:34 -0600
+Message-ID: <20050803223934.GB18973@untroubled.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-2"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="liOOAslEiF7prFVr"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E0EXT-00071t-GK
-	for nfs@lists.sourceforge.net; Wed, 03 Aug 2005 01:23:47 -0700
-Received: from mail.rdslink.ro ([193.231.236.20])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1E0EXS-00067g-Mm
-	for nfs@lists.sourceforge.net; Wed, 03 Aug 2005 01:23:47 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1E0Rtm-00011f-CD
+	for nfs@lists.sourceforge.net; Wed, 03 Aug 2005 15:39:42 -0700
+Received: from zak.futurequest.net ([69.5.6.152])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1E0Rti-0001Jd-3q
+	for nfs@lists.sourceforge.net; Wed, 03 Aug 2005 15:39:42 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,55 +28,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a NFS network which looks like this:
 
-The server is 192.168.1.3, the client is 192.168.1.4
-- the /etc/exports on the server contains:
- /scoop *(rw,sync)
+--liOOAslEiF7prFVr
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-- the /etc/hosts on server contains:
- 127.0.0.1        CASA1localhost.localdomain localhost
- 192.168.1.4    CASA2
+Hi.
 
-- the /etc/hosts.allow and /etc/hosts.deny on the server and client are all
-blank!!!!
+I am trying to get a directory linked with mount --bind to export
+without needing a separate client mount with NFSv3.  Is this possible?
 
-- the /etc/hosts on client contains:
- 127.0.0.1     CASA2 localhost.localdomain localhost
- 192.168.1.3     CASA1
+That is, if I export /share, and do
+	mount --bind /usr/portage /share/portage
+I would like the contents of /share/portage to show up on the clients.
+I have tried many combinations of nohide, crossmnt, and no_subtree_check
+in the exports file to no avail.
 
-When I go to client and give
- #mount 192.168.1.3:/scoop /mnt/1
-it works well and I can use the /mnt/1 directory in read-write mode
+Thanks.
+--=20
+Bruce Guenter <bruce@untroubled.org> http://untroubled.org/
+OpenPGP key: 699980E8 / D0B7 C8DD 365D A395 29DA  2E2A E96F B2DC 6999 80E8
 
-Ok by now. I give on client
- #umount /mnt/1
+--liOOAslEiF7prFVr
+Content-Type: application/pgp-signature
+Content-Disposition: inline
 
-I give on server
- #service nfs restart
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
 
-I give on client:
- #mount 192.168.1.3:/scoop /mnt/1
-I receive error: connection failed: the server is down
+iD8DBQFC8Uem6W+y3GmZgOgRAt+0AKCl6TexjTHDOnfL3hK2XdwUawEUZgCfSRjE
+gxNqaTGy++LQdKxpACQyrW0=
+=NPSE
+-----END PGP SIGNATURE-----
 
->From now one, no mater how many times I restart the nfs services on server,
-the client tell's me the server is down.
-
-If I rboot the server Linux then all will work fine again (I can mount all
-stuff untill I need to restart nfs services which forces me to reboot the
-server linux station)
-
-That's a wierd problem. I'm using Fedora Core 2 on all stations. It can be a
-distribution problem.
-
-
+--liOOAslEiF7prFVr--
 
 
 -------------------------------------------------------
-SF.Net email is sponsored by: Discover Easy Linux Migration Strategies
-from IBM. Find simple to follow Roadmaps, straightforward articles,
-informative Webcasts and more! Get everything you need to get up to
-speed, fast. http://ads.osdn.com/?ad_id=7477&alloc_id=16492&op=click
+SF.Net email is Sponsored by the Better Software Conference & EXPO
+September 19-22, 2005 * San Francisco, CA * Development Lifecycle Practices
+Agile & Plan-Driven Development * Managing Projects & Teams * Testing & QA
+Security * Process Improvement & Measurement * http://www.sqe.com/bsce5sf
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
