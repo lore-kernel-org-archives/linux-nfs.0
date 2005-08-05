@@ -1,26 +1,20 @@
-From: "Weathers, Norman R." <Norman.R.Weathers@conocophillips.com>
-Subject: rpciod Problems
-Date: Thu, 4 Aug 2005 15:15:47 -0500
-Message-ID: <D821697F08061F4FBB069FA1AAAA92370C45B1@hoexmb7.conoco.net>
+From: =?ks_c_5601-1987?B?seiw5sel?= <kpkim@gluesys.com>
+Subject: nfsd hang !!! RPC request reserved -1453504422 but used 116
+Date: Fri, 5 Aug 2005 18:52:53 +0900
+Message-ID: <000a01c599a3$730fc720$6b00a8c0@hgichon>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0007_01C599EE.E2CC8E90"
+Cc: <kgh@gluesys.com>, <jgchoi@gluesys.com>, <gbkwon@gluesys.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E0m88-0002FP-Qu
-	for nfs@lists.sourceforge.net; Thu, 04 Aug 2005 13:15:52 -0700
-Received: from mailman1.ppco.com ([138.32.33.10])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1E0m87-0006tT-4t
-	for nfs@lists.sourceforge.net; Thu, 04 Aug 2005 13:15:52 -0700
-Received: from bvlextrd01.conoco.net (trend1.ppco.com [138.32.33.139])
-	by mailman1.ppco.com (8.12.8/8.12.8) with ESMTP id j74KFnRJ027510
-	for <nfs@lists.sourceforge.net>; Thu, 4 Aug 2005 15:15:49 -0500
-Received: from bvlexbh2.conoco.net (bvlexbh2.conoco.net [138.32.45.42])
-	by mail1.ppco.com (8.11.6+Sun/8.11.6) with ESMTP id j74KFmO11104
-	for <nfs@lists.sourceforge.net>; Thu, 4 Aug 2005 15:15:48 -0500 (CDT)
+	id 1E0ysN-0000Qf-Q3
+	for nfs@lists.sourceforge.net; Fri, 05 Aug 2005 02:52:27 -0700
+Received: from mailgate1.kt-idc.co.kr ([211.62.35.98] helo=mailgate1.mailhost2.kornet.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1E0ysN-0000qO-3i
+	for nfs@lists.sourceforge.net; Fri, 05 Aug 2005 02:52:28 -0700
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,46 +29,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+This is a multi-part message in MIME format.
 
-I appear to be having an issue with the NFS client in the 2.6.12.1
-kernel.  Here are the vital statistics:
+------=_NextPart_000_0007_01C599EE.E2CC8E90
+Content-Type: text/plain;
+	charset="ks_c_5601-1987"
+Content-Transfer-Encoding: base64
 
-Fedora Core 3 clients, 2.6.12.1 kernels.  Boxes are Opterons (2200 MHz)
-with 4G of RAM.
+SGksDQoNClRocmVlIGRheXMgYWdvLCBJIGdvdCB0aGUgbWVzc2FnZSAiUlBDIHJlcXVlc3QgcmVz
+ZXJ2ZWQgLTE0NTM1MDQ0MjIgYnV0IHVzZWQgMTE2IiBpbiBteSBsaW51eCBib3guDQpXaGVuIHRo
+ZSBtZXNzYWdlIGlzc3VlZCwgbXkgbmZzZCBpcyBub3QgcmVzcG9uZC4NCg0KLS0tIE5GUyBzZXJ2
+ZXIgLS0tDQpsaW51eC0yLjQuMjcNCmZpbGVzeXN0ZW0gOiB4ZnMNCg0KLS0tIE5GUyBDbGllbnQg
+LS0tDQpsaW51eC0yLjQuMzENClJlZGhhdCA3LjINCmFwcGxpY2F0aW9uIGFwYWNoZS1saW5nZXIt
+MS4zLjMzDQoNCi0tLSBDb25maWd1cmF0aW9uIC0tLQ0KTkZTIHNlcnZlciBleHBvcnQgb3B0aW9u
+IDogYXN5bmMsIHJ3DQpORlMgQ2xpZW50IG1vdW50IG9wdGlvbiA6IG5vYXRpbWUsIHVkcA0KDQoN
+CkFuZCBhIHdlZWsgYWdvLCBORlMgc2VydmVyIHdhcyBjcmFzaGVkIGFuZCBObyBwaW5nLg0KSSBj
+YW4ndCBmaW5kIGFueSBrZXJuZWwgbWVzc2FnZSBkdW1wLg0KDQpJIGRvbid0IGtub3cgdGhhdCBh
+Ym92ZSAyIHByb2JsZW0gaXMgcmVsYXRlZC4NCg0KUGxlYXNlIGhlbHAhDQpUaGFua3Mu
 
-Servers:  Various, FC3 i386 and Opterons
-			 FC2 i386
-			 RedHat 7.3 i386
+------=_NextPart_000_0007_01C599EE.E2CC8E90
+Content-Type: text/html;
+	charset="ks_c_5601-1987"
+Content-Transfer-Encoding: base64
 
->From our testing, it appears that whenever our clients go into long
-writes (something around 2G or more), the clients rpciod/0 thread
-appears to start taking a lot of CPU time, sometimes it takes 100 % of a
-CPU for long periods of time.  Eventually, you will notice the load to
-start and climb on the client that the rpciod thread is running 100 %.
-Then, as more services are needing to write over NFS, they too start
-using more CPU time.  In the end, the nodes will become unresponsive to
-NFS.  They become so slow that logins are no longer possible over the
-network.  We have the client nodes on serial consoles, so we have been
-able to get the console open and run SysRq T and see that a lot of
-processes are in IO wait.  This was not an issue, as far as we could
-tell, in the 2.6.11.7 kernel (although there were other problems with
-this kernel that would not allow us to use it).
+PCFET0NUWVBFIEhUTUwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMCBUcmFuc2l0aW9uYWwv
+L0VOIj4NCjxIVE1MPjxIRUFEPg0KPE1FVEEgaHR0cC1lcXVpdj1Db250ZW50LVR5cGUgY29udGVu
+dD0idGV4dC9odG1sOyBjaGFyc2V0PWtzX2NfNTYwMS0xOTg3Ij4NCjxNRVRBIGNvbnRlbnQ9Ik1T
+SFRNTCA2LjAwLjI4MDAuMTUwNSIgbmFtZT1HRU5FUkFUT1I+DQo8U1RZTEU+PC9TVFlMRT4NCjwv
+SEVBRD4NCjxCT0RZIGJnQ29sb3I9I2ZmZmZmZj4NCjxESVY+PEZPTlQgc2l6ZT0yPkhpLDwvRk9O
+VD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPjwvRk9OVD4mbmJzcDs8L0RJVj4NCjxESVY+PEZP
+TlQgc2l6ZT0yPlRocmVlJm5ic3A7ZGF5cyBhZ28sIEkgZ290IHRoZSBtZXNzYWdlICJSUEMgcmVx
+dWVzdCByZXNlcnZlZCANCi0xNDUzNTA0NDIyIGJ1dCB1c2VkIDExNiIgaW4gbXkgbGludXggYm94
+LjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPldoZW4gdGhlIG1lc3NhZ2UgaXNzdWVk
+LCBteSBuZnNkIGlzIG5vdCByZXNwb25kLjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0y
+PjwvRk9OVD4mbmJzcDs8L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPi0tLSBORlMgc2VydmVyIC0t
+LTwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPmxpbnV4LTIuNC4yNzwvRk9OVD48L0RJ
+Vj4NCjxESVY+PEZPTlQgc2l6ZT0yPmZpbGVzeXN0ZW0gOiB4ZnM8L0ZPTlQ+PC9ESVY+DQo8RElW
+PjxGT05UIHNpemU9Mj48L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj4tLS0g
+TkZTIENsaWVudCAtLS08L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5saW51eC0yLjQu
+MzE8L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5SZWRoYXQgNy4yPC9GT05UPjwvRElW
+Pg0KPERJVj48Rk9OVCBzaXplPTI+YXBwbGljYXRpb24gYXBhY2hlLWxpbmdlci0xLjMuMzM8L0ZP
+TlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj48L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxG
+T05UIHNpemU9Mj4tLS0gQ29uZmlndXJhdGlvbiAtLS08L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05U
+IHNpemU9Mj5ORlMgc2VydmVyIGV4cG9ydCZuYnNwO29wdGlvbiA6Jm5ic3A7YXN5bmMsIHJ3PC9G
+T05UPjwvRElWPg0KPERJVj48Rk9OVCBzaXplPTI+TkZTIENsaWVudCBtb3VudCBvcHRpb24gOiBu
+b2F0aW1lLCB1ZHA8L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj48L0ZPTlQ+Jm5ic3A7
+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj48L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxGT05U
+IHNpemU9Mj5BbmQmbmJzcDthIHdlZWsgYWdvLCZuYnNwO05GUyBzZXJ2ZXImbmJzcDt3YXMgY3Jh
+c2hlZCBhbmQgTm8gDQpwaW5nLjwvRk9OVD48L0RJVj4NCjxESVY+PEZPTlQgc2l6ZT0yPkkgY2Fu
+J3QgZmluZCBhbnkga2VybmVsIG1lc3NhZ2UgZHVtcC48L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05U
+IHNpemU9Mj48L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5JIGRvbid0IGtu
+b3cgdGhhdCBhYm92ZSAyIHByb2JsZW0gaXMgcmVsYXRlZC48L0ZPTlQ+PC9ESVY+DQo8RElWPjxG
+T05UIHNpemU9Mj48L0ZPTlQ+Jm5ic3A7PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5QbGVhc2Ug
+aGVscCE8L0ZPTlQ+PC9ESVY+DQo8RElWPjxGT05UIHNpemU9Mj5UaGFua3MuPC9GT05UPjwvRElW
+PjwvQk9EWT48L0hUTUw+DQo=
 
-I noticed in a thread that someone suggested lowering some vm settings,
-and we have done this, and as of yet, have not seen the larger spikes
-from the past.  The question is, "Is this the preferred method of fixing
-this issue?"
+------=_NextPart_000_0007_01C599EE.E2CC8E90--
 
-Other bit of information:  We are using Trond's NFS_ALL patches.
-
-Any information anyone can give would be most useful.
-
-Also, we have several nodes for testing if patches are needed.
-
-Thanks in advance.
-
-Norman Weathers
 
 
 -------------------------------------------------------
