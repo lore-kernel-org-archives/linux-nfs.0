@@ -1,32 +1,21 @@
-From: Haakon Riiser <haakon.riiser@fys.uio.no>
-Subject: Re: "Server not responding" after periods of client inactivity
-Date: Wed, 10 Aug 2005 00:24:03 +0200
-Message-ID: <20050809222403.GA9444@fox.upc.no>
-References: <20050714212514.GA23867@fox> <20050730131031.GA1668@fox> <1122732943.8248.13.camel@lade.trondhjem.org> <20050730143216.GA2339@fox> <1122735345.8248.28.camel@lade.trondhjem.org> <20050809190634.GA5779@fox.upc.no> <1123614892.8245.166.camel@lade.trondhjem.org> <20050809203219.GA6740@fox.upc.no> <1123621160.8245.200.camel@lade.trondhjem.org>
+From: Michael <mikore.li@gmail.com>
+Subject: newbie question
+Date: Fri, 12 Aug 2005 12:12:30 +0800
+Message-ID: <bc572709050811211255587aba@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E2cWA-00073k-Ja
-	for nfs@lists.sourceforge.net; Tue, 09 Aug 2005 15:24:18 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1E2cWA-0001jH-3P
-	for nfs@lists.sourceforge.net; Tue, 09 Aug 2005 15:24:18 -0700
-Received: from mail-mx3.uio.no ([129.240.10.44])
-	by pat.uio.no with esmtp (Exim 4.43)
-	id 1E2cW3-0006mW-Jm
-	for nfs@lists.sourceforge.net; Wed, 10 Aug 2005 00:24:11 +0200
-Received: from cm-80.111.122.093.chello.no ([80.111.122.93] helo=fox.venod.com)
-	by mail-mx3.uio.no with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.43)
-	id 1E2cW0-0001Gn-Q2
-	for nfs@lists.sourceforge.net; Wed, 10 Aug 2005 00:24:08 +0200
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1123621160.8245.200.camel@lade.trondhjem.org>
+	id 1E3QuM-0005vV-Kb
+	for nfs@lists.sourceforge.net; Thu, 11 Aug 2005 21:12:38 -0700
+Received: from wproxy.gmail.com ([64.233.184.192])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1E3QuL-0000pe-9L
+	for nfs@lists.sourceforge.net; Thu, 11 Aug 2005 21:12:38 -0700
+Received: by wproxy.gmail.com with SMTP id i3so493330wra
+        for <nfs@lists.sourceforge.net>; Thu, 11 Aug 2005 21:12:30 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,42 +29,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond,
+Hi,=20
 
->> rpc.mountd    R running  1880  2814      1               18906 (NOTLB)
-> 
-> Makes sense. That means that rpc.mountd is hanging in userland. That
-> would also explain why you can't immediately ptrace it.
+how can I understand following output from "tcpdump -p", at that time,
+I am "dd" a file into a nfs mount point. Can anyone send me a
+reference link to me? especially what's the meaning of "frag
+55141:1292@2960", what's "DF"...
 
-But shouldn't strace immediately attach, even if mountd is
-busy-waiting in userspace?  E.g., if I create a program that loops
-forever, such as
+11:40:16.499209 192.168.0.148.3554257722 > 192.168.0.90.nfs: 1472
+write [|nfs] (frag 55140:1480@0+)
+11:40:16.499412 192.168.0.90.nfs > 192.168.0.148.3302599482: reply ok 136 (=
+DF)
+11:40:16.499450 192.168.0.148 > 192.168.0.90: udp (frag 55141:1292@2960)
+11:40:16.499458 192.168.0.148 > 192.168.0.90: udp (frag 55141:1480@1480+)
+11:40:16.499464 192.168.0.148.3571034938 > 192.168.0.90.nfs: 1472
+write [|nfs] (frag 55141:1480@0+)
+11:40:16.499777 192.168.0.90.nfs > 192.168.0.148.3319376698: reply ok 136 (=
+DF)
+11:40:16.499813 192.168.0.148 > 192.168.0.90: udp (frag 55142:1292@2960)
+11:40:16.499821 192.168.0.148 > 192.168.0.90: udp (frag 55142:1480@1480+)
 
-  for (;;) { }
+Thank,
 
-I can still attach immediately, although nothing is printed since
-there are no system calls (I've verified this).  How can a program
-running in userspace delay strace's initial attachment?
-
-> It is worrying, though. rpc.mountd should almost always be in the
-> kernel, waiting in select().
-> 
-> Did you compile this version of rpc.mountd yourself? If not, is there
-> anything special/weird in your /etc/exports file that might cause the
-> rpc.mountd parser to be screwing up?
-
-No and no.  I'm using Fedora Core 3's rpc.mountd (nfs-utils-1.0.6-52),
-and this is my /etc/exports:
-
-/pub    10.0.0.4(rw,async,no_root_squash,no_subtree_check)
-/raid   10.0.0.4(rw,async,no_subtree_check)
-/pub    10.0.0.21(rw,async,no_root_squash,no_subtree_check)
-/raid   10.0.0.21(rw,async,no_subtree_check)
-
-Shouldn't have any problems with this, right?
-
--- 
- Haakon
+Mike
 
 
 -------------------------------------------------------
