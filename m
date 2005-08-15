@@ -1,22 +1,28 @@
-From: Scott Taylor <scottt@methodstudios.com>
-Subject: WARNING: rfs3call
-Date: Mon, 15 Aug 2005 18:03:53 -0700
-Message-ID: <43013B79.2070800@methodstudios.com>
+From: Roger Zimmermann <Roger.Zimmermann@arcor.de>
+Subject: Is this possible using NFS ?
+Date: Mon, 15 Aug 2005 23:13:06 +0200
+Message-ID: <1124140386.11051.22.camel@rudi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E4ps6-00052D-QY
-	for nfs@lists.sourceforge.net; Mon, 15 Aug 2005 18:04:06 -0700
-Received: from mail.methodstudios.com ([205.147.9.194] helo=myo2.methodstudios.com)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	id 1E4mGl-0002IJ-Nf
+	for nfs@lists.sourceforge.net; Mon, 15 Aug 2005 14:13:19 -0700
+Received: from mail-in-02.arcor-online.net ([151.189.21.42])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1E4ps6-0000ch-IA
-	for nfs@lists.sourceforge.net; Mon, 15 Aug 2005 18:04:06 -0700
-Received: from [192.168.10.80] (scottPC.methodstudios.com [192.168.10.80])
-	by myo2.methodstudios.com (8.12.5/8.12.8) with ESMTP id j7G13udx020858
-	for <nfs@lists.sourceforge.net>; Mon, 15 Aug 2005 18:03:56 -0700
+	id 1E4mGk-0002O5-JK
+	for nfs@lists.sourceforge.net; Mon, 15 Aug 2005 14:13:19 -0700
+Received: from mail-in-03-z2.arcor-online.net (mail-in-03-z2.arcor-online.net [151.189.8.15])
+	by mail-in-02.arcor-online.net (Postfix) with ESMTP id 80EE22E511
+	for <nfs@lists.sourceforge.net>; Mon, 15 Aug 2005 23:13:09 +0200 (CEST)
+Received: from mail-in-07.arcor-online.net (mail-in-07.arcor-online.net [151.189.21.47])
+	by mail-in-03-z2.arcor-online.net (Postfix) with ESMTP id 70EAC17D582
+	for <nfs@lists.sourceforge.net>; Mon, 15 Aug 2005 23:13:09 +0200 (CEST)
+Received: from [192.168.2.191] (dsl-084-059-209-228.arcor-ip.net [84.59.209.228])
+	by mail-in-07.arcor-online.net (Postfix) with ESMTP id 1D00234BF6
+	for <nfs@lists.sourceforge.net>; Mon, 15 Aug 2005 23:13:09 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -31,39 +37,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi.
+Hi,
 
-In an environment with a Fedora3 (2.6.11.3 kernel) serving NFS to 
-several IRIX (6.5.21) boxen, I occasionally see the following messages 
-in the IRIX system's syslogs:
+I've got a server, where a varying number of disks is connected.
+The layout:
 
-Aug 15 16:03:42 4A:K6 unix: WARNING: rfs3call: file temporarily 
-unavailable on the server s2, retrying...
-Aug 15 17:44:48 4A:K6 unix: WARNING: rfs3call: file temporarily 
-unavailable on the server s2, retrying...
-Aug 15 17:46:07 4A:K6 unix: WARNING: rfs3call: file temporarily 
-unavailable on the server s2, retrying...
+/exampledir/onedisk/sometimes-mounted/etc
+/exampledir/onotherdisk/sometimes-mounted/etc
+/exampledir/harddisk/always-mounted
+/exampledir/otherdata
 
+can I simply export /exampledir from the server
+and mount it via NFS by clients without having each client to inform
+when e.g 'onedisk' is connected or removed ?
 
-Some of the IRIX boxen weather these messages well, while others (onyx2 
-and octane1) will hang for a while.
-
-All of these systems reside on the same gigabit ethernet switch.
-
-The line in the IRIX boxen fstab looks like this :
-
-s2:/array /ocean nfs rw,soft,bg,rsize=32768,wsize=32768,proto=tcp 0 0
-
-Things seemed to be working nicely for a long time, and I cannot 
-identify any specific change to the network or machines that may have 
-led to these messages.
-
-Many thanks for any thoughts or input - please reply to my email address 
-directly as I do not subscribe to the list.
-
-Thanks,
-
-Scott
+THNX, Roger
 
 
 
