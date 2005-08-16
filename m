@@ -1,23 +1,23 @@
-From: "Gomez, Daniel" <dgomez@tigr.ORG>
-Subject: RE: Setting up NFS on Windows
-Date: Fri, 19 Aug 2005 13:41:36 -0400
-Message-ID: <7F0AA25C9B1706448E8B73DFDD109B31017DEA9C@EXCHANGE.TIGR.ORG>
+From: Scott Taylor <scottt@methodstudios.com>
+Subject: WARNING: rfs3call
+Date: Mon, 15 Aug 2005 18:03:53 -0700
+Message-ID: <43013B79.2070800@methodstudios.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E6AsC-0002fe-Ry
-	for nfs@lists.sourceforge.net; Fri, 19 Aug 2005 10:41:44 -0700
-Received: from ranger.tigr.org ([192.207.234.252])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1E6AsB-0004e2-KA
-	for nfs@lists.sourceforge.net; Fri, 19 Aug 2005 10:41:45 -0700
-Received: from EXCHANGE.TIGR.ORG (exch1n [172.17.5.22])
-	by ranger.tigr.org (8.13.0/8.13.0/Submit) with ESMTP id j7JHfakV024265
-	for <nfs@lists.sourceforge.net>; Fri, 19 Aug 2005 13:41:36 -0400 (EDT)
-To: <nfs@lists.sourceforge.net>
+	id 1E4ps6-00052D-QY
+	for nfs@lists.sourceforge.net; Mon, 15 Aug 2005 18:04:06 -0700
+Received: from mail.methodstudios.com ([205.147.9.194] helo=myo2.methodstudios.com)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44)
+	id 1E4ps6-0000ch-IA
+	for nfs@lists.sourceforge.net; Mon, 15 Aug 2005 18:04:06 -0700
+Received: from [192.168.10.80] (scottPC.methodstudios.com [192.168.10.80])
+	by myo2.methodstudios.com (8.12.5/8.12.8) with ESMTP id j7G13udx020858
+	for <nfs@lists.sourceforge.net>; Mon, 15 Aug 2005 18:03:56 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,66 +31,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi.
 
-1. It is free.
-Download Microsoft's SFU service
-http://www.microsoft.com/technet/interopmigration/unix/sfu/sfu35int.mspx
+In an environment with a Fedora3 (2.6.11.3 kernel) serving NFS to 
+several IRIX (6.5.21) boxen, I occasionally see the following messages 
+in the IRIX system's syslogs:
 
-2. somewhat - it's easier if you just use local passwd/group files.
-
-I personally copied /etc/passwd /etc/group files from my linux
-environment to my local windows box to make the UID mapping between our
-unix environment and our windows environment. If you want something more
-domain wide, either use the other mapping services as explained in SFU
-OR expose your passwd/group file on say the netlogin domain shared
-folder.
-
-3. dunno aside from what's in the SFU software and on Microsoft's site.
-Another useful config page.
-http://www.microsoft.com/technet/interopmigration/unix/sfu/perfnfs.mspx
+Aug 15 16:03:42 4A:K6 unix: WARNING: rfs3call: file temporarily 
+unavailable on the server s2, retrying...
+Aug 15 17:44:48 4A:K6 unix: WARNING: rfs3call: file temporarily 
+unavailable on the server s2, retrying...
+Aug 15 17:46:07 4A:K6 unix: WARNING: rfs3call: file temporarily 
+unavailable on the server s2, retrying...
 
 
------Original Message-----
-From: nfs-admin@lists.sourceforge.net
-[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Vijaya Kishore
-Idimadakala
-Sent: Friday, August 19, 2005 12:44 PM
-To: nfs@lists.sourceforge.net
-Subject: [NFS] Setting up NFS on Windows
+Some of the IRIX boxen weather these messages well, while others (onyx2 
+and octane1) will hang for a while.
 
+All of these systems reside on the same gigabit ethernet switch.
 
-Hey All,
+The line in the IRIX boxen fstab looks like this :
 
-I have a few questions wrt installing NFS server on
-Windows XP (Client=3D a board running Linux).
+s2:/array /ocean nfs rw,soft,bg,rsize=32768,wsize=32768,proto=tcp 0 0
 
-1. Is it Free?
-2. Is it easy to install/use=20
-3. are there any good tutorials on installation/usage?
+Things seemed to be working nicely for a long time, and I cannot 
+identify any specific change to the network or machines that may have 
+led to these messages.
 
-Any help is greatly appreciated.
+Many thanks for any thoughts or input - please reply to my email address 
+directly as I do not subscribe to the list.
 
-Thanks in advance and have a wonderful day,
-Vijay
+Thanks,
 
+Scott
 
-
-	=09
-____________________________________________________
-Start your day with Yahoo! - make it your home page=20
-http://www.yahoo.com/r/hs=20
-=20
-
-
--------------------------------------------------------
-SF.Net email is Sponsored by the Better Software Conference & EXPO
-September 19-22, 2005 * San Francisco, CA * Development Lifecycle
-Practices Agile & Plan-Driven Development * Managing Projects & Teams *
-Testing & QA Security * Process Improvement & Measurement *
-http://www.sqe.com/bsce5sf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
