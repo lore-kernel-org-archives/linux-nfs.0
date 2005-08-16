@@ -1,23 +1,21 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: NFS How-To: broken link
-Date: Tue, 16 Aug 2005 10:58:02 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539EBF@lavender-fe.eng.netapp.com>
+From: Nick I <clusterbuilder@gmail.com>
+Subject: Thanks for the help
+Date: Tue, 16 Aug 2005 13:58:42 -0600
+Message-ID: <e073f9120508161258253e4a6f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----_=_NextPart_001_01C5A28C.0BDFED74"
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E55he-00006a-0F
-	for nfs@lists.sourceforge.net; Tue, 16 Aug 2005 10:58:22 -0700
-Received: from mx1.netapp.com ([216.240.18.38])
+	id 1E57aE-0004oi-Lr
+	for nfs@lists.sourceforge.net; Tue, 16 Aug 2005 12:58:50 -0700
+Received: from wproxy.gmail.com ([64.233.184.195])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1E55hc-0005el-V4
-	for nfs@lists.sourceforge.net; Tue, 16 Aug 2005 10:58:22 -0700
-Received: from svlexc03.hq.netapp.com (svlexc03.corp.netapp.com [10.57.156.149])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id j7GHvvWl007619
-	for <nfs@lists.sourceforge.net>; Tue, 16 Aug 2005 10:58:06 -0700 (PDT)
-To: <nfs@lists.sourceforge.net>
+	id 1E57aD-0005hU-Ho
+	for nfs@lists.sourceforge.net; Tue, 16 Aug 2005 12:58:50 -0700
+Received: by wproxy.gmail.com with SMTP id 58so16295wri
+        for <nfs@lists.sourceforge.net>; Tue, 16 Aug 2005 12:58:42 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,64 +29,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi,
 
-------_=_NextPart_001_01C5A28C.0BDFED74
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+Thanks you everyone for submitting links about HPC related projects
+and sites to Cluster Builder (http://www.clusterbuilder.org). Upon
+suggestions sent by the HPC community, I added sections for Grid
+middleware and end-user applications under the "Software" category.
 
-see attached.
+I want to continue making Cluster Builder a helpful research tool for
+HPC related information. So I'd like to know, based upon your
+experience, if there are any other important components you run on
+your cluster that I failed to note, or are there changes you would
+make in how I listed the applications.
 
-who is maintaining the NFS How-To these days?
+Please go ahead and respond to this email in the user list so that
+others can give their opinions as well. Links that you mention in the
+user list I will be sure to include on Cluster Builder.
 
-------_=_NextPart_001_01C5A28C.0BDFED74
-Content-Type: message/rfc822
-Content-Transfer-Encoding: 7bit
-
-Return-Path: <Lars.Voelker@tm.uka.de>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-X-Mailer: Microsoft Office Outlook, Build 11.0.6353
-X-MimeOLE: Produced By Microsoft Exchange V6.0.6603.0
-Delivered-To: cel@citi.umich.edu
-X-Spam-Status: No
-X-Spam-Score: -5.8 (-----)
-X-Original-To: cel@citi.umich.edu
-Content-class: urn:content-classes:message
-Subject: NFS FAQ: broken link
-Date: Tue, 16 Aug 2005 01:17:03 -0700
-Message-ID: <20050816081703.4A36C8686@smtp.ipv6.tm.uni-karlsruhe.de>
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-Thread-Index: AcWiOuCAhbrbldAHTmqIFjVyiPZblA==
-From: =?iso-8859-1?Q?Lars_V=F6lker?= <Lars.Voelker@tm.uka.de>
-To: <cel@citi.umich.edu>
-
-
-Hi!
-
-On the webpage http://nfs.sourceforge.net/nfs-howto/intro.html#WHAT is a
-link which has some rather unexpected content:
-http://www.transarc.com/Product/EFS/AFS/index.html
-
-You probably want to change that link. Maybe to http://www.openafs.org/ =
-???
-
-Lars
-
---=20
-Dipl.-Inform. Lars V=F6lker
-Institute of Telematics, University of Karlsruhe
-Zirkel 2, 76128 Karlsruhe
-Phone: +49 721 - 608 6397
-Fax:   +49 721 - 608 6789
-
-
-
-------_=_NextPart_001_01C5A28C.0BDFED74--
+Thanks for the help,
+Nick
 
 
 -------------------------------------------------------
