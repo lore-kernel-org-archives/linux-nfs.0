@@ -1,27 +1,23 @@
-From: Michael <mikore.li@gmail.com>
-Subject: Re: can anyone explain this state?
-Date: Wed, 17 Aug 2005 21:39:55 +0800
-Message-ID: <bc57270905081706392d1706aa@mail.gmail.com>
-References: <bc57270905081704131c4b23d4@mail.gmail.com>
-	 <1124280174.23245.4.camel@lade.trondhjem.org>
-	 <43032CF2.3070908@redhat.com>
-	 <1124282392.23245.26.camel@lade.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Hang in 2.6.11.11 NFSv3 client following NFSERR_JUKEBOX
+Date: Wed, 17 Aug 2005 10:15:52 -0400
+Message-ID: <1124288152.23245.31.camel@lade.trondhjem.org>
+References: <20050817133257.GK13622@sentientmeat.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E5O9D-0002NR-LW
-	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 06:40:03 -0700
-Received: from wproxy.gmail.com ([64.233.184.202])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1E5O9B-0003tg-7Z
-	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 06:40:03 -0700
-Received: by wproxy.gmail.com with SMTP id i3so138918wra
-        for <nfs@lists.sourceforge.net>; Wed, 17 Aug 2005 06:39:55 -0700 (PDT)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1124282392.23245.26.camel@lade.trondhjem.org>
+	id 1E5OiL-0003wt-Gy
+	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 07:16:21 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1E5OiK-0004Ei-0Z
+	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 07:16:21 -0700
+To: Richard Perrin <rcp@sentientmeat.ca>
+In-Reply-To: <20050817133257.GK13622@sentientmeat.ca>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,100 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 8/17/05, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> on den 17.08.2005 Klokka 08:26 (-0400) skreiv Peter Staubach:
-> > Trond Myklebust wrote:
-> >
-> > >on den 17.08.2005 Klokka 19:13 (+0800) skreiv Michael:
-> > >
-> > >
-> > >>Hi,
-> > >>
-> > >>These day, I observed a strange thing when I copy a 100MB file from
-> > >>nfs server, both client and server is running redhat 9.0 with kernel
-> > >>2.4.20-8:
-> > >>
-> > >>$ sudo mount -o
-> > >>rw,bg,vers=3D3,tcp,timeo=3D600,rsize=3D1024,wsize=3D1024,hard,intr,ac
-> > >>server1:/home/test filetest
-> > >>$ time cp ./filetest/new100m /tmp/o100m
-> > >>
-> > >>real    1m6.575s
-> > >>user    0m0.040s
-> > >>sys     0m1.430s
-> > >>$ time cp ./filetest/new100m /tmp/o100m
-> > >>
-> > >>real    0m4.964s     =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D> it is so different comparing
-> > >>with above time!!
-> > >>user    0m0.030s
-> > >>sys     0m0.570s
-> > >>
-> > >>
-> > >
-> > >This is done using synchronous writes. Each write will wait for the
-> > >server to commit it to disk.
-> > >
-> > >
-> > >
-> > >>$ sudo umount filetest
-> > >>$ sudo mount -o
-> > >>rw,bg,vers=3D3,tcp,timeo=3D600,rsize=3D102400,wsize=3D102400,hard,int=
-r,ac
-> > >>server1:/home/test filetest
-> > >>$ time cp ./filetest/new100m /tmp/o100m
-> > >>
-> > >>real    0m9.075s
-> > >>user    0m0.020s
-> > >>sys     0m0.470s
-> > >>$ time cp ./filetest/new100m /tmp/o100m
-> > >>
-> > >>real    0m7.501s    =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D>only different in 2 seconds!
-> > >>why not less than 4.9 seconds?
-> > >>user    0m0.000s
-> > >>sys     0m0.520s
-> > >>
-> > >>
-> > >
-> > >This is done using asynchronous writes. Much faster, and no need (on
-> > >NFSv3) to wait for the disk before sending the next request.
-> > >
-> > >The reason is that on 2.4 kernels (and early 2.6 kernels) we could onl=
-y
-> > >do synchronous writes when you set wsize < PAGE_SIZE.
-> > >
-> >
-> > Maybe I am misreading the commands being run, but they look like they w=
-ould
-> > generate all NFS READ traffic.  It appears to be copying from an NFS mo=
-unted
-> > file system to /tmp, a local file system.
->=20
-> Oops. errno=3DENOCOFFEE... You are quite right.
->=20
-> Yep. That would indeed put the differences down to caching.
->=20
-> Cheers,
->   Trond
->=20
->=20
+on den 17.08.2005 Klokka 09:32 (-0400) skreiv Richard Perrin:
+> Summary:
+> After receiving an ERR_JUKEBOX, client does not appear to resend request.
+> - Script to reproduce enclosed.
+> - Packet capture available at
+>   http://sentientmeat.ca/~rcp/tmp/nfs_traffic.gz
+> - Reproduceable via interaction with a Samba server having oplocks enabled.
+> - Related to Haakon Riiser's message of 2005-05-08 to the NFS list
+> (http://sourceforge.net/mailarchive/message.php?msg_id=11689791).
+> 
+> Please see attached script for the order of operations. The end result is
+> that a process reading a file on the NFSv3 client machine will become
+> hung, unresponsive to signals after it receives the JUKEBOX error that
+> the server sends. ps(1) reveals the NFS reading process to be in
+> uninterruptible sleep.
 
-Thanks for your feedback!
+Have you tried with 2.6.13-pre6 or any of the other kernels that has the
+"sunrpc_timer_restart" patch applied? 
 
-Yes, I know it should be cache related, but you can see it took me
-more than 1 minute at the first time copy 100Mfile from nfs server,
-but suddenly the second time took 4 second.
-How can the cache result to this? NFS client cache ability? ok, if it
-is, that means NFS client could cache at least 90M data of 100M, then,
-how to explain the last 2 copies?  with rsize=3D8k,first time copy 100M
-file took 9 seconds, but the second time took 7 seconds, if cache work
-as great as rsize=3D1k, why not the second time copy take less than 1
-second?
+see
+http://client.linux-nfs.org/Linux-2.6.x/2.6.12/linux-2.6.12-01-sunrpc_timer_restart.dif
 
-Thanks,
+Cheers,
+  Trond
 
-Michael
 
 
 -------------------------------------------------------
