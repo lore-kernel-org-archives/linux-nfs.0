@@ -1,21 +1,23 @@
-From: Michael <mikore.li@gmail.com>
-Subject: can anyone explain this state?
-Date: Wed, 17 Aug 2005 19:13:42 +0800
-Message-ID: <bc57270905081704131c4b23d4@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: can anyone explain this state?
+Date: Wed, 17 Aug 2005 08:02:54 -0400
+Message-ID: <1124280174.23245.4.camel@lade.trondhjem.org>
+References: <bc57270905081704131c4b23d4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E5Lrj-00055M-Lj
-	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 04:13:51 -0700
-Received: from wproxy.gmail.com ([64.233.184.192])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1E5Lri-0002LN-BJ
-	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 04:13:51 -0700
-Received: by wproxy.gmail.com with SMTP id i3so118602wra
-        for <nfs@lists.sourceforge.net>; Wed, 17 Aug 2005 04:13:44 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1E5Mde-0006v4-OZ
+	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 05:03:22 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1E5Mde-0006I1-CH
+	for nfs@lists.sourceforge.net; Wed, 17 Aug 2005 05:03:22 -0700
+To: Michael <mikore.li@gmail.com>
+In-Reply-To: <bc57270905081704131c4b23d4@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,45 +31,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,=20
+on den 17.08.2005 Klokka 19:13 (+0800) skreiv Michael:
+> Hi, 
+> 
+> These day, I observed a strange thing when I copy a 100MB file from
+> nfs server, both client and server is running redhat 9.0 with kernel
+> 2.4.20-8:
+> 
+> $ sudo mount -o
+> rw,bg,vers=3,tcp,timeo=600,rsize=1024,wsize=1024,hard,intr,ac
+> server1:/home/test filetest
+> $ time cp ./filetest/new100m /tmp/o100m
+> 
+> real    1m6.575s
+> user    0m0.040s
+> sys     0m1.430s
+> $ time cp ./filetest/new100m /tmp/o100m
+> 
+> real    0m4.964s     =================> it is so different comparing
+> with above time!!
+> user    0m0.030s
+> sys     0m0.570s
 
-These day, I observed a strange thing when I copy a 100MB file from
-nfs server, both client and server is running redhat 9.0 with kernel
-2.4.20-8:
+This is done using synchronous writes. Each write will wait for the
+server to commit it to disk.
 
-$ sudo mount -o
-rw,bg,vers=3D3,tcp,timeo=3D600,rsize=3D1024,wsize=3D1024,hard,intr,ac
-server1:/home/test filetest
-$ time cp ./filetest/new100m /tmp/o100m
+> $ sudo umount filetest
+> $ sudo mount -o
+> rw,bg,vers=3,tcp,timeo=600,rsize=102400,wsize=102400,hard,intr,ac
+> server1:/home/test filetest
+> $ time cp ./filetest/new100m /tmp/o100m
+> 
+> real    0m9.075s
+> user    0m0.020s
+> sys     0m0.470s
+> $ time cp ./filetest/new100m /tmp/o100m
+> 
+> real    0m7.501s    ==================>only different in 2 seconds!
+> why not less than 4.9 seconds?
+> user    0m0.000s
+> sys     0m0.520s
 
-real    1m6.575s
-user    0m0.040s
-sys     0m1.430s
-$ time cp ./filetest/new100m /tmp/o100m
+This is done using asynchronous writes. Much faster, and no need (on
+NFSv3) to wait for the disk before sending the next request.
 
-real    0m4.964s     =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D> i=
-t is so different comparing
-with above time!!
-user    0m0.030s
-sys     0m0.570s
-$ sudo umount filetest
-$ sudo mount -o
-rw,bg,vers=3D3,tcp,timeo=3D600,rsize=3D102400,wsize=3D102400,hard,intr,ac
-server1:/home/test filetest
-$ time cp ./filetest/new100m /tmp/o100m
+The reason is that on 2.4 kernels (and early 2.6 kernels) we could only
+do synchronous writes when you set wsize < PAGE_SIZE.
 
-real    0m9.075s
-user    0m0.020s
-sys     0m0.470s
-$ time cp ./filetest/new100m /tmp/o100m
+Cheers,
+  Trond
 
-real    0m7.501s    =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D>=
-only different in 2 seconds!
-why not less than 4.9 seconds?
-user    0m0.000s
-sys     0m0.520s
-
-Thanks!
 
 
 -------------------------------------------------------
