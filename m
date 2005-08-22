@@ -1,32 +1,19 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Re: Exportfs and rpc.mountd optimalization - patch
-Date: Mon, 22 Aug 2005 18:05:14 +0200
-Message-ID: <200508221805.14998.vincent.roqueta@ext.bull.net>
-References: <42B86FB9.6060102@gmail.com> <20050822155320.GC12618@fieldses.org>
+From: Mason Sanders <mason@castlebranch.com>
+Subject: Secure NFS File Share Problem
+Date: Mon, 22 Aug 2005 17:45:07 -0400
+Message-ID: <1124747108.2642.24.camel@mason.castlebranch.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: multipart/alternative; boundary="=-XpdkAzGMyzFKzPepQdB0"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E7Ejs-0002o0-CF
-	for nfs@lists.sourceforge.net; Mon, 22 Aug 2005 09:01:32 -0700
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1E7Ejq-0007k1-TN
-	for nfs@lists.sourceforge.net; Mon, 22 Aug 2005 09:01:32 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 5779219DF04
-	for <nfs@lists.sourceforge.net>; Mon, 22 Aug 2005 18:00:49 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 17281-04 for <nfs@lists.sourceforge.net>;
- Mon, 22 Aug 2005 18:00:48 +0200 (CEST)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id B084819D913
-	for <nfs@lists.sourceforge.net>; Mon, 22 Aug 2005 18:00:47 +0200 (CEST)
+	id 1E7K6P-0000CI-IK
+	for nfs@lists.sourceforge.net; Mon, 22 Aug 2005 14:45:09 -0700
+Received: from proxy1.castlebranch.com ([66.21.56.81])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1E7K6P-000743-5l
+	for nfs@lists.sourceforge.net; Mon, 22 Aug 2005 14:45:09 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20050822155320.GC12618@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,15 +27,129 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le lundi 22 Ao=FBt 2005 17:53, J. Bruce Fields a =E9crit=A0:
-> Vincent, have you tried rerunning your export-scalability test with this
-> patch applied to see if it helps?
->
-> --b.
 
-I can test for nfsv3 if that is important?=20
+--=-XpdkAzGMyzFKzPepQdB0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-V.
+Hello,
+
+I have an LDAP based network with several Cent OS 4 file servers and
+many Fedora Core 2 client machines.  I want to set up NFS on one of them
+in the following configuration and I can't seem to make it work.
+
+I have the following directory structure and I want to lock it down:
+
+/public
+/public/sales
+/public/operations
+/public/hr
+/public/acct
+
+Basically I want each department to be able to access only their files.
+I also want all files that are created in these directories to be able
+to be modified by everyone in the respective group.  I currently have
+this setup functional with samba, but since my clients are now all linux
+based, I would like to use nfs.  Here is an example from my smb.conf
+that accomplishes what I want:
+
+ [acct]
+   comment = Accounting Administration Share
+   writable = yes
+   path = /public/acct
+   sync always = yes
+   valid users = @acct
+   force group = acct
+   create mode = 0660
+   directory mode = 0770
+   public = no
+   browseable = no
+
+
+Is there a way to do this with nfs?  My /etc/exports on the server looks
+like this:
+
+/public/acct
+192.168.2.0/255.255.255.0(rw,sync,all_squash,anonuid=510,anongid=601)
+
+This works in that all files are created as the same user and can be
+modified by anyone, but access is not limited to the acct group.  When I
+change the entry to 
+
+/public/acct           @acct(rw,sync,all_squash,anonuid=510,anongid=601)
+
+It then denies access to anyone not in the acct posix group in LDAP, but
+whenever a user creates a file in the share, it is owned by that user
+with their primary group with permissions of 0644.  My anonymous uid and
+gid are ignored!  Now access to the files is restricted to the acct
+group, but the files are only able to be modified by their owner.  I
+could change the umask to 002 on all of my clients, but then this opens
+up security problems elsewhere, most notably in one's home directory.
+
+Any help with this would be appreciated.
+
+Thanks,
+
+Mason Sanders
+
+--=-XpdkAzGMyzFKzPepQdB0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 TRANSITIONAL//EN">
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=UTF-8">
+  <META NAME="GENERATOR" CONTENT="GtkHTML/3.6.2">
+</HEAD>
+<BODY>
+Hello,<BR>
+<BR>
+I have an LDAP based network with several Cent OS 4 file servers and many Fedora Core 2 client machines.&nbsp; I want to set up NFS on one of them in the following configuration and I can't seem to make it work.<BR>
+<BR>
+I have the following directory structure and I want to lock it down:<BR>
+<BR>
+/public<BR>
+/public/sales<BR>
+/public/operations<BR>
+/public/hr<BR>
+/public/acct<BR>
+<BR>
+Basically I want each department to be able to access only their files.&nbsp; I also want all files that are created in these directories to be able to be modified by everyone in the respective group.&nbsp; I currently have this setup functional with samba, but since my clients are now all linux based, I would like to use nfs.&nbsp; Here is an example from my smb.conf that accomplishes what I want:<BR>
+<BR>
+ [acct]<BR>
+&nbsp;&nbsp; comment = Accounting Administration Share<BR>
+&nbsp;&nbsp; writable = yes<BR>
+&nbsp;&nbsp; path = /public/acct<BR>
+&nbsp;&nbsp; sync always = yes<BR>
+&nbsp;&nbsp; valid users = @acct<BR>
+&nbsp;&nbsp; force group = acct<BR>
+&nbsp;&nbsp; create mode = 0660<BR>
+&nbsp;&nbsp; directory mode = 0770<BR>
+&nbsp;&nbsp; public = no<BR>
+&nbsp;&nbsp; browseable = no<BR>
+<BR>
+<BR>
+Is there a way to do this with nfs?&nbsp; My /etc/exports on the server looks like this:<BR>
+<BR>
+/public/acct&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 192.168.2.0/255.255.255.0(rw,sync,all_squash,anonuid=510,anongid=601)<BR>
+<BR>
+This works in that all files are created as the same user and can be modified by anyone, but access is not limited to the acct group.&nbsp; When I change the entry to <BR>
+<BR>
+/public/acct&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; @acct(rw,sync,all_squash,anonuid=510,anongid=601)<BR>
+<BR>
+It then denies access to anyone not in the acct posix group in LDAP, but whenever a user creates a file in the share, it is owned by that user with their primary group with permissions of 0644.&nbsp; My anonymous uid and gid are ignored!&nbsp; Now access to the files is restricted to the acct group, but the files are only able to be modified by their owner.&nbsp; I could change the umask to 002 on all of my clients, but then this opens up security problems elsewhere, most notably in one's home directory.<BR>
+<BR>
+Any help with this would be appreciated.<BR>
+<BR>
+Thanks,<BR>
+<BR>
+Mason Sanders
+</BODY>
+</HTML>
+
+--=-XpdkAzGMyzFKzPepQdB0--
+
 
 
 -------------------------------------------------------
