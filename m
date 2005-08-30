@@ -1,26 +1,23 @@
-From: Mike Frysinger <vapier@gentoo.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: rquota overflow fix never applied ?
-Date: Tue, 30 Aug 2005 09:20:44 -0400
-Message-ID: <200508300920.44405.vapier@gentoo.org>
-References: <200508300108.52636.vapier@gentoo.org> <17171.63513.738531.932794@cse.unsw.edu.au>
+Date: Tue, 30 Aug 2005 09:05:20 -0700
+Message-ID: <1125417920.8443.20.camel@lade.trondhjem.org>
+References: <200508300108.52636.vapier@gentoo.org>
+	 <17171.63513.738531.932794@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain
+Cc: Mike Frysinger <vapier@gentoo.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EA62f-0001Ff-7U
-	for nfs@lists.sourceforge.net; Tue, 30 Aug 2005 06:20:45 -0700
-Received: from smtp.gentoo.org ([134.68.220.30])
+	id 1EA8cO-0007xA-VP
+	for nfs@lists.sourceforge.net; Tue, 30 Aug 2005 09:05:48 -0700
+Received: from pat.uio.no ([129.240.130.16])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EA62e-0007Zq-RH
-	for nfs@lists.sourceforge.net; Tue, 30 Aug 2005 06:20:45 -0700
-Received: from localhost ([127.0.0.1] helo=home.wh0rd.org)
-	by smtp.gentoo.org with esmtp (Exim 4.43)
-	id 1EA62Y-0002TQ-3G
-	for nfs@lists.sourceforge.net; Tue, 30 Aug 2005 13:20:38 +0000
-To: nfs@lists.sourceforge.net
+	id 1EA8cN-0007mN-Ke
+	for nfs@lists.sourceforge.net; Tue, 30 Aug 2005 09:05:49 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
 In-Reply-To: <17171.63513.738531.932794@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,37 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday 30 August 2005 02:09 am, Neil Brown wrote:
-> On Tuesday August 30, vapier@gentoo.org wrote:
-> > Gentoo and Fedora both apply an old patch to resolve an overflow issue
-> > ... is this just a case of fixes never going upstream or is there a
-> > reason this hasnt been applied ... if so, can someone please clue me in
-> > ;)
->
-> Well..... the patch does seem to be somewhat flawed .....
-> There is a comment, and matching code, and the code is changed, but
-> not the comment !!! :-)
+ty den 30.08.2005 Klokka 16:09 (+1000) skreiv Neil Brown:
 
-i'm just the messenger, i didnt write it ;)
-
-> However I don't think that would be the reason.  I think it either has
-> not been sent upstream, it when it was it was missed and not resent.
->
-> I have added it to my tree, with appropriate changes to the comment.
->
 > However I seem to be a bit thick today and cannot see where the
 > overflow is happening.
 > dqblk is 6 u_int32_t's and 2 time_t's
-> struct rquota (after rq_bhardlimit) is 8 u_int's
->
-> On what arch are there different?
-> (maybe time_t isn't 32bits everwhere, is that it?)
 
-the overflow occurs on 64bit arches due to the size differences in time_t ... 
-for original description of the issue and author of the patch, please see 
-(sorry, should have included this in the first e-mail):
-http://bugs.gentoo.org/72113
--mike
+Isn't time_t defined to be unsigned long?
+
+> struct rquota (after rq_bhardlimit) is 8 u_int's
+
+Whether or not it fixes the particular problem it claims to, this is a
+patch we should apply (or we should write something similar).
+
+It is just evil to do direct memcpy between different structures. As
+soon as someone does something that changes field alignments, starts
+appending new fields,... on one structure but not the other, you
+immediately get into trouble.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
