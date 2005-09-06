@@ -1,28 +1,23 @@
-From: Chris Penney <penney@msu.edu>
-Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server reboot
-Date: Thu, 22 Sep 2005 12:08:49 -0400
-Message-ID: <111aefd05092209082abc9378@mail.gmail.com>
-References: <433027F7.1030702@staff.uni-marburg.de>
-	 <4332784C.8040503@staff.uni-marburg.de>
-	 <4332C52F.5000908@staff.uni-marburg.de>
-	 <200509221720.52412.vincent.roqueta@ext.bull.net>
-Reply-To: Chris Penney <penney@msu.edu>
+From: =?ISO-8859-1?Q?Rainer_Sch=F6pf?= <rainer.schoepf@proteosys.com>
+Subject: NFS client problem: reading from zero length file
+Date: Tue, 6 Sep 2005 15:47:01 +0200 (CEST)
+Message-ID: <Pine.LNX.4.63.0509061510040.29150@bk-ws-11.proteosys>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_2594_22209225.1127405329112"
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Cc: =?ISO-8859-1?Q?Rainer_Sch=F6pf?= <rainer.schoepf@proteosys.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EITq1-0000kC-D2
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:22:21 -0700
-Received: from xproxy.gmail.com ([66.249.82.196])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EITpz-0002CZ-W8
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:22:21 -0700
-Received: by xproxy.gmail.com with SMTP id t10so516870wxc
-        for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 09:20:32 -0700 (PDT)
+	id 1ECdnE-0003nL-6H
+	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 06:47:20 -0700
+Received: from mail.proteosys.com ([213.139.130.197])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ECdnC-0005B6-ME
+	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 06:47:20 -0700
+Received: by mail.proteosys.com (8.12.10/8.12.2) with ESMTP id j86Dl1Ia032700
+	for <nfs@lists.sourceforge.net>; Tue, 6 Sep 2005 15:47:02 +0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <200509221720.52412.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,76 +31,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_Part_2594_22209225.1127405329112
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Hello,
 
-On 9/22/05, Vincent Roqueta <vincent.roqueta@ext.bull.net> wrote:
->
-> There are several problems using x86_64 linux NFS (v4) machines as server=
-,
-> and
-> it seems to have several problems on 64 bits architectures in general (at
-> least with x86_64 and ppc64. Surely other architectures)
->
-> For now there are this issue yet known (linux 2.6.13+CITI, Linux
-> 2.6.14-rc*
-> +CITI)
-> -> Socket error -11 closing a big file (server : x86_64, clients: x86,
-> ppc64)
-> -> wrong lock behaviours (Client PPC64, servers: ppc64, x86)
-> -> Input/output error closing a big file (server: ppc64, client x86_64)
-> -> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
->
-> However, this issues concern NFSv4. I am going to try to reproduce your
-> problem with NFSv3 and NFSv4.
->
->
-> Vincent
+I've encountered a strange problem on an NFS client: after an open system=
+=20
+call like
 
- I've not heard anything negative about x86_64 systems as NFS servers, but
-this note is somewhat concerning to me as I've got some new AMD Opteron
-hardware coming to replace some Pentium 4 NFS servers. We only use NFS v3
-(mainly tcp). Should I be concerned? Should I use i386 mode instead of
-x86_64?
-  Chris
+32036 open("result/PI_002_exp_003_pH_4-5.tif.s", O_RDWR|O_CREAT|O_TRUNC, =
+0666) =3D 29
 
-------=_Part_2594_22209225.1127405329112
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+an immediately following read returns=20
 
-<br><br>
-<div><span class=3D"gmail_quote">On 9/22/05, <b class=3D"gmail_sendername">=
-Vincent Roqueta</b> &lt;<a href=3D"mailto:vincent.roqueta@ext.bull.net">vin=
-cent.roqueta@ext.bull.net</a>&gt; wrote:</span>
-<blockquote class=3D"gmail_quote" style=3D"PADDING-LEFT: 1ex; MARGIN: 0px 0=
-px 0px 0.8ex; BORDER-LEFT: #ccc 1px solid">There are several problems using=
- x86_64 linux NFS (v4) machines as server, and<br>it seems to have several =
-problems on 64 bits architectures in general (at
-<br>least with x86_64 and ppc64. Surely other architectures)<br><br>For now=
- there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14-rc*<br>+CI=
-TI)<br>-&gt; Socket error -11 closing a big file (server : x86_64, clients:=
- x86, ppc64)
-<br>-&gt; wrong lock behaviours&nbsp;&nbsp;(Client PPC64, servers: ppc64, x=
-86)<br>-&gt;&nbsp;&nbsp;Input/output error closing a big file (server: ppc6=
-4, client x86_64)<br>-&gt; Oops (Client x86_64, server x86_64) - Linux 2.6.=
-13+CITI<br><br>However, this issues concern NFSv4. I am going to try to rep=
-roduce your
-<br>problem with NFSv3 and NFSv4.<br><br><br>Vincent</blockquote>
-<div>&nbsp;</div>
-<div>I've not heard anything negative about x86_64 systems as NFS servers, =
-but this note is somewhat concerning to me as I've got some new AMD Opteron=
- hardware coming to replace some Pentium 4 NFS servers.&nbsp; We only use N=
-FS v3 (mainly tcp).&nbsp; Should I be concerned?&nbsp; Should I use i386 mo=
-de instead of x86_64?
-</div>
-<div>&nbsp;</div>
-<div>&nbsp;&nbsp; Chris</div>
-<div>&nbsp;</div><br><br>&nbsp;</div>
+32036 read(29, "abcdefgh", 8)                   =3D 8
 
-------=_Part_2594_22209225.1127405329112--
+As far as I know, this shouldn't happen, because of the O_TRUNC flag in=20
+the open call.
+
+I'm afraid this is the only pattern I've been able to isolate. This=20
+happens when we run a complicated image analysis software, but only=20
+occasionally, every couple of days, not systematically. If it happens,=20
+repeated runs exhibit the problem (most of the time). umount/mount makes=20
+it disappear.
+
+A simple program that repeatedly opens a file and reads from it failed to=
+=20
+show the problem.
+
+This is a Suse 9.3 system with kernel 2.6.11.4-21.8 (in Suse's=20
+versioning).
+
+The behaviour described above looks like some race condition to me.=20
+I looked through the list of patches to the nfs client code on=20
+www.linux-nfs.org, but am not sure how to proceed.
+
+I'd be happy to try a patch if someone would suggest which one.
+
+Thanks in advance
+  Rainer Sch=F6pf
 
 
 -------------------------------------------------------
