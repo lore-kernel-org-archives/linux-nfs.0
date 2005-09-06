@@ -1,21 +1,21 @@
-From: James Yarbrough <jmy@sgi.com>
-Subject: Re: Is this possible using NFS ?
-Date: Wed, 24 Aug 2005 15:18:05 -0700
-Message-ID: <430CF21D.EC268F1E@sgi.com>
-References: <1124140386.11051.22.camel@rudi>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Some code, and a question
+Date: Tue, 06 Sep 2005 15:39:57 -0700
+Message-ID: <1126046397.3000.188.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: strombrg@dcs.nac.uci.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1E83ZV-0005Rj-Jp
-	for nfs@lists.sourceforge.net; Wed, 24 Aug 2005 15:18:13 -0700
-Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1E83ZU-0000eb-9U
-	for nfs@lists.sourceforge.net; Wed, 24 Aug 2005 15:18:13 -0700
-To: Roger Zimmermann <Roger.Zimmermann@arcor.de>
+	id 1ECm7B-0007G3-Ra
+	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 15:40:29 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ECm7A-0004GL-Nj
+	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 15:40:29 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,47 +29,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Roger,
 
-I think the answer to this question is going to be "no" unless you
-have only one client.  There is an export option that might do what
-you want, it just may not work very well.  Read about the nohide
-option in the exports(5) man page.  You can try out that export option
-and see if it works for you.  I tend to avoid it, though.
+OK, I know NFS isn't usually thought of as the fastest protocol under
+the sun, but still, there are times when making NFS move along a little
+faster can be worthwhile.
 
-Roger Zimmermann wrote:
-> 
-> Hi,
-> 
-> I've got a server, where a varying number of disks is connected.
-> The layout:
-> 
-> /exampledir/onedisk/sometimes-mounted/etc
-> /exampledir/onotherdisk/sometimes-mounted/etc
-> /exampledir/harddisk/always-mounted
-> /exampledir/otherdata
-> 
-> can I simply export /exampledir from the server
-> and mount it via NFS by clients without having each client to inform
-> when e.g 'onedisk' is connected or removed ?
-> 
-> THNX, Roger
-> 
-> -------------------------------------------------------
-> SF.Net email is Sponsored by the Better Software Conference & EXPO
-> September 19-22, 2005 * San Francisco, CA * Development Lifecycle Practices
-> Agile & Plan-Driven Development * Managing Projects & Teams * Testing & QA
-> Security * Process Improvement & Measurement * http://www.sqe.com/bsce5sf
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+I've written a sort of NFS benchmark that I'm calling nfs-test.  It
+tries a largish number of rsize's, wsize's, tcp vs udp, and version 2
+or 3 (4 would be very easy to add), to see what gives the best
+performance.  You can find it at
+http://dcs.nac.uci.edu/~strombrg/nfs-test.html
 
--- 
-jmy@sgi.com
-650 933 3124
+My question is, before diving into trying to determine this empirically,
+is there any theoretical reason why it would be better to have
+rsize==wsize, or should it be better to just pick whatever rsize gives
+the best read performance and pick whatever wsize gives the best write
+performance, and not worry about if rsize!=wsize?
 
-McGoogles is me name, I like a cup a' joe.
-Throw me in the padded room, and tie me up with rope.
+Thanks!
+
+
 
 
 -------------------------------------------------------
