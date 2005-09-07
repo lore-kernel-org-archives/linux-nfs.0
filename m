@@ -1,23 +1,21 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Some code, and a question
-Date: Wed, 07 Sep 2005 13:27:45 -0400
-Message-ID: <431F2311.4040908@redhat.com>
-References: <1126046397.3000.188.camel@seki.nac.uci.edu>	 <20050907010219.GA14233@sgi.com>	 <1126103821.16701.8.camel@seki.nac.uci.edu>  <431EFF78.6000709@redhat.com>	 <1126112442.16701.17.camel@seki.nac.uci.edu>  <431F1FD5.4@redhat.com> <1126114111.16701.33.camel@seki.nac.uci.edu>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Multiple mounts of the same filesystem
+Date: Wed, 07 Sep 2005 16:12:36 -0700
+Message-ID: <1126134757.16701.82.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Greg Banks <gnb@sgi.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: strombrg@dcs.nac.uci.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ED3mk-0008CU-Fj
-	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 10:32:34 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1ED96Q-0004Z6-2J
+	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 16:13:14 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1ED3mk-0007ff-78
-	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 10:32:34 -0700
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1126114111.16701.33.camel@seki.nac.uci.edu>
+	id 1ED96O-0005tI-BZ
+	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 16:13:14 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,20 +29,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Dan Stromberg wrote:
 
->
->I set up our QFS.  I made the QFS transfer size the same as the
->underlying stripe size in the underlying RAID 5's.  Is there more to it
->than that?  I studied some QFS notes that a QFS instructor shared with
->me, but I didn't see anything more about QFS tuning than that.
->
+As I was doing the previously-mentioned NFS+QFS+gigabit performance
+testing, I got to thinking that it may be faster to sometimes have as
+many as 3 NFS mounts of the filesystem: One with read speed optimized,
+one with write speed optimized, and one with a balance of the two.
 
-I don't know how to tune a QFS file system.  I do know that it was 
-considered
-to be a black art and LSC/Sun consulting would often get involved.
+The client I'm working on this for isn't interested in the additional
+complication for his users, but I hope someone who -does- have an
+environment where every least ounce of performance is importance, might
+interested in exploring the idea further.
 
-       ps
+I have a bit of a writeup of a few different mounting schemes included
+at:
+
+http://dcs.nac.uci.edu/~strombrg/nfs-test.html
+
+HTH someone.
+
+
+
 
 
 -------------------------------------------------------
