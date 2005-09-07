@@ -1,21 +1,22 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Some code, and a question
-Date: Tue, 06 Sep 2005 15:39:57 -0700
-Message-ID: <1126046397.3000.188.camel@seki.nac.uci.edu>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: Some code, and a question
+Date: Wed, 7 Sep 2005 11:02:19 +1000
+Message-ID: <20050907010219.GA14233@sgi.com>
+References: <1126046397.3000.188.camel@seki.nac.uci.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: strombrg@dcs.nac.uci.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ECm7B-0007G3-Ra
-	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 15:40:29 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ECm7A-0004GL-Nj
-	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 15:40:29 -0700
-To: nfs@lists.sourceforge.net
+	id 1ECoKg-0005ud-6n
+	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 18:02:34 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1ECoKe-0002is-0l
+	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 18:02:34 -0700
+To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+In-Reply-To: <1126046397.3000.188.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,26 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Tue, Sep 06, 2005 at 03:39:57PM -0700, Dan Stromberg wrote:
+> 
+> OK, I know NFS isn't usually thought of as the fastest protocol under
+> the sun,
 
-OK, I know NFS isn't usually thought of as the fastest protocol under
-the sun, but still, there are times when making NFS move along a little
-faster can be worthwhile.
+Why would you think that?  NFSv3 can be very efficient at moving
+bits from point A to point B.
 
-I've written a sort of NFS benchmark that I'm calling nfs-test.  It
-tries a largish number of rsize's, wsize's, tcp vs udp, and version 2
-or 3 (4 would be very easy to add), to see what gives the best
-performance.  You can find it at
-http://dcs.nac.uci.edu/~strombrg/nfs-test.html
+> My question is, before diving into trying to determine this empirically,
+> is there any theoretical reason why it would be better to have
+> rsize==wsize,
 
-My question is, before diving into trying to determine this empirically,
-is there any theoretical reason why it would be better to have
-rsize==wsize, or should it be better to just pick whatever rsize gives
-the best read performance and pick whatever wsize gives the best write
-performance, and not worry about if rsize!=wsize?
+>From a protocol point of view, no.
 
-Thanks!
+> or should it be better to just pick whatever rsize gives
+> the best read performance and pick whatever wsize gives the best write
+> performance, and not worry about if rsize!=wsize?
 
+It will depend on the workload, but generally read and write throughput
+will be better the larger the block size, up to a value beyond the
+Linux kernel's ability to support.  I expect you will find your optimum
+at rsize=wsize=32K.
 
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
