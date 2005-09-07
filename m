@@ -1,21 +1,26 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Some code, and a question
-Date: Wed, 7 Sep 2005 08:34:15 -0700
-Message-ID: <482A3FA0050D21419C269D13989C611308539F8B@lavender-fe.eng.netapp.com>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: Some code, and a question
+Date: Wed, 07 Sep 2005 10:00:42 -0700
+Message-ID: <1126112442.16701.17.camel@seki.nac.uci.edu>
+References: <1126046397.3000.188.camel@seki.nac.uci.edu>
+	 <20050907010219.GA14233@sgi.com>
+	 <1126103821.16701.8.camel@seki.nac.uci.edu>  <431EFF78.6000709@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>, "Greg Banks" <gnb@sgi.com>
+Content-Type: text/plain
+Cc: Greg Banks <gnb@sgi.com>, nfs@lists.sourceforge.net,
+	strombrg@dcs.nac.uci.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ED1wS-0003A7-8t
-	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 08:34:28 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ED1wQ-0006Fj-53
-	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 08:34:28 -0700
-To: "Dan Stromberg" <strombrg@dcs.nac.uci.edu>
+	id 1ED3IV-0006kw-9U
+	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 10:01:19 -0700
+Received: from dcs.nac.uci.edu ([128.200.34.32])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ED3IT-0008Ux-6R
+	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 10:01:19 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <431EFF78.6000709@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,24 +34,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> On Wed, 2005-09-07 at 11:02 +1000, Greg Banks wrote:=20
-> > On Tue, Sep 06, 2005 at 03:39:57PM -0700, Dan Stromberg wrote:
-> > >=20
-> > > OK, I know NFS isn't usually thought of as the fastest=20
-> protocol under
-> > > the sun,
-> >=20
-> > Why would you think that?  NFSv3 can be very efficient at moving
-> > bits from point A to point B.
->=20
-> You mean aside from the troublesome back-and-forthing on a=20
-> high latency network?
+On Wed, 2005-09-07 at 10:55 -0400, Peter Staubach wrote:
+> Dan Stromberg wrote:
+> 
+> >
+> >Here's the summary output from my script.  You may find it surprising.
+> >It may have bugs, but so far it seems to be coming up with results that
+> >one might not expect.  This was iterating rsize's and wsize's from 4K to
+> >64K in steps of 1K.  BTW, this is from an AIX 5.1 host to a Solaris 9
+> >host, but the script should run on nearly any unix or linux:
+> >
+> 
+> Presumably you have made the configuration changes at least on the Solaris
+> side, /etc/system or some such, to allow these systems to go all the way to
+> a 64K transfer size?  Vanilla Solaris 9 won't do that.
 
-NFSv4 delegation will help there.
+No I haven't - great lead.  I'll see if I can google that up.  Or if you
+have the incantation at your fingertips...
 
-but on a data-intensive workload (ie mostly reads and writes and very
-few metadata operations) NFS can be quite as fast as the underlying
-network and the server's file system will allow.
+> What have you done to factor out the file system on the server?
+
+Nothing.  Actually, I don't really want to in this case, because it's
+the speed as seen by the enduser that I need to optimize, not the speed
+of NFS alone.  That is, if there's something specific to the combination
+of NFS and the underlying QFS filesystem, I don't want my benchmarking
+to miss that.
+
+Thanks!
+
+
 
 
 -------------------------------------------------------
