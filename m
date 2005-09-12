@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 003 of 5] nfsd4: fix open seqid incrementing in lock
-Date: Mon, 12 Sep 2005 16:25:40 +1000
-Message-ID: <1050912062540.3990@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 005 of 5] Code cleanups in calbacks in svcsock.
+Date: Mon, 12 Sep 2005 16:25:42 +1000
+Message-ID: <1050912062542.4020@cse.unsw.edu.au>
 References: <20050912162037.1825.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EEhlU-0005NE-V8
-	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:26:04 -0700
+	id 1EEhlG-0005MA-It
+	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:25:50 -0700
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EEhlT-0000V1-Dk
-	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:26:04 -0700
+	id 1EEhlF-0007m0-WB
+	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:25:50 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,104 +28,153 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-In the case of a lock which introduces a new lockowner, the openowner's
-sequence id should be incremented, even when the operation fails, if the error
-is a sequence-id-mutating error.  The current code fails to do that in some
-cases.  Fix this by using the same sequence-id-incrementing mechanism that
-all other such operations use.
+Change a printk(KERN_WARNING to dprintk, and it is really only interesting
+when trying to debug a problem, and can occur normally without error.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Remove various gratuitous gotos in surrounding code, and remove
+some type-cast assignments from inside 'if' conditionals,
+as that is just obscuring what it going on.
+
+
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   28 +++++++++++++++-------------
- 1 file changed, 15 insertions(+), 13 deletions(-)
+ ./net/sunrpc/svcsock.c |   83 +++++++++++++++++++++++--------------------------
+ 1 file changed, 39 insertions(+), 44 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2005-09-12 16:11:48.000000000 +1000
-+++ ./fs/nfsd/nfs4state.c	2005-09-12 16:12:02.000000000 +1000
-@@ -2629,7 +2629,9 @@ alloc_init_lock_stateowner(unsigned int 
- 	sop->so_is_open_owner = 0;
- 	sop->so_id = current_ownerid++;
- 	sop->so_client = clp;
--	sop->so_seqid = lock->lk_new_lock_seqid;
-+	/* It is the openowner seqid that will be incremented in encode in the
-+	 * case of new lockowners; so increment the lock seqid manually: */
-+	sop->so_seqid = lock->lk_new_lock_seqid + 1;
- 	sop->so_confirmed = 1;
- 	rp = &sop->so_replay;
- 	rp->rp_status = NFSERR_SERVERFAULT;
-@@ -2684,6 +2686,7 @@ int
- nfsd4_lock(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_lock *lock, struct nfs4_stateowner **replay_owner)
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2005-09-12 16:09:09.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2005-09-12 16:12:29.000000000 +1000
+@@ -512,15 +512,14 @@ svc_sock_setbufsize(struct socket *sock,
+ static void
+ svc_udp_data_ready(struct sock *sk, int count)
  {
- 	struct nfs4_stateowner *open_sop = NULL;
-+	struct nfs4_stateowner *lock_sop = NULL;
- 	struct nfs4_stateid *lock_stp;
- 	struct file *filp;
- 	struct file_lock file_lock;
-@@ -2718,9 +2721,11 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 				        lock->lk_new_open_seqid,
- 		                        &lock->lk_new_open_stateid,
- 		                        CHECK_FH | OPEN_STATE,
--		                        &open_sop, &open_stp, lock);
-+		                        &lock->lk_stateowner, &open_stp,
-+					lock);
- 		if (status)
- 			goto out;
-+		open_sop = lock->lk_stateowner;
- 		/* create lockowner and lock stateid */
- 		fp = open_stp->st_file;
- 		strhashval = lock_ownerstr_hashval(fp->fi_inode, 
-@@ -2730,16 +2735,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 		 * the same file, or should they just be allowed (and
- 		 * create new stateids)? */
- 		status = nfserr_resource;
--		if (!(lock->lk_stateowner = alloc_init_lock_stateowner(strhashval, open_sop->so_client, open_stp, lock)))
-+		lock_sop = alloc_init_lock_stateowner(strhashval,
-+				open_sop->so_client, open_stp, lock);
-+		if (lock_sop == NULL)
- 			goto out;
--		if ((lock_stp = alloc_init_lock_stateid(lock->lk_stateowner, 
--						fp, open_stp)) == NULL) {
--			release_stateowner(lock->lk_stateowner);
--			lock->lk_stateowner = NULL;
-+		lock_stp = alloc_init_lock_stateid(lock_sop, fp, open_stp);
-+		if (lock_stp == NULL) {
-+			release_stateowner(lock_sop);
- 			goto out;
- 		}
--		/* bump the open seqid used to create the lock */
--		open_sop->so_seqid++;
- 	} else {
- 		/* lock (lock owner + lock stateid) already exists */
- 		status = nfs4_preprocess_seqid_op(current_fh,
-@@ -2749,6 +2753,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 				       &lock->lk_stateowner, &lock_stp, lock);
- 		if (status)
- 			goto out;
-+		lock_sop = lock->lk_stateowner;
+-	struct svc_sock	*svsk = (struct svc_sock *)(sk->sk_user_data);
++	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
+ 
+-	if (!svsk)
+-		goto out;
+-	dprintk("svc: socket %p(inet %p), count=%d, busy=%d\n",
+-		svsk, sk, count, test_bit(SK_BUSY, &svsk->sk_flags));
+-	set_bit(SK_DATA, &svsk->sk_flags);
+-	svc_sock_enqueue(svsk);
+- out:
++	if (svsk) {
++		dprintk("svc: socket %p(inet %p), count=%d, busy=%d\n",
++			svsk, sk, count, test_bit(SK_BUSY, &svsk->sk_flags));
++		set_bit(SK_DATA, &svsk->sk_flags);
++		svc_sock_enqueue(svsk);
++	}
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible(sk->sk_sleep);
+ }
+@@ -540,7 +539,7 @@ svc_write_space(struct sock *sk)
  	}
- 	/* lock->lk_stateowner and lock_stp have been created or found */
- 	filp = lock_stp->st_vfs_file;
-@@ -2779,7 +2784,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 			status = nfserr_inval;
- 		goto out;
+ 
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep)) {
+-		printk(KERN_WARNING "RPC svc_write_space: some sleeping on %p\n",
++		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+ 		       svsk);
+ 		wake_up_interruptible(sk->sk_sleep);
  	}
--	file_lock.fl_owner = (fl_owner_t) lock->lk_stateowner;
-+	file_lock.fl_owner = (fl_owner_t)lock_sop;
- 	file_lock.fl_pid = current->tgid;
- 	file_lock.fl_file = filp;
- 	file_lock.fl_flags = FL_POSIX;
-@@ -2835,9 +2840,6 @@ out_destroy_new_stateid:
- 		 * An error encountered after instantiation of the new
- 		 * stateid has forced us to destroy it.
- 		 */
--		if (!seqid_mutating_err(status))
--			open_sop->so_seqid--;
--
- 		release_state_owner(lock_stp, LOCK_STATE);
+@@ -689,31 +688,29 @@ svc_udp_init(struct svc_sock *svsk)
+ static void
+ svc_tcp_listen_data_ready(struct sock *sk, int count_unused)
+ {
+-	struct svc_sock	*svsk;
++	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
+ 
+ 	dprintk("svc: socket %p TCP (listen) state change %d\n",
+-			sk, sk->sk_state);
++		sk, sk->sk_state);
+ 
+-	if  (sk->sk_state != TCP_LISTEN) {
+-		/*
+-		 * This callback may called twice when a new connection
+-		 * is established as a child socket inherits everything
+-		 * from a parent LISTEN socket.
+-		 * 1) data_ready method of the parent socket will be called
+-		 *    when one of child sockets become ESTABLISHED.
+-		 * 2) data_ready method of the child socket may be called
+-		 *    when it receives data before the socket is accepted.
+-		 * In case of 2, we should ignore it silently.
+-		 */
+-		goto out;
+-	}
+-	if (!(svsk = (struct svc_sock *) sk->sk_user_data)) {
+-		printk("svc: socket %p: no user data\n", sk);
+-		goto out;
++	/*
++	 * This callback may called twice when a new connection
++	 * is established as a child socket inherits everything
++	 * from a parent LISTEN socket.
++	 * 1) data_ready method of the parent socket will be called
++	 *    when one of child sockets become ESTABLISHED.
++	 * 2) data_ready method of the child socket may be called
++	 *    when it receives data before the socket is accepted.
++	 * In case of 2, we should ignore it silently.
++	 */
++	if  (sk->sk_state == TCP_LISTEN) {
++		if (svsk) {
++			set_bit(SK_CONN, &svsk->sk_flags);
++			svc_sock_enqueue(svsk);
++		} else
++			printk("svc: socket %p: no user data\n", sk);
  	}
- out:
+-	set_bit(SK_CONN, &svsk->sk_flags);
+-	svc_sock_enqueue(svsk);
+- out:
++
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible_all(sk->sk_sleep);
+ }
+@@ -724,18 +721,17 @@ svc_tcp_listen_data_ready(struct sock *s
+ static void
+ svc_tcp_state_change(struct sock *sk)
+ {
+-	struct svc_sock	*svsk;
++	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
+ 
+ 	dprintk("svc: socket %p TCP (connected) state change %d (svsk %p)\n",
+-			sk, sk->sk_state, sk->sk_user_data);
++		sk, sk->sk_state, sk->sk_user_data);
+ 
+-	if (!(svsk = (struct svc_sock *) sk->sk_user_data)) {
++	if (!svsk)
+ 		printk("svc: socket %p: no user data\n", sk);
+-		goto out;
++	else {
++		set_bit(SK_CLOSE, &svsk->sk_flags);
++		svc_sock_enqueue(svsk);
+ 	}
+-	set_bit(SK_CLOSE, &svsk->sk_flags);
+-	svc_sock_enqueue(svsk);
+- out:
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible_all(sk->sk_sleep);
+ }
+@@ -743,15 +739,14 @@ svc_tcp_state_change(struct sock *sk)
+ static void
+ svc_tcp_data_ready(struct sock *sk, int count)
+ {
+-	struct svc_sock *	svsk;
++	struct svc_sock *svsk = (struct svc_sock *)sk->sk_user_data;
+ 
+ 	dprintk("svc: socket %p TCP data ready (svsk %p)\n",
+-			sk, sk->sk_user_data);
+-	if (!(svsk = (struct svc_sock *)(sk->sk_user_data)))
+-		goto out;
+-	set_bit(SK_DATA, &svsk->sk_flags);
+-	svc_sock_enqueue(svsk);
+- out:
++		sk, sk->sk_user_data);
++	if (svsk) {
++		set_bit(SK_DATA, &svsk->sk_flags);
++		svc_sock_enqueue(svsk);
++	}
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible(sk->sk_sleep);
+ }
 
 
 -------------------------------------------------------
