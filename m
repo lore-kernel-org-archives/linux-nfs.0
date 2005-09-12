@@ -1,21 +1,18 @@
-From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Subject: Multiple mounts of the same filesystem
-Date: Wed, 07 Sep 2005 16:12:36 -0700
-Message-ID: <1126134757.16701.82.camel@seki.nac.uci.edu>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: strombrg@dcs.nac.uci.edu
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 000 of 5] Introduction
+Date: Mon, 12 Sep 2005 16:25:38 +1000
+Message-ID: <20050912162037.1825.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ED96Q-0004Z6-2J
-	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 16:13:14 -0700
-Received: from dcs.nac.uci.edu ([128.200.34.32])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ED96O-0005tI-BZ
-	for nfs@lists.sourceforge.net; Wed, 07 Sep 2005 16:13:14 -0700
-To: nfs@lists.sourceforge.net
+	id 1EEhlH-0005MB-9s
+	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:25:51 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EEhlF-0000SL-Vo
+	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:25:51 -0700
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,25 +27,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-As I was doing the previously-mentioned NFS+QFS+gigabit performance
-testing, I got to thinking that it may be faster to sometimes have as
-many as 3 NFS mounts of the filesystem: One with read speed optimized,
-one with write speed optimized, and one with a balance of the two.
+Following are 5 patches for knfsd suitable for immediate inclusion
+in 2.6.14-rc
+There are either code cleanups, or bug fixes.
+4 From Bruce Fields, one from me.
 
-The client I'm working on this for isn't interested in the additional
-complication for his users, but I hope someone who -does- have an
-environment where every least ounce of performance is importance, might
-interested in exploring the idea further.
+(and my 'From:' address is different from the 'Signed-off-by:' address,
+so as to get through the subscriber-only nfs@lists.sourceforge.net list..
+I wonder if I am going to pay for that :-)
 
-I have a bit of a writeup of a few different mounting schemes included
-at:
-
-http://dcs.nac.uci.edu/~strombrg/nfs-test.html
-
-HTH someone.
+NeilBrown
 
 
-
+ [PATCH kNFSd 001 of 5] nfsd4: printk reduction
+ [PATCH kNFSd 002 of 5] nfsd4: move replay_owner
+ [PATCH kNFSd 003 of 5] nfsd4: fix open seqid incrementing in lock
+ [PATCH kNFSd 004 of 5] nfsd4: fix setclientid unlock of unlocked state lock
+ [PATCH kNFSd 005 of 5] Code cleanups in callbacks in svcsock.
 
 
 -------------------------------------------------------
