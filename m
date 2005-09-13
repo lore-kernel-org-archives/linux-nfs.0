@@ -1,25 +1,22 @@
-From: Thomas Stockheim <tommi@bub-agema.de>
-Subject: NFS problem - close to open cache consistency broken ?
-Date: Tue, 13 Sep 2005 11:04:41 +0200
-Message-ID: <43269629.3030503@bub-agema.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+From: Scott Leerssen <scott@leerssen.com>
+Subject: permission denied with nfs built into kernel 2.6.13
+Date: Tue, 13 Sep 2005 10:23:49 -0400
+Message-ID: <fd1eac12512fdd18f46a0635cff07b22@leerssen.com>
+Mime-Version: 1.0 (Apple Message framework v622)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EF6jL-0007y1-4q
-	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 02:05:31 -0700
-Received: from dhuumrelay3.dtm.ops.eu.uu.net ([194.139.33.96] helo=dhuumrelay3.mail.eu.uu.net)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EF6jH-0000xX-IO
-	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 02:05:31 -0700
-Received: from bub-agema.de (dhuumprxy3.dtm.ops.eu.uu.net [194.139.33.83])
-	by dhuumrelay3.mail.eu.uu.net (8.13.4/8.13.4) with ESMTP id j8D95IJm007925
-	for <nfs@lists.sourceforge.net>; Tue, 13 Sep 2005 09:05:18 GMT
-Received: from [134.130.203.160] (pccl-03-16 [134.130.203.160])
-	by bub-agema.de (8.9.3 (PHNE_18979)/8.9.3) with ESMTP id LAA05488
-	for <nfs@lists.sourceforge.net.>; Tue, 13 Sep 2005 11:04:36 +0200 (METDST)
+	id 1EFBha-0005YC-VZ
+	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 07:24:02 -0700
+Received: from smtpauth03.mail.atl.earthlink.net ([209.86.89.63])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EFBhX-0001EK-E9
+	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 07:24:02 -0700
+Received: from [216.91.87.190] (helo=[192.168.1.70])
+	by smtpauth03.mail.atl.earthlink.net with asmtp (Exim 4.34)
+	id 1EFBhO-0005JW-Mh
+	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 10:23:50 -0400
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,71 +31,125 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm having a problem with NFS caching after updating from Redhat 8 to 
-Fedora. Sometimes changes to files ( even when done on the server) just 
-do not show up. At first we suspected timing problems, but all machines
-are synchronized with ntp.
+Thanks in advance for plowing through this message...
 
-Then I found out how to reproduce it:
-1 server: echo xxxx > testfile
-2 client: Application 1 on client opens testfile, does nothing with it - 
-keeps it open forever ( simple fortran program with an open and an
-endless loop )
-3 client: cat testfile  gives xxxx
-4 server: echo yyyy > testfile
-5 client: cat testfile  still shows xxxx
+I have NFS built into a 2.6.13 kernel running on Fedora Core 3, and am 
+unable to mount a filesystem on the server running the kernel.  Output 
+in /var/log/messages seems to indicate a successful mount request:
 
-Its not a file attribute caching problem I think, ls -l shows the
-correct, updated modificiation time for the file. But the file contents
-never get updated. Once I kill the application that was holding open the 
-testfile, it still shows the wrong content, but any new changes show 
-immediately.
+Sep 13 10:10:41 boot10-5-3-54 rpc.mountd: authenticated mount request 
+from 10.5.1.1:870 for /I (/I)
 
-At first, we tested this on kernel 2.6.11 and 2.6.9. Here, increasing
-file size by 1 worked to get the updated file contents on the client, 
-but decreasing file size did not work.
+However the client gives me this:
 
-6a server: echo zzzzz > testfile
-7a client: cat testfile  shows zzzzz
+mount: 10.5.3.54:/I failed, reason given by server: Permission denied
 
-6b server: echo zzz > testfile
-7b server: cat testfile  shows xxxx
+Even though from the client:
 
-With kernel 2.6.13, any file size changes show the new content directly,
-but if the file size stays constant it still does not work.
+[root@devmws5 fc3mws]# showmount -e 10.5.3.54
+Export list for 10.5.3.54:
+/I   *
 
-I tried all the mount options, but even turning attribute
-caching totally off does not seem to help. Mouting as nfsv2 did not help
-either.
+I've noticed that Fedora blindly assumes that all of the nfs related 
+kernel code will load as modules, as there are a number of module 
+install options that won't occur (like '/bin/mount -t rpc_pipefs sunrpc 
+/var/lib/nfs/rpc_pipefs').  I probably just missed some obscure 
+configuration option.
 
-I assume its a problem of the client, not the server - mounting the
-same exports on old redhat 7 with kernel 2.4.2 everything works.
+Here's a list of what I have....
 
-If I understand Close-to-open cache consistency right, having the file
-opened from a different application on the same client should not be a 
-problem ?
+nfs-utils-1.0.6-52
 
+kernel config for NFS in case it helps:
 
-Thanks, Thomas
+linux 2.6.13 built with NFS in the kernel as follows:
+#
+# Network File Systems
+#
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V3_ACL is not set
+CONFIG_NFS_V4=y
+CONFIG_NFS_DIRECTIO=y
+CONFIG_NFSD=m
+CONFIG_NFSD_V3=y
+# CONFIG_NFSD_V3_ACL is not set
+CONFIG_NFSD_V4=y
+CONFIG_NFSD_TCP=y
+CONFIG_ROOT_NFS=y
+CONFIG_LOCKD=y
+CONFIG_LOCKD_V4=y
+CONFIG_EXPORTFS=m
+CONFIG_NFS_COMMON=y
+CONFIG_SUNRPC=y
 
--- 
+/etc/exports:
 
-************************************************************************
-**
-**  B&B-AGEMA GmbH
-**
-**  Thomas Stockheim
-**  Juelicher Strasse 338
-**  D-52070 Aachen
-**  Germany
-**
-**  Tel. (Zentrale):  ++49-(0)241-56878-0
-**  Tel. (Durchwahl): ++49-(0)241-56878-31
-**  Fax.:             ++49-(0)241-56878-79
-**  e-mail:           <tommi@bub-agema.de>
-**  Internet:         http://www.bub-agema.de
-**
-************************************************************************
+/R *(rw,async,hide,insecure,no_root_squash,secure_locks)
+/I *(rw,async,hide,insecure,no_root_squash,secure_locks)
+
+And, finally, output from the client:
+
+[root@devmws5 fc3mws]# rpcinfo -p 10.5.3.54
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100024    1   udp  32768  status
+     100024    1   tcp  32769  status
+     100021    1   udp  32769  nlockmgr
+     100021    3   udp  32769  nlockmgr
+     100021    4   udp  32769  nlockmgr
+     100021    1   tcp  32774  nlockmgr
+     100021    3   tcp  32774  nlockmgr
+     100021    4   tcp  32774  nlockmgr
+     100011    1   udp    871  rquotad
+     100011    2   udp    871  rquotad
+     100011    1   tcp    874  rquotad
+     100011    2   tcp    874  rquotad
+     100003    2   udp   2049  nfs
+     100003    3   udp   2049  nfs
+     100003    4   udp   2049  nfs
+     100003    2   tcp   2049  nfs
+     100003    3   tcp   2049  nfs
+     100003    4   tcp   2049  nfs
+     100005    1   udp    886  mountd
+     100005    1   tcp    889  mountd
+     100005    2   udp    886  mountd
+     100005    2   tcp    889  mountd
+     100005    3   udp    886  mountd
+     100005    3   tcp    889  mountd
+
+and from the server:
+
+[root@boot10-5-3-54 ~]# rpcinfo -p localhost
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100024    1   udp  32768  status
+     100024    1   tcp  32769  status
+     100021    1   udp  32769  nlockmgr
+     100021    3   udp  32769  nlockmgr
+     100021    4   udp  32769  nlockmgr
+     100021    1   tcp  32774  nlockmgr
+     100021    3   tcp  32774  nlockmgr
+     100021    4   tcp  32774  nlockmgr
+     100011    1   udp    871  rquotad
+     100011    2   udp    871  rquotad
+     100011    1   tcp    874  rquotad
+     100011    2   tcp    874  rquotad
+     100003    2   udp   2049  nfs
+     100003    3   udp   2049  nfs
+     100003    4   udp   2049  nfs
+     100003    2   tcp   2049  nfs
+     100003    3   tcp   2049  nfs
+     100003    4   tcp   2049  nfs
+     100005    1   udp    886  mountd
+     100005    1   tcp    889  mountd
+     100005    2   udp    886  mountd
+     100005    2   tcp    889  mountd
+     100005    3   udp    886  mountd
+     100005    3   tcp    889  mountd
+
 
 
 -------------------------------------------------------
