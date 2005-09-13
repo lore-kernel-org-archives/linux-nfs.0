@@ -1,19 +1,26 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 005 of 5] Code cleanups in calbacks in svcsock.
-Date: Mon, 12 Sep 2005 16:25:42 +1000
-Message-ID: <1050912062542.4020@cse.unsw.edu.au>
-References: <20050912162037.1825.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+From: Thomas Stockheim <tommi@bub-agema.de>
+Subject: NFS problem - close to open cache consistency broken ?
+Date: Tue, 13 Sep 2005 11:04:41 +0200
+Message-ID: <43269629.3030503@bub-agema.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EEhlG-0005MA-It
-	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:25:50 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EEhlF-0007m0-WB
-	for nfs@lists.sourceforge.net; Sun, 11 Sep 2005 23:25:50 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1EF6jL-0007y1-4q
+	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 02:05:31 -0700
+Received: from dhuumrelay3.dtm.ops.eu.uu.net ([194.139.33.96] helo=dhuumrelay3.mail.eu.uu.net)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EF6jH-0000xX-IO
+	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 02:05:31 -0700
+Received: from bub-agema.de (dhuumprxy3.dtm.ops.eu.uu.net [194.139.33.83])
+	by dhuumrelay3.mail.eu.uu.net (8.13.4/8.13.4) with ESMTP id j8D95IJm007925
+	for <nfs@lists.sourceforge.net>; Tue, 13 Sep 2005 09:05:18 GMT
+Received: from [134.130.203.160] (pccl-03-16 [134.130.203.160])
+	by bub-agema.de (8.9.3 (PHNE_18979)/8.9.3) with ESMTP id LAA05488
+	for <nfs@lists.sourceforge.net.>; Tue, 13 Sep 2005 11:04:36 +0200 (METDST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,154 +34,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I'm having a problem with NFS caching after updating from Redhat 8 to 
+Fedora. Sometimes changes to files ( even when done on the server) just 
+do not show up. At first we suspected timing problems, but all machines
+are synchronized with ntp.
 
-Change a printk(KERN_WARNING to dprintk, and it is really only interesting
-when trying to debug a problem, and can occur normally without error.
+Then I found out how to reproduce it:
+1 server: echo xxxx > testfile
+2 client: Application 1 on client opens testfile, does nothing with it - 
+keeps it open forever ( simple fortran program with an open and an
+endless loop )
+3 client: cat testfile  gives xxxx
+4 server: echo yyyy > testfile
+5 client: cat testfile  still shows xxxx
 
-Remove various gratuitous gotos in surrounding code, and remove
-some type-cast assignments from inside 'if' conditionals,
-as that is just obscuring what it going on.
+Its not a file attribute caching problem I think, ls -l shows the
+correct, updated modificiation time for the file. But the file contents
+never get updated. Once I kill the application that was holding open the 
+testfile, it still shows the wrong content, but any new changes show 
+immediately.
+
+At first, we tested this on kernel 2.6.11 and 2.6.9. Here, increasing
+file size by 1 worked to get the updated file contents on the client, 
+but decreasing file size did not work.
+
+6a server: echo zzzzz > testfile
+7a client: cat testfile  shows zzzzz
+
+6b server: echo zzz > testfile
+7b server: cat testfile  shows xxxx
+
+With kernel 2.6.13, any file size changes show the new content directly,
+but if the file size stays constant it still does not work.
+
+I tried all the mount options, but even turning attribute
+caching totally off does not seem to help. Mouting as nfsv2 did not help
+either.
+
+I assume its a problem of the client, not the server - mounting the
+same exports on old redhat 7 with kernel 2.4.2 everything works.
+
+If I understand Close-to-open cache consistency right, having the file
+opened from a different application on the same client should not be a 
+problem ?
 
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+Thanks, Thomas
 
-### Diffstat output
- ./net/sunrpc/svcsock.c |   83 +++++++++++++++++++++++--------------------------
- 1 file changed, 39 insertions(+), 44 deletions(-)
+-- 
 
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2005-09-12 16:09:09.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2005-09-12 16:12:29.000000000 +1000
-@@ -512,15 +512,14 @@ svc_sock_setbufsize(struct socket *sock,
- static void
- svc_udp_data_ready(struct sock *sk, int count)
- {
--	struct svc_sock	*svsk = (struct svc_sock *)(sk->sk_user_data);
-+	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
- 
--	if (!svsk)
--		goto out;
--	dprintk("svc: socket %p(inet %p), count=%d, busy=%d\n",
--		svsk, sk, count, test_bit(SK_BUSY, &svsk->sk_flags));
--	set_bit(SK_DATA, &svsk->sk_flags);
--	svc_sock_enqueue(svsk);
-- out:
-+	if (svsk) {
-+		dprintk("svc: socket %p(inet %p), count=%d, busy=%d\n",
-+			svsk, sk, count, test_bit(SK_BUSY, &svsk->sk_flags));
-+		set_bit(SK_DATA, &svsk->sk_flags);
-+		svc_sock_enqueue(svsk);
-+	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible(sk->sk_sleep);
- }
-@@ -540,7 +539,7 @@ svc_write_space(struct sock *sk)
- 	}
- 
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep)) {
--		printk(KERN_WARNING "RPC svc_write_space: some sleeping on %p\n",
-+		dprintk("RPC svc_write_space: someone sleeping on %p\n",
- 		       svsk);
- 		wake_up_interruptible(sk->sk_sleep);
- 	}
-@@ -689,31 +688,29 @@ svc_udp_init(struct svc_sock *svsk)
- static void
- svc_tcp_listen_data_ready(struct sock *sk, int count_unused)
- {
--	struct svc_sock	*svsk;
-+	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
- 
- 	dprintk("svc: socket %p TCP (listen) state change %d\n",
--			sk, sk->sk_state);
-+		sk, sk->sk_state);
- 
--	if  (sk->sk_state != TCP_LISTEN) {
--		/*
--		 * This callback may called twice when a new connection
--		 * is established as a child socket inherits everything
--		 * from a parent LISTEN socket.
--		 * 1) data_ready method of the parent socket will be called
--		 *    when one of child sockets become ESTABLISHED.
--		 * 2) data_ready method of the child socket may be called
--		 *    when it receives data before the socket is accepted.
--		 * In case of 2, we should ignore it silently.
--		 */
--		goto out;
--	}
--	if (!(svsk = (struct svc_sock *) sk->sk_user_data)) {
--		printk("svc: socket %p: no user data\n", sk);
--		goto out;
-+	/*
-+	 * This callback may called twice when a new connection
-+	 * is established as a child socket inherits everything
-+	 * from a parent LISTEN socket.
-+	 * 1) data_ready method of the parent socket will be called
-+	 *    when one of child sockets become ESTABLISHED.
-+	 * 2) data_ready method of the child socket may be called
-+	 *    when it receives data before the socket is accepted.
-+	 * In case of 2, we should ignore it silently.
-+	 */
-+	if  (sk->sk_state == TCP_LISTEN) {
-+		if (svsk) {
-+			set_bit(SK_CONN, &svsk->sk_flags);
-+			svc_sock_enqueue(svsk);
-+		} else
-+			printk("svc: socket %p: no user data\n", sk);
- 	}
--	set_bit(SK_CONN, &svsk->sk_flags);
--	svc_sock_enqueue(svsk);
-- out:
-+
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible_all(sk->sk_sleep);
- }
-@@ -724,18 +721,17 @@ svc_tcp_listen_data_ready(struct sock *s
- static void
- svc_tcp_state_change(struct sock *sk)
- {
--	struct svc_sock	*svsk;
-+	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
- 
- 	dprintk("svc: socket %p TCP (connected) state change %d (svsk %p)\n",
--			sk, sk->sk_state, sk->sk_user_data);
-+		sk, sk->sk_state, sk->sk_user_data);
- 
--	if (!(svsk = (struct svc_sock *) sk->sk_user_data)) {
-+	if (!svsk)
- 		printk("svc: socket %p: no user data\n", sk);
--		goto out;
-+	else {
-+		set_bit(SK_CLOSE, &svsk->sk_flags);
-+		svc_sock_enqueue(svsk);
- 	}
--	set_bit(SK_CLOSE, &svsk->sk_flags);
--	svc_sock_enqueue(svsk);
-- out:
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible_all(sk->sk_sleep);
- }
-@@ -743,15 +739,14 @@ svc_tcp_state_change(struct sock *sk)
- static void
- svc_tcp_data_ready(struct sock *sk, int count)
- {
--	struct svc_sock *	svsk;
-+	struct svc_sock *svsk = (struct svc_sock *)sk->sk_user_data;
- 
- 	dprintk("svc: socket %p TCP data ready (svsk %p)\n",
--			sk, sk->sk_user_data);
--	if (!(svsk = (struct svc_sock *)(sk->sk_user_data)))
--		goto out;
--	set_bit(SK_DATA, &svsk->sk_flags);
--	svc_sock_enqueue(svsk);
-- out:
-+		sk, sk->sk_user_data);
-+	if (svsk) {
-+		set_bit(SK_DATA, &svsk->sk_flags);
-+		svc_sock_enqueue(svsk);
-+	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible(sk->sk_sleep);
- }
+************************************************************************
+**
+**  B&B-AGEMA GmbH
+**
+**  Thomas Stockheim
+**  Juelicher Strasse 338
+**  D-52070 Aachen
+**  Germany
+**
+**  Tel. (Zentrale):  ++49-(0)241-56878-0
+**  Tel. (Durchwahl): ++49-(0)241-56878-31
+**  Fax.:             ++49-(0)241-56878-79
+**  e-mail:           <tommi@bub-agema.de>
+**  Internet:         http://www.bub-agema.de
+**
+************************************************************************
 
 
 -------------------------------------------------------
