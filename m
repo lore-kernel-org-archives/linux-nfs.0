@@ -1,23 +1,28 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Sporadic timeout problems during streaming to nfs server
-Date: Wed, 14 Sep 2005 17:17:29 -0400
-Message-ID: <43289369.9080906@redhat.com>
-References: <044B81DE141D7443BCE91E8F44B3C1E288E43F@exsvl02.hq.netapp.com> <ef6372aa4d.stefan@wuerthner.dyndns.org>
+From: Thomas Stockheim <tommi@bub-agema.de>
+Subject: Re: NFS problem - close to open cache consistency broken ?
+Date: Thu, 15 Sep 2005 09:47:58 +0200
+Message-ID: <4329272E.7070807@bub-agema.de>
+References: <6063053.1126674084242.JavaMail.root@dtm1eusosrv72.dtm.ops.eu.uu.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EFejB-0006dO-Vr
-	for nfs@lists.sourceforge.net; Wed, 14 Sep 2005 14:23:37 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1EFoUM-00069p-M0
+	for nfs@lists.sourceforge.net; Thu, 15 Sep 2005 00:48:58 -0700
+Received: from dhuumrelay3.dtm.ops.eu.uu.net ([194.139.33.96] helo=dhuumrelay3.mail.eu.uu.net)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EFejA-00073j-JN
-	for nfs@lists.sourceforge.net; Wed, 14 Sep 2005 14:23:37 -0700
-To: Stefan Wuerthner <trash.wuerthner@gmx.de>
-In-Reply-To: <ef6372aa4d.stefan@wuerthner.dyndns.org>
+	id 1EFoUK-0002sq-Pm
+	for nfs@lists.sourceforge.net; Thu, 15 Sep 2005 00:48:58 -0700
+Received: from bub-agema.de (dhuumprxy3.dtm.ops.eu.uu.net [194.139.33.83])
+	by dhuumrelay3.mail.eu.uu.net (8.13.4/8.13.4) with ESMTP id j8F7mdFa022008
+	for <nfs@lists.sourceforge.net>; Thu, 15 Sep 2005 07:48:40 GMT
+Received: from [134.130.203.160] (pccl-03-16 [134.130.203.160])
+	by bub-agema.de (8.9.3 (PHNE_18979)/8.9.3) with ESMTP id JAA06589
+	for <nfs@lists.sourceforge.net>; Thu, 15 Sep 2005 09:47:55 +0200 (METDST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <6063053.1126674084242.JavaMail.root@dtm1eusosrv72.dtm.ops.eu.uu.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,94 +36,104 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Stefan Wuerthner wrote:
-
->In message <044B81DE141D7443BCE91E8F44B3C1E288E43F@exsvl02.hq.netapp.com> you wrote:
->
->  
->
->>>In message 
->>><044B81DE141D7443BCE91E8F44B3C1E288E43C@exsvl02.hq.netapp.com>
->>> you wrote:
->>>
->>>      
->>>
->>>>don't use the "soft" option -- use "hard" instead.  "soft" 
->>>>        
->>>>
->>>with "udp" is
->>>      
->>>
->>>>a sure recipe for data corruption and the very symptoms you describe
->>>>below. 
->>>>
->>>>        
->>>>
->>>I already tried "hard", but without success:
->>>
->>>The serial log tells me:
->>>
->>>[Fri Sep  9 11:50:20 2005]
->>>nfs: server 192.168.24.50 not responding, still trying
->>>[Fri Sep  9 12:58:53 2005]
->>>PANIC: not enough space in ringbuffer, available 42887, needed 93225
->>>
->>>
->>>E.g. the client cannot reach the server and therefore the 
->>>client ringbuffer
->>>overflows. This results in a total lockup of the client...
->>>      
->>>
->>a ring buffer overflow is a NIC driver problem.  the NFS timeout issues
->>suggest a network problem (either the link or the NICs or...).  i would
->>start looking closely at your client-side network (driver version,
->>hardware, cabling, switch, etc).
+Lever, Charles wrote:
+>>I'm having a problem with NFS caching after updating from Redhat 8 to 
+>>Fedora. Sometimes changes to files ( even when done on the 
+>>server) just 
+>>do not show up. At first we suspected timing problems, but 
+>>all machines
+>>are synchronized with ntp.
 >>
->>in the long run you want to use NFS over TCP rather than UDP (and don't
->>use "soft").
+>>Then I found out how to reproduce it:
+>>1 server: echo xxxx > testfile
+>>2 client: Application 1 on client opens testfile, does 
+>>nothing with it - 
+>>keeps it open forever ( simple fortran program with an open and an
+>>endless loop )
+>>3 client: cat testfile  gives xxxx
+>>4 server: echo yyyy > testfile
+>>5 client: cat testfile  still shows xxxx
 >>
->>    
+>>Its not a file attribute caching problem I think, ls -l shows the
+>>correct, updated modificiation time for the file. But the 
+>>file contents
+>>never get updated. Once I kill the application that was 
+>>holding open the 
+>>testfile, it still shows the wrong content, but any new changes show 
+>>immediately.
 >>
->
->Client side is more or less fixed because it's not a computer but a
->consumer device running busybox. Ethernet controller is partially
->formed by the CPU (slow PPC)...
->
->The ring buffer is afaik not part of the NIC, but has been added
->some time ago to buffer peak bitrates in the TS stream. Hardware 
->should be o.k. (Cat5e+ cabling, Allied Telesyn switches).
->
->The difficult points are:
->
->1. Real-time application: video streaming (MPEG2 stream)
->2. Receiver NIC is limited to 10MBit half-duplex
->3. video streams can peak to 8-10MBit...
->
->So:
->
->1. NFS over TCP is too slow
->2. - "hard" is no option, because it stops writing the stream finally
->   - "soft" allows the server to restart the recording after several seconds
->     but there is a small interruption in the final recording
->
->The interesting questions are:
->
->Why does streaming work for e.g. 30min or 65min and then fail with
->'timeout'?
->
->How can I get more information on the server side what happened exactly at
->this point of time. I could not find any logs related to serverside NFS.
->
+>>At first, we tested this on kernel 2.6.11 and 2.6.9. Here, increasing
+>>file size by 1 worked to get the updated file contents on the client, 
+>>but decreasing file size did not work.
+>>
+>>6a server: echo zzzzz > testfile
+>>7a client: cat testfile  shows zzzzz
+>>
+>>6b server: echo zzz > testfile
+>>7b server: cat testfile  shows xxxx
+>>
+>>With kernel 2.6.13, any file size changes show the new 
+>>content directly,
+>>but if the file size stays constant it still does not work.
+>>
+>>I tried all the mount options, but even turning attribute
+>>caching totally off does not seem to help. Mouting as nfsv2 
+>>did not help
+>>either.
+>>
+>>I assume its a problem of the client, not the server - mounting the
+>>same exports on old redhat 7 with kernel 2.4.2 everything works.
+>>
+>>If I understand Close-to-open cache consistency right, having the file
+>>opened from a different application on the same client should 
+>>not be a problem ?
+> 
+> 
+> thomas-
+> 
+> the client uses mtime and size to detect file changes on the server.  if
+> the mtime doesn't change on the server, the clients won't detect any
+> data changes.
+> 
+> what physical file system are you using on the server?
+> 
+> 
 
-10Mb/s is really slow, for today's standards.  Almost anything ought to
-be able to drive the network at full speed, even with TCP.
+Thanks for the reply, but thats exactly my problem: Mtime does change
+on the server, and the client even sees that change ( faster or slower 
+depending on caching settings ).
 
-Can you try this without the ring buffer?
+But the data on the client never gets updated.
 
-I would suggest using ethereal or tcpdump on the server to watch the
-traffic and see if anything appears unusual when the situation occurs.
+I tested some more, and this only happens if another application on the
+client has the file open for writing.
 
-       ps
+I think it might have to do something with the data_unstable flag in
+nfs_refresh_inode - but I don't understand the kernel code well enough
+to see what happens exactly or how to fix it for us.
+
+Thomas
+
+
+
+-- 
+
+************************************************************************
+**
+**  B&B-AGEMA GmbH
+**
+**  Thomas Stockheim
+**  Juelicher Strasse 338
+**  D-52070 Aachen
+**  Germany
+**
+**  Tel. (Zentrale):  ++49-(0)241-56878-0
+**  Tel. (Durchwahl): ++49-(0)241-56878-31
+**  Fax.:             ++49-(0)241-56878-79
+**  e-mail:           <tommi@bub-agema.de>
+**  Internet:         http://www.bub-agema.de
+**
+************************************************************************
 
 
 -------------------------------------------------------
