@@ -1,24 +1,28 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Thomas Stockheim <tommi@bub-agema.de>
 Subject: Re: NFS problem - close to open cache consistency broken ?
-Date: Thu, 15 Sep 2005 11:12:42 -0400
-Message-ID: <43298F6A.9000500@redhat.com>
-References: <044B81DE141D7443BCE91E8F44B3C1E288E451@exsvl02.hq.netapp.com> <20050915150824.GA24870@fieldses.org>
+Date: Thu, 15 Sep 2005 17:14:12 +0200
+Message-ID: <43298FC4.3080008@bub-agema.de>
+References: <12528729.1126796454117.JavaMail.root@dtm1eusosrv72.dtm.ops.eu.uu.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
-	Thomas Stockheim <tommi@bub-agema.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EFvPz-0006oE-3Z
-	for nfs@lists.sourceforge.net; Thu, 15 Sep 2005 08:12:55 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1EFvSG-00071B-A6
+	for nfs@lists.sourceforge.net; Thu, 15 Sep 2005 08:15:16 -0700
+Received: from dhuumrelay3.dtm.ops.eu.uu.net ([194.139.33.96] helo=dhuumrelay3.mail.eu.uu.net)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EFvPx-0005UC-0b
-	for nfs@lists.sourceforge.net; Thu, 15 Sep 2005 08:12:55 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20050915150824.GA24870@fieldses.org>
+	id 1EFvSB-00062a-E1
+	for nfs@lists.sourceforge.net; Thu, 15 Sep 2005 08:15:16 -0700
+Received: from bub-agema.de (dhuumprxy3.dtm.ops.eu.uu.net [194.139.33.83])
+	by dhuumrelay3.mail.eu.uu.net (8.13.4/8.13.4) with ESMTP id j8FFEsE7026725
+	for <nfs@lists.sourceforge.net>; Thu, 15 Sep 2005 15:15:03 GMT
+Received: from [134.130.203.160] (pccl-03-16 [134.130.203.160])
+	by bub-agema.de (8.9.3 (PHNE_18979)/8.9.3) with ESMTP id RAA06895
+	for <nfs@lists.sourceforge.net>; Thu, 15 Sep 2005 17:14:10 +0200 (METDST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <12528729.1126796454117.JavaMail.root@dtm1eusosrv72.dtm.ops.eu.uu.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,27 +36,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-J. Bruce Fields wrote:
-
->On Thu, Sep 15, 2005 at 06:50:49AM -0700, Lever, Charles wrote:
->  
->
->>close-to-open is a convention, not a specification, so it's really up to
->>the client developers to implement what they think is right.
->>    
+Lever, Charles wrote:
+>>>peter, do you happen to know how the solaris NFS client 
 >>
->
->You can't turn off cache revalidation checks while someone else on the
->client has the file open.  Wouldn't that would make close-to-open
->useless in a lot of cases?
->
+>>behaves when an
+>>
+>>>application holds a file open like this?
+>>>
+>>>close-to-open is a convention, not a specification, so it's 
+>>
+>>really up to
+>>
+>>>the client developers to implement what they think is right.  i'm
+>>>guessing that the Linux client is working as designed here.  i'm not
+>>>convinced it's very *convenient* behavior, though.
+>>>
+>>>
+>>>
+>>
+>>Well, linux did not allways do this - same directory mounted 
+>>on an older 
+>>redhat with kernel 2.4.2 and its working fine.
+> 
+> 
+> those ancient kernels don't support close-to-open.  that was introduced
+> around 2.4.20.
+> 
+> 
+I don't know what model they had instead, but it worked better
+for us. I've been running linux clusters for 5 years or so and
+never had this problem before.
 
-Perhaps, but close-to-open still covers cases that the normal cache
-revalidation does not.  There are still windows possible with the
-normal attribute cache which close-to-open handles.  Some of this
-depends upon the attribute cache timeouts...
 
-       ps
+
+-- 
+
+************************************************************************
+**
+**  B&B-AGEMA GmbH
+**
+**  Thomas Stockheim
+**  Juelicher Strasse 338
+**  D-52070 Aachen
+**  Germany
+**
+**  Tel. (Zentrale):  ++49-(0)241-56878-0
+**  Tel. (Durchwahl): ++49-(0)241-56878-31
+**  Fax.:             ++49-(0)241-56878-79
+**  e-mail:           <tommi@bub-agema.de>
+**  Internet:         http://www.bub-agema.de
+**
+************************************************************************
 
 
 -------------------------------------------------------
