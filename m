@@ -1,25 +1,23 @@
-From: Sumeet Gupta <sumeet.gupta@flextronicssoftware.com>
-Subject: NFS Problem : --"mount : fs type nfs not supported by kernel"
-Date: Mon, 19 Sep 2005 12:16:24 +0530
-Message-ID: <OF1E87C410.9CAE1EE6-ON65257081.00249476-65257081.00253562@flextronicssoftware.com>
-Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="=_alternative 0025356065257081_="
+From: Steven <steven@void.org>
+Subject: Minor problem in nfsv3 write
+Date: Mon, 19 Sep 2005 18:10:46 -0700
+Message-ID: <20050920011046.23A07F4@dead.void.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EHFUE-0001EI-Eo
-	for nfs@lists.sourceforge.net; Sun, 18 Sep 2005 23:50:46 -0700
-Received: from spark.hss.co.in ([203.145.155.21])
+	id 1EHWfR-00043Y-Fs
+	for nfs@lists.sourceforge.net; Mon, 19 Sep 2005 18:11:29 -0700
+Received: from dsl092-218-023.sfo2.dsl.speakeasy.net ([66.92.218.23] helo=chaotic.void.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EHFUC-0005yS-4N
-	for nfs@lists.sourceforge.net; Sun, 18 Sep 2005 23:50:46 -0700
-Received: from ultra.hss.co.in (ultra [192.168.100.5])
-	by spark.hss.co.in (8.12.10/8.12.10) with ESMTP id j8J6j53q007212
-	for <nfs@lists.sourceforge.net>; Mon, 19 Sep 2005 12:15:17 +0530 (IST)
-Received: from parinda.nokiaddf.hss.hns.com (localhost [127.0.0.1])
-	by ultra.hss.co.in (8.10.0/8.10.0) with ESMTP id j8J6o9621752
-	for <nfs@lists.sourceforge.net>; Mon, 19 Sep 2005 12:20:10 +0530 (IST)
+	id 1EHWfP-0000Cy-4t
+	for nfs@lists.sourceforge.net; Mon, 19 Sep 2005 18:11:29 -0700
+Received: from dead.void.org ([192.168.54.11])
+	by chaotic.void.org (8.13.1/8.10.2/SuSE Linux 8.10.0-0.3) with ESMTP id j8K1lRki008576
+	for <nfs@lists.sourceforge.net>; Mon, 19 Sep 2005 18:47:27 -0700
+Received: from dead.void.org (localhost [127.0.0.1])
+	by dead.void.org (Postfix) with ESMTP id 23A07F4
+	for <nfs@lists.sourceforge.net>; Mon, 19 Sep 2005 18:10:46 -0700 (PDT)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,119 +32,108 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multipart message in MIME format.
---=_alternative 0025356065257081_=
-Content-Type: text/plain; charset="us-ascii"
 
-Hi
+There is a minor bug in the way writes are handled in nfs3.  If the
+client requests a write for more than 32k of data the server will only
+write 32k but report that it wrote the whole amount.
 
-I have compiled kernel-2.6.9 on kernel 2.4 .
-I am able to compile it successfully after alot of troubles but finally 
-while booting i am facing following issues.
-Kindly help me out if possible.
+This happens when nfs3svc_decode_writeargs caps the amount that can be
+written to NFSSVC_MAXBLKSIZE (which is 32k), by limiting the amount that
+it copies into the args object (fs/nfsd/nfs3xdr.c:375).  The amount that
+is reported to the client is copied from the request packet, which is
+the amount the client requested (fs/nfsd/nfs3proc.c:209) not the amount
+which was written.
 
-If I see the /var/log messages the following error appears 
+I think the right thing to do is adjust the amount in the request object
+to the amount that will be written in the decoder. 
 
-Sep 12 19:27:36 rncpet31 nfs: Starting NFS services:  succeeded
-Sep 12 19:27:36 rncpet31 nfs: rpc.rquotad startup succeeded
-Sep 12 19:27:36 rncpet31 nfsd[1698]: nfssvc: No such device
-Sep 12 19:27:36 rncpet31 nfs: rpc.nfsd startup failed
-Sep 12 19:27:36 rncpet31 nfs: rpc.mountd startup succeeded
+Following is an modified version of nfs3svc_decode_writeargs and diffs
+against a 2.6.13 kernel which does this.
 
-Sep 12 19:28:09 rncpet31 automount[1654]: attempting to mount entry 
-/home1/amsethi
-Sep 12 19:28:09 rncpet31 kernel: nfs warning: mount version older than kernel
-Sep 12 19:28:09 rncpet31 automount[1654]: attempting to mount entry 
-/home1/labuser
-Sep 12 19:28:09 rncpet31 kernel: nfs warning: mount version older than kernel
-Sep 12 19:28:09 rncpet31 automount[1654]: attempting to mount entry 
-/home1/sumgupta
-Sep 12 19:28:12 rncpet31 kernel: nfs warning: mount version older than kernel
+--Steven
 
-If I run the following command to check the nfs status it shows the nfs 
-demon is stopped demon i.e. rpc.nfsd
+int
+nfs3svc_decode_writeargs(struct svc_rqst *rqstp, u32 *p,
+                                        struct nfsd3_writeargs *args)
+{
+        unsigned int len, v, hdr;
 
-[root@rncpet31 root]# service nfs status
-rpc.mountd (pid 1711) is running...
-nfsd is stopped
-rpc.rquotad (pid 1700) is running...
+        if (!(p = decode_fh(p, &args->fh))
+         || !(p = xdr_decode_hyper(p, &args->offset)))
+                return 0;
 
+        args->count = ntohl(*p++);
+        args->stable = ntohl(*p++);
+        len = args->len = ntohl(*p++);
 
-and while booting the kernel on the booting screen the following message 
-appears too :
+        hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
+        if (rqstp->rq_arg.len < len + hdr)
+                return 0;
 
-Starting NFS daemon:                                       [FAILED]
-mount : fs type nfs not supported by kernel
+        args->vec[0].iov_base = (void*)p;
+        args->vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
 
+        if (len > NFSSVC_MAXBLKSIZE) {
+                len = NFSSVC_MAXBLKSIZE;
+                /* adjust count to match the amount that will be written */
+                args->count = len;
+        }
+        v=  0;
+        while (len > args->vec[v].iov_len) {
+                len -= args->vec[v].iov_len;
+                v++;
+                args->vec[v].iov_base = page_address(rqstp->rq_argpages[v]);
+                args->vec[v].iov_len = PAGE_SIZE;
+        }
+        args->vec[v].iov_len = len;
+        args->vlen = v+1;
 
-The /proc/filesystems didn't contained the entry for nfs when we booted 
-the kernel for the first time i.e. the module was compiled with the kernel 
-but didn't started at the boot time. So we added the following script to 
-start the nfs automatically during bootup but this script only starts the 
-client end demon, the server side nfs demon still didn't started up
+        /* args->count may be less than args->len since it is capped */
+        return args->count <= args->len && args->vec[0].iov_len > 0;
+}
 
-KERNEL=$(uname -r | cut -b 1-4)
-if [ $KERNEL = "2.6." ] ; then
-/sbin/modprobe nfs
-fi
-
-
-Thanking You.
-
-Regards
-Sumeet Gupta
---=_alternative 0025356065257081_=
-Content-Type: text/html; charset="us-ascii"
-
-
-<br><font size=2 face="sans-serif">Hi</font>
-<br>
-<br><font size=2 face="sans-serif">I have compiled kernel-2.6.9 on kernel 2.4 .</font>
-<br><font size=2 face="sans-serif">I am able to compile it successfully after alot of troubles but finally while booting i am facing following issues.</font>
-<br><font size=2 face="sans-serif">Kindly help me out if possible.</font>
-<br>
-<br><font size=2 face="sans-serif">If I see the /var/log messages the following error appears </font>
-<br>
-<br><font size=2 face="sans-serif">Sep 12 19:27:36 rncpet31 nfs: Starting NFS services: &nbsp;succeeded</font>
-<br><font size=2 face="sans-serif">Sep 12 19:27:36 rncpet31 nfs: rpc.rquotad startup succeeded</font>
-<br><font size=2 face="sans-serif">Sep 12 19:27:36 rncpet31 nfsd[1698]: nfssvc: No such device</font>
-<br><font size=2 face="sans-serif">Sep 12 19:27:36 rncpet31 <b>nfs: rpc.nfsd startup failed</b></font>
-<br><font size=2 face="sans-serif">Sep 12 19:27:36 rncpet31 nfs: rpc.mountd startup succeeded</font>
-<br>
-<br><font size=2 face="sans-serif">Sep 12 19:28:09 rncpet31 automount[1654]: attempting to mount entry /home1/amsethi</font>
-<br><font size=2 face="sans-serif">Sep 12 19:28:09 rncpet31 <b>kernel: nfs warning: mount version older than kernel</b></font>
-<br><font size=2 face="sans-serif">Sep 12 19:28:09 rncpet31 automount[1654]: attempting to mount entry /home1/labuser</font>
-<br><font size=2 face="sans-serif">Sep 12 19:28:09 rncpet31 <b>kernel: nfs warning: mount version older than kernel</b></font>
-<br><font size=2 face="sans-serif">Sep 12 19:28:09 rncpet31 automount[1654]: attempting to mount entry /home1/sumgupta</font>
-<br><font size=2 face="sans-serif">Sep 12 19:28:12 rncpet31 <b>kernel: nfs warning: mount version older than kernel</b></font>
-<br>
-<br><font size=2 face="sans-serif">If I run the following command to check the nfs status it shows the nfs demon is stopped demon i.e. <b>rpc.nfsd</b></font>
-<br>
-<br><font size=2 face="sans-serif"><b>[root@rncpet31 root]#</b> <b>service nfs status</b></font>
-<br><font size=2 face="sans-serif">rpc.mountd (pid 1711) is running...</font>
-<br><font size=2 face="sans-serif"><b>nfsd is stopped</b></font>
-<br><font size=2 face="sans-serif">rpc.rquotad (pid 1700) is running...<br>
-</font>
-<br>
-<br><font size=2 face="sans-serif">and while booting the kernel on the booting screen the following message appears too :</font>
-<br>
-<br><font size=2 face="sans-serif"><b>Starting NFS daemon: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; [FAILED]</b></font>
-<br><font size=2 face="sans-serif"><b>mount : fs type nfs not supported by kernel</b></font>
-<br>
-<br>
-<br><font size=2 face="sans-serif">The /proc/filesystems didn't contained the entry for nfs when we booted the kernel for the first time i.e. the module was compiled with the kernel but didn't started at the boot time. So we added the following script to start the nfs automatically during bootup but this script only starts the client end demon, the server side nfs demon still didn't started up</font>
-<br>
-<br><font size=2 face="Courier New">KERNEL=$(uname -r | cut -b 1-4)</font>
-<p><font size=2 face="Courier New">if [ $KERNEL = &quot;2.6.&quot; ] ; then</font>
-<p><font size=2 face="Courier New">/sbin/modprobe nfs</font>
-<p><font size=2 face="Courier New">fi</font>
-<p><font size=2 face="sans-serif"><br>
-<br>
-Thanking You.<br>
-<br>
-Regards<br>
-Sumeet Gupta</font>
---=_alternative 0025356065257081_=--
+*** fs/nfsd/nfs3xdr.c.orig	Fri Sep 16 18:02:12 2005
+--- fs/nfsd/nfs3xdr.c	Mon Sep 19 17:35:22 2005
+***************
+*** 372,379 ****
+  	args->vec[0].iov_base = (void*)p;
+  	args->vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
+  
+! 	if (len > NFSSVC_MAXBLKSIZE)
+  		len = NFSSVC_MAXBLKSIZE;
+  	v=  0;
+  	while (len > args->vec[v].iov_len) {
+  		len -= args->vec[v].iov_len;
+--- 372,382 ----
+  	args->vec[0].iov_base = (void*)p;
+  	args->vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
+  
+! 	if (len > NFSSVC_MAXBLKSIZE) {
+  		len = NFSSVC_MAXBLKSIZE;
++ 		/* adjust count to match the amount that will be written */
++ 		args->count = len;
++ 	}
+  	v=  0;
+  	while (len > args->vec[v].iov_len) {
+  		len -= args->vec[v].iov_len;
+***************
+*** 384,390 ****
+  	args->vec[v].iov_len = len;
+  	args->vlen = v+1;
+  
+! 	return args->count == args->len && args->vec[0].iov_len > 0;
+  }
+  
+  int
+--- 387,394 ----
+  	args->vec[v].iov_len = len;
+  	args->vlen = v+1;
+  
+! 	/* args->count may be less than args->len since it is capped */
+! 	return args->count <= args->len && args->vec[0].iov_len > 0;
+  }
+  
+  int
 
 
 -------------------------------------------------------
