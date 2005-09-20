@@ -1,21 +1,23 @@
-From: Sumeet Gupta <sumeet.gupta@flextronicssoftware.com>
-Subject: Re:(PROBLEM RESOLVED!!!!)  Minor problem in nfsv3 write
-Date: Tue, 20 Sep 2005 15:12:37 +0530
-Message-ID: <OF39BEA58E.15588109-ON65257082.0035026D-65257082.00355779@flextronicssoftware.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Minor problem in nfsv3 write
+Date: Tue, 20 Sep 2005 08:25:43 -0400
+Message-ID: <432FFFC7.7010803@redhat.com>
+References: <20050920011046.23A07F4@dead.void.org> <20050920012525.GA26729@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="=_alternative 0035577465257082_="
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Steven <steven@void.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EHei9-00051u-G3
-	for nfs@lists.sourceforge.net; Tue, 20 Sep 2005 02:46:49 -0700
-Received: from spark.hss.co.in ([203.145.155.21])
+	id 1EHhIu-0002eh-CP
+	for nfs@lists.sourceforge.net; Tue, 20 Sep 2005 05:32:56 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EHei7-0004wx-OC
-	for nfs@lists.sourceforge.net; Tue, 20 Sep 2005 02:46:49 -0700
-To: Steven <steven@void.org>, bfields@fieldses.org
+	id 1EHhIt-0001Nt-46
+	for nfs@lists.sourceforge.net; Tue, 20 Sep 2005 05:32:56 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20050920012525.GA26729@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,34 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multipart message in MIME format.
---=_alternative 0035577465257082_=
-Content-Type: text/plain; charset="us-ascii"
+J. Bruce Fields wrote:
 
-Thanks Allot !!! But the problem got resolved !!!1
-The NFS_FS was compiled as a module in the kernel
-By changing the .config file and making the NFS as a part of kernel 
-resolved the problem !!!
+>On Mon, Sep 19, 2005 at 06:10:46PM -0700, Steven wrote:
+>  
+>
+>>There is a minor bug in the way writes are handled in nfs3.  If the
+>>client requests a write for more than 32k of data the server will only
+>>write 32k but report that it wrote the whole amount.
+>>    
+>>
+>
+>Our server also reports 32k as the maximum write size.  So the bug is on
+>the client side here, isn't it?
+>
 
-Thanks anyways !!!!
+This would be a bug in the client, but if the server is going to attempt
+to write some of the data anyway, then it should correctly report the
+number of bytes written.  Otherwise, the server should reject the entire
+request.
 
+    Thanx...
 
-Regards
-Sumeet Gupta
---=_alternative 0035577465257082_=
-Content-Type: text/html; charset="us-ascii"
-
-
-<br><font size=2 face="sans-serif">Thanks Allot !!! But the problem got resolved !!!1</font>
-<br><font size=2 face="sans-serif">The NFS_FS was compiled as a module in the kernel</font>
-<br><font size=2 face="sans-serif">By changing the .config file and making the NFS as a part of kernel resolved the problem !!!</font>
-<br>
-<br><font size=2 face="sans-serif">Thanks anyways !!!!<br>
-<br>
-<br>
-Regards<br>
-Sumeet Gupta</font>
---=_alternative 0035577465257082_=--
+       ps
 
 
 -------------------------------------------------------
