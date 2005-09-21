@@ -1,28 +1,25 @@
-From: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Subject: Re: ADMINSTRIVIA - Intent to open nfs@lists.sourceforge.net
-	to non-subscribers.
-Date: Wed, 21 Sep 2005 12:16:47 -0400
-Message-ID: <1127319409.9932.213.camel@pc.local>
-References: <17201.34296.859729.69509@cse.unsw.edu.au>
+From: Reuti <reuti@staff.uni-marburg.de>
+Subject: Re: NFS client got stale NFS handle after server reboot
+Date: Wed, 21 Sep 2005 18:49:42 +0200
+Message-ID: <43318F26.2030001@staff.uni-marburg.de>
+References: <433027F7.1030702@staff.uni-marburg.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-C6Yb36gzLmWGxxUQx/fJ"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EI7HQ-00068q-Ke
-	for nfs@lists.sourceforge.net; Wed, 21 Sep 2005 09:17:08 -0700
-Received: from linux.interlinx.bc.ca ([66.11.173.224])
+	id 1EI7n8-0007gp-Rw
+	for nfs@lists.sourceforge.net; Wed, 21 Sep 2005 09:49:54 -0700
+Received: from vhrz24.hrz.uni-marburg.de ([137.248.1.34])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EI7HO-0003zm-9r
-	for nfs@lists.sourceforge.net; Wed, 21 Sep 2005 09:17:08 -0700
-Received: from pc.ilinx (pc.ilinx [10.75.22.1])
-	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
-	(No client certificate requested)
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id 7E511AE7C5
-	for <nfs@lists.sourceforge.net>; Wed, 21 Sep 2005 12:16:53 -0400 (EDT)
+	id 1EI7n7-0002K3-BV
+	for nfs@lists.sourceforge.net; Wed, 21 Sep 2005 09:49:55 -0700
+Received: from staff.uni-marburg.de (pc15218.Chemie.Uni-Marburg.DE [137.248.152.52])
+	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8LGngUI018603
+	for <nfs@lists.sourceforge.net>; Wed, 21 Sep 2005 18:49:42 +0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <17201.34296.859729.69509@cse.unsw.edu.au>
+In-Reply-To: <433027F7.1030702@staff.uni-marburg.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,44 +33,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi again,
 
---=-C6Yb36gzLmWGxxUQx/fJ
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Reuti wrote:
+> Hi all,
+> 
+> I set up a NFS server using kernel NFS in kernel 2.6.11.4-21.9 from
+> SuSE. I defined three directories to be exported using netgroups and all
+> is working fine, as they can be mounted as intended by all the nodes in
+> the cluster.
+> 
+> Up to now I was used to have the NFS feature, that a "hard" mount on the
+> nodes will survive a reboot of the NFS server. This is now no longer the
+> case. If I reboot the server, all the nodes get a stale NFS handle. I
+> can achieve the same effect by simple stopping and starting the nfsd -
+> same result.
+> 
+> As we use a RAID card for the disks in the server, I got the idea of
+> changed major-minor numbers and also tried to give in the "exports"
+> file a chosen "fsid=" for each of the three exports. (Although
+> starting/stopping the nfsd won't change the major-minor numbers I
+> think.) No change.
+> 
+> Now the funny part: login to a node. Choose any of the three imported
+> directories. Make an "umount" and "mount" on this dir - and also the
+> other two dirs reappear and are accessible again.
+> 
+> Does anyone has an explanation and/or solution for this setup, to get
+> the surviving feature back?
+> 
+> CU - Reuti
+> 
+> (BTW: all partitions are ext2 on Linux x86 machines, mounted with NFSv3)
 
-On Wed, 2005-09-21 at 18:10 +0200, Neil Brown wrote:
->=20
->  If you have a violent objection to this, please write now.
+as a followup to my own posting:
 
-Not really violent.
+I did some more testing: downloaded the latest stable kernel (2.6.13.2) 
+and compiled for server and client, no success.
 
->  I don't believe a fear of 'SPAM' is a reasonable objection as there
->  are plenty of tools available that reduce SPAM substantially.
+Then I installed a conventional IDE harddisk - same result. So it's not 
+AACRAID to blame for.
 
-Indeed, and better done as far upstream as possible.  i.e. don't
-distribute spam for every recipient to have to deal with.  It's better
-if the distribution point deals with it.
+Then I tried with another server, but a 32 bit machine. And with this it 
+was working.
 
-b.
+So my conclusion:
 
---=20
-My other computer is your Microsoft Windows server.
+Server 64 bit and client 32 bit will not survive a stop/start of the NFS 
+server. But if you unmount/mount one of the imported dirs, all will 
+reappear as already stated.
 
-Brian J. Murrell
+Is this a known issue, and/or any solution to this?
 
---=-C6Yb36gzLmWGxxUQx/fJ
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+Tomorrow I'll try to get another 64 bit machine as client, to check 
+whether this would behave the same with the 64 bit server.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2 (GNU/Linux)
-
-iD8DBQBDMYdvl3EQlGLyuXARAr6xAJ9OYwSjeAilPk+W7vX6DvVE7GQ55wCgkCg7
-odfS6hr7s6l4Tt5Q6aoK+Lw=
-=rca2
------END PGP SIGNATURE-----
-
---=-C6Yb36gzLmWGxxUQx/fJ--
+TIA - Reuti
 
 
 
