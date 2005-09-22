@@ -1,23 +1,22 @@
-From: Julius Schwartzenberg <julius@zgod.cjb.net>
-Subject: Unable to access mountpoints over NFS
-Date: Thu, 15 Sep 2005 00:58:13 +0200
-Message-ID: <4328AB05.1040502@zgod.cjb.net>
+From: "H. J. Lu" <hjl@lucon.org>
+Subject: Re: ADMINSTRIVIA - Intent to open nfs@lists.sourceforge.net to non-subscribers.
+Date: Thu, 22 Sep 2005 01:56:19 -0700
+Message-ID: <20050922085619.GA31016@lucon.org>
+References: <17201.34296.859729.69509@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EFgCz-0001zV-D8
-	for nfs@lists.sourceforge.net; Wed, 14 Sep 2005 15:58:29 -0700
-Received: from netlx050.vf.utwente.nl ([192.87.17.19])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1EFgCy-00009M-4G
-	for nfs@lists.sourceforge.net; Wed, 14 Sep 2005 15:58:29 -0700
-Received: from [130.89.166.98] (middelvinger.student.utwente.nl [130.89.166.98])
-          by netlx050.vf.utwente.nl (8.11.7/HKD) with ESMTP id j8EMw7NP022604
-          for <nfs@lists.sourceforge.net>; Thu, 15 Sep 2005 00:58:12 +0200
-To: nfs@lists.sourceforge.net
+	id 1EIMsh-0006en-ET
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 01:56:39 -0700
+Received: from smtp101.sbc.mail.mud.yahoo.com ([68.142.198.200])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EIMsg-0007fW-AX
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 01:56:39 -0700
+To: Neil Brown <neilb@cse.unsw.edu.au>
+In-Reply-To: <17201.34296.859729.69509@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,14 +30,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
-I've exported / from my server and I have a harddisk mounted at 
-/mnt/hdb1. The clients see /mnt/hdb1 as an empty directory though.
-Is this normal?
-Do I need to create an extra export or is it possible to allow access to 
-it using the / export?
-Thanks in advance,
-Julius
+On Wed, Sep 21, 2005 at 06:10:32PM +0200, Neil Brown wrote:
+> 
+> Greetings.
+> 
+>  It is generally accepted in the linux-kernel community that mailing
+>  lists for discussion problems with parts of the kernel should not be
+>  subscriber-only.  This is (in part) because subscriber-only lists
+>  increase the barrier to submitting useful problem reports, and we
+>  want to get useful problem reports.
+> 
+>  Hence, I intend to switch nfs@lists.sourceforge.net to accept mail
+>  from non-subscribers.
+> 
+>  If you have a violent objection to this, please write now.
+>  I don't believe a fear of 'SPAM' is a reasonable objection as there
+>  are plenty of tools available that reduce SPAM substantially.
+> 
+
+I have no objection.
+
+
+H.J.
 
 
 -------------------------------------------------------
