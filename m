@@ -1,32 +1,29 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+From: Chris Penney <cpenney@gmail.com>
 Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server reboot
-Date: Thu, 22 Sep 2005 17:20:52 +0200
-Message-ID: <200509221720.52412.vincent.roqueta@ext.bull.net>
-References: <433027F7.1030702@staff.uni-marburg.de> <4332784C.8040503@staff.uni-marburg.de> <4332C52F.5000908@staff.uni-marburg.de>
+Date: Thu, 22 Sep 2005 12:27:33 -0400
+Message-ID: <111aefd0509220927881ad18@mail.gmail.com>
+References: <433027F7.1030702@staff.uni-marburg.de>
+	 <4332784C.8040503@staff.uni-marburg.de>
+	 <4332C52F.5000908@staff.uni-marburg.de>
+	 <200509221720.52412.vincent.roqueta@ext.bull.net>
+Reply-To: Chris Penney <cpenney@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: multipart/alternative;
+	boundary="----=_Part_2722_3836150.1127406453708"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EISpz-00069B-EZ
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 08:18:15 -0700
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	id 1EITvv-00012T-KP
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:28:27 -0700
+Received: from xproxy.gmail.com ([66.249.82.205])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EISpx-0005gO-A5
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 08:18:15 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 3EF7619D909
-	for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 17:17:27 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 20508-04 for <nfs@lists.sourceforge.net>;
- Thu, 22 Sep 2005 17:17:25 +0200 (CEST)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4CDFC19D907
-	for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 17:17:25 +0200 (CEST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <4332C52F.5000908@staff.uni-marburg.de>
+	id 1EITvu-0003IM-2R
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:28:27 -0700
+Received: by xproxy.gmail.com with SMTP id t10so518189wxc
+        for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 09:27:33 -0700 (PDT)
+To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200509221720.52412.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,44 +37,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le jeudi 22 Septembre 2005 16:52, Reuti a =E9crit=A0:
-> Finally I could track down the odd behavior (this time in top posting):
+------=_Part_2722_3836150.1127406453708
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+On 9/22/05, Vincent Roqueta <vincent.roqueta@ext.bull.net> wrote:
 >
-> If you have this combination:
+> There are several problems using x86_64 linux NFS (v4) machines as server=
+,
+> and
+> it seems to have several problems on 64 bits architectures in general (at
+> least with x86_64 and ppc64. Surely other architectures)
 >
-> + Linux kernel 2.6 nfsd on server
-> + 64 bit i386, i.e. x86_64 server
-> + using netgroups in /etc/exports
-> + operate mountd/exportfs in new mode
+> For now there are this issue yet known (linux 2.6.13+CITI, Linux
+> 2.6.14-rc*
+> +CITI)
+> -> Socket error -11 closing a big file (server : x86_64, clients: x86,
+> ppc64)
+> -> wrong lock behaviours (Client PPC64, servers: ppc64, x86)
+> -> Input/output error closing a big file (server: ppc64, client x86_64)
+> -> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
 >
-> you will face the problem of stale NFS handle after a stop/start of of
-> the NFS service. As we want to use 64 bit of course, and enjoy netgroups
-> for easier administration, I got a working setup by *not* mounting
-> /proc/fs/nfsd and forcing this way mountd/exportfs into legacy mode also
-> on a 2.6 kernel.
+> However, this issues concern NFSv4. I am going to try to reproduce your
+> problem with NFSv3 and NFSv4.
 >
-> Cheers - Reuti
+I've not heard anything negative about x86_64 systems as NFS servers, but
+this note is somewhat concerning to me as I've got some new AMD Opteron
+hardware coming to replace some Pentium 4 NFS servers. We only use NFS v3
+(mainly tcp). Should I be concerned? Should I use i386 mode instead of
+x86_64?
+  Chris
 
+------=_Part_2722_3836150.1127406453708
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-There are several problems using x86_64 linux NFS (v4) machines as server, =
-and=20
-it seems to have several problems on 64 bits architectures in general (at=20
-least with x86_64 and ppc64. Surely other architectures)
-=20
-=46or now there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14-r=
-c*=20
-+CITI)
-=2D> Socket error -11 closing a big file (server : x86_64, clients: x86, pp=
-c64)
-=2D> wrong lock behaviours  (Client PPC64, servers: ppc64, x86)
-=2D>  Input/output error closing a big file (server: ppc64, client x86_64)
-=2D> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
+<div><span class=3D"gmail_quote">On 9/22/05, <b class=3D"gmail_sendername">=
+Vincent Roqueta</b> &lt;<a href=3D"mailto:vincent.roqueta@ext.bull.net">vin=
+cent.roqueta@ext.bull.net</a>&gt; wrote:</span>
+<blockquote class=3D"gmail_quote" style=3D"PADDING-LEFT: 1ex; MARGIN: 0px 0=
+px 0px 0.8ex; BORDER-LEFT: #ccc 1px solid">There are several problems using=
+ x86_64 linux NFS (v4) machines as server, and<br>it seems to have several =
+problems on 64 bits architectures in general (at
+<br>least with x86_64 and ppc64. Surely other architectures)<br><br>For now=
+ there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14-rc*<br>+CI=
+TI)<br>-&gt; Socket error -11 closing a big file (server : x86_64, clients:=
+ x86, ppc64)
+<br>-&gt; wrong lock behaviours&nbsp;&nbsp;(Client PPC64, servers: ppc64, x=
+86)<br>-&gt;&nbsp;&nbsp;Input/output error closing a big file (server: ppc6=
+4, client x86_64)<br>-&gt; Oops (Client x86_64, server x86_64) - Linux 2.6.=
+13+CITI<br><br>However, this issues concern NFSv4. I am going to try to rep=
+roduce your
+<br>problem with NFSv3 and NFSv4.<br></blockquote></div>
+<div>I've not heard anything negative about x86_64 systems as NFS servers, =
+but this note is somewhat concerning to me as I've got some new AMD Opteron=
+ hardware coming to replace some Pentium 4 NFS servers.&nbsp; We only use N=
+FS v3 (mainly tcp).&nbsp; Should I be concerned?&nbsp; Should I use i386 mo=
+de instead of x86_64?=20
+</div>
+<div>&nbsp;</div>
+<div>&nbsp;&nbsp; Chris</div>
 
-However, this issues concern NFSv4. I am going to try to reproduce your=20
-problem with NFSv3 and NFSv4.
-
-
-Vincent
+------=_Part_2722_3836150.1127406453708--
 
 
 -------------------------------------------------------
