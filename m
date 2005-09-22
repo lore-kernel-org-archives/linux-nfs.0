@@ -1,20 +1,25 @@
-From: "Joeri Belis" <joeri.belis@nollekens.be>
-Subject: /etc/exports and netmask option
-Date: Thu, 22 Sep 2005 11:00:24 +0200
-Message-ID: <04e901c5bf54$11cc31c0$15c809c6@PCJOERI01>
+From: Reuti <reuti@staff.uni-marburg.de>
+Subject: Re: NFS client got stale NFS handle after server reboot
+Date: Thu, 22 Sep 2005 11:24:28 +0200
+Message-ID: <4332784C.8040503@staff.uni-marburg.de>
+References: <433027F7.1030702@staff.uni-marburg.de> <43318F26.2030001@staff.uni-marburg.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EIMvQ-0006jk-LA
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 01:59:28 -0700
-Received: from [194.78.89.210] (helo=linuxnol2004.nollekens.be)
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EIMvQ-000094-57
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 01:59:28 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1EINJj-0007pO-4E
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 02:24:35 -0700
+Received: from vhrz24.hrz.uni-marburg.de ([137.248.1.34])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EINJg-0001Aa-HA
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 02:24:35 -0700
+Received: from staff.uni-marburg.de (pc15218.Chemie.Uni-Marburg.DE [137.248.152.52])
+	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8M9OSRI009331
+	for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 11:24:29 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <43318F26.2030001@staff.uni-marburg.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,31 +33,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-My nfs was working perfect with following /etc/exports on the server
+Okay, here the result:
 
-/home/test/nfstest 198.9.200.227(rw,sync,no_root_squash)
+Reuti wrote:
+> Hi again,
+> 
+> Reuti wrote:
+> 
+>> Hi all,
+>>
+>> I set up a NFS server using kernel NFS in kernel 2.6.11.4-21.9 from
+>> SuSE. I defined three directories to be exported using netgroups and all
+>> is working fine, as they can be mounted as intended by all the nodes in
+>> the cluster.
+>>
+>> Up to now I was used to have the NFS feature, that a "hard" mount on the
+>> nodes will survive a reboot of the NFS server. This is now no longer the
+>> case. If I reboot the server, all the nodes get a stale NFS handle. I
+>> can achieve the same effect by simple stopping and starting the nfsd -
+>> same result.
+>>
+>> As we use a RAID card for the disks in the server, I got the idea of
+>> changed major-minor numbers and also tried to give in the "exports"
+>> file a chosen "fsid=" for each of the three exports. (Although
+>> starting/stopping the nfsd won't change the major-minor numbers I
+>> think.) No change.
+>>
+>> Now the funny part: login to a node. Choose any of the three imported
+>> directories. Make an "umount" and "mount" on this dir - and also the
+>> other two dirs reappear and are accessible again.
+>>
+>> Does anyone has an explanation and/or solution for this setup, to get
+>> the surviving feature back?
+>>
+>> CU - Reuti
+>>
+>> (BTW: all partitions are ext2 on Linux x86 machines, mounted with NFSv3)
+> 
+> 
+> as a followup to my own posting:
+> 
+> I did some more testing: downloaded the latest stable kernel (2.6.13.2) 
+> and compiled for server and client, no success.
+> 
+> Then I installed a conventional IDE harddisk - same result. So it's not 
+> AACRAID to blame for.
+> 
+> Then I tried with another server, but a 32 bit machine. And with this it 
+> was working.
+> 
+> So my conclusion:
+> 
+> Server 64 bit and client 32 bit will not survive a stop/start of the NFS 
+> server. But if you unmount/mount one of the imported dirs, all will 
+> reappear as already stated.
+> 
+> Is this a known issue, and/or any solution to this?
+> 
+> Tomorrow I'll try to get another 64 bit machine as client, to check 
+> whether this would behave the same with the 64 bit server.
 
-But after a powerloss and restart of the server it only works with the
-following
-
-/home/test/nfstest 198.9.200.227/24(rw,sync,no_root_squash)
-
-if i don't add the /24 netmask option i get this error
-
-exportfs: No host name given with
-/home/test/nfstest(rw,no_root_squash)
-(ro,async,wdelay,hide,secure,root_squash,no_all_squash,subtree_check,secure_
-locks,mapping=identity,anonuid=-2,anongid=-2),
-suggest
-*(ro,async,wdelay,hide,secure,root_squash,no_all_squash,subtree_check,secure
-_locks,mapping=identity,anonuid=-2,anongid=-2)
-to avoid warning
-
-So my question is. Why do i suddenly need to add the netmask option. I am
-sure it
-was not there before. After the powerloss, I had to remove the mount on the
-client
-it was giving rubbish. any ideas?
+64 bit server and 64 bit client has the same issue of a stale NFS handle 
+after stop/start of the nfs daemon. To me it looks like a bug, as it was 
+working within a pure 32 bit setup. Where exactly shall I report this as 
+a bug? - Reuti
 
 
 
