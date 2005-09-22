@@ -1,23 +1,32 @@
-From: Reuti <reuti@staff.uni-marburg.de>
-Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server
- reboot
-Date: Thu, 22 Sep 2005 16:52:31 +0200
-Message-ID: <4332C52F.5000908@staff.uni-marburg.de>
-References: <433027F7.1030702@staff.uni-marburg.de> <43318F26.2030001@staff.uni-marburg.de> <4332784C.8040503@staff.uni-marburg.de>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server reboot
+Date: Thu, 22 Sep 2005 17:20:52 +0200
+Message-ID: <200509221720.52412.vincent.roqueta@ext.bull.net>
+References: <433027F7.1030702@staff.uni-marburg.de> <4332784C.8040503@staff.uni-marburg.de> <4332C52F.5000908@staff.uni-marburg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EISRV-0004o6-OS
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 07:52:57 -0700
-Received: from vhrz24.hrz.uni-marburg.de ([137.248.1.34])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EISRS-00089G-6V
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 07:52:57 -0700
+	id 1EISpz-00069B-EZ
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 08:18:15 -0700
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EISpx-0005gO-A5
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 08:18:15 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 3EF7619D909
+	for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 17:17:27 +0200 (CEST)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 20508-04 for <nfs@lists.sourceforge.net>;
+ Thu, 22 Sep 2005 17:17:25 +0200 (CEST)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4CDFC19D907
+	for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 17:17:25 +0200 (CEST)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <4332784C.8040503@staff.uni-marburg.de>
+In-Reply-To: <4332C52F.5000908@staff.uni-marburg.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,94 +40,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Finally I could track down the odd behavior (this time in top posting):
+Le jeudi 22 Septembre 2005 16:52, Reuti a =E9crit=A0:
+> Finally I could track down the odd behavior (this time in top posting):
+>
+> If you have this combination:
+>
+> + Linux kernel 2.6 nfsd on server
+> + 64 bit i386, i.e. x86_64 server
+> + using netgroups in /etc/exports
+> + operate mountd/exportfs in new mode
+>
+> you will face the problem of stale NFS handle after a stop/start of of
+> the NFS service. As we want to use 64 bit of course, and enjoy netgroups
+> for easier administration, I got a working setup by *not* mounting
+> /proc/fs/nfsd and forcing this way mountd/exportfs into legacy mode also
+> on a 2.6 kernel.
+>
+> Cheers - Reuti
 
-If you have this combination:
 
-+ Linux kernel 2.6 nfsd on server
-+ 64 bit i386, i.e. x86_64 server
-+ using netgroups in /etc/exports
-+ operate mountd/exportfs in new mode
+There are several problems using x86_64 linux NFS (v4) machines as server, =
+and=20
+it seems to have several problems on 64 bits architectures in general (at=20
+least with x86_64 and ppc64. Surely other architectures)
+=20
+=46or now there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14-r=
+c*=20
++CITI)
+=2D> Socket error -11 closing a big file (server : x86_64, clients: x86, pp=
+c64)
+=2D> wrong lock behaviours  (Client PPC64, servers: ppc64, x86)
+=2D>  Input/output error closing a big file (server: ppc64, client x86_64)
+=2D> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
 
-you will face the problem of stale NFS handle after a stop/start of of 
-the NFS service. As we want to use 64 bit of course, and enjoy netgroups 
-for easier administration, I got a working setup by *not* mounting 
-/proc/fs/nfsd and forcing this way mountd/exportfs into legacy mode also 
-on a 2.6 kernel.
-
-Cheers - Reuti
+However, this issues concern NFSv4. I am going to try to reproduce your=20
+problem with NFSv3 and NFSv4.
 
 
-Reuti wrote:
-> Okay, here the result:
-> 
-> Reuti wrote:
-> 
->> Hi again,
->>
->> Reuti wrote:
->>
->>> Hi all,
->>>
->>> I set up a NFS server using kernel NFS in kernel 2.6.11.4-21.9 from
->>> SuSE. I defined three directories to be exported using netgroups and all
->>> is working fine, as they can be mounted as intended by all the nodes in
->>> the cluster.
->>>
->>> Up to now I was used to have the NFS feature, that a "hard" mount on the
->>> nodes will survive a reboot of the NFS server. This is now no longer the
->>> case. If I reboot the server, all the nodes get a stale NFS handle. I
->>> can achieve the same effect by simple stopping and starting the nfsd -
->>> same result.
->>>
->>> As we use a RAID card for the disks in the server, I got the idea of
->>> changed major-minor numbers and also tried to give in the "exports"
->>> file a chosen "fsid=" for each of the three exports. (Although
->>> starting/stopping the nfsd won't change the major-minor numbers I
->>> think.) No change.
->>>
->>> Now the funny part: login to a node. Choose any of the three imported
->>> directories. Make an "umount" and "mount" on this dir - and also the
->>> other two dirs reappear and are accessible again.
->>>
->>> Does anyone has an explanation and/or solution for this setup, to get
->>> the surviving feature back?
->>>
->>> CU - Reuti
->>>
->>> (BTW: all partitions are ext2 on Linux x86 machines, mounted with NFSv3)
->>
->>
->>
->> as a followup to my own posting:
->>
->> I did some more testing: downloaded the latest stable kernel 
->> (2.6.13.2) and compiled for server and client, no success.
->>
->> Then I installed a conventional IDE harddisk - same result. So it's 
->> not AACRAID to blame for.
->>
->> Then I tried with another server, but a 32 bit machine. And with this 
->> it was working.
->>
->> So my conclusion:
->>
->> Server 64 bit and client 32 bit will not survive a stop/start of the 
->> NFS server. But if you unmount/mount one of the imported dirs, all 
->> will reappear as already stated.
->>
->> Is this a known issue, and/or any solution to this?
->>
->> Tomorrow I'll try to get another 64 bit machine as client, to check 
->> whether this would behave the same with the 64 bit server.
-> 
-> 
-> 64 bit server and 64 bit client has the same issue of a stale NFS handle 
-> after stop/start of the nfs daemon. To me it looks like a bug, as it was 
-> working within a pure 32 bit setup. Where exactly shall I report this as 
-> a bug? - Reuti
-> 
-
+Vincent
 
 
 -------------------------------------------------------
