@@ -1,23 +1,28 @@
-From: Stefan Wuerthner <trash.wuerthner@gmx.de>
-Subject: Sporadic timeout problems during streaming to nfs server
-Date: Wed, 14 Sep 2005 01:41:18 +0200
-Message-ID: <d853fca94d.stefan@wuerthner.dyndns.org>
-References: <twig.1074096221.40393@mail.uni-tuebingen.de> <20040114161124.GD31464@gw.netwinder.org> <756bb8704c.stefan@wuerthner.dyndns.org>
- <20040114171148.GA761@gw.netwinder.org>
-Reply-To: stefan.wuerthner@uni-tuebingen.de
+From: Chris Penney <penney@msu.edu>
+Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server reboot
+Date: Thu, 22 Sep 2005 12:08:49 -0400
+Message-ID: <111aefd05092209082abc9378@mail.gmail.com>
+References: <433027F7.1030702@staff.uni-marburg.de>
+	 <4332784C.8040503@staff.uni-marburg.de>
+	 <4332C52F.5000908@staff.uni-marburg.de>
+	 <200509221720.52412.vincent.roqueta@ext.bull.net>
+Reply-To: Chris Penney <penney@msu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----=_Part_2594_22209225.1127405329112"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EFKP6-0002xm-LI
-	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 16:41:32 -0700
-Received: from pop.gmx.de ([213.165.64.20] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EFKP5-0003TW-1N
-	for nfs@lists.sourceforge.net; Tue, 13 Sep 2005 16:41:32 -0700
+	id 1EITq1-0000kC-D2
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:22:21 -0700
+Received: from xproxy.gmail.com ([66.249.82.196])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EITpz-0002CZ-W8
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:22:21 -0700
+Received: by xproxy.gmail.com with SMTP id t10so516870wxc
+        for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 09:20:32 -0700 (PDT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20040114171148.GA761@gw.netwinder.org>
+In-Reply-To: <200509221720.52412.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,58 +36,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-- I have the following setup:
+------=_Part_2594_22209225.1127405329112
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-DBox (DVB-C receiver, 10BaseT) connected to
-100MBit-Switch connected over 10m TP to
-100MBit-Switch connected over 5m TP to
-Netwinder (Linux server, 100BaseT)
+On 9/22/05, Vincent Roqueta <vincent.roqueta@ext.bull.net> wrote:
+>
+> There are several problems using x86_64 linux NFS (v4) machines as server=
+,
+> and
+> it seems to have several problems on 64 bits architectures in general (at
+> least with x86_64 and ppc64. Surely other architectures)
+>
+> For now there are this issue yet known (linux 2.6.13+CITI, Linux
+> 2.6.14-rc*
+> +CITI)
+> -> Socket error -11 closing a big file (server : x86_64, clients: x86,
+> ppc64)
+> -> wrong lock behaviours (Client PPC64, servers: ppc64, x86)
+> -> Input/output error closing a big file (server: ppc64, client x86_64)
+> -> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
+>
+> However, this issues concern NFSv4. I am going to try to reproduce your
+> problem with NFSv3 and NFSv4.
+>
+>
+> Vincent
 
-- Export options on the Netwinder (Kernel 2.4.19-rmk7-nw1):
+ I've not heard anything negative about x86_64 systems as NFS servers, but
+this note is somewhat concerning to me as I've got some new AMD Opteron
+hardware coming to replace some Pentium 4 NFS servers. We only use NFS v3
+(mainly tcp). Should I be concerned? Should I use i386 mode instead of
+x86_64?
+  Chris
 
-dbox2(rw,insecure,all_squash)
+------=_Part_2594_22209225.1127405329112
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-- Mount options on the DBox (Kernel 2.4.31-dbox2) to stream the DVB-TS:
+<br><br>
+<div><span class=3D"gmail_quote">On 9/22/05, <b class=3D"gmail_sendername">=
+Vincent Roqueta</b> &lt;<a href=3D"mailto:vincent.roqueta@ext.bull.net">vin=
+cent.roqueta@ext.bull.net</a>&gt; wrote:</span>
+<blockquote class=3D"gmail_quote" style=3D"PADDING-LEFT: 1ex; MARGIN: 0px 0=
+px 0px 0.8ex; BORDER-LEFT: #ccc 1px solid">There are several problems using=
+ x86_64 linux NFS (v4) machines as server, and<br>it seems to have several =
+problems on 64 bits architectures in general (at
+<br>least with x86_64 and ppc64. Surely other architectures)<br><br>For now=
+ there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14-rc*<br>+CI=
+TI)<br>-&gt; Socket error -11 closing a big file (server : x86_64, clients:=
+ x86, ppc64)
+<br>-&gt; wrong lock behaviours&nbsp;&nbsp;(Client PPC64, servers: ppc64, x=
+86)<br>-&gt;&nbsp;&nbsp;Input/output error closing a big file (server: ppc6=
+4, client x86_64)<br>-&gt; Oops (Client x86_64, server x86_64) - Linux 2.6.=
+13+CITI<br><br>However, this issues concern NFSv4. I am going to try to rep=
+roduce your
+<br>problem with NFSv3 and NFSv4.<br><br><br>Vincent</blockquote>
+<div>&nbsp;</div>
+<div>I've not heard anything negative about x86_64 systems as NFS servers, =
+but this note is somewhat concerning to me as I've got some new AMD Opteron=
+ hardware coming to replace some Pentium 4 NFS servers.&nbsp; We only use N=
+FS v3 (mainly tcp).&nbsp; Should I be concerned?&nbsp; Should I use i386 mo=
+de instead of x86_64?
+</div>
+<div>&nbsp;</div>
+<div>&nbsp;&nbsp; Chris</div>
+<div>&nbsp;</div><br><br>&nbsp;</div>
 
-rw,soft,udp,nolock,rsize=8192,wsize=8192
-
-- This results in:
-
-192.168.24.50:/home/wuerthne on /mnt/filme type nfs (rw,v3,rsize=8192,
-wsize=8192,soft,udp,nolock,addr=192.168.24.50)
-
-
-Unfortunately, I sometimes get a timeout error in the serial logfile of my
-DBox:
-
-[Tue Sep 13 19:15:49 2005]nfs: server 192.168.24.50 not responding, timed out
-[Tue Sep 13 19:15:49 2005][stream2file]: error in write: Input/output error
-[Tue Sep 13 19:15:51 2005][stream2file] pthreads exit code: 4294967293
-[Tue Sep 13 19:15:56 2005][neutrino.cpp] executing /var/tuxbox/config/recording.start.
-[Tue Sep 13 19:15:57 2005]Record channel_id: 44d00016dcd epg: 44d00016dcda60c, apids  mode 1
-[Tue Sep 13 19:46:43 2005]nfs: server 192.168.24.50 not responding, timed out
-[Tue Sep 13 19:46:43 2005][stream2file]: error in write: Input/output error
-[Tue Sep 13 19:46:44 2005][stream2file] pthreads exit code: 4294967293
-[Tue Sep 13 19:46:49 2005][neutrino.cpp] executing /var/tuxbox/config/recording.start.
-
-E.g. the client recognizes a timeout and restarts the recording. This
-results in two ore more fragments which is not desirable.
-
-For some time now, I played with different NFS options, changed switches and
-so on but to no avail. Sometimes I can stream 5GB without problems,
-sometimes the timeout occurs after a short period of time.
-
-
-Any ideas what I can change or how I can diagnose this problem further to
-avoid the timeouts?
-
-
-Stefan
-
--- 
------------------------------------------------------------------------------
-Stefan Wuerthner                             web  http://wuerthner.dyndns.org
------------------------------------------------------------------------------
+------=_Part_2594_22209225.1127405329112--
 
 
 -------------------------------------------------------
