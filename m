@@ -1,24 +1,25 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] nfs-utils 2 of 10 - Incorporate some clean up	code
- from Ulrich Drepper
-Date: Fri, 23 Sep 2005 12:56:15 -0400
-Message-ID: <433433AF.1040702@RedHat.com>
-References: <433414D0.8030905@RedHat.com> <1127490778.8328.6.camel@lade.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] nfs-utils 2 of 10 - Incorporate some clean
+	up	code from Ulrich Drepper
+Date: Fri, 23 Sep 2005 14:23:36 -0400
+Message-ID: <1127499816.8328.17.camel@lade.trondhjem.org>
+References: <433414D0.8030905@RedHat.com>
+	 <1127490778.8328.6.camel@lade.trondhjem.org>  <433433AF.1040702@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EIqqV-0003Vo-Oq
-	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 09:56:23 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1EIsDB-0007IG-4x
+	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 11:23:53 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EIqqU-0006eL-FQ
-	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 09:56:24 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1127490778.8328.6.camel@lade.trondhjem.org>
+	id 1EIsD6-0007Sj-37
+	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 11:23:48 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <433433AF.1040702@RedHat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,21 +33,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
->  Why not clean that up further by putting it into a simple library
-> function that takes an argument consisting of the pipes you do not want
-> it to close?
-Good point... its just one things that appeared one day (Uli when
-nuts and changed a bunch of system daemons) and since everything
-seem to still work I never gave it a second thought...
+fr den 23.09.2005 Klokka 12:56 (-0400) skreiv Steve Dickson:
 
-Where would be the best place for this this new routine?
-If we put the routine in libnfs.a, then both the
-idmapd and svcgssd daemons would have to start
-linking it which may or may not cause a problem..
-Or maybe a new local library??
+> Where would be the best place for this this new routine?
+> If we put the routine in libnfs.a, then both the
+> idmapd and svcgssd daemons would have to start
+> linking it which may or may not cause a problem..
+> Or maybe a new local library??
 
-steved.
+How about in libmisc?
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
