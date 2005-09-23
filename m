@@ -1,26 +1,26 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils 9 of 10 - Fixed some security issues found by SGI
-Date: Fri, 23 Sep 2005 10:49:49 -0400
-Message-ID: <4334160D.6020705@RedHat.com>
+Subject: [PATCH] nfs-utils 7 of 10 - Changed mountd to use stat64()
+Date: Fri, 23 Sep 2005 10:48:24 -0400
+Message-ID: <433415B8.6090708@RedHat.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------090106070701010901040901"
+ boundary="------------090907070806030100000308"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EIos8-00066D-2J
-	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 07:49:56 -0700
+	id 1EIoqp-00062j-1C
+	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 07:48:35 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EIos7-0003va-SU
-	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 07:49:56 -0700
+	id 1EIoqh-0007Gj-Hg
+	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 07:48:35 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j8NEnsnP015847
-	for <nfs@lists.sourceforge.net>; Fri, 23 Sep 2005 10:49:54 -0400
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j8NEmPwl015327
+	for <nfs@lists.sourceforge.net>; Fri, 23 Sep 2005 10:48:25 -0400
 Received: from [172.16.50.33] (vpn50-33.rdu.redhat.com [172.16.50.33])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j8NEnnV14507
-	for <nfs@lists.sourceforge.net>; Fri, 23 Sep 2005 10:49:49 -0400
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j8NEmPV14150
+	for <nfs@lists.sourceforge.net>; Fri, 23 Sep 2005 10:48:25 -0400
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -36,72 +36,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------090106070701010901040901
+--------------090907070806030100000308
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
---------------090106070701010901040901
+--------------090907070806030100000308
 Content-Type: text/x-patch;
- name="nfs-utils-1.0.7-sgi-statd-fixes.patch"
+ name="nfs-utils-1.0.7-mountd-stat64.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="nfs-utils-1.0.7-sgi-statd-fixes.patch"
+ filename="nfs-utils-1.0.7-mountd-stat64.patch"
 
-Fixed some security issues found by SGI (bz# 133556)
+Changed mountd to use stat64() (bz 165062)
+Which fixed the following error:
+rpc.mountd: can't stat exported dir /mnt/bigfile: Value too large 
+for defined data type
+
+I wonder if it would be better just to make mountd a 64bit
+application by compiling with -D_FILE_OFFSET_BITS=64?
 
 Details can be found in:
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=133556
+https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=165062
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---------
---- nfs-utils-1.0.7/utils/statd/monitor.c.sgi	2004-09-14 23:08:01.000000000 -0400
-+++ nfs-utils-1.0.7/utils/statd/monitor.c	2005-02-21 11:32:06.558972064 -0500
-@@ -15,6 +15,7 @@
- #include <string.h>
- #include <unistd.h>
- #include <sys/stat.h>
-+#include <errno.h>
- #include <arpa/inet.h>
- #include "misc.h"
- #include "statd.h"
-@@ -172,7 +173,7 @@ sm_mon_1_svc(struct mon *argp, struct sv
- 	sprintf(path, "%s/%s", SM_DIR, mon_name);
- 	if ((fd = open(path, O_WRONLY|O_SYNC|O_CREAT, S_IRUSR|S_IWUSR)) < 0) {
- 		/* Didn't fly.  We won't monitor. */
--		note(N_ERROR, "creat(%s) failed: %m", path);
-+		note(N_ERROR, "creat(%s) failed: %s", path, strerror (errno));
- 		nlist_free(NULL, clnt);
- 		free(path);
- 		goto failure;
---- nfs-utils-1.0.7/utils/statd/statd.c.sgi	2004-12-05 20:25:27.000000000 -0500
-+++ nfs-utils-1.0.7/utils/statd/statd.c	2005-02-21 11:32:06.561971608 -0500
-@@ -194,8 +194,10 @@ static void drop_privs(void)
- 	struct stat st;
- 
- 	if (stat(SM_DIR, &st) == -1 &&
--	    stat(DIR_BASE, &st) == -1)
-+	    stat(DIR_BASE, &st) == -1) {
- 		st.st_uid = 0;
-+		st.st_gid = 0;
-+	}
- 
- 	if (st.st_uid == 0) {
- 		note(N_WARNING, "statd running as root. chown %s to choose different user\n",
---- nfs-utils-1.0.7/utils/statd/svc_run.c.sgi	2004-12-05 20:25:28.000000000 -0500
-+++ nfs-utils-1.0.7/utils/statd/svc_run.c	2005-02-21 11:32:06.562971456 -0500
-@@ -123,7 +123,8 @@ my_svc_run(void)
- 			if (errno == EINTR || errno == ECONNREFUSED
- 			 || errno == ENETUNREACH || errno == EHOSTUNREACH)
- 				continue;
--			note(N_ERROR, "my_svc_run() - select: %m");
-+			note(N_ERROR, "my_svc_run() - select: %s",
-+				strerror (errno));
- 			return;
- 
- 		case 0:
+--- nfs-utils-1.0.7/utils/mountd/mountd.c.orig	2005-08-02 10:25:34.000000000 -0400
++++ nfs-utils-1.0.7/utils/mountd/mountd.c	2005-08-16 04:01:27.000000000 -0400
+@@ -187,7 +187,7 @@ mount_pathconf_2_svc(struct svc_req *rqs
+ {
+ 	struct sockaddr_in *sin
+ 		= (struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
+-	struct stat	stb;
++	struct stat64	stb;
+ 	nfs_export	*exp;
+ 	char		rpath[MAXPATHLEN+1];
+ 	char		*p = *path;
+@@ -209,7 +209,7 @@ mount_pathconf_2_svc(struct svc_req *rqs
+ 	/* Now authenticate the intruder... */
+ 	if (!(exp = auth_authenticate("pathconf", sin, p))) {
+ 		return 1;
+-	} else if (stat(p, &stb) < 0) {
++	} else if (stat64(p, &stb) < 0) {
+ 		xlog(L_WARNING, "can't stat exported dir %s: %s",
+ 				p, strerror(errno));
+ 		export_reset (exp);
+@@ -263,7 +263,7 @@ get_rootfh(struct svc_req *rqstp, dirpat
+ {
+ 	struct sockaddr_in *sin =
+ 		(struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
+-	struct stat	stb, estb;
++	struct stat64	stb, estb;
+ 	nfs_export	*exp;
+ 	char		rpath[MAXPATHLEN+1];
+ 	char		*p = *path;
+@@ -283,7 +283,7 @@ get_rootfh(struct svc_req *rqstp, dirpat
+ 	/* Now authenticate the intruder... */
+ 	if (!(exp = auth_authenticate("mount", sin, p))) {
+ 		*error = NFSERR_ACCES;
+-	} else if (stat(p, &stb) < 0) {
++	} else if (stat64(p, &stb) < 0) {
+ 		xlog(L_WARNING, "can't stat exported dir %s: %s",
+ 				p, strerror(errno));
+ 		if (errno == ENOENT)
+@@ -293,7 +293,7 @@ get_rootfh(struct svc_req *rqstp, dirpat
+ 	} else if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
+ 		xlog(L_WARNING, "%s is not a directory or regular file", p);
+ 		*error = NFSERR_NOTDIR;
+-	} else if (stat(exp->m_export.e_path, &estb) < 0) {
++	} else if (stat64(exp->m_export.e_path, &estb) < 0) {
+ 		xlog(L_WARNING, "can't stat export point %s: %s",
+ 		     p, strerror(errno));
+ 		*error = NFSERR_NOENT;
 
---------------090106070701010901040901--
+--------------090907070806030100000308--
 
 
 -------------------------------------------------------
