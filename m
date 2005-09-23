@@ -1,29 +1,27 @@
-From: Chris Penney <cpenney@gmail.com>
-Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server reboot
-Date: Thu, 22 Sep 2005 12:27:33 -0400
-Message-ID: <111aefd0509220927881ad18@mail.gmail.com>
-References: <433027F7.1030702@staff.uni-marburg.de>
-	 <4332784C.8040503@staff.uni-marburg.de>
-	 <4332C52F.5000908@staff.uni-marburg.de>
-	 <200509221720.52412.vincent.roqueta@ext.bull.net>
-Reply-To: Chris Penney <cpenney@gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] nfs-utils 1 of 10  - Removed sync warning on readonly exports
+Date: Fri, 23 Sep 2005 10:44:13 -0400
+Message-ID: <433414BD.5080209@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_2722_3836150.1127406453708"
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+ boundary="------------070106020303080504080908"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EITvv-00012T-KP
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:28:27 -0700
-Received: from xproxy.gmail.com ([66.249.82.205])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EITvu-0003IM-2R
-	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 09:28:27 -0700
-Received: by xproxy.gmail.com with SMTP id t10so518189wxc
-        for <nfs@lists.sourceforge.net>; Thu, 22 Sep 2005 09:27:33 -0700 (PDT)
-To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-In-Reply-To: <200509221720.52412.vincent.roqueta@ext.bull.net>
+	id 1EIoml-0005mH-2K
+	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 07:44:23 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EIomj-0002NF-MA
+	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 07:44:23 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id j8NEiEvs013933
+	for <nfs@lists.sourceforge.net>; Fri, 23 Sep 2005 10:44:14 -0400
+Received: from [172.16.50.33] (vpn50-33.rdu.redhat.com [172.16.50.33])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id j8NEiEV12556
+	for <nfs@lists.sourceforge.net>; Fri, 23 Sep 2005 10:44:14 -0400
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,70 +35,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_Part_2722_3836150.1127406453708
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+This is a multi-part message in MIME format.
+--------------070106020303080504080908
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On 9/22/05, Vincent Roqueta <vincent.roqueta@ext.bull.net> wrote:
->
-> There are several problems using x86_64 linux NFS (v4) machines as server=
-,
-> and
-> it seems to have several problems on 64 bits architectures in general (at
-> least with x86_64 and ppc64. Surely other architectures)
->
-> For now there are this issue yet known (linux 2.6.13+CITI, Linux
-> 2.6.14-rc*
-> +CITI)
-> -> Socket error -11 closing a big file (server : x86_64, clients: x86,
-> ppc64)
-> -> wrong lock behaviours (Client PPC64, servers: ppc64, x86)
-> -> Input/output error closing a big file (server: ppc64, client x86_64)
-> -> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
->
-> However, this issues concern NFSv4. I am going to try to reproduce your
-> problem with NFSv3 and NFSv4.
->
-I've not heard anything negative about x86_64 systems as NFS servers, but
-this note is somewhat concerning to me as I've got some new AMD Opteron
-hardware coming to replace some Pentium 4 NFS servers. We only use NFS v3
-(mainly tcp). Should I be concerned? Should I use i386 mode instead of
-x86_64?
-  Chris
+The following 10 patches are a result of bugs that were reported
+to us and have been fixed in various Red Hat releases.
+I'm hopeful that at least some of them will incorporated into
+the SourceForge CVS tree....
 
-------=_Part_2722_3836150.1127406453708
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+steved.
 
-<div><span class=3D"gmail_quote">On 9/22/05, <b class=3D"gmail_sendername">=
-Vincent Roqueta</b> &lt;<a href=3D"mailto:vincent.roqueta@ext.bull.net">vin=
-cent.roqueta@ext.bull.net</a>&gt; wrote:</span>
-<blockquote class=3D"gmail_quote" style=3D"PADDING-LEFT: 1ex; MARGIN: 0px 0=
-px 0px 0.8ex; BORDER-LEFT: #ccc 1px solid">There are several problems using=
- x86_64 linux NFS (v4) machines as server, and<br>it seems to have several =
-problems on 64 bits architectures in general (at
-<br>least with x86_64 and ppc64. Surely other architectures)<br><br>For now=
- there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14-rc*<br>+CI=
-TI)<br>-&gt; Socket error -11 closing a big file (server : x86_64, clients:=
- x86, ppc64)
-<br>-&gt; wrong lock behaviours&nbsp;&nbsp;(Client PPC64, servers: ppc64, x=
-86)<br>-&gt;&nbsp;&nbsp;Input/output error closing a big file (server: ppc6=
-4, client x86_64)<br>-&gt; Oops (Client x86_64, server x86_64) - Linux 2.6.=
-13+CITI<br><br>However, this issues concern NFSv4. I am going to try to rep=
-roduce your
-<br>problem with NFSv3 and NFSv4.<br></blockquote></div>
-<div>I've not heard anything negative about x86_64 systems as NFS servers, =
-but this note is somewhat concerning to me as I've got some new AMD Opteron=
- hardware coming to replace some Pentium 4 NFS servers.&nbsp; We only use N=
-FS v3 (mainly tcp).&nbsp; Should I be concerned?&nbsp; Should I use i386 mo=
-de instead of x86_64?=20
-</div>
-<div>&nbsp;</div>
-<div>&nbsp;&nbsp; Chris</div>
 
-------=_Part_2722_3836150.1127406453708--
+
+--------------070106020303080504080908
+Content-Type: text/x-patch;
+ name="nfs-utils-1.0.6-expwarn.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfs-utils-1.0.6-expwarn.patch"
+
+Removed sync warning on readonly exports.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---------
+--- src/support/nfs/exports.c.org	2003-08-06 01:19:42.000000000 -0400
++++ src/support/nfs/exports.c	2004-06-14 06:48:29.000000000 -0400
+@@ -442,7 +442,7 @@ bad_option:
+ 	ep->e_nsqgids = nsqgids;
+ 
+ out:
+-	if (warn && !had_sync_opt)
++	if (warn && !had_sync_opt && !(ep->e_flags & NFSEXP_READONLY))
+ 		xlog(L_WARNING, "%s [%d]: No 'sync' or 'async' option specified for export \"%s:%s\".\n"
+ 				"  Assuming default behaviour ('sync').\n"
+ 		     		"  NOTE: this default has changed from previous versions\n",
+
+--------------070106020303080504080908--
 
 
 -------------------------------------------------------
