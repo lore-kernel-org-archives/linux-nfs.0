@@ -1,20 +1,23 @@
-From: "sharad" <singh.sharad@netsity.com>
-Subject: Kernel panic
-Date: Fri, 23 Sep 2005 19:07:01 +0530
-Message-ID: <005b01c5c043$e0df4e80$5867a8c0@netsity.com>
+From: MVR Murty <mvr.murty@gmail.com>
+Subject: Hello
+Date: Sun, 25 Sep 2005 17:19:50 -0400
+Message-ID: <e994f6fb0509251419305945da@mail.gmail.com>
+Reply-To: MVR Murty <mvr.murty@gmail.com>
 Mime-Version: 1.0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0058_01C5C071.FA83B460"
+	boundary="----=_Part_22361_26660162.1127683190771"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EInjz-0002zx-Rq
-	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 06:37:27 -0700
-Received: from smtp.netsity.com ([61.246.47.138] helo=mail.netsity.com)
+	id 1EJduh-0007tO-Hg
+	for nfs@lists.sourceforge.net; Sun, 25 Sep 2005 14:19:59 -0700
+Received: from xproxy.gmail.com ([66.249.82.197])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EInjw-0003vB-9i
-	for nfs@lists.sourceforge.net; Fri, 23 Sep 2005 06:37:24 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1EJduh-0006vu-7W
+	for nfs@lists.sourceforge.net; Sun, 25 Sep 2005 14:19:59 -0700
+Received: by xproxy.gmail.com with SMTP id t16so71094wxc
+        for <nfs@lists.sourceforge.net>; Sun, 25 Sep 2005 14:19:50 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,78 +31,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0058_01C5C071.FA83B460
-Content-Type: text/plain;
-	charset="iso-8859-1"
+------=_Part_22361_26660162.1127683190771
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Hi everyone,
- I am using AU1200 board and trying to boot through NFS.Kernel boots but =
-shows a panic after some time..
-Following is the screen shot of it:-
+Hello,
+I was wondering whether anyone has implemented:
+ 1) Location Transparency of files/dirs
+2) Location Independence
+ in Linux and is the code available for general public in
+www.sourceforge.net <http://www.sourceforge.net> . Please let me know if it
+available and if so please send me the link.
+ Thanks and Regards,
+Murty.
+ PS: I was planning on mounting the directories of the Client and server an=
+d
+using a wrapper to wrap the mounted directory(s) and the write a deamon, so
+that Location transparency could be implemented. But I am not sure how to
+implement Location Implementation.
 
-TCP: Hash tables configured (established 2048 bind 2048)
-NET: Registered protocol family 1
-NET: Registered protocol family 17
-NET: Registered protocol family 15
-Root-NFS: No NFS server available, giving up.
-VFS: Unable to mount root fs via NFS, trying floppy.
-VFS: Cannot open root device "nfs" or unknown-block(2,0)
-Please append a correct "root=3D" boot option
-Kernel panic - not syncing: VFS: Unable to mount root fs on =
-unknown-block(2,0)
-
-
-Can anyone help me please
-
-Thanks in advance
-sharad
-
-------=_NextPart_000_0058_01C5C071.FA83B460
-Content-Type: text/html;
-	charset="iso-8859-1"
+------=_Part_22361_26660162.1127683190771
+Content-Type: text/html; charset=ISO-8859-1
 Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2600.0" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT color=3D#000080>Hi everyone,</FONT></DIV>
-<DIV><FONT color=3D#000080>&nbsp;I am using AU1200 board and trying to =
-boot=20
-through NFS.Kernel boots but shows a panic after some =
-time..</FONT></DIV>
-<DIV><FONT color=3D#000080>Following is the screen shot of =
-it:-</FONT></DIV>
-<DIV><FONT color=3D#000080></FONT>&nbsp;</DIV>
-<DIV><FONT color=3D#000080>TCP: Hash tables configured (established 2048 =
-bind=20
-2048)<BR>NET: Registered protocol family 1<BR>NET: Registered protocol =
-family=20
-17<BR>NET: Registered protocol family 15<BR>Root-NFS: No NFS server =
-available,=20
-giving up.<BR>VFS: Unable to mount root fs via NFS, trying =
-floppy.<BR>VFS:=20
-Cannot open root device "nfs" or unknown-block(2,0)<BR>Please append a =
-correct=20
-"root=3D" boot option<BR>Kernel panic - not syncing: VFS: Unable to =
-mount root fs=20
-on unknown-block(2,0)</FONT></DIV>
-<DIV><FONT color=3D#000080></FONT>&nbsp;</DIV>
-<DIV><FONT color=3D#000080></FONT>&nbsp;</DIV>
-<DIV><FONT color=3D#000080>Can&nbsp;anyone help me please</FONT></DIV>
-<DIV><FONT color=3D#000080></FONT>&nbsp;</DIV>
-<DIV><FONT color=3D#000080>Thanks in advance</FONT></DIV>
-<DIV><FONT color=3D#000080>sharad</FONT></DIV></BODY></HTML>
+<div>Hello,</div>
+<div>I was wondering whether anyone has implemented:</div>
+<div>&nbsp;</div>
+<div>1)&nbsp; Location Transparency of files/dirs</div>
+<div>2)&nbsp; Location Independence </div>
+<div>&nbsp;</div>
+<div>in Linux and is&nbsp;the code&nbsp;available for general public&nbsp;i=
+n <a href=3D"http://www.sourceforge.net">www.sourceforge.net</a> . Please l=
+et me know if it available and if so please send me the link.</div>
+<div>&nbsp;</div>
+<div>Thanks and Regards,</div>
+<div>Murty.</div>
+<div>&nbsp;</div>
+<div>PS: I was planning on mounting the directories of the Client and serve=
+r and using a wrapper to wrap the mounted directory(s) and the write a deam=
+on, so that Location transparency could be implemented. But I am not sure h=
+ow to implement Location Implementation.
+</div>
+<div>&nbsp;</div>
 
-------=_NextPart_000_0058_01C5C071.FA83B460--
-
+------=_Part_22361_26660162.1127683190771--
 
 
 -------------------------------------------------------
