@@ -1,27 +1,24 @@
 From: Reuti <reuti@staff.uni-marburg.de>
-Subject: Re: /etc/exports and netmask option
-Date: Sat, 24 Sep 2005 19:47:12 +0200
-Message-ID: <20050924194712.2xekkbwquyog8cow@home.staff.uni-marburg.de>
-References: <04e901c5bf54$11cc31c0$15c809c6@PCJOERI01>
+Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server
+ reboot
+Date: Mon, 26 Sep 2005 10:31:02 +0200
+Message-ID: <4337B1C6.7050105@staff.uni-marburg.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=ISO-8859-1;
-	format="flowed"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EJE7O-0003Bg-IY
-	for nfs@lists.sourceforge.net; Sat, 24 Sep 2005 10:47:22 -0700
+	id 1EJoOF-000809-5g
+	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:31:11 -0700
 Received: from vhrz24.hrz.uni-marburg.de ([137.248.1.34])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EJE7N-0006nd-4e
-	for nfs@lists.sourceforge.net; Sat, 24 Sep 2005 10:47:22 -0700
-Received: from localhost (vhrz78.HRZ.Uni-Marburg.DE [137.248.1.54])
-	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8OHlCNY030222
-	for <nfs@lists.sourceforge.net>; Sat, 24 Sep 2005 19:47:12 +0200
+	id 1EJoOE-0001Ve-JT
+	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:31:11 -0700
+Received: from staff.uni-marburg.de (pc15218.Chemie.Uni-Marburg.DE [137.248.152.52])
+	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8Q8V2RU008767
+	for <nfs@lists.sourceforge.net>; Mon, 26 Sep 2005 10:31:02 +0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <04e901c5bf54$11cc31c0$15c809c6@PCJOERI01>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,46 +32,91 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Here one mail, which didn't got to the list by pressing the wrong=20
+button. As I just found another fact, first this mail to the list...
 
-Zitat von Joeri Belis <joeri.belis@nollekens.be>:
 
-> My nfs was working perfect with following /etc/exports on the server
->
-> /home/test/nfstest 198.9.200.227(rw,sync,no_root_squash)
->
-> But after a powerloss and restart of the server it only works with the
-> following
->
-> /home/test/nfstest 198.9.200.227/24(rw,sync,no_root_squash)
->
-> if i don't add the /24 netmask option i get this error
->
-> exportfs: No host name given with
-> /home/test/nfstest(rw,no_root_squash)
-> (ro,async,wdelay,hide,secure,root_squash,no_all_squash,subtree_check,secure_
-> locks,mapping=identity,anonuid=-2,anongid=-2),
-> suggest
-> *(ro,async,wdelay,hide,secure,root_squash,no_all_squash,subtree_check,secure
-> _locks,mapping=identity,anonuid=-2,anongid=-2)
-> to avoid warning
->
-> So my question is. Why do i suddenly need to add the netmask option. I am
-> sure it
-> was not there before. After the powerloss, I had to remove the mount on the
-> client
-> it was giving rubbish. any ideas?
+Hi Vincent,
 
-what happens if you give the command:
+one additonal observation:
 
-$ exportfs -o rw,sync,no_root_squash 198.9.200.227:/home/test/nfstest
+I looked at /var/lib/nfs/rmtab and was confused by the entries. Seems
+under the new mode they weren't properly maintained, and also after an
+unmount some entries stayed there (not all). And there was an additonal
+line just for the netgroup for each client.
 
-directly? Maybe you have to "resync" some of the NFS files because of 
-the crash.
-You can try to shutdown the NFS service and look into /var/lib/nfs and zap the
-etab, rmtab and xtab (:>etab) before you restart it.
+In the legacy mode there is just one entry for each mount, and the
+machines from netgroups appear there with their nodename. After an
+unmount the lines are proper removed.
 
-Cheers - Reuti
+I'm not sure, whether this is important (is rmtab still used in the new
+mode?) or at least a hint for the source of this behavior - just to let
+you know.
+
+Best Greetings - Reuti
+
+PS: Yes, in the summary I missed it: it was all under NFSv3.
+
+
+Vincent Roqueta wrote:
+> Le jeudi 22 Septembre 2005 16:52, Reuti a =E9crit :
+>=20
+>>Finally I could track down the odd behavior (this time in top posting):
+>>
+>>If you have this combination:
+>>
+>>+ Linux kernel 2.6 nfsd on server
+>>+ 64 bit i386, i.e. x86_64 server
+>>+ using netgroups in /etc/exports
+>>+ operate mountd/exportfs in new mode
+>>
+>>you will face the problem of stale NFS handle after a stop/start of of
+>>the NFS service. As we want to use 64 bit of course, and enjoy netgroup=
+s
+>>for easier administration, I got a working setup by *not* mounting
+>>/proc/fs/nfsd and forcing this way mountd/exportfs into legacy mode als=
+o
+>>on a 2.6 kernel.
+>>
+>>Cheers - Reuti
+>=20
+>=20
+>=20
+> There are several problems using x86_64 linux NFS (v4) machines as serv=
+er, and=20
+> it seems to have several problems on 64 bits architectures in general (=
+at=20
+> least with x86_64 and ppc64. Surely other architectures)
+> =20
+> For now there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14=
+-rc*=20
+> +CITI)
+> -> Socket error -11 closing a big file (server : x86_64, clients: x86, =
+ppc64)
+> -> wrong lock behaviours  (Client PPC64, servers: ppc64, x86)
+> ->  Input/output error closing a big file (server: ppc64, client x86_64=
+)
+> -> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
+>=20
+> However, this issues concern NFSv4. I am going to try to reproduce your=
+=20
+> problem with NFSv3 and NFSv4.
+>=20
+>=20
+> Vincent
+>=20
+>=20
+> -------------------------------------------------------
+> SF.Net email is sponsored by:
+> Tame your development challenges with Apache's Geronimo App Server.=20
+> Download it for free - -and be entered to win a 42" plasma tv or your v=
+ery
+> own Sony(tm)PSP.  Click here to play: http://sourceforge.net/geronimo.p=
+hp
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 
