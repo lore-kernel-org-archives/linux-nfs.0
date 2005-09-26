@@ -1,26 +1,23 @@
-From: Reuti <reuti@staff.uni-marburg.de>
-Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server
- reboot
-Date: Mon, 26 Sep 2005 10:32:55 +0200
-Message-ID: <4337B237.9000706@staff.uni-marburg.de>
-References: <433027F7.1030702@staff.uni-marburg.de> <4332784C.8040503@staff.uni-marburg.de> <4332C52F.5000908@staff.uni-marburg.de> <200509221720.52412.vincent.roqueta@ext.bull.net>
+From: GOKUL HUGGAHALLI <gokul.adi@gmail.com>
+Subject: Problem with NFS
+Date: Mon, 26 Sep 2005 14:36:29 -0400
+Message-ID: <73f1ae830509261136253f29e4@mail.gmail.com>
+Reply-To: GOKUL HUGGAHALLI <gokul.adi@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: multipart/alternative;
+	boundary="----=_Part_1169_1540005.1127759789097"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EJoQ0-000839-Vo
-	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:33:00 -0700
-Received: from vhrz24.hrz.uni-marburg.de ([137.248.1.34])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EJoQ0-0001uK-8P
-	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:33:01 -0700
-Received: from staff.uni-marburg.de (pc15218.Chemie.Uni-Marburg.DE [137.248.152.52])
-	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8Q8WtrC009096
-	for <nfs@lists.sourceforge.net>; Mon, 26 Sep 2005 10:32:55 +0200
+	id 1EJxqB-0000Ro-2s
+	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 11:36:39 -0700
+Received: from xproxy.gmail.com ([66.249.82.199])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EJxq8-0002it-SR
+	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 11:36:38 -0700
+Received: by xproxy.gmail.com with SMTP id s7so1290674wxc
+        for <nfs@lists.sourceforge.net>; Mon, 26 Sep 2005 11:36:29 -0700 (PDT)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <200509221720.52412.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,82 +31,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-...and then this one.
+------=_Part_1169_1540005.1127759789097
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Hi Vincent,
+Hello,
+ I have two machines ADB and AWEB
+Linux adb 2.4.21-27.0.4.ELsmp #1 SMP Sat Apr 16 18:43:06 EDT 2005 i686 i686
+i386 GNU/Linux
+Linux aweb 2.4.21-32.ELsmp #1 SMP Fri Apr 15 21:17:59 EDT 2005 i686 i686
+i386 GNU/Linux
+ ADB runs Oracle and AWEB runs Apache and Coldfusion. I have set up a drive
+on machine AWEB which is mountable from machine ADB. I am mounting it so
+that I can transfer around 130GB of RMAN backup from ADB to AWEB. I am usin=
+g
+nfs so that RMAN is can push the backup from ADB to AWEB.
+ The problem I am facing right now is that in the middle of that transfer
+the AWEB machine becomes unresponsive. I cant even ping it from anywhere
+else. After some hours it recovers on its own. The only other option is to
+bounce AWEB. I checked the /var/log/messages in AWEB after it recovers to
+see if there are any problems but it does not indicate that there is a
+problem.
+ Are there any bugs which relate to this problem? How do I go about solving
+this problem.
+ Thank you,
+Gokul
 
-I had a short look into the source of nfs-utils, but I realized, that=20
-most is in the kernel. But I saw a line checking for the DNS names and=20
-sometimes skipping it (if all mount points are unexported).
+------=_Part_1169_1540005.1127759789097
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-And this was another thing: we don't have DNS in the cluster, but use=20
-only the /etc/hosts file and distribute it to the nodes with NIS. And in=20
-the rmtab file, I saw some entries with the nodename, and another one=20
-with the TCP/IP address of the same node. Relies NFS on DNS in the new mo=
-de?
+<div>Hello,</div>
+<div>&nbsp;</div>
+<div>I have two machines&nbsp;ADB and AWEB</div>
+<div>Linux&nbsp;adb 2.4.21-27.0.4.ELsmp #1 SMP Sat Apr 16 18:43:06 EDT 2005=
+ i686 i686 i386 GNU/Linux</div>
+<div>Linux aweb 2.4.21-32.ELsmp #1 SMP Fri Apr 15 21:17:59 EDT 2005 i686 i6=
+86 i386 GNU/Linux</div>
+<div>&nbsp;</div>
+<div>ADB runs Oracle and&nbsp;AWEB runs Apache and Coldfusion. I have set u=
+p a drive on machine&nbsp;AWEB which is mountable from machine ADB. I am mo=
+unting it so that I can transfer around 130GB of RMAN backup from ADB to AW=
+EB. I am using nfs so that RMAN is&nbsp;can push&nbsp;the backup&nbsp;from =
+ADB to AWEB.
+</div>
+<div>&nbsp;</div>
+<div>The problem I am facing right now is that in the middle of that transf=
+er the AWEB machine becomes unresponsive.&nbsp;I cant even ping it from any=
+where else. After some hours it recovers on its own. The only other option =
+is to bounce AWEB. I checked the /var/log/messages in AWEB after it recover=
+s to see if there are any problems but it does not indicate that there&nbsp=
+;is a problem.
+</div>
+<div>&nbsp;</div>
+<div>Are there any bugs which relate to this problem? How do I go about sol=
+ving this problem.</div>
+<div>&nbsp;</div>
+<div>Thank you,</div>
+<div>Gokul</div>
+<div>&nbsp;</div>
 
-Cheers - Reuti
-
-
-Vincent Roqueta wrote:
-> Le jeudi 22 Septembre 2005 16:52, Reuti a =E9crit :
->=20
->>Finally I could track down the odd behavior (this time in top posting):
->>
->>If you have this combination:
->>
->>+ Linux kernel 2.6 nfsd on server
->>+ 64 bit i386, i.e. x86_64 server
->>+ using netgroups in /etc/exports
->>+ operate mountd/exportfs in new mode
->>
->>you will face the problem of stale NFS handle after a stop/start of of
->>the NFS service. As we want to use 64 bit of course, and enjoy netgroup=
-s
->>for easier administration, I got a working setup by *not* mounting
->>/proc/fs/nfsd and forcing this way mountd/exportfs into legacy mode als=
-o
->>on a 2.6 kernel.
->>
->>Cheers - Reuti
->=20
->=20
->=20
-> There are several problems using x86_64 linux NFS (v4) machines as serv=
-er, and=20
-> it seems to have several problems on 64 bits architectures in general (=
-at=20
-> least with x86_64 and ppc64. Surely other architectures)
-> =20
-> For now there are this issue yet known (linux 2.6.13+CITI, Linux 2.6.14=
--rc*=20
-> +CITI)
-> -> Socket error -11 closing a big file (server : x86_64, clients: x86, =
-ppc64)
-> -> wrong lock behaviours  (Client PPC64, servers: ppc64, x86)
-> ->  Input/output error closing a big file (server: ppc64, client x86_64=
-)
-> -> Oops (Client x86_64, server x86_64) - Linux 2.6.13+CITI
->=20
-> However, this issues concern NFSv4. I am going to try to reproduce your=
-=20
-> problem with NFSv3 and NFSv4.
->=20
->=20
-> Vincent
->=20
->=20
-> -------------------------------------------------------
-> SF.Net email is sponsored by:
-> Tame your development challenges with Apache's Geronimo App Server.=20
-> Download it for free - -and be entered to win a 42" plasma tv or your v=
-ery
-> own Sony(tm)PSP.  Click here to play: http://sourceforge.net/geronimo.p=
-hp
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
+------=_Part_1169_1540005.1127759789097--
 
 
 -------------------------------------------------------
