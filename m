@@ -1,24 +1,26 @@
 From: Reuti <reuti@staff.uni-marburg.de>
 Subject: Re: [CIRCUMVENTED] NFS client got stale NFS handle after server
  reboot
-Date: Mon, 26 Sep 2005 10:31:02 +0200
-Message-ID: <4337B1C6.7050105@staff.uni-marburg.de>
+Date: Mon, 26 Sep 2005 10:32:55 +0200
+Message-ID: <4337B237.9000706@staff.uni-marburg.de>
+References: <433027F7.1030702@staff.uni-marburg.de> <4332784C.8040503@staff.uni-marburg.de> <4332C52F.5000908@staff.uni-marburg.de> <200509221720.52412.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EJoOF-000809-5g
-	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:31:11 -0700
+	id 1EJoQ0-000839-Vo
+	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:33:00 -0700
 Received: from vhrz24.hrz.uni-marburg.de ([137.248.1.34])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EJoOE-0001Ve-JT
-	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:31:11 -0700
+	id 1EJoQ0-0001uK-8P
+	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 01:33:01 -0700
 Received: from staff.uni-marburg.de (pc15218.Chemie.Uni-Marburg.DE [137.248.152.52])
-	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8Q8V2RU008767
-	for <nfs@lists.sourceforge.net>; Mon, 26 Sep 2005 10:31:02 +0200
+	by vhrz24.hrz.uni-marburg.de (8.13.4/8.13.4/Debian-3) with ESMTP id j8Q8WtrC009096
+	for <nfs@lists.sourceforge.net>; Mon, 26 Sep 2005 10:32:55 +0200
 To: nfs@lists.sourceforge.net
+In-Reply-To: <200509221720.52412.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,30 +34,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Here one mail, which didn't got to the list by pressing the wrong=20
-button. As I just found another fact, first this mail to the list...
-
+...and then this one.
 
 Hi Vincent,
 
-one additonal observation:
+I had a short look into the source of nfs-utils, but I realized, that=20
+most is in the kernel. But I saw a line checking for the DNS names and=20
+sometimes skipping it (if all mount points are unexported).
 
-I looked at /var/lib/nfs/rmtab and was confused by the entries. Seems
-under the new mode they weren't properly maintained, and also after an
-unmount some entries stayed there (not all). And there was an additonal
-line just for the netgroup for each client.
+And this was another thing: we don't have DNS in the cluster, but use=20
+only the /etc/hosts file and distribute it to the nodes with NIS. And in=20
+the rmtab file, I saw some entries with the nodename, and another one=20
+with the TCP/IP address of the same node. Relies NFS on DNS in the new mo=
+de?
 
-In the legacy mode there is just one entry for each mount, and the
-machines from netgroups appear there with their nodename. After an
-unmount the lines are proper removed.
-
-I'm not sure, whether this is important (is rmtab still used in the new
-mode?) or at least a hint for the source of this behavior - just to let
-you know.
-
-Best Greetings - Reuti
-
-PS: Yes, in the summary I missed it: it was all under NFSv3.
+Cheers - Reuti
 
 
 Vincent Roqueta wrote:
@@ -116,7 +109,6 @@ hp
 > _______________________________________________
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
-
 
 
 
