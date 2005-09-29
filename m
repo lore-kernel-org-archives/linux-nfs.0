@@ -1,20 +1,19 @@
-From: "Roger Heflin" <rheflin@atipa.com>
-Subject: Odd issue, Baseboard management controller grabs packets that should go to the OS (NFS)
-Date: Mon, 26 Sep 2005 17:17:01 -0500
-Message-ID: <EXCHG2003EsBk31TZ1400000b28@EXCHG2003.microtech-ks.com>
+From: Brian Elliott Finley <finley@anl.gov>
+Subject: rpc.mountd at 99% cpu
+Date: Thu, 29 Sep 2005 14:12:07 -0500
+Message-ID: <433C3C87.4040401@anl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EK1CN-000180-Jj
-	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 15:11:47 -0700
-Received: from host27-37.discord.birch.net ([65.16.27.37] helo=EXCHG2003.microtech-ks.com)
+	id 1EL3oz-0002HC-BZ
+	for nfs@lists.sourceforge.net; Thu, 29 Sep 2005 12:11:57 -0700
+Received: from perilous.es.anl.gov ([130.202.170.14])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EK1CM-0003RB-UI
-	for nfs@lists.sourceforge.net; Mon, 26 Sep 2005 15:11:47 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1EL3oz-0002Iw-09
+	for nfs@lists.sourceforge.net; Thu, 29 Sep 2005 12:11:57 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,143 +27,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I've got an nfs server (quad cpu amd64, 36G mem, failover fiberchannel)
+running ubuntu, and I'm getting the following behavior that I haven't
+been able to track down yet:
 
-I have a small problem, we have a customer with BMC cards and these
-BMC cards use the same IP and MAC address the OS.
+    * rpc.mountd spikes to 99% cpu usage when a client machine mounts,
+      causing a temporary disruption in service to all client systems
 
-Certain application packets (NFS UDP) seem to match close enough to
-what the BMC card/network firmware believes is one of its packets, and
-the network firmware directs these packets to the BMC and the OS never
-sees the packet.
+Google, NFS Howtos, NFS Perf Tuning docs, IRC (can't find an NFS
+specific IRC channel), local sysadmins all turn up nothing so far.  Here
+are potentially relavant data:
 
-I have identified via a network trace that the 32k NFS read is sent
-out by the server, and one single packet of the 32k is not received, and
-the client asks for a retransmit, and again the exact same packet is of
-course lost, and this repeats until we delete the file on the server
-and cause things to abort.   
+    * exportfs -v -o rw,secure,sync,no_root_squash
+      10.10.0.0/255.255.0.0:/export/home
+    * nfs server has all clients info in /etc/hosts
+    * /etc/hosts is first in nsswitch.conf
+    * kernel is ubuntu's: linux-image-2.6.10-5-amd64-k8-smp
+    * nfs performance is fine once a filesystem is mounted
+    * unless, someone else is mounting a filesystem, in which case
+      already mounted filesystems
+    * only 8 clients
+    * home directories mounted by autofs on clients as
+      server:/export/home/bob /home/bob
+    * 32 nfsd threads
+    * % netstat -in
+      Kernel Interface table
+      Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR   TX-OK TX-ERR TX-DRP
+      TX-OVR Flg
+      eth0   1500 0  247854230      0      0      0324570001      0
+      0      0 BMRU
+      eth1   1500 0  1022171197      0      0      0258643880
+      0      0      0 BMR U
+      lo    16436 0    419024      0      0      0  419024      0
+      0      0 LRU
+    * % cat /proc/net/rpc/nfsd | grep ^th
+      th 32 8229 13759.142 6537.314 1919.479 4.212 129.977 52.636 11.780
+      10.231 0.000 101.321
+    * caching bind9 installed on server, and it points to itself for
+      first nameserver entry
 
-The packet in question has 0x026f in the 0x24/0x25 position.  The full
-dump is below.
+Any one know what's up here?  Or how I can tell what's making rpc.mountd
+take so much time?
 
-I am being told that this is the UDP port number, since this problem
-appear to be data dependent, and I would believe if things where generating
-random port numbers that I should hit this port fairly quickly under load,
-and I do not, we only hit this problem with certain types of on-disk data.
-I suspect that this may be data or internal nfs data structures or something
-similar. I have not yet looked at the specifics of how a UDP/NFS data stream
-is broken up.   Things do work under tcp.
-
-Is there anything I can do on the client to disallow it from using this
-port, if it is a port?   Changing the server is not really an option as
-there are lots of different servers running various oses.
-
-                                 Roger
-
-
-04:31:37.493386 IP (tos 0x0, ttl  64, id 58474, offset 16280, flags [+],
-proto 17, length: 1500) 172.20.168.6 > lab219.lab.atipa.com: udp
-        0x0000:  00e0 8156 de2e 0004 23af 7622 0800 4500  ...V....#.v"..E.
-        0x0010:  05dc e46a 27f3 4011 bfa8 ac14 a806 ac14  ...j'.@.........
-        0x0020:  a8db 76fd 026f 999a 8141 66f7 2488 999a  ..v..o...Af.$...
-        0x0030:  8141 56f1 46a1 999a 8141 46eb 68ba 999a  .AV.F....AF.h...
-        0x0040:  8141 36e5 8ad3 999a 8141 26df acec 999a  .A6......A&.....
-        0x0050:  8141 16d9 ce05 9a9a 8141 06d3 f01e 9a9a  .A.......A......
-        0x0060:  8141 f7cc 1238 9a9a 8141 e7c6 3451 9a9a  .A...8...A..4Q..
-        0x0070:  8141 d7c0 566a 9a9a 8141 c7ba 7883 9a9a  .A..Vj...A..x...
-        0x0080:  8141 b7b4 9a9c 9a9a 8141 a7ae bcb5 9a9a  .A.......A......
-        0x0090:  8141 97a8 dece 9a9a 8141 87a2 00e8 9a9a  .A.......A......
-        0x00a0:  8141 779c 2201 9b9a 8141 6896 441a 9b9a  .Aw."....Ah.D...
-        0x00b0:  8141 5890 6633 9b9a 8141 488a 884c 9b9a  .AX.f3...AH..L..
-        0x00c0:  8141 3884 aa65 9b9a 8141 287e cc7e 9b9a  .A8..e...A(~.~..
-        0x00d0:  8141 1878 ee97 9b9a 8141 0872 10b1 9b9a  .A.x.....A.r....
-        0x00e0:  8141 f86b 32ca 9b9a 8141 e865 54e3 9b9a  .A.k2....A.eT...
-        0x00f0:  8141 d85f 76fc 9b9a 8141 c959 9815 9c9a  .A._v....A.Y....
-        0x0100:  8141 b953 ba2e 9c9a 8141 a94d dc47 9c9a  .A.S.....A.M.G..
-        0x0110:  8141 9947 fe60 9c9a 8141 8941 207a 9c9a  .A.G.`...A.A.z..
-        0x0120:  8141 793b 4293 9c9a 8141 6935 64ac 9c9a  .Ay;B....Ai5d...
-        0x0130:  8141 592f 86c5 9c9a 8141 4929 a8de 9c9a  .AY/.....AI)....
-        0x0140:  8141 3a23 caf7 9c9a 8141 2a1d ec10 9d9a  .A:#.....A*.....
-        0x0150:  8141 1a17 0e2a 9d9a 8141 0a11 3043 9d9a  .A...*...A..0C..
-        0x0160:  8141 fa0a 525c 9d9a 8141 ea04 7475 9d9a  .A..R\...A..tu..
-        0x0170:  8141 dafe 958e 9d9a 8141 caf8 b7a7 9d9a  .A.......A......
-        0x0180:  8141 baf2 d9c0 9d9a 8141 abec fbd9 9d9a  .A.......A......
-        0x0190:  8141 9be6 1df3 9d9a 8141 8be0 3f0c 9e9a  .A.......A..?...
-        0x01a0:  8141 7bda 6125 9e9a 8141 6bd4 833e 9e9a  .A{.a%...Ak..>..
-        0x01b0:  8141 5bce a557 9e9a 8141 4bc8 c770 9e9a  .A[..W...AK..p..
-        0x01c0:  8141 3bc2 e989 9e9a 8141 2bbc 0ba3 9e9a  .A;......A+.....
-        0x01d0:  8141 1cb6 2dbc 9e9a 8141 0cb0 4fd5 9e9a  .A..-....A..O...
-        0x01e0:  8141 fca9 71ee 9e9a 8141 eca3 9307 9f9a  .A..q....A......
-        0x01f0:  8141 dc9d b520 9f9a 8141 cc97 d739 9f9a  .A.......A...9..
-        0x0200:  8141 bc91 f952 9f9a 8141 ac8b 1b6c 9f9a  .A...R...A...l..
-        0x0210:  8141 9c85 3d85 9f9a 8141 8c7f 5f9e 9f9a  .A..=....A.._...
-        0x0220:  8141 7d79 81b7 9f9a 8141 6d73 a3d0 9f9a  .A}y.....Ams....
-        0x0230:  8141 5d6d c5e9 9f9a 8141 4d67 e702 a09a  .A]m.....AMg....
-        0x0240:  8141 3d61 091c a09a 8141 2d5b 2b35 a09a  .A=a.....A-[+5..
-        0x0250:  8141 1d55 4d4e a09a 8141 0d4f 6f67 a09a  .A.UMN...A.Oog..
-        0x0260:  8141 fd48 9180 a09a 8141 ee42 b399 a09a  .A.H.....A.B....
-        0x0270:  8141 de3c d5b2 a09a 8141 ce36 f7cb a09a  .A.<.....A.6....
-        0x0280:  8141 be30 19e5 a09a 8141 ae2a 3bfe a09a  .A.0.....A.*;...
-        0x0290:  8141 9e24 5d17 a19a 8141 8e1e 7f30 a19a  .A.$]....A...0..
-        0x02a0:  8141 7e18 a149 a19a 8141 6e12 c362 a19a  .A~..I...An..b..
-        0x02b0:  8141 5f0c e57b a19a 8141 4f06 0795 a19a  .A_..{...AO.....
-        0x02c0:  8141 3f00 29ae a19a 8141 2ffa 4ac7 a19a  .A?.)....A/.J...
-        0x02d0:  8141 1ff4 6ce0 a19a 8141 0fee 8ef9 a19a  .A..l....A......
-        0x02e0:  8141 ffe7 b012 a29a 8141 efe1 d22b a29a  .A.......A...+..
-        0x02f0:  8141 dfdb f444 a29a 8141 cfd5 165e a29a  .A...D...A...^..
-        0x0300:  8141 c0cf 3877 a29a 8141 b0c9 5a90 a29a  .A..8w...A..Z...
-        0x0310:  8141 a0c3 7ca9 a29a 8141 90bd 9ec2 a29a  .A..|....A......
-        0x0320:  8141 80b7 c0db a29a 8141 70b1 e2f4 a29a  .A.......Ap.....
-        0x0330:  8141 60ab 040e a39a 8141 50a5 2627 a39a  .A`......AP.&'..
-        0x0340:  8141 409f 4840 a39a 8141 3199 6a59 a39a  .A@.H@...A1.jY..
-        0x0350:  8141 2193 8c72 a39a 8141 118d ae8b a39a  .A!..r...A......
-        0x0360:  8141 0187 d0a4 a39a 8141 f180 f2bd a39a  .A.......A......
-        0x0370:  8141 e17a 14d7 a39a 8141 d174 36f0 a39a  .A.z.....A.t6...
-        0x0380:  8141 c16e 5809 a49a 8141 b168 7a22 a49a  .A.nX....A.hz"..
-        0x0390:  8141 a262 9c3b a49a 8141 925c be54 a49a  .A.b.;...A.\.T..
-        0x03a0:  8141 8256 e06d a49a 8141 7250 0287 a49a  .A.V.m...ArP....
-        0x03b0:  8141 624a 24a0 a49a 8141 5244 46b9 a49a  .AbJ$....ARDF...
-        0x03c0:  8141 423e 68d2 a49a 8141 3238 8aeb a49a  .AB>h....A28....
-        0x03d0:  8141 2232 ac04 a59a 8141 122c ce1d a59a  .A"2.....A.,....
-        0x03e0:  8141 0326 f036 a59a 8141 f31f 1250 a59a  .A.&.6...A...P..
-        0x03f0:  8141 e319 3469 a59a 8141 d313 5682 a59a  .A..4i...A..V...
-        0x0400:  8141 c30d 789b a59a 8141 b307 9ab4 a59a  .A..x....A......
-        0x0410:  8141 a301 bccd a59a 8141 93fb dde6 a59a  .A.......A......
-        0x0420:  8141 83f5 ffff a59a 8141 74ef 2119 a69a  .A.......At.!...
-        0x0430:  8141 64e9 4332 a69a 8141 54e3 654b a69a  .Ad.C2...AT.eK..
-        0x0440:  8141 44dd 8764 a69a 8141 34d7 a97d a69a  .AD..d...A4..}..
-        0x0450:  8141 24d1 cb96 a69a 8141 14cb edaf a69a  .A$......A......
-        0x0460:  8141 04c5 0fc9 a69a 8141 f4be 31e2 a69a  .A.......A..1...
-        0x0470:  8141 e5b8 53fb a69a 8141 d5b2 7514 a79a  .A..S....A..u...
-        0x0480:  8141 c5ac 972d a79a 8141 b5a6 b946 a79a  .A...-...A...F..
-        0x0490:  8141 a5a0 db5f a79a 8141 959a fd78 a79a  .A..._...A...x..
-        0x04a0:  8141 8594 1f92 a79a 8141 758e 41ab a79a  .A.......Au.A...
-        0x04b0:  8141 6588 63c4 a79a 8141 5682 85dd a79a  .Ae.c....AV.....
-        0x04c0:  8141 467c a7f6 a79a 8141 3676 c90f a89a  .AF|.....A6v....
-        0x04d0:  8141 2670 eb28 a89a 8141 166a 0d42 a89a  .A&p.(...A.j.B..
-        0x04e0:  8141 0664 2f5b a89a 8141 f65d 5174 a89a  .A.d/[...A.]Qt..
-        0x04f0:  8141 e657 738d a89a 8141 d651 95a6 a89a  .A.Ws....A.Q....
-        0x0500:  8141 c64b b7bf a89a 8141 b745 d9d8 a89a  .A.K.....A.E....
-        0x0510:  8141 a73f fbf1 a89a 8141 9739 1d0b a99a  .A.?.....A.9....
-        0x0520:  8141 8733 3f24 a99a 8141 772d 613d a99a  .A.3?$...Aw-a=..
-        0x0530:  8141 6727 8356 a99a 8141 5721 a56f a99a  .Ag'.V...AW!.o..
-        0x0540:  8141 471b c788 a99a 8141 3715 e9a1 a99a  .AG......A7.....
-        0x0550:  8141 280f 0bbb a99a 8141 1809 2dd4 a99a  .A(......A..-...
-       0x0560:  8141 0803 4fed a99a 8141 f8fc 7006 aa9a  .A..O....A..p...
-        0x0570:  8141 e8f6 921f aa9a 8141 d8f0 b438 aa9a  .A.......A...8..
-        0x0580:  8141 c8ea d651 aa9a 8141 b8e4 f86a aa9a  .A...Q...A...j..
-        0x0590:  8141 a8de 1a84 aa9a 8141 99d8 3c9d aa9a  .A.......A..<...
-        0x05a0:  8141 89d2 5eb6 aa9a 8141 79cc 80cf aa9a  .A..^....Ay.....
-        0x05b0:  8141 69c6 a2e8 aa9a 8141 59c0 c401 ab9a  .Ai......AY.....
-        0x05c0:  8141 49ba e61a ab9a 8141 39b4 0834 ab9a  .AI......A9..4..
-        0x05d0:  8141 29ae 2a4d ab9a 8141 19a8            .A).*M...A..
+-- 
+Brian Elliott Finley
+Linux Strategist, CIS
+Desk: 630.252.4742
+Cell: 630.631.6621
 
 
 
 -------------------------------------------------------
-SF.Net email is sponsored by:
-Tame your development challenges with Apache's Geronimo App Server. 
-Download it for free - -and be entered to win a 42" plasma tv or your very
-own Sony(tm)PSP.  Click here to play: http://sourceforge.net/geronimo.php
+This SF.Net email is sponsored by:
+Power Architecture Resource Center: Free content, downloads, discussions,
+and more. http://solutions.newsforge.com/ibmarch.tmpl
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
