@@ -1,470 +1,264 @@
-From: Brian Elliott Finley <finley@anl.gov>
-Subject: Re: rpc.mountd at 99% cpu
-Date: Fri, 30 Sep 2005 16:41:18 -0500
-Message-ID: <433DB0FE.7070808@anl.gov>
-References: <433C3C87.4040401@anl.gov><20050929213533.koygqlpb3hy8ogsg@home.staff.uni-marburg.de><433C43AE.5060709@anl.gov><20050929215204.85kt3qx0hwf4kc00@home.staff.uni-marburg.de><433C49F1.1010409@anl.gov> <433C4BE1.7000107@anl.gov> <20050929223150.81i91gujaqds8wk8@home.staff.uni-marburg.de> <433C60AF.30409@anl.gov>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [RFC: 2.6 patch] net/sunrpc/: possible cleanups
+Date: Sat, 1 Oct 2005 16:20:41 +0200
+Message-ID: <20051001142041.GB4212@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Reuti <reuti@staff.uni-marburg.de>,
-	Dan Stromberg <strombrg@dcs.nac.uci.edu>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ELWUH-0002tH-3U
-	for nfs@lists.sourceforge.net; Fri, 30 Sep 2005 18:48:29 -0700
-Received: from peabody.anl.gov ([146.137.222.62] helo=anlmail.anl.gov)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ELSd3-00005G-Fc
-	for nfs@lists.sourceforge.net; Fri, 30 Sep 2005 14:41:25 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <433C60AF.30409@anl.gov>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, trond.myklebust@fys.uio.no,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	netdev@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1750704AbVJAOUp@vger.kernel.org>
+To: David Miller <davem@davemloft.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Reuti, Dan,
+This patch contains the following possible cleanups:
+- make needlessly global code static
+- #if 0 the following unused global function:
+  - xdr.c: xdr_decode_string
+- remove the following unneeded EXPORT_SYMBOL's:
+  - auth_gss/gss_mech_switch.c: gss_mech_get
+  - auth_gss/gss_mech_switch.c: gss_mech_get_by_name
+  - auth_gss/gss_mech_switch.c: gss_mech_get_by_pseudoflavor
+  - auth_gss/gss_mech_switch.c: gss_pseudoflavor_to_service
+  - auth_gss/gss_mech_switch.c: gss_service_to_auth_domain_name
+  - auth_gss/gss_mech_switch.c: gss_mech_put
+  - sunrpc_syms.c: rpc_wake_up_next
+  - sunrpc_syms.c: rpc_new_child
+  - sunrpc_syms.c: rpc_run_child
+  - sunrpc_syms.c: rpc_new_task
+  - sunrpc_syms.c: rpc_release_task
+  - sunrpc_syms.c: rpc_release_client
+  - sunrpc_syms.c: xprt_udp_slot_table_entries
+  - sunrpc_syms.c: xprt_tcp_slot_table_entries
+  - sunrpc_syms.c: svc_drop
+  - sunrpc_syms.c: svc_authenticate
+  - sunrpc_syms.c: xdr_decode_string
 
-I've resolved my problem, and I think I've solved it too.
+Please review which of these patches do make sense and which conflict 
+with pending patches.
 
-The following details my process and result, in the hope that it may
-benefit others.  Thanks to Dan and Reuti for their help.
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-Cheers, -Brian
+---
 
+This patch was already sent on:
+- 30 May 2005
+- 7 May 2005
 
-<<<<<<<<<<>>>>>>>>>>
+ include/linux/sunrpc/clnt.h           |    1 -
+ include/linux/sunrpc/gss_api.h        |    3 ---
+ include/linux/sunrpc/xdr.h            |    2 --
+ net/sunrpc/auth_gss/gss_mech_switch.c |   13 +------------
+ net/sunrpc/clnt.c                     |    3 ++-
+ net/sunrpc/sunrpc_syms.c              |   11 -----------
+ net/sunrpc/xdr.c                      |    4 +++-
+ 7 files changed, 6 insertions(+), 31 deletions(-)
 
-NFS Server Performance Troubleshooting
---------------------------------------
-#
-# 2005.09.30 Brian Elliott Finley
-#
-
-Problem:
-    - Poor performance in general
-    - Sometimes home directories not mounted on clients
-    - Bursty performance -- sometimes good, sometimes bad
-    - Performance got so bad at one point that nfs server service had to be
-        restarted.
-
-Initial Observations:
-    rpc.mountd and/or nfsd sometimes taking 99% of one CPU
-   
-Initial Tuning:
-    /etc/default/nfs-kernel-server: s/RPCNFSDCOUNT=8/RPCNFSDCOUNT=32/
-        See: http://nfs.sourceforge.net/nfs-howto/performance.html
-            (section 5.6)
-   
-Further Observations:
-    rpc.mountd, nfsd, and ypserv (sometimes) tend to spike when a mount
-        request happens.
-    Timeouts in auto.master are set to 10s for 3 maps, and 160s for one
-        map, so mount requests happen very often.  The autofs default
-        timeout is 5m (300).
-    Some entries in /etc/exports use hostnames, some use IP addresses
-        (herring or no?)
-    client1 using these ext3 mount options: noatime,data=writeback.  nfs01
-        not using these.
-    client1 using async nfs exports (nfs-utils-0.3.1-14.72).  The default
-        export behavior for both NFS Version 2 and Version 3 protocols,
-        used by exportfs in nfs-utils versions prior to nfs-utils-1.0.1
-        is "asynchronous".  See:
-        http://nfs.sourceforge.net/nfs-howto/performance.html (section
-        5.9).  nfs01 using synchronous Writes (nfs-kernel-server
-        1.0.6-3.1ubuntu1).
-   
-   
-Second Level Tuning:
-    1.) Modify ext3 mount options to include noatime, and mount -o remount
-        each file system.  No casually noticeable improvement.
-
-    2.) Try s/sync/async/ nfs01:/etc/exports for /export/home filesystem,
-        then re-export.  No casually noticeable improvement.  Changed
-        back to sync.  async is technically non-NFS compliant.
-
-    3.) Change all hostnames to IP addresses in /etc/exports, then
-        re-export.  No casually noticeable imrovement.
-
-    4.) Some hostnames, some IPs show up in /var/lib/nfs/etab, despite
-        having only IPs listed in /etc/exports.  Tried this:
-        "exportfs -v -o \
-        rw,secure,sync,no_root_squash \
-        10.10.0.0/255.255.0.0:/export/home"
-        Then unexported everything else.  No improvement.
-
-    5.) Used Ethereal to sniff the net -- no obvious issues there.  A
-        re-transmit of a mount request, but that is likely due to slow
-        response time of rpc.mountd rather than a network problem.
-
-    6.) rpcinfo -p nfs01-priv.net.anl.gov from both nfs01, and from client
-        side look fine.
-
-    7.) No entries in /etc/hosts.{allow,deny} to get in the way.
-
-    8.) All client IP/Hostname combos in /etc/hosts on nfs01, so lookup
-        timeouts shouldn't be an issue, but tried commenting out nis on
-        the hosts line in /etc/nsswitch.conf just in case.  No
-        improvement.
-
-    9.) Installed a bind9 daemon in a cacheing only config on nfs01, and
-        modified /etc/resolv.conf to look to itself first when
-        performing a DNS resolution.  No improvement.
-
-    10.) Modified auto.master umount timeout, and upped it from 10s to just
-        over 1h.  This significantly decreased the frequency of the
-        disruptions, but didn't address the underlying problem.
-
-    11.) Did this:  "mount -t nfsd nfsd /proc/fs/nfsd" to try the "new
-        style" NFS for 2.6 series kernels.  Without this, NFS behaves
-        like it's on a 2.4 series kernel.  There was no specific reason
-        why this should cause an improvement, but it cut the following
-        ls command (which forces an automount of the three
-        filesystems in question) down from 30s to 7s.
-       
-        sudo umount /home/{user1,user2,user3}
-        time ls -d /home/{user1,user2,user3}/.
-       
-    12.) strace -p $(pidof rpc.mountd) didn't reveal anything particularly
-        odd, but it was done after /proc/fs/nfsd was mounted, and it did
-        try to read /proc/fs/nfsd/filehandle.  I take this as further
-        indication that mounting /proc/fs/nfsd/ was key.
-
-    13.) client1 reboot determined necessary.  I took this opportunity to do
-        a complete stop and restart of the NFS daemons and the
-        portmapper.  Immediately upon a clean restart of these two (no
-        changes had actually been made to anything that should affect
-        portmap, but restarted it anyway just to get a perfectly clean
-        slate) mount performance improved from the 7s to execute "time
-        ls -d /home/{user1,user2,user3}/." down to 0.030s.
-       
-        Bingo!
-   
-    14.) I modified /etc/fstab to mount /proc/fs/nfsd on future boots.
-       
-Conclusion:
-    Prior to Second Level Tuning step 13, the NFS daemons hadn't been
-    restarted since the Initial Tuning, which only increased the number
-    of nfsd threads.  This means that Second Level Tuning steps 1 - 12 were
-    performed without a restart of the nfs daemons. 
-   
-    Which step was key?  Was it a combination of them?  Well, I can't
-    say with 100% certainty without backstepping and restarting the nfs
-    daemons each time, which obviously causes an service outage, but seeing
-    as how step number 11 was the only step that provoked any kind of
-    improvement prior to restarting the daemons, and was the only part of
-    the configuration that was clearly expected to change behavior in a
-    significant way (2.4 series kernel style behavior vs. 2.6 series kernel
-    style behavior), my current theory is this:
-
-        The mounting of /proc/fs/nfsd was key.  And while the mounting
-        of it had an immediate effect for certain nfs daemon functions,
-        it didn't have an immediate effect for others.  Once the nfs
-        daemons were completely flushed    and restarted cleanly,
-        it had an effect on all relevant nfs daemon functions.
-   
-   
-       
-       
-
-Brian Elliott Finley wrote:
-
-> I've tried mounting it, and see that rpc.mountd performance is just over
-> 3 times better.
->
-> I notice that "df" doesn't show it, but "mount" does.  Now that I've got
-> it mounted, I get this:
->
->     % mount | grep nfsd
->     nfsd on /proc/fs/nfsd type nfsd (rw)
->
-> Now examining an strace of rpc.mountd.
->
-> -Brian
->
->
-> Reuti wrote:
->
-> > Yes, I als use v3. And there is no entry in "df" for this filesystem
-> > or so; if
-> > it is mounted in any of the scripts, to me it looks like you can check
-> > this
-> > only if there is anything inside /proc/fs/nfsd - then it's mounted.
-> >
-> > But anyway, if you modify the script just to test the other mode of
-> > nsfd (have a
-> > look at "man 8 exportfs" - and mountd is involved there), you could
-> check
-> > whether there is any difference.
-> >
-> > -- Reuti
-> >
-> >
-> > Zitat von Brian Elliott Finley <finley@anl.gov>:
-> >
-> > > I've taken a quick look at your posts.  My situation is a bit
-> different:
-> > >
-> > >    * Using nfs v3 only
-> > >    * /proc/fs/nfsd does exist, but it is not a mounted filesystem
-> > >    * stale filehandles and errors don't seem to be an issue, only
-> > >      rpc.mountd monopolizing CPU during client mounting
-> > >
-> > > Cheers, -Brian
-> > >
-> > >
-> > > Brian Elliott Finley wrote:
-> > >
-> > >> Reuti,
-> > >>
-> > >> /proc/fs/nfsd/ does exist.  I'll go back and have a look at your
-> posts.
-> > >>
-> > >> -Brian
-> > >>
-> > >>
-> > >>
-> > >> Reuti wrote:
-> > >>
-> > >>
-> > >>
-> > >>> Typo: the one I meant was /proc/fs/nfsd - is there anything in this
-> > >>> directory?
-> > >>>
-> > >>> -- Reuti
-> > >>>
-> > >>> Zitat von Brian Elliott Finley <finley@anl.gov>:
-> > >>>
-> > >>>
-> > >>>
-> > >>>> Reuti,
-> > >>>>
-> > >>>> Thanks for your reply, but I'm afraid /proc/nfs/nfsd is *not*
-> > currently
-> > >>>> mounted.
-> > >>>>
-> > >>>> Cheers, -Brian
-> > >>>>
-> > >>>>
-> > >>>> Reuti wrote:
-> > >>>>
-> > >>>>
-> > >>>>
-> > >>>>> Brian,
-> > >>>>>
-> > >>>>> is there a file system mounted in /proc/nfs/nfsd - then nfsd is
-> > working
-> > >>>>> in a new
-> > >>>>> mode? You can try *not* to mount it in the start/stop-script of
-> > the NFS
-> > >>>>> server.
-> > >>>>> This way you will force nsfd to operate in a legacy mode. If you
-> > >>>>> followed my
-> > >>>>> posts last week, this solved a problem with stale file handles
-> > for me.
-> > >>>>>
-> > >>>>> Cheers - Reuti
-> > >>>>>
-> > >>>>>
-> > >>>>> Zitat von Brian Elliott Finley <finley@anl.gov>:
-> > >>>>>
-> > >>>>>
-> > >>>>>
-> > >>>>>> I've got an nfs server (quad cpu amd64, 36G mem, failover
-> > >>>>>>
-> > >>>>>>
-> > >>> fiberchannel)
-> > >>>
-> > >>>
-> > >>>>>> running ubuntu, and I'm getting the following behavior that I
-> > haven't
-> > >>>>>> been able to track down yet:
-> > >>>>>>
-> > >>>>>>   * rpc.mountd spikes to 99% cpu usage when a client machine
-> > mounts,
-> > >>>>>>     causing a temporary disruption in service to all client
-> systems
-> > >>>>>>
-> > >>>>>> Google, NFS Howtos, NFS Perf Tuning docs, IRC (can't find an NFS
-> > >>>>>> specific IRC channel), local sysadmins all turn up nothing so
-> > >>>>>>
-> > >>>>>>
-> > >>> far.  Here
-> > >>>
-> > >>>
-> > >>>>>> are potentially relavant data:
-> > >>>>>>
-> > >>>>>>   * exportfs -v -o rw,secure,sync,no_root_squash
-> > >>>>>>     10.10.0.0/255.255.0.0:/export/home
-> > >>>>>>   * nfs server has all clients info in /etc/hosts
-> > >>>>>>   * /etc/hosts is first in nsswitch.conf
-> > >>>>>>   * kernel is ubuntu's: linux-image-2.6.10-5-amd64-k8-smp
-> > >>>>>>   * nfs performance is fine once a filesystem is mounted
-> > >>>>>>   * unless, someone else is mounting a filesystem, in which case
-> > >>>>>>     already mounted filesystems
-> > >>>>>>   * only 8 clients
-> > >>>>>>   * home directories mounted by autofs on clients as
-> > >>>>>>     server:/export/home/bob /home/bob
-> > >>>>>>   * 32 nfsd threads
-> > >>>>>>   * % netstat -in
-> > >>>>>>     Kernel Interface table
-> > >>>>>>     Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR   TX-OK TX-ERR
-> > >>>>>>
-> > >>>>>>
-> > >>> TX-DRP
-> > >>>
-> > >>>
-> > >>>>>>     TX-OVR Flg
-> > >>>>>>     eth0   1500 0  247854230      0      0      0324570001      0
-> > >>>>>>     0      0 BMRU
-> > >>>>>>     eth1   1500 0  1022171197      0      0      0258643880
-> > >>>>>>     0      0      0 BMR U
-> > >>>>>>     lo    16436 0    419024      0      0      0  419024      0
-> > >>>>>>     0      0 LRU
-> > >>>>>>   * % cat /proc/net/rpc/nfsd | grep ^th
-> > >>>>>>     th 32 8229 13759.142 6537.314 1919.479 4.212 129.977 52.636
-> > >>>>>>
-> > >>>>>>
-> > >>> 11.780
-> > >>>
-> > >>>
-> > >>>>>>     10.231 0.000 101.321
-> > >>>>>>   * caching bind9 installed on server, and it points to
-> itself for
-> > >>>>>>     first nameserver entry
-> > >>>>>>
-> > >>>>>> Any one know what's up here?  Or how I can tell what's making
-> > >>>>>>
-> > >>>>>>
-> > >>> rpc.mountd
-> > >>>
-> > >>>
-> > >>>>>> take so much time?
-> > >>>>>>
-> > >>>>>> --
-> > >>>>>> Brian Elliott Finley
-> > >>>>>> Linux Strategist, CIS
-> > >>>>>> Desk: 630.252.4742
-> > >>>>>> Cell: 630.631.6621
-> > >>>>>>
-> > >>>>>>
-> > >>>>>>
-> > >>>>>> -------------------------------------------------------
-> > >>>>>> This SF.Net email is sponsored by:
-> > >>>>>> Power Architecture Resource Center: Free content, downloads,
-> > >>>>>>
-> > >>>>>>
-> > >>>>> discussions,
-> > >>>>>
-> > >>>>>
-> > >>>>>> and more. http://solutions.newsforge.com/ibmarch.tmpl
-> > >>>>>> _______________________________________________
-> > >>>>>> NFS maillist  -  NFS@lists.sourceforge.net
-> > >>>>>> https://lists.sourceforge.net/lists/listinfo/nfs
-> > >>>>>>
-> > >>>>>>
-> > >>>>>>
-> > >>>>>
-> > >>>>>
-> > >>>>>
-> > >>>>> -------------------------------------------------------
-> > >>>>> This SF.Net email is sponsored by:
-> > >>>>> Power Architecture Resource Center: Free content, downloads,
-> > >>>>>
-> > >>>>>
-> > >>> discussions,
-> > >>>
-> > >>>
-> > >>>>> and more. http://solutions.newsforge.com/ibmarch.tmpl
-> > >>>>> _______________________________________________
-> > >>>>> NFS maillist  -  NFS@lists.sourceforge.net
-> > >>>>> https://lists.sourceforge.net/lists/listinfo/nfs
-> > >>>>>
-> > >>>>>
-> > >>>>>
-> > >>>> --
-> > >>>> Brian Elliott Finley
-> > >>>> Linux Strategist, CIS
-> > >>>> Desk: 630.252.4742
-> > >>>> Cell: 630.631.6621
-> > >>>>
-> > >>>>
-> > >>>>
-> > >>>> -------------------------------------------------------
-> > >>>> This SF.Net email is sponsored by:
-> > >>>> Power Architecture Resource Center: Free content, downloads,
-> > >>>>
-> > >>>>
-> > >>> discussions,
-> > >>>
-> > >>>
-> > >>>> and more. http://solutions.newsforge.com/ibmarch.tmpl
-> > >>>> _______________________________________________
-> > >>>> NFS maillist  -  NFS@lists.sourceforge.net
-> > >>>> https://lists.sourceforge.net/lists/listinfo/nfs
-> > >>>>
-> > >>>>
-> > >>>>
-> > >>
-> > >>
-> > >>
-> > >
-> > > --
-> > > Brian Elliott Finley
-> > > Linux Strategist, CIS
-> > > Desk: 630.252.4742
-> > > Cell: 630.631.6621
-> > >
-> > >
-> > >
-> > > -------------------------------------------------------
-> > > This SF.Net email is sponsored by:
-> > > Power Architecture Resource Center: Free content, downloads,
-> > discussions,
-> > > and more. http://solutions.newsforge.com/ibmarch.tmpl
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > >
-> >
->
-> --
-> Brian Elliott Finley
-> Linux Strategist, CIS
-> Desk: 630.252.4742
-> Cell: 630.631.6621
->
->
->
-> -------------------------------------------------------
-> This SF.Net email is sponsored by:
-> Power Architecture Resource Center: Free content, downloads, discussions,
-> and more. http://solutions.newsforge.com/ibmarch.tmpl
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
-
--- 
-Brian Elliott Finley
-Linux Strategist, CIS
-Desk: 630.252.4742
-Cell: 630.631.6621
-
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by:
-Power Architecture Resource Center: Free content, downloads, discussions,
-and more. http://solutions.newsforge.com/ibmarch.tmpl
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--- linux-2.6.12-rc3-mm3-full/include/linux/sunrpc/gss_api.h.old	2005-05-05 23:05:01.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/include/linux/sunrpc/gss_api.h	2005-05-05 23:05:10.000000000 +0200
+@@ -110,9 +110,6 @@
+ /* Similar, but get by pseudoflavor. */
+ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+ 
+-/* Just increments the mechanism's reference count and returns its input: */
+-struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+-
+ /* For every succesful gss_mech_get or gss_mech_get_by_* call there must be a
+  * corresponding call to gss_mech_put. */
+ void gss_mech_put(struct gss_api_mech *);
+--- linux-2.6.12-rc3-mm3-full/net/sunrpc/auth_gss/gss_mech_switch.c.old	2005-05-05 23:05:17.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/net/sunrpc/auth_gss/gss_mech_switch.c	2005-05-05 23:19:33.000000000 +0200
+@@ -133,14 +133,13 @@
+ 
+ EXPORT_SYMBOL(gss_mech_unregister);
+ 
+-struct gss_api_mech *
++static struct gss_api_mech *
+ gss_mech_get(struct gss_api_mech *gm)
+ {
+ 	__module_get(gm->gm_owner);
+ 	return gm;
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_get);
+ 
+ struct gss_api_mech *
+ gss_mech_get_by_name(const char *name)
+@@ -160,8 +159,6 @@
+ 
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_get_by_name);
+-
+ static inline int
+ mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+@@ -193,8 +190,6 @@
+ 	return gm;
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_get_by_pseudoflavor);
+-
+ u32
+ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+@@ -207,8 +202,6 @@
+ 	return 0;
+ }
+ 
+-EXPORT_SYMBOL(gss_pseudoflavor_to_service);
+-
+ char *
+ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
+ {
+@@ -221,16 +214,12 @@
+ 	return NULL;
+ }
+ 
+-EXPORT_SYMBOL(gss_service_to_auth_domain_name);
+-
+ void
+ gss_mech_put(struct gss_api_mech * gm)
+ {
+ 	module_put(gm->gm_owner);
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_put);
+-
+ /* The mech could probably be determined from the token instead, but it's just
+  * as easy for now to pass it in. */
+ int
+--- linux-2.6.12-rc3-mm3-full/include/linux/sunrpc/clnt.h.old	2005-05-05 23:05:45.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/include/linux/sunrpc/clnt.h	2005-05-05 23:05:50.000000000 +0200
+@@ -134,7 +134,6 @@
+ void		rpc_clnt_sigunmask(struct rpc_clnt *clnt, sigset_t *oldset);
+ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
+ size_t		rpc_max_payload(struct rpc_clnt *);
+-int		rpc_ping(struct rpc_clnt *clnt, int flags);
+ 
+ static __inline__
+ int rpc_call(struct rpc_clnt *clnt, u32 proc, void *argp, void *resp, int flags)
+--- linux-2.6.12-rc3-mm3-full/net/sunrpc/clnt.c.old	2005-05-05 23:05:58.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/net/sunrpc/clnt.c	2005-05-05 23:06:21.000000000 +0200
+@@ -63,6 +63,7 @@
+ static u32 *	call_header(struct rpc_task *task);
+ static u32 *	call_verify(struct rpc_task *task);
+ 
++static int	rpc_ping(struct rpc_clnt *clnt, int flags);
+ 
+ static int
+ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+@@ -1178,7 +1179,7 @@
+ 	.p_decode = rpcproc_decode_null,
+ };
+ 
+-int rpc_ping(struct rpc_clnt *clnt, int flags)
++static int rpc_ping(struct rpc_clnt *clnt, int flags)
+ {
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &rpcproc_null,
+--- linux-2.6.12-rc3-mm3-full/include/linux/sunrpc/xdr.h.old	2005-05-05 23:06:40.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/include/linux/sunrpc/xdr.h	2005-05-05 23:07:23.000000000 +0200
+@@ -91,7 +91,6 @@
+ u32 *	xdr_encode_opaque_fixed(u32 *p, const void *ptr, unsigned int len);
+ u32 *	xdr_encode_opaque(u32 *p, const void *ptr, unsigned int len);
+ u32 *	xdr_encode_string(u32 *p, const char *s);
+-u32 *	xdr_decode_string(u32 *p, char **sp, int *lenp, int maxlen);
+ u32 *	xdr_decode_string_inplace(u32 *p, char **sp, int *lenp, int maxlen);
+ u32 *	xdr_encode_netobj(u32 *p, const struct xdr_netobj *);
+ u32 *	xdr_decode_netobj(u32 *p, struct xdr_netobj *);
+@@ -147,7 +146,6 @@
+ extern int xdr_buf_subsegment(struct xdr_buf *, struct xdr_buf *, int, int);
+ extern int xdr_buf_read_netobj(struct xdr_buf *, struct xdr_netobj *, int);
+ extern int read_bytes_from_xdr_buf(struct xdr_buf *, int, void *, int);
+-extern int write_bytes_to_xdr_buf(struct xdr_buf *, int, void *, int);
+ 
+ /*
+  * Helper structure for copying from an sk_buff.
+--- linux-2.6.12-rc3-mm3-full/net/sunrpc/xdr.c.old	2005-05-05 23:06:52.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/net/sunrpc/xdr.c	2005-05-05 23:07:56.000000000 +0200
+@@ -95,6 +95,7 @@
+ 	return xdr_encode_array(p, string, strlen(string));
+ }
+ 
++#if 0
+ u32 *
+ xdr_decode_string(u32 *p, char **sp, int *lenp, int maxlen)
+ {
+@@ -115,6 +116,7 @@
+ 	*sp = string;
+ 	return p + XDR_QUADLEN(len);
+ }
++#endif  /*  0  */
+ 
+ u32 *
+ xdr_decode_string_inplace(u32 *p, char **sp, int *lenp, int maxlen)
+@@ -882,7 +884,7 @@
+ }
+ 
+ /* obj is assumed to point to allocated memory of size at least len: */
+-int
++static int
+ write_bytes_to_xdr_buf(struct xdr_buf *buf, int base, void *obj, int len)
+ {
+ 	struct xdr_buf subbuf;
+--- linux-2.6.12-rc3-mm3-full/net/sunrpc/sunrpc_syms.c.old	2005-05-05 23:07:30.000000000 +0200
++++ linux-2.6.12-rc3-mm3-full/net/sunrpc/sunrpc_syms.c	2005-05-05 23:36:43.000000000 +0200
+@@ -29,15 +29,10 @@
+ EXPORT_SYMBOL(rpc_execute);
+ EXPORT_SYMBOL(rpc_init_task);
+ EXPORT_SYMBOL(rpc_sleep_on);
+-EXPORT_SYMBOL(rpc_wake_up_next);
+ EXPORT_SYMBOL(rpc_wake_up_task);
+-EXPORT_SYMBOL(rpc_new_child);
+-EXPORT_SYMBOL(rpc_run_child);
+ EXPORT_SYMBOL(rpciod_down);
+ EXPORT_SYMBOL(rpciod_up);
+-EXPORT_SYMBOL(rpc_new_task);
+ EXPORT_SYMBOL(rpc_wake_up_status);
+-EXPORT_SYMBOL(rpc_release_task);
+ 
+ /* RPC client functions */
+ EXPORT_SYMBOL(rpc_create_client);
+@@ -45,7 +40,6 @@
+ EXPORT_SYMBOL(rpc_bind_new_program);
+ EXPORT_SYMBOL(rpc_destroy_client);
+ EXPORT_SYMBOL(rpc_shutdown_client);
+-EXPORT_SYMBOL(rpc_release_client);
+ EXPORT_SYMBOL(rpc_killall_tasks);
+ EXPORT_SYMBOL(rpc_call_sync);
+ EXPORT_SYMBOL(rpc_call_async);
+@@ -63,8 +57,6 @@
+ /* Client transport */
+ EXPORT_SYMBOL(xprt_create_proto);
+ EXPORT_SYMBOL(xprt_set_timeout);
+-EXPORT_SYMBOL(xprt_udp_slot_table_entries);
+-EXPORT_SYMBOL(xprt_tcp_slot_table_entries);
+ 
+ /* Client credential cache */
+ EXPORT_SYMBOL(rpcauth_register);
+@@ -81,7 +73,6 @@
+ EXPORT_SYMBOL(svc_create_thread);
+ EXPORT_SYMBOL(svc_exit_thread);
+ EXPORT_SYMBOL(svc_destroy);
+-EXPORT_SYMBOL(svc_drop);
+ EXPORT_SYMBOL(svc_process);
+ EXPORT_SYMBOL(svc_recv);
+ EXPORT_SYMBOL(svc_wake_up);
+@@ -89,7 +80,6 @@
+ EXPORT_SYMBOL(svc_reserve);
+ EXPORT_SYMBOL(svc_auth_register);
+ EXPORT_SYMBOL(auth_domain_lookup);
+-EXPORT_SYMBOL(svc_authenticate);
+ EXPORT_SYMBOL(svc_set_client);
+ 
+ /* RPC statistics */
+@@ -122,7 +112,6 @@
+ 
+ /* Generic XDR */
+ EXPORT_SYMBOL(xdr_encode_string);
+-EXPORT_SYMBOL(xdr_decode_string);
+ EXPORT_SYMBOL(xdr_decode_string_inplace);
+ EXPORT_SYMBOL(xdr_decode_netobj);
+ EXPORT_SYMBOL(xdr_encode_netobj);
