@@ -1,31 +1,23 @@
-From: Stefan Palme <kleiner@hora-obscura.de>
-Subject: userid mapping
-Date: Mon, 03 Oct 2005 23:36:23 +0200
-Message-ID: <1128375383.26373.4.camel@blackmamba.kapott.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: userid mapping
+Date: Mon, 03 Oct 2005 17:50:49 -0400
+Message-ID: <4341A7B9.5060109@redhat.com>
+References: <1128375383.26373.4.camel@blackmamba.kapott.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EMXyx-0005zz-PH
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:36:23 -0700
-Received: from rhea.primacom.net ([217.68.160.208] helo=smtp03.primacom.net)
+	id 1EMYD4-0006lS-An
+	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:50:58 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EMXyu-0005US-7f
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:36:23 -0700
-Received: from 217-68-166-77.cable.primacom.net ([217.68.166.77] helo=backup.kapott.org)
-	by smtp03.primacom.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.42)
-	id 1EMXyn-0005rp-5e
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 23:36:13 +0200
-Received: from blackmamba.kapott.org (blackmamba.kapott.org [192.168.1.248])
-	by backup.kapott.org (Postfix) with ESMTP id E3033265160
-	for <nfs@lists.sourceforge.net>; Mon,  3 Oct 2005 23:36:11 +0200 (CEST)
-Received: from localhost (localhost [127.0.0.1])
-	by blackmamba.kapott.org (Postfix) with ESMTP id F3B3612067B
-	for <nfs@lists.sourceforge.net>; Mon,  3 Oct 2005 23:36:23 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1EMYD4-0008Bn-6j
+	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:50:58 -0700
+To: Stefan Palme <kleiner@hora-obscura.de>
+In-Reply-To: <1128375383.26373.4.camel@blackmamba.kapott.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,22 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Stefan Palme wrote:
 
-Hello list,
+>Hello list,
+>
+>I guess this is a FAQ, but I have not found any information that
+>helped me out... I'm running a NFSv3-server and clients with linux
+>kernel 2.6.X. I have the same user-names on both client and server,
+>but different user-ids. Is it possible to establish a mapping between
+>the client's and server's userids? 
+>
+>A link to an earlier discussion of this topic would be enough...
+>
 
-I guess this is a FAQ, but I have not found any information that
-helped me out... I'm running a NFSv3-server and clients with linux
-kernel 2.6.X. I have the same user-names on both client and server,
-but different user-ids. Is it possible to establish a mapping between
-the client's and server's userids? 
+There has never really been a standard set for mapping the numerical
+userids and groupids.  There have been several implementations which
+provided such a mapping, but none ever went very far.
 
-A link to an earlier discussion of this topic would be enough...
+The usual suggestion is to set up Kerberos and use RPCSEC_GSS to
+pass the authentication information.
 
-TIA
--Stefan-
+    Thanx...
 
-
-
+       ps
 
 
 -------------------------------------------------------
