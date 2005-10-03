@@ -1,23 +1,30 @@
-From: Josh Tasman <tasman@u.washington.edu>
-Subject: serving 2.4 binaries from 2.6?
-Date: Mon, 03 Oct 2005 12:29:03 -0700
-Message-ID: <4341867F.2070104@u.washington.edu>
+From: Stefan Palme <kleiner@hora-obscura.de>
+Subject: userid mapping
+Date: Mon, 03 Oct 2005 23:36:23 +0200
+Message-ID: <1128375383.26373.4.camel@blackmamba.kapott.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EMVzv-0000Qh-MP
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 12:29:15 -0700
-Received: from mxout7.cac.washington.edu ([140.142.32.178])
+	id 1EMXyx-0005zz-PH
+	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:36:23 -0700
+Received: from rhea.primacom.net ([217.68.160.208] helo=smtp03.primacom.net)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EMVzs-00063Y-Cs
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 12:29:15 -0700
-Received: from smtp.washington.edu (smtp.washington.edu [140.142.32.139])
-	by mxout7.cac.washington.edu (8.13.4+UW05.04/8.13.4+UW05.09) with ESMTP id j93JT67P025710
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <nfs@lists.sourceforge.net>; Mon, 3 Oct 2005 12:29:06 -0700
+	id 1EMXyu-0005US-7f
+	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:36:23 -0700
+Received: from 217-68-166-77.cable.primacom.net ([217.68.166.77] helo=backup.kapott.org)
+	by smtp03.primacom.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.42)
+	id 1EMXyn-0005rp-5e
+	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 23:36:13 +0200
+Received: from blackmamba.kapott.org (blackmamba.kapott.org [192.168.1.248])
+	by backup.kapott.org (Postfix) with ESMTP id E3033265160
+	for <nfs@lists.sourceforge.net>; Mon,  3 Oct 2005 23:36:11 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by blackmamba.kapott.org (Postfix) with ESMTP id F3B3612067B
+	for <nfs@lists.sourceforge.net>; Mon,  3 Oct 2005 23:36:23 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -33,19 +40,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Our lab has a mix of Fedora Core 1 and 4 machines.  I'd like to set up a
-fileserver, preferably with FC4.  Does anyone have any pointers for
-serving 2.4 binaries from a 2.6 machine?
+Hello list,
 
-Should 2.4 applications first be installed on a (client) 2.4 machine,
-and then moved to the server?  I'm hoping that correct 2.4 dynamically
-linked libraries would be found on the 2.4 client (if library
-directories aren't exported-- i.e. apps exported from /usr/local/2.4 and
-/usr/local/2.6 )
+I guess this is a FAQ, but I have not found any information that
+helped me out... I'm running a NFSv3-server and clients with linux
+kernel 2.6.X. I have the same user-names on both client and server,
+but different user-ids. Is it possible to establish a mapping between
+the client's and server's userids? 
 
-Thanks,
+A link to an earlier discussion of this topic would be enough...
 
-Josh
+TIA
+-Stefan-
+
+
 
 
 
