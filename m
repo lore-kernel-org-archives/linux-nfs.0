@@ -1,23 +1,40 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Stefan Palme <kleiner@hora-obscura.de>
 Subject: Re: userid mapping
-Date: Mon, 03 Oct 2005 17:50:49 -0400
-Message-ID: <4341A7B9.5060109@redhat.com>
+Date: Tue, 04 Oct 2005 17:19:03 +0200
+Message-ID: <1128439143.2465.33.camel@devel.office.ancoso-development.de>
 References: <1128375383.26373.4.camel@blackmamba.kapott.org>
+	 <4341A7B9.5060109@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EMYD4-0006lS-An
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:50:58 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EMYD4-0008Bn-6j
-	for nfs@lists.sourceforge.net; Mon, 03 Oct 2005 14:50:58 -0700
-To: Stefan Palme <kleiner@hora-obscura.de>
-In-Reply-To: <1128375383.26373.4.camel@blackmamba.kapott.org>
+	id 1EMoZb-0008ID-Lj
+	for nfs@lists.sourceforge.net; Tue, 04 Oct 2005 08:19:19 -0700
+Received: from 213-239-198-170.clients.your-server.de ([213.239.198.170] helo=ancoso-development.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EMoZW-0004Oa-Ku
+	for nfs@lists.sourceforge.net; Tue, 04 Oct 2005 08:19:19 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by linux.ancoso-development.de (Postfix) with ESMTP id AEF974A499
+	for <nfs@lists.sourceforge.net>; Tue,  4 Oct 2005 17:19:05 +0200 (CEST)
+Received: from ancoso-development.de ([127.0.0.1])
+ by localhost (smtp.ancoso-development.de [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 21513-06 for <nfs@lists.sourceforge.net>;
+ Tue,  4 Oct 2005 17:19:05 +0200 (CEST)
+Received: from laus.ancoso-development.de (p54B982DD.dip0.t-ipconnect.de [84.185.130.221])
+	by linux.ancoso-development.de (Postfix) with ESMTP id 6C56049ED5
+	for <nfs@lists.sourceforge.net>; Tue,  4 Oct 2005 17:19:05 +0200 (CEST)
+Received: from devel.office.ancoso-development.de (devel.office.ancoso-development.de [192.168.2.126])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by laus.ancoso-development.de (Postfix) with ESMTP id 6BE5E1CA47A
+	for <nfs@lists.sourceforge.net>; Tue,  4 Oct 2005 17:19:04 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by devel.office.ancoso-development.de (Postfix) with ESMTP id E205E1FF165
+	for <nfs@lists.sourceforge.net>; Tue,  4 Oct 2005 17:19:03 +0200 (CEST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <4341A7B9.5060109@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,29 +48,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Stefan Palme wrote:
+On Mon, 2005-10-03 at 17:50 -0400, Peter Staubach wrote:
+> Stefan Palme wrote:
+> >I guess this is a FAQ, but I have not found any information that
+> >helped me out... I'm running a NFSv3-server and clients with linux
+> >kernel 2.6.X. I have the same user-names on both client and server,
+> >but different user-ids. Is it possible to establish a mapping between
+> >the client's and server's userids? 
+> 
+> The usual suggestion is to set up Kerberos and use RPCSEC_GSS to
+> pass the authentication information.
 
->Hello list,
->
->I guess this is a FAQ, but I have not found any information that
->helped me out... I'm running a NFSv3-server and clients with linux
->kernel 2.6.X. I have the same user-names on both client and server,
->but different user-ids. Is it possible to establish a mapping between
->the client's and server's userids? 
->
->A link to an earlier discussion of this topic would be enough...
->
+Won't this slow down the NFS-performance? Or is the security overhead
+for kerberos "ignorable"?
 
-There has never really been a standard set for mapping the numerical
-userids and groupids.  There have been several implementations which
-provided such a mapping, but none ever went very far.
+Thanks
+-Stefan-
 
-The usual suggestion is to set up Kerberos and use RPCSEC_GSS to
-pass the authentication information.
 
-    Thanx...
 
-       ps
 
 
 -------------------------------------------------------
