@@ -1,23 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: block dev minor > 255 and exporting fs
-Date: Thu, 6 Oct 2005 16:33:16 +1000
-Message-ID: <17220.50476.651824.874256@cse.unsw.edu.au>
-References: <87hdbvx41r.fsf@coraid.com>
+From: Leif Nixon <nixon@nsc.liu.se>
+Subject: Cache invalidation bug in v3
+Date: Thu, 06 Oct 2005 14:57:20 +0200
+Message-ID: <m3vf0aerbj.fsf@nammatj.nsc.liu.se>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ENPJo-0006YZ-HB
-	for nfs@lists.sourceforge.net; Wed, 05 Oct 2005 23:33:28 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ENPJm-0007Cj-0w
-	for nfs@lists.sourceforge.net; Wed, 05 Oct 2005 23:33:28 -0700
-To: Ed L Cashin <ecashin@coraid.com>
-In-Reply-To: message from Ed L Cashin on Wednesday October 5
+	id 1ENVJO-00044c-4d
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 05:57:26 -0700
+Received: from n166p091.linnet.se ([85.112.166.91] helo=nammatj.nsc.liu.se)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1ENVJM-0002FS-Jh
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 05:57:26 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +27,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wednesday October 5, ecashin@coraid.com wrote:
-> Hi.  I've noticed that an NFS mount times out when I export a
-> filesystem residing on a block device with a "large" minor number,
-> i.e. beyond the old limit of 255 from when there were only eight bits
-> for the minor number of devices.
+Hi,
 
-Hmmm.  it definitely shouldn't do that, but I'm not surprised.  knfsd
-has some fairly old-fashioned ideas about how device number work.
-I'll put it on my todo list to look at, but in the mean time there is
-another work around you could use that is slightly less awkward than
-making an 'md' device.
+We have come across a bug where a v3 client fails to invalidate its
+data cache for a file even though it realizes that the file attributes
+have changed. We have been able to recreate the bug on a range of
+kernel versions and different underlying file systems.
 
-If you would 'fsid=23', or some other number, as an option in
-/etc/exports, then it will use that number rather than the device
-number to identify the filesystem, and so it should work better.
+Here's a minimal way to reproduce the error (there seems to be some
+timing issues involved, but this has worked at least 90% of the time):
 
-NeilBrown
+  NFS client n1                NFS client n2
+
+  $ echo 1 > f
+			       $ cat f
+			       1
+  $ touch .
+  $ echo 2 > f
+			       $ touch f
+			       $ cat f
+			       1
+
+Now client n2 is stuck in a state where it uses its old cached data
+forever (or at least for several hours):
+
+  NFS client n1                NFS client n2
+
+  $ cat f
+  2
+			       $ cat f
+			       1
+
+However, stat(1) gives the same output on both clients. "touch f" on
+either machine corrects the situation; n2 invalidates its data cache.
+
+We have seen this on a range of kernels between 2.6.9 and 2.6.13.2 on
+Debian, CentOS, RHEL, Fedora and vanilla kernel.org, on both clients
+and server. We have *not* been able to reproduce the bug with a
+Solaris server. Underlying file systems have been ext3 and xfs (and
+Solaris ufs). We have tried varying mount options, but to no avail;
+the bug persists, even with "noac".
+
+
+Hypothesis:
+
+When n2 does "touch f" and wants to do SETATTR, it first has to do a
+LOOKUP (because n1 has updated the attributes on cwd with "touch .").
+It seems that when n2 receives the updated attributes for f as a part
+of the LOOKUP reply, it updates its attribute cache without
+invalidating its data cache, leading to the anomalous situation.
+
+If the "touch ." is omitted, n2 receives the updated file attributes
+via an explicit GETATTR on f, and then everything works properly.
+
+-- 
+Leif Nixon                       -            Systems expert
+------------------------------------------------------------
+National Supercomputer Centre    -      Linkoping University
+------------------------------------------------------------
 
 
 -------------------------------------------------------
