@@ -1,25 +1,20 @@
-From: Ed L Cashin <ecashin@coraid.com>
-Subject: Re: block dev minor > 255 and exporting fs
-Date: Thu, 06 Oct 2005 12:38:58 -0400
-Message-ID: <874q7u7g7x.fsf@coraid.com>
-References: <87hdbvx41r.fsf@coraid.com>
-	<17220.50476.651824.874256@cse.unsw.edu.au>
+From: "Vithal Shirodkar" <vithals@hotmail.com>
+Subject: Re: nfsd dies quietly in anaconda loader
+Date: Thu, 06 Oct 2005 11:39:01 -0700
+Message-ID: <BAY101-F38BB20A9CD39137D725E79B2850@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ENZ7S-0005iJ-Ey
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 10:01:22 -0700
-Received: from ns1.coraid.com
-	([65.14.39.133] helo=coraid.com ident=none)
+	id 1ENae6-0000uB-SL
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 11:39:10 -0700
+Received: from bay101-f38.bay101.hotmail.com ([64.4.56.48] helo=hotmail.com)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ENZ7R-0001DU-1C
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 10:01:22 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17220.50476.651824.874256@cse.unsw.edu.au> (Neil Brown's
- message of "Thu, 6 Oct 2005 16:33:16 +1000")
+	id 1ENae2-00058A-Kh
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 11:39:10 -0700
+To: neilb@suse.de
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,35 +28,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown <neilb@suse.de> writes:
+I did a strace on rpc.mountd and found that it was looking for a loopback 
+interface to contact the rpc server.  I did not have a loopback interface. 
+Once i added that, the daemons came up fine.  However, now I cannot mount 
+from a client.  I get a "permission denied error" from server.
 
-> On Wednesday October 5, ecashin@coraid.com wrote:
->> Hi.  I've noticed that an NFS mount times out when I export a
->> filesystem residing on a block device with a "large" minor number,
->> i.e. beyond the old limit of 255 from when there were only eight bits
->> for the minor number of devices.
+I have portmap, nfsd, lockd, rpciod and rpc.mountd running.  /etc/exports 
+has the entry
+/sbin *(ro,no_root_squash)
+I did a "exportfs -ra" after making the entry... also tried restarting the 
+daemons.  But still the permission denied error.  Am I missing anything ?
+
+There is only a layer2 switch sitting in between the server and client.. so 
+firewalls shouldn't be an issue.
+
+Thanks
+Vithal
+
+
+
+
+From:  Neil Brown <neilb@suse.de>
+To:  "Vithal Shirodkar" <vithals@hotmail.com>
+CC:  nfs@lists.sourceforge.net
+Subject:  Re: [NFS] nfsd dies quietly in anaconda loader
+Date:  Thu, 6 Oct 2005 16:19:20 +1000
+>On Tuesday October 4, vithals@hotmail.com wrote:
+> > I modified anaconda loader to complete startup till network is up and 
+>call
+> > my script where I try to load nfs server.  I did insmod for nfsd, nfs,
+> > lockd, sunrpc and see that these modules are up.  However, when I do a
+> > /etc/rc.d/init.d/nfs start I get a OK message but ps -e reports that nfs 
+>is
+> > not running.
 >
-> Hmmm.  it definitely shouldn't do that, but I'm not surprised.  knfsd
-> has some fairly old-fashioned ideas about how device number work.
-> I'll put it on my todo list to look at, 
-
-Excellent!  I'd like to hear about what you find.
-
-...
-> but in the mean time there is
-> another work around you could use that is slightly less awkward than
-> making an 'md' device.
+>My best guess is that /etc/exports doesn't actually mention anything
+>to export.  In that case, the 'nfs' script doesn't bother starting
+>nfsd.
 >
-> If you would 'fsid=23', or some other number, as an option in
-> /etc/exports, then it will use that number rather than the device
-> number to identify the filesystem, and so it should work better.
+>Is that possible.?
+>
+>NeilBrown
+>
+> >
+> > My goal is to have a basic kernel running which will have nfs server up
+> > without going through init.
+> >
+> > vithals
+> >
+> >
+> >
+> >
+> > -------------------------------------------------------
+> > This SF.Net email is sponsored by:
+> > Power Architecture Resource Center: Free content, downloads, 
+>discussions,
+> > and more. http://solutions.newsforge.com/ibmarch.tmpl
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
+>-------------------------------------------------------
+>This SF.Net email is sponsored by:
+>Power Architecture Resource Center: Free content, downloads, discussions,
+>and more. http://solutions.newsforge.com/ibmarch.tmpl
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
 
-Well I'll be!  That works great and is indeed much more convenient
-than using md.  Thanks for the tip---I hadn't noticed fsid in the
-exports manpage before.
-
--- 
-  Ed L Cashin <ecashin@coraid.com>
 
 
 
