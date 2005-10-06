@@ -1,19 +1,22 @@
 From: Leif Nixon <nixon@nsc.liu.se>
-Subject: Cache invalidation bug in v3
-Date: Thu, 06 Oct 2005 14:57:20 +0200
-Message-ID: <m3vf0aerbj.fsf@nammatj.nsc.liu.se>
+Subject: Re: Cache invalidation bug in v3
+Date: Thu, 06 Oct 2005 15:36:26 +0200
+Message-ID: <m3fyreepid.fsf@nammatj.nsc.liu.se>
+References: <m3vf0aerbj.fsf@nammatj.nsc.liu.se>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ENVJO-00044c-4d
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 05:57:26 -0700
-Received: from n166p091.linnet.se ([85.112.166.91] helo=nammatj.nsc.liu.se)
+	id 1ENVvI-0005dt-Oo
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 06:36:36 -0700
+Received: from nammatj.nsc.liu.se ([130.236.101.75])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ENVJM-0002FS-Jh
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 05:57:26 -0700
+	id 1ENVvI-0006Wx-C1
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 06:36:36 -0700
 To: nfs@lists.sourceforge.net
+In-Reply-To: <m3vf0aerbj.fsf@nammatj.nsc.liu.se> (Leif Nixon's message of
+ "Thu, 06 Oct 2005 14:57:20 +0200")
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,58 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+Leif Nixon <nixon@nsc.liu.se> writes:
 
-We have come across a bug where a v3 client fails to invalidate its
-data cache for a file even though it realizes that the file attributes
-have changed. We have been able to recreate the bug on a range of
-kernel versions and different underlying file systems.
+> Here's a minimal way to reproduce the error (there seems to be some
+> timing issues involved, but this has worked at least 90% of the time):
+>
+>   NFS client n1                NFS client n2
+>
+>   $ echo 1 > f
+> 			       $ cat f
+> 			       1
+>   $ touch .
+>   $ echo 2 > f
+> 			       $ touch f
+> 			       $ cat f
+> 			       1
 
-Here's a minimal way to reproduce the error (there seems to be some
-timing issues involved, but this has worked at least 90% of the time):
-
-  NFS client n1                NFS client n2
-
-  $ echo 1 > f
-			       $ cat f
-			       1
-  $ touch .
-  $ echo 2 > f
-			       $ touch f
-			       $ cat f
-			       1
-
-Now client n2 is stuck in a state where it uses its old cached data
-forever (or at least for several hours):
-
-  NFS client n1                NFS client n2
-
-  $ cat f
-  2
-			       $ cat f
-			       1
-
-However, stat(1) gives the same output on both clients. "touch f" on
-either machine corrects the situation; n2 invalidates its data cache.
-
-We have seen this on a range of kernels between 2.6.9 and 2.6.13.2 on
-Debian, CentOS, RHEL, Fedora and vanilla kernel.org, on both clients
-and server. We have *not* been able to reproduce the bug with a
-Solaris server. Underlying file systems have been ext3 and xfs (and
-Solaris ufs). We have tried varying mount options, but to no avail;
-the bug persists, even with "noac".
-
-
-Hypothesis:
-
-When n2 does "touch f" and wants to do SETATTR, it first has to do a
-LOOKUP (because n1 has updated the attributes on cwd with "touch .").
-It seems that when n2 receives the updated attributes for f as a part
-of the LOOKUP reply, it updates its attribute cache without
-invalidating its data cache, leading to the anomalous situation.
-
-If the "touch ." is omitted, n2 receives the updated file attributes
-via an explicit GETATTR on f, and then everything works properly.
+Ah, yes, I forgot one strange point; the second write to the file must
+not change the size of the file, else the bug doesn't appear. So if
+you change "echo 2 > f" to "echo foo > f", everything works just
+fine...
 
 -- 
 Leif Nixon                       -            Systems expert
