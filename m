@@ -1,23 +1,26 @@
-From: David Warren <warren@atmos.washington.edu>
-Subject: Re: Cache invalidation bug in v3
-Date: Thu, 06 Oct 2005 14:36:12 -0700
-Message-ID: <434598CC.3080604@atmos.washington.edu>
-References: <m3vf0aerbj.fsf@nammatj.nsc.liu.se>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Re: ADMINSTRIVIA - Intent to open nfs@lists.sourceforge.net to non-subscribers.
+Date: Fri, 7 Oct 2005 08:46:54 +1000
+Message-ID: <17221.43358.657816.924659@cse.unsw.edu.au>
+References: <17201.34296.859729.69509@cse.unsw.edu.au>
+	<20050922085619.GA31016@lucon.org>
+	<20051006134141.GB25067@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: "H. J. Lu" <hjl@lucon.org>, Neil Brown <neilb@cse.unsw.edu.au>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ENdPY-0006qW-N3
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 14:36:20 -0700
-Received: from dew1.atmos.washington.edu ([128.95.89.41])
+	id 1ENeW4-0000Qp-1W
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 15:47:08 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1ENdPX-0000im-2x
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 14:36:20 -0700
-To: Leif Nixon <nixon@nsc.liu.se>
-In-Reply-To: <m3vf0aerbj.fsf@nammatj.nsc.liu.se>
+	id 1ENeW1-0000YJ-KX
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 15:47:08 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: message from J. Bruce Fields on Thursday October 6
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,80 +34,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is the same thing I reported about a week and a half ago. While you 
-can't replicate it on a solaris server, I could replicate it with a 
-solaris client. I also can not replicate it with NFSv4. I had several 
-configuration suggestions sent to me. None of them changed anything.
+On Thursday October 6, bfields@fieldses.org wrote:
+> > On Wed, Sep 21, 2005 at 06:10:32PM +0200, Neil Brown wrote:
+> > >  Hence, I intend to switch nfs@lists.sourceforge.net to accept mail
+> > >  from non-subscribers.
+> 
+> Has that changed? Because I'm still seeing these long delays:
+> 
 
-Leif Nixon wrote:
+I had planned to leave it a few days for people to have a chance to
+comment.  I ended up leaving it two weeks (a little longer than I
+planned, but still...).
 
->Hi,
->
->We have come across a bug where a v3 client fails to invalidate its
->data cache for a file even though it realizes that the file attributes
->have changed. We have been able to recreate the bug on a range of
->kernel versions and different underlying file systems.
->
->Here's a minimal way to reproduce the error (there seems to be some
->timing issues involved, but this has worked at least 90% of the time):
->
->  NFS client n1                NFS client n2
->
->  $ echo 1 > f
->			       $ cat f
->			       1
->  $ touch .
->  $ echo 2 > f
->			       $ touch f
->			       $ cat f
->			       1
->
->Now client n2 is stuck in a state where it uses its old cached data
->forever (or at least for several hours):
->
->  NFS client n1                NFS client n2
->
->  $ cat f
->  2
->			       $ cat f
->			       1
->
->However, stat(1) gives the same output on both clients. "touch f" on
->either machine corrects the situation; n2 invalidates its data cache.
->
->We have seen this on a range of kernels between 2.6.9 and 2.6.13.2 on
->Debian, CentOS, RHEL, Fedora and vanilla kernel.org, on both clients
->and server. We have *not* been able to reproduce the bug with a
->Solaris server. Underlying file systems have been ext3 and xfs (and
->Solaris ufs). We have tried varying mount options, but to no avail;
->the bug persists, even with "noac".
->
->
->Hypothesis:
->
->When n2 does "touch f" and wants to do SETATTR, it first has to do a
->LOOKUP (because n1 has updated the attributes on cwd with "touch .").
->It seems that when n2 receives the updated attributes for f as a part
->of the LOOKUP reply, it updates its attribute cache without
->invalidating its data cache, leading to the anomalous situation.
->
->If the "touch ." is omitted, n2 receives the updated file attributes
->via an explicit GETATTR on f, and then everything works properly.
->
->  
->
+Yesterday I went to look into it, found a large number of pending
+messages and went though them, discarding the spam and approving the
+ham. 
 
+I then disabled the auto-response email that told people their message
+had to be approved (as I think that is the most annoying part of the
+process), made sure that I got notifications of non-subscriber email,
+and left it subscriber-only for now.
+My plan was to approve things promptly and monitor the spam levels and
+the hassle (to me) level, and decided then whether to open it
+completely or not.
 
--- 
-David Warren 		INTERNET: warren@atmos.washington.edu
-(206) 543-0945		Fax: (206) 543-0308
-University of Washington
-Dept of Atmospheric Sciences, Box 351640
-Seattle, WA 98195-1640
--------------------------------------------------------------------------------
-DECUS E-PUBS Library Committee representative
-SeaLUG DECUS Chair
+However it seems that someone has beaten me to it and made the list
+open while I slept.....
 
+So, maybe I'll just leave it that way.
+
+NeilBrown
 
 
 -------------------------------------------------------
