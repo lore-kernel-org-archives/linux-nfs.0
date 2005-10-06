@@ -1,22 +1,23 @@
-From: Leif Nixon <nixon@nsc.liu.se>
-Subject: Re: Cache invalidation bug in v3
-Date: Thu, 06 Oct 2005 15:36:26 +0200
-Message-ID: <m3fyreepid.fsf@nammatj.nsc.liu.se>
-References: <m3vf0aerbj.fsf@nammatj.nsc.liu.se>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Re: ADMINSTRIVIA - Intent to open nfs@lists.sourceforge.net to non-subscribers.
+Date: Thu, 6 Oct 2005 09:41:41 -0400
+Message-ID: <20051006134141.GB25067@fieldses.org>
+References: <17201.34296.859729.69509@cse.unsw.edu.au> <20050922085619.GA31016@lucon.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ENVvI-0005dt-Oo
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 06:36:36 -0700
-Received: from nammatj.nsc.liu.se ([130.236.101.75])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ENVvI-0006Wx-C1
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 06:36:36 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <m3vf0aerbj.fsf@nammatj.nsc.liu.se> (Leif Nixon's message of
- "Thu, 06 Oct 2005 14:57:20 +0200")
+	id 1ENW0V-0005q7-MH
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 06:41:59 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ENW0T-0008TB-EH
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 06:41:59 -0700
+To: "H. J. Lu" <hjl@lucon.org>
+In-Reply-To: <20050922085619.GA31016@lucon.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Leif Nixon <nixon@nsc.liu.se> writes:
+> On Wed, Sep 21, 2005 at 06:10:32PM +0200, Neil Brown wrote:
+> >  Hence, I intend to switch nfs@lists.sourceforge.net to accept mail
+> >  from non-subscribers.
 
-> Here's a minimal way to reproduce the error (there seems to be some
-> timing issues involved, but this has worked at least 90% of the time):
->
->   NFS client n1                NFS client n2
->
->   $ echo 1 > f
-> 			       $ cat f
-> 			       1
->   $ touch .
->   $ echo 2 > f
-> 			       $ touch f
-> 			       $ cat f
-> 			       1
+Has that changed? Because I'm still seeing these long delays:
 
-Ah, yes, I forgot one strange point; the second write to the file must
-not change the size of the file, else the bug doesn't appear. So if
-you change "echo 2 > f" to "echo foo > f", everything works just
-fine...
+>From nfs-admin@lists.sourceforge.net Thu Oct 06 01:54:50 2005
+Received: from lists-outbound.sourceforge.net ([66.35.250.225])
+	by pickle.fieldses.org with esmtp (Exim 4.53)
+	id 1ENOiQ-0000MG-E5
+	for bfields@fieldses.org; Thu, 06 Oct 2005 01:54:50 -0400
+Received: from projects.sourceforge.net (sc8-sf-list2-b.sourceforge.net [10.3.1.8])
+	by sc8-sf-spam2.sourceforge.net (Postfix) with ESMTP
+	id 750D813202; Wed,  5 Oct 2005 22:54:19 -0700 (PDT)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1EIMsh-0006en-ET
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 01:56:39 -0700
+Received: from smtp101.sbc.mail.mud.yahoo.com ([68.142.198.200])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EIMsg-0007fW-AX
+	for nfs@lists.sourceforge.net; Thu, 22 Sep 2005 01:56:39 -0700
+Received: (qmail 55585 invoked from network); 22 Sep 2005 08:56:21 -0000
+Received: from unknown (HELO lucon.org) (hjjean@sbcglobal.net@69.232.225.39 with login)
+  by smtp101.sbc.mail.mud.yahoo.com with SMTP; 22 Sep 2005 08:56:21 -0000
+Received: by lucon.org (Postfix, from userid 1000)
+	id A2DC164547; Thu, 22 Sep 2005 01:56:19 -0700 (PDT)
 
--- 
-Leif Nixon                       -            Systems expert
-------------------------------------------------------------
-National Supercomputer Centre    -      Linkoping University
-------------------------------------------------------------
+--b.
 
 
 -------------------------------------------------------
