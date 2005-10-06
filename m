@@ -1,23 +1,23 @@
-From: =?ISO-8859-1?Q?Rainer_Sch=F6pf?= <rainer.schoepf@proteosys.com>
-Subject: NFS client problem: reading from zero length file
-Date: Tue, 6 Sep 2005 15:47:01 +0200 (CEST)
-Message-ID: <Pine.LNX.4.63.0509061510040.29150@bk-ws-11.proteosys>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfs-utils 1 of 10  - Removed sync warning on readonly exports
+Date: Thu, 6 Oct 2005 15:30:58 +1000
+Message-ID: <17220.46738.524366.494475@cse.unsw.edu.au>
+References: <433414BD.5080209@RedHat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Cc: =?ISO-8859-1?Q?Rainer_Sch=F6pf?= <rainer.schoepf@proteosys.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ECdnE-0003nL-6H
-	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 06:47:20 -0700
-Received: from mail.proteosys.com ([213.139.130.197])
+	id 1ENOLc-0004Ei-EJ
+	for nfs@lists.sourceforge.net; Wed, 05 Oct 2005 22:31:16 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1ECdnC-0005B6-ME
-	for nfs@lists.sourceforge.net; Tue, 06 Sep 2005 06:47:20 -0700
-Received: by mail.proteosys.com (8.12.10/8.12.2) with ESMTP id j86Dl1Ia032700
-	for <nfs@lists.sourceforge.net>; Tue, 6 Sep 2005 15:47:02 +0200
-To: nfs@lists.sourceforge.net
+	id 1ENOLb-0002Ln-Tc
+	for nfs@lists.sourceforge.net; Wed, 05 Oct 2005 22:31:16 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: message from Steve Dickson on Friday September 23
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,43 +31,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Friday September 23, SteveD@redhat.com wrote:
+> The following 10 patches are a result of bugs that were reported
+> to us and have been fixed in various Red Hat releases.
+> I'm hopeful that at least some of them will incorporated into
+> the SourceForge CVS tree....
+> 
+> steved.
+> 
 
-I've encountered a strange problem on an NFS client: after an open system=
-=20
-call like
+Thanks Steve (and sorry about the delay).
+I've incorporated some of them into SourceForge CVS (oh how I wish it
+was something other than CVS !!).
 
-32036 open("result/PI_002_exp_003_pH_4-5.tif.s", O_RDWR|O_CREAT|O_TRUNC, =
-0666) =3D 29
+Tree is tagged nfs-utils-1-0-7-post6 after the commit, and -post5
+before.
 
-an immediately following read returns=20
+ "[NFS] [PATCH] nfs-utils 1 of 10  - Removed sync warning on readonly exports"
+   Included unchanged.
 
-32036 read(29, "abcdefgh", 8)                   =3D 8
+ "[NFS] [PATCH] nfs-utils 2 of 10 - Incorporate some clean up code from Ulrich Drepper"
+   I re-wrote this with a separate function 'closeall' which is called
+   from various places.  
+   The 'signal' changes I left out because there was no explanatory
+   text :-)
 
-As far as I know, this shouldn't happen, because of the O_TRUNC flag in=20
-the open call.
+ "[NFS] [PATCH] nfs-utils 3 of 10 - Make sure check_new_cache() looks in the right place"
+   I think the change to check_new_cache is wrong.  It really needs to
+   check if /proc/fs/nfs{,d} is mounted, and it doesn't do that any
+   more.
+   The other change in this patch -removing the warning - is included
+   unchanged. 
 
-I'm afraid this is the only pattern I've been able to isolate. This=20
-happens when we run a complicated image analysis software, but only=20
-occasionally, every couple of days, not systematically. If it happens,=20
-repeated runs exhibit the problem (most of the time). umount/mount makes=20
-it disappear.
+ "[NFS] [PATCH] nfs-utils 4 of 10 - Replaced a memcopy with explicit assignment"
+   Already in the CVS.
 
-A simple program that repeatedly opens a file and reads from it failed to=
-=20
-show the problem.
+ "[NFS] [PATCH] nfs-utils 5 of 10 - make sure the correct hostname is used in the SM_NOTIFY"
+   Rather ugly, but then statd is fairly ugly already.  I looks
+   believable so I included it unchanged.
 
-This is a Suse 9.3 system with kernel 2.6.11.4-21.8 (in Suse's=20
-versioning).
+ "[NFS] [PATCH] nfs-utils 6 of 10 - Fixed subscripting problem in idmapd"
+   Yep, good.
 
-The behaviour described above looks like some race condition to me.=20
-I looked through the list of patches to the nfs client code on=20
-www.linux-nfs.org, but am not sure how to proceed.
+ "[NFS] [PATCH] nfs-utils 7 of 10 - Changed mountd to use stat64()"
+   Not included. 
+   Can you say more about:
 
-I'd be happy to try a patch if someone would suggest which one.
+           I wonder if it would be better just to make mountd a 64bit
+           application by compiling with -D_FILE_OFFSET_BITS=64?
 
-Thanks in advance
-  Rainer Sch=F6pf
+   I thought that when you compiled with a newer glibc, you
+   automagically got 64bit stuff...
+
+
+ "[NFS] [PATCH] nfs-utils 8 of 10 - added the command line arguments to rpc.nfsd"
+   Not included.  Uses functionality specific to redhat kernel.
+
+ "[NFS] [PATCH] nfs-utils 9 of 10 - Fixed some security issues found by SGI"
+   The bugzilla entry isn't world-readable, but the patch looks fine
+   and is included as-is.
+
+ "[NFS] [PATCH] nfs-utils 9 of 10 - Changed xlog to use LOG_INFO instead of LOG_DEBUG"
+   Yep, that's ok too.
+
+If you would like to 
+ - comment more on the 'signal' changes in patch 3
+ - talk about the underlying problem wrt check_new_cache()
+ - help me understand the 64-bit options wrt patch 7
+ - re-open the debate on specifying version/protocol option to the
+   kernel,
+
+I am all ears.
+
+NeilBrown
 
 
 -------------------------------------------------------
