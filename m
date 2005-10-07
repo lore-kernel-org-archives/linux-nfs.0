@@ -1,23 +1,28 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: nfsd dies quietly in anaconda loader
-Date: Fri, 7 Oct 2005 08:57:35 +1000
-Message-ID: <17221.43999.796998.941914@cse.unsw.edu.au>
-References: <BAY101-F38BB20A9CD39137D725E79B2850@phx.gbl>
+Subject: Re: Small nfs-utils patch
+Date: Fri, 7 Oct 2005 14:47:12 +1000
+Message-ID: <17221.64976.852023.657826@cse.unsw.edu.au>
+References: <20050523101557.GD24634@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ENegM-0000i7-5F
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 15:57:46 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1ENk8k-0003eE-KF
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 21:47:26 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1ENegK-0002Xt-QD
-	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 15:57:46 -0700
-To: "Vithal Shirodkar" <vithals@hotmail.com>
-In-Reply-To: message from Vithal Shirodkar on Thursday October 6
+	id 1ENk8j-0004u0-DI
+	for nfs@lists.sourceforge.net; Thu, 06 Oct 2005 21:47:26 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id AE881EC86
+	for <nfs@lists.sourceforge.net>; Fri,  7 Oct 2005 06:47:20 +0200 (CEST)
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: message from Olaf Kirch on Monday May 23
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,37 +36,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday October 6, vithals@hotmail.com wrote:
-> I did a strace on rpc.mountd and found that it was looking for a loopback 
-> interface to contact the rpc server.  I did not have a loopback interface. 
-> Once i added that, the daemons came up fine.  However, now I cannot mount 
-> from a client.  I get a "permission denied error" from server.
+On Monday May 23, okir@suse.de wrote:
+> Without this patch, showmount -e would sometimes display
+> host names that should really have been subsumed under a
+> wildcard entry.
 > 
-> I have portmap, nfsd, lockd, rpciod and rpc.mountd running.  /etc/exports 
-> has the entry
-> /sbin *(ro,no_root_squash)
-> I did a "exportfs -ra" after making the entry... also tried restarting the 
-> daemons.  But still the permission denied error.  Am I missing
-> anything ?
+> The problem was that the code in get_exportlist would always
+> skip the next group entry after removing one FQDN.
 
-Nothing obvious.
-I assume /var/lib/nfs exists and has sensible etab/xtab files in it?
-I note you aren't running 'statd', but that shouldn't give you a
-permission-denied error.  It would only mean that locking might not
-work.
-Is there anything in the logs on the server, either kern.log or
-daemon.log (or anywhere else)?
+Thanks.  I've committed it to the sourceforge CVS.
+(Hey, turn-around of less than 5 months! You can't complain 
+about that!! :-) 
 
 NeilBrown
 
 > 
-> There is only a layer2 switch sitting in between the server and client.. so 
-> firewalls shouldn't be an issue.
+> Olaf
+> -- 
+> Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+> okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 > 
-> Thanks
-> Vithal
+> Without this patch, showmount -e would sometimes display
+> host names that should really have been subsumed under a
+> wildcard entry.
 > 
+> The problem was that the code in get_exportlist would always
+> skip the next group entry after removing one FQDN.
 > 
+> Signed-off-by: Olaf Kirch <okir@suse.de>
+> 
+> Index: nfs-utils-1.0.7/utils/mountd/mountd.c
+> ===================================================================
+> --- nfs-utils-1.0.7.orig/utils/mountd/mountd.c
+> +++ nfs-utils-1.0.7/utils/mountd/mountd.c
+> @@ -409,11 +409,9 @@ get_exportlist(void)
+>  				xfree(c->gr_name);
+>  				xfree(c);
+>  				xfree (hp);
+> -				if ((c = *cp) == NULL)
+> -				  break;
+> +				continue;
+>  			      }
+> -			      else
+> -				xfree (hp);
+> +			      xfree (hp);
+>  			    }
+>  			    cp = &(c->gr_next);
+>  			  }
 
 
 -------------------------------------------------------
