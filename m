@@ -1,77 +1,49 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [NFS] [PATCH] kNFSD - Allowing rpc.nfsd to setting of the port,
- transport and version the server will use
-Date: Fri, 07 Oct 2005 13:54:32 -0400
-Message-ID: <4346B658.9010700@redhat.com>
-References: <43469FA7.7020908@RedHat.com> <20051007164435.GC9759@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1030391AbVJGRyy@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20051007164435.GC9759@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: "=?ISO-2022-JP?B?GyRCJTUlJCVIGyhCd2F0Y2g=?=" <mm_site_watch@yahoo.com>
+Subject: =?ISO-2022-JP?B?GyRCJDMkcyRLJEEkTxsoQg==?=
+Date: Sun, 9 Oct 2005 11:26:20 +0000 (UTC)
+Message-ID: <8ytIN58D69.7440@yahoo.com>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1EOZGx-0004cb-1p
+	for nfs@lists.sourceforge.net; Sun, 09 Oct 2005 04:23:19 -0700
+Received: from 61.206.127.146.user.rf.il24.net ([61.206.127.146] helo=mail.sourceforge.net)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EOZGr-0005NU-HJ
+	for nfs@lists.sourceforge.net; Sun, 09 Oct 2005 04:23:19 -0700
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Date: Sun Oct  9 04:24:19 2005
 
-J. Bruce Fields wrote:
+★━━━━━━━━━━━━━━━━━‥‥……・・・
+新しい出会いは見つけに行かないとありませんよ！
+今あなたの周りにいる女性たちだけが女性ではありません・・・
+まず無料登録からはじめてください。
+気負わず、いろんな女性の存在を知るところから始めてみては？
+プロフィール閲覧無料です～♪
+http://tiger501.maido3.com/~bj1143/beach.html
+・・・……‥‥━━━━━━━━━━━━━━━━━★
 
->On Fri, Oct 07, 2005 at 12:17:43PM -0400, Steve Dickson wrote:
->  
->
->>Here is a kernel patch that will enable the setting
->>of the port knfsd will listens on, the transport knfsd
->>will support and which NFS version will be advertised.
->>
->>The nfs-utils patch, which is also attached, will added
->>the following flags to rpc.nfsd that will enable the kernel
->>functionality (Note: These patches are NOT dependent on each
->>other. Meaning rpc.nfsd and knfsd will still function correctly
->>if one or the other patch do or do not exist):
->>
->>
->>   -N  or  --no-nfs-version vers
->>        This option can be used to request that rpc.nfsd does not  offer
->>        certain  versions of NFS. The current version of rpc.nfsd can
->>        support both NFS version 2,3 and the newer version 4.
->>    
->>
->
->So the obvious question is what will happen if someone does
->
->	rpc.nfsd -N 3
->
->on a server supporting 2, 3, and 4.
->
->It looks like the code in svc_create() will set pg_lovers to 2 and
->pg_hivers to 4 in that case.  So if someone tries to use version 3, the
->error they get back will be a somewhat contradictory "sorry, I only
->support versions 2 through 4."
->
->It seems to me that it'd be cleaner if the kernel interface only
->accepted a range (e.g., "2--4" or "2--3").  Then if someone
->attempted the above, they'll get an error back immediately.
->
->Or svc_create could be adjusted to report a more conservative range
->("2--2" or "4--4" instead of "2--4").
->
->But I don't have really strong feelings about it.  Maybe we shouldn't
->care enough about that case.
->
+まってます(^o^)
 
-Well, you are right, it seems contradictory, but it is the right thing
-to do in such a situation.  It follows the RPC semantics as defined.
-(I suspect that Bob didn't consider something like this when he was
-designing this part of RPC.)
 
-I would suggest that doing this to an NFS server would be pretty silly,
-not done very much if at all, and not something to care about.
 
-It also isn't the first time that such a situation has occurred.  SGI
-used to have a MOUNT version 99 (or some such value) and responses such
-as this could be seen from their server at times.
 
-    Thanx...
-
-       ps
+-------------------------------------------------------
+This SF.Net email is sponsored by:
+Power Architecture Resource Center: Free content, downloads, discussions,
+and more. http://solutions.newsforge.com/ibmarch.tmpl
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
