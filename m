@@ -1,23 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS security
-Date: Thu, 13 Oct 2005 08:43:43 -0400
-Message-ID: <1129207423.8578.3.camel@lade.trondhjem.org>
-References: <f872993a0510130004p90cb2eal3dd17d58b892083d@mail.gmail.com>
+From: Brian Kerr <kerrboy@gmail.com>
+Subject: nfs stale directory listings
+Date: Thu, 13 Oct 2005 13:40:02 -0400
+Message-ID: <b83c9e30510131040v82885d2r407f5a12be93e30f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EQ2Rf-0004Mc-IK
-	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 05:44:27 -0700
-Received: from pat.uio.no ([129.240.130.16])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EQ2Re-0001iK-AU
-	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 05:44:27 -0700
-To: Raghu R <roverphoenix@gmail.com>
-In-Reply-To: <f872993a0510130004p90cb2eal3dd17d58b892083d@mail.gmail.com>
+	id 1EQ73w-0000IV-Jz
+	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 10:40:16 -0700
+Received: from xproxy.gmail.com ([66.249.82.196])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EQ73v-0004PD-Df
+	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 10:40:16 -0700
+Received: by xproxy.gmail.com with SMTP id i28so283596wxd
+        for <nfs@lists.sourceforge.net>; Thu, 13 Oct 2005 10:40:02 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +29,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-to den 13.10.2005 Klokka 00:04 (-0700) skreiv Raghu R:
-> Hi guys,
-> 
-> I am a newbie at sourceforge and I need some help regarding a project
-> topic I would like to do provide GAA-API/kerberos support into NFS(I
-> obviously would not be able to provide all the features eg n/w with
-> bridges etc), I would like to get some feedback as to the scope of it,
-> I am planning to do it alone and have a time frame of about 2 months,
-> I am very comfortable with C/C++ and linux architecture.
+Hi,
 
-Since we already have GSS_API support, I assume that your project would
-mainly be to add all the support for the EACL stuff?
-Could you please outline how you propose to implement this? I'm not
-aware of any GAA-API implementations for RPC or NFS.
+We have a mixed environment of several hundred RH boxes running
+2.4.20+ and 2.6.11+ kernels that are mounting against netapps and
+linux nfsd servers.
 
-Cheers,
-  Trond
+We have a problem where sometimes client machines will not see the
+latest(newest) files that are created by one client in a particular
+directory path until we cd /net/path&&touch foo&&rm -f foo.  After
+doing this the problem goes away and everything works fine, but we
+have to do this on multiple machines multiple times a day.
 
+On solaris I know the DNLC directory cache is tunable - is this
+tweakable on linux?  I've looked around but have not found a solution
+to the problem.
+
+This is all nfs v3 over TCP.
+
+Thanks in advance,
+Brian
 
 
 -------------------------------------------------------
