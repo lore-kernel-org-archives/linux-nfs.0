@@ -1,185 +1,85 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] kNFSD - Allowing rpc.nfsd to setting of the port, transport
- and version the server will use
-Date: Wed, 12 Oct 2005 14:23:16 +1000
-Message-ID: <17228.36788.911900.280394@cse.unsw.edu.au>
-References: <43469FA7.7020908@RedHat.com>
-	<17227.5288.236699.46660@cse.unsw.edu.au>
-	<434B9A02.8010005@RedHat.com>
+From: Raghu R <roverphoenix@gmail.com>
+Subject: NFS security
+Date: Thu, 13 Oct 2005 00:04:31 -0700
+Message-ID: <f872993a0510130004p90cb2eal3dd17d58b892083d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932418AbVJLEXa@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: message from Steve Dickson on Tuesday October 11
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/alternative;
+	boundary="----=_Part_569_29534499.1129187071675"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1EPx8m-0007g0-8j
+	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 00:04:36 -0700
+Received: from qproxy.gmail.com ([72.14.204.200])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EPx8m-0000aI-2R
+	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 00:04:36 -0700
+Received: by qproxy.gmail.com with SMTP id p36so84949qba
+        for <nfs@lists.sourceforge.net>; Thu, 13 Oct 2005 00:04:31 -0700 (PDT)
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday October 11, SteveD@redhat.com wrote:
-> > 
-> > The 'port' bit I had trouble liking.
-> > You write:
-> > 
-> >    family proto proto addr port
-> > 
-> > to the 'ports' file.
-> > 'family' and 'addr' are completely ignored.
-> Well at this point they are not needed since we
-> only support ipv4... and I can only assume when we do
-> support other families, changing this interface will be
-> the least of our problems... ;-)
+------=_Part_569_29534499.1129187071675
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Maybe, but either we make it ready for future needs now, or we only
-support current needs and allow a clear upgrade path.
-Ignoring fields which might later have a meaning is bad because it
-means that user-space code which works now much break later for no
-good reason.  
-My basic position wrt this is that if the fields are there, they
-should be checked.
+Hi guys,
 
-> 
-> > 'port' is effectively ignored (value is stored in a variable which
-> > isn't used).
-> I'm not sure I understand this... nfsd_port is set and used in
-> nfsd_svc()
-> @@ -104,11 +152,14 @@ nfsd_svc(unsigned short port, int nrserv
->   		nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE);
->   		if (nfsd_serv == NULL)
->   			goto out;
-> +		if (NFSCTL_UDPISSET(nfsd_portbits))
-> +			port = nfsd_port;
->   		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
->   		if (error < 0)
->   			goto failure;
->   #ifdef CONFIG_NFSD_TCP
-> +		if (NFSCTL_TCPISSET(nfsd_portbits))
-> +			port = nfsd_port;
->   		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
->   		if (error < 0)
->   			goto failure;
-> 
-> iff the nfsd_portbits are set... which is exactly the same concept
-> used with the version bits... so I am a bit confused on what you
-> want...
+I am a newbie at sourceforge and I need some help regarding a project topic
+I would like to do provide GAA-API/kerberos support into NFS(I obviously
+would not be able to provide all the features eg n/w with bridges etc), I
+would like to get some feedback as to the scope of it, I am planning to do
+it alone and have a time frame of about 2 months, I am very comfortable wit=
+h
+C/C++ and linux architecture.
 
-Uhmmmm.... that code fragment isn't in the patch you sent.  I got:
+Thanks a ton,
 
-> @@ -104,14 +152,17 @@ nfsd_svc(unsigned short port, int nrserv
->  		nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE);
->  		if (nfsd_serv == NULL)
->  			goto out;
-> -		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
-> -		if (error < 0)
-> -			goto failure;
-> -
-> +		if (!nfsd_portbits || NFSCTL_UDPISSET(nfsd_portbits)) {
-> +			error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
-> +			if (error < 0)
-> +				goto failure;
-> +		}
->  #ifdef CONFIG_NFSD_TCP
-> -		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
-> -		if (error < 0)
-> -			goto failure;
-> +		if (!nfsd_portbits || NFSCTL_TCPISSET(nfsd_portbits)) {
-> +			error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
-> +			if (error < 0)
-> +				goto failure;
-> +		}
->  #endif
->  		do_gettimeofday(&nfssvc_boot);		/* record boot time */
->  	} else
+Raghu
+Univ of California
+Los Angeles.
 
-I guess if you merged these two, you might get something usable..
+------=_Part_569_29534499.1129187071675
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-> > 
-> > That leaves 'proto' and 'proto'.  One should be 'tcp' or 'notcp', the
-> > other should be 'udp' or 'noudp'.  Which is which?  Udp comes first,
-> > but it isn't at all obvious from the interface..
-> Maybe being the author of these interfaces you have a better perspective
-> than I, but I could say the same thing about all the interfaces under
-> /proc/fs/nfsd... :-) So I do agree... its not that obvious, but I guess
-> I didn't think it needed to be.. Who else do you see, other than
-> rpc.nfsd, using this interface?
+Hi guys,<br>
+<br>
+I am a newbie at sourceforge and I need some help regarding a project
+topic I would like to do provide GAA-API/kerberos support into NFS(I
+obviously would not be able to provide all the features eg n/w with
+bridges etc), I would like to get some feedback as to the scope of it,
+I am planning to do it alone and have a time frame of about 2 months, I
+am very comfortable with C/C++ and linux architecture.<br>
+<br>
+Thanks a ton,<br>
+<br>
+Raghu<br>
+Univ of California<br>
+Los Angeles.<br>
+<br>
+<br>
 
-Ok, I guess I presented by difficulty with this rather badly.  The
-order does seem arbitrary and non-obvious, but you are right that
-other things are no-obvious too...
-The point I should have made was that it is non-extensible. 
-Suppose NFSv4.4 is defined to work over SCTP to even DCCP (which might
-be ideal for NFS), how would we specify those?
-
-> 
-> > I think you should write:
-> >  [+-]family proto addr port
-> > 
-> > and every field must be checked and used.
-> > So while we only support ipv4, the 'family' must by 'ipv4' or an error
-> > is returned.
-> > '+' adds an endpoint.  '-' removes it.
-> Understood... And I'll assume the default of both TCP and UDP
-> listening on port 2048 will stay the same when nothing
-> is specified...
-
-Yes... but I'm not sure of the rest of the rules about defaults...
-- should you need to explicitly remove the defaults if you don't want
-  them?
-- should there be an easy way to revert-to-defaults?  Maybe when the
-  last nfsd dies, all setting are forgotten (just like currently all
-  exports are removed).
-
-  
-> 
-> > 
-> > The old nfssvc syscall should add 'ipv4 udp * %port' and 'ipv4 tcp *
-> > %port' if they don't already exist.
-> Won't this break backwards compatibility with all the 2.4 kernels?
-> The beauty of seq files is that you can change the interface
-> and have no effect on kABI at all... which is really a good thing
-> in my world... So why do we even care about the old syscall
-> interface?
-
-I don't see why it would break backwards compat.  Isn't that exactly
-what the nfssvc syscall does?  You give it a port number, and it
-starts the number of threads with two sockets, a udp bound to ADDR_ANY
-and the given port, and a TCP bound the same way?  What is what I
-meant to say above.
+------=_Part_569_29534499.1129187071675--
 
 
-> 
-> > 
-> > An alternate interface, which would be quite appealing, would be to
-> > require the user-space program to create and bind a socket and then
-> > communicate it to the kernel, possibly by writing a file-descriptor
-> > number to a file in the nfsd filesystem.
-> > 'nfsd' would check it is an appropriate type of socket, take
-> > an extra reference, and use it.
-> > This would probably be best done *after* the nfsd threads were
-> > started, so there would need to be a way to start threads without
-> > them automatically opening sockets.  I'm not sure what the best
-> > interface for that would be... Maybe establishing sockets before the
-> > thread would be ok.
-> Maybe I'm missing something here.... but I'm not quite sure how passing
-> a fd to the kernel would help, other than (possibly) with error 
-> processing... The kernel will still need to know the port and proto so
-> it can register them with the  portmapper... plus permissions could
-> become an problem especially with things like selinux running around..
-> 
-
-I think the principle of "do as much as possible in user-space" is a
-good one. 
-   socket / bind / pmap_register 
-can all be done in user-space, so maybe they should be.
-You could possible even argue that 
-   listen / accept
-the be done in user-space, and so should be, but I'm not sure I want
-to push it that far.
-
-The nice thing about just passing down a filedescriptor for a socket
-is that it allows for any future additions of protocols.
-
-I don't see how permissions could be a problem, but then I know very
-little about selinux, so maybe there is something.  Is there something
-specific you foresee, or is it just general concern?
-
-NeilBrown
+-------------------------------------------------------
+This SF.Net email is sponsored by:
+Power Architecture Resource Center: Free content, downloads, discussions,
+and more. http://solutions.newsforge.com/ibmarch.tmpl
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
