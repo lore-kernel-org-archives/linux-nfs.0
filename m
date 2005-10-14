@@ -1,25 +1,25 @@
-From: =?ISO-2022-JP?B?GyRCRiNAJTQ0SVcbKEIg?= <itic@opt.gate01.com>
-Subject: =?ISO-2022-JP?B?GyRCTCQ+NUJ6OS05cCIoISE1Oz1RS11MdRsoQihUZWNobmlj?=
- =?ISO-2022-JP?B?YWwgVHJhbnNsYXRpb24p?=
-Date: Sat, 15 Oct 2005 00:12:04 +0900
-Message-ID: <20051014.1512030984@itic-opt.gate01.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS security
+Date: Fri, 14 Oct 2005 11:52:23 -0400
+Message-ID: <1129305143.8571.46.camel@lade.trondhjem.org>
+References: <f872993a0510130004p90cb2eal3dd17d58b892083d@mail.gmail.com>
+	 <1129207423.8578.3.camel@lade.trondhjem.org>
+	 <f872993a0510140741l1ac0147ep1c6fea89b737434c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EQREK-0000ko-A8
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:12:20 -0700
-Received: from pip2.gate01.com ([61.122.117.240] helo=mx.gate01.com)
+	id 1EQRrW-0002VV-Ke
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:52:50 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EQREE-0004Wu-In
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:12:20 -0700
-Received: from [221.255.117.254] (helo=HP)
-	by smtp32.isp.us-com.jp with smtp (Mail 4.41)
-	id 1EQRE5-0003ga-Vy
-	for nfs@lists.sourceforge.net; Sat, 15 Oct 2005 00:12:06 +0900
-To: nfs@lists.sourceforge.net
+	id 1EQRrV-0006Pi-Dr
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:52:50 -0700
+To: Raghu R <roverphoenix@gmail.com>
+In-Reply-To: <f872993a0510140741l1ac0147ep1c6fea89b737434c@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,37 +33,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-国際技術情報センター株式会社
-代表取締役 藤瀬幹夫
-TEL: 03-5914-1360  FAX: 03-5914-1361
-E-mail: mfujise@itic.co.jp
-URL: http://www.itic.co.jp/
-今後、当社からの宣伝メールを必要とされない方は、mfujise@itic.co.jp 宛にご連絡ください。
+fr den 14.10.2005 Klokka 07:41 (-0700) skreiv Raghu R:
+> Hi,
+> 
+> I am sorry I mistyped that I had meant GSS-API and not GAA-API, I
+> actually proposed to the professor today he says the scope of the
+> project is huge for a single person for a perid of abt 2 months, the
+> professor has suggested something simpler managable like a fix or
+> something tp add to security to NFS, can you suggest some?
 
+I'm not sure I understand you. We already have GSS-API support for Linux
+NFS on both client and server in linux-2.6.x. RPCSEC_GSS _is_ GSS-API
+for SunRPC based protocols.
 
-nfs@lists.sourceforge.net 様
+Cheers,
+  Trond
 
-拝啓/Dear Sir
-
-貴社ますますご清栄のこととお慶び申し上げます。
-
-弊社は、技術分野の翻訳を得意としております。翻訳を必要とされる際は、是非、弊社のホームページ、URL: http://www.itic.co.jp/ をお読みくださいましてご連絡くださいますようお願いいたします。優秀な米国技術者をネイティブ・チェッカーとして擁しております。
-
-お忙しい折、本メッセージをお読みくださいましてありがとうございました。
-
-We are highly skilled in technical translation. Whenever your circumstances require translating, please visit our Internet website, http://www.itic.co.jp/, and contact us.
-
-Thank you for taking the time to read this message.
-
-敬具/Best regards,
-
-Mikio Fujise, President
-International Technical Information Center Co., Ltd.
-#312, 2-6-11, Sakashita
-Itabashi-ku, Tokyo, Japan  174-0043
-TEL: 03-5914-1360  FAX: 03-5914-1361
-E-mail: mfujise@itic.co.jp
-URL: http://www.itic.co.jp/
 
 
 -------------------------------------------------------
