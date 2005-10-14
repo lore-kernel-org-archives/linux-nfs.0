@@ -1,24 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS security
-Date: Fri, 14 Oct 2005 11:56:54 -0400
-Message-ID: <20051014155654.GC26480@fieldses.org>
-References: <f872993a0510130004p90cb2eal3dd17d58b892083d@mail.gmail.com> <1129207423.8578.3.camel@lade.trondhjem.org> <f872993a0510140741l1ac0147ep1c6fea89b737434c@mail.gmail.com>
+From: James Yarbrough <jmy@sgi.com>
+Subject: Re: [PATCH kNFSd 001 of 4] fix setattr-on-symlink error return
+Date: Fri, 14 Oct 2005 11:41:40 -0700
+Message-ID: <434FFBE4.2C502E98@sgi.com>
+References: <20051014122041.11376.patches@notabene> <1051014022307.11542@cse.unsw.edu.au> <434FA4C4.6010806@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+Cc: NeilBrown <neilb@cse.unsw.edu.au>, Andrew Morton <akpm@osdl.org>,
 	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EQRvg-0002fV-RF
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:57:08 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EQRvb-00018U-HC
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:57:06 -0700
-To: Raghu R <roverphoenix@gmail.com>
-In-Reply-To: <f872993a0510140741l1ac0147ep1c6fea89b737434c@mail.gmail.com>
+	id 1EQUV5-0001SJ-C9
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 11:41:51 -0700
+Received: from omx3-ext.sgi.com ([192.48.171.20] helo=omx3.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EQUV4-0007EF-6J
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 11:41:51 -0700
+To: Peter Staubach <staubach@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +30,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Oct 14, 2005 at 07:41:26AM -0700, Raghu R wrote:
-> I am sorry I mistyped that I had meant GSS-API and not GAA-API, I actually
-> proposed to the professor today he says the scope of the project is huge for
-> a single person for a perid of abt 2 months,
+As I recall, the SpecFS tests exercise the NFS protocols directly, rather
+than through the filesystem interface provided by the client OS.
 
-Probably so.  And it's already been done, for the most part.
+Peter Staubach wrote:
+> 
+> Just out of curiosity, how does the testsuite even generate a chmod(2)
+> request on a symbolic link?  The chmod(2) system call semantics should
+> not allow this.
 
-> the professor has suggested something simpler managable like a fix or
-> something tp add to security to NFS, can you suggest some?
+-- 
+jmy@sgi.com
+650 933 3124
 
-A couple rpcsec_gss loose ends that need doing:
-
-	* Fix mountd to enable auth_unix mount requests for krb5
-	  mounts--needed by people doing rpcsec_gss over NFSv2/v3.
-	  See http://bugzilla.linux-nfs.org/show_bug.cgi?id=57
-	* Add 3DES, AES, etc. support.
-	* Perform experiments to measure the rpcsec_gss performance
-	  overhead.
-
-And there are probably plenty of others depending on interest.
-
-Make sure you let the list at nfsv4@linux-nfs.org know what you're
-doing.
-
---b.
+Let's get ta jigglin'!
 
 
 -------------------------------------------------------
