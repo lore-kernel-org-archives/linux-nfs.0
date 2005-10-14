@@ -1,24 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: nfsd dies quietly in anaconda loader
-Date: Fri, 14 Oct 2005 17:45:32 +1000
-Message-ID: <17231.25116.764430.223050@cse.unsw.edu.au>
-References: <17221.43999.796998.941914@cse.unsw.edu.au>
-	<BAY101-F3A29A71D505BC1D551AD5B2840@phx.gbl>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH kNFSd 001 of 4] fix setattr-on-symlink error return
+Date: Fri, 14 Oct 2005 08:29:56 -0400
+Message-ID: <434FA4C4.6010806@redhat.com>
+References: <20051014122041.11376.patches@notabene> <1051014022307.11542@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EQKGA-00004t-Kk
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 00:45:46 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1EQOhH-0002G4-Ug
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 05:30:03 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EQKG9-0007M0-Da
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 00:45:46 -0700
-To: "Vithal Shirodkar" <vithals@hotmail.com>
-In-Reply-To: message from Vithal Shirodkar on Friday October 7
+	id 1EQOhH-0007Jm-LP
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 05:30:03 -0700
+To: NeilBrown <neilb@cse.unsw.edu.au>
+In-Reply-To: <1051014022307.11542@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,19 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday October 7, vithals@hotmail.com wrote:
-> Strace came in handy again.  I found that mountd was trying to open a 
-> filehandle on /proc/fs/nfsd which failed.  So I did the following mounts and 
-> things worked magically.
-> mount nfsd /proc/fs/nfsd -t nfsd
+NeilBrown wrote:
 
-nfsd is supposed to work without this mounted, but I believe there are
-some broken version of nfs-utils floating around that don't....
+>This is a somewhat cosmetic fix to keep the SpecFS validation test
+>from complaining.
+>SpecFS want's to try chmod on symlinks, and ext3 and reiser (at least)
+>return ENOTSUPP.
+>Probably both sides are being silly, but it is easiest to simply make
+>it a non-issue and filter out chmod requests on symlinks at the nfsd level.
+>
 
-It certainly doesn't hurt to mount it, and it is probably a good idea.
-I'm glad this all got sorted out.
+Wouldn't it be better to fix the testsuite to not do this?  Doesn't the
+testsuite also fail when run against ext3 and/or reiser file systems?
 
-NeilBrown
+This is just overhead which will slow the NFS server a tiny bit.
+
+Just out of curiosity, how does the testsuite even generate a chmod(2)
+request on a symbolic link?  The chmod(2) system call semantics should
+not allow this.
+
+    Thanx...
+
+       ps
 
 
 -------------------------------------------------------
