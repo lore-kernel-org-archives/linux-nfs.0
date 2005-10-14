@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 002 of 4] Restore functionality to read from file in /proc/fs/nfsd/
-Date: Fri, 14 Oct 2005 12:23:08 +1000
-Message-ID: <1051014022308.11554@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 004 of 4] Fix some minor sign problems in nfsd/xdr
+Date: Fri, 14 Oct 2005 12:23:09 +1000
+Message-ID: <1051014022309.11579@cse.unsw.edu.au>
 References: <20051014122041.11376.patches@notabene>
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EQFE8-0006Rs-HD
-	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 19:23:20 -0700
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1EQFE6-0006Re-7E
+	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 19:23:18 -0700
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EQFE5-0006JR-0r
-	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 19:23:17 -0700
+	id 1EQFE4-0006Jg-Lo
+	for nfs@lists.sourceforge.net; Thu, 13 Oct 2005 19:23:18 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,48 +28,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Most files in the nfsd filesystems are transaction files.
-You write a request, and read a response.
-For some (e.g. 'threads') it makes sense to just be able to read
-and get the current value.
-This functionality did exist but was broken recently when someone
-modified nfsctl.c without going through the maintainer.
-This patch fixes the regression.
+There are a couple of tests which could possibly be confused by
+extremely large numbers appearing in 'xdr' packets.
+I think the closest to an exploit you could get would be writing
+random data from a free page into a file - i.e. leak data
+out of kernel space.
+
+I'm fairly sure they cannot be used for remote compromise.
+
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfsctl.c |   16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ ./fs/nfsd/nfs3xdr.c          |    3 ++-
+ ./include/linux/nfsd/xdr3.h  |    2 +-
+ ./include/linux/sunrpc/svc.h |    3 ++-
+ 3 files changed, 5 insertions(+), 3 deletions(-)
 
-diff ./fs/nfsd/nfsctl.c~current~ ./fs/nfsd/nfsctl.c
---- ./fs/nfsd/nfsctl.c~current~	2005-10-14 12:01:38.000000000 +1000
-+++ ./fs/nfsd/nfsctl.c	2005-10-14 12:02:35.000000000 +1000
-@@ -104,9 +104,23 @@ static ssize_t nfsctl_transaction_write(
- 	return rv;
+diff ./fs/nfsd/nfs3xdr.c~current~ ./fs/nfsd/nfs3xdr.c
+--- ./fs/nfsd/nfs3xdr.c~current~	2005-10-14 12:01:38.000000000 +1000
++++ ./fs/nfsd/nfs3xdr.c	2005-10-14 12:03:04.000000000 +1000
+@@ -366,7 +366,8 @@ nfs3svc_decode_writeargs(struct svc_rqst
+ 	len = args->len = ntohl(*p++);
+ 
+ 	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
+-	if (rqstp->rq_arg.len < len + hdr)
++	if (rqstp->rq_arg.len < hdr ||
++	    rqstp->rq_arg.len - hdr < len)
+ 		return 0;
+ 
+ 	args->vec[0].iov_base = (void*)p;
+
+diff ./include/linux/nfsd/xdr3.h~current~ ./include/linux/nfsd/xdr3.h
+--- ./include/linux/nfsd/xdr3.h~current~	2005-10-14 12:01:38.000000000 +1000
++++ ./include/linux/nfsd/xdr3.h	2005-10-14 12:03:04.000000000 +1000
+@@ -42,7 +42,7 @@ struct nfsd3_writeargs {
+ 	__u64			offset;
+ 	__u32			count;
+ 	int			stable;
+-	int			len;
++	__u32			len;
+ 	struct kvec		vec[RPCSVC_MAXPAGES];
+ 	int			vlen;
+ };
+
+diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
+--- ./include/linux/sunrpc/svc.h~current~	2005-10-14 12:01:38.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2005-10-14 12:03:04.000000000 +1000
+@@ -171,7 +171,8 @@ xdr_argsize_check(struct svc_rqst *rqstp
+ {
+ 	char *cp = (char *)p;
+ 	struct kvec *vec = &rqstp->rq_arg.head[0];
+-	return cp - (char*)vec->iov_base <= vec->iov_len;
++	return cp >= (char*)vec->iov_base
++		&& cp <= (char*)vec->iov_base + vec->iov_len;
  }
  
-+static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size_t size, loff_t *pos)
-+{
-+	if (! file->private_data) {
-+		/* An attempt to read a transaction file without writing
-+		 * causes a 0-byte write so that the file can return
-+		 * state information
-+		 */
-+		ssize_t rv = nfsctl_transaction_write(file, buf, 0, pos);
-+		if (rv < 0)
-+			return rv;
-+	}
-+	return simple_transaction_read(file, buf, size, pos);
-+}
-+
- static struct file_operations transaction_ops = {
- 	.write		= nfsctl_transaction_write,
--	.read		= simple_transaction_read,
-+	.read		= nfsctl_transaction_read,
- 	.release	= simple_transaction_release,
- };
- 
+ static inline int
 
 
 -------------------------------------------------------
