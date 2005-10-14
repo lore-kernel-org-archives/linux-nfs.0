@@ -1,26 +1,25 @@
-From: Raghu R <roverphoenix@gmail.com>
-Subject: Re: NFS security
-Date: Fri, 14 Oct 2005 07:41:26 -0700
-Message-ID: <f872993a0510140741l1ac0147ep1c6fea89b737434c@mail.gmail.com>
-References: <f872993a0510130004p90cb2eal3dd17d58b892083d@mail.gmail.com>
-	 <1129207423.8578.3.camel@lade.trondhjem.org>
+From: =?ISO-2022-JP?B?GyRCRiNAJTQ0SVcbKEIg?= <itic@opt.gate01.com>
+Subject: =?ISO-2022-JP?B?GyRCTCQ+NUJ6OS05cCIoISE1Oz1RS11MdRsoQihUZWNobmlj?=
+ =?ISO-2022-JP?B?YWwgVHJhbnNsYXRpb24p?=
+Date: Sat, 15 Oct 2005 00:12:04 +0900
+Message-ID: <20051014.1512030984@itic-opt.gate01.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_1685_8619503.1129300886164"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-2022-JP
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EQQkX-0007i0-Kq
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 07:41:33 -0700
-Received: from qproxy.gmail.com ([72.14.204.197])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EQQkX-0003r0-FV
-	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 07:41:33 -0700
-Received: by qproxy.gmail.com with SMTP id p32so333593qba
-        for <nfs@lists.sourceforge.net>; Fri, 14 Oct 2005 07:41:26 -0700 (PDT)
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1129207423.8578.3.camel@lade.trondhjem.org>
+	id 1EQREK-0000ko-A8
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:12:20 -0700
+Received: from pip2.gate01.com ([61.122.117.240] helo=mx.gate01.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EQREE-0004Wu-In
+	for nfs@lists.sourceforge.net; Fri, 14 Oct 2005 08:12:20 -0700
+Received: from [221.255.117.254] (helo=HP)
+	by smtp32.isp.us-com.jp with smtp (Mail 4.41)
+	id 1EQRE5-0003ga-Vy
+	for nfs@lists.sourceforge.net; Sat, 15 Oct 2005 00:12:06 +0900
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,86 +33,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_Part_1685_8619503.1129300886164
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-
-Hi,
-
-I am sorry I mistyped that I had meant GSS-API and not GAA-API, I actually
-proposed to the professor today he says the scope of the project is huge fo=
-r
-a single person for a perid of abt 2 months, the professor has suggested
-something simpler managable like a fix or something tp add to security to
-NFS, can you suggest some?
-
-Thanks.
-Raghu
-Univ of California
-Los Angeles, LA
-
-On 10/13/05, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->
-> to den 13.10.2005 Klokka 00:04 (-0700) skreiv Raghu R:
-> > Hi guys,
-> >
-> > I am a newbie at sourceforge and I need some help regarding a project
-> > topic I would like to do provide GAA-API/kerberos support into NFS(I
-> > obviously would not be able to provide all the features eg n/w with
-> > bridges etc), I would like to get some feedback as to the scope of it,
-> > I am planning to do it alone and have a time frame of about 2 months,
-> > I am very comfortable with C/C++ and linux architecture.
->
-> Since we already have GSS_API support, I assume that your project would
-> mainly be to add all the support for the EACL stuff?
-> Could you please outline how you propose to implement this? I'm not
-> aware of any GAA-API implementations for RPC or NFS.
->
-> Cheers,
-> Trond
->
->
-
-------=_Part_1685_8619503.1129300886164
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-
-Hi,<br>
-<br>
-I am sorry I mistyped that I had meant GSS-API and not GAA-API, I
-actually proposed to the professor today he says the scope of the
-project is huge for a single person for a perid of abt 2 months, the
-professor has suggested something simpler managable like a fix or
-something tp add to security to NFS, can you suggest some?<br>
-<br>
-Thanks.<br>
-Raghu<br>
-Univ of California<br>
-Los Angeles, LA<br><br><div><span class=3D"gmail_quote">On 10/13/05, <b cla=
-ss=3D"gmail_sendername">Trond Myklebust</b> &lt;<a href=3D"mailto:trond.myk=
-lebust@fys.uio.no">trond.myklebust@fys.uio.no</a>&gt; wrote:</span><blockqu=
-ote class=3D"gmail_quote" style=3D"border-left: 1px solid rgb(204, 204, 204=
-); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-
-to den 13.10.2005 Klokka 00:04 (-0700) skreiv Raghu R:<br>&gt; Hi guys,<br>=
-&gt;<br>&gt; I am a newbie at sourceforge and I need some help regarding a =
-project<br>&gt; topic I would like to do provide GAA-API/kerberos support i=
-nto NFS(I
-<br>&gt; obviously would not be able to provide all the features eg n/w wit=
-h<br>&gt; bridges etc), I would like to get some feedback as to the scope o=
-f it,<br>&gt; I am planning to do it alone and have a time frame of about 2=
- months,
-<br>&gt; I am very comfortable with C/C++ and linux architecture.<br><br>Si=
-nce we already have GSS_API support, I assume that your project would<br>ma=
-inly be to add all the support for the EACL stuff?<br>Could you please outl=
-ine how you propose to implement this? I'm not
-<br>aware of any GAA-API implementations for RPC or NFS.<br><br>Cheers,<br>=
-&nbsp;&nbsp;Trond<br><br></blockquote></div><br>
+国際技術情報センター株式会社
+代表取締役 藤瀬幹夫
+TEL: 03-5914-1360  FAX: 03-5914-1361
+E-mail: mfujise@itic.co.jp
+URL: http://www.itic.co.jp/
+今後、当社からの宣伝メールを必要とされない方は、mfujise@itic.co.jp 宛にご連絡ください。
 
 
-------=_Part_1685_8619503.1129300886164--
+nfs@lists.sourceforge.net 様
+
+拝啓/Dear Sir
+
+貴社ますますご清栄のこととお慶び申し上げます。
+
+弊社は、技術分野の翻訳を得意としております。翻訳を必要とされる際は、是非、弊社のホームページ、URL: http://www.itic.co.jp/ をお読みくださいましてご連絡くださいますようお願いいたします。優秀な米国技術者をネイティブ・チェッカーとして擁しております。
+
+お忙しい折、本メッセージをお読みくださいましてありがとうございました。
+
+We are highly skilled in technical translation. Whenever your circumstances require translating, please visit our Internet website, http://www.itic.co.jp/, and contact us.
+
+Thank you for taking the time to read this message.
+
+敬具/Best regards,
+
+Mikio Fujise, President
+International Technical Information Center Co., Ltd.
+#312, 2-6-11, Sakashita
+Itabashi-ku, Tokyo, Japan  174-0043
+TEL: 03-5914-1360  FAX: 03-5914-1361
+E-mail: mfujise@itic.co.jp
+URL: http://www.itic.co.jp/
 
 
 -------------------------------------------------------
