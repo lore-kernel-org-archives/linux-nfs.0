@@ -1,25 +1,23 @@
-From: support@lists.sourceforge.net
-Subject: Your new account password is approved
-Date: Mon, 17 Oct 2005 12:10:13 -0500
-Message-ID: <E1ERYV5-0006dG-5w@externalmx-1.sourceforge.net>
+From: "Lever, Charles" <Charles.Lever@netapp.com>
+Subject: historical question: nfs_rename()
+Date: Mon, 17 Oct 2005 12:12:14 -0700
+Message-ID: <044B81DE141D7443BCE91E8F44B3C1E288E56A@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0010_AB859A25.E1283AFE"
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ERYVE-0005EQ-6v
-	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 10:10:24 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ERYV8-0007Nk-2Z
-	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 10:10:20 -0700
-Received: from [140.242.26.81] (helo=lists.sourceforge.net)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1ERYV5-0006dG-5w
-	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 10:10:17 -0700
-To: nfs@lists.sourceforge.net
+	id 1ERaPU-0002ps-EM
+	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 12:12:36 -0700
+Received: from mx1.netapp.com ([216.240.18.38])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1ERaPS-0005Jb-VC
+	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 12:12:36 -0700
+Received: from svlexc02.hq.netapp.com (svlexc02.corp.netapp.com [10.57.157.136])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id j9HJCFI8011913
+	for <nfs@lists.sourceforge.net>; Mon, 17 Oct 2005 12:12:29 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,41 +31,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+a customer recently pointed out that the rename(2) system call does not
+allow replacing directories, even if they are empty.  RFC1813 at least
+suggests that the server and protocol do allow directory replacement, as
+long as the target is empty.
 
-------=_NextPart_000_0010_AB859A25.E1283AFE
-Content-Type: text/html;
-	charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
+the culprit appears to be this check in nfs_rename()
 
+        if (S_ISDIR(new_inode->i_mode))
+                goto out;
 
-<html> 
-<body> 
-<BR><STRONG>Dear user nfs, </STRONG><BR> 
-<BR>You have successfully updated the password of your Lists account.<BR> 
-<BR>If you did not authorize this change or if you need assistance with your account, please contact Lists customer service at: support@lists.sourceforge.net<BR> 
-<BR>Thank you for using Lists! 
-<BR>The Lists Support Team <BR> 
-<BR><BR><BR><BR><BR> 
-<BR>+++ Attachment: No Virus (Clean) 
-<BR>+++ Lists Antivirus - www.lists.sourceforge.net 
-</body> 
-</html> 
+which causes nfs_rename() to return -EBUSY if the target is a directory.
 
+is there a historical reason why the Linux NFS client does not allow
+directory replacement?  shouldn't the error code be -EISDIR for this
+case?
 
-
-------=_NextPart_000_0010_AB859A25.E1283AFE
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-Dangerous Attachment has been Removed.  The file "account-password.zip" h=
-as been removed because of a virus.  It was infected with the "W32/Doombo=
-t.B-mm" virus.  File quarantined as: "". http://www.fortinet.com/VirusEnc=
-yclopedia/search/encyclopediaSearch.do?method=3DquickSearchDirectly&virus=
-Name=3DW32%2FDoombot.B-mm
-------=_NextPart_000_0010_AB859A25.E1283AFE--
-
-
+        - Chuck Lever
+--
+corporate:     <cel at netapp dot com>
+personal:      <chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
