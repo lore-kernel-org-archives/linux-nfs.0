@@ -1,24 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: historical question: nfs_rename()
-Date: Tue, 18 Oct 2005 14:03:01 -0400
-Message-ID: <435538D5.7080202@redhat.com>
-References: <044B81DE141D7443BCE91E8F44B3C1E288E579@exsvl02.hq.netapp.com>
+Date: Tue, 18 Oct 2005 11:06:42 -0700
+Message-ID: <1129658802.12268.25.camel@lade.trondhjem.org>
+References: <044B81DE141D7443BCE91E8F44B3C1E288E56A@exsvl02.hq.netapp.com>
+	 <1129651829.8989.17.camel@lade.trondhjem.org> <4355296E.4020606@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+Content-Type: multipart/mixed; boundary="=-P8cG7IRQ/zP4yh6jxvPv"
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
 	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ERvns-0006kg-Lx
-	for nfs@lists.sourceforge.net; Tue, 18 Oct 2005 11:03:12 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1ERvrq-0006uv-7b
+	for nfs@lists.sourceforge.net; Tue, 18 Oct 2005 11:07:18 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1ERvnp-00037I-VS
-	for nfs@lists.sourceforge.net; Tue, 18 Oct 2005 11:03:12 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E288E579@exsvl02.hq.netapp.com>
+	id 1ERvra-0003wd-NK
+	for nfs@lists.sourceforge.net; Tue, 18 Oct 2005 11:07:18 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <4355296E.4020606@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +33,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles wrote:
 
->>Actually, this case should fail with EISDIR, as it does.  Mixing
->>directory and files in a rename(2) will fail with EISDIR or ENOTDIR.
->>
->>However, renaming one directory to another directory, when the target
->>directory is "empty", should not fail.
->>    
->>
->
->the specific case i'm whining about today is renaming a directory to an
->empty directory.  the desired semantic is that the empty directory will
->be replaced.  the existing semantic on the Linux NFS client is that
->rename(2) returns -EBUSY.
->
->as far as we can tell, the Solaris client works as desired.  the issue
->is a portability problem that arises because Linux's rename(2) doesn't
->work precisely the same way as Solaris'.
->  
->
-I think that this is actually a POSIX/SUS3 thing...
+--=-P8cG7IRQ/zP4yh6jxvPv
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-    Thanx...
+ty den 18.10.2005 klokka 12:57 (-0400) skreiv Peter Staubach:
+> However, renaming one directory to another directory, when the target
+> directory is "empty", should not fail.
 
-       ps
+Ah... I see now. OK, so when I rewrite the test case to the attached
+code then it does indeed succeed.
+
+The following patch should do the right thing then.
+
+Cheers,
+  Trond
+
+NFS: Fix rename of directory onto empty directory
+
+ If someone tries to rename a directory onto an empty directory, we
+ currently fail and return EBUSY.
+ This patch ensures that we try the rename if both source and target
+ are directories, and that we fail with a correct error of EISDIR if
+ the source is not a directory.
+
+ Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
+
+Index: linux-2.6/fs/nfs/dir.c
+===================================================================
+--- linux-2.6.orig/fs/nfs/dir.c
++++ linux-2.6/fs/nfs/dir.c
+@@ -1511,9 +1511,11 @@ static int nfs_rename(struct inode *old_
+ 	 */
+ 	if (!new_inode)
+ 		goto go_ahead;
+-	if (S_ISDIR(new_inode->i_mode))
+-		goto out;
+-	else if (atomic_read(&new_dentry->d_count) > 2) {
++	if (S_ISDIR(new_inode->i_mode)) {
++		error = -EISDIR;
++		if (!S_ISDIR(old_inode->i_mode))
++			goto out;
++	} else if (atomic_read(&new_dentry->d_count) > 2) {
+ 		int err;
+ 		/* copy the target dentry's name */
+ 		dentry = d_alloc(new_dentry->d_parent,
+
+
+--=-P8cG7IRQ/zP4yh6jxvPv
+Content-Disposition: inline; filename=main.c
+Content-Type: text/x-csrc; name=main.c; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define DIRNAME1 "gnurr"
+#define DIRNAME2 "gnarg"
+
+void die(char *errmsg)
+{
+	perror(errmsg);
+	exit(1);
+}
+
+int main()
+{
+	int fd;
+	int err;
+
+	err = mkdir(DIRNAME1, 0700);
+	if (err != 0)
+		die("Creation of directory 1 failed");
+	err = mkdir(DIRNAME2, 0770);
+	if (err != 0)
+		die("Creation of directory 2 failed");
+	err = rename(DIRNAME1, DIRNAME2);
+	if (err != 0)
+		die("Rename failed");
+}
+
+--=-P8cG7IRQ/zP4yh6jxvPv--
+
 
 
 -------------------------------------------------------
