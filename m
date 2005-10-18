@@ -1,23 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: historical question: nfs_rename()
-Date: Mon, 17 Oct 2005 15:18:56 -0400
-Message-ID: <4353F920.4070408@redhat.com>
-References: <044B81DE141D7443BCE91E8F44B3C1E288E56A@exsvl02.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+From: Sven Geggus <sven@geggus.net>
+Subject: Authenticated NFS mounts
+Date: Tue, 18 Oct 2005 11:00:39 +0000 (UTC)
+Message-ID: <dj2kkn$4hr$1@benzin.geggus.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ERaVs-00039r-Bc
-	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 12:19:12 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1ERpD7-0003aJ-Cm
+	for nfs@lists.sourceforge.net; Tue, 18 Oct 2005 04:00:49 -0700
+Received: from dolly.gnuher.de ([212.227.64.154])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1ERaVq-0006K3-V4
-	for nfs@lists.sourceforge.net; Mon, 17 Oct 2005 12:19:12 -0700
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E288E56A@exsvl02.hq.netapp.com>
+	id 1ERpD6-0003qe-6X
+	for nfs@lists.sourceforge.net; Tue, 18 Oct 2005 04:00:49 -0700
+Received: from benzin.geggus.net ([2001:8d8:81:672::1])
+	by dolly.gnuher.de with esmtpsa TLS-1.0:RSA_AES_256_CBC_SHA:32
+	(Exim 4.50 id 1ERpCy-00021f-QF)
+	for <nfs@lists.sourceforge.net>; Tue, 18 Oct 2005 13:00:41 +0200
+Received: from news by benzin.geggus.net with local
+	(Exim 4.50 id 1ERpCx-0001HA-HX)
+	for <nfs@lists.sourceforge.net>; Tue, 18 Oct 2005 13:00:39 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,34 +33,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Lever, Charles wrote:
+Hello NFS-list,
 
->a customer recently pointed out that the rename(2) system call does not
->allow replacing directories, even if they are empty.  RFC1813 at least
->suggests that the server and protocol do allow directory replacement, as
->long as the target is empty.
->
->the culprit appears to be this check in nfs_rename()
->
->        if (S_ISDIR(new_inode->i_mode))
->                goto out;
->
->which causes nfs_rename() to return -EBUSY if the target is a directory.
->
->is there a historical reason why the Linux NFS client does not allow
->directory replacement?  shouldn't the error code be -EISDIR for this
->case?
->
+Section A5 of the Linux NFS FAQ (Can I use Kerberos authentication with NFS
+on Linux?) is somewhat confusing as it the Answer is not clearly yes or no.
 
-Assuming that the client can handle this situation by ensuring that all
-of its caches stay updated, then it seems to me that the client should
-just package up the rename and send it off to the server.  It should be
-up to the server to decide whether it can handle directory renames of
-this type or not.
+So whats the current Answer to this simple Question:
 
-    Thanx...
+Is ist possible to use RPCSEC GSSAPI in conjunction with NFSv3 on Linux
+Clients and Servers?
 
-       ps
+I managed to use it in conjunction with NFSv4, but NFSv4 does not seem to be
+stable enough for production use. I had machine lockups even on a
+test-installation I have been using :(
+
+Sven
+
+-- 
+Software patents are the software project equivalent of land mines: Each
+design decision carries a risk of stepping on a patent, which can destroy
+your project. (Richard M. Stallman)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
 
 
 -------------------------------------------------------
