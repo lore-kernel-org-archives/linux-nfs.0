@@ -1,29 +1,11 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: Accelerating 'mountd'
-Date: Wed, 19 Oct 2005 11:36:57 -0700
-Message-ID: <20051019183657.GX27890@polop.usc.edu>
-References: <dj5r3h$rqm$1@osprey.mgras.de>
+From: Christian Robottom Reis <kiko@async.com.br>
+Subject: Potential skew in /proc/net/rpc/nfsd
+Date: Wed, 19 Oct 2005 22:16:30 -0200
+Message-ID: <20051020001630.GL30673@anthem.async.com.br>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="35kA0bP2/aOd7joH"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ESIoD-0003Vd-4o
-	for nfs@lists.sourceforge.net; Wed, 19 Oct 2005 11:37:05 -0700
-Received: from polop.usc.edu ([128.125.10.9])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ESIoC-0003RL-11
-	for nfs@lists.sourceforge.net; Wed, 19 Oct 2005 11:37:05 -0700
-Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
-	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id j9JIav1e017692
-	for <nfs@lists.sourceforge.net>; Wed, 19 Oct 2005 11:36:57 -0700
-Received: (from garrick@localhost)
-	by polop.usc.edu (8.12.11/8.12.11/Submit) id j9JIav75017690
-	for nfs@lists.sourceforge.net; Wed, 19 Oct 2005 11:36:57 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <dj5r3h$rqm$1@osprey.mgras.de>
+To: NFS@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,36 +20,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---35kA0bP2/aOd7joH
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+(Linux anthem 2.6.10-5-686-smp #1 SMP (Ubuntu Hoary))
 
-On Wed, Oct 19, 2005 at 04:09:21PM +0000, Martin Spott alleged:
-> 2.) Are there typical environments that degrade the performance of the
->     'mountd' where I should have a closer look at ?
+Hello there,
 
-I'm far from an NFS expert, but I've always seen slow mounts come from
-slow or missing DNS resolution.  Simply adding the clients to the
-server's /etc/hosts and running nscd can often make a huge difference.
+    I've been studying the nfsd statistics file on our server, a
+dual-hyperthreaded-Xeon box (which appears to 2.6 as having 4 CPUs) and
+I've noticed an oddits in the thread statistics. Here's the output,
+edited to display clearly what I mean:
 
---=20
-Garrick Staples, Linux/HPCC Administrator
-University of Southern California
+            th
+             8
+       2747936
+         59079.566
+         14835.486
+          5952.540
+             0.000
+          3293.329
+          2232.819
+          1900.259
+          1999.936
+             0.000
+          6549.737
 
---35kA0bP2/aOd7joH
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+Do the values of zero in the 4th and 9th percentage there make any
+sense, or are they an artifact of how the statistics are calculated
+(noting that I have 8 threads being used)? I've shifted the number of
+threads to 64 this morning, and this afternoon I now see:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.3 (GNU/Linux)
+            th
+            64
+       2748083
+         59543.017
+         14912.958
+          5959.034
+             0.854
+          3293.654
+          2233.022
+          1900.395
+          1999.936
+             0.000
+          6549.737
 
-iD8DBQFDVpJJ0SBUxJbm9HMRAhjDAJ9znJF9k1DgF66vO7R2LtN6YQsVdwCdFoai
-uBqCWMUTzKRerK5eSrO3tfI=
-=+qHo
------END PGP SIGNATURE-----
+The 0.854 there in the 4th percentage suggests to me that the accounting
+is now functioning as it should; I might be mistaken, since it's the
+first time I look at these numbers, but that's what it suggests to me.
 
---35kA0bP2/aOd7joH--
+Take care,
+--
+Christian Robottom Reis | http://async.com.br/~kiko/ | [+55 16] 3376 0125
 
 
 -------------------------------------------------------
