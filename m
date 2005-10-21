@@ -1,24 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: petter.knutsen@cgi.no
 Subject: Re: File lock with multiple clients
-Date: Thu, 20 Oct 2005 18:20:13 -0700
-Message-ID: <1129857613.10026.1.camel@lade.trondhjem.org>
-References: <E1ESjPp-0004BW-Qv@mail.sourceforge.net>
-	 <17240.14767.472971.724098@cse.unsw.edu.au>
+Date: Fri, 21 Oct 2005 12:25:07 +0200
+Message-ID: <E1ESu5K-0007a8-1Z@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: petter.knutsen@cgi.no, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ESla0-0008Or-D6
-	for nfs@lists.sourceforge.net; Thu, 20 Oct 2005 18:20:20 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ESlZy-0001Hg-Qk
-	for nfs@lists.sourceforge.net; Thu, 20 Oct 2005 18:20:20 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17240.14767.472971.724098@cse.unsw.edu.au>
+	id 1ESu5L-0006yx-SR
+	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 03:25:15 -0700
+Received: from mail09.webhuset.no ([81.27.32.116] helo=mx.webhuset.no)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1ESu5K-0007a8-1Z
+	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 03:25:15 -0700
+To: nfs@lists.sourceforge.net, neilb@suse.de
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,20 +27,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 21.10.2005 klokka 10:43 (+1000) skreiv Neil Brown:
+> Check the man page:  "man flock":
+>=20
+> Use fcntl or lockf (which is wrapper for fcntl) if you want to lock
+> over NFS.
 
-> NOTES
->        flock(2) does not lock files over NFS.  Use fcntl(2) instead: that does
->        work  over  NFS,  given  a  sufficiently  recent version of Linux and a
->        server which supports locking.
-> 
+As Trond said, flock() seems to work by emulating fcntl(), but regardless of
+whether I'm using fcntl() directly or flock() with emulation, should my
+scenario  with two clients work, where one client locks and the other client
+honouring the lock?
 
-Note that this is not entirely accurate any more. Recent kernels will
-emulate flock() over NFS by using fcntl() locks.
+As I said, it works between processes on the same client, but not between
+processes on different clients.
 
-Cheers,
-  Trond
+I would appreciate if someone could tell me if this is possible or not, so I
+can either abandon NFS and look for alternatives or, if it should work, go
+back and look for flaws in my setup. :-)
 
+--
+Petter=
 
 
 -------------------------------------------------------
