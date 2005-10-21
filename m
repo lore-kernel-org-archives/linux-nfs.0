@@ -1,22 +1,23 @@
-From: Simon Kelley <srk@sanger.ac.uk>
-Subject: Re: NFS port use.
-Date: Fri, 21 Oct 2005 17:15:33 +0100
-Message-ID: <43591425.1050608@sanger.ac.uk>
-References: <4357C75C.8050805@sanger.ac.uk> <1129828136.9882.11.camel@lade.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: Issue with parallel writes over NFS
+Date: Fri, 21 Oct 2005 09:29:05 -0700
+Message-ID: <1129912146.9014.24.camel@lade.trondhjem.org>
+References: <D821697F08061F4FBB069FA1AAAA92370C4649@hoexmb7.conoco.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ESzYr-0006Ui-Ex
-	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 09:16:05 -0700
-Received: from smtp.sanger.ac.uk ([193.62.203.215])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ESzYk-0007ZH-1K
-	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 09:16:02 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1129828136.9882.11.camel@lade.trondhjem.org>
+	id 1ESzm0-0007D5-8C
+	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 09:29:40 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ESzly-0003WV-Tn
+	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 09:29:40 -0700
+To: "Weathers, Norman R." <Norman.R.Weathers@conocophillips.com>
+In-Reply-To: <D821697F08061F4FBB069FA1AAAA92370C4649@hoexmb7.conoco.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,39 +31,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> to den 20.10.2005 klokka 17:35 (+0100) skreiv Simon Kelley:
-> 
-> 
->>logger: tcp        0      0 bc-4-3-09.internal.:988 ecs2:sunrpc 
->>    TIME_WAIT  -
-> 
-> 
-> This is probably the "mount" program probing the portmapper for the
-> supported NFS versions.
+fr den 21.10.2005 klokka 11:08 (-0500) skreiv Weathers, Norman R.:
+> Thanks for the pointer.  We think that the application may be
+> able to do this.  Just for reference of mind, when you are saying
+> page align block writes, are you meaning basically the page size
+> of the vm (in this case, Opteron boxes running 64 bit FC3, which I
+> am hoping is still 4k)?
 
-That looks likely: I checked the source, and it uses  bindresvport(). It 
-looks like that can pick any port < 1024.
-> 
-> 
->>At this point I need help: my reasoning is wrong somewhere and I can't 
->>get any furher. Can anybody clarify things and tell me how to keep the 
->>NFS client subsystem away from port 988?
-> 
-> 
-> Why can't you just ensure that start your daemon before you start NFS?
-
-Possibly, but the dependencies are rather complex: it would be a case of 
-"create a new start up order with daemon after NFS", not just "move 
-daemon before NFS."
-
-Thanks for you help.
-
+I mean that we align the writes to the VM pages so that we write out
+complete pages (much like we have always done with mmap()).
 
 Cheers,
-
-Simon
-
+  Trond
 
 
 
