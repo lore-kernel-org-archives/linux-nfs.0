@@ -1,23 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: File lock with multiple clients
-Date: Fri, 21 Oct 2005 09:32:30 -0700
-Message-ID: <1129912351.9014.29.camel@lade.trondhjem.org>
-References: <cmu-lmtpd-31394-1129908191-0@mail-imap5.uio.no>
+From: Jun Zhang <nugulus@yahoo.com>
+Subject: How to find what to make "df -jk" hang (redhat)
+Date: Fri, 21 Oct 2005 15:02:05 -0700 (PDT)
+Message-ID: <20051021220205.410.qmail@web52402.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative; boundary="0-1964372892-1129932125=:98215"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ESzpK-0007P7-Nd
-	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 09:33:06 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ESzpH-0005NO-WC
-	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 09:33:06 -0700
-To: petter.knutsen@cgi.no
-In-Reply-To: <cmu-lmtpd-31394-1129908191-0@mail-imap5.uio.no>
+	id 1ET4xv-0005C1-KW
+	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 15:02:19 -0700
+Received: from web52402.mail.yahoo.com ([206.190.48.165])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1ET4xt-0004oe-9h
+	for nfs@lists.sourceforge.net; Fri, 21 Oct 2005 15:02:19 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,30 +27,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 21.10.2005 klokka 17:22 (+0200) skreiv petter.knutsen@cgi.no:
-> > Note that this is not entirely accurate any more. Recent kernels will
-> > emulate flock() over NFS by using fcntl() locks.
-> 
-> I've gotten fcntl() to work, but it doesn't seem that flock() works between
-> clients. Do you know which kernel version implemented the emulation? Are we
-> talking about the latest 2.6.14 rc, or should a 2.6.x be sufficient? Also,
-> should this emulation be enough to make flock() work between clients?
+--0-1964372892-1129932125=:98215
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-I think I went into 2.6.12, but a quick hunt through the ChangeLog file
-should tell you.
+=20
+Many a time when I type df -k, the prompt will not come back. Went to ano=
+ther session, I found the df process is not killable. I then checked each=
+ piece in /etc/fstab, each piece is fine (mounted and accessible).
+Can somebosy give a clue?
+=20
+Jun
 
-The emulation should make flock() work between clients by converting
-flock() calls into fcntl() calls on the wire, but this means that you
-have to be very wary of using flock on the server: Linux servers (unlike
-most others) will not notice conflicts between an fcntl() lock (which I
-remind you is what comes in from the clients) and a flock() lock.
+	=09
+---------------------------------
+ Yahoo! FareChase - Search multiple travel sites in one click. =20
+--0-1964372892-1129932125=:98215
+Content-Type: text/html; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-The best option is therefore still to convert your application to use
-fcntl() locks if possible.
+<DIV>&nbsp;</DIV>
+<DIV>Many a time when I type df -k, the prompt will not come back. Went t=
+o another session, I found the df process is not killable. I then checked=
+ each piece in /etc/fstab, each piece is fine (mounted and accessible).</=
+DIV>
+<DIV>Can somebosy give a clue?</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>Jun</DIV><p>
+		<hr size=3D1> <a href=3D"http://us.lrd.yahoo.com/_ylc=3DX3oDMTFqODRtdXQ=
+4BF9TAzMyOTc1MDIEX3MDOTY2ODgxNjkEcG9zAzEEc2VjA21haWwtZm9vdGVyBHNsawNmYw--=
+/SIG=3D110oav78o/**http%3a//farechase.yahoo.com/">Yahoo! FareChase - Sear=
+ch multiple travel sites in one click.</a>
 
-Cheers,
-  Trond
+=20
 
+=20
+--0-1964372892-1129932125=:98215--
 
 
 -------------------------------------------------------
