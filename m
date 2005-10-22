@@ -1,22 +1,22 @@
 From: Jun Zhang <nugulus@yahoo.com>
 Subject: Re: How to find what to make "df -jk" hang (redhat)
-Date: Sat, 22 Oct 2005 08:45:28 -0700 (PDT)
-Message-ID: <20051022154528.24385.qmail@web52411.mail.yahoo.com>
-References: <Pine.LNX.4.63.0510221218370.2552@donald.themaw.net>
+Date: Sat, 22 Oct 2005 08:52:10 -0700 (PDT)
+Message-ID: <20051022155210.76957.qmail@web52402.mail.yahoo.com>
+References: <435A456D.8080601@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ETLYt-0004IW-IY
-	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 08:45:35 -0700
-Received: from web52411.mail.yahoo.com ([206.190.48.174])
+	id 1ETLfN-0004dv-3K
+	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 08:52:17 -0700
+Received: from web52402.mail.yahoo.com ([206.190.48.165])
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1ETLYs-0007P1-77
-	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 08:45:35 -0700
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: <Pine.LNX.4.63.0510221218370.2552@donald.themaw.net>
+	id 1ETLfM-00028C-Tn
+	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 08:52:17 -0700
+To: Steve Dickson <steved@redhat.com>
+In-Reply-To: <435A456D.8080601@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,53 +30,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Ian,
-   What do I look for? Those two file have quite the
-same contents. Ain't what listed there are mounted
-items?
+Steve,
+   The problem is that I don't what is trying to be
+mounted, from what server. All automount map listed
+directories are also accessible. As of this writing,
+three 'df -k' processes are still running, and refuse
+to be killed.
+   I've never used ethereal, and it seems not
+available on this redhat 7.1. I'll download and try
+that.
 
 Jun Zhang
 
---- Ian Kent <raven@themaw.net> wrote:
+--- Steve Dickson <steved@redhat.com> wrote:
 
-> On Fri, 21 Oct 2005, Jun Zhang wrote:
+> Jun Zhang wrote:
 >=20
 > > =20
 > > Many a time when I type df -k, the prompt will not
-> come back. Went to another session, I found the df
-> process is not killable. I then checked each piece
-> in /etc/fstab, each piece is fine (mounted and
-> accessible).
+> come back. Went to=20
+> > another session, I found the df process is not
+> killable. I then=20
+> > checked each piece in /etc/fstab, each piece is
+> fine (mounted and=20
+> > accessible).
 > > Can somebosy give a clue?
 >=20
-> Not fstab.
+> Is autofs in the picture? which kernel and nfs-utils
+> versions are you=20
+> running also
+> who is the server? Is there any errors being logged
+> on either the client=20
+> or server?
+> Finally, a ethereal trace (i.e. tethereal -w
+> /tmp/data.cap host=20
+> <server>) at the
+> time of the hang might also help...
 >=20
-> Try working out what is blocked by looking at
-> /etc/mtab or /proc/mounts.
+> steved.
 >=20
-> Ian
->=20
->=20
->=20
->
--------------------------------------------------------
-> This SF.Net email is sponsored by:
-> Power Architecture Resource Center: Free content,
-> downloads, discussions,
-> and more.
-> http://solutions.newsforge.com/ibmarch.tmpl
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
 >=20
 
 
 
-=09
 	=09
 __________________________________=20
-Yahoo! Mail - PC Magazine Editors' Choice 2005=20
-http://mail.yahoo.com
+Yahoo! FareChase: Search multiple travel sites in one click.
+http://farechase.yahoo.com
 
 
 -------------------------------------------------------
