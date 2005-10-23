@@ -1,23 +1,23 @@
-From: raven@themaw.net
+From: Ian Kent <raven@themaw.net>
 Subject: Re: How to find what to make "df -jk" hang (redhat)
-Date: Sat, 22 Oct 2005 23:55:42 +0800 (WST)
-Message-ID: <Pine.LNX.4.63.0510222354090.17429@donald.themaw.net>
-References: <20051022154528.24385.qmail@web52411.mail.yahoo.com>
+Date: Sun, 23 Oct 2005 12:18:51 +0800 (WST)
+Message-ID: <Pine.LNX.4.63.0510231205130.19701@donald.themaw.net>
+References: <20051022155210.76957.qmail@web52402.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net
+Cc: Steve Dickson <steved@redhat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ETM17-0005Xl-K3
-	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 09:14:45 -0700
+	id 1ETXKo-0001M5-Lo
+	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 21:19:50 -0700
 Received: from wombat.indigo.net.au ([202.0.185.19])
 	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.44)
-	id 1ETM16-0006Eq-SH
-	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 09:14:45 -0700
+	id 1ETXKl-0004ha-VB
+	for nfs@lists.sourceforge.net; Sat, 22 Oct 2005 21:19:50 -0700
 To: Jun Zhang <nugulus@yahoo.com>
-In-Reply-To: <20051022154528.24385.qmail@web52411.mail.yahoo.com>
+In-Reply-To: <20051022155210.76957.qmail@web52402.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,58 +33,32 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Sat, 22 Oct 2005, Jun Zhang wrote:
 
-> Ian,
->    What do I look for? Those two file have quite the
-> same contents. Ain't what listed there are mounted
-> items?
+> Steve,
+>    The problem is that I don't what is trying to be
+> mounted, from what server. All automount map listed
+> directories are also accessible. As of this writing,
+> three 'df -k' processes are still running, and refuse
+> to be killed.
 
-But something is hanging so you should be able to work out which one it is 
-by identifing how far df got.
+So you are using autofs.
 
-> 
-> Jun Zhang
-> 
-> --- Ian Kent <raven@themaw.net> wrote:
-> 
-> > On Fri, 21 Oct 2005, Jun Zhang wrote:
-> > 
-> > >  
-> > > Many a time when I type df -k, the prompt will not
-> > come back. Went to another session, I found the df
-> > process is not killable. I then checked each piece
-> > in /etc/fstab, each piece is fine (mounted and
-> > accessible).
-> > > Can somebosy give a clue?
-> > 
-> > Not fstab.
-> > 
-> > Try working out what is blocked by looking at
-> > /etc/mtab or /proc/mounts.
-> > 
-> > Ian
-> > 
-> > 
-> > 
-> >
-> -------------------------------------------------------
-> > This SF.Net email is sponsored by:
-> > Power Architecture Resource Center: Free content,
-> > downloads, discussions,
-> > and more.
-> > http://solutions.newsforge.com/ibmarch.tmpl
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> > 
-> 
-> 
-> 
-> 	
-> 		
-> __________________________________ 
-> Yahoo! Mail - PC Magazine Editors' Choice 2005 
-> http://mail.yahoo.com
-> 
+That's a different story altogether.
+If autofs is hanging on trying to mount something you should see the mount 
+command it has issued in a ps listing. You might be able to see the 
+mountpoint directory there.
+
+Care to tell the version of autofs?
+The kernel version?
+What are your maps?
+
+Maybe get a debug log of autofs by using the -d option added to your 
+master map entries? Don't forget to ensure that syslog priority debug is 
+being logged. Use man syslog.conf to check this.
+
+You probably should be asking this on the autofs list.
+http://linux.kernel.org/mailman/listinfo/autofs
+
+Ian
 
 
 
