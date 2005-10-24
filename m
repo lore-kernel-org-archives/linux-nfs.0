@@ -1,27 +1,36 @@
-From: Brian Kerr <kerrboy@gmail.com>
-Subject: Re: nfs stale directory listings
-Date: Mon, 24 Oct 2005 14:27:21 -0400
-Message-ID: <b83c9e30510241127l40f382carb7032acd37e8fd9@mail.gmail.com>
-References: <b83c9e30510131040v82885d2r407f5a12be93e30f@mail.gmail.com>
-	 <1129225982.16119.1386.camel@rcsr01.cadence.com>
-	 <b83c9e30510131120k117a8ac6q4a2d3a5ec7042cfd@mail.gmail.com>
-	 <1129228138.16114.1394.camel@rcsr01.cadence.com>
-	 <b83c9e30510131151w65a86078r668bd18c6a7b3bf7@mail.gmail.com>
+From: Usha Ketineni <ketineni@us.ibm.com>
+Subject: [NFS][PATCH] Fix to start nfs services through rsh
+Date: Mon, 24 Oct 2005 11:49:37 -0700
+Message-ID: <1130179778.4887.33.camel@ibm-rf40cz9kb83.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EU72n-0002uE-PR
-	for nfs@lists.sourceforge.net; Mon, 24 Oct 2005 11:27:37 -0700
-Received: from xproxy.gmail.com ([66.249.82.194])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EU72m-0001KL-IZ
-	for nfs@lists.sourceforge.net; Mon, 24 Oct 2005 11:27:37 -0700
-Received: by xproxy.gmail.com with SMTP id s10so508386wxc
-        for <nfs@lists.sourceforge.net>; Mon, 24 Oct 2005 11:27:21 -0700 (PDT)
+	id 1EU7PJ-00040h-OY
+	for nfs@lists.sourceforge.net; Mon, 24 Oct 2005 11:50:53 -0700
+Received: from over.co.us.ibm.com ([32.97.110.157] helo=bldfb.esmtp.ibm.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EU7PJ-0007uO-J2
+	for nfs@lists.sourceforge.net; Mon, 24 Oct 2005 11:50:53 -0700
+Received: from e36.co.us.ibm.com (e36.boulder.ibm.com [9.17.249.46])
+	by bldfb.esmtp.ibm.com (8.12.11/8.12.11) with ESMTP id j9OIo011019711
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <nfs@lists.sourceforge.net>; Mon, 24 Oct 2005 14:50:00 -0400
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e36.co.us.ibm.com (8.12.11/8.12.11) with ESMTP id j9OIneAb006750
+	for <nfs@lists.sourceforge.net>; Mon, 24 Oct 2005 14:49:40 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by westrelay02.boulder.ibm.com (8.12.10/NCO/VERS6.7) with ESMTP id j9OInedH447476
+	for <nfs@lists.sourceforge.net>; Mon, 24 Oct 2005 12:49:40 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11/8.13.3) with ESMTP id j9OIndXM026448
+	for <nfs@lists.sourceforge.net>; Mon, 24 Oct 2005 12:49:40 -0600
+Received: from sapho.beaverton.ibm.com (sapho.beaverton.ibm.com [9.47.22.85])
+	by d03av02.boulder.ibm.com (8.12.11/8.12.11) with ESMTP id j9OIndYv026390
+	for <nfs@lists.sourceforge.net>; Mon, 24 Oct 2005 12:49:39 -0600
 To: nfs@lists.sourceforge.net
-In-Reply-To: <b83c9e30510131151w65a86078r668bd18c6a7b3bf7@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,23 +44,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 10/13/05, Brian Kerr <kerrboy@gmail.com> wrote:
-> On 10/13/05, Chris Croswhite <csc@cadence.com> wrote:
-> > do you mind mounting with sync option?  This will force write to disk
-> > (in your case NFS disk).  This is what I did to make file appear
-> > consistantly across the modest computer farm I work with.  e.g.
-> > /etc/init.d/autofs- localoptions "sync".  Too, is there a reason you
-> > chose soft mounts?
->
-> I will try using the sync option - there is a performance hit
-> associated with using that option though which may or may not be a
-> problem.
 
-The performance hit from forcing the sync option is rather dramatic,
-10MByte/sec down to 1-2MByte/sec with sync enabled.
+When issuing "rsh hostname /sbin/service nfs start"
+rsh gives the error message "Starting NFS mountd: svc_tcp.c - cannot
+getsockname or listen: Invalid argument [FAILED]"
 
-I doubt enabling the sync option will be a possibility with this huge
-performance hit.
+When mountd is invoked by rshd, file descriptor 0 is a socket, hence
+getsockname in rpc_init() succeeds so, rpc_init() tries to listen on
+that socket in svc_tcp_create(). The socket is a connected socket, but
+this code is assuming the socket came from inetd (or xinetd) and listen
+& accept can be called to establish a connection.
+
+When mountd is invoked from the command line or sshd, file descriptor 0
+is not a socket.
+
+Here is a fix for starting the nfs services through rsh which checks
+whether 0 is not a connected socket and if it is, sets socket to
+RPC_ANYSOCK so, svc_tcp_create() will create a new socket. 
+
+This patched code assumes that any udp socket, or a tcp socket that is
+not connected came from inetd and can be passed to svc_udp_create() or
+svc_tcp_create().
+
+Signed-off-by: Usha Ketineni <uketinen@us.ibm.com>
+
+--- nfs-utils-1.0.7.orig/support/nfs/rpcmisc.c	2005-10-24 17:19:07.000000000 -0700
++++ nfs-utils-1.0.7/support/nfs/rpcmisc.c	2005-10-24 18:48:23.000000000 -0700
+@@ -53,10 +53,17 @@ rpc_init(char *name, int prog, int vers,
+ 	if (getsockname(0, (struct sockaddr *) &saddr, &asize) == 0
+ 	    && saddr.sin_family == AF_INET) {
+ 		int ssize = sizeof (int);
+-		_rpcfdtype = 0;
++		int tmp_rpcfdtype = 0;
+ 		if (getsockopt(0, SOL_SOCKET, SO_TYPE,
+ 				(char *)&_rpcfdtype, &ssize) == -1)
+ 			xlog(L_FATAL, "getsockopt failed: %s", strerror(errno));
++		if (_rpcfdtype != SOCK_STREAM || listen(0,5) != -1) {
++			_rpcpmstart = 1;
++			_rpcfdtype = tmp_rpcfdtype;
++		} else {
++			sock = RPC_ANYSOCK;
++			pmap_unset(prog, vers);
++		}
+ 		_rpcpmstart = 1;
+ 	} else {
+ 		pmap_unset(prog, vers);
+
+
 
 
 -------------------------------------------------------
