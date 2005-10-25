@@ -1,22 +1,23 @@
-From: "Samuela Flenniken" <fle@dreamtime.net>
-Subject: Re: Ernest's Raw story
-Date: Mon, 24 Oct 2005 23:05:44 -0500
-Message-ID: <003901c5d919$5eee1c00$3400a8c0@peritonea>
+From: Rejaine Monteiro <rejaine@bhz.jamef.com.br>
+Subject: nfsserver hangs randomly
+Date: Tue, 25 Oct 2005 10:25:17 -0200
+Message-ID: <1130243117.21685.14.camel@acesup2.bhz.jamef>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0036_01C5D8EF.76181400"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EUG4d-00038A-Fy
-	for nfs@lists.sourceforge.net; Mon, 24 Oct 2005 21:06:07 -0700
-Received: from [58.232.21.37] (helo=dreamtime.net)
+	id 1EUNrQ-0000xK-Hp
+	for nfs@lists.sourceforge.net; Tue, 25 Oct 2005 05:25:00 -0700
+Received: from jamef.com.br ([200.243.222.66] helo=mail.jamef.com.br)
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EUG4b-000330-FM
-	for nfs@lists.sourceforge.net; Mon, 24 Oct 2005 21:06:07 -0700
-To: "Mehetabel Epp" <nfs@lists.sourceforge.net>
-From: "{%NAME_FROM}" <{@MAIL_FROM}.sourceforge.net>
-To: "{%NAME_TO}" <{@MAIL_TO}.sourceforge.net>
+	id 1EUNrO-0001OF-SG
+	for nfs@lists.sourceforge.net; Tue, 25 Oct 2005 05:25:00 -0700
+Received: from acesup2.bhz.jamef ([172.22.10.30])
+          (envelope-sender <rejaine@bhz.jamef.com.br>)
+          by mail.bhz.jamef (qmail-ldap-1.03) with SMTP
+          for <nfs@lists.sourceforge.net>; 25 Oct 2005 12:24:55 -0000
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,55 +31,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Hi, 
 
-------=_NextPart_000_0036_01C5D8EF.76181400
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+My nfsserver is stable, but sometimes (at least 1 or time per week) the
+service just hangs (ONLY the service nfsserver) 
 
-I am a 39 year old male and in good health and fairly fit, but realized a =
-while back that sometimes I had a hard time maintaining an erection.
-I am single, but I do date a lot and I believe many times the problem was due =
-to anxiety and pressure to perform with someone new. 
-I bought Vjaggra online http://www.godeih.com and decided to give it a go.
-WOW WOW WOW it kicked in after about 20-30 minutes and that was just perfect, =
-as I knew where the evening was going.
-She is a beautiful woman with a great body and I did not think I needed it =
-with her, but let me just say After the 5th time
-I am not kidding ;) she said: Please no more  lol unbelievable.
-It was like being a teenager over again. Amazing!
+When this happens, "rcnfsserver stop/start/restart/reload" or "exportfs
+-a" don't work (just hangs), can't do a "cat /proc/fs/nfs/exports" or
+"cat /etc/exports" (hangs to) and cpu load is very high (but all others
+services on server is OK) and all clients hangs up (home's users is a
+nfs mounted folder...)
 
-------=_NextPart_000_0036_01C5D8EF.76181400
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+My /var/log/messages reports only this:
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dus-ascii">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>I am a 39 year old male and in good health and fairly fit, but realized =
-a while back that sometimes I had a hard time maintaining an erection.</DIV>
-<DIV>I am single, but I do date a lot and I believe many times the problem =
-was due to anxiety and pressure to perform with someone new. </DIV>
-<DIV>&nbsp;</DIV>
-<DIV>I bought Vjaggra online <A href=3D"http://www.godeih.com">http://www.=
-godeih.com</A> and decided to give it a go.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>WOW WOW WOW it kicked in after about 20-30 minutes and that was just =
-perfect, as I knew where the evening was going.</DIV>
-<DIV>She is a beautiful woman with a great body and I did not think I needed =
-it with her, but let me just say <STRONG>After the 5th time</STRONG></DIV>
-<DIV>&nbsp; I am not kidding ;) she said: <STRONG>Please no more </STRONG> =
-lol unbelievable.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>It was like being a teenager over again. Amazing!</DIV></BODY></HTML>
+saobkp rpc.statd[1152]: Can't callback saobkp (100021,4), giving up.
 
-------=_NextPart_000_0036_01C5D8EF.76181400--
+ps: saobkp is the nfsserver 
+
+The last resource is a hard boot (power off) !!!
+
+My configuration:
+
+#Server Suse 9.0
+#Linux saobkp 2.4.21-273-smp4G #1 SMP i686 i686 i386 GNU/Linux
+#nfs-utils-1.0.6-114
+
+# /etc/exports
+
+/home              *(insecure,sync,rw)
+/cdrom             *(insecure,sync,ro)
+
+# /etc/hosts
+
+127.0.0.1       localhost
+# special IPv6 addresses
+::1             localhost ipv6-localhost ipv6-loopback
+fe00::0         ipv6-localnet
+ff00::0         ipv6-mcastprefix
+ff02::1         ipv6-allnodes
+ff02::2         ipv6-allrouters
+ff02::3         ipv6-allhosts
+172.22.50.6     saobkp.sao.jamef        saobkp
+
+# eth0 = 172.22.50.1
+
+# host saobkp
+saobkp.sao.jamef has address 172.22.50.6 
+
+# /etc/sysconfig/nfs
+
+USE_KERNEL_NFSD_NUMBER="10"
+STATD_HOSTNAME="saobkp"
+
+# CLIENTS CONFIGURATION uses autofs (automount)
+
+# /etc/auto.master
+
+/server/u /etc/auto.u
+
+# /etc/auto.u 
+
+*       -fstype=nfs     nfs:/home/u/&
+
+# And "host nfs"
+nfs.sao.jamef has address 172.22.50.6
+
+What is wrong?
+
+Rejaine da Silveira Monteiro
 
 
 
