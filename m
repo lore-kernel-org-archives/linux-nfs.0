@@ -1,24 +1,23 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: Bad  nsec conversion  in svc_udp_recvfrom()
-Date: Wed, 26 Oct 2005 01:50:00 -0700
-Message-ID: <20051026015000.609cd153.akpm@osdl.org>
-References: <435F3FFC.6020303@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Patrick McHardy <kaber@trash.net>
+From: Martin Spott <Martin.Spott@mgras.net>
+Subject: Re: Accelerating 'mountd'
+Date: Wed, 26 Oct 2005 10:46:22 +0000 (UTC)
+Message-ID: <djnmpt$138e$1@osprey.mgras.de>
+References: <dj5r3h$rqm$1@osprey.mgras.de>
+Reply-To: Martin.Spott@mgras.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EUgzS-0001DS-Cz
-	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 01:50:34 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1EUgzR-0000M1-6h
-	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 01:50:34 -0700
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <435F3FFC.6020303@RedHat.com>
+	id 1EUinq-0005u8-V1
+	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 03:46:42 -0700
+Received: from quickstep.mgras.net ([213.146.115.59] helo=foehn.mgras.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EUinq-0000Xz-EN
+	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 03:46:43 -0700
+Received: from osprey.mgras.de (osprey.mgras.de [192.168.48.3])
+	by foehn.mgras.de (8.13.0/8.13.0) with ESMTP id j9QAkMhV001526
+	for <nfs@lists.sourceforge.net>; Wed, 26 Oct 2005 12:46:23 +0200 (CEST)
+Received: (from news@localhost) by osprey.mgras.de (AIX5.1/8.11.6p2/8.11.0) id j9QAkMg28772 for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 12:46:22 +0200
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,44 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Steve Dickson <SteveD@redhat.com> wrote:
->
-> In patch-2.6.14-rc5 there is the following:
-> @@ -584,13 +583,16 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
->          /* possibly an icmp error */
->          dprintk("svc: recvfrom returned error %d\n", -err);
->      }
-> -   if (skb->stamp.tv_sec == 0) {
-> -       skb->stamp.tv_sec = xtime.tv_sec;
-> -       skb->stamp.tv_usec = xtime.tv_nsec / NSEC_PER_USEC;
-> +   if (skb->tstamp.off_sec == 0) {
-> +       struct timeval tv;
-> +
-> +       tv.tv_sec = xtime.tv_sec;
-> +       tv.tv_usec = xtime.tv_nsec * 1000;
-> +       skb_set_timestamp(skb, &tv);
->          /* Don't enable netstamp, sunrpc doesn't
->             need that much accuracy */
->      }
-> -   svsk->sk_sk->sk_stamp = skb->stamp;
-> +   skb_get_timestamp(skb, &svsk->sk_sk->sk_stamp);
->      set_bit(SK_DATA, &svsk->sk_flags); /* there may be more data... */
-> 
->      /*
-> Shouldn't tv.tv_usec = xtime.tv_nsec * 1000
-> be tv.tv_usec = xtime.tv_nsec / 1000 or possible
-> tv.tv_usec = xtime.tv_nsec / NSEC_PER_USEC ?
-> 
-> The was fixed by a previous patch
-> (see http://lkml.org/lkml/2005/8/1/251)
-> but now it seems to be broken again...
-> 
+Martin Spott wrote:
 
-Yes, that's screwed up - well spotted.
+> In principle this is a stable setup but it comes to a bottleneck, when
+> twenty diskless client intend to mount their shares almost at the same
+> time. Therefore the server is supposed to handle about 200 mount
+> requests within ten seconds ....  but when I look at my server I
+> realize that at best only two requests are being handled per second.
 
-Patrick, please be more careful about these things.
+Actually I had to realize that I've been fooled. A co-worker, although
+having all NFS clients entered in /etc/hosts was claiming to face the
+same problem - but this actually was not the case.
+Now after entering all clients in /etc/hosts my server happily serves
+20 mount requests per second - or even more.
 
-I'll fix it up.
+Sorry for the noise,
+	Martin.
+-- 
+ Unix _IS_ user friendly - it's just selective about who its friends are !
+--------------------------------------------------------------------------
 
 
 -------------------------------------------------------
