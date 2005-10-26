@@ -1,21 +1,31 @@
-From: Nick I <clusterbuilder@gmail.com>
-Subject: Ask the Cluster Expert
-Date: Tue, 25 Oct 2005 11:32:15 -0600
-Message-ID: <e073f9120510251032v128f11f8ld30484b45b0fec0@mail.gmail.com>
+From: "Charles Duffy" <ccd@mailcall.com.au>
+Subject: Data coherency trouble with multiple clients, on 2.6.14-rc5
+Date: Wed, 26 Oct 2005 16:01:26 +1000
+Message-ID: <ef97ar3j.yzmpka2thm8d@a1g2zg0c>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_42404_10901797.1130261535312"
+Content-Type: text/plain; charset="UTF-8"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EUSes-0007dB-G0
-	for nfs@lists.sourceforge.net; Tue, 25 Oct 2005 10:32:22 -0700
-Received: from xproxy.gmail.com ([66.249.82.203])
+	id 1EUeSI-0002oT-H9
+	for nfs@lists.sourceforge.net; Tue, 25 Oct 2005 23:08:10 -0700
+Received: from mailadsl.gw.pacific.net.au ([202.7.91.241] helo=newadsl.mailcall.com.au)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EUSer-0001gm-1p
-	for nfs@lists.sourceforge.net; Tue, 25 Oct 2005 10:32:22 -0700
-Received: by xproxy.gmail.com with SMTP id t9so71164wxc
-        for <nfs@lists.sourceforge.net>; Tue, 25 Oct 2005 10:32:15 -0700 (PDT)
+	id 1EUeSF-0004R5-PY
+	for nfs@lists.sourceforge.net; Tue, 25 Oct 2005 23:08:10 -0700
+Received: from localhost (newadsl.mailcall.com.au [127.0.0.1])
+	by newadsl.mailcall.com.au (Postfix) with ESMTP id 6A2C329797
+	for <nfs@lists.sourceforge.net>; Wed, 26 Oct 2005 16:07:55 +1000 (EST)
+Received: from newadsl.mailcall.com.au ([127.0.0.1])
+ by localhost (newadsl.mailcall.com.au [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 07954-01 for <nfs@lists.sourceforge.net>;
+ Wed, 26 Oct 2005 16:07:54 +1000 (EST)
+Received: from adm3.mailcall.com.au (adm3.mailcall.com.au [172.17.0.110])
+	by newadsl.mailcall.com.au (Postfix) with ESMTP id 3DDDF2976E
+	for <nfs@lists.sourceforge.net>; Wed, 26 Oct 2005 16:07:54 +1000 (EST)
+Received: from [127.0.0.1] (cabbage.mailcall.com.au [172.17.16.3])
+	by adm3.mailcall.com.au (Postfix) with ESMTP id 3A0D141CA07
+	for <nfs@lists.sourceforge.net>; Wed, 26 Oct 2005 16:07:54 +1000 (EST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,97 +40,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_Part_42404_10901797.1130261535312
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Hi all,
 
- Hi.
+I'm hoping someone can shed some light on this problem I'm having.
 
-Thanks to the response from many in the community I have added sections
-about diskless clusters and information on 32-bit and 64-bit processors at
-the site I help run,
-www.ClusterBuilder.org.<http://www.clusterbuilder.org/>I also added a
-section called Ask the Cluster Expert (
-http://www.clusterbuilder.org/pages/ask-the-expert.php) for people to submi=
-t
-questions they have about cluster and grid computing. I post the questions
-at an FAQ page (http://www.clusterbuilder.org/pages/ask-the-expert/faq.php)
-and then research the answer as well as allow those knowledgeable in the
-community to submit a response to the question. I want to build a valuable
-knowledgebase of high performance computing information.
+I have 2 NFS client machines (CentOS 4, kernel 2.6.14-rc5+latest 'NFS_ALL'=
+ patch, nfsutils 1.0.6) who each mount the same export from an NFS server (=
+WBEL3, kernel 2.4.21-20, nfsutils 1.0.6).
 
-I need you to share your knowledge by adding to the question responses and
-also submitting questions/answers to common problems you've experienced in
-the past and are experiencing now.
+These client machines are supposed to run an in-house database application=
+ - multiple processes on different clients often have the same datafile op=
+en simultaneously (via NFS).
 
-A sample question could be about file sysems that run on clusters.
+Previously, we had these client machines running 2.2.21 kernels. The old (=
+pre-CTO) behaviour would see writes from any of the clients becoming immed=
+iately 'visible' in any of the others. This is no longer the case, even wi=
+th 'nocto' specified as a mount option.
+
+Currently, if a process on client1 has the file open while it is written t=
+o by another process (on client2), the changes made to the file are never r=
+eflected in the data available to the process on client1 unless:
+
+a) client1's NFS filesystem is unmounted and re-mounted
+b) The file is 'touched' on the server or on client2 after both processes h=
+ave closed the file
+c) The process on client1 writes to the file (note 'touching' the file on c=
+lient1 has no effect, either while or after the process has the file open)=
+.
+
+It doesn't matter if both processes subsequently close the file and exit, t=
+hen re-open the file from scratch - the discrepancy remains until either (=
+a), (b) or (c) occurs. Client1 and client2 are identical systems, and the p=
+roblem works both ways. In the event of (c), the previous write becomes vi=
+sible to client1, but the write by client1 is not visible to client2.
+
+'stat' run on the datafile from either client always gives the same output=
+.
+
+I've also tried adding O_SYNC to the flags in the call to 'open()' in the a=
+pplication itself. Makes no difference.=C2=A0 fsync()ing after every write=
+ similarly makes no difference to the problem.
+
+This problem appears similar to that which the linux-2.6.14-01-fix_attrcac=
+he patch was posted in response to, but it can't be reproduced with the pr=
+ocedure outlined in that post.
+
+The client mount options are: noac,nocto,sync,hard,intr,rw,nfsvers=3D3
+The server exports flags are: (rw,no_root_squash,sync,no_wdelay,insecure)
+
+Various combinations of the above mount options make no difference.
+I've also tried with a 2.6.14-rc5 server, and the problem persists.
 
 Thanks,
-Nick
-
-------=_Part_42404_10901797.1130261535312
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
 
 
 
-Hi.
-<p style=3D"margin-bottom: 0in; text-decoration: none;">Thanks to the
-response from many in the community I have added sections about
-diskless clusters and information on 32-bit and 64-bit processors at
-the site I help run, <a href=3D"http://www.clusterbuilder.org/">www.Cluster=
-Builder.org.</a>
-I also added a section called Ask the Cluster Expert (<a href=3D"http://www=
-.clusterbuilder.org/pages/ask-the-expert.php">http://www.clusterbuilder.org=
-/pages/ask-the-expert.php</a>) for people
-to submit questions they have about cluster and grid computing.  I
-post the questions at an FAQ page
-(<a href=3D"http://www.clusterbuilder.org/pages/ask-the-expert/faq.php">htt=
-p://www.clusterbuilder.org/pages/ask-the-expert/faq.php</a>)
-and then research the answer as well as allow those knowledgeable in
-the community to submit a response to the question.  I want to build
-a valuable knowledgebase of high performance computing information.=20
-</p>
+---
+Charles Duffy
+Systems Administrator
+Mail Call Couriers
 
 
 
-
-
-
-<p style=3D"margin-bottom: 0in; text-decoration: none;">I need you to
-share your knowledge by adding to the question responses and also
-submitting questions/answers to common problems you've experienced in
-the past and are experiencing now.=20
-</p>
-
-
-
-
-<p style=3D"margin-bottom: 0in; text-decoration: none;"> A sample question =
-could be about file sysems that run on clusters.<br>
- </p>
-
-
-
-
-
-
-<br>
-
-
-
-
-Thanks,<br>
-
-
-
-
-
-Nick
-
-------=_Part_42404_10901797.1130261535312--
 
 
 -------------------------------------------------------
