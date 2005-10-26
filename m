@@ -1,22 +1,24 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: Data coherency trouble with multiple clients, on2.6.14-rc5
-Date: Wed, 26 Oct 2005 08:27:57 -0700
-Message-ID: <044B81DE141D7443BCE91E8F44B3C1E288E5A5@exsvl02.hq.netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: Data coherency trouble with multiple clients,
+	on2.6.14-rc5
+Date: Wed, 26 Oct 2005 12:50:50 -0400
+Message-ID: <1130345451.8852.7.camel@lade.trondhjem.org>
+References: <044B81DE141D7443BCE91E8F44B3C1E288E5A5@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: Charles Duffy <ccd@mailcall.com.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EUnCA-0001M2-LB
-	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 08:28:06 -0700
-Received: from mx1.netapp.com ([216.240.18.38])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EUnCA-0005OL-7h
-	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 08:28:06 -0700
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	"Charles Duffy" <ccd@mailcall.com.au>
+	id 1EUoUo-0005Uh-NI
+	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 09:51:26 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EUoUm-0006GD-9q
+	for nfs@lists.sourceforge.net; Wed, 26 Oct 2005 09:51:26 -0700
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E288E5A5@exsvl02.hq.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,20 +32,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > The client mount options are: =
-noac,nocto,sync,hard,intr,rw,nfsvers=3D3
-> > The server exports flags are:=20
-> (rw,no_root_squash,sync,no_wdelay,insecure)
-> >=20
-> > Various combinations of the above mount options make no difference.
-> > I've also tried with a 2.6.14-rc5 server, and the problem persists.
->=20
-> It sounds like you are really looking for the O_DIRECT (i.e. uncached)
-> file I/O mode.
+on den 26.10.2005 klokka 08:27 (-0700) skreiv Lever, Charles:
 
-i agree that O_DIRECT is the right solution.  however, even with "noac"
-i would expect mr. duffy's workload to behave correctly most of the
-time.  sounds like he is able to make it fail very easily.
+> i agree that O_DIRECT is the right solution.  however, even with "noac"
+> i would expect mr. duffy's workload to behave correctly most of the
+> time.  sounds like he is able to make it fail very easily.
+
+Why would you expect that?
+
+"noac" does not turn off data caching, nor does it change the policy
+that the client will not invalidate the data cache while it is holding
+the file open for write.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
