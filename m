@@ -1,32 +1,29 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Re: regarding nfs configuration
-Date: Thu, 27 Oct 2005 14:35:54 +0200
-Message-ID: <200510271435.54673.vincent.roqueta@ext.bull.net>
-References: <951c25610510270333j62173c46q2228447338177af0@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Data coherency
+	trouble	with	multiple	clients,	on2.6.14-rc5
+Date: Thu, 27 Oct 2005 08:53:13 -0400
+Message-ID: <1130417594.14036.20.camel@lade.trondhjem.org>
+References: <044B81DE141D7443BCE91E8F44B3C1E288E5A5@exsvl02.hq.netapp.com>
+	 <1130345451.8852.7.camel@lade.trondhjem.org> <435FCECF.2090800@redhat.com>
+	 <1130353693.8859.21.camel@lade.trondhjem.org> <435FDEA9.5060706@redhat.com>
+	 <1130360742.8859.56.camel@lade.trondhjem.org> <435FF3B1.5030200@redhat.com>
+	 <1130363854.8956.23.camel@lade.trondhjem.org> <4360C739.5010403@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain
+Cc: "Lever, Charles" <Charles.Lever@netapp.com>,
+	Charles Duffy <ccd@mailcall.com.au>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EV6wV-00060q-GO
-	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 05:33:15 -0700
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EV6wT-00065N-OP
-	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 05:33:15 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id F1F3619DF06
-	for <nfs@lists.sourceforge.net>; Thu, 27 Oct 2005 14:32:25 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 00478-09 for <nfs@lists.sourceforge.net>;
- Thu, 27 Oct 2005 14:32:24 +0200 (CEST)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 468B819DF05
-	for <nfs@lists.sourceforge.net>; Thu, 27 Oct 2005 14:32:24 +0200 (CEST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <951c25610510270333j62173c46q2228447338177af0@mail.gmail.com>
+	id 1EV7GJ-0006oc-HV
+	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 05:53:43 -0700
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EV7GH-0003n2-AP
+	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 05:53:43 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <4360C739.5010403@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,27 +37,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Jeudi 27 Octobre 2005 12:33, Rajesh kumar a =E9crit=A0:
-> Respected .............
->
-> I am using redhat 9 OS
-> i have completed the nfs configuration at server side. while mounting
-> from the client side i am facing the follwing error.
-> mount: RPC: Remote system error - Connection refused
+to den 27.10.2005 klokka 08:25 (-0400) skreiv Peter Staubach:
+> >See my recent proposal for NFSv4 "byte range delegations" at the IETF
+> >RFC website. If people want NFS to have full posix cache semantics, then
+> >we can certainly add that capability. ;-)
+> >
+> 
+> I'll have to take a closer look.  Is this a performance thing over the
+> normal whole file delegations?
 
-Could you tel me results of=20
-(server side)
-exportfs -v=20
-mount=20
-lsmod (if nfs or nfsd are modularized)
-kernel version (uname -a)
+No. It is dealing with caching in an environment where you may have
+possibly multiple readers and writers to the same file. In such an
+environment, the file delegation model cannot function at all.
 
-(Client side)
-mount=20
-options you are passing to mount
+Basically the proposal adds support for safe write-behind and read
+caching by allowing the client to set up a lease on ranges of cached
+data. The server is given the ability to notify the client whenever it
+needs to write back the dirty data and/or clear its read cache.
+See
+http://www.ietf.org/internet-drafts/draft-myklebust-nfsv4-byte-range-delegations-00.txt
 
+Cheers,
+  Trond
 
-Vincent
 
 
 -------------------------------------------------------
