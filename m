@@ -1,22 +1,23 @@
-From: Calum Mackay <calum.mackay@sun.com>
-Subject: Re: Data coherency trouble	with	multiple	clients,	on2.6.14-rc5
-Date: Thu, 27 Oct 2005 15:25:42 +0100
-Message-ID: <4360E366.90200@sun.com>
-References: <044B81DE141D7443BCE91E8F44B3C1E288E5A5@exsvl02.hq.netapp.com> <1130345451.8852.7.camel@lade.trondhjem.org> <435FCECF.2090800@redhat.com> <1130353693.8859.21.camel@lade.trondhjem.org> <435FDEA9.5060706@redhat.com> <1130360742.8859.56.camel@lade.trondhjem.org> <435FF3B1.5030200@redhat.com> <1130363854.8956.23.camel@lade.trondhjem.org>
+From: Gary Richardson <garich@ptd.net>
+Subject: nfs server/clients hang after upgrade to 2.6.11-1.1180axp-smp
+Date: Thu, 27 Oct 2005 10:36:55 -0400
+Message-ID: <4360E607.8070205@ptd.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EV8hZ-0002VM-O5
-	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 07:25:57 -0700
-Received: from brmea-mail-4.sun.com ([192.18.98.36])
+	id 1EV8t5-00032l-EP
+	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 07:37:51 -0700
+Received: from smtpd.ha-net.ptd.net ([207.44.96.84])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EV8hT-0004i8-MZ
-	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 07:25:57 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1130363854.8956.23.camel@lade.trondhjem.org>
+	id 1EV8t1-0007mO-9M
+	for nfs@lists.sourceforge.net; Thu, 27 Oct 2005 07:37:48 -0700
+Received: from 24.238.44.7.res-cmts.tv13.ptd.net (HELO [24.238.44.7]) ([24.238.44.7])
+          (envelope-sender <garich@ptd.net>)
+          by smtpd.ha-net.ptd.net (qmail-ldap-1.03) with SMTP
+          for <nfs@lists.sourceforge.net>; 27 Oct 2005 14:36:59 -0000
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,21 +31,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
->> Actually NFSv4 does have an attribute that the client can use, doesn't it?
->> Something like change_attr or some such?
-> 
-> The NFSv4 change attribute may be returned atomically for some
-> operations (mainly those that modify a directory, such as CREATE,
-> OPEN,...).
-> Unfortunately it is not returned atomically for the case of the WRITE
-> operation.
+after upgrading my machine alpha to alphacore nfs
+the nfsserver is hanging after another client attempts
+to access the server.  After trying all sort so both
+server and client configurations I finally enabled
+debugging.
 
-I'm imagine that's for performance reasons? Do we have any experience as 
-to what sort of difference this makes, in practice?
+after enabling rpc and nfs debug the server screen fills:
 
-cheers,
-calum.
+Want update, refage = xxx, age = xxx
+
+What is the significance of the error message?
+
+-- 
+Gary Richardson
+garich@ptd.net
 
 
 -------------------------------------------------------
