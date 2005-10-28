@@ -1,23 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: CAP_DAC_OVERRIDE on nfs
-Date: Fri, 28 Oct 2005 14:22:34 -0400
-Message-ID: <1130523754.28718.13.camel@lade.trondhjem.org>
-References: <20051028180633.GB6852@blackhole.websupport.sk>
+From: email builder <emailbuilder88@yahoo.com>
+Subject: Re: OT: RAID perf doldrums: advice/recommendations?
+Date: Fri, 28 Oct 2005 14:58:07 -0700 (PDT)
+Message-ID: <20051028215807.77283.qmail@web51915.mail.yahoo.com>
+References: <17249.40023.950260.948987@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EVYsP-0000GS-HO
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 11:22:53 -0700
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EVYsN-000572-Sq
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 11:22:53 -0700
-To: stanojr@blackhole.websupport.sk
-In-Reply-To: <20051028180633.GB6852@blackhole.websupport.sk>
+	id 1EVcEp-0001VH-7h
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 14:58:15 -0700
+Received: from web51915.mail.yahoo.com ([206.190.48.78])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EVcEo-0002cw-2u
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 14:58:15 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <17249.40023.950260.948987@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +29,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-fr den 28.10.2005 klokka 20:06 (+0200) skreiv
-stanojr@blackhole.websupport.sk:
-> Hello,
-> 
-> When process with CAP_DAC_OVERRIDE capability on nfs client tried
-> to access file or directory on nfs mount where it does not have acces, it got access denied.
-> On local fs it work as expected. (CAP_DAC_OVERRIDE bypass filesystem access permission on process
-> with uid!=0)
-> I am using 2.6.13.4 kernel on client and server and nfs mount is exported with no_root_squash. 
-> 
-> This is feature or bug ?
+> were
+> > able to buy some time by moving our (ext3) journal off of the same
+> device,
+> > fiddle with a couple NFS settings (nodiratime,noatime), but it is sti=
+ll
+> > woefully slow.
+>=20
+> mounting the ext3 partition with 'data=3Djournal' can help NFS service,
+> especially with the journal on a separate device.
 
-It is expected behaviour. Capabilities are not supported by the NFS
-protocol.
+OK, we must have missed this one in the noise.  I just added it to the mo=
+unt
+where all the NFS server's exports are (ext3 defaults,data=3Djournal).  E=
+ven
+rebooted, but don't see evidence that it took (cat /proc/mounts just show=
+s
+ext3 rw but nothing about the journaling mode, should it?).  Where can I
+verify what mode it is in?
 
-Cheers,
-  Trond
+The other thing that came as a strong recommendation to us was to put
+"no_acl" on all of our NFS exports, but on our Fedora system (with up to =
+date
+nfs-utils), "no_acl" is treated as an unrecognized keyword.  Is there any
+support for no_acl under redhat at all???
 
+
+=09
+	=09
+__________________________________=20
+Yahoo! Mail - PC Magazine Editors' Choice 2005=20
+http://mail.yahoo.com
 
 
 -------------------------------------------------------
