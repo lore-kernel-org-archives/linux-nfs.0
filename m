@@ -1,21 +1,21 @@
 From: email builder <emailbuilder88@yahoo.com>
 Subject: Re: OT: RAID perf doldrums: advice/recommendations?
-Date: Fri, 28 Oct 2005 15:09:38 -0700 (PDT)
-Message-ID: <20051028220938.76022.qmail@web51901.mail.yahoo.com>
-References: <4361E6BD.2060701@stams.strath.ac.uk>
+Date: Fri, 28 Oct 2005 15:22:38 -0700 (PDT)
+Message-ID: <20051028222238.92185.qmail@web51914.mail.yahoo.com>
+References: <OFD83698F6.DC37B847-ON862570A8.004CF42A-862570A8.004F38EC@kcp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EVcPz-0002DC-1S
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 15:09:47 -0700
-Received: from web51901.mail.yahoo.com ([206.190.48.64])
+	id 1EVccX-0002i8-TR
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 15:22:45 -0700
+Received: from web51914.mail.yahoo.com ([206.190.48.77])
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EVcPx-0005Jq-JK
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 15:09:46 -0700
+	id 1EVccW-0000v7-IC
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 15:22:45 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <4361E6BD.2060701@stams.strath.ac.uk>
+In-Reply-To: <OFD83698F6.DC37B847-ON862570A8.004CF42A-862570A8.004F38EC@kcp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,30 +29,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> We noticed similar issues which we never tracked down, even after help=20
-> from this list.  There is a huge bug report at Redhat entitled:
->=20
-> "Extremely high iowait with 3Ware array and moderate disk activity"
->=20
-> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D121434
->=20
-> which may be of some help, but it never quite gets to the bottom
-> of things.  3ware cards/drivers seem to the common factor in most if
 
-Yes, we've combed this thread, much to our shagrin, none of the tips work=
-ed
-for us.  I suppose I should have said that one of our other possibilities=
- is
-to go with FreeBSD to see if this issue is the source of the problem.  Wh=
-at
-can you say after reading this thread that's been open for WELL over a ye=
-ar?=20
-RedHat loses a lot of points on this one.
+> If you stay with RAID5, get something with a battery backed write cache=
+.=20
+> That will make a huge difference in RAID5 performance.
 
-> not all of the "me too's", but of course everyone with a 3ware problem=20
-> would find this bug report...
+Really?  I was under the impression that this was just a safety precautio=
+n or
+similar... it is called a "backup" after all.  :)  How exactly does it
+increase performance? =20
 
-
+(And, yes, I have seen this mentioned in many places, so this would be a
+criteria for our next purchase. :) )
 
 
 =09
