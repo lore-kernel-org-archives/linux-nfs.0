@@ -1,19 +1,19 @@
 From: Mail Delivery Subsystem <MAILER-DAEMON@otws.otw.herzing.edu>
 Subject: Returned mail: <jan@otw.herzing.edu>... User unknown
-Date: Fri, 28 Oct 2005 23:14:12 -0400 (EDT)
-Message-ID: <200510290314.XAB10714@otws.otw.herzing.edu>
+Date: Fri, 28 Oct 2005 23:14:19 -0400 (EDT)
+Message-ID: <200510290314.XAB10716@otws.otw.herzing.edu>
 Mime-Version: 1.0
 Content-Type: multipart/report; report-type=delivery-status;
-	boundary="XAB10714.1130555652/otws.otw.herzing.edu"
+	boundary="XAB10716.1130555659/otws.otw.herzing.edu"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EVhB5-0008Dg-Pv
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:43 -0700
+	id 1EVhB9-0008Dm-PC
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:47 -0700
 Received: from host-034.letoque.com ([216.191.227.34] helo=otws.otw.herzing.edu)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EVhB5-00082L-5O
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:43 -0700
+	id 1EVhB9-000837-5q
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:47 -0700
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,9 +30,9 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a MIME-encapsulated message
 
---XAB10714.1130555652/otws.otw.herzing.edu
+--XAB10716.1130555659/otws.otw.herzing.edu
 
-The original message was received at Fri, 28 Oct 2005 23:14:11 -0400 (EDT)
+The original message was received at Fri, 28 Oct 2005 23:14:17 -0400 (EDT)
 from [62.56.157.5]
 
    ----- The following addresses had permanent fatal errors -----
@@ -44,20 +44,20 @@ from [62.56.157.5]
 421 otws.otw.herzing.edu Lost input channel from [62.56.157.5]
 otws.otw.herzing.edu Lost input channel from [62.56.157.5]
 
---XAB10714.1130555652/otws.otw.herzing.edu
+--XAB10716.1130555659/otws.otw.herzing.edu
 Content-Type: message/delivery-status
 
 Reporting-MTA: dns; otws.otw.herzing.edu
 Received-From-MTA: dns; [62.56.157.5]
-Arrival-Date: Fri, 28 Oct 2005 23:14:11 -0400 (EDT)
+Arrival-Date: Fri, 28 Oct 2005 23:14:17 -0400 (EDT)
 
 Final-Recipient: rfc822; jan@otws.otw.herzing.edu
 Action: failed
 Status: 5.1.1
-Last-Attempt-Date: Fri, 28 Oct 2005 23:14:12 -0400 (EDT)
+Last-Attempt-Date: Fri, 28 Oct 2005 23:14:19 -0400 (EDT)
 
 
---XAB10714.1130555652/otws.otw.herzing.edu--
+--XAB10716.1130555659/otws.otw.herzing.edu--
 
 
 
