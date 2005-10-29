@@ -1,31 +1,20 @@
-From: Gilles HAUTZ <gilles.hautz@mana.pf>
-Subject: exportfs strange behavior
-Date: Fri, 28 Oct 2005 14:09:16 -1000
-Message-ID: <4362BDAC.7090804@mana.pf>
+From: Mail Delivery Subsystem <MAILER-DAEMON@otws.otw.herzing.edu>
+Subject: Returned mail: <jan@otw.herzing.edu>... User unknown
+Date: Fri, 28 Oct 2005 23:14:12 -0400 (EDT)
+Message-ID: <200510290314.XAB10714@otws.otw.herzing.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------010902030101030709030500"
-Cc: gilles.hautz@mana.pf
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="XAB10714.1130555652/otws.otw.herzing.edu"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EVeHb-0006mw-Nu
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 17:09:15 -0700
-Received: from mirapoint3.mana.pf ([202.3.225.153] ident=mirapoint)
+	id 1EVhB5-0008Dg-Pv
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:43 -0700
+Received: from host-034.letoque.com ([216.191.227.34] helo=otws.otw.herzing.edu)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EVeHY-0001jn-Mj
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 17:09:15 -0700
-Received: from smtp2.mana.pf ([202.3.225.154])
-	by mirapoint3.mana.pf (MOS 3.4.6-GR)
-	with ESMTP id BEE11657
-	for <nfs@lists.sourceforge.net>;
-	Fri, 28 Oct 2005 14:08:57 -1000 (TAHT)
-Received: from [192.168.4.30] (ntp2.mana.pf [202.3.225.5])
-	by smtp2.mana.pf (MOS 3.5.8-GR)
-	with ESMTP id BNN77867
-	for nfs@lists.sourceforge.net;
-	Fri, 28 Oct 2005 14:08:55 -1000 (TAHT)
-To: nfs@lists.sourceforge.net
+	id 1EVhB5-00082L-5O
+	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:43 -0700
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,49 +28,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------010902030101030709030500
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+This is a MIME-encapsulated message
 
-Hi list
+--XAB10714.1130555652/otws.otw.herzing.edu
 
-I have a server running nfs-utils-1.0.7, stock kernel-2.6.13.4 on LFS-6.1
-I'm exporting some directories to a lot of clients (different versions)
-When I modify /etc/exports and run exportfs -ra or exportfs a , I need 
-to remount the directory on ALL the clients.
-It's very boring as this is a production server, and I don't know how to 
-solve this issue.
+The original message was received at Fri, 28 Oct 2005 23:14:11 -0400 (EDT)
+from [62.56.157.5]
 
-Any help would be appreciate.
+   ----- The following addresses had permanent fatal errors -----
+<jan@otw.herzing.edu>
 
-Sorry for my poor english.
+   ----- Transcript of session follows -----
+<<< RCPT TO:<jan@otw.herzing.edu>
+550 <jan@otw.herzing.edu>... User unknown
+421 otws.otw.herzing.edu Lost input channel from [62.56.157.5]
+otws.otw.herzing.edu Lost input channel from [62.56.157.5]
 
---------------010902030101030709030500
-Content-Type: text/x-vcard; charset=utf-8;
- name="gilles.hautz.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="gilles.hautz.vcf"
+--XAB10714.1130555652/otws.otw.herzing.edu
+Content-Type: message/delivery-status
 
-begin:vcard
-fn:Gilles HAUTZ
-n:HAUTZ;Gilles
-org:MANA S.A.S.;PRODUCTION
-adr;quoted-printable:;;B.P. 40001 FARE TONY;;TAHITI;98713;Polynesie Fran=C3=A7aise
-email;internet:gilles.hautz@mana.pf
-title;quoted-printable:Sp=C3=A9cialiste syst=C3=A8mes
-tel;work:+689 479956
-tel;fax:+689 508859
-tel;cell:+689 789788
-note:APNIC Member IAP/ISP of Tahiti and her islands
-x-mozilla-html:TRUE
-url:http://www.mana.pf
-version:2.1
-end:vcard
+Reporting-MTA: dns; otws.otw.herzing.edu
+Received-From-MTA: dns; [62.56.157.5]
+Arrival-Date: Fri, 28 Oct 2005 23:14:11 -0400 (EDT)
+
+Final-Recipient: rfc822; jan@otws.otw.herzing.edu
+Action: failed
+Status: 5.1.1
+Last-Attempt-Date: Fri, 28 Oct 2005 23:14:12 -0400 (EDT)
 
 
---------------010902030101030709030500--
+--XAB10714.1130555652/otws.otw.herzing.edu--
+
 
 
 -------------------------------------------------------
