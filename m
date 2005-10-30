@@ -1,20 +1,21 @@
-From: Mail Delivery Subsystem <MAILER-DAEMON@otws.otw.herzing.edu>
-Subject: Returned mail: <jan@otw.herzing.edu>... User unknown
-Date: Fri, 28 Oct 2005 23:14:19 -0400 (EDT)
-Message-ID: <200510290314.XAB10716@otws.otw.herzing.edu>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: regarding nfs configuration
+Date: Sun, 30 Oct 2005 03:06:54 -0800 (PST)
+Message-ID: <20051030110654.80142.qmail@web51607.mail.yahoo.com>
+References: <951c25610510270333j62173c46q2228447338177af0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/report; report-type=delivery-status;
-	boundary="XAB10716.1130555659/otws.otw.herzing.edu"
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EVhB9-0008Dm-PC
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:47 -0700
-Received: from host-034.letoque.com ([216.191.227.34] helo=otws.otw.herzing.edu)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EVhB9-000837-5q
-	for nfs@lists.sourceforge.net; Fri, 28 Oct 2005 20:14:47 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1EWB1k-00009D-5e
+	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 03:07:04 -0800
+Received: from web51607.mail.yahoo.com ([206.190.38.212])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EWB1i-0006wq-E2
+	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 03:07:04 -0800
+To: Rajesh kumar <rishi.rajesh@gmail.com>, nfs@lists.sourceforge.net
+In-Reply-To: <951c25610510270333j62173c46q2228447338177af0@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,37 +29,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a MIME-encapsulated message
+Looks like you have not started mountd on
+server side. This error is thrown when there
+is no entity on server side listening for=20
+connections.
 
---XAB10716.1130555659/otws.otw.herzing.edu
+Can you send output of following on client
+#rpcinfo -p <nfs server name>
 
-The original message was received at Fri, 28 Oct 2005 23:14:17 -0400 (EDT)
-from [62.56.157.5]
+thanks,
+ kiran
 
-   ----- The following addresses had permanent fatal errors -----
-<jan@otw.herzing.edu>
+--- Rajesh kumar <rishi.rajesh@gmail.com> wrote:
 
-   ----- Transcript of session follows -----
-<<< RCPT TO:<jan@otw.herzing.edu>
-550 <jan@otw.herzing.edu>... User unknown
-421 otws.otw.herzing.edu Lost input channel from [62.56.157.5]
-otws.otw.herzing.edu Lost input channel from [62.56.157.5]
+> Respected .............
+>=20
+> I am using redhat 9 OS
+> i have completed the nfs configuration at server
+> side. while mounting
+> from the client side i am facing the follwing error.
+> mount: RPC: Remote system error - Connection refused
+>=20
+> kindly tell me the solution to the problem
+>=20
+> With Regards
+> Rajesh Sharma
+>=20
+>=20
+>
+-------------------------------------------------------
+> This SF.Net email is sponsored by the JBoss Inc.
+> Get Certified Today * Register for a JBoss Training
+> Course
+> Free Certification Exam for All Training Attendees
+> Through End of 2005
+> Visit http://www.jboss.com/services/certification
+> for more information
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
---XAB10716.1130555659/otws.otw.herzing.edu
-Content-Type: message/delivery-status
-
-Reporting-MTA: dns; otws.otw.herzing.edu
-Received-From-MTA: dns; [62.56.157.5]
-Arrival-Date: Fri, 28 Oct 2005 23:14:17 -0400 (EDT)
-
-Final-Recipient: rfc822; jan@otws.otw.herzing.edu
-Action: failed
-Status: 5.1.1
-Last-Attempt-Date: Fri, 28 Oct 2005 23:14:19 -0400 (EDT)
 
 
---XAB10716.1130555659/otws.otw.herzing.edu--
-
+	=09
+__________________________________=20
+Yahoo! FareChase: Search multiple travel sites in one click.
+http://farechase.yahoo.com
 
 
 -------------------------------------------------------
