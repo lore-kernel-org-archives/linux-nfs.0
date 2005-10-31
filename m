@@ -1,34 +1,19 @@
-From: CHIKAMA masaki <masaki-c@nict.go.jp>
-Subject: Can't write over 100GB to large NFS server (10TB)
-Date: Mon, 31 Oct 2005 11:20:56 +0900
-Message-ID: <20051031112056.546d7d7b.masaki-c@nict.go.jp>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd ] Make sure svc_process call the correct pg_authenticate for multi-service port
+Date: Mon, 31 Oct 2005 17:01:09 +1100
+Message-ID: <1051031060109.8246@cse.unsw.edu.au>
+References: <20051031165939.8227.patches@notabene>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EWPIH-0002PG-7w
-	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 18:21:05 -0800
-Received: from ns1.nict.go.jp ([133.243.3.1])
+	id 1EWSjO-0002aN-1P
+	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 22:01:18 -0800
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EWPIE-0001Ez-JW
-	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 18:21:05 -0800
-Received: from gw1.nict.go.jp (gw1.nict.go.jp [133.243.18.250])
-	by ns1.nict.go.jp  with ESMTP id j9V2Kvil016468
-	for <nfs@lists.sourceforge.net>; Mon, 31 Oct 2005 11:20:57 +0900 (JST)
-Received: from gw1.nict.go.jp (localhost [127.0.0.1])
-	by gw1.nict.go.jp  with ESMTP id j9V2Kvjd001209
-	for <nfs@lists.sourceforge.net>; Mon, 31 Oct 2005 11:20:57 +0900 (JST)
-Received: from mail1.nict.go.jp (mail.nict.go.jp [133.243.18.3])
-	by gw1.nict.go.jp  with ESMTP id j9V2Kvg0001205
-	for <nfs@lists.sourceforge.net>; Mon, 31 Oct 2005 11:20:57 +0900 (JST)
-Received: from mail1.nict.go.jp (localhost [127.0.0.1])
-	by localhost.nict.go.jp (Postfix) with ESMTP id F0B10434F
-	for <nfs@lists.sourceforge.net>; Mon, 31 Oct 2005 11:20:56 +0900 (JST)
-Received: from nabal.nict.go.jp (unknown [133.243.93.85])
-	by mail1.nict.go.jp (Postfix) with SMTP id BF1274272
-	for <nfs@lists.sourceforge.net>; Mon, 31 Oct 2005 11:20:56 +0900 (JST)
-To: nfs@lists.sourceforge.net
+	id 1EWSjM-0001d4-DN
+	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 22:01:18 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,60 +27,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello all.
+Patch against 2.6.14-rc5-mm1.  Should apply against most recent 2.6 
+kernels.  Fixes potential bug, not an actual bug (at least, not in mainline..)
 
-I have some trouble with large NFS server.
-I can't write date over 100GB to NFS server.
+--
 
-Here is my setup.
+If an RPC socket is serving multiple programs, then the
+pg_authenticate of the first program in the list is called,
+instead of pg_authenticate for the program to be run.
 
-NFS server (HOSTA)
-  Fedora Core 3 + update + kernel-2.6.13.4
-  10TB disk. reiserfs3.
+This does not cause a problem with any programs in the current kernel,
+but could confuse future code.
 
-NFS client
-  Fedora Core 3 + update (2.6.12-1.1380_FC3smp)
-  SUSE 9.1 (2.6.12.4)
-  RedHat 7.3 (2.4.25)
+Also set pg_authenticate for nfsd_acl_program incase it ever gets used.
 
 
-How to reproduce  
+Signed-off-by: Neil Brown <neilb@suse.de>
 
-$ df -h
-Filesystem            Size  Used Avail Use% Mounted on
-/dev/mapper/VolGroup00-LogVol00
-                       73G  2.9G   66G   5% /
-/dev/hda1              99M   38M   56M  41% /boot
-none                  248M     0  248M   0% /dev/shm
-HOSTA:/raid/disk1      11T  100G   11T   1% /misc/HOSTA
+### Diffstat output
+ ./fs/nfsd/nfssvc.c |    1 +
+ ./net/sunrpc/svc.c |   12 +++++++-----
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-$dd if=/dev/zero of=/mis/HOSTA/largefile bs=1024 count=65536
-65536+0 records in
-65536+0 records out
-dd: closing output file `largefile': No space left on device
+diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
+--- ./fs/nfsd/nfssvc.c~current~	2005-10-31 15:55:20.000000000 +1100
++++ ./fs/nfsd/nfssvc.c	2005-10-31 15:55:20.000000000 +1100
+@@ -427,6 +427,7 @@ static struct svc_program	nfsd_acl_progr
+ 	.pg_name		= "nfsd",
+ 	.pg_class		= "nfsd",
+ 	.pg_stats		= &nfsd_acl_svcstats,
++	.pg_authenticate	= &svc_set_client,
+ };
+ 
+ static struct svc_stat	nfsd_acl_svcstats = {
 
-All three different client produce the same result.
-
-Writing local filesystem is OK.
-
--rw-rw-r--  1 demo demo 15106048 Oct 31 11:08 largefile   (<- NFS write)
--rw-rw-r--  1 demo demo 67108864 Oct 31 11:11 largefile2  (<- Local write)
-
-Strangely enough, I have no trouble with 5TB partion(reisefs3) 
-on the HOSTA.
-
-/dev/mapper/vg0-lvol0
-                      5.1T  2.4T  2.8T  46% /raid/disk0
-/dev/mapper/vg1-lvol0
-                       11T  100G   11T   1% /raid/disk1
-
-Any help appreciates.
-Thanks.
-
-
--- 
-CHIKAMA Masaki @ NICT
-
+diff ./net/sunrpc/svc.c~current~ ./net/sunrpc/svc.c
+--- ./net/sunrpc/svc.c~current~	2005-10-31 15:55:20.000000000 +1100
++++ ./net/sunrpc/svc.c	2005-10-31 15:55:20.000000000 +1100
+@@ -310,6 +310,11 @@ svc_process(struct svc_serv *serv, struc
+ 	rqstp->rq_proc = proc = ntohl(svc_getu32(argv));	/* procedure number */
+ 
+ 	progp = serv->sv_program;
++
++	for (progp = serv->sv_program; progp; progp = progp->pg_next)
++		if (prog == progp->pg_prog)
++			break;
++
+ 	/*
+ 	 * Decode auth data, and add verifier to reply buffer.
+ 	 * We do this before anything else in order to get a decent
+@@ -317,7 +322,7 @@ svc_process(struct svc_serv *serv, struc
+ 	 */
+ 	auth_res = svc_authenticate(rqstp, &auth_stat);
+ 	/* Also give the program a chance to reject this call: */
+-	if (auth_res == SVC_OK) {
++	if (auth_res == SVC_OK && progp) {
+ 		auth_stat = rpc_autherr_badcred;
+ 		auth_res = progp->pg_authenticate(rqstp);
+ 	}
+@@ -337,10 +342,7 @@ svc_process(struct svc_serv *serv, struc
+ 	case SVC_COMPLETE:
+ 		goto sendit;
+ 	}
+-		
+-	for (progp = serv->sv_program; progp; progp = progp->pg_next)
+-		if (prog == progp->pg_prog)
+-			break;
++
+ 	if (progp == NULL)
+ 		goto err_bad_prog;
+ 
 
 
 -------------------------------------------------------
