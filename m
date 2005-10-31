@@ -1,19 +1,21 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd ] Make sure svc_process call the correct pg_authenticate for multi-service port
-Date: Mon, 31 Oct 2005 17:01:09 +1100
-Message-ID: <1051031060109.8246@cse.unsw.edu.au>
-References: <20051031165939.8227.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+From: mhaverkamp@kcp.com
+Subject: Re: OT: RAID perf doldrums: advice/recommendations?
+Date: Mon, 31 Oct 2005 09:12:27 -0600
+Message-ID: <OF4F03C35B.15525291-ON862570AB.0052D3A1-862570AB.005389DD@kcp.com>
+References: <20051028222238.92185.qmail@web51914.mail.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EWSjO-0002aN-1P
-	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 22:01:18 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1EWbL7-0000MZ-31
+	for nfs@lists.sourceforge.net; Mon, 31 Oct 2005 07:12:49 -0800
+Received: from mailhost2.os.kcp.com ([198.124.201.32])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EWSjM-0001d4-DN
-	for nfs@lists.sourceforge.net; Sun, 30 Oct 2005 22:01:18 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1EWbKz-0001ta-Te
+	for nfs@lists.sourceforge.net; Mon, 31 Oct 2005 07:12:48 -0800
+In-Reply-To: <20051028222238.92185.qmail@web51914.mail.yahoo.com>
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,76 +29,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Patch against 2.6.14-rc5-mm1.  Should apply against most recent 2.6 
-kernels.  Fixes potential bug, not an actual bug (at least, not in mainline..)
+nfs-admin@lists.sourceforge.net wrote on 10/28/2005 05:22:38 PM:
 
---
+> 
+> > If you stay with RAID5, get something with a battery backed write 
+cache. 
+> > That will make a huge difference in RAID5 performance.
+> 
+> Really?  I was under the impression that this was just a safety 
+precaution or
+> similar... it is called a "backup" after all.  :)  How exactly does it
+> increase performance? 
 
-If an RPC socket is serving multiple programs, then the
-pg_authenticate of the first program in the list is called,
-instead of pg_authenticate for the program to be run.
+Without one, writes must be flushed to disk before the RAID controller can 
+report them as complete.  This includes even trivial things like updating 
+file access times.  With one, writes only need to get into the 
+controller's write cache before they are reported as complete.  This 
+allows the controller to schedule the actual write to disk at an optimal 
+time.
 
-This does not cause a problem with any programs in the current kernel,
-but could confuse future code.
+A good way to show this is to untar a tar file full of small files (e.g. 
+kernel source).  On RAID5 without write cache, this takes at least 10 
+times longer than even a single ATA disk.
 
-Also set pg_authenticate for nfsd_acl_program incase it ever gets used.
+> 
+> (And, yes, I have seen this mentioned in many places, so this would be a
+> criteria for our next purchase. :) )
+> 
+> 
+> 
+> 
+> __________________________________ 
+> Yahoo! Mail - PC Magazine Editors' Choice 2005 
+> http://mail.yahoo.com
+> 
+> 
+> -------------------------------------------------------
+> This SF.Net email is sponsored by the JBoss Inc.
+> Get Certified Today * Register for a JBoss Training Course
+> Free Certification Exam for All Training Attendees Through End of 2005
+> Visit http://www.jboss.com/services/certification for more information
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/nfsd/nfssvc.c |    1 +
- ./net/sunrpc/svc.c |   12 +++++++-----
- 2 files changed, 8 insertions(+), 5 deletions(-)
-
-diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
---- ./fs/nfsd/nfssvc.c~current~	2005-10-31 15:55:20.000000000 +1100
-+++ ./fs/nfsd/nfssvc.c	2005-10-31 15:55:20.000000000 +1100
-@@ -427,6 +427,7 @@ static struct svc_program	nfsd_acl_progr
- 	.pg_name		= "nfsd",
- 	.pg_class		= "nfsd",
- 	.pg_stats		= &nfsd_acl_svcstats,
-+	.pg_authenticate	= &svc_set_client,
- };
- 
- static struct svc_stat	nfsd_acl_svcstats = {
-
-diff ./net/sunrpc/svc.c~current~ ./net/sunrpc/svc.c
---- ./net/sunrpc/svc.c~current~	2005-10-31 15:55:20.000000000 +1100
-+++ ./net/sunrpc/svc.c	2005-10-31 15:55:20.000000000 +1100
-@@ -310,6 +310,11 @@ svc_process(struct svc_serv *serv, struc
- 	rqstp->rq_proc = proc = ntohl(svc_getu32(argv));	/* procedure number */
- 
- 	progp = serv->sv_program;
-+
-+	for (progp = serv->sv_program; progp; progp = progp->pg_next)
-+		if (prog == progp->pg_prog)
-+			break;
-+
- 	/*
- 	 * Decode auth data, and add verifier to reply buffer.
- 	 * We do this before anything else in order to get a decent
-@@ -317,7 +322,7 @@ svc_process(struct svc_serv *serv, struc
- 	 */
- 	auth_res = svc_authenticate(rqstp, &auth_stat);
- 	/* Also give the program a chance to reject this call: */
--	if (auth_res == SVC_OK) {
-+	if (auth_res == SVC_OK && progp) {
- 		auth_stat = rpc_autherr_badcred;
- 		auth_res = progp->pg_authenticate(rqstp);
- 	}
-@@ -337,10 +342,7 @@ svc_process(struct svc_serv *serv, struc
- 	case SVC_COMPLETE:
- 		goto sendit;
- 	}
--		
--	for (progp = serv->sv_program; progp; progp = progp->pg_next)
--		if (prog == progp->pg_prog)
--			break;
-+
- 	if (progp == NULL)
- 		goto err_bad_prog;
- 
 
 
 -------------------------------------------------------
