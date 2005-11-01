@@ -1,20 +1,21 @@
-From: "Edward Hibbert" <Edward.Hibbert@dataconnection.com>
-Subject: RE: Stale NFS mounts
-Date: Tue, 1 Nov 2005 15:29:21 -0000
-Message-ID: <9E621559095AA746B22B21CD4FAF99A54E3197@EDINMAIL1.ad.datcon.co.uk>
+From: Tim Southerwood <ts@dionic.net>
+Subject: Optimising NFS
+Date: Tue, 01 Nov 2005 14:50:36 +0000
+Message-ID: <1130856636.25420.48.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C5DEF9.085B485D"
+Content-Type: text/plain
+Cc: ts@dionic.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EWy4s-0007yo-AG
-	for nfs@lists.sourceforge.net; Tue, 01 Nov 2005 07:29:34 -0800
-Received: from smtp.dataconnection.com ([192.91.191.4])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EWy4r-0006yB-7K
-	for nfs@lists.sourceforge.net; Tue, 01 Nov 2005 07:29:34 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1EWyX5-0000iK-Fu
+	for nfs@lists.sourceforge.net; Tue, 01 Nov 2005 07:58:43 -0800
+Received: from mothra.dionic.net ([81.2.78.41] helo=smtp.dionic.net)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EWyX4-00054B-3E
+	for nfs@lists.sourceforge.net; Tue, 01 Nov 2005 07:58:43 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,188 +29,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+Subject:      Optimising NFS
+From:         Tim S <ts@dionic.net>
+Newsgroups:   uk.comp.os.linux
+Date:         Mon, 31 Oct 2005 23:09:19 +0000
 
-------_=_NextPart_001_01C5DEF9.085B485D
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+Hi
 
-Bit more on this. =20
-=20
-If we export a directory X, then mount subdirectories within it (so from
-a client, mount X/Y) then we see the problem.
-If we export X/Y and mount X/Y then we don't.
-=20
-Can anyone suggest any reason for this?
-=20
-Regards,
-=20
-Edward.
+Here's a challenge; I'm in the process of building an NFS server...
 
-________________________________
+The general idea is that it should go as fast as possible
+serving read-only mostly unchanging content (it's my install server).
 
-From: Edward Hibbert=20
-Sent: 01 November 2005 10:58
-To: 'nfs@lists.sourceforge.net'
-Subject: RE: [NFS] Stale NFS mounts
+I have a dual Xeon 3GHz server with 9GB Ram and a quad intel e1000
+server class card... I applied various tuning to the IP stack, e1000
+driver and bonded the 4 gig links to the switch (We use Extreme switches
+with 10Gig interconnects, so I am not expecting bottlnecks in teh
+network infrastructure).
+
+So far it tops out at 190MB/sec serving a DVD ISO to a load of test
+clients with gig connections, cpu's running at 100%. Most of the load
+comes from 4 other servers on the same switch. Extra load is applied
+from more remote clients (upto 90 gig connected clients in this case).
+
+Thus I was hoping for rather more (like saturating the 4gig bonded
+channel), given the file in question is proven to be entirely in buffer
+cache at this point (disk channel load is practically zero).
+
+Have any NFS experts here got any tips or experience at achieving higher
+throughput?
+
+The tuning parameters I have applied are:
+
+1) Set the e1000 driver to interrupt throttle at 2000/sec per NIC
+(default is 8000/sec)
+
+2) Set IRQ affinity so that each NIC's interrupts are serviced
+by a different hyperthreaded CPU instance spread over both CPUs
+
+3) These settings (taken from an IBM document on tuning NFS and
+gratuitously increased in places)
+
+ethtool -G eth2 rx 4096 tx 4096 # repeat for all bonded link members
+
+ip link set eth2 txqueuelen 16000 # ditto + bond0 device (not sure if I
+need these on the real devices or the bond device or both?)
+
+sysctl -w net.ipv4.tcp_window_scaling=0 
+sysctl -w net.ipv4.tcp_timestamps=0
+sysctl -w net.ipv4.tcp_sack=0
+sysctl -w net.ipv4.tcp_max_tw_buckets=8000000 
+sysctl -w net.ipv4.tcp_rmem="40000000 40000000 40000000" 
+sysctl -w net.ipv4.tcp_wmem="40000000 40000000 40000000" 
+sysctl -w net.ipv4.tcp_mem="40000000 40000000 40000000" 
+sysctl -w net.core.rmem_max=8192000
+sysctl -w net.core.wmem_max=8192000
+sysctl -w net.core.rmem_default=8192000 
+sysctl -w net.core.wmem_default=8192000 
+sysctl -w net.core.optmem_max=40000000 
+sysctl -w net.core.netdev_max_backlog=8000000
+
+NFS clients are running over TCP with window sizes of 8192, non jumbo
+frames.
+
+I've been through various numbers in a rather non scientific way and
+these are the best to date... I'll admit that I'm not actually sure what
+some of them do!
+
+Any thoughts most welcome. I'm going to try the same test on a twin
+dual-core opteron server that just came in (before it gets given its
+rightful job) for comparision.
+
+Many thanks
+
+Tim
+
+-- 
+Tim Southerwood
 
 
 
->
-> The NFS server is a Fedora system with kernel 2.6.9-1.667smp.  The NFS
-> clients are RedHat AS 4.0 2.6.9-11.ELsmp.  Do ask for more details if
-> needed.
-
-On the server:
-  cat /etc/exports
-  cat /proc/fs/nfsd/exports
-  grep . /proc/net/rpc/*/content
-
-Ok, I've done this now while it's working - but what should I be looking
-for here?  Maybe the last couple of lines changing?
-
-root[vitorbelfort]:/var/log> cat /etc/exports=20
-/opt/dcl/data/disk1 *(rw,sync,no_root_squash)
-/opt/dcl/data/disk2 *(rw,sync,no_root_squash)
-root[vitorbelfort]:/var/log> cd /proc/fs/nfsd/exports=20
--bash: cd: /proc/fs/nfsd/exports: Not a directory
-root[vitorbelfort]:/var/log> cat /proc/fs/nfsd/exports =20
-# Version 1.1
-# Path Client(Flags) # IPs
-/opt/dcl/data/disk1     *(rw,no_root_squash,sync,wdelay)
-/opt/dcl/data/disk2     *(rw,no_root_squash,sync,wdelay)
-root[vitorbelfort]:/var/log>   grep . /proc/net/rpc/*/content
-/proc/net/rpc/auth.unix.ip/content:#class IP domain
-/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.102 *
-/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.101 *
-/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.97 *
-/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.91 *
-/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.92 *
-/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.89 *
-/proc/net/rpc/nfs4.idtoname/content:#domain type id [name]
-/proc/net/rpc/nfs4.nametoid/content:#domain type name [id]
-/proc/net/rpc/nfsd.export/content:#path domain(flags)
-/proc/net/rpc/nfsd.export/content:/opt/dcl/data/disk1
-*(rw,no_root_squash,sync,wdelay)
-/proc/net/rpc/nfsd.export/content:/opt/dcl/data/disk2
-*(rw,no_root_squash,sync,wdelay)
-/proc/net/rpc/nfsd.fh/content:#domain fsidtype fsid [path]
-/proc/net/rpc/nfsd.fh/content:* 0 0x0300080000000080 /opt/dcl/data/disk1
-/proc/net/rpc/nfsd.fh/content:* 0 0x1100080000000080 /opt/dcl/data/disk2
-
-Regards,
-
-Edward.
-
-
-------_=_NextPart_001_01C5DEF9.085B485D
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE></TITLE>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dus-ascii">
-<META content=3D"MSHTML 6.00.2800.1515" name=3DGENERATOR></HEAD>
-<BODY>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005>Bit more on this.&nbsp; </SPAN></FONT></DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005></SPAN></FONT>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005>If we export a directory X, then mount =
-subdirectories=20
-within it (so from a client, mount X/Y) then we see the=20
-problem.</SPAN></FONT></DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005>If we export X/Y and mount X/Y then we=20
-don't.</SPAN></FONT></DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005></SPAN></FONT>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005>Can anyone suggest any reason for=20
-this?</SPAN></FONT></DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005></SPAN></FONT>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005>Regards,</SPAN></FONT></DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005></SPAN></FONT>&nbsp;</DIV>
-<DIV dir=3Dltr align=3Dleft><FONT face=3DArial color=3D#ff00ff =
-size=3D2><SPAN=20
-class=3D403102315-01112005>Edward.</SPAN></FONT></DIV><BR>
-<DIV class=3DOutlookMessageHeader lang=3Den-us dir=3Dltr align=3Dleft>
-<HR tabIndex=3D-1>
-<FONT face=3DTahoma size=3D2><B>From:</B> Edward Hibbert =
-<BR><B>Sent:</B> 01=20
-November 2005 10:58<BR><B>To:</B> =
-'nfs@lists.sourceforge.net'<BR><B>Subject:</B>=20
-RE: [NFS] Stale NFS mounts<BR></FONT><BR></DIV>
-<DIV></DIV>
-<P><FONT size=3D2>&gt;<BR>&gt; The NFS server is a Fedora system with =
-kernel=20
-2.6.9-1.667smp.&nbsp; The NFS<BR>&gt; clients are RedHat AS 4.0=20
-2.6.9-11.ELsmp.&nbsp; Do ask for more details if<BR>&gt; =
-needed.<BR><BR>On the=20
-server:<BR>&nbsp; cat /etc/exports<BR>&nbsp; cat =
-/proc/fs/nfsd/exports<BR>&nbsp;=20
-grep . /proc/net/rpc/*/content<BR><BR><FONT face=3DArial =
-color=3D#ff00ff>Ok, I've=20
-done this now while it's working - but what should I be looking for =
-here?&nbsp;=20
-Maybe the last couple of lines changing?</FONT></FONT></P>
-<P><FONT face=3DArial color=3D#ff00ff =
-size=3D2>root[vitorbelfort]:/var/log&gt; cat=20
-/etc/exports <BR>/opt/dcl/data/disk1=20
-*(rw,sync,no_root_squash)<BR>/opt/dcl/data/disk2=20
-*(rw,sync,no_root_squash)<BR>root[vitorbelfort]:/var/log&gt; cd=20
-/proc/fs/nfsd/exports <BR>-bash: cd: /proc/fs/nfsd/exports: Not a=20
-directory<BR>root[vitorbelfort]:/var/log&gt; cat =
-/proc/fs/nfsd/exports&nbsp;=20
-<BR># Version 1.1<BR># Path Client(Flags) #=20
-IPs<BR>/opt/dcl/data/disk1&nbsp;&nbsp;&nbsp;&nbsp;=20
-*(rw,no_root_squash,sync,wdelay)<BR>/opt/dcl/data/disk2&nbsp;&nbsp;&nbsp;=
-&nbsp;=20
-*(rw,no_root_squash,sync,wdelay)<BR>root[vitorbelfort]:/var/log&gt;&nbsp;=
-&nbsp;=20
-grep . =
-/proc/net/rpc/*/content<BR>/proc/net/rpc/auth.unix.ip/content:#class IP=20
-domain<BR>/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.102=20
-*<BR>/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.101=20
-*<BR>/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.97=20
-*<BR>/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.91=20
-*<BR>/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.92=20
-*<BR>/proc/net/rpc/auth.unix.ip/content:nfsd 172.19.15.89=20
-*<BR>/proc/net/rpc/nfs4.idtoname/content:#domain type id=20
-[name]<BR>/proc/net/rpc/nfs4.nametoid/content:#domain type name=20
-[id]<BR>/proc/net/rpc/nfsd.export/content:#path=20
-domain(flags)<BR>/proc/net/rpc/nfsd.export/content:/opt/dcl/data/disk1&nb=
-sp;&nbsp;=20
-*(rw,no_root_squash,sync,wdelay)<BR>/proc/net/rpc/nfsd.export/content:/op=
-t/dcl/data/disk2&nbsp;&nbsp;=20
-*(rw,no_root_squash,sync,wdelay)<BR>/proc/net/rpc/nfsd.fh/content:#domain=
-=20
-fsidtype fsid [path]<BR>/proc/net/rpc/nfsd.fh/content:* 0 =
-0x0300080000000080=20
-/opt/dcl/data/disk1<BR>/proc/net/rpc/nfsd.fh/content:* 0 =
-0x1100080000000080=20
-/opt/dcl/data/disk2</FONT></P>
-<P><FONT face=3DArial color=3D#ff00ff size=3D2>Regards,</FONT></P>
-<P><FONT face=3DArial color=3D#ff00ff =
-size=3D2>Edward.</FONT></P></BODY></HTML>
-
-------_=_NextPart_001_01C5DEF9.085B485D--
 
 
 -------------------------------------------------------
