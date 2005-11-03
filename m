@@ -1,20 +1,19 @@
-From: "Alex" <kzl5566@citiz.net>
-Subject: Marketing for you
-Date: Fri, 4 Nov 2005 04:10:32 +0800
-Message-ID: <E1EXlPl-0001ey-4d@mail.sourceforge.net>
-Reply-To: "Alex" <kezunli321@56.com>
+From: email builder <emailbuilder88@yahoo.com>
+Subject: no_acl?
+Date: Thu, 3 Nov 2005 14:52:58 -0800 (PST)
+Message-ID: <20051103225258.36123.qmail@web51914.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EXlPm-0003FE-U8
-	for nfs@lists.sourceforge.net; Thu, 03 Nov 2005 12:10:26 -0800
-Received: from [218.6.22.79] (helo=citiz.net)
+	id 1EXnxB-000208-OV
+	for nfs@lists.sourceforge.net; Thu, 03 Nov 2005 14:53:05 -0800
+Received: from web51914.mail.yahoo.com ([206.190.48.77])
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EXlPl-0001ey-4d
-	for nfs@lists.sourceforge.net; Thu, 03 Nov 2005 12:10:26 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1EXnxA-0004y7-Ie
+	for nfs@lists.sourceforge.net; Thu, 03 Nov 2005 14:53:05 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,32 +27,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hello,
 
-Dear nfs@lists.sourceforge.net:
+  I am trying to see if it is possible to specify no_acl for my exports (=
+uh,
+sorry, I forget if this is a client-mount or server-export setting), but =
+it
+does not appear to be implemented for the latest NFS package under Fedora
+(core 3).
 
-We specialized in E-mail Marketing.
+  Am I just out of luck with Fedora and this option, or is there somethin=
+g
+I've overlooked?  I was advised that it could eliminate a lot of unecessa=
+ry
+traffic and help performance noticably.
 
-1. Targeted list
-
-We may provide targeted email list. We will customize the list according =
-to=20
-your requirements.
-
-2. Sending out Targeted Marketing for you
-
-We may send your email message to your target clients! We will
-customize your email list and send your message for you.
-
-* We offer BP web Hosting & mail server.
+TIA!
 
 
-Regards!
-
-Alex
-Marketing Team
-kezunli321@yeah.net
-
-Bye: AlexNo@hotmail.com
+=09
+	=09
+__________________________________=20
+Yahoo! Mail - PC Magazine Editors' Choice 2005=20
+http://mail.yahoo.com
 
 
 -------------------------------------------------------
