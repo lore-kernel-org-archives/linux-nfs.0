@@ -1,18 +1,22 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Bug: nfsd ignores return value from vfs_getattr()
-Date: Fri, 04 Nov 2005 11:05:42 +0100
-Message-ID: <E1EXyS6-0003cx-00@dorka.pomaz.szeredi.hu>
-Cc: nfs@lists.sourceforge.net, David Shaw <dshaw@jabberwocky.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: no_acl?
+Date: Fri, 04 Nov 2005 07:45:18 -0500
+Message-ID: <436B57DE.8060207@RedHat.com>
+References: <20051103225258.36123.qmail@web51914.mail.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EXySm-0005Js-QE
-	for nfs@lists.sourceforge.net; Fri, 04 Nov 2005 02:06:24 -0800
-Received: from 238-193.adsl.pool.ew.hu ([193.226.238.193] helo=dorka.pomaz.szeredi.hu)
+	id 1EY0wf-0003JV-J2
+	for nfs@lists.sourceforge.net; Fri, 04 Nov 2005 04:45:25 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EXySl-0001Xz-Dj
-	for nfs@lists.sourceforge.net; Fri, 04 Nov 2005 02:06:24 -0800
-To: neilb@suse.de
+	id 1EY0wf-0002Y9-EC
+	for nfs@lists.sourceforge.net; Fri, 04 Nov 2005 04:45:25 -0800
+To: email builder <emailbuilder88@yahoo.com>
+In-Reply-To: <20051103225258.36123.qmail@web51914.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,17 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-In fs/nfsd/nfs3xdr.c encode_fattr3() the return value from
-vfs_getattr() is ignored.
+email builder wrote:
+>   I am trying to see if it is possible to specify no_acl for my exports (uh,
+> sorry, I forget if this is a client-mount or server-export setting), but it
+> does not appear to be implemented for the latest NFS package under Fedora
+> (core 3).
+ACLs are not available in the 2.6.9 kernel. I believe they came
+in around 2.6.10 or 2.6.11.
+> 
+>   Am I just out of luck with Fedora and this option, or is there something
+> I've overlooked?  I was advised that it could eliminate a lot of unecessary
+> traffic and help performance noticably.
+You'll need to upgrade to FC4 and then use the nfs-utils in Rawhide
+to use the no_acl export option. I am assuming your talking about
+nfsv3 acls...
 
-This causes the server to send bogus (random stack contents) values as
-attributes.  This affects exported FUSE filesystems, and possibly
-others which may return an error from ->getattr() (e.g. reexported
-NFS).
-
-Miklos
-
-
+steved.
 
 
 -------------------------------------------------------
