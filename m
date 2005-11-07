@@ -1,23 +1,32 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: updates to the Linux NFS FAQ
-Date: Mon, 7 Nov 2005 12:01:22 -0500
-Message-ID: <20051107170122.GF1096@fieldses.org>
-References: <044B81DE141D7443BCE91E8F44B3C1E288E5F3@exsvl02.hq.netapp.com>
+From: Gilles HAUTZ <gilles.hautz@mana.pf>
+Subject: Re: exportfs -ra problem
+Date: Mon, 07 Nov 2005 09:29:42 -1000
+Message-ID: <436FAB26.2090204@mana.pf>
+References: <436AA072.5010904@mana.pf>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+ boundary="------------040909070000040102000309"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZAN5-00044K-8c
-	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 09:01:27 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EZAN5-0004TY-3g
-	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 09:01:27 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
-In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E288E5F3@exsvl02.hq.netapp.com>
+	id 1EZDSl-0005lR-9k
+	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 12:19:31 -0800
+Received: from mirapoint3.mana.pf ([202.3.225.153] ident=mirapoint)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EZDSh-00020N-Fi
+	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 12:19:31 -0800
+Received: from smtp2.mana.pf ([202.3.225.154])
+	by mirapoint3.mana.pf (MOS 3.4.6-GR)
+	with ESMTP id BEO04339
+	for <nfs@lists.sourceforge.net>;
+	Mon, 7 Nov 2005 09:29:10 -1000 (TAHT)
+Received: from [192.168.4.30] (ntp2.mana.pf [202.3.225.5])
+	by smtp2.mana.pf (MOS 3.5.8-GR)
+	with ESMTP id BOW57111
+	for <nfs@lists.sourceforge.net>;
+	Mon, 7 Nov 2005 09:29:08 -1000 (TAHT)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <436AA072.5010904@mana.pf>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +40,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Nov 07, 2005 at 08:51:22AM -0800, Lever, Charles wrote:
-> i've finally gotten off my lazy ass and added some updates to the FAQ
-> that have been queued for a while.
-> 
-> question A8 (what is close-to-open cache coherency?) has been
-> substantially updated to discuss noac, file locking, O_DIRECT, and write
-> caching behavior.
-> 
-> question D2 now has a better explanation of silly renames, based on some
-> recent questions to this mailing list.
-> 
-> question D12 has been added, describing how to use "umount -f" and
-> "umount -l".
+This is a multi-part message in MIME format.
+--------------040909070000040102000309
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I assume http://nfs.sourceforge.net/ is the right URL for that.
+Any ideas ?
 
---b.
+Gilles HAUTZ wrote:
+
+> Hi
+>
+> I've got a server running nfs-utils-1.0.7 latest kernel with bonding 
+> enabled.
+> When I modify the export file and then execute exportfs -ra, all the 
+> client ( 1.0.6 or 1.0.7 ) need to remount their mount point.
+> What is the problem as this is the first time it happens on a server. 
+> Same client doesn't have this problem on another server.
+>
+> Any help would be appreciate.
+
+
+--------------040909070000040102000309
+Content-Type: text/x-vcard; charset=utf-8;
+ name="gilles.hautz.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="gilles.hautz.vcf"
+
+begin:vcard
+fn:Gilles HAUTZ
+n:HAUTZ;Gilles
+org:MANA S.A.S.;PRODUCTION
+adr;quoted-printable:;;B.P. 40001 FARE TONY;;TAHITI;98713;Polynesie Fran=C3=A7aise
+email;internet:gilles.hautz@mana.pf
+title;quoted-printable:Sp=C3=A9cialiste syst=C3=A8mes
+tel;work:+689 479956
+tel;fax:+689 508859
+tel;cell:+689 789788
+note:APNIC Member IAP/ISP of Tahiti and her islands
+x-mozilla-html:TRUE
+url:http://www.mana.pf
+version:2.1
+end:vcard
+
+
+--------------040909070000040102000309--
 
 
 -------------------------------------------------------
