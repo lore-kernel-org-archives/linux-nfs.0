@@ -1,32 +1,23 @@
-From: Gilles HAUTZ <gilles.hautz@mana.pf>
-Subject: Re: exportfs -ra problem
-Date: Mon, 07 Nov 2005 09:29:42 -1000
-Message-ID: <436FAB26.2090204@mana.pf>
-References: <436AA072.5010904@mana.pf>
+From: "Vijay Khemka -X (vkhemka - WIPRO at Cisco)" <vkhemka@cisco.com>
+Subject: Cross compiling for MIPS
+Date: Tue, 8 Nov 2005 02:33:08 +0530
+Message-ID: <1291FDD1356B0F4C9A1AA94C61D49077A9680D@xmb-blr-418.apac.cisco.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040909070000040102000309"
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C5E3DE.A97D4EC6"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZDSl-0005lR-9k
-	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 12:19:31 -0800
-Received: from mirapoint3.mana.pf ([202.3.225.153] ident=mirapoint)
+	id 1EZE9G-0007fk-R9
+	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 13:03:26 -0800
+Received: from ind-iport-1.cisco.com ([64.104.129.195])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EZDSh-00020N-Fi
-	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 12:19:31 -0800
-Received: from smtp2.mana.pf ([202.3.225.154])
-	by mirapoint3.mana.pf (MOS 3.4.6-GR)
-	with ESMTP id BEO04339
-	for <nfs@lists.sourceforge.net>;
-	Mon, 7 Nov 2005 09:29:10 -1000 (TAHT)
-Received: from [192.168.4.30] (ntp2.mana.pf [202.3.225.5])
-	by smtp2.mana.pf (MOS 3.5.8-GR)
-	with ESMTP id BOW57111
-	for <nfs@lists.sourceforge.net>;
-	Mon, 7 Nov 2005 09:29:08 -1000 (TAHT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <436AA072.5010904@mana.pf>
+	id 1EZE9F-0004V1-61
+	for nfs@lists.sourceforge.net; Mon, 07 Nov 2005 13:03:26 -0800
+Received: from xbh-blr-411.apac.cisco.com (xbh-blr-411.cisco.com [64.104.140.150])
+	by india-core-1.cisco.com (8.12.10/8.12.6) with ESMTP id jA7L36xr010529
+	for <nfs@lists.sourceforge.net>; Mon, 7 Nov 2005 21:03:07 GMT
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,51 +32,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
---------------040909070000040102000309
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Any ideas ?
+------_=_NextPart_001_01C5E3DE.A97D4EC6
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-Gilles HAUTZ wrote:
+Hi,
+I have cross compiled nfs package for MIPS environment. There are two
+issue..
+1. when I run mountd daemon, I get error failed to bind -22
+2. When I yun rquotad then I get segmentation fault.
+=20
+Please let me know what are faults can be..
+=20
+Regards
+-Vijay
+=20
 
-> Hi
->
-> I've got a server running nfs-utils-1.0.7 latest kernel with bonding 
-> enabled.
-> When I modify the export file and then execute exportfs -ra, all the 
-> client ( 1.0.6 or 1.0.7 ) need to remount their mount point.
-> What is the problem as this is the first time it happens on a server. 
-> Same client doesn't have this problem on another server.
->
-> Any help would be appreciate.
+------_=_NextPart_001_01C5E3DE.A97D4EC6
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Dus-ascii">
+<META content=3D"MSHTML 6.00.2900.2180" name=3DGENERATOR></HEAD>
+<BODY>
+<DIV><SPAN class=3D979325720-07112005><FONT face=3DArial=20
+size=3D2>Hi,</FONT></SPAN></DIV>
+<DIV><SPAN class=3D979325720-07112005><FONT face=3DArial =
+size=3D2>I&nbsp;have cross=20
+compiled nfs package&nbsp;for MIPS environment.&nbsp;There are two=20
+issue..</FONT></SPAN></DIV>
+<DIV><SPAN class=3D979325720-07112005><FONT face=3DArial size=3D2>1. =
+when I run mountd=20
+daemon, I get error failed to bind -22</FONT></SPAN></DIV>
+<DIV><SPAN class=3D979325720-07112005><FONT face=3DArial size=3D2>2. =
+When I yun=20
+rquotad then I get segmentation fault.</FONT></SPAN></DIV>
+<DIV><SPAN class=3D979325720-07112005><FONT face=3DArial=20
+size=3D2></FONT></SPAN>&nbsp;</DIV>
+<DIV><SPAN class=3D979325720-07112005><FONT face=3DArial size=3D2>Please =
+let me know=20
+what are faults can be..</FONT></SPAN></DIV>
+<DIV>&nbsp;</DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>Regards</FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>-Vijay</FONT></DIV>
+<DIV>&nbsp;</DIV></BODY></HTML>
 
---------------040909070000040102000309
-Content-Type: text/x-vcard; charset=utf-8;
- name="gilles.hautz.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="gilles.hautz.vcf"
-
-begin:vcard
-fn:Gilles HAUTZ
-n:HAUTZ;Gilles
-org:MANA S.A.S.;PRODUCTION
-adr;quoted-printable:;;B.P. 40001 FARE TONY;;TAHITI;98713;Polynesie Fran=C3=A7aise
-email;internet:gilles.hautz@mana.pf
-title;quoted-printable:Sp=C3=A9cialiste syst=C3=A8mes
-tel;work:+689 479956
-tel;fax:+689 508859
-tel;cell:+689 789788
-note:APNIC Member IAP/ISP of Tahiti and her islands
-x-mozilla-html:TRUE
-url:http://www.mana.pf
-version:2.1
-end:vcard
-
-
---------------040909070000040102000309--
+------_=_NextPart_001_01C5E3DE.A97D4EC6--
 
 
 -------------------------------------------------------
