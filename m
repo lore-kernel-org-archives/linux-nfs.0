@@ -1,27 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Errors ...
-Date: Tue, 08 Nov 2005 08:12:45 -0800
-Message-ID: <1131466365.32482.40.camel@lade.trondhjem.org>
-References: <4370AB14.9020203@renatre.org.ar>
-	 <1131460555.32482.4.camel@lade.trondhjem.org>
-	 <4370C459.5050600@renatre.org.ar>
-	 <1131465035.32482.37.camel@lade.trondhjem.org>
-	 <4370CB53.2000006@renatre.org.ar>
+From: Nick I <clusterbuilder@gmail.com>
+Subject: backbone of a large-file streaming system
+Date: Tue, 8 Nov 2005 10:29:15 -0700
+Message-ID: <e073f9120511080929t5280f1fag16b18d2d86567011@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_Part_47470_20240324.1131470955583"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZW5p-0003Xb-Qh
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 08:13:05 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EZW5n-0007kl-6K
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 08:13:05 -0800
-To: Alan Glait <aglait@renatre.org.ar>
-In-Reply-To: <4370CB53.2000006@renatre.org.ar>
+	id 1EZXHb-0006xl-OB
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 09:29:19 -0800
+Received: from xproxy.gmail.com ([66.249.82.194])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EZXHb-0002h1-F8
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 09:29:19 -0800
+Received: by xproxy.gmail.com with SMTP id h29so678959wxd
+        for <nfs@lists.sourceforge.net>; Tue, 08 Nov 2005 09:29:15 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,23 +30,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2005-11-08 at 12:59 -0300, Alan Glait wrote:
-> Ok ... when it happend i will test the comunication between the servers 
-> ....
+------=_Part_47470_20240324.1131470955583
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Thanks.
+Hi,
+I help maintain a Web site at
+www.clusterbuilder.org<http://www.clusterbuilder.org/>.
+You might have seen before that I have a section called Ask the Cluster
+Expert, where I am building a knowledgebase of cluster and grid information=
+.
+When someone asks a question I am researching the answer to build this
+knowledgebase out. I received the following question:
 
-> I will add to the kernel :
-> Provide client support for the NFSv3 ACL protocol extension
-> Provide server support for the NFSv3 ACL protocol extension
+*"I am looking for a variety of solutions to be a backbone of a large-file
+streaming system providing thousands of concurrent download streams.
+Preferably commodity hardware and Linux, though I'm open to commercial
+solutions."*
 
-This isn't really necessary unless you want to use ACLs. The server
-should be able to return the appropriate error to the client, and the
-client will stop probing.
+I am wondering if anyone here has suggestions of what applications will wor=
+k
+best for this type of setup. You can respond to the question at
+www.clusterbuilder.org/FAQ
+<http://www.clusterbuilder.org/FAQ>or respond in email.
 
-Cheers,
-  Trond
+Thanks,
+Nick
 
+------=_Part_47470_20240324.1131470955583
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+
+<p style=3D"margin-bottom: 0in;"><font size=3D"2"><font face=3D"arial, helv=
+etica, sans-serif">Hi,<br>I
+help maintain a Web site at <a href=3D"http://www.clusterbuilder.org/" targ=
+et=3D"_blank" onclick=3D"return top.js.OpenExtLink(window,event,this)">www.=
+clusterbuilder.org</a>.&nbsp;&nbsp;
+You might have seen before that I have a section called Ask the
+Cluster Expert, where I am building a knowledgebase of cluster and
+grid information.&nbsp; When someone asks a question I am researching
+the answer to build this knowledgebase out.&nbsp; I received the
+following question: <br><br><b>&quot;I am looking for a variety of
+solutions to be a backbone of a large-file streaming system providing
+thousands of concurrent download streams. Preferably commodity
+hardware and Linux, though I'm open to commercial solutions.&quot;</b><br><=
+br>I
+am wondering if anyone here has suggestions of what applications will
+work best for this type of setup. You can respond to the question at
+<a href=3D"http://www.clusterbuilder.org/FAQ"><span style=3D"text-decoratio=
+n: none;">www.clusterbuilder.org/FAQ
+</span></a></font><font face=3D"Arial, sans-serif">or respond in email.
+ </font><font face=3D"arial, helvetica, sans-serif"><br><br>Thanks,<br>Nick
+</font></font>
+</p>
+
+------=_Part_47470_20240324.1131470955583--
 
 
 -------------------------------------------------------
