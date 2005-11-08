@@ -1,22 +1,30 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Alan Glait <aglait@renatre.org.ar>
 Subject: Re: Errors ...
-Date: Tue, 08 Nov 2005 09:53:43 -0500
-Message-ID: <4370BBF7.50907@RedHat.com>
-References: <4370AB14.9020203@renatre.org.ar>
+Date: Tue, 08 Nov 2005 12:29:29 -0300
+Message-ID: <4370C459.5050600@renatre.org.ar>
+References: <4370AB14.9020203@renatre.org.ar> <1131460555.32482.4.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZUr5-00008V-07
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 06:53:47 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EZUr3-0006MQ-Gp
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 06:53:47 -0800
-To: Alan Glait <aglait@renatre.org.ar>
-In-Reply-To: <4370AB14.9020203@renatre.org.ar>
+	id 1EZVOY-0001ct-IX
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 07:28:22 -0800
+Received: from host132.200-45-109.telecom.net.ar ([200.45.109.132] helo=gate.renatre.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EZVOW-0007fy-UD
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 07:28:22 -0800
+Received: from mx2.renatre.org.ar (mx2.renatre.org.ar [192.168.1.4])
+	by gate.renatre.org (8.12.10/8.12.10) with ESMTP id jA8FS3Ls018613
+	for <nfs@lists.sourceforge.net>; Tue, 8 Nov 2005 12:28:03 -0300
+Received: from [192.168.1.5] (unknown [192.168.1.5])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.renatre.org.ar (Postfix) with ESMTP id 75C235C1E
+	for <nfs@lists.sourceforge.net>; Tue,  8 Nov 2005 12:39:26 -0300 (ART)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1131460555.32482.4.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +38,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+That the strange thing... There is not a process at 100% ... and the 
+first 10 process are at most 1% but the nfs doesnt respond.
 
+Alan
 
-Alan Glait wrote:
-> I have an Fedora core 4 exporting a directory. It have 2.6.13 kernel.
-> I mount it on Red Hat Enterprise Linux AS release 3 with 2.4.21-4.ELsmp 
-> kernel. 
-I have to admit... this gave be a bit of a scare...
-but this seem to work for me...
+Trond Myklebust wrote:
 
-> In the server, I get "svc: unknown version (0)" everytime. 
-This basically means your server it getting garbage instead
-of a valid RPC message...
+>On Tue, 2005-11-08 at 10:41 -0300, Alan Glait wrote:
+>  
+>
+>>Hi !
+>>I have an Fedora core 4 exporting a directory. It have 2.6.13 kernel.
+>>I mount it on Red Hat Enterprise Linux AS release 3 with 2.4.21-4.ELsmp 
+>>kernel. In the server, I get "svc: unknown version (0)" everytime. In 
+>>the client i get :nfsd: last server has exited
+>>    
+>>
+>
+>That is probably 2.6.13 probing for ACL support on the server. It should
+>be harmless.
+>
+>  
+>
+>>                                                             nfsd: 
+>>unexporting all filesystems
+>>                                                             nfsd: last 
+>>server has exited
+>>                                                             nfsd: 
+>>unexporting all filesystems
+>>                                                             portmap: 
+>>server localhost not responding, timed out
+>>all time.
+>>There is no problem but sometimes in the client it start to consume a 
+>>lot of the processors and I cant to stop it. The service stop ok but it 
+>>doesnt "release the usage" of th precessors ... in a top, a see iowait 
+>>at 100% or 98% .
+>>    
+>>
+>
+>Could you explain what you mean by "iowait at 100%"? Normally, iowait is
+>a process state, (a sleep state actually).
+>
+>Which process is in this state?
+>
+>Cheers,
+>  Trond
+>
+>
+>
+>-------------------------------------------------------
+>SF.Net email is sponsored by:
+>Tame your development challenges with Apache's Geronimo App Server. Download
+>it for free - -and be entered to win a 42" plasma tv or your very own
+>Sony(tm)PSP.  Click here to play: http://sourceforge.net/geronimo.php
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
+>  
+>
 
-> In the client i get :nfsd: last server has exited
->                                                             nfsd: 
-> unexporting all filesystems
->                                                             nfsd: last 
-> server has exited
->                                                             nfsd: 
-> unexporting all filesystems
->   
-This does not make much sense they are happening on your
-client since they happen when you bring down the NFS server.
-
-> portmap: server localhost not responding, timed out
-I would guess this means your network is down...
-
-
-steved.
 
 
 -------------------------------------------------------
