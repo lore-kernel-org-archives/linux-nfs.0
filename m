@@ -1,24 +1,28 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: BUG: soft lockup detected on CPU#0! (linux-2.6.14)
-Date: Tue, 8 Nov 2005 13:27:44 +0100
-Message-ID: <20051108122744.GA3045@elte.hu>
-References: <20051106193142.GD26862@skl-net.de> <17262.31781.497775.640424@cse.unsw.edu.au>
+From: Alan Glait <aglait@renatre.org.ar>
+Subject: Errors ...
+Date: Tue, 08 Nov 2005 10:41:40 -0300
+Message-ID: <4370AB14.9020203@renatre.org.ar>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andre Noll <maan@systemlinux.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, Andrew Morton <akpm@osdl.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZSZa-0002pc-U5
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 04:27:34 -0800
-Received: from mx3.mail.elte.hu ([157.181.1.138])
+	id 1EZTiA-0005d6-Rl
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 05:40:30 -0800
+Received: from host132.200-45-109.telecom.net.ar ([200.45.109.132] helo=gate.renatre.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EZSZZ-00050N-JZ
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 04:27:34 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17262.31781.497775.640424@cse.unsw.edu.au>
+	id 1EZTiA-0003am-BH
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 05:40:30 -0800
+Received: from mx2.renatre.org.ar (mx2.renatre.org.ar [192.168.1.4])
+	by gate.renatre.org (8.12.10/8.12.10) with ESMTP id jA8DeFnD013110
+	for <nfs@lists.sourceforge.net>; Tue, 8 Nov 2005 10:40:15 -0300
+Received: from [192.168.1.5] (unknown [192.168.1.5])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.renatre.org.ar (Postfix) with ESMTP id 13708619B
+	for <nfs@lists.sourceforge.net>; Tue,  8 Nov 2005 10:51:37 -0300 (ART)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,24 +36,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hi !
+I have an Fedora core 4 exporting a directory. It have 2.6.13 kernel.
+I mount it on Red Hat Enterprise Linux AS release 3 with 2.4.21-4.ELsmp 
+kernel. In the server, I get "svc: unknown version (0)" everytime. In 
+the client i get :nfsd: last server has exited
+                                                             nfsd: 
+unexporting all filesystems
+                                                             nfsd: last 
+server has exited
+                                                             nfsd: 
+unexporting all filesystems
+                                                             portmap: 
+server localhost not responding, timed out
+all time.
+There is no problem but sometimes in the client it start to consume a 
+lot of the processors and I cant to stop it. The service stop ok but it 
+doesnt "release the usage" of th precessors ... in a top, a see iowait 
+at 100% or 98% .
 
-* Neil Brown <neilb@suse.de> wrote:
+What can I do ??
+thanx for any help
 
-> > Nov  4 12:46:44 p133 kernel: BUG: soft lockup detected on CPU#0!
-> 
-> This seems to suggest that the nfsd thread is always runnable, which 
-> implies a read-only load with everything in cache - at least for the 
-> 10 seconds leading up to each of these errors.  Is that likely?
-> 
-> The following patch might fix it.  Please let me know the result.
-
->  	try_to_freeze();
-> +	cond_resched();
-
-and the NFSd thread never considered preemption in any other place? Then 
-this should be the right fix - the kernel was running under !PREEMPT.
-
-	Ingo
 
 
 -------------------------------------------------------
