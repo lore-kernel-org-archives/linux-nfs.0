@@ -1,23 +1,30 @@
-From: Vince Busam <vbusam@google.com>
-Subject: Re: oops in rpc_pipe_release
-Date: Tue, 08 Nov 2005 10:37:38 -0800
-Message-ID: <4370F072.3090104@google.com>
-References: <436FEB9B.3010007@google.com> <4370B4E0.6090306@RedHat.com>
+From: Alan Glait <aglait@renatre.org.ar>
+Subject: Re: Errors ...
+Date: Tue, 08 Nov 2005 15:45:42 -0300
+Message-ID: <4370F256.6030503@renatre.org.ar>
+References: <4370AB14.9020203@renatre.org.ar>	 <1131460555.32482.4.camel@lade.trondhjem.org>	 <4370C459.5050600@renatre.org.ar>	 <1131465035.32482.37.camel@lade.trondhjem.org>	 <4370CB53.2000006@renatre.org.ar> <1131466365.32482.40.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZYLs-0001Pt-Pt
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 10:37:48 -0800
-Received: from smtp-out.google.com ([216.239.45.12])
+	id 1EZYSQ-0001jj-NM
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 10:44:34 -0800
+Received: from host132.200-45-109.telecom.net.ar ([200.45.109.132] helo=gate.renatre.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EZYLq-0004iA-La
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 10:37:48 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <4370B4E0.6090306@RedHat.com>
+	id 1EZYSP-0008Qn-5A
+	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 10:44:34 -0800
+Received: from mx2.renatre.org.ar (mx2.renatre.org.ar [192.168.1.4])
+	by gate.renatre.org (8.12.10/8.12.10) with ESMTP id jA8IiELs028127
+	for <nfs@lists.sourceforge.net>; Tue, 8 Nov 2005 15:44:14 -0300
+Received: from [192.168.1.5] (unknown [192.168.1.5])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.renatre.org.ar (Postfix) with ESMTP id 9749E5C1E
+	for <nfs@lists.sourceforge.net>; Tue,  8 Nov 2005 15:55:38 -0300 (ART)
+In-Reply-To: <1131466365.32482.40.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,52 +38,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I tried that with and without the linux-2.6.13-CITI_NFS4_ALL-1.dif patch, and either way 
-it ends up causing another NULL pointer dereference in __rpc_purge_upcall after an hour or 
-two.
+Now, everything is ok:
+in the client: load average: 0.06, 0.15, 0.18
+and I can see the nfs`s filesystem. But in the server I steel getting:
+svc: unknown version (0)
 
-Vince
+I will change the on-board ethernet card in this server. May be this the 
+problem??
 
-Steve Dickson wrote:
-> 
-> 
-> Vince Busam wrote:
-> 
->> I'm using NFS3 with kerberos authentication, and 25 hour tickets that 
->> refresh when
->> unlocking the screensaver.  Over the weekend, it'll hang with one of 
->> the following stack
->> traces.  Any ideas what could cause this?
-> 
-> I believe this is caused by the fact gss_pipe_release()
-> (i.e. rpci->ops->release_pipe(inode)) is being called
-> with a freed clnt->cl_auth pointer. I proposed the
-> following patch a while back that I thought fixed the
-> problem, but Trond said the patch "prevents anyone from
-> reopening the pipe after the first close(), so if gssd
-> needs to be restarted, then all pipes will forever block."
-> So the patch got reverted....
-> 
-> 
-> --- linux-2.6.13/net/sunrpc/rpc_pipe.c.orig    2005-08-28 
-> 19:41:01.000000000 -0400
-> +++ linux-2.6.13/net/sunrpc/rpc_pipe.c    2005-09-16 11:18:53.598157000 
-> -0400
-> @@ -177,6 +177,8 @@ rpc_pipe_release(struct inode *inode, st
->          __rpc_purge_upcall(inode, -EPIPE);
->      if (rpci->ops->release_pipe)
->          rpci->ops->release_pipe(inode);
-> +    if (!rpci->nreaders && !rpci->nwriters)
-> +        rpci->ops = NULL;
->  out:
->      up(&inode->i_sem);
->      return 0;
-> 
-> I think the main problem here is there is no way of telling
-> if a rpc_inode is or is not valid (or active) so there
-> is no way of knowing whether or not a release call is needed...
-> 
-> steved.
+Trond Myklebust wrote:
+
+>On Tue, 2005-11-08 at 12:59 -0300, Alan Glait wrote:
+>  
+>
+>>Ok ... when it happend i will test the comunication between the servers 
+>>....
+>>    
+>>
+>
+>Thanks.
+>
+>  
+>
+>>I will add to the kernel :
+>>Provide client support for the NFSv3 ACL protocol extension
+>>Provide server support for the NFSv3 ACL protocol extension
+>>    
+>>
+>
+>This isn't really necessary unless you want to use ACLs. The server
+>should be able to return the appropriate error to the client, and the
+>client will stop probing.
+>
+>Cheers,
+>  Trond
+>
+>
+>
+>-------------------------------------------------------
+>SF.Net email is sponsored by:
+>Tame your development challenges with Apache's Geronimo App Server. Download
+>it for free - -and be entered to win a 42" plasma tv or your very own
+>Sony(tm)PSP.  Click here to play: http://sourceforge.net/geronimo.php
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
+>  
+>
+
 
 
 -------------------------------------------------------
