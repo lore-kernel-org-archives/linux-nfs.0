@@ -1,24 +1,21 @@
-From: <comunica@grupobbva.com>
-Subject: BBVA net (ID 53219)
-Date: Wed, 09 Nov 2005 11:54:38 -0800
-Message-ID: <E1EZw1m-0002S6-LC@rh-2.fiberfeed.com>
-Reply-To: jordi_oviedo@terra.es
+From: email builder <emailbuilder88@yahoo.com>
+Subject: Re: OT: RAID perf doldrums: advice/recommendations?
+Date: Wed, 9 Nov 2005 12:55:22 -0800 (PST)
+Message-ID: <20051109205522.54312.qmail@web51905.mail.yahoo.com>
+References: <OF4F03C35B.15525291-ON862570AB.0052D3A1-862570AB.005389DD@kcp.com>
 Mime-Version: 1.0
-Content-Type: text/html
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EZw1l-0005LL-O2
-	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 11:54:37 -0800
-Received: from rh-2.fiberfeed.com ([65.110.12.230])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EZw1i-00015Z-Oa
-	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 11:54:37 -0800
-Received: from nobody by rh-2.fiberfeed.com with local (Exim 4.51)
-	id 1EZw1m-0002S6-LC
-	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 11:54:38 -0800
-To: nfs@lists.sourceforge.net
+	id 1EZwyh-00088L-7q
+	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 12:55:31 -0800
+Received: from web51905.mail.yahoo.com ([206.190.48.68])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EZwyg-00058H-2Y
+	for nfs@lists.sourceforge.net; Wed, 09 Nov 2005 12:55:31 -0800
+To: mhaverkamp@kcp.com, nfs@lists.sourceforge.net
+In-Reply-To: <OF4F03C35B.15525291-ON862570AB.0052D3A1-862570AB.005389DD@kcp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,28 +29,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-BBVA net<br>
-Estimado nfs@lists.sourceforge.net
-!<br>
-Nosotros no hemos podido proceder las operaciones ultimas sobre vuestra c=
-uenta. Para garantir que vuestra cuenta no esta suspendido, renueve, por =
-favor, vuesta informacion. Si usted ha renovado su informacion recienteme=
-nte, rechazar, desprecie, por favor, porque nosotros procedemos los cambi=
-os cuales usted ha hecho. <br><br>
-<a href=3D"http://www.novo.pe.kr/ktools/reda.php">La Banca en Internet </=
-a><br><br>
-adelante es no quedarse atras <br>
-* adelante es acceder a BBVA ahora y las 24 horas del dia.<br>
-* adelante es administrar tus cuentas de la manera mas sencilla.<br>
-* adelante es disponer de los productos y servicios exclusivos que mejor =
-se adaptan a ti.<br>
-* adelante es que nos tengas siempre a un clic de distancia.<br>
-* adelante es que disfrutes de la mejor banca online.<br>
-adelante es BBVA net <br><br>
-Llene la forma following BBVA NET<br>
+> > > If you stay with RAID5, get something with a battery backed write=20
+> cache.=20
+> > > That will make a huge difference in RAID5 performance.
+> >=20
+> > Really?  I was under the impression that this was just a safety=20
+> precaution or
+> > similar... it is called a "backup" after all.  :)  How exactly does i=
+t
+> > increase performance?=20
+>=20
+> Without one, writes must be flushed to disk before the RAID controller =
+can=20
+> report them as complete.  This includes even trivial things like updati=
+ng=20
+> file access times.  With one, writes only need to get into the=20
+> controller's write cache before they are reported as complete.  This=20
+> allows the controller to schedule the actual write to disk at an optima=
+l=20
+> time.
+
+Thank you sincerely for this excellent explanation.  We are currently loo=
+king
+at the new 3Ware SATA II card, the 9550SX:
+
+http://3ware.com/products/serial_ata2-9000.asp
+
+What is strange about these is that the battery backup is sold separately=
+.=20
+Does anyone have experience with the BBUs (battery backup units) on the 3=
+Ware
+9000 series cards?
+
+  - Do they really provide the bang for the extra $100?
+  - What kind of configuration/installation mess are the BBUs?
+
+
+> A good way to show this is to untar a tar file full of small files (e.g=
+.=20
+> kernel source).  On RAID5 without write cache, this takes at least 10=20
+> times longer than even a single ATA disk.
+>=20
+> >=20
+> > (And, yes, I have seen this mentioned in many places, so this would b=
+e a
+> > criteria for our next purchase. :) )
 
 
 
+	=09
+__________________________________=20
+Yahoo! FareChase: Search multiple travel sites in one click.
+http://farechase.yahoo.com
 
 
 -------------------------------------------------------
