@@ -1,23 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Edward Hibbert" <Edward.Hibbert@dataconnection.com>
 Subject: RE: Rename window
-Date: Fri, 11 Nov 2005 10:29:19 -0500
-Message-ID: <1131722959.8805.53.camel@lade.trondhjem.org>
-References: <9E621559095AA746B22B21CD4FAF99A55735BC@EDINMAIL1.ad.datcon.co.uk>
+Date: Fri, 11 Nov 2005 15:31:42 -0000
+Message-ID: <9E621559095AA746B22B21CD4FAF99A55735BF@EDINMAIL1.ad.datcon.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Peter Staubach" <staubach@redhat.com>,
+	<nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EaaqS-0008Ku-Fs
-	for nfs@lists.sourceforge.net; Fri, 11 Nov 2005 07:29:40 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EaaqR-0006ww-Ve
-	for nfs@lists.sourceforge.net; Fri, 11 Nov 2005 07:29:40 -0800
-To: Edward Hibbert <Edward.Hibbert@dataconnection.com>
-In-Reply-To: <9E621559095AA746B22B21CD4FAF99A55735BC@EDINMAIL1.ad.datcon.co.uk>
+	id 1Eaasa-0008Up-Au
+	for nfs@lists.sourceforge.net; Fri, 11 Nov 2005 07:31:52 -0800
+Received: from smtp2.dataconnection.com ([192.91.191.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EaasZ-0007R8-OX
+	for nfs@lists.sourceforge.net; Fri, 11 Nov 2005 07:31:52 -0800
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,10 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Hey, who said "it" couldn't refer to "Solaris"?
+
+Edward.=20
+
+-----Original Message-----
+From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]=20
+Sent: 11 November 2005 15:29
+To: Edward Hibbert
+Cc: Peter Staubach; nfs@lists.sourceforge.net
+Subject: RE: [NFS] Rename window
+
 On Fri, 2005-11-11 at 15:28 +0000, Edward Hibbert wrote:
 
-> However I should probably have said that our test app suggests this
+> However I should probably have said that our test app suggests this=20
 > doesn't occur with Solaris NFS clients, which might influence people's
+
 > opinion on whether it should be fixed.
 
 Not really, no. ;-)
