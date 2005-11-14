@@ -1,20 +1,29 @@
-From: "Derrick Abebrese" <abebrd9@msn.com>
-Subject: NFS Help
-Date: Mon, 14 Nov 2005 04:38:02 -0600
-Message-ID: <BAY103-DAV13963A55824DEBEB7EAB8DEE5A0@phx.gbl>
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
+Subject: Diskless boot problems
+Date: Mon, 14 Nov 2005 14:55:22 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0511141441390.11652@xpc20.ast.cam.ac.uk>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0032_01C5E8D5.32E454F0"
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ebbiu-0007WV-IB
-	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 02:38:04 -0800
-Received: from bay103-dav13.bay103.hotmail.com ([65.54.174.85] helo=hotmail.com)
+	id 1EbfkL-0001Gy-SH
+	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 06:55:49 -0800
+Received: from ppsw-0.csi.cam.ac.uk ([131.111.8.130])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ebbiu-0008Dy-B3
-	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 02:38:04 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1EbfkJ-0003Cx-Jr
+	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 06:55:50 -0800
+Received: from cass41.ast.cam.ac.uk ([131.111.69.186]:48587)
+	by ppsw-0.csi.cam.ac.uk (ppsw.cam.ac.uk [131.111.8.130]:25)
+	with esmtp id 1Ebfjv-0001y4-0p (Exim 4.54) for nfs@lists.sourceforge.net
+	(return-path <jss@ast.cam.ac.uk>); Mon, 14 Nov 2005 14:55:23 +0000
+Received: from xserv1.ast.cam.ac.uk (xserv1.ast.cam.ac.uk [131.111.69.235])
+	by cass41.ast.cam.ac.uk (8.13.4+Sun/8.13.4) with ESMTP id jAEEtND7023123
+	for <nfs@lists.sourceforge.net>; Mon, 14 Nov 2005 14:55:23 GMT
+Received: from xpc20.ast.cam.ac.uk (xpc20.ast.cam.ac.uk [131.111.69.39])
+	by xserv1.ast.cam.ac.uk (Postfix) with ESMTP id 04941172FD7
+	for <nfs@lists.sourceforge.net>; Mon, 14 Nov 2005 14:55:22 +0000 (GMT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,48 +37,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
 
-------=_NextPart_000_0032_01C5E8D5.32E454F0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+We have a set of clients which boot over the network, and mount their root 
+file systems over NFS from a server. All systems run linux-2.6.9-22 
+(Scientific Linux 4.1, a RHEL clone).
 
-Hi Guys
-  I sent in a request for some help on mounting my NFS volumes, I used =
-the IP instead of the DNS names and that works just fine so I am ok now
-thanks anyway
-Justice
-------=_NextPart_000_0032_01C5E8D5.32E454F0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Occasionally the system breaks. For some reason some of the clients 
+produce errors in the logs like:
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type =
-content=3Dtext/html;charset=3Diso-8859-1>
-<STYLE></STYLE>
+portmap: server localhost not responding, timed out
+RPC: failed to contact portmap (errno -5).
+portmap: server localhost not responding, timed out
+RPC: failed to contact portmap (errno -5).
+portmap: server localhost not responding, timed out
+RPC: failed to contact portmap (errno -5).
+lockd_up: makesock failed, error=-5
+portmap: server localhost not responding, timed out
+RPC: failed to contact portmap (errno -5).
+lockd_up: no pid, 2 users??
 
-<META content=3D"MSHTML 6.00.2900.2769" name=3DGENERATOR></HEAD>
-<BODY id=3DMailContainerBody=20
-style=3D"PADDING-LEFT: 10px; FONT-WEIGHT: normal; FONT-SIZE: 10pt; =
-COLOR: #000000; BORDER-TOP-STYLE: none; PADDING-TOP: 15px; FONT-STYLE: =
-normal; FONT-FAMILY: Verdana; BORDER-RIGHT-STYLE: none; =
-BORDER-LEFT-STYLE: none; TEXT-DECORATION: none; BORDER-BOTTOM-STYLE: =
-none"=20
-leftMargin=3D0 topMargin=3D0 acc_role=3D"text" CanvasTabStop=3D"true"=20
-name=3D"Compose message area"><!--[gte IE 5]><?xml:namespace =
-prefix=3D"v" /><?xml:namespace prefix=3D"o" /><![endif]-->
-<DIV>Hi Guys</DIV>
-<DIV>&nbsp; I sent in a request for some help on mounting my NFS =
-volumes, I used=20
-the IP instead of the DNS names and that works just fine so I am ok =
-now</DIV>
-<DIV>thanks anyway</DIV>
-<DIV>Justice</DIV></BODY></HTML>
+This happens every few weeks, and appears random. The clients then get 
+into a funny state where some parts of the system appear to continue 
+working, but with lockups and hangs.
 
-------=_NextPart_000_0032_01C5E8D5.32E454F0--
+The systems boot using pxelinux. A busybox initrd sets the IP of the 
+client using dhcp, and mounts the root file system. This setup is so that 
+the client can use a standard kernel image.
+
+The mount options the client use are:
+
+XXX:~> cat /proc/mounts
+aaa.bbb.ccc.ddd:/xss_data1/foo / nfs rw,v3,rsize=32768,wsize=32768,hard,udp,nolock,addr=aaa.bbb.ccc.ddd 0 0
+...
+
+I'm not sure how the kernel uses rsize,wsize=32768 with udp, but it says 
+so.
+
+Any ideas what could cause this??? We experienced a very similar problem 
+with Fedora Core 2, and before that RedHat 7.3.
+
+Thanks
+
+Jeremy
+
+-- 
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
 
 
 -------------------------------------------------------
