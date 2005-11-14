@@ -1,23 +1,20 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Rename window
-Date: Fri, 11 Nov 2005 10:33:07 -0500
-Message-ID: <4374B9B3.6030905@redhat.com>
-References: <9E621559095AA746B22B21CD4FAF99A55735BC@EDINMAIL1.ad.datcon.co.uk>
+From: "Derrick Abebrese" <abebrd9@msn.com>
+Subject: I need some help with setting up NFS on my system
+Date: Mon, 14 Nov 2005 03:55:13 -0600
+Message-ID: <BAY103-DAV14DC4E762345924A06290EE5A0@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_001C_01C5E8CF.37387B90"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Eaatx-00006Z-IV
-	for nfs@lists.sourceforge.net; Fri, 11 Nov 2005 07:33:17 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1Ebb3X-0005iF-Or
+	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 01:55:19 -0800
+Received: from bay103-dav1.bay103.hotmail.com ([65.54.174.73] helo=hotmail.com)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Eaatw-0002UQ-2S
-	for nfs@lists.sourceforge.net; Fri, 11 Nov 2005 07:33:17 -0800
-To: Edward Hibbert <Edward.Hibbert@dataconnection.com>
-In-Reply-To: <9E621559095AA746B22B21CD4FAF99A55735BC@EDINMAIL1.ad.datcon.co.uk>
+	id 1Ebb3V-0000i2-OA
+	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 01:55:20 -0800
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +28,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Edward Hibbert wrote:
+This is a multi-part message in MIME format.
 
->Thanks for your replies.  We're getting round this by ensuring that we
->don't rename to the same name - we can put something machine-specific in
->the destination filename fairly easily.
->
->However I should probably have said that our test app suggests this
->doesn't occur with Solaris NFS clients, which might influence people's
->opinion on whether it should be fixed.
->
+------=_NextPart_000_001C_01C5E8CF.37387B90
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-I'd be surprised if this couldn't happen with Solaris clients.  They do
-the same lookups and have many of the same decision making statements.
-It is implemented differently, completely down in the NFS file system,
-but it works about the same.
+Hello
+  my problem involves the inability mount or export shares please also =
+include:=20
 
-       ps
+  a.. a copy of your /etc/exports file
+
+  b.. the output of rpcinfo -p localhost run on the server
+
+  c.. the output of rpcinfo -p servername run on the client
+
+  d.. also I will like to know what I need to setup on the client side =
+and the server side to enable me to mount both file systems
+
+  e.. any help will be appriciated
+
+  f.. thanks
+
+  g.. Justice
+
+------=_NextPart_000_001C_01C5E8CF.37387B90
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type =
+content=3Dtext/html;charset=3Diso-8859-1>
+<STYLE></STYLE>
+
+<META content=3D"MSHTML 6.00.2900.2769" name=3DGENERATOR></HEAD>
+<BODY id=3DMailContainerBody=20
+style=3D"PADDING-LEFT: 10px; FONT-WEIGHT: normal; FONT-SIZE: 10pt; =
+COLOR: #000000; BORDER-TOP-STYLE: none; PADDING-TOP: 15px; FONT-STYLE: =
+normal; FONT-FAMILY: Verdana; BORDER-RIGHT-STYLE: none; =
+BORDER-LEFT-STYLE: none; TEXT-DECORATION: none; BORDER-BOTTOM-STYLE: =
+none"=20
+leftMargin=3D0 topMargin=3D0 acc_role=3D"text" CanvasTabStop=3D"true"=20
+name=3D"Compose message area"><!--[gte IE 5]><?xml:namespace =
+prefix=3D"v" /><?xml:namespace prefix=3D"o" /><![endif]-->
+<DIV>Hello</DIV>
+<DIV>&nbsp; my problem involves the inability mount or export shares =
+please also=20
+include:=20
+<P></P>
+<UL>
+  <LI>
+  <P>a copy of your <TT class=3DFILENAME>/etc/exports</TT> file</P>
+  <LI>
+  <P>the output of <B class=3DCOMMAND>rpcinfo -p</B> <EM>localhost</EM> =
+run on the=20
+  server</P>
+  <LI>
+  <P>the output of <B class=3DCOMMAND>rpcinfo -p</B> <EM>servername</EM> =
+run on=20
+  the client</P>
+  <LI>
+  <P>also I will like to know what I need to setup on the client side =
+and the=20
+  server side to enable me to mount both file systems</P>
+  <LI>
+  <P>any help will be appriciated</P>
+  <LI>
+  <P>thanks</P>
+  <LI>
+  <P>Justice</P></LI></UL></DIV></BODY></HTML>
+
+------=_NextPart_000_001C_01C5E8CF.37387B90--
 
 
 -------------------------------------------------------
