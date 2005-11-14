@@ -1,29 +1,21 @@
-From: Jeremy Sanders <jss@ast.cam.ac.uk>
-Subject: Diskless boot problems
-Date: Mon, 14 Nov 2005 14:55:22 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0511141441390.11652@xpc20.ast.cam.ac.uk>
+From: "Thomas, Dave" <Dave.Thomas@savvis.net>
+Subject: RE: NFS inconsistencies experienced between server and client.
+Date: Mon, 14 Nov 2005 15:25:34 -0000
+Message-ID: <51E1B8DFD9EE6747889DB802751770B90700F7@S229378RGEW08.apptix-01.savvis.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EbfkL-0001Gy-SH
-	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 06:55:49 -0800
-Received: from ppsw-0.csi.cam.ac.uk ([131.111.8.130])
+	id 1EbgDJ-0002kw-6b
+	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 07:25:45 -0800
+Received: from out001.uk.email.savvis.net ([213.174.205.44])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EbfkJ-0003Cx-Jr
-	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 06:55:50 -0800
-Received: from cass41.ast.cam.ac.uk ([131.111.69.186]:48587)
-	by ppsw-0.csi.cam.ac.uk (ppsw.cam.ac.uk [131.111.8.130]:25)
-	with esmtp id 1Ebfjv-0001y4-0p (Exim 4.54) for nfs@lists.sourceforge.net
-	(return-path <jss@ast.cam.ac.uk>); Mon, 14 Nov 2005 14:55:23 +0000
-Received: from xserv1.ast.cam.ac.uk (xserv1.ast.cam.ac.uk [131.111.69.235])
-	by cass41.ast.cam.ac.uk (8.13.4+Sun/8.13.4) with ESMTP id jAEEtND7023123
-	for <nfs@lists.sourceforge.net>; Mon, 14 Nov 2005 14:55:23 GMT
-Received: from xpc20.ast.cam.ac.uk (xpc20.ast.cam.ac.uk [131.111.69.39])
-	by xserv1.ast.cam.ac.uk (Postfix) with ESMTP id 04941172FD7
-	for <nfs@lists.sourceforge.net>; Mon, 14 Nov 2005 14:55:22 +0000 (GMT)
-To: nfs@lists.sourceforge.net
+	id 1EbgDI-0005Sl-RR
+	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 07:25:45 -0800
+To: "Neil Horman" <nhorman@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,53 +29,118 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I've tried client with AS3.0U5, but still experiencing issues. Not able
+to update the server easily.
+Also have tried to mount with data caching disabled by adding=20
 
-We have a set of clients which boot over the network, and mount their root 
-file systems over NFS from a server. All systems run linux-2.6.9-22 
-(Scientific Linux 4.1, a RHEL clone).
+options nfs nfs_uncached_io=3D1
 
-Occasionally the system breaks. For some reason some of the clients 
-produce errors in the logs like:
+to the /etc/modules.conf file, but get following error on reboot.
 
-portmap: server localhost not responding, timed out
-RPC: failed to contact portmap (errno -5).
-portmap: server localhost not responding, timed out
-RPC: failed to contact portmap (errno -5).
-portmap: server localhost not responding, timed out
-RPC: failed to contact portmap (errno -5).
-lockd_up: makesock failed, error=-5
-portmap: server localhost not responding, timed out
-RPC: failed to contact portmap (errno -5).
-lockd_up: no pid, 2 users??
+insmod: Warning: ignoring nfs_uncached_io=3D1, no such parameter in this
+module
 
-This happens every few weeks, and appears random. The clients then get 
-into a funny state where some parts of the system appear to continue 
-working, but with lockups and hangs.
 
-The systems boot using pxelinux. A busybox initrd sets the IP of the 
-client using dhcp, and mounts the root file system. This setup is so that 
-the client can use a standard kernel image.
+> Hi,
+>=20
+> =20
+>=20
+> I currently a web site consisting of one NFS server and 2 clients
+> running RedHat AS3.0 (kernel 2.4.21-9.0.1.ELsmp)
+>=20
+Have you tried this with the latest RHEL3 kernel?  I remember a simmilar
+problem
+being addressed some time ago.
+Neil
 
-The mount options the client use are:
+> =20
+>=20
+> Clients run:-
+>=20
+> Apache/2.0.52
+>=20
+> jakarta-tomcat-5.5.4
+>=20
+> nfs-utils-1.0.6-33EL
+>=20
+> =20
+>=20
+> Server runs:-
+>=20
+> mysql  Ver 14.7 Distrib 4.1.13, for pc-linux-gnu (i686) using readline
+> 4.3
+>=20
+> nfs-utils-1.0.6-33EL
+>=20
+> =20
+>=20
+> The server shares out a directory /data01/www, mounted as /www on the
+> clients, which contains the DocumentRoot used by apache.
+>=20
+> =20
+>=20
+> New content is uploaded to the server at /data01/www, several times a
+> day.
+>=20
+> =20
+>=20
+> I am seeing inconsistencies between some files on the server, and the
+> same files on the client, index.shtml files in particular.
+>=20
+> When I run a checksum on certain files on the clients and server,
+> different results are obtained. The checksums, and the files, only
+> become identical if the file is deleted before being uploaded onto the
+> server, but this is not an option.
+>=20
+> If the file is not deleted, before being uploaded, they remain
+different
+> indefinitely.=20
+>=20
+> =20
+>=20
+> The filesystem is exported with the options (rw,async), and mounted
+with
+> following (rsize=3D8192,wsize=3D8192,timeo=3D15,rw,hard,intr).
+>=20
+> We have tested by changing several mount options, including:-
+>=20
+> Server export with ro, client mount with ro, client mount with noac.
+We
+> have increased the number of nfs threads on the server from 8 to 16.
+>=20
+> =20
+>=20
+> But the problem is still being experienced, and is becoming a critical
+> issue, as the website shows different data, depending upon which
+client
+> you connect to.
+>=20
+> =20
+>=20
+> =20
+>=20
+> Any thoughts would be welcome.
+>=20
+> =20
+>=20
+> Thanks,
+>=20
+> =20
+>=20
+> Dave.
+>=20
+> =20
+>=20
 
-XXX:~> cat /proc/mounts
-aaa.bbb.ccc.ddd:/xss_data1/foo / nfs rw,v3,rsize=32768,wsize=32768,hard,udp,nolock,addr=aaa.bbb.ccc.ddd 0 0
-...
-
-I'm not sure how the kernel uses rsize,wsize=32768 with udp, but it says 
-so.
-
-Any ideas what could cause this??? We experienced a very similar problem 
-with Fedora Core 2, and before that RedHat 7.3.
-
-Thanks
-
-Jeremy
-
--- 
-Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
-X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
-Public Key Server PGP Key ID: E1AAE053
+--=20
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
