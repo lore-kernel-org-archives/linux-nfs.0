@@ -1,19 +1,22 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd ] Make sure nfsd doesn't hog a cpu forever.
-Date: Tue, 15 Nov 2005 12:54:29 +1100
-Message-ID: <1051115015429.9307@cse.unsw.edu.au>
+From: carlos@fisica.ufpr.br (Carlos Carvalho)
+Subject: Re: [PATCH kNFSd ] Make sure nfsd doesn't hog a cpu forever.
+Date: Tue, 15 Nov 2005 12:33:37 -0200
+Message-ID: <17273.61889.607871.762490@fisica.ufpr.br>
 References: <20051115125307.9288.patches@notabene>
-Cc: nfs@lists.sourceforge.net
+	<1051115015429.9307@cse.unsw.edu.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ebq1v-0008FR-Fv
-	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 17:54:39 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1Ec1sX-00023i-ME
+	for nfs@lists.sourceforge.net; Tue, 15 Nov 2005 06:33:45 -0800
+Received: from fisica.ufpr.br ([200.17.209.129])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ebq1u-0005d6-Au
-	for nfs@lists.sourceforge.net; Mon, 14 Nov 2005 17:54:39 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1Ec1sW-0001gz-Ch
+	for nfs@lists.sourceforge.net; Tue, 15 Nov 2005 06:33:45 -0800
+To: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net
+In-Reply-To: <1051115015429.9307@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,34 +30,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Against 2.6.14-mm2, or 2.6.15-rc1
-### Comments for Changeset
+NeilBrown (neilb@cse.unsw.edu.au) wrote on 15 November 2005 12:54:
+ >Against 2.6.14-mm2, or 2.6.15-rc1
+ >### Comments for Changeset
+ >
+ >Being kernel-threads, nfsd servers don't get pre-empted (depending on
+ >CONIG).  If there is a steady stream of NFS requests that can be
+ >served from cache, an nfsd thread may hold on to a cpu indefinitely ,
+ >which isn't very friendly.
+ >
+ >So it is good to have a cond_resched in there (just before looking for
+ >a new request to serve), to make sure we play nice.
 
-Being kernel-threads, nfsd servers don't get pre-empted (depending on
-CONIG).  If there is a steady stream of NFS requests that can be
-served from cache, an nfsd thread may hold on to a cpu indefinitely ,
-which isn't very friendly.
+Yes!!!
 
-So it is good to have a cond_resched in there (just before looking for
-a new request to serve), to make sure we play nice.
+This happens rather frequently here. I tried to put the nfsd threads
+at nice 19 but it helped only a little and disturbs the other clients
+too...
 
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./net/sunrpc/svcsock.c |    1 +
- 1 file changed, 1 insertion(+)
-
-diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
---- ./net/sunrpc/svcsock.c~current~	2005-11-15 10:24:52.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2005-11-15 10:24:52.000000000 +1100
-@@ -1181,6 +1181,7 @@ svc_recv(struct svc_serv *serv, struct s
- 	arg->tail[0].iov_len = 0;
- 
- 	try_to_freeze();
-+	cond_resched();
- 	if (signalled())
- 		return -EINTR;
- 
+Could this be done for 2.4 also?
 
 
 -------------------------------------------------------
