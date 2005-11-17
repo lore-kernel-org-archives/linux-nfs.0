@@ -1,23 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: RE: NLM GRANT callback using AUTH_NULL is rejected
-Date: Thu, 17 Nov 2005 11:56:40 -0500
-Message-ID: <1132246600.8028.5.camel@lade.trondhjem.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NLM GRANT callback using AUTH_NULL is rejected
+Date: Thu, 17 Nov 2005 14:11:46 -0500
+Message-ID: <437CD5F2.5010007@RedHat.com>
 References: <044B81DE141D7443BCE91E8F44B3C1E2013327B7@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, neilb@suse.de,
-	Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ecn4X-000820-PJ
-	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:57:17 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Ecn4V-0000dq-Dd
-	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:57:18 -0800
-To: "Lever, Charles" <Charles.Lever@netapp.com>
+	id 1EcpAj-0005jP-8a
+	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 11:11:49 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EcpAh-0002Qx-RX
+	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 11:11:49 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id jAHJBlvw024633
+	for <nfs@lists.sourceforge.net>; Thu, 17 Nov 2005 14:11:47 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id jAHJBkV19684
+	for <nfs@lists.sourceforge.net>; Thu, 17 Nov 2005 14:11:46 -0500
+Received: from [172.16.80.110] (dickson.boston.redhat.com [172.16.80.110])
+	by lacrosse.corp.redhat.com (8.11.6/8.11.6) with ESMTP id jAHJBk412199
+	for <nfs@lists.sourceforge.net>; Thu, 17 Nov 2005 14:11:46 -0500
+To: nfs@lists.sourceforge.net
 In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E2013327B7@exsvl02.hq.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,20 +38,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2005-11-17 at 08:20 -0800, Lever, Charles wrote:
 
-> was it the judgement of the community that no IP address checking for
-> AUTH_NULL callbacks is better than having at least *some* sanity
-> checking?  seems reasonable to me to register the IP address of the file
-> server so that not just any joe IP address can grant locks.
-> (limitations of authentication via IP address notwithstanding).
 
-nlmsvc_grant_callback() checks that both the IP address and the cookie
-match a request that was sent by the client.
+Lever, Charles wrote:
+> ok, these appear not to be in RHEL 4 update 2, which is what our
+> internal test happens to be using at the moment.  
+I beg to differ my friend...  They seem to be in the
+2.6.9-22 kernel I'm looking at...
 
-Cheers,
-  Trond
-
+steved.
 
 
 -------------------------------------------------------
