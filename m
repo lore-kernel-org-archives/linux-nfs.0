@@ -1,30 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Funny looking code in __rpc_purge_upcall
-Date: Thu, 17 Nov 2005 11:01:00 -0500
-Message-ID: <437CA93C.7030402@RedHat.com>
-References: <437BD49A.5070509@google.com> <1132197000.8561.1.camel@lade.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NLM GRANT callback using AUTH_NULL is rejected
+Date: Thu, 17 Nov 2005 11:05:08 -0500
+Message-ID: <20051117160508.GB2337@fieldses.org>
+References: <044B81DE141D7443BCE91E8F44B3C1E2013327B6@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@suse.de, Olaf Kirch <okir@suse.de>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EcmCa-0005il-AB
-	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:01:32 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EcmCa-0002Yy-4v
-	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:01:32 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id jAHG11AX026568
-	for <nfs@lists.sourceforge.net>; Thu, 17 Nov 2005 11:01:01 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id jAHG11V17259
-	for <nfs@lists.sourceforge.net>; Thu, 17 Nov 2005 11:01:01 -0500
-Received: from [172.16.80.110] (dickson.boston.redhat.com [172.16.80.110])
-	by lacrosse.corp.redhat.com (8.11.6/8.11.6) with ESMTP id jAHG10425573
-	for <nfs@lists.sourceforge.net>; Thu, 17 Nov 2005 11:01:00 -0500
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1132197000.8561.1.camel@lade.trondhjem.org>
+	id 1EcmGG-0005t4-SE
+	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:05:20 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EcmGC-0004Ka-84
+	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:05:20 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E2013327B6@exsvl02.hq.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,13 +32,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> That might explain the rpc-pipe related cleanup problem that Steve
-> Dickson has reported on the list earlier...
-No go... :-( I just tried that patch and unfortunately it does
-not stop the oops that you are referring to...
+On Thu, Nov 17, 2005 at 07:38:22AM -0800, Lever, Charles wrote:
+> our filer sends NLM GRANTED callbacks back to clients using AUTH_NULL
+> authentication.  Linux clients always seem to reject these callbacks.
+> 
+> parsing through fs/lockd and net/sunrpc, i see a comment that indicates
+> that AUTH_NULL RPC requests are subject to IP access control (a la
+> /etc/exports).  theoretically, if lockd doesn't register the filer in
+> the ip_map cache, then all the filer's callbacks will be rejected,
+> right?
 
-steved.
+See
+
+http://marc.theaimsgroup.com/?l=linux-nfs&m=110608174305835&w=2
+
+and following messages.  These appear to have gone into 2.6 in early
+March sometime, so I assume that was about 2.6.12?
+
+--b.
 
 
 -------------------------------------------------------
