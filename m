@@ -1,24 +1,26 @@
-From: Joshua Baker-LePain <jlb17@duke.edu>
-Subject: Re: Odd errors and bad performance -- NFS/MD/centOS 4
-Date: Wed, 16 Nov 2005 14:55:46 -0500 (EST)
-Message-ID: <Pine.LNX.4.62.0511161450280.4055@chaos.egr.duke.edu>
-References: <Pine.LNX.4.62.0511151326270.806@chaos.egr.duke.edu>
- <17274.28176.342907.560389@cse.unsw.edu.au> <Pine.LNX.4.62.0511160625450.9734@chaos.egr.duke.edu>
+From: Vince Busam <vbusam@google.com>
+Subject: Funny looking code in __rpc_purge_upcall
+Date: Wed, 16 Nov 2005 16:53:46 -0800
+Message-ID: <437BD49A.5070509@google.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EcTNo-0000kE-SC
-	for nfs@lists.sourceforge.net; Wed, 16 Nov 2005 11:55:52 -0800
-Received: from chaos.egr.duke.edu ([152.3.195.82])
+	id 1EcY2F-0004Cr-Dr
+	for nfs@lists.sourceforge.net; Wed, 16 Nov 2005 16:53:55 -0800
+Received: from smtp-out.google.com ([216.239.45.12])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EcTNn-0001c1-Ny
-	for nfs@lists.sourceforge.net; Wed, 16 Nov 2005 11:55:53 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <Pine.LNX.4.62.0511160625450.9734@chaos.egr.duke.edu>
+	id 1EcY2E-0004m1-FC
+	for nfs@lists.sourceforge.net; Wed, 16 Nov 2005 16:53:55 -0800
+Received: from mail2.smo.corp.google.com (mail2.smo.corp.google.com [172.29.48.30])
+	by smtp-out.google.com with ESMTP id jAH0rnFW015874
+	for <nfs@lists.sourceforge.net>; Wed, 16 Nov 2005 16:53:49 -0800
+Received: from [172.29.52.19] (dig.smo.corp.google.com [172.29.52.19])
+	by mail2.smo.corp.google.com with ESMTP id jAH0rkoI020877
+	for <nfs@lists.sourceforge.net>; Wed, 16 Nov 2005 16:53:47 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,38 +34,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 16 Nov 2005 at 8:45am, Joshua Baker-LePain wrote
+In __rpc_purge_upcall (net/sunrpc/rpc_pipe.c), the newer code to clean up the in_upcall 
+list looks bad.  Shouldn't the first argument to list_entry() be rpci->in_upcall.next?
 
-> On Wed, 16 Nov 2005 at 10:24am, Neil Brown wrote
+--- net/sunrpc/rpc_pipe.c.orig  2005-11-16 16:48:00.000000000 -0800
++++ net/sunrpc/rpc_pipe.c       2005-11-16 16:52:23.000000000 -0800
+@@ -51,7 +51,7 @@ __rpc_purge_upcall(struct inode *inode,
+                 rpci->ops->destroy_msg(msg);
+         }
+         while (!list_empty(&rpci->in_upcall)) {
+-               msg = list_entry(rpci->pipe.next, struct rpc_pipe_msg, list);
++               msg = list_entry(rpci->in_upcall.next, struct rpc_pipe_msg, list);
+                 list_del_init(&msg->list);
+                 msg->errno = err;
+                 rpci->ops->destroy_msg(msg);
 
->> What kernel version, and in particular, what is the timestamp in
->> 'uname -a'.  There was a bug that was fixed around April (?) which
->> affected NFS service of EXT3 filesystems with hash-directories
->> enabled.  This particularly hit redhat as they turn on
->> hash-directories, and so probably affects CentOS too.  You can try
->> using tune2fs to turn off hash-directories and see what happens.
->> That could explain the 'No such file or directory' and 'Stale' errors,
->> but I don't think it explains the slow directory listing.
->
-> uname -a says "2.6.9-11.ELsmp #1 SMP Wed Jun 8 17:54:20 CDT 2005".  Also, 
-> Seth pointed out to me on another list that this may well be fixed in the 
-> most recent centos kernel, due to 
-> <https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=158293>.  I'm going to 
-> give that kernel a shot.
-
-It didn't help.  'uname -a' now says "2.6.9-22.0.1.ELsmp #1 SMP Thu Oct 27 
-13:14:25 CDT 2005", but a client just hung doing 'df' and got this in the 
-logs:
-
-RPC: error 512 connecting to server $SERVER
-nfs_statfs: statfs error = 512
-
-I've now disabled hash-directories.  Any other hints on places to look?
-
--- 
-Joshua Baker-LePain
-Department of Biomedical Engineering
-Duke University
+Vince
 
 
 -------------------------------------------------------
