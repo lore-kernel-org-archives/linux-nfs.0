@@ -1,22 +1,24 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
-Subject: RE: NLM GRANT callback using AUTH_NULL is rejected
-Date: Thu, 17 Nov 2005 08:20:48 -0800
-Message-ID: <044B81DE141D7443BCE91E8F44B3C1E2013327B7@exsvl02.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NLM GRANT callback using AUTH_NULL is rejected
+Date: Thu, 17 Nov 2005 11:27:45 -0500
+Message-ID: <20051117162745.GD2337@fieldses.org>
+References: <044B81DE141D7443BCE91E8F44B3C1E2013327B7@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: <neilb@suse.de>, "Olaf Kirch" <okir@suse.de>,
-	<nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@suse.de, Olaf Kirch <okir@suse.de>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EcmVV-0006cX-W3
-	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:21:05 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EcmVP-00087x-UE
-	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:21:05 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
+	id 1Ecmc3-0006vO-SU
+	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:27:51 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Ecmc1-0001cP-RS
+	for nfs@lists.sourceforge.net; Thu, 17 Nov 2005 08:27:51 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E2013327B7@exsvl02.hq.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,43 +32,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> On Thu, Nov 17, 2005 at 07:38:22AM -0800, Lever, Charles wrote:
-> > our filer sends NLM GRANTED callbacks back to clients using=20
-> AUTH_NULL
-> > authentication.  Linux clients always seem to reject these=20
-> callbacks.
-> >=20
-> > parsing through fs/lockd and net/sunrpc, i see a comment=20
-> that indicates
-> > that AUTH_NULL RPC requests are subject to IP access control (a la
-> > /etc/exports).  theoretically, if lockd doesn't register=20
-> the filer in
-> > the ip_map cache, then all the filer's callbacks will be rejected,
-> > right?
->=20
-> See
->=20
-> http://marc.theaimsgroup.com/?l=3Dlinux-nfs&m=3D110608174305835&w=3D2
->=20
-> and following messages.  These appear to have gone into 2.6 in early
-> March sometime, so I assume that was about 2.6.12?
+On Thu, Nov 17, 2005 at 08:20:48AM -0800, Lever, Charles wrote:
+> was it the judgement of the community that no IP address checking for
+> AUTH_NULL callbacks is better than having at least *some* sanity
+> checking?  seems reasonable to me to register the IP address of the file
+> server so that not just any joe IP address can grant locks.
 
-thanks bruce.
+My memory of the details is hazy now, but I seem to recall that lockd
+does check that somewhere.
 
-ok, these appear not to be in RHEL 4 update 2, which is what our
-internal test happens to be using at the moment.  i would assume that an
-FC4 system running the latest update would already have this series of
-patches integrated...?
+> obtw, did you happen to have a test to see if GRANTED callbacks were
+> being accepted after your patch is applied?  that will save me the
+> trouble of working up a test myself.
 
-was it the judgement of the community that no IP address checking for
-AUTH_NULL callbacks is better than having at least *some* sanity
-checking?  seems reasonable to me to register the IP address of the file
-server so that not just any joe IP address can grant locks.
-(limitations of authentication via IP address notwithstanding).
+All I did was run the following on two different machines, and verify
+that one got the lock the instant I ^C'd the other.
 
-obtw, did you happen to have a test to see if GRANTED callbacks were
-being accepted after your patch is applied?  that will save me the
-trouble of working up a test myself.
+--b.
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/select.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <err.h>
+
+int main(int argc, char *argv[])
+{
+	char buf[4096];
+	struct flock fl;
+	int fd, ret;
+
+	if (argc != 2)
+		errx(1, "usage: %s file_to_lock", argv[0]);
+
+	fd = open(argv[1], O_RDWR|O_CREAT, 0666);
+	if (fd == -1)
+		err(1, "open");
+	/* Exclusive lock on whole file: */
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+	ret = fcntl(fd, F_SETLKW, &fl);
+	if (ret == -1)
+		err(1, "fcntl(fd, F_SETLKWD, fl)");
+	printf("got lock; waiting\n");
+	select(0, NULL, NULL, NULL, NULL);
+	exit(0);
+}
 
 
 -------------------------------------------------------
