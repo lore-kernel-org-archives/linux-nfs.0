@@ -1,22 +1,26 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: export very large filesystem
-Date: Mon, 21 Nov 2005 11:12:26 -0500
-Message-ID: <4381F1EA.2020602@redhat.com>
-References: <4381DDBA.9090509@chrisdos.com>
+From: Vince Busam <vbusam@google.com>
+Subject: [PATCH] Fix typo on __rpc_purge_upcall
+Date: Mon, 21 Nov 2005 11:51:10 -0800
+Message-ID: <4382252E.4000602@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EeEHp-0003Ua-NE
-	for nfs@lists.sourceforge.net; Mon, 21 Nov 2005 08:12:57 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EeEHn-0003bp-D5
-	for nfs@lists.sourceforge.net; Mon, 21 Nov 2005 08:12:57 -0800
-To: Chris Dos <chris@chrisdos.com>
-In-Reply-To: <4381DDBA.9090509@chrisdos.com>
+	id 1EeHhF-0004uK-BR
+	for nfs@lists.sourceforge.net; Mon, 21 Nov 2005 11:51:25 -0800
+Received: from smtp-out.google.com ([216.239.45.12])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EeHhC-0004m7-2a
+	for nfs@lists.sourceforge.net; Mon, 21 Nov 2005 11:51:25 -0800
+Received: from mail2.smo.corp.google.com (mail2.smo.corp.google.com [172.29.48.30])
+	by smtp-out.google.com with ESMTP id jALJpCrC016677
+	for <nfs@lists.sourceforge.net>; Mon, 21 Nov 2005 11:51:12 -0800
+Received: from [172.29.52.19] (dig.smo.corp.google.com [172.29.52.19])
+	by mail2.smo.corp.google.com with ESMTP id jALJpAwQ030852
+	for <nfs@lists.sourceforge.net>; Mon, 21 Nov 2005 11:51:10 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,18 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Chris Dos wrote:
+I posted this last week.  Here's an official style patch.
 
-> I have a customer that would like to export their 22.5 TB XFS file 
-> system via NFS using Linux 2.6.14.  Before I even attempt to do this, 
-> can NFS v2/3/4 even handle something like this? 
+Vince
+------------------------------------------------------------------
 
+Fix an obvious typo that would cause a NULL pointer dereference.
 
-As mentioned, yes.  NFSv2 limits file sizes and the total number of blocks
-in file systems to 32 bit quantities, so it won't, but NFSv3 and NFSv4 use
-64 bit quantities, so they can.
+Signed-off-by: Vince Busam <vbusam@google.com>
+---
 
-       ps
+--- linux-2.6.13.4/net/sunrpc/rpc_pipe.c.orig  2005-11-16 16:48:00.000000000 -0800
++++ linux-2.6.13.4/net/sunrpc/rpc_pipe.c       2005-11-16 16:52:23.000000000 -0800
+@@ -51,7 +51,7 @@ __rpc_purge_upcall(struct inode *inode,
+                  rpci->ops->destroy_msg(msg);
+          }
+          while (!list_empty(&rpci->in_upcall)) {
+-               msg = list_entry(rpci->pipe.next, struct rpc_pipe_msg, list);
++               msg = list_entry(rpci->in_upcall.next, struct rpc_pipe_msg, list);
+                  list_del_init(&msg->list);
+                  msg->errno = err;
+                  rpci->ops->destroy_msg(msg);
 
 
 -------------------------------------------------------
