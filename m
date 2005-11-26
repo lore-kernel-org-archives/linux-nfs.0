@@ -1,23 +1,23 @@
-From: sjmolia@sancharnet.in
-Subject: Shailesh J. Molia (About NFS)
-Date: Sat, 26 Nov 2005 07:54:00 +0530 (GMT+05:30)
-Message-ID: <33112383.1132971840288.JavaMail.nobody@ndl1pp2-a-fixed>
+From: Dan Stromberg <strombrg@dcs.nac.uci.edu>
+Subject: Re: Shailesh J. Molia (About NFS)
+Date: Fri, 25 Nov 2005 21:23:24 -0800
+Message-ID: <1132982604.24223.259.camel@seki.nac.uci.edu>
+References: <33112383.1132971840288.JavaMail.nobody@ndl1pp2-a-fixed>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_PVQWvFDu0nr8mYXxLHs53g)"
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net, strombrg@dcs.nac.uci.edu
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Efpl5-0006hI-Hf
-	for nfs@lists.sourceforge.net; Fri, 25 Nov 2005 18:25:47 -0800
-Received: from bgl1mr1-a-fixed.sancharnet.in ([61.1.128.45])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Efpl3-0002IK-LS
-	for nfs@lists.sourceforge.net; Fri, 25 Nov 2005 18:25:47 -0800
-Received: from ndl1pp2-a-fixed ([61.0.0.70]) by bgl1mr1-a-fixed.sancharnet.in
- (iPlanet Messaging Server 5.2 Patch 2 (built Jul 14 2004))
- with ESMTP id <0IQJ0084RIO0WW@""> for nfs@lists.sourceforge.net; Sat,
- 26 Nov 2005 07:54:00 +0530 (IST)
-To: nfs@lists.sourceforge.net
+	id 1EfsX8-0002H4-7J
+	for nfs@lists.sourceforge.net; Fri, 25 Nov 2005 21:23:34 -0800
+Received: from dcs.nac.uci.edu ([128.200.34.32])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EfsX7-000421-1M
+	for nfs@lists.sourceforge.net; Fri, 25 Nov 2005 21:23:34 -0800
+To: sjmolia@sancharnet.in
+In-Reply-To: <33112383.1132971840288.JavaMail.nobody@ndl1pp2-a-fixed>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,35 +32,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
---Boundary_(ID_PVQWvFDu0nr8mYXxLHs53g)
-Content-type: text/plain; charset=us-ascii
-Content-transfer-encoding: 7BIT
-Content-disposition: inline
+If you want the usual in-kernel NFS used on Linux, you probably want to
+check out kernel.org.
 
-Sir
+There is more than one user-space implementation too though.
 
-    I m doing my Dissertation of M.E.(Comp. Engg.) on NFS in LINUX .  
+On Sat, 2005-11-26 at 07:54 +0530, sjmolia@sancharnet.in wrote:
+> Sir
+> 
+>     I m doing my Dissertation of M.E.(Comp. Engg.) on NFS in LINUX .  
+> 
+> So, For implementation part of it I want a source code for SUN NFS in 
+> 
+> linux.    
+> 
+>      Kindly suggest from where to get the souce code for NFS.
+> 
+> 
+>      Hope for early response.
+> 
+> Thanking you,
+> 
+> +++++++++++++++++++++++
+> S. J. MOlia
+> Lecturer
+> IT Dept
+> L.E. College 
+> Morbi
+> India    
 
-So, For implementation part of it I want a source code for SUN NFS in 
-
-linux.    
-
-     Kindly suggest from where to get the souce code for NFS.
-
-
-     Hope for early response.
-
-Thanking you,
-
-+++++++++++++++++++++++
-S. J. MOlia
-Lecturer
-IT Dept
-L.E. College 
-Morbi
-India    
-
---Boundary_(ID_PVQWvFDu0nr8mYXxLHs53g)--
 
 
 -------------------------------------------------------
