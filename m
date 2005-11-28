@@ -1,24 +1,32 @@
-From: Peter Schneider-Kamp <psk@informatik.rwth-aachen.de>
-Subject: how much CPU/RAM does NFS need?
-Date: Mon, 28 Nov 2005 14:48:04 +0100
-Message-ID: <438B0A94.8090201@informatik.rwth-aachen.de>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+Subject: Re: how much CPU/RAM does NFS need?
+Date: Mon, 28 Nov 2005 15:02:26 +0100
+Message-ID: <200511281502.26418.vincent.roqueta@ext.bull.net>
+References: <438B0A94.8090201@informatik.rwth-aachen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EgjMV-0001yx-CR
-	for nfs@lists.sourceforge.net; Mon, 28 Nov 2005 05:48:07 -0800
-Received: from ms-1.rz.rwth-aachen.de ([134.130.3.130] helo=ms-dienst.rz.rwth-aachen.de)
+	id 1EgjYI-0002wK-3l
+	for nfs@lists.sourceforge.net; Mon, 28 Nov 2005 06:00:18 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EgjMT-0006zM-Us
-	for nfs@lists.sourceforge.net; Mon, 28 Nov 2005 05:48:07 -0800
-Received: from r220-1 (r220-1.rz.RWTH-Aachen.DE [134.130.3.31])
- by ms-dienst.rz.rwth-aachen.de
- (iPlanet Messaging Server 5.2 Patch 2 (built Jul 14 2004))
- with ESMTP id <0IQO00H1C3O0EL@ms-dienst.rz.rwth-aachen.de> for
- nfs@lists.sourceforge.net; Mon, 28 Nov 2005 14:48:00 +0100 (MET)
+	id 1EgjYF-0003y5-Im
+	for nfs@lists.sourceforge.net; Mon, 28 Nov 2005 06:00:17 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4729B1A08DE
+	for <nfs@lists.sourceforge.net>; Mon, 28 Nov 2005 14:59:31 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 12485-07 for <nfs@lists.sourceforge.net>;
+ Mon, 28 Nov 2005 14:59:29 +0100 (CET)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 98C571A08B9
+	for <nfs@lists.sourceforge.net>; Mon, 28 Nov 2005 14:59:28 +0100 (CET)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <438B0A94.8090201@informatik.rwth-aachen.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,37 +40,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Le Lundi 28 Novembre 2005 14:48, Peter Schneider-Kamp a =E9crit=A0:
+> Hi,
+>
+> we are about to purchase a file server for a 3,2 TerraByte disk array
+> which has 2 GBit/s fibre channel connections. The server will
+> have a PCI-X 133MHz fibre channel controller and a PCI-X 133MHz fibre
+> ethernet card.
+>
+> How much CPU do we need to serve approx. 1 GBit/s of NFS from the
+> disk array to the network?
+I don't know the answer, but I think it lacks some important parameters :
 
-Hi,
+How many clients do you have?
+What kind of load clients do?
 
-we are about to purchase a file server for a 3,2 TerraByte disk array
-which has 2 GBit/s fibre channel connections. The server will
-have a PCI-X 133MHz fibre channel controller and a PCI-X 133MHz fibre
-ethernet card.
-
-How much CPU do we need to serve approx. 1 GBit/s of NFS from the
-disk array to the network? The server will be dedicated, i.e., there
-will be no other applications running on it.
-
-And, similarly, how many GBytes of RAM are useful for buffering?
-
-Kind regards,
-Peter
-- --
-Peter Schneider-Kamp   mailto:psk@informatik.rwth-aachen.de
-LuFG Informatik II     http://www-i2.informatik.rwth-aachen.de/~nowonder
-RWTH Aachen            phone: ++49 241 80-21211
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://enigmail.mozdev.org
-
-iD8DBQFDiwqU3VbrCXkKHhwRAtpyAKC3QAeIG+7DSdOJ3ViO+Pef4IVdiACgrkc1
-1l9VypP8I2ZCOyOpLptvhXY=
-=AERV
------END PGP SIGNATURE-----
-
+Vincent
 
 
 -------------------------------------------------------
