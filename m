@@ -1,23 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: mtime not updated in client cache?
-Date: Mon, 28 Nov 2005 19:45:29 -0500
-Message-ID: <1133225130.12178.9.camel@lade.trondhjem.org>
-References: <438B9C44.4030305@google.com>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: overlapping/conflicting entries in
+ /proc/net/rpc/nfsd.export/content
+Date: Tue, 29 Nov 2005 09:10:40 -0500
+Message-ID: <1133273443.25136.66.camel@pc.local>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-S6OgKVWDdL+wCIn7b5ME"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Egtcw-0008QF-EL
-	for nfs@lists.sourceforge.net; Mon, 28 Nov 2005 16:45:46 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1Eh6C6-0002hz-6w
+	for nfs@lists.sourceforge.net; Tue, 29 Nov 2005 06:10:54 -0800
+Received: from linux.interlinx.bc.ca ([66.11.173.224])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Egtcr-0005ci-U5
-	for nfs@lists.sourceforge.net; Mon, 28 Nov 2005 16:45:46 -0800
-To: Vince Busam <vbusam@google.com>
-In-Reply-To: <438B9C44.4030305@google.com>
+	id 1Eh6C4-0007Yo-Gi
+	for nfs@lists.sourceforge.net; Tue, 29 Nov 2005 06:10:54 -0800
+Received: from pc.ilinx (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 0735CC36DB
+	for <nfs@lists.sourceforge.net>; Tue, 29 Nov 2005 09:10:45 -0500 (EST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,53 +34,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2005-11-28 at 16:09 -0800, Vince Busam wrote:
-> The following code snippet run on a 2.6.13.4 (+CITI patch) client shows that mtime doesn't 
-> get updated unless fclose() is called before stat, or O_DIRECT is used.  In 2.4, the stat 
-> would return an updated mtime.  Is this a bug, or expected cache behavior?
 
-That is a known issue that should be fixed in 2.6.15-rcX
+--=-S6OgKVWDdL+wCIn7b5ME
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Cheers,
-  Trond
+I have what seem to be overlapping/conflicting entries
+in /proc/net/rpc/nfsd.export/content.  The two entries that seem to
+conflict each other are:
 
-> Thanks,
-> Vince
-> 
-> #include <stdio.h>
-> #include <time.h>
-> #include <sys/types.h>
-> #include <unistd.h>
-> #include <sys/stat.h>
-> 
-> int main(int argc, char **argv) {
->    time_t tm;
->    struct stat statinfo;
->    FILE *fp = fopen("testfile", "w");
->    sleep(2);
->    tm = time(NULL);
->    fwrite("X", 1, 1, fp);
->    fflush(fp);
-> 
->    stat("testfile", &statinfo);
-> 
->    if (statinfo.st_mtime < tm) {
->      printf("Bug: write time = %u, mtime = %u\n", tm, statinfo.st_mtime);
->    }
-> 
->    fclose(fp);
->    return 0;
-> }
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
-> for problems?  Stop!  Download the new AJAX search engine that makes
-> searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-> http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+/home   10.75.22.0/24,pc.ilinx(rw,no_root_squash,sync,wdelay)
+/home   pc.ilinx(rw,no_root_squash,sync,wdelay)
+
+I believe these are the cause of the following messages littering my
+syslog:
+
+12:53:27 rpc.mountd /home exported to both 10.75.22.0/24 and pc.ilinx in 10=
+.75.22.0/24,pc.ilinx
+
+How do I clean up that /proc/net/rpc/nfsd.export/content?
+
+Thanx,
+b.
+
+--=20
+My other computer is your Microsoft Windows server.
+
+Brian J. Murrell
+
+--=-S6OgKVWDdL+wCIn7b5ME
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2 (GNU/Linux)
+
+iD8DBQBDjGFgl3EQlGLyuXARAm3rAKDbEQDFICRk5hfreEAXSsctf0QFWwCg2M1f
+N7uBa/PXLSUNQdmdV2VEPmk=
+=+1HI
+-----END PGP SIGNATURE-----
+
+--=-S6OgKVWDdL+wCIn7b5ME--
 
 
 
