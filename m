@@ -1,60 +1,29 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs4 and atomic O_APPEND
-Date: Wed, 30 Nov 2005 09:34:17 -0500
-Message-ID: <1133361257.8625.6.camel@lade.trondhjem.org>
-References: <20051130142253.GA9317@blackhole.websupport.sk>
+Subject: Re: NFS cache consistancy appears to be broken...
+Date: Wed, 30 Nov 2005 09:47:14 -0500
+Message-ID: <1133362034.8625.12.camel@lade.trondhjem.org>
+References: <200510281607.j9SG7Tll024133@hera.kernel.org>
+	 <438D0E80.2020905@RedHat.com> <1133334608.8010.9.camel@lade.trondhjem.org>
+	 <438DB65D.8010306@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EhT2t-0002DC-Qv
-	for nfs@lists.sourceforge.net; Wed, 30 Nov 2005 06:34:55 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EhT2l-0000Ko-4Y
-	for nfs@lists.sourceforge.net; Wed, 30 Nov 2005 06:34:55 -0800
-To: stanojr@blackhole.websupport.sk
-In-Reply-To: <20051130142253.GA9317@blackhole.websupport.sk>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751234AbVK3Ord@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <438DB65D.8010306@RedHat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, 2005-11-30 at 15:22 +0100, stanojr@blackhole.websupport.sk
-wrote:
-> hello
-> 
-> is O_APPEND atomic in nfs4 ? or it will be sometime ?
+On Wed, 2005-11-30 at 09:25 -0500, Steve Dickson wrote:
 
- 1) No.
- 2) I doubt it.
+> It was the simple fact that nfsi->cache_change_attribute was not being 
+> initialized to jiffies when the nfs inode was being allocated. This
+> meant when nfs_revalidate_mapping() was called with the
+> NFS_INO_INVALID_DATA bit was on, nfsi->cache_change_attribute
+> was not being changed, it was actually being set!
 
-Atomic O_APPEND doesn't mesh very well with the concept of client-side
-caching, nor does it work particularly well in an environment where you
-may have to retransmit RPC requests because a reply was lost (for
-instance when the server reboots).
+That makes sense. Thanks!
 
 Cheers,
   Trond
-
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
-for problems?  Stop!  Download the new AJAX search engine that makes
-searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
