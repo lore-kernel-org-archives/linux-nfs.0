@@ -1,24 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: mtime not updated in client cache?
-Date: Wed, 30 Nov 2005 20:15:27 -0500
-Message-ID: <1133399727.8267.11.camel@lade.trondhjem.org>
-References: <438B9C44.4030305@google.com>
-	 <1133225130.12178.9.camel@lade.trondhjem.org> <438E4CA7.2050405@google.com>
+From: "Jayachandran C." <jchandra@digeo.com>
+Subject: [NFSD] Fix issues reported by coverity in include/linux/nfsd/nfsfh.h
+Date: Thu, 1 Dec 2005 08:24:05 -0800
+Message-ID: <20051201162405.GD4571@random.pao.digeo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@osdl.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ehd3C-0005Ue-9M
-	for nfs@lists.sourceforge.net; Wed, 30 Nov 2005 17:15:54 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Ehd3A-0006sC-Pb
-	for nfs@lists.sourceforge.net; Wed, 30 Nov 2005 17:15:54 -0800
-To: Vince Busam <vbusam@google.com>
-In-Reply-To: <438E4CA7.2050405@google.com>
+	id 1EhrEN-0005RF-EM
+	for nfs@lists.sourceforge.net; Thu, 01 Dec 2005 08:24:23 -0800
+Received: from packet.digeo.com ([12.110.80.53])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EhrEL-00065w-Rl
+	for nfs@lists.sourceforge.net; Thu, 01 Dec 2005 08:24:23 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,28 +28,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2005-11-30 at 17:06 -0800, Vince Busam wrote:
-> Trond Myklebust wrote:
-> > On Mon, 2005-11-28 at 16:09 -0800, Vince Busam wrote:
-> > 
-> >>The following code snippet run on a 2.6.13.4 (+CITI patch) client shows that mtime doesn't 
-> >>get updated unless fclose() is called before stat, or O_DIRECT is used.  In 2.4, the stat 
-> >>would return an updated mtime.  Is this a bug, or expected cache behavior?
-> > 
-> > 
-> > That is a known issue that should be fixed in 2.6.15-rcX
-> > 
-> 
-> Awesome.  Is there a patch I can help test out?
+This patch tries to fix two minor issues reported in include/linux/nfsd/nfsfh.h
+by Coverity, please review and apply if correct.
 
-The standard 2.6.15-rc3 patch from ftp.kernel.org should suffice. There
-is both an NFS_ALL and a CITI_ALL that you can apply on top of it if you
-like, but the straight 2.6.15-rc3 should already fix the mtime issue you
-reported.
+Errors reported:
+CID: 3589
+Checker: FORWARD_NULL
+File: include/linux/nfsd/nfsfh.h
+Function: fh_unlock
+Description: Variable "(fhp)->fh_dentry" tracked as NULL was dereferenced.
 
-Cheers,
-  Trond
+CID: 2657
+Checker: FORWARD_NULL
+File: include/linux/nfsd/nfsfh.h
+Function: fh_copy
+Description: Variable "dentry" tracked as NULL was dereferenced.
 
+Patch Description:
+1. In fh_copy, the check "src->fh_dentry || src->fh_locked" does not
+   seem to make sense. If "fh_dentry" is NULL and fh_locked is set
+   (which should not happen), we should not dereference fh_dentry and
+   panic.  
+
+2. In fh_unlock, return after reporting error if fh_dentry == NULL,
+   this will be consistent with the other places where fh_dentry is
+   checked.
+
+
+Signed-off-by: Jayachandran C. <c.jayachandran at gmail.com>
+
+---
+
+ nfsfh.h |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
+
+diff -ur linux-2.6.15-rc3-git1.clean/include/linux/nfsd/nfsfh.h linux-2.6.15-rc3-git1/include/linux/nfsd/nfsfh.h
+--- linux-2.6.15-rc3-git1.clean/include/linux/nfsd/nfsfh.h	Thu Oct 27 17:02:08 2005
++++ linux-2.6.15-rc3-git1/include/linux/nfsd/nfsfh.h	Thu Dec  1 05:31:52 2005
+@@ -218,11 +218,13 @@
+ static __inline__ struct svc_fh *
+ fh_copy(struct svc_fh *dst, struct svc_fh *src)
+ {
+-	if (src->fh_dentry || src->fh_locked) {
++	if (src->fh_dentry) {
+ 		struct dentry *dentry = src->fh_dentry;
+ 		printk(KERN_ERR "fh_copy: copying %s/%s, already verified!\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name);
+ 	}
++	if (src->fh_locked) 
++		printk(KERN_ERR "fh_copy: already locked!\n");
+ 			
+ 	*dst = *src;
+ 	return dst;
+@@ -328,8 +330,10 @@
+ static inline void
+ fh_unlock(struct svc_fh *fhp)
+ {
+-	if (!fhp->fh_dentry)
++	if (!fhp->fh_dentry) {
+ 		printk(KERN_ERR "fh_unlock: fh not verified!\n");
++		return;
++	}
+ 
+ 	if (fhp->fh_locked) {
+ 		fill_post_wcc(fhp);
 
 
 -------------------------------------------------------
