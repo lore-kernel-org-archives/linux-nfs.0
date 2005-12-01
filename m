@@ -1,20 +1,23 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd ] Fix hash function for IP addresses on 64bit little-endian machines.
-Date: Fri, 16 Dec 2005 15:22:04 +1100
-Message-ID: <1051216042204.5009@cse.unsw.edu.au>
-References: <20051216152056.4989.patches@notabene>
-Cc: "Iozone" <capps@iozone.org>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1En76k-0004Gi-6F
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 20:22:14 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1En76j-0007Q7-RN
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 20:22:14 -0800
-To: Andrew Morton <akpm@osdl.org>
+From: Vince Busam <vbusam@google.com>
+Subject: Re: mtime not updated in client cache?
+Date: Wed, 30 Nov 2005 17:06:47 -0800
+Message-ID: <438E4CA7.2050405@google.com>
+References: <438B9C44.4030305@google.com> <1133225130.12178.9.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Ehcud-0004Dl-A1
+	for nfs@lists.sourceforge.net; Wed, 30 Nov 2005 17:07:03 -0800
+Received: from smtp-out.google.com ([216.239.45.12])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Ehcuc-0008Ih-2Z
+	for nfs@lists.sourceforge.net; Wed, 30 Nov 2005 17:07:03 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1133225130.12178.9.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,58 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This patch against 2.6.15-rc5-mm2 is suitable, but not critical, for 2.6.15.
+Trond Myklebust wrote:
+> On Mon, 2005-11-28 at 16:09 -0800, Vince Busam wrote:
+> 
+>>The following code snippet run on a 2.6.13.4 (+CITI patch) client shows that mtime doesn't 
+>>get updated unless fclose() is called before stat, or O_DIRECT is used.  In 2.4, the stat 
+>>would return an updated mtime.  Is this a bug, or expected cache behavior?
+> 
+> 
+> That is a known issue that should be fixed in 2.6.15-rcX
+> 
 
---
-The hash.h hash_long function, when used on a 64 bit machine, ignores
-many of the middle-order bits. (The prime chosen it too bit-sparse).
+Awesome.  Is there a patch I can help test out?
 
-IP addresses for clients of an NFS server are very likely to differ
-only in the low-order bits.  As addresses are stored in
-network-byte-order, these bits become middle-order bits in a
-little-endian 64bit 'long', and so do not contribute to the hash.
-Thus you can have the situation where all clients appear on one hash chain.
-
-So, until hash_long is fixed (or maybe forever), us a hash function
-that works well on IP addresses - xor the bytes together.
-
-Thanks to "Iozone" <capps@iozone.org> for identifying this problem.
-
-Cc: "Iozone" <capps@iozone.org>
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./net/sunrpc/svcauth_unix.c |   14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
---- ./net/sunrpc/svcauth_unix.c~current~	2005-12-16 15:10:12.000000000 +1100
-+++ ./net/sunrpc/svcauth_unix.c	2005-12-16 15:12:00.000000000 +1100
-@@ -101,10 +101,22 @@ static void ip_map_put(struct cache_head
- 	}
- }
- 
-+#if IP_HASHBITS == 8
-+/* hash_long on a 64 bit machine is currently REALLY BAD for
-+ * IP addresses in reverse-endian (i.e. on a little-endian machine).
-+ * So use a trivial but reliable hash instead
-+ */
-+static inline int hash_ip(unsigned long ip)
-+{
-+	int hash = ip ^ (ip>>16);
-+	return (hash ^ (hash>>8)) & 0xff;
-+}
-+#endif
-+
- static inline int ip_map_hash(struct ip_map *item)
- {
- 	return hash_str(item->m_class, IP_HASHBITS) ^ 
--		hash_long((unsigned long)item->m_addr.s_addr, IP_HASHBITS);
-+		hash_ip((unsigned long)item->m_addr.s_addr);
- }
- static inline int ip_map_match(struct ip_map *item, struct ip_map *tmp)
- {
+Vince
 
 
 -------------------------------------------------------
