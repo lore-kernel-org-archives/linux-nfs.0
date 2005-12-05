@@ -1,23 +1,28 @@
-From: "Jayachandran C." <jchandra@digeo.com>
-Subject: Re: [NFSD] Fix issues reported by coverity in include/linux/nfsd/nfsfh.h
-Date: Fri, 2 Dec 2005 00:10:00 -0800
-Message-ID: <20051202081000.GA17710@random.pao.digeo.com>
-References: <20051201162405.GD4571@random.pao.digeo.com> <1133458801.9597.9.camel@lade.trondhjem.org>
+From: Helge Bahmann <hcb@chaoticmind.net>
+Subject: NFS over localhost?
+Date: Mon, 5 Dec 2005 09:37:29 +0100 (CET)
+Message-ID: <Pine.LNX.4.44.0512050921200.18221-100000@lothlorien.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	akpm@osdl.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ei5zn-0006Mm-JC
-	for nfs@lists.sourceforge.net; Fri, 02 Dec 2005 00:10:19 -0800
-Received: from packet.digeo.com ([12.110.80.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ei5zl-00032Y-WD
-	for nfs@lists.sourceforge.net; Fri, 02 Dec 2005 00:10:19 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1133458801.9597.9.camel@lade.trondhjem.org>
+	id 1EjBqm-0008IY-JP
+	for nfs@lists.sourceforge.net; Mon, 05 Dec 2005 00:37:32 -0800
+Received: from m4s07.vlinux.de ([83.151.27.105])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44)
+	id 1EjBql-0008W6-A5
+	for nfs@lists.sourceforge.net; Mon, 05 Dec 2005 00:37:32 -0800
+Received: from p54b4e15f.dip.t-dialin.net ([84.180.225.95] helo=lothlorien.local)
+	by m4s07.vlinux.de with asmtp (Exim 3.35 #1 (Debian))
+	id 1EjBqg-00014e-00
+	for <nfs@lists.sourceforge.net>; Mon, 05 Dec 2005 09:37:27 +0100
+Received: from helge (helo=localhost)
+	by lothlorien.local with local-esmtp (Exim 3.35 #1 (Debian))
+	id 1EjBqj-0004ke-00
+	for <nfs@lists.sourceforge.net>; Mon, 05 Dec 2005 09:37:29 +0100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,47 +36,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Dec 01, 2005 at 12:40:00PM -0500, Trond Myklebust wrote:
-> On Thu, 2005-12-01 at 08:24 -0800, Jayachandran C. wrote:
-> > This patch tries to fix two minor issues reported in include/linux/nfsd/nfsfh.h
-> > by Coverity, please review and apply if correct.
-[...]
-> > 
-> > diff -ur linux-2.6.15-rc3-git1.clean/include/linux/nfsd/nfsfh.h linux-2.6.15-rc3-git1/include/linux/nfsd/nfsfh.h
-> > --- linux-2.6.15-rc3-git1.clean/include/linux/nfsd/nfsfh.h	Thu Oct 27 17:02:08 2005
-> > +++ linux-2.6.15-rc3-git1/include/linux/nfsd/nfsfh.h	Thu Dec  1 05:31:52 2005
-> > @@ -218,11 +218,13 @@
-> >  static __inline__ struct svc_fh *
-> >  fh_copy(struct svc_fh *dst, struct svc_fh *src)
-> >  {
-> > -	if (src->fh_dentry || src->fh_locked) {
-> > +	if (src->fh_dentry) {
-> >  		struct dentry *dentry = src->fh_dentry;
-> >  		printk(KERN_ERR "fh_copy: copying %s/%s, already verified!\n",
-> >  			dentry->d_parent->d_name.name, dentry->d_name.name);
-> >  	}
-> > +	if (src->fh_locked) 
-> > +		printk(KERN_ERR "fh_copy: already locked!\n");
-> 
-> How useful are these printks anyway? Can't we convert them into BUG_ON
-> or WARN_ONs? To me it looks like they are signalling an implementation
-> bug in which case we should also be generating a stack dump in order to
-> figure out how to fix the bug.
-> 
-> If, OTOH, they are signalling some weird behaviour that is allowed, but
-> might be useful to track when debugging, then we should really convert
-> them into dprintks so that we don't risk spamming the syslog in
-> production systems.
+Hello list!
 
-Yes, these probably should be dprintk or BUG/WARN messages, but it
-would be a more fundamental change to convert the whole NFSD code to that
-style of error reporting.
+Setup: One volume ("/export") exported to 192.168.1.1 via kernel-space
+NFSv3 server; imported from the same machine 192.168.1.1 (at "/import");
+this setup is only for configuration testing purposes.
 
-This patch just fixes a couple of places to avoid null dereference in
-case of error.
+Symptoms: Under heavy write load ("dd if=/dev/zero of=/import/x") both NFS
+client and NFS server deadlock reproducibly, various kernels 2.6.8 -
+2.6.15-rc4 affected, both SMP and non-SMP. All accesses to "/import" hang
+indefinitely, sometimes also the mount-point "/export" becomes unusable;
+both reiserfs and ext3 as back-end filesystems are affected. This
+situation happens as the "free" memory (as reported by vmstat)
+approaches zero, so it may possibly be an out-of-memory-thing.
 
-Regards,
-JC.
+Question(s): Is this kind of deadlock "supposed" to happen? I mean, there
+is no purpose in using NFS in this kind of way (except for configuration
+testing), so I can imagine no one bothers to clean up the interaction
+between NFS client and server in this scenario. However I am slightly
+concerned that a similiar scenario might be possible with our "real" NFS
+server, as it can receive data faster over the network than it can write
+out to the disks. Is this possible?
+
+Any comments? Thanks and best regards
+-- 
+Helge Bahmann <hcb@chaoticmind.net>                     /| \__
+The past: Smart users in front of dumb terminals       /_|____\
+                                                     _/\ |   __)
+$ ./configure                                        \\ \|__/__|
+checking whether build environment is sane... yes     \\/___/ |
+checking for AIX... no (we already did this)            |
+
 
 
 -------------------------------------------------------
