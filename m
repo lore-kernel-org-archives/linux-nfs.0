@@ -1,23 +1,23 @@
-From: Kalin KOZHUHAROV <kalin@thinrope.net>
-Subject: Re: rpc.statd: open (/var/lib/nfs/state): Permission denied
-Date: Sat, 31 Dec 2005 14:51:52 +0900
-Message-ID: <43B61C78.5000500@thinrope.net>
-References: <43B514AC.7080400@thinrope.net> <20051231050049.GV29622@polop.usc.edu>
+From: Vince Busam <vbusam@google.com>
+Subject: Re: mtime not updated in client cache?
+Date: Wed, 07 Dec 2005 17:22:26 -0800
+Message-ID: <43978AD2.8020000@google.com>
+References: <438B9C44.4030305@google.com>	 <1133225130.12178.9.camel@lade.trondhjem.org> <438E4CA7.2050405@google.com> <1133399727.8267.11.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EsZfS-0007SV-Qr
-	for nfs@lists.sourceforge.net; Fri, 30 Dec 2005 21:52:38 -0800
-Received: from s175249.ppp.asahi-net.or.jp ([220.157.175.249] helo=mail.tar.bz)
+	id 1EkAUn-0005aW-GI
+	for nfs@lists.sourceforge.net; Wed, 07 Dec 2005 17:22:53 -0800
+Received: from smtp-out.google.com ([216.239.33.17])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EsZfR-000392-Cg
-	for nfs@lists.sourceforge.net; Fri, 30 Dec 2005 21:52:39 -0800
-To: Garrick Staples <garrick@usc.edu>
-In-Reply-To: <20051231050049.GV29622@polop.usc.edu>
+	id 1EkAUk-0003HA-Se
+	for nfs@lists.sourceforge.net; Wed, 07 Dec 2005 17:22:53 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1133399727.8267.11.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,48 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Garrick Staples wrote:
-> On Fri, Dec 30, 2005 at 08:06:20PM +0900, Kalin KOZHUHAROV alleged:
+Trond Myklebust wrote:
+> On Wed, 2005-11-30 at 17:06 -0800, Vince Busam wrote:
 > 
->>celina nfs # ls -ld /var/lib/nfs/{,state}
->>drwxr-xr-x  7 root   root 304 Dec 30 18:42 /var/lib/nfs/
->>-rw-------  1 nobody root   6 Dec 30 18:50 /var/lib/nfs/state
+>>Trond Myklebust wrote:
+>>
+>>>On Mon, 2005-11-28 at 16:09 -0800, Vince Busam wrote:
+>>>
+>>>
+>>>>The following code snippet run on a 2.6.13.4 (+CITI patch) client shows that mtime doesn't 
+>>>>get updated unless fclose() is called before stat, or O_DIRECT is used.  In 2.4, the stat 
+>>>>would return an updated mtime.  Is this a bug, or expected cache behavior?
+>>>
+>>>
+>>>That is a known issue that should be fixed in 2.6.15-rcX
+>>>
+>>
+>>Awesome.  Is there a patch I can help test out?
 > 
 > 
-> Have you checked the perms on /, /var, and /var/lib?
+> The standard 2.6.15-rc3 patch from ftp.kernel.org should suffice. There
+> is both an NFS_ALL and a CITI_ALL that you can apply on top of it if you
+> like, but the straight 2.6.15-rc3 should already fix the mtime issue you
+> reported.
 > 
-Ooops :-)
-Thank you for pointing that! Now, this was the situation:
 
-celina ~ # ll -d / /var /var/lib
-d-wxr----t  21 root root 568 Dec 22 21:05 /
-drwxr-xr-x  21 root root 584 Dec 26 15:49 /var
-drwxr-xr-x  12 root root 304 Dec 30 17:59 /var/lib
+I tried 2.6.15-rc5 (withoug NFS_ALL and CITI_ALL), and it exhibits the same issue as 
+demonstrated by the above referenced code.
 
-Ouch... Who the .uc. chmod-ed /? Knowing it is probably me does not make me feel better.
-Found another box with the same problem, so might have to investigate it.
-
-Anyway, fixind that and creating/chmod-ing /var/lib/nfs/sm{,.bak} and now everything is fine!
-
-celina ~ # ls -ld / /var /var/lib /var/lib/nfs /var/lib/nfs/{state,sm*}
-drwxr-xr-x  21 root   root 568 Dec 22 21:05 /
-drwxr-xr-x  21 root   root 584 Dec 26 15:49 /var
-drwxr-xr-x  12 root   root 304 Dec 31 14:38 /var/lib
-drwxr-xr-x   7 root   root 304 Dec 31 14:41 /var/lib/nfs
-drwxr-xr-x   2 nobody root  48 Dec 30 20:25 /var/lib/nfs/sm
-drwxr-xr-x   2 nobody root  48 Dec 30 20:25 /var/lib/nfs/sm.bak
--rw-------   1 nobody root   4 Dec 31 14:41 /var/lib/nfs/state
-
-Will have to drink less coffee, I guess :-)
-
-Happy hollidays to all!
-
-Kalin.
--- 
-|[ ~~~~~~~~~~~~~~~~~~~~~~ ]|
-+-> http://ThinRope.net/ <-+
-|[ ______________________ ]|
-
+Vince
 
 
 -------------------------------------------------------
