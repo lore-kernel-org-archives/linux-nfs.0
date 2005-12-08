@@ -1,32 +1,32 @@
 From: "Tradebit Service" <info@tradebit.com>
 Subject: RE: blocked remote subdirectories
-Date: Thu, 8 Dec 2005 12:26:11 +0100
-Message-ID: <E1EkJsl-0006AH-18@mail.sourceforge.net>
-References: <E1EkBVL-0003Ee-9s@mail.sourceforge.net>
+Date: Thu, 8 Dec 2005 12:51:26 +0100
+Message-ID: <E1EkKHC-0002aL-WD@mail.sourceforge.net>
+References: <17303.49759.151786.204513@cse.unsw.edu.au>
 Reply-To: <info@tradebit.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EkJsl-0004PG-H9
-	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 03:24:15 -0800
+	id 1EkKHF-0006LW-Kl
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 03:49:33 -0800
 Received: from aibo.runbox.com ([193.71.199.94] helo=cujo.runbox.com)
 	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.44)
-	id 1EkJsl-0006AH-18
-	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 03:24:15 -0800
+	id 1EkKHC-0002aL-WD
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 03:49:33 -0800
 Received: from [10.9.9.15] (helo=odie.runbox.com)
 	by greyhound.runbox.com with esmtp (Exim 4.34)
-	id 1EkJsi-0002cA-Al
-	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 12:24:12 +0100
-Received: from [84.168.156.66] (helo=muelleimer)
+	id 1EkKH9-0008PI-FP
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 12:49:27 +0100
+Received: from [84.168.129.37] (helo=muelleimer)
 	by odie.runbox.com with asmtp  (uid:433466 )  (Exim 4.34)
-	id 1EkJsi-0005nX-19
-	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 12:24:12 +0100
+	id 1EkKH8-00062I-UH
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 12:49:27 +0100
 To: <nfs@lists.sourceforge.net>
-In-Reply-To: <E1EkBVL-0003Ee-9s@mail.sourceforge.net>
+In-Reply-To: <17303.49759.151786.204513@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,18 +40,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> 2 times the directory "came back" after a few minutes (have 
-> seen that mail too late) and in the 3 other cases, it did not 
-> (maybe I was too fast).
+> Are you running a redhat kernel earlier than about April2005, 
+> and ext3 as the filesystem, and directory indexing enabled on 
+> the filesystem.
+> If so, you have hit a known bug.
+> Either turn off directory indexing (tune2fs) or upgrade your kernel.
 
-PS: just happened again...
+hi neil,
 
-"ls: .: Stale NFS file handle"
+did miss that mail earlier, so disregard my last.
+thanks for the hint, I will do so!
 
-is the error message. could anyone help me here, please?
-
-thanks,
-ralf
+Regards,
+Ralf
 
 
 
