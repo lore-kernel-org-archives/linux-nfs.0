@@ -1,23 +1,32 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: blocked remote subdirectories
-Date: Thu, 8 Dec 2005 16:19:27 +1100
-Message-ID: <17303.49759.151786.204513@cse.unsw.edu.au>
+From: "Tradebit Service" <info@tradebit.com>
+Subject: RE: blocked remote subdirectories
+Date: Thu, 8 Dec 2005 12:26:11 +0100
+Message-ID: <E1EkJsl-0006AH-18@mail.sourceforge.net>
 References: <E1EkBVL-0003Ee-9s@mail.sourceforge.net>
+Reply-To: <info@tradebit.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EkEBu-0008Ku-QE
-	for nfs@lists.sourceforge.net; Wed, 07 Dec 2005 21:19:38 -0800
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	id 1EkJsl-0004PG-H9
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 03:24:15 -0800
+Received: from aibo.runbox.com ([193.71.199.94] helo=cujo.runbox.com)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.44)
-	id 1EkEBt-0000oV-CU
-	for nfs@lists.sourceforge.net; Wed, 07 Dec 2005 21:19:38 -0800
-To: <info@tradebit.com>
-In-Reply-To: message from Tradebit Service on Thursday December 8
+	id 1EkJsl-0006AH-18
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 03:24:15 -0800
+Received: from [10.9.9.15] (helo=odie.runbox.com)
+	by greyhound.runbox.com with esmtp (Exim 4.34)
+	id 1EkJsi-0002cA-Al
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 12:24:12 +0100
+Received: from [84.168.156.66] (helo=muelleimer)
+	by odie.runbox.com with asmtp  (uid:433466 )  (Exim 4.34)
+	id 1EkJsi-0005nX-19
+	for nfs@lists.sourceforge.net; Thu, 08 Dec 2005 12:24:12 +0100
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <E1EkBVL-0003Ee-9s@mail.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,40 +40,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday December 8, info@tradebit.com wrote:
-> hi everybody,
-> 
-> for a few days now i run a new setup
-> with NFS on RHEL4 (kmountd nfs-utils 1.0.6) and
-> from our storage I serve a few hundred thousand
-> files of all sizes to 3 other servers.
-> 
-> now, in these (around 14) days, I had 5 incidents of
-> blocked subdirectories on the server from different clients.
-> 
-> 2 times the directory "came back" after a few minutes 
-> (have seen that mail too late) and in the 3 other cases,
-> it did not (maybe I was too fast).
-> 
-> for the time the dir is blocked, the failure looks
-> like a rights mismanagement, but nothing changed it just
-> denies access for minutes/hours.
-> 
-> the directories were deep in the dir tree, but random as
-> it seems.
-> 
-> does anyone know, how to prevent that in the future?
-> what could be the cause of these voodoo incidents?
-> 
-> any help appreciated,
+> 2 times the directory "came back" after a few minutes (have 
+> seen that mail too late) and in the 3 other cases, it did not 
+> (maybe I was too fast).
 
-Are you running a redhat kernel earlier than about April2005, and ext3
-as the filesystem, and directory indexing enabled on the filesystem.
+PS: just happened again...
 
-If so, you have hit a known bug.
-Either turn off directory indexing (tune2fs) or upgrade your kernel.
+"ls: .: Stale NFS file handle"
 
-NeilBrown
+is the error message. could anyone help me here, please?
+
+thanks,
+ralf
+
 
 
 -------------------------------------------------------
