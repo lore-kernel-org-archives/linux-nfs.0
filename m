@@ -1,23 +1,22 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+From: Peter Staubach <staubach@redhat.com>
 Subject: Re: NFS and C Language
-Date: Fri, 9 Dec 2005 12:31:26 +0100
-Message-ID: <200512091231.26341.vincent.roqueta@ext.bull.net>
-References: <ADEFIEOLGCCFDKBLPHKEIEEJCDAA.e_rln@yahoo.co.in>
+Date: Fri, 09 Dec 2005 09:10:48 -0500
+Message-ID: <43999068.3080500@redhat.com>
+References: <ADEFIEOLGCCFDKBLPHKEIEEJCDAA.e_rln@yahoo.co.in> <200512091231.26341.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: "RLN" <e_rln@yahoo.co.in>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net, RLN <e_rln@yahoo.co.in>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EkgQw-0001ON-Q1
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 03:29:02 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	id 1Ekixg-0006tP-6O
+	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 06:11:00 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EkgQt-0005DD-RK
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 03:29:02 -0800
-To: nfs@lists.sourceforge.net
-In-Reply-To: <ADEFIEOLGCCFDKBLPHKEIEEJCDAA.e_rln@yahoo.co.in>
+	id 1Ekixd-0006RB-OM
+	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 06:11:00 -0800
+To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200512091231.26341.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +30,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Vendredi 09 D=E9cembre 2005 12:12, RLN a =E9crit=A0:
-> Hi!
+Vincent Roqueta wrote:
+
+>Le Vendredi 09 D=E9cembre 2005 12:12, RLN a =E9crit :
+> =20
+>
+>>Hi!
+>>
+>>
+>>I want to write simple C language program to read and write a file in N=
+FS
+>>file system.
+>>
+>>Please give a link or advice to write a program using C language.
+>>
+>>Also help for which calls I have to use.
+>>   =20
+>>
+>You access NFS as other file systems...
+>Generic C howto about files manipulations works for NFS.
+>
+>Vincent
 >
 >
-> I want to write simple C language program to read and write a file in NFS
-> file system.
+>_______________________
+>#include <stdio.h>
+>#include <string.h>
+>#include <sys/types.h>
+>#include <sys/stat.h>
+>#include <fcntl.h>
 >
-> Please give a link or advice to write a program using C language.
 >
-> Also help for which calls I have to use.
-You access NFS as other file systems...
-Generic C howto about files manipulations works for NFS.
+>int main(int argc, char **argv){
+>    char path[]=3D"/path/to/the/testfile";
+>    char string[]=3D"hello world!";
+>    int fd;
+>
+>    fd=3Dopen(path,O_WRONLY|O_CREAT);
+>    if(fd<0){
+>        perror("Open");
+>        return 0;
+>    }
+>    write(fd, string,strlen(string));
+>    return 0;
+>}
+>
 
-Vincent
+Actually, this little program may or may not work on an NFS mounted file
+system.  It contains a bug in that the open(2) system call takes three
+arguments and the third, the mode, is used when O_CREAT is specified and
+the file does not already exist.  If the random bits, which the kernel
+uses because the mode was not actually specified, are wrong, like for
+example require mandatory locking, then the write(2) call may fail.
+Also, the write(2) call returns whether or not it succeeded and how much
+data was written.  The close(2) call, which was not explicitly coded,
+but should have been, is also used to return whether any error occurred
+while trying to write data to the NFS server.
 
+    Thanx...
 
-_______________________
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-
-int main(int argc, char **argv){
-    char path[]=3D"/path/to/the/testfile";
-    char string[]=3D"hello world!";
-    int fd;
-
-    fd=3Dopen(path,O_WRONLY|O_CREAT);
-    if(fd<0){
-        perror("Open");
-        return 0;
-    }
-    write(fd, string,strlen(string));
-    return 0;
-}
-
+       ps
 
 
 -------------------------------------------------------
