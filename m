@@ -1,22 +1,24 @@
-From: "Lever, Charles" <Charles.Lever@netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: RE: mtime not updated in client cache?
-Date: Fri, 9 Dec 2005 07:56:37 -0800
-Message-ID: <044B81DE141D7443BCE91E8F44B3C1E201332862@exsvl02.hq.netapp.com>
+Date: Fri, 09 Dec 2005 11:10:36 -0500
+Message-ID: <1134144637.8007.56.camel@lade.trondhjem.org>
+References: <044B81DE141D7443BCE91E8F44B3C1E201332862@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: "Vince Busam" <vbusam@google.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: Peter Staubach <staubach@redhat.com>,
+	Vince Busam <vbusam@google.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ekkc5-00086k-5s
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 07:56:49 -0800
-Received: from mx1.netapp.com ([216.240.18.38])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ekkc4-0006bi-2l
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 07:56:49 -0800
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	"Peter Staubach" <staubach@redhat.com>
+	id 1Ekkq3-0000is-HG
+	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 08:11:15 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Ekkpx-00055A-Rm
+	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 08:11:15 -0800
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E201332862@exsvl02.hq.netapp.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +32,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> On Fri, 2005-12-09 at 09:24 -0500, Peter Staubach wrote:
->=20
-> > >One alternative would be to flush dirty data to the server=20
-> on every call
-> > >to stat(), but that would slow it down considerably.
+On Fri, 2005-12-09 at 07:56 -0800, Lever, Charles wrote:
+> do you need to prevent writes *during* the stat() call?  or do you just
+> want to make sure that any writes that happened *before* the stat() call
+> have the intended side-effects on the file size and mtime?  that might
+> be worth a comment or two.
 
-only in certain cases.  i can think of one:  'ls -l' in a directory full
-of data files for an active Oracle instance.
+I cannot see that we would want strict serialisation of stat() and
+write(). That would give rise to an even worse performance hit.
+If someone calls write() while we're in stat() then the outcome should
+be indeterminate, just as it is for local filesystems.
 
-> > Yes, to this last, but this is how most NFS implementations=20
-> that I have seen
-> > conform to the requirment that write(2) cause the mtime to=20
-> be updated.  The
-> > use of UNSTABLE NFSv3/NFSv4 writes can help as well as=20
-> limiting the amount
-> > of dirty data that the client allows to be cached.
->=20
-> My main concern is that it will hit commands like 'ls -l' _hard_. The
-> latter will, for instance, be forced to wait until all=20
-> pending writes on
-> all files in the directory have been flushed out. I'm not sure that
-> strict POSIX compatibility is worth that kind of hit.
->=20
-> Anyhow, the attached patch implements it. Lets try it out, and see how
-> it does. Definitely _not_ a 2.6.15 candidate, though.
+> are you flushing dirty mmap'd data too?  or can this be skipped until
+> msync() time?
 
-i like the idea.
+There appears to be no SuS requirement to do so: the description of
+msync() says that you are only required to update m/ctime if writes are
+actually initiated.
 
-do you need to prevent writes *during* the stat() call?  or do you just
-want to make sure that any writes that happened *before* the stat() call
-have the intended side-effects on the file size and mtime?  that might
-be worth a comment or two.
+  http://www.opengroup.org/onlinepubs/009695399/toc.htm
 
-are you flushing dirty mmap'd data too?  or can this be skipped until
-msync() time?
+> and now that you have added a "flush but don't commit" flag to
+> nfs_sync_file, maybe we might consider using that (optionally) at file
+> close() time, like some other NFS client implementations do.  :^)
 
-and now that you have added a "flush but don't commit" flag to
-nfs_sync_file, maybe we might consider using that (optionally) at file
-close() time, like some other NFS client implementations do.  :^)
+Nope.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
