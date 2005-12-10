@@ -1,23 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: UnionFS over NFS over UnionFS
-Date: Fri, 09 Dec 2005 16:37:48 -0500
-Message-ID: <1134164268.17356.2.camel@lade.trondhjem.org>
-References: <200512100020.26498.meier@informatik.fh-kl.de>
+From: pascal <pascal@deception.nl>
+Subject: Unable to mount nfs share
+Date: Sat, 10 Dec 2005 04:24:40 +0100
+Message-ID: <439A4A78.6070807@deception.nl>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EkpwU-0002zq-2a
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 13:38:14 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1EkvLs-0005JG-9A
+	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 19:24:48 -0800
+Received: from [84.246.52.99] (helo=mail.deception.nl)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EkpwR-0008S9-89
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 13:38:14 -0800
-To: Wilhelm Meier <meier@informatik.fh-kl.de>
-In-Reply-To: <200512100020.26498.meier@informatik.fh-kl.de>
+	id 1EkvLr-0007g7-S4
+	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 19:24:48 -0800
+Received: from [192.168.0.21] (helo=[192.168.0.21])
+	by router with esmtp (Exim 4.54)
+	id 1EkvLk-00078O-Mp
+	for nfs@lists.sourceforge.net; Sat, 10 Dec 2005 04:24:40 +0100
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,160 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, 2005-12-10 at 00:20 +0100, Wilhelm Meier wrote:
-> Hello everybody,
-> 
-> the below problem was allready posted to the unionfs-list, but remains 
-> unsolved:
-> --------------
-> 
-> To clarify things further, this happens only in the follwing scenario (as
-> described in previous posting, see below):
-> 
-> 1) we build a union mounted on server:/tftproot/gentoo_B
-> 2) we export this union via NFS
-> 3) we mount server:/tftproot/gentoo_B onto client:/mnt/test/N
-> 4) we build a union on the client consisting of /mnt/test/N an some tmpfs
-> 
-> If we change step 2) to export some local filesytem (tftproot/gentoo_A in
-> the below example) and change step 3) to mount server:/tftproot/gentoo_A
-> onto the client, all works well.
-> 
-> A saw a posting on this list reporting similar problems. Are the any hints?
+I'm unable to mount a nfs share. I've followed the howto from
+nfs.sourceforge.
+Error: 
+mount: permission denied.
+Is there anything else I have to think of in Debian? Or am I just plain
+stupid?
+Can't get it to work.
 
+On the client:
 
-You don't actually tell us what the /etc/exports looks like on the
-server, but given that the test was made from a root account on the
-client, could it simply be root squashing?
+rpcinfo -p 192.168.0.21 gives me:
+programma versie protocol poort
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp  32768  nlockmgr
+    100021    3   udp  32768  nlockmgr
+    100005    1   udp   1014  mountd
+    100005    1   tcp   1017  mountd
+    391002    2   tcp    625  sgi_fam
+    100024    1   udp    633  status
+    100024    1   tcp    636  status
 
-Cheers,
-  Trond
+On the server:
 
-> --
-> Wilhelm
-> 
-> 
-> > Hello,
-> >
-> > thank you for the advice, but this does not solve the problem.
-> >
-> > On the other hand, I tried to export and nfs-mount all rw, but to declare
-> > the nfs-mounted branch ro for the union-mount:
-> >
-> > gs test # mount
-> > /dev/hda1 on / type ext3 (rw,noatime)
-> > proc on /proc type proc (rw)
-> > sysfs on /sys type sysfs (rw)
-> > udev on /dev type tmpfs (rw,nosuid)
-> > devpts on /dev/pts type devpts (rw)
-> > /dev/hdb1 on /tftproot type ext3 (rw,noatime)
-> > none on /tftproot/gentoo_B type unionfs
-> > (rw,dirs=/tftproot/gentoo_Bdiff=rw:/tftproot/gentoo_A=ro)
-> > shm on /dev/shm type tmpfs (rw,noexec,nosuid,nodev)
-> > nfsd on /proc/fs/nfs type nfsd (rw)
-> > rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
-> > 192.168.39.10:/tftproot/gentoo_B on /mnt/test/N type nfs
-> > (rw,addr=192.168.39.10)
-> > none on /mnt/test/T type tmpfs (rw)
-> > none on /mnt/test/A type unionfs (rw,dirs=/mnt/test/T=rw:/mnt/test/N=ro)
-> >
-> > gs test # touch A/x
-> > touch: setting times of `A/x': Operation not permitted
-> >
-> > gs test # ls A
-> > bin   dev  home  mnt  proc  sbin          sys  usr
-> > boot  etc  lib   opt  root  stateless.sh  tmp  var
-> >
-> > gs test # touch N/x
-> >
-> > gs test # ls A
-> > bin   dev  home  mnt  proc  sbin          sys  usr  x
-> > boot  etc  lib   opt  root  stateless.sh  tmp  var
-> >
-> > gs test # touch A/x
-> > touch: setting times of `A/x': Operation not permitted
-> > gs test #
-> >
-> > Any hints?
-> >
-> > -
-> > Wilhelm
-> >>
-> >> Hi!!
-> >>
-> >>> The same problem arises also a simpler setup (on the a single machine):
-> >>>
-> >>> gs ~ # mount
-> >>> /dev/hda1 on / type ext3 (rw,noatime)
-> >>> proc on /proc type proc (rw)
-> >>> sysfs on /sys type sysfs (rw)
-> >>> udev on /dev type tmpfs (rw,nosuid)
-> >>> devpts on /dev/pts type devpts (rw)
-> >>> /dev/hdb1 on /tftproot type ext3 (rw,noatime)
-> >>> shm on /dev/shm type tmpfs (rw,noexec,nosuid,nodev)
-> >>> nfsd on /proc/fs/nfs type nfsd (rw)
-> >>> /dev/hdc on /mnt/cdrom type iso9660 (ro)
-> >>> none on /tftproot/gentoo_B type unionfs
-> >>> (rw,dirs=/tftproot/gentoo_Bdiff=rw:/tftproot/gentoo_A=ro)
-> >>> rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
-> >>> 192.168.39.10:/tftproot/gentoo_B on /mnt/test/N type nfs
-> >>> (rw,addr=192.168.39.10)
-> >>
-> >> If this share is exported RO it should be mounted RO only. Unfortunately
-> >> I
-> >> may mount a RO nfs share with RW option on a client (of course it does
-> >> not
-> >> renders the share writeable) - but it will confuse unionfs. If you mount
-> >> your share explicitly RO you shouldn't get a permission denied...
-> >>
-> >> We had the same problem with RO nfs root filesystem unioned with RW
-> >> tempfs
-> >> on top of it. Hope I got the idea right what you intend to do :-))
-> >>
-> >> Ciao,
-> >>      Dirk
-> >>
-> >>> none on /mnt/test/T type tmpfs (rw)
-> >>> none on /mnt/test/A type unionfs
-> >>> (rw,dirs=/mnt/test/T=rw:/mnt/test/N=ro)
-> >>> gs ~ #
-> >>>
-> >>> As you see 192.168.39.10:/tftproot/gentoo_B is exported and mounted
-> >>> on /mnt/test/N. This is union-mounted together with tmpfs /mnt/test/T
-> >>> on /mnt/test/A.
-> >>>
-> >>> On /mnt/test/A we get:
-> >>>
-> >>> gs A # touch x
-> >>> touch: setting times of `x': Operation not permitted
-> >>>
-> >>>
-> >>> Am Montag, 5. Dezember 2005 13:48 schrieben Sie:
-> >>> > >NFS: Buggy server - nlink == 0!
-> >>> > >nfs_fhget: iget failed
-> >>> > >
-> >>> > >We are using unionfs-1.0.14
-> >>> >
-> >>> > Step 1: Try updating to 1.1.1 or some CVS snapshot.
-> >>> >
-> >>> >
-> >>> >
-> >>> >
-> >>> > Jan Engelhardt
-> >>>
-> >>> --
-> >>> --
-> >>> Wilhelm Meier
-> >>> email: meier@informatik.fh-kl.de
-> >>> _______________________________________________
-> >>> unionfs mailing list
-> >>> unionfs@mail.fsl.cs.sunysb.edu
-> >>> http://www.fsl.cs.sunysb.edu/mailman/listinfo/unionfs
-> >>>
-> >>
-> >
-> >
-> >
+cat /proc/fs/nfs/exp*
+# Version 1.1
+# Path Client(Flags) # IPs
+/data   *(rw,no_root_squash,sync,wdelay)
+
+syslog:
+Dec 10 02:29:58 mainframe mountd[5502]: authenticated mount request from
+router.deception.lan:819 for /data (/data)
+
+I'm trying to mount as root, since I haven't added the share to fstab yet.
+
+Thx.
 
 
 
