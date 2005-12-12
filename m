@@ -1,24 +1,25 @@
-From: pascal <pascal@deception.nl>
-Subject: Unable to mount nfs share
-Date: Sat, 10 Dec 2005 04:24:40 +0100
-Message-ID: <439A4A78.6070807@deception.nl>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH kNFSd ] Check error status from vfs_getattr and
+ i_op->fsync
+Date: Mon, 12 Dec 2005 16:11:44 +1100
+Message-ID: <17309.1680.482774.920851@cse.unsw.edu.au>
+References: <1051128014127.24572@cse.unsw.edu.au>
+	<1134087942.500655.14993.nullmailer@yamt.dyndns.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@osdl.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EkvLs-0005JG-9A
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 19:24:48 -0800
-Received: from [84.246.52.99] (helo=mail.deception.nl)
+	id 1Elfyo-0003mK-A1
+	for nfs@lists.sourceforge.net; Sun, 11 Dec 2005 21:12:06 -0800
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EkvLr-0007g7-S4
-	for nfs@lists.sourceforge.net; Fri, 09 Dec 2005 19:24:48 -0800
-Received: from [192.168.0.21] (helo=[192.168.0.21])
-	by router with esmtp (Exim 4.54)
-	id 1EkvLk-00078O-Mp
-	for nfs@lists.sourceforge.net; Sat, 10 Dec 2005 04:24:40 +0100
-To: nfs@lists.sourceforge.net
+	id 1Elfym-0003Qz-Sn
+	for nfs@lists.sourceforge.net; Sun, 11 Dec 2005 21:12:06 -0800
+To: YAMAMOTO Takashi <yamamoto@valinux.co.jp>
+In-Reply-To: message from YAMAMOTO Takashi on Friday December 9
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,45 +33,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm unable to mount a nfs share. I've followed the howto from
-nfs.sourceforge.
-Error: 
-mount: permission denied.
-Is there anything else I have to think of in Debian? Or am I just plain
-stupid?
-Can't get it to work.
+On Friday December 9, yamamoto@valinux.co.jp wrote:
+> 
+> it reminded me of a similar diff in our local tree.  (attached)
+> it's fsync part only but more complete.
+> 
 
-On the client:
+Thanks.  I've merged and revised it a bit and will submit it shortly.
 
-rpcinfo -p 192.168.0.21 gives me:
-programma versie protocol poort
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100021    1   udp  32768  nlockmgr
-    100021    3   udp  32768  nlockmgr
-    100005    1   udp   1014  mountd
-    100005    1   tcp   1017  mountd
-    391002    2   tcp    625  sgi_fam
-    100024    1   udp    633  status
-    100024    1   tcp    636  status
+Are there any other nfs patches in your local tree that you would like
+to share ?? ;-)
 
-On the server:
-
-cat /proc/fs/nfs/exp*
-# Version 1.1
-# Path Client(Flags) # IPs
-/data   *(rw,no_root_squash,sync,wdelay)
-
-syslog:
-Dec 10 02:29:58 mainframe mountd[5502]: authenticated mount request from
-router.deception.lan:819 for /data (/data)
-
-I'm trying to mount as root, since I haven't added the share to fstab yet.
-
-Thx.
-
+NeilBrown
 
 
 -------------------------------------------------------
