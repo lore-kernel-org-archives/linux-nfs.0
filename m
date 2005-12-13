@@ -1,24 +1,23 @@
-From: YAMAMOTO Takashi <yamamoto@valinux.co.jp>
-Subject: Re: [PATCH kNFSd ] Check error status from vfs_getattr and
- i_op->fsync
-Date: Tue, 13 Dec 2005 09:10:42 +0900
-Message-ID: <1134432642.095526.2354.nullmailer@yamt.dyndns.org>
-References: <17309.1680.482774.920851@cse.unsw.edu.au>
+From: Vince Busam <vbusam@google.com>
+Subject: Re: mtime not updated in client cache?
+Date: Mon, 12 Dec 2005 17:51:27 -0800
+Message-ID: <439E291F.4000505@google.com>
+References: <438B9C44.4030305@google.com>	 <1133225130.12178.9.camel@lade.trondhjem.org> <438E4CA7.2050405@google.com>	 <1133399727.8267.11.camel@lade.trondhjem.org> <43978AD2.8020000@google.com>		 <1134013082.8002.8.camel@lade.trondhjem.org> <43998F4C.6010902@redhat.com>	 <1134137783.8007.24.camel@lade.trondhjem.org> <439993B0.90801@redhat.com> <1134141589.8007.35.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: akpm@osdl.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ElxlH-0004PN-NR
-	for nfs@lists.sourceforge.net; Mon, 12 Dec 2005 16:11:19 -0800
-Received: from fla1aai163.kng.mesh.ad.jp ([61.193.102.163] helo=yamt.dyndns.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ElxlG-0005p0-7p
-	for nfs@lists.sourceforge.net; Mon, 12 Dec 2005 16:11:19 -0800
-To: neilb@suse.de
-In-Reply-To: Your message of "Mon, 12 Dec 2005 16:11:44 +1100"
-	<17309.1680.482774.920851@cse.unsw.edu.au>
+	id 1ElzKS-0004lG-CB
+	for nfs@lists.sourceforge.net; Mon, 12 Dec 2005 17:51:44 -0800
+Received: from smtp-out.google.com ([216.239.45.12])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ElzKR-0001XO-BB
+	for nfs@lists.sourceforge.net; Mon, 12 Dec 2005 17:51:44 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1134141589.8007.35.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,21 +31,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-> > it reminded me of a similar diff in our local tree.  (attached)
-> > it's fsync part only but more complete.
-> > 
-> 
-> Thanks.  I've merged and revised it a bit and will submit it shortly.
+> Anyhow, the attached patch implements it. Lets try it out, and see how
+> it does. Definitely _not_ a 2.6.15 candidate, though.
 
-thanks.
+Without getting into the argument of whether this is the right thing to do or not, I will 
+verify that this patch resolved the "problem" and that the example code acts as it does on 
+2.4 and Solaris.
 
-> Are there any other nfs patches in your local tree that you would like
-> to share ?? ;-)
-
-i'll send you and/or this list if suitable ones are digged up.
-not today, tho. :-)
-
-YAMAMOTO Takashi
+Thanks,
+Vince
 
 
 -------------------------------------------------------
