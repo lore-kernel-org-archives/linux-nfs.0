@@ -1,52 +1,69 @@
-From: Vince Busam <vbusam@google.com>
-Subject: Re: mtime not updated in client cache?
-Date: Mon, 12 Dec 2005 17:51:27 -0800
-Message-ID: <439E291F.4000505@google.com>
-References: <438B9C44.4030305@google.com>	 <1133225130.12178.9.camel@lade.trondhjem.org> <438E4CA7.2050405@google.com>	 <1133399727.8267.11.camel@lade.trondhjem.org> <43978AD2.8020000@google.com>		 <1134013082.8002.8.camel@lade.trondhjem.org> <43998F4C.6010902@redhat.com>	 <1134137783.8007.24.camel@lade.trondhjem.org> <439993B0.90801@redhat.com> <1134141589.8007.35.camel@lade.trondhjem.org>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [-mm patch] fs/nfsd/vfs.c: fix possible runtime stack corruption
+Date: Wed, 14 Dec 2005 00:06:25 +0100
+Message-ID: <20051213230625.GW23349@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ElzKS-0004lG-CB
-	for nfs@lists.sourceforge.net; Mon, 12 Dec 2005 17:51:44 -0800
-Received: from smtp-out.google.com ([216.239.45.12])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1ElzKR-0001XO-BB
-	for nfs@lists.sourceforge.net; Mon, 12 Dec 2005 17:51:44 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1134141589.8007.35.camel@lade.trondhjem.org>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@cse.unsw.edu.au>,
+	Dave Kleikamp <shaggy@austin.ibm.com>,
+	Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932615AbVLMXG2@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-> Anyhow, the attached patch implements it. Lets try it out, and see how
-> it does. Definitely _not_ a 2.6.15 candidate, though.
+Compiling 2.6.15-rc5-mm2 with CONFIG_NFSD_V4=n and CONFIG_NFSD_V2_ACL=y 
+or CONFIG_NFSD_V3_ACL=y results due to 
+add-vfs_-helpers-for-xattr-operations.patch in the following:
 
-Without getting into the argument of whether this is the right thing to do or not, I will 
-verify that this patch resolved the "problem" and that the example code acts as it does on 
-2.4 and Solaris.
+<--  snip  -->
 
-Thanks,
-Vince
+...
+  CC [M]  fs/nfsd/vfs.o
+fs/nfsd/vfs.c: In function 'nfsd_getxattr':
+fs/nfsd/vfs.c:376: warning: implicit declaration of function 'vfs_getxattr'
+fs/nfsd/vfs.c: In function 'nfsd_set_posix_acl':
+fs/nfsd/vfs.c:1931: warning: implicit declaration of function 'vfs_setxattr'
+fs/nfsd/vfs.c:1936: warning: implicit declaration of function 'vfs_removexattr'
+...
+
+<--  snip  -->
 
 
--------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
-for problems?  Stop!  Download the new AJAX search engine that makes
-searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+The possible stack corruption if gcc guessed the types of the parameters 
+of any of these functions wrong is obvious.
+
+
+Given the -Werror-implicit-function-declaration flag, gcc would	
+abort compilation in such cases:
+
+<--  snip  -->
+
+...
+  CC [M]  fs/nfsd/vfs.o
+fs/nfsd/vfs.c: In function 'nfsd_getxattr':
+fs/nfsd/vfs.c:376: error: implicit declaration of function 'vfs_getxattr'
+fs/nfsd/vfs.c: In function 'nfsd_set_posix_acl':
+fs/nfsd/vfs.c:1931: error: implicit declaration of function 'vfs_setxattr'
+fs/nfsd/vfs.c:1936: error: implicit declaration of function 'vfs_removexattr'
+make[2]: *** [fs/nfsd/vfs.o] Error 1
+
+<--  snip  -->
+
+
+
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
+
+--- linux-2.6.15-rc5-mm2-modular/fs/nfsd/vfs.c.old	2005-12-13 22:05:39.000000000 +0100
++++ linux-2.6.15-rc5-mm2-modular/fs/nfsd/vfs.c	2005-12-13 22:05:55.000000000 +0100
+@@ -48,8 +48,8 @@
+ #include <linux/fsnotify.h>
+ #include <linux/posix_acl.h>
+ #include <linux/posix_acl_xattr.h>
+-#ifdef CONFIG_NFSD_V4
+ #include <linux/xattr.h>
++#ifdef CONFIG_NFSD_V4
+ #include <linux/nfs4.h>
+ #include <linux/nfs4_acl.h>
+ #include <linux/nfsd_idmap.h>
