@@ -1,69 +1,93 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: [-mm patch] fs/nfsd/vfs.c: fix possible runtime stack corruption
-Date: Wed, 14 Dec 2005 00:06:25 +0100
-Message-ID: <20051213230625.GW23349@stusta.de>
+From: "=?GB2312?Q?=B3=C2=BB=B6?=" <huanchen@ncic.ac.cn>
+Subject: performance problem on nfs in kernel v2.4 and v2.6
+Date: Wed, 14 Dec 2005 10:14:47 +0800
+Message-ID: <20051214021641.0C18CFB045@gatekeeper.ncic.ac.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@cse.unsw.edu.au>,
-	Dave Kleikamp <shaggy@austin.ibm.com>,
-	Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932615AbVLMXG2@vger.kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain;
+      charset="GB2312"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1EmMAf-0002Lx-Pi
+	for nfs@lists.sourceforge.net; Tue, 13 Dec 2005 18:15:09 -0800
+Received: from gatekeeper.ncic.ac.cn ([159.226.41.188] helo=ncic.ac.cn)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EmMAd-0004kM-3U
+	for nfs@lists.sourceforge.net; Tue, 13 Dec 2005 18:15:09 -0800
+Received: from chenhuan (trumpet.ncic.ac.cn [159.226.41.129])
+	by gatekeeper.ncic.ac.cn (Postfix) with SMTP id 0C18CFB045
+	for <nfs@lists.sourceforge.net>; Wed, 14 Dec 2005 10:16:41 +0800 (CST)
+To: nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Compiling 2.6.15-rc5-mm2 with CONFIG_NFSD_V4=n and CONFIG_NFSD_V2_ACL=y 
-or CONFIG_NFSD_V3_ACL=y results due to 
-add-vfs_-helpers-for-xattr-operations.patch in the following:
+nfs:
 
-<--  snip  -->
+=09
+=09I did some test on nfs in linux kernel v2.6 ,but there are some=
+ problem i can't solve.
+=09I need your help!
 
-...
-  CC [M]  fs/nfsd/vfs.o
-fs/nfsd/vfs.c: In function 'nfsd_getxattr':
-fs/nfsd/vfs.c:376: warning: implicit declaration of function 'vfs_getxattr'
-fs/nfsd/vfs.c: In function 'nfsd_set_posix_acl':
-fs/nfsd/vfs.c:1931: warning: implicit declaration of function 'vfs_setxattr'
-fs/nfsd/vfs.c:1936: warning: implicit declaration of function 'vfs_removexattr'
-...
+=09I run iozone on nfs in kernel v2.4.21 and v2.6.11.12 ,the test=
+ result is as follows:
+=09v2.4.21:    write performance 106MB/s   (wsize,rsize=3D8192)
+=09v2.6.11.12: write performance 52MB/s ;  (wsize,rsize=3D32768)
 
-<--  snip  -->
+=09the iozone test command I use is : 
+=09=09iozone -c -e -f /mnt/nfs/file1 -s 1g -r 2m -i 0 -w
 
+=09My question is why the performance is lower when using v2.6?
 
-The possible stack corruption if gcc guessed the types of the parameters 
-of any of these functions wrong is obvious.
+=09The test platform is :
+=09=09client: 1G memory,
+=09=09server: 4G memory, 146G disk. 2cpu.
+=09=09net: 1000Mb
 
+=09When i use the following command to chechk why v2.6 takes much=
+ more time, I found that the fsync operations takes much more=
+ time. the command is:
+=09strace -o result -T write, close, fsync ./iozone -c -e -f=
+ /mnt/nfs/file1 -s 1g -r 2m -i 0 -w
+=09the result of this command is that the time of write is=
+ 6(ms),while the time of sync before close is 6 (s).
 
-Given the -Werror-implicit-function-declaration flag, gcc would	
-abort compilation in such cases:
+=09So what is wrong? how can i see performance improvement of nfs=
+ in v2.6. Is there any key value I can tune ?    Or the problem=
+ relates to the removal of flushd while introducing  pdflush in=
+ client memory management ?
 
-<--  snip  -->
-
-...
-  CC [M]  fs/nfsd/vfs.o
-fs/nfsd/vfs.c: In function 'nfsd_getxattr':
-fs/nfsd/vfs.c:376: error: implicit declaration of function 'vfs_getxattr'
-fs/nfsd/vfs.c: In function 'nfsd_set_posix_acl':
-fs/nfsd/vfs.c:1931: error: implicit declaration of function 'vfs_setxattr'
-fs/nfsd/vfs.c:1936: error: implicit declaration of function 'vfs_removexattr'
-make[2]: *** [fs/nfsd/vfs.o] Error 1
-
-<--  snip  -->
-
+=09Thank you!  Waiting for your reply!
 
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
+------------------------------------------------------------
+National Research Center for Intelligent Computing Systems
+Insitute of Computing Technology
+Chinese Academy of Sciences=A1=A1=A1=A1=A1=A1
+------------------------------------------------------------
+=09=09
 
---- linux-2.6.15-rc5-mm2-modular/fs/nfsd/vfs.c.old	2005-12-13 22:05:39.000000000 +0100
-+++ linux-2.6.15-rc5-mm2-modular/fs/nfsd/vfs.c	2005-12-13 22:05:55.000000000 +0100
-@@ -48,8 +48,8 @@
- #include <linux/fsnotify.h>
- #include <linux/posix_acl.h>
- #include <linux/posix_acl_xattr.h>
--#ifdef CONFIG_NFSD_V4
- #include <linux/xattr.h>
-+#ifdef CONFIG_NFSD_V4
- #include <linux/nfs4.h>
- #include <linux/nfs4_acl.h>
- #include <linux/nfsd_idmap.h>
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1huanchen@ncic.ac.cn
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A12005-12-14
+
+
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+for problems?  Stop!  Download the new AJAX search engine that makes
+searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
