@@ -1,25 +1,27 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: performance problem on nfs in kernel v2.4 and v2.6
-Date: Wed, 14 Dec 2005 15:16:26 -0800
-Message-ID: <43A0A7CA.1020006@citi.umich.edu>
-References: <20051214021641.0C18CFB045@gatekeeper.ncic.ac.cn>
-Reply-To: cel@citi.umich.edu
+From: "Iozone" <capps@iozone.org>
+Subject: Re: An interesting performance thing ?
+Date: Wed, 14 Dec 2005 17:47:47 -0600
+Message-ID: <018401c60108$c9477f30$1500000a@americas.hpqcorp.net>
+References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>
+ <17312.39940.985507.704832@cse.unsw.edu.au> <43A0A0D5.4040804@citi.umich.edu>
+Reply-To: "Iozone" <capps@iozone.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------000300040903050604010600"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; format=flowed; charset=iso-8859-1; reply-type=original
+Cc: <wli@holomorphy.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EmfrQ-0002FJ-1d
-	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 15:16:36 -0800
-Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EmfrN-0000JJ-EI
-	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 15:16:35 -0800
-To: =?GB2312?B?s8K7tg==?= <huanchen@ncic.ac.cn>
-In-Reply-To: <20051214021641.0C18CFB045@gatekeeper.ncic.ac.cn>
+	id 1EmgLh-0004PL-8f
+	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 15:47:53 -0800
+Received: from vms042pub.verizon.net ([206.46.252.42])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EmgLh-0004Mi-53
+	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 15:47:53 -0800
+Received: from cappsnc ([71.96.135.143])
+ by vms042.mailsrvcs.net (Sun Java System Messaging Server 6.2-4.02 (built Sep
+ 9 2005)) with ESMTPA id <0IRI00K7XI3N2RS1@vms042.mailsrvcs.net> for
+ nfs@lists.sourceforge.net; Wed, 14 Dec 2005 17:47:48 -0600 (CST)
+To: <cel@citi.umich.edu>, "Neil Brown" <neilb@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,97 +35,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------000300040903050604010600
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: quoted-printable
 
-huanchen-
-
-you tell us which kernels you've tried, but it's not clear
-whether you are switching the client or the server kernel.
-
-also, what export options do you use on the server?  and
-what file system?
+----- Original Message ----- 
+From: "Chuck Lever" <cel@citi.umich.edu>
+To: "Neil Brown" <neilb@suse.de>
+Cc: "Iozone" <capps@iozone.org>; <wli@holomorphy.com>; 
+<nfs@lists.sourceforge.net>
+Sent: Wednesday, December 14, 2005 4:46 PM
+Subject: Re: An interesting performance thing ?
 
 
+> Neil Brown wrote:
+>> William, Chunk:  Any suggestions on whether a straight multiply would
+>> be too expensive, or what else we could do to make hash_long both fast
+>> and effective?
+>
+> my original proposal was a hash function which computed the index by a
+> single multiplication with a large prime number.  i was told that
+> multiplication was too expensive, especially on older platforms, so the
+> existing computation took its place.  but i don't think anyone ever did
+> any real studies.  i can't imagine that multiplication would be worse
+> than extra elements in a hash chain, especially on modern CPU 
+> architectures.
+>
 
-=B3=C2=BB=B6 wrote:
-> nfs:
->=20
-> =09
-> 	I did some test on nfs in linux kernel v2.6 ,but there are some proble=
-m i can't solve.
-> 	I need your help!
->=20
-> 	I run iozone on nfs in kernel v2.4.21 and v2.6.11.12 ,the test result =
-is as follows:
-> 	v2.4.21:    write performance 106MB/s   (wsize,rsize=3D8192)
-> 	v2.6.11.12: write performance 52MB/s ;  (wsize,rsize=3D32768)
->=20
-> 	the iozone test command I use is :=20
-> 		iozone -c -e -f /mnt/nfs/file1 -s 1g -r 2m -i 0 -w
->=20
-> 	My question is why the performance is lower when using v2.6?
->=20
-> 	The test platform is :
-> 		client: 1G memory,
-> 		server: 4G memory, 146G disk. 2cpu.
-> 		net: 1000Mb
->=20
-> 	When i use the following command to chechk why v2.6 takes much more ti=
-me, I found that the fsync operations takes much more time. the command i=
-s:
-> 	strace -o result -T write, close, fsync ./iozone -c -e -f /mnt/nfs/fil=
-e1 -s 1g -r 2m -i 0 -w
-> 	the result of this command is that the time of write is 6(ms),while th=
-e time of sync before close is 6 (s).
->=20
-> 	So what is wrong? how can i see performance improvement of nfs in v2.6=
-. Is there any key value I can tune ?    Or the problem relates to the re=
-moval of flushd while introducing  pdflush in client memory management ?
->=20
-> 	Thank you!  Waiting for your reply!
->=20
->=20
-> ------------------------------------------------------------
-> National Research Center for Intelligent Computing Systems
-> Insitute of Computing Technology
-> Chinese Academy of Sciences=A1=A1=A1=A1=A1=A1
-> ------------------------------------------------------------
-> 	=09
->=20
-> =A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1
-> =A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1huanchen@ncic.ac.cn
-> =A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A12005-12-14
->=20
->=20
->=20
->=20
-> -------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc. Do you grep through log =
-files
-> for problems?  Stop!  Download the new AJAX search engine that makes
-> searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-> http://ads.osdn.com/?ad_idv37&alloc_id=16865&op=3Dclick
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Neil,
+
+    In a perfect world, a perfect hash would be ideal...but,
+
+    1. It is fairly normal practice for code to call inet_lnaof( in_addr )
+        so that the host native format is used by the host. Just
+        grabbing s_addr is a bit odd.
+    2. Simply adding the inet_lnaof( in_addr ) would do nice
+        things with the existing hash algorithm, for CDIR allocated
+        monotonically incremented IP address spaces.
+    3. Gosh, it seems like a pretty easy and safe change.
+
+        I think I understand Neil's position. If one hands a 64 bit
+    opaque object to a hash function, it should do a better
+    job of distribution, so who cares if it was in the native
+    format or not.  Ok..  But, given 1->3 above, it seems
+    like there might be a lower risk, less controversial, solution
+    for the immediate future, and permit folks to do a study
+    while the world goes on its happy way :-)
+
+    Thanks again for being kind to new kid tossing
+    spitballs :-)
+
+Enjoy,
+Don Capps
 
 
---------------000300040903050604010600
-Content-Type: text/x-vcard; charset=utf-8;
- name="cel.vcf"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="cel.vcf"
 
-YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6TmV0d29y
-ayBBcHBsaWFuY2UsIEluY29ycG9yYXRlZDtPcGVuIFNvdXJjZSBORlMgQ2xpZW50IEVuZ2lu
-ZWVyaW5nDQplbWFpbDtpbnRlcm5ldDpjZWxAY2l0aS51bWljaC5lZHUNCnRpdGxlOk1lbWJl
-ciBvZiBUZWNobmljYWwgU3RhZmYNCngtbW96aWxsYS1odG1sOkZBTFNFDQp1cmw6aHR0cDov
-L3d3dy5tb25rZXkub3JnL35jZWwNCnZlcnNpb246Mi4xDQplbmQ6dmNhcmQNCg0K
---------------000300040903050604010600--
 
 
 -------------------------------------------------------
