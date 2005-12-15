@@ -1,26 +1,21 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: Re: An interesting performance thing ?
-Date: Wed, 14 Dec 2005 16:59:42 -0800
-Message-ID: <43A0BFFE.2050906@citi.umich.edu>
-References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>	<17312.39940.985507.704832@cse.unsw.edu.au>	<43A0A0D5.4040804@citi.umich.edu>	<018401c60108$c9477f30$1500000a@americas.hpqcorp.net>	<17312.45710.867019.969182@cse.unsw.edu.au>	<43A0BC49.3070604@citi.umich.edu> <17312.49024.378295.414582@cse.unsw.edu.au>
-Reply-To: cel@citi.umich.edu
+From: "=?GB2312?Q?=B3=C2=BB=B6?=" <huanchen@ncic.ac.cn>
+Subject: Re: Re: performance problem on nfs in kernel v2.4 and v2.6
+Date: Thu, 15 Dec 2005 9:12:20 +0800
+Message-ID: <20051215011405.3037CFB047@gatekeeper.ncic.ac.cn>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------080801060009050006060005"
-Cc: Iozone <capps@iozone.org>, wli@holomorphy.com,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain;
+      charset="GB2312"
+Cc: nfs@lists.sourceforge.net <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EmhTJ-0000YE-PT
-	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 16:59:49 -0800
-Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EmhTI-00087r-JW
-	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 16:59:50 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17312.49024.378295.414582@cse.unsw.edu.au>
+	id 1EmhfZ-000218-ID
+	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 17:12:29 -0800
+Received: from gatekeeper.ncic.ac.cn ([159.226.41.188] helo=ncic.ac.cn)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EmhfX-0004nM-K0
+	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 17:12:29 -0800
+To: cel@citi.umich.edu <cel@citi.umich.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,59 +29,110 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------080801060009050006060005
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Chuck Lever,=C4=FA=BA=C3=A3=A1
 
-Neil Brown wrote:
-> A good question is:  Do we ever need more than 4 bytes of hash
-> value?
-> We wouldn't for hash tables, but they may well be other uses of
-> hashes.
-> 
-> If we don't then a function that maps and arbitrary mem buffer into
-> a u32 would be suitable general for all uses or all architectures,
-> though some special cases like 4byte and 8byte inputs could probably
-> be optimised sensibly.
-> 
->  I suspect the function given in
->    http://burtleburtle.net/bob/hash/evahash.html
-> 
-> my really be a good choice.  
-> It does about 40 add/subtracts for each 4bytes, but seems to have good
-> properties.
-> (Hmm.. that is probably similar to a constant 32bit multiply, but
->  maybe the current code with a better non-sparse prime is just as
->  good).
+=09when i did test on kernel 2.4.21, both client and server are of=
+ that kernel version. So i did on kernel 2.6.11.12.
 
-i haven't looked at how the network layer handles this issue, but it 
-might be a good start if there is something there to reuse.
+=09the export option i use is :=
+ =09(rw,async,wdelay,hide,nocrossmnt,secure,no_root_squash,no_all_s=
+quash,subtree_check,secure_locks,mapping=3Didentity,anonuid=3D-2,anon=
+gid=3D-2)
 
---------------080801060009050006060005
-Content-Type: text/x-vcard; charset=utf-8;
- name="cel.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="cel.vcf"
+=09the filesystem is ext2.
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Charles
-org:Network Appliance, Incorporated;Open Source NFS Client Development
-adr:535 West William Street, Suite 3100;;Center for Information Technology Integration;Ann Arbor;MI;48103-4943;USA
-email;internet:cel@citi.umich.edu
-title:Member of Technical Staff
-tel;work:+1 734 763-4415
-tel;fax:+1 734 763 4434
-tel;home:+1 734 668-1089
-x-mozilla-html:FALSE
-url:http://troy.citi.umich.edu/u/cel/
-version:2.1
-end:vcard
+=09why i can't test the good performance i expected on v2.6.?
+
+=3D=3D=3D=3D=3D=3D=3D 2005-12-14 15:16:00 =C4=FA=D4=DA=C0=B4=D0=C5=D6=D0=D0=B4=B5=C0=A3=BA=3D=3D=3D=3D=3D=3D=3D
+
+>huanchen-
+>
+>you tell us which kernels you've tried, but it's not clear
+>whether you are switching the client or the server kernel.
+>
+>also, what export options do you use on the server?  and
+>what file system?
+>
+>
+>
+>=B3=C2=BB=B6 wrote:
+>> nfs:
+>> 
+>> =09
+>> =09I did some test on nfs in linux kernel v2.6 ,but there are=
+ some problem i can't solve.
+>> =09I need your help!
+>> 
+>> =09I run iozone on nfs in kernel v2.4.21 and v2.6.11.12 ,the=
+ test result is as follows:
+>> =09v2.4.21:    write performance 106MB/s   (wsize,rsize=3D8192)
+>> =09v2.6.11.12: write performance 52MB/s ;  (wsize,rsize=3D32768)
+>> 
+>> =09the iozone test command I use is : 
+>> =09=09iozone -c -e -f /mnt/nfs/file1 -s 1g -r 2m -i 0 -w
+>> 
+>> =09My question is why the performance is lower when using v2.6?
+>> 
+>> =09The test platform is :
+>> =09=09client: 1G memory,
+>> =09=09server: 4G memory, 146G disk. 2cpu.
+>> =09=09net: 1000Mb
+>> 
+>> =09When i use the following command to chechk why v2.6 takes=
+ much more time, I found that the fsync operations takes much=
+ more time. the command is:
+>> =09strace -o result -T write, close, fsync ./iozone -c -e -f=
+ /mnt/nfs/file1 -s 1g -r 2m -i 0 -w
+>> =09the result of this command is that the time of write is=
+ 6(ms),while the time of sync before close is 6 (s).
+>> 
+>> =09So what is wrong? how can i see performance improvement of=
+ nfs in v2.6. Is there any key value I can tune ?    Or the=
+ problem relates to the removal of flushd while introducing =
+ pdflush in client memory management ?
+>> 
+>> =09Thank you!  Waiting for your reply!
+>> 
+>> 
+>> ------------------------------------------------------------
+>> National Research Center for Intelligent Computing Systems
+>> Insitute of Computing Technology
+>> Chinese Academy of Sciences=A1=A1=A1=A1=A1=A1
+>> ------------------------------------------------------------
+>> =09=09
+>> 
+>> =A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1
+>> =A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1huanchen@ncic.ac.cn
+>> =A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A12005-12-14
+>> 
+>> 
+>> 
+>> 
+>> -------------------------------------------------------
+>> This SF.net email is sponsored by: Splunk Inc. Do you grep=
+ through log files
+>> for problems?  Stop!  Download the new AJAX search engine that=
+ makes
+>> searching your log files as easy as surfing the  web. =
+ DOWNLOAD SPLUNK!
+>> http://ads.osdn.com/?ad_idv37&alloc_id=16865&op=3Dclick
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
+
+=3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D =3D
+=09=09=09
+
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=D6=C2
+=C0=F1=A3=A1
+ 
+=09=09=09=09 
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=B3=C2=BB=B6
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1huanchen@ncic.ac.cn
+=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A1=A12005-12-15
 
 
---------------080801060009050006060005--
+
 
 
 -------------------------------------------------------
