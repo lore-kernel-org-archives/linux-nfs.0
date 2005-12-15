@@ -1,25 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH]: NFS: fix inadvertent reversion of mode bits
-	during chown
-Date: Thu, 15 Dec 2005 09:14:47 -0500
-Message-ID: <1134656087.7954.7.camel@lade.trondhjem.org>
-References: <20051215130939.GA8111@hmsreliant.homelinux.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Re: An interesting performance thing ?
+Date: Thu, 15 Dec 2005 09:49:01 -0500
+Message-ID: <20051215144901.GD14973@fieldses.org>
+References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net> <17312.39940.985507.704832@cse.unsw.edu.au> <43A0A0D5.4040804@citi.umich.edu> <018401c60108$c9477f30$1500000a@americas.hpqcorp.net> <17312.45710.867019.969182@cse.unsw.edu.au> <20051215023256.GA22951@fieldses.org> <020a01c60133$3d8fc530$1500000a@americas.hpqcorp.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, neilb@cse.unsw.edu.au,
-	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, cel@citi.umich.edu,
+	wli@holomorphy.com, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Emtt3-0001dN-5w
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 06:15:13 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1EmuPx-00042R-1c
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 06:49:13 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Emtt2-0005NE-EG
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 06:15:13 -0800
-To: Neil Horman <nhorman@tuxdriver.com>
-In-Reply-To: <20051215130939.GA8111@hmsreliant.homelinux.net>
+	id 1EmuPs-0005yo-CM
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 06:49:09 -0800
+To: Iozone <capps@iozone.org>
+In-Reply-To: <020a01c60133$3d8fc530$1500000a@americas.hpqcorp.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,42 +32,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2005-12-15 at 08:09 -0500, Neil Horman wrote:
-> Hey all-
-> 	This problem was reported to me recently that when a process is attempting
-> to change ownership (chown) on a file on a NFS share, it is possible that
-> permissions bits will be reverted to a previous state on the server, even if an
-> exclusive lock is held on the file.  I verified this, and came to find that this
-> occurs if the SUID bit is set on the file.  Basically when a file is chown-ed,
-> the chown_call forcibly strips the SUID/SGID bits from the mode (ostensibly for
-> security purposes).  The VFS then implements this stripping (if the SUID/SGID
-> bits are currently set on the inode in question) by updating the iattr structure
-> in notify_change to not only change the UID/GID of the inode, but also the MODE,
-> using the mode bits in the inode.  This works fine on locally mounted file
-> systems, in which the inodes in ram are only modified by one system, and are in
-> sync with disk contents.  However on NFS, its possible for the a files
-> attributes to be out of sync with the cached inode on a given system sharing the
-> NFS mount.  As such, if system A changes the mode bits on a file on the server,
-> system B preforming a chown on an inode cached locally can inadvertantly revert
-> permissions on the inode to whatever was most recently cached.
-> 
-> I don't think this hole can be 100% closed, as we can guarantee the order of
-> arival of packets to the server between nodes, but we can be sure that the
-> filesystem bits aren't reverted if the accessing programs participate in a
-> locking protocol.  The patch below refreshes the inode and strips the SUID/SGID
-> bits from the latest server side inode->i_mode bits.  This has been tested and
-> prevents the described problem from occuring.
-> 
-> An alternate solution (and one that generates less traffic) may be to simply
-> disallow the setting of ATTR_MODE and (ATTR_UID|ATTR_GID) at the same time in
-> nfs_setattr, but I haven't thought through what all the implications are there.
+On Wed, Dec 14, 2005 at 10:51:40PM -0600, Iozone wrote:
+>        One of the interesting things I noticed is that the general
+>    purpose hash_long() function may not be as optimal
+>    as a more focused hash_IP_addr() function might be,
+>    even if GOLDEN were GOLDEN :-) And, trying
+>    to smash 128 bit IPV6 addresses into a 8 bit hash
+>    value, that is somehow uniformly distributed, well,
+>    that's going to be quite a neat trick, and making it
+>    work for 32 bit, 64, and 128 bit objects, with uniform
+>    distribution over a variable number of output bits,
+>    is approaching magical.
 
-Third alternative: Fix the VFS to not do that. That makes the whole
-thing race-free.
+I'm not so pessimistic, but I'm also not expert enough about hash
+functions to know how much magic is reasonable to expect out of a good
+one.  Time to pull out Knuth, maybe.
 
-Cheers,
-  Trond
+There might also be an argument for experimenting with different data
+structures.  I'd expect high temporal locality--in typical situations a
+server with lots of clients may have only a few that are active at a
+particular time--so one of those balanced trees that migrates recently
+looked-up items to the top might be helpful.
 
+Aside from seeing the race condition triggered, have you done any
+profiling to make sure this is actually a big problem, even with the
+current worst-case linear-search behaviour?
+
+--b.
 
 
 -------------------------------------------------------
