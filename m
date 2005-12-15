@@ -1,25 +1,26 @@
-From: Joshua Baker-LePain <jlb17@duke.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Error 512
-Date: Thu, 15 Dec 2005 14:16:41 -0500 (EST)
-Message-ID: <Pine.LNX.4.62.0512151416100.5180@chaos.egr.duke.edu>
+Date: Thu, 15 Dec 2005 14:37:01 -0500
+Message-ID: <1134675422.7956.12.camel@lade.trondhjem.org>
 References: <Pine.LNX.4.62.0512141521150.5180@chaos.egr.duke.edu>
- <1134601986.13707.12.camel@lade.trondhjem.org>
- <Pine.LNX.4.62.0512142052290.6445@chaos.egr.duke.edu>
- <1134612343.13707.20.camel@lade.trondhjem.org> <Pine.LNX.4.62.0512151405060.5180@chaos.egr.duke.edu>
+	 <1134601986.13707.12.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.62.0512142052290.6445@chaos.egr.duke.edu>
+	 <1134612343.13707.20.camel@lade.trondhjem.org>
+	 <Pine.LNX.4.62.0512151405060.5180@chaos.egr.duke.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Emyaz-0007O6-3s
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 11:16:53 -0800
-Received: from chaos.egr.duke.edu ([152.3.195.82])
+	id 1Emyuq-0000QO-6d
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 11:37:24 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Emyau-0002vg-Ez
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 11:16:50 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1Emyum-0000hQ-JJ
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 11:37:24 -0800
+To: Joshua Baker-LePain <jlb17@duke.edu>
 In-Reply-To: <Pine.LNX.4.62.0512151405060.5180@chaos.egr.duke.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,28 +35,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 15 Dec 2005 at 2:05pm, Joshua Baker-LePain wrote
-
+On Thu, 2005-12-15 at 14:05 -0500, Joshua Baker-LePain wrote:
 > On Wed, 14 Dec 2005 at 9:05pm, Trond Myklebust wrote
->
->> On Wed, 2005-12-14 at 20:54 -0500, Joshua Baker-LePain wrote:
->
->>> Ah, OK.  So you're saying I need to find out why the server is waiting
->>> 10+ minutes to respond to the client's request(s).  *sigh*
->> 
->> Yep. If you can send us a tcpdump, then that might help...
->
+> 
+> > On Wed, 2005-12-14 at 20:54 -0500, Joshua Baker-LePain wrote:
+> 
+> >> Ah, OK.  So you're saying I need to find out why the server is waiting
+> >> 10+ minutes to respond to the client's request(s).  *sigh*
+> >
+> > Yep. If you can send us a tcpdump, then that might help...
+> 
 > http://biomechanics.bme.duke.edu/~jlb/nfshang
->
-> This is a *long* hang that eventually did resolve captured via
+> 
 
-*sigh*  No, it didn't resolve.  Let me know if you need a dump from when 
-it's unhung.
+It looks like the client is looping while trying to connect to the
+server. The server appears to be ACKing the connection attempt, but that
+is where it stops.
 
--- 
-Joshua Baker-LePain
-Department of Biomedical Engineering
-Duke University
+I assume this tcpdump was taken on the server? If so, it might be
+interesting to look at what the client is seeing.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
