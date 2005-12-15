@@ -1,25 +1,24 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: NFS Client  port
-Date: Thu, 15 Dec 2005 08:30:31 -0800
-Message-ID: <43A19A27.2040209@citi.umich.edu>
-References: <20051215125807.35005.qmail@web51602.mail.yahoo.com>
-Reply-To: cel@citi.umich.edu
+From: Neil Horman <nhorman@tuxdriver.com>
+Subject: Re: [PATCH]: NFS: fix inadvertent reversion of mode bits during chown
+Date: Thu, 15 Dec 2005 11:38:34 -0500
+Message-ID: <20051215163834.GB8376@hmsreliant.homelinux.net>
+References: <20051215130939.GA8111@hmsreliant.homelinux.net> <1134656087.7954.7.camel@lade.trondhjem.org> <20051215144945.GA8376@hmsreliant.homelinux.net> <1134658644.7954.13.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050903080106070707080302"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, neilb@cse.unsw.edu.au,
+	linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Emw09-00037a-Rb
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:30:41 -0800
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1Emw88-0003ku-5s
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:38:56 -0800
+Received: from ra.tuxdriver.com ([24.172.12.4])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Emw04-0003Fe-C2
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:30:38 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20051215125807.35005.qmail@web51602.mail.yahoo.com>
+	id 1Emw85-0003js-N2
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:38:56 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1134658644.7954.13.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,52 +32,89 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------050903080106070707080302
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-mehta kiran wrote:
-> Hi,
->    Does NFS Client try to use port different then the
-> port
->    most recently released or next in the series ?
+On Thu, Dec 15, 2005 at 09:57:24AM -0500, Trond Myklebust wrote:
+> On Thu, 2005-12-15 at 09:49 -0500, Neil Horman wrote:
 > 
->    NFS client is using some port say x
->    Due to some reason connection between client 
->    and server is broken. Will NFS Client
->    use the port x to reestablish connection or will it
+> > I considered this, but I'm not sure thats the right way to go. It seems that the
+> > attribute structure can only set the mode bit, it has no way to represent a
+> > masking of bits.  So to set the mode, the VFS needs to know what the current
+> > mode flags are.  Since the sys_chown code path has no authoritative info on what
+> > the mode bits should be (like chmod does, where the user explicitly specifies
+> > the mode bits), notify_change has to rely on the current mode bits in
+> > inode->i_mode.  We could modify notify_change to not alter the mode bits at all
+> > and leave the ATTR_KILL_SUID flag in the ia_valid field for individual
+> > filesystems to deal with, but I'm not sure thats the better solution, as it
+> > would still leave NFS (and all other filesystems) with the responsibility of
+> > turning the s[u|g]id bits off.
 > 
->    use port other then x ?
+> As far as an NFS client is concerned, we don't need to clear the
+> suid/sgid bits at all since the server will do it for us anyway. If the
+> VFS were to just send us the ATTR_UID/ATTR_GID fields, then we'd be
+> fine.
+> 
+> As for local filesystems, they can be given a helper function that fixes
+> up the struct sattr to do the KILL_SUID thing.
+> 
+> Cheers,
+>   Trond
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+> for problems?  Stop!  Download the new AJAX search engine that makes
+> searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+> http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-until very recently, the RPC client would choose a different port when 
-reconnecting.  there's a patch in the transport switch series that i 
-believe is going in 2.6.15 that makes the client reconnect on the same port.
+Then this patch should work just as well (and save the overhead of both adding
+the extra getaddr call and the need to add a helper function to all the other
+supported file systems to kill the SUID bits that already happens in the VFS.
 
---------------050903080106070707080302
-Content-Type: text/x-vcard; charset=utf-8;
- name="cel.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="cel.vcf"
+Thanks & Regards
+Neil
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Charles
-org:Network Appliance, Incorporated;Open Source NFS Client Development
-adr:535 West William Street, Suite 3100;;Center for Information Technology Integration;Ann Arbor;MI;48103-4943;USA
-email;internet:cel@citi.umich.edu
-title:Member of Technical Staff
-tel;work:+1 734 763-4415
-tel;fax:+1 734 763 4434
-tel;home:+1 734 668-1089
-x-mozilla-html:FALSE
-url:http://troy.citi.umich.edu/u/cel/
-version:2.1
-end:vcard
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
 
 
---------------050903080106070707080302--
+ inode.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+)
+
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -845,6 +845,22 @@ nfs_setattr(struct dentry *dentry, struc
+ 	if (attr->ia_valid == 0)
+ 		return 0;
+ 
++	/*
++	 * If we are changing UID/GID, lets be sure that we
++	 * have the latest mode attribute.  Conducting a chown,
++	 * causes the suid bits to get dropped, and that in turn 
++	 * can accidentally revert file permissions.
++	 */
++	if ((attr->ia_valid & (ATTR_UID|ATTR_GID)) &&
++	    (attr->ia_valid & ATTR_MODE)) {
++		/*
++		 * We fix this by simply dropping the mode change
++		 * as the NFS server will conditionally drop the 
++		 * the [s|g]uid bits at the server anyway
++		 */
++		attr->ia_valid &= ~ATTR_MODE;
++	}
++
+ 	lock_kernel();
+ 	nfs_begin_data_update(inode);
+ 	/* Write all dirty data if we're changing file permissions or size */
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *gpg keyid: 1024D / 0x92A74FA1 - http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
