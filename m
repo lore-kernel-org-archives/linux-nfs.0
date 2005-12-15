@@ -1,23 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: An interesting performance thing ?
-Date: Wed, 14 Dec 2005 21:22:10 -0500
-Message-ID: <20051215022210.GB21176@fieldses.org>
-References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>
+From: Joshua Baker-LePain <jlb17@duke.edu>
+Subject: Re: Error 512
+Date: Wed, 14 Dec 2005 21:21:42 -0500 (EST)
+Message-ID: <Pine.LNX.4.62.0512142120510.6445@chaos.egr.duke.edu>
+References: <Pine.LNX.4.62.0512141521150.5180@chaos.egr.duke.edu>
+ <1134601986.13707.12.camel@lade.trondhjem.org>
+ <Pine.LNX.4.62.0512142052290.6445@chaos.egr.duke.edu>
+ <1134612343.13707.20.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Emil7-0007Qn-PE
-	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 18:22:17 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1Emikd-0007Ps-CA
+	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 18:21:47 -0800
+Received: from chaos.egr.duke.edu ([152.3.195.82])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Emil5-0001W9-DU
-	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 18:22:17 -0800
-To: Iozone <capps@iozone.org>
-In-Reply-To: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>
+	id 1Emikd-0006pL-27
+	for nfs@lists.sourceforge.net; Wed, 14 Dec 2005 18:21:47 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1134612343.13707.20.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,34 +34,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Dec 14, 2005 at 12:22:38PM -0600, Iozone wrote:
->     Then the hash_long function would have done a nice job.  Since
->     one is not converting the network neutral IP address into a 
->     host binary format, here is an example of the hash distribution
->     that, I believe via experimentation, is currently being seen on 
->     Little Endian 64 Bit systems....
+On Wed, 14 Dec 2005 at 9:05pm, Trond Myklebust wrote
 
-A little bit of fiddling about with pencil and paper shows what's
-happening:  suppose longs are 64 bits and let x be a long.  Then
-hash_long operates on x by multiplying it by
+> On Wed, 2005-12-14 at 20:54 -0500, Joshua Baker-LePain wrote:
+>>
+>> Ah, OK.  So you're saying I need to find out why the server is waiting
+>> 10+ minutes to respond to the client's request(s).  *sigh*
+>
+> Yep. If you can send us a tcpdump, then that might help...
+>
+Will do first chance I get.  The real fun bit is that I haven't yet worked 
+out a way to reproduce this at will.
 
-	 1 - 2^18 - 2^51 + 2^54 - 2^57 + 2^61 + 2^63
-
-and then taking the high bits.
-
-You can think of that as adding and subtracting a bunch of left-shifts.
-Note that the last four terms are all shifts by at least 51 bits, so
-wipe out all but the lowest 13 bits.  So if those low 13 bits are all
-constant, then the only variation is from multiplication by (1 - 2^18).
-But if the input is small (say the top 32 bits are all zero...) then
-multiplying by (1 - 2^18) doesn't affect the high bits of the output at
-all.
-
-So in our case, where the 32 high bits are zero and we're only asking
-for the top 8 bits, it looks like all but the bottom 13 bits of x (the
-top 13 bits of the IP address) are ignored.
-
---b.
+-- 
+Joshua Baker-LePain
+Department of Biomedical Engineering
+Duke University
 
 
 -------------------------------------------------------
