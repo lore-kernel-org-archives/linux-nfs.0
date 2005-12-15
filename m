@@ -1,35 +1,29 @@
-From: "Iozone" <capps@iozone.org>
-Subject: Re: Re: An interesting performance thing ?
-Date: Thu, 15 Dec 2005 10:41:19 -0600
-Message-ID: <031801c60196$60a70ac0$1500000a@americas.hpqcorp.net>
-References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>
- <17312.39940.985507.704832@cse.unsw.edu.au> <43A0A0D5.4040804@citi.umich.edu>
- <018401c60108$c9477f30$1500000a@americas.hpqcorp.net>
- <17312.45710.867019.969182@cse.unsw.edu.au>
- <20051215023256.GA22951@fieldses.org>
- <020a01c60133$3d8fc530$1500000a@americas.hpqcorp.net>
- <20051215144901.GD14973@fieldses.org>
- <02f001c6018d$56b31030$1500000a@americas.hpqcorp.net>
- <20051215161431.GA21043@fieldses.org>
-Reply-To: "Iozone" <capps@iozone.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH]: NFS: fix inadvertent reversion of mode bits
+	during chown
+Date: Thu, 15 Dec 2005 11:50:42 -0500
+Message-ID: <1134665442.7944.3.camel@lade.trondhjem.org>
+References: <20051215130939.GA8111@hmsreliant.homelinux.net>
+	 <1134656087.7954.7.camel@lade.trondhjem.org>
+	 <20051215144945.GA8376@hmsreliant.homelinux.net>
+	 <1134658644.7954.13.camel@lade.trondhjem.org>
+	 <20051215163834.GB8376@hmsreliant.homelinux.net>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=iso-8859-1; reply-type=original
-Cc: "Neil Brown" <neilb@suse.de>, <cel@citi.umich.edu>,
-	<wli@holomorphy.com>, <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net, neilb@cse.unsw.edu.au,
+	linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EmwCE-0003yZ-SO
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:43:10 -0800
-Received: from vms040pub.verizon.net ([206.46.252.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EmwCD-0005rz-PA
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:43:11 -0800
-Received: from cappsnc ([71.96.135.143])
- by vms040.mailsrvcs.net (Sun Java System Messaging Server 6.2-4.02 (built Sep
- 9 2005)) with ESMTPA id <0IRJ002JIT0V4XA0@vms040.mailsrvcs.net> for
- nfs@lists.sourceforge.net; Thu, 15 Dec 2005 10:41:21 -0600 (CST)
-To: "J. Bruce Fields" <bfields@fieldses.org>
+	id 1EmwJw-0004fJ-DA
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:51:08 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EmwJu-0002sq-4A
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 08:51:08 -0800
+To: Neil Horman <nhorman@tuxdriver.com>
+In-Reply-To: <20051215163834.GB8376@hmsreliant.homelinux.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,49 +37,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, 2005-12-15 at 11:38 -0500, Neil Horman wrote:
 
------ Original Message ----- 
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Iozone" <capps@iozone.org>
-Cc: "Neil Brown" <neilb@suse.de>; <cel@citi.umich.edu>; 
-<wli@holomorphy.com>; <nfs@lists.sourceforge.net>
-Sent: Thursday, December 15, 2005 10:14 AM
-Subject: Re: [NFS] Re: An interesting performance thing ?
+> Then this patch should work just as well (and save the overhead of both adding
+> the extra getaddr call and the need to add a helper function to all the other
+> supported file systems to kill the SUID bits that already happens in the VFS.
 
+NACK. The filesystem should _not_ try to second-guess what the VFS
+intends it to do.
 
-> On Thu, Dec 15, 2005 at 09:36:37AM -0600, Iozone wrote:
->>        With IP_HASHBITS = 8, there were 256 queues,
->>    but only one was active. If the hash distribution were
->>    uniform, then the queue depth could have been 1 (one)
->>    but instead is a linear search of a relatively large number
->>    of items.
->>
->>    Does that help ?
->
-> I'm mainly curious how much effort it's worth expending on optimizing
-> that hash.  If it turns out that even the current linear search isn't
-> that expensive, then that's an argument against doing any more
-> optimizing (beyond just fixing the current obvious problem).
->
-> So maybe playing with oprofile or something would help answer my
-> question.
->
-> --b.
->
-Bruce,
-
-        I'm still working on trying to track down the patch to
-    fix RedHat EL 4  (2.6.9-11) so that it will not panic.
-    Until I get that patch located and installed, the profiling
-    may not be very successful :-(
-
-    It's a good idea, I'm just not able to grant your wish
-    at this point in time. Please try your wish again later :-)
-    ( EAGAIN ? :-)
-
-Enjoy,
-Don Capps
-
+Cheers,
+  Trond
 
 
 
