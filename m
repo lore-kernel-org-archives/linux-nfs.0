@@ -1,25 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: nfs-utils 1.0.8-rc1
-Date: Fri, 16 Dec 2005 16:54:36 +1100
-Message-ID: <17314.22172.913247.595571@cse.unsw.edu.au>
+From: Shunichi Sagawa <s-sagawa@jp.fujitsu.com>
+Subject: Re: kernel 2.4  The process hang on NFS
+Date: Fri, 16 Dec 2005 15:40:55 +0900
+Message-ID: <20051216154055.7f369762.s-sagawa@jp.fujitsu.com>
+References: <20051215195925.475aee2c.s-sagawa@jp.fujitsu.com>
+	<1134655845.7954.4.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1En8YI-00021G-M9
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 21:54:46 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1En8YH-0003rj-Hp
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 21:54:46 -0800
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id DA5CFF06E
-	for <nfs@lists.sourceforge.net>; Fri, 16 Dec 2005 06:54:40 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1En9Ev-00050z-26
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 22:38:49 -0800
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1En9Et-0001u1-Ju
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 22:38:49 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1134655845.7954.4.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,22 +31,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Thu, 15 Dec 2005 09:10:45 -0500
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-I have just make a RC release for nfs-utils.
-nfs-utils-1.0.8-rc1 can be found at
+> On Thu, 2005-12-15 at 19:59 +0900, Shunichi Sagawa wrote:
+> > Hello, 
+> > 
+> > In the multithreaded NFS access program,
+> > "Ctrl + C" causes the process hang.
+> > 
+> >     498 static int
+> >     499 __rpc_execute(struct rpc_task *task)
+> >     500 {
+> >     :
+> >     560                 while (RPC_IS_SLEEPING(task)) {
+> >     561                         /* sync task: sleep here */
+> >     562                         dprintk("RPC: %4d sync task going to sleepn",
+> >     563                                                         task->tk_pid);
+> >     564                         if (current->pid == rpciod_pid)
+> >     565                                 printk(KERN_ERR "RPC: rpciod waiting on sync task!n");
+> >     566 
+> >     567                         __wait_event(task->tk_wait, !RPC_IS_SLEEPING(task));  <= here
+> > 
+> > 
+> > Even though a task receives a signal, __wait_event() does not resume the task.
+> > I think that __wait_event_interruptible() should be used instead of __wait_event().
+> > 
+> > Is it right?
+> 
+> Yes. See the 2.6 kernels, which have fixed this.
 
-  http://sourceforge.net/project/showfiles.php?group_id=14
-or (soon) at
-  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
+Do you have a plan to fix this problem on kernel 2.4?
+And, in kernel 2.4, only have to change __wait_event()           
+to wait_event_interruptible() ?
 
-There have been an assortment of bugfixes and improvements over the 
-past year, but nothing major.
-As I haven't done much testing myself, I am making this an -rc release
-and hoping that other will test it.  I hope to make a real 1.0.8
-in late January, so if anyone has some patches they have been saving
-up, or knows of some annoying problems with nfs-utils, speak now.
+Best Regards,
+Sagawa.
 
-NeilBrown 16-December-2005
 
 
 -------------------------------------------------------
