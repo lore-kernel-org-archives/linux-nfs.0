@@ -1,36 +1,20 @@
-From: "Iozone" <capps@iozone.org>
-Subject: Re: Re: An interesting performance thing ?
-Date: Thu, 15 Dec 2005 21:59:10 -0600
-Message-ID: <046b01c601f5$128c55c0$1500000a@americas.hpqcorp.net>
-References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>
- <17312.39940.985507.704832@cse.unsw.edu.au>	<43A0A0D5.4040804@citi.umich.edu>
- <018401c60108$c9477f30$1500000a@americas.hpqcorp.net>
- <17312.45710.867019.969182@cse.unsw.edu.au>
- <20051215023256.GA22951@fieldses.org>
- <020a01c60133$3d8fc530$1500000a@americas.hpqcorp.net>
- <20051215144901.GD14973@fieldses.org>
- <02f001c6018d$56b31030$1500000a@americas.hpqcorp.net>
- <20051215161431.GA21043@fieldses.org> <17314.6053.665428.83930@cse.unsw.edu.au>
-Reply-To: "Iozone" <capps@iozone.org>
-Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=iso-8859-1; reply-type=original
-Cc: <cel@citi.umich.edu>, <wli@holomorphy.com>,
-	<nfs@lists.sourceforge.net>
+From: NeilBrown <neilb@cse.unsw.edu.au>
+Subject: [PATCH kNFSd ] Fix hash function for IP addresses on 64bit little-endian machines.
+Date: Fri, 16 Dec 2005 15:22:04 +1100
+Message-ID: <1051216042204.5009@cse.unsw.edu.au>
+References: <20051216152056.4989.patches@notabene>
+Cc: "Iozone" <capps@iozone.org>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1En6kU-0002j3-4D
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 19:59:14 -0800
-Received: from vms042pub.verizon.net ([206.46.252.42])
+	id 1En76k-0004Gi-6F
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 20:22:14 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1En6kU-0002GN-3E
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 19:59:14 -0800
-Received: from cappsnc ([71.96.135.143])
- by vms042.mailsrvcs.net (Sun Java System Messaging Server 6.2-4.02 (built Sep
- 9 2005)) with ESMTPA id <0IRK00BOQOEMVBX8@vms042.mailsrvcs.net> for
- nfs@lists.sourceforge.net; Thu, 15 Dec 2005 21:59:12 -0600 (CST)
-To: "Neil Brown" <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+	id 1En76j-0007Q7-RN
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 20:22:14 -0800
+To: Andrew Morton <akpm@osdl.org>
+Cc: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,80 +28,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+This patch against 2.6.15-rc5-mm2 is suitable, but not critical, for 2.6.15.
 
------ Original Message ----- 
-From: "Neil Brown" <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Iozone" <capps@iozone.org>; <cel@citi.umich.edu>; <wli@holomorphy.com>; 
-<nfs@lists.sourceforge.net>
-Sent: Thursday, December 15, 2005 7:25 PM
-Subject: Re: [NFS] Re: An interesting performance thing ?
+--
+The hash.h hash_long function, when used on a 64 bit machine, ignores
+many of the middle-order bits. (The prime chosen it too bit-sparse).
 
+IP addresses for clients of an NFS server are very likely to differ
+only in the low-order bits.  As addresses are stored in
+network-byte-order, these bits become middle-order bits in a
+little-endian 64bit 'long', and so do not contribute to the hash.
+Thus you can have the situation where all clients appear on one hash chain.
 
-> On Thursday December 15, bfields@fieldses.org wrote:
->> I'm mainly curious how much effort it's worth expending on optimizing
->> that hash.  If it turns out that even the current linear search isn't
->> that expensive, then that's an argument against doing any more
->> optimizing (beyond just fixing the current obvious problem).
->>
->
-> Thinking a bit more about this, a very suitable hash to produce 8 bits
-> from an IPv4 address would be to xor all the bytes together:
->       hash = addr ^ (addr>>16);
->       hash = (hash ^ (hash>>8)) & 0xff;
->
-> I think this would have good properties on any natural set of IP
-> addresses.
->
-> I'd still prefer to use a good general purpose hash function because
-> it is conceptually simpler.  But when one isn't available....
->
-> NeilBrown
->
+So, until hash_long is fixed (or maybe forever), us a hash function
+that works well on IP addresses - xor the bytes together.
 
-Neil,
+Thanks to "Iozone" <capps@iozone.org> for identifying this problem.
 
-        I think we're in phase :-)  I too was thinking of
-    something much simpler and faster, that took advantage
-    of the pre-knowledge of variably of the input, the
-    needed size, and distribution of the hash output.
+Cc: "Iozone" <capps@iozone.org>
 
-    This approach has some interesting benefits:
+Signed-off-by: Neil Brown <neilb@suse.de>
 
-    1) Runs faster, and consumes far fewer CPU cycles.
-        Zero multiples, or golden primes, and a bunch fewer
-        other instructions.
-    2) Does a better distribution than any general purpose hash function.
-    3) Can easily be adapted for IPV6
-    4) Needs far less testing, than a one fits all model.
-    5) Can be implemented quickly, easily, and has low risk
-        of affecting un-related subsystems.
-    6) Will not need a PHD (strong in number theory) to understand that
-        it's actually doing a good job.
+### Diffstat output
+ ./net/sunrpc/svcauth_unix.c |   14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-        Don't get me wrong, I still see a need for a generalized hash
-    algorithm that needs primes, and heavy magic. Its needed for
-    nodalization with unpredictable invariant bit pattern inputs (due to 
-compiler
-    alignments of native data types, and structure alignments, on pointers)
-    and other non-predictive input data sets. But with IP addresses, the
-    natural distribution does not have the same issues, and can
-    be solved much more effectively, and efficiently. As is
-    demonstrated so well, by you, above :-)
-
-    Is it too late to place an order for one of these for Christmas ?
-
-Enjoy,
-Don Capps
-
-P.S. If you go with your algorithm above, I'll concede the
-        need for inet_lnaof(s_addr)  The folding and XORs
-        work fine on either native or network neutral formats.
-         :-)
-
-
-
-
+diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
+--- ./net/sunrpc/svcauth_unix.c~current~	2005-12-16 15:10:12.000000000 +1100
++++ ./net/sunrpc/svcauth_unix.c	2005-12-16 15:12:00.000000000 +1100
+@@ -101,10 +101,22 @@ static void ip_map_put(struct cache_head
+ 	}
+ }
+ 
++#if IP_HASHBITS == 8
++/* hash_long on a 64 bit machine is currently REALLY BAD for
++ * IP addresses in reverse-endian (i.e. on a little-endian machine).
++ * So use a trivial but reliable hash instead
++ */
++static inline int hash_ip(unsigned long ip)
++{
++	int hash = ip ^ (ip>>16);
++	return (hash ^ (hash>>8)) & 0xff;
++}
++#endif
++
+ static inline int ip_map_hash(struct ip_map *item)
+ {
+ 	return hash_str(item->m_class, IP_HASHBITS) ^ 
+-		hash_long((unsigned long)item->m_addr.s_addr, IP_HASHBITS);
++		hash_ip((unsigned long)item->m_addr.s_addr);
+ }
+ static inline int ip_map_match(struct ip_map *item, struct ip_map *tmp)
+ {
 
 
 -------------------------------------------------------
