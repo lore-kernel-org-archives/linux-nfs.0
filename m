@@ -1,33 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Re: An interesting performance thing ?
-Date: Fri, 16 Dec 2005 12:25:57 +1100
-Message-ID: <17314.6053.665428.83930@cse.unsw.edu.au>
-References: <00b901c600db$5d374960$1500000a@americas.hpqcorp.net>
-	<17312.39940.985507.704832@cse.unsw.edu.au>
-	<43A0A0D5.4040804@citi.umich.edu>
-	<018401c60108$c9477f30$1500000a@americas.hpqcorp.net>
-	<17312.45710.867019.969182@cse.unsw.edu.au>
-	<20051215023256.GA22951@fieldses.org>
-	<020a01c60133$3d8fc530$1500000a@americas.hpqcorp.net>
-	<20051215144901.GD14973@fieldses.org>
-	<02f001c6018d$56b31030$1500000a@americas.hpqcorp.net>
-	<20051215161431.GA21043@fieldses.org>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: NFS Client  port
+Date: Thu, 15 Dec 2005 18:31:47 -0800 (PST)
+Message-ID: <20051216023147.51739.qmail@web51602.mail.yahoo.com>
+References: <43A19A27.2040209@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Iozone <capps@iozone.org>, cel@citi.umich.edu,
-	wli@holomorphy.com, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1En4MY-00013D-P2
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 17:26:22 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1En4MX-0002Qf-9V
-	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 17:26:22 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Thursday December 15
+	id 1En5Nz-0005LO-72
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 18:31:55 -0800
+Received: from web51602.mail.yahoo.com ([206.190.38.207])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1En5Nx-0006kq-NQ
+	for nfs@lists.sourceforge.net; Thu, 15 Dec 2005 18:31:55 -0800
+To: cel@citi.umich.edu
+In-Reply-To: <43A19A27.2040209@citi.umich.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,32 +30,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thursday December 15, bfields@fieldses.org wrote:
-> I'm mainly curious how much effort it's worth expending on optimizing
-> that hash.  If it turns out that even the current linear search isn't
-> that expensive, then that's an argument against doing any more
-> optimizing (beyond just fixing the current obvious problem).
-> 
+Hi,
+    Any specific reason to make NFS Client connect on=20
+    the same port or is it to make it simialr
+to/follow=20
+    Solaris implementation where NFS Client connects
+with
+    same port?
 
-Thinking a bit more about this, a very suitable hash to produce 8 bits
-from an IPv4 address would be to xor all the bytes together:
-       hash = addr ^ (addr>>16);
-       hash = (hash ^ (hash>>8)) & 0xff;
+thanks,
+ kiran
 
-I think this would have good properties on any natural set of IP
-addresses.
 
-I'd still prefer to use a good general purpose hash function because
-it is conceptually simpler.  But when one isn't available....
+--- Chuck Lever <cel@citi.umich.edu> wrote:
 
-NeilBrown
+> mehta kiran wrote:
+> > Hi,
+> >    Does NFS Client try to use port different then
+> the
+> > port
+> >    most recently released or next in the series ?
+> >=20
+> >    NFS client is using some port say x
+> >    Due to some reason connection between client=20
+> >    and server is broken. Will NFS Client
+> >    use the port x to reestablish connection or
+> will it
+> >=20
+> >    use port other then x ?
+>=20
+> until very recently, the RPC client would choose a
+> different port when=20
+> reconnecting.  there's a patch in the transport
+> switch series that i=20
+> believe is going in 2.6.15 that makes the client
+> reconnect on the same port.
+> > begin:vcard
+> fn:Chuck Lever
+> n:Lever;Charles
+> org:Network Appliance, Incorporated;Open Source NFS
+> Client Development
+> adr:535 West William Street, Suite 3100;;Center for
+> Information Technology Integration;Ann
+> Arbor;MI;48103-4943;USA
+> email;internet:cel@citi.umich.edu
+> title:Member of Technical Staff
+> tel;work:+1 734 763-4415
+> tel;fax:+1 734 763 4434
+> tel;home:+1 734 668-1089
+> x-mozilla-html:FALSE
+> url:http://troy.citi.umich.edu/u/cel/
+> version:2.1
+> end:vcard
+>=20
+>=20
+
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
+les
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+http://ads.osdn.com/?ad_id=3D7637&alloc_id=3D16865&op=3Dclick
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
