@@ -1,95 +1,97 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Ryan Richter <ryan@tau.solarneutrino.net>
 Subject: Re: lockd: couldn't create RPC handle for (host)
-Date: Sun, 18 Dec 2005 03:33:56 -0500
-Message-ID: <1134894836.7931.17.camel@lade.trondhjem.org>
-References: <20051216205536.GA20497@tau.solarneutrino.net>
-	 <1134776945.7952.4.camel@lade.trondhjem.org>
-	 <20051216235841.GA20539@tau.solarneutrino.net>
-	 <1134797577.20929.2.camel@lade.trondhjem.org>
-	 <20051217055907.GC20539@tau.solarneutrino.net>
-	 <1134801822.7946.4.camel@lade.trondhjem.org>
-	 <20051217070222.GD20539@tau.solarneutrino.net>
-	 <1134847699.7950.25.camel@lade.trondhjem.org>
-	 <20051217194553.GE20539@tau.solarneutrino.net>
+Date: Sun, 18 Dec 2005 13:01:50 -0500
+Message-ID: <20051218180150.GF20539@tau.solarneutrino.net>
+References: <20051216205536.GA20497@tau.solarneutrino.net> <1134776945.7952.4.camel@lade.trondhjem.org> <20051216235841.GA20539@tau.solarneutrino.net> <1134797577.20929.2.camel@lade.trondhjem.org> <20051217055907.GC20539@tau.solarneutrino.net> <1134801822.7946.4.camel@lade.trondhjem.org> <20051217070222.GD20539@tau.solarneutrino.net> <1134847699.7950.25.camel@lade.trondhjem.org> <20051217194553.GE20539@tau.solarneutrino.net> <1134894836.7931.17.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Enu0a-0005zi-2A
-	for nfs@lists.sourceforge.net; Sun, 18 Dec 2005 00:35:08 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Enu0Y-0004cp-I6
-	for nfs@lists.sourceforge.net; Sun, 18 Dec 2005 00:35:08 -0800
-To: Ryan Richter <ryan@tau.solarneutrino.net>
-In-Reply-To: <20051217194553.GE20539@tau.solarneutrino.net>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=utf-8
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	ryan@tau.solarneutrino.net
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S965242AbVLRS7W@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1134894836.7931.17.camel@lade.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Sat, 2005-12-17 at 14:45 -0500, Ryan Richter wrote:
-> > So what do you mean when you say that there is "no lockd process
-> > running" on the client?
+On Sun, Dec 18, 2005 at 03:33:56AM -0500, Trond Myklebust wrote:
+> Any Oopses? (use 'dmesg')
+> 
+> Could you also check dmesg for any entries of the form
+> 
+> 'lockd: new process, skipping host shutdown'
+> or
+> 'lockd_up: makesock failed, error='
+
+Well, there are the oopses I reported last week or so:
+
+Unable to handle kernel NULL pointer dereference at 0000000000000018 RIP: 
+<ffffffff801dbd9e>{nlmclnt_mark_reclaim+62}
+PGD 7e0e7067 PUD 7e6c0067 PMD 0 
+Oops: 0000 [1] 
+CPU 0 
+Modules linked in:
+Pid: 1316, comm: lockd Not tainted 2.6.14.2 #2
+RIP: 0010:[<ffffffff801dbd9e>] <ffffffff801dbd9e>{nlmclnt_mark_reclaim+62}
+RSP: 0018:ffff81007dfade70  EFLAGS: 00010246
+RAX: 0000000000000000 RBX: ffff81007ad74740 RCX: ffff81007e24a858
+RDX: ffff81007e24a8f0 RSI: ffff81007e24a8e8 RDI: ffff81007ad74740
+RBP: ffff81007e820e00 R08: 00000000fffffffa R09: 0000000000000001
+R10: 00000000ffffffff R11: 0000000000000000 R12: 0000000000000000
+R13: 0000000000000000 R14: ffffffff803ec420 R15: ffff81007df62014
+FS:  00002aaaab00c4a0(0000) GS:ffffffff804b6800(0000) knlGS:00000000557a9080
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000000000018 CR3: 000000007e113000 CR4: 00000000000006e0
+Process lockd (pid: 1316, threadinfo ffff81007dfac000, task ffff81007eea61c0)
+Stack: ffffffff801dbe6b ffff81007ad74740 ffffffff801e3d8c 3256cc84d3030002 
+       0000000000000000 ffff81007df4fc68 ffff81007df4fc00 ffffffff803ed4a0 
+       ffff81007df4fca0 ffff81007df4fc68 
+Call Trace:<ffffffff801dbe6b>{nlmclnt_recovery+139} <ffffffff801e3d8c>{nlm4svc_proc_sm_notify+188}
+       <ffffffff8034c5a4>{svc_process+884} <ffffffff8012ab40>{default_wake_function+0}
+       <ffffffff801dde00>{lockd+352} <ffffffff801ddca0>{lockd+0}
+       <ffffffff8010e352>{child_rip+8} <ffffffff801ddca0>{lockd+0}
+       <ffffffff801ddca0>{lockd+0} <ffffffff8010e34a>{child_rip+0}
+       
+
+Code: 48 39 78 18 75 1c 8b 86 8c 00 00 00 a8 01 74 12 83 c8 02 89 
+RIP <ffffffff801dbd9e>{nlmclnt_mark_reclaim+62} RSP <ffff81007dfade70>
+CR2: 0000000000000018
+
+Every machine with a dead lockd has had this oops.  Other stuff that
+looks related (these came after the oops, a few days later):
+
+lockd: unexpected unlock status: 1
+lockd: weird return 7 for CANCEL call
+
+Neither of those two messages you mentioned are present.
+
+> > > Is anything at all listening on port 32768 on 'jacquere'? (check using
+> > > 'netstat -ap | grep 32768').
 > > 
-> > Is it not appearing in the output of 'ps -ef' either?
+> > Er... sort of?
+> > 
+> > # netstat -ap | grep 32768
+> > udp    11144      0 *:32768                 *:*                                -                   
+> > I'm not sure what that means...  lsof|grep 32768 returns nothing.
 > 
-> Nope.
+> That could be a kernel process. The RPC client has no reason to set up a
+> full file descriptor for the socket.
 > 
-> $ ps -ef|grep lock
-> root        77     5  0 Nov20 ?        00:00:00 [kblockd/0]
-> foo       6811  6800  0 14:29 pts/0    00:00:00 grep -E lock
+> Could you please finally double-check that the entries in /proc/mounts
+> for your NFS mounts do contain the 'lock' mount option.
 
-Any Oopses? (use 'dmesg')
+Yep:
 
-Could you also check dmesg for any entries of the form
+xarello:/export/home /export/home nfs rw,nosuid,nodev,v3,rsize=8192,wsize=8192,hard,intr,udp,lock,addr=xarello 0 0
 
-'lockd: new process, skipping host shutdown'
-or
-'lockd_up: makesock failed, error='
-
-> > Is anything at all listening on port 32768 on 'jacquere'? (check using
-> > 'netstat -ap | grep 32768').
+> Finally, please do
 > 
-> Er... sort of?
-> 
-> # netstat -ap | grep 32768
-> udp    11144      0 *:32768                 *:*                                -                   
-> I'm not sure what that means...  lsof|grep 32768 returns nothing.
+> echo 1 > /proc/sys/sunrpc/rpc_lockd
+> then unmount one of your NFS partitions, and then mount it again.
 
-That could be a kernel process. The RPC client has no reason to set up a
-full file descriptor for the socket.
+That file doesn't exist.
 
-Could you please finally double-check that the entries in /proc/mounts
-for your NFS mounts do contain the 'lock' mount option.
+$ ls /proc/sys/sunrpc 
+nfs_debug  nfsd_debug  nlm_debug  rpc_debug  tcp_slot_table_entries  udp_slot_table_entries
 
-Finally, please do
-
-echo 1 > /proc/sys/sunrpc/rpc_lockd
-then unmount one of your NFS partitions, and then mount it again.
-
-
-Cheers,
-  Trond
-
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
-for problems?  Stop!  Download the new AJAX search engine that makes
-searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Thanks,
+-ryan
