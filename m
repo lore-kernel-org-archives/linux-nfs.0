@@ -1,24 +1,24 @@
-From: Ryan Richter <ryan@tau.solarneutrino.net>
-Subject: Re: lockd: couldn't create RPC handle for (host)
-Date: Sun, 18 Dec 2005 17:44:10 -0500
-Message-ID: <20051218224409.GA21709@tau.solarneutrino.net>
-References: <20051217055907.GC20539@tau.solarneutrino.net> <1134801822.7946.4.camel@lade.trondhjem.org> <20051217070222.GD20539@tau.solarneutrino.net> <1134847699.7950.25.camel@lade.trondhjem.org> <20051217194553.GE20539@tau.solarneutrino.net> <1134894836.7931.17.camel@lade.trondhjem.org> <20051218180150.GF20539@tau.solarneutrino.net> <1134934267.7966.37.camel@lade.trondhjem.org> <20051218200052.GA21665@tau.solarneutrino.net> <1134944665.11596.9.camel@lade.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfs-utils 1.0.8-rc1
+Date: Mon, 19 Dec 2005 11:20:33 +1100
+Message-ID: <17317.64721.281658.752530@cse.unsw.edu.au>
+References: <17314.22172.913247.595571@cse.unsw.edu.au>
+	<4d569c330512160621u4cd1a047g2a838e0dbf8963e8@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	ryan@tau.solarneutrino.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Eo7GI-0005Z4-Ko
-	for nfs@lists.sourceforge.net; Sun, 18 Dec 2005 14:44:14 -0800
-Received: from solarneutrino.net ([66.199.224.43] helo=tau.solarneutrino.net)
+	id 1Eo8lf-0001wb-4F
+	for nfs@lists.sourceforge.net; Sun, 18 Dec 2005 16:20:43 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Eo7GH-0008E4-EX
-	for nfs@lists.sourceforge.net; Sun, 18 Dec 2005 14:44:14 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1134944665.11596.9.camel@lade.trondhjem.org>
+	id 1Eo8ld-0000Iy-Ou
+	for nfs@lists.sourceforge.net; Sun, 18 Dec 2005 16:20:43 -0800
+To: Kevin Coffman <kwc@citi.umich.edu>
+In-Reply-To: message from Kevin Coffman on Friday December 16
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,30 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Dec 18, 2005 at 05:24:24PM -0500, Trond Myklebust wrote:
-> On Sun, 2005-12-18 at 15:00 -0500, Ryan Richter wrote:
-> > On Sun, Dec 18, 2005 at 02:31:07PM -0500, Trond Myklebust wrote:
-> > > On Sun, 2005-12-18 at 13:01 -0500, Ryan Richter wrote:
-> > > > Code: 48 39 78 18 75 1c 8b 86 8c 00 00 00 a8 01 74 12 83 c8 02 89 
-> > > > RIP <ffffffff801dbd9e>{nlmclnt_mark_reclaim+62} RSP <ffff81007dfade70>
-> > > > CR2: 0000000000000018
-> > > 
-> > > Looks like the global lock list is corrupted. Could you cat the contents
-> > > of /proc/locks?
-> > 
-> > $ cat /proc/locks
-> > 1: POSIX  ADVISORY  WRITE 1657 00:0e:1771273 0 EOF
-> > 2: FLOCK  ADVISORY  WRITE 1486 00:0e:1770759 0 EOF
-> > 3: FLOCK  ADVISORY  WRITE 1478 00:0e:1770399 0 EOF
-> 
-> OK. I think this client patch ought to fix the Oopses. It should apply
-> to a 2.6.14 kernel as well as 2.6.15-rc5.
+On Friday December 16, kwc@citi.umich.edu wrote:
+> Hi Neil,
+> One patch that I didn't include in the bundle I sent yesterday is to
+> change the build system to use gnu autotools.  I was waiting on some
+> feedback before sending this one along to you.  Perhaps it would get
+> more exposure if it was in a release candidate -- if you're willing...
 
-Thanks, I'm testing it now, although I'm not sure how much testing it
-will get before the new year.
+Yeh... how much can it break?
+And I can always back it out if it makes a mess of anything.
 
-Cheers,
--ryan
+So, send it over.
+
+Thanks,
+NeilBrown
 
 
 -------------------------------------------------------
