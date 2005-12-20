@@ -1,22 +1,27 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: NFS behavior as seen by EXT2
-Date: Tue, 20 Dec 2005 10:14:32 +1100
-Message-ID: <20051219231432.GA30403@sgi.com>
-References: <28437eef0512190352l34a0ba47g96be56cb455608cf@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: nfs-utils 1.0.8-rc2
+Date: Tue, 20 Dec 2005 18:49:26 +1100
+Message-ID: <17319.46982.772021.518625@cse.unsw.edu.au>
+References: <17314.22172.913247.595571@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EoUDL-0003Tq-AQ
-	for nfs@lists.sourceforge.net; Mon, 19 Dec 2005 15:14:43 -0800
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EoUDJ-0008ES-Oy
-	for nfs@lists.sourceforge.net; Mon, 19 Dec 2005 15:14:43 -0800
-To: Muhammad Irfan Nazir <arfan.se@gmail.com>
-In-Reply-To: <28437eef0512190352l34a0ba47g96be56cb455608cf@mail.gmail.com>
+	id 1EocFd-0008Ul-8B
+	for nfs@lists.sourceforge.net; Mon, 19 Dec 2005 23:49:37 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EocFc-0001bh-0i
+	for nfs@lists.sourceforge.net; Mon, 19 Dec 2005 23:49:37 -0800
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 6DAFF1BFDD
+	for <nfs@lists.sourceforge.net>; Tue, 20 Dec 2005 08:49:31 +0100 (CET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: message from Neil Brown on Friday December 16
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,30 +35,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Dec 19, 2005 at 04:52:30PM +0500, Muhammad Irfan Nazir wrote:
-> Where as at EXT2 level I was supposing to get the position zero as the file
-> was closed in the last reading and all its memory references were deleted.
+On Friday December 16, neilb@suse.de wrote:
 > 
-> How/where does the nfs keeps the record of the previous reading position?
+> I have just make a RC release for nfs-utils.
+> nfs-utils-1.0.8-rc1 can be found at
+> 
+>   http://sourceforge.net/project/showfiles.php?group_id=14
+> or (soon) at
+>   http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
 
-In the NFS client.  Each READ call passes the filehandle, offset and
-size to be read.  On traditional UNIX servers, read and readahead
-behaviour is controlled entirely by the client.  However the Linux
-NFS server also keeps a cache of read-ahead state for a small number
-of files (search for "raparm" in fs/nfsd/vfs.c) thus enabling it to
-do server-side readahead also.
+Now there is an -rc2. 
+It has a large update to the autoconf infrastructure. 
+It would be helpful to know that it builds successfully in various
+configurations on various distributions.
+Please report any problems.
 
-> I want to get the reference to the documentation stating the read/write
-> behaviour of nfs.
-
-RFC1813 would be a good start.
-
-http://www.faqs.org/rfcs/rfc1813.html
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Thanks,
+NeilBrown
 
 
 -------------------------------------------------------
