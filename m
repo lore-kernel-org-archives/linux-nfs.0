@@ -1,22 +1,23 @@
-From: =?ISO-8859-1?Q?Aur=E9lien_Charbon?= <aurelien.charbon@ext.bull.net>
-Subject: Re: nfs-utils 1.0.8-rc2
-Date: Wed, 21 Dec 2005 10:38:57 +0100
-Message-ID: <43A922B1.3090809@ext.bull.net>
-References: <17314.22172.913247.595571@cse.unsw.edu.au>	<17319.46982.772021.518625@cse.unsw.edu.au>	<43A7DA2F.8090902@ext.bull.net>	<17320.50441.923081.501789@cse.unsw.edu.au> <17320.51818.921672.429852@cse.unsw.edu.au>
+From: Leonid Podolny <leonid@montilio.com>
+Subject: nfsacl specs
+Date: Wed, 21 Dec 2005 16:12:04 +0200
+Message-ID: <43A962B4.1030906@montilio.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ep0Q0-0002qs-Fj
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 01:37:56 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	id 1Ep4hu-0006Yu-5p
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:12:42 -0800
+Received: from mtaout3.barak.net.il ([212.150.49.173])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ep0Pz-0004rO-4q
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 01:37:56 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17320.51818.921672.429852@cse.unsw.edu.au>
+	id 1Ep4hr-0005na-ML
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:12:42 -0800
+Received: from [192.168.1.202] ([62.90.35.123])
+ by mtaout3.barak.net.il (Sun Java System Messaging Server 6.1 HotFix 0.02
+ (built Aug 25 2004)) with ESMTPA id <0IRU00CG1Q4TDLB0@mtaout3.barak.net.il> for
+ nfs@lists.sourceforge.net; Wed, 21 Dec 2005 16:12:29 +0200 (IST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +31,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Brown wrote:
+Hi,
+Where can one obtain RPC packet structure for nfsacl for nfs3 as
+implemented in recent linux kernels? I failed to find an RFC for it,
+tried to google it around but also to no avail.
 
->On Wednesday December 21, neilb@suse.de wrote:
-> =20
->
->>I guess I'd better fix it....
->>
->Does this patch
->  a/ look ok (if a bit heavy handed).
->  b/ compile for you?
-> =20
->
-That is OK for that part
-
-There is another problem for the compilation of hasquota.c, because=20
-QUOTAFILENAME definition is missing in sys/quota.h
-
-#define QUOTAFILENAME "quota"
-is needed to compile
-
-Thanks,
-
-Aur=E9lien
+-- 
+Leonid Podolny
+Montilio Inc.
+Phone:  +972-9-9511944 ext.209
+Mobile: +972-52-4781423
+Fax:    +972-9-9542430
+PGP:	51B2 F1DB 485E 2C48 2E17 94D1 7EC4 E524 B156 B9F0
 
 
 -------------------------------------------------------
