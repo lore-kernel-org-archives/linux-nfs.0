@@ -1,23 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Leonid Podolny <leonid@montilio.com>
 Subject: Re: nfsacl specs
-Date: Wed, 21 Dec 2005 09:25:21 -0500
-Message-ID: <1135175121.7958.31.camel@lade.trondhjem.org>
+Date: Wed, 21 Dec 2005 16:40:51 +0200
+Message-ID: <43A96973.2080704@montilio.com>
 References: <43A962B4.1030906@montilio.com>
+ <1135175121.7958.31.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ep4ub-0007TS-GQ
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:25:49 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Ep4uY-0006OB-Vz
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:25:48 -0800
-To: Leonid Podolny <leonid@montilio.com>
-In-Reply-To: <43A962B4.1030906@montilio.com>
+	id 1Ep59k-0000Nc-9A
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:41:28 -0800
+Received: from mtaout1.barak.net.il ([212.150.49.171])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Ep59d-0000Vl-Jd
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:41:28 -0800
+Received: from [192.168.1.202] ([62.90.35.123])
+ by mtaout1.barak.net.il (Sun Java System Messaging Server 6.1 HotFix 0.02
+ (built Aug 25 2004)) with ESMTPA id <0IRU004W5RGS9450@mtaout1.barak.net.il> for
+ nfs@lists.sourceforge.net; Wed, 21 Dec 2005 16:41:17 +0200 (IST)
+In-reply-to: <1135175121.7958.31.camel@lade.trondhjem.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,17 +35,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2005-12-21 at 16:12 +0200, Leonid Podolny wrote:
-> Hi,
-> Where can one obtain RPC packet structure for nfsacl for nfs3 as
-> implemented in recent linux kernels? I failed to find an RFC for it,
-> tried to google it around but also to no avail.
+Trond Myklebust wrote:
+> On Wed, 2005-12-21 at 16:12 +0200, Leonid Podolny wrote:
+>> Hi,
+>> Where can one obtain RPC packet structure for nfsacl for nfs3 as
+>> implemented in recent linux kernels? I failed to find an RFC for it,
+>> tried to google it around but also to no avail.
+> 
+> Just google for nfs_acl.x
 
-Just google for nfs_acl.x
+Cool, thanks. Just what I needed.
 
-Cheers,
-  Trond
-
+-- 
+Leonid Podolny
+Montilio Inc.
+Phone:  +972-9-9511944 ext.209
+Mobile: +972-52-4781423
+Fax:    +972-9-9542430
+PGP:	51B2 F1DB 485E 2C48 2E17 94D1 7EC4 E524 B156 B9F0
 
 
 -------------------------------------------------------
