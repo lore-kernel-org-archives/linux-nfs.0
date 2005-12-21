@@ -1,27 +1,22 @@
-From: Leonid Podolny <leonid@montilio.com>
-Subject: Re: nfsacl specs
-Date: Wed, 21 Dec 2005 16:40:51 +0200
-Message-ID: <43A96973.2080704@montilio.com>
-References: <43A962B4.1030906@montilio.com>
- <1135175121.7958.31.camel@lade.trondhjem.org>
+From: Kenny Simpson <theonetruekenny@yahoo.com>
+Subject: Re: NFS TCP settings
+Date: Wed, 21 Dec 2005 08:32:54 -0800 (PST)
+Message-ID: <20051221163254.70779.qmail@web34105.mail.mud.yahoo.com>
+References: <1135093627.7955.36.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ep59k-0000Nc-9A
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:41:28 -0800
-Received: from mtaout1.barak.net.il ([212.150.49.171])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ep59d-0000Vl-Jd
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 06:41:28 -0800
-Received: from [192.168.1.202] ([62.90.35.123])
- by mtaout1.barak.net.il (Sun Java System Messaging Server 6.1 HotFix 0.02
- (built Aug 25 2004)) with ESMTPA id <0IRU004W5RGS9450@mtaout1.barak.net.il> for
- nfs@lists.sourceforge.net; Wed, 21 Dec 2005 16:41:17 +0200 (IST)
-In-reply-to: <1135175121.7958.31.camel@lade.trondhjem.org>
+	id 1Ep6th-0001At-9h
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 08:33:01 -0800
+Received: from web34105.mail.mud.yahoo.com ([66.163.178.103])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1Ep6tg-0001vM-V6
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 08:33:01 -0800
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1135093627.7955.36.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,31 +30,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> On Wed, 2005-12-21 at 16:12 +0200, Leonid Podolny wrote:
->> Hi,
->> Where can one obtain RPC packet structure for nfsacl for nfs3 as
->> implemented in recent linux kernels? I failed to find an RFC for it,
->> tried to google it around but also to no avail.
-> 
-> Just google for nfs_acl.x
+--- Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> The NFS/RPC code has no direct control over the TCP window size. That
+> would be an issue for the networking people.
 
-Cool, thanks. Just what I needed.
+I have tracked this a bit further, and am reporting back for completeness=
+..
 
--- 
-Leonid Podolny
-Montilio Inc.
-Phone:  +972-9-9511944 ext.209
-Mobile: +972-52-4781423
-Fax:    +972-9-9542430
-PGP:	51B2 F1DB 485E 2C48 2E17 94D1 7EC4 E524 B156 B9F0
+The version of OnTap we are using (6.4.1p1) does not seem to support RFC =
+1323 (large TCP windows),
+but the Linux client does.  The window scaling is communicated in the ini=
+tial connection (SYN), so
+if ethereal does not catch that, it will incorrectly report the window si=
+ze as the unscaled number
+- making the Linux client appear to be using a very small window.
+The reason it appeared that the small window size was being honored is a =
+result of the direct
+crossover cable making the BDP (bandwidth-delay product) very small.
+
+As for the server side, because large TCP windows are not supported, the =
+best it can do is 64k -
+which it does.  Running with GbE and jumbo packets fills the window quite=
+ fast obviating the need
+for RFC 1323.
+
+Thanks to those who took the time to swing a clue stick in my direction.
+
+-Kenny
+
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
+les
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+http://ads.osdn.com/?ad_id=3D7637&alloc_id=3D16865&op=3Dclick
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
