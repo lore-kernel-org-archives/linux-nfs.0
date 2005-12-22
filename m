@@ -1,25 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS TCP settings
-Date: Thu, 22 Dec 2005 17:41:31 -0500
-Message-ID: <1135291291.9769.32.camel@lade.trondhjem.org>
-References: <20051221163254.70779.qmail@web34105.mail.mud.yahoo.com>
-	 <1135191742.1122.402.camel@seki.nac.uci.edu>
+Subject: Re: segfault in mount with CITI patch
+Date: Thu, 22 Dec 2005 18:08:30 -0500
+Message-ID: <1135292911.3685.4.camel@lade.trondhjem.org>
+References: <43AA01AA.3060705@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Kenny Simpson <theonetruekenny@yahoo.com>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EpZ88-0004gX-GA
-	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 14:41:48 -0800
+	id 1EpZmC-0007Du-Lj
+	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 15:23:12 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EpZ87-0006GW-Fc
-	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 14:41:48 -0800
-To: Dan Stromberg <strombrg@dcs.nac.uci.edu>
-In-Reply-To: <1135191742.1122.402.camel@seki.nac.uci.edu>
+	id 1EpZmB-0000jO-9c
+	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 15:23:12 -0800
+To: Vince Busam <vbusam@google.com>
+In-Reply-To: <43AA01AA.3060705@google.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,20 +31,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2005-12-21 at 11:02 -0800, Dan Stromberg wrote:
+On Wed, 2005-12-21 at 17:30 -0800, Vince Busam wrote:
+> Is nfsvers=3,mountvers=2 even OK to do?  If not, mount should print an error instead of 
+> segfault.
 
-> I have some connection between some pairs of hosts for which all of the
-> following appear to be true:
-> 
-> 1) TCP Window Scaling is enabled on both endpoints
-> 2) TCP Window Scaling is mentioned in the initial SYN and SYN/ACK
-> 3) tcptrace thinks that TCP Window Scaling isn't happening
-> 
-> Is there something other than the SYN and SYN/ACK that might cause TCP
-> Window Scaling to go away?
+Do you mean that the kernel Oopses, or is it really just a userland
+segfault. If the latter, we really don't care too much: mixing nfsvers=3
+and mountvers=2 is just silly. Sure, we can put a check in util-linux,
+but there is no security implication.
 
-Routers/switches that don't support TCP window scaling are a typical
-cause.
+OTOH, an Oops will be a security problem.
 
 Cheers,
   Trond
