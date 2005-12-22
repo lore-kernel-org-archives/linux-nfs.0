@@ -1,21 +1,25 @@
-From: "Henderson, David" <Henderson.David@mail.dc.state.fl.us>
-Subject: unable to copy to nfs share
-Date: Thu, 22 Dec 2005 15:47:31 -0500
-Message-ID: <82DCFB9BFDF35D4A8B2B2C3878121A89428A11@cos93.dc.state.fl.us>
+From: khowe@micron.com
+Subject: Fcntl F_SETLKW hangs on Linux NFS mount
+Date: Thu, 22 Dec 2005 13:57:24 -0700
+Message-ID: <AB58C1C45C3FD74A9C262584E8F8C16001F001D1@ntxboimbx16.micron.com>
 Mime-Version: 1.0
-Content-Type: multipart/related;
-	boundary="----_=_NextPart_001_01C60738.EDDB1767";
-	type="multipart/alternative"
-Cc: <dhenderson@digital-pipe.com>
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C6073A.4EF533E7"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EpXLh-0005Ma-JI
-	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 12:47:41 -0800
-Received: from mail.dc.state.fl.us ([205.145.233.1] helo=cos94.dc.state.fl.us)
+	id 1EpXVF-00063v-Jj
+	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 12:57:33 -0800
+Received: from masquerade.micron.com ([137.201.242.130])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EpXLg-0008L9-5p
-	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 12:47:41 -0800
+	id 1EpXVF-0005Jc-26
+	for nfs@lists.sourceforge.net; Thu, 22 Dec 2005 12:57:33 -0800
+Received: from mail-srv2.micron.com (localhost [127.0.0.1])
+	by masquerade.micron.com (8.12.9/8.12.2) with ESMTP id jBMKw1qh021170
+	for <nfs@lists.sourceforge.net>; Thu, 22 Dec 2005 13:58:01 -0700 (MST)
+Received: from ntxboimbx16.micron.com (ntxboimbx16.micron.com [137.201.82.61])
+	by mail-srv2.micron.com (8.12.9/8.12.11) with ESMTP id jBMKvx2N021142
+	for <nfs@lists.sourceforge.net>; Thu, 22 Dec 2005 13:58:00 -0700 (MST)
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,498 +36,420 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a multi-part message in MIME format.
 
-------_=_NextPart_001_01C60738.EDDB1767
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_002_01C60738.EDDB1767"
-
-
-------_=_NextPart_002_01C60738.EDDB1767
+------_=_NextPart_001_01C6073A.4EF533E7
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-Gang,
+I'm running into an issue when using fcntl with the F_SETLKW command on
+a Linux NFS client. In cases where I have many processes all trying to
+get a write lock at once, the call to fcntl never returns, even though
+the lock appears to have been granted successfully. It is not a
+consistent error, but it is fairly repeatable (about 30% of the time).
+I'm running on a RedHat client, though I'm not exactly sure of the
+RedHat version. However, the kernel reported by uname is "Linux
+prblnx-bo04 2.4.21-32.ELsmp #1 SMP Fri Apr 15 21:17:59 EDT 2005 i686
+i686 i386 GNU/Linux", and it appears to be using v1.0.6 of nfs-utils.
+The mounts are set via autofs, using automount v4.1.3-130.
 
-            I am having a problem with copying files to an NFS share.  I
-can successfully ping all computers and can mount the nfs share from all
-client computers (one client can successfully perform all file related
-tasks).
+My test program creates 16 process that all try to get a write lock on
+the same file, and it will frequently fail such that one of the
+processes appears to have been granted the lock but does not return from
+the fcntl call (and the remaining processes are then also all stuck).
+Listing open files and locks using "lsof -N" shows that one of the
+processes has been granted the W lock, yet this same process does not
+return from the fcntl call. I have toyed with the mounting options on
+the client and I am seeing this behavior with NFS v2 and v3, with short
+or long timeouts (from timeo=3D7 to timeo=3D600), with intr and with =
+nointr,
+and with r and wsize's ranging from 1024 to 32768. The only option I
+haven't been able to mess with is using TCP instead of UDP, since this
+particular RedHat build does not seem to allow the TCP option.
 
-=20
+The NFS server for the mount is a vendor provided NAS device, and I'm
+not sure what its OS or NFS server is. However, the fact that lsof shows
+the lock has been granted seems to indicate the disconnect is somewhere
+on the client side after getting the lock but before waking up fcntl. I
+also run the exact some program on a Solaris host against the same mount
+and have no issues at all, which also seems to rule out a server-side
+issue.
 
-Background information
+The test program I'm using is a c app compiled with gcc v3.3.1. Any
+thoughts? Thanks...
 
-I have a server installed with Debian 3.1 (Sarge) GNU/Linux named (fs1)
-that has a file share /mnt/export.  I have two client computers, one
-with Debian 3.1 and one that I am trying to boot to a cd I created.  I
-can mount the nfs share using the two Debian computers, so I know the
-share is setup correctly and it must be something I have left off of the
-boot cd.  I will include output from various tests below.  Please let me
-know if there is something I am missing.  By the way, the boot cd has no
-login authentication, it just boots to a prompt.  I have checked the UID
-and USER environment variables and they are '0' and 'root' respectively.
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 
-=20
+extern int errno;
 
-Version Information
+double now(void) {
+  struct timeval tv;
+  struct timezone tz;
+ =20
+  gettimeofday(&tv, &tz);
+ =20
+  return((double)tv.tv_sec + (double)tv.tv_usec/1000000);
+}
 
-Debian doesn't use an nfs-utils package, but has it broken down into
-several packages.  All of this computers are using the latest nfs
-software released with Debian 3.1.  The kernels used are all 2.6.8.
+int main(int argc, char **argv) {
+  int i, j, id =3D 0;
+ =20
+  // create test lock file
+  int lock_h =3D open(argv[1], O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+  if (lock_h =3D=3D -1) {
+    printf("failed to create lock file: %s\n", strerror(errno));
+    exit(2);
+  }
+  else {
+    close(lock_h);
+  }
+ =20
+  // fork some workers
+  pid_t pids[4] =3D { 0, 0, 0, 0 };
+  for (i =3D 3; i >=3D 0; i--) {
+    pid_t pid =3D fork();
+    if (pid =3D=3D -1) {
+      printf("failed to fork: %s\n", strerror(errno));
+      exit(3);
+    }
+    if (pid =3D=3D 0) {
+      int pow =3D 1;
+      for (j =3D 0; j < i; j++) {
+        pow *=3D 2;
+      }
+      id +=3D pow;
+    }
+    pids[i] =3D pid;
+  }
+ =20
+  pid_t mypid =3D getpid();
+ =20
+  // open lock file for write and try to lock it
+  int status;
+  struct flock lock;
+  lock.l_type =3D F_WRLCK;
+  lock.l_whence =3D 0;
+  lock.l_start =3D 0;
+  lock.l_len =3D 0;
+  lock_h =3D open(argv[1], O_WRONLY);
+  if (lock_h =3D=3D -1) {
+    printf("failed to open lock file: %s\n", strerror(errno));
+    exit(4);
+  }
+  printf("%15.5f %05d %s\n", now(), mypid, "trying lock");
+  status =3D fcntl(lock_h, F_SETLKW, &lock);
+  if (status =3D=3D 0) {
+    printf("%15.5f %05d %s\n", now(), mypid, "got lock");
+    lock.l_type =3D F_UNLCK;
+    fcntl(lock_h, F_SETLKW, &lock);
+    printf("%15.5f %05d %s\n", now(), mypid, "freed lock");
+  }
+  else {
+    printf("%15.5f %05d %s\n", now(), mypid, "failed lock");
+    printf("%15.5f %05d %s\n", now(), mypid, strerror(errno));
+  }
+  close(lock_h);
+ =20
+  // cleanup and quit
+  for (i =3D 0; i < 4; i++) {
+    if (pids[i] !=3D 0) {
+      waitpid(pids[i], &status, 0);
+    }
+  }
+  if (id =3D=3D 0) {
+    unlink(argv[1]);
+  }
+ =20
+  return(0);
+}
 
-=20
-
-=20
-
-Showmount -e (on server)
-
-Export list for fs1
-
-/mnt/export        192.168.0.100/255.255.255.0
-
-=20
-
-/etc/exports (on server)
-
-/mnt/export        192.168.0.100/255.255.255.0      <-- tried both ip
-addresses of clients, this is the one of the bootcd
-
-=20
-
-rpcinfo -p (on client)
-
-100000    2    tcp    111    portmapper
-
-100000    2    udp    111    portmapper
-
-100024    1    udp    604    status
-
-100024    1    tcp    607    status
-
-=20
-
-=20
-
-mount (on client)
-
-mount -t nfs 192.168.0.11:/mnt/export /mnt/nfs
-
-nfs warning : mount version older than kernel
-
-=20
-
-copy request (on client)
-
-copy /etc/test.doc /mnt/nfs
-
-Unable to handle kernel NULL pointer dereference at virtual address ...
-
-....
-
-Segmentation fault
-
-=20
-
-=20
-
-Does anyone have any ideas as to why this wouldn't be working?  Does nfs
-require any additional packages to be installed?
-
-=20
-
-Thanks,
-
-=20
-
-Dave Henderson
-
-=20
-
-MCP, MCSA, MCSE, A+
-
-Distributed Computer Systems Analyst
-
-Florida Department of Corrections
-
-Phone: 407.207.7391            Suncom: 343.7391
-
-=20
-
-=20
-
-=20
-
-
-------_=_NextPart_002_01C60738.EDDB1767
+------_=_NextPart_001_01C6073A.4EF533E7
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-<html>
-
-<head>
-<meta http-equiv=3DContent-Type content=3D"text/html; =
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
 charset=3Dus-ascii">
-<meta name=3DGenerator content=3D"Microsoft Word 10 (filtered)">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.5.7226.0">
+<TITLE>Fcntl F_SETLKW hangs on Linux NFS mount</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
 
-<style>
-<!--
- /* Font Definitions */
- @font-face
-	{font-family:Wingdings;
-	panose-1:5 0 0 0 0 0 0 0 0 0;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0in;
-	margin-bottom:.0001pt;
-	font-size:12.0pt;
-	font-family:"Times New Roman";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;}
-span.EmailStyle17
-	{font-family:Arial;
-	color:windowtext;}
-@page Section1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.25in 1.0in 1.25in;}
-div.Section1
-	{page:Section1;}
--->
-</style>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">I'm running into an issue when using =
+fcntl with the F_SETLKW command on a Linux NFS client. In cases where I =
+have many processes all trying to get a write lock at once, the call to =
+fcntl never returns, even though the lock appears to have been granted =
+successfully. It is not a consistent error, but it is fairly repeatable =
+(about 30% of the time). I'm running on a RedHat client, though I'm not =
+exactly sure of the RedHat version. However, the kernel reported by =
+uname is &quot;Linux prblnx-bo04 2.4.21-32.ELsmp #1 SMP Fri Apr 15 =
+21:17:59 EDT 2005 i686 i686 i386 GNU/Linux&quot;, and it appears to be =
+using v1.0.6 of nfs-utils. The mounts are set via autofs, using =
+automount v4.1.3-130.</FONT></P>
 
-</head>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">My test program creates 16 process =
+that all try to get a write lock on the same file, and it will =
+frequently fail such that one of the processes appears to have been =
+granted the lock but does not return from the fcntl call (and the =
+remaining processes are then also all stuck). Listing open files and =
+locks using &quot;lsof -N&quot; shows that one of the processes has been =
+granted the W lock, yet this same process does not return from the fcntl =
+call. I have toyed with the mounting options on the client and I am =
+seeing this behavior with NFS v2 and v3, with short or long timeouts =
+(from timeo=3D7 to timeo=3D600), with intr and with nointr, and with r =
+and wsize's ranging from 1024 to 32768. The only option I haven't been =
+able to mess with is using TCP instead of UDP, since this particular =
+RedHat build does not seem to allow the TCP option.</FONT></P>
 
-<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">The NFS server for the mount is a =
+vendor provided NAS device, and I'm not sure what its OS or NFS server =
+is. However, the fact that lsof shows the lock has been granted seems to =
+indicate the disconnect is somewhere on the client side after getting =
+the lock but before waking up fcntl. I also run the exact some program =
+on a Solaris host against the same mount and have no issues at all, =
+which also seems to rule out a server-side issue.</FONT></P>
 
-<div class=3DSection1>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">The test program I'm using is a c app =
+compiled with gcc v3.3.1. Any thoughts? Thanks&#8230;</FONT>
+</P>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Gang,</span></font></p>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;errno.h&gt;</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp; I
-am having a problem with copying files to an NFS share. &nbsp;I can
-successfully ping all computers and can mount the nfs share from all =
-client
-computers (one client can successfully perform all file related =
-tasks).</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;fcntl.h&gt;</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><span =
-style=3D'text-decoration:none'>&nbsp;</span></span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;stdio.h&gt;</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Background information</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;string.h&gt;</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I have a server installed with Debian 3.1 (Sarge) =
-GNU/Linux
-named (fs1) that has a file share /mnt/export.&nbsp; I have two client
-computers, one with Debian 3.1 and one that I am trying to boot to a cd =
-I
-created. &nbsp;I can mount the nfs share using the two Debian computers, =
-so I
-know the share is setup correctly and it must be something I have left =
-off of
-the boot cd.&nbsp; I will include output from various tests below.&nbsp; =
-Please
-let me know if there is something I am missing.&nbsp; By the way, the =
-boot cd
-has no login authentication, it just boots to a prompt. &nbsp;I have =
-checked
-the UID and USER environment variables and they are &#8216;0&#8217; and =
-&#8216;root&#8217;
-respectively.</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;unistd.h&gt;</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;sys/stat.h&gt;</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Version Information</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">#include &lt;sys/time.h&gt;</FONT>
+</P>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Debian doesn&#8217;t use an nfs-utils package, but =
-has it
-broken down into several packages.&nbsp; All of this computers are using =
-the
-latest nfs software released with Debian 3.1.&nbsp; The kernels used are =
-all
-2.6.8.</span></font></p>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">extern int errno;</FONT>
+</P>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">double now(void) {</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><span =
-style=3D'text-decoration:none'>&nbsp;</span></span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; struct timeval tv;</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Showmount &#8211;e (on server)</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; struct timezone tz;</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Export list for fs1</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>/mnt/export&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
-192.168.0.100/255.255.255.0</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; gettimeofday(&amp;tv, =
+&amp;tz);</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>/etc/exports (on server)</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; return((double)tv.tv_sec + =
+(double)tv.tv_usec/1000000);</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>/mnt/export&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
-192.168.0.100/255.255.255.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
-</span></font><font
-size=3D2 face=3DWingdings><span =
-style=3D'font-size:10.0pt;font-family:Wingdings'>&szlig;</span></font><fo=
-nt
-size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;font-family:Arial'> tried both ip
-addresses of clients, this is the one of the bootcd</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">}</FONT>
+</P>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<P><FONT SIZE=3D2 FACE=3D"Verdana">int main(int argc, char **argv) =
+{</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>rpcinfo &#8211;p (on client)</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; int i, j, id =3D 0;</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>100000&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp; =
-tcp&nbsp;&nbsp;&nbsp;
-111&nbsp;&nbsp;&nbsp; portmapper</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>100000&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp; =
-udp&nbsp;&nbsp;&nbsp;
-111&nbsp;&nbsp;&nbsp; portmapper</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; // create test lock =
+file</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>100024&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp;&nbsp; =
-udp&nbsp;&nbsp;&nbsp;
-604&nbsp;&nbsp;&nbsp; status</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; int lock_h =3D open(argv[1], =
+O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>100024&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp;&nbsp; =
-tcp&nbsp;&nbsp;&nbsp;
-607&nbsp;&nbsp;&nbsp; status</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; if (lock_h =3D=3D -1) =
+{</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+printf(&quot;failed to create lock file: %s\n&quot;, =
+strerror(errno));</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; exit(2);</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>mount (on client)</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DFR =
-style=3D'font-size:10.0pt;
-font-family:Arial'>mount &#8211;t nfs 192.168.0.11:/mnt/export =
-/mnt/nfs</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; else {</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>nfs warning&nbsp;: mount version older than =
-kernel</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+close(lock_h);</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
 
-<p class=3DMsoNormal><u><font size=3D2 face=3DArial><span lang=3DFR =
-style=3D'font-size:
-10.0pt;font-family:Arial'>copy request (on client)</span></font></u></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DFR =
-style=3D'font-size:10.0pt;
-font-family:Arial'>copy /etc/test.doc /mnt/nfs</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; // fork some workers</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Unable to handle kernel NULL pointer dereference at =
-virtual address
-...</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; pid_t pids[4] =3D { 0, 0, 0, =
+0 };</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&#8230;.</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; for (i =3D 3; i &gt;=3D 0; =
+i--) {</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Segmentation fault</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; pid_t pid =3D =
+fork();</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; if (pid =3D=3D =
+-1) {</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+printf(&quot;failed to fork: %s\n&quot;, strerror(errno));</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Does anyone have any ideas as to why this =
-wouldn&#8217;t be
-working?&nbsp; Does nfs require any additional packages to be =
-installed?</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+exit(3);</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; }</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Thanks,</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; if (pid =3D=3D 0) =
+{</FONT>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int =
+pow =3D 1;</FONT>
 
-<p class=3DMsoNormal><b><font size=3D3 color=3D"#3366ff" face=3D"Times =
-New Roman"><span
-style=3D'font-size:12.0pt;color:#3366FF;font-weight:bold'>Dave =
-Henderson</span></font></b></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for =
+(j =3D 0; j &lt; i; j++) {</FONT>
 
-<p class=3DMsoNormal><b><font size=3D3 face=3D"Times New Roman"><span
-style=3D'font-size:12.0pt;font-weight:bold'><img width=3D200 height=3D59
-src=3D"cid:image001.jpg@01C6070F.6C6C0440"></span></font></b></p>
+<BR><FONT SIZE=3D2 =
+FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pow *=3D =
+2;</FONT>
 
-<p class=3DMsoNormal><b><font size=3D2 color=3D"#00ccff" face=3D"Times =
-New Roman"><span
-style=3D'font-size:10.0pt;color:#00CCFF;font-weight:bold'>MCP, MCSA, =
-MCSE, A+</span></font></b></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+}</FONT>
 
-<p class=3DMsoNormal><font size=3D2 color=3D"#3366ff" face=3D"Times New =
-Roman"><span
-style=3D'font-size:10.0pt;color:#3366FF'>Distributed Computer Systems =
-Analyst</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; id =
++=3D pow;</FONT>
 
-<p class=3DMsoNormal><font size=3D2 color=3D"#3366ff" face=3D"Times New =
-Roman"><span
-style=3D'font-size:10.0pt;color:#3366FF'>Florida Department of =
-Corrections</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; }</FONT>
 
-<p class=3DMsoNormal><b><font size=3D2 color=3D"#3366ff" face=3D"Times =
-New Roman"><span
-style=3D'font-size:10.0pt;color:#3366FF;font-weight:bold'>Phone:</span></=
-font></b><font
-size=3D2><span style=3D'font-size:10.0pt'> =
-407.207.7391&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp; <b><font
-color=3D"#3366ff"><span =
-style=3D'color:#3366FF;font-weight:bold'>Suncom:</span></font>
-</b>343.7391</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; pids[i] =3D =
+pid;</FONT>
 
-<p class=3DMsoNormal><font size=3D3 face=3D"Times New Roman"><span =
-style=3D'font-size:
-12.0pt'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
 
-<p class=3DMsoNormal><font size=3D3 face=3D"Times New Roman"><span =
-style=3D'font-size:
-12.0pt'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
 
-<p class=3DMsoNormal><font size=3D3 face=3D"Times New Roman"><span =
-style=3D'font-size:
-12.0pt'>&nbsp;</span></font></p>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; pid_t mypid =3D =
+getpid();</FONT>
 
-</div>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
 
-</body>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; // open lock file for write =
+and try to lock it</FONT>
 
-</html>
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; int status;</FONT>
 
-------_=_NextPart_002_01C60738.EDDB1767--
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; struct flock lock;</FONT>
 
-------_=_NextPart_001_01C60738.EDDB1767
-Content-Type: image/jpeg;
-	name="image001.jpg"
-Content-Transfer-Encoding: base64
-Content-ID: <image001.jpg@01C6070F.6C6C0440>
-Content-Description: image001.jpg
-Content-Location: image001.jpg
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; lock.l_type =3D =
+F_WRLCK;</FONT>
 
-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
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; lock.l_whence =3D 0;</FONT>
 
-------_=_NextPart_001_01C60738.EDDB1767--
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; lock.l_start =3D 0;</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; lock.l_len =3D 0;</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; lock_h =3D open(argv[1], =
+O_WRONLY);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; if (lock_h =3D=3D -1) =
+{</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+printf(&quot;failed to open lock file: %s\n&quot;, =
+strerror(errno));</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; exit(4);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; printf(&quot;%15.5f %05d =
+%s\n&quot;, now(), mypid, &quot;trying lock&quot;);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; status =3D fcntl(lock_h, =
+F_SETLKW, &amp;lock);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; if (status =3D=3D 0) {</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+printf(&quot;%15.5f %05d %s\n&quot;, now(), mypid, &quot;got =
+lock&quot;);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; lock.l_type =3D =
+F_UNLCK;</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; fcntl(lock_h, =
+F_SETLKW, &amp;lock);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+printf(&quot;%15.5f %05d %s\n&quot;, now(), mypid, &quot;freed =
+lock&quot;);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; else {</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+printf(&quot;%15.5f %05d %s\n&quot;, now(), mypid, &quot;failed =
+lock&quot;);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+printf(&quot;%15.5f %05d %s\n&quot;, now(), mypid, =
+strerror(errno));</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; close(lock_h);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; // cleanup and quit</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; for (i =3D 0; i &lt; 4; i++) =
+{</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; if (pids[i] !=3D =
+0) {</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+waitpid(pids[i], &amp;status, 0);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; }</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; if (id =3D=3D 0) {</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp;&nbsp;&nbsp; =
+unlink(argv[1]);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; }</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; </FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">&nbsp; return(0);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Verdana">}</FONT>
+</P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C6073A.4EF533E7--
 
 
 -------------------------------------------------------
