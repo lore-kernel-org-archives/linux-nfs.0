@@ -1,24 +1,26 @@
-From: =?ISO-8859-1?Q?J=E9r=F4me?= Warnier <jwarnier@beeznest.net>
-Subject: Re: NFS TCP settings
-Date: Wed, 21 Dec 2005 23:05:50 +0100
-Message-ID: <1135202750.10000.23.camel@localhost>
-References: <20051221163254.70779.qmail@web34105.mail.mud.yahoo.com>
+From: Vince Busam <vbusam@google.com>
+Subject: segfault in mount with CITI patch
+Date: Wed, 21 Dec 2005 17:30:18 -0800
+Message-ID: <43AA01AA.3060705@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EpC61-0002Lx-Sn
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 14:06:05 -0800
-Received: from mailfe07.swip.net ([212.247.154.193] helo=swip.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EpC5z-0004ah-93
-	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 14:06:05 -0800
-Received: from [83.182.16.181] (HELO aphrodite.beeznest.net)
-  by mailfe07.swip.net (CommuniGate Pro SMTP 5.0.2)
-  with ESMTP id 57474078 for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 23:05:51 +0100
+	id 1EpFHt-00015F-IE
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 17:30:33 -0800
+Received: from smtp-out.google.com ([216.239.45.12])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EpFHr-0005tG-Dc
+	for nfs@lists.sourceforge.net; Wed, 21 Dec 2005 17:30:33 -0800
+Received: from mail2.smo.corp.google.com (mail2.smo.corp.google.com [172.29.48.30])
+	by smtp-out.google.com with ESMTP id jBM1UNPM018783
+	for <nfs@lists.sourceforge.net>; Wed, 21 Dec 2005 17:30:24 -0800
+Received: from [172.29.52.29] (block.smo.corp.google.com [172.29.52.29])
+	by mail2.smo.corp.google.com with ESMTP id jBM1UIZJ014567
+	for <nfs@lists.sourceforge.net>; Wed, 21 Dec 2005 17:30:18 -0800
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20051221163254.70779.qmail@web34105.mail.mud.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,43 +34,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le mercredi 21 d=E9cembre 2005 =E0 08:32 -0800, Kenny Simpson a =E9crit :
-> --- Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > The NFS/RPC code has no direct control over the TCP window size. That
-> > would be an issue for the networking people.
->=20
-> I have tracked this a bit further, and am reporting back for completeness=
-..
->=20
-> The version of OnTap we are using (6.4.1p1) does not seem to support RFC =
-1323 (large TCP windows),
-> but the Linux client does.  The window scaling is communicated in the ini=
-tial connection (SYN), so
-> if ethereal does not catch that, it will incorrectly report the window si=
-ze as the unscaled number
-> - making the Linux client appear to be using a very small window.
-> The reason it appeared that the small window size was being honored is a =
-result of the direct
-> crossover cable making the BDP (bandwidth-delay product) very small.
->=20
-> As for the server side, because large TCP windows are not supported, the =
-best it can do is 64k -
-> which it does.  Running with GbE and jumbo packets fills the window quite=
- fast obviating the need
-> for RFC 1323.
-I'm experiencing big performance trouble with NFS on a GbE NIC (Intel
-eepro1000) and a 2.6.8 kernel, to the point of NFS being unusable, and
-having to force NIC to 100Mbs. The clients are 10/100 Mbs.
-I've made no particular tuning on the server side for the GbE. Could
-someone help me to get the most out of this GbE NIC?
+I've found that mount (from util-linux 2.12 + CITI_NFS4_ALL-3 patch) will segfault with 
+this (probably rare) command:
 
-Thanks
+mount -o tcp,nosuid,rw,rsize=8192,wsize=8192,nfsvers=3,mountvers=2,intr,sec=krb5 
+server:/volume /mntpoint
 
-> Thanks to those who took the time to swing a clue stick in my direction.
->=20
-> -Kenny
+This is because nfs_call_mount() will run nfs2_mount() when mountvers=2, but since 
+nfsvers=3, nfsmount() will expect certain fields to be filled out, which are not.  Causing 
+a segfault here, where flavor points to an invalid address.
+1061                            if (flavor[i] == data.pseudoflavor)
 
 
+Is nfsvers=3,mountvers=2 even OK to do?  If not, mount should print an error instead of 
+segfault.
+
+Thanks,
+Vince
 
 
 -------------------------------------------------------
