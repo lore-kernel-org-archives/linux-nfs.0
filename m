@@ -1,20 +1,22 @@
-From: Kalin KOZHUHAROV <kalin@thinrope.net>
-Subject: rpc.statd: open (/var/lib/nfs/state): Permission denied
-Date: Fri, 30 Dec 2005 20:06:20 +0900
-Message-ID: <43B514AC.7080400@thinrope.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Fcntl F_SETLKW hangs on Linux NFS mount
+Date: Fri, 30 Dec 2005 08:42:29 -0500
+Message-ID: <43B53945.1060008@RedHat.com>
+References: <AB58C1C45C3FD74A9C262584E8F8C16001F001D1@ntxboimbx16.micron.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EsI6S-0005U4-Tl
-	for nfs@lists.sourceforge.net; Fri, 30 Dec 2005 03:07:20 -0800
-Received: from s175249.ppp.asahi-net.or.jp ([220.157.175.249] helo=mail.tar.bz)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1EsI6P-0005cb-BA
-	for nfs@lists.sourceforge.net; Fri, 30 Dec 2005 03:07:20 -0800
-To: nfs@lists.sourceforge.net
+	id 1EsKWn-0005qi-3s
+	for nfs@lists.sourceforge.net; Fri, 30 Dec 2005 05:42:41 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EsKWm-00025H-Rb
+	for nfs@lists.sourceforge.net; Fri, 30 Dec 2005 05:42:41 -0800
+To: khowe@micron.com
+In-Reply-To: <AB58C1C45C3FD74A9C262584E8F8C16001F001D1@ntxboimbx16.micron.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,98 +30,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi, there!
+khowe@micron.com wrote:
+> I'm running into an issue when using fcntl with the F_SETLKW command on 
+> a Linux NFS client. In cases where I have many processes all trying to 
+> get a write lock at once, the call to fcntl never returns, even though 
+> the lock appears to have been granted successfully. It is not a 
+> consistent error, but it is fairly repeatable (about 30% of the time). 
+> I'm running on a RedHat client, though I'm not exactly sure of the 
+> RedHat version. However, the kernel reported by uname is "Linux 
+> prblnx-bo04 2.4.21-32.ELsmp #1 SMP Fri Apr 15 21:17:59 EDT 2005 i686 
+> i686 i386 GNU/Linux", and it appears to be using v1.0.6 of nfs-utils. 
+> The mounts are set via autofs, using automount v4.1.3-130.
+> 
+> My test program creates 16 process that all try to get a write lock on 
+> the same file, and it will frequently fail such that one of the 
+> processes appears to have been granted the lock but does not return from 
+> the fcntl call (and the remaining processes are then also all stuck). 
+> Listing open files and locks using "lsof -N" shows that one of the 
+> processes has been granted the W lock, yet this same process does not 
+> return from the fcntl call. I have toyed with the mounting options on 
+> the client and I am seeing this behavior with NFS v2 and v3, with short 
+> or long timeouts (from timeo=7 to timeo=600), with intr and with nointr, 
+> and with r and wsize's ranging from 1024 to 32768. The only option I 
+> haven't been able to mess with is using TCP instead of UDP, since this 
+> particular RedHat build does not seem to allow the TCP option.
+> 
+> The NFS server for the mount is a vendor provided NAS device, and I'm 
+> not sure what its OS or NFS server is. However, the fact that lsof shows 
+> the lock has been granted seems to indicate the disconnect is somewhere 
+> on the client side after getting the lock but before waking up fcntl. I 
+> also run the exact some program on a Solaris host against the same mount 
+> and have no issues at all, which also seems to rule out a server-side issue.
+> 
+> The test program I'm using is a c app compiled with gcc v3.3.1. Any 
+> thoughts? 
+Using your test program I see there is a window where a GRANT
+message can come in before the client has added a the lock request
+to the blocked locked list. In this case the status in the
+GRANT reply is set to one (i.e. nlm_lck_denied), but the lock will be
+retried after a 30sec time out, which can give the appearance
+that the app is hung... With my testing, I've simply waited a
+period of time and the app always returned....
 
-I guess it is not the bes time to ask, but some of us have busy hollidays...
+So we can compare findings, I would like you to post a bzip2-ed
+binary tethereal trace. Something like:
+     tethereal -w /tmp/data.pcap host <client> and host <server>
+     bzip2 /tmp/data.pcap
 
-So I am upgrading a small network to rely more on NFSv3 (All are Gentoo boxen) and I ran into a problem.
+steved.
 
-On one of the server machines, rpc.statd cannot start:
 
-celina nfs # rpc.statd -Fd
-12/30/2005 19:01:49 rpc.statd[17982]: Version 1.0.7 Starting
-12/30/2005 19:01:49 rpc.statd[17982]: Flags: No-Daemon Log-STDERR
-12/30/2005 19:01:49 rpc.statd[17982]: open (/var/lib/nfs/state): Permission denied
 
-celina nfs # strace -s64 -f -e setuid32,open,socket,bind,dup,close rpc.statd -Fd
-
-[snip]
-
-12/30/2005 19:44:10 rpc.statd[18113]: Version 1.0.7 Starting
-12/30/2005 19:44:10 rpc.statd[18113]: Flags: No-Daemon Log-STDERR
-socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) = 3
-bind(3, {sa_family=AF_INET, sin_port=htons(905), sin_addr=inet_addr("0.0.0.0")}, 16) = 0
-open("/var/run/rpc.statd.pid", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 4
-dup(4)                                  = 5
-close(4)                                = 0
-setuid32(65534)                         = 0
-socket(PF_NETLINK, SOCK_RAW, 0)         = 4
-bind(4, {sa_family=AF_NETLINK, pid=0, groups=00000000}, 12) = 0
-close(4)                                = 0
-socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) = 4
-bind(4, {sa_family=AF_INET, sin_port=htons(906), sin_addr=inet_addr("0.0.0.0")}, 16) = -1 EACCES
-(Permission denied)
-close(4)                                = 0
-open("/var/lib/nfs/state", O_RDWR|O_CREAT, 0600) = -1 EACCES (Permission denied)
-12/30/2005 19:44:10 rpc.statd[18113]: open (/var/lib/nfs/state): Permission denied
-
-celina nfs # ls -ld /var/lib/nfs/{,state}
-drwxr-xr-x  7 root   root 304 Dec 30 18:42 /var/lib/nfs/
--rw-------  1 nobody root   6 Dec 30 18:50 /var/lib/nfs/state
-
-celina nfs # getfacl /var/lib/nfs/{,state}
-getfacl: Removing leading '/' from absolute path names
-# file: var/lib/nfs
-# owner: root
-# group: root
-user::rwx
-group::r-x
-other::r-x
-
-# file: var/lib/nfs/state
-# owner: nobody
-# group: root
-user::rw-
-group::---
-other::---
-
-celina nfs # grep nobody /etc/{passwd,group}
-/etc/passwd:nobody:x:65534:65534:nobody:/:/bin/false
-/etc/group:nobody:x:65534:
-
-celina nfs # lsmod |grep nfs
-nfs                   114028  0
-nfsd                  111240  0
-exportfs                5984  1 nfsd
-nfs_acl                 3680  2 nfs,nfsd
-lockd                  66728  2 nfs,nfsd
-sunrpc                147388  4 nfs,nfsd,nfs_acl,lockd
-
-celina nfs # uname -a
-Linux celina 2.6.14.4-K01_PIII_server #1 Thu Dec 22 14:48:26 JST 2005 i686 Celeron (Coppermine)
-GenuineIntel GNU/Linux
-
-celina nfs # gzcat /proc/config.gz |grep NFS |grep =
-CONFIG_NFS_FS=m
-CONFIG_NFS_V3=y
-CONFIG_NFS_V3_ACL=y
-CONFIG_NFSD=m
-CONFIG_NFSD_V2_ACL=y
-CONFIG_NFSD_V3=y
-CONFIG_NFSD_V3_ACL=y
-CONFIG_NFS_ACL_SUPPORT=m
-CONFIG_NFS_COMMON=y
-
-I have almost exactly the same setup on a few other machines and it works.
-
-What am I missing here? This just drives me crazy...
-
-Kalin.
-
--- 
-|[ ~~~~~~~~~~~~~~~~~~~~~~ ]|
-+-> http://ThinRope.net/ <-+
-|[ ______________________ ]|
 
 
 -------------------------------------------------------
