@@ -1,22 +1,20 @@
-From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
-Subject: Re: NFS re-export of non-local mountpoint
-Date: Mon, 2 Jan 2006 19:57:46 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0601021956490.29084@maggie.lkpg.cendio.se>
-References: <OF9EFE8519.B9EB421D-ONC12570EA.004FBF22-C12570EA.00519D78@de.ibm.com>
+From: "Joeri Belis" <joeri.belis@nollekens.be>
+Subject: nfs crashes the df command and cannot be unmounted
+Date: Tue, 3 Jan 2006 13:45:29 +0100
+Message-ID: <032501c61063$941c09b0$15c809c6@PCJOERI01>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-2054831717-1136228266=:29084"
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0322_01C6106B.F5AB09D0"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EtUsY-0008Kd-A0
-	for nfs@lists.sourceforge.net; Mon, 02 Jan 2006 10:57:58 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EtUsX-0008RX-5G
-	for nfs@lists.sourceforge.net; Mon, 02 Jan 2006 10:57:58 -0800
-To: Holger Smolinski <smolinski@de.ibm.com>
-In-Reply-To: <OF9EFE8519.B9EB421D-ONC12570EA.004FBF22-C12570EA.00519D78@de.ibm.com>
+	id 1EtlWp-0004gt-DK
+	for nfs@lists.sourceforge.net; Tue, 03 Jan 2006 04:44:39 -0800
+Received: from [194.78.89.210] (helo=linuxnol2004.nollekens.be)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EtlWn-0006wt-6H
+	for nfs@lists.sourceforge.net; Tue, 03 Jan 2006 04:44:39 -0800
+To: <NFS@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +28,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+This is a multi-part message in MIME format.
 
---789237761-2054831717-1136228266=:29084
-Content-Type: TEXT/PLAIN; charset=iso-8859-1; format=flowed
+------=_NextPart_000_0322_01C6106B.F5AB09D0
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, 2 Jan 2006, Holger Smolinski wrote:
+Hi,
 
-> We are looking for a solution, that will allow us to re-export a=20
-> non-local mountpoint (e.g. Samba Share, or NFSmount) through at least=20
-> NFSv3 to another system using a Linux NFS Server. Sinde knfsd lacks thi=
-s=20
-> functionality and we are not aware of any currently maintained user=20
-> space Linux NFS Server, that has this capability, we are currently=20
-> assessing the effort to add this functions to the knfsd. So far
+We have a nfs filesystem on a redhat es4 mounted on our aix 4.3.
+After a powerloss and a rebout of the redhat es4 ( aix was not down ). =
+the nfs filesystem can not be seen anymore on the aix.
 
-I think UNFS3 is what you are looking for: http://unfs3.sourceforge.net/
+trying to umount gives:
+/bunolleken/users/joeri> umount /linuxnol2004/dump
+umount: 1831-015 16 error while unmounting =
+198.9.200.232:/nollekens/progress/dump -
+The requested resource is busy.
 
-Regards,
---=20
-Peter =C5strand		ThinLinc Chief Developer
-Cendio			www.cendio.se
-Teknikringen 3
-583 30 Link=F6ping        Phone: +46-13-21 46 00
---789237761-2054831717-1136228266=:29084--
+any ideas how to unmount this or get it going again. the redhat es4 is =
+back online.
+
+Joeri
+------=_NextPart_000_0322_01C6106B.F5AB09D0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Hi,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>We have a nfs filesystem on a redhat =
+es4 mounted on=20
+our aix 4.3.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>After a powerloss and a rebout of the =
+redhat es4 (=20
+aix was not down ). the nfs filesystem can not be seen anymore on the=20
+aix.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>trying to umount gives:</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>/bunolleken/users/joeri&gt; umount=20
+/linuxnol2004/dump<BR>umount: 1831-015 16 error while unmounting=20
+198.9.200.232:/nollekens/progress/dump -<BR>The requested resource is=20
+busy.<BR></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>any ideas how to unmount this or get it =
+going=20
+again. the redhat es4 is back online.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Joeri</DIV></FONT></BODY></HTML>
+
+------=_NextPart_000_0322_01C6106B.F5AB09D0--
+
 
 
 -------------------------------------------------------
