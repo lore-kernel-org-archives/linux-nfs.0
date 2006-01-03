@@ -1,20 +1,19 @@
-From: "Joeri Belis" <joeri.belis@nollekens.be>
-Subject: Re: [FIXED]nfs crashes the df command and cannot be unmounted
-Date: Tue, 3 Jan 2006 14:04:07 +0100
-Message-ID: <032f01c61066$2e585f90$15c809c6@PCJOERI01>
-References: <032501c61063$941c09b0$15c809c6@PCJOERI01>
+From: Mail Delivery Subsystem <postmaster@g21ac25r.com>
+Subject: Returned mail
+Date: Tue, 3 Jan 2006 13:01:00 +0100
+Message-ID: <E1Etnio-0007Vf-87@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_032C_01C6106E.9008F170"
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="KMS-21448206-31101-delim"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Etlou-0005uK-V3
-	for nfs@lists.sourceforge.net; Tue, 03 Jan 2006 05:03:20 -0800
-Received: from [194.78.89.210] (helo=linuxnol2004.nollekens.be)
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1Etlor-0002xQ-Iu
-	for nfs@lists.sourceforge.net; Tue, 03 Jan 2006 05:03:20 -0800
+	id 1Etnip-0004ya-RZ
+	for nfs@lists.sourceforge.net; Tue, 03 Jan 2006 07:05:11 -0800
+Received: from [200.101.45.186] (helo=g21ac25r.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Etnio-0007Vf-87
+	for nfs@lists.sourceforge.net; Tue, 03 Jan 2006 07:05:11 -0800
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,106 +28,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_032C_01C6106E.9008F170
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-Oops,
-
-the service nfs was stopped on redhat
-
-fix it.
-  ----- Original Message -----=20
-  From: Joeri Belis=20
-  To: NFS@lists.sourceforge.net=20
-  Sent: Tuesday, January 03, 2006 1:45 PM
-  Subject: [NFS] nfs crashes the df command and cannot be unmounted
+--KMS-21448206-31101-delim
+Content-Type: text/plain; charset="us-ascii"
 
 
-  Hi,
+This is an informative message sent by Kerio MailServer 5.6.4 at g21ac25r.com.
+The server was not able to deliver your mail message to the following addresses:
 
-  We have a nfs filesystem on a redhat es4 mounted on our aix 4.3.
-  After a powerloss and a rebout of the redhat es4 ( aix was not down ). =
-the nfs filesystem can not be seen anymore on the aix.
+  <nfs@lists.sourceforge.net> (externalmx-1.sourceforge.net: 550-"For the time being, we are blocking all mail with the .zip extension.
+550-If this this is a problem, please open a Support Request on the SF.net
+550 webite.")
+--KMS-21448206-31101-delim
+Content-Type: message/delivery-status
 
-  trying to umount gives:
-  /bunolleken/users/joeri> umount /linuxnol2004/dump
-  umount: 1831-015 16 error while unmounting =
-198.9.200.232:/nollekens/progress/dump -
-  The requested resource is busy.
+Reporting-MTA: dns; g21ac25r.com
+Arrival-Date: Tue, 3 Jan 2006 12:15:08 +0100
 
-  any ideas how to unmount this or get it going again. the redhat es4 is =
-back online.
+Final-Recipient: rfc822;nfs@lists.sourceforge.net
+Action: failed
+Status: 5.6.0
+Remote-MTA: externalmx-1.sourceforge.net
+Diagnostic-Code: SMTP; 550-"For the time being, we are blocking all mail with the .zip extension.
 
-  Joeri
-------=_NextPart_000_032C_01C6106E.9008F170
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+550-If this this is a problem, please open a Support Request on the SF.net
+550 webite."
+--KMS-21448206-31101-delim
+Content-Type: text/rfc822-headers
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2>Oops,</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>the service nfs was stopped on =
-redhat</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-<DIV><FONT face=3DArial size=3D2>fix it.</FONT></DIV>
-<BLOCKQUOTE dir=3Dltr=20
-style=3D"PADDING-RIGHT: 0px; PADDING-LEFT: 5px; MARGIN-LEFT: 5px; =
-BORDER-LEFT: #000000 2px solid; MARGIN-RIGHT: 0px">
-  <DIV style=3D"FONT: 10pt arial">----- Original Message ----- </DIV>
-  <DIV=20
-  style=3D"BACKGROUND: #e4e4e4; FONT: 10pt arial; font-color: =
-black"><B>From:</B>=20
-  <A title=3Djoeri.belis@nollekens.be =
-href=3D"mailto:joeri.belis@nollekens.be">Joeri=20
-  Belis</A> </DIV>
-  <DIV style=3D"FONT: 10pt arial"><B>To:</B> <A =
-title=3DNFS@lists.sourceforge.net=20
-  =
-href=3D"mailto:NFS@lists.sourceforge.net">NFS@lists.sourceforge.net</A> =
-</DIV>
-  <DIV style=3D"FONT: 10pt arial"><B>Sent:</B> Tuesday, January 03, 2006 =
-1:45=20
-  PM</DIV>
-  <DIV style=3D"FONT: 10pt arial"><B>Subject:</B> [NFS] nfs crashes the =
-df command=20
-  and cannot be unmounted</DIV>
-  <DIV><BR></DIV>
-  <DIV><FONT face=3DArial size=3D2>Hi,</FONT></DIV>
-  <DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-  <DIV><FONT face=3DArial size=3D2>We have a nfs filesystem on a redhat =
-es4 mounted=20
-  on our aix 4.3.</FONT></DIV>
-  <DIV><FONT face=3DArial size=3D2>After a powerloss and a rebout of the =
-redhat es4=20
-  ( aix was not down ). the nfs filesystem can not be seen anymore on =
-the=20
-  aix.</FONT></DIV>
-  <DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-  <DIV><FONT face=3DArial size=3D2>trying to umount gives:</FONT></DIV>
-  <DIV><FONT face=3DArial size=3D2>/bunolleken/users/joeri&gt; umount=20
-  /linuxnol2004/dump<BR>umount: 1831-015 16 error while unmounting=20
-  198.9.200.232:/nollekens/progress/dump -<BR>The requested resource is=20
-  busy.<BR></FONT></DIV>
-  <DIV><FONT face=3DArial size=3D2>any ideas how to unmount this or get =
-it going=20
-  again. the redhat es4 is back online.</FONT></DIV>
-  <DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-  <DIV><FONT face=3DArial =
-size=3D2>Joeri</DIV></BLOCKQUOTE></FONT></BODY></HTML>
+X-Spam-Status: No, hits=0.0 required=5.0
+X-Spam-Level: 
+Received: from 192.168.1.1 ([192.168.1.1])
+	by g21ac25r.com
+	for nfs@lists.sourceforge.net;
+	Tue, 3 Jan 2006 12:15:08 +0100
+From: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Subject: nfs@lists.sourceforge.net
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="0-1451934252-992792781=:22818"
+Content-Length: 5783
 
-------=_NextPart_000_032C_01C6106E.9008F170--
+--KMS-21448206-31101-delim--
+
 
 
 
