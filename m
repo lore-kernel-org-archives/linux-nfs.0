@@ -1,19 +1,24 @@
-From: Eugene <hdejin@yahoo.com>
-Subject: nfs-utils-1.0.8-rc2: Makefile DESTDIR problem (patch)
-Date: Wed, 4 Jan 2006 07:24:58 -0800 (PST)
-Message-ID: <20060104152458.77638.qmail@web50211.mail.yahoo.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs-utils 1.0.8-rc1
+Date: Wed, 4 Jan 2006 16:33:18 -0500
+Message-ID: <20060104213318.GA31023@fieldses.org>
+References: <17314.22172.913247.595571@cse.unsw.edu.au> <1134718387.3699.10.camel@lade.trondhjem.org> <17318.4720.969963.469187@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EuAVh-00013Z-02
-	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 07:25:09 -0800
-Received: from web50211.mail.yahoo.com ([206.190.39.175])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EuAVc-0005KI-Tl
-	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 07:25:09 -0800
-To: nfs@lists.sourceforge.net
+	id 1EuGGM-0003I8-Nb
+	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 13:33:42 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EuGGL-0004el-4a
+	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 13:33:42 -0800
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17318.4720.969963.469187@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,63 +32,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Sorry, the attachment didn't go thru earlier.
+On Mon, Dec 19, 2005 at 12:52:48PM +1100, Neil Brown wrote:
+> 57 	nor 	P3 	All 	bfields@fieldses.org 	NEW 		unable to export to nfs3 krb5 clients without also export...
+> 
+>   Messy.... the submitter want to allow mount/STATFS and maybe GETATTR
+>   to succeed with only AUTH_UNIX, even though /etc/exports says that
+>   krb5 is required to access the filesystem.
 
-~~BEGIN PATCH~~
---- nfs-utils-1.0.8-rc2.orig/Makefile.am	2006-01-04
-20:31:07.000000000 +0800
-+++ nfs-utils-1.0.8-rc2/Makefile.am	2006-01-04
-20:36:28.000000000 +0800
-@@ -40,11 +40,11 @@
- 	aclocal/tcp-wrappers.m4
-=20
- install-data-hook:
--	if [ ! -d $(statedir) ]; then mkdir -p $(statedir);
-fi
--	touch $(statedir)/xtab; chmod 644 $(statedir)/xtab
--	touch $(statedir)/etab; chmod 644 $(statedir)/etab
--	touch $(statedir)/rmtab; chmod 644 $(statedir)/rmtab
--	mkdir -p $(statedir)/sm $(statedir)/sm.bak
--	touch $(statedir)/state
--	chmod go-rwx $(statedir)/sm $(statedir)/sm.bak
-$(statedir)/state
--	chown $(statduser) $(statedir)/sm $(statedir)/sm.bak
-$(statedir)/state
-+	if [ ! -d $(DESTDIR)/$(statedir) ]; then mkdir -p=20
-$(DESTDIR)/$(statedir); fi
-+	touch  $(DESTDIR)/$(statedir)/xtab; chmod 644=20
-$(DESTDIR)/$(statedir)/xtab
-+	touch  $(DESTDIR)/$(statedir)/etab; chmod 644=20
-$(DESTDIR)/$(statedir)/etab
-+	touch  $(DESTDIR)/$(statedir)/rmtab; chmod 644=20
-$(DESTDIR)/$(statedir)/rmtab
-+	mkdir -p  $(DESTDIR)/$(statedir)/sm=20
-$(DESTDIR)/$(statedir)/sm.bak
-+	touch  $(DESTDIR)/$(statedir)/state
-+	chmod go-rwx  $(DESTDIR)/$(statedir)/sm=20
-$(DESTDIR)/$(statedir)/sm.bak=20
-$(DESTDIR)/$(statedir)/state
-+	chown  $(statduser)  $(DESTDIR)/$(statedir)/sm=20
-$(DESTDIR)/$(statedir)/sm.bak=20
-$(DESTDIR)/$(statedir)/state
-~~ END PATCH ~~
+You could argue that that's dumb, and I'd be sympathetic.
+Unfortunately, it's just the way NFSv2/v3 works--see RFC 2623.  So we
+need to support this to interoperate well.
 
+>   As there is no list of authorised hosts available in this context,
+>   we really need to give filehandles and stats info away to
+>   anyone. i.e. even accept AUTH_NONE.  But we only need to do this for
+>   filesystems which require krb5.
 
+We won't have to give this information away to everyone once we adopt
+the conventional approach of passing security flavors as export options
+(sec=krb5) instead of as clients (gss/krb5(rw,no_subtree_check,...)).
 
-	=09
-__________________________________________=20
-Yahoo! DSL =96 Something to write home about.=20
-Just $16.99/mo. or less.=20
-dsl.yahoo.com=20
+So this is another reason to make that switch.  (The other was that some
+people want different security flavor requirements enforced on different
+IP network, e.g., in case they have a performance-critical trusted local
+network but are also willing to export to the world as long as they come
+in with krb5p.)
 
+>   Hmmm.. more thought needed.  I don't think this will get into 1.0.8.
+
+Agreed.
+
+> 58 	nor 	P3 	All 	bfields@fieldses.org 	NEW 		unable to require different security flavors for differen...
+>   The bit about having the same format 'exports' file as 'the others',
+>   while probably a nice goal, is currently awkward.  So that bit won't
+>   be possible for 1.0.8.
+
+Yeah.  I think it's a lower priority too.  What's the history of the
+linux exports file format?  Was it invented for linux, or taken from
+someplace else?
+
+>   The idea of connection IP addresses with GSS auth connects with bug
+>   57 somewhat..
+
+Right.
+
+--b.
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
-les
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=3D7637&alloc_id=3D16865&op=3Dclick
+http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
