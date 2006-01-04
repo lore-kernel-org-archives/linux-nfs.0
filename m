@@ -1,32 +1,26 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Re: Q: How can I run nfs-utils on MIPS uclibc-based distro with kernel 2.6?
-Date: Wed, 4 Jan 2006 11:54:29 +0100
-Message-ID: <200601041154.29648.vincent.roqueta@ext.bull.net>
-References: <20060104103519.9306.qmail@hoster903.com> <1136371255.28640.26.camel@lade.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Q: How can I run nfs-utils on MIPS uclibc-based distro
+	with kernel 2.6?
+Date: Wed, 04 Jan 2006 11:58:59 +0100
+Message-ID: <1136372340.31785.1.camel@lade.trondhjem.org>
+References: <20060104103519.9306.qmail@hoster903.com>
+	 <1136371255.28640.26.camel@lade.trondhjem.org>
+	 <200601041154.29648.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=utf-8
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Eu6FI-0007qD-6K
-	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 02:51:56 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Eu6FG-00086m-Jg
-	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 02:51:56 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 8981219D90D
-	for <nfs@lists.sourceforge.net>; Wed,  4 Jan 2006 11:51:13 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 09193-07 for <nfs@lists.sourceforge.net>;
- Wed,  4 Jan 2006 11:51:12 +0100 (CET)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 41FF319D906
-	for <nfs@lists.sourceforge.net>; Wed,  4 Jan 2006 11:51:12 +0100 (CET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1136371255.28640.26.camel@lade.trondhjem.org>
+	id 1Eu6MS-0008Nm-8h
+	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 02:59:20 -0800
+Received: from pat.uio.no ([129.240.130.16])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1Eu6MR-0002yW-3p
+	for nfs@lists.sourceforge.net; Wed, 04 Jan 2006 02:59:20 -0800
+To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200601041154.29648.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,19 +34,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Mercredi 4 Janvier 2006 11:40, Trond Myklebust a =E9crit=A0:
-> On Wed, 2006-01-04 at 10:35 +0000, linux wrote:
-> > According to Vincent Roqueta (I received his  reply to my private
-> > address)   nfs-utils v.1.0.1 shouldn't work with kernels 2.6.
->
-> ??? Sure it will. 2.6 kernels have legacy support for older versions of
-> both mount and nfs-utils.
-Right ... for NFSv3 only?=20
-( It I forgot v4 is not yet the standard :/)
+On Wed, 2006-01-04 at 11:54 +0100, Vincent Roqueta wrote:
+> Le Mercredi 4 Janvier 2006 11:40, Trond Myklebust a =C3=A9crit :
+> > On Wed, 2006-01-04 at 10:35 +0000, linux wrote:
+> > > According to Vincent Roqueta (I received his  reply to my private
+> > > address)   nfs-utils v.1.0.1 shouldn't work with kernels 2.6.
+> >
+> > ??? Sure it will. 2.6 kernels have legacy support for older versions of
+> > both mount and nfs-utils.
+> Right ... for NFSv3 only?=20
 
+Yes, for NFSv2 and NFSv3.
 
-Sorry.
-Vincent
+NFSv4 needs support from extra daemons and also requires some mountd
+changes that are more recent.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------
