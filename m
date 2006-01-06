@@ -1,23 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Peter Staubach <staubach@redhat.com>
 Subject: Re: NFS performance tuning
-Date: Fri, 06 Jan 2006 12:07:45 -0500
-Message-ID: <1136567265.7839.25.camel@lade.trondhjem.org>
-References: <43BE9EC3.3090108@totalflood.com>
+Date: Fri, 06 Jan 2006 12:48:04 -0500
+Message-ID: <43BEAD54.7020204@redhat.com>
+References: <43BE9EC3.3090108@totalflood.com> <1136567265.7839.25.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Stephen Carville <stephen@totalflood.com>,
+	NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Euv4Q-0006cG-6t
-	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 09:08:06 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Euv4O-0002uS-9Y
-	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 09:08:06 -0800
-To: Stephen Carville <stephen@totalflood.com>
-In-Reply-To: <43BE9EC3.3090108@totalflood.com>
+	id 1EuvhN-0000KQ-TO
+	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 09:48:21 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EuvhN-0006Ng-JW
+	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 09:48:22 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1136567265.7839.25.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,40 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2006-01-06 at 08:45 -0800, Stephen Carville wrote:
-> I have NFS server running on a Dell 2850:
-> 
->    Name: Amazon
->     CPU: 3000 Mhz Xeon  (X2)
-> Memory: 2G
->    Swap: 8G
->      OS: Fedora Core 3
->     NFS: Version 1-4
-> 
-> I export a 150G volume thusly:
-> 
-> /NFS/tigris_backup
-> 10.1.1.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
-> 
-> The client is a Dell 2650 running Oracle 9i
-> 
->    Name: Tigris
->     CPU: 3200Mhz Xeon (X2)
-> Memory: 8G
->    Swap: 4G
->      OS: Redhat ES 3.2
->     NFS: Version 2/tcp
+Trond Myklebust wrote:
 
-Why are you using NFSv2? That forces the server to use synchronous
-writes (i.e. each write must be committed to disk before the server
-replies to the client) and is very inefficient.
+>On Fri, 2006-01-06 at 08:45 -0800, Stephen Carville wrote:
+>  
+>
+>>I have NFS server running on a Dell 2850:
+>>
+>>   Name: Amazon
+>>    CPU: 3000 Mhz Xeon  (X2)
+>>Memory: 2G
+>>   Swap: 8G
+>>     OS: Fedora Core 3
+>>    NFS: Version 1-4
+>>
+>>I export a 150G volume thusly:
+>>
+>>/NFS/tigris_backup
+>>10.1.1.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
+>>
+>>The client is a Dell 2650 running Oracle 9i
+>>
+>>   Name: Tigris
+>>    CPU: 3200Mhz Xeon (X2)
+>>Memory: 8G
+>>   Swap: 4G
+>>     OS: Redhat ES 3.2
+>>    NFS: Version 2/tcp
+>>    
+>>
+>
+>Why are you using NFSv2? That forces the server to use synchronous
+>writes (i.e. each write must be committed to disk before the server
+>replies to the client) and is very inefficient.
+>
+>If your application is write-intensive, you should always choose NFSv3
+>or greater.
+>
 
-If your application is write-intensive, you should always choose NFSv3
-or greater.
+There might also be some benefits from using the larger transfer sizes 
+available
+in NFSv3 or greater too.  NFSv2 is limited to 8kB transfers, which is 
+kind of
+small for the larger bandwidth networks, especially in conjunction with 
+the use
+of TCP to minimize any possible retransmitted packets.
 
-Cheers,
-  Trond
+    Thanx...
 
+       ps
 
 
 -------------------------------------------------------
