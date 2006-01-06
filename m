@@ -1,24 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs-utils 1.0.8-rc1
-Date: Fri, 6 Jan 2006 12:58:13 -0500
-Message-ID: <20060106175813.GE4759@fieldses.org>
-References: <17314.22172.913247.595571@cse.unsw.edu.au> <1134718387.3699.10.camel@lade.trondhjem.org> <17318.4720.969963.469187@cse.unsw.edu.au>
+From: Stephen Carville <stephen@totalflood.com>
+Subject: Re: NFS performance tuning
+Date: Fri, 06 Jan 2006 11:30:14 -0800
+Message-ID: <43BEC546.1010906@totalflood.com>
+References: <43BE9EC3.3090108@totalflood.com> <1136567265.7839.25.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Euvr8-0000rZ-KS
-	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 09:58:26 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Euvr6-0005jw-Ay
-	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 09:58:26 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17318.4720.969963.469187@cse.unsw.edu.au>
+	id 1EuxI4-0005Xo-Uc
+	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 11:30:20 -0800
+Received: from [209.189.103.195] (helo=mail.totalflood.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EuxI3-0004BH-NY
+	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 11:30:20 -0800
+To: NFS List <nfs@lists.sourceforge.net>
+In-Reply-To: <1136567265.7839.25.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,37 +30,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, Dec 19, 2005 at 12:52:48PM +1100, Neil Brown wrote:
-> 75 	nor 	P3 	Oth 	bfields@fieldses.org 	NEW 		pseudofilesystem paths are confusing and v3-incompatible
+Trond Myklebust wrote:
+> On Fri, 2006-01-06 at 08:45 -0800, Stephen Carville wrote:
 > 
->   That's a fair comment, but the solution isn't obvious.
->   The apparently straight forward approach might be:
->     If 'fsid=0' isn't given in /etc/exports, then auto-export
->       /var/lib/nfs/pseudo-root
->     as fsid=0,ro,... and bind-mount all other exported filesystems
->     into a suitable place in there.
+>>I have NFS server running on a Dell 2850:
+>>
+>>   Name: Amazon
+>>    CPU: 3000 Mhz Xeon  (X2)
+>>Memory: 2G
+>>   Swap: 8G
+>>     OS: Fedora Core 3
+>>    NFS: Version 1-4
+>>
+>>I export a 150G volume thusly:
+>>
+>>/NFS/tigris_backup
+>>10.1.1.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
+>>
+>>The client is a Dell 2650 running Oracle 9i
+>>
+>>   Name: Tigris
+>>    CPU: 3200Mhz Xeon (X2)
+>>Memory: 8G
+>>   Swap: 4G
+>>     OS: Redhat ES 3.2
+>>    NFS: Version 2/tcp
+> 
+> 
+> Why are you using NFSv2? That forces the server to use synchronous
+> writes (i.e. each write must be committed to disk before the server
+> replies to the client) and is very inefficient.
+> 
+> If your application is write-intensive, you should always choose NFSv3
+> or greater.
 
-Yes, I've thought about doing something like that.  It has the advantage
-that we can fix everything in nfs-utils, without needing new kernel
-interfaces.
+No problem.  I added nfsvers=3 to the mount options and I'll see how it 
+works tonight
 
-Another change is needed so that mountd doesn't report that it's
-exporting a bunch of paths starting with /var/lib/nfs/pseudo-root.  We'd
-need to hide that part of any such path from the mount protocol
-entirely--so the export
-
-	/var/lib/nfs/pseudo-root/path
-
-would be referred to as "/path" for the purposes of mount requests and
-responses.
-
-Should we start coding all this?  I'm a little nervous about making
-exportfs suddenly do a bunch of bind mounts behind the administrators
-back, but I guess we can control that behaviour with configuration
-and/or commandline operations and let administrators and users decide
-how to handle the transition.
-
---b.
+-- 
+Stephen Carville <stephen@totalflood.com>
+Unix and Network Admin
+Nationwide Totalflood
+6033 W. Century Blvd
+Los Angeles, CA 90045
+310-342-3602
 
 
 -------------------------------------------------------
