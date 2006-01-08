@@ -1,24 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs-utils 1.0.8-rc1
-Date: Fri, 6 Jan 2006 13:03:14 -0500
-Message-ID: <20060106180314.GF4759@fieldses.org>
-References: <17314.22172.913247.595571@cse.unsw.edu.au> <1134718387.3699.10.camel@lade.trondhjem.org> <17318.4720.969963.469187@cse.unsw.edu.au> <20060106175813.GE4759@fieldses.org>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: NFS performance tuning
+Date: Sun, 8 Jan 2006 14:51:53 +0800 (WST)
+Message-ID: <Pine.LNX.4.64.0601081449320.19300@eagle.themaw.net>
+References: <43BE9EC3.3090108@totalflood.com> <32f0438a5087c2ea289922bbacb1897d@local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Stephen Carville <stephen@totalflood.com>,
+	NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Euvvz-0001EW-EB
-	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 10:03:27 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	id 1EvUPe-0007Ui-Tw
+	for nfs@lists.sourceforge.net; Sat, 07 Jan 2006 22:52:22 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.44)
-	id 1Euvvw-0003wC-On
-	for nfs@lists.sourceforge.net; Fri, 06 Jan 2006 10:03:27 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <20060106175813.GE4759@fieldses.org>
+	id 1EvUPc-0007BL-LP
+	for nfs@lists.sourceforge.net; Sat, 07 Jan 2006 22:52:23 -0800
+To: Blake Golliher <golliher@yahoo-inc.com>
+In-Reply-To: <32f0438a5087c2ea289922bbacb1897d@local>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,25 +32,104 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Jan 06, 2006 at 12:58:13PM -0500, J. Bruce Fields wrote:
-> On Mon, Dec 19, 2005 at 12:52:48PM +1100, Neil Brown wrote:
-> > 75 	nor 	P3 	Oth 	bfields@fieldses.org 	NEW 		pseudofilesystem paths are confusing and v3-incompatible
-> > 
-> >   That's a fair comment, but the solution isn't obvious.
-> >   The apparently straight forward approach might be:
-> >     If 'fsid=0' isn't given in /etc/exports, then auto-export
-> >       /var/lib/nfs/pseudo-root
-> >     as fsid=0,ro,... and bind-mount all other exported filesystems
-> >     into a suitable place in there.
-> 
-> Yes, I've thought about doing something like that.  It has the advantage
-> that we can fix everything in nfs-utils, without needing new kernel
-> interfaces.
+On Fri, 6 Jan 2006, Blake Golliher wrote:
 
-Oh, note one other thing--/var/lib/nfs/pseudo-root is on the root
-filesystem on a lot of systems, and we definitely don't want to silently
-export bits of the root filesystem.... So we'd need to do a loopback
-mount or something.--b.
+> Did you specify using a 32k read and write size, that I didn't see somewhere?
+> If you have a very clean network, you could get an advantage of using UDP as
+> well.  I'm not sure which transport you are using though.
+> 
+> Oh I see a mention of nfs v2 tcp.  Well, I'd recommend moving to nfs v3, using
+> a 64k read/write size, and using UDP.  That might give you some gains.  Of
+> course, I'm usually a TCP bigot for nfs transport, but for a very clean,
+> almost back to back, dedicated switch type of environment, I'll allow it.
+
+Mmm. I thought UDP was max. 8k read and write size and 32k was the max. 
+for TCP.
+
+> 
+> -Blake
+> 
+> On Jan 6, 2006, at 8:45 AM, Stephen Carville wrote:
+> 
+> > I have NFS server running on a Dell 2850:
+> > 
+> >  Name: Amazon
+> >   CPU: 3000 Mhz Xeon  (X2)
+> > Memory: 2G
+> >  Swap: 8G
+> >    OS: Fedora Core 3
+> >   NFS: Version 1-4
+> > 
+> > I export a 150G volume thusly:
+> > 
+> > /NFS/tigris_backup
+> > 10.1.1.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
+> > 
+> > The client is a Dell 2650 running Oracle 9i
+> > 
+> >  Name: Tigris
+> >   CPU: 3200Mhz Xeon (X2)
+> > Memory: 8G
+> >  Swap: 4G
+> >    OS: Redhat ES 3.2
+> >   NFS: Version 2/tcp
+> > 
+> > Both have hyperthreading enabled.
+> > The machines are connected via a dedicated gigabit switch.
+> > 
+> > The goal (among others) is to run the nightly RMAN backups of the Oracle
+> > database to the NFS drive on Amazon where it is backed up to tape later.
+> > To this end I mount the NFS volume, run the backups, and unmount the volme.
+> > 
+> > That part works well.  However the thruput on the connection is much
+> > less than I expected.  Simple file transfers for example give only about:
+> > 
+> > Using NFS
+> > Amazon to Tigris: 168 Mbps
+> > Tigris to Amazon: 104 Mbps
+> > 
+> > Using ftp
+> > ssh A to T: 320 Mbps
+> > ssh T to A  360 Mbps
+> > 
+> > I can accept that I may never get a full Gigabit per second over copper
+> > but it still looks like there is room for improvement in the NFS trnsfer
+> > speeds.
+> > 
+> > Suggestions?
+> > 
+> > -- 
+> > Stephen Carville <stephen@totalflood.com>
+> > Unix and Network Admin
+> > Nationwide Totalflood
+> > 6033 W. Century Blvd
+> > Los Angeles, CA 90045
+> > 310-342-3602
+> > 
+> > 
+> > 
+> > -------------------------------------------------------
+> > This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+> > for problems?  Stop!  Download the new AJAX search engine that makes
+> > searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+> > http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > 
+> > 
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+> for problems?  Stop!  Download the new AJAX search engine that makes
+> searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+> http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 -------------------------------------------------------
