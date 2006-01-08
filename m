@@ -1,34 +1,26 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
+From: Chuck Lever <cel@citi.umich.edu>
 Subject: Re: NFS performance tuning
-Date: Sun, 8 Jan 2006 13:10:00 -0800
-Message-ID: <OFFAE75FBD.F10D10DF-ON882570F0.0073C58D-882570F0.0073FC86@us.ibm.com>
-References: <1136751734.7849.1.camel@lade.trondhjem.org>
+Date: Sun, 08 Jan 2006 08:44:17 -0500
+Message-ID: <43C11731.7030003@citi.umich.edu>
+References: <43BE9EC3.3090108@totalflood.com> <32f0438a5087c2ea289922bbacb1897d@local> <Pine.LNX.4.64.0601081449320.19300@eagle.themaw.net> <06259ef940d5d01fc15319edce982acc@local>
+Reply-To: cel@citi.umich.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: multipart/mixed;
+ boundary="------------000308030403060908040000"
 Cc: Ian Kent <raven@themaw.net>,
 	Stephen Carville <stephen@totalflood.com>,
 	NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Evhns-0005Gq-3r
-	for nfs@lists.sourceforge.net; Sun, 08 Jan 2006 13:10:16 -0800
-Received: from e5.ny.us.ibm.com ([32.97.182.145])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Evhnq-0007jf-Ip
-	for nfs@lists.sourceforge.net; Sun, 08 Jan 2006 13:10:15 -0800
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.12.11/8.12.11) with ESMTP id k08LA8ox016507
-	for <nfs@lists.sourceforge.net>; Sun, 8 Jan 2006 16:10:08 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.12.10/NCO/VERS6.8) with ESMTP id k08LA7Vp076588
-	for <nfs@lists.sourceforge.net>; Sun, 8 Jan 2006 16:10:07 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11/8.13.3) with ESMTP id k08LA7Bi019640
-	for <nfs@lists.sourceforge.net>; Sun, 8 Jan 2006 16:10:07 -0500
-In-Reply-To: <1136751734.7849.1.camel@lade.trondhjem.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1Evaqa-0001Ni-75
+	for nfs@lists.sourceforge.net; Sun, 08 Jan 2006 05:44:36 -0800
+Received: from mx1.netapp.com ([216.240.18.38])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EvaqY-0003x7-NN
+	for nfs@lists.sourceforge.net; Sun, 08 Jan 2006 05:44:36 -0800
+To: Blake Golliher <golliher@yahoo-inc.com>
+In-Reply-To: <06259ef940d5d01fc15319edce982acc@local>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,23 +34,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-nfs-admin@lists.sourceforge.net wrote on 01/08/2006 12:22:13 PM:
+This is a multi-part message in MIME format.
+--------------000308030403060908040000
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> On Sat, 2006-01-07 at 23:44 -0800, Blake Golliher wrote:
-> > The linux nfs client supports, at least, a 64k block transfer size.  I 
+Blake Golliher wrote:
+> 
+> On Jan 7, 2006, at 10:51 PM, Ian Kent wrote:
+> 
+>> On Fri, 6 Jan 2006, Blake Golliher wrote:
+>>
+>>> Did you specify using a 32k read and write size, that I didn't see 
+>>> somewhere?
+>>> If you have a very clean network, you could get an advantage of using 
+>>> UDP as
+>>> well.  I'm not sure which transport you are using though.
+>>>
+>>> Oh I see a mention of nfs v2 tcp.  Well, I'd recommend moving to nfs 
+>>> v3, using
+>>> a 64k read/write size, and using UDP.  That might give you some 
+>>> gains.  Of
+>>> course, I'm usually a TCP bigot for nfs transport, but for a very clean,
+>>> almost back to back, dedicated switch type of environment, I'll allow 
+>>> it.
+>>
+>>
+>> Mmm. I thought UDP was max. 8k read and write size and 32k was the max.
+>> for TCP.
+> 
+> 
+> The linux nfs client supports, at least, a 64k block transfer size.  I 
+> don't believe it's constrained by transport protocol.
 
-> > don't believe it's constrained by transport protocol.
-> 
-> That is a very recent feature, though. Unless you are using the NFS_ALL
-> patches, you will only get 64k block transfer sizes on the very latest
-> GIT tarball. ;-)
-> 
-> Cheers,
->   Trond
-> 
+hi blake-
 
-But is still constrained by the transport protocol.
-Marc.
+as of 2.6.15, the stock Linux NFS client supports up to 32KB read and 
+write size for NFS versions 2, 3, and 4, and for UDP and TCP.
+
+the recommended r/wsize for UDP is 8KB simply to avoid IP fragment 
+storms.  on a clean network with few other clients, 32KB with UDP will 
+probably work well.
+
+soon, the Linux NFS client will support up to 1MB r/wsize, depending on 
+the network transport and the server's capabilities.
+
+--------------000308030403060908040000
+Content-Type: text/x-vcard; charset=utf-8;
+ name="cel.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="cel.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Charles
+org:Network Appliance, Incorporated;Open Source NFS Client Development
+adr:535 West William Street, Suite 3100;;Center for Information Technology Integration;Ann Arbor;MI;48103-4943;USA
+email;internet:cel@citi.umich.edu
+title:Member of Technical Staff
+tel;work:+1 734 763-4415
+tel;fax:+1 734 763 4434
+tel;home:+1 734 668-1089
+x-mozilla-html:FALSE
+url:http://troy.citi.umich.edu/u/cel/
+version:2.1
+end:vcard
+
+
+--------------000308030403060908040000--
 
 
 -------------------------------------------------------
