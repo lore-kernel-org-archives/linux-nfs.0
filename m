@@ -1,16 +1,24 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: NFS performance tuning
-Date: Sun, 8 Jan 2006 17:17:32 -0800
-Message-ID: <OFDC1A84DC.085D116A-ON882570F1.0005D98F-882570F1.0006D002@us.ibm.com>
-References: <1136758155.7849.11.camel@lade.trondhjem.org>
+From: "denis.immoos" <denis.immoos@edubs.ch>
+Subject: NFSROOT PROBLEM
+Date: Mon, 9 Jan 2006 10:33:49 +0100
+Message-ID: <000301c614ff$cf090a50$150110ac@wgbs.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: NFS List <nfs@lists.sourceforge.net>,
-	nfs-admin@lists.sourceforge.net, Ian Kent <raven@themaw.net>,
-	Stephen Carville <stephen@totalflood.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
-In-Reply-To: <1136758155.7849.11.camel@lade.trondhjem.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1EvtPb-0005x6-3w
+	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 01:33:59 -0800
+Received: from faraday.edubs.ch ([212.117.98.9])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EvtPY-0005uw-I4
+	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 01:33:59 -0800
+Received: from TITAN01 ([10.149.1.254])
+	by faraday.edubs.ch (8.13.0/8.12.11) with ESMTP id k099XsmD004852
+	for <nfs@lists.sourceforge.net>; Mon, 9 Jan 2006 10:33:54 +0100 (CET)
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -24,59 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I tried lately to change the max block size on the client and server from 
-32K to 64K and I got 36K. Looking at the code it looked like it got the 
-size from
- 
-max_rpc_payload = nfs_block_size(rpc_max_payload(server->client), NULL);
-        if (server->rsize > max_rpc_payload)
+Hi there, 
 
-and max_payload was set by the network driver.
+I have problems mounting a nfs-root filesystem over TCP.
 
-Marc.
+My mount options for the kernel are :
 
-nfs-admin@lists.sourceforge.net wrote on 01/08/2006 02:09:15 PM:
+root=/dev/nfs
+nfsroot=10.10.1.24:/home/denis/gentoo,wsize=4096,rsize=4096,tcp ip=dhcp
 
-> On Sun, 2006-01-08 at 13:10 -0800, Marc Eshel wrote:
-> > nfs-admin@lists.sourceforge.net wrote on 01/08/2006 12:22:13 PM:
-> > 
-> > > On Sat, 2006-01-07 at 23:44 -0800, Blake Golliher wrote:
-> > > > The linux nfs client supports, at least, a 64k block transfer 
-size.  I 
-> > 
-> > > > don't believe it's constrained by transport protocol.
-> > > 
-> > > That is a very recent feature, though. Unless you are using the 
-NFS_ALL
-> > > patches, you will only get 64k block transfer sizes on the very 
-latest
-> > > GIT tarball. ;-)
-> > > 
-> > > Cheers,
-> > >   Trond
-> > > 
-> > 
-> > But is still constrained by the transport protocol.
-> > Marc.
-> 
-> Yes. UDP won't allow you to use 64k read/write sizes since that would
-> overflow the size of a datagram. TCP has no such inherent limitation,
-> though.
-> 
-> Cheers,
->   Trond
-> 
-> 
-> 
-> -------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc. Do you grep through log 
-files
-> for problems?  Stop!  Download the new AJAX search engine that makes
-> searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-> http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+In /etc/exports on the server is the following entry :
+
+/home/denis/gentoo       10.10.103.0/255.255.255.0(ro,no_root_squash,sync)
+
+These are the entries in the Servers syslog :
+
+Jan  5 15:20:33 hydra rpc.mountd: refused mount request from 10.10.103.24
+for /home/denis/gentoo,wsize=4096,rsize=4096,proto=tcp (/): no export entry
+
+
+The Server believes the following string is a directory and is unable to
+parse [wsize,rsize,tcp]
+
+>> /home/denis/gentoo,wsize=4096,rsize=4096,proto=tcp << 
+
+I believe this might be a bug either in LILO/Grub or the Kernel.
+
+I tried Lilo/Grub and Syslinux as Bootmanagers the error occurs with Lilo
+and Grub, when I boot with Syslinux there is no such behavior and the
+options get set.
+
+With Grub and Lilo the the Kernel panics.
+
+If there someone who got the same Problem or even a solution, please mail me
+back ...
+
+Denis 
+
+
 
 
 
