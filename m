@@ -1,23 +1,23 @@
 From: "denis.immoos" <denis.immoos@edubs.ch>
 Subject: NFSROOT PROBLEM
-Date: Mon, 9 Jan 2006 10:33:49 +0100
-Message-ID: <000301c614ff$cf090a50$150110ac@wgbs.ch>
+Date: Mon, 9 Jan 2006 10:35:29 +0100
+Message-ID: <000801c61500$0a6a4dc0$150110ac@wgbs.ch>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EvtPb-0005x6-3w
-	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 01:33:59 -0800
+	id 1EvtRB-00060X-EQ
+	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 01:35:37 -0800
 Received: from faraday.edubs.ch ([212.117.98.9])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EvtPY-0005uw-I4
-	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 01:33:59 -0800
+	id 1EvtR9-0006Ho-V2
+	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 01:35:37 -0800
 Received: from TITAN01 ([10.149.1.254])
-	by faraday.edubs.ch (8.13.0/8.12.11) with ESMTP id k099XsmD004852
-	for <nfs@lists.sourceforge.net>; Mon, 9 Jan 2006 10:33:54 +0100 (CET)
+	by faraday.edubs.ch (8.13.0/8.12.11) with ESMTP id k099ZX2q015617
+	for <nfs@lists.sourceforge.net>; Mon, 9 Jan 2006 10:35:33 +0100 (CET)
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -54,7 +54,7 @@ for /home/denis/gentoo,wsize=4096,rsize=4096,proto=tcp (/): no export entry
 The Server believes the following string is a directory and is unable to
 parse [wsize,rsize,tcp]
 
->> /home/denis/gentoo,wsize=4096,rsize=4096,proto=tcp << 
+>> /home/denis/gentoo,wsize=4096,rsize=4096,proto=tcp <<
 
 I believe this might be a bug either in LILO/Grub or the Kernel.
 
@@ -68,8 +68,6 @@ If there someone who got the same Problem or even a solution, please mail me
 back ...
 
 Denis 
-
-
 
 
 
