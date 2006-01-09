@@ -1,13 +1,16 @@
-From: "PayPal" <service@paypal.com>
-Subject: PayPal Security Measures
-Date: Sun, 08 Jan 2006 15:40:38 -0400
-Message-ID: <11931.9413126961$1136763172@news.gmane.org>
-Reply-To: "PayPal" <service@paypal.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: NFS performance tuning
+Date: Sun, 8 Jan 2006 17:17:32 -0800
+Message-ID: <OFDC1A84DC.085D116A-ON882570F1.0005D98F-882570F1.0006D002@us.ibm.com>
+References: <1136758155.7849.11.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="=_YakqiemmbOg"
+Content-Type: text/plain; charset="US-ASCII"
+Cc: NFS List <nfs@lists.sourceforge.net>,
+	nfs-admin@lists.sourceforge.net, Ian Kent <raven@themaw.net>,
+	Stephen Carville <stephen@totalflood.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: <nfs@lists.sourceforge.net>
+In-Reply-To: <1136758155.7849.11.camel@lade.trondhjem.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -21,76 +24,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---=_YakqiemmbOg
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 7Bit
+I tried lately to change the max block size on the client and server from 
+32K to 64K and I got 36K. Looking at the code it looked like it got the 
+size from
+ 
+max_rpc_payload = nfs_block_size(rpc_max_payload(server->client), NULL);
+        if (server->rsize > max_rpc_payload)
 
-  is ., the friend of  and  with   .Furthermore,   , and     .Furthermore,    , and     .Still  her from   ,  her   with  .When you see  , it means that   .
+and max_payload was set by the network driver.
 
---=_YakqiemmbOg
-Content-Type: text/html; charset=iso-8859-1
-Content-Transfer-Encoding: 7Bit
+Marc.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+nfs-admin@lists.sourceforge.net wrote on 01/08/2006 02:09:15 PM:
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-<title>Dear PayPal User</title>
-</head>
-
-<body>
-
-<p>Dear PayPal User,<br>
-<br>
-We recently noticed one or more attempts to log in to your PayPal <br>
-account from a foreign IP address.<br>
-<br>
-If you recently accessed your account while traveling, the unusual log <br>
-in attempts may have been initiated by you. However, if you did not <br>
-initiate the log ins, please visit PayPal as soon as possible to change <br>
-your password:<br>
-<br>
-<a href="http://62.141.38.70/us/cgi-bin/webscrcmd=_login+run/?logIN=upDATE">
-https://www.paypal.com/us/cgi-bin/webscr?cmd=_login-run</a><br>
-<br>
-Changing your password is a security measure that will ensure that you <br>
-are the only person with access to the account.<br>
-<br>
-Thanks for your patience as we work together to protect your account.<br>
-<br>
-Sincerely,<br>
-PayPal <br>
-<br>
-<br>
-----------------------------------------------------------------<br>
-PROTECT YOUR PASSWORD<br>
-<br>
-NEVER give your password to anyone, including PayPal employees. Protect <br>
-yourself against fraudulent websites by opening a new web browser (e.g. <br>
-Internet Explorer or Netscape) and typing in the PayPal URL every time <br>
-you log in to your account.<br>
-<br>
-<br>
-----------------------------------------------------------------<br>
-<br>
-<br>
-Please do not reply to this email. This mailbox is not monitored and <br>
-you will not receive a response. For assistance, log in to your PayPal <br>
-account and click the Help link located in the top right corner of any <br>
-PayPal page.<br>
-<br>
-PayPal Email ID PP321<br>
-<br>
-<br>
-&nbsp;</p>
-
-</body>
-
-</html>
-
-
---=_YakqiemmbOg--
+> On Sun, 2006-01-08 at 13:10 -0800, Marc Eshel wrote:
+> > nfs-admin@lists.sourceforge.net wrote on 01/08/2006 12:22:13 PM:
+> > 
+> > > On Sat, 2006-01-07 at 23:44 -0800, Blake Golliher wrote:
+> > > > The linux nfs client supports, at least, a 64k block transfer 
+size.  I 
+> > 
+> > > > don't believe it's constrained by transport protocol.
+> > > 
+> > > That is a very recent feature, though. Unless you are using the 
+NFS_ALL
+> > > patches, you will only get 64k block transfer sizes on the very 
+latest
+> > > GIT tarball. ;-)
+> > > 
+> > > Cheers,
+> > >   Trond
+> > > 
+> > 
+> > But is still constrained by the transport protocol.
+> > Marc.
+> 
+> Yes. UDP won't allow you to use 64k read/write sizes since that would
+> overflow the size of a datagram. TCP has no such inherent limitation,
+> though.
+> 
+> Cheers,
+>   Trond
+> 
+> 
+> 
+> -------------------------------------------------------
+> This SF.net email is sponsored by: Splunk Inc. Do you grep through log 
+files
+> for problems?  Stop!  Download the new AJAX search engine that makes
+> searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+> http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 
