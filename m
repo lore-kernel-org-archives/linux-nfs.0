@@ -1,20 +1,19 @@
-From: YAMAMOTO Takashi <yamamoto@valinux.co.jp>
-Subject: lockd jiffies fixes
-Date: Tue, 10 Jan 2006 14:45:53 +0900
-Message-ID: <1136871953.120927.9448.nullmailer@yamt.dyndns.org>
+From: Al Active <LLLActive@GMX.Net>
+Subject: Searching NFS Archives
+Date: Tue, 10 Jan 2006 16:34:38 +0100
+Message-ID: <1136907278.6837.12.camel@L10-WS-AWS1.AWS>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed; boundary="NextPart-20060110144245-0654100"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EwCKp-0006lk-Du
-	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 21:46:19 -0800
-Received: from fla1adj210.kng.mesh.ad.jp ([60.236.232.210] helo=yamt.dyndns.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EwCKo-0005lI-0z
-	for nfs@lists.sourceforge.net; Mon, 09 Jan 2006 21:46:19 -0800
-To: neilb@suse.de
+	id 1EwLWK-00035c-FY
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 07:34:48 -0800
+Received: from mail.gmx.net ([213.165.64.21])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1EwLWJ-0001Ce-7h
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 07:34:48 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,56 +27,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---NextPart-20060110144245-0654100
-Content-Type: Text/Plain; charset=us-ascii
+Hi all,
 
-hi,
+I tried to search the archives of NFS-Lists; my Firefox browser asserts
+that 'The Document contains no data'. How can I get some info on my
+access problems of windows office programmes (over Samba) and OpenOffice
+(direct NFS Client) on a NFS Server installed with the purchased box
+version of Novell's SUSE 10.0?
 
-linux lockd has some code to initialize jiffies-relative variables with 0.
-the attached patch fixes them.
+:-)
+Al
 
-YAMAMOTO Takashi
-
---NextPart-20060110144245-0654100
-Content-Type: Text/Plain; charset=us-ascii
-Content-Disposition: attachment;
- filename="vaj_2.6.12.6_lockd-jiffies-fix__0.patch"
-
---- linux/fs/lockd/host.c.BACKUP.LIST-2002.8	2005-11-25 10:36:35.000000000 +0900
-+++ linux/fs/lockd/host.c	2005-11-25 10:36:58.000000000 +0900
-@@ -125,7 +125,7 @@ nlm_lookup_host(int server, struct socka
- 	spin_lock_init(&host->h_lock);
- 
- 	if (++nrhosts > NLM_HOST_MAX)
--		next_gc = 0;
-+		next_gc = jiffies;
- 
- nohost:
- 	up(&nlm_host_sema);
---- linux/fs/lockd/svcsubs.c.BACKUP.LIST-2002.8	2005-11-25 10:36:35.000000000 +0900
-+++ linux/fs/lockd/svcsubs.c	2005-11-25 10:36:58.000000000 +0900
-@@ -302,7 +302,7 @@ nlmsvc_invalidate_all(void)
- 	struct nlm_host *host;
- 	while ((host = nlm_find_client()) != NULL) {
- 		nlmsvc_free_host_resources(host);
--		host->h_expires = 0;
-+		host->h_expires = jiffies;
- 		host->h_killed = 1;
- 		nlm_release_host(host);
- 	}
---- linux/fs/lockd/clntlock.c.BACKUP.LIST-2002.8	2005-11-25 10:36:35.000000000 +0900
-+++ linux/fs/lockd/clntlock.c	2005-11-25 10:36:59.000000000 +0900
-@@ -164,7 +164,7 @@ void nlmclnt_prepare_reclaim(struct nlm_
- 	host->h_monitored = 0;
- 	host->h_nsmstate = newstate;
- 	host->h_state++;
--	host->h_nextrebind = 0;
-+	host->h_nextrebind = jiffies;
- 	nlm_rebind_host(host);
- 	nlmclnt_mark_reclaim(host);
- 	dprintk("NLM: reclaiming locks for host %s", host->h_name);
-
---NextPart-20060110144245-0654100--
 
 
 -------------------------------------------------------
