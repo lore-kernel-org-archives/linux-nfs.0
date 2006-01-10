@@ -1,22 +1,24 @@
-From: Al Active <LLLActive@GMX.Net>
-Subject: Re: Searching NFS Archives
-Date: Tue, 10 Jan 2006 17:23:10 +0100
-Message-ID: <1136910191.6837.49.camel@L10-WS-AWS1.AWS>
-References: <1136907278.6837.12.camel@L10-WS-AWS1.AWS>
-	 <200601101645.14166.vincent.roqueta@ext.bull.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS client getting server not responding on kernel
+	2.6.15 with nfs-client-patch
+Date: Tue, 10 Jan 2006 08:37:57 -0800
+Message-ID: <1136911077.9223.13.camel@lade.trondhjem.org>
+References: <BAY7-F206E8494F3B5CB3B898ABCB9250@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EwMHJ-0005Pb-8k
-	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 08:23:21 -0800
-Received: from mail.gmx.net ([213.165.64.21])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EwMHG-0003nb-Lt
-	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 08:23:21 -0800
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200601101645.14166.vincent.roqueta@ext.bull.net>
+	id 1EwMW9-00066W-9X
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 08:38:41 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EwMW7-0002tK-Pi
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 08:38:41 -0800
+To: Pelle Svensson <pelle2004@hotmail.com>
+In-Reply-To: <BAY7-F206E8494F3B5CB3B898ABCB9250@phx.gbl>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,74 +32,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Thanx for answering Vincent
+On Tue, 2006-01-10 at 17:20 +0100, Pelle Svensson wrote:
+> Hi,
+> 
+> I'm running a 2.6.15 client on a small ARM embedded platform with the root 
+> system as NFS client
+> (root=/dev/nfs). The server is Fedora core 3.
+> 
+> I'm getting about 2 to 6 errors as below on the first larger operation on 
+> the ARM system after
+> booting the system. Smaller this like #echo "dof to file" >/tmp/dog is okay
+> 
+> nfs: server 192.168.x.x not responding, still trying.
+> nfs: server 192.168.x.x not responding, still trying.
+> nfs: server 192.168.x.x not responding, still trying.
+> 
+> This happens when I read a lot from the server and at the same time try's to 
+> write that back as an
+> image file. Looking at the output from Ethereal shows that all 'V2 Read ...' 
+> request gets an answer
+> from the server but when the client issu the first section of 'V2 Write ...' 
+> there are no answers.
+> After a short while the client retransmitt same request in a loop.
+> 
+> The command I use is 'mkfs.jffs2' which reads a image of the root system and 
+> writes that
+> into a image file. Reads about 46M and supose to writes about 20M.
+> 
+> Any ideas what to do next?
 
-On Tue, 2006-01-10 at 16:45 +0100, Vincent Roqueta wrote:
-> Le Mardi 10 Janvier 2006 16:34, Al Active a =C3=A9crit :
-> works for me:
-> http://sourceforge.net/mailarchive/forum.php?forum=3Dnfs
+A lot of the ARM embedded systems use really cheap and crappy NICs with
+almost no on-board memory. I'd therefore try the following:
 
-I still can't open it ??
+Use the 'tcp' mount option
 
->=20
-> I don't understand what you are trying to do?
-> Samba clients can't access a NFS server...
+or
 
-No, I have one central SuSE Linux 10.0 server cluster for all data. It
-exports NFS shares to a number of NFS-Servers. The NFS-Servers are also
-clusters with heartbeat; one for Samba, another for Apache, another for
-ERP. The Samba server, for eg. receives all data shares from the central
-data cluster for a windows network over the NFS-Shares. =20
+set the "rsize" and "wsize" mount options to some smaller value (4096 or
+even 1024).
 
-Data-Cluster           =20
-NFS Shares Export
-    |
-    |
-    v
-|--1GB-IP--|
-    |  |______________________
-    |                        |
-    v                        v
-NFS-Shares Import      (Other Servers)
-NFS-Server Cluster
-(w/Samba)
-SMB-Shares
-    ^
-    |
-    v
-|--100MB-IP--|
-    ^
-    |
-    v
-Windows Network
-
-I can not write to Windows Office products over SMB shares in the
-Windows Network on the Samba Server, and not with OpenOffice products on
-directly on the NFS-Server shares. Text and script files can be edited.
-OO can edit on the Data-Cluster mounted devices. The NFS-Export seems to
-limit access to read only of eg. *.doc, *.rtf, *.xls files etc., also
-then limiting access by Samba.
-
-I am busy reading the NFS How-To to check the Server & Client setups. I
-have an older system that does not have the problem. I will explain my
-problem in more detail when I am through. Thanx.
-
->=20
-> Vincent
->=20
-
-
-:-)
-Al
+Cheers,
+  Trond
 
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
-les
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=3D7637&alloc_id=3D16865&op=3Dclick
+http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
