@@ -1,24 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS client getting server not responding on kernel
-	2.6.15 with nfs-client-patch
-Date: Tue, 10 Jan 2006 08:37:57 -0800
-Message-ID: <1136911077.9223.13.camel@lade.trondhjem.org>
-References: <BAY7-F206E8494F3B5CB3B898ABCB9250@phx.gbl>
+From: Garrick Staples <garrick@usc.edu>
+Subject: Re: Searching NFS Archives
+Date: Tue, 10 Jan 2006 11:35:01 -0800
+Message-ID: <20060110193501.GE29622@polop.usc.edu>
+References: <1136907278.6837.12.camel@L10-WS-AWS1.AWS> <200601101645.14166.vincent.roqueta@ext.bull.net> <1136910191.6837.49.camel@L10-WS-AWS1.AWS>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="uIqYzFIsIr/FOPFK"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EwMW9-00066W-9X
-	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 08:38:41 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1EwPGu-0005N7-Tj
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 11:35:08 -0800
+Received: from polop.usc.edu ([128.125.10.9])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EwMW7-0002tK-Pi
-	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 08:38:41 -0800
-To: Pelle Svensson <pelle2004@hotmail.com>
-In-Reply-To: <BAY7-F206E8494F3B5CB3B898ABCB9250@phx.gbl>
+	id 1EwPGt-0004pd-O3
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 11:35:08 -0800
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.11/8.12.11) with ESMTP id k0AJZ1KI031368
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jan 2006 11:35:01 -0800
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.11/8.12.11/Submit) id k0AJZ1R0031366
+	for nfs@lists.sourceforge.net; Tue, 10 Jan 2006 11:35:01 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1136910191.6837.49.camel@L10-WS-AWS1.AWS>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,48 +37,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2006-01-10 at 17:20 +0100, Pelle Svensson wrote:
-> Hi,
-> 
-> I'm running a 2.6.15 client on a small ARM embedded platform with the root 
-> system as NFS client
-> (root=/dev/nfs). The server is Fedora core 3.
-> 
-> I'm getting about 2 to 6 errors as below on the first larger operation on 
-> the ARM system after
-> booting the system. Smaller this like #echo "dof to file" >/tmp/dog is okay
-> 
-> nfs: server 192.168.x.x not responding, still trying.
-> nfs: server 192.168.x.x not responding, still trying.
-> nfs: server 192.168.x.x not responding, still trying.
-> 
-> This happens when I read a lot from the server and at the same time try's to 
-> write that back as an
-> image file. Looking at the output from Ethereal shows that all 'V2 Read ...' 
-> request gets an answer
-> from the server but when the client issu the first section of 'V2 Write ...' 
-> there are no answers.
-> After a short while the client retransmitt same request in a loop.
-> 
-> The command I use is 'mkfs.jffs2' which reads a image of the root system and 
-> writes that
-> into a image file. Reads about 46M and supose to writes about 20M.
-> 
-> Any ideas what to do next?
 
-A lot of the ARM embedded systems use really cheap and crappy NICs with
-almost no on-board memory. I'd therefore try the following:
+--uIqYzFIsIr/FOPFK
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Use the 'tcp' mount option
+On Tue, Jan 10, 2006 at 05:23:10PM +0100, Al Active alleged:
+> Thanx for answering Vincent
+>=20
+> On Tue, 2006-01-10 at 16:45 +0100, Vincent Roqueta wrote:
+> > Le Mardi 10 Janvier 2006 16:34, Al Active a ??crit :
+> > works for me:
+> > http://sourceforge.net/mailarchive/forum.php?forum=3Dnfs
+>=20
+> I still can't open it ??
+>=20
+> >=20
+> > I don't understand what you are trying to do?
+> > Samba clients can't access a NFS server...
+>=20
+> No, I have one central SuSE Linux 10.0 server cluster for all data. It
+> exports NFS shares to a number of NFS-Servers. The NFS-Servers are also
+> clusters with heartbeat; one for Samba, another for Apache, another for
+> ERP. The Samba server, for eg. receives all data shares from the central
+> data cluster for a windows network over the NFS-Shares. =20
 
-or
+Be careful with the terminology.  It is confusing to call machines that
+don't serve NFS, "NFS-Servers."  The SuSE box is the "NFS server", the
+other machines are "NFS clients" and "Samba servers".
 
-set the "rsize" and "wsize" mount options to some smaller value (4096 or
-even 1024).
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
 
-Cheers,
-  Trond
+--uIqYzFIsIr/FOPFK
+Content-Type: application/pgp-signature
+Content-Disposition: inline
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFDxAxl0SBUxJbm9HMRAqKEAJ9kN1GD7Fl3aPLCgcZuUQGhg6asYQCfQ2lC
+EXrUTpYqvBiwIx+TvqcqvS8=
+=MLCj
+-----END PGP SIGNATURE-----
+
+--uIqYzFIsIr/FOPFK--
 
 
 -------------------------------------------------------
