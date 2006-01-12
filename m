@@ -1,30 +1,32 @@
 From: walt <wa1ter@myrealbox.com>
-Subject: NFS breakage from recent commit
-Date: Wed, 11 Jan 2006 06:42:57 -0800
-Message-ID: <dq35hi$372$1@sea.gmane.org>
+Subject: Re: NFS (version 2) breakage from recent commit
+Date: Thu, 12 Jan 2006 07:37:38 -0800
+Message-ID: <dq5t42$pim$1@sea.gmane.org>
+References: <dq35hi$372$1@sea.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EwhKf-00051B-HE
-	for nfs@lists.sourceforge.net; Wed, 11 Jan 2006 06:52:13 -0800
+	id 1Ex4Wt-0002p2-4a
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 07:38:23 -0800
 Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EwhKe-0006hC-BP
-	for nfs@lists.sourceforge.net; Wed, 11 Jan 2006 06:52:13 -0800
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1EwhK6-0006Uf-JR
-	for nfs@lists.sourceforge.net; Wed, 11 Jan 2006 15:51:39 +0100
+	id 1Ex4Wr-0007T7-II
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 07:38:22 -0800
+Received: from list by ciao.gmane.org with local (Exim 4.43)
+	id 1Ex4WS-0006Oq-OK
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 16:37:57 +0100
 Received: from adsl-69-234-210-171.dsl.irvnca.pacbell.net ([69.234.210.171])
         by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
         id 1AlnuQ-0007hv-00
-        for <nfs@lists.sourceforge.net>; Wed, 11 Jan 2006 15:51:38 +0100
+        for <nfs@lists.sourceforge.net>; Thu, 12 Jan 2006 16:37:56 +0100
 Received: from wa1ter by adsl-69-234-210-171.dsl.irvnca.pacbell.net with local (Gmexim 0.1 (Debian))
         id 1AlnuQ-0007hv-00
-        for <nfs@lists.sourceforge.net>; Wed, 11 Jan 2006 15:51:38 +0100
+        for <nfs@lists.sourceforge.net>; Thu, 12 Jan 2006 16:37:56 +0100
 To: nfs@lists.sourceforge.net
+In-Reply-To: <dq35hi$372$1@sea.gmane.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,24 +40,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
+walt wrote:
+> Hi all,
+> 
+[...]
+> #mount -t nfs k2:/ /mnt/nfs/
+> mount: Cannot allocate memory
 
-This recent commit has broken NFS for me:
-
-commit a334de28665b14f0a33df82699fa9a78cfeedf31
-tree 21749c30159b1e0bf4cae7e174ec1bdcf3859ef4
-parent 93fbf1a5de8afde08988dda3735669099dee84d0
-author David Shaw <dshaw@jabberwocky.com> Fri, 06 Jan 2006 00:19:58 -0800
-committer Linus Torvalds <torvalds@g5.osdl.org> Fri, 06 Jan 2006
-08:33:59 -0800
-
-    [PATCH] knfsd: check error status from vfs_getattr and i_op->fsync
-
-#mount -t nfs k2:/ /mnt/nfs/
-mount: Cannot allocate memory
-
-Reverting that one commit makes nfs work normally again.  Anyone
-else seeing this?
+I just discovered that only version 2 is broken -- NFS v3
+works fine.
 
 
 
