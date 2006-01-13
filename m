@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 007 of 26] nfsd4: remove release_state_owner()
-Date: Fri, 13 Jan 2006 12:00:54 +1100
-Message-ID: <1060113010054.23010@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 004 of 26] nfsd4: misc lock fixes
+Date: Fri, 13 Jan 2006 12:00:51 +1100
+Message-ID: <1060113010051.22974@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJN-0002Xy-Fq
+	id 1ExDJN-0002Y7-Tn
 	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:01 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJN-0004p9-1V
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:01 -0800
+	id 1ExDJN-0006iM-Ft
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:02 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.16] == smtp-dist-01.services.comms.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Fri, 13 Jan 2006 12:00:58 +1100
-Received: From
-	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
+	smtp-dist.unsw.edu.au ([149.171.97.17] == smtp-dist-02.services.comms.unsw.EDU.AU)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
 	Fri, 13 Jan 2006 12:00:55 +1100
+Received: From
+	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Fri, 13 Jan 2006 12:00:52 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,82 +35,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-It's confusing having both release_stateowner() and release_state_owner().  And
-as it turns out, release_state_owner() is short and only called from one place;
-so just remove it.
+Logic fixes for LOCK and UNLOCK.
 
-Also note the confirmed check is superfluous there--preprocess_seqid_op
-already check this.
+- Move the permission check on the current file handle outside of
+nfs4_lock_state()
+- remove the file manager fl_release_private calls; fl_ops is not set.
 
-And remove a redundant comment and a superfluous line assignment while we're at
-it.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   31 +++++++++----------------------
- 1 file changed, 9 insertions(+), 22 deletions(-)
+ ./fs/nfsd/nfs4state.c |   14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:51:05.000000000 +1100
+--- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:50:54.000000000 +1100
 +++ ./fs/nfsd/nfs4state.c	2006-01-13 11:51:05.000000000 +1100
-@@ -1178,7 +1178,6 @@ release_stateid(struct nfs4_stateid *stp
- 		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
- 	put_nfs4_file(stp->st_file);
- 	kmem_cache_free(stateid_slab, stp);
--	stp = NULL;
- }
+@@ -2700,6 +2700,11 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 	if (check_lock_length(lock->lk_offset, lock->lk_length))
+ 		 return nfserr_inval;
  
- static void
-@@ -1191,22 +1190,6 @@ move_to_close_lru(struct nfs4_stateowner
- 	sop->so_time = get_seconds();
- }
- 
--static void
--release_state_owner(struct nfs4_stateid *stp, int flag)
--{
--	struct nfs4_stateowner *sop = stp->st_stateowner;
--
--	dprintk("NFSD: release_state_owner\n");
--	release_stateid(stp, flag);
--
--	/* place unused nfs4_stateowners on so_close_lru list to be
--	 * released by the laundromat service after the lease period
--	 * to enable us to handle CLOSE replay
--	 */
--	if (sop->so_confirmed && list_empty(&sop->so_stateids))
--		move_to_close_lru(sop);
--}
--
- static int
- cmp_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner, clientid_t *clid) {
- 	return ((sop->so_owner.len == owner->len) && 
-@@ -2423,15 +2406,19 @@ nfsd4_close(struct svc_rqst *rqstp, stru
- 					CHECK_FH | OPEN_STATE | CLOSE_STATE,
- 					&close->cl_stateowner, &stp, NULL)))
- 		goto out; 
--	/*
--	*  Return success, but first update the stateid.
--	*/
- 	status = nfs_ok;
- 	update_stateid(&stp->st_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
- 
--	/* release_state_owner() calls nfsd_close() if needed */
--	release_state_owner(stp, OPEN_STATE);
-+	/* release_stateid() calls nfsd_close() if needed */
-+	release_stateid(stp, OPEN_STATE);
++	if ((status = fh_verify(rqstp, current_fh, S_IFREG, MAY_LOCK))) {
++		dprintk("NFSD: nfsd4_lock: permission denied!\n");
++		return status;
++	}
 +
-+	/* place unused nfs4_stateowners on so_close_lru list to be
-+	 * released by the laundromat service after the lease period
-+	 * to enable us to handle CLOSE replay
-+	 */
-+	if (list_empty(&close->cl_stateowner->so_stateids))
-+		move_to_close_lru(close->cl_stateowner);
- out:
- 	if (close->cl_stateowner) {
- 		nfs4_get_stateowner(close->cl_stateowner);
+ 	nfs4_lock_state();
+ 
+ 	if (lock->lk_is_new) {
+@@ -2757,11 +2762,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 	/* lock->lk_stateowner and lock_stp have been created or found */
+ 	filp = lock_stp->st_vfs_file;
+ 
+-	if ((status = fh_verify(rqstp, current_fh, S_IFREG, MAY_LOCK))) {
+-		dprintk("NFSD: nfsd4_lock: permission denied!\n");
+-		goto out;
+-	}
+-
+ 	status = nfserr_grace;
+ 	if (nfs4_in_grace() && !lock->lk_reclaim)
+ 		goto out;
+@@ -2802,8 +2802,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 	*/
+ 
+ 	status = posix_lock_file(filp, &file_lock);
+-	if (file_lock.fl_ops && file_lock.fl_ops->fl_release_private)
+-		file_lock.fl_ops->fl_release_private(&file_lock);
+ 	dprintk("NFSD: nfsd4_lock: posix_lock_file status %d\n",status);
+ 	switch (-status) {
+ 	case 0: /* success! */
+@@ -2977,8 +2975,6 @@ nfsd4_locku(struct svc_rqst *rqstp, stru
+ 	*  Try to unlock the file in the VFS.
+ 	*/
+ 	status = posix_lock_file(filp, &file_lock); 
+-	if (file_lock.fl_ops && file_lock.fl_ops->fl_release_private)
+-		file_lock.fl_ops->fl_release_private(&file_lock);
+ 	if (status) {
+ 		dprintk("NFSD: nfs4_locku: posix_lock_file failed!\n");
+ 		goto out_nfserr;
 
 
 -------------------------------------------------------
