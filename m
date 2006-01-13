@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 001 of 26] Check error status from nfsd_sync_dir
-Date: Fri, 13 Jan 2006 12:00:47 +1100
-Message-ID: <1060113010047.22935@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 007 of 26] nfsd4: remove release_state_owner()
+Date: Fri, 13 Jan 2006 12:00:54 +1100
+Message-ID: <1060113010054.23010@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJN-0002Xz-Ia
+	id 1ExDJN-0002Xy-Fq
 	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:01 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJM-0006i2-Tz
+	id 1ExDJN-0004p9-1V
 	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:01 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.18] == smtp-dist-03.services.comms.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:00:53 +1100
+	smtp-dist.unsw.edu.au ([149.171.97.16] == smtp-dist-01.services.comms.unsw.EDU.AU)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Fri, 13 Jan 2006 12:00:58 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:00:49 +1100
+	Fri, 13 Jan 2006 12:00:55 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,211 +35,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-From: YAMAMOTO Takashi <yamamoto@valinux.co.jp>
+It's confusing having both release_stateowner() and release_state_owner().  And
+as it turns out, release_state_owner() is short and only called from one place;
+so just remove it.
 
-Change nfsd_sync_dir to return an error if ->sync fails, and pass that
-error up through the stack.
-This involves a number of rearrangements of error paths, and care to
-distinguish between Linux -errno numbers and NFSERR numbers.
+Also note the confirmed check is superfluous there--preprocess_seqid_op
+already check this.
 
-In the 'create' routines, we continue with the 'setattr' even if a
-previous sync_dir failed.
+And remove a redundant comment and a superfluous line assignment while we're at
+it.
 
-This patch is quite different from Takashi's in a few ways, but there
-is still a strong lineage.
-
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/vfs.c             |   80 ++++++++++++++++++++++++--------------------
- ./include/linux/nfsd/nfsd.h |    2 -
- 2 files changed, 45 insertions(+), 37 deletions(-)
+ ./fs/nfsd/nfs4state.c |   31 +++++++++----------------------
+ 1 file changed, 9 insertions(+), 22 deletions(-)
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2006-01-13 11:48:43.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2006-01-13 11:48:46.000000000 +1100
-@@ -710,14 +710,15 @@ static inline int nfsd_dosync(struct fil
- {
- 	struct inode *inode = dp->d_inode;
- 	int (*fsync) (struct file *, struct dentry *, int);
--	int err = nfs_ok;
-+	int err;
- 
--	filemap_fdatawrite(inode->i_mapping);
--	if (fop && (fsync = fop->fsync))
--		err=fsync(filp, dp, 0);
--	filemap_fdatawait(inode->i_mapping);
-+	err = filemap_fdatawrite(inode->i_mapping);
-+	if (err == 0 && fop && (fsync = fop->fsync))
-+		err = fsync(filp, dp, 0);
-+	if (err == 0)
-+		err = filemap_fdatawait(inode->i_mapping);
- 
--	return nfserrno(err);
-+	return err;
- }
- 	
- 
-@@ -734,10 +735,10 @@ nfsd_sync(struct file *filp)
- 	return err;
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:51:05.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2006-01-13 11:51:05.000000000 +1100
+@@ -1178,7 +1178,6 @@ release_stateid(struct nfs4_stateid *stp
+ 		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
+ 	put_nfs4_file(stp->st_file);
+ 	kmem_cache_free(stateid_slab, stp);
+-	stp = NULL;
  }
  
--void
-+int
- nfsd_sync_dir(struct dentry *dp)
- {
--	nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
-+	return nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
+ static void
+@@ -1191,22 +1190,6 @@ move_to_close_lru(struct nfs4_stateowner
+ 	sop->so_time = get_seconds();
  }
  
- /*
-@@ -1065,6 +1066,7 @@ nfsd_commit(struct svc_rqst *rqstp, stru
- 	if (EX_ISSYNC(fhp->fh_export)) {
- 		if (file->f_op && file->f_op->fsync) {
- 			err = nfsd_sync(file);
-+			err = nfserrno(err);
- 		} else {
- 			err = nfserr_notsupp;
- 		}
-@@ -1175,7 +1177,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
- 		goto out_nfserr;
- 
- 	if (EX_ISSYNC(fhp->fh_export)) {
--		nfsd_sync_dir(dentry);
-+		err = nfsd_sync_dir(dentry);
- 		write_inode_now(dchild->d_inode, 1);
- 	}
- 
-@@ -1185,9 +1187,11 @@ nfsd_create(struct svc_rqst *rqstp, stru
- 	 * send along the gid when it tries to implement setgid
- 	 * directories via NFS.
- 	 */
--	err = 0;
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0)
--		err = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-+	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
-+		int err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-+		if (err2)
-+			err = err2;
-+	}
- 	/*
- 	 * Update the file handle to get the new inode info.
- 	 */
-@@ -1306,17 +1310,12 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		goto out_nfserr;
- 
- 	if (EX_ISSYNC(fhp->fh_export)) {
--		nfsd_sync_dir(dentry);
-+		err = nfsd_sync_dir(dentry);
-+		if (err)
-+			err = nfserrno(err);
- 		/* setattr will sync the child (or not) */
- 	}
- 
--	/*
--	 * Update the filehandle to get the new inode info.
+-static void
+-release_state_owner(struct nfs4_stateid *stp, int flag)
+-{
+-	struct nfs4_stateowner *sop = stp->st_stateowner;
+-
+-	dprintk("NFSD: release_state_owner\n");
+-	release_stateid(stp, flag);
+-
+-	/* place unused nfs4_stateowners on so_close_lru list to be
+-	 * released by the laundromat service after the lease period
+-	 * to enable us to handle CLOSE replay
 -	 */
--	err = fh_update(resfhp);
--	if (err)
--		goto out;
+-	if (sop->so_confirmed && list_empty(&sop->so_stateids))
+-		move_to_close_lru(sop);
+-}
 -
- 	if (createmode == NFS3_CREATE_EXCLUSIVE) {
- 		/* Cram the verifier into atime/mtime/mode */
- 		iap->ia_valid = ATTR_MTIME|ATTR_ATIME
-@@ -1337,8 +1336,17 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 	 * implement setgid directories via NFS. Clear out all that cruft.
- 	 */
-  set_attr:
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID)) != 0)
-- 		err = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-+	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID)) != 0) {
-+ 		int err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-+		if (err2)
-+			err = nfserrno(err2);
-+	}
+ static int
+ cmp_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner, clientid_t *clid) {
+ 	return ((sop->so_owner.len == owner->len) && 
+@@ -2423,15 +2406,19 @@ nfsd4_close(struct svc_rqst *rqstp, stru
+ 					CHECK_FH | OPEN_STATE | CLOSE_STATE,
+ 					&close->cl_stateowner, &stp, NULL)))
+ 		goto out; 
+-	/*
+-	*  Return success, but first update the stateid.
+-	*/
+ 	status = nfs_ok;
+ 	update_stateid(&stp->st_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 
+-	/* release_state_owner() calls nfsd_close() if needed */
+-	release_state_owner(stp, OPEN_STATE);
++	/* release_stateid() calls nfsd_close() if needed */
++	release_stateid(stp, OPEN_STATE);
 +
-+	/*
-+	 * Update the filehandle to get the new inode info.
++	/* place unused nfs4_stateowners on so_close_lru list to be
++	 * released by the laundromat service after the lease period
++	 * to enable us to handle CLOSE replay
 +	 */
-+	if (!err)
-+		err = fh_update(resfhp);
- 
-  out:
- 	fh_unlock(fhp);
-@@ -1447,10 +1455,10 @@ nfsd_symlink(struct svc_rqst *rqstp, str
- 	} else
- 		err = vfs_symlink(dentry->d_inode, dnew, path, mode);
- 
--	if (!err) {
-+	if (!err)
- 		if (EX_ISSYNC(fhp->fh_export))
--			nfsd_sync_dir(dentry);
--	} else
-+			err = nfsd_sync_dir(dentry);
-+	if (err)
- 		err = nfserrno(err);
- 	fh_unlock(fhp);
- 
-@@ -1506,8 +1514,10 @@ nfsd_link(struct svc_rqst *rqstp, struct
- 	err = vfs_link(dold, dirp, dnew);
- 	if (!err) {
- 		if (EX_ISSYNC(ffhp->fh_export)) {
--			nfsd_sync_dir(ddir);
-+			err = nfsd_sync_dir(ddir);
- 			write_inode_now(dest, 1);
-+			if (err)
-+				err = nfserrno(err);
- 		}
- 	} else {
- 		if (err == -EXDEV && rqstp->rq_vers == 2)
-@@ -1595,8 +1605,9 @@ nfsd_rename(struct svc_rqst *rqstp, stru
- #endif
- 	err = vfs_rename(fdir, odentry, tdir, ndentry);
- 	if (!err && EX_ISSYNC(tfhp->fh_export)) {
--		nfsd_sync_dir(tdentry);
--		nfsd_sync_dir(fdentry);
-+		err = nfsd_sync_dir(tdentry);
-+		if (!err)
-+			err = nfsd_sync_dir(fdentry);
- 	}
- 
-  out_dput_new:
-@@ -1671,17 +1682,14 @@ nfsd_unlink(struct svc_rqst *rqstp, stru
- 
- 	dput(rdentry);
- 
--	if (err)
--		goto out_nfserr;
--	if (EX_ISSYNC(fhp->fh_export)) 
--		nfsd_sync_dir(dentry);
--
--out:
--	return err;
-+	if (err == 0 &&
-+	    EX_ISSYNC(fhp->fh_export))
-+			err = nfsd_sync_dir(dentry);
- 
- out_nfserr:
- 	err = nfserrno(err);
--	goto out;
-+out:
-+	return err;
- }
- 
- /*
-
-diff ./include/linux/nfsd/nfsd.h~current~ ./include/linux/nfsd/nfsd.h
---- ./include/linux/nfsd/nfsd.h~current~	2006-01-13 11:48:43.000000000 +1100
-+++ ./include/linux/nfsd/nfsd.h	2006-01-13 11:48:46.000000000 +1100
-@@ -124,7 +124,7 @@ int		nfsd_statfs(struct svc_rqst *, stru
- 
- int		nfsd_notify_change(struct inode *, struct iattr *);
- int		nfsd_permission(struct svc_export *, struct dentry *, int);
--void		nfsd_sync_dir(struct dentry *dp);
-+int		nfsd_sync_dir(struct dentry *dp);
- 
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- #ifdef CONFIG_NFSD_V2_ACL
++	if (list_empty(&close->cl_stateowner->so_stateids))
++		move_to_close_lru(close->cl_stateowner);
+ out:
+ 	if (close->cl_stateowner) {
+ 		nfs4_get_stateowner(close->cl_stateowner);
 
 
 -------------------------------------------------------
