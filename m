@@ -1,27 +1,23 @@
-From: Mailer Daemon <Mailer-Daemon@punt-3.mail.demon.net>
-Subject: Mail delivery failure
-Date: Fri, 13 Jan 2006 02:30:41 -0000
-Message-ID: <1137119441-25262-4556-dsn@lon1-punt3-2.mail.demon.net>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH kNFSd 014 of 26] nfsd4: recovery lookup dir check
+Date: Fri, 13 Jan 2006 09:35:25 +0000
+Message-ID: <20060113093525.GA10814@infradead.org>
+References: <20060113115744.22704.patches@notabene> <1060113010059.23096@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: multipart/report; report-type=delivery-status;
- boundary="=_1137119441_25262_4556_="
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExJt7-0004Dz-0Y
-	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 00:02:21 -0800
-Received: from anchor-post-31.mail.demon.net ([194.217.242.89])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExJt6-0000cI-OG
-	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 00:02:21 -0800
-Received: from lon1-punt3-2.mail.demon.net ([194.217.242.165] helo=punt-3.mail.demon.net)
-	by anchor-post-31.mail.demon.net with esmtp (Exim 4.42)
-	id 1ExGtS-000NIy-3i
-	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 04:50:30 +0000
-Received: from punt-3.mail.demon.net ([194.217.242.254])
-	by punt-3.mail.demon.net with esmtp id 1ExEi9-0006ZX-9M
-	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 02:30:41 +0000
-To: nfs@lists.sourceforge.net
+	id 1ExLLG-0007n0-1F
+	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 01:35:30 -0800
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1ExLLE-0002Jf-PJ
+	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 01:35:30 -0800
+To: NeilBrown <neilb@cse.unsw.edu.au>
+In-Reply-To: <1060113010059.23096@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,51 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---=_1137119441_25262_4556_=
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+On Fri, Jan 13, 2006 at 12:00:59PM +1100, NeilBrown wrote:
+> 
+> Make sure we get a directory when we look up the recovery directory.
+> 
+> Thanks to Christoph Hellwig for the bug report.
+> 
+> Based on feedback from Christoph and others, we may remove the need for
+> this lookup and just pass in a file descriptor from userspace instead,
+> and/or completely move the directory handling to userspace.  For now we're
+> just fixing the obvious bugs.
 
-This message was created automatically by mail delivery software.
-
-A message you sent could not be delivered to the following recipients:
-    andrew@g4klx.demon.co.uk
-
-The message has not been collected after 30 days
-
---=_1137119441_25262_4556_=
-Content-Type: message/delivery-status
-
-Reporting-MTA: dns; punt-3.mail.demon.net
-
-Final-Recipient: rfc822; andrew@g4klx.demon.co.uk
-Action: failed
-Status: 5.4.7
-
---=_1137119441_25262_4556_=
-Content-Type: text/rfc822-headers; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-
-Received: from punt3.mail.demon.net by mailstore
-	for andrew@g4klx.demon.co.uk id 1Em6Tu-43q000-07-Fg1;
-	Tue, 13 Dec 2005 09:29:58 +0000
-Received: from [194.217.242.245] (lhlo=lon1-hub.mail.demon.net)
-	by punt3.mail.demon.net with lmtp id 1Em6Tu-43q000-07
-	for andrew@g4klx.demon.co.uk; Tue, 13 Dec 2005 09:29:58 +0000
-Received: from [202.56.207.29] (helo=lists.sourceforge.net)
-	by lon1-hub.mail.demon.net with esmtp id 1Em6Tt-0005Ao-7Q
-	for andrew@g4klx.demon.co.uk; Tue, 13 Dec 2005 09:29:58 +0000
-From: nfs@lists.sourceforge.net
-To: andrew@g4klx.demon.co.uk
-Subject: **VIRUS FOUND MAIL REJECTED **  Good day
-Date: Tue, 13 Dec 2005 14:54:12 +0530
-MIME-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0004_37697FA0.1FA5A516"
-X-Priority: 3
-X-MSMail-Priority: Normal
-
-
---=_1137119441_25262_4556_=--
+So can you please work on this real fix now?  It's bad enough the current
+crappy state has been in mainline for so long.
 
 
 
