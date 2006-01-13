@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 009 of 26] nfsd4: operation debugging
-Date: Fri, 13 Jan 2006 12:00:56 +1100
-Message-ID: <1060113010056.23036@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 002 of 26] Remove inline from a couple of large NFS functions.
+Date: Fri, 13 Jan 2006 12:00:49 +1100
+Message-ID: <1060113010049.22948@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJQ-0002Z0-DQ
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:04 -0800
+	id 1ExDJO-0002YK-Au
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:02 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJP-0004sn-UK
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:04 -0800
+	id 1ExDJM-0006ho-V5
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:02 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.18] == smtp-dist-03.services.comms.unsw.EDU.AU)
+	smtp-dist.unsw.edu.au ([149.171.97.17] == smtp-dist-02.services.comms.unsw.EDU.AU)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:01:00 +1100
+	Fri, 13 Jan 2006 12:00:51 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:00:57 +1100
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Fri, 13 Jan 2006 12:00:49 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,27 +35,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Simple, useful debugging printk: print the number of each op as we process it.
+These are both called from two places close together.
+I could rearrange that code so there is only one call site,
+but just removing the 'inline' is probably best.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c |    2 ++
- 1 file changed, 2 insertions(+)
+ ./fs/nfsd/vfs.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2006-01-13 11:50:54.000000000 +1100
-+++ ./fs/nfsd/nfs4proc.c	2006-01-13 11:51:06.000000000 +1100
-@@ -768,6 +768,8 @@ nfsd4_proc_compound(struct svc_rqst *rqs
- 	while (!status && resp->opcnt < args->opcnt) {
- 		op = &args->ops[resp->opcnt++];
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2006-01-13 11:48:46.000000000 +1100
++++ ./fs/nfsd/vfs.c	2006-01-13 11:49:45.000000000 +1100
+@@ -815,7 +815,7 @@ nfsd_read_actor(read_descriptor_t *desc,
+ 	return size;
+ }
  
-+		dprintk("nfsv4 compound op #%d: %d\n", resp->opcnt, op->opnum);
-+
- 		/*
- 		 * The XDR decode routines may have pre-set op->status;
- 		 * for example, if there is a miscellaneous XDR error
+-static inline int
++static int
+ nfsd_vfs_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+               loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
+ {
+@@ -879,7 +879,7 @@ static void kill_suid(struct dentry *den
+ 	mutex_unlock(&dentry->d_inode->i_mutex);
+ }
+ 
+-static inline int
++static int
+ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 				loff_t offset, struct kvec *vec, int vlen,
+ 	   			unsigned long cnt, int *stablep)
 
 
 -------------------------------------------------------
