@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 013 of 26] nfsd4: fix open of recovery directory
-Date: Fri, 13 Jan 2006 12:00:59 +1100
-Message-ID: <1060113010059.23084@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 024 of 26] nfsd4_truncate() bogus return value
+Date: Fri, 13 Jan 2006 12:01:06 +1100
+Message-ID: <1060113010106.23216@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJW-0002Zu-1E
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:10 -0800
-Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
+	id 1ExDJZ-0002aO-49
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:13 -0800
+Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJU-0004yY-Dp
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:10 -0800
+	id 1ExDJY-00053T-Gz
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:13 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.18] == smtp-dist-03.services.comms.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:01:03 +1100
+	smtp-dist.unsw.edu.au ([149.171.97.17] == smtp-dist-02.services.comms.unsw.EDU.AU)
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Fri, 13 Jan 2006 12:01:09 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
-	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:00:59 +1100
+	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	Fri, 13 Jan 2006 12:01:07 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,30 +35,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-We should be opening this directory RDONLY, not RDWR.
+From: Al Viro <viro@zeniv.linux.org.uk>
+Date: 1135492779 -0500
 
-Thanks to Christoph Hellwig for the bug report.
+-EINVAL (in host order, no less) is not a good thing to return to client.
+nfsd4_truncate() returns it in one case and its callers expect nfs_....
+from it.  AFAICS, it should be nfserr_inval
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4recover.c |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ ./fs/nfsd/nfs4state.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff ./fs/nfsd/nfs4recover.c~current~ ./fs/nfsd/nfs4recover.c
---- ./fs/nfsd/nfs4recover.c~current~	2006-01-13 11:50:54.000000000 +1100
-+++ ./fs/nfsd/nfs4recover.c	2006-01-13 11:51:07.000000000 +1100
-@@ -222,8 +222,7 @@ nfsd4_list_rec_dir(struct dentry *dir, r
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:51:09.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2006-01-13 11:51:10.000000000 +1100
+@@ -1600,7 +1600,7 @@ nfsd4_truncate(struct svc_rqst *rqstp, s
+ 	if (!open->op_truncate)
+ 		return 0;
+ 	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
+-		return -EINVAL;
++		return nfserr_inval;
+ 	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
+ }
  
- 	nfs4_save_user(&uid, &gid);
- 
--	filp = dentry_open(dget(dir), mntget(rec_dir.mnt),
--			O_RDWR);
-+	filp = dentry_open(dget(dir), mntget(rec_dir.mnt), O_RDONLY);
- 	status = PTR_ERR(filp);
- 	if (IS_ERR(filp))
- 		goto out;
 
 
 -------------------------------------------------------
