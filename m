@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 014 of 26] nfsd4: recovery lookup dir check
-Date: Fri, 13 Jan 2006 12:00:59 +1100
-Message-ID: <1060113010059.23096@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 025 of 26] NFSERR_SERVERFAULT returned host-endian
+Date: Fri, 13 Jan 2006 12:01:07 +1100
+Message-ID: <1060113010107.23228@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJb-0002b0-Ps
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:15 -0800
+	id 1ExDJc-0002b8-QQ
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:16 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJW-00050c-KN
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:15 -0800
+	id 1ExDJc-00057H-Bz
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:16 -0800
 Received: From
 	smtp-dist.unsw.edu.au ([149.171.97.17] == smtp-dist-02.services.comms.unsw.EDU.AU)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:01:03 +1100
+	Fri, 13 Jan 2006 12:01:12 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Fri, 13 Jan 2006 12:01:00 +1100
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Fri, 13 Jan 2006 12:01:08 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,39 +35,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Make sure we get a directory when we look up the recovery directory.
+From: Al Viro <viro@zeniv.linux.org.uk>
+Date: 1135492936 -0500
 
-Thanks to Christoph Hellwig for the bug report.
+->rp_status is network-endian and nobody byteswaps it before sending to
+client; putting NFSERR_SERVERFAULT instead of nfserr_serverfault in there
+is not nice...
 
-Based on feedback from Christoph and others, we may remove the need for
-this lookup and just pass in a file descriptor from userspace instead,
-and/or completely move the directory handling to userspace.  For now we're
-just fixing the obvious bugs.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4recover.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ ./fs/nfsd/nfs4state.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff ./fs/nfsd/nfs4recover.c~current~ ./fs/nfsd/nfs4recover.c
---- ./fs/nfsd/nfs4recover.c~current~	2006-01-13 11:51:07.000000000 +1100
-+++ ./fs/nfsd/nfs4recover.c	2006-01-13 11:51:08.000000000 +1100
-@@ -399,9 +399,10 @@ nfsd4_init_recdir(char *rec_dirname)
- 
- 	nfs4_save_user(&uid, &gid);
- 
--	status = path_lookup(rec_dirname, LOOKUP_FOLLOW, &rec_dir);
--	if (status == -ENOENT)
--		printk("NFSD: recovery directory %s doesn't exist\n",
-+	status = path_lookup(rec_dirname, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,
-+			&rec_dir);
-+	if (status)
-+		printk("NFSD: unable to find recovery directory %s\n",
- 				rec_dirname);
- 
- 	if (!status)
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:51:10.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2006-01-13 11:51:10.000000000 +1100
+@@ -1088,7 +1088,7 @@ alloc_init_open_stateowner(unsigned int 
+ 	sop->so_seqid = open->op_seqid;
+ 	sop->so_confirmed = 0;
+ 	rp = &sop->so_replay;
+-	rp->rp_status = NFSERR_SERVERFAULT;
++	rp->rp_status = nfserr_serverfault;
+ 	rp->rp_buflen = 0;
+ 	rp->rp_buf = rp->rp_ibuf;
+ 	return sop;
+@@ -2583,7 +2583,7 @@ alloc_init_lock_stateowner(unsigned int 
+ 	sop->so_seqid = lock->lk_new_lock_seqid + 1;
+ 	sop->so_confirmed = 1;
+ 	rp = &sop->so_replay;
+-	rp->rp_status = NFSERR_SERVERFAULT;
++	rp->rp_status = nfserr_serverfault;
+ 	rp->rp_buflen = 0;
+ 	rp->rp_buf = rp->rp_ibuf;
+ 	return sop;
 
 
 -------------------------------------------------------
