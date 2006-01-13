@@ -1,19 +1,27 @@
-From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 003 of 3] Provide missing NFSv2 part of patch for checking vfs_getattr.
-Date: Fri, 13 Jan 2006 14:14:28 +1100
-Message-ID: <1060113031428.4672@cse.unsw.edu.au>
-References: <20060113141059.4573.patches@notabene>
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+From: Mailer Daemon <Mailer-Daemon@punt-3.mail.demon.net>
+Subject: Mail delivery failure
+Date: Fri, 13 Jan 2006 02:30:41 -0000
+Message-ID: <1137119441-25262-4556-dsn@lon1-punt3-2.mail.demon.net>
+Mime-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+ boundary="=_1137119441_25262_4556_="
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExFOe-0001ro-9W
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 19:14:36 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1ExJt7-0004Dz-0Y
+	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 00:02:21 -0800
+Received: from anchor-post-31.mail.demon.net ([194.217.242.89])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExFOd-0007nj-MD
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 19:14:36 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1ExJt6-0000cI-OG
+	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 00:02:21 -0800
+Received: from lon1-punt3-2.mail.demon.net ([194.217.242.165] helo=punt-3.mail.demon.net)
+	by anchor-post-31.mail.demon.net with esmtp (Exim 4.42)
+	id 1ExGtS-000NIy-3i
+	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 04:50:30 +0000
+Received: from punt-3.mail.demon.net ([194.217.242.254])
+	by punt-3.mail.demon.net with esmtp id 1ExEi9-0006ZX-9M
+	for nfs@lists.sourceforge.net; Fri, 13 Jan 2006 02:30:41 +0000
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,127 +35,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+--=_1137119441_25262_4556_=
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 
-From: David Shaw <dshaw@jabberwocky.com>
+This message was created automatically by mail delivery software.
 
-A recent patch which checked the return status of vfs_getattr in nfsd,
-completely missed the nfsproc.c (NFSv2) part.  Here is it.
+A message you sent could not be delivered to the following recipients:
+    andrew@g4klx.demon.co.uk
 
-This patch moved the call to vfs_getattr from the xdr encoding (at
-which point it is too late to return an error) to the call handling.
-This means several calls to vfs_getattr are needed in nfsproc.c.  Many
-are encapsulated in nfsd_return_attrs and nfsd_return_dirop.
+The message has not been collected after 30 days
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+--=_1137119441_25262_4556_=
+Content-Type: message/delivery-status
 
-### Diffstat output
- ./fs/nfsd/nfsproc.c |   37 ++++++++++++++++++++++++++++++-------
- 1 file changed, 30 insertions(+), 7 deletions(-)
+Reporting-MTA: dns; punt-3.mail.demon.net
 
-diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
---- ./fs/nfsd/nfsproc.c~current~	2006-01-13 13:42:09.000000000 +1100
-+++ ./fs/nfsd/nfsproc.c	2006-01-13 13:42:14.000000000 +1100
-@@ -36,6 +36,22 @@ nfsd_proc_null(struct svc_rqst *rqstp, v
- 	return nfs_ok;
- }
- 
-+static int
-+nfsd_return_attrs(int err, struct nfsd_attrstat *resp)
-+{
-+	if (err) return err;
-+	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_mnt,
-+				    resp->fh.fh_dentry,
-+				    &resp->stat));
-+}
-+static int
-+nfsd_return_dirop(int err, struct nfsd_diropres *resp)
-+{
-+	if (err) return err;
-+	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_mnt,
-+				    resp->fh.fh_dentry,
-+				    &resp->stat));
-+}
- /*
-  * Get a file's attributes
-  * N.B. After this call resp->fh needs an fh_put
-@@ -44,10 +60,12 @@ static int
- nfsd_proc_getattr(struct svc_rqst *rqstp, struct nfsd_fhandle  *argp,
- 					  struct nfsd_attrstat *resp)
- {
-+	int nfserr;
- 	dprintk("nfsd: GETATTR  %s\n", SVCFH_fmt(&argp->fh));
- 
- 	fh_copy(&resp->fh, &argp->fh);
--	return fh_verify(rqstp, &resp->fh, 0, MAY_NOP);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP);
-+	return nfsd_return_attrs(nfserr, resp);
- }
- 
- /*
-@@ -58,12 +76,14 @@ static int
- nfsd_proc_setattr(struct svc_rqst *rqstp, struct nfsd_sattrargs *argp,
- 					  struct nfsd_attrstat  *resp)
- {
-+	int nfserr;
- 	dprintk("nfsd: SETATTR  %s, valid=%x, size=%ld\n",
- 		SVCFH_fmt(&argp->fh),
- 		argp->attrs.ia_valid, (long) argp->attrs.ia_size);
- 
- 	fh_copy(&resp->fh, &argp->fh);
--	return nfsd_setattr(rqstp, &resp->fh, &argp->attrs,0, (time_t)0);
-+	nfserr = nfsd_setattr(rqstp, &resp->fh, &argp->attrs,0, (time_t)0);
-+	return nfsd_return_attrs(nfserr, resp);
- }
- 
- /*
-@@ -86,7 +106,7 @@ nfsd_proc_lookup(struct svc_rqst *rqstp,
- 				 &resp->fh);
- 
- 	fh_put(&argp->fh);
--	return nfserr;
-+	return nfsd_return_dirop(nfserr, resp);
- }
- 
- /*
-@@ -142,7 +162,10 @@ nfsd_proc_read(struct svc_rqst *rqstp, s
- 			   	  argp->vec, argp->vlen,
- 				  &resp->count);
- 
--	return nfserr;
-+	if (nfserr) return nfserr;
-+	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_mnt,
-+				    resp->fh.fh_dentry,
-+				    &resp->stat));
- }
- 
- /*
-@@ -165,7 +188,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, 
- 				   argp->vec, argp->vlen,
- 				   argp->len,
- 				   &stable);
--	return nfserr;
-+	return nfsd_return_attrs(nfserr, resp);
- }
- 
- /*
-@@ -322,7 +345,7 @@ out_unlock:
- 
- done:
- 	fh_put(dirfhp);
--	return nfserr;
-+	return nfsd_return_dirop(nfserr, resp);
- }
- 
- static int
-@@ -425,7 +448,7 @@ nfsd_proc_mkdir(struct svc_rqst *rqstp, 
- 	nfserr = nfsd_create(rqstp, &argp->fh, argp->name, argp->len,
- 				    &argp->attrs, S_IFDIR, 0, &resp->fh);
- 	fh_put(&argp->fh);
--	return nfserr;
-+	return nfsd_return_dirop(nfserr, resp);
- }
- 
- /*
+Final-Recipient: rfc822; andrew@g4klx.demon.co.uk
+Action: failed
+Status: 5.4.7
+
+--=_1137119441_25262_4556_=
+Content-Type: text/rfc822-headers; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+Received: from punt3.mail.demon.net by mailstore
+	for andrew@g4klx.demon.co.uk id 1Em6Tu-43q000-07-Fg1;
+	Tue, 13 Dec 2005 09:29:58 +0000
+Received: from [194.217.242.245] (lhlo=lon1-hub.mail.demon.net)
+	by punt3.mail.demon.net with lmtp id 1Em6Tu-43q000-07
+	for andrew@g4klx.demon.co.uk; Tue, 13 Dec 2005 09:29:58 +0000
+Received: from [202.56.207.29] (helo=lists.sourceforge.net)
+	by lon1-hub.mail.demon.net with esmtp id 1Em6Tt-0005Ao-7Q
+	for andrew@g4klx.demon.co.uk; Tue, 13 Dec 2005 09:29:58 +0000
+From: nfs@lists.sourceforge.net
+To: andrew@g4klx.demon.co.uk
+Subject: **VIRUS FOUND MAIL REJECTED **  Good day
+Date: Tue, 13 Dec 2005 14:54:12 +0530
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0004_37697FA0.1FA5A516"
+X-Priority: 3
+X-MSMail-Priority: Normal
+
+
+--=_1137119441_25262_4556_=--
+
 
 
 -------------------------------------------------------
