@@ -1,24 +1,24 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 020 of 26] nfsd4: fix open_downgrade
-Date: Fri, 13 Jan 2006 12:01:04 +1100
-Message-ID: <1060113010104.23168@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 019 of 26] nfsd4: don't create on open that fails due to ERR_GRACE
+Date: Fri, 13 Jan 2006 12:01:02 +1100
+Message-ID: <1060113010102.23156@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJc-0002b5-1o
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:16 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1ExDJe-0002bC-5w
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:18 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJW-0006pH-Jd
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:16 -0800
+	id 1ExDJY-00053f-Mz
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:18 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.17] == smtp-dist-02.services.comms.unsw.EDU.AU)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Fri, 13 Jan 2006 12:01:07 +1100
+	smtp-dist.unsw.edu.au ([149.171.97.18] == smtp-dist-03.services.comms.unsw.EDU.AU)
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
+	Fri, 13 Jan 2006 12:01:08 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
-	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
+	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
 	Fri, 13 Jan 2006 12:01:04 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
@@ -35,57 +35,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Bad bookkeeping of the share reservations when handling open upgrades
-was causing open downgrade to fail.
+In an earlier patch (commit b648330a1d741d5df8a5076b2a0a2519c69c8f41) I
+noted that a too-early grace-period check was preventing us from bumping
+the sequence id on open.  Unfortunately in that patch I stupidly moved the
+grace-period check back too far, so now an open for create can succesfully
+create the file while still returning ERR_GRACE.
+
+The correct place for that check is after we've set the open_owner and
+handled any replays, but before we actually start mucking with the filesystem.
+
+Thanks to Avishay Traeger for reporting the bug.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |   22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ ./fs/nfsd/nfs4proc.c  |    8 ++++++++
+ ./fs/nfsd/nfs4state.c |    6 ------
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2006-01-13 11:51:08.000000000 +1100
++++ ./fs/nfsd/nfs4proc.c	2006-01-13 11:51:09.000000000 +1100
+@@ -192,6 +192,14 @@ nfsd4_open(struct svc_rqst *rqstp, struc
+ 	}
+ 	if (status)
+ 		goto out;
++
++	/* Openowner is now set, so sequence id will get bumped.  Now we need
++	 * these checks before we do any creates: */
++	if (nfs4_in_grace() && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
++		return nfserr_grace;
++	if (!nfs4_in_grace() && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
++		return nfserr_no_grace;
++
+ 	switch (open->op_claim_type) {
+ 		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+ 			status = nfserr_inval;
 
 diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
 --- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:51:09.000000000 +1100
 +++ ./fs/nfsd/nfs4state.c	2006-01-13 11:51:09.000000000 +1100
-@@ -1609,26 +1609,26 @@ nfs4_upgrade_open(struct svc_rqst *rqstp
- {
- 	struct file *filp = stp->st_vfs_file;
- 	struct inode *inode = filp->f_dentry->d_inode;
--	unsigned int share_access;
-+	unsigned int share_access, new_writer;
+@@ -1732,12 +1732,6 @@ nfsd4_process_open2(struct svc_rqst *rqs
+ 	struct nfs4_delegation *dp = NULL;
  	int status;
  
- 	set_access(&share_access, stp->st_access_bmap);
--	share_access = ~share_access;
--	share_access &= open->op_share_access;
+-	if (nfs4_in_grace() && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+-		return nfserr_grace;
 -
--	if (!(share_access & NFS4_SHARE_ACCESS_WRITE))
--		return nfsd4_truncate(rqstp, cur_fh, open);
-+	new_writer = (~share_access) & open->op_share_access
-+			& NFS4_SHARE_ACCESS_WRITE;
- 
--	status = get_write_access(inode);
--	if (status)
--		return nfserrno(status);
-+	if (new_writer) {
-+		status = get_write_access(inode);
-+		if (status)
-+			return nfserrno(status);
-+	}
- 	status = nfsd4_truncate(rqstp, cur_fh, open);
- 	if (status) {
--		put_write_access(inode);
-+		if (new_writer)
-+			put_write_access(inode);
- 		return status;
- 	}
- 	/* remember the open */
--	filp->f_mode = (filp->f_mode | FMODE_WRITE) & ~FMODE_READ;
-+	filp->f_mode |= open->op_share_access;
- 	set_bit(open->op_share_access, &stp->st_access_bmap);
- 	set_bit(open->op_share_deny, &stp->st_deny_bmap);
- 
+-	if (!nfs4_in_grace() && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
+-		return nfserr_no_grace;
+-
+ 	status = nfserr_inval;
+ 	if (!TEST_ACCESS(open->op_share_access) || !TEST_DENY(open->op_share_deny))
+ 		goto out;
 
 
 -------------------------------------------------------
