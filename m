@@ -1,18 +1,18 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 002 of 3] Fix some more errno/nfserr confusion in vfs.c
-Date: Fri, 13 Jan 2006 14:14:28 +1100
-Message-ID: <1060113031428.4660@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 001 of 3] semaphore to mutex conversion.
+Date: Fri, 13 Jan 2006 14:14:27 +1100
+Message-ID: <1060113031427.4647@cse.unsw.edu.au>
 References: <20060113141059.4573.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExFOc-0001rZ-Ex
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 19:14:34 -0800
-Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
+	id 1ExFOd-0001rj-Ll
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 19:14:35 -0800
+Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExFOb-0002FY-OW
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 19:14:34 -0800
+	id 1ExFOb-0002Fv-W7
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 19:14:35 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,95 +28,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-From: NeilBrown <neilb@suse.de>
+From: Ingo Molnar <mingo@elte.hu>
 
-nfsd_sync* return an errno, which usually needs to be converted to an errno,
-sometimes immediately, sometimes a little later.
+the conversion was generated via scripts, and the result was validated
+automatically via a script as well.
 
-Also, nfsd_setattr returns an nfserr which SHOULDN'T be converted from
-an errno (because it isn't one).
+build and boot tested.
 
-Also some tidyups of the form:
-  err = XX
-  err = nfserrno(err)
-and
-  err = XX
-  if (err)
-      err = nfserrno(err)
-become
-  err = nfserrno(XX)
-
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/vfs.c |   17 ++++++-----------
- 1 file changed, 6 insertions(+), 11 deletions(-)
+ ./include/linux/sunrpc/svcsock.h |    2 +-
+ ./net/sunrpc/svcsock.c           |    8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
---- ./fs/nfsd/vfs.c~current~	2006-01-13 12:37:26.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2006-01-13 13:20:55.000000000 +1100
-@@ -891,9 +891,9 @@ nfsd_vfs_write(struct svc_rqst *rqstp, s
- 	int			err = 0;
- 	int			stable = *stablep;
+diff ./include/linux/sunrpc/svcsock.h~current~ ./include/linux/sunrpc/svcsock.h
+--- ./include/linux/sunrpc/svcsock.h~current~	2006-01-13 12:37:33.000000000 +1100
++++ ./include/linux/sunrpc/svcsock.h	2006-01-13 12:37:33.000000000 +1100
+@@ -36,7 +36,7 @@ struct svc_sock {
  
-+#ifdef MSNFS
- 	err = nfserr_perm;
+ 	struct list_head	sk_deferred;	/* deferred requests that need to
+ 						 * be revisted */
+-	struct semaphore        sk_sem;		/* to serialize sending data */
++	struct mutex		sk_mutex;	/* to serialize sending data */
  
--#ifdef MSNFS
- 	if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
- 		(!lock_may_write(file->f_dentry->d_inode, offset, cnt)))
- 		goto out;
-@@ -1065,8 +1065,7 @@ nfsd_commit(struct svc_rqst *rqstp, stru
- 		return err;
- 	if (EX_ISSYNC(fhp->fh_export)) {
- 		if (file->f_op && file->f_op->fsync) {
--			err = nfsd_sync(file);
--			err = nfserrno(err);
-+			err = nfserrno(nfsd_sync(file));
- 		} else {
- 			err = nfserr_notsupp;
- 		}
-@@ -1177,7 +1176,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
- 		goto out_nfserr;
+ 	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
+ 	int			(*sk_sendto)(struct svc_rqst *rqstp);
+
+diff ./net/sunrpc/svcsock.c~current~ ./net/sunrpc/svcsock.c
+--- ./net/sunrpc/svcsock.c~current~	2006-01-13 12:37:25.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2006-01-13 12:37:33.000000000 +1100
+@@ -1296,13 +1296,13 @@ svc_send(struct svc_rqst *rqstp)
+ 		xb->page_len +
+ 		xb->tail[0].iov_len;
  
- 	if (EX_ISSYNC(fhp->fh_export)) {
--		err = nfsd_sync_dir(dentry);
-+		err = nfserrno(nfsd_sync_dir(dentry));
- 		write_inode_now(dchild->d_inode, 1);
- 	}
+-	/* Grab svsk->sk_sem to serialize outgoing data. */
+-	down(&svsk->sk_sem);
++	/* Grab svsk->sk_mutex to serialize outgoing data. */
++	mutex_lock(&svsk->sk_mutex);
+ 	if (test_bit(SK_DEAD, &svsk->sk_flags))
+ 		len = -ENOTCONN;
+ 	else
+ 		len = svsk->sk_sendto(rqstp);
+-	up(&svsk->sk_sem);
++	mutex_unlock(&svsk->sk_mutex);
+ 	svc_sock_release(rqstp);
  
-@@ -1310,9 +1309,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		goto out_nfserr;
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+@@ -1351,7 +1351,7 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	svsk->sk_lastrecv = get_seconds();
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+ 	INIT_LIST_HEAD(&svsk->sk_ready);
+-	sema_init(&svsk->sk_sem, 1);
++	mutex_init(&svsk->sk_mutex);
  
- 	if (EX_ISSYNC(fhp->fh_export)) {
--		err = nfsd_sync_dir(dentry);
--		if (err)
--			err = nfserrno(err);
-+		err = nfserrno(nfsd_sync_dir(dentry));
- 		/* setattr will sync the child (or not) */
- 	}
- 
-@@ -1339,7 +1336,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID)) != 0) {
-  		int err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
- 		if (err2)
--			err = nfserrno(err2);
-+			err = err2;
- 	}
- 
- 	/*
-@@ -1514,10 +1511,8 @@ nfsd_link(struct svc_rqst *rqstp, struct
- 	err = vfs_link(dold, dirp, dnew);
- 	if (!err) {
- 		if (EX_ISSYNC(ffhp->fh_export)) {
--			err = nfsd_sync_dir(ddir);
-+			err = nfserrno(nfsd_sync_dir(ddir));
- 			write_inode_now(dest, 1);
--			if (err)
--				err = nfserrno(err);
- 		}
- 	} else {
- 		if (err == -EXDEV && rqstp->rq_vers == 2)
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
 
 
 -------------------------------------------------------
