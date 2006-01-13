@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 015 of 26] nfsd4: handle replays of failed open reclaims
-Date: Fri, 13 Jan 2006 12:01:00 +1100
-Message-ID: <1060113010100.23108@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 011 of 26] svcrpc: gss: server context init failure handling
+Date: Fri, 13 Jan 2006 12:00:57 +1100
+Message-ID: <1060113010057.23060@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJV-0002Zp-8h
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:09 -0800
+	id 1ExDJS-0002ZZ-Kp
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:06 -0800
 Received: from tone.orchestra.cse.unsw.edu.au ([129.94.242.59] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJT-0004xA-DC
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:09 -0800
+	id 1ExDJR-0004v9-MZ
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:06 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.18] == smtp-dist-03.services.comms.unsw.EDU.AU)
+	smtp-dist.unsw.edu.au ([149.171.97.16] == smtp-dist-01.services.comms.unsw.EDU.AU)
 	(for <nfs@lists.sourceforge.net>) By tone With Smtp ;
-	Fri, 13 Jan 2006 12:01:03 +1100
+	Fri, 13 Jan 2006 12:01:01 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:01:01 +1100
+	Fri, 13 Jan 2006 12:00:58 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -35,36 +35,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-We need to make sure open reclaims are marked confirmed immediately so that
-we can handle replays even if they fail (e.g. with a seqid-incrementing error).
-(See 8.1.8.)
+We require the server's gssd to create a completed context before asking the
+kernel to send a final context init reply.  However, gssd could be buggy, or
+under some bizarre circumstances we might purge the context from our cache
+before we get the chance to use it here.
+
+Handle this case by returning GSS_S_NO_CONTEXT to the client.
+
+Also move the relevant code here to a separate function rather than nesting
+excessively.
+
+>From Kevin Coffman <kwc@citi.umich.edu>
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c |    2 ++
- 1 file changed, 2 insertions(+)
+ ./net/sunrpc/auth_gss/svcauth_gss.c |   29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
-diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
---- ./fs/nfsd/nfs4proc.c~current~	2006-01-13 11:51:06.000000000 +1100
-+++ ./fs/nfsd/nfs4proc.c	2006-01-13 11:51:08.000000000 +1100
-@@ -210,6 +210,7 @@ nfsd4_open(struct svc_rqst *rqstp, struc
- 				goto out;
- 			break;
- 		case NFS4_OPEN_CLAIM_PREVIOUS:
-+			open->op_stateowner->so_confirmed = 1;
- 			/*
- 			 * The CURRENT_FH is already set to the file being
- 			 * opened.  (1) set open->op_cinfo, (2) set
-@@ -221,6 +222,7 @@ nfsd4_open(struct svc_rqst *rqstp, struc
- 				goto out;
- 			break;
-              	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-+			open->op_stateowner->so_confirmed = 1;
- 			printk("NFSD: unsupported OPEN claim type %d\n",
- 				open->op_claim_type);
- 			status = nfserr_notsupp;
+diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
+--- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2006-01-13 11:51:06.000000000 +1100
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-01-13 11:51:06.000000000 +1100
+@@ -755,6 +755,21 @@ svcauth_gss_set_client(struct svc_rqst *
+ 	return SVC_OK;
+ }
+ 
++static inline int
++gss_write_init_verf(struct svc_rqst *rqstp, struct rsi *rsip)
++{
++	struct rsc *rsci;
++
++	if (rsip->major_status != GSS_S_COMPLETE)
++		return gss_write_null_verf(rqstp);
++	rsci = gss_svc_searchbyctx(&rsip->out_handle);
++	if (rsci == NULL) {
++		rsip->major_status = GSS_S_NO_CONTEXT;
++		return gss_write_null_verf(rqstp);
++	}
++	return gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
++}
++
+ /*
+  * Accept an rpcsec packet.
+  * If context establishment, punt to user space
+@@ -890,18 +905,8 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 		case -ENOENT:
+ 			goto drop;
+ 		case 0:
+-			if (rsip->major_status == GSS_S_COMPLETE) {
+-				rsci = gss_svc_searchbyctx(&rsip->out_handle);
+-				if (!rsci) {
+-					goto drop;
+-				}
+-				if (gss_write_verf(rqstp, rsci->mechctx,
+-							GSS_SEQ_WIN))
+-					goto drop;
+-			} else {
+-				if (gss_write_null_verf(rqstp))
+-					goto drop;
+-			}
++			if (gss_write_init_verf(rqstp, rsip))
++				goto drop;
+ 			if (resv->iov_len + 4 > PAGE_SIZE)
+ 				goto drop;
+ 			svc_putu32(resv, rpc_success);
 
 
 -------------------------------------------------------
