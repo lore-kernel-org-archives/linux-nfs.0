@@ -1,25 +1,25 @@
 From: NeilBrown <neilb@cse.unsw.edu.au>
-Subject: [PATCH kNFSd 025 of 26] NFSERR_SERVERFAULT returned host-endian
-Date: Fri, 13 Jan 2006 12:01:07 +1100
-Message-ID: <1060113010107.23228@cse.unsw.edu.au>
+Subject: [PATCH kNFSd 023 of 26] nfsd/vfs.c: endianness fixes
+Date: Fri, 13 Jan 2006 12:01:06 +1100
+Message-ID: <1060113010106.23204@cse.unsw.edu.au>
 References: <20060113115744.22704.patches@notabene>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1ExDJc-0002b8-QQ
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:16 -0800
+	id 1ExDJd-0002bB-OJ
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:17 -0800
 Received: from note.orchestra.cse.unsw.edu.au ([129.94.242.24] ident=root)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1ExDJc-00057H-Bz
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:16 -0800
+	id 1ExDJa-00055N-Sg
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 17:01:17 -0800
 Received: From
-	smtp-dist.unsw.edu.au ([149.171.97.17] == smtp-dist-02.services.comms.unsw.EDU.AU)
+	smtp-dist.unsw.edu.au ([149.171.97.18] == smtp-dist-03.services.comms.unsw.EDU.AU)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:01:12 +1100
+	Fri, 13 Jan 2006 12:01:10 +1100
 Received: From
 	neil.brown.name ([220.233.11.133] == 133.11.233.220.exetel.com.au) (auth-user neilb)
 	(for <nfs@lists.sourceforge.net>) By note With Smtp ;
-	Fri, 13 Jan 2006 12:01:08 +1100
+	Fri, 13 Jan 2006 12:01:07 +1100
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -36,40 +36,48 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 From: Al Viro <viro@zeniv.linux.org.uk>
-Date: 1135492936 -0500
+Date: 1135476096 -0500
 
-->rp_status is network-endian and nobody byteswaps it before sending to
-client; putting NFSERR_SERVERFAULT instead of nfserr_serverfault in there
-is not nice...
+several failure exits return -E<something> instead of nfserr_<something>
+and vice versa.
 
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4state.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ ./fs/nfsd/vfs.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
---- ./fs/nfsd/nfs4state.c~current~	2006-01-13 11:51:10.000000000 +1100
-+++ ./fs/nfsd/nfs4state.c	2006-01-13 11:51:10.000000000 +1100
-@@ -1088,7 +1088,7 @@ alloc_init_open_stateowner(unsigned int 
- 	sop->so_seqid = open->op_seqid;
- 	sop->so_confirmed = 0;
- 	rp = &sop->so_replay;
--	rp->rp_status = NFSERR_SERVERFAULT;
-+	rp->rp_status = nfserr_serverfault;
- 	rp->rp_buflen = 0;
- 	rp->rp_buf = rp->rp_ibuf;
- 	return sop;
-@@ -2583,7 +2583,7 @@ alloc_init_lock_stateowner(unsigned int 
- 	sop->so_seqid = lock->lk_new_lock_seqid + 1;
- 	sop->so_confirmed = 1;
- 	rp = &sop->so_replay;
--	rp->rp_status = NFSERR_SERVERFAULT;
-+	rp->rp_status = nfserr_serverfault;
- 	rp->rp_buflen = 0;
- 	rp->rp_buf = rp->rp_ibuf;
- 	return sop;
+diff ./fs/nfsd/vfs.c~current~ ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c~current~	2006-01-13 11:50:54.000000000 +1100
++++ ./fs/nfsd/vfs.c	2006-01-13 11:51:10.000000000 +1100
+@@ -1134,7 +1134,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+ 				"nfsd_create: parent %s/%s not locked!\n",
+ 				dentry->d_parent->d_name.name,
+ 				dentry->d_name.name);
+-			err = -EIO;
++			err = nfserr_io;
+ 			goto out;
+ 		}
+ 	}
+@@ -1600,7 +1600,7 @@ nfsd_rename(struct svc_rqst *rqstp, stru
+ 	if ((ffhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
+ 		((atomic_read(&odentry->d_count) > 1)
+ 		 || (atomic_read(&ndentry->d_count) > 1))) {
+-			err = nfserr_perm;
++			err = -EPERM;
+ 	} else
+ #endif
+ 	err = vfs_rename(fdir, odentry, tdir, ndentry);
+@@ -1672,7 +1672,7 @@ nfsd_unlink(struct svc_rqst *rqstp, stru
+ #ifdef MSNFS
+ 		if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
+ 			(atomic_read(&rdentry->d_count) > 1)) {
+-			err = nfserr_perm;
++			err = -EPERM;
+ 		} else
+ #endif
+ 		err = vfs_unlink(dirp, rdentry);
 
 
 -------------------------------------------------------
