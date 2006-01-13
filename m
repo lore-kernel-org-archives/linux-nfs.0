@@ -1,30 +1,27 @@
-From: David Dougall <davidd@et.byu.edu>
-Subject: nfs client weirdness
-Date: Thu, 12 Jan 2006 10:27:23 -0700 (MST)
-Message-ID: <Pine.LNX.4.58.0601121016220.7720@lewis.et.byu.edu>
+From: "Edwards, Scott (GE Healthcare)" <J.Scott.Edwards@ge.com>
+Subject: NFS hangs for 15 seconds after exportfs -r
+Date: Thu, 12 Jan 2006 18:05:09 -0600
+Message-ID: <C664ABFF405D6A458806C03AA2E0FF6B06CBC733@MKEMLVEM01.e2k.ad.ge.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ex6EW-0008DA-Pp
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 09:27:32 -0800
-Received: from postal1.et.byu.edu ([128.187.48.11])
+	id 1ExCRg-0000Cb-IR
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 16:05:32 -0800
+Received: from ext-ch1gw-8.online-age.net ([64.37.194.16])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1Ex6EV-0000dw-4B
-	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 09:27:32 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by postal1.et.byu.edu (Postfix) with ESMTP id 489AB4E12
-	for <nfs@lists.sourceforge.net>; Thu, 12 Jan 2006 10:27:24 -0700 (MST)
-Received: from postal1.et.byu.edu ([127.0.0.1])
-	by localhost (postal1.et.byu.edu [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 24390-03 for <nfs@lists.sourceforge.net>;
-	Thu, 12 Jan 2006 10:27:23 -0700 (MST)
-Received: from lewis.et.byu.edu (lewis.et.byu.edu [10.5.113.201])
-	by postal1.et.byu.edu (Postfix) with ESMTP id E74E84E10
-	for <nfs@lists.sourceforge.net>; Thu, 12 Jan 2006 10:27:23 -0700 (MST)
-To: nfs@lists.sourceforge.net
+	id 1ExCRg-0000K7-5E
+	for nfs@lists.sourceforge.net; Thu, 12 Jan 2006 16:05:32 -0800
+Received: from int-ch1gw-4.online-age.net (int-ch1gw-4 [3.159.232.68])
+	by ext-ch1gw-8.online-age.net (8.13.4/8.13.5/20051111-SVVS-TLS-DNSBL) with ESMTP id k0D05BGS014125
+	for <nfs@lists.sourceforge.net>; Thu, 12 Jan 2006 19:05:11 -0500
+Received: from cinmlef01.e2k.ad.ge.com (localhost [127.0.0.1])
+	by int-ch1gw-4.online-age.net (8.12.9/8.12.3/990426-RLH) with ESMTP id k0D059gf012349
+	for <nfs@lists.sourceforge.net>; Thu, 12 Jan 2006 19:05:10 -0500 (EST)
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,39 +35,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a cluster of machines that mount nfs shares and reexport them
-through samba.  This has been working fairly cleanly for several years.  I
-made a change recently to newer hardware and what I think was a small
-kernel change...
-Anyway, the symptoms that are exhibited are samba drives not mapping, slow
-access, etc.  I log into the samba servers(which are nfs clients) and
-everything looks fine as far as load and nfs mounting "appears" OK from a
-cursory look.  However my `dmesg` and syslog are full of lockd and
-other bad-looking errors:
-lockd: unexpected unlock status: 7
-lockd: unexpected unlock status: 1
-VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice
-day...
-lockd: can't encode arguments: 5
 
+We have a strange problem with the 2.6.9 kernel and NFS hanging for =
+several seconds after upgrading.
 
-These nfs clients are running 2.6.13 kernel on Intel Xeon 64 machines:
->cat /proc/version
-Linux version 2.6.13 (root@ct355l15.et.byu.edu) (gcc version 3.3.5 (Debian
-1:3.3.5-13)) #1 SMP Tue Sep 13 15:49:24 MDT 2005
-The network card is an e1000 driver.  Samba is version 3.0.14a.
+We have been running Fedora Core 2 for about two years on a system.  =
+This system has two processors, one running an RTOS and the other was =
+running the 2.6.6 kernel.  The RTOS is diskless and mounts a partition =
+on the Linux drive via NFS.  It also mounts the CD-ROM drive under it's =
+partition when a disc is mounted.  When the CD is mounted we run an =
+"exportfs -r" command to export the CD.  The system worked fine with =
+Fedora Core 2 and the 2.6.6 kernel.
 
-The nfs servers are mostly 2.4.26 kernel running 32 bit kernels.  2 nfs
-servers have been upgraded to SLES9 with 2.6.5-7.191.  I am not sure if
-the heterogeneous server environment may cause a problem for the clients.
-Those 2 nfs servers were upgraded a few weeks ago.
+Lately we have been trying to upgrade to a newer version of Linux 2.6.9 =
+kernel, with the RHEL clones (WhiteBox and CentOS).  On both of these =
+systems after a CD is inserted the RTOS hangs for around 15 seconds =
+waiting for NFS to reply.  We have tried removing "exportfs -r" and then =
+there is no perceivable delay.  However the reason that is in there is =
+so that the newly mounted CD is exported so we need to have that.
 
-The gist of the question is:
-Are these error messages bad?  If so, is there a kernel upgrade I should
-do on either the client or server to prevent them(client would be much
-easier)?  What other diagnostic information can I give?
+Is this a known problem with the 2.6.9 Kernel?  I searched the archives =
+and found a couple of e-mails about the 2.6.9 kernel hanging after an =
+"exportfs -ra", but it hung completely and never came back.
+
+Any advice would be most appreciated.
+
 Thanks
---David Dougall
+  -Scott
+
+
 
 
 -------------------------------------------------------
