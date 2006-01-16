@@ -1,25 +1,22 @@
-From: "Carmella Villa" <prohor_k@mail.ru>
-Subject: Improve sperm integrity
-Date: Sun, 15 Jan 2006 14:24:09 -0100
-Message-ID: <E1Ey7rV-0006KG-A2@externalmx-1.sourceforge.net>
+From: "Wally Winchester" <wally_winchester@fastmail.fm>
+Subject: Stale nfs file handle - cwd without path - workaround?
+Date: Mon, 16 Jan 2006 09:16:06 +0000
+Message-ID: <1137402966.3299.251938119@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-        charset="Windows-1252"
+Content-Type: text/plain; charset="ISO-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ey7rc-0000xr-Hv
-	for nfs@lists.sourceforge.net; Sun, 15 Jan 2006 05:24:08 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Ey7rY-0002on-9F
-	for nfs@lists.sourceforge.net; Sun, 15 Jan 2006 05:24:08 -0800
-Received: from abayonne-157-1-29-100.w86-207.abo.wanadoo.fr ([86.207.140.100] helo=1dauo.cur8ifru.comcast.net)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1Ey7rV-0006KG-A2
-	for nfs@lists.sourceforge.net; Sun, 15 Jan 2006 05:24:02 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1EyQTD-0000Ef-SR
+	for nfs@lists.sourceforge.net; Mon, 16 Jan 2006 01:16:11 -0800
+Received: from out4.smtp.messagingengine.com ([66.111.4.28])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EyQTC-00088e-HP
+	for nfs@lists.sourceforge.net; Mon, 16 Jan 2006 01:16:11 -0800
+Received: from frontend1.internal (mysql-sessions.internal [10.202.2.149])
+	by frontend1.messagingengine.com (Postfix) with ESMTP id 49E82D2F6E9
+	for <nfs@lists.sourceforge.net>; Mon, 16 Jan 2006 04:16:06 -0500 (EST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,19 +30,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-SPERMAMAX is a scientifically validated herbal nutritional blend to enhance fertility by improving sperm quality, count and motility (spontaneous motion).
+Hello,
 
-SPERMAMAX is formulated to:
-+ Improve overall sperm production
-+ Improve sperm quality
-+ Improve sperm integrity
-+ Improve sperm motility
-+ Improve sperm morphology
+I have an nfs setup with heartbeat failover that is working nicely. I
+only have one problem, I hope someone can help.
 
-This premium combination of herbs, vitamins and minerals improves overall health and helps address many of the deficiencies known to decrease fertility health.
+When nfs1 dies, and nfs2 takes over, everything works - as long as the
+clients are writing files using the full paths.
+If the path is omitted, i.e. they are expecting a write to their cwd, a
+"stale nfs file handle" warning is issued.
 
-http://cgiklabhm.greatroot.com/?defjmxwqowycgiklzsmabh
+Is there a way around this?
 
+e.g. this works
+touch /nfs-mount/file
+(failover)
+touch /nfs-mount/file
+
+e.g. this doesn't work
+cd /nfs-mount/
+touch file
+(failover)
+touch file
+(stale nfs file handle)
+
+Thanks
+-- 
+  Wally Winchester
+  wally_winchester@fastmail.fm
+
+-- 
+http://www.fastmail.fm - Access all of your messages and folders
+                          wherever you are
 
 
 
