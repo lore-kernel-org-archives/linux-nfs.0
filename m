@@ -1,23 +1,25 @@
-From: "Wally Winchester" <wally_winchester@fastmail.fm>
-Subject: Re: Stale nfs file handle - cwd without path - workaround?
-Date: Tue, 17 Jan 2006 08:45:11 +0000
-Message-ID: <1137487511.18746.252023882@webmail.messagingengine.com>
-References: <1137402966.3299.251938119@webmail.messagingengine.com>
-   <200601170043.18048.bernd-schubert@gmx.de>
+From: Kirk Ismay <captain@netidea.com>
+Subject: Linux NFS Client ignores quotas
+Date: Tue, 17 Jan 2006 12:33:02 -0800
+Message-ID: <43CD547E.9080808@netidea.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EymSq-0002zR-H5
-	for nfs@lists.sourceforge.net; Tue, 17 Jan 2006 00:45:16 -0800
-Received: from out4.smtp.messagingengine.com ([66.111.4.28])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EymSo-0004b9-CT
-	for nfs@lists.sourceforge.net; Tue, 17 Jan 2006 00:45:16 -0800
-To: "Bernd Schubert" <bernd-schubert@gmx.de>,
-	nfs@lists.sourceforge.net
-In-Reply-To: <200601170043.18048.bernd-schubert@gmx.de>
+	id 1EyxZW-0005Hu-54
+	for nfs@lists.sourceforge.net; Tue, 17 Jan 2006 12:36:54 -0800
+Received: from [207.194.161.10] (helo=nola.netidea.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EyxZO-0000uV-Qk
+	for nfs@lists.sourceforge.net; Tue, 17 Jan 2006 12:36:51 -0800
+Received: from [192.168.100.206] (ymir.netidea.com [66.244.242.8] (may be forged))
+	(authenticated bits=0)
+	by nola.netidea.com (8.13.4/8.13.4/Debian-3) with ESMTP id k0HKaimr016814
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Tue, 17 Jan 2006 12:36:45 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,72 +33,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 17 Jan 2006 00:43:17 +0100, "Bernd Schubert"
-<bernd-schubert@gmx.de> said:
-> Hello Wally,
-> 
-> > When nfs1 dies, and nfs2 takes over, everything works - as long as the
-> > clients are writing files using the full paths.
-> > If the path is omitted, i.e. they are expecting a write to their cwd, a
-> > "stale nfs file handle" warning is issued.
-> >
-> > Is there a way around this?
-> >
-> > e.g. this works
-> > touch /nfs-mount/file
-> > (failover)
-> > touch /nfs-mount/file
-> >
-> > e.g. this doesn't work
-> > cd /nfs-mount/
-> > touch file
-> > (failover)
-> > touch file
-> > (stale nfs file handle)
-> 
-> really strange, we never had this problem. I think you have to provide
-> some 
-> more information (/etc/exports of both servers, kernel version,
-> distribution, 
-> how you handle /var/lib/nfs, drbd? configuration, etc.).
-> 
-> Cheers,
-> 	Bernd
-> 
-> 
-> 
+I have an nfs client that mounts /home from another linux file server. 
+Both run Linux 2.4.25 kernels on Debian woody. Quotas are enabled for 
+/home and are working properly on the server, but on the client they are 
+ignored.
 
-The setup is two virtual machines on VMWare ESX server.
-They talk to a shared partition which is really a disk file on a SAN.
+If I log in as a user who is over quota (about 300MB over quota, and the 
+grace period has expired) on the client and copy a file, it succeeds. I 
+can also modify any of the files.
 
-Perhaps interestingly, this works:
- cd /nfs-mount/
- touch file
- (failover)
- touch file
- (stale nfs file handle)
- cd .
- touch file
- (works)
+The nfs server is:
+/usr/sbin/rpc.nfsd --version
+Universal NFS Server 2.2beta47
 
-$ cat /etc/exports
-/srv/nfs *(rw,no_root_squash,insecure,sync)
+I'm not sure when this stopped working. I would appreciate suggestions 
+on how to track down the source of the problem.
 
-$ ls -la /var/lib/|grep nfs
-           nfs -> /srv/nfs/nfs/
+Let me know if additional information is needed.
 
-$ ls /srv/nfs/nfs/
-etab rmtab sm state xtab
-
-This is a Debian Sarge install.
--- 
-  Wally Winchester
-  wally_winchester@fastmail.fm
+Thanks.
 
 -- 
-http://www.fastmail.fm - Access all of your messages and folders
-                          wherever you are
+Sincerely,
+Kirk Ismay
+System Administrator
 
+--
+Net Idea
+201-625 Front Street Nelson, BC V1L 4B6
+P:250-352-3512 | F:250-352-9780 | TF:888-246-4222
+
+10 Years of Service Excellence!
+
+Visit us online at:
+www.netidea.com | www.netidea.biz
 
 
 -------------------------------------------------------
