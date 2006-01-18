@@ -1,23 +1,29 @@
-From: Vince Busam <vbusam@google.com>
-Subject: Re: [PATCH] Fix typo on __rpc_purge_upcall
-Date: Mon, 05 Dec 2005 13:03:42 -0800
-Message-ID: <4394AB2E.1030809@google.com>
-References: <4382252E.4000602@google.com>	 <1132602917.8011.2.camel@lade.trondhjem.org> <43824151.5060604@google.com>	 <1132612440.8011.7.camel@lade.trondhjem.org> <4382515C.9020200@google.com>	 <1132614431.8011.14.camel@lade.trondhjem.org> <438B4983.3030809@google.com> <1133203961.27574.66.camel@lade.trondhjem.org>
+From: "Edwards, Scott (GE Healthcare)" <J.Scott.Edwards@ge.com>
+Subject: Another hang problem - Jukebox error (was: NFS hangs for 15 seconds after exportfs -r)
+Date: Wed, 18 Jan 2006 11:35:02 -0600
+Message-ID: <C664ABFF405D6A458806C03AA2E0FF6B06CBC744@MKEMLVEM01.e2k.ad.ge.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EjNVJ-00060U-Gc
-	for nfs@lists.sourceforge.net; Mon, 05 Dec 2005 13:04:09 -0800
-Received: from smtp-out.google.com ([216.239.45.12])
+	id 1EzHDP-00047M-D5
+	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 09:35:23 -0800
+Received: from ext-nj2ut-13.online-age.net ([64.14.54.246])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EjNVJ-0003bK-27
-	for nfs@lists.sourceforge.net; Mon, 05 Dec 2005 13:04:09 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1133203961.27574.66.camel@lade.trondhjem.org>
+	id 1EzHDO-0002Dt-Ru
+	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 09:35:23 -0800
+Received: from int-nj2ut-5.online-age.net (int-nj2ut-5.online-age.net [3.159.237.74])
+	by ext-nj2ut-13.online-age.net (8.13.5/8.13.5/20051114-SVVS-TLS-DNSBL) with ESMTP id k0IHZ3Am018417
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jan 2006 12:35:03 -0500
+Received: from cinmlef06.e2k.ad.ge.com (localhost.localdomain [127.0.0.1])
+	by int-nj2ut-5.online-age.net (8.11.6/8.11.6/20050510-SVVS) with ESMTP id k0IHZ3R15698
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jan 2006 12:35:03 -0500
+To: "Edwards, Scott (GE Healthcare)" <J.Scott.Edwards@ge.com>,
+	"Neil Brown" <neilb@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,74 +37,157 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> 
-> Argh... Yep. Looks like the "fix" to ensure that we purge
-> rpci->in_upcall was wrong. Does the following patch fix it?
 
-I got another oops in __rpc_purge_upcall, which looks like this after applying the 
-patches.  Looks like rcpi must have been NULL, but I'll defer to the experts here.
+We have discovered another hang problem, I am not sure if it's
+related to the other one or not.
 
-static void
-__rpc_purge_upcall(struct inode *inode, int err)
-{
-         struct rpc_inode *rpci = RPC_I(inode);
+We have discovered that on boot up, the very first time the RTOS
+tries to access NFS, it gets a JUKEBOX error and the RTOS waits
+15 seconds before retrying.
 
-         __rpc_purge_list(rpci, &rpci->pipe, err);
-         rpci->pipelen = 0;
-         wake_up(&rpci->waitq);
-}
+We were capturing the packets with tcpdump and everytime the RTOS
+tries to read the first file, Linux returns an JUKEBOX error=20
+(10008).  One odd thing was that one time it sent back an OK reply
+right after the Jukebox error, but by then it was too late the RTOS
+had gotten the error.
 
-Dec  4 13:09:59 block kernel: RPC: AUTH_GSS upcall timed out.
-Dec  4 13:09:59 block kernel: Please check user daemon is running!
-Dec  4 13:10:12 block kernel: Unable to handle kernel NULL pointer dereference at virtual 
-address 00000004
-Dec  4 13:10:12 block kernel: printing eip:
-Dec  4 13:10:12 block kernel: f8a98d55
-Dec  4 13:10:12 block kernel: *pde = 00000000
-Dec  4 13:10:12 block kernel: Oops: 0002 [#1]
-Dec  4 13:10:12 block kernel: PREEMPT SMP
-Dec  4 13:10:12 block kernel: Modules linked in: des tsdev usbhid vmnet vmmon binfmt_misc 
-cpufreq_userspace cpufreq_ondemand cpufreq_powersave autofs4 video button battery 
-container ac capability commoncap nfs lockd af_packet tg3 generic piix snd_intel8x0 
-snd_ac97_codec snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore snd_page_alloc 
-uhci_hcd pci_hotplug floppy pcspkr rtc md_mod evdev dm_mod nvidia agpgart psmouse mousedev 
-parport_pc lp parport ide_generic ide_disk ide_cd cdrom ide_core rpcsec_gss_krb5 
-auth_rpcgss sunrpc ehci_hcd usbcore ext3 jbd mbcache ahci sd_mod ata_piix libata scsi_mod 
-unix thermal processor fan
-Dec  4 13:10:12 block kernel: CPU:    1
-Dec  4 13:10:12 block kernel: EIP:    0060:[<f8a98d55>]    Tainted: P      VLI
-Dec  4 13:10:12 block kernel: EFLAGS: 00010202   (2.6.13.4-gg5vb7)
-Dec  4 13:10:12 block kernel: EIP is at __rpc_purge_upcall+0x35/0x80 [sunrpc]
-Dec  4 13:10:12 block kernel: eax: 00000000   ebx: c2bcec84   ecx: d16e1688   edx: 00000000
-Dec  4 13:10:12 block kernel: esi: c2bceb00   edi: f88b5ce0   ebp: ffffffe0   esp: eea1bf30
-Dec  4 13:10:12 block kernel: ds: 007b   es: 007b   ss: 0068
-Dec  4 13:10:12 block kernel: Process rpc.gssd (pid: 5833, threadinfo=eea1a000 task=ef353020)
-Dec  4 13:10:12 block kernel: Stack: d16e1680 c2bceb00 cf453380 c2bceb00 c2bceb00 f8a990cb 
-c2bceb00 ffffffe0
-Dec  4 13:10:12 block kernel: 00000008 cf453380 eea94800 c01675fa c2bceb00 cf453380 
-00000000 00000000
-Dec  4 13:10:12 block kernel: d16a28c0 cf453380 ef02b300 00000000 cf453380 c0165906 
-cf453380 ef02b300
-Dec  4 13:10:12 block kernel: Call Trace:
-Dec  4 13:10:12 block kernel: [<f8a990cb>] rpc_pipe_release+0xcb/0xf0 [sunrpc]
-Dec  4 13:10:12 block kernel: [<c01675fa>] __fput+0x18a/0x1d0
-Dec  4 13:10:12 block kernel: [<c0165906>] filp_close+0x46/0x90
-Dec  4 13:10:12 block kernel: [<c01659ba>] sys_close+0x6a/0xa0
-Dec  4 13:10:12 block kernel: [<c010316b>] sysenter_past_esp+0x54/0x75
-Dec  4 13:10:12 block kernel: Code: 18 8b 6c 24 1c 8b 86 ac 01 00 00 8d 9e 84 01 00 00 8b 
-78 0c 8b 86 84 01 00 00 39 d8 74 25 89 c1 8d b6 00 00 00 00 8b 51 04 8b 01 <89> 50 04 89 
-02 89 49 04 89 09 89 69 14 89 0c 24 ff d7 8b 0b 39
-Dec  5 10:59:31 block kernel: x55/0xb0
+I compared the nfs code from kernel 2.6.6 (our old kernel that
+worked) and 2.6.9 (that causes the error) and discovered that there
+was an addition of a JUKEBOX error from an EWOULDBLOCK in nfsproc.c.
+I couldn't find a difference that would explain why we would be=20
+getting an error when we didn't before (mostly because there were=20
+so many changes I couldn't figure out which one could cause an=20
+error).
 
-Vince
+I built a 2.6.6 kernel to test in place of the 2.6.9 but the
+machine won't boot with it, it gets a kernel panic on boot.
+
+I'm not sure where to look now.  Could anyone shed some light on
+why we would be getting the JUKEBOX (EWOULDBLOCK?) error the first
+time NFS is accessed?
+
+Thanks
+  -Scott
+
+
+-----Original Message-----
+From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net]On Behalf Of Edwards, Scott (GE
+Healthcare)
+Sent: Friday, January 13, 2006 3:08 PM
+To: Neil Brown
+Cc: nfs@lists.sourceforge.net
+Subject: RE: [NFS] NFS hangs for 15 seconds after exportfs -r
+
+
+
+Boy, am I ever embarrassed.  I completely misunderstood what was
+happening.
+
+We have a program that mounts and unmounts the CD and makes calls
+to exportfs along the way to make sure it gets re-exported.  I knew
+that it hung for 15 seconds both after you inserted a CD and ejected
+a CD.  And we knew that if you took out the exportfs calls (all of
+them) the delay went away.  I looked at the mount and unmount and
+the mount only called exportfs once with the -r option so I thought
+since it was only one call it would easier to chase down.  However,
+when I started to try to run strace I found that there was no delay
+after I did an exportfs -r.  Upon further investigation I discovered
+the program does an unmount before it does a mount.  So when you
+insert a CD it does the whole unmount sequence.  From there it was
+quite obvious what was causing the delay: there is an "exportfs -f"
+call before unmounting the CD.  Sure enough all I have to do is run
+a "exportfs -f" from the command line and the RTOS hangs for 16 or
+so seconds.
+
+I then re-installed Fedora Core 2 on a system and discovered that
+it has the same delay after a "exportfs -f" command, but that if
+you follow the "exportfs -f" command immediately with a "exportfs
+-a" command (which the program does) there is no delay.  I have no
+idea why.
+
+So I'm not sure what this means to us yet.  Perhaps we can just
+leave out the "exportfs -f"...
+
+Anyway, thanks for the help and sorry for the trouble.
+
+-Scott
+
+
+-----Original Message-----
+From: Neil Brown [mailto:neilb@suse.de]
+Sent: Thursday, January 12, 2006 5:33 PM
+To: Edwards, Scott (GE Healthcare)
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] NFS hangs for 15 seconds after exportfs -r
+
+
+On Thursday January 12, J.Scott.Edwards@ge.com wrote:
+>=20
+> We have a strange problem with the 2.6.9 kernel and NFS hanging for =
+=3D
+> several seconds after upgrading.
+>=20
+> We have been running Fedora Core 2 for about two years on a system.  =
+=3D
+> This system has two processors, one running an RTOS and the other was =
+=3D
+> running the 2.6.6 kernel.  The RTOS is diskless and mounts a partition =
+=3D
+> on the Linux drive via NFS.  It also mounts the CD-ROM drive under =
+it's =3D
+> partition when a disc is mounted.  When the CD is mounted we run an =
+=3D
+> "exportfs -r" command to export the CD.  The system worked fine with =
+=3D
+> Fedora Core 2 and the 2.6.6 kernel.
+>=20
+> Lately we have been trying to upgrade to a newer version of Linux =
+2.6.9 =3D
+> kernel, with the RHEL clones (WhiteBox and CentOS).  On both of these =
+=3D
+> systems after a CD is inserted the RTOS hangs for around 15 seconds =
+=3D
+> waiting for NFS to reply.  We have tried removing "exportfs -r" and =
+then =3D
+> there is no perceivable delay.  However the reason that is in there is =
+=3D
+> so that the newly mounted CD is exported so we need to have that.
+>=20
+> Is this a known problem with the 2.6.9 Kernel?  I searched the =
+archives =3D
+> and found a couple of e-mails about the 2.6.9 kernel hanging after an =
+=3D
+> "exportfs -ra", but it hung completely and never came back.
+>=20
+> Any advice would be most appreciated.
+
+Sounds weird, and doesn't ring any bells....
+
+I suspect that mountd on the server would be implicated in the hang
+somehow.=20
+Can you get an 'strace' and maybe also an 'ltrace' of mountd when the
+hang happens on the client and see if that shows anything interesting.
+
+NeilBrown
+
+
+-------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log =
+files
+for problems?  Stop!  Download the new AJAX search engine that makes
+searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+http://ads.osdn.com/?ad_idv37&alloc_id=16865&op=3Dick
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://ads.osdn.com/?ad_id=7637&alloc_id=16865&op=click
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
