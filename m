@@ -1,110 +1,93 @@
-From: Ryan Richter <ryan@tau.solarneutrino.net>
-Subject: Re: lockd: couldn't create RPC handle for (host)
-Date: Tue, 17 Jan 2006 19:02:54 -0500
-Message-ID: <20060118000254.GA821@tau.solarneutrino.net>
-References: <20051217055907.GC20539@tau.solarneutrino.net> <1134801822.7946.4.camel@lade.trondhjem.org> <20051217070222.GD20539@tau.solarneutrino.net> <1134847699.7950.25.camel@lade.trondhjem.org> <20051217194553.GE20539@tau.solarneutrino.net> <1134894836.7931.17.camel@lade.trondhjem.org> <20051218180150.GF20539@tau.solarneutrino.net> <1134934267.7966.37.camel@lade.trondhjem.org> <20051218200052.GA21665@tau.solarneutrino.net> <1134944665.11596.9.camel@lade.trondhjem.org>
+From: "Wally Winchester" <wally_winchester@fastmail.fm>
+Subject: Re: Stale nfs file handle - cwd without path - workaround?
+Date: Wed, 18 Jan 2006 08:43:39 +0000
+Message-ID: <1137573819.15439.252122025@webmail.messagingengine.com>
+References: <1137402966.3299.251938119@webmail.messagingengine.com>
+   <200601170043.18048.bernd-schubert@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964773AbWARAqX@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1134944665.11596.9.camel@lade.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="ISO-8859-1"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Ez8uv-0004HY-Sj
+	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 00:43:45 -0800
+Received: from out4.smtp.messagingengine.com ([66.111.4.28])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Ez8uu-0000no-Nm
+	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 00:43:46 -0800
+To: "Bernd Schubert" <bernd-schubert@gmx.de>,
+	nfs@lists.sourceforge.net
+In-Reply-To: <200601170043.18048.bernd-schubert@gmx.de>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sun, Dec 18, 2005 at 05:24:24PM -0500, Trond Myklebust wrote:
-> On Sun, 2005-12-18 at 15:00 -0500, Ryan Richter wrote:
-> > On Sun, Dec 18, 2005 at 02:31:07PM -0500, Trond Myklebust wrote:
-> > > On Sun, 2005-12-18 at 13:01 -0500, Ryan Richter wrote:
-> > > > Code: 48 39 78 18 75 1c 8b 86 8c 00 00 00 a8 01 74 12 83 c8 02 89 
-> > > > RIP <ffffffff801dbd9e>{nlmclnt_mark_reclaim+62} RSP <ffff81007dfade70>
-> > > > CR2: 0000000000000018
-> > > 
-> > > Looks like the global lock list is corrupted. Could you cat the contents
-> > > of /proc/locks?
-> > 
-> > $ cat /proc/locks
-> > 1: POSIX  ADVISORY  WRITE 1657 00:0e:1771273 0 EOF
-> > 2: FLOCK  ADVISORY  WRITE 1486 00:0e:1770759 0 EOF
-> > 3: FLOCK  ADVISORY  WRITE 1478 00:0e:1770399 0 EOF
+
+On Tue, 17 Jan 2006 00:43:17 +0100, "Bernd Schubert"
+<bernd-schubert@gmx.de> said:
+> Hello Wally,
 > 
-> OK. I think this client patch ought to fix the Oopses. It should apply
-> to a 2.6.14 kernel as well as 2.6.15-rc5.
+> > When nfs1 dies, and nfs2 takes over, everything works - as long as the
+> > clients are writing files using the full paths.
+> > If the path is omitted, i.e. they are expecting a write to their cwd, a
+> > "stale nfs file handle" warning is issued.
+> >
+> > Is there a way around this?
+> >
+> > e.g. this works
+> > touch /nfs-mount/file
+> > (failover)
+> > touch /nfs-mount/file
+> >
+> > e.g. this doesn't work
+> > cd /nfs-mount/
+> > touch file
+> > (failover)
+> > touch file
+> > (stale nfs file handle)
+> 
+> really strange, we never had this problem. I think you have to provide
+> some 
+> more information (/etc/exports of both servers, kernel version,
+> distribution, 
+> how you handle /var/lib/nfs, drbd? configuration, etc.).
 > 
 > Cheers,
->   Trond
+> 	Bernd
+> 
+> 
 > 
 
-> NLM: Fix Oops in nlmclnt_mark_reclaim()
+As a follow up to my reply,
+can anyone suggest how to troubleshoot this? Is there a way of getting
+an nfs client to not cache the details of the cwd (if this is the
+problem)?
 
-This is still a problem with 2.6.15.
+I hope someone knows!
+-- 
+  Wally Winchester
+  wally_winchester@fastmail.fm
 
-Unable to handle kernel paging request at 000000000000d08c RIP: 
-<ffffffff801c3538>{nlmclnt_mark_reclaim+67}
-PGD 7c4af067 PUD 7d194067 PMD 0 
-Oops: 0000 [1] 
-CPU 0 
-Modules linked in:
-Pid: 1222, comm: lockd Not tainted 2.6.15 #5
-RIP: 0010:[<ffffffff801c3538>] <ffffffff801c3538>{nlmclnt_mark_reclaim+67}
-RSP: 0018:ffff81007ddf9e70  EFLAGS: 00010206
-RAX: 000000000000d074 RBX: ffff81007f365240 RCX: ffff81007f973e80
-RDX: ffff81007f973e88 RSI: 000000000000003b RDI: ffff81007f365240
-RBP: ffff81007ecaec00 R08: 00000000fffffffa R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000000 R14: 0000000000000010 R15: ffffffff803bb5e0
-FS:  00002aaaab00c4a0(0000) GS:ffffffff80489800(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 000000000000d08c CR3: 000000007c4eb000 CR4: 00000000000006e0
-Process lockd (pid: 1222, threadinfo ffff81007ddf8000, task ffff81007ed341c0)
-Stack: ffffffff801c35ef ffff81007f365240 ffffffff801ca2ba 3256cc8460030002 
-       0000000000000000 0000000000000004 ffff81007f34b000 ffff81007f34b0a0 
-       ffffffff803bc660 ffff81007ddf0014 
-Call Trace:<ffffffff801c35ef>{nlmclnt_recovery+139} <ffffffff801ca2ba>{nlm4svc_proc_sm_notify+188}
-       <ffffffff80314b07>{svc_process+871} <ffffffff801c519d>{lockd+344}
-       <ffffffff801c5045>{lockd+0} <ffffffff801c5045>{lockd+0}
-       <ffffffff8010dfaa>{child_rip+8} <ffffffff801c5045>{lockd+0}
-       <ffffffff801c5045>{lockd+0} <ffffffff8010dfa2>{child_rip+0}
-       
+-- 
+http://www.fastmail.fm - Accessible with your email software
+                          or over the web
 
-Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
-RIP <ffffffff801c3538>{nlmclnt_mark_reclaim+67} RSP <ffff81007ddf9e70>
-CR2: 000000000000d08c
 
-And another machine
 
-Unable to handle kernel paging request at 0000000000009090 RIP: 
-<ffffffff801c3538>{nlmclnt_mark_reclaim+67}
-PGD 7bc89067 PUD 7bc8a067 PMD 0 
-Oops: 0000 [1] 
-CPU 0 
-Modules linked in:
-Pid: 1220, comm: lockd Not tainted 2.6.15 #5
-RIP: 0010:[<ffffffff801c3538>] <ffffffff801c3538>{nlmclnt_mark_reclaim+67}
-RSP: 0018:ffff81007de17e70  EFLAGS: 00010206
-RAX: 0000000000009078 RBX: ffff810079e35f00 RCX: ffff81007f979e80
-RDX: ffff81007f979e88 RSI: 000000000000003b RDI: ffff810079e35f00
-RBP: ffff81007eca9200 R08: 00000000fffffffa R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000000 R14: 0000000000000010 R15: ffffffff803bb5e0
-FS:  00002aaaab00c4a0(0000) GS:ffffffff80489800(0000) knlGS:0000000056701920
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000009090 CR3: 000000007bc7e000 CR4: 00000000000006e0
-Process lockd (pid: 1220, threadinfo ffff81007de16000, task ffff81007ed261c0)
-Stack: ffffffff801c35ef ffff810079e35f00 ffffffff801ca2ba 3256cc8473030002 
-       0000000000000000 0000000000000004 ffff81007f0e3000 ffff81007f0e30a0 
-       ffffffff803bc660 ffff81007ddf8014 
-Call Trace:<ffffffff801c35ef>{nlmclnt_recovery+139} <ffffffff801ca2ba>{nlm4svc_proc_sm_notify+188}
-       <ffffffff80314b07>{svc_process+871} <ffffffff801c519d>{lockd+344}
-       <ffffffff801c5045>{lockd+0} <ffffffff801c5045>{lockd+0}
-       <ffffffff8010dfaa>{child_rip+8} <ffffffff801c5045>{lockd+0}
-       <ffffffff801c5045>{lockd+0} <ffffffff8010dfa2>{child_rip+0}
-       
-
-Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
-RIP <ffffffff801c3538>{nlmclnt_mark_reclaim+67} RSP <ffff81007de17e70>
-CR2: 0000000000009090
-
-Lockd is no longer running etc.
-
--ryan
+-------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+for problems?  Stop!  Download the new AJAX search engine that makes
+searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
