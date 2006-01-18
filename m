@@ -1,23 +1,25 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Stale nfs file handle - cwd without path - workaround?
-Date: Wed, 18 Jan 2006 19:18:17 +0100
-Message-ID: <200601181918.18475.bernd-schubert@gmx.de>
-References: <1137402966.3299.251938119@webmail.messagingengine.com> <200601170043.18048.bernd-schubert@gmx.de> <1137487511.18746.252023882@webmail.messagingengine.com>
+Date: Wed, 18 Jan 2006 16:05:49 -0500
+Message-ID: <1137618350.8706.27.camel@lade.trondhjem.org>
+References: <1137402966.3299.251938119@webmail.messagingengine.com>
+	 <200601170043.18048.bernd-schubert@gmx.de>
+	 <1137573819.15439.252122025@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Bernd Schubert <bernd-schubert@gmx.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EzHtG-00067V-Mw
-	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 10:18:38 -0800
-Received: from mail.gmx.net ([213.165.64.21])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1EzHtD-0004Lu-TS
-	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 10:18:38 -0800
-To: "Wally Winchester" <wally_winchester@fastmail.fm>
-In-Reply-To: <1137487511.18746.252023882@webmail.messagingengine.com>
+	id 1EzKVc-0005yj-Vm
+	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 13:06:24 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1EzKVb-0008UD-Bn
+	for nfs@lists.sourceforge.net; Wed, 18 Jan 2006 13:06:24 -0800
+To: Wally Winchester <wally_winchester@fastmail.fm>
+In-Reply-To: <1137573819.15439.252122025@webmail.messagingengine.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,53 +33,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Wally,
+On Wed, 2006-01-18 at 08:43 +0000, Wally Winchester wrote:
+> > > When nfs1 dies, and nfs2 takes over, everything works - as long as the
+> > > clients are writing files using the full paths.
+> > > If the path is omitted, i.e. they are expecting a write to their cwd, a
+> > > "stale nfs file handle" warning is issued.
+> > >
+> > > Is there a way around this?
+> > >
+> > > e.g. this works
+> > > touch /nfs-mount/file
+> > > (failover)
+> > > touch /nfs-mount/file
+> > >
+> > > e.g. this doesn't work
+> > > cd /nfs-mount/
+> > > touch file
+> > > (failover)
+> > > touch file
+> > > (stale nfs file handle)
+> > 
+> > really strange, we never had this problem. I think you have to provide
+> > some 
+> > more information (/etc/exports of both servers, kernel version,
+> > distribution, 
+> > how you handle /var/lib/nfs, drbd? configuration, etc.).
+> > 
+> > Cheers,
+> > 	Bernd
+> > 
+> > 
+> > 
+> 
+> As a follow up to my reply,
+> can anyone suggest how to troubleshoot this? Is there a way of getting
+> an nfs client to not cache the details of the cwd (if this is the
+> problem)?
+> 
+> I hope someone knows!
 
-sorry for the late response, but I'm very busy right now.
+You have never actually told anybody which kernel version you are using.
+My guess, however, would be either a 2.4.x kernel, or an early 2.6.x.
 
-> The setup is two virtual machines on VMWare ESX server.
-> They talk to a shared partition which is really a disk file on a SAN.
->
-> Perhaps interestingly, this works:
->  cd /nfs-mount/
->  touch file
->  (failover)
->  touch file
->  (stale nfs file handle)
->  cd .
->  touch file
->  (works)
->
-> $ cat /etc/exports
-> /srv/nfs *(rw,no_root_squash,insecure,sync)
->
-> $ ls -la /var/lib/|grep nfs
->            nfs -> /srv/nfs/nfs/
->
-> $ ls /srv/nfs/nfs/
-> etab rmtab sm state xtab
->
-> This is a Debian Sarge install.
-
-Which kernel version are you using? If its the debian kernel try a newer on=
-e=20
-(on the client and on the server). Rather probably its not related, but you=
-=20
-should also add an fsid entry to your exports.
-Sorry, can't help more, since I'm absolutely not familar with your virtual=
-=20
-machine + SAN setup.
+IOW: this sort of thing should be fixed in more recent 2.6.x kernels.
+Please upgrade, and try again.
 
 Cheers,
-	Bernd
-
-
-=2D-=20
-Bernd Schubert
-PCI / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
+  Trond
 
 
 
