@@ -1,21 +1,21 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH] knfsd: Restore recently broken ACL functionality to NFS server
-Date: Fri, 20 Jan 2006 17:49:36 +1100
-Message-ID: <1060120064936.9440@suse.de>
-References: <20060120174858.9422.patches@notabene>
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+From: Rajesh Kalmady <krajesh304@gmail.com>
+Subject: nfs mounting problem in a linux cluster
+Date: Fri, 20 Jan 2006 18:03:43 +0530
+Message-ID: <536c333e0601200433s270e4e47x@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Ezq5n-0004uD-L3
-	for nfs@lists.sourceforge.net; Thu, 19 Jan 2006 22:49:51 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Ezq5l-0006ZI-7J
-	for nfs@lists.sourceforge.net; Thu, 19 Jan 2006 22:49:51 -0800
-To: Andrew Morton <akpm@osdl.org>
-Cc: Andreas Gruenbacher <agruen@suse.de>
+	id 1EzvSa-0001hw-Iu
+	for nfs@lists.sourceforge.net; Fri, 20 Jan 2006 04:33:44 -0800
+Received: from zproxy.gmail.com ([64.233.162.206])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1EzvSa-00031h-Dy
+	for nfs@lists.sourceforge.net; Fri, 20 Jan 2006 04:33:44 -0800
+Received: by zproxy.gmail.com with SMTP id r28so428077nza
+        for <nfs@lists.sourceforge.net>; Fri, 20 Jan 2006 04:33:43 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,126 +29,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+I have a linux cluster with RHEL 4.1 installed in all nodes and the
+NFS servers too. I have a
+strange problem of NFS mounting. When I try to mount a file system
+from the NFS server  on
+to all nodes, I find that the mount hangs in some nodes, but works in
+others normally. I go to that node, kill the mount command and run it
+again, it works. The set of nodes where it
+does not work is also random.
 
-From: Andreas Gruenbacher <agruen@suse.de>
+I was doing this using a shell script which uses rsh to issue mount
+commands on the nodes,
+one by one. I thought that maybe the NFS server cannot handle rapid
+requests, so I put a
+sleep of 2 seconds between successive mount commands. But there was no
+change in
+the behavior.
 
-A recent patch to 
-   Allow run-time selection of NFS versions to export  
+After some diagnosing using tcpdump, I found that the mount client
+first contacts the
+RPC portmapper, then the NFS port and then the port where mountd is
+listening. In those
+machines where it does not work, I found that portmapper and nfs are
+contacted but after
+this, there is no progress.
 
-meant that NO nfsacl service versions were exported.
-This patch restored that functionality.
+The linux version is 2.6.9 (the one which comes in RHEL 4.1).
 
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Neil Brown <neilb@suse.de>
+The same behavior happens when I unmount the partition too.
 
-### Diffstat output
- ./fs/nfsd/nfssvc.c |   76 ++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 49 insertions(+), 27 deletions(-)
+Could some experts help me out please ?
 
-diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
---- ./fs/nfsd/nfssvc.c~current~	2006-01-20 17:41:12.000000000 +1100
-+++ ./fs/nfsd/nfssvc.c	2006-01-20 17:46:24.000000000 +1100
-@@ -64,6 +64,32 @@ struct nfsd_list {
- };
- static struct list_head nfsd_list = LIST_HEAD_INIT(nfsd_list);
- 
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+static struct svc_stat	nfsd_acl_svcstats;
-+static struct svc_version *	nfsd_acl_version[] = {
-+	[2] = &nfsd_acl_version2,
-+	[3] = &nfsd_acl_version3,
-+};
-+
-+#define NFSD_ACL_MINVERS            2
-+#define NFSD_ACL_NRVERS		(sizeof(nfsd_acl_version)/sizeof(nfsd_acl_version[0]))
-+static struct svc_version *nfsd_acl_versions[NFSD_ACL_NRVERS];
-+
-+static struct svc_program	nfsd_acl_program = {
-+	.pg_prog		= NFS_ACL_PROGRAM,
-+	.pg_nvers		= NFSD_ACL_NRVERS,
-+	.pg_vers		= nfsd_acl_versions,
-+	.pg_name		= "nfsd",
-+	.pg_class		= "nfsd",
-+	.pg_stats		= &nfsd_acl_svcstats,
-+	.pg_authenticate	= &svc_set_client,
-+};
-+
-+static struct svc_stat	nfsd_acl_svcstats = {
-+	.program	= &nfsd_acl_program,
-+};
-+#endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
-+
- static struct svc_version *	nfsd_version[] = {
- 	[2] = &nfsd_version2,
- #if defined(CONFIG_NFSD_V3)
-@@ -79,6 +105,9 @@ static struct svc_version *	nfsd_version
- static struct svc_version *nfsd_versions[NFSD_NRVERS];
- 
- struct svc_program		nfsd_program = {
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+	.pg_next		= &nfsd_acl_program,
-+#endif
- 	.pg_prog		= NFS_PROGRAM,		/* program number */
- 	.pg_nvers		= NFSD_NRVERS,		/* nr of entries in nfsd_version */
- 	.pg_vers		= nfsd_versions,	/* version table */
-@@ -147,6 +176,26 @@ nfsd_svc(unsigned short port, int nrserv
- 				nfsd_program.pg_vers[i] = nfsd_version[i];
- 		}
- 
-+
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+		found_one = 0;
-+
-+		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++) {
-+			if (NFSCTL_VERISSET(nfsd_versbits, i)) {
-+				nfsd_acl_program.pg_vers[i] =
-+					nfsd_acl_version[i];
-+				found_one = 1;
-+			} else
-+				nfsd_acl_program.pg_vers[i] = NULL;
-+		}
-+
-+		if (!found_one) {
-+			for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
-+				nfsd_acl_program.pg_vers[i] =
-+					nfsd_acl_version[i];
-+		}
-+#endif
-+
- 		atomic_set(&nfsd_busy, 0);
- 		error = -ENOMEM;
- 		nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE);
-@@ -411,30 +460,3 @@ nfsd_dispatch(struct svc_rqst *rqstp, u3
- 	nfsd_cache_update(rqstp, proc->pc_cachetype, statp + 1);
- 	return 1;
- }
--
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
--static struct svc_stat	nfsd_acl_svcstats;
--static struct svc_version *	nfsd_acl_version[] = {
--	[2] = &nfsd_acl_version2,
--	[3] = &nfsd_acl_version3,
--};
--
--#define NFSD_ACL_NRVERS		(sizeof(nfsd_acl_version)/sizeof(nfsd_acl_version[0]))
--static struct svc_program	nfsd_acl_program = {
--	.pg_prog		= NFS_ACL_PROGRAM,
--	.pg_nvers		= NFSD_ACL_NRVERS,
--	.pg_vers		= nfsd_acl_version,
--	.pg_name		= "nfsd",
--	.pg_class		= "nfsd",
--	.pg_stats		= &nfsd_acl_svcstats,
--	.pg_authenticate	= &svc_set_client,
--};
--
--static struct svc_stat	nfsd_acl_svcstats = {
--	.program	= &nfsd_acl_program,
--};
--
--#define nfsd_acl_program_p	&nfsd_acl_program
--#else
--#define nfsd_acl_program_p	NULL
--#endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
+regards
+
+Rajesh
 
 
 -------------------------------------------------------
