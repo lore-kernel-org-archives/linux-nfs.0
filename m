@@ -1,23 +1,21 @@
-From: Daniel Phillips <phillips@google.com>
-Subject: Re: Re: Lock recursion in rpc_pipefs+auth_gss...
-Date: Thu, 19 Jan 2006 17:18:48 -0800
-Message-ID: <43D03A78.3020707@google.com>
-References: <43CFE807.5080304@google.com> <1137712176.11182.20.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH] knfsd: Restore recently broken ACL functionality to NFS server
+Date: Fri, 20 Jan 2006 17:49:36 +1100
+Message-ID: <1060120064936.9440@suse.de>
+References: <20060120174858.9422.patches@notabene>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EzkvV-0007ng-UJ
-	for nfs@lists.sourceforge.net; Thu, 19 Jan 2006 17:18:53 -0800
-Received: from smtp-out.google.com ([216.239.45.12])
+	id 1Ezq5n-0004uD-L3
+	for nfs@lists.sourceforge.net; Thu, 19 Jan 2006 22:49:51 -0800
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1EzkvU-0006WG-NX
-	for nfs@lists.sourceforge.net; Thu, 19 Jan 2006 17:18:53 -0800
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-In-Reply-To: <1137712176.11182.20.camel@lade.trondhjem.org>
+	id 1Ezq5l-0006ZI-7J
+	for nfs@lists.sourceforge.net; Thu, 19 Jan 2006 22:49:51 -0800
+To: Andrew Morton <akpm@osdl.org>
+Cc: Andreas Gruenbacher <agruen@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,32 +29,126 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> On Thu, 2006-01-19 at 11:27 -0800, Daniel Phillips wrote:
->>That in itself should not cause an oops.  I would think there is a
->>reference-counting problem still lurking.  I'm a little concerned that a
->>patch like this one may just make the oops a lot rarer without solving it.
-> 
-> The lock recursion is _real_: I've been able to trigger it on
-> 2.6.16-rc1. The only question here is therefore whether or not it
-> suffices to explain the Oops.
 
-I don't see how it could.
+From: Andreas Gruenbacher <agruen@suse.de>
 
-I do not doubt the veracity of the lock recursion, but holding the i_sem/mutex
-for a long time seems to be one of the things we need to do to trigger the
-oops, so this deadlock is our friend.  Does it always trigger the oops?  Do
-you have a recipe handy so we can try it here?
+A recent patch to 
+   Allow run-time selection of NFS versions to export  
 
-The symptoms we see suggest the pipe inode was freed while somebody was
-waiting to get the i_mutex.  What prevents this?
+meant that NO nfsacl service versions were exported.
+This patch restored that functionality.
 
-Re the lock recursion itself, is there any good reason to serialize upcalls
-against downcalls in the first place?
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Neil Brown <neilb@suse.de>
 
-Regards,
+### Diffstat output
+ ./fs/nfsd/nfssvc.c |   76 ++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 49 insertions(+), 27 deletions(-)
 
-Daniel
+diff ./fs/nfsd/nfssvc.c~current~ ./fs/nfsd/nfssvc.c
+--- ./fs/nfsd/nfssvc.c~current~	2006-01-20 17:41:12.000000000 +1100
++++ ./fs/nfsd/nfssvc.c	2006-01-20 17:46:24.000000000 +1100
+@@ -64,6 +64,32 @@ struct nfsd_list {
+ };
+ static struct list_head nfsd_list = LIST_HEAD_INIT(nfsd_list);
+ 
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++static struct svc_stat	nfsd_acl_svcstats;
++static struct svc_version *	nfsd_acl_version[] = {
++	[2] = &nfsd_acl_version2,
++	[3] = &nfsd_acl_version3,
++};
++
++#define NFSD_ACL_MINVERS            2
++#define NFSD_ACL_NRVERS		(sizeof(nfsd_acl_version)/sizeof(nfsd_acl_version[0]))
++static struct svc_version *nfsd_acl_versions[NFSD_ACL_NRVERS];
++
++static struct svc_program	nfsd_acl_program = {
++	.pg_prog		= NFS_ACL_PROGRAM,
++	.pg_nvers		= NFSD_ACL_NRVERS,
++	.pg_vers		= nfsd_acl_versions,
++	.pg_name		= "nfsd",
++	.pg_class		= "nfsd",
++	.pg_stats		= &nfsd_acl_svcstats,
++	.pg_authenticate	= &svc_set_client,
++};
++
++static struct svc_stat	nfsd_acl_svcstats = {
++	.program	= &nfsd_acl_program,
++};
++#endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
++
+ static struct svc_version *	nfsd_version[] = {
+ 	[2] = &nfsd_version2,
+ #if defined(CONFIG_NFSD_V3)
+@@ -79,6 +105,9 @@ static struct svc_version *	nfsd_version
+ static struct svc_version *nfsd_versions[NFSD_NRVERS];
+ 
+ struct svc_program		nfsd_program = {
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++	.pg_next		= &nfsd_acl_program,
++#endif
+ 	.pg_prog		= NFS_PROGRAM,		/* program number */
+ 	.pg_nvers		= NFSD_NRVERS,		/* nr of entries in nfsd_version */
+ 	.pg_vers		= nfsd_versions,	/* version table */
+@@ -147,6 +176,26 @@ nfsd_svc(unsigned short port, int nrserv
+ 				nfsd_program.pg_vers[i] = nfsd_version[i];
+ 		}
+ 
++
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++		found_one = 0;
++
++		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++) {
++			if (NFSCTL_VERISSET(nfsd_versbits, i)) {
++				nfsd_acl_program.pg_vers[i] =
++					nfsd_acl_version[i];
++				found_one = 1;
++			} else
++				nfsd_acl_program.pg_vers[i] = NULL;
++		}
++
++		if (!found_one) {
++			for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
++				nfsd_acl_program.pg_vers[i] =
++					nfsd_acl_version[i];
++		}
++#endif
++
+ 		atomic_set(&nfsd_busy, 0);
+ 		error = -ENOMEM;
+ 		nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE);
+@@ -411,30 +460,3 @@ nfsd_dispatch(struct svc_rqst *rqstp, u3
+ 	nfsd_cache_update(rqstp, proc->pc_cachetype, statp + 1);
+ 	return 1;
+ }
+-
+-#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+-static struct svc_stat	nfsd_acl_svcstats;
+-static struct svc_version *	nfsd_acl_version[] = {
+-	[2] = &nfsd_acl_version2,
+-	[3] = &nfsd_acl_version3,
+-};
+-
+-#define NFSD_ACL_NRVERS		(sizeof(nfsd_acl_version)/sizeof(nfsd_acl_version[0]))
+-static struct svc_program	nfsd_acl_program = {
+-	.pg_prog		= NFS_ACL_PROGRAM,
+-	.pg_nvers		= NFSD_ACL_NRVERS,
+-	.pg_vers		= nfsd_acl_version,
+-	.pg_name		= "nfsd",
+-	.pg_class		= "nfsd",
+-	.pg_stats		= &nfsd_acl_svcstats,
+-	.pg_authenticate	= &svc_set_client,
+-};
+-
+-static struct svc_stat	nfsd_acl_svcstats = {
+-	.program	= &nfsd_acl_program,
+-};
+-
+-#define nfsd_acl_program_p	&nfsd_acl_program
+-#else
+-#define nfsd_acl_program_p	NULL
+-#endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
 
 
 -------------------------------------------------------
