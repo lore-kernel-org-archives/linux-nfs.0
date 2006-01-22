@@ -1,23 +1,23 @@
-From: Piers Kittel <ed@biased.org>
+From: Piers Kittel <debian@biased.org>
 Subject: Mounting DVDs via NFS problem
-Date: Sun, 22 Jan 2006 17:52:46 +0000
-Message-ID: <43D3C66E.4060509@biased.org>
+Date: Sun, 22 Jan 2006 17:53:09 +0000
+Message-ID: <43D3C685.9040804@biased.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F0jOZ-0003xb-Eu
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:52:55 -0800
+	id 1F0jOv-0003ze-RZ
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:53:17 -0800
 Received: from englishdude.plus.com ([81.174.246.186] helo=destiny.biased.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1F0jOY-0003tx-Sh
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:52:55 -0800
+	id 1F0jOt-0003zI-0P
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:53:18 -0800
 Received: from akane.10sca.intranet ([192.168.1.17])
 	by destiny.biased.org with esmtp (Exim 4.50)
-	id 1F0jOP-0005vy-Kl
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 17:52:45 +0000
+	id 1F0jOn-0005wG-2U
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 17:53:09 +0000
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
