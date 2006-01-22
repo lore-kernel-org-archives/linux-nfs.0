@@ -1,20 +1,23 @@
-From: Rajesh Kalmady <krajesh304@gmail.com>
-Subject: nfs mounting problem in a linux cluster
-Date: Fri, 20 Jan 2006 18:03:43 +0530
-Message-ID: <536c333e0601200433s270e4e47x@mail.gmail.com>
+From: Piers Kittel <ed@biased.org>
+Subject: Mounting DVDs via NFS problem
+Date: Sun, 22 Jan 2006 17:52:46 +0000
+Message-ID: <43D3C66E.4060509@biased.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1EzvSa-0001hw-Iu
-	for nfs@lists.sourceforge.net; Fri, 20 Jan 2006 04:33:44 -0800
-Received: from zproxy.gmail.com ([64.233.162.206])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1EzvSa-00031h-Dy
-	for nfs@lists.sourceforge.net; Fri, 20 Jan 2006 04:33:44 -0800
-Received: by zproxy.gmail.com with SMTP id r28so428077nza
-        for <nfs@lists.sourceforge.net>; Fri, 20 Jan 2006 04:33:43 -0800 (PST)
+	id 1F0jOZ-0003xb-Eu
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:52:55 -0800
+Received: from englishdude.plus.com ([81.174.246.186] helo=destiny.biased.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1F0jOY-0003tx-Sh
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:52:55 -0800
+Received: from akane.10sca.intranet ([192.168.1.17])
+	by destiny.biased.org with esmtp (Exim 4.50)
+	id 1F0jOP-0005vy-Kl
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 17:52:45 +0000
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,40 +32,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I have a linux cluster with RHEL 4.1 installed in all nodes and the
-NFS servers too. I have a
-strange problem of NFS mounting. When I try to mount a file system
-from the NFS server  on
-to all nodes, I find that the mount hangs in some nodes, but works in
-others normally. I go to that node, kill the mount command and run it
-again, it works. The set of nodes where it
-does not work is also random.
+Hello all,
 
-I was doing this using a shell script which uses rsh to issue mount
-commands on the nodes,
-one by one. I thought that maybe the NFS server cannot handle rapid
-requests, so I put a
-sleep of 2 seconds between successive mount commands. But there was no
-change in
-the behavior.
+Am trying to mount a DVD drive via NFS and am having problems.  For
+note, 192.168.1.2 (hostname - destiny) is the client and 192.168.1.15
+(hostname - mythtv) is the server.
 
-After some diagnosing using tcpdump, I found that the mount client
-first contacts the
-RPC portmapper, then the NFS port and then the port where mountd is
-listening. In those
-machines where it does not work, I found that portmapper and nfs are
-contacted but after
-this, there is no progress.
+I have this in my /etc/exports:
 
-The linux version is 2.6.9 (the one which comes in RHEL 4.1).
+/media/cdrom0 192.168.1.2(ro,sync)
 
-The same behavior happens when I unmount the partition too.
+and 192.168.1.2 is in the /etc/hosts.allow.
 
-Could some experts help me out please ?
+If the DVD is not mounted, it works perfectly fine:
 
-regards
+destiny:/mnt# mount mythtv:/media/cdrom0 /mnt/mythtv
+destiny:/mnt# df
+Filesystem           1K-blocks      Used Available Use% Mounted on
+<snip>
+mythtv:/media/cdrom0   1829192   1547128    184472  90% /mnt/mythtv
+destiny:/mnt#
 
-Rajesh
+If I unmount the above, and then mount the DVD on mythtv:
+
+mythtv:/home/piers# mount /cdrom
+mythtv:/home/piers#
+
+and try again on destiny, I get:
+
+destiny:/# mount mythtv:/media/cdrom0 /mnt/mythtv
+mount: mythtv:/media/cdrom0 failed, reason given by server: Permission
+denied
+destiny:/#
+
+and in the logs, I get:
+
+Jan 21 21:57:08 localhost kernel: UDF-fs INFO UDF 0.9.8.1 (2004/29/09)
+Mounting volume 'FIREFLY_D3', timestamp 2003/09/08 20:08 (1000)
+Jan 21 21:57:39 localhost rpc.mountd: authenticated mount request from
+destiny.10sca.intranet:923 for /media/cdrom0 (/media/cdrom0)
+Jan 21 21:57:39 localhost rpc.mountd: getfh failed: Operation not permitted
+
+I've googled for a long time with the last message but I can't find any
+help anywhere.
+
+I've tried this on my 2 Macs but had the exact same problem:
+
+Jan 21 20:34:55 localhost rpc.mountd: authenticated mount request from
+ukyo.10sca.intranet:982 for /media/cdrom0 (/media/cdrom0)
+Jan 21 20:34:55 localhost rpc.mountd: getfh failed: Operation not permitted
+Jan 21 21:29:59 localhost rpc.mountd: authenticated mount request from
+akane.10sca.intranet:972 for /media/cdrom0 (/media/cdrom0)
+Jan 21 21:29:59 localhost rpc.mountd: getfh failed: Operation not permitted
+
+I'm hoping you guys can tell me what I'm doing wrong here?
+
+Thanks very much in advance!
+
+Cheers - Piers
 
 
 -------------------------------------------------------
