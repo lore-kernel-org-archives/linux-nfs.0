@@ -1,23 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Mounting DVDs via NFS problem
-Date: Mon, 23 Jan 2006 13:54:34 +1100
-Message-ID: <17364.17770.366712.686773@cse.unsw.edu.au>
-References: <43D3C685.9040804@biased.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: nfs mounting problem in a linux cluster
+Date: Mon, 23 Jan 2006 08:02:26 -0500
+Message-ID: <43D4D3E2.5030806@RedHat.com>
+References: <536c333e0601200433s270e4e47x@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F0rqy-0001KM-0z
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 18:54:48 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1F0rqw-0001dT-Re
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 18:54:48 -0800
-To: Piers Kittel <debian@biased.org>
-In-Reply-To: message from Piers Kittel on Sunday January 22
+	id 1F11LD-00085G-60
+	for nfs@lists.sourceforge.net; Mon, 23 Jan 2006 05:02:39 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1F11LB-0007Mm-Td
+	for nfs@lists.sourceforge.net; Mon, 23 Jan 2006 05:02:39 -0800
+To: Rajesh Kalmady <krajesh304@gmail.com>
+In-Reply-To: <536c333e0601200433s270e4e47x@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,55 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sunday January 22, debian@biased.org wrote:
-> Hello all,
+Rajesh Kalmady wrote:
+> I have a linux cluster with RHEL 4.1 installed in all nodes and the
+> NFS servers too. I have a
+> strange problem of NFS mounting. When I try to mount a file system
+> from the NFS server  on
+> to all nodes, I find that the mount hangs in some nodes, but works in
+> others normally. I go to that node, kill the mount command and run it
+> again, it works. The set of nodes where it
+> does not work is also random.
 > 
-> Am trying to mount a DVD drive via NFS and am having problems.  For
-> note, 192.168.1.2 (hostname - destiny) is the client and 192.168.1.15
-> (hostname - mythtv) is the server.
+> I was doing this using a shell script which uses rsh to issue mount
+> commands on the nodes,
+> one by one. I thought that maybe the NFS server cannot handle rapid
+> requests, so I put a
+> sleep of 2 seconds between successive mount commands. But there was no
+> change in
+> the behavior.
 > 
-> I have this in my /etc/exports:
-> 
-> /media/cdrom0 192.168.1.2(ro,sync)
-> 
-> and 192.168.1.2 is in the /etc/hosts.allow.
-> 
-> If the DVD is not mounted, it works perfectly fine:
-> 
-> destiny:/mnt# mount mythtv:/media/cdrom0 /mnt/mythtv
-> destiny:/mnt# df
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> <snip>
-> mythtv:/media/cdrom0   1829192   1547128    184472  90% /mnt/mythtv
-> destiny:/mnt#
-> 
-> If I unmount the above, and then mount the DVD on mythtv:
-> 
-> mythtv:/home/piers# mount /cdrom
-> mythtv:/home/piers#
-> 
-> and try again on destiny, I get:
-> 
-> destiny:/# mount mythtv:/media/cdrom0 /mnt/mythtv
-> mount: mythtv:/media/cdrom0 failed, reason given by server: Permission
-> denied
-> destiny:/#
-> 
-...
-> 
-> I'm hoping you guys can tell me what I'm doing wrong here?
+> After some diagnosing using tcpdump, I found that the mount client
+> first contacts the
+> RPC portmapper, then the NFS port and then the port where mountd is
+> listening. In those
+> machines where it does not work, I found that portmapper and nfs are
+> contacted but after
+> this, there is no progress.
+hmm... is there anything in /var/log/messages describing the failure
+(on either side)?
 
-You need to run 'exportfs -a' again after mounting the dvd.....
-OR maybe you need to unexport before mounting, and re-export after
-mounting.  I don't remember the exact details.
-
-If you use 2.6, nfs-utils 1.0.6 or later, and have the 'nfsd'
-filesytem mounted on /proc/fs/nfsd:
-  mount -t nfsd nfsd /proc/fs/nfsd
-
-then this would work more smoothly, not requiring any re-export.
-
-NeilBrown
+steved.
 
 
 -------------------------------------------------------
