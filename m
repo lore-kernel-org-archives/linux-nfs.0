@@ -1,24 +1,23 @@
-From: Piers Kittel <debian@biased.org>
-Subject: Mounting DVDs via NFS problem
-Date: Sun, 22 Jan 2006 17:53:09 +0000
-Message-ID: <43D3C685.9040804@biased.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Mounting DVDs via NFS problem
+Date: Mon, 23 Jan 2006 13:54:34 +1100
+Message-ID: <17364.17770.366712.686773@cse.unsw.edu.au>
+References: <43D3C685.9040804@biased.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F0jOv-0003ze-RZ
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:53:17 -0800
-Received: from englishdude.plus.com ([81.174.246.186] helo=destiny.biased.org)
+	id 1F0rqy-0001KM-0z
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 18:54:48 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1F0jOt-0003zI-0P
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 09:53:18 -0800
-Received: from akane.10sca.intranet ([192.168.1.17])
-	by destiny.biased.org with esmtp (Exim 4.50)
-	id 1F0jOn-0005wG-2U
-	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 17:53:09 +0000
-To: nfs@lists.sourceforge.net
+	id 1F0rqw-0001dT-Re
+	for nfs@lists.sourceforge.net; Sun, 22 Jan 2006 18:54:48 -0800
+To: Piers Kittel <debian@biased.org>
+In-Reply-To: message from Piers Kittel on Sunday January 22
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,64 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello all,
+On Sunday January 22, debian@biased.org wrote:
+> Hello all,
+> 
+> Am trying to mount a DVD drive via NFS and am having problems.  For
+> note, 192.168.1.2 (hostname - destiny) is the client and 192.168.1.15
+> (hostname - mythtv) is the server.
+> 
+> I have this in my /etc/exports:
+> 
+> /media/cdrom0 192.168.1.2(ro,sync)
+> 
+> and 192.168.1.2 is in the /etc/hosts.allow.
+> 
+> If the DVD is not mounted, it works perfectly fine:
+> 
+> destiny:/mnt# mount mythtv:/media/cdrom0 /mnt/mythtv
+> destiny:/mnt# df
+> Filesystem           1K-blocks      Used Available Use% Mounted on
+> <snip>
+> mythtv:/media/cdrom0   1829192   1547128    184472  90% /mnt/mythtv
+> destiny:/mnt#
+> 
+> If I unmount the above, and then mount the DVD on mythtv:
+> 
+> mythtv:/home/piers# mount /cdrom
+> mythtv:/home/piers#
+> 
+> and try again on destiny, I get:
+> 
+> destiny:/# mount mythtv:/media/cdrom0 /mnt/mythtv
+> mount: mythtv:/media/cdrom0 failed, reason given by server: Permission
+> denied
+> destiny:/#
+> 
+...
+> 
+> I'm hoping you guys can tell me what I'm doing wrong here?
 
-Am trying to mount a DVD drive via NFS and am having problems.  For
-note, 192.168.1.2 (hostname - destiny) is the client and 192.168.1.15
-(hostname - mythtv) is the server.
+You need to run 'exportfs -a' again after mounting the dvd.....
+OR maybe you need to unexport before mounting, and re-export after
+mounting.  I don't remember the exact details.
 
-I have this in my /etc/exports:
+If you use 2.6, nfs-utils 1.0.6 or later, and have the 'nfsd'
+filesytem mounted on /proc/fs/nfsd:
+  mount -t nfsd nfsd /proc/fs/nfsd
 
-/media/cdrom0 192.168.1.2(ro,sync)
+then this would work more smoothly, not requiring any re-export.
 
-and 192.168.1.2 is in the /etc/hosts.allow.
-
-If the DVD is not mounted, it works perfectly fine:
-
-destiny:/mnt# mount mythtv:/media/cdrom0 /mnt/mythtv
-destiny:/mnt# df
-Filesystem           1K-blocks      Used Available Use% Mounted on
-<snip>
-mythtv:/media/cdrom0   1829192   1547128    184472  90% /mnt/mythtv
-destiny:/mnt#
-
-If I unmount the above, and then mount the DVD on mythtv:
-
-mythtv:/home/piers# mount /cdrom
-mythtv:/home/piers#
-
-and try again on destiny, I get:
-
-destiny:/# mount mythtv:/media/cdrom0 /mnt/mythtv
-mount: mythtv:/media/cdrom0 failed, reason given by server: Permission
-denied
-destiny:/#
-
-and in the logs, I get:
-
-Jan 21 21:57:08 localhost kernel: UDF-fs INFO UDF 0.9.8.1 (2004/29/09)
-Mounting volume 'FIREFLY_D3', timestamp 2003/09/08 20:08 (1000)
-Jan 21 21:57:39 localhost rpc.mountd: authenticated mount request from
-destiny.10sca.intranet:923 for /media/cdrom0 (/media/cdrom0)
-Jan 21 21:57:39 localhost rpc.mountd: getfh failed: Operation not permitted
-
-I've googled for a long time with the last message but I can't find any
-help anywhere.
-
-I've tried this on my 2 Macs but had the exact same problem:
-
-Jan 21 20:34:55 localhost rpc.mountd: authenticated mount request from
-ukyo.10sca.intranet:982 for /media/cdrom0 (/media/cdrom0)
-Jan 21 20:34:55 localhost rpc.mountd: getfh failed: Operation not permitted
-Jan 21 21:29:59 localhost rpc.mountd: authenticated mount request from
-akane.10sca.intranet:972 for /media/cdrom0 (/media/cdrom0)
-Jan 21 21:29:59 localhost rpc.mountd: getfh failed: Operation not permitted
-
-I'm hoping you guys can tell me what I'm doing wrong here?
-
-Thanks very much in advance!
-
-Cheers - Piers
+NeilBrown
 
 
 -------------------------------------------------------
