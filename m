@@ -1,18 +1,18 @@
-From: Peter M Kekenes-Huskey <huskeypm@wag.caltech.edu>
+From: "pete huskey" <huskeypm@hotmail.com>
 Subject: Three ports required for nfs mounting?
-Date: Thu, 26 Jan 2006 20:09:41 -0800
-Message-ID: <1138334981.22516.8.camel@nietzsche>
+Date: Thu, 26 Jan 2006 20:20:20 -0800
+Message-ID: <BAY102-F11963DF60347864DF9C2E9CB140@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F2Kwd-0001fm-4u
-	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 20:10:43 -0800
-Received: from igor.wag.caltech.edu ([131.215.26.3])
+	id 1F2L5x-0002Ps-51
+	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 20:20:21 -0800
+Received: from bay102-f11.bay102.hotmail.com ([64.4.61.21] helo=hotmail.com)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F2Kwc-00027J-Qv
-	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 20:10:43 -0800
+	id 1F2L5w-0001ni-Ua
+	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 20:20:21 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,7 +30,7 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 Hi
 I currently use guarddog/firestarter (on different machines) to
 configure my iptables.  When activated, although ports 111 and 2049 were
-freed for nfs, i was unable to mount shared volumes from a remote host. 
+freed for nfs, i was unable to mount shared volumes from a remote host.
 After scanning my tcpdump outputs, it came to my attention that an
 additional port (861 in this case) needed to be opened to allow
 mounting:
@@ -52,6 +52,7 @@ requires freeing different ports, not just 861.  Does anyone understand
 why this happens?
 
 pete
+
 
 
 
