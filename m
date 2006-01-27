@@ -1,23 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS dentry caching mechanism
-Date: Thu, 26 Jan 2006 18:14:07 -0500
-Message-ID: <1138317247.8770.39.camel@lade.trondhjem.org>
-References: <OFE1F20AE4.839B09EC-ON87257102.007A50EE-88257102.007C7D01@us.ibm.com>
+From: Peter M Kekenes-Huskey <huskeypm@wag.caltech.edu>
+Subject: Three ports required for nfs mounting?
+Date: Thu, 26 Jan 2006 20:09:41 -0800
+Message-ID: <1138334981.22516.8.camel@nietzsche>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F2GJy-0000jp-DU
-	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 15:14:30 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1F2GJx-0007nN-TP
-	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 15:14:30 -0800
-To: uketinen@us.ibm.com
-In-Reply-To: <OFE1F20AE4.839B09EC-ON87257102.007A50EE-88257102.007C7D01@us.ibm.com>
+	id 1F2Kwd-0001fm-4u
+	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 20:10:43 -0800
+Received: from igor.wag.caltech.edu ([131.215.26.3])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1F2Kwc-00027J-Qv
+	for nfs@lists.sourceforge.net; Thu, 26 Jan 2006 20:10:43 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,83 +27,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2006-01-26 at 14:40 -0800, Usha Ketineni wrote:
-> 
-> 
-> 
-> We are investigating an issue with the NFS client code in 2.4.21
-> kernel:
-> 
-> To reproduce the issue: 
-> 
-> (using machine A and machine B, and a file system mounted off an NFS
-> server 
-> called /home)
-> 
-> 1) On Machine A: 
-> 
-> ls home/source 
-> ls: /home/source: No such file or directory 
-> 
-> 2) On machine B: 
-> touch /home/source 
-> 
-> 3) back on machine A: 
-> rm /home/source 
-> rm: cannot lstat `source': No such file or directory 
-> 
-> But source *does* exist. 
-> 
+Hi
+I currently use guarddog/firestarter (on different machines) to
+configure my iptables.  When activated, although ports 111 and 2049 were
+freed for nfs, i was unable to mount shared volumes from a remote host. 
+After scanning my tcpdump outputs, it came to my attention that an
+additional port (861 in this case) needed to be opened to allow
+mounting:
 
-Why on earth is 'rm' trying to lstat the file? That is both racy and
-unnecessary.
+< 10.1.1.2 is the remote computer, 10.1.1.3 is the nfs host>
 
-> This shows the problem.
-> 
-> ===
-> 
-> There are workarounds:
-> 
-> 1) Mount the file system with acdirmin=0 and acdirmax=0. But this then
-> affects 
-> all system calls, not just unlink(). And it hurts NFS performance.
-> 
-> 2) Mount the file system with the noac option, but the same negative
-> effect as 
-> in #1 applies.
-> 
-> What happens is this: 
-> 
-> 0) Let F be a filename on the NFS file system. Initially this file
-> does not exist.
-> 
-> 1) The application on the machine A does a stat() on F. The NFS
-> client in the kernel sends a LOOKUP request to the NFS server, which
-> obviously returns failure. The stat() fails with ENOENT. OK so far.
-> 
-> 2) Immediately afterwards (a few seconds max), the application on
-> machine B creates the file F. No problems so far.
-> 
-> 3) When B is done with F, a few seconds later the application on
-> machine A does an unlink() on F. Because of the negative dentry
-> caching in the Linux kernel, it doesn't even bother to send an NFS
-> REMOVE request to the NFS server, as (it thinks) it knows for sure the
-> file doesn't exist. It lets the unlink() fail with ENOENT. But the
-> file definitely exists. 
-> 
-> Is there any other solution for this (including moving to a newer
-> kernel)? 
-> 
-I suppose one could add a VFS intent for unlink in order to force
-nfs_lookup_revalidate() to drop the negative dentry. We don't do that on
-any existing kernels though (particularly not on 2.4 kernels, as they
-don't support intents).
+19:55:09.466230 10.1.1.3.111 > 10.1.1.2.32798: F [tcp sum ok] 33:33(0)
+ack 62 win 5840 (DF) (ttl 64, id 9328, len 40)
+19:55:09.466345 10.1.1.2.32798 > 10.1.1.3.111: . [tcp sum ok] 62:62(0)
+ack 34 win 5840 (DF) (ttl 64, id 64023, len 40)
+19:55:12.465733 10.1.1.2.32799 > 10.1.1.3.861: S [tcp sum ok]
+362674659:362674659(0) win 5840 <mss 1460> (DF) (ttl 64, id 49614, len
+44)
+19:55:20.621919 10.1.1.3.2406888837 > 10.1.1.2.2049: 104 getattr [|nfs]
+(DF) (ttl 64, id 5800, len 132)
 
-However I suspect that most non-linux clients will similarly cache
-negative DNLC entries, and be vulnerable to the same problem.
+Once 861 was freed, all was well.  However, sharing different volumes
+requires freeing different ports, not just 861.  Does anyone understand
+why this happens?
 
-Cheers,
-  Trond
+pete
 
 
 
