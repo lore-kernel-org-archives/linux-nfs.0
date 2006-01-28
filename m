@@ -1,22 +1,15 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: NFS dentry caching mechanism
-Date: Fri, 27 Jan 2006 13:20:54 -0500
-Message-ID: <43DA6486.9090403@redhat.com>
-References: <OFE1F20AE4.839B09EC-ON87257102.007A50EE-88257102.007C7D01@us.ibm.com>	 <1138317247.8770.39.camel@lade.trondhjem.org> <43DA2240.2090900@redhat.com>	 <1138369456.8712.14.camel@lade.trondhjem.org> <43DA24D3.3090400@redhat.com>	 <1138371965.8712.30.camel@lade.trondhjem.org> <43DA3180.7010807@redhat.com>	 <1138374819.8712.53.camel@lade.trondhjem.org> <43DA3E0D.70007@redhat.com> <1138381997.8708.21.camel@lade.trondhjem.org>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: virtual hostname support for sm-notify on SuSE
+Date: Fri, 27 Jan 2006 18:21:59 -0800
+Message-ID: <OF322A73D5.EFCAF050-ON88257104.000C2815-88257104.000CB1F4@us.ibm.com>
+References: <20060104060244.76161.qmail@web51613.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: uketinen@us.ibm.com, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="US-ASCII"
+Cc: nfs@lists.sourceforge.net, nfs-admin@lists.sourceforge.net,
+	Manoj Naik <manoj@almaden.ibm.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F2YDd-00018T-Sp
-	for nfs@lists.sourceforge.net; Fri, 27 Jan 2006 10:21:09 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F2YDZ-0005vi-58
-	for nfs@lists.sourceforge.net; Fri, 27 Jan 2006 10:21:06 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1138381997.8708.21.camel@lade.trondhjem.org>
+In-Reply-To: <20060104060244.76161.qmail@web51613.mail.yahoo.com>
+To: okir@suse.de, mehta kiran <kiranmehta1981@yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,68 +23,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+Hi Olaf 
+I asked for this fix a couple of years ago, here is the fix for this 
+problem.
+Marc.
 
->
->Note that the strong cache validation your describe also relies heavily
->on the mtime accuracy on the server. A typical exported ext3 or reiserfs
->filesystem will still fail for the distributed make case since it has an
->mtime resolution of 1 second.
->
->  
->
+ 
+--- sm-notify.c.orig             2006-01-27 16:58:47.913561080 -0800
++++ sm-notify.c          2006-01-27 16:59:11.855921288 -0800
+@@ -183,12 +183,16 @@ notify(void)
+                 sin.sin_family = AF_INET;
+ 
+                 /* Bind source IP if provided on command line */
+-                if (opt_srcaddr
+-                 && inet_aton(opt_srcaddr, &sin.sin_addr) == 0) {
+-                                fprintf(stderr,
+-                                                "Not a valid IP address: 
+\"%s\"\n",
+-                                                opt_srcaddr);
+-                                exit(1);
++                if (opt_srcaddr) {
++                                struct hostent *hp = 
+gethostbyname(opt_srcaddr);
++                                if (hp)
++                                                sin.sin_addr = *(struct 
+in_addr *)hp->h_addr;
++                                else {
++                                                fprintf(stderr,
++                                                                "Not a 
+valid IP address: \"%s\"\n",
++ opt_srcaddr);
++                                                exit(1);
++                                }
+                 }
+ 
+                 /* Use source port if provided on the command line,
 
-True.  I don't believe that the client is the right place to work around
-such a problem with a server though.  We should get the server fixed, or
-in this case, any relevant local file systems fixed so that they support
-the required semantics.  There are lots of NFS servers in the world which
-do not have this issue.
+-------------------------------------------------------------------------------------------------------------------------------
+nfs-admin@lists.sourceforge.net wrote on 01/03/2006 10:02:44 PM:
 
-I know that fixing/changing these file systems will be difficult, but
-as they are, they don't make for very good NFS server service.
+> Hi,
+>      I have noticed that
+>      sm-notify -v <virtual ip> works 
+>      while sm-notify -v <virtual name> does not work.
+>      Virtual name may be required if nfs server fails 
+>      over across subnets.
+> 
+> 
+> thanks,
+>  kiran
 
->>>Operations such as RMDIR and unlink() do have a race, but in the case
->>>where you have one client creating a directory and another client
->>>destroying it, there will always be a race unless you have some method
->>>of synchronisation between the processes on the clients.
->>>
->>>There is a potential caching race if you try to open the file, but that
->>>is (as I said previously) quite intentional: it is done for scalability
->>>reasons.
->>>
->>> 
->>>
->>>      
->>>
->>I don't think that I understand this last paragraph.  Does this mean that
->>the consistency was purposefully relaxed in order to increase performance?
->>    
->>
->
->Not performance as such, but scalability. Both the server and network
->suffer in the case where you have nfsroot clients flooding the system
->with GETATTR requests in order to revalidate negative dentries. Consider
->for instance at all the little shared libraries, config files, and other
->junk that a typical GNOME or KDE desktop login involves, and you'll know
->what I mean. The difference between negative dentry caching and not is
->very significant in those cases, and so we were seeing some nasty
->network floods in the early 2.4 series when it was briefly turned off.
->
->I am basically very wary of increasing the number of GETATTR calls:
->we're already seeing a large number of HPC sites complaining about the
->scalability problems those cause on their servers, and asking for a
->reduction in the number of unnecessary revalidations (particularly so
->for 2.6 kernels).
->
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-I agree completely.  It in the decision making for "unnecessary" where
-the issue lie.  It is very easy to go too far and relax the consistency
-too much or go too far in the other direction and end up with the extra
-over the wire round trips for little or no gain.
-
-    Thanx...
-
-       ps
 
 
 -------------------------------------------------------
