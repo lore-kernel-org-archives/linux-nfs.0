@@ -1,16 +1,21 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: virtual hostname support for sm-notify on SuSE
-Date: Mon, 30 Jan 2006 10:56:52 +0100
-Message-ID: <20060130095652.GC421@suse.de>
-References: <OF322A73D5.EFCAF050-ON88257104.000C2815-88257104.000CB1F4@us.ibm.com> <43DAD784.8050409@almaden.ibm.com>
+From: "Com MN PG P E B Consultant 3" <mn-pg-p-e-b-consultant-3.com@siemens.com>
+Subject: Broken Link
+Date: Mon, 30 Jan 2006 16:59:08 +0100
+Message-ID: <6F0CB04509C11D46A54232E852E390ACC265EE@MCHP7R6A.ww002.siemens.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: mehta kiran <kiranmehta1981@yahoo.com>,
-	nfs@lists.sourceforge.net, nfs-admin@lists.sourceforge.net,
-	Manoj Naik <manoj@almaden.ibm.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <tavis.bar@liu.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: <43DAD784.8050409@almaden.ibm.com>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1F3bRg-0006BI-2o
+	for nfs@lists.sourceforge.net; Mon, 30 Jan 2006 08:00:00 -0800
+Received: from david.siemens.de ([192.35.17.14])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1F3bRe-0001gp-Id
+	for nfs@lists.sourceforge.net; Mon, 30 Jan 2006 08:00:00 -0800
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -24,18 +29,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Marc,
+The link in chapter 2.3 on the page
 
-I don't remember seeing that request, sorry. 
+http://nfs.sourceforge.net/nfs-howto/intro.html
 
-SLES10 will have a fix for this (which uses getaddrinfo rather than
-gethostbyname, but otherwise it should work the same way as your patch)
+is broken. The correct link is:
 
-Thanks,
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+http://www.tldp.org/HOWTO/Networking-Overview-HOWTO.html
+
+Ronald
+--=20
+Ronald Fischer (phone +49-89-63676431)
+mailto:mn-pg-p-e-b-consultant-3.com@siemens.com
 
 
 -------------------------------------------------------
