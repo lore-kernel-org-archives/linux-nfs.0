@@ -1,21 +1,25 @@
-From: "Com MN PG P E B Consultant 3" <mn-pg-p-e-b-consultant-3.com@siemens.com>
-Subject: Broken Link
-Date: Mon, 30 Jan 2006 16:59:08 +0100
-Message-ID: <6F0CB04509C11D46A54232E852E390ACC265EE@MCHP7R6A.ww002.siemens.net>
+From: Olaf Kirch <okir@suse.de>
+Subject: [PATCH] Auto-load RPC authentication kernel modules (client-side)
+Date: Tue, 31 Jan 2006 11:13:37 +0100
+Message-ID: <20060131101337.GF1462@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <tavis.bar@liu.edu>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F3bRg-0006BI-2o
-	for nfs@lists.sourceforge.net; Mon, 30 Jan 2006 08:00:00 -0800
-Received: from david.siemens.de ([192.35.17.14])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F3bRe-0001gp-Id
-	for nfs@lists.sourceforge.net; Mon, 30 Jan 2006 08:00:00 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1F3sW6-0007CY-MP
+	for nfs@lists.sourceforge.net; Tue, 31 Jan 2006 02:13:42 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1F3sW5-0000ET-7y
+	for nfs@lists.sourceforge.net; Tue, 31 Jan 2006 02:13:42 -0800
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 9409E1BEA3
+	for <nfs@lists.sourceforge.net>; Tue, 31 Jan 2006 11:13:37 +0100 (CET)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,18 +33,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-The link in chapter 2.3 on the page
+Summary: Auto-load RPC authentication kernel modules (client-side)
 
-http://nfs.sourceforge.net/nfs-howto/intro.html
+This patch adds a request_module call to rpcauth_create which will try
+to auto-load the kernel module for the requested authentication flavor.
+For kernels with modular sunrpc, this reduces the admin overhead for
+the user.
 
-is broken. The correct link is:
+Signed-off-by: Olaf Kirch <okir@suse.de>
 
-http://www.tldp.org/HOWTO/Networking-Overview-HOWTO.html
+ net/sunrpc/auth.c |   16 ++++++++++++++--
+ 1 files changed, 14 insertions(+), 2 deletions(-)
 
-Ronald
---=20
-Ronald Fischer (phone +49-89-63676431)
-mailto:mn-pg-p-e-b-consultant-3.com@siemens.com
+Index: build/net/sunrpc/auth.c
+===================================================================
+--- build.orig/net/sunrpc/auth.c
++++ build/net/sunrpc/auth.c
+@@ -64,14 +64,26 @@ rpcauth_create(rpc_authflavor_t pseudofl
+ 	struct rpc_authops	*ops;
+ 	u32			flavor = pseudoflavor_to_flavor(pseudoflavor);
+ 
+-	if (flavor >= RPC_AUTH_MAXFLAVOR || !(ops = auth_flavors[flavor]))
+-		return ERR_PTR(-EINVAL);
++	auth = ERR_PTR(-EINVAL);
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		goto out;
++
++	/* FIXME - auth_flavors[] really needs an rw lock,
++	 * and module refcounting. */
++#ifdef CONFIG_KMOD
++	if ((ops = auth_flavors[flavor]) == NULL)
++		request_module("rpc-auth-%u", flavor);
++#endif
++	if ((ops = auth_flavors[flavor]) == NULL)
++		goto out;
+ 	auth = ops->create(clnt, pseudoflavor);
+ 	if (IS_ERR(auth))
+ 		return auth;
+ 	if (clnt->cl_auth)
+ 		rpcauth_destroy(clnt->cl_auth);
+ 	clnt->cl_auth = auth;
++
++out:
+ 	return auth;
+ }
+ 
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
