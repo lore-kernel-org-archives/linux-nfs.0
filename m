@@ -1,25 +1,30 @@
-From: Brian Kerr <kerrboy@gmail.com>
-Subject: Re: NFS reliability in Enterprise Environment
-Date: Thu, 2 Feb 2006 00:00:25 -0500
-Message-ID: <b83c9e30602012100p3cdc75b2w3f6d3e128d51305d@mail.gmail.com>
-References: <5573EF758F632B43A91FE1A01B6AC3D401B77D6B@exch3-dc-aus.northamerica.corporate-domain.net>
-	 <b83c9e30602011608s6ba5b8d9sc2c9b01e27740ce0@mail.gmail.com>
-	 <1138840427.26648.178.camel@seki.nac.uci.edu>
+From: Ingo Lantschner <ingo.lists@vum.at>
+Subject: udp port sunrpc unreachable
+Date: Thu, 02 Feb 2006 10:21:14 +0100
+Message-ID: <drsiub$vok$1@sea.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F4Wa4-0002az-Co
-	for nfs@lists.sourceforge.net; Wed, 01 Feb 2006 21:00:28 -0800
-Received: from xproxy.gmail.com ([66.249.82.196])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F4Wa3-0005qo-7N
-	for nfs@lists.sourceforge.net; Wed, 01 Feb 2006 21:00:28 -0800
-Received: by xproxy.gmail.com with SMTP id s6so217841wxc
-        for <nfs@lists.sourceforge.net>; Wed, 01 Feb 2006 21:00:25 -0800 (PST)
+	id 1F4anp-00048V-6s
+	for nfs@lists.sourceforge.net; Thu, 02 Feb 2006 01:30:57 -0800
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1F4anl-0008Af-SZ
+	for nfs@lists.sourceforge.net; Thu, 02 Feb 2006 01:30:57 -0800
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1F4anY-0000XZ-38
+	for nfs@lists.sourceforge.net; Thu, 02 Feb 2006 10:30:40 +0100
+Received: from 85-124-230-82.work.xdsl-line.inode.at ([85.124.230.82])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <nfs@lists.sourceforge.net>; Thu, 02 Feb 2006 10:30:40 +0100
+Received: from ingo.lists by 85-124-230-82.work.xdsl-line.inode.at with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <nfs@lists.sourceforge.net>; Thu, 02 Feb 2006 10:30:40 +0100
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1138840427.26648.178.camel@seki.nac.uci.edu>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,65 +38,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On 2/1/06, Dan Stromberg <strombrg@dcs.nac.uci.edu> wrote:
+Hi all,
+I have a propably simple problem here - but can not find a solution:
+NFS-Client wslisi should mount a directory from NFS-Server wsvideo. 
+Potmaper und nfs-common are installed on both machines. The server has 
+nfs-kernel-server installed:
+-------------------------------------------------------------------------
+wsvideo$ env LANG=C dpkg -l nfs*
+...
+un  nfs-client                       <none>
+ii  nfs-common                       1.0.6-3.1ubuntu1
+ii  nfs-kernel-server                1.0.6-3.1ubuntu1
+--------------------------------------------------------------------------
 
-> We tried GFS served out over NFS, and it didn't work out well at all.
->
-> In fact, since we had a bunch of 2 terabyte slices that were made
-> available via GFS, we could've just eliminated GFS altogether, because
-> 32 bit linux can do that -without- GFS.  Sorry my GFS notes are a little
-> sketchy, but my manager seemed to want to do the GFS stuff himself :)  I
-> mostly just documented how to start it up and shut it down:
+But I still can not connect - tcpdump says that port 111 (sunrpc) is not 
+reachable:
+-------------------------------------------------------------------------
+# tcpdump -t not port 22
+IP wslisi.696 > wsvideo.sunrpc: S 727126627:727126627(0) win 5840 <mss 
+1460,sackOK,timestamp 2256871 0,nop,wscale 2>
+IP wsvideo.sunrpc > wslisi.696: R 0:0(0) ack 727126628 win 0
+IP wslisi.697 > wsvideo.sunrpc: UDP, length: 56
+IP wsvideo > wslisi: icmp 92: wsvideo udp port sunrpc unreachable
+IP wsvideo.32803 > fw.domain:  29191+ PTR? 13.4.168.192.in-addr.arpa. (43)
+IP wslisi.698 > wsvideo.sunrpc: S 724474935:724474935(0) win 5840 <mss 
+1460,sackOK,timestamp 2256872 0,nop,wscale 2>
+IP wsvideo.sunrpc > wslisi.698: R 0:0(0) ack 724474936 win 0
+IP fw.domain > wsvideo.32803:  29191* 1/0/0 (64)
+IP wsvideo.32803 > fw.domain:  29192+ PTR? 12.4.168.192.in-addr.arpa. (43)
+IP fw.domain > wsvideo.32803:  29192* 1/0/0 (63)
+IP wsvideo.32803 > fw.domain:  29193+ PTR? 254.4.168.192.in-addr.arpa. (44)
+IP fw.domain > wsvideo.32803:  29193* 1/0/0 (60)
+arp who-has wsvideo tell wslisi
+arp reply wsvideo is-at 00:0c:76:71:02:09
+arp who-has fw tell wsvideo
+arp reply fw is-at 00:4f:4e:05:d1:bd
+--------------------------------------------------------------------------
 
-That's not what I wanted to hear!
+netstat sees tcp open:
 
-We are looking at fairly dense storage and will need to make about
-9-10 2TB partitions.  Having the limitation of only one host seeing a
-partition is obviously a huge drawback.  I was hoping to avoid this
-with clustered file systems of some sort.  I plan to do some of my own
-testing on a smaller scale before moving anything into the next phase.
+--------------------------------------------------------------------------
+$ env LANG=C netstat -an | grep 111
+tcp        0      0 127.0.0.1:111           0.0.0.0:*           LISTEN
+udp        0      0 127.0.0.1:111           0.0.0.0:*
+--------------------------------------------------------------------------
 
-Thanks for the summary!
+Any idea? TIA Ingo.
 
->         http://dcs.nac.uci.edu/~strombrg/gfs_procedures.html
->
->
-> We later tried Lustre, but that didn't work out well in combination with
-> NFS either, despite our having contracted with the vendor to -make- it
-> work.  It was just iteration after iteration and patch after patch, and
-> "it's the hardware" vs "it's the software" because we had so many
-> vendors involved.  My lustre notes are far less sketchy, because I got
-> to take a lead role in that one for the most part:
->
->         http://dcs.nac.uci.edu/~strombrg/Lustre-notes.html
->
-> I also still have reams of log data that I shared with the vendor:
->
->         http://dcs.nac.uci.edu/~strombrg/lustre-info-for-CFS.html
->
-> ...and as I skim through it, I'm recalling that I eventually discovered
-> that we were getting errors even on the lustre NAS head that was serving
-> data out over NFS - IE, with no NFS involved at all.  Then again, we
-> were using a fork off the lustre mainline that wasn't to be merged back
-> into the mainline (which means if we ever needed to upgrade, we'd
-> probably end up contracting with them again to merge the needed changes
-> into either the mainline, or -another- fork).
->
->
-> We eventually got IBM to buy back the PC hardware they sold us for the
-> storage farm, got a StorEdge 3511 and a sparc box from Sun, and we had
-> about 16 terabytes up in short order.  We're using a sparc with Solaris
-> on it as a NAS head for all that data, and then an AIX system accesses
-> the data over NFS.
->
->
-> QFS, the filesystem we're using on it, is actually kind of cool.  It
-> allows you to easily aggregate data into one huge filesystem, and it
-> merges the volume management and filesystem layers for performance - but
-> I'm glad it's them maintaining the combination and not me :)
->
->
->
 
 
 -------------------------------------------------------
