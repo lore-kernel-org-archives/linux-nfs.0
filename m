@@ -1,32 +1,33 @@
-From: "Tradebit Service" <info@tradebit.com>
+From: Daniel Bramkamp <bramkamp@team-datentechnik.de>
 Subject: RE: Permission denied
-Date: Tue, 7 Feb 2006 12:52:28 +0100
-Message-ID: <011401c62bdc$f8f03890$0700a8c0@muelleimer>
-References: <20060207123448.pqv165xvwosgk0g8@linux-smb.molly>
-Reply-To: <info@tradebit.com>
+Date: Tue, 07 Feb 2006 14:04:08 +0100
+Message-ID: <20060207140408.nhfp0qhukggs84ck@linux-smb.molly>
+References: <011401c62bdc$f8f03890$0700a8c0@muelleimer>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset="us-ascii"
+	charset=ISO-8859-15;
+	format="flowed"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F6ROi-0006u6-7H
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 03:52:40 -0800
-Received: from aibo.runbox.com ([193.71.199.94] helo=cujo.runbox.com)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1F6ROf-0006DW-LP
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 03:52:40 -0800
-Received: from [10.9.9.160] (helo=penny.runbox.com ident=Debian-exim)
-	by greyhound.runbox.com with esmtp (Exim 4.34)
-	id 1F6ROb-0001tB-Il
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 12:52:33 +0100
-Received: from [84.168.140.148] (helo=muelleimer)
-	by penny.runbox.com with esmtpa  (uid:433466 )  (Exim 4.50)
-	id 1F6ROb-0004Xg-6W
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 12:52:33 +0100
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <20060207123448.pqv165xvwosgk0g8@linux-smb.molly>
+	id 1F6SW4-0003gl-HV
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 05:04:20 -0800
+Received: from natblindhugh.rzone.de ([81.169.145.175])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1F6SW3-0007SV-9O
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 05:04:20 -0800
+Received: from linux-smb.molly ([85.8.92.16])
+	by post.webmailer.de (8.13.1/8.13.1) with ESMTP id k17D4AMo020353
+	for <nfs@lists.sourceforge.net>; Tue, 7 Feb 2006 14:04:11 +0100 (MET)
+Received: from localhost (localhost [127.0.0.1])
+	by linux-smb.molly (Postfix) with ESMTP id C565A450CF
+	for <nfs@lists.sourceforge.net>; Tue,  7 Feb 2006 14:04:08 +0100 (CET)
+Received: from linux-smb.molly ([127.0.0.1])
+ by localhost (linux-smb.molly [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 20248-19 for <nfs@lists.sourceforge.net>;
+ Tue,  7 Feb 2006 14:04:08 +0100 (CET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <011401c62bdc$f8f03890$0700a8c0@muelleimer>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,35 +41,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
- 
-> great, however, sometimes access to files and directories 
-> stored on the server is denied for a certain user account. I 
-> am not sure if it affects other users as well - only heard 
-> complaints from that particular user so far. 
+Quoting Tradebit Service <info@tradebit.com>:
 
-daniel,
+>
+>> great, however, sometimes access to files and directories
+>> stored on the server is denied for a certain user account. I
+>> am not sure if it affects other users as well - only heard
+>> complaints from that particular user so far.
+>
+> daniel,
 
-just a wild guess: did you compare the user IDs in /etc/shadow
-on both systems?
+Hi Ralf,
 
-if you do a "ls -l" on the files on the client, who is the owner
-and what are the access flags?
+thanks for your reply.
 
-eg:
+> just a wild guess: did you compare the user IDs in /etc/shadow
+> on both systems?
 
--rw-rw-r--    1 ftp      users       28076 Dec 19 18:59 somefile.tgz
+sorry, I should have added this to my orginal post. The user accounts 
+are managed via LDAP. UIDs start at 10000 and they do not overlap with 
+system accounts. Also, when the problem arises, access to all NFS 
+shares is denied, not just a single directory or file.
 
-that would mean, that only the user "ftp" and the members of the
-group "users" could write (and delete) the file.
+-- 
+Daniel Bramkamp
 
-compare these flags and ownerships on both systems.
-
-Cheers!
-
---
-Ralf Schwoebel
-http://www.tradebit.com/
-
+team! datentechnik GmbH & Co.KG
+Werner von Siemens Stra=DFe 12a
+49124 Georgsmarienh=FCtte
+Tel.: 05401-8226-0
+Fax : 05401-8226-20
+eMail: bramkamp@team-datentechnik.de
 
 
 -------------------------------------------------------
