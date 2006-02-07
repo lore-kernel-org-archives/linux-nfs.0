@@ -1,31 +1,32 @@
-From: Daniel Bramkamp <bramkamp@team-datentechnik.de>
-Subject: Permission denied
-Date: Tue, 07 Feb 2006 12:34:48 +0100
-Message-ID: <20060207123448.pqv165xvwosgk0g8@linux-smb.molly>
+From: "Tradebit Service" <info@tradebit.com>
+Subject: RE: Permission denied
+Date: Tue, 7 Feb 2006 12:52:28 +0100
+Message-ID: <011401c62bdc$f8f03890$0700a8c0@muelleimer>
+References: <20060207123448.pqv165xvwosgk0g8@linux-smb.molly>
+Reply-To: <info@tradebit.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-	charset=ISO-8859-15;
-	format="flowed"
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F6R7Z-0005Yc-Sc
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 03:34:57 -0800
-Received: from natfrord.rzone.de ([81.169.145.161])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F6R7Y-0007Ol-CX
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 03:34:57 -0800
-Received: from linux-smb.molly ([85.8.92.16])
-	by post.webmailer.de (8.13.1/8.13.1) with ESMTP id k17BYoTm024187
-	for <nfs@lists.sourceforge.net>; Tue, 7 Feb 2006 12:34:52 +0100 (MET)
-Received: from localhost (localhost [127.0.0.1])
-	by linux-smb.molly (Postfix) with ESMTP id 2F45544F00
-	for <nfs@lists.sourceforge.net>; Tue,  7 Feb 2006 12:34:49 +0100 (CET)
-Received: from linux-smb.molly ([127.0.0.1])
- by localhost (linux-smb.molly [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 26011-04 for <nfs@lists.sourceforge.net>;
- Tue,  7 Feb 2006 12:34:48 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1F6ROi-0006u6-7H
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 03:52:40 -0800
+Received: from aibo.runbox.com ([193.71.199.94] helo=cujo.runbox.com)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44)
+	id 1F6ROf-0006DW-LP
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 03:52:40 -0800
+Received: from [10.9.9.160] (helo=penny.runbox.com ident=Debian-exim)
+	by greyhound.runbox.com with esmtp (Exim 4.34)
+	id 1F6ROb-0001tB-Il
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 12:52:33 +0100
+Received: from [84.168.140.148] (helo=muelleimer)
+	by penny.runbox.com with esmtpa  (uid:433466 )  (Exim 4.50)
+	id 1F6ROb-0004Xg-6W
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 12:52:33 +0100
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <20060207123448.pqv165xvwosgk0g8@linux-smb.molly>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,20 +40,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi list,
+ 
+> great, however, sometimes access to files and directories 
+> stored on the server is denied for a certain user account. I 
+> am not sure if it affects other users as well - only heard 
+> complaints from that particular user so far. 
 
-I am experiencing some issues with a NFS server running on Linux Kernel 
-2.4.26 with nfs-utils-1.0.6 installed. Basically it works great, 
-however, sometimes access to files and directories stored on the server 
-is denied for a certain user account. I am not sure if it affects other 
-users as well - only heard complaints from that particular user so far. 
-This happens very infrequently. They mainly use KDE's Konqueror to 
-access the NFS shares but the problem affects Gnome's Nautilus and the 
-KDE konsole as well. Any ideas what could cause this weird behaviour ?
+daniel,
 
-TIA
--- 
-Daniel Bramkamp
+just a wild guess: did you compare the user IDs in /etc/shadow
+on both systems?
+
+if you do a "ls -l" on the files on the client, who is the owner
+and what are the access flags?
+
+eg:
+
+-rw-rw-r--    1 ftp      users       28076 Dec 19 18:59 somefile.tgz
+
+that would mean, that only the user "ftp" and the members of the
+group "users" could write (and delete) the file.
+
+compare these flags and ownerships on both systems.
+
+Cheers!
+
+--
+Ralf Schwoebel
+http://www.tradebit.com/
+
 
 
 -------------------------------------------------------
