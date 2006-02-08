@@ -1,33 +1,22 @@
-From: Daniel Bramkamp <bramkamp@team-datentechnik.de>
-Subject: RE: Permission denied
-Date: Tue, 07 Feb 2006 14:04:08 +0100
-Message-ID: <20060207140408.nhfp0qhukggs84ck@linux-smb.molly>
-References: <011401c62bdc$f8f03890$0700a8c0@muelleimer>
+From: Stephen Carville <stephen@totalflood.com>
+Subject: Performance improvement.
+Date: Tue, 07 Feb 2006 23:56:24 -0800
+Message-ID: <43E9A428.2030606@totalflood.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=ISO-8859-15;
-	format="flowed"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F6SW4-0003gl-HV
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 05:04:20 -0800
-Received: from natblindhugh.rzone.de ([81.169.145.175])
+	id 1F6kBg-000213-V3
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 23:56:28 -0800
+Received: from [209.189.103.195] (helo=mail.totalflood.com)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F6SW3-0007SV-9O
-	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 05:04:20 -0800
-Received: from linux-smb.molly ([85.8.92.16])
-	by post.webmailer.de (8.13.1/8.13.1) with ESMTP id k17D4AMo020353
-	for <nfs@lists.sourceforge.net>; Tue, 7 Feb 2006 14:04:11 +0100 (MET)
-Received: from localhost (localhost [127.0.0.1])
-	by linux-smb.molly (Postfix) with ESMTP id C565A450CF
-	for <nfs@lists.sourceforge.net>; Tue,  7 Feb 2006 14:04:08 +0100 (CET)
-Received: from linux-smb.molly ([127.0.0.1])
- by localhost (linux-smb.molly [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 20248-19 for <nfs@lists.sourceforge.net>;
- Tue,  7 Feb 2006 14:04:08 +0100 (CET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <011401c62bdc$f8f03890$0700a8c0@muelleimer>
+	id 1F6kBf-0007Gy-Ni
+	for nfs@lists.sourceforge.net; Tue, 07 Feb 2006 23:56:29 -0800
+Received: from [192.168.124.232] (pellucidar.totalflood.com [192.168.124.232])
+	by mail.totalflood.com (Un-Exchange Mail Version 9.7.2.4) with ESMTP id B7C61540DC
+	for <nfs@lists.sourceforge.net>; Tue,  7 Feb 2006 23:56:24 -0800 (PST)
+To: NFS List <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,37 +30,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Quoting Tradebit Service <info@tradebit.com>:
+Maybe my expectations are too high but...
 
->
->> great, however, sometimes access to files and directories
->> stored on the server is denied for a certain user account. I
->> am not sure if it affects other users as well - only heard
->> complaints from that particular user so far.
->
-> daniel,
+I have an NFS server (amazon) running FC3 and two clients (tigris and 
+euphrates) running Redhat ES-3.4 and ES-3.0 respectively.   I am writing 
+the nightly rman backups of the oracle databases running tigris and 
+euphrates to a large RAID on amazon.  The machines are connected via a 
+private network thru a Dell Power Connect 2716 switch.  After some 
+tuning, Iperf shows consistent transfer rates of 950 Mbps to 980 Mbps 
+for both TCP and UDP.
 
-Hi Ralf,
+Euphrates (ES 3.0) will only work with nfs2 and, even with 8K packets, 
+only produices about 1.5 MB/s (12 Mbps).  By comparison, tigris (ES 3.4) 
+handles V3 with 32K datagrams and produces about 12 MB/s (96 Mbps). 
+Still only a fraction of what the network can handle but much better 
+than the other box.
 
-thanks for your reply.
-
-> just a wild guess: did you compare the user IDs in /etc/shadow
-> on both systems?
-
-sorry, I should have added this to my orginal post. The user accounts 
-are managed via LDAP. UIDs start at 10000 and they do not overlap with 
-system accounts. Also, when the problem arises, access to all NFS 
-shares is denied, not just a single directory or file.
+I've tuned the network and I'm using the largest blocksize I can.  What 
+else can I do to improve performance?
 
 -- 
-Daniel Bramkamp
-
-team! datentechnik GmbH & Co.KG
-Werner von Siemens Stra=DFe 12a
-49124 Georgsmarienh=FCtte
-Tel.: 05401-8226-0
-Fax : 05401-8226-20
-eMail: bramkamp@team-datentechnik.de
+Stephen Carville <stephen@totalflood.com>
+Unix and Network Admin
+Nationwide Totalflood
+6033 W. Century Blvd
+Los Angeles, CA 90045
+310-342-3602
 
 
 -------------------------------------------------------
