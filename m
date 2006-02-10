@@ -1,21 +1,19 @@
-From: Olivier Croquette <ocroquette@free.fr>
-Subject: NFS client hangs under certain circumstances on SMP machine
-Date: Tue, 28 Feb 2006 21:35:40 +0100
-Message-ID: <4404B41C.10404@free.fr>
-Reply-To: ocroquette@free.fr
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+From: William Bardwell <bardwell@curl.com>
+Subject: Trouble with Linux NFS open()/close()/unlink() when interupted by SIGTSTP
+Date: Fri, 10 Feb 2006 04:44:00 -0500
+Message-ID: <20060210094400.3BE10E616@bela.curl.com>
+Reply-To: wbardwel@curl.com
+Cc: wbardwel@curl.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FEBZo-0007mV-Qm
-	for nfs@lists.sourceforge.net; Tue, 28 Feb 2006 12:36:09 -0800
-Received: from moutng.kundenserver.de ([212.227.126.177])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FEBZm-0000nq-6X
-	for nfs@lists.sourceforge.net; Tue, 28 Feb 2006 12:36:08 -0800
-To: LKML <linux-kernel@vger.kernel.org>
+	id 1F7Uoz-0002sp-De
+	for nfs@lists.sourceforge.net; Fri, 10 Feb 2006 01:44:09 -0800
+Received: from mail-ext.curl.com ([66.228.88.132])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1F7Uox-0003gE-Tf
+	for nfs@lists.sourceforge.net; Fri, 10 Feb 2006 01:44:09 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,95 +27,134 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi
+On a 2.6.11 client, with a 2.6.11 server, on a filesystem mounted:
+(nfsv3,intr,proto=udp,vers=3)
 
-I have already sent this message on the NFS mailing-list, but I had no 
-reaction there. May be you kernel hackers have an idea?
+If I run a program that opens a file, writes to it, closes and unlinks
+it, and then another program that sends SIGTSTP and SIGCONT to the
+first program, all sorts of weird failures happen.
 
+1) If open() is called with O_EXCL|O_CREAT then it will sometimes fail
+with errno 17 (EEXIST) and the file will be created, but be mode 0
+and have a date like Dec 30 20034.
+2) (without O_EXCL on open) sometimes close() will fail with 3 (BADF)
+3) (without O_EXCL on open) sometimes unlink() will fail with 2 (ENOENT)
+    and sometimes with 16 (EBUSY).
 
+These all seem wrong.  And are all presumably due to it starting to
+do the proper operations, and getting interupted, and not remembering
+where to resume the operation.  But the calls aren't getting
+EINTR, so shouldn't this just work?
 
-I have a strange problem since a few months on some Linux clients.
+Curiously, it only happens if the IO is in a pthreads spawned thread,
+and ofcourse only on an NFS filesystem.  (And if I remove the FD_CLOEXEC
+stuff, the unlink and close problems are reduced.)
 
-I have a file server accessed through:
-   - NFS from Linux clients (autofs, but direct mount causes same effect)
-   - Samba from Windows clients
+The script to send the signals:
 
-This works since several years like a charm, but as I said there is a
-strange problem that appeared recently:
+#!/bin/sh
+$@ &
+back_pid=$!
+while true; do
+    kill -TSTP $back_pid;
+    kill -CONT $back_pid;
+done
+exit 0
 
-I have a directory, to which I generate code from Windows (\\server\dir)
-I can see it under Linux (/mount/dir) where I can access (compile) the
-files.
+---
+// The C program to do IO, compiled with -lpthreads and optionaly
+// -DNO_EXCL or -DNO_PTHREADS
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <pthread.h>
 
-However, when I regenerate the file under Windows again (ie. I overwrite
-the old files), and I try to compile the files again under Linux, "make"
-hangs simply in D state:
+void *thingy(void *data);
 
-# ps aux | grep make
-user 7177 0.0  0.0 1984 760 pts/1 D+ 16:13 0:00 make -f myMakefile
+int main()
+{
+#ifndef NO_THREADS
+  pthread_t thread = 0;
+  pthread_create(&thread, NULL, thingy, NULL);
+  pthread_join(thread, NULL);
+  return 0;
+}
 
-The load average goes up one unit each time I reproduce this test 
-(apparently, processes in non-interruptible state are considered as 
-running).
+void *thingy(void *data)
+{
+#endif
+  char base_filename[] = "xxx";
+  char filename[128];
+  char stuff[10000] = "xxx.txt";
+  int i = 0;
+  int flags =
+    O_CREAT | O_TRUNC | O_RDWR |
+#ifdef NO_EXCL
+    0
+#else
+    O_EXCL
+#endif
+    ;
+    
+  while (1)
+  {
+    ++i;
+    sprintf(filename, "%s%d.txt", base_filename, i);
+    int fd = open(filename, flags, 0666);
+    if (fd < 0 && errno == EINTR)
+    {
+        printf("open got EINTR\n");
+        continue;
+    }
+    if (fd < 0)
+    {
+        printf("open got %d\n", errno);
+        continue;
+    }
+    int old_flags = fcntl(fd, F_GETFD);
+    if (old_flags >= 0 && (old_flags & FD_CLOEXEC) == 0)
+    {
+        fcntl(fd, F_SETFD, old_flags | FD_CLOEXEC);
+    }
+    while (write(fd, stuff, sizeof stuff) < 0 && errno == EINTR);
+    if (close(fd) != 0)
+    {
+        if (errno != EBADF)
+        {
+            printf("close failed %d %d\n", errno, fd); fflush(stdout);
+            exit (1);
+        }
+         else
+        {
+            printf("close failed EBADF %d\n", fd); fflush(stdout);
+        }
+    }
+    while (unlink(filename) < 0)
+    {
+        if (errno == EINTR)
+        {
+            printf("unlink got EINTR\n");
+        } else {
+            printf("unlink got %d\n", errno);
+            break;
+        }
+    }
+  }
+  return 0;
+}
 
- From then, the following actions does NOT unblock the process:
-   - stopping or restarting the NFS service on the server
-   - restarting the server
-   - restarting autofs on the client
-   - trying to unmount the NFS mount
-
-If I reboot the client, all goes back to normal, until I repeat the
-process below (ie. overwriting and compiling).
-Typically, "shutdown -r" does not work, I have to "reboot -f".
-
-There is nothing interesting in /var/log on the server nor on the
-client.
-
-Versions used on the server:
-   - SuSE 9.3
-   - kernel-default-2.6.11.4-21.11
-   - nfs-utils-1.0.7-3
-   - samba-3.0.13-1.1
-   - filesystem: reiserfs
-
-On the client:
-   - SuSE 9.3
-   - kernel-smp-2.6.11.4-21.10
-   - nfs-utils-1.0.7-3
-   - mounts:
-     automount on /mount type autofs 
-(rw,fd=4,pgrp=6529,minproto=2,maxproto=4)
-     serv:/dir on /mount/dir type nfs (rw,addr=*IP*)
-   - CPU: P4 with hyper threading (2 virtual CPUs)
-Note: maxcpus=0 does not make any difference regarding this issue. I
-could not test yet with kernel compiled without SMP at all.
-
-
-On the following clients with the very same server, network, and mount 
-tables I could not reproduce the problem:
-
-   - SuSE 9.1
-   - kernel-default-2.6.5-7.202.7
-   - nfs-utils-1.0.6-103
-   - CPU: P4 single core
-
-   - SuSE 10.0
-   - Kernel: 2.6.14.3-default (from kernel.org)
-   - nfs-utils-1.0.7-13
-
-
-Any idea?
-Seems to me as it is related to the SMP. What do you think?
-How can I debug further?
-
-
+William Bardwell
+wbardwel@curl.com
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+for problems?  Stop!  Download the new AJAX search engine that makes
+searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
