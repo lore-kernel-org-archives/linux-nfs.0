@@ -1,25 +1,23 @@
-From: "Content-filter at perseus.trampi.mpi.it" <postmaster@perseus.trampi.mpi.it>
-Subject: VIRUS (Win32/Netsky.Q!Worm): IN UNA E-MAIL DA LEI INVIATA
-Date: Fri, 10 Feb 2006 12:50:58 +0100 (CET)
-Message-ID: <VS02234-02-10@perseus.trampi.mpi.it>
-References: <20060210111919.690BB102C84@mx2.istruzione.it>
+From: Levent Serinol <lserinol@gmail.com>
+Subject: [PATCH] more verbose output for rpc auth weak error
+Date: Fri, 10 Feb 2006 11:50:33 +0200
+Message-ID: <2c1942a70602100150q630758eqda2565831ccd7d81@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/report; report-type=delivery-status;
- boundary="----------=_1139572258-2234-17"
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: trond.myklebust@fys.uio.no, Olaf Kirch <okir@suse.de>,
+	NeilBrown <neilb@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F7Wnp-0006HR-7e
-	for nfs@lists.sourceforge.net; Fri, 10 Feb 2006 03:51:05 -0800
-Received: from [193.206.15.105] (helo=mx2.istruzione.it)
+	id 1F7bMZ-0000WW-3s
+	for nfs@lists.sourceforge.net; Fri, 10 Feb 2006 08:43:15 -0800
+Received: from pproxy.gmail.com ([64.233.166.183])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1F7Wno-0000C9-R8
-	for nfs@lists.sourceforge.net; Fri, 10 Feb 2006 03:51:05 -0800
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by mx2.istruzione.it (Mail Service) with ESMTP id 4893D106B03
-	for <nfs@lists.sourceforge.net>; Fri, 10 Feb 2006 12:50:58 +0100 (CET)
-In-Reply-To: <20060210111919.690BB102C84@mx2.istruzione.it>
-To: <nfs@lists.sourceforge.net>
+	id 1F7bMY-0004aN-0W
+	for nfs@lists.sourceforge.net; Fri, 10 Feb 2006 08:43:15 -0800
+Received: by pproxy.gmail.com with SMTP id s49so237790pyc
+        for <nfs@lists.sourceforge.net>; Fri, 10 Feb 2006 08:43:08 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,78 +31,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format...
+Summary: more verbose output for rpc auth weak error
 
-------------=_1139572258-2234-17
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Disposition: inline
-Content-Transfer-Encoding: 7bit
+This patch adds server ip address to be printed out when "server
+requires stronger authentication" error occured.
 
-VIRUS ALERT
+Signed-off-by: Levent Serinol <lserinol@gmail.com>
 
-Il sistema di scansione ha rilevato un problema
-in una email presumibilmente inviate da Lei
--> (<nfs@lists.sourceforge.net>),
-per il seguente destinatario:
--> csa.go@istruzione.it
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+--- linux-2.6.16-rc2/net/sunrpc/clnt.c.org      2006-02-10
+10:17:01.000000000 +0200
++++ linux-2.6.16-rc2/net/sunrpc/clnt.c  2006-02-10 10:23:53.000000000 +0200
+@@ -1193,8 +1193,8 @@ call_verify(struct rpc_task *task)
+                        task->tk_action =3D call_bind;
+                        goto out_retry;
+                case RPC_AUTH_TOOWEAK:
+-                       printk(KERN_NOTICE "call_verify: server
+requires stronger "
+-                              "authentication.\n");
++                       printk(KERN_NOTICE "call_verify: server %s
+requires stronger "
++                              "authentication.\n",task->tk_client->cl_serv=
+er);
+                        break;
+                default:
+                        printk(KERN_WARNING "call_verify: unknown auth
+error: %x\n", n);
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 
-La consegna del messaggio non e' potuta avvenire
 
-Di seguito i riferimenti della e-Mail inviata:
-------------------------- BEGIN HEADERS -----------------------------
-Return-Path: <nfs@lists.sourceforge.net>
-Received: from istruzione.it (host240-50.pool81116.interbusiness.it [81.116.50.240])
-	by mx2.istruzione.it (Mail Service) with ESMTP id 690BB102C84
-	for <csa.go@istruzione.it>; Fri, 10 Feb 2006 12:19:19 +0100 (CET)
-From: nfs@lists.sourceforge.net
-To: csa.go@istruzione.it
-Subject: Delivery (csa.go@istruzione.it)
-Date: Fri, 10 Feb 2006 12:18:47 +0100
-MIME-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0016----=_NextPart_000_0016"
-X-Priority: 1
-X-MSMail-Priority: High
-Message-Id: <20060210111919.690BB102C84@mx2.istruzione.it>
--------------------------- END HEADERS ------------------------------
 
-------------=_1139572258-2234-17
-Content-Type: message/delivery-status
-Content-Disposition: inline
-Content-Transfer-Encoding: 7bit
-Content-Description: Delivery error report
 
-Reporting-MTA: dns; perseus.trampi.mpi.it
-Received-From-MTA: smtp; mx2.istruzione.it ([127.0.0.1])
-Arrival-Date: Fri, 10 Feb 2006 12:50:55 +0100 (CET)
+--
 
-Final-Recipient: rfc822; csa.go@istruzione.it
-Action: failed
-Status: 5.7.1
-Diagnostic-Code: smtp; 550 5.7.1 Message content rejected, id=02234-02-10 - VIRUS: Win32/Netsky.Q!Worm
-Last-Attempt-Date: Fri, 10 Feb 2006 12:50:58 +0100 (CET)
-
-------------=_1139572258-2234-17
-Content-Type: text/rfc822-headers
-Content-Disposition: inline
-Content-Transfer-Encoding: 7bit
-Content-Description: Undelivered-message headers
-
-Received: from istruzione.it (host240-50.pool81116.interbusiness.it [81.116.50.240])
-	by mx2.istruzione.it (Mail Service) with ESMTP id 690BB102C84
-	for <csa.go@istruzione.it>; Fri, 10 Feb 2006 12:19:19 +0100 (CET)
-From: nfs@lists.sourceforge.net
-To: csa.go@istruzione.it
-Subject: Delivery (csa.go@istruzione.it)
-Date: Fri, 10 Feb 2006 12:18:47 +0100
-MIME-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0016----=_NextPart_000_0016"
-X-Priority: 1
-X-MSMail-Priority: High
-Message-Id: <20060210111919.690BB102C84@mx2.istruzione.it>
-
-------------=_1139572258-2234-17--
+Stay out of the road, if you want to grow old.
+~ Pink Floyd ~.
 
 
 -------------------------------------------------------
