@@ -1,23 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: query about clnt_create
-Date: Wed, 15 Feb 2006 14:13:51 -0500
-Message-ID: <1140030832.7888.18.camel@lade.trondhjem.org>
-References: <20060215161642.58912.qmail@web51607.mail.yahoo.com>
+Subject: Re: NFS mount in a changing network
+Date: Wed, 15 Feb 2006 14:23:45 -0500
+Message-ID: <1140031426.7888.28.camel@lade.trondhjem.org>
+References: <200602151716.18601.strieder@informatik.uni-kl.de>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Kevin Coffman <kwc@citi.umich.edu>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F9S6Q-0007ar-73
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 11:14:14 -0800
+	id 1F9SGC-0000FY-5S
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 11:24:20 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1F9S6O-0003Xd-Mp
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 11:14:14 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20060215161642.58912.qmail@web51607.mail.yahoo.com>
+	id 1F9SG6-0003Dm-Gs
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 11:24:20 -0800
+To: Bernd Strieder <strieder@informatik.uni-kl.de>
+In-Reply-To: <200602151716.18601.strieder@informatik.uni-kl.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,20 +31,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2006-02-15 at 08:16 -0800, mehta kiran wrote:
-> Hi Kevin,
->       Sorry for not mentioning this.
->       I do not get any error.
->       Customers can have different settings
->       for NFS daemons.
->       I just want to confirm if
->       clnt_create is a realiable 
->       way  to monitor different 
->       versions of nfsd  running.
+On Wed, 2006-02-15 at 17:16 +0100, Bernd Strieder wrote:
 
-The only reasonably reliable way to check for RPC service availability
-is to ping it using a NULL rpc call (procedure number == 0 and no
-arguments).
+> Attaching gdb to the process and setting a breakpoint on printf, 
+> after calling ferror returning 1, it is clear that printf does not 
+> output anything. errno has the value 116 ESTALE.
+> 
+> How can this happen, an existing file gets into deleted status on 
+> the client, without anybody having issued an unlink or whatever? 
+> Or do stale filehandles finally result in deleted?
+
+See http://nfs.sourceforge.net/#faq_a10
 
 Cheers,
   Trond
