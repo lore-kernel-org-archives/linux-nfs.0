@@ -1,22 +1,26 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: query about clnt_create
-Date: Wed, 15 Feb 2006 08:16:42 -0800 (PST)
-Message-ID: <20060215161642.58912.qmail@web51607.mail.yahoo.com>
-References: <4d569c330602150808m2a2abe9dxc041eb16b5d926c3@mail.gmail.com>
+From: Sev Binello <sev@bnl.gov>
+Subject: executables crash when moved
+Date: Wed, 15 Feb 2006 12:58:46 -0500
+Message-ID: <43F36BD6.7010408@bnl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F9PKj-0004MF-Ek
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 08:16:49 -0800
-Received: from web51607.mail.yahoo.com ([206.190.38.212])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1F9PKi-0002fY-Rt
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 08:16:49 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <4d569c330602150808m2a2abe9dxc041eb16b5d926c3@mail.gmail.com>
+	id 1F9QvW-0007UX-Mv
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 09:58:54 -0800
+Received: from smtpgw.bnl.gov
+	([130.199.3.132] helo=smtpgateway.bnl.gov ident=SMTP)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1F9QvU-0004Eg-MG
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 09:58:54 -0800
+Received: from acnlin64.pbn.bnl.gov ([130.199.104.22])
+	by smtpgw.bnl.gov with esmtps (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(bnl.gov SMTP on gw3)
+	serial 1F9QvO-00038g-AL
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 12:58:46 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,145 +34,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+We have had a consistent problem of executables shared over NFS crashing
+when new executables are released.
 
-Hi Kevin,
-      Sorry for not mentioning this.
-      I do not get any error.
-      Customers can have different settings
-      for NFS daemons.
-      I just want to confirm if
-      clnt_create is a realiable=20
-      way  to monitor different=20
-      versions of nfsd  running.
-     =20
-thanks,
- kiran
-     =20
+    Before a new executable replaces an older one with a cp,
+    we mv the executable to a fallback dir and rename it.
+    We have 2 renaming schemes,
+    either .old, .older, .oldest or  append a date to the old executable.
+   
+    This used to work fine when the nfs sever was solaris,
+    however since we migrated it to redhat linux WS,
+    we find that the executables crash with a SIGBUS.
+   
+    The executables don't necessarily crash right away,
+    as a matter of fact we can't intentionally reproduce the crash.
+    Which leads me to believe it is cache related.
 
-     =20
-     =20
-=20
+    Has anyone experienced a similar problem,
+     and come up with a solution ?
 
---- Kevin Coffman <kwc@citi.umich.edu> wrote:
+Thanks
+-Sev
 
-> What kind of error do you get back from the
-> clnt_create() ?
->=20
-> On 2/15/06, mehta kiran <kiranmehta1981@yahoo.com>
-> wrote:
-> > Hi,
-> >     Can clnt_create for NFS versions fail in any
-> >     case due to security setting on NFS Sever ?
-> >     Description: NFS client can mount exported FS.
-> >     I have a small application which detects
-> >     health of NFS server by creating client
-> >     handle for required NFS version+protocol.
-> >     Can this ever fail consistenly
-> >     due to security or any other
-> >     settings on NFS server
-> >     (nfs client system and server are connected to
-> >     network, there is no hardware/(network load)
-> >     problem and portmapper + all nfs daemons are
-> >     runnnig)?
-> >
-> > thanks,
-> >  kiran
-> >
-> >
-> > __________________________________________________
-> > Do You Yahoo!?
-> > Tired of spam?  Yahoo! Mail has the best spam
-> protection around
-> > http://mail.yahoo.com
-> >
-> >
-> >
->
--------------------------------------------------------
-> > This SF.net email is sponsored by: Splunk Inc. Do
-> you grep through log files
-> > for problems?  Stop!  Download the new AJAX search
-> engine that makes
-> > searching your log files as easy as surfing the=20
-> web.  DOWNLOAD SPLUNK!
-> >
->
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> >
-> >
->=20
+-- 
 
---- Kevin Coffman <kwc@citi.umich.edu> wrote:
+Sev Binello
+Brookhaven National Laboratory
+Upton, New York
+631-344-5647
+sev@bnl.gov
 
-> What kind of error do you get back from the
-> clnt_create() ?
->=20
-> On 2/15/06, mehta kiran <kiranmehta1981@yahoo.com>
-> wrote:
-> > Hi,
-> >     Can clnt_create for NFS versions fail in any
-> >     case due to security setting on NFS Sever ?
-> >     Description: NFS client can mount exported FS.
-> >     I have a small application which detects
-> >     health of NFS server by creating client
-> >     handle for required NFS version+protocol.
-> >     Can this ever fail consistenly
-> >     due to security or any other
-> >     settings on NFS server
-> >     (nfs client system and server are connected to
-> >     network, there is no hardware/(network load)
-> >     problem and portmapper + all nfs daemons are
-> >     runnnig)?
-> >
-> > thanks,
-> >  kiran
-> >
-> >
-> > __________________________________________________
-> > Do You Yahoo!?
-> > Tired of spam?  Yahoo! Mail has the best spam
-> protection around
-> > http://mail.yahoo.com
-> >
-> >
-> >
->
--------------------------------------------------------
-> > This SF.net email is sponsored by: Splunk Inc. Do
-> you grep through log files
-> > for problems?  Stop!  Download the new AJAX search
-> engine that makes
-> > searching your log files as easy as surfing the=20
-> web.  DOWNLOAD SPLUNK!
-> >
->
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> >
-> >
->=20
-
-
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
-les
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
