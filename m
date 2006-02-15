@@ -1,29 +1,21 @@
-From: Ingo Lantschner <ingo.lists@vum.at>
-Subject: NFS Server listening to only one interface - but how?
-Date: Wed, 15 Feb 2006 13:42:22 +0100
-Message-ID: <dsv7jf$m2r$1@sea.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+From: Sebo Suprir <sebo@suprir.com>
+Subject: Sebo Suprir -  Adquira livros, Conhecimento
+Date: Wed, 15 Feb 2006 09:33:47 -0500
+Message-ID: <E1F9Nj1-0003EF-LO@vn1030.fireboxhosting.com>
+Content-Type: text/html;
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F9Lzb-0005Ez-TY
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 04:42:47 -0800
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	id 1F9Njc-0000iQ-9P
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 06:34:24 -0800
+Received: from vn1030.fireboxhosting.com ([204.11.233.62])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1F9LzZ-0006g7-AB
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 04:42:48 -0800
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1F9LzI-0002NU-Ou
-	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 13:42:29 +0100
-Received: from 85-124-230-82.work.xdsl-line.inode.at ([85.124.230.82])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <nfs@lists.sourceforge.net>; Wed, 15 Feb 2006 13:42:28 +0100
-Received: from ingo.lists by 85-124-230-82.work.xdsl-line.inode.at with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <nfs@lists.sourceforge.net>; Wed, 15 Feb 2006 13:42:28 +0100
+	id 1F9Njb-0006QH-3E
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 06:34:24 -0800
+Received: from root by vn1030.fireboxhosting.com with local (Exim 4.52)
+	id 1F9Nj1-0003EF-LO
+	for nfs@lists.sourceforge.net; Wed, 15 Feb 2006 09:33:47 -0500
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -38,25 +30,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi all,
-I would like to run NFS Server (kernel) on a firewall. For obvious 
-reasons I would like it to listen only to the internal interface.
-I tried to start portmap with -i 192.168.x.y - which is fine, but it 
-prevents nfs-kernel-server from starting.
-It says in syslog:
-fw kernel: portmap: server localhost not responding, timed out
-fw kernel: RPC: failed to contact portmap (errno -5).
-fw last message repeated 4 times
+<html>
+<head>
+	<title>Sebo Suprir -  Adquira livros, Conhecimento.</title>
+</head>
 
-How can I tell the nfs-serer to contact the portmapper at 192.168.x.y 
-and not at localhost? Can I make portmap listen to both interfaces (lo 
-and eth1)?
-
-Btw.: I am missing the man-page for nfs-kernel server - I use now Ubuntu 
-Breezy (based on debian)
-
-TIA, Ingo.
-
+<body>
+<table width=75% cellpadding=10 cellspacing=1 bgcolor="#02AD98" align=center>
+	<td width=1% valign=top bgcolor=white><a href="http://www.suprir.com/livros.php" target=_blank><img src='http://www.suprir.com/images/logo.gif' border=0></a></td>
+	<td width=99% bgcolor=white align=left>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font face=verdana size=5><b>Sebo Suprir</td>
+	<TR>
+	<td colspan=2 height=10></td>
+	<TR>
+	<td colspan=2 bgcolor=white><font face=verdana size=4>
+		Adquira livros em ótimas condições, usados, alguns raros, por valor bem abaixo do mercado. A internet a serviço da Cultura.  
+		<BR><BR>
+		<a href="http://www.suprir.com/livros.php" target=_blank>Clique aqui e saiba mais.</a>
+	</td>
+</table>
+<BR>
+<center><a href="mailto:removersebo@suprir.com?subject=cancelar envio de emails" style='color:black; font-size:10px; font-family:verdana'>Caso não queira mais receber informações sobre o Sebo Suprir, clique aqui e responda este e-mail.</a>
+</body>
+</html>
 
 
 -------------------------------------------------------
