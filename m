@@ -1,22 +1,27 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: Stale handle error on RHEL4 (2.6.9-22.ELsmp)
-Date: Thu, 16 Feb 2006 07:44:05 -0800 (PST)
-Message-ID: <20060216154405.29704.qmail@web51615.mail.yahoo.com>
-References: <1140104151.8891.38.camel@lade.trondhjem.org>
+From: emlyn jem <966bryan@walla.com>
+Subject: =?iso-8859-1?B?Kipqb2Igb2ZmZXJ0Kio=?=
+Date: Thu, 16 Feb 2006 21:43:04 +0000
+Message-ID: <b6bb01c63341$72e9946b$6ea9f483@walla.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net, steved@redhat.com
+Content-Type: text/plain;
+    format=flowed;
+    charset="iso-8859-1";
+    reply-type=original
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1F9lIj-0006Vk-CP
-	for nfs@lists.sourceforge.net; Thu, 16 Feb 2006 07:44:13 -0800
-Received: from web51615.mail.yahoo.com ([206.190.39.127])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1F9lIj-00073W-2V
-	for nfs@lists.sourceforge.net; Thu, 16 Feb 2006 07:44:13 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1140104151.8891.38.camel@lade.trondhjem.org>
+	id 1F9tv7-0000ox-4D
+	for nfs@lists.sourceforge.net; Thu, 16 Feb 2006 16:56:25 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1F9tv4-0007ju-SC
+	for nfs@lists.sourceforge.net; Thu, 16 Feb 2006 16:56:24 -0800
+Received: from 43.223.100-84.rev.gaoland.net ([84.100.223.43])
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1F9rtW-00084W-3E
+	for nfs@lists.sourceforge.net; Thu, 16 Feb 2006 14:46:40 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,54 +35,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
-     But this is different than behaviour of NFS=20
-     on other platforms. On other platforms like=20
-     AIX, root of exported fses need not be=20
-     on shared disk.
-     Anyways, i will try out the thing suggested
-     by you and post the result tomorrow.
+Greetings,
 
-thanks,
- kiran
+My name is Vladimir Popov and I am a Director of Ukraine-based Company that specializes in selling Ukrainian souvenirs and artworks abroad. The demand for our products is very high in your country as both private collectors and resellers are interested in purchasing our artworks and souvenirs. We usually sell all of our products through E-Bay and sometimes we experience problems with payments because there are many 
+  people in your country who know little about Ukraine and thus are afraid to send their payments directly to us.
+That’s why we are currently looking for people in your country to join our business and work for us as regional financial managers. As a regional financial manager you will receive 8% of every deal made with your assistance. You will be earning around $600 a week on the first stage which is really a good start considering all those
+  great career growth opportunities our Company offers.
+If you are interested in this job or want to know more about career and business opportunities with WorldTrans Inc. please feel free to contact us at deworldtrancinc@aol.com.
 
+Respectfully,
 
---- Trond Myklebust <trond.myklebust@fys.uio.no>
-wrote:
-
-> On Thu, 2006-02-16 at 07:34 -0800, mehta kiran
-> wrote:
-> > Hi Trond,
-> >   partitions /dev/sdi1 and /dev/sdi2 are=20
-> >   seen by both the systems on which server
-> >   can start and their major/minor numbers
-> >   are same on both the systems.
-> >   Sfter server fails over to other system,
-> >   output of exportfs and mount looks the same.
-> >   Should /export directory which is exported
-> >   with fsid=3D0 be on shared disk as well ?
->=20
-> Probably, yes.
->=20
-> Cheers,
->   Trond
->=20
->=20
-
-
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
-
-
--------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
-les
-for problems?  Stop!  Download the new AJAX search engine that makes
-searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Vladimir Popov
+Director, WorldTrans Inc.
