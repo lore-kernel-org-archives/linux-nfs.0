@@ -1,17 +1,19 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: NFS lock reclaiming not working on SLES9 SP2
-Date: Fri, 17 Feb 2006 11:08:39 -0800
-Message-ID: <OF136BE891.79D84BC6-ON88257118.006848D5-88257118.0068D68C@us.ibm.com>
-References: <20060217095618.GB25707@suse.de>
+From: Bill Johnstone <beejstone3@yahoo.com>
+Subject: Expected NFS behavior?
+Date: Fri, 17 Feb 2006 13:48:00 -0800 (PST)
+Message-ID: <20060217214800.9612.qmail@web37415.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: asha yr <asha_yr@rediffmail.com>,
-	Greg Banks <gnb@melbourne.sgi.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	nfs-admin@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-In-Reply-To: <20060217095618.GB25707@suse.de>
-To: Olaf Kirch <okir@suse.de>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FADSR-0002g9-Is
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 13:48:07 -0800
+Received: from web37415.mail.mud.yahoo.com ([209.191.87.68])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FADSQ-0005dH-6x
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 13:48:07 -0800
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,38 +27,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Olaf,
-This fix will not work for HA-NFS which allows a failover node to send the 
-SM_NOTIFY on behalf of the failed node.
-The -v option was added for this purpose.
-Marc. 
+Hello.
 
-nfs-admin@lists.sourceforge.net wrote on 02/17/2006 01:56:18 AM:
+I've got a network wherein the machines are all running kernel 2.6.12,
+and NFSv3 is exclusively being used.  The exports / mounts are all
+'sync'.  I'm seeing some behavior that doesn't seem to be correct to
+me, and I want to see if this is expected or if I'm hitting a bug or
+perhaps hardware failure/flakiness along the way.
 
-> On Fri, Feb 17, 2006 at 08:37:05PM +1100, Greg Banks wrote:
-> > In his trace, the client wasn't sending any LOCK calls at all
-> > for multiple minutes after receiving the NOTIFY.
-> 
-> Ah, you're right. I wasn't paying attention to the time stamps.
-> 
-> It seems the problem is that we're now using hostnames to identify lockd
-> peers, but you mounted the file system using the ipaddr:/path.
-> 
-> Could you please try the attached patch?
-> 
-> Thanks
-> Olaf
-> -- 
-> Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-> okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
-> [attachment "statd-hostname-fix" deleted by Marc Eshel/Almaden/IBM] 
+The scenario:
+
+A user has an existing set of files on the server, on an XFS volume.
+
+If he is on the server (i.e. logged in via ssh) and runs a cp command
+to overwrite existing file "a" with file "b", then file "a" appears to
+be correctly overwritten as verified from the command-line on the
+server.  However, when any of the client machines opens file "a" after
+this, they see the previous contents.  It seems like an incoherent
+cache issue.
+
+If the user instead runs the cp command on one of the client machines,
+then all the client machines now see the updated file.
+
+Does this sound like it should be expected behavior, i.e. if the file
+changes "underneath" NFS (direct to the volume via command-line) will
+NFS have stale information, or should it explicitly handle this case?
+
+Thanks.
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
+les
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
+121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
