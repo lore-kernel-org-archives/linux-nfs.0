@@ -1,25 +1,26 @@
-From: "Gulya Khokiroeva" <khokirog@rambler.ru>
-Subject: rquotad
-Date: Fri, 17 Feb 2006 19:22:14 +0300
-Message-ID: <web-187185372@mail5.rambler.ru>
+From: Bernd Schubert <bernd.schubert@pci.uni-heidelberg.de>
+Subject: Re: NFS mount in a changing network
+Date: Fri, 17 Feb 2006 17:55:32 +0100
+Message-ID: <200602171755.33419.bernd.schubert@pci.uni-heidelberg.de>
+References: <200602151716.18601.strieder@informatik.uni-kl.de> <200602161116.24884.strieder@informatik.uni-kl.de> <1140192487.3612.23.camel@lade.trondhjem.org>
+Reply-To: bernd-schubert@gmx.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1251"; format="flowed"
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Bernd Strieder <strieder@informatik.uni-kl.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FA8ND-00012u-0B
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 08:22:23 -0800
-Received: from mxb.rambler.ru ([81.19.66.30])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FA8NA-0003iE-AS
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 08:22:23 -0800
-Received: from rambler.ru (mail5.rambler.ru [81.19.66.7])
-	by mxb.rambler.ru (Postfix) with ESMTP id A98B232487
-	for <nfs@lists.sourceforge.net>; Fri, 17 Feb 2006 19:22:14 +0300 (MSK)
-Received: from [193.111.10.57] (account khokirog@rambler.ru)
-  by mail5.rambler.ru (CommuniGate Pro WebUser 4.2.10)
-  with HTTP id 187185372 for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 19:22:14 +0300
+	id 1FA8tb-0005Uw-Tb
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 08:55:51 -0800
+Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FA8tW-0001Nk-Vt
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 08:55:51 -0800
 To: nfs@lists.sourceforge.net
+In-Reply-To: <1140192487.3612.23.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,15 +34,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I am having problem with Quota over NFS.
-I keep receiving message
+> The basic rule of thumb follows directly from 1:
+>
+>         If you have clients that have mounted a given partition, then do
+>         _not_ bring up the server until you have set up all the exports.
+>
+> IOW: if you want to move the clients from one server to another, then
+> the sequence is
+>
+>  1) Kill nfsd on _both_ servers
+>  2) Move the IP address from server 1 to server 2
+>  3) Add the exports for the clients from server 1 to /etc/exports on
+> server 2 (and possibly run exportfs)
+>  4) Now bring nfsd up on server 2.
+>
 
-Starting rquota daemn              failed
-Failed services in runlevel 3       quotad
+We also always set fsid entries in the exports, to prevent problems if devi=
+ce=20
+names accidentely change.
 
-Please help what I should do?
 
-Thank you in advance
+Btw, information like this should be managed in a wiki, recently I found=20
+http://wiki.linux-nfs.org, but it seems mainly related to NFSv4. Does=20
+somebody mind if I would do some modifications there?
+
+Cheers,
+	Bernd
+
+=2D-=20
+Bernd Schubert
+Physikalisch Chemisches Institut / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 
 -------------------------------------------------------
