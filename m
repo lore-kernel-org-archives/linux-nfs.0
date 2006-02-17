@@ -1,23 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Problems with mmap consistency
-Date: Fri, 17 Feb 2006 10:15:30 -0500
-Message-ID: <1140189330.3612.3.camel@lade.trondhjem.org>
-References: <20060217105756.GE25707@suse.de>
+Subject: Re: NFS mount in a changing network
+Date: Fri, 17 Feb 2006 11:08:07 -0500
+Message-ID: <1140192487.3612.23.camel@lade.trondhjem.org>
+References: <200602151716.18601.strieder@informatik.uni-kl.de>
+	 <1140031426.7888.28.camel@lade.trondhjem.org>
+	 <200602161116.24884.strieder@informatik.uni-kl.de>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, Andrea Arcangeli <andrea@suse.de>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FA7Ky-0000FU-ID
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 07:16:00 -0800
+	id 1FA89m-0007jU-TQ
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 08:08:30 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FA7Kx-0001nB-3r
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 07:16:00 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20060217105756.GE25707@suse.de>
+	id 1FA89l-0006Rt-Eo
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 08:08:30 -0800
+To: Bernd Strieder <strieder@informatik.uni-kl.de>
+In-Reply-To: <200602161116.24884.strieder@informatik.uni-kl.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +33,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2006-02-17 at 11:57 +0100, Olaf Kirch wrote:
-> It seems the problem is that there is still a fairly big race window
-> in this code - after unmap_mapping_range returns, we're waiting for
-> all dirty pages to be flushed to the server. A lot can happen while
-> we wait - for instance, some other process may modify a page that
-> has already been written. This modification will be lost during
-> the subsequent invalidate_inode_pages2 call.
-> 
-> Is there a simple VM mechanism that could be used to prevent this,
-> or does it need some extra logic to block a process in nfs_readpage
-> while we're revalidating?
+On Thu, 2006-02-16 at 11:16 +0100, Bernd Strieder wrote:
 
-No. I believe I have discussed this with Andrea and others before.
-We need to add a VM helper that will invalidate the page cache and flush
-dirty pages atomically (such a thing does not yet exist).
+> The ultimate question, which might be helpful to others, which I 
+> haven't found anything written on anywhere is:
+> 
+> What are the things to care about, if you want to switch the 
+> network configuration of a NFS server and a NFS client if umount 
+> must be avoided? Are there any chances to get this cleanly done?
+
+The basic rule of thumb follows directly from 1:
+
+        If you have clients that have mounted a given partition, then do
+        _not_ bring up the server until you have set up all the exports.
+
+IOW: if you want to move the clients from one server to another, then
+the sequence is
+
+ 1) Kill nfsd on _both_ servers
+ 2) Move the IP address from server 1 to server 2
+ 3) Add the exports for the clients from server 1 to /etc/exports on
+server 2 (and possibly run exportfs)
+ 4) Now bring nfsd up on server 2.
 
 Cheers,
-  Trond
+ Trond
 
 
 
