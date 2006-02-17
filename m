@@ -1,24 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: Re: NFS lock reclaiming not working on SLES9 SP2
-Date: Fri, 17 Feb 2006 12:07:56 +0100
-Message-ID: <20060217110756.GF25707@suse.de>
-References: <20060217104842.5424.qmail@webmail24.rediffmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Problems with mmap consistency
+Date: Fri, 17 Feb 2006 10:15:30 -0500
+Message-ID: <1140189330.3612.3.camel@lade.trondhjem.org>
+References: <20060217105756.GE25707@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Greg Banks <gnb@melbourne.sgi.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net, Andrea Arcangeli <andrea@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FA3T0-0008TO-J9
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 03:08:02 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1FA7Ky-0000FU-ID
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 07:16:00 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FA3Sx-0003Oq-Sj
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 03:08:02 -0800
-To: asha yr <asha_yr@rediffmail.com>
-In-Reply-To: <20060217104842.5424.qmail@webmail24.rediffmail.com>
+	id 1FA7Kx-0001nB-3r
+	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 07:16:00 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20060217105756.GE25707@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Feb 17, 2006 at 10:48:42AM -0000, asha  yr wrote:
-> I am comparing the working of NFS lock recovery feature on different
-> updates of SLES9 and Redhat4. So I dont want to test the feature by
-> applying any patch. Anyway, thanks for the patch.
+On Fri, 2006-02-17 at 11:57 +0100, Olaf Kirch wrote:
+> It seems the problem is that there is still a fairly big race window
+> in this code - after unmap_mapping_range returns, we're waiting for
+> all dirty pages to be flushed to the server. A lot can happen while
+> we wait - for instance, some other process may modify a page that
+> has already been written. This modification will be lost during
+> the subsequent invalidate_inode_pages2 call.
+> 
+> Is there a simple VM mechanism that could be used to prevent this,
+> or does it need some extra logic to block a process in nfs_readpage
+> while we're revalidating?
 
-Hm, I thought posting to a developer list normally indicates willingness
-to try out patches to narrow down the problem. That's why it is a free
-service, unlike the business support we offer (the difference being that
-they would build a test kernel for you, using this exact same patch :-)
+No. I believe I have discussed this with Andrea and others before.
+We need to add a VM helper that will invalidate the page cache and flush
+dirty pages atomically (such a thing does not yet exist).
 
-> Feb 17 16:10:07 sgmlx2 kernel: NFS lockd/statd started (ver 0.5).
-> Feb 17 16:10:23 sgmlx2 kernel: lockd: request from 0f46bfac
-> Feb 17 16:10:23 sgmlx2 kernel: lockd: nlm_host_rebooted("sgmlx1")
-> Feb 17 16:10:30 sgmlx2 kernel: lockd: nlm_lookup_host(0f46bfac, p=6, v=4, my role=client, name=sgmlx1)
-> Feb 17 16:10:30 sgmlx2 kernel: lockd: host garbage collection
-> Feb 17 16:10:30 sgmlx2 kernel: lockd: nlmsvc_mark_resources
+Cheers,
+  Trond
 
-Hm, it still doesn't find the host. Please provide the line in
-/proc/mounts for this NFS mount.
-
-Thanks,
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
