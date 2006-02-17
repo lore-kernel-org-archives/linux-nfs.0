@@ -1,27 +1,17 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS mount in a changing network
-Date: Fri, 17 Feb 2006 13:36:07 -0500
-Message-ID: <1140201367.7879.4.camel@lade.trondhjem.org>
-References: <200602151716.18601.strieder@informatik.uni-kl.de>
-	 <200602161116.24884.strieder@informatik.uni-kl.de>
-	 <1140192487.3612.23.camel@lade.trondhjem.org>
-	 <200602171755.33419.bernd.schubert@pci.uni-heidelberg.de>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: NFS lock reclaiming not working on SLES9 SP2
+Date: Fri, 17 Feb 2006 11:08:39 -0800
+Message-ID: <OF136BE891.79D84BC6-ON88257118.006848D5-88257118.0068D68C@us.ibm.com>
+References: <20060217095618.GB25707@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net,
-	Bernd Strieder <strieder@informatik.uni-kl.de>
+Content-Type: text/plain; charset="US-ASCII"
+Cc: asha yr <asha_yr@rediffmail.com>,
+	Greg Banks <gnb@melbourne.sgi.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	nfs-admin@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FAASr-0002VZ-JT
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 10:36:21 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FAASp-00085B-Px
-	for nfs@lists.sourceforge.net; Fri, 17 Feb 2006 10:36:21 -0800
-To: bernd-schubert@gmx.de
-In-Reply-To: <200602171755.33419.bernd.schubert@pci.uni-heidelberg.de>
+In-Reply-To: <20060217095618.GB25707@suse.de>
+To: Olaf Kirch <okir@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,36 +25,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2006-02-17 at 17:55 +0100, Bernd Schubert wrote:
-> > The basic rule of thumb follows directly from 1:
-> >
-> >         If you have clients that have mounted a given partition, then do
-> >         _not_ bring up the server until you have set up all the exports.
-> >
-> > IOW: if you want to move the clients from one server to another, then
-> > the sequence is
-> >
-> >  1) Kill nfsd on _both_ servers
-> >  2) Move the IP address from server 1 to server 2
-> >  3) Add the exports for the clients from server 1 to /etc/exports on
-> > server 2 (and possibly run exportfs)
-> >  4) Now bring nfsd up on server 2.
-> >
-> 
-> We also always set fsid entries in the exports, to prevent problems if device 
-> names accidentely change.
-> 
-> 
-> Btw, information like this should be managed in a wiki, recently I found 
-> http://wiki.linux-nfs.org, but it seems mainly related to NFSv4. Does 
-> somebody mind if I would do some modifications there?
+Hi Olaf,
+This fix will not work for HA-NFS which allows a failover node to send the 
+SM_NOTIFY on behalf of the failed node.
+The -v option was added for this purpose.
+Marc. 
 
-Feel free. I don't think we need to limit the subject matter to NFSv4 in
-that wiki.
+nfs-admin@lists.sourceforge.net wrote on 02/17/2006 01:56:18 AM:
 
-Cheers,
-  Trond
-
+> On Fri, Feb 17, 2006 at 08:37:05PM +1100, Greg Banks wrote:
+> > In his trace, the client wasn't sending any LOCK calls at all
+> > for multiple minutes after receiving the NOTIFY.
+> 
+> Ah, you're right. I wasn't paying attention to the time stamps.
+> 
+> It seems the problem is that we're now using hostnames to identify lockd
+> peers, but you mounted the file system using the ipaddr:/path.
+> 
+> Could you please try the attached patch?
+> 
+> Thanks
+> Olaf
+> -- 
+> Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+> okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+> [attachment "statd-hostname-fix" deleted by Marc Eshel/Almaden/IBM] 
 
 
 -------------------------------------------------------
