@@ -1,23 +1,24 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: Stale handle error on RHEL4 (2.6.9-22.ELsmp)
-Date: Sat, 18 Feb 2006 00:00:08 -0800 (PST)
-Message-ID: <20060218080008.17579.qmail@web51608.mail.yahoo.com>
-References: <20060216154405.29704.qmail@web51615.mail.yahoo.com>
+From: Grace Omar <gra_omar@mmail.com>
+Subject: Please reply
+Date: Sat, 18 Feb 2006 16:13:28 -0600
+Message-ID: <quality1111$196.207.219.43$.43f79c1c.b8da1.5965.3384@yuma.onspeed.com>
+Reply-To: Grace Omar <gra_omar@mmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net, steved@redhat.com
+Content-Type: multipart/mixed;
+	boundary="qzsoft_directmail_seperator"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FAN0p-0006AP-PY
-	for nfs@lists.sourceforge.net; Sat, 18 Feb 2006 00:00:15 -0800
-Received: from web51608.mail.yahoo.com ([206.190.38.213])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FAN0p-0000ff-FS
-	for nfs@lists.sourceforge.net; Sat, 18 Feb 2006 00:00:16 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <20060216154405.29704.qmail@web51615.mail.yahoo.com>
+	id 1FAaLR-0007th-4m
+	for nfs@lists.sourceforge.net; Sat, 18 Feb 2006 14:14:25 -0800
+Received: from lb2.onspeed.com ([72.3.137.84] helo=yuma.onspeed.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FAaLQ-0007VY-Nd
+	for nfs@lists.sourceforge.net; Sat, 18 Feb 2006 14:14:25 -0800
+Received: from ibm.com (localhost [127.0.0.1])
+	by yuma.onspeed.com (8.12.11/8.12.11) with SMTP id k1IMDSd9012036
+	for <nfs@lists.sourceforge.net>; Sat, 18 Feb 2006 16:13:39 -0600
+To: nfs <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,92 +32,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Trond,
-      I tried with a setup in which filesystem
-      exported with fsid=3D0 is also on shared disk.
-      I worked that way. However it is still
-      interesting to see that on AIX it works
-      with a little less restriction as mentioned
-      in my mail below.
-    =20
-thanks,
- kiran
-     =20
+--qzsoft_directmail_seperator
+Content-Type: text/plain;
+	charset="DEFAULT"
+Content-Transfer-Encoding: base64
 
---- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+TXJzLkdyYWNlIE9tYXIKRGFrYXIKUmVwLm9mIFNlbmVnYWwKV2VzdCBBZnJpY2EuCgogRGVhciBC
+ZWxvdmVkIE9uZS4KCiBUaGFuayB5b3UgZm9yIGdpdmluZyBtZSB5b3VyIHRpbWU7UGxlYXNlIGJl
+IHBhdGllbnQgYW5kIHJlYWQgbXkgZW1haWwgdG8geW91LCB0aGlzIGxldHRlciBtaWdodCBjb21l
+IGFzIGEgc3VycHJpc2UgdG8geW91LGFuZCB5b3UgY291bGQgYmUgd29uZGVyaW5nIHdoZXJlIEkg
+Z290IHlvdXIgY29udGFjdC4KIEkgZ290IHlvdXIgYWRkcmVzcyB0aHJvdWdoIGEgcGVyc29uYWwg
+c2VhcmNoIG9uIHRoZSBpbnRlcm5ldCBmb3Igc29tZW9uZSByZWxhaWJsZSBhbmQgdHJ1c3R3b3J0
+aHksc28gaSBkZWNpZGVkIHRvIGNvbnRhY3QgeW91IGZvciBhbiBhc3Npc3RhbnQsIHdoaWNoIEkg
+ZG8gaG9wZSB5b3Ugd2lsbCB0YWtlIHlvdXIgdGltZSB0byBjb25zaWRlci4gCiBJIGFtIGEgd2lk
+b3cgIHRvIHRoZSBsYXRlIHByaW5jaXBhbCBhY2NvdW50YW50IG9mIFNpZXJyYSBMZW9uIGNlbnRy
+YWwgYmFuayB3aG8gd2FzIGFzc2Fzc2luYXRlZCBkdWUgdG8gcG9saXRpY2FsIGhvc3RpbGl0eSBp
+biBteSBjb3VudHJ5LgogRm9yIHRoZSBzYWtlIG9mIG91ciBsaXZlcyxteSBjaGlsZHJlbiBhbmQg
+aSBmbGVkIHRvIGEgbmVpZ2hib3VyaW5nIGNvdW50cnksIFNlbmVnYWw7IHdoZXJlIHdlIGFyZSBu
+b3cgc2Vla2luZyByZWZ1Z2UuCiBJIG11c3QgY29uZmVzcyB0byB5b3Usb3VyIGpvdXJuZXkgdG8g
+U2VuZWdhbCB3YXMgbm90IGEgam9sbHkgcmlkZSBhcyB3ZSBlbmNvdW50ZXJlZCBhIGxvdCBvZiBw
+cm9ibGVtcyxtb3N0IHBhaW5mdWwgd2FzIGEgcGFydGljdWxhciBzaXR1YXRpb24gdGhhdCBsZWZ0
+IHVzIGluIGEgc3RhdGUgb2YgcGVudXJ5IGFuZCB3aGVyZSB3ZSBhbHNvIGxvc3Qgb3VyIHRyYXZl
+bGxpbmcgZG9jdW1lbnRzLHRoZXJlYnkgbWFraW5nIGl0IGltcG9zc2libGUgZm9yIHVzIHRvIHRy
+YXZlbCBub3cuCiBNb250aHMgYWdvIGkgd2FzIGRpYWdub3NlZCB3aXRoIGNhbmNlcix0aGlzIGZ1
+dGhlciBtYWRlIG91ciBsaXZlcyBtb3JlIGRpZmZpY3VsdCBhcyBpIGFtIGxhY2tpbmcgZnVuZHMg
+dG8gdGFrZSBjYXJlIG9mIG15IHNlbGYgYW5kIG15IGNoaWxkcmVuLgogSSBkZWNpZGVkIHRvIGNv
+bnRhY3QgeW91LHNlZWtpbmcgeW91ciBhc3Npc3RhbmNlIGJlY2F1c2UgaSBhbSBoYXZpbmcgcHJv
+YmxlbXMgcmVjb3ZlcmluZyBhIGxhcmdlIGRlcG9zaXQgbWFkZSBieSBteSBsYXRlIGh1c2JhbmQg
+b3ZlcnNlYXMgc2luY2UgdGhlIGNvbXBhbnkgbWFpbnRhaW5lZCB0aGF0IGluc3RydWN0aW9ucyBs
+ZWZ0IGJ5IG15IGxhdGUgaHVzYmFuZCB0aGUgb3JpZ2luYWwgZGVwb3NpdG9yLHN0YXRlcyB0aGF0
+IHRoZSBmdW5kcyBiZSAiUkVMRUFTRUQgVE8gTUUgSElTIFdJRkUgT1IgQSBGT1JFSUdOIFJFUFJF
+U0VOVEFUSVZFIE9OTFkiLCBiZWxpZXZpbmcgaGUgd291bGQgYXBwb2ludCBzb21lb25lIGJ5IGhp
+bXNlbGYgdG8gcmVwcmVzZW50IGhpbSBmb3IgdGhlIGNsYWltIGJ1dCB1bmZvcnR1bmF0ZWx5IGhl
+IGRpZWQgZWFybGllci4KIFRoaXMgaXMgdGhlIG9ubHkgaG9wZSBteSBmYW1pbHkgaGFzIG9mIHN1
+cnZpdmluZyxwYXRpY3VsYXJseSBteSBvbmx5IApzb24sd2hvIGhhcyBzbyBtdWNoIGRyZWFtcyBh
+bmQgaSB3YW50IHRvIGRvIHRoZSBiZXN0IGkgY2FuIHRvIGhlbHAgdGhlbSBmdWZpbGwgCnRoaWVy
+IGRyZWFtcy4KIEkgYW0gY29udGFjdGluZyB5b3UgdG8gaGVscCBtZSBtYWtlIHRoZSBjbGFpbXMg
+YnkgcmVwcmVzZW50aW5nIG15IGh1c2JhbmQgYXMgdGhlIGZvcmVpZ24gcmVwcmVzZW50YXRpdmUs
+c2luY2UgaSBjYW5ub3QgdHJhdmVsIHRvIG1ha2UgdGhlIGNsYWltcyBteSBzZWxmIGR1ZSB0byBt
+eSBwcmVzZW50IGNvbmRpdGlvbixpIGFtIHBsZWFkaW5nIHdpdGggeW91IHRvIGhlbHAgdXMgY2xh
+aW0gdGhlIGZ1bmRzIGZyb20gdGhlIHNlY3VyaXR5IGZpcm0gYW5kIG1vc3QgaW1wb3J0YW50bHks
+IHlvdXIgYWJpbGl0eSB0byBwdXQgdGhlIHNhaWQgZnVuZHMgaW50byBjaXJjdWxhdGlvbiB3aXNl
+bHkgZm9yIG91ciBqb2ludCBpbnRlcmVzdCBhbmQgcmVsb2NhdGluZyBteSBjaGlsZHJlbiBwYXJ0
+aWN1bGFybHkgbXkgc29uIGlzIGEgbWFqb3IgY29uc2lkZXJhYmxlIGZhY3RvciByZWdhcmRpbmcg
+bXkgcmVxdWVzdCBhcyBteSBrbm93bGVkZ2Ugb24gZmluYW5jaWFsIG1hdHRlcnMgaXMgbm90IGVu
+b3VnaCB0byBoYW5kbGUgc3VjaCBhbW91bnQgb2YgZnVuZCh1cyQxNiwwMDAsMDAwLjAwKSBzaXh0
+ZWVuIG1pbGxpb24gZG9sbGFycy4KIEluIHZpZXcgb2YgdGhpcywgaWYgeW91IGFyZSB0b3VjaGVk
+IHRvIHdvcmsgd2l0aCBtZSBpbiBzaW5jZXJpdHksIGJ5IHN0YW5kaW5nIGFzIG15IGxhdGUgaHVz
+YmFuZCxzIGZvcmVpZ24gcmVwcmVzZW50YXRpdmUgdG8gcmVjZWl2ZSB0aGUgc2FpZCBkZXBvc2l0
+IG9uIG91ciBiZWhhbGYsIHdlIHNoYWxsIGVtYnJhY2UgeW91IGFzIG91ciBmYW1pbHkgYW5kIHdp
+bGwgY29tcGVuc2F0ZSB5b3UgYWNjb3JkaW5nbHkuCiBJIGFtIHdpbGxpbmcgdG8gc2hhcmUgdGhl
+IG1vbmV5IDQ1JSBmb3IgeW91LDQ1JSBmb3IgbWUgYW5kIG15IGNoaWxkcmVuIGFuZCB0aGUgcmVt
+YWluaW5nIDEwJSB3ZSBiZSBzZXQgYXNpZGUgZm9yIGFueSBleHBlbnNlcyB0aGF0IG1heSBiZSBp
+bmN1cnJlZCBpbiB0aGUgY291cnNlIG9mIHRoaXMgdHJhbnNhY3Rpb24sYWxsIGkgcmVhbGx5IGNh
+cmUgYWJvdXQgbm93IGlzIHRoZSB3ZWxmYXJlIG9mIG15IGNoaWxkcmVuLgogQXMgeW91IGluZGlj
+YXRlIGludGVyZXN0LCBwbGVhc2UgY29udGFjdCBteSBzb24gQU5UQSBPTUFSIG9uIHRoaXMgZW1h
+aWwgCmFkZHJlc3MgKGFuX29tYXIwMkB5YWhvby5mcilvciBjYWxsIGhpbSBvbiBoaXMgcGhvbmUg
+bnVtYmVyIFRlbDogCisyMjEtNDQ4ODQ2OSAgdG8gZW5hYmxlIGhpbSBnaXZlIHlvdSBmdXJ0aGVy
+IGluZm9ybWF0aW9uIHJlbGF0aW5nIHRvIHRoZSBmdW5kcyBhbmQgdGhlIHN0ZXBzIHdlIHNoYWxs
+IHRha2UgdG8gZmluYWxpemUgb24gdGhlIHByb2plY3QsaSBoYXZlIGhhbmRlZCB0aGlzIHByb2pl
+Y3QgdG8gaGltIGFzIG15IGhlYWx0aCBjb25kaXRpb25zIG1ha2VzIGl0IGhhcmQgZm9yIG1lIHRv
+IHRhbGsgb3IgZ28gYXJvdW5kLgogVGhhbmtpbmcgeW91IGluIGFkdmFuY2UgZm9yIHlvdXIga2lu
+ZCBhbmQgdXJnZW50IHJlc3BvbnNlLCBtb3JlIHNvIGZvciBrZWVwaW5nIG91ciBwcm9wb3NhbCB0
+byB5b3VyIHNlbGYuCgpTaW5jZXJlbHkKR3JhY2UgT21hci4K
 
-> Hi Trond,
->      But this is different than behaviour of NFS=20
->      on other platforms. On other platforms like=20
->      AIX, root of exported fses need not be=20
->      on shared disk.
->      Anyways, i will try out the thing suggested
->      by you and post the result tomorrow.
->=20
-> thanks,
->  kiran
->=20
->=20
-> --- Trond Myklebust <trond.myklebust@fys.uio.no>
-> wrote:
->=20
-> > On Thu, 2006-02-16 at 07:34 -0800, mehta kiran
-> > wrote:
-> > > Hi Trond,
-> > >   partitions /dev/sdi1 and /dev/sdi2 are=20
-> > >   seen by both the systems on which server
-> > >   can start and their major/minor numbers
-> > >   are same on both the systems.
-> > >   Sfter server fails over to other system,
-> > >   output of exportfs and mount looks the same.
-> > >   Should /export directory which is exported
-> > >   with fsid=3D0 be on shared disk as well ?
-> >=20
-> > Probably, yes.
-> >=20
-> > Cheers,
-> >   Trond
-> >=20
-> >=20
->=20
->=20
-> __________________________________________________
-> Do You Yahoo!?
-> Tired of spam?  Yahoo! Mail has the best spam
-> protection around=20
-> http://mail.yahoo.com=20
->=20
->=20
->
--------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc. Do
-> you grep through log files
-> for problems?  Stop!  Download the new AJAX search
-> engine that makes
-> searching your log files as easy as surfing the=20
-> web.  DOWNLOAD SPLUNK!
->
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+--qzsoft_directmail_seperator--
 
-
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log fi=
-les
+This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
 for problems?  Stop!  Download the new AJAX search engine that makes
 searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
