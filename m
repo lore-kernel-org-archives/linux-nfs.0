@@ -1,24 +1,24 @@
-From: Grace Omar <gra_omar@mmail.com>
-Subject: Please reply
-Date: Sat, 18 Feb 2006 16:13:28 -0600
-Message-ID: <quality1111$196.207.219.43$.43f79c1c.b8da1.5965.3384@yuma.onspeed.com>
-Reply-To: Grace Omar <gra_omar@mmail.com>
+From: Bernd Strieder <strieder@informatik.uni-kl.de>
+Subject: Re: NFS mount in a changing network
+Date: Mon, 20 Feb 2006 10:49:00 +0100
+Message-ID: <200602201049.00351.strieder@informatik.uni-kl.de>
+References: <200602151716.18601.strieder@informatik.uni-kl.de> <200602161116.24884.strieder@informatik.uni-kl.de> <1140192487.3612.23.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="qzsoft_directmail_seperator"
+Content-Type: text/plain;
+  charset="utf-8"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FAaLR-0007th-4m
-	for nfs@lists.sourceforge.net; Sat, 18 Feb 2006 14:14:25 -0800
-Received: from lb2.onspeed.com ([72.3.137.84] helo=yuma.onspeed.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FAaLQ-0007VY-Nd
-	for nfs@lists.sourceforge.net; Sat, 18 Feb 2006 14:14:25 -0800
-Received: from ibm.com (localhost [127.0.0.1])
-	by yuma.onspeed.com (8.12.11/8.12.11) with SMTP id k1IMDSd9012036
-	for <nfs@lists.sourceforge.net>; Sat, 18 Feb 2006 16:13:39 -0600
-To: nfs <nfs@lists.sourceforge.net>
+	id 1FB7gS-0004Z3-Sw
+	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 01:50:20 -0800
+Received: from mailgate1.uni-kl.de ([131.246.120.5])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FB7gR-0006aN-Cl
+	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 01:50:21 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
+In-Reply-To: <1140192487.3612.23.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,72 +32,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---qzsoft_directmail_seperator
-Content-Type: text/plain;
-	charset="DEFAULT"
-Content-Transfer-Encoding: base64
+Hello,
 
-TXJzLkdyYWNlIE9tYXIKRGFrYXIKUmVwLm9mIFNlbmVnYWwKV2VzdCBBZnJpY2EuCgogRGVhciBC
-ZWxvdmVkIE9uZS4KCiBUaGFuayB5b3UgZm9yIGdpdmluZyBtZSB5b3VyIHRpbWU7UGxlYXNlIGJl
-IHBhdGllbnQgYW5kIHJlYWQgbXkgZW1haWwgdG8geW91LCB0aGlzIGxldHRlciBtaWdodCBjb21l
-IGFzIGEgc3VycHJpc2UgdG8geW91LGFuZCB5b3UgY291bGQgYmUgd29uZGVyaW5nIHdoZXJlIEkg
-Z290IHlvdXIgY29udGFjdC4KIEkgZ290IHlvdXIgYWRkcmVzcyB0aHJvdWdoIGEgcGVyc29uYWwg
-c2VhcmNoIG9uIHRoZSBpbnRlcm5ldCBmb3Igc29tZW9uZSByZWxhaWJsZSBhbmQgdHJ1c3R3b3J0
-aHksc28gaSBkZWNpZGVkIHRvIGNvbnRhY3QgeW91IGZvciBhbiBhc3Npc3RhbnQsIHdoaWNoIEkg
-ZG8gaG9wZSB5b3Ugd2lsbCB0YWtlIHlvdXIgdGltZSB0byBjb25zaWRlci4gCiBJIGFtIGEgd2lk
-b3cgIHRvIHRoZSBsYXRlIHByaW5jaXBhbCBhY2NvdW50YW50IG9mIFNpZXJyYSBMZW9uIGNlbnRy
-YWwgYmFuayB3aG8gd2FzIGFzc2Fzc2luYXRlZCBkdWUgdG8gcG9saXRpY2FsIGhvc3RpbGl0eSBp
-biBteSBjb3VudHJ5LgogRm9yIHRoZSBzYWtlIG9mIG91ciBsaXZlcyxteSBjaGlsZHJlbiBhbmQg
-aSBmbGVkIHRvIGEgbmVpZ2hib3VyaW5nIGNvdW50cnksIFNlbmVnYWw7IHdoZXJlIHdlIGFyZSBu
-b3cgc2Vla2luZyByZWZ1Z2UuCiBJIG11c3QgY29uZmVzcyB0byB5b3Usb3VyIGpvdXJuZXkgdG8g
-U2VuZWdhbCB3YXMgbm90IGEgam9sbHkgcmlkZSBhcyB3ZSBlbmNvdW50ZXJlZCBhIGxvdCBvZiBw
-cm9ibGVtcyxtb3N0IHBhaW5mdWwgd2FzIGEgcGFydGljdWxhciBzaXR1YXRpb24gdGhhdCBsZWZ0
-IHVzIGluIGEgc3RhdGUgb2YgcGVudXJ5IGFuZCB3aGVyZSB3ZSBhbHNvIGxvc3Qgb3VyIHRyYXZl
-bGxpbmcgZG9jdW1lbnRzLHRoZXJlYnkgbWFraW5nIGl0IGltcG9zc2libGUgZm9yIHVzIHRvIHRy
-YXZlbCBub3cuCiBNb250aHMgYWdvIGkgd2FzIGRpYWdub3NlZCB3aXRoIGNhbmNlcix0aGlzIGZ1
-dGhlciBtYWRlIG91ciBsaXZlcyBtb3JlIGRpZmZpY3VsdCBhcyBpIGFtIGxhY2tpbmcgZnVuZHMg
-dG8gdGFrZSBjYXJlIG9mIG15IHNlbGYgYW5kIG15IGNoaWxkcmVuLgogSSBkZWNpZGVkIHRvIGNv
-bnRhY3QgeW91LHNlZWtpbmcgeW91ciBhc3Npc3RhbmNlIGJlY2F1c2UgaSBhbSBoYXZpbmcgcHJv
-YmxlbXMgcmVjb3ZlcmluZyBhIGxhcmdlIGRlcG9zaXQgbWFkZSBieSBteSBsYXRlIGh1c2JhbmQg
-b3ZlcnNlYXMgc2luY2UgdGhlIGNvbXBhbnkgbWFpbnRhaW5lZCB0aGF0IGluc3RydWN0aW9ucyBs
-ZWZ0IGJ5IG15IGxhdGUgaHVzYmFuZCB0aGUgb3JpZ2luYWwgZGVwb3NpdG9yLHN0YXRlcyB0aGF0
-IHRoZSBmdW5kcyBiZSAiUkVMRUFTRUQgVE8gTUUgSElTIFdJRkUgT1IgQSBGT1JFSUdOIFJFUFJF
-U0VOVEFUSVZFIE9OTFkiLCBiZWxpZXZpbmcgaGUgd291bGQgYXBwb2ludCBzb21lb25lIGJ5IGhp
-bXNlbGYgdG8gcmVwcmVzZW50IGhpbSBmb3IgdGhlIGNsYWltIGJ1dCB1bmZvcnR1bmF0ZWx5IGhl
-IGRpZWQgZWFybGllci4KIFRoaXMgaXMgdGhlIG9ubHkgaG9wZSBteSBmYW1pbHkgaGFzIG9mIHN1
-cnZpdmluZyxwYXRpY3VsYXJseSBteSBvbmx5IApzb24sd2hvIGhhcyBzbyBtdWNoIGRyZWFtcyBh
-bmQgaSB3YW50IHRvIGRvIHRoZSBiZXN0IGkgY2FuIHRvIGhlbHAgdGhlbSBmdWZpbGwgCnRoaWVy
-IGRyZWFtcy4KIEkgYW0gY29udGFjdGluZyB5b3UgdG8gaGVscCBtZSBtYWtlIHRoZSBjbGFpbXMg
-YnkgcmVwcmVzZW50aW5nIG15IGh1c2JhbmQgYXMgdGhlIGZvcmVpZ24gcmVwcmVzZW50YXRpdmUs
-c2luY2UgaSBjYW5ub3QgdHJhdmVsIHRvIG1ha2UgdGhlIGNsYWltcyBteSBzZWxmIGR1ZSB0byBt
-eSBwcmVzZW50IGNvbmRpdGlvbixpIGFtIHBsZWFkaW5nIHdpdGggeW91IHRvIGhlbHAgdXMgY2xh
-aW0gdGhlIGZ1bmRzIGZyb20gdGhlIHNlY3VyaXR5IGZpcm0gYW5kIG1vc3QgaW1wb3J0YW50bHks
-IHlvdXIgYWJpbGl0eSB0byBwdXQgdGhlIHNhaWQgZnVuZHMgaW50byBjaXJjdWxhdGlvbiB3aXNl
-bHkgZm9yIG91ciBqb2ludCBpbnRlcmVzdCBhbmQgcmVsb2NhdGluZyBteSBjaGlsZHJlbiBwYXJ0
-aWN1bGFybHkgbXkgc29uIGlzIGEgbWFqb3IgY29uc2lkZXJhYmxlIGZhY3RvciByZWdhcmRpbmcg
-bXkgcmVxdWVzdCBhcyBteSBrbm93bGVkZ2Ugb24gZmluYW5jaWFsIG1hdHRlcnMgaXMgbm90IGVu
-b3VnaCB0byBoYW5kbGUgc3VjaCBhbW91bnQgb2YgZnVuZCh1cyQxNiwwMDAsMDAwLjAwKSBzaXh0
-ZWVuIG1pbGxpb24gZG9sbGFycy4KIEluIHZpZXcgb2YgdGhpcywgaWYgeW91IGFyZSB0b3VjaGVk
-IHRvIHdvcmsgd2l0aCBtZSBpbiBzaW5jZXJpdHksIGJ5IHN0YW5kaW5nIGFzIG15IGxhdGUgaHVz
-YmFuZCxzIGZvcmVpZ24gcmVwcmVzZW50YXRpdmUgdG8gcmVjZWl2ZSB0aGUgc2FpZCBkZXBvc2l0
-IG9uIG91ciBiZWhhbGYsIHdlIHNoYWxsIGVtYnJhY2UgeW91IGFzIG91ciBmYW1pbHkgYW5kIHdp
-bGwgY29tcGVuc2F0ZSB5b3UgYWNjb3JkaW5nbHkuCiBJIGFtIHdpbGxpbmcgdG8gc2hhcmUgdGhl
-IG1vbmV5IDQ1JSBmb3IgeW91LDQ1JSBmb3IgbWUgYW5kIG15IGNoaWxkcmVuIGFuZCB0aGUgcmVt
-YWluaW5nIDEwJSB3ZSBiZSBzZXQgYXNpZGUgZm9yIGFueSBleHBlbnNlcyB0aGF0IG1heSBiZSBp
-bmN1cnJlZCBpbiB0aGUgY291cnNlIG9mIHRoaXMgdHJhbnNhY3Rpb24sYWxsIGkgcmVhbGx5IGNh
-cmUgYWJvdXQgbm93IGlzIHRoZSB3ZWxmYXJlIG9mIG15IGNoaWxkcmVuLgogQXMgeW91IGluZGlj
-YXRlIGludGVyZXN0LCBwbGVhc2UgY29udGFjdCBteSBzb24gQU5UQSBPTUFSIG9uIHRoaXMgZW1h
-aWwgCmFkZHJlc3MgKGFuX29tYXIwMkB5YWhvby5mcilvciBjYWxsIGhpbSBvbiBoaXMgcGhvbmUg
-bnVtYmVyIFRlbDogCisyMjEtNDQ4ODQ2OSAgdG8gZW5hYmxlIGhpbSBnaXZlIHlvdSBmdXJ0aGVy
-IGluZm9ybWF0aW9uIHJlbGF0aW5nIHRvIHRoZSBmdW5kcyBhbmQgdGhlIHN0ZXBzIHdlIHNoYWxs
-IHRha2UgdG8gZmluYWxpemUgb24gdGhlIHByb2plY3QsaSBoYXZlIGhhbmRlZCB0aGlzIHByb2pl
-Y3QgdG8gaGltIGFzIG15IGhlYWx0aCBjb25kaXRpb25zIG1ha2VzIGl0IGhhcmQgZm9yIG1lIHRv
-IHRhbGsgb3IgZ28gYXJvdW5kLgogVGhhbmtpbmcgeW91IGluIGFkdmFuY2UgZm9yIHlvdXIga2lu
-ZCBhbmQgdXJnZW50IHJlc3BvbnNlLCBtb3JlIHNvIGZvciBrZWVwaW5nIG91ciBwcm9wb3NhbCB0
-byB5b3VyIHNlbGYuCgpTaW5jZXJlbHkKR3JhY2UgT21hci4K
+Am Freitag, 17. Februar 2006 17:08 schrieben Sie:
+> On Thu, 2006-02-16 at 11:16 +0100, Bernd Strieder wrote:
+> > The ultimate question, which might be helpful to others, which
+> > I haven't found anything written on anywhere is:
+> >
+> > What are the things to care about, if you want to switch the
+> > network configuration of a NFS server and a NFS client if
+> > umount must be avoided? Are there any chances to get this
+> > cleanly done?
+>
+> The basic rule of thumb follows directly from 1:
+>
+>         If you have clients that have mounted a given partition,
+> then do _not_ bring up the server until you have set up all the
+> exports.
 
---qzsoft_directmail_seperator--
+IOW, if the server comes up, and has not the exports a running 
+client expects, then the file handles on the client will get 
+stale, and will not block until the server has the expected 
+exports again. So there is no safety net in that respect, which I 
+would prefer, if I had the choice. Many applications will not get 
+into a non-recoverable state, when blocked, but ESTALE is 
+different. I don't yet know whether closing the stale file-handle 
+is possible, so this handling is not nice to do. 
 
+>
+> IOW: if you want to move the clients from one server to another,
+> then the sequence is
+>
+>  1) Kill nfsd on _both_ servers
+>  2) Move the IP address from server 1 to server 2
+>  3) Add the exports for the clients from server 1 to
+> /etc/exports on server 2 (and possibly run exportfs)
+>  4) Now bring nfsd up on server 2.
+
+I did not exactly move the server, but added additional IP 
+addresses of a different network to the server.
+
+I cannot remember the exact sequence of things I did, but I added 
+export entries a few days before the main IP addresses changed, 
+and I verified that I could mount using both IP addresses of the 
+server, and I was happy, because it meant that I could possibly do 
+the change without killing that process on the client.
+
+I used private addresses before, and used another private network 
+to try it out. I was not conscious that a missing export entry 
+will make the client stale, I did not experience any problems like 
+that during testing, probably because I did it right then. But in 
+the end it is highly possible that I really missed some export 
+entries at prime time. I need not tell you.
+
+Thanks a lot,
+
+Bernd Strieder
 
 
 -------------------------------------------------------
