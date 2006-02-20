@@ -1,25 +1,36 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Daniel Bramkamp <bramkamp@team-datentechnik.de>
 Subject: Re: Permission denied
-Date: Mon, 20 Feb 2006 09:31:39 -0500
-Message-ID: <1140445899.7863.16.camel@lade.trondhjem.org>
+Date: Mon, 20 Feb 2006 16:43:22 +0100
+Message-ID: <20060220164322.hv8kw08k08gk00kc@linux-smb.molly>
 References: <20060207123448.pqv165xvwosgk0g8@linux-smb.molly>
-	 <20060220112535.GA10567@janus>
-	 <20060220131637.iqam5s8yb4o8co44@linux-smb.molly>
+	<20060220112535.GA10567@janus>
+	<20060220131637.iqam5s8yb4o8co44@linux-smb.molly>
+	<1140445899.7863.16.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset=ISO-8859-15;
+	format="flowed"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FBC53-0004NT-CM
-	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 06:32:01 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FBC4x-0004Bx-OX
-	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 06:32:01 -0800
-To: Daniel Bramkamp <bramkamp@team-datentechnik.de>
-In-Reply-To: <20060220131637.iqam5s8yb4o8co44@linux-smb.molly>
+	id 1FBDCG-0004ji-Ui
+	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 07:43:32 -0800
+Received: from natsluvver.rzone.de ([81.169.145.176])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FBDCF-0001P9-CJ
+	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 07:43:33 -0800
+Received: from linux-smb.molly ([85.8.92.16])
+	by post.webmailer.de (8.13.1/8.13.1) with ESMTP id k1KFhMnD011125
+	for <nfs@lists.sourceforge.net>; Mon, 20 Feb 2006 16:43:22 +0100 (MET)
+Received: from localhost (localhost [127.0.0.1])
+	by linux-smb.molly (Postfix) with ESMTP id B4AE445973
+	for <nfs@lists.sourceforge.net>; Mon, 20 Feb 2006 16:43:23 +0100 (CET)
+Received: from linux-smb.molly ([127.0.0.1])
+ by localhost (linux-smb.molly [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 05881-18 for <nfs@lists.sourceforge.net>;
+ Mon, 20 Feb 2006 16:43:22 +0100 (CET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1140445899.7863.16.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,37 +44,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2006-02-20 at 13:16 +0100, Daniel Bramkamp wrote:
-> Quoting Frank van Maarseveen <frankvm@frankvm.com>:
-> 
-> > On Tue, Feb 07, 2006 at 12:34:48PM +0100, Daniel Bramkamp wrote:
-> >> Hi list,
-> >>
-> >> I am experiencing some issues with a NFS server running on Linux Kernel
-> >> 2.4.26 with nfs-utils-1.0.6 installed. Basically it works great,
-> >> however, sometimes access to files and directories stored on the server
-> >> is denied for a certain user account. I am not sure if it affects other
-> >> users as well - only heard complaints from that particular user so far.
-> >
-> > A bit late but.. is that user a member of more than 16 groups?
-> 
-> Hi,
-> 
-> yesterday I reinstalled the server. The server is now running Gentoo 
-> instead of Slackware. The installed software is up to date now. Kernel 
-> is 2.6.14, nfs-utils is still 1.0.6, it seems 1.0.8 is currently a 
-> realease candidate. Half an hour ago I got a call from the user - the 
-> problem still exists. The user is a member of 13 groups. I really hoped 
-> the update would solve the problem since I have no idea how to fix this.
+Quoting Trond Myklebust <trond.myklebust@fys.uio.no>:
 
-You have to look at the client machine too.
 
-Is the user still limited to 13 groups on the client, and do the
-numerical uid/gid values match on the client and server?
+> You have to look at the client machine too.
 
-Cheers,
-  Trond
+yeah, the client in this case is a terminal server.
 
+> Is the user still limited to 13 groups on the client, and do the
+> numerical uid/gid values match on the client and server?
+
+Since I use LDAP to store user accounts the uid and gid is the same on 
+all servers. The user is not a member of any local group on any server 
+either so the total number of groups the particular user is in is 13 on 
+all servers. I just double checked that.
+
+-- 
+Daniel Bramkamp
+
+team! datentechnik GmbH & Co.KG
+Werner von Siemens Stra=DFe 12a
+49124 Georgsmarienh=FCtte
+Tel.: 05401-8226-0
+Fax : 05401-8226-20
+eMail: bramkamp@team-datentechnik.de
 
 
 -------------------------------------------------------
