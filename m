@@ -1,23 +1,21 @@
 From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: NFS lock reclaiming not working on Redhat4 update3
-Date: Mon, 20 Feb 2006 20:27:47 -0800 (PST)
-Message-ID: <20060221042747.74605.qmail@web51604.mail.yahoo.com>
-References: <43FA1067.3070506@RedHat.com>
+Subject: Re: query about clnt_create
+Date: Tue, 21 Feb 2006 00:39:48 -0800 (PST)
+Message-ID: <20060221083948.5152.qmail@web51601.mail.yahoo.com>
+References: <1140104058.8891.36.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FBP7y-0001Sn-GR
-	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 20:27:54 -0800
-Received: from web51604.mail.yahoo.com ([206.190.38.209])
+	id 1FBT3s-0007kR-0T
+	for nfs@lists.sourceforge.net; Tue, 21 Feb 2006 00:39:56 -0800
+Received: from web51601.mail.yahoo.com ([206.190.38.206])
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FBP7x-0004TB-TG
-	for nfs@lists.sourceforge.net; Mon, 20 Feb 2006 20:27:54 -0800
-To: Steve Dickson <SteveD@redhat.com>,
-	asha yr <asha_yr@rediffmail.com>
-In-Reply-To: <43FA1067.3070506@RedHat.com>
+	id 1FBT3q-0001Vv-KT
+	for nfs@lists.sourceforge.net; Tue, 21 Feb 2006 00:39:56 -0800
+To: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
+In-Reply-To: <1140104058.8891.36.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,36 +29,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Issue 79602 is also related to this problem.
+I noticed that clnt_create takes 3.5 min for tcp
+and 1 min for udp protocol by default
+(when taget system in UNREACHABLE). Anyway to modify
+default timeout ? I could see that there are
+functions like clnt_create_timed on  solaris 5.8/5.9
+but not on linux.
 
---- Steve Dickson <SteveD@redhat.com> wrote:
+thanks,
+ kiran
 
-> asha yr wrote:
-> > NFS lock reclaiming is not working on Redhat4
-> Update3.
-> I opened up the following bz report to trace this
-> problem:
->
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D182137.
-> The proposed patch in in that bz report.
+--- Trond Myklebust <trond.myklebust@fys.uio.no>
+wrote:
+
+> On Thu, 2006-02-16 at 03:58 -0800, mehta kiran
+> wrote:
+> > Hi Trond,
+> >=20
+> > May be i am confused.
+> > But, is this  assumption ok :
+> > that clnt_create/clnt_call call  from a client
+> system
+> > will not fail due to any kind of security
+> > settings(kerberos,firewall) on the nfs server
+> > ( PS: client system can mount exported fs from
+> > nfs server) ?
 >=20
-> steved.
+> Of course clnt_call can fail due to security
+> settings on the server:
+> they wouldn't be much use for security purposes if
+> they didn't stop an
+> actual RPC call. :-)
 >=20
+> clnt_create might succeed, though, since it doesn't
+> actually try to talk
+> to the server.
 >=20
->
--------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc. Do
-> you grep through log files
-> for problems?  Stop!  Download the new AJAX search
-> engine that makes
-> searching your log files as easy as surfing the=20
-> web.  DOWNLOAD SPLUNK!
->
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D103432&bid=3D230486&dat=3D=
-121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+> Cheers,
+>   Trond
+>=20
 >=20
 
 
