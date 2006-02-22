@@ -1,37 +1,22 @@
-From: CHIKAMA masaki <masaki-c@nict.go.jp>
+From: Ramon van Alteren <ramon@vanalteren.nl>
 Subject: Re: Writing to an NFS share truncates files on >8Tb Raid +
  LVM2
-Date: Wed, 22 Feb 2006 19:45:41 +0900
-Message-ID: <20060222194541.4167cd7a.masaki-c@nict.go.jp>
-References: <43FC3ED3.2060908@vanalteren.nl>
+Date: Wed, 22 Feb 2006 14:08:34 +0100
+Message-ID: <43FC6252.2030104@vanalteren.nl>
+References: <43FC3ED3.2060908@vanalteren.nl> <111aefd0602220459s1786fe4ewddc5c21698002e27@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FBrVE-0005eu-9o
-	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 02:45:48 -0800
-Received: from ns1.nict.go.jp ([133.243.3.1])
+	id 1FBtjT-0006l8-Ck
+	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:08:39 -0800
+Received: from cust.92.104.adsl.cistron.nl ([195.64.92.104] helo=router.forgottenland.net)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FBrVA-0005rk-SW
-	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 02:45:48 -0800
-Received: from gw1.nict.go.jp (gw1.nict.go.jp [133.243.18.250])
-	by ns1.nict.go.jp  with ESMTP id k1MAjgEj015962
-	for <nfs@lists.sourceforge.net>; Wed, 22 Feb 2006 19:45:42 +0900 (JST)
-Received: from gw1.nict.go.jp (localhost [127.0.0.1])
-	by gw1.nict.go.jp  with ESMTP id k1MAjfN5028405
-	for <nfs@lists.sourceforge.net>; Wed, 22 Feb 2006 19:45:41 +0900 (JST)
-Received: from mail1.nict.go.jp (mail.nict.go.jp [133.243.18.3])
-	by gw1.nict.go.jp  with ESMTP id k1MAjfks028402
-	for <nfs@lists.sourceforge.net>; Wed, 22 Feb 2006 19:45:41 +0900 (JST)
-Received: from mail1.nict.go.jp (localhost [127.0.0.1])
-	by localhost.nict.go.jp (Postfix) with ESMTP id 8354C43E3
-	for <nfs@lists.sourceforge.net>; Wed, 22 Feb 2006 19:45:41 +0900 (JST)
-Received: from nabal.nict.go.jp (unknown [133.243.93.85])
-	by mail1.nict.go.jp (Postfix) with SMTP id 4902B42CB
-	for <nfs@lists.sourceforge.net>; Wed, 22 Feb 2006 19:45:41 +0900 (JST)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <43FC3ED3.2060908@vanalteren.nl>
+	id 1FBtjR-0007Qc-Tq
+	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:08:39 -0800
+To: Chris Penney <penney@msu.edu>, nfs@lists.sourceforge.net
+In-Reply-To: <111aefd0602220459s1786fe4ewddc5c21698002e27@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -45,24 +30,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello Ramon.
+Hi Chris & Chikama,
 
-On Wed, 22 Feb 2006 11:37:07 +0100
-Ramon van Alteren <ramon@vanalteren.nl> wrote:
+Chris Penney wrote:
 
-> We're using reiserfsv3. It's a raid-50 machine based on two raid-50
-> arrays of 4,55 Tb handled  by the hardware controller.
+> I would highly recommend you use jfs instead of reiserfs (or xfs) for 
+> an NFS shared volume.  I have several >8TB NFS file servers and jfs, 
+> in my testing, is the only free file system (ie. not vxfs) that has 
+> top performance (xfs & jfs are about equal) and the best reliability 
+> (rebooting the NFS server caused no corruption in our testing while 
+> rebooting with xfs frequently caused nulled zones in files).
 
-I had a similar problem before, and I'm sure it's because using reiserfsv3.
-The reiserfsv3 does not support > 8TB filesystem.
+Anybody any experience with ext3 on filesystems >8Tb.
+Chikama pointed me to the explanation on why this doesn't work with 
+reiserfs.
 
-Please see my post the following.
+But now I need to figure out which filesystem I will use.
+Testing reveals that ext3 is pretty fast: 
+http://linuxgazette.net/122/piszcz.html
+However I have no clue how ext3 behaves with >8Tb filesystems.
 
-http://sourceforge.net/mailarchive/forum.php?forum_id=4930&max_rows=25&style=flat&viewmonth=200511&viewday=1
+Anybody ?
 
+Grtz Ramon
 
 -- 
-CHIKAMA Masaki @ NICT
+To be stupid and selfish and to have good health are the three requirements for happiness, though if stupidity is lacking, the others are useless.
+
+Gustave Flaubert
+
+  
+  
 
 
 
