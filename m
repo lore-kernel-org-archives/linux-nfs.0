@@ -1,22 +1,23 @@
 From: Ramon van Alteren <ramon@vanalteren.nl>
 Subject: Re: Writing to an NFS share truncates files on >8Tb Raid +
  LVM2
-Date: Wed, 22 Feb 2006 14:08:34 +0100
-Message-ID: <43FC6252.2030104@vanalteren.nl>
-References: <43FC3ED3.2060908@vanalteren.nl> <111aefd0602220459s1786fe4ewddc5c21698002e27@mail.gmail.com>
+Date: Wed, 22 Feb 2006 14:15:33 +0100
+Message-ID: <43FC63F5.6090809@vanalteren.nl>
+References: <43FC3ED3.2060908@vanalteren.nl> <111aefd0602220459s1786fe4ewddc5c21698002e27@mail.gmail.com> <43FC6252.2030104@vanalteren.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Chris Penney <penney@msu.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FBtjT-0006l8-Ck
-	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:08:39 -0800
+	id 1FBtqB-0007h2-Oq
+	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:15:35 -0800
 Received: from cust.92.104.adsl.cistron.nl ([195.64.92.104] helo=router.forgottenland.net)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FBtjR-0007Qc-Tq
-	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:08:39 -0800
-To: Chris Penney <penney@msu.edu>, nfs@lists.sourceforge.net
-In-Reply-To: <111aefd0602220459s1786fe4ewddc5c21698002e27@mail.gmail.com>
+	id 1FBtqB-0001v6-9z
+	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:15:35 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <43FC6252.2030104@vanalteren.nl>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +31,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Chris & Chikama,
+Ramon van Alteren wrote:
 
-Chris Penney wrote:
+> Anybody any experience with ext3 on filesystems >8Tb.
+> Chikama pointed me to the explanation on why this doesn't work with 
+> reiserfs.
+>
+> But now I need to figure out which filesystem I will use.
+> Testing reveals that ext3 is pretty fast: 
+> http://linuxgazette.net/122/piszcz.html
+> However I have no clue how ext3 behaves with >8Tb filesystems.
 
-> I would highly recommend you use jfs instead of reiserfs (or xfs) for 
-> an NFS shared volume.  I have several >8TB NFS file servers and jfs, 
-> in my testing, is the only free file system (ie. not vxfs) that has 
-> top performance (xfs & jfs are about equal) and the best reliability 
-> (rebooting the NFS server caused no corruption in our testing while 
-> rebooting with xfs frequently caused nulled zones in files).
+Nevermind....
 
-Anybody any experience with ext3 on filesystems >8Tb.
-Chikama pointed me to the explanation on why this doesn't work with 
-reiserfs.
+Should learn to sit on fingers longer. From the ext3 faq:
 
-But now I need to figure out which filesystem I will use.
-Testing reveals that ext3 is pretty fast: 
-http://linuxgazette.net/122/piszcz.html
-However I have no clue how ext3 behaves with >8Tb filesystems.
 
-Anybody ?
+    Q: What is the largest possible size of an ext3 filesystem and of
+    files on ext3?
 
-Grtz Ramon
+inspired by Andreas Dilger, suggested by Christian Kujau:
+
+Ext3 can support files up to 1TB. With a 2.4 kernel the filesystem size 
+is limited by the maximal block device size, which is 2TB. In 2.6 the 
+maximum (32-bit CPU) limit is of block devices is 16TB, but ext3 
+supports only up to 4TB.
+
+
+Ramon
 
 -- 
 To be stupid and selfish and to have good health are the three requirements for happiness, though if stupidity is lacking, the others are useless.
