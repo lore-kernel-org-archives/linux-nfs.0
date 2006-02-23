@@ -1,27 +1,31 @@
-From: "Chris Penney" <penney@msu.edu>
-Subject: Re: Writing to an NFS share truncates files on >8Tb Raid + LVM2
-Date: Wed, 22 Feb 2006 08:41:23 -0500
-Message-ID: <111aefd0602220541l35019fa4me72c0227230d2c36@mail.gmail.com>
-References: <43FC3ED3.2060908@vanalteren.nl>
-	 <111aefd0602220459s1786fe4ewddc5c21698002e27@mail.gmail.com>
-	 <43FC6252.2030104@vanalteren.nl> <43FC63F5.6090809@vanalteren.nl>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Should fcntl operations check attributes with the server when NFS shares are mounted noac?
+Date: Thu, 23 Feb 2006 07:42:55 -0500
+Message-ID: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_3715_14965668.1140615683545"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FBuFC-0002lJ-Mv
-	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:41:26 -0800
-Received: from zproxy.gmail.com ([64.233.162.194])
+	id 1FCFoL-0003U5-Ur
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 04:43:09 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FBuFB-0003EU-Gj
-	for nfs@lists.sourceforge.net; Wed, 22 Feb 2006 05:41:26 -0800
-Received: by zproxy.gmail.com with SMTP id 13so1415807nzp
-        for <nfs@lists.sourceforge.net>; Wed, 22 Feb 2006 05:41:24 -0800 (PST)
-To: "Ramon van Alteren" <ramon@vanalteren.nl>,
-	nfs@lists.sourceforge.net
-In-Reply-To: <43FC63F5.6090809@vanalteren.nl>
+	id 1FCFoJ-000347-IC
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 04:43:09 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id k1NCgt1V002867
+	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 07:42:55 -0500
+Received: from hmsendeavour.rdu.redhat.com (hmsendeavour.rdu.redhat.com [172.16.57.156])
+	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id k1NCgt119403
+	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 07:42:55 -0500
+Received: from hmsendeavour.rdu.redhat.com (localhost.localdomain [127.0.0.1])
+	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1) with ESMTP id k1NCgtaI031644
+	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 07:42:55 -0500
+Received: (from nhorman@localhost)
+	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1/Submit) id k1NCgtVs031643
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 07:42:55 -0500
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,71 +39,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-------=_Part_3715_14965668.1140615683545
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Hey all-
+	I've got a dillema and I'm not sure how to anwser it.  I recently had
+someone mention to me that some of the operations executed via fcntl
+(specifically F_SETLEASE was demonstrated to me) don't check the file attributes
+on the server before executing their operations.  This can lead to erroneous
+behavior in which, if someone updates file permissions or ownership from another
+node mounting an NFS share, a node attempting to do something like a F_SETLEASE
+operation will fail when it should succede, or vice versa.
 
-On 2/22/06, Ramon van Alteren <ramon@vanalteren.nl> wrote:
->
-> Ramon van Alteren wrote:
->
-> > But now I need to figure out which filesystem I will use.
-> > Testing reveals that ext3 is pretty fast:
-> > http://linuxgazette.net/122/piszcz.html
-> > However I have no clue how ext3 behaves with >8Tb filesystems.
+	I can see who this could be interpreted as a bug, but I can also see how
+we might not want to change the behavior, given that the fcntl code currently
+does not call down to the underlying filesystem for most operations (as it
+doesn't nominally need to), and the problem can easily be avoided by the use of
+a file lock and a stat operation.  Is there consensus on this issue, as to how
+it should operate, or how we would like it to operate?
 
+Thanks & Regards
+Neil
 
-
-What is the workload going to be like on your server?  In general, I don't
-think you can go wrong with JFS.  If you are doing mostly reads, esp. of
-smaller files, it probablly matters less, but the systems I maintain are 85=
-%
-writes with average file sizes around 10-20mb and range from a few bytes to
-in excess of 100gb and I've found that ext3 and reiserfs3 (I was testing
-with smaller file systems using the same number of luns from our san) do no=
-t
-perform to the same level as jfs and xfs, with jfs getting the nod for clea=
-r
-reliability benefits in our failure mode testing (rebooting, hba failover,
-etc.).
-
-   Chris
-
-------=_Part_3715_14965668.1140615683545
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-
-<br><div><span class=3D"gmail_quote">On 2/22/06, <b class=3D"gmail_senderna=
-me">Ramon van Alteren</b> &lt;<a href=3D"mailto:ramon@vanalteren.nl">ramon@=
-vanalteren.nl</a>&gt; wrote:</span><blockquote class=3D"gmail_quote" style=
-=3D"border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; p=
-adding-left: 1ex;">
-Ramon van Alteren wrote:<br><br>&gt; But now I need to figure out which fil=
-esystem I will use.<br>&gt; Testing reveals that ext3 is pretty fast:<br>&g=
-t; <a href=3D"http://linuxgazette.net/122/piszcz.html">http://linuxgazette.=
-net/122/piszcz.html
-</a><br>&gt; However I have no clue how ext3 behaves with &gt;8Tb filesyste=
-ms.</blockquote><div><br><br>What is the workload going to be like on your =
-server?&nbsp; In general, I don't think you can go wrong with JFS.&nbsp; If=
- you are doing mostly reads, esp. of smaller files, it probablly matters le=
-ss, but the systems I maintain are 85% writes with average file sizes aroun=
-d 10-20mb and range from a few bytes to in excess of 100gb and I've found t=
-hat ext3 and reiserfs3 (I was testing with smaller file systems using the s=
-ame number of luns from our san) do not perform to the same level as jfs an=
-d xfs, with jfs getting the nod for clear reliability benefits in our failu=
-re mode testing (rebooting, hba failover, etc.).
-<br><br>&nbsp;&nbsp; Chris<br><br></div></div>
-
-------=_Part_3715_14965668.1140615683545--
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc. Do you grep through log files
-for problems?  Stop!  Download the new AJAX search engine that makes
-searching your log files as easy as surfing the  web.  DOWNLOAD SPLUNK!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=103432&bid=230486&dat=121642
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
