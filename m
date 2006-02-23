@@ -1,25 +1,24 @@
-From: Neil Horman <nhorman@redhat.com>
-Subject: Re: Should fcntl operations check attributes with the server when NFS shares are mounted noac?
-Date: Thu, 23 Feb 2006 10:17:50 -0500
-Message-ID: <20060223151750.GD29177@hmsendeavour.rdu.redhat.com>
-References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com> <43FDBA49.1000802@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Should fcntl operations check attributes with the server
+	when NFS shares are mounted noac?
+Date: Thu, 23 Feb 2006 11:12:13 -0500
+Message-ID: <1140711133.11831.27.camel@lade.trondhjem.org>
+References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Horman <nhorman@redhat.com>, nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCIEA-0004xM-10
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 07:17:58 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FCIE9-0003kF-JY
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 07:17:57 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id k1NFHpqp009870
-	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 10:17:51 -0500
-To: Peter Staubach <staubach@redhat.com>
-In-Reply-To: <43FDBA49.1000802@redhat.com>
+	id 1FCJ58-0003HG-9L
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 08:12:42 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FCJ53-0007yP-EG
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 08:12:39 -0800
+To: Neil Horman <nhorman@redhat.com>
+In-Reply-To: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,75 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Feb 23, 2006 at 08:36:09AM -0500, Peter Staubach wrote:
-> Neil Horman wrote:
-> 
-> >Hey all-
-> >	I've got a dillema and I'm not sure how to anwser it.  I recently had
-> >someone mention to me that some of the operations executed via fcntl
-> >(specifically F_SETLEASE was demonstrated to me) don't check the file 
-> >attributes
-> >on the server before executing their operations.  This can lead to 
-> >erroneous
-> >behavior in which, if someone updates file permissions or ownership from 
-> >another
-> >node mounting an NFS share, a node attempting to do something like a 
-> >F_SETLEASE
-> >operation will fail when it should succede, or vice versa.
-> >
-> >	I can see who this could be interpreted as a bug, but I can also see 
-> >	how
-> >we might not want to change the behavior, given that the fcntl code 
-> >currently
-> >does not call down to the underlying filesystem for most operations (as it
-> >doesn't nominally need to), and the problem can easily be avoided by the 
-> >use of
-> >a file lock and a stat operation.  Is there consensus on this issue, as to 
-> >how
-> >it should operate, or how we would like it to operate?
-> >
-> 
-> It seems to me that all operations, which use attributes, in any fashion,
-> whether to make decisions or to return them to the user level, should
-> verify that the attributes are up to date before using them.  This 
-> verification
-> may mean talking to the server or simply deciding that the attributes are
-> up to date because they are still within the attribute cache timeout period.
-> The "noac" option should mean, perhaps among other things, that the 
-> attribute
-> cache timeout period is zero in length.
-> 
-> If the fcntl code doesn't call into the file system to do the actual
-> operations, then it needs to verify that the attributes that it is using
-> are up to date.  If it doesn't, then it is broken and needs to be modified
-> to do so.
-> 
->    Thanx...
-> 
->       ps
+On Thu, 2006-02-23 at 07:42 -0500, Neil Horman wrote:
+> Hey all-
+> 	I've got a dillema and I'm not sure how to anwser it.  I recently had
+> someone mention to me that some of the operations executed via fcntl
+> (specifically F_SETLEASE was demonstrated to me) don't check the file attributes
+> on the server before executing their operations.  This can lead to erroneous
+> behavior in which, if someone updates file permissions or ownership from another
+> node mounting an NFS share, a node attempting to do something like a F_SETLEASE
+> operation will fail when it should succede, or vice versa.
 
-Thank you Peter, I tend to agree with you, but I wanted to be sure.  It's just
-been my experience that others people may make the agrument that if you truly
-want to guarantee that truly have the latest attributes on a file in a race free
-fashion then you need to serialize access to that file (get a lock, access the
-file, unlock).  Since noac doesn't provide that serialization, the argument can
-be made that its a best effort option, and in some events its "ok" to avoid the
-extra check.
+Who is trying to use F_SETLEASE on an NFS share in these conditions? 
 
-Since I agree with your stand though, I'll write the patch :).
+That is unbelievably borken: leases are supposed to guarantee that
+nobody is changing the file. If the file is being changed on the server,
+then exactly what use do they serve?
 
-Thanks & Regards
-Neil
+Cheers,
+  Trond
 
--- 
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
 
 
 -------------------------------------------------------
