@@ -1,26 +1,23 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Should fcntl operations check attributes with the server
- when NFS shares are mounted noac?
-Date: Thu, 23 Feb 2006 08:36:09 -0500
-Message-ID: <43FDBA49.1000802@redhat.com>
-References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
+From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+Subject: Re: query required
+Date: Thu, 23 Feb 2006 14:43:26 +0100
+Message-ID: <200602231443.26532.vincent.roqueta@ext.bull.net>
+References: <001a01c6387a$1e166eb0$027d0297@hcl01>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: "Abhishek" <abhimal@hcl.in>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCGdp-0001O6-Rp
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:36:21 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1FCGiF-0001y7-Rz
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:40:55 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FCGdp-0002Ey-KN
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:36:21 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id k1NDaAAt027977
-	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 08:36:10 -0500
-To: Neil Horman <nhorman@redhat.com>
-In-Reply-To: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
+	id 1FCGiE-0003ja-7H
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:40:55 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <001a01c6387a$1e166eb0$027d0297@hcl01>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,43 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Neil Horman wrote:
-
->Hey all-
->	I've got a dillema and I'm not sure how to anwser it.  I recently had
->someone mention to me that some of the operations executed via fcntl
->(specifically F_SETLEASE was demonstrated to me) don't check the file attributes
->on the server before executing their operations.  This can lead to erroneous
->behavior in which, if someone updates file permissions or ownership from another
->node mounting an NFS share, a node attempting to do something like a F_SETLEASE
->operation will fail when it should succede, or vice versa.
+Le Jeudi 23 F=E9vrier 2006 14:07, Abhishek a =E9crit=A0:
+> HI,
+>      I have questions regarding NFS,
 >
->	I can see who this could be interpreted as a bug, but I can also see how
->we might not want to change the behavior, given that the fcntl code currently
->does not call down to the underlying filesystem for most operations (as it
->doesn't nominally need to), and the problem can easily be avoided by the use of
->a file lock and a stat operation.  Is there consensus on this issue, as to how
->it should operate, or how we would like it to operate?
->
+> 1.)  How to find which version of NFS am I using.
+type mount  -v on the client.
+If version is not=20
 
-It seems to me that all operations, which use attributes, in any fashion,
-whether to make decisions or to return them to the user level, should
-verify that the attributes are up to date before using them.  This 
-verification
-may mean talking to the server or simply deciding that the attributes are
-up to date because they are still within the attribute cache timeout period.
-The "noac" option should mean, perhaps among other things, that the 
-attribute
-cache timeout period is zero in length.
+> 2.) How to switch from one version to other version.
+mount -t nfs -o nfsvers=3D2/3  server:/exported/directory /mount/point/
 
-If the fcntl code doesn't call into the file system to do the actual
-operations, then it needs to verify that the attributes that it is using
-are up to date.  If it doesn't, then it is broken and needs to be modified
-to do so.
 
-    Thanx...
+for nfs4
+mount -t nfs4 server:/ /mount/point/
 
-       ps
+
+Vincent
 
 
 -------------------------------------------------------
