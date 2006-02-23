@@ -1,31 +1,26 @@
-From: Neil Horman <nhorman@redhat.com>
-Subject: Should fcntl operations check attributes with the server when NFS shares are mounted noac?
-Date: Thu, 23 Feb 2006 07:42:55 -0500
-Message-ID: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
+From: "Abhishek" <abhimal@hcl.in>
+Subject: query required
+Date: Thu, 23 Feb 2006 18:37:36 +0530
+Message-ID: <001a01c6387a$1e166eb0$027d0297@hcl01>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0017_01C638A8.37A3CA20"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCFoL-0003U5-Ur
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 04:43:09 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1FCGCC-0006PU-Rg
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:07:48 -0800
+Received: from www.hclinsys.com ([203.90.70.241])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FCFoJ-000347-IC
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 04:43:09 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id k1NCgt1V002867
-	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 07:42:55 -0500
-Received: from hmsendeavour.rdu.redhat.com (hmsendeavour.rdu.redhat.com [172.16.57.156])
-	by int-mx1.corp.redhat.com (8.11.6/8.11.6) with ESMTP id k1NCgt119403
-	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 07:42:55 -0500
-Received: from hmsendeavour.rdu.redhat.com (localhost.localdomain [127.0.0.1])
-	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1) with ESMTP id k1NCgtaI031644
-	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 07:42:55 -0500
-Received: (from nhorman@localhost)
-	by hmsendeavour.rdu.redhat.com (8.13.1/8.13.1/Submit) id k1NCgtVs031643
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 07:42:55 -0500
-To: nfs@lists.sourceforge.net
+	id 1FCGCA-0003td-VS
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:07:48 -0800
+Received: from hclmail.hcl.in (hclmail1 [151.2.10.100])
+	by www.hclinsys.com (8.11.6/8.11.6) with ESMTP id k1ND7cQ16889
+	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 18:37:38 +0530
+Received: from hcl01 (localhost [127.0.0.1])
+	by hclmail.hcl.in (8.11.6/8.11.6) with SMTP id k1NDAvN25949
+	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 18:40:57 +0530
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,34 +34,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hey all-
-	I've got a dillema and I'm not sure how to anwser it.  I recently had
-someone mention to me that some of the operations executed via fcntl
-(specifically F_SETLEASE was demonstrated to me) don't check the file attributes
-on the server before executing their operations.  This can lead to erroneous
-behavior in which, if someone updates file permissions or ownership from another
-node mounting an NFS share, a node attempting to do something like a F_SETLEASE
-operation will fail when it should succede, or vice versa.
+This is a multi-part message in MIME format.
 
-	I can see who this could be interpreted as a bug, but I can also see how
-we might not want to change the behavior, given that the fcntl code currently
-does not call down to the underlying filesystem for most operations (as it
-doesn't nominally need to), and the problem can easily be avoided by the use of
-a file lock and a stat operation.  Is there consensus on this issue, as to how
-it should operate, or how we would like it to operate?
+------=_NextPart_000_0017_01C638A8.37A3CA20
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Thanks & Regards
-Neil
+HI,
+     I have questions regarding NFS,=20
 
--- 
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+1.)  How to find which version of NFS am I using.
+
+2.) How to switch from one version to other version.
+
+Rgds,
+
+Abhishek
+------=_NextPart_000_0017_01C638A8.37A3CA20
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 7.00.5112.0" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>HI,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>&nbsp;&nbsp;&nbsp;&nbsp; I have =
+questions regarding=20
+NFS, </FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>1.)&nbsp; How to find which version of =
+NFS am I=20
+using.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>2.) How to switch from one version to =
+other=20
+version.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Rgds,</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2><BR>Abhishek</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0017_01C638A8.37A3CA20--
+
 
 
 -------------------------------------------------------
