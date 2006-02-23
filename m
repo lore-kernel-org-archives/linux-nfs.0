@@ -1,23 +1,27 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Should fcntl operations check attributes with the server
- when NFS shares are mounted noac?
-Date: Thu, 23 Feb 2006 14:50:09 -0500
-Message-ID: <43FE11F1.5040005@redhat.com>
-References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>	 <1140711133.11831.27.camel@lade.trondhjem.org>	 <20060223192253.GG29177@hmsendeavour.rdu.redhat.com> <1140723567.7963.13.camel@lade.trondhjem.org>
+	when NFS shares are mounted noac?
+Date: Thu, 23 Feb 2006 15:19:29 -0500
+Message-ID: <1140725969.7963.17.camel@lade.trondhjem.org>
+References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
+	 <1140711133.11831.27.camel@lade.trondhjem.org>
+	 <20060223192253.GG29177@hmsendeavour.rdu.redhat.com>
+	 <1140723567.7963.13.camel@lade.trondhjem.org> <43FE11F1.5040005@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Cc: Neil Horman <nhorman@redhat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCMTj-0003ae-Me
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 11:50:19 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FCMTi-0006F8-ID
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 11:50:19 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1140723567.7963.13.camel@lade.trondhjem.org>
+	id 1FCMwF-0006yE-3s
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 12:19:47 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FCMwC-0002YV-Fv
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 12:19:46 -0800
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <43FE11F1.5040005@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,37 +35,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+On Thu, 2006-02-23 at 14:50 -0500, Peter Staubach wrote:
+> Trond Myklebust wrote:
+> 
+> >
+> >It is not worth fixing. There is currently no support for using
+> >fcntl(F_SETLEASE) in an NFS shared environment, and there are no plans
+> >to support it unless at some point we get NFS protocol support for it.
+> >
+> >Leases will currently work as expected in an NFS environment where a
+> >single client has exclusive access to the file (and hence where local
+> >locking works), but that is all.
+> >
+> >In the scenario you describe, we would need NFS protocol support in
+> >order to get leases to work at all. This is due to the fact that under
+> >the lease model, the process holding the lease expects to be notified
+> >_synchronously_ of any conflicting open() calls, renames, mode changes,
+> >truncate calls, etc to the file. By "synchronously", I mean that the
+> >notification must come _before_ the server actually performs the change.
+> >
+> >The EACCESS race that you describe should be the very least of your
+> >worries.
+> >
+> 
+> I would disagree somewhat.  There is a customer who has stumbled into this
+> situation.  We know that there is a bug here, that it has affected at one
+> customer, and the risk for fixing it is very small.  The gains might not be
+> obvious, but it would make at one customer even slightly happier.  That's
+> worth the small amount of effort that it would take to fix this.
 
->
->It is not worth fixing. There is currently no support for using
->fcntl(F_SETLEASE) in an NFS shared environment, and there are no plans
->to support it unless at some point we get NFS protocol support for it.
->
->Leases will currently work as expected in an NFS environment where a
->single client has exclusive access to the file (and hence where local
->locking works), but that is all.
->
->In the scenario you describe, we would need NFS protocol support in
->order to get leases to work at all. This is due to the fact that under
->the lease model, the process holding the lease expects to be notified
->_synchronously_ of any conflicting open() calls, renames, mode changes,
->truncate calls, etc to the file. By "synchronously", I mean that the
->notification must come _before_ the server actually performs the change.
->
->The EACCESS race that you describe should be the very least of your
->worries.
->
+Will the customer be happy to find out that the application breaks in
+much more nefarious ways as a result of a non-working lease?
 
-I would disagree somewhat.  There is a customer who has stumbled into this
-situation.  We know that there is a bug here, that it has affected at one
-customer, and the risk for fixing it is very small.  The gains might not be
-obvious, but it would make at one customer even slightly happier.  That's
-worth the small amount of effort that it would take to fix this.
+If this is Samba, then the correct answer is obvious: turn off oplocks
+in the configuration file since they won't ever work as expected anyway.
 
-    Thanx...
+Cheers,
+  Trond
 
-       ps
 
 
 -------------------------------------------------------
