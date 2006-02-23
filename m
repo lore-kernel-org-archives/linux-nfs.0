@@ -1,21 +1,25 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: query required
-Date: Thu, 23 Feb 2006 05:46:32 -0800 (PST)
-Message-ID: <20060223134632.42832.qmail@web51612.mail.yahoo.com>
-References: <001a01c6387a$1e166eb0$027d0297@hcl01>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: Should fcntl operations check attributes with the server when NFS shares are mounted noac?
+Date: Thu, 23 Feb 2006 10:17:50 -0500
+Message-ID: <20060223151750.GD29177@hmsendeavour.rdu.redhat.com>
+References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com> <43FDBA49.1000802@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Horman <nhorman@redhat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCGnq-0002aM-Ld
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:46:42 -0800
-Received: from web51612.mail.yahoo.com ([68.142.224.85])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FCGnp-0006En-A0
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 05:46:42 -0800
-To: Abhishek <abhimal@hcl.in>, nfs@lists.sourceforge.net
-In-Reply-To: <001a01c6387a$1e166eb0$027d0297@hcl01>
+	id 1FCIEA-0004xM-10
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 07:17:58 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FCIE9-0003kF-JY
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 07:17:57 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11/8.12.11) with ESMTP id k1NFHpqp009870
+	for <nfs@lists.sourceforge.net>; Thu, 23 Feb 2006 10:17:51 -0500
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <43FDBA49.1000802@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,43 +33,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-1. You can see output of rpcinfo -p to see all the
-   versions of nfs on your system.
-2. nfsstat -s will give you list of calls being made.
-   From this you can find active nfs server version.
-   Similarly for client you can use nfsstat -c
-3.You can mount by using nfsvers option of mount=20
-  command to use specific nfs version
+On Thu, Feb 23, 2006 at 08:36:09AM -0500, Peter Staubach wrote:
+> Neil Horman wrote:
+> 
+> >Hey all-
+> >	I've got a dillema and I'm not sure how to anwser it.  I recently had
+> >someone mention to me that some of the operations executed via fcntl
+> >(specifically F_SETLEASE was demonstrated to me) don't check the file 
+> >attributes
+> >on the server before executing their operations.  This can lead to 
+> >erroneous
+> >behavior in which, if someone updates file permissions or ownership from 
+> >another
+> >node mounting an NFS share, a node attempting to do something like a 
+> >F_SETLEASE
+> >operation will fail when it should succede, or vice versa.
+> >
+> >	I can see who this could be interpreted as a bug, but I can also see 
+> >	how
+> >we might not want to change the behavior, given that the fcntl code 
+> >currently
+> >does not call down to the underlying filesystem for most operations (as it
+> >doesn't nominally need to), and the problem can easily be avoided by the 
+> >use of
+> >a file lock and a stat operation.  Is there consensus on this issue, as to 
+> >how
+> >it should operate, or how we would like it to operate?
+> >
+> 
+> It seems to me that all operations, which use attributes, in any fashion,
+> whether to make decisions or to return them to the user level, should
+> verify that the attributes are up to date before using them.  This 
+> verification
+> may mean talking to the server or simply deciding that the attributes are
+> up to date because they are still within the attribute cache timeout period.
+> The "noac" option should mean, perhaps among other things, that the 
+> attribute
+> cache timeout period is zero in length.
+> 
+> If the fcntl code doesn't call into the file system to do the actual
+> operations, then it needs to verify that the attributes that it is using
+> are up to date.  If it doesn't, then it is broken and needs to be modified
+> to do so.
+> 
+>    Thanx...
+> 
+>       ps
 
---- Abhishek <abhimal@hcl.in> wrote:
+Thank you Peter, I tend to agree with you, but I wanted to be sure.  It's just
+been my experience that others people may make the agrument that if you truly
+want to guarantee that truly have the latest attributes on a file in a race free
+fashion then you need to serialize access to that file (get a lock, access the
+file, unlock).  Since noac doesn't provide that serialization, the argument can
+be made that its a best effort option, and in some events its "ok" to avoid the
+extra check.
 
-> HI,
->      I have questions regarding NFS,=20
->=20
-> 1.)  How to find which version of NFS am I using.
->=20
-> 2.) How to switch from one version to other version.
->=20
-> Rgds,
->=20
-> Abhishek
+Since I agree with your stand though, I'll write the patch :).
 
+Thanks & Regards
+Neil
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
-ge
-that extends applications into web and mobile media. Attend the live webc=
-ast
-and join the prime developer group breaking into this new coding territor=
-y!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
-121642
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
