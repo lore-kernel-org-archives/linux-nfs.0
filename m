@@ -1,24 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Should fcntl operations check attributes with the server
-	when NFS shares are mounted noac?
-Date: Thu, 23 Feb 2006 11:12:13 -0500
-Message-ID: <1140711133.11831.27.camel@lade.trondhjem.org>
-References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
+Subject: Re: [PATCH] more verbose output for rpc auth weak error
+Date: Thu, 23 Feb 2006 14:10:18 -0500
+Message-ID: <1140721818.7874.35.camel@lade.trondhjem.org>
+References: <2c1942a70602100150q630758eqda2565831ccd7d81@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Olaf Kirch <okir@suse.de>,
+	NeilBrown <neilb@suse.de>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCJ58-0003HG-9L
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 08:12:42 -0800
+	id 1FCLrF-0007aL-NY
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 11:10:33 -0800
 Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FCJ53-0007yP-EG
-	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 08:12:39 -0800
-To: Neil Horman <nhorman@redhat.com>
-In-Reply-To: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com>
+	id 1FCLrE-0008DI-2J
+	for nfs@lists.sourceforge.net; Thu, 23 Feb 2006 11:10:33 -0800
+To: Levent Serinol <lserinol@gmail.com>
+In-Reply-To: <2c1942a70602100150q630758eqda2565831ccd7d81@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,24 +32,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2006-02-23 at 07:42 -0500, Neil Horman wrote:
-> Hey all-
-> 	I've got a dillema and I'm not sure how to anwser it.  I recently had
-> someone mention to me that some of the operations executed via fcntl
-> (specifically F_SETLEASE was demonstrated to me) don't check the file attributes
-> on the server before executing their operations.  This can lead to erroneous
-> behavior in which, if someone updates file permissions or ownership from another
-> node mounting an NFS share, a node attempting to do something like a F_SETLEASE
-> operation will fail when it should succede, or vice versa.
+On Fri, 2006-02-10 at 11:50 +0200, Levent Serinol wrote:
+> Summary: more verbose output for rpc auth weak error
+> 
+> This patch adds server ip address to be printed out when "server
+> requires stronger authentication" error occured.
 
-Who is trying to use F_SETLEASE on an NFS share in these conditions? 
 
-That is unbelievably borken: leases are supposed to guarantee that
-nobody is changing the file. If the file is being changed on the server,
-then exactly what use do they serve?
+Your email program managed to badly mangle the patch itself, but I've
+fixed it up and included it in the latest NFS_ALL.
 
 Cheers,
   Trond
+
+> Signed-off-by: Levent Serinol <lserinol@gmail.com>
+> 
+> ==============================================
+> --- linux-2.6.16-rc2/net/sunrpc/clnt.c.org      2006-02-10
+> 10:17:01.000000000 +0200
+> +++ linux-2.6.16-rc2/net/sunrpc/clnt.c  2006-02-10 10:23:53.000000000 +0200
+> @@ -1193,8 +1193,8 @@ call_verify(struct rpc_task *task)
+>                         task->tk_action = call_bind;
+>                         goto out_retry;
+>                 case RPC_AUTH_TOOWEAK:
+> -                       printk(KERN_NOTICE "call_verify: server
+> requires stronger "
+> -                              "authentication.\n");
+> +                       printk(KERN_NOTICE "call_verify: server %s
+> requires stronger "
+> +                              "authentication.\n",task->tk_client->cl_server);
+>                         break;
+>                 default:
+>                         printk(KERN_WARNING "call_verify: unknown auth
+> error: %x\n", n);
+> ==============================================
+> 
+> 
+> 
+> 
+> --
+> 
+> Stay out of the road, if you want to grow old.
+> ~ Pink Floyd ~.
 
 
 
