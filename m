@@ -1,32 +1,23 @@
-From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
-Subject: Re: Info needed for Development and troubleshooting NFS3 server on Linux 2.6.5+ kernel
-Date: Fri, 24 Feb 2006 15:38:52 +0100
-Message-ID: <200602241538.52625.vincent.roqueta@ext.bull.net>
-References: <5640edcd0602232034pb497dfchb3e890397e124bf4@mail.gmail.com>
+From: Neil Horman <nhorman@redhat.com>
+Subject: Re: Should fcntl operations check attributes with the server when NFS shares are mounted noac?
+Date: Fri, 24 Feb 2006 10:25:14 -0500
+Message-ID: <20060224152514.GB31881@hmsendeavour.rdu.redhat.com>
+References: <20060223124255.GA29177@hmsendeavour.rdu.redhat.com> <1140711133.11831.27.camel@lade.trondhjem.org> <20060223192253.GG29177@hmsendeavour.rdu.redhat.com> <1140723567.7963.13.camel@lade.trondhjem.org> <43FE11F1.5040005@redhat.com> <1140725969.7963.17.camel@lade.trondhjem.org> <43FE2029.7040205@redhat.com> <1140733881.7963.31.camel@lade.trondhjem.org> <20060224140615.GA31881@hmsendeavour.rdu.redhat.com> <1140791215.3615.20.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Horman <nhorman@redhat.com>,
+	Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FCe3T-0008Us-3j
-	for nfs@lists.sourceforge.net; Fri, 24 Feb 2006 06:36:23 -0800
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	id 1FCeop-0005NV-Jv
+	for nfs@lists.sourceforge.net; Fri, 24 Feb 2006 07:25:19 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FCe3P-0001yq-3P
-	for nfs@lists.sourceforge.net; Fri, 24 Feb 2006 06:36:23 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 0965C19D913
-	for <nfs@lists.sourceforge.net>; Fri, 24 Feb 2006 15:35:48 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 06410-06 for <nfs@lists.sourceforge.net>;
- Fri, 24 Feb 2006 15:35:46 +0100 (CET)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id AFABE19D907
-	for <nfs@lists.sourceforge.net>; Fri, 24 Feb 2006 15:35:46 +0100 (CET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <5640edcd0602232034pb497dfchb3e890397e124bf4@mail.gmail.com>
+	id 1FCeoo-0006H5-8N
+	for nfs@lists.sourceforge.net; Fri, 24 Feb 2006 07:25:19 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1140791215.3615.20.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,22 +31,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Le Vendredi 24 F=E9vrier 2006 05:34, Sree AR a =E9crit=A0:
-> Hi,
->
-> I would like to work on Linux 2.6.5+ kernel NFS3 server performance
-> improvement.Basically I am a Windows guy and I don't know much about
-> Debugging on Linux.
-Ok. Is it mandatory to work on :
-* NFSv3 instead of NFSv4 ?
-* 2.6.5 kernels while we are working on latest 2.6.15+ kernels ?
+On Fri, Feb 24, 2006 at 09:26:55AM -0500, Trond Myklebust wrote:
+> On Fri, 2006-02-24 at 09:06 -0500, Neil Horman wrote:
+> 
+> > This strikes in a somewhat simmilar fashion to the flock() function.  For years
+> > it just didn't work over NFS (and still IIRC doesn't), but a while ago we put in
+> > a check so that it returned an appropriate error in the event that you tried to
+> > flock a file over NFS.  Perhaps what we need to do here is:
+> 
+> Flock should now work over NFS. Try it.
+> 
+Sorry, missed the reversal of sense in the check for FL_FLOCK in nfs_flock.  But
+the precedent still remains that we can check to deny access to a particular
+service dependent on the underlying filesystem.
 
-> If anybody has NFS3 design documents plz share with me.=20
-I am not sure such documents exist.
-> Also plz send me the steps to Debug NFS3 server.
-http://www.citi.umich.edu/projects/nfsv4/linux/nfsv4-hacking.html
+> > 1) Fix the noac problem as previously described
+> > 2) Add a check (simmilar to that of flock) such that attempting to set a lease
+> > on a file over NFS results in a return of -ENOTSUPP or another appropriate
+> > error.
+> 
+> Why waste time doing (1) at all, since a "noac" mount usually means you
+> are in a situation where (2) applies?
+> 
+If this problem only exists on NFS, then I'd tend to agree.  Although again, it
+would seem that other multi-access file systems are going to suffer from the
+same drawback since we never call to the underlying filesystem to get the latest
+attributes.  two nodes could access a file in OCFS or GFS in the same way, and I
+would expect the same problem would occur.  Do you agree?
 
-Vincent
+> How about instead we do
+> 
+> (3) Fix the fcntl (2) manpage so that it mentions distributed
+> filesystems and the caveats of using F_SETLEASE on them.
+> 
+Agreed, this would probably be a good idea regardless.
+
+
+Regards
+Neil
+
+> Cheers,
+>   Trond
+> 
+
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 
 
 -------------------------------------------------------
