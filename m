@@ -1,116 +1,107 @@
-From: Olivier Croquette <ocroquette@free.fr>
-Subject: NFS client hangsNFS client hangs
-Date: Sun, 26 Feb 2006 13:12:52 +0100
-Message-ID: <44019B44.7050001@free.fr>
+From: Bernd Schubert <bernd-schubert@gmx.de>
+Subject: Re: wiki.linux-nfs.org
+Date: Sun, 26 Feb 2006 14:54:47 +0100
+Message-ID: <200602261454.51003.bernd-schubert@gmx.de>
+References: <200602251810.50744.bernd-schubert@gmx.de>
+	<4400CC16.3040606@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FDKlk-00020W-KC
-	for nfs@lists.sourceforge.net; Sun, 26 Feb 2006 04:12:56 -0800
-Received: from moutng.kundenserver.de ([212.227.126.187])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FDKlj-0008Cf-VS
-	for nfs@lists.sourceforge.net; Sun, 26 Feb 2006 04:12:56 -0800
-To: nfs@lists.sourceforge.net
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: multipart/mixed; boundary="===============1471487309=="
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: cel@citi.umich.edu
+In-Reply-To: <4400CC16.3040606@citi.umich.edu>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Mime-version: 1.0
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-I have a strange problem since a few months on some Linux clients.
+--===============1471487309==
+Content-Type: multipart/signed; boundary="nextPart1154619.f0c4Ndzlf6";
+	protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
 
-I have a file server accessed through:
-   - NFS from Linux clients (autofs, but direct mount causes same effect)
-   - Samba from Windows clients
+--nextPart1154619.f0c4Ndzlf6
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-This works since several years like a charm, but as I said there is a
-strange problem that appeared recently:
+On Saturday 25 February 2006 22:28, Chuck Lever wrote:
+> Bernd Schubert wrote:
+> > I would like to add the complete FAQ on http://nfs.sourceforge.net to t=
+he
+> > wiki.linux-nfs.org site. Does somebody has objections against that? This
+> > will make it much easier to add new chapters like NFS-failover and
+> > others.
+>
+> if i update the FAQ on sourceforge, how do you get the updates?  if you
+> update your copy of the FAQ, how are the updates going to get back to
+> the sourceforge copy?
 
-I have a directory, to which I generate code from Windows (\\server\dir)
-I can see it under Linux (/mount/dir) where I can access (compile) the
-files.
+>
+> by adding the FAQ to the wiki, are you proposing that it should be
+> removed from sourceforge, and maintained by whomever wants to edit the
 
-However, when I regenerate the file under Windows again (ie. I overwrite
-the old files), and I try to compile the files again under Linux, "make"
-hangs simply in D state:
+That was the idea, but thatswhy I also asked for objections.
 
-# ps aux | grep make
-user 7177 0.0  0.0 1984 760 pts/1 D+ 16:13 0:00 make -f myMakefile
+> wiki pages?  i'm not really comfortable with that.  the FAQ is very very
+> carefully crafted and vetted so that it contains good information.
 
-The load average goes up one unit each time I reproduce this test 
-(apparently, processes in non-interruptible state are considered as 
-running).
+Well, thats the general problem of a wiki. Usually it works, but sometimes=
+=20
+there is vandalism. On the other hand, most pages of the NFSv4 stuff also c=
+an=20
+be edited by all.=20
+Maybe we should add a page where people wanting to modify the wiki can ente=
+r=20
+their username and email and Bryce can unlock them on request? (I hope this=
+=20
+is possible with mediawiki, we unlock per user with moinmoin).
 
- From then, the following actions does NOT unblock the process:
-   - stopping or restarting the NFS service on the server
-   - restarting the server
-   - restarting autofs on the client
-   - trying to unmount the NFS mount
+>
+> are you talking about both the FAQ and the How-To, or just one of them?
 
-If I reboot the client, all goes back to normal, until I repeat the
-process below (ie. overwriting and compiling).
-Typically, "shutdown -r" does not work, I have to "reboot -f".
+Well, first the FAQ.
 
-There is nothing interesting in /var/log on the server nor on the
-client.
+Cheers,
+	Bernd
 
-Versions used on the server:
-   - SuSE 9.3
-   - kernel-default-2.6.11.4-21.11
-   - nfs-utils-1.0.7-3
-   - samba-3.0.13-1.1
-   - filesystem: reiserfs
-
-On the client:
-   - SuSE 9.3
-   - kernel-smp-2.6.11.4-21.10
-   - nfs-utils-1.0.7-3
-   - mounts:
-     automount on /mount type autofs 
-(rw,fd=4,pgrp=6529,minproto=2,maxproto=4)
-     serv:/dir on /mount/dir type nfs (rw,addr=*IP*)
-   - CPU: P4 dual core (2 virtual CPUs)
-Note: maxcpus=0 does not make any difference regarding this issue. I
-could not test yet with kernel compiled without SMP at all.
+=2D-=20
+Bernd Schubert
+PCI / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
 
 
-On the following clients on the very same server and network, I could 
-not reproduce the problem:
+--nextPart1154619.f0c4Ndzlf6
+Content-Type: application/pgp-signature
 
-   - SuSE 9.1
-   - kernel-default-2.6.5-7.202.7
-   - nfs-utils-1.0.6-103
-   - same mounts
-   - CPU: P4 single core
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2 (GNU/Linux)
 
-   - SuSE 10.0
-   - Kernel: 2.6.14.3-default (from kernel.org)
-   - nfs-utils-1.0.7-13
-   - same mounts
+iD8DBQBEAbMqD9LEisjtWBERAkppAJ4tX9zb2koS29V7Bu0+NvmFjeOhGgCgkfha
+wC427JV0Fv1RTP9egdpQhg4=
+=TnMq
+-----END PGP SIGNATURE-----
 
+--nextPart1154619.f0c4Ndzlf6--
 
-Any idea?
-Seems to me as it is related to the SMP. What do you think?
-How to debug that deeper?
+--===============1471487309==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============1471487309==--
