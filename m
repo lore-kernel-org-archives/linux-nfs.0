@@ -1,61 +1,53 @@
-From: Simon Gao <gao@schrodinger.com>
-Subject: Compare binary or data files in different nfs share
-Date: Mon, 27 Feb 2006 11:22:28 -0800
-Message-ID: <44035174.2060500@schrodinger.com>
+From: Ryan Richter <ryan@tau.solarneutrino.net>
+Subject: Re: lockd: couldn't create RPC handle for (host)
+Date: Mon, 27 Feb 2006 15:37:41 -0500
+Message-ID: <20060227203740.GB10719@tau.solarneutrino.net>
+References: <20051217055907.GC20539@tau.solarneutrino.net> <1134801822.7946.4.camel@lade.trondhjem.org> <20051217070222.GD20539@tau.solarneutrino.net> <1134847699.7950.25.camel@lade.trondhjem.org> <20051217194553.GE20539@tau.solarneutrino.net> <1134894836.7931.17.camel@lade.trondhjem.org> <20051218180150.GF20539@tau.solarneutrino.net> <1134934267.7966.37.camel@lade.trondhjem.org> <20051218200052.GA21665@tau.solarneutrino.net> <1134944665.11596.9.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FDnx0-0004Vy-00
-	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 11:22:30 -0800
-Received: from thermidore.schrodinger.com ([192.156.98.99] helo=schrodinger.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FDnwy-0003Ow-PF
-	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 11:22:30 -0800
-Received: from [192.156.98.12] (ithi.schrodinger.com [192.156.98.12])
-	by schrodinger.com (8.13.4/8.12.8) with ESMTP id k1RJMGGs007398
-	for <nfs@lists.sourceforge.net>; Mon, 27 Feb 2006 11:22:17 -0800 (PST)
-	(envelope-from gao@schrodinger.com)
-To: nfs@lists.sourceforge.net
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=utf-8
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964836AbWB0WCW@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1134944665.11596.9.camel@lade.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
+On Sun, Dec 18, 2005 at 05:24:24PM -0500, Trond Myklebust wrote:
+> OK. I think this client patch ought to fix the Oopses. It should apply
+> to a 2.6.14 kernel as well as 2.6.15-rc5.
 
-Not sure if anyone has seen this kind of problem. I have two NFS shares,
-one provided by EMC box, one by Gentoo Linux machine (kernel 2.6.15). 
-The source directory is on the EMC machine, destination on the Linux
-machine. The client machine runs CentOS 4.2 (kernel 2.6.9-22.0.2.ELsmp).
+Oops still occurs with 2.6.15.4.
 
+Unable to handle kernel paging request at 0000000100000011 RIP: 
+<ffffffff801c3424>{nlmclnt_mark_reclaim+67}
+PGD 7bc9b067 PUD 0 
+Oops: 0000 [1] 
+CPU 0 
+Modules linked in:
+Pid: 2210, comm: lockd Not tainted 2.6.15.4 #3
+RIP: 0010:[<ffffffff801c3424>] <ffffffff801c3424>{nlmclnt_mark_reclaim+67}
+RSP: 0018:ffff81007ddf9e70  EFLAGS: 00010206
+RAX: 00000000fffffff9 RBX: ffff81007f35a540 RCX: ffff81007ecb5980
+RDX: ffff81007ecb5988 RSI: 0000000000000053 RDI: ffff81007f35a540
+RBP: ffff81007f8e1800 R08: 00000000fffffffa R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+R13: 0000000000000000 R14: 0000000000000010 R15: ffffffff803bb460
+FS:  00002aaaab00c4a0(0000) GS:ffffffff80489800(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000100000011 CR3: 000000007bc9a000 CR4: 00000000000006e0
+Process lockd (pid: 2210, threadinfo ffff81007ddf8000, task ffff81007ed261c0)
+Stack: ffffffff801c34db ffff81007f35a540 ffffffff801ca1a6 3256cc8459020002 
+       0000000000000000 0000000000000004 ffff81007ec94000 ffff81007ec940a0 
+       ffffffff803bc4e0 ffff810061626014 
+Call Trace:<ffffffff801c34db>{nlmclnt_recovery+139} <ffffffff801ca1a6>{nlm4svc_proc_sm_notify+188}
+       <ffffffff803149d7>{svc_process+871} <ffffffff801c5089>{lockd+344}
+       <ffffffff801c4f31>{lockd+0} <ffffffff801c4f31>{lockd+0}
+       <ffffffff8010dfaa>{child_rip+8} <ffffffff801c4f31>{lockd+0}
+       <ffffffff801c4f31>{lockd+0} <ffffffff8010dfa2>{child_rip+0}
+       
 
-When untar large tarball of many binary and data files (range from 50 MB
-to 700 MB) from source to destination, the uncompressed binary files are
-different from the ones in source directory if using diff to compare.
-What are the possible reasons to cause the difference?
+Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
+RIP <ffffffff801c3424>{nlmclnt_mark_reclaim+67} RSP <ffff81007ddf9e70>
+CR2: 0000000100000011
 
-The local filesystem on the Linux nfs server is reiserfs. Exports file
-is set to use "sync,wdelay". Client side uses autofs with  
-"rw,nosuid,hard,intr,nfsvers=3,udp".
-
-Simon Gao
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-ryan
