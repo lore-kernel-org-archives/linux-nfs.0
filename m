@@ -1,53 +1,115 @@
-From: Ryan Richter <ryan@tau.solarneutrino.net>
-Subject: Re: lockd: couldn't create RPC handle for (host)
-Date: Mon, 27 Feb 2006 15:37:41 -0500
-Message-ID: <20060227203740.GB10719@tau.solarneutrino.net>
-References: <20051217055907.GC20539@tau.solarneutrino.net> <1134801822.7946.4.camel@lade.trondhjem.org> <20051217070222.GD20539@tau.solarneutrino.net> <1134847699.7950.25.camel@lade.trondhjem.org> <20051217194553.GE20539@tau.solarneutrino.net> <1134894836.7931.17.camel@lade.trondhjem.org> <20051218180150.GF20539@tau.solarneutrino.net> <1134934267.7966.37.camel@lade.trondhjem.org> <20051218200052.GA21665@tau.solarneutrino.net> <1134944665.11596.9.camel@lade.trondhjem.org>
+From: Bernd Schubert <bernd-schubert@gmx.de>
+Subject: Re: wiki.linux-nfs.org
+Date: Tue, 28 Feb 2006 00:11:09 +0100
+Message-ID: <200602280011.09331.bernd-schubert@gmx.de>
+References: <200602251810.50744.bernd-schubert@gmx.de>
+	<200602261454.51003.bernd-schubert@gmx.de>
+	<44032127.1070008@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964836AbWB0WCW@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1134944665.11596.9.camel@lade.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: cel@citi.umich.edu
+In-Reply-To: <44032127.1070008@citi.umich.edu>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Sun, Dec 18, 2005 at 05:24:24PM -0500, Trond Myklebust wrote:
-> OK. I think this client patch ought to fix the Oopses. It should apply
-> to a 2.6.14 kernel as well as 2.6.15-rc5.
+On Monday 27 February 2006 16:56, Chuck Lever wrote:
+> Bernd Schubert wrote:
+> >>by adding the FAQ to the wiki, are you proposing that it should be
+> >>removed from sourceforge, and maintained by whomever wants to edit the
+> >
+> > That was the idea, but thatswhy I also asked for objections.
+>
+> you posted your question at 9am (EST) on a non-workday, then you waited
 
-Oops still occurs with 2.6.15.4.
+Well, I'm working too much nowadays. Almost have forgotten that weekends ar=
+e=20
+non-workdays ;)
 
-Unable to handle kernel paging request at 0000000100000011 RIP: 
-<ffffffff801c3424>{nlmclnt_mark_reclaim+67}
-PGD 7bc9b067 PUD 0 
-Oops: 0000 [1] 
-CPU 0 
-Modules linked in:
-Pid: 2210, comm: lockd Not tainted 2.6.15.4 #3
-RIP: 0010:[<ffffffff801c3424>] <ffffffff801c3424>{nlmclnt_mark_reclaim+67}
-RSP: 0018:ffff81007ddf9e70  EFLAGS: 00010206
-RAX: 00000000fffffff9 RBX: ffff81007f35a540 RCX: ffff81007ecb5980
-RDX: ffff81007ecb5988 RSI: 0000000000000053 RDI: ffff81007f35a540
-RBP: ffff81007f8e1800 R08: 00000000fffffffa R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000000 R14: 0000000000000010 R15: ffffffff803bb460
-FS:  00002aaaab00c4a0(0000) GS:ffffffff80489800(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000100000011 CR3: 000000007bc9a000 CR4: 00000000000006e0
-Process lockd (pid: 2210, threadinfo ffff81007ddf8000, task ffff81007ed261c0)
-Stack: ffffffff801c34db ffff81007f35a540 ffffffff801ca1a6 3256cc8459020002 
-       0000000000000000 0000000000000004 ffff81007ec94000 ffff81007ec940a0 
-       ffffffff803bc4e0 ffff810061626014 
-Call Trace:<ffffffff801c34db>{nlmclnt_recovery+139} <ffffffff801ca1a6>{nlm4svc_proc_sm_notify+188}
-       <ffffffff803149d7>{svc_process+871} <ffffffff801c5089>{lockd+344}
-       <ffffffff801c4f31>{lockd+0} <ffffffff801c4f31>{lockd+0}
-       <ffffffff8010dfaa>{child_rip+8} <ffffffff801c4f31>{lockd+0}
-       <ffffffff801c4f31>{lockd+0} <ffffffff8010dfa2>{child_rip+0}
-       
+> less than an hour before proceeding with the transfer.  that's hardly
+> "asking for objections."
 
-Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
-RIP <ffffffff801c3424>{nlmclnt_mark_reclaim+67} RSP <ffff81007ddf9e70>
-CR2: 0000000100000011
+Sorry, the initial transfer was more or less just a test how well it works=
+=20
+automatically.
 
--ryan
+>
+> also, why didn't you contact me about this first?  i am the FAQ
+> maintainer, after all.  is there a problem you are trying to address?
+> is there something missing in the FAQ?  have i been slacking?
+
+Sorry, clearly my fault. I was really unpolite, please excuse me.
+
+>
+> >>wiki pages?  i'm not really comfortable with that.  the FAQ is very very
+> >>carefully crafted and vetted so that it contains good information.
+> >
+> > Well, thats the general problem of a wiki. Usually it works, but
+> > sometimes there is vandalism. On the other hand, most pages of the NFSv4
+> > stuff also can be edited by all.
+> > Maybe we should add a page where people wanting to modify the wiki can
+> > enter their username and email and Bryce can unlock them on request? (I
+> > hope this is possible with mediawiki, we unlock per user with moinmoin).
+>
+> i think wikis are a great tool, but here's the problem.
+>
+> if anyone (in the NFS community) can edit the FAQ, what stops people
+> from adding erroneous advice, or even advice that opens a security hole
+> or that could cause silent data corruption?
+>
+> for example, what happens if someone comes along and sees the "async"
+> export option on the server and says "oh wow!  i can make my server 10x
+> faster with this!  i'm going to add something to the FAQ that encourages
+> everyone to use the 'async' export option!"
+>
+> or even worse, someone adds advice to export shares without root
+> squashing because it makes accessing the data "so much easier", or
+> misconfigure Kerberos, and on and on.
+>
+> sure, you can back it out easily, because it's a wiki.  but this all
+> depends on us knowing the NFS implementation well enough, testing the
+> advice, and being on top of the changes so we can quickly remove advice
+> that is destructive.
+>
+> basically, people trust that this information won't screw them.  if we
+> let anyone edit this page, it will become worthless information.  you
+> don't see the Linux kernel developed this way, and for exactly the same
+> reasons.
+>
+> i don't deny that the FAQ and How-To could use some help.  but please,
+> let's reasonably discuss why we want to do this first, and see if we can
+> address those issues with what we have.
+
+Actually, I just wanted to add a how-to about high-availibility, moving a n=
+fs=20
+exported partition and more details about the fsid usage.
+I have now removed the transferred FAQ, but I'm still planning to add some =
+ha=20
+stuff there. It only too late now (midnight).
+
+What do you think about naming the section in the Wiki 'User FAQ' and then =
+to=20
+put a big disclaimer on that page, that shortly explains that this is not t=
+he=20
+official howto?
+
+
+Sorry again,
+	Bernd
+
+=2D-=20
+Bernd Schubert
+PCI / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
