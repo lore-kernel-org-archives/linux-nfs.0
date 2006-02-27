@@ -1,119 +1,61 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: wiki.linux-nfs.org
-Date: Mon, 27 Feb 2006 07:56:23 -0800
-Message-ID: <44032127.1070008@citi.umich.edu>
-References: <200602251810.50744.bernd-schubert@gmx.de>
-	<4400CC16.3040606@citi.umich.edu>
-	<200602261454.51003.bernd-schubert@gmx.de>
-Reply-To: cel@citi.umich.edu
+From: Simon Gao <gao@schrodinger.com>
+Subject: Compare binary or data files in different nfs share
+Date: Mon, 27 Feb 2006 11:22:28 -0800
+Message-ID: <44035174.2060500@schrodinger.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030501080802090302090400"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Bernd Schubert <bernd-schubert@gmx.de>
-In-Reply-To: <200602261454.51003.bernd-schubert@gmx.de>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FDnx0-0004Vy-00
+	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 11:22:30 -0800
+Received: from thermidore.schrodinger.com ([192.156.98.99] helo=schrodinger.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FDnwy-0003Ow-PF
+	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 11:22:30 -0800
+Received: from [192.156.98.12] (ithi.schrodinger.com [192.156.98.12])
+	by schrodinger.com (8.13.4/8.12.8) with ESMTP id k1RJMGGs007398
+	for <nfs@lists.sourceforge.net>; Mon, 27 Feb 2006 11:22:17 -0800 (PST)
+	(envelope-from gao@schrodinger.com)
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------030501080802090302090400
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Hi,
 
-Bernd Schubert wrote:
->>by adding the FAQ to the wiki, are you proposing that it should be
->>removed from sourceforge, and maintained by whomever wants to edit the
-> 
-> 
-> That was the idea, but thatswhy I also asked for objections.
-
-you posted your question at 9am (EST) on a non-workday, then you waited 
-less than an hour before proceeding with the transfer.  that's hardly 
-"asking for objections."
-
-also, why didn't you contact me about this first?  i am the FAQ 
-maintainer, after all.  is there a problem you are trying to address? 
-is there something missing in the FAQ?  have i been slacking?
-
->>wiki pages?  i'm not really comfortable with that.  the FAQ is very very
->>carefully crafted and vetted so that it contains good information.
-> 
-> 
-> Well, thats the general problem of a wiki. Usually it works, but sometimes 
-> there is vandalism. On the other hand, most pages of the NFSv4 stuff also can 
-> be edited by all. 
-> Maybe we should add a page where people wanting to modify the wiki can enter 
-> their username and email and Bryce can unlock them on request? (I hope this 
-> is possible with mediawiki, we unlock per user with moinmoin).
-
-i think wikis are a great tool, but here's the problem.
-
-if anyone (in the NFS community) can edit the FAQ, what stops people 
-from adding erroneous advice, or even advice that opens a security hole 
-or that could cause silent data corruption?
-
-for example, what happens if someone comes along and sees the "async" 
-export option on the server and says "oh wow!  i can make my server 10x 
-faster with this!  i'm going to add something to the FAQ that encourages 
-everyone to use the 'async' export option!"
-
-or even worse, someone adds advice to export shares without root 
-squashing because it makes accessing the data "so much easier", or 
-misconfigure Kerberos, and on and on.
-
-sure, you can back it out easily, because it's a wiki.  but this all 
-depends on us knowing the NFS implementation well enough, testing the 
-advice, and being on top of the changes so we can quickly remove advice 
-that is destructive.
-
-basically, people trust that this information won't screw them.  if we 
-let anyone edit this page, it will become worthless information.  you 
-don't see the Linux kernel developed this way, and for exactly the same 
-reasons.
-
-i don't deny that the FAQ and How-To could use some help.  but please, 
-let's reasonably discuss why we want to do this first, and see if we can 
-address those issues with what we have.
-
---------------030501080802090302090400
-Content-Type: text/x-vcard; charset=utf-8;
- name="cel.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="cel.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Charles
-org:Network Appliance, Incorporated;Open Source NFS Client Development
-adr:535 West William Street, Suite 3100;;Center for Information Technology Integration;Ann Arbor;MI;48103-4943;USA
-email;internet:cel@citi.umich.edu
-title:Member of Technical Staff
-tel;work:+1 734 763-4415
-tel;fax:+1 734 763 4434
-tel;home:+1 734 668-1089
-x-mozilla-html:FALSE
-url:http://troy.citi.umich.edu/u/cel/
-version:2.1
-end:vcard
+Not sure if anyone has seen this kind of problem. I have two NFS shares,
+one provided by EMC box, one by Gentoo Linux machine (kernel 2.6.15). 
+The source directory is on the EMC machine, destination on the Linux
+machine. The client machine runs CentOS 4.2 (kernel 2.6.9-22.0.2.ELsmp).
 
 
---------------030501080802090302090400
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+When untar large tarball of many binary and data files (range from 50 MB
+to 700 MB) from source to destination, the uncompressed binary files are
+different from the ones in source directory if using diff to compare.
+What are the possible reasons to cause the difference?
 
+The local filesystem on the Linux nfs server is reiserfs. Exports file
+is set to use "sync,wdelay". Client side uses autofs with  
+"rw,nosuid,hard,intr,nfsvers=3,udp".
+
+Simon Gao
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---------------030501080802090302090400--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
