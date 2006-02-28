@@ -1,89 +1,84 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: wiki.linux-nfs.org
-Date: Mon, 27 Feb 2006 16:13:36 -0800
-Message-ID: <440395B0.3000309@citi.umich.edu>
-References: <200602251810.50744.bernd-schubert@gmx.de>
-	<200602261454.51003.bernd-schubert@gmx.de>
-	<44032127.1070008@citi.umich.edu>
-	<200602280011.09331.bernd-schubert@gmx.de>
-Reply-To: cel@citi.umich.edu
+From: Andrea Arcangeli <andrea@suse.de>
+Subject: Re: Problems with mmap consistency
+Date: Tue, 28 Feb 2006 02:04:46 +0100
+Message-ID: <20060228010446.GI5410@g5.random>
+References: <17406.42109.177974.703541@cse.unsw.edu.au> <20060224160828.GB5866@g5.random> <20060224153931.746cc19f.akpm@osdl.org> <20060225003343.GA6592@g5.random> <1140829162.3615.117.camel@lade.trondhjem.org> <20060224171752.546dbe0d.akpm@osdl.org> <20060225045940.GB6592@g5.random> <1140879301.3615.137.camel@lade.trondhjem.org> <20060225172737.GB5410@g5.random> <1140892927.7877.24.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090600090206030705090907"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Bernd Schubert <bernd-schubert@gmx.de>
-In-Reply-To: <200602280011.09331.bernd-schubert@gmx.de>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>, neilb@suse.de, okir@suse.de,
+	nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FDtIR-0007se-Cp
+	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 17:04:59 -0800
+Received: from 217-133-42-200.b2b.tiscali.it ([217.133.42.200] helo=g5.random)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FDtIP-0007td-Lg
+	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 17:04:59 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1140892927.7877.24.camel@lade.trondhjem.org>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
---------------090600090206030705090907
-Content-Type: text/plain; charset=iso-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Sat, Feb 25, 2006 at 01:42:07PM -0500, Trond Myklebust wrote:
+> The only case where we allow ourselves to rely on writepage() is for
+> mmapped files, where the whole concept of "user context" is all pretty
+> blurry anyway.
 
-Bernd Schubert wrote:
->>also, why didn't you contact me about this first?  i am the FAQ
->>maintainer, after all.  is there a problem you are trying to address?
->>is there something missing in the FAQ?  have i been slacking?
-> 
-> 
-> Sorry, clearly my fault. I was really unpolite, please excuse me.
+Ok. I trust you on the nfs lowlevel part and I think Neil's comment on
+this is interesting.
 
-accepted, thanks.
-
-> Actually, I just wanted to add a how-to about high-availibility, moving a nfs 
-> exported partition and more details about the fsid usage.
-> I have now removed the transferred FAQ, but I'm still planning to add some ha 
-> stuff there. It only too late now (midnight).
-> 
-> What do you think about naming the section in the Wiki 'User FAQ' and then to 
-> put a big disclaimer on that page, that shortly explains that this is not the 
-> official howto?
-
-those sound useful enough to add to the official FAQ and How-To.  i'm 
-happy to work with you on the FAQ components, but we need to find one of 
-the How-To maintainers to help with the other parts.
-
-it might be useful to host "requests for enhancements to the FAQ and 
-How-To" somewhere like on the wiki.  using the wiki to develop the 
-contents of the FAQ and How-To, then copying them to the real documents 
-when new entries have been reviewed, could be a good thing.
-
---------------090600090206030705090907
-Content-Type: text/x-vcard; charset=utf-8;
- name="cel.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="cel.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Network Appliance, Incorporated;Open Source NFS Client Engineering
-email;internet:cel@citi.umich.edu
-title:Member of Technical Staff
-x-mozilla-html:FALSE
-url:http://www.monkey.org/~cel
-version:2.1
-end:vcard
+However I want to clarify a few things on those two patches. While you
+currently don't relay on the dirty bitflag when it's clear, you
+definitely relay on the dirty bitflag when it's set (because your
+.set_page_dirty callback is set to __set_page_dirty_nobuffers).
 
 
---------------090600090206030705090907
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+I mean, you don't relay on the dirty bitflag after writepage has been
+called and the page is clean, but like every other kernel fs (including
+ext2) you relay on it _before_ writepage is invoked. The race my patch
+wants to address is a race where a page becomes from dirty to clean,
+without writepage being invoked and without the lowlevel fs ever
+noticing that the page has been marked dirty.
 
+If you had a lowlevel implementation of .set_page_dirty, you had a
+slight chance to fix the race locally to the fs, but you didn't use it,
+not even Neil's patch modified set_page_dirty.
+
+So no matter how you change the code inside linux/fs/*, unless you hack
+more around .set_page_dirty there's no chance for you to fix the
+fs-corruption source that my patch fixed in the VM (in linux/mm/*).
+
+So again those two patches are completely orthogonal, both are needed
+and they should be considered separately: they fixes two completely
+different bugs. The fact both bugs can lead to a similar kind of fs
+corruption now seems just a pure coincidence.
+
+The fact my fix fixed the testcase fully, seems to mean that the
+lowlevel race has a much smaller window to trigger and the highlevel
+race in the VM was the biggest offender (at least for the testcase that
+Olaf posted here, dunno about other workloads).
+
+Thanks.
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---------------090600090206030705090907--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
