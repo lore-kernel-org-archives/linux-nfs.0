@@ -1,20 +1,21 @@
-From: Mail Delivery Subsystem <MAILER-DAEMON@smtp3.adl2.internode.on.net>
-Subject: Returned mail: see transcript for details
-Date: Tue, 28 Feb 2006 18:22:38 +1030 (CST)
-Message-ID: <200602280752.k1S7qcB7058003@smtp3.adl2.internode.on.net>
+From: Olivier Croquette <ocroquette@free.fr>
+Subject: NFS client hangs under certain circumstances on SMP machine
+Date: Tue, 28 Feb 2006 21:35:40 +0100
+Message-ID: <4404B41C.10404@free.fr>
+Reply-To: ocroquette@free.fr
 Mime-Version: 1.0
-Content-Type: multipart/report; report-type=delivery-status;
-	boundary="k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FDzez-0007JZ-L4
-	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 23:52:41 -0800
-Received: from smtp3.adl2.internode.on.net ([203.16.214.203])
+	id 1FEBZo-0007mV-Qm
+	for nfs@lists.sourceforge.net; Tue, 28 Feb 2006 12:36:09 -0800
+Received: from moutng.kundenserver.de ([212.227.126.177])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FDzey-0002x0-4q
-	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 23:52:41 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1FEBZm-0000nq-6X
+	for nfs@lists.sourceforge.net; Tue, 28 Feb 2006 12:36:08 -0800
+To: LKML <linux-kernel@vger.kernel.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,79 +29,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a MIME-encapsulated message
+Hi
 
---k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net
-
-The original message was received at Tue, 28 Feb 2006 18:22:37 +1030 (CST)
-from [202.56.207.29]
-
-   ----- The following addresses had permanent fatal errors -----
-<sharpe@ns.aus.com>
-    (reason: 550 No such user (ns) Cached lookup)
-
-   ----- Transcript of session follows -----
-... while talking to bep.internode.on.net.:
->>> RCPT To:<ns@adelaide.on.net>
-<<< 550 No such user (ns) Cached lookup
-550 5.1.1 <sharpe@ns.aus.com>... User unknown
-
---k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net
-Content-Type: message/delivery-status
-
-Reporting-MTA: dns; smtp3.adl2.internode.on.net
-Received-From-MTA: DNS; [202.56.207.29]
-Arrival-Date: Tue, 28 Feb 2006 18:22:37 +1030 (CST)
-
-Final-Recipient: RFC822; ns@adelaide.on.net
-Action: failed
-Status: 5.1.1
-Remote-MTA: DNS; bep.internode.on.net
-Diagnostic-Code: SMTP; 550 No such user (ns) Cached lookup
-Last-Attempt-Date: Tue, 28 Feb 2006 18:22:38 +1030 (CST)
-
---k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net
-Content-Type: message/rfc822
-
-Return-Path: <nfs@lists.sourceforge.net>
-Received: from lists.sourceforge.net ([202.56.207.29])
-	by smtp3.adl2.internode.on.net (8.13.5/8.13.5) with ESMTP id k1S7qYB7057984
-	for <sharpe@ns.aus.com>; Tue, 28 Feb 2006 18:22:37 +1030 (CST)
-	(envelope-from nfs@lists.sourceforge.net)
-Message-Id: <200602280752.k1S7qYB7057984@smtp3.adl2.internode.on.net>
-From: nfs@lists.sourceforge.net
-To: sharpe@ns.aus.com
-Subject: **VIRUS FONUD MAIL REJECTED**  hello
-Date: Tue, 28 Feb 2006 13:20:34 +0530
-MIME-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0009_181619CD.08DAE251"
-X-Priority: 3
-X-MSMail-Priority: Normal
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0009_181619CD.08DAE251
-Content-Type: text/plain;
-	charset="Windows-1252"
-Content-Transfer-Encoding: 7bit
-
-Here are your banks documents.
+I have already sent this message on the NFS mailing-list, but I had no 
+reaction there. May be you kernel hackers have an idea?
 
 
-------=_NextPart_000_0009_181619CD.08DAE251
-Content-Type: TEXT/PLAIN
 
-KWF Email scanner found a virus in following attachment:
-	Name:	doc.scr
-	Content type:	application/octet-stream
-Additional information from antivirus:
-	New Win32
-Attachment has been removed by firewall.
+I have a strange problem since a few months on some Linux clients.
 
-------=_NextPart_000_0009_181619CD.08DAE251--
+I have a file server accessed through:
+   - NFS from Linux clients (autofs, but direct mount causes same effect)
+   - Samba from Windows clients
 
---k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net--
+This works since several years like a charm, but as I said there is a
+strange problem that appeared recently:
+
+I have a directory, to which I generate code from Windows (\\server\dir)
+I can see it under Linux (/mount/dir) where I can access (compile) the
+files.
+
+However, when I regenerate the file under Windows again (ie. I overwrite
+the old files), and I try to compile the files again under Linux, "make"
+hangs simply in D state:
+
+# ps aux | grep make
+user 7177 0.0  0.0 1984 760 pts/1 D+ 16:13 0:00 make -f myMakefile
+
+The load average goes up one unit each time I reproduce this test 
+(apparently, processes in non-interruptible state are considered as 
+running).
+
+ From then, the following actions does NOT unblock the process:
+   - stopping or restarting the NFS service on the server
+   - restarting the server
+   - restarting autofs on the client
+   - trying to unmount the NFS mount
+
+If I reboot the client, all goes back to normal, until I repeat the
+process below (ie. overwriting and compiling).
+Typically, "shutdown -r" does not work, I have to "reboot -f".
+
+There is nothing interesting in /var/log on the server nor on the
+client.
+
+Versions used on the server:
+   - SuSE 9.3
+   - kernel-default-2.6.11.4-21.11
+   - nfs-utils-1.0.7-3
+   - samba-3.0.13-1.1
+   - filesystem: reiserfs
+
+On the client:
+   - SuSE 9.3
+   - kernel-smp-2.6.11.4-21.10
+   - nfs-utils-1.0.7-3
+   - mounts:
+     automount on /mount type autofs 
+(rw,fd=4,pgrp=6529,minproto=2,maxproto=4)
+     serv:/dir on /mount/dir type nfs (rw,addr=*IP*)
+   - CPU: P4 with hyper threading (2 virtual CPUs)
+Note: maxcpus=0 does not make any difference regarding this issue. I
+could not test yet with kernel compiled without SMP at all.
+
+
+On the following clients with the very same server, network, and mount 
+tables I could not reproduce the problem:
+
+   - SuSE 9.1
+   - kernel-default-2.6.5-7.202.7
+   - nfs-utils-1.0.6-103
+   - CPU: P4 single core
+
+   - SuSE 10.0
+   - Kernel: 2.6.14.3-default (from kernel.org)
+   - nfs-utils-1.0.7-13
+
+
+Any idea?
+Seems to me as it is related to the SMP. What do you think?
+How can I debug further?
+
 
 
 
