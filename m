@@ -1,24 +1,20 @@
-From: Andrea Arcangeli <andrea@suse.de>
-Subject: Re: Problems with mmap consistency
-Date: Tue, 28 Feb 2006 02:04:46 +0100
-Message-ID: <20060228010446.GI5410@g5.random>
-References: <17406.42109.177974.703541@cse.unsw.edu.au> <20060224160828.GB5866@g5.random> <20060224153931.746cc19f.akpm@osdl.org> <20060225003343.GA6592@g5.random> <1140829162.3615.117.camel@lade.trondhjem.org> <20060224171752.546dbe0d.akpm@osdl.org> <20060225045940.GB6592@g5.random> <1140879301.3615.137.camel@lade.trondhjem.org> <20060225172737.GB5410@g5.random> <1140892927.7877.24.camel@lade.trondhjem.org>
+From: Mail Delivery Subsystem <MAILER-DAEMON@smtp3.adl2.internode.on.net>
+Subject: Returned mail: see transcript for details
+Date: Tue, 28 Feb 2006 18:22:38 +1030 (CST)
+Message-ID: <200602280752.k1S7qcB7058003@smtp3.adl2.internode.on.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>, neilb@suse.de, okir@suse.de,
-	nfs@lists.sourceforge.net
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FDtIR-0007se-Cp
-	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 17:04:59 -0800
-Received: from 217-133-42-200.b2b.tiscali.it ([217.133.42.200] helo=g5.random)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FDtIP-0007td-Lg
-	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 17:04:59 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1140892927.7877.24.camel@lade.trondhjem.org>
+	id 1FDzez-0007JZ-L4
+	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 23:52:41 -0800
+Received: from smtp3.adl2.internode.on.net ([203.16.214.203])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FDzey-0002x0-4q
+	for nfs@lists.sourceforge.net; Mon, 27 Feb 2006 23:52:41 -0800
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,46 +28,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sat, Feb 25, 2006 at 01:42:07PM -0500, Trond Myklebust wrote:
-> The only case where we allow ourselves to rely on writepage() is for
-> mmapped files, where the whole concept of "user context" is all pretty
-> blurry anyway.
+This is a MIME-encapsulated message
 
-Ok. I trust you on the nfs lowlevel part and I think Neil's comment on
-this is interesting.
+--k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net
 
-However I want to clarify a few things on those two patches. While you
-currently don't relay on the dirty bitflag when it's clear, you
-definitely relay on the dirty bitflag when it's set (because your
-.set_page_dirty callback is set to __set_page_dirty_nobuffers).
+The original message was received at Tue, 28 Feb 2006 18:22:37 +1030 (CST)
+from [202.56.207.29]
+
+   ----- The following addresses had permanent fatal errors -----
+<sharpe@ns.aus.com>
+    (reason: 550 No such user (ns) Cached lookup)
+
+   ----- Transcript of session follows -----
+... while talking to bep.internode.on.net.:
+>>> RCPT To:<ns@adelaide.on.net>
+<<< 550 No such user (ns) Cached lookup
+550 5.1.1 <sharpe@ns.aus.com>... User unknown
+
+--k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; smtp3.adl2.internode.on.net
+Received-From-MTA: DNS; [202.56.207.29]
+Arrival-Date: Tue, 28 Feb 2006 18:22:37 +1030 (CST)
+
+Final-Recipient: RFC822; ns@adelaide.on.net
+Action: failed
+Status: 5.1.1
+Remote-MTA: DNS; bep.internode.on.net
+Diagnostic-Code: SMTP; 550 No such user (ns) Cached lookup
+Last-Attempt-Date: Tue, 28 Feb 2006 18:22:38 +1030 (CST)
+
+--k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net
+Content-Type: message/rfc822
+
+Return-Path: <nfs@lists.sourceforge.net>
+Received: from lists.sourceforge.net ([202.56.207.29])
+	by smtp3.adl2.internode.on.net (8.13.5/8.13.5) with ESMTP id k1S7qYB7057984
+	for <sharpe@ns.aus.com>; Tue, 28 Feb 2006 18:22:37 +1030 (CST)
+	(envelope-from nfs@lists.sourceforge.net)
+Message-Id: <200602280752.k1S7qYB7057984@smtp3.adl2.internode.on.net>
+From: nfs@lists.sourceforge.net
+To: sharpe@ns.aus.com
+Subject: **VIRUS FONUD MAIL REJECTED**  hello
+Date: Tue, 28 Feb 2006 13:20:34 +0530
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0009_181619CD.08DAE251"
+X-Priority: 3
+X-MSMail-Priority: Normal
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0009_181619CD.08DAE251
+Content-Type: text/plain;
+	charset="Windows-1252"
+Content-Transfer-Encoding: 7bit
+
+Here are your banks documents.
 
 
-I mean, you don't relay on the dirty bitflag after writepage has been
-called and the page is clean, but like every other kernel fs (including
-ext2) you relay on it _before_ writepage is invoked. The race my patch
-wants to address is a race where a page becomes from dirty to clean,
-without writepage being invoked and without the lowlevel fs ever
-noticing that the page has been marked dirty.
+------=_NextPart_000_0009_181619CD.08DAE251
+Content-Type: TEXT/PLAIN
 
-If you had a lowlevel implementation of .set_page_dirty, you had a
-slight chance to fix the race locally to the fs, but you didn't use it,
-not even Neil's patch modified set_page_dirty.
+KWF Email scanner found a virus in following attachment:
+	Name:	doc.scr
+	Content type:	application/octet-stream
+Additional information from antivirus:
+	New Win32
+Attachment has been removed by firewall.
 
-So no matter how you change the code inside linux/fs/*, unless you hack
-more around .set_page_dirty there's no chance for you to fix the
-fs-corruption source that my patch fixed in the VM (in linux/mm/*).
+------=_NextPart_000_0009_181619CD.08DAE251--
 
-So again those two patches are completely orthogonal, both are needed
-and they should be considered separately: they fixes two completely
-different bugs. The fact both bugs can lead to a similar kind of fs
-corruption now seems just a pure coincidence.
+--k1S7qcB7058003.1141113158/smtp3.adl2.internode.on.net--
 
-The fact my fix fixed the testcase fully, seems to mean that the
-lowlevel race has a much smaller window to trigger and the highlevel
-race in the VM was the biggest offender (at least for the testcase that
-Olaf posted here, dunno about other workloads).
-
-Thanks.
 
 
 -------------------------------------------------------
