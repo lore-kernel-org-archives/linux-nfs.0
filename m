@@ -1,77 +1,47 @@
-From: Marco Gaiarin <gaio@sv.lnf.it>
-Subject: ACL on NFS, how make it work?
-Date: Fri, 3 Mar 2006 11:38:06 +0100
-Message-ID: <20060303103806.GB8038@sv.lnf.it>
+From: Gopal Santhanam <gopal@nerur.com>
+Subject: Re: NFSv3 + ACL + XFS?
+Date: Fri, 3 Mar 2006 08:02:37 -0800
+Message-ID: <200603030802.37899.gopal@nerur.com>
+References: <200603020703.26338.gopal@nerur.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Marius Aamodt Eriksen <marius@umich.edu>,
-	Jeff Sedlak <jsedlak@umich.edu>,
-	"J. Bruce Fields" <bfields@umich.edu>, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FF7fw-0007Uu-PC
-	for nfs@lists.sourceforge.net; Fri, 03 Mar 2006 02:38:20 -0800
-Received: from mta065b.interbusiness.it ([85.37.17.65])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FF7fv-0006Ah-BH
-	for nfs@lists.sourceforge.net; Fri, 03 Mar 2006 02:38:20 -0800
-To: Andreas Gruenbacher <agruen@suse.de>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
+In-Reply-To: <200603020703.26338.gopal@nerur.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
+
+Hi all,
+
+Any ideas on the below?
+
+I'm supposing it just doesn't work, but would like to get 
+confirmation and some idea why it doesn't work before I decide 
+to migrate all of my XFS to EXT3.
+
+Thanks,
+Gopal
 
 
-Sorry for this mail, directly to (as source said ;) nfs3 and nfs4
-kernel developers, but i'm completely stopped trying to make acl work
-via nfs.
-
-For a little nonprofit organization i've setup a little network, with a
-server (debian sarge, with samba3 and nfs), a windows client (some
-legacy app...) and two ubuntu client.
-
-The windows client and the ubuntu client share the same files, one via
-samba (and ACL), the other via nfs.
-
-
-I've tried all the options (there's only an ``noacl'' options, not an
-``acl'' one...), i've verified with nfsstat that i was using nfs3, i've
-done all i think is useful with no luck.
-
-
-There's at least some kernel options, programs, mount switch ... with i
-can debug this?
-
-
-Please, help me. ;)
-
---=20
-dott. Marco Gaiarin				    GNUPG Key ID: 240A3D66
-  Associazione ``La Nostra Famiglia''                http://www.sv.lnf.it=
-/
-  Polo FVG  -  Via della Bont=E0, 7 - 33078  -  San Vito al Tagliamento (=
-PN)
-  marco.gaiarin(at)sv.lnf.it	  tel +39-0434-842711  fax +39-0434-842797
-
-
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
-ge
-that extends applications into web and mobile media. Attend the live webc=
-ast
-and join the prime developer group breaking into this new coding territor=
-y!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
-121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+On Thursday 02 March 2006 07:03, Gopal Santhanam wrote:
+> Hi all,
+>
+> I am successful in exporting an EXT3 partition with ACLs
+> through NFSv3.
+>
+> However, I cannot do the same for an XFS partition with ACLs. 
+> I did a quick search on the web and did not easily find any
+> information on this.  What's the status on this?  Is there a
+> way I can get this to work through proper configuration?
+>
+> Thanks!
+> Gopal
