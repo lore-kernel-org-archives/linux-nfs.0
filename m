@@ -1,23 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: NFS Server Installation -- Urgent
-Date: Tue, 7 Mar 2006 15:32:46 +1100
-Message-ID: <17421.3310.55982.578236@cse.unsw.edu.au>
-References: <20060307041248.94423.qmail@web8506.mail.in.yahoo.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFS possible race condition, nfs_unlink vs. d_lookup
+Date: Tue, 07 Mar 2006 07:36:16 -0500
+Message-ID: <440D7E40.9000401@RedHat.com>
+References: <Pine.LNX.4.62.0603030955060.11612@snowball.fnal.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FGTtY-0002Fz-GP
-	for nfs@lists.sourceforge.net; Mon, 06 Mar 2006 20:34:00 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FGTtX-0001R2-7g
-	for nfs@lists.sourceforge.net; Mon, 06 Mar 2006 20:34:00 -0800
-To: Banu Gandhi <banugandhi80@yahoo.co.in>
-In-Reply-To: message from Banu Gandhi on Tuesday March 7
+	id 1FGbQP-000052-Gq
+	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 04:36:25 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FGbQO-0004j6-A4
+	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 04:36:25 -0800
+To: Steven Timm <timm@fnal.gov>
+In-Reply-To: <Pine.LNX.4.62.0603030955060.11612@snowball.fnal.gov>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,27 +30,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday March 7, banugandhi80@yahoo.co.in wrote:
-> Hi there,
->    
->   I have try to install NFS Server on linux server in which we are using Fedora core 2 and the kernel version is 2.6.
->    
->   I have followed all the steps for Server as well as Client Installation.
->   After that NFS Server is running successfully. But when I try to mount the file systems from the server, It saying that the server is down.
->    
->   But when I try to ping to the same server, can connect.
+Sorry for the delayed response...
 
-Sounds like a firewall problem.
-On the client can you:
+Steven Timm wrote:
+> My question.. is the 2.4.21-37 kernel as distributed by Red Hat also
+> vulnerable to this race condition? 
+Not that I'm aware of...
 
-  - rpcinfo -p SERVER
-  - showmount -e SERVER
+steved.
 
-If so, report the output.
-If not, and 'portmap' and 'mountd' are running on the server, then
-check your firewall.
-
-NeilBrown
 
 
 -------------------------------------------------------
