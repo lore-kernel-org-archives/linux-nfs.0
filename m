@@ -1,22 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: NFS possible race condition, nfs_unlink vs. d_lookup
-Date: Tue, 07 Mar 2006 07:36:16 -0500
-Message-ID: <440D7E40.9000401@RedHat.com>
-References: <Pine.LNX.4.62.0603030955060.11612@snowball.fnal.gov>
+From: "Vijay Chauhan" <kernel.vijay@gmail.com>
+Subject: mounting NFS with TCP option
+Date: Tue, 7 Mar 2006 20:33:45 +0530
+Message-ID: <a9ed420f0603070703x7a864804h9e6e2786b6dcdd19@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/alternative;
+	boundary="----=_Part_6787_24752940.1141743825262"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FGbQP-000052-Gq
-	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 04:36:25 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1FGdj4-0007QN-BZ
+	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 07:03:50 -0800
+Received: from xproxy.gmail.com ([66.249.82.193])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FGbQO-0004j6-A4
-	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 04:36:25 -0800
-To: Steven Timm <timm@fnal.gov>
-In-Reply-To: <Pine.LNX.4.62.0603030955060.11612@snowball.fnal.gov>
+	id 1FGdj3-0000Cj-3n
+	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 07:03:50 -0800
+Received: by xproxy.gmail.com with SMTP id r21so992938wxc
+        for <nfs@lists.sourceforge.net>; Tue, 07 Mar 2006 07:03:45 -0800 (PST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,15 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Sorry for the delayed response...
+------=_Part_6787_24752940.1141743825262
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Steven Timm wrote:
-> My question.. is the 2.4.21-37 kernel as distributed by Red Hat also
-> vulnerable to this race condition? 
-Not that I'm aware of...
+Hi,
+im mounting a remote file system like this:
+while [ "a" =3D=3D "a" ];
+do
+mount -t nfs -o tcp server:/file-system-path /mnt-point
+umount -at nfs
+done
 
-steved.
+after few mounts it stop mounting the file system.
 
+Can anyone give any hints/suggestion
+Also does tcp have any effect in this case?
+
+TIA,
+Vijay
+
+------=_Part_6787_24752940.1141743825262
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+<div>Hi,</div>
+<div>im mounting a remote file system like this:</div>
+<div>while [ &quot;a&quot; =3D=3D &quot;a&quot; ];</div>
+<div>do</div>
+<div>mount -t nfs -o tcp server:/file-system-path /mnt-point</div>
+<div>umount -at nfs</div>
+<div>done</div>
+<div>&nbsp;</div>
+<div>after few mounts it stop mounting the file system.</div>
+<div>&nbsp;</div>
+<div>Can anyone give any hints/suggestion</div>
+<div>Also does tcp have any effect in this case?</div>
+<div>&nbsp;</div>
+<div>TIA,</div>
+<div>Vijay</div>
+
+------=_Part_6787_24752940.1141743825262--
 
 
 -------------------------------------------------------
