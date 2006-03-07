@@ -1,30 +1,30 @@
 From: Vincent Roqueta <vincent.roqueta@ext.bull.net>
 Subject: Re: mounting NFS with TCP option
-Date: Tue, 7 Mar 2006 16:12:56 +0100
-Message-ID: <200603071612.56819.vincent.roqueta@ext.bull.net>
+Date: Tue, 7 Mar 2006 16:14:26 +0100
+Message-ID: <200603071614.26647.vincent.roqueta@ext.bull.net>
 References: <a9ed420f0603070703x7a864804h9e6e2786b6dcdd19@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
   charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FGdpL-0008BO-P7
-	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 07:10:19 -0800
+	id 1FGdqp-0008LS-K1
+	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 07:11:51 -0800
 Received: from ecfrec.frec.bull.fr ([129.183.4.8])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FGdpJ-0001yv-RW
-	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 07:10:19 -0800
+	id 1FGdqo-00047t-2r
+	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 07:11:51 -0800
 Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 6059219D90E
-	for <nfs@lists.sourceforge.net>; Tue,  7 Mar 2006 16:09:46 +0100 (CET)
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id F388E19D912
+	for <nfs@lists.sourceforge.net>; Tue,  7 Mar 2006 16:11:14 +0100 (CET)
 Received: from ecfrec.frec.bull.fr ([127.0.0.1])
  by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 04041-01 for <nfs@lists.sourceforge.net>;
- Tue,  7 Mar 2006 16:09:45 +0100 (CET)
+ with ESMTP id 04041-02 for <nfs@lists.sourceforge.net>;
+ Tue,  7 Mar 2006 16:11:13 +0100 (CET)
 Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id C64AB19D906
-	for <nfs@lists.sourceforge.net>; Tue,  7 Mar 2006 16:09:44 +0100 (CET)
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 8BB0619D90E
+	for <nfs@lists.sourceforge.net>; Tue,  7 Mar 2006 16:11:13 +0100 (CET)
 To: nfs@lists.sourceforge.net
 In-Reply-To: <a9ed420f0603070703x7a864804h9e6e2786b6dcdd19@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
@@ -57,13 +57,16 @@ Le Mardi 7 Mars 2006 16:03, Vijay Chauhan a =E9crit=A0:
 > TIA,
 > Vijay
 
-To many port used?
-Each time you perform a mount with NFSv3 you open a new tcp port. if there =
-is=20
-no more tcp port avalaible, mount fails.
+Sorry... I haven't seen you where unmounting between each mount/umount.
+TCP port need a few seconds to be freed and reusable so :
 
-
-Vincent
+Try this :
+while [ "a" =3D=3D "a" ];
+ do
+ mount -t nfs -o tcp server:/file-system-path /mnt-point
+sleep 2
+ umount -at nfs
+ done
 
 
 -------------------------------------------------------
