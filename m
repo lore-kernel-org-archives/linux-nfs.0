@@ -1,21 +1,25 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: issues with nfsv4 secure(krb5) and non-secure mounts on RHEL4 u2
-Date: Wed, 8 Mar 2006 07:53:17 -0800 (PST)
-Message-ID: <20060308155317.71101.qmail@web51614.mail.yahoo.com>
-References: <20060308153542.62119.qmail@web51603.mail.yahoo.com>
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: Re: NFS mount error
+Date: Wed, 08 Mar 2006 11:30:51 -0500
+Message-ID: <440F06BB.1090802@citi.umich.edu>
+References: <a9ed420f0603080059n65c8ee01t978a5e9f58ddcbd9@mail.gmail.com>
+Reply-To: cel@citi.umich.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: multipart/mixed;
+ boundary="------------020306070004020209040004"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FH0yo-0007Fy-OZ
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 07:53:38 -0800
-Received: from web51614.mail.yahoo.com ([206.190.39.126])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FH0ym-0005bd-12
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 07:53:38 -0800
-To: mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net
-In-Reply-To: <20060308153542.62119.qmail@web51603.mail.yahoo.com>
+	id 1FH1Yu-0002tz-2R
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 08:30:56 -0800
+Received: from citi.umich.edu ([141.211.133.111])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FH1Yr-0007ix-Mz
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 08:30:56 -0800
+To: Vijay Chauhan <kernel.vijay@gmail.com>
+In-Reply-To: <a9ed420f0603080059n65c8ee01t978a5e9f58ddcbd9@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,245 +33,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-One more problem i see is that i can mount
-exports (with gss/krb5 option) using server FQDN
-and not using ip address irrespective of presence of=20
-sec=3Dkrb5 option of mount.Is this because servername
-used for mounting should be same as one in keytab
-file of server when exportfs is done with gss/krb5?
+This is a multi-part message in MIME format.
+--------------020306070004020209040004
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-thanks,
- kiran
+Vijay Chauhan wrote:
+> hi,
+> im doing mount/unmount in an infinte loop
+> while [ "a" == "a" ];
+> do
+> mount -t nfs -o tcp server:/filepath /mount-point
+> unmount -at nfs
+> done
+>  
+> after some successful mount/unmount its giving error message like
+>  
+> RPC: can't bind to reserved port.
+>  
+> what does it means?
+>  
+> TIA,
+> Vijay
 
+there are a limited number of reserved ports on every host.  each mount 
+operation takes up to 5 ports (5 sockets for contacting the server's 
+portmapper, mount daemon, and so on).  when each mount is finished, it 
+leaves 4 sockets in TIME_WAIT and one, to the NFS server, is ESTABLISHED.
 
---- mehta kiran <kiranmehta1981@yahoo.com> wrote:
+after about 120 seconds the TIME_WAIT sockets will go away, freeing 
+those ports.  but if you mount in a tight loop, you are not giving these 
+sockets long enough to time out.  so all the reserved ports are used up 
+with TIME_WAIT sockets.  you can see this with the "netstat" command.
 
-> Hi,
->      I am facing couple of issues with nfsv4 mounts
-> 1. Some times mount command cannot mount the
-> exported
->    filesytem. mount gives error "Mount: File exists"
->    When i used a different mount point, it gets
-> mounted
->   =20
-> [root@vcslinux121 ~]# mount
-> /dev/sda1 on / type ext3 (rw)
-> none on /proc type proc (rw)
-> none on /sys type sysfs (rw)
-> none on /dev/pts type devpts (rw,gid=3D5,mode=3D620)
-> usbfs on /proc/bus/usb type usbfs (rw)
-> tmpfs on /dev/vx type tmpfs
-> (rw,size=3D4k,nr_inodes=3D2097152,mode=3D0755)
-> none on /dev/shm type tmpfs (rw)
-> none on /proc/sys/fs/binfmt_misc type binfmt_misc
-> (rw)
-> sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs
-> (rw)
-> [root@vcslinux121 ~]# mount -t nfs4=20
-> vcslinux139.vxindia.veritas.com:/  /mnt
-> mount: File exists
-> [root@vcslinux121 ~]# mount
-> /dev/sda1 on / type ext3 (rw)
-> none on /proc type proc (rw)
-> none on /sys type sysfs (rw)
-> none on /dev/pts type devpts (rw,gid=3D5,mode=3D620)
-> usbfs on /proc/bus/usb type usbfs (rw)
-> tmpfs on /dev/vx type tmpfs
-> (rw,size=3D4k,nr_inodes=3D2097152,mode=3D0755)
-> none on /dev/shm type tmpfs (rw)
-> none on /proc/sys/fs/binfmt_misc type binfmt_misc
-> (rw)
-> sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs
-> (rw)
-> [root@vcslinux121 ~]#
-> [root@vcslinux121 ~]# mount -t nfs4=20
-> vcslinux139.vxindia.veritas.com:/  /home/gu
-> est
-> [root@vcslinux121 ~]# mount
-> /dev/sda1 on / type ext3 (rw)
-> none on /proc type proc (rw)
-> none on /sys type sysfs (rw)
-> none on /dev/pts type devpts (rw,gid=3D5,mode=3D620)
-> usbfs on /proc/bus/usb type usbfs (rw)
-> tmpfs on /dev/vx type tmpfs
-> (rw,size=3D4k,nr_inodes=3D2097152,mode=3D0755)
-> none on /dev/shm type tmpfs (rw)
-> none on /proc/sys/fs/binfmt_misc type binfmt_misc
-> (rw)
-> sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs
-> (rw)
-> vcslinux139.vxindia.veritas.com:/ on /home/guest
-> type
-> nfs4 (rw,addr=3D10.212.88.31)
->=20
->=20
-> After client reboot, i can again mount on /mnt
->=20
->=20
->=20
->=20
->=20
->=20
->   =20
-> 2. i am able to mount the filesystem(exported with=20
->    krb5) and cannot access individual mounts.=20
->=20
-> ************ server side ***********************
-> [root@vcslinux139 ~]# exportfs -v
-> /home/export/nshare1
->               =20
-> <world>(rw,wdelay,nohide,no_root_squash)
-> /home/export/nshare3
->               =20
-> <world>(rw,wdelay,nohide,no_root_squash)
-> /home/export/nshare2
->               =20
-> <world>(rw,wdelay,nohide,no_root_squash)
-> /home/export  =20
-> <world>(rw,wdelay,nohide,no_root_squash,fsid=3D0)
-> /home/export/nshare3
->               =20
-> gss/krb5(rw,wdelay,nohide,no_root_squash)
-> /home/export/nshare2
->               =20
-> gss/krb5(rw,wdelay,nohide,no_root_squash)
-> /home/export/nshare1
->               =20
-> gss/krb5(rw,wdelay,nohide,no_root_squash)
-> /home/export  =20
-> gss/krb5(rw,wdelay,nohide,no_root_squash,fsid=3D0)
->=20
-> [root@vcslinux139 ~]# hostname
-> vcslinux139.vxindia.veritas.com
-> [root@vcslinux139 ~]# ps -ef | grep nfs
-> root      8964     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8965     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8966     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8967     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8968     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8969     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8970     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8971     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8972     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root      8973     1  0 20:35 ?        00:00:00
-> [nfsd]
-> root     15577  7051  0 21:05 pts/1    00:00:00 grep
-> nfs
-> [root@vcslinux139 ~]# ps -ef | grep rpc
-> rpc       5179     1  0 20:30 ?        00:00:00
-> portmap
-> root      8975     1  0 20:35 ?        00:00:00
-> [rpciod]
-> root      8977     1  0 20:35 ?        00:00:00
-> rpc.mountd
-> rpcuser   8983     1  0 20:35 ?        00:00:00
-> rpc.statd
-> root      8985     1  0 20:35 ?        00:00:00
-> rpc.idmapd
-> root      8987     1  0 20:35 ?        00:00:00
-> rpc.svcgssd
-> root     15579  7051  0 21:05 pts/1    00:00:00 grep
-> rpc
-> [root@vcslinux139 ~]# /usr/kerberos/bin/klist -k
-> /etc/krb5.keytab
-> Keytab name: FILE:/etc/krb5.keytab
-> KVNO Principal
-> ----
->
--------------------------------------------------------------------------=
--
->    4
->
-nfs/vcslinux139.vxindia.veritas.com@VXINDIA.VERITAS.COM
->=20
-> ***********************************************
->=20
->=20
->=20
-> ***********************client side **********
->=20
-> [root@vcslinux121 ~]# mount
-> /dev/sda1 on / type ext3 (rw)
-> none on /proc type proc (rw)
-> none on /sys type sysfs (rw)
-> none on /dev/pts type devpts (rw,gid=3D5,mode=3D620)
-> usbfs on /proc/bus/usb type usbfs (rw)
-> tmpfs on /dev/vx type tmpfs
-> (rw,size=3D4k,nr_inodes=3D2097152,mode=3D0755)
-> none on /dev/shm type tmpfs (rw)
-> none on /proc/sys/fs/binfmt_misc type binfmt_misc
-> (rw)
-> sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs
-> (rw)
-> vcslinux139.vxindia.veritas.com:/ on /mnt1 type nfs4
-> (rw,sec=3Dkrb5,addr=3D10.212.88
-> .31)
-> [root@vcslinux121 ~]# cd /mnt1
-> [root@vcslinux121 mnt1]# ls
-> lost+found  nshare0  nshare1  nshare2  nshare3=20
-> nshare4  nshare5
-> [root@vcslinux121 mnt1]# cd
-> [root@vcslinux121 ~]# klist -k /etc/krb5.keytab
-> Keytab name: FILE:/etc/krb5.keytab
-> KVNO Principal
-> ----
->
--------------------------------------------------------------------------=
--
->    2
->
-nfs/vcslinux121.vxindia.veritas.com@VXINDIA.VERITAS.COM
-> [root@vcslinux121 ~]# ps -ef | grep rpc
-> rpc       4054     1  0 20:42 ?        00:00:00
-> portmap
-> rpcuser   4074     1  0 20:42 ?        00:00:00
-> rpc.statd
-> root      4102     1  0 20:42 ?        00:00:00
-> rpc.idmapd
-> root      5992     1  0 20:42 ?        00:00:00
-> rpc.gssd -m
-> root      6633     1  0 20:57 ?        00:00:00
-> [rpciod]
-> root      6890  4533  0 21:00 pts/0    00:00:00 grep
-> rpc
->=20
-> [root@vcslinux121 mnt1]# cd nshare2
->         ..... gets hung
->=20
-> ***************************************************
->=20
->=20
-> thanks,
->  kiran
->     =20
->=20
-=3D=3D=3D message truncated =3D=3D=3D
+if you wait a few minutes, you will find that the ports free up and you 
+can do more mounts.  or you can add a "sleep" in your loop.
+
+there has been some mitigation in later kernels.
+
+1.  port numbers can be reused immediately in some circumstances.
+
+2.  steve d has reduced the number of sockets used for a mount request.
+
+3.  NFSv4 can usually skip the portmapper query.
+
+4.  the RPC client will attempt to connect to the default port first, 
+and use the portmapper only if the requested service isn't available on 
+the default port.
+
+but a tight loop like yours will still probably consume all the reserved 
+ports available on a client.
+
+--------------020306070004020209040004
+Content-Type: text/x-vcard; charset=utf-8;
+ name="cel.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="cel.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Charles
+org:Network Appliance, Incorporated;Open Source NFS Client Development
+adr:535 West William Street, Suite 3100;;Center for Information Technology Integration;Ann Arbor;MI;48103-4943;USA
+email;internet:cel@citi.umich.edu
+title:Member of Technical Staff
+tel;work:+1 734 763 4415
+tel;fax:+1 734 763 4434
+tel;home:+1 734 668 1089
+x-mozilla-html:FALSE
+url:http://troy.citi.umich.edu/u/cel/
+version:2.1
+end:vcard
 
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
+--------------020306070004020209040004--
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
-ge
-that extends applications into web and mobile media. Attend the live webc=
-ast
-and join the prime developer group breaking into this new coding territor=
-y!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
-121642
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
