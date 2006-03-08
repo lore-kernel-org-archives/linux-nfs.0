@@ -1,21 +1,21 @@
 From: Bas van der Vlies <basv@sara.nl>
-Subject: NFSD crashes
-Date: Wed, 8 Mar 2006 08:51:40 +0100
-Message-ID: <38431008-F8C2-4910-9B7F-CC6E05B9F0CB@sara.nl>
+Subject: NFSD crashes with oops
+Date: Wed, 8 Mar 2006 09:00:24 +0100
+Message-ID: <5F4E2391-4553-4A5A-8A92-1033CE717267@sara.nl>
 Mime-Version: 1.0 (Apple Message framework v746.2)
 Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FGtSW-0007V4-6z
-	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 23:51:48 -0800
+	id 1FGtat-0008Mv-7E
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 00:00:27 -0800
 Received: from smtp-vbr15.xs4all.nl ([194.109.24.35])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FGtSU-000101-SX
-	for nfs@lists.sourceforge.net; Tue, 07 Mar 2006 23:51:48 -0800
+	id 1FGtas-0003y6-Te
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 00:00:27 -0800
 Received: from [192.168.1.2] (bastiaan.xs4all.nl [82.93.6.142])
-	by smtp-vbr15.xs4all.nl (8.13.3/8.13.3) with ESMTP id k287pfQF029052
-	for <nfs@lists.sourceforge.net>; Wed, 8 Mar 2006 08:51:41 +0100 (CET)
+	by smtp-vbr15.xs4all.nl (8.13.3/8.13.3) with ESMTP id k2880Psl034470
+	for <nfs@lists.sourceforge.net>; Wed, 8 Mar 2006 09:00:25 +0100 (CET)
 	(envelope-from basv@sara.nl)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
@@ -97,7 +97,6 @@ Call Trace:
 Code: 24 08 8d 45 c4 89 54 24 0c 89 74 24 04 89 04 24 e8 1d c3 fe ff  
 85 c0 89 c3 0f 84 2e 01 00 00 83 f8 ef 0f 85 13 01 00 00 8b 55 14  
 <80> 7a 38 00 0f 88 06 01 00 00 89 7c 24 0c 31 c0 8d 55 c4 89 44
-
 
 --
 Bas van der Vlies
