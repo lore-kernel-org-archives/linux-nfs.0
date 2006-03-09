@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 008 of 14] knfsd: Use new sunrpc cache for rsi cache
-Date: Thu, 9 Mar 2006 17:52:03 +1100
-Message-ID: <1060309065203.24605@suse.de>
+Subject: [PATCH 013 of 14] knfsd: Unexport cache_fresh and fix a small race.
+Date: Thu, 9 Mar 2006 17:52:29 +1100
+Message-ID: <1060309065229.24678@suse.de>
 References: <20060309174755.24381.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHF1J-0000dC-NV
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:09 -0800
+	id 1FHF1j-0000hg-AU
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:35 -0800
 Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHF1H-00076U-TV
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:09 -0800
+	id 1FHF1h-0000OL-Mj
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:35 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,156 +29,143 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Cache_fresh is now only used in cache.c, so unexport it.
 
+Part of cache_fresh (setting CACHE_VALID) should really be done under the
+lock, while part (calling cache_revisit_request etc) must be done outside
+the lock.  So we split it up appropriately.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/auth_gss/svcauth_gss.c |   66 ++++++++++++++++++++++++++++++++----
- 1 file changed, 59 insertions(+), 7 deletions(-)
+ ./include/linux/sunrpc/cache.h |    2 -
+ ./net/sunrpc/cache.c           |   51 ++++++++++++++++++++++++-----------------
+ ./net/sunrpc/sunrpc_syms.c     |    1 
+ 3 files changed, 30 insertions(+), 24 deletions(-)
 
-diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2006-03-09 17:15:13.000000000 +1100
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-03-09 17:15:43.000000000 +1100
-@@ -78,7 +78,8 @@ struct rsi {
- 
- static struct cache_head *rsi_table[RSI_HASHMAX];
- static struct cache_detail rsi_cache;
--static struct rsi *rsi_lookup(struct rsi *item, int set);
-+static struct rsi *rsi_update(struct rsi *new, struct rsi *old);
-+static struct rsi *rsi_lookup(struct rsi *item);
- 
- static void rsi_free(struct rsi *rsii)
- {
-@@ -103,8 +104,10 @@ static inline int rsi_hash(struct rsi *i
- 	     ^ hash_mem(item->in_token.data, item->in_token.len, RSI_HASHBITS);
+diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
+--- ./include/linux/sunrpc/cache.h~current~	2006-03-09 17:41:52.000000000 +1100
++++ ./include/linux/sunrpc/cache.h	2006-03-09 17:33:29.000000000 +1100
+@@ -165,8 +165,6 @@ static inline int cache_put(struct cache
  }
  
--static inline int rsi_match(struct rsi *item, struct rsi *tmp)
-+static int rsi_match(struct cache_head *a, struct cache_head *b)
- {
-+	struct rsi *item = container_of(a, struct rsi, h);
-+	struct rsi *tmp = container_of(b, struct rsi, h);
- 	return netobj_equal(&item->in_handle, &tmp->in_handle)
- 		&& netobj_equal(&item->in_token, &tmp->in_token);
+ extern void cache_init(struct cache_head *h);
+-extern void cache_fresh(struct cache_detail *detail,
+-			struct cache_head *head, time_t expiry);
+ extern int cache_check(struct cache_detail *detail,
+ 		       struct cache_head *h, struct cache_req *rqstp);
+ extern void cache_flush(void);
+
+diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
+--- ./net/sunrpc/cache.c~current~	2006-03-09 17:41:52.000000000 +1100
++++ ./net/sunrpc/cache.c	2006-03-09 17:45:46.000000000 +1100
+@@ -96,6 +96,27 @@ struct cache_head *sunrpc_cache_lookup(s
  }
-@@ -125,8 +128,11 @@ static inline int dup_netobj(struct xdr_
- 	return dup_to_netobj(dst, src->data, src->len);
- }
+ EXPORT_SYMBOL(sunrpc_cache_lookup);
  
--static inline void rsi_init(struct rsi *new, struct rsi *item)
-+static void rsi_init(struct cache_head *cnew, struct cache_head *citem)
- {
-+	struct rsi *new = container_of(cnew, struct rsi, h);
-+	struct rsi *item = container_of(citem, struct rsi, h);
 +
- 	new->out_handle.data = NULL;
- 	new->out_handle.len = 0;
- 	new->out_token.data = NULL;
-@@ -141,8 +147,11 @@ static inline void rsi_init(struct rsi *
- 	item->in_token.data = NULL;
- }
- 
--static inline void rsi_update(struct rsi *new, struct rsi *item)
-+static void update_rsi(struct cache_head *cnew, struct cache_head *citem)
- {
-+	struct rsi *new = container_of(cnew, struct rsi, h);
-+	struct rsi *item = container_of(citem, struct rsi, h);
++static void queue_loose(struct cache_detail *detail, struct cache_head *ch);
 +
- 	BUG_ON(new->out_handle.data || new->out_token.data);
- 	new->out_handle.len = item->out_handle.len;
- 	item->out_handle.len = 0;
-@@ -157,6 +166,15 @@ static inline void rsi_update(struct rsi
- 	new->minor_status = item->minor_status;
- }
- 
-+static struct cache_head *rsi_alloc(void)
++static int cache_fresh_locked(struct cache_head *head, time_t expiry)
 +{
-+	struct rsi *rsii = kmalloc(sizeof(*rsii), GFP_KERNEL);
-+	if (rsii)
-+		return &rsii->h;
-+	else
-+		return NULL;
++	head->expiry_time = expiry;
++	head->last_refresh = get_seconds();
++	return !test_and_set_bit(CACHE_VALID, &head->flags);
 +}
 +
- static void rsi_request(struct cache_detail *cd,
-                        struct cache_head *h,
-                        char **bpp, int *blen)
-@@ -198,6 +216,10 @@ static int rsi_parse(struct cache_detail
- 	if (dup_to_netobj(&rsii.in_token, buf, len))
- 		goto out;
- 
-+	rsip = rsi_lookup(&rsii);
-+	if (!rsip)
-+		goto out;
-+
- 	rsii.h.flags = 0;
- 	/* expiry */
- 	expiry = get_expiry(&mesg);
-@@ -240,12 +262,14 @@ static int rsi_parse(struct cache_detail
- 			goto out;
- 	}
- 	rsii.h.expiry_time = expiry;
--	rsip = rsi_lookup(&rsii, 1);
-+	rsip = rsi_update(&rsii, rsip);
- 	status = 0;
- out:
- 	rsi_free(&rsii);
- 	if (rsip)
- 		rsi_put(&rsip->h, &rsi_cache);
-+	else
-+		status = -ENOMEM;
- 	return status;
- }
- 
-@@ -257,9 +281,37 @@ static struct cache_detail rsi_cache = {
- 	.cache_put      = rsi_put,
- 	.cache_request  = rsi_request,
- 	.cache_parse    = rsi_parse,
-+	.match		= rsi_match,
-+	.init		= rsi_init,
-+	.update		= update_rsi,
-+	.alloc		= rsi_alloc,
- };
- 
--static DefineSimpleCacheLookup(rsi, rsi)
-+static struct rsi *rsi_lookup(struct rsi *item)
++static void cache_fresh_unlocked(struct cache_head *head,
++			struct cache_detail *detail, int new)
 +{
-+	struct cache_head *ch;
-+	int hash = rsi_hash(item);
-+
-+	ch = sunrpc_cache_lookup(&rsi_cache, &item->h, hash);
-+	if (ch)
-+		return container_of(ch, struct rsi, h);
-+	else
-+		return NULL;
++	if (new)
++		cache_revisit_request(head);
++	if (test_and_clear_bit(CACHE_PENDING, &head->flags)) {
++		cache_revisit_request(head);
++		queue_loose(detail, head);
++	}
 +}
 +
-+static struct rsi *rsi_update(struct rsi *new, struct rsi *old)
-+{
-+	struct cache_head *ch;
-+	int hash = rsi_hash(new);
-+
-+	ch = sunrpc_cache_update(&rsi_cache, &new->h,
-+				 &old->h, hash);
-+	if (ch)
-+		return container_of(ch, struct rsi, h);
-+	else
-+		return NULL;
-+}
-+
+ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
+ 				       struct cache_head *new, struct cache_head *old, int hash)
+ {
+@@ -105,6 +126,7 @@ struct cache_head *sunrpc_cache_update(s
+ 	 */
+ 	struct cache_head **head;
+ 	struct cache_head *tmp;
++	int is_new;
  
- /*
-  * The rpcsec_context cache is used to store a context that is
-@@ -895,7 +947,7 @@ svcauth_gss_accept(struct svc_rqst *rqst
- 			goto drop;
+ 	if (!test_bit(CACHE_VALID, &old->flags)) {
+ 		write_lock(&detail->hash_lock);
+@@ -113,9 +135,9 @@ struct cache_head *sunrpc_cache_update(s
+ 				set_bit(CACHE_NEGATIVE, &old->flags);
+ 			else
+ 				detail->update(old, new);
+-			/* FIXME cache_fresh should come first */
++			is_new = cache_fresh_locked(old, new->expiry_time);
+ 			write_unlock(&detail->hash_lock);
+-			cache_fresh(detail, old, new->expiry_time);
++			cache_fresh_unlocked(old, detail, is_new);
+ 			return old;
  		}
+ 		write_unlock(&detail->hash_lock);
+@@ -138,9 +160,11 @@ struct cache_head *sunrpc_cache_update(s
+ 	tmp->next = *head;
+ 	*head = tmp;
+ 	cache_get(tmp);
++	is_new = cache_fresh_locked(tmp, new->expiry_time);
++	cache_fresh_locked(old, 0);
+ 	write_unlock(&detail->hash_lock);
+-	cache_fresh(detail, tmp, new->expiry_time);
+-	cache_fresh(detail, old, 0);
++	cache_fresh_unlocked(tmp, detail, is_new);
++	cache_fresh_unlocked(old, detail, 0);
+ 	detail->cache_put(old, detail);
+ 	return tmp;
+ }
+@@ -192,7 +216,8 @@ int cache_check(struct cache_detail *det
+ 				clear_bit(CACHE_PENDING, &h->flags);
+ 				if (rv == -EAGAIN) {
+ 					set_bit(CACHE_NEGATIVE, &h->flags);
+-					cache_fresh(detail, h, get_seconds()+CACHE_NEW_EXPIRY);
++					cache_fresh_unlocked(h, detail,
++					     cache_fresh_locked(h, get_seconds()+CACHE_NEW_EXPIRY));
+ 					rv = -ENOENT;
+ 				}
+ 				break;
+@@ -213,22 +238,6 @@ int cache_check(struct cache_detail *det
+ 	return rv;
+ }
  
--		rsip = rsi_lookup(&rsikey, 0);
-+		rsip = rsi_lookup(&rsikey);
- 		rsi_free(&rsikey);
- 		if (!rsip) {
- 			goto drop;
+-static void queue_loose(struct cache_detail *detail, struct cache_head *ch);
+-
+-void cache_fresh(struct cache_detail *detail,
+-		 struct cache_head *head, time_t expiry)
+-{
+-
+-	head->expiry_time = expiry;
+-	head->last_refresh = get_seconds();
+-	if (!test_and_set_bit(CACHE_VALID, &head->flags))
+-		cache_revisit_request(head);
+-	if (test_and_clear_bit(CACHE_PENDING, &head->flags)) {
+-		cache_revisit_request(head);
+-		queue_loose(detail, head);
+-	}
+-}
+-
+ /*
+  * caches need to be periodically cleaned.
+  * For this we maintain a list of cache_detail and
+
+diff ./net/sunrpc/sunrpc_syms.c~current~ ./net/sunrpc/sunrpc_syms.c
+--- ./net/sunrpc/sunrpc_syms.c~current~	2006-03-09 17:41:52.000000000 +1100
++++ ./net/sunrpc/sunrpc_syms.c	2006-03-09 17:33:47.000000000 +1100
+@@ -105,7 +105,6 @@ EXPORT_SYMBOL(auth_unix_lookup);
+ EXPORT_SYMBOL(cache_check);
+ EXPORT_SYMBOL(cache_flush);
+ EXPORT_SYMBOL(cache_purge);
+-EXPORT_SYMBOL(cache_fresh);
+ EXPORT_SYMBOL(cache_init);
+ EXPORT_SYMBOL(cache_register);
+ EXPORT_SYMBOL(cache_unregister);
 
 
 -------------------------------------------------------
