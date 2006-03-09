@@ -1,25 +1,26 @@
-From: Gopal Santhanam <gopal@nerur.com>
-Subject: Re: Re: ACL on NFS, how make it work?
-Date: Thu, 9 Mar 2006 00:56:30 -0800
-Message-ID: <200603090056.31041.gopal@nerur.com>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: ACL on NFS, how make it work?
+Date: Thu, 9 Mar 2006 12:20:13 +0100
+Message-ID: <200603091220.13561.agruen@suse.de>
 References: <20060303103806.GB8038@sv.lnf.it> <20060308170425.GS8060@sv.lnf.it> <20060309014955.GA8089@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain;
   charset="iso-8859-1"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Marco Gaiarin <gaio@sv.lnf.it>, Andreas Gruenbacher <agruen@suse.de>,
+Cc: Marco Gaiarin <gaio@sv.lnf.it>,
 	Marius Aamodt Eriksen <marius@umich.edu>,
-	Jeff Sedlak <jsedlak@umich.edu>
+	Jeff Sedlak <jsedlak@umich.edu>, nfs@lists.sourceforge.net,
+	Gopal Santhanam <gopal@nerur.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHGx1-0004Bs-Kr
-	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 00:56:51 -0800
-Received: from smtp3.stanford.edu ([171.67.16.138])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FHGx0-0000od-Hw
-	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 00:56:51 -0800
-To: nfs@lists.sourceforge.net
+	id 1FHJBt-0001Wt-Vy
+	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 03:20:21 -0800
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FHJBs-0008VP-IT
+	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 03:20:21 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
 In-Reply-To: <20060309014955.GA8089@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -34,44 +35,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-It seems to work for me.  Thanks!
+Hello,
 
-Why does the return value of vfs_getxattr change between the two 
-calls though?  Can you explain?
+the patch looks good.
 
-Thanks again,
-Gopal
-
-
-On Wednesday 08 March 2006 17:49, J. Bruce Fields wrote:
-> On Wed, Mar 08, 2006 at 06:04:25PM +0100, Marco Gaiarin wrote:
-> > Mandi! J. Bruce Fields
-> >   In chel di` si favelave...
-> >
-> > > Actually I got one other NFS/XFS ACL complaint recently,
-> > > and confirmed that with current kernels I'm able to get
-> > > and set ext3 ACL's over NFS, and get and set XFS ACL's
-> > > locally, but I can't use XFS ACL's over NFS. Which is
-> > > odd--on a first glance it looks like the two filesystems
-> > > export posix acl's through the same interface, etc.  I
-> > > haven't had the chance to figure out what's going on
-> > > yet....
-> >
-> > If i can do something to debug that, say me.
->
-> Could you try the following patch?  Fixes the problem for me.
->
-> --b.
->
+On Thursday 09 March 2006 02:49, J. Bruce Fields wrote:
 > nfsd4: fix acl xattr length return
+Actually all versions, not only v4.
 >
-> We should be using the length from the second vfs_getxattr, in
-> case it changed.  (Note: there's still a small race here; we
-> could end up returning -ENOMEM if the length increased between
-> the first and second call.  Oh well; I'm not sure it's worth
-> spending a lot of effort to fix that.)
+> We should be using the length from the second vfs_getxattr, in case it
+> changed.  (Note: there's still a small race here; we could end up returning
+> -ENOMEM if the length increased between the first and second call.  Oh
+> well; I'm not sure it's worth spending a lot of effort to fix that.)
 >
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 > ---
 >
 >  fs/nfsd/vfs.c |    6 +-----
@@ -82,8 +60,8 @@ On Wednesday 08 March 2006 17:49, J. Bruce Fields wrote:
 > --- a/fs/nfsd/vfs.c
 > +++ b/fs/nfsd/vfs.c
 > @@ -371,7 +371,6 @@ out_nfserr:
->  static ssize_t nfsd_getxattr(struct dentry *dentry, char
-> *key, void **buf) {
+>  static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
+>  {
 >  	ssize_t buflen;
 > -	int error;
 >
@@ -100,18 +78,13 @@ On Wednesday 08 March 2006 17:49, J. Bruce Fields wrote:
 > +	return vfs_getxattr(dentry, key, *buf, buflen);
 >  }
 >  #endif
->
->
->
-> -------------------------------------------------------
-> This SF.Net email is sponsored by xPML, a groundbreaking
-> scripting language that extends applications into web and
-> mobile media. Attend the live webcast and join the prime
-> developer group breaking into this new coding territory!
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&
->dat=121642 _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+
+Thanks,
+Andreas
+
+-- 
+Andreas Gruenbacher <agruen@suse.de>
+SUSE Labs, SUSE LINUX Products GmbH / Novell Inc.
 
 
 -------------------------------------------------------
