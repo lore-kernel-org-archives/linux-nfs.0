@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 009 of 14] knfsd: Use new cache code for rsc cache
-Date: Thu, 9 Mar 2006 17:52:08 +1100
-Message-ID: <1060309065208.24617@suse.de>
+Subject: [PATCH 008 of 14] knfsd: Use new sunrpc cache for rsi cache
+Date: Thu, 9 Mar 2006 17:52:03 +1100
+Message-ID: <1060309065203.24605@suse.de>
 References: <20060309174755.24381.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHF1N-0000eO-TN
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:13 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1FHF1J-0000dC-NV
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:09 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHF1M-0000Ix-W8
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:14 -0800
+	id 1FHF1H-00076U-TV
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:53:09 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,158 +30,155 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
 
+
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/auth_gss/svcauth_gss.c |   74 +++++++++++++++++++++++++++++++-----
- 1 file changed, 64 insertions(+), 10 deletions(-)
+ ./net/sunrpc/auth_gss/svcauth_gss.c |   66 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 59 insertions(+), 7 deletions(-)
 
 diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
---- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2006-03-09 17:15:43.000000000 +1100
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-03-09 17:15:58.000000000 +1100
-@@ -345,7 +345,8 @@ struct rsc {
+--- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2006-03-09 17:15:13.000000000 +1100
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-03-09 17:15:43.000000000 +1100
+@@ -78,7 +78,8 @@ struct rsi {
  
- static struct cache_head *rsc_table[RSC_HASHMAX];
- static struct cache_detail rsc_cache;
--static struct rsc *rsc_lookup(struct rsc *item, int set);
-+static struct rsc *rsc_update(struct rsc *new, struct rsc *old);
-+static struct rsc *rsc_lookup(struct rsc *item);
+ static struct cache_head *rsi_table[RSI_HASHMAX];
+ static struct cache_detail rsi_cache;
+-static struct rsi *rsi_lookup(struct rsi *item, int set);
++static struct rsi *rsi_update(struct rsi *new, struct rsi *old);
++static struct rsi *rsi_lookup(struct rsi *item);
  
- static void rsc_free(struct rsc *rsci)
+ static void rsi_free(struct rsi *rsii)
  {
-@@ -372,15 +373,21 @@ rsc_hash(struct rsc *rsci)
- 	return hash_mem(rsci->handle.data, rsci->handle.len, RSC_HASHBITS);
+@@ -103,8 +104,10 @@ static inline int rsi_hash(struct rsi *i
+ 	     ^ hash_mem(item->in_token.data, item->in_token.len, RSI_HASHBITS);
  }
  
--static inline int
--rsc_match(struct rsc *new, struct rsc *tmp)
-+static int
-+rsc_match(struct cache_head *a, struct cache_head *b)
+-static inline int rsi_match(struct rsi *item, struct rsi *tmp)
++static int rsi_match(struct cache_head *a, struct cache_head *b)
  {
-+	struct rsc *new = container_of(a, struct rsc, h);
-+	struct rsc *tmp = container_of(b, struct rsc, h);
++	struct rsi *item = container_of(a, struct rsi, h);
++	struct rsi *tmp = container_of(b, struct rsi, h);
+ 	return netobj_equal(&item->in_handle, &tmp->in_handle)
+ 		&& netobj_equal(&item->in_token, &tmp->in_token);
+ }
+@@ -125,8 +128,11 @@ static inline int dup_netobj(struct xdr_
+ 	return dup_to_netobj(dst, src->data, src->len);
+ }
+ 
+-static inline void rsi_init(struct rsi *new, struct rsi *item)
++static void rsi_init(struct cache_head *cnew, struct cache_head *citem)
+ {
++	struct rsi *new = container_of(cnew, struct rsi, h);
++	struct rsi *item = container_of(citem, struct rsi, h);
 +
- 	return netobj_equal(&new->handle, &tmp->handle);
+ 	new->out_handle.data = NULL;
+ 	new->out_handle.len = 0;
+ 	new->out_token.data = NULL;
+@@ -141,8 +147,11 @@ static inline void rsi_init(struct rsi *
+ 	item->in_token.data = NULL;
  }
  
--static inline void
--rsc_init(struct rsc *new, struct rsc *tmp)
-+static void
-+rsc_init(struct cache_head *cnew, struct cache_head *ctmp)
+-static inline void rsi_update(struct rsi *new, struct rsi *item)
++static void update_rsi(struct cache_head *cnew, struct cache_head *citem)
  {
-+	struct rsc *new = container_of(cnew, struct rsc, h);
-+	struct rsc *tmp = container_of(ctmp, struct rsc, h);
++	struct rsi *new = container_of(cnew, struct rsi, h);
++	struct rsi *item = container_of(citem, struct rsi, h);
 +
- 	new->handle.len = tmp->handle.len;
- 	tmp->handle.len = 0;
- 	new->handle.data = tmp->handle.data;
-@@ -389,9 +396,12 @@ rsc_init(struct rsc *new, struct rsc *tm
- 	new->cred.cr_group_info = NULL;
+ 	BUG_ON(new->out_handle.data || new->out_token.data);
+ 	new->out_handle.len = item->out_handle.len;
+ 	item->out_handle.len = 0;
+@@ -157,6 +166,15 @@ static inline void rsi_update(struct rsi
+ 	new->minor_status = item->minor_status;
  }
  
--static inline void
--rsc_update(struct rsc *new, struct rsc *tmp)
-+static void
-+update_rsc(struct cache_head *cnew, struct cache_head *ctmp)
- {
-+	struct rsc *new = container_of(cnew, struct rsc, h);
-+	struct rsc *tmp = container_of(ctmp, struct rsc, h);
-+
- 	new->mechctx = tmp->mechctx;
- 	tmp->mechctx = NULL;
- 	memset(&new->seqdata, 0, sizeof(new->seqdata));
-@@ -400,6 +410,16 @@ rsc_update(struct rsc *new, struct rsc *
- 	tmp->cred.cr_group_info = NULL;
- }
- 
-+static struct cache_head *
-+rsc_alloc(void)
++static struct cache_head *rsi_alloc(void)
 +{
-+	struct rsc *rsci = kmalloc(sizeof(*rsci), GFP_KERNEL);
-+	if (rsci)
-+		return &rsci->h;
++	struct rsi *rsii = kmalloc(sizeof(*rsii), GFP_KERNEL);
++	if (rsii)
++		return &rsii->h;
 +	else
 +		return NULL;
 +}
 +
- static int rsc_parse(struct cache_detail *cd,
- 		     char *mesg, int mlen)
- {
-@@ -425,6 +445,10 @@ static int rsc_parse(struct cache_detail
- 	if (expiry == 0)
+ static void rsi_request(struct cache_detail *cd,
+                        struct cache_head *h,
+                        char **bpp, int *blen)
+@@ -198,6 +216,10 @@ static int rsi_parse(struct cache_detail
+ 	if (dup_to_netobj(&rsii.in_token, buf, len))
  		goto out;
  
-+	rscp = rsc_lookup(&rsci);
-+	if (!rscp)
++	rsip = rsi_lookup(&rsii);
++	if (!rsip)
 +		goto out;
 +
- 	/* uid, or NEGATIVE */
- 	rv = get_int(&mesg, &rsci.cred.cr_uid);
- 	if (rv == -EINVAL)
-@@ -480,12 +504,14 @@ static int rsc_parse(struct cache_detail
- 		gss_mech_put(gm);
+ 	rsii.h.flags = 0;
+ 	/* expiry */
+ 	expiry = get_expiry(&mesg);
+@@ -240,12 +262,14 @@ static int rsi_parse(struct cache_detail
+ 			goto out;
  	}
- 	rsci.h.expiry_time = expiry;
--	rscp = rsc_lookup(&rsci, 1);
-+	rscp = rsc_update(&rsci, rscp);
+ 	rsii.h.expiry_time = expiry;
+-	rsip = rsi_lookup(&rsii, 1);
++	rsip = rsi_update(&rsii, rsip);
  	status = 0;
  out:
- 	rsc_free(&rsci);
- 	if (rscp)
- 		rsc_put(&rscp->h, &rsc_cache);
+ 	rsi_free(&rsii);
+ 	if (rsip)
+ 		rsi_put(&rsip->h, &rsi_cache);
 +	else
 +		status = -ENOMEM;
  	return status;
  }
  
-@@ -496,9 +522,37 @@ static struct cache_detail rsc_cache = {
- 	.name		= "auth.rpcsec.context",
- 	.cache_put	= rsc_put,
- 	.cache_parse	= rsc_parse,
-+	.match		= rsc_match,
-+	.init		= rsc_init,
-+	.update		= update_rsc,
-+	.alloc		= rsc_alloc,
+@@ -257,9 +281,37 @@ static struct cache_detail rsi_cache = {
+ 	.cache_put      = rsi_put,
+ 	.cache_request  = rsi_request,
+ 	.cache_parse    = rsi_parse,
++	.match		= rsi_match,
++	.init		= rsi_init,
++	.update		= update_rsi,
++	.alloc		= rsi_alloc,
  };
  
--static DefineSimpleCacheLookup(rsc, rsc);
-+static struct rsc *rsc_lookup(struct rsc *item)
+-static DefineSimpleCacheLookup(rsi, rsi)
++static struct rsi *rsi_lookup(struct rsi *item)
 +{
 +	struct cache_head *ch;
-+	int hash = rsc_hash(item);
++	int hash = rsi_hash(item);
 +
-+	ch = sunrpc_cache_lookup(&rsc_cache, &item->h, hash);
++	ch = sunrpc_cache_lookup(&rsi_cache, &item->h, hash);
 +	if (ch)
-+		return container_of(ch, struct rsc, h);
++		return container_of(ch, struct rsi, h);
 +	else
 +		return NULL;
 +}
 +
-+static struct rsc *rsc_update(struct rsc *new, struct rsc *old)
++static struct rsi *rsi_update(struct rsi *new, struct rsi *old)
 +{
 +	struct cache_head *ch;
-+	int hash = rsc_hash(new);
++	int hash = rsi_hash(new);
 +
-+	ch = sunrpc_cache_update(&rsc_cache, &new->h,
++	ch = sunrpc_cache_update(&rsi_cache, &new->h,
 +				 &old->h, hash);
 +	if (ch)
-+		return container_of(ch, struct rsc, h);
++		return container_of(ch, struct rsi, h);
 +	else
 +		return NULL;
 +}
 +
  
- static struct rsc *
- gss_svc_searchbyctx(struct xdr_netobj *handle)
-@@ -509,7 +563,7 @@ gss_svc_searchbyctx(struct xdr_netobj *h
- 	memset(&rsci, 0, sizeof(rsci));
- 	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
- 		return NULL;
--	found = rsc_lookup(&rsci, 0);
-+	found = rsc_lookup(&rsci);
- 	rsc_free(&rsci);
- 	if (!found)
- 		return NULL;
+ /*
+  * The rpcsec_context cache is used to store a context that is
+@@ -895,7 +947,7 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 			goto drop;
+ 		}
+ 
+-		rsip = rsi_lookup(&rsikey, 0);
++		rsip = rsi_lookup(&rsikey);
+ 		rsi_free(&rsikey);
+ 		if (!rsip) {
+ 			goto drop;
 
 
 -------------------------------------------------------
