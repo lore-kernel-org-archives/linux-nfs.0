@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 004 of 14] knfsd: Create cache_lookup function instead of using a macro to declare one.
-Date: Thu, 9 Mar 2006 17:51:43 +1100
-Message-ID: <1060309065143.24557@suse.de>
+Subject: [PATCH 006 of 14] knfsd: Use new cache_lookup for svc_export
+Date: Thu, 9 Mar 2006 17:51:53 +1100
+Message-ID: <1060309065153.24581@suse.de>
 References: <20060309174755.24381.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHF0x-0000Yb-KH
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:47 -0800
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1FHF18-0000Z3-1S
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:58 -0800
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHF0x-0006xZ-0c
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:47 -0800
+	id 1FHF17-0000AE-Cv
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:58 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,156 +29,204 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-The C++-like 'template' approach proves to be too ugly and hard
-to work with.
-
-The old 'template' won't go away until all users are updated.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./include/linux/sunrpc/cache.h |   12 +++++
- ./net/sunrpc/cache.c           |   98 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 110 insertions(+)
+ ./fs/nfsd/export.c |  125 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 88 insertions(+), 37 deletions(-)
 
-diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
---- ./include/linux/sunrpc/cache.h~current~	2006-03-09 17:15:13.000000000 +1100
-+++ ./include/linux/sunrpc/cache.h	2006-03-09 17:15:14.000000000 +1100
-@@ -81,6 +81,11 @@ struct cache_detail {
- 					      struct cache_detail *cd,
- 					      struct cache_head *h);
+diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
+--- ./fs/nfsd/export.c~current~	2006-03-09 17:15:13.000000000 +1100
++++ ./fs/nfsd/export.c	2006-03-09 17:15:14.000000000 +1100
+@@ -258,16 +258,6 @@ static DefineSimpleCacheLookup(svc_expke
  
-+	struct cache_head *	(*alloc)(void);
-+	int			(*match)(struct cache_head *orig, struct cache_head *new);
-+	void			(*init)(struct cache_head *orig, struct cache_head *new);
-+	void			(*update)(struct cache_head *orig, struct cache_head *new);
-+
- 	/* fields below this comment are for internal use
- 	 * and should not be touched by cache owners
- 	 */
-@@ -237,6 +242,13 @@ RTN *FNAME ARGS										\
- 	& FUNC##_cache, FUNC##_hash(item), FUNC##_match(item, tmp),	\
- 	STRUCT##_init(new, item), STRUCT##_update(tmp, item))
+ static struct cache_head *export_table[EXPORT_HASHMAX];
  
-+extern struct cache_head *
-+sunrpc_cache_lookup(struct cache_detail *detail,
-+		    struct cache_head *key, int hash);
-+extern struct cache_head *
-+sunrpc_cache_update(struct cache_detail *detail,
-+		    struct cache_head *new, struct cache_head *old, int hash);
-+
- 
- #define cache_for_each(pos, detail, index, member) 						\
- 	for (({read_lock(&(detail)->hash_lock); index = (detail)->hash_size;}) ;		\
-
-diff ./net/sunrpc/cache.c~current~ ./net/sunrpc/cache.c
---- ./net/sunrpc/cache.c~current~	2006-03-09 17:12:58.000000000 +1100
-+++ ./net/sunrpc/cache.c	2006-03-09 17:15:14.000000000 +1100
-@@ -47,6 +47,104 @@ void cache_init(struct cache_head *h)
- 	h->last_refresh = now;
+-static inline int svc_export_hash(struct svc_export *item)
+-{
+-	int rv;
+-
+-	rv = hash_ptr(item->ex_client, EXPORT_HASHBITS);
+-	rv ^= hash_ptr(item->ex_dentry, EXPORT_HASHBITS);
+-	rv ^= hash_ptr(item->ex_mnt, EXPORT_HASHBITS);
+-	return rv;
+-}
+-
+ void svc_export_put(struct cache_head *item, struct cache_detail *cd)
+ {
+ 	if (cache_put(item, cd)) {
+@@ -298,7 +288,8 @@ static void svc_export_request(struct ca
+ 	(*bpp)[-1] = '\n';
  }
  
-+struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
-+				       struct cache_head *key, int hash)
-+{
-+	struct cache_head **head,  **hp;
-+	struct cache_head *new = NULL;
-+
-+	head = &detail->hash_table[hash];
-+
-+	read_lock(&detail->hash_lock);
-+
-+	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
-+		struct cache_head *tmp = *hp;
-+		if (detail->match(tmp, key)) {
-+			cache_get(tmp);
-+			read_unlock(&detail->hash_lock);
-+			return tmp;
-+		}
-+	}
-+	read_unlock(&detail->hash_lock);
-+	/* Didn't find anything, insert an empty entry */
-+
-+	new = detail->alloc();
-+	if (!new)
-+		return NULL;
-+	cache_init(new);
-+
-+	write_lock(&detail->hash_lock);
-+
-+	/* check if entry appeared while we slept */
-+	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
-+		struct cache_head *tmp = *hp;
-+		if (detail->match(tmp, key)) {
-+			cache_get(tmp);
-+			write_unlock(&detail->hash_lock);
-+			detail->cache_put(new, detail);
-+			return tmp;
-+		}
-+	}
-+	detail->init(new, key);
-+	new->next = *head;
-+	*head = new;
-+	detail->entries++;
-+	cache_get(new);
-+	write_unlock(&detail->hash_lock);
-+
-+	return new;
-+}
-+EXPORT_SYMBOL(sunrpc_cache_lookup);
-+
-+struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
-+				       struct cache_head *new, struct cache_head *old, int hash)
-+{
-+	/* The 'old' entry is to be replaced by 'new'.
-+	 * If 'old' is not VALID, we update it directly,
-+	 * otherwise we need to replace it
-+	 */
-+	struct cache_head **head;
-+	struct cache_head *tmp;
-+
-+	if (!test_bit(CACHE_VALID, &old->flags)) {
-+		write_lock(&detail->hash_lock);
-+		if (!test_bit(CACHE_VALID, &old->flags)) {
-+			if (test_bit(CACHE_NEGATIVE, &new->flags))
-+				set_bit(CACHE_NEGATIVE, &old->flags);
-+			else
-+				detail->update(old, new);
-+			/* FIXME cache_fresh should come first */
-+			write_unlock(&detail->hash_lock);
-+			cache_fresh(detail, old, new->expiry_time);
-+			return old;
-+		}
-+		write_unlock(&detail->hash_lock);
-+	}
-+	/* We need to insert a new entry */
-+	tmp = detail->alloc();
-+	if (!tmp) {
-+		detail->cache_put(old, detail);
-+		return NULL;
-+	}
-+	cache_init(tmp);
-+	detail->init(tmp, old);
-+	head = &detail->hash_table[hash];
-+
-+	write_lock(&detail->hash_lock);
-+	if (test_bit(CACHE_NEGATIVE, &new->flags))
-+		set_bit(CACHE_NEGATIVE, &tmp->flags);
-+	else
-+		detail->update(tmp, new);
-+	tmp->next = *head;
-+	*head = tmp;
-+	cache_get(tmp);
-+	write_unlock(&detail->hash_lock);
-+	cache_fresh(detail, tmp, new->expiry_time);
-+	cache_fresh(detail, old, 0);
-+	detail->cache_put(old, detail);
-+	return tmp;
-+}
-+EXPORT_SYMBOL(sunrpc_cache_update);
+-static struct svc_export *svc_export_lookup(struct svc_export *, int);
++struct svc_export *svc_export_update(struct svc_export *new, struct svc_export *old);
++static struct svc_export *svc_export_lookup(struct svc_export *);
  
- static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h);
- /*
+ static int check_export(struct inode *inode, int flags)
+ {
+@@ -411,11 +402,16 @@ static int svc_export_parse(struct cache
+ 		if (err) goto out;
+ 	}
+ 
+-	expp = svc_export_lookup(&exp, 1);
++	expp = svc_export_lookup(&exp);
+ 	if (expp)
+-		exp_put(expp);
+-	err = 0;
++		expp = svc_export_update(&exp, expp);
++	else
++		err = -ENOMEM;
+ 	cache_flush();
++	if (expp == NULL)
++		err = -ENOMEM;
++	else
++		exp_put(expp);
+  out:
+ 	if (nd.dentry)
+ 		path_release(&nd);
+@@ -449,40 +445,95 @@ static int svc_export_show(struct seq_fi
+ 	seq_puts(m, ")\n");
+ 	return 0;
+ }
+-struct cache_detail svc_export_cache = {
+-	.owner		= THIS_MODULE,
+-	.hash_size	= EXPORT_HASHMAX,
+-	.hash_table	= export_table,
+-	.name		= "nfsd.export",
+-	.cache_put	= svc_export_put,
+-	.cache_request	= svc_export_request,
+-	.cache_parse	= svc_export_parse,
+-	.cache_show	= svc_export_show,
+-};
+-
+-static inline int svc_export_match(struct svc_export *a, struct svc_export *b)
++static int svc_export_match(struct cache_head *a, struct cache_head *b)
+ {
+-	return a->ex_client == b->ex_client &&
+-		a->ex_dentry == b->ex_dentry &&
+-		a->ex_mnt == b->ex_mnt;
++	struct svc_export *orig = container_of(a, struct svc_export, h);
++	struct svc_export *new = container_of(b, struct svc_export, h);
++	return orig->ex_client == new->ex_client &&
++		orig->ex_dentry == new->ex_dentry &&
++		orig->ex_mnt == new->ex_mnt;
+ }
+-static inline void svc_export_init(struct svc_export *new, struct svc_export *item)
++
++static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ {
++	struct svc_export *new = container_of(cnew, struct svc_export, h);
++	struct svc_export *item = container_of(citem, struct svc_export, h);
++
+ 	kref_get(&item->ex_client->ref);
+ 	new->ex_client = item->ex_client;
+ 	new->ex_dentry = dget(item->ex_dentry);
+ 	new->ex_mnt = mntget(item->ex_mnt);
+ }
+ 
+-static inline void svc_export_update(struct svc_export *new, struct svc_export *item)
++static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ {
++	struct svc_export *new = container_of(cnew, struct svc_export, h);
++	struct svc_export *item = container_of(citem, struct svc_export, h);
++
+ 	new->ex_flags = item->ex_flags;
+ 	new->ex_anon_uid = item->ex_anon_uid;
+ 	new->ex_anon_gid = item->ex_anon_gid;
+ 	new->ex_fsid = item->ex_fsid;
+ }
+ 
+-static DefineSimpleCacheLookup(svc_export, svc_export)
++static struct cache_head *svc_export_alloc(void)
++{
++	struct svc_export *i = kmalloc(sizeof(*i), GFP_KERNEL);
++	if (i)
++		return &i->h;
++	else
++		return NULL;
++}
++
++struct cache_detail svc_export_cache = {
++	.owner		= THIS_MODULE,
++	.hash_size	= EXPORT_HASHMAX,
++	.hash_table	= export_table,
++	.name		= "nfsd.export",
++	.cache_put	= svc_export_put,
++	.cache_request	= svc_export_request,
++	.cache_parse	= svc_export_parse,
++	.cache_show	= svc_export_show,
++	.match		= svc_export_match,
++	.init		= svc_export_init,
++	.update		= export_update,
++	.alloc		= svc_export_alloc,
++};
++
++static struct svc_export *
++svc_export_lookup(struct svc_export *exp)
++{
++	struct cache_head *ch;
++	int hash;
++	hash = hash_ptr(exp->ex_client, EXPORT_HASHBITS);
++	hash ^= hash_ptr(exp->ex_dentry, EXPORT_HASHBITS);
++	hash ^= hash_ptr(exp->ex_mnt, EXPORT_HASHBITS);
++
++	ch = sunrpc_cache_lookup(&svc_export_cache, &exp->h,
++				 hash);
++	if (ch)
++		return container_of(ch, struct svc_export, h);
++	else
++		return NULL;
++}
++
++struct svc_export *
++svc_export_update(struct svc_export *new, struct svc_export *old)
++{
++	struct cache_head *ch;
++	int hash;
++	hash = hash_ptr(old->ex_client, EXPORT_HASHBITS);
++	hash ^= hash_ptr(old->ex_dentry, EXPORT_HASHBITS);
++	hash ^= hash_ptr(old->ex_mnt, EXPORT_HASHBITS);
++
++	ch = sunrpc_cache_update(&svc_export_cache, &new->h,
++				 &old->h,
++				 hash);
++	if (ch)
++		return container_of(ch, struct svc_export, h);
++	else
++		return NULL;
++}
+ 
+ 
+ struct svc_expkey *
+@@ -568,7 +619,7 @@ exp_get_by_name(svc_client *clp, struct 
+ 	key.ex_mnt = mnt;
+ 	key.ex_dentry = dentry;
+ 
+-	exp = svc_export_lookup(&key, 0);
++	exp = svc_export_lookup(&key);
+ 	if (exp != NULL) 
+ 		switch (cache_check(&svc_export_cache, &exp->h, reqp)) {
+ 		case 0: break;
+@@ -770,13 +821,13 @@ exp_export(struct nfsctl_export *nxp)
+ 	new.ex_anon_gid = nxp->ex_anon_gid;
+ 	new.ex_fsid = nxp->ex_dev;
+ 
+-	exp = svc_export_lookup(&new, 1);
++	exp = svc_export_lookup(&new);
++	if (exp)
++		exp = svc_export_update(&new, exp);
+ 
+-	if (exp == NULL)
++	if (!exp)
+ 		goto finish;
+ 
+-	err = 0;
+-
+ 	if (exp_hash(clp, exp) ||
+ 	    exp_fsid_hash(clp, exp)) {
+ 		/* failed to create at least one index */
 
 
 -------------------------------------------------------
