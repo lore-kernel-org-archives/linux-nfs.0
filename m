@@ -1,26 +1,19 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: ACL on NFS, how make it work?
-Date: Wed, 8 Mar 2006 20:49:55 -0500
-Message-ID: <20060309014955.GA8089@fieldses.org>
-References: <20060303103806.GB8038@sv.lnf.it> <20060303163535.GB32552@fieldses.org> <20060306090557.GD8429@sv.lnf.it> <20060306152340.GA31408@fieldses.org> <20060308170425.GS8060@sv.lnf.it>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruen@suse.de>,
-	Marius Aamodt Eriksen <marius@umich.edu>,
-	Jeff Sedlak <jsedlak@umich.edu>, nfs@lists.sourceforge.net,
-	Gopal Santhanam <gopal@nerur.com>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 14] knfsd: Introduction
+Date: Thu, 9 Mar 2006 17:51:22 +1100
+Message-ID: <20060309174755.24381.patches@notabene>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHAHz-0005hU-UF
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 17:50:03 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1FHF0h-0000Y9-BN
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:31 -0800
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHAHz-0007xE-9r
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 17:50:04 -0800
-To: Marco Gaiarin <gaio@sv.lnf.it>
-In-Reply-To: <20060308170425.GS8060@sv.lnf.it>
+	id 1FHF0g-0006t5-60
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:31 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,60 +27,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, Mar 08, 2006 at 06:04:25PM +0100, Marco Gaiarin wrote:
-> Mandi! J. Bruce Fields
->   In chel di` si favelave...
-> 
-> > Actually I got one other NFS/XFS ACL complaint recently, and confirmed
-> > that with current kernels I'm able to get and set ext3 ACL's over NFS,
-> > and get and set XFS ACL's locally, but I can't use XFS ACL's over NFS.
-> > Which is odd--on a first glance it looks like the two filesystems export
-> > posix acl's through the same interface, etc.  I haven't had the chance
-> > to figure out what's going on yet....
-> 
-> If i can do something to debug that, say me.
+The following series of patches changes the code for lookup up
+authentication/authorisation caches in sunrpc as used by nfsd.  That
+than having a delightful macro that defines a function of a particular
+type of cache, the functions are coded on a more traditional manner
+using library routines.
 
-Could you try the following patch?  Fixes the problem for me.
+This will hopefully make the code more maintainable.
 
---b.
+This series should not effect the functionality at all -- except maybe
+to fix some very minor bugs
 
-nfsd4: fix acl xattr length return
+This is against 2.6.16-rc5-mm2 and is NOT suitable for 2.6.16, but maybe for .17
+(though holding it back to .18 wouldn't be a big problem if any issues came up).
 
-We should be using the length from the second vfs_getxattr, in case it
-changed.  (Note: there's still a small race here; we could end up returning
--ENOMEM if the length increased between the first and second call.  Oh
-well; I'm not sure it's worth spending a lot of effort to fix that.)
+Thanks,
+NeilBrown
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
 
- fs/nfsd/vfs.c |    6 +-----
- 1 files changed, 1 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 5320e5a..ac3a8e4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -371,7 +371,6 @@ out_nfserr:
- static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
- {
- 	ssize_t buflen;
--	int error;
- 
- 	buflen = vfs_getxattr(dentry, key, NULL, 0);
- 	if (buflen <= 0)
-@@ -381,10 +380,7 @@ static ssize_t nfsd_getxattr(struct dent
- 	if (!*buf)
- 		return -ENOMEM;
- 
--	error = vfs_getxattr(dentry, key, *buf, buflen);
--	if (error < 0)
--		return error;
--	return buflen;
-+	return vfs_getxattr(dentry, key, *buf, buflen);
- }
- #endif
- 
+ [PATCH 000 of 14] knfsd: Introduction
+ [PATCH 001 of 14] knfsd: Change the store of auth_domains to not be a 'cache'.
+ [PATCH 002 of 14] knfsd: Break the hard linkage from svc_expkey to svc_export
+ [PATCH 003 of 14] knfsd: Get rid of 'inplace' sunrpc caches
+ [PATCH 004 of 14] knfsd: Create cache_lookup function instead of using a macro to declare one.
+ [PATCH 005 of 14] knfsd: Convert ip_map cache to use the new lookup routine.
+ [PATCH 006 of 14] knfsd: Use new cache_lookup for svc_export
+ [PATCH 007 of 14] knfsd: Use new cache_lookup for svc_expkey cache.
+ [PATCH 008 of 14] knfsd: Use new sunrpc cache for rsi cache
+ [PATCH 009 of 14] knfsd: Use new cache code for rsc cache
+ [PATCH 010 of 14] knfsd: Use new cache code for name/id lookup caches
+ [PATCH 011 of 14] knfsd: An assortment of little fixes to the sunrpc cache code.
+ [PATCH 012 of 14] knfsd: Remove DefineCacheLookup
+ [PATCH 013 of 14] knfsd: Unexport cache_fresh and fix a small race.
+ [PATCH 014 of 14] knfsd: Convert sunrpc_cache to use krefs
 
 
 -------------------------------------------------------
