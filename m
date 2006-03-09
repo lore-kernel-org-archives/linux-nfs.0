@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 002 of 14] knfsd: Break the hard linkage from svc_expkey to svc_export
-Date: Thu, 9 Mar 2006 17:51:32 +1100
-Message-ID: <1060309065132.24533@suse.de>
+Subject: [PATCH 003 of 14] knfsd: Get rid of 'inplace' sunrpc caches
+Date: Thu, 9 Mar 2006 17:51:37 +1100
+Message-ID: <1060309065137.24545@suse.de>
 References: <20060309174755.24381.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHF0n-0000YL-8z
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:37 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1FHF0s-0000YV-Oe
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:42 -0800
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHF0m-0006ve-Kk
-	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:37 -0800
+	id 1FHF0r-0006wn-TS
+	for nfs@lists.sourceforge.net; Wed, 08 Mar 2006 22:52:42 -0800
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,199 +29,188 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Current svc_expkey holds a pointer to the svc_export
-structure, so updates to that structure have to be in-place,
-which is a wart on the whole cache infrastruct.
-So we break that linkage and just do a second lookup.
+These were an unnecessary wart.
+Also only have one 'DefineSimpleCache..' instead of two.
 
-If this became a performance issue, it would be possible to put a
-direct link back in which was only used conditionally.
-i.e. when an object is replaced in the cache, we set a flag in the old 
-object.  When dereferencing the link from svc_expkey, if the flag is set,
-we drop the reference and do a fresh lookup.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/export.c            |   60 ++++++++++++++++++++++++++++--------------
- ./include/linux/nfsd/export.h |   20 ++------------
- 2 files changed, 44 insertions(+), 36 deletions(-)
+ ./fs/nfsd/export.c                  |    4 ++--
+ ./fs/nfsd/nfs4idmap.c               |   10 ++--------
+ ./include/linux/sunrpc/cache.h      |   28 +++++++++++-----------------
+ ./net/sunrpc/auth_gss/svcauth_gss.c |    4 ++--
+ ./net/sunrpc/svcauth_unix.c         |    2 +-
+ 5 files changed, 18 insertions(+), 30 deletions(-)
 
 diff ./fs/nfsd/export.c~current~ ./fs/nfsd/export.c
---- ./fs/nfsd/export.c~current~	2006-03-09 17:13:01.000000000 +1100
+--- ./fs/nfsd/export.c~current~	2006-03-09 17:15:13.000000000 +1100
 +++ ./fs/nfsd/export.c	2006-03-09 17:15:13.000000000 +1100
-@@ -73,8 +73,10 @@ void expkey_put(struct cache_head *item,
- 	if (cache_put(item, cd)) {
- 		struct svc_expkey *key = container_of(item, struct svc_expkey, h);
- 		if (test_bit(CACHE_VALID, &item->flags) &&
--		    !test_bit(CACHE_NEGATIVE, &item->flags))
--			exp_put(key->ek_export);
-+		    !test_bit(CACHE_NEGATIVE, &item->flags)) {
-+			dput(key->ek_dentry);
-+			mntput(key->ek_mnt);
-+		}
- 		auth_domain_put(key->ek_client);
- 		kfree(key);
- 	}
-@@ -164,26 +166,18 @@ static int expkey_parse(struct cache_det
- 	} else {
- 		struct nameidata nd;
- 		struct svc_expkey *ek;
--		struct svc_export *exp;
- 		err = path_lookup(buf, 0, &nd);
- 		if (err)
- 			goto out;
- 
- 		dprintk("Found the path %s\n", buf);
--		exp = exp_get_by_name(dom, nd.mnt, nd.dentry, NULL);
--
--		err = -ENOENT;
--		if (!exp)
--			goto out_nd;
--		key.ek_export = exp;
--		dprintk("And found export\n");
-+		key.ek_mnt = nd.mnt;
-+		key.ek_dentry = nd.dentry;
- 		
- 		ek = svc_expkey_lookup(&key, 1);
- 		if (ek)
- 			expkey_put(&ek->h, &svc_expkey_cache);
--		exp_put(exp);
- 		err = 0;
--	out_nd:
- 		path_release(&nd);
- 	}
- 	cache_flush();
-@@ -214,7 +208,7 @@ static int expkey_show(struct seq_file *
- 	if (test_bit(CACHE_VALID, &h->flags) && 
- 	    !test_bit(CACHE_NEGATIVE, &h->flags)) {
- 		seq_printf(m, " ");
--		seq_path(m, ek->ek_export->ex_mnt, ek->ek_export->ex_dentry, "\\ \t\n");
-+		seq_path(m, ek->ek_mnt, ek->ek_dentry, "\\ \t\n");
- 	}
- 	seq_printf(m, "\n");
- 	return 0;
-@@ -252,8 +246,8 @@ static inline void svc_expkey_init(struc
- 
- static inline void svc_expkey_update(struct svc_expkey *new, struct svc_expkey *item)
- {
--	cache_get(&item->ek_export->h);
--	new->ek_export = item->ek_export;
-+	new->ek_mnt = mntget(item->ek_mnt);
-+	new->ek_dentry = dget(item->ek_dentry);
+@@ -250,7 +250,7 @@ static inline void svc_expkey_update(str
+ 	new->ek_dentry = dget(item->ek_dentry);
  }
  
- static DefineSimpleCacheLookup(svc_expkey,0) /* no inplace updates */
-@@ -519,7 +513,8 @@ static int exp_set_key(svc_client *clp, 
- 	key.ek_client = clp;
- 	key.ek_fsidtype = fsid_type;
- 	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
--	key.ek_export = exp;
-+	key.ek_mnt = exp->ex_mnt;
-+	key.ek_dentry = exp->ex_dentry;
- 	key.h.expiry_time = NEVER;
- 	key.h.flags = 0;
+-static DefineSimpleCacheLookup(svc_expkey,0) /* no inplace updates */
++static DefineSimpleCacheLookup(svc_expkey, svc_expkey)
  
-@@ -741,8 +736,8 @@ exp_export(struct nfsctl_export *nxp)
- 	if ((nxp->ex_flags & NFSEXP_FSID) &&
- 	    (fsid_key = exp_get_fsid_key(clp, nxp->ex_dev)) &&
- 	    !IS_ERR(fsid_key) &&
--	    fsid_key->ek_export &&
--	    fsid_key->ek_export != exp)
-+	    fsid_key->ek_mnt &&
-+	    (fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry) )
- 		goto finish;
- 
- 	if (exp) {
-@@ -912,6 +907,24 @@ out:
- 	return err;
+ #define	EXPORT_HASHBITS		8
+ #define	EXPORT_HASHMAX		(1<< EXPORT_HASHBITS)
+@@ -482,7 +482,7 @@ static inline void svc_export_update(str
+ 	new->ex_fsid = item->ex_fsid;
  }
  
-+struct svc_export *
-+exp_find(struct auth_domain *clp, int fsid_type, u32 *fsidv,
-+	 struct cache_req *reqp)
-+{
-+	struct svc_export *exp;
-+	struct svc_expkey *ek = exp_find_key(clp, fsid_type, fsidv, reqp);
-+	if (!ek || IS_ERR(ek))
-+		return ERR_PTR(PTR_ERR(ek));
-+
-+	exp = exp_get_by_name(clp, ek->ek_mnt, ek->ek_dentry, reqp);
-+	expkey_put(&ek->h, &svc_expkey_cache);
-+
-+	if (!exp || IS_ERR(exp))
-+		return ERR_PTR(PTR_ERR(exp));
-+	return exp;
-+}
-+
-+
- /*
-  * Called when we need the filehandle for the root of the pseudofs,
-  * for a given NFSv4 client.   The root is defined to be the
-@@ -922,6 +935,7 @@ exp_pseudoroot(struct auth_domain *clp, 
- 	       struct cache_req *creq)
- {
- 	struct svc_expkey *fsid_key;
-+	struct svc_export *exp;
- 	int rv;
- 	u32 fsidv[2];
+-static DefineSimpleCacheLookup(svc_export,1) /* allow inplace updates */
++static DefineSimpleCacheLookup(svc_export, svc_export)
  
-@@ -933,8 +947,14 @@ exp_pseudoroot(struct auth_domain *clp, 
- 	if (!fsid_key || IS_ERR(fsid_key))
- 		return nfserr_perm;
  
--	rv = fh_compose(fhp, fsid_key->ek_export, 
--			  fsid_key->ek_export->ex_dentry, NULL);
-+	exp = exp_get_by_name(clp, fsid_key->ek_mnt, fsid_key->ek_dentry, creq);
-+	if (exp == NULL)
-+		rv = nfserr_perm;
-+	else if (IS_ERR(exp))
-+		rv = nfserrno(PTR_ERR(exp));
-+	else
-+		rv = fh_compose(fhp, exp,
-+				fsid_key->ek_dentry, NULL);
- 	expkey_put(&fsid_key->h, &svc_expkey_cache);
- 	return rv;
- }
+ struct svc_expkey *
 
-diff ./include/linux/nfsd/export.h~current~ ./include/linux/nfsd/export.h
---- ./include/linux/nfsd/export.h~current~	2006-03-09 17:12:58.000000000 +1100
-+++ ./include/linux/nfsd/export.h	2006-03-09 17:15:13.000000000 +1100
-@@ -67,7 +67,8 @@ struct svc_expkey {
- 	int			ek_fsidtype;
- 	u32			ek_fsid[3];
- 
--	struct svc_export *	ek_export;
-+	struct vfsmount *	ek_mnt;
-+	struct dentry *		ek_dentry;
+diff ./fs/nfsd/nfs4idmap.c~current~ ./fs/nfsd/nfs4idmap.c
+--- ./fs/nfsd/nfs4idmap.c~current~	2006-03-09 17:12:58.000000000 +1100
++++ ./fs/nfsd/nfs4idmap.c	2006-03-09 17:15:13.000000000 +1100
+@@ -76,12 +76,6 @@ struct ent {
+ 	char              authname[IDMAP_NAMESZ];
  };
  
- #define EX_SECURE(exp)		(!((exp)->ex_flags & NFSEXP_INSECURE_PORT))
-@@ -114,22 +115,9 @@ static inline void exp_get(struct svc_ex
- {
- 	cache_get(&exp->h);
+-#define DefineSimpleCacheLookupMap(STRUCT, FUNC)			\
+-        DefineCacheLookup(struct STRUCT, h, FUNC##_lookup,		\
+-        (struct STRUCT *item, int set), /*no setup */,			\
+-	& FUNC##_cache, FUNC##_hash(item), FUNC##_match(item, tmp),	\
+-	STRUCT##_init(new, item), STRUCT##_update(tmp, item), 0)
+-
+ /* Common entry handling */
+ 
+ #define ENT_HASHBITS          8
+@@ -264,7 +258,7 @@ out:
+ 	return error;
  }
--static inline struct svc_export *
-+extern struct svc_export *
- exp_find(struct auth_domain *clp, int fsid_type, u32 *fsidv,
--	 struct cache_req *reqp)
--{
--	struct svc_expkey *ek = exp_find_key(clp, fsid_type, fsidv, reqp);
--	if (ek && !IS_ERR(ek)) {
--		struct svc_export *exp = ek->ek_export;
--		int err;
--		exp_get(exp);
--		expkey_put(&ek->h, &svc_expkey_cache);
--		if ((err = cache_check(&svc_export_cache, &exp->h, reqp)))
--			exp = ERR_PTR(err);
--		return exp;
--	} else
--		return ERR_PTR(PTR_ERR(ek));
--}
-+	 struct cache_req *reqp);
  
- #endif /* __KERNEL__ */
+-static DefineSimpleCacheLookupMap(ent, idtoname);
++static DefineSimpleCacheLookup(ent, idtoname);
  
+ /*
+  * Name -> ID cache
+@@ -390,7 +384,7 @@ out:
+ 	return (error);
+ }
+ 
+-static DefineSimpleCacheLookupMap(ent, nametoid);
++static DefineSimpleCacheLookup(ent, nametoid);
+ 
+ /*
+  * Exported API
+
+diff ./include/linux/sunrpc/cache.h~current~ ./include/linux/sunrpc/cache.h
+--- ./include/linux/sunrpc/cache.h~current~	2006-03-09 17:12:58.000000000 +1100
++++ ./include/linux/sunrpc/cache.h	2006-03-09 17:15:13.000000000 +1100
+@@ -133,14 +133,11 @@ struct cache_deferred_req {
+  * If "set" == 0 :
+  *    If an entry is found, it is returned
+  *    If no entry is found, a new non-VALID entry is created.
+- * If "set" == 1 and INPLACE == 0 :
++ * If "set" == 1 :
+  *    If no entry is found a new one is inserted with data from "template"
+  *    If a non-CACHE_VALID entry is found, it is updated from template using UPDATE
+  *    If a CACHE_VALID entry is found, a new entry is swapped in with data
+  *       from "template"
+- * If set == 1, and INPLACE == 1 :
+- *    As above, except that if a CACHE_VALID entry is found, we UPDATE in place
+- *       instead of swapping in a new entry.
+  *
+  * If the passed handle has the CACHE_NEGATIVE flag set, then UPDATE is not
+  * run but insteead CACHE_NEGATIVE is set in any new item.
+@@ -159,13 +156,8 @@ struct cache_deferred_req {
+  * TEST  tests if "tmp" matches "item"
+  * INIT copies key information from "item" to "new"
+  * UPDATE copies content information from "item" to "tmp"
+- * INPLACE is true if updates can happen inplace rather than allocating a new structure
+- *
+- * WARNING: any substantial changes to this must be reflected in
+- *   net/sunrpc/svcauth.c(auth_domain_lookup)
+- *  which is a similar routine that is open-coded.
+  */
+-#define DefineCacheLookup(RTN,MEMBER,FNAME,ARGS,SETUP,DETAIL,HASHFN,TEST,INIT,UPDATE,INPLACE)	\
++#define DefineCacheLookup(RTN,MEMBER,FNAME,ARGS,SETUP,DETAIL,HASHFN,TEST,INIT,UPDATE)	\
+ RTN *FNAME ARGS										\
+ {											\
+ 	RTN *tmp, *new=NULL;								\
+@@ -179,13 +171,13 @@ RTN *FNAME ARGS										\
+ 		tmp = container_of(*hp, RTN, MEMBER);					\
+ 		if (TEST) { /* found a match */						\
+ 											\
+-			if (set && !INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags) && !new) \
++			if (set && test_bit(CACHE_VALID, &tmp->MEMBER.flags) && !new)	\
+ 				break;							\
+ 											\
+ 			if (new)							\
+ 				{INIT;}							\
+ 			if (set) {							\
+-				if (!INPLACE && test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
++				if (test_bit(CACHE_VALID, &tmp->MEMBER.flags))\
+ 				{ /* need to swap in new */				\
+ 					RTN *t2;					\
+ 											\
+@@ -206,7 +198,7 @@ RTN *FNAME ARGS										\
+ 			else read_unlock(&(DETAIL)->hash_lock);				\
+ 			if (set)							\
+ 				cache_fresh(DETAIL, &tmp->MEMBER, item->MEMBER.expiry_time); \
+-			if (set && !INPLACE && new) cache_fresh(DETAIL, &new->MEMBER, 0);	\
++			if (set && new) cache_fresh(DETAIL, &new->MEMBER, 0);	\
+ 			if (new) (DETAIL)->cache_put(&new->MEMBER, DETAIL);		\
+ 			return tmp;							\
+ 		}									\
+@@ -239,10 +231,12 @@ RTN *FNAME ARGS										\
+ 	return NULL;									\
+ }
+ 
+-#define DefineSimpleCacheLookup(STRUCT,INPLACE)	\
+-	DefineCacheLookup(struct STRUCT, h, STRUCT##_lookup, (struct STRUCT *item, int set), /*no setup */,	\
+-			  & STRUCT##_cache, STRUCT##_hash(item), STRUCT##_match(item, tmp),\
+-			  STRUCT##_init(new, item), STRUCT##_update(tmp, item),INPLACE)
++#define DefineSimpleCacheLookup(STRUCT, FUNC)				\
++        DefineCacheLookup(struct STRUCT, h, FUNC##_lookup,		\
++        (struct STRUCT *item, int set), /*no setup */,			\
++	& FUNC##_cache, FUNC##_hash(item), FUNC##_match(item, tmp),	\
++	STRUCT##_init(new, item), STRUCT##_update(tmp, item))
++
+ 
+ #define cache_for_each(pos, detail, index, member) 						\
+ 	for (({read_lock(&(detail)->hash_lock); index = (detail)->hash_size;}) ;		\
+
+diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
+--- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2006-03-09 17:13:54.000000000 +1100
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-03-09 17:15:13.000000000 +1100
+@@ -259,7 +259,7 @@ static struct cache_detail rsi_cache = {
+ 	.cache_parse    = rsi_parse,
+ };
+ 
+-static DefineSimpleCacheLookup(rsi, 0)
++static DefineSimpleCacheLookup(rsi, rsi)
+ 
+ /*
+  * The rpcsec_context cache is used to store a context that is
+@@ -446,7 +446,7 @@ static struct cache_detail rsc_cache = {
+ 	.cache_parse	= rsc_parse,
+ };
+ 
+-static DefineSimpleCacheLookup(rsc, 0);
++static DefineSimpleCacheLookup(rsc, rsc);
+ 
+ static struct rsc *
+ gss_svc_searchbyctx(struct xdr_netobj *handle)
+
+diff ./net/sunrpc/svcauth_unix.c~current~ ./net/sunrpc/svcauth_unix.c
+--- ./net/sunrpc/svcauth_unix.c~current~	2006-03-09 17:13:01.000000000 +1100
++++ ./net/sunrpc/svcauth_unix.c	2006-03-09 17:15:13.000000000 +1100
+@@ -258,7 +258,7 @@ struct cache_detail ip_map_cache = {
+ 	.cache_show	= ip_map_show,
+ };
+ 
+-static DefineSimpleCacheLookup(ip_map, 0)
++static DefineSimpleCacheLookup(ip_map, ip_map)
+ 
+ 
+ int auth_unix_add_addr(struct in_addr addr, struct auth_domain *dom)
 
 
 -------------------------------------------------------
