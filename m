@@ -1,27 +1,26 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: ACL on NFS, how make it work?
-Date: Thu, 9 Mar 2006 12:20:13 +0100
-Message-ID: <200603091220.13561.agruen@suse.de>
-References: <20060303103806.GB8038@sv.lnf.it> <20060308170425.GS8060@sv.lnf.it> <20060309014955.GA8089@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Re: ACL on NFS, how make it work?
+Date: Thu, 9 Mar 2006 09:00:02 -0500
+Message-ID: <20060309140002.GB1093@fieldses.org>
+References: <20060303103806.GB8038@sv.lnf.it> <20060308170425.GS8060@sv.lnf.it> <20060309014955.GA8089@fieldses.org> <200603090056.31041.gopal@nerur.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Marco Gaiarin <gaio@sv.lnf.it>,
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, Marco Gaiarin <gaio@sv.lnf.it>,
+	Andreas Gruenbacher <agruen@suse.de>,
 	Marius Aamodt Eriksen <marius@umich.edu>,
-	Jeff Sedlak <jsedlak@umich.edu>, nfs@lists.sourceforge.net,
-	Gopal Santhanam <gopal@nerur.com>
+	Jeff Sedlak <jsedlak@umich.edu>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHJBt-0001Wt-Vy
-	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 03:20:21 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1FHLgY-0000YY-7A
+	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 06:00:10 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHJBs-0008VP-IT
-	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 03:20:21 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20060309014955.GA8089@fieldses.org>
+	id 1FHLgU-00088P-51
+	for nfs@lists.sourceforge.net; Thu, 09 Mar 2006 06:00:10 -0800
+To: Gopal Santhanam <gopal@nerur.com>
+In-Reply-To: <200603090056.31041.gopal@nerur.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,56 +34,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
+On Thu, Mar 09, 2006 at 12:56:30AM -0800, Gopal Santhanam wrote:
+> It seems to work for me.  Thanks!
+> 
+> Why does the return value of vfs_getxattr change between the two 
+> calls though?  Can you explain?
 
-the patch looks good.
+Well, it *could* happen just by accident if someone was modifying the
+acl simultaneously with our fetching it.  Obviously that wasn't
+happening in this case, though.
 
-On Thursday 09 March 2006 02:49, J. Bruce Fields wrote:
-> nfsd4: fix acl xattr length return
-Actually all versions, not only v4.
->
-> We should be using the length from the second vfs_getxattr, in case it
-> changed.  (Note: there's still a small race here; we could end up returning
-> -ENOMEM if the length increased between the first and second call.  Oh
-> well; I'm not sure it's worth spending a lot of effort to fix that.)
->
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-> ---
->
->  fs/nfsd/vfs.c |    6 +-----
->  1 files changed, 1 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 5320e5a..ac3a8e4 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -371,7 +371,6 @@ out_nfserr:
->  static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
->  {
->  	ssize_t buflen;
-> -	int error;
->
->  	buflen = vfs_getxattr(dentry, key, NULL, 0);
->  	if (buflen <= 0)
-> @@ -381,10 +380,7 @@ static ssize_t nfsd_getxattr(struct dent
->  	if (!*buf)
->  		return -ENOMEM;
->
-> -	error = vfs_getxattr(dentry, key, *buf, buflen);
-> -	if (error < 0)
-> -		return error;
-> -	return buflen;
-> +	return vfs_getxattr(dentry, key, *buf, buflen);
->  }
->  #endif
+Looks to me like a bug in XFS.  Though in practice, since the return
+value is expected to be used just to guess at the correct buffer size,
+returning a too-large size probably isn't a problem for most
+applications.
 
-Thanks,
-Andreas
-
--- 
-Andreas Gruenbacher <agruen@suse.de>
-SUSE Labs, SUSE LINUX Products GmbH / Novell Inc.
+--b.
 
 
 -------------------------------------------------------
