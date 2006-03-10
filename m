@@ -1,23 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS refusing to perform when backup ISDN link is up
-Date: Fri, 10 Mar 2006 09:32:35 -0500
-Message-ID: <1142001156.8041.5.camel@lade.trondhjem.org>
-References: <47324.62.159.242.114.1141983018.squirrel@otto.lonx.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: /var/lib/nfs/v4recovery
+Date: Fri, 10 Mar 2006 10:26:03 -0500
+Message-ID: <20060310152603.GD24554@fieldses.org>
+References: <20060310071803.8229.qmail@web51601.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHig7-0005zd-Qs
-	for nfs@lists.sourceforge.net; Fri, 10 Mar 2006 06:33:15 -0800
-Received: from pat.uio.no ([129.240.130.16] ident=7411)
+	id 1FHjVI-00037D-Nn
+	for nfs@lists.sourceforge.net; Fri, 10 Mar 2006 07:26:08 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FHig6-0006im-Eo
-	for nfs@lists.sourceforge.net; Fri, 10 Mar 2006 06:33:15 -0800
-To: Daniel Amthor <da@lonx.net>
-In-Reply-To: <47324.62.159.242.114.1141983018.squirrel@otto.lonx.net>
+	id 1FHjVF-00045U-RE
+	for nfs@lists.sourceforge.net; Fri, 10 Mar 2006 07:26:08 -0800
+To: mehta kiran <kiranmehta1981@yahoo.com>
+In-Reply-To: <20060310071803.8229.qmail@web51601.mail.yahoo.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,36 +31,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2006-03-10 at 10:30 +0100, Daniel Amthor wrote:
-> Hello List,
-> our setup:
-> 25 Solaris Clients bound to a Linux SLES 9 Server (2.6.5-7-139)
-> Authentication and NameServices run locally and on as a backup a remote
-> site connected via Fibre Optics. When the Fibre Link goes down a 384k ISDN
-> backup fails in.
-> The Scene:
-> When ISDN failover occurs the local client performance goes down rapidly,
-> even though all traffic stays local. We get "RPC timeout" as well as some
-> "Permission denied" in the logs. Quite erratic, sometime it works,
-> sometimes it does not. I've read the NFS FAQ and figured maybe MTU and
-> fragmentation, but then all traffic should be local.
-> Any ideas or experiences ?
-> Best
-> Dan
+On Thu, Mar 09, 2006 at 11:18:03PM -0800, mehta kiran wrote:
+>    I could see that it is mentioned that
+>    /var/lib/nfs/v4recovery needs to be created
+>    for NFSv4 at 
+>  
+> http://www.citi.umich.edu/projects/nfsv4/linux/using-nfsv4.html.
 
-rpc.mountd and rpc.statd both need BIND lookup services in order to
-resolve the entries in /etc/exports. If those are running over the ISDN
-link, then that might explain some of the issues you are seeing.
+We've had some negative feedback on the way we're storing persistant
+state for reboot recovery.  Among other problems:
+	- There's an objection (which I don't entirely claim to
+	  understand) against nfsd doing directory operations in the
+	  kernel
+	- It doesn't give any chance for synchronous callouts for, e.g.,
+	  mirroring the data to a backup server for failover, whereas
+	  the standard statd stuff does.
 
-Try adding the clients to /etc/hosts on the server and then check
-that /etc/nsswitch.conf does local file lookup before dns by changing
-your 'hosts' entry to
+Hopefully this will fixed by 2.6.17 or 2.6.18.
 
-hosts:		files dns
+>    1. What is this file for ?
+>       As NFSv4 uses lease based locking , it does
+>       create files on persistent storage.
+>       And its state could be stored   
+>       in /var/lib/nfs/statd/state , right ?
 
-Cheers,
-  Trond
+I don't think we can store the state in exactly the same place, but we
+probably will move to something more similar to statd.
 
+>    2. I have read that lease time for NFSV4 can be 
+>       chnaged by setting value in
+>       /proc/fs/nfsd/nfsv4leasetime. In case i dont
+>       set lease period  , is grace period set by user
+>       considered as the lease time ?
+
+Since we use leases to implement delegations, there's an ugly conflict
+between /proc/sys/fs/lease-break-time and /proc/fs/nfsd/nfsv4leasetime,
+which we're currently working on fixing.
+
+--b.
 
 
 -------------------------------------------------------
