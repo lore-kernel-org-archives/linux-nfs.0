@@ -1,21 +1,23 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Subject: [PATCH] nfs4: fix segfult on errors returned that are < -1000
-Date: Mon, 13 Mar 2006 11:05:03 -0500
-Message-ID: <20060313160503.GA27685@hmsreliant.homelinux.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] nfs4: fix segfult on errors returned that are < -1000
+Date: Mon, 13 Mar 2006 11:12:52 -0500
+Message-ID: <1142266372.8017.6.camel@lade.trondhjem.org>
+References: <20060313160503.GA27685@hmsreliant.homelinux.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, nhorman@tuxdriver.com
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FIpXq-0006Gq-9T
-	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 08:05:18 -0800
-Received: from ra.tuxdriver.com ([24.172.12.4])
+	id 1FIpfU-00076X-V0
+	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 08:13:12 -0800
+Received: from pat.uio.no ([129.240.130.16] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FIpXo-0006Vr-T8
-	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 08:05:18 -0800
-To: nfs@lists.sourceforge.net
+	id 1FIpfU-0000TS-Fb
+	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 08:13:12 -0800
+To: Neil Horman <nhorman@tuxdriver.com>
+In-Reply-To: <20060313160503.GA27685@hmsreliant.homelinux.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,45 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hey all-
-	This was reported to me last week.  If you attempt to mount an nfsv4
-share, and the mount syscall for that filesystem returns an error code that is
-less than -1000 (of which NFS4 has many), The IS_ERR macro function will
-erroniously return false, and do_kern_mount will pass the error code to called
-functions as though it were a valid pointer.  This patch fixes up the missed
-point in nfs4_get_sb that allows such an error to propogate to do_kern_mount.
+On Mon, 2006-03-13 at 11:05 -0500, Neil Horman wrote:
+> Hey all-
+> 	This was reported to me last week.  If you attempt to mount an nfsv4
+> share, and the mount syscall for that filesystem returns an error code that is
+> less than -1000 (of which NFS4 has many), The IS_ERR macro function will
+> erroniously return false, and do_kern_mount will pass the error code to called
+> functions as though it were a valid pointer.  This patch fixes up the missed
+> point in nfs4_get_sb that allows such an error to propogate to do_kern_mount.
 
-Regards
-Neil
+Nice catch! I will apply.
 
+Thanks,
+  Trond
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-
-
- inode.c |    2 +-
- 1 files changed, 1 insertion(+), 1 deletion(-)
-
-
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index a77ee95..0eb1c57 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -2000,7 +2000,7 @@ static struct super_block *nfs4_get_sb(s
- 	if (error) {
- 		up_write(&s->s_umount);
- 		deactivate_super(s);
--		return ERR_PTR(error);
-+		return ERR_PTR(nfs4_map_errors(error));
- 	}
- 	s->s_flags |= MS_ACTIVE;
- 	return s;
--- 
-/***************************************************
- *Neil Horman
- *Software Engineer
- *gpg keyid: 1024D / 0x92A74FA1 - http://pgp.mit.edu
- ***************************************************/
 
 
 -------------------------------------------------------
