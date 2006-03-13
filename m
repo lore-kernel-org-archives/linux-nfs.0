@@ -1,101 +1,164 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Subject: Re: Re: [PATCH] nfs4: fix segfult on errors returned that are < -1000
-Date: Mon, 13 Mar 2006 14:47:23 -0500
-Message-ID: <20060313194723.GC27685@hmsreliant.homelinux.net>
-References: <20060313160503.GA27685@hmsreliant.homelinux.net> <1142276979.16692.6.camel@lade.trondhjem.org>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [RFC: -mm patch] fs/nfsd/export.c,net/sunrpc/cache.c: make needlessly global code static
+Date: Mon, 13 Mar 2006 22:19:26 +0100
+Message-ID: <20060313211926.GJ13973@stusta.de>
+References: <20060312031036.3a382581.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FIt17-0004fb-7d
-	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 11:47:45 -0800
-Received: from ra.tuxdriver.com ([24.172.12.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FIt15-0007n0-Sr
-	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 11:47:45 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1142276979.16692.6.camel@lade.trondhjem.org>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932319AbWCMVT2@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>, NeilBrown <neilb@suse.de>
+In-Reply-To: <20060312031036.3a382581.akpm@osdl.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, Mar 13, 2006 at 02:09:39PM -0500, Trond Myklebust wrote:
-> On Mon, 2006-03-13 at 11:05 -0500, Neil Horman wrote:
-> > Hey all-
-> > 	This was reported to me last week.  If you attempt to mount an nfsv4
-> > share, and the mount syscall for that filesystem returns an error code that is
-> > less than -1000 (of which NFS4 has many), The IS_ERR macro function will
-> > erroniously return false, and do_kern_mount will pass the error code to called
-> > functions as though it were a valid pointer.  This patch fixes up the missed
-> > point in nfs4_get_sb that allows such an error to propogate to do_kern_mount.
+On Sun, Mar 12, 2006 at 03:10:36AM -0800, Andrew Morton wrote:
+>...
+> +knfsd-change-the-store-of-auth_domains-to-not-be-a-cache.patch
+> +knfsd-change-the-store-of-auth_domains-to-not-be-a-cache-fix.patch
+> +knfsd-change-the-store-of-auth_domains-to-not-be-a-cache-fix-2.patch
+> +knfsd-change-the-store-of-auth_domains-to-not-be-a-cache-fix-3.patch
+> +knfsd-change-the-store-of-auth_domains-to-not-be-a-cache-fix-3-fix.patch
+> +knfsd-break-the-hard-linkage-from-svc_expkey-to-svc_export.patch
+> +knfsd-get-rid-of-inplace-sunrpc-caches.patch
+> +knfsd-create-cache_lookup-function-instead-of-using-a-macro-to-declare-one.patch
+> +knfsd-convert-ip_map-cache-to-use-the-new-lookup-routine.patch
+> +knfsd-use-new-cache_lookup-for-svc_export.patch
+> +knfsd-use-new-cache_lookup-for-svc_expkey-cache.patch
+> +knfsd-use-new-sunrpc-cache-for-rsi-cache.patch
+> +knfsd-use-new-cache-code-for-rsc-cache.patch
+> +knfsd-use-new-cache-code-for-name-id-lookup-caches.patch
+> +knfsd-an-assortment-of-little-fixes-to-the-sunrpc-cache-code.patch
+> +knfsd-remove-definecachelookup.patch
+> +knfsd-unexport-cache_fresh-and-fix-a-small-race.patch
+> +knfsd-convert-sunrpc_cache-to-use-krefs.patch
+> +knfsd-convert-sunrpc_cache-to-use-krefs-fix.patch
 > 
-> Hmm... On a second read through the code, it looks like this can still
-> cause trouble in nfs_sb_init(), where there is a similar test. The real
-> fix should be to ensure that nfs4_proc_get_root() always maps the raw
-> NFSv4 errors into kernel errors.
-> 
-Yeah, good catch, that definately covers all the cases where this might be
-wrong.
-
-Regards
-Neil
-
-> Cheers,
->   Trond
-
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> NFSv4: fix mount segfault on errors returned that are < -1000
-> 
-> It turns out that nfs4_proc_get_root() may return raw NFSv4 errors instead
-> of mapping them to kernel errors.
-> Problem spotted by Neil Horman <nhorman@tuxdriver.com>
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/nfs4proc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 145a6b7..3f86138 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1432,7 +1432,7 @@ static int nfs4_proc_get_root(struct nfs
->  	if (status == 0)
->  		status = nfs4_do_fsinfo(server, fhandle, info);
->  out:
-> -	return status;
-> +	return nfs4_map_errors(status);
->  }
->  
->  static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+>  knfsd update
+>...
 
 
--- 
-/***************************************************
- *Neil Horman
- *Software Engineer
- *gpg keyid: 1024D / 0x92A74FA1 - http://pgp.mit.edu
- ***************************************************/
+We can now make some code static.
 
 
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
+
+---
+
+ fs/nfsd/export.c             |   13 ++++++++-----
+ include/linux/nfsd/export.h  |    5 +----
+ include/linux/sunrpc/cache.h |    1 -
+ net/sunrpc/cache.c           |    2 +-
+ net/sunrpc/sunrpc_syms.c     |    1 -
+ 5 files changed, 10 insertions(+), 12 deletions(-)
+
+--- linux-2.6.16-rc6-mm1-full/include/linux/nfsd/export.h.old	2006-03-13 21:18:50.000000000 +0100
++++ linux-2.6.16-rc6-mm1-full/include/linux/nfsd/export.h	2006-03-13 21:20:05.000000000 +0100
+@@ -86,9 +86,6 @@
+ void			nfsd_export_flush(void);
+ void			exp_readlock(void);
+ void			exp_readunlock(void);
+-struct svc_expkey *	exp_find_key(struct auth_domain *clp, 
+-				     int fsid_type, u32 *fsidv,
+-				     struct cache_req *reqp);
+ struct svc_export *	exp_get_by_name(struct auth_domain *clp,
+ 					struct vfsmount *mnt,
+ 					struct dentry *dentry,
+@@ -102,7 +99,7 @@
+ int			exp_pseudoroot(struct auth_domain *, struct svc_fh *fhp, struct cache_req *creq);
+ int			nfserrno(int errno);
+ 
+-extern struct cache_detail svc_export_cache, svc_expkey_cache;
++extern struct cache_detail svc_export_cache;
+ 
+ static inline void exp_put(struct svc_export *exp)
+ {
+--- linux-2.6.16-rc6-mm1-full/fs/nfsd/export.c.old	2006-03-13 21:19:13.000000000 +0100
++++ linux-2.6.16-rc6-mm1-full/fs/nfsd/export.c	2006-03-13 21:25:02.000000000 +0100
+@@ -57,7 +57,7 @@
+ #define	EXPKEY_HASHMASK		(EXPKEY_HASHMAX -1)
+ static struct cache_head *expkey_table[EXPKEY_HASHMAX];
+ 
+-void expkey_put(struct kref *ref)
++static void expkey_put(struct kref *ref)
+ {
+ 	struct svc_expkey *key = container_of(ref, struct svc_expkey, h.ref);
+ 
+@@ -87,6 +87,8 @@
+ 
+ static struct svc_expkey *svc_expkey_update(struct svc_expkey *new, struct svc_expkey *old);
+ static struct svc_expkey *svc_expkey_lookup(struct svc_expkey *);
++static struct cache_detail svc_expkey_cache;
++
+ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
+ {
+ 	/* client fsidtype fsid [path] */
+@@ -255,7 +257,7 @@
+ 		return NULL;
+ }
+ 
+-struct cache_detail svc_expkey_cache = {
++static struct cache_detail svc_expkey_cache = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= EXPKEY_HASHMAX,
+ 	.hash_table	= expkey_table,
+@@ -345,7 +347,8 @@
+ 	(*bpp)[-1] = '\n';
+ }
+ 
+-struct svc_export *svc_export_update(struct svc_export *new, struct svc_export *old);
++static struct svc_export *svc_export_update(struct svc_export *new,
++					    struct svc_export *old);
+ static struct svc_export *svc_export_lookup(struct svc_export *);
+ 
+ static int check_export(struct inode *inode, int flags)
+@@ -574,7 +577,7 @@
+ 		return NULL;
+ }
+ 
+-struct svc_export *
++static struct svc_export *
+ svc_export_update(struct svc_export *new, struct svc_export *old)
+ {
+ 	struct cache_head *ch;
+@@ -593,7 +596,7 @@
+ }
+ 
+ 
+-struct svc_expkey *
++static struct svc_expkey *
+ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
+ {
+ 	struct svc_expkey key, *ek;
+--- linux-2.6.16-rc6-mm1-full/include/linux/sunrpc/cache.h.old	2006-03-13 21:26:34.000000000 +0100
++++ linux-2.6.16-rc6-mm1-full/include/linux/sunrpc/cache.h	2006-03-13 21:26:40.000000000 +0100
+@@ -163,7 +163,6 @@
+ 	kref_put(&h->ref, cd->cache_put);
+ }
+ 
+-extern void cache_init(struct cache_head *h);
+ extern int cache_check(struct cache_detail *detail,
+ 		       struct cache_head *h, struct cache_req *rqstp);
+ extern void cache_flush(void);
+--- linux-2.6.16-rc6-mm1-full/net/sunrpc/cache.c.old	2006-03-13 21:26:55.000000000 +0100
++++ linux-2.6.16-rc6-mm1-full/net/sunrpc/cache.c	2006-03-13 21:27:01.000000000 +0100
+@@ -37,7 +37,7 @@
+ static void cache_defer_req(struct cache_req *req, struct cache_head *item);
+ static void cache_revisit_request(struct cache_head *item);
+ 
+-void cache_init(struct cache_head *h)
++static void cache_init(struct cache_head *h)
+ {
+ 	time_t now = get_seconds();
+ 	h->next = NULL;
+--- linux-2.6.16-rc6-mm1-full/net/sunrpc/sunrpc_syms.c.old	2006-03-13 21:27:10.000000000 +0100
++++ linux-2.6.16-rc6-mm1-full/net/sunrpc/sunrpc_syms.c	2006-03-13 21:27:13.000000000 +0100
+@@ -105,7 +105,6 @@
+ EXPORT_SYMBOL(cache_check);
+ EXPORT_SYMBOL(cache_flush);
+ EXPORT_SYMBOL(cache_purge);
+-EXPORT_SYMBOL(cache_init);
+ EXPORT_SYMBOL(cache_register);
+ EXPORT_SYMBOL(cache_unregister);
+ EXPORT_SYMBOL(qword_add);
