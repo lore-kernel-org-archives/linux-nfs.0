@@ -1,54 +1,80 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [NFS] [PATCH 000 of 14] knfsd: Introduction
-Date: Mon, 13 Mar 2006 06:41:50 -0500
-Message-ID: <44155A7E.4030804@RedHat.com>
-References: <20060309174755.24381.patches@notabene>
+From: Neil Horman <nhorman@tuxdriver.com>
+Subject: [PATCH] nfs4: fix segfult on errors returned that are < -1000
+Date: Mon, 13 Mar 2006 11:05:03 -0500
+Message-ID: <20060313160503.GA27685@hmsreliant.homelinux.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932130AbWCMLmu@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <20060309174755.24381.patches@notabene>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, nhorman@tuxdriver.com
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FIpXq-0006Gq-9T
+	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 08:05:18 -0800
+Received: from ra.tuxdriver.com ([24.172.12.4])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FIpXo-0006Vr-T8
+	for nfs@lists.sourceforge.net; Mon, 13 Mar 2006 08:05:18 -0800
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-NeilBrown wrote:
-> The following series of patches changes the code for lookup up
-> authentication/authorisation caches in sunrpc as used by nfsd.  That
-> than having a delightful macro that defines a function of a particular
-> type of cache, the functions are coded on a more traditional manner
-> using library routines.
-> 
-> This will hopefully make the code more maintainable.
-After looking over these patches, it appears there two 'minor'
-things missing... comments and dprintk statements... :-)
-Maybe I missed them, but out of all these 14 patches (i.e. basically
-rewriting a critical part of kNFSD) not one comment or dprintk
-as added....
+Hey all-
+	This was reported to me last week.  If you attempt to mount an nfsv4
+share, and the mount syscall for that filesystem returns an error code that is
+less than -1000 (of which NFS4 has many), The IS_ERR macro function will
+erroniously return false, and do_kern_mount will pass the error code to called
+functions as though it were a valid pointer.  This patch fixes up the missed
+point in nfs4_get_sb that allows such an error to propogate to do_kern_mount.
 
-Now I'm sure this is a much better design that the previous one,
-(i.e. hide sight is always 20/20) and I'm looking forward to
-help iron out the nits... But without meaningful comments and a way
-to turn on a _few_ well placed "I failed here" type of debug
-messages, the design really doesn't matter since the maintainable
-has not improved... imho...
+Regards
+Neil
 
-Secondly,  In a number of places, mostly in the alloc routines and in
-patch 006 there are if statements like:
 
-+	if (ch)
-+		return container_of(ch, struct svc_export, h);
-+	else
-+		return NULL;
-the else is simply not needed... Plus adding a dprintk like:
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
 
-+	if (ch)
-+		return container_of(ch, struct svc_export, h);
-+	
-+	dprintk("svc_export_update: returns NULL\n");
-+	return NULL;
-might make sense... assuming svc_export_update does not return NULL
-99% of the time...
 
-steved.
+ inode.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
+
+
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index a77ee95..0eb1c57 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -2000,7 +2000,7 @@ static struct super_block *nfs4_get_sb(s
+ 	if (error) {
+ 		up_write(&s->s_umount);
+ 		deactivate_super(s);
+-		return ERR_PTR(error);
++		return ERR_PTR(nfs4_map_errors(error));
+ 	}
+ 	s->s_flags |= MS_ACTIVE;
+ 	return s;
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *gpg keyid: 1024D / 0x92A74FA1 - http://pgp.mit.edu
+ ***************************************************/
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
