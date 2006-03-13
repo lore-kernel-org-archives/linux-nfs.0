@@ -1,25 +1,24 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: NFS directio
-Date: Fri, 31 Mar 2006 10:50:26 -0500
-Message-ID: <442D4FC2.7060109@citi.umich.edu>
-References: <20060330151544.GA11915@suse.de> <1143734612.8093.8.camel@lade.trondhjem.org> <20060331074900.GC32461@suse.de> <12E368A4-2262-4EBF-8769-581DB3500A36@citi.umich.edu> <20060331145849.GF18629@suse.de>
-Reply-To: cel@citi.umich.edu
+From: Ian Kent <raven@themaw.net>
+Subject: Re: mounting NFS with TCP option
+Date: Mon, 13 Mar 2006 11:42:30 +0800 (WST)
+Message-ID: <Pine.LNX.4.64.0603131142050.2349@eagle.themaw.net>
+References: <a9ed420f0603070703x7a864804h9e6e2786b6dcdd19@mail.gmail.com>
+ <200603071614.26647.vincent.roqueta@ext.bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net
+Content-Type: MULTIPART/MIXED; BOUNDARY="822748769-190459245-1142221350=:2349"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FPLtY-00072Q-HR
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 07:50:40 -0800
-Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	id 1FIdwr-00071c-E8
+	for nfs@lists.sourceforge.net; Sun, 12 Mar 2006 19:42:21 -0800
+Received: from wombat.indigo.net.au ([202.0.185.19])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.44)
-	id 1FPLtX-0006Xs-Dd
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 07:50:40 -0800
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20060331145849.GF18629@suse.de>
+	id 1FIdwq-0006e0-S5
+	for nfs@lists.sourceforge.net; Sun, 12 Mar 2006 19:42:21 -0800
+To: Vincent Roqueta <vincent.roqueta@ext.bull.net>
+In-Reply-To: <200603071614.26647.vincent.roqueta@ext.bull.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,26 +32,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Olaf Kirch wrote:
-> On Fri, Mar 31, 2006 at 09:35:34AM -0500, Chuck Lever wrote:
->> the check isn't in 2.6.16.  it was removed sometime after 2.6.5.
-> 
-> It is still in the 2.6.16 tree I'm looking at; else I wouldn't ask :)
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-it's been in my trees since 2.6.13 or even earlier, my mistake.
+--822748769-190459245-1142221350=:2349
+Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-that change is part of the aio+dio patches that were just included in 
-2.6.17-rc1.  instead of creating a single patch for this change, you 
-should consider taking those patches, since they were tested as a unit.
+On Tue, 7 Mar 2006, Vincent Roqueta wrote:
 
-if you can guarantee that atomic_t is 32-bits on every platform you 
-support, then it should be save to change that #define to 2^31. 
-otherwise, the work to eliminate the limit entirely has already been 
-done by the above-mentioned patches.
+> Le Mardi 7 Mars 2006 16:03, Vijay Chauhan a =E9crit=A0:
+> > Hi,
+> > im mounting a remote file system like this:
+> > while [ "a" =3D=3D "a" ];
+> > do
+> > mount -t nfs -o tcp server:/file-system-path /mnt-point
+> > umount -at nfs
+> > done
+> >
+> > after few mounts it stop mounting the file system.
+> >
+> > Can anyone give any hints/suggestion
+> > Also does tcp have any effect in this case?
+> >
+> > TIA,
+> > Vijay
+>=20
+> Sorry... I haven't seen you where unmounting between each mount/umount.
+> TCP port need a few seconds to be freed and reusable so :
 
--- 
-corporate:	<cel at netapp dot com>
-personal:	<chucklever at bigfoot dot com>
+60 seconds.
+
+>=20
+> Try this :
+> while [ "a" =3D=3D "a" ];
+>  do
+>  mount -t nfs -o tcp server:/file-system-path /mnt-point
+> sleep 2
+>  umount -at nfs
+>  done
+>=20
+>=20
+> -------------------------------------------------------
+> This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
+ge
+> that extends applications into web and mobile media. Attend the live webc=
+ast
+> and join the prime developer group breaking into this new coding territor=
+y!
+> http://sel.as-us.falkag.net/sel?cmd______________________________________=
+_________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
+
+--822748769-190459245-1142221350=:2349--
 
 
 -------------------------------------------------------
