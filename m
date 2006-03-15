@@ -1,37 +1,52 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] sunrpc svc: be quieter
-Date: Tue, 14 Mar 2006 16:29:19 -0500
-Message-ID: <1142371759.7987.27.camel@lade.trondhjem.org>
-References: <20060305005532.5E7A0870504@zog.reactivated.net>
-	 <Pine.LNX.4.61.0603051451590.30115@yvahk01.tjqt.qr>
-	 <1141678330.31680.13.camel@lade.trondhjem.org>
-	 <441733C0.5040605@gentoo.org>
+From: Jun Zhang <nugulus@yahoo.com>
+Subject: mount point to mount point transfer rate low
+Date: Tue, 14 Mar 2006 16:39:15 -0800 (PST)
+Message-ID: <20060315003915.22169.qmail@web52406.mail.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jan Engelhardt <jengelh@linux01.gwdg.de>, neilb@cse.unsw.edu.au,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	okir@monad.swb.de
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751888AbWCNVaD@vger.kernel.org>
-To: Daniel Drake <dsd@gentoo.org>
-In-Reply-To: <441733C0.5040605@gentoo.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+To: NFS@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2006-03-14 at 21:21 +0000, Daniel Drake wrote:
-> Trond,
-> 
-> Trond Myklebust wrote:
-> > They are probably trying to ping the server with a NULL procedure call
-> > to test for service availability. We should allow that particular
-> > usage...
-> 
-> Thanks, that sounds likely. Can you give some hints as to how a NULL 
-> procedure call might appear? Would testing for prog==0 and/or proc==0 be 
-> appropriate?
+There are two mount points on my solaris 9 box in a
+gigabit network. Let's label them R1 (the first remote
+NFS mount point), R2 (the second remote NFS mount
+point) and L (local directory).
+The transfer rates when copying files are as follows,
+L <----> R1  20MB/s
+L <----> R2  20MB/s
+but
+R1 <---> R2  0.2MB/s
 
-I can't see that authorising calls to prog==0 could ever be useful (what
-would that mean?), but proc==0 is another matter: that is precisely the
-NULL procedure call that I mentioned above.
+What is the problem?
 
-Cheers,
-  Trond
+
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
+ge
+that extends applications into web and mobile media. Attend the live webc=
+ast
+and join the prime developer group breaking into this new coding territor=
+y!
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
+121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
