@@ -1,52 +1,50 @@
-From: Jun Zhang <nugulus@yahoo.com>
-Subject: mount point to mount point transfer rate low
-Date: Tue, 14 Mar 2006 16:39:15 -0800 (PST)
-Message-ID: <20060315003915.22169.qmail@web52406.mail.yahoo.com>
+From: Aurelien Degremont <aurelien.degremont@cea.fr>
+Subject: NFS superblock sharing implies mount flags bug
+Date: Wed, 15 Mar 2006 11:37:57 +0100
+Message-ID: <200603151038.LAA21392@styx.bruyeres.cea.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Return-path: <nfs-admin@lists.sourceforge.net>
-To: NFS@lists.sourceforge.net
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	Jacques-Charles Lafoucriere <jc.lafoucriere@cea.fr>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: trond.myklebust@fys.uio.no
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-There are two mount points on my solaris 9 box in a
-gigabit network. Let's label them R1 (the first remote
-NFS mount point), R2 (the second remote NFS mount
-point) and L (local directory).
-The transfer rates when copying files are as follows,
-L <----> R1  20MB/s
-L <----> R2  20MB/s
-but
-R1 <---> R2  0.2MB/s
+Hello
 
-What is the problem?
+I'm facing incorrect using of mount flags when dealing with NFS mounts 
+and I think it could be seen as a bug.
+
+The error occurs when mounting the same NFS export many times, on the 
+same machine but *with different mount flags*, particularly concerning 
+RO/RW flags.
+
+As the NFS client code re-uses superblocks when it detects that it is 
+the same export (same server/same port/same exported directory) and that 
+the read-only flag is managed as a per-superblock flag, if a NFS exports 
+is mounted a second time, the superblock of the first mount is re-used 
+and the specified mount flag is ignored.
+
+# mount foo:/bar /bar_ro -o ro
+# mount foo:/bar /bar_rw -o rw
+$ touch /bar_rw/bar
+touch: cannot touch `/bar_rw/bar': Read-only file system
+
+Ideally, the best solution to fix this is to move the RDONLY flag from 
+its per-superblock basis to a per-mountpoint (vfsmount) basis. I do not 
+know is there is a something that prevent that except that this implies 
+many changes as many codes do not use macros but access s_flags directly.
+
+It seems quite clear that the superblock sharing couldn't be changed (to 
+avoid incoherency, inode aliasing and so on...) ?
+
+Do you have a (better) solution ?
+I can help if needed.
 
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
+Cordially
 
-
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
-ge
-that extends applications into web and mobile media. Attend the live webc=
-ast
-and join the prime developer group breaking into this new coding territor=
-y!
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
-121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-- 
+Aurelien Degremont
