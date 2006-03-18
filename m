@@ -1,17 +1,20 @@
-From: MAILER-DAEMON@yahoo.com
-Subject: failure delivery
-Date: 18 Mar 2006 05:45:22 -0000
-Message-ID: <E1FKUFj-0007QP-QO@mail.sourceforge.net>
+From: Mail Delivery Subsystem <MAILER-DAEMON@aol.com>
+Subject: Returned mail: User unknown
+Date: Sat, 18 Mar 2006 06:52:58 -0500 (EST)
+Message-ID: <200603181152.GAE22897@rly-xm05.mx.aol.com>
+Mime-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="GAE22897.1142682778/rly-xm05.mx.aol.com"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FKUFj-0008EP-Ug
-	for nfs@lists.sourceforge.net; Fri, 17 Mar 2006 21:45:27 -0800
-Received: from mta126.mail.mud.yahoo.com ([68.142.202.58])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FKUFj-0007QP-QO
-	for nfs@lists.sourceforge.net; Fri, 17 Mar 2006 21:45:28 -0800
-To: nfs@lists.sourceforge.net
+	id 1FKZzd-0003fw-Mu
+	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 03:53:13 -0800
+Received: from omr-m12.mx.aol.com ([64.12.136.10])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FKZzd-0000En-IF
+	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 03:53:13 -0800
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,48 +28,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Message from  yahoo.com.
-Unable to deliver message to the following address(es).
+This is a MIME-encapsulated message
 
-<root@yahoo.com>:
-This address no longer accepts mail.
+--GAE22897.1142682778/rly-xm05.mx.aol.com
 
---- Original message follows.
+The original message was received at Sat, 18 Mar 2006 06:52:35 -0500 (EST)
+from 221-134-114-122.sify.net [221.134.114.122]
 
-Return-Path: <nfs@lists.sourceforge.net>
 
-The original message is over 5k.  Message truncated to 1K.
+*** ATTENTION ***
 
-X-Rocket-Spam: 221.134.114.122
-X-YahooFilteredBulk: 221.134.114.122
-X-Rocket-Track: cat=BK; info=ip:BK<ip=221.134.114.122,policy=g-w0,n0,g100>
-X-Originating-IP: [221.134.114.122]
-Return-Path: <nfs@lists.sourceforge.net>
-Authentication-Results: mta126.mail.mud.yahoo.com
-  from=lists.sourceforge.net; domainkeys=neutral (no sig)
-Received: from 221.134.114.122  (EHLO lists.sourceforge.net) (221.134.114.122)
-  by mta126.mail.mud.yahoo.com with SMTP; Fri, 17 Mar 2006 21:45:22 -0800
+Your e-mail is being returned to you because there was a problem with its
+delivery.  The address which was undeliverable is listed in the section
+labeled: "----- The following addresses had permanent fatal errors -----".
+
+The reason your mail is being returned to you is listed in the section
+labeled: "----- Transcript of Session Follows -----".
+
+The line beginning with "<<<" describes the specific reason your e-mail could
+not be delivered.  The next line contains a second error message which is a
+general translation for other e-mail servers.
+
+Please direct further questions regarding this message to your e-mail
+administrator.
+
+--AOL Postmaster
+
+
+
+   ----- The following addresses had permanent fatal errors -----
+<jose@aol.com>
+
+   ----- Transcript of session follows -----
+... while talking to air-xm04.mail.aol.com.:
+>>> RCPT To:<jose@aol.com>
+<<< 550 MAILBOX NOT FOUND
+550 <jose@aol.com>... User unknown
+
+--GAE22897.1142682778/rly-xm05.mx.aol.com
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; rly-xm05.mx.aol.com
+Arrival-Date: Sat, 18 Mar 2006 06:52:35 -0500 (EST)
+
+Final-Recipient: RFC822; jose@aol.com
+Action: failed
+Status: 5.1.1
+Remote-MTA: DNS; air-xm04.mail.aol.com
+Diagnostic-Code: SMTP; 550 MAILBOX NOT FOUND
+Last-Attempt-Date: Sat, 18 Mar 2006 06:52:58 -0500 (EST)
+
+--GAE22897.1142682778/rly-xm05.mx.aol.com
+Content-Type: text/rfc822-headers
+
+Received: from  lists.sourceforge.net (221-134-114-122.sify.net [221.134.114.122]) by rly-xm05.mx.aol.com (vx) with ESMTP id MAILRELAYINXM56-614441bf47417a; Sat, 18 Mar 2006 06:52:24 -0500
 From: nfs@lists.sourceforge.net
-To: david@yahoo.com
-Subject: hello
-Date: Fri, 17 Mar 2006 21:45:00 -0800
+To: jose@aol.com
+Subject: 
+Date: Sat, 18 Mar 2006 03:52:22 -0800
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0000_86C886C8.F7F9F7F9"
+	boundary="----=_NextPart_000_0001_07614718.DA9BB2D9"
 X-Priority: 3
 X-MSMail-Priority: Normal
+X-AOL-IP: 221.134.114.122
+X-AOL-SCOLL-SCORE: 0:2:333963326:14495514
+X-AOL-SCOLL-URL_COUNT: 0
+Message-ID: <200603180652.614441bf47417a@rly-xm05.mx.aol.com>
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0000_86C886C8.F7F9F7F9
-Content-Type: text/plain;
-	charset="Windows-1252"
-Content-Transfer-Encoding: 7bit
-
-Tºz›¯Í¦K¶B‰danœZƒÊ™…¶Ë"íû‘ Ëž:Æ•†·™•´©ÒˆÊ¸Qïkê»äYoüÙöýa§5»_iï'V4“«_N™–ôùß{´x%°ä“’Ïë/
-7ÓViŠÍ¡‘.«Ó^ÏfÈgÙ˜ß«¦|)ÜåØ×4½™-~÷§¤llDU¸Á‰;ƒ0×¸„Š\ÆÇøäá/Lº³v3Â­2>¡âycBˆ
-i|S|¢ÅÇ½È`SîO7Ö‚†eâòH« 4o­Œp9ëCþiO…®Oa:6"I7«å`}r>ëÌì)¨ªîÆ®e2®à†ª¼Ej…šÝvw»õ·hÔ{ü»ƒS3Æ™0
-*** MESSAGE TRUNCATED ***
+--GAE22897.1142682778/rly-xm05.mx.aol.com--
 
 
 
