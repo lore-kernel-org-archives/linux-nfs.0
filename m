@@ -1,20 +1,16 @@
-From: Postmaster@relay1.sun.com
-Subject: Undeliverable mail
-Date: Thu, 16 Mar 2006 06:10:52 +0000
-Message-ID: <iss.8f964667.2d84.4419016c.b9170.1@relay1.sun.com>
-Mime-Version: 1.0
-Content-Type: multipart/report; report-type=delivery-status;
-              boundary="=_mh.ndn.2d84.4419016c_="
-Cc: Postmaster@relay1.sun.com
+From: MAILER-DAEMON@yahoo.com
+Subject: failure delivery
+Date: 18 Mar 2006 05:45:22 -0000
+Message-ID: <E1FKUFj-0007QP-QO@mail.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FJlhL-0000aU-TQ
-	for nfs@lists.sourceforge.net; Wed, 15 Mar 2006 22:10:59 -0800
-Received: from [150.143.103.14] (helo=relay1.sun.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FJlhK-0007n3-Fy
-	for nfs@lists.sourceforge.net; Wed, 15 Mar 2006 22:10:59 -0800
+	id 1FKUFj-0008EP-Ug
+	for nfs@lists.sourceforge.net; Fri, 17 Mar 2006 21:45:27 -0800
+Received: from mta126.mail.mud.yahoo.com ([68.142.202.58])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FKUFj-0007QP-QO
+	for nfs@lists.sourceforge.net; Fri, 17 Mar 2006 21:45:28 -0800
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,68 +25,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---=_mh.ndn.2d84.4419016c_=
-Content-Type: text/plain; charset=us-ascii
+Message from  yahoo.com.
+Unable to deliver message to the following address(es).
 
-Your message was not delivered to the following recipients:
+<root@yahoo.com>:
+This address no longer accepts mail.
 
-     kevin@javamedia.eng.sun.com: 550 5.7.1 <kevin@javamedia.eng.sun.com>... Access denied
-
---=_mh.ndn.2d84.4419016c_=
-Content-Type: message/delivery-status
-Content-Transfer-Encoding: 7bit
-
-Reporting-MTA: dns;relay1.sun.com
-
-Original-Recipient: rfc822;kevin@javamedia.eng.sun.com
-Final-Recipient: rfc822;kevin@javamedia.eng.sun.com
-Action: failed
-Status: 5.1.1
-Remote-MTA: dns;nwkea-mail-4.sun.com
-Diagnostic-Code: smtp;550 5.7.1 <kevin@javamedia.eng.sun.com>... Access denied
-
---=_mh.ndn.2d84.4419016c_=
-Content-Type: message/rfc822
+--- Original message follows.
 
 Return-Path: <nfs@lists.sourceforge.net>
-Received: from mms09es.sun.com (mms09es.sun.com [150.143.104.174]) by relay1.sun.com with ESMTP for kevin@javamedia.eng.sun.com; Thu, 16 Mar 2006 06:10:52 Z
-Received: from relay2.sun.com (relay2.sun.com [150.143.103.24]) by mms09es.sun.com with ESMTP for kevin@javamedia.eng.sun.com; Thu, 16 Mar 2006 06:10:50 Z
-Received: from lists.sourceforge.net ([202.56.207.29] [202.56.207.29]) by relay2.sun.com with ESMTP for kevin@javamedia.eng.sun.com; Thu, 16 Mar 2006 06:10:49 Z
+
+The original message is over 5k.  Message truncated to 1K.
+
+X-Rocket-Spam: 221.134.114.122
+X-YahooFilteredBulk: 221.134.114.122
+X-Rocket-Track: cat=BK; info=ip:BK<ip=221.134.114.122,policy=g-w0,n0,g100>
+X-Originating-IP: [221.134.114.122]
+Return-Path: <nfs@lists.sourceforge.net>
+Authentication-Results: mta126.mail.mud.yahoo.com
+  from=lists.sourceforge.net; domainkeys=neutral (no sig)
+Received: from 221.134.114.122  (EHLO lists.sourceforge.net) (221.134.114.122)
+  by mta126.mail.mud.yahoo.com with SMTP; Fri, 17 Mar 2006 21:45:22 -0800
 From: nfs@lists.sourceforge.net
-To: kevin@javamedia.eng.sun.com
-Subject: **VIRUS FOUND MAIL REJECTED**  Good day
-Date: Thu, 16 Mar 2006 11:40:02 +0530
+To: david@yahoo.com
+Subject: hello
+Date: Fri, 17 Mar 2006 21:45:00 -0800
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0006_7D37D706.ECBD314D"
+	boundary="----=_NextPart_000_0000_86C886C8.F7F9F7F9"
 X-Priority: 3
 X-MSMail-Priority: Normal
-Message-Id: <iss.8f961467.3c8a.4419016a.6d358.69@relay2.sun.com>
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0006_7D37D706.ECBD314D
+------=_NextPart_000_0000_86C886C8.F7F9F7F9
 Content-Type: text/plain;
 	charset="Windows-1252"
 Content-Transfer-Encoding: 7bit
 
-Here are your banks documents.
+Tºz›¯Í¦K¶B‰danœZƒÊ™…¶Ë"íû‘ Ëž:Æ•†·™•´©ÒˆÊ¸Qïkê»äYoüÙöýa§5»_iï'V4“«_N™–ôùß{´x%°ä“’Ïë/
+7ÓViŠÍ¡‘.«Ó^ÏfÈgÙ˜ß«¦|)ÜåØ×4½™-~÷§¤llDU¸Á‰;ƒ0×¸„Š\ÆÇøäá/Lº³v3Â­2>¡âycBˆ
+i|S|¢ÅÇ½È`SîO7Ö‚†eâòH« 4o­Œp9ëCþiO…®Oa:6"I7«å`}r>ëÌì)¨ªîÆ®e2®à†ª¼Ej…šÝvw»õ·hÔ{ü»ƒS3Æ™0
+*** MESSAGE TRUNCATED ***
 
-
-------=_NextPart_000_0006_7D37D706.ECBD314D
-Content-Type: TEXT/PLAIN
-
-Kerio WinRoute Firewall email scanner found a virus in the following attachment:
-	Name:	document.pif
-	Content type:	application/octet-stream
-Additional information from antivirus:
-	New Win32
-The attachment was removed.
-
-
-------=_NextPart_000_0006_7D37D706.ECBD314D--
-
---=_mh.ndn.2d84.4419016c_=--
 
 
 -------------------------------------------------------
