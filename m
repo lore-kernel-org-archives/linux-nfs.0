@@ -1,19 +1,30 @@
-From: Mail Delivery Subsystem <MAILER-DAEMON@aol.com>
-Subject: Returned mail: User unknown
-Date: Sat, 18 Mar 2006 06:52:58 -0500 (EST)
-Message-ID: <200603181152.GAE22897@rly-xm05.mx.aol.com>
+From: "Edith Mahoney" <gddmim@nasoda.com>
+Subject: edit
+Date: Sat, 18 Mar 2006 14:02:12 -0800
+Message-ID: <000701c64ad7$c2b5184e$6eb2b743@wfpsy>
 Mime-Version: 1.0
-Content-Type: multipart/report; report-type=delivery-status;
-	boundary="GAE22897.1142682778/rly-xm05.mx.aol.com"
+Content-Type: text/plain;
+	format=flowed;
+	charset="Windows-1252";
+	reply-type=original
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FKZzd-0003fw-Mu
-	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 03:53:13 -0800
-Received: from omr-m12.mx.aol.com ([64.12.136.10])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FKZzd-0000En-IF
-	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 03:53:13 -0800
+	id 1FKjY4-00041R-TO
+	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 14:05:24 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FKjY3-0001vJ-F2
+	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 14:05:24 -0800
+Received: from c-67-183-90-185.hsd1.wa.comcast.net ([67.183.90.185])
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1FKjY1-00053I-Up
+	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 14:05:22 -0800
+Received: from [67.183.178.110] (port=3433 helo=wfpsy)
+	by c-67-183-90-185.hsd1.wa.comcast.net with esmtp
+	id 1FKjaQ-0003jx-An
+	for nfs@lists.sourceforge.net; Sat, 18 Mar 2006 14:07:50 -0800
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,75 +39,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a MIME-encapsulated message
+To Investor:
 
---GAE22897.1142682778/rly-xm05.mx.aol.com
+nZon Corporation
+Trading As: IZON
+Last Trade: $0.45
+7 Day Proj: $1.10-$1.25
+30 Day Proj: $1.75-$2.00
 
-The original message was received at Sat, 18 Mar 2006 06:52:35 -0500 (EST)
-from 221-134-114-122.sify.net [221.134.114.122]
+InZon Corp. is the new stock on our watch.
 
+After recently acquiring SAE Group including all assets and
+technologies, IZON has been laying quite while developing a new
+technology that will revolutionize the Online Media Broadcasting
+market.
 
-*** ATTENTION ***
+Two Announcements this month have sparked our understandable
+interest. On March 6, 2006 IZON announced the expansion of its
+network by 400% which has paved the way for the announcement
+that has brought this Alert to you.
 
-Your e-mail is being returned to you because there was a problem with its
-delivery.  The address which was undeliverable is listed in the section
-labeled: "----- The following addresses had permanent fatal errors -----".
+IZON released at end of day yesterday that they have completed
+their development of a new software that allows Online Broadcast
+Companies to better utilize their networks thus reducing their
+highest expense while at the same time increasing the quality of
+broadcasts allowing them to offer more HD (High definition)
+broadcasts over the Internet.
 
-The reason your mail is being returned to you is listed in the section
-labeled: "----- Transcript of Session Follows -----".
+This technology will completely change what Tier 1 and Tier 2
+providers are able to offer to the clients in service and
+quality, and over all continue advance the technology that has
+made the internet the most powerful information medium on the
+planet.
 
-The line beginning with "<<<" describes the specific reason your e-mail could
-not be delivered.  The next line contains a second error message which is a
-general translation for other e-mail servers.
+Make no mistake, this company is going places and fast. Once
+this news hits the market we believe IZON is going to take off.
+Most important, don't let this one pass you buy. IZON is set to
+BUY.
 
-Please direct further questions regarding this message to your e-mail
-administrator.
-
---AOL Postmaster
-
-
-
-   ----- The following addresses had permanent fatal errors -----
-<jose@aol.com>
-
-   ----- Transcript of session follows -----
-... while talking to air-xm04.mail.aol.com.:
->>> RCPT To:<jose@aol.com>
-<<< 550 MAILBOX NOT FOUND
-550 <jose@aol.com>... User unknown
-
---GAE22897.1142682778/rly-xm05.mx.aol.com
-Content-Type: message/delivery-status
-
-Reporting-MTA: dns; rly-xm05.mx.aol.com
-Arrival-Date: Sat, 18 Mar 2006 06:52:35 -0500 (EST)
-
-Final-Recipient: RFC822; jose@aol.com
-Action: failed
-Status: 5.1.1
-Remote-MTA: DNS; air-xm04.mail.aol.com
-Diagnostic-Code: SMTP; 550 MAILBOX NOT FOUND
-Last-Attempt-Date: Sat, 18 Mar 2006 06:52:58 -0500 (EST)
-
---GAE22897.1142682778/rly-xm05.mx.aol.com
-Content-Type: text/rfc822-headers
-
-Received: from  lists.sourceforge.net (221-134-114-122.sify.net [221.134.114.122]) by rly-xm05.mx.aol.com (vx) with ESMTP id MAILRELAYINXM56-614441bf47417a; Sat, 18 Mar 2006 06:52:24 -0500
-From: nfs@lists.sourceforge.net
-To: jose@aol.com
-Subject: 
-Date: Sat, 18 Mar 2006 03:52:22 -0800
-MIME-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0001_07614718.DA9BB2D9"
-X-Priority: 3
-X-MSMail-Priority: Normal
-X-AOL-IP: 221.134.114.122
-X-AOL-SCOLL-SCORE: 0:2:333963326:14495514
-X-AOL-SCOLL-URL_COUNT: 0
-Message-ID: <200603180652.614441bf47417a@rly-xm05.mx.aol.com>
-
---GAE22897.1142682778/rly-xm05.mx.aol.com--
+We hope to see you jump on the bandwagon Monday March 20,
+2006!!!
 
 
 
