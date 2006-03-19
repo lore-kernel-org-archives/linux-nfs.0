@@ -1,19 +1,19 @@
 From: Mail Delivery Subsystem <MAILER-DAEMON@aol.com>
 Subject: Returned mail: User unknown
-Date: Sun, 19 Mar 2006 13:31:20 -0500 (EST)
-Message-ID: <200603191831.NAB17707@rly-xl02.mx.aol.com>
+Date: Sun, 19 Mar 2006 13:31:57 -0500 (EST)
+Message-ID: <200603191831.NAB11982@rly-xa02.mx.aol.com>
 Mime-Version: 1.0
 Content-Type: multipart/report; report-type=delivery-status;
-	boundary="NAB17707.1142793080/rly-xl02.mx.aol.com"
+	boundary="NAB11982.1142793117/rly-xa02.mx.aol.com"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FL2ge-0006U2-TB
-	for nfs@lists.sourceforge.net; Sun, 19 Mar 2006 10:31:32 -0800
-Received: from omr-m13.mx.aol.com ([64.12.136.11])
+	id 1FL2hE-0006aE-Nr
+	for nfs@lists.sourceforge.net; Sun, 19 Mar 2006 10:32:08 -0800
+Received: from omr-m07.mx.aol.com ([64.12.138.19])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FL2ge-0007V9-JL
-	for nfs@lists.sourceforge.net; Sun, 19 Mar 2006 10:31:32 -0800
+	id 1FL2hD-0007bz-DH
+	for nfs@lists.sourceforge.net; Sun, 19 Mar 2006 10:32:08 -0800
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,9 +30,9 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a MIME-encapsulated message
 
---NAB17707.1142793080/rly-xl02.mx.aol.com
+--NAB11982.1142793117/rly-xa02.mx.aol.com
 
-The original message was received at Sun, 19 Mar 2006 13:31:07 -0500 (EST)
+The original message was received at Sun, 19 Mar 2006 13:31:46 -0500 (EST)
 from p24.pub.ro [141.85.0.80]
 
 
@@ -60,28 +60,28 @@ administrator.
 <spectreincarnate@aol.com>
 
    ----- Transcript of session follows -----
-... while talking to air-xl01.mail.aol.com.:
+... while talking to air-xa02.mail.aol.com.:
 >>> RCPT To:<spectreincarnate@aol.com>
 <<< 550 MAILBOX NOT FOUND
 550 <spectreincarnate@aol.com>... User unknown
 
---NAB17707.1142793080/rly-xl02.mx.aol.com
+--NAB11982.1142793117/rly-xa02.mx.aol.com
 Content-Type: message/delivery-status
 
-Reporting-MTA: dns; rly-xl02.mx.aol.com
-Arrival-Date: Sun, 19 Mar 2006 13:31:07 -0500 (EST)
+Reporting-MTA: dns; rly-xa02.mx.aol.com
+Arrival-Date: Sun, 19 Mar 2006 13:31:46 -0500 (EST)
 
 Final-Recipient: RFC822; spectreincarnate@aol.com
 Action: failed
 Status: 5.1.1
-Remote-MTA: DNS; air-xl01.mail.aol.com
+Remote-MTA: DNS; air-xa02.mail.aol.com
 Diagnostic-Code: SMTP; 550 MAILBOX NOT FOUND
-Last-Attempt-Date: Sun, 19 Mar 2006 13:31:20 -0500 (EST)
+Last-Attempt-Date: Sun, 19 Mar 2006 13:31:57 -0500 (EST)
 
---NAB17707.1142793080/rly-xl02.mx.aol.com
+--NAB11982.1142793117/rly-xa02.mx.aol.com
 Content-Type: text/rfc822-headers
 
-Received: from  lists.sourceforge.net (p24.pub.ro [141.85.0.80]) by rly-xl02.mx.aol.com (vx) with ESMTP id MAILRELAYINXL24-5b8441da33c204; Sun, 19 Mar 2006 13:30:25 -0500
+Received: from  lists.sourceforge.net (p24.pub.ro [141.85.0.80]) by rly-xa02.mx.aol.com (vx) with ESMTP id MAILRELAYINXA25-55441da37a38e; Sun, 19 Mar 2006 13:31:23 -0500
 From: nfs@lists.sourceforge.net
 To: spectreincarnate@aol.com
 Subject: Hello
@@ -94,9 +94,9 @@ X-MSMail-Priority: Normal
 X-AOL-IP: 141.85.0.80
 X-AOL-SCOLL-SCORE: 0:2:287064962:14495514
 X-AOL-SCOLL-URL_COUNT: 0
-Message-ID: <200603191331.5b8441da33c204@rly-xl02.mx.aol.com>
+Message-ID: <200603191331.55441da37a38e@rly-xa02.mx.aol.com>
 
---NAB17707.1142793080/rly-xl02.mx.aol.com--
+--NAB11982.1142793117/rly-xa02.mx.aol.com--
 
 
 
