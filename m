@@ -1,18 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <cel@citi.umich.edu>
 Subject: Re: [NFS] [GIT] NFS client update for 2.6.16
-Date: Tue, 21 Mar 2006 14:06:20 -0500
-Message-ID: <1142967981.7987.92.camel@lade.trondhjem.org>
-References: <1142961077.7987.14.camel@lade.trondhjem.org>
-	<20060321174634.GA15827@infradead.org>
-	<1142964532.7987.61.camel@lade.trondhjem.org>
+Date: Tue, 21 Mar 2006 14:12:03 -0500
+Message-ID: <44205003.8070702@citi.umich.edu>
+References: <1142961077.7987.14.camel@lade.trondhjem.org>	
+	<20060321174634.GA15827@infradead.org>	
+	<1142964532.7987.61.camel@lade.trondhjem.org>	
 	<20060321185734.GB19125@infradead.org>
+	<1142967981.7987.92.camel@lade.trondhjem.org>
+Reply-To: cel@citi.umich.edu
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="------------020505010409050904040303"
 Cc: nfsv4@linux-nfs.org, Linus Torvalds <torvalds@osdl.org>,
 	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20060321185734.GB19125@infradead.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Christoph Hellwig <hch@infradead.org>
+In-Reply-To: <1142967981.7987.92.camel@lade.trondhjem.org>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -24,29 +27,62 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, 2006-03-21 at 18:57 +0000, Christoph Hellwig wrote:
-> On Tue, Mar 21, 2006 at 01:08:52PM -0500, Trond Myklebust wrote:
-> > We never had support for multiple iovecs in O_DIRECT, but were passing
-> > around a single iovec entry deep into code that couldn't care less.
+This is a multi-part message in MIME format.
+--------------020505010409050904040303
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> As I said in my other posting, I believe Chuck's changes are relatively
+> orthogonal to what you want to do: they neither make the low-level
+> plumbing better or worse for readv()/writev().
 > 
-> anthing that moves from iovecs back to plain buffers is counterproductive.
-> The plan is that every fullblown fs will only deal with iovecs, onlt drivers
-> and synthetic filesystems will implement the plain buffers.
+> We'd be happy to work with you in the run-up to 2.6.18 to add
+> multi-segment support for the existing patchsets. It makes more sense to
+> me to append that functionality to the existing patchsets rather than
+> trigger a complete rewrite (and thus have a sh_tload more code to
+> retest).
 
-You need to do more than just add an iovec argument to
-nfs_file_direct_read()/nfs_file_direct_write() if you want to achieve
-this. The new call interface actually just clarifies something that was
-implicit in the old one.
+after i reviewed this work with zach last summer, he and i also agreed 
+that it would be best if i did this work after the generic changes are 
+integrated -- so he wouldn't have to work on, and possibly break, the 
+NFS client.
 
-As I said in my other posting, I believe Chuck's changes are relatively
-orthogonal to what you want to do: they neither make the low-level
-plumbing better or worse for readv()/writev().
+i have been watching the multi-segment iovec work since then, and fully 
+intended to add the support for readv/writev aio in the NFS direct path 
+when the generic support becomes available.
 
-We'd be happy to work with you in the run-up to 2.6.18 to add
-multi-segment support for the existing patchsets. It makes more sense to
-me to append that functionality to the existing patchsets rather than
-trigger a complete rewrite (and thus have a sh_tload more code to
-retest).
+--------------020505010409050904040303
+Content-Type: text/x-vcard; charset=utf-8;
+ name="cel.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="cel.vcf"
 
-Cheers,
-    Trond
+begin:vcard
+fn:Chuck Lever
+n:Lever;Charles
+org:Network Appliance, Incorporated;Open Source NFS Client Development
+adr:535 West William Street, Suite 3100;;Center for Information Technology Integration;Ann Arbor;MI;48103-4943;USA
+email;internet:cel@citi.umich.edu
+title:Member of Technical Staff
+tel;work:+1 734 763-4415
+tel;fax:+1 734 763 4434
+tel;home:+1 734 668-1089
+x-mozilla-html:FALSE
+url:http://troy.citi.umich.edu/u/cel/
+version:2.1
+end:vcard
+
+
+--------------020505010409050904040303
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--------------020505010409050904040303--
