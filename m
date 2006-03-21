@@ -1,19 +1,19 @@
 From: Mail Delivery Subsystem <MAILER-DAEMON@aol.com>
-Subject: Returned mail: User unknown
-Date: Tue, 21 Mar 2006 00:14:15 -0500 (EST)
-Message-ID: <200603210514.AAG01946@rly-yj04.mx.aol.com>
+Subject: Returned mail: Service unavailable
+Date: Tue, 21 Mar 2006 03:00:06 -0500 (EST)
+Message-ID: <200603210800.CAD07550@rly-ya02.mx.aol.com>
 Mime-Version: 1.0
 Content-Type: multipart/report; report-type=delivery-status;
-	boundary="AAG01946.1142918055/rly-yj04.mx.aol.com"
+	boundary="CAD07550.1142928006/rly-ya02.mx.aol.com"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FLZCl-00079S-GU
-	for nfs@lists.sourceforge.net; Mon, 20 Mar 2006 21:14:51 -0800
-Received: from omr-m15.mx.aol.com ([64.12.136.13])
+	id 1FLbmy-0007xi-FL
+	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 00:00:24 -0800
+Received: from omr-m08.mx.aol.com ([64.12.138.20])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FLZCk-00059Y-W6
-	for nfs@lists.sourceforge.net; Mon, 20 Mar 2006 21:14:51 -0800
+	id 1FLbmy-0004dE-Bt
+	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 00:00:24 -0800
 To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -30,10 +30,10 @@ List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a MIME-encapsulated message
 
---AAG01946.1142918055/rly-yj04.mx.aol.com
+--CAD07550.1142928006/rly-ya02.mx.aol.com
 
-The original message was received at Tue, 21 Mar 2006 00:13:51 -0500 (EST)
-from p24.pub.ro [141.85.0.80]
+The original message was received at Tue, 21 Mar 2006 02:59:57 -0500 (EST)
+from 221-134-114-122.sify.net [221.134.114.122]
 
 
 *** ATTENTION ***
@@ -57,46 +57,46 @@ administrator.
 
 
    ----- The following addresses had permanent fatal errors -----
-<spectreincarnate@aol.com>
+<david@aol.com>
 
    ----- Transcript of session follows -----
-... while talking to air-yj02.mail.aol.com.:
->>> RCPT To:<spectreincarnate@aol.com>
-<<< 550 MAILBOX NOT FOUND
-550 <spectreincarnate@aol.com>... User unknown
+... while talking to air-ya02.mail.aol.com.:
+>>> RCPT To:<david@aol.com>
+<<< 552 david MAILBOX FULL
+554 <david@aol.com>... Service unavailable
 
---AAG01946.1142918055/rly-yj04.mx.aol.com
+--CAD07550.1142928006/rly-ya02.mx.aol.com
 Content-Type: message/delivery-status
 
-Reporting-MTA: dns; rly-yj04.mx.aol.com
-Arrival-Date: Tue, 21 Mar 2006 00:13:51 -0500 (EST)
+Reporting-MTA: dns; rly-ya02.mx.aol.com
+Arrival-Date: Tue, 21 Mar 2006 02:59:57 -0500 (EST)
 
-Final-Recipient: RFC822; spectreincarnate@aol.com
+Final-Recipient: RFC822; david@aol.com
 Action: failed
-Status: 5.1.1
-Remote-MTA: DNS; air-yj02.mail.aol.com
-Diagnostic-Code: SMTP; 550 MAILBOX NOT FOUND
-Last-Attempt-Date: Tue, 21 Mar 2006 00:14:15 -0500 (EST)
+Status: 5.2.2
+Remote-MTA: DNS; air-ya02.mail.aol.com
+Diagnostic-Code: SMTP; 552 david MAILBOX FULL
+Last-Attempt-Date: Tue, 21 Mar 2006 03:00:06 -0500 (EST)
 
---AAG01946.1142918055/rly-yj04.mx.aol.com
+--CAD07550.1142928006/rly-ya02.mx.aol.com
 Content-Type: text/rfc822-headers
 
-Received: from  lists.sourceforge.net (p24.pub.ro [141.85.0.80]) by rly-yj04.mx.aol.com (vx) with ESMTP id MAILRELAYINYJ42-80c441f8b8083; Tue, 21 Mar 2006 00:13:48 -0500
+Received: from  lists.sourceforge.net (221-134-114-122.sify.net [221.134.114.122]) by rly-ya02.mx.aol.com (vx) with ESMTP id MAILRELAYINYA28-148441fb27138; Tue, 21 Mar 2006 02:59:46 -0500
 From: nfs@lists.sourceforge.net
-To: spectreincarnate@aol.com
-Subject: Mail Delivery System
-Date: Tue, 21 Mar 2006 07:13:46 +0200
+To: david@aol.com
+Subject: Status
+Date: Mon, 20 Mar 2006 23:59:55 -0800
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0014_F5E11F4D.E0B0FD1C"
+	boundary="----=_NextPart_000_0004_6FB66FB6.24272427"
 X-Priority: 3
 X-MSMail-Priority: Normal
-X-AOL-IP: 141.85.0.80
-X-AOL-SCOLL-SCORE: 0:2:360843382:14495514
+X-AOL-IP: 221.134.114.122
+X-AOL-SCOLL-SCORE: 0:2:334396308:14495514
 X-AOL-SCOLL-URL_COUNT: 0
-Message-ID: <200603210013.80c441f8b8083@rly-yj04.mx.aol.com>
+Message-ID: <200603210259.148441fb27138@rly-ya02.mx.aol.com>
 
---AAG01946.1142918055/rly-yj04.mx.aol.com--
+--CAD07550.1142928006/rly-ya02.mx.aol.com--
 
 
 
