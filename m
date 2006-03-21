@@ -1,23 +1,24 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: "Permission Denied" when attempting mount command - Any
- help appreciated
-Date: Tue, 21 Mar 2006 16:33:20 -0500
-Message-ID: <44207120.3040400@redhat.com>
-References: <FB2F81A7764D9244849441E9DC12702B01E06739@teak.vontu.corp>
+From: "Brookes, John" <john.brookes@vontu.com>
+Subject: RE: "Permission Denied" when attempting mount command - Any help appreciated
+Date: Tue, 21 Mar 2006 13:38:27 -0800
+Message-ID: <FB2F81A7764D9244849441E9DC12702B01E0673A@teak.vontu.corp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <nfs@lists.sourceforge.net>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FLoTs-0006Kp-LR
-	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 13:33:32 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1FLoZt-00078M-B8
+	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 13:39:45 -0800
+Received: from dsl081-249-146.sfo1.dsl.speakeasy.net ([64.81.249.146] helo=sentinal.vontu.corp)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FLoTs-0001AD-Ag
-	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 13:33:32 -0800
-To: "Brookes, John" <john.brookes@vontu.com>
-In-Reply-To: <FB2F81A7764D9244849441E9DC12702B01E06739@teak.vontu.corp>
+	id 1FLoZs-0001pU-KB
+	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 13:39:45 -0800
+Received: from teak.vontu.corp (teak.vontu.corp [10.67.20.15])
+	by sentinal.vontu.corp with ESMTP id k2LLcqgb003324
+	for <nfs@lists.sourceforge.net>; Tue, 21 Mar 2006 13:38:52 -0800 (PST)
+To: "Peter Staubach" <staubach@redhat.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,10 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Yes, a forward slash makes no difference. -John B
+Thanks
+
+-----Original Message-----
+From: Peter Staubach [mailto:staubach@redhat.com]=20
+Sent: Tuesday, March 21, 2006 1:33 PM
+To: Brookes, John
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] "Permission Denied" when attempting mount command -
+Any help appreciated
+
+
 Brookes, John wrote:
 
 > Hello,
-> I am running redhat linux 4 enterprise version. (I'll be glad to send 
+> I am running redhat linux 4 enterprise version. (I'll be glad to send
 > more version info, but you'll have to tell me how to find it. :)
 >
 > The exports file on the server machine is:
@@ -107,9 +120,9 @@ Brookes, John wrote:
 >
 > The mount command and response:
 >
-> [root@redhat13 mnt]# mount -o intr,timeo=50 ds10.test.lab:root/try  
+> [root@redhat13 mnt]# mount -o intr,timeo=3D50 ds10.test.lab:root/try
 > mnt/jbrookes
-> mount: ds10.test.lab:root/try failed, reason given by server: 
+> mount: ds10.test.lab:root/try failed, reason given by server:=20
 > Permission denied
 >
 
@@ -120,10 +133,12 @@ instead of "ds10.test.lab:root/try" results in the same thing?
 
        ps
 
-> I am logged in as root on both machines. I have tried many different 
+> I am logged in as root on both machines. I have tried many different
 > combinations, but same negative result.
-> Machine A (which is the server in this example) can successfully mount 
-> the volumes on machine B when it is functioning as client, but not the 
+> Machine A (which is the server in this example) can successfully mount
+
+> the volumes on machine B when it is functioning as client, but not the
+
 > other way around. (as illustrated by the mount command above.)
 >
 > Anyone can offer me any clues into this puzzling problem?
