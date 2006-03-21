@@ -1,80 +1,52 @@
-From: Simon Gao <gao@schrodinger.com>
-Subject: Re: Compare binary or data files in different nfs share
-Date: Tue, 21 Mar 2006 10:58:51 -0800
-Message-ID: <44204CEB.2060103@schrodinger.com>
-References: <44035174.2060500@schrodinger.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] [GIT] NFS client update for 2.6.16
+Date: Tue, 21 Mar 2006 14:06:20 -0500
+Message-ID: <1142967981.7987.92.camel@lade.trondhjem.org>
+References: <1142961077.7987.14.camel@lade.trondhjem.org>
+	<20060321174634.GA15827@infradead.org>
+	<1142964532.7987.61.camel@lade.trondhjem.org>
+	<20060321185734.GB19125@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FLm41-0004Xf-8C
-	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 10:58:41 -0800
-Received: from thermidore.schrodinger.com ([192.156.98.99] helo=schrodinger.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FLm3z-0005QG-1n
-	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 10:58:41 -0800
-Received: from [192.156.98.12] (ithi.schrodinger.com [192.156.98.12])
-	by schrodinger.com (8.13.4/8.12.8) with ESMTP id k2LIwR9C090266
-	for <nfs@lists.sourceforge.net>; Tue, 21 Mar 2006 10:58:27 -0800 (PST)
-	(envelope-from gao@schrodinger.com)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <44035174.2060500@schrodinger.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain
+Cc: nfsv4@linux-nfs.org, Linus Torvalds <torvalds@osdl.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Christoph Hellwig <hch@infradead.org>
+In-Reply-To: <20060321185734.GB19125@infradead.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-It turns out that it was an issue between raid card and motherboard.
-Lower clock speed for PCI-X bus fixed the problem.
+On Tue, 2006-03-21 at 18:57 +0000, Christoph Hellwig wrote:
+> On Tue, Mar 21, 2006 at 01:08:52PM -0500, Trond Myklebust wrote:
+> > We never had support for multiple iovecs in O_DIRECT, but were passing
+> > around a single iovec entry deep into code that couldn't care less.
+> 
+> anthing that moves from iovecs back to plain buffers is counterproductive.
+> The plan is that every fullblown fs will only deal with iovecs, onlt drivers
+> and synthetic filesystems will implement the plain buffers.
 
+You need to do more than just add an iovec argument to
+nfs_file_direct_read()/nfs_file_direct_write() if you want to achieve
+this. The new call interface actually just clarifies something that was
+implicit in the old one.
 
-Simon Gao wrote:
-> Hi,
->
-> Not sure if anyone has seen this kind of problem. I have two NFS shares,
-> one provided by EMC box, one by Gentoo Linux machine (kernel 2.6.15). 
-> The source directory is on the EMC machine, destination on the Linux
-> machine. The client machine runs CentOS 4.2 (kernel 2.6.9-22.0.2.ELsmp).
->
->
-> When untar large tarball of many binary and data files (range from 50 MB
-> to 700 MB) from source to destination, the uncompressed binary files are
-> different from the ones in source directory if using diff to compare.
-> What are the possible reasons to cause the difference?
->
-> The local filesystem on the Linux nfs server is reiserfs. Exports file
-> is set to use "sync,wdelay". Client side uses autofs with  
-> "rw,nosuid,hard,intr,nfsvers=3,udp".
->
-> Simon Gao
->
->
-> -------------------------------------------------------
-> This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-> that extends applications into web and mobile media. Attend the live webcast
-> and join the prime developer group breaking into this new coding territory!
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->   
+As I said in my other posting, I believe Chuck's changes are relatively
+orthogonal to what you want to do: they neither make the low-level
+plumbing better or worse for readv()/writev().
 
+We'd be happy to work with you in the run-up to 2.6.18 to add
+multi-segment support for the existing patchsets. It makes more sense to
+me to append that functionality to the existing patchsets rather than
+trigger a complete rewrite (and thus have a sh_tload more code to
+retest).
 
-
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+    Trond
