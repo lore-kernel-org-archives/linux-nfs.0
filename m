@@ -1,55 +1,80 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] [GIT] NFS client update for 2.6.16
-Date: Tue, 21 Mar 2006 13:58:01 -0500
-Message-ID: <1142967482.7987.83.camel@lade.trondhjem.org>
-References: <1142961077.7987.14.camel@lade.trondhjem.org>
-	<20060321174634.GA15827@infradead.org>
+From: Simon Gao <gao@schrodinger.com>
+Subject: Re: Compare binary or data files in different nfs share
+Date: Tue, 21 Mar 2006 10:58:51 -0800
+Message-ID: <44204CEB.2060103@schrodinger.com>
+References: <44035174.2060500@schrodinger.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfsv4@linux-nfs.org, Linus Torvalds <torvalds@osdl.org>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20060321174634.GA15827@infradead.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FLm41-0004Xf-8C
+	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 10:58:41 -0800
+Received: from thermidore.schrodinger.com ([192.156.98.99] helo=schrodinger.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FLm3z-0005QG-1n
+	for nfs@lists.sourceforge.net; Tue, 21 Mar 2006 10:58:41 -0800
+Received: from [192.156.98.12] (ithi.schrodinger.com [192.156.98.12])
+	by schrodinger.com (8.13.4/8.12.8) with ESMTP id k2LIwR9C090266
+	for <nfs@lists.sourceforge.net>; Tue, 21 Mar 2006 10:58:27 -0800 (PST)
+	(envelope-from gao@schrodinger.com)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <44035174.2060500@schrodinger.com>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2006-03-21 at 17:46 +0000, Christoph Hellwig wrote:
-> > commit 47989d7454398827500d0e73766270986a3b488f
-> > Author: Chuck Lever <cel@netapp.com>
-> > Date:   Mon Mar 20 13:44:32 2006 -0500
-> > 
-> >     NFS: remove support for multi-segment iovs in the direct write path
-> >     
-> >     Eliminate the persistent use of automatic storage in all parts of the
-> >     NFS client's direct write path to pave the way for introducing support
-> >     for aio against files opened with the O_DIRECT flag.
-> 
-> NACK.  We have patches pending that consolidate ->aio_read/write and
-> ->read/writev into one operation.  this change is completely counterproductive
-> towards that goal which has been discussed on -fsdevel for a while.
+It turns out that it was an issue between raid card and motherboard.
+Lower clock speed for PCI-X bus fixed the problem.
 
-Could you, BTW, please post these pending patches? They are clearly not
-in -mm, since these patches have been there for some time without
-conflicting with anything else. The only references I could find were to
-the following thread:
 
-   http://thread.gmane.org/gmane.linux.file-systems/7748
+Simon Gao wrote:
+> Hi,
+>
+> Not sure if anyone has seen this kind of problem. I have two NFS shares,
+> one provided by EMC box, one by Gentoo Linux machine (kernel 2.6.15). 
+> The source directory is on the EMC machine, destination on the Linux
+> machine. The client machine runs CentOS 4.2 (kernel 2.6.9-22.0.2.ELsmp).
+>
+>
+> When untar large tarball of many binary and data files (range from 50 MB
+> to 700 MB) from source to destination, the uncompressed binary files are
+> different from the ones in source directory if using diff to compare.
+> What are the possible reasons to cause the difference?
+>
+> The local filesystem on the Linux nfs server is reiserfs. Exports file
+> is set to use "sync,wdelay". Client side uses autofs with  
+> "rw,nosuid,hard,intr,nfsvers=3,udp".
+>
+> Simon Gao
+>
+>
+> -------------------------------------------------------
+> This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+> that extends applications into web and mobile media. Attend the live webcast
+> and join the prime developer group breaking into this new coding territory!
+> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>   
 
-which basically just adds a BUG() if you call NFS O_DIRECT with a
-multi-segment iovec.
 
-I can't see from those patches how Chuck's O_DIRECT changes can be
-construed as being "counterproductive". AFAICS those changes are
-completely orthogonal to your proposal.
 
-Cheers,
-  Trond
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
