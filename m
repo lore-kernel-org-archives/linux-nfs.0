@@ -1,60 +1,47 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] [GIT] NFS client update for 2.6.16
-Date: Wed, 22 Mar 2006 06:35:12 -0500
-Message-ID: <1143027313.12871.27.camel@lade.trondhjem.org>
-References: <1142961077.7987.14.camel@lade.trondhjem.org>
-	<20060321174634.GA15827@infradead.org>
-	<1142964532.7987.61.camel@lade.trondhjem.org>
-	<20060321185734.GB19125@infradead.org>
-	<1142967981.7987.92.camel@lade.trondhjem.org>
-	<44205003.8070702@citi.umich.edu> <20060322103044.GB7025@infradead.org>
+From: "prafulla chandra vejendla" <v.prafulla@gmail.com>
+Subject: check this out...
+Date: Thu, 23 Mar 2006 16:07:14 +0300
+Message-ID: <26d3a31c0603230507k6fb72dc8me986bd3ee72b844c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfsv4@linux-nfs.org, Linus Torvalds <torvalds@osdl.org>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20060322103044.GB7025@infradead.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FMPX6-0005Md-8Z
+	for nfs@lists.sourceforge.net; Thu, 23 Mar 2006 05:07:20 -0800
+Received: from [64.233.182.187] (helo=nproxy.gmail.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FMPX4-0002W7-Sv
+	for nfs@lists.sourceforge.net; Thu, 23 Mar 2006 05:07:20 -0800
+Received: by nproxy.gmail.com with SMTP id p77so254669nfc
+        for <nfs@lists.sourceforge.net>; Thu, 23 Mar 2006 05:07:17 -0800 (PST)
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2006-03-22 at 10:30 +0000, Christoph Hellwig wrote:
-> On Tue, Mar 21, 2006 at 02:12:03PM -0500, Chuck Lever wrote:
-> > i have been watching the multi-segment iovec work since then, and fully 
-> > intended to add the support for readv/writev aio in the NFS direct path 
-> > when the generic support becomes available.
-> 
-> 
-> we agreed to not add another set of methods but rather consolidate the
-> existing two sets of aio and vectored methods into one.  So to merge the
-> core support all users including nfs need to be updated.  the last wip
-> patchset is posted in the at:
-> 
-> 	http://marc.theaimsgroup.com/?l=linux-kernel&m=114177713027505&w=2
-> 	http://marc.theaimsgroup.com/?l=linux-kernel&m=114177739515518&w=2
-> 	http://marc.theaimsgroup.com/?l=linux-kernel&m=114177739313588&w=2
-> 	http://marc.theaimsgroup.com/?l=linux-kernel&m=114177739407636&w=2
-> 
-> any nfs work should happen ontop of that.
-> 
-> I'm sill the opinion removing the iovec arguments isn't helpfull, but
-> it's your code and if you think it helps you move forwarg go ahead with
-> this.
+Hi! I just signed up for a great promotion that I think you should
+check out. We can both get a free new IPOD nano!
 
-Adding multi-segment support on top of this is not going to be a huge
-job since the new code already does a form of multi-segment tracking in
-the lower layers. By that I mean that it has to convert an arbitrarily
-sized user buffer into a series of asynchronous NFS requests to be put
-on the wire and then track them until they have completed. That is
-pretty much all you have to do for the multi-iovec case too.
+http://saleadig.com/?r=3DkQEkI4EBOSc0CWYBCCEB&i=3Dgmail&z=3D1&tc=3D18
 
-Cheers,
-  Trond
+Talk to you soon!
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
