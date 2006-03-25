@@ -1,21 +1,25 @@
-From: Kaginba Davidson. <kaginbadavidson@netscape.net>
-Subject: Intending Partner
-Date: Sat, 25 Mar 2006 15:49:15 +0000 (UTC)
-Message-ID: <E1FNAyz-00032I-Ol@mail.sourceforge.net>
-Reply-To: Kaginba Davidson. <kaginbadavidson@netscape.net>
+From: parinay <parinay@gmail.com>
+Subject: Re: Kerberized NFS v2/v3
+Date: Sun, 26 Mar 2006 00:39:30 +0530
+Message-ID: <ea2ed4af0603251109k3ae359f3g6d2bac88452d6cdf@mail.gmail.com>
+References: <ea2ed4af0603240243n220f1a20o62bfb9910ebf1698@mail.gmail.com>
+	 <4d569c330603241204y7e6fc2baq144a6bf3d26b92ac@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="qzsoft_directmail_seperator"
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FNAz0-000321-Ju
-	for nfs@lists.sourceforge.net; Sat, 25 Mar 2006 07:47:18 -0800
-Received: from [84.76.183.126] (helo=ibm.com)
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FNAyz-00032I-Ol
-	for nfs@lists.sourceforge.net; Sat, 25 Mar 2006 07:47:18 -0800
-To: nfs <nfs@lists.sourceforge.net>
+	id 1FNE8o-00071L-CV
+	for nfs@lists.sourceforge.net; Sat, 25 Mar 2006 11:09:38 -0800
+Received: from xproxy.gmail.com ([66.249.82.195])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FNE8n-0008Ux-QG
+	for nfs@lists.sourceforge.net; Sat, 25 Mar 2006 11:09:38 -0800
+Received: by xproxy.gmail.com with SMTP id h26so1069254wxd
+        for <nfs@lists.sourceforge.net>; Sat, 25 Mar 2006 11:09:30 -0800 (PST)
+To: "Kevin Coffman" <kwc@citi.umich.edu>
+In-Reply-To: <4d569c330603241204y7e6fc2baq144a6bf3d26b92ac@mail.gmail.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,57 +32,122 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-Date: Sat Mar 25 07:48:02 2006
 
---qzsoft_directmail_seperator
-Content-Type: text/plain;
-	charset="DEFAULT"
-Content-Transfer-Encoding: base64
+Thanks a lot.
+parinay
 
-RnJvbSBUaGUgRGVzayBvZiBLYWdpbmJhIERhdmlkc29uIApaYW1iaWEgTWluaXN0cnkgb2YgTWlu
-ZXMgYW5kIE1pbmVyYWwgUmVzb3VyY2VzLiAKS2F1bmRhIFNlY3JldGFyaWF0IENvbXBsZXgsIApM
-dXNha2EgLSBaYW1iaWEgCkVtYWlsOiBrYWdpbmJhZGF2aWRzb25AbmV0c2NhcGUubmV0CgpEZWFy
-IEludGVuZGluZyBQYXJ0bmVyLAoKSSBhbSBLYWdpbmJhIERhdmlkc29uLiBJIGhhdmUgYmVlbiBu
-b21pbmF0ZWQgdG8gZnJvbnQgZm9yIGEgR3JvdXAgb2YgaGlnaCByYW5raW5nIG9mZmljZXJzIG9m
-IHRoZSBaYW1iaWFuIGNpdmlsIFNlcnZpY2UgaW4gYSBkZWFsIG9mIG11dHVhbCBiZW5lZml0IHRv
-IGFsbCBpbnZvbHZlZC4gUGxlYXNlIEkgd3JpdGUgdG8ga25vdyBpZiB5b3UgY291bGQgYXNzaXN0
-IG15IENvbnRhY3RzIGluIGhhbmRsaW5nIHRoZSB0cmFuc2ZlciBvZiBodWdlIGZ1bmRzIGluIFVu
-aXRlZCBTdGF0ZXMgZG9sbGFyIGN1cnJlbmN5IGRlbm9taW5hdGlvbiB0byBhIHNhZmUgQmFuayBh
-Y2NvdW50IGluIHlvdXIgY291bnRyeS4gCgpUaGVyZSBpcyBhIHJlZm9ybSBpbiB0aGUgYmFua2lu
-ZyBpbmR1c3RyeSBvZiBteSBDb3VudHJ5IGFuZCB0aGV5IHdpbGwgbm90IGJlIHBvc3NpYmxlIHRv
-IGRlcG9zaXQgaHVnZSBBbW91bnRzIGluIGFueSBiYW5rIGFjY291bnQgaW4gb3VyIGNvdW50cnku
-IFRoZSBjb2RlIG9mIGNvbmR1Y3Qgb2YgdGhlIGNpdmlsIHNlcnZpY2UgZm9yYmlkcyB0aGUgb3Bl
-bmluZyBvZiBkb21pY2lsaWFyeSBhY2NvdW50cyBmb3IgYWN0aXZlIGNpdmlsIHNlcnZhbnRzLiAK
-Ck15IGNvbnRhY3RzIGhhdmUgaWRlbnRpZmllZCBhbiBvdmVyIGluZmxhdGVkIHN1bSBvZiBNb25l
-eSBpbiBVLlMgZG9sbGFycyBmcm9tIENvbnRyYWN0cyBhd2FyZGVkIHRvIGEgQ2hpbmVzZSBjb21w
-YW55LiBUaGUgQ2hpbmVzZSBjb21wYW55IGhhcyBleGVjdXRlZCB0aGUgQ29udHJhY3QgYW5kIGhh
-cyBiZWVuIHBhaWQgYnV0IHRoZSBpbmZsYXRlZCBzdW0gaXMgd2hhdCBteSBjb250YWN0cyB3YW50
-IHRvIHRyYW5zZmVyIHRvIGEgZm9yZWlnbiBiYW5rIEFjY291bnQgc2luY2UgaXQgaGFzIGJlY29t
-ZSBkaWZmaWN1bHQgZm9yIHRoZW0gdG8gRGVwb3NpdCBpdCBpbnRvIGFueSBiYW5rIGFjY291bnQg
-aW4gWmFtYmlhLiAKClBsZWFzZSBJIHNlZWsgeW91ciBwYXJ0bmVyc2hpcCBhbmQgdHJ1c3QgaW4g
-YXNzaXN0aW5nIE15IGNvbnRhY3RzIHRvIHRyYW5zZmVyIHRoZSBtb25leSB0byBhbnkgc2FmZSBi
-YW5rIEFjY291bnQgdGhhdCB5b3Ugd2lsbCBwcm92aWRlIGZyb20gd2hlcmUgdGhlIGZ1bmRzIFdp
-bGwgYmUgYXBwbGllZCBmb3IgZ2FpbmZ1bCBpbnZlc3RtZW50IG9wcG9ydHVuaXRpZXMgQXMgeW91
-IG1heSBhZHZpc2UgdW50aWwgdGhleSBhcmUgYWJsZSB0byB0YWtlIGNvbnRyb2wgYW5kIHBvc3Nl
-c3Npb24gb2YgdGhlaXIgc2hhcmUgb2YgdGhlIGZ1bmRzLiBNeSBDb250YWN0cyBoYXZlIG1hZGUg
-YWxsIGFycmFuZ2VtZW50cyBvbiBob3cgdGhlIGZ1bmQge1VTJDMwLjUgbWlsbGlvbn0gd2lsbCBi
-ZSBzZWN1cmVkIGFuZCB0cmFuc2ZlciBFZmZlY3RlZCB0byB0aGUgYmFuayBhY2NvdW50IHRoYXQg
-eW91IHdpbGwgcHJvdmlkZS4gCgpUaGUgZW50aXJlIHRyYW5zYWN0aW9uIGhhcyBiZWVuIGFycmFu
-Z2VkIHRvIG9jY3VyIHdpdGhpbiBhIGxpbWl0ZWQgdGltZSBjaXJjbGUgYW5kIHRoZXJlIGlzIG5v
-dGhpbmcgdG8gd29ycnkgYWJvdXQsIGFzIGV2ZXJ5dGhpbmcgaGFzIGJlZW4gcGxhbm5lZCB0byBi
-ZSB0b3RhbGx5IHJpc2stZnJlZSBhbmQgaGl0Y2gtZnJlZS4gCgpZb3VyIGNvbnNlbnQgdG8gcmVu
-ZGVyIGEgZGVkaWNhdGVkIGFzc2lzdGFuY2UgYW5kIFBhcnRuZXJzaGlwIHdpbGwgYXV0b21hdGlj
-YWxseSByZXN1bHQgaW4geW91IHNlY3VyaW5nIDMwJSBvZiB0aGUgZnVuZCBhcyB5b3VyIHNoYXJl
-IGZvciB5b3VyIGFzc2lzdGFuY2UgYW5kIEEgZnVydGhlciAzMCUgb24gcHJvZml0cyBmcm9tIGFu
-eSBpbnZlc3RtZW50IHVuZGVyIHlvdXIgc3VwZXJ2aXNpb24uIAoKS2luZGx5IHJldHVybiB0byBt
-ZSB2aWEgbXkgZW1haWwgYWRkcmVzcyBhbmQgSSB3aWxsIGJyaWVmIHlvdSBvZiB0aGUgbW9kYWxp
-dGllcyBzZXQgdXAgYnkgbXkgY29udGFjdHMgdG8gc3VjY2Vzc2Z1bGx5IGVmZmVjdCB0aGUgdHJh
-bnNmZXIgdG8geW91ciBhY2NvdW50IHdpdGhpbiBhIGxpbWl0ZWQgdGltZSBmcmFtZS4KCkkgd2ls
-bCBsb29rIGZvcndhcmQgdG8gcmVjZWl2aW5nIHlvdXIgcmVzcG9uc2UuIAoKWW91cnMgZmFpdGhm
-dWxseSwgCkthZ2luYmEgRGF2aWRzb24uCgo=
+On 3/25/06, Kevin Coffman <kwc@citi.umich.edu> wrote:
+> See comments inline below.
+>
+> On 3/24/06, parinay <parinay@gmail.com> wrote:
+> > Hi,
+> > While trying to mount an export with '-sec=3Dkrb5', on linux client, I
+> > am getting this error,
+> > "mount: 10.55.60.142:/vol/fornfs failed, security flavor not supported"
+> > I am trying to get into 'What kerberos is all about?'.But any help on s=
+etting up
+> > a kerberised NFS v2/v3 client would be helpful.
+> > My prime questions are,
+> >             1. Where can I get the information about generating /etc/kr=
+b5.keytab
+> >                  My scenario is , I am using Microsoft Active Directory=
+ KDC
+>
+> See section "Using Active Directory as your KDC for NFS" here
+> http://nfsworld.blogspot.com/
+>
+> >             2. The patches for bugs,in RH bugzilla's 142464 and 146703.
+> >                 Where can I get the patches for my kernel/distro ?
+> >                 Can I get a individual patchs instead of a source RPM ?
+> >
+> > Steps I have followed so far:
+> > 1.add new file /etc/sysconfig/nfs containing "SECURE_NFS=3Dyes"
+> > 2.edit /etc/init.d/rpcgssd
+> >   added,"/sbin/modprobe rpcsec_gss_krb5"
+>
+> You'll also need to modload sunrpc since that is built as a module also.
+>
+> > 4.use "authconfig" to update /etc/krb5.conf and /etc/pam.d/system-auth
+> >
+> > My NFS client details:
+> > Distro: Fedora core 3
+> > Kernel:2.6.15-6
+> > .config
+> > # Network File Systems
+> > #
+> > CONFIG_NFS_FS=3Dm
+> > CONFIG_NFS_V3=3Dy
+> > CONFIG_NFS_V3_ACL=3Dy
+> > CONFIG_NFS_V4=3Dy
+> > CONFIG_NFS_DIRECTIO=3Dy
+> > CONFIG_NFSD=3Dm
+> > CONFIG_NFSD_V2_ACL=3Dy
+> > CONFIG_NFSD_V3=3Dy
+> > CONFIG_NFSD_V3_ACL=3Dy
+> > CONFIG_NFSD_V4=3Dy
+> > CONFIG_NFSD_TCP=3Dy
+> > CONFIG_LOCKD=3Dm
+> > CONFIG_LOCKD_V4=3Dy
+> > CONFIG_EXPORTFS=3Dm
+> > CONFIG_NFS_ACL_SUPPORT=3Dm
+> > CONFIG_NFS_COMMON=3Dy
+> > CONFIG_SUNRPC=3Dm
+> > CONFIG_SUNRPC_GSS=3Dm
+> > CONFIG_RPCSEC_GSS_KRB5=3Dm
+> > CONFIG_RPCSEC_GSS_SPKM3=3Dm
+> > Krb packages on machine:
+> > [root@akam ~]# rpm -qa | grep -i krb
+> > krb5-auth-dialog-0.2-1
+> > krb5-server-1.3.4-7
+> > krbafs-utils-1.2.2-6
+> > pam_krb5-2.1.2-1
+> > krb5-workstation-1.3.4-7
+> > krb5-devel-1.3.4-7
+> > krb5-libs-1.3.4-7
+> > krbafs-1.2.2-6
+> > krbafs-devel-1.2.2-6
+> > nfs-utils on machine
+> > nfs-utils-1.0.6-39
+> > system-config-nfs-1.2.8-1
+> > Command executed.
+> > mount  10.55.60.142:/vol/fornfs /mnt/nfs1
+> > Result:
+> > mount: 10.55.60.142:/vol/fornfs failed, security flavor not supported
+> >
+> > Sorry for the length of the mail.
+> > thanks & regards,
+> > parinay
+> >
+> > --
+> > easy is right
+> > begin right and you're easy
+> > continue easy and you're right
+> > the right way to go easy is to forget the right way
+> > and forget that the going is easy....
+> >
+> >
+> > -------------------------------------------------------
+> > This SF.Net email is sponsored by xPML, a groundbreaking scripting lang=
+uage
+> > that extends applications into web and mobile media. Attend the live we=
+bcast
+> > and join the prime developer group breaking into this new coding territ=
+ory!
+> > http://sel.as-us.falkag.net/sel?cmdlnk&kid=110944&bid$1720&dat=121642
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> >
+> >
+>
 
---qzsoft_directmail_seperator--
 
+--
+easy is right
+begin right and you're easy
+continue easy and you're right
+the right way to go easy is to forget the right way
+and forget that the going is easy....
 
 
 -------------------------------------------------------
