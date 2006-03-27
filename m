@@ -1,20 +1,32 @@
-From: "Dooley, Jesse" <Jesse.Dooley@ngc.com>
-Subject: NFS 3 - OSX - Kerberos
-Date: Mon, 27 Mar 2006 11:04:09 -0500
-Message-ID: <55DAC882ED6A7542B7E6999ABC1B532513307D@XMBV4801.northgrum.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [Patch 0/4] knfsd Coverity Errors
+Date: Mon, 27 Mar 2006 10:57:04 -0800
+Message-ID: <1143485824.9451.27.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C651B8.14EC3F92"
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FNuCi-00078h-8T
-	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 08:04:28 -0800
-Received: from xcgca812.northgrum.com ([208.12.122.38])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FNuCf-0005Hj-QV
-	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 08:04:28 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1FNwqS-0000sw-Jn
+	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 10:53:40 -0800
+Received: from e34.co.us.ibm.com ([32.97.110.152])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FNwqR-0004f1-Hd
+	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 10:53:40 -0800
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e34.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k2RIrVGu006631
+	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 13:53:31 -0500
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay02.boulder.ibm.com (8.12.10/NCO/VER6.8) with ESMTP id k2RIoMUw265044
+	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 11:50:22 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11/8.13.3) with ESMTP id k2RIrU5W004597
+	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 11:53:30 -0700
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av01.boulder.ibm.com (8.12.11/8.12.11) with ESMTP id k2RIrU2x004578
+	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 11:53:30 -0700
+To: NFS List <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,45 +40,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+The following patches address four errors found by Coverity.
 
-------_=_NextPart_001_01C651B8.14EC3F92
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+Frank Filz
 
-Has anyone had success using NFS with Kerberos on Mac OSX 10? Any
-thoughts would be appreciated.
 
--Jesse B. Dooley
-
-------_=_NextPart_001_01C651B8.14EC3F92
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.5.7232.7">
-<TITLE>NFS 3 - OSX - Kerberos</TITLE>
-</HEAD>
-<BODY>
-<!-- Converted from text/rtf format -->
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">Has anyone had success using NFS with =
-Kerberos on Mac OSX 10? Any thoughts would be appreciated.</FONT>
-</P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">-Jesse B. Dooley</FONT>
-</P>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C651B8.14EC3F92--
 
 
 -------------------------------------------------------
