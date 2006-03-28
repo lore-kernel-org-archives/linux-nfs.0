@@ -1,33 +1,27 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: Re: [Patch 4/4] Coverity #324
-Date: Mon, 27 Mar 2006 11:44:04 -0800
-Message-ID: <1143488644.9451.35.camel@dyn9047022153>
-References: <1143485836.9451.31.camel@dyn9047022153>
-	 <1143486523.28645.51.camel@lade.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: 1.0.8-rc4: Was Re: nfs-utils 1.0.8-rc3
+Date: Tue, 28 Mar 2006 15:47:24 +1100
+Message-ID: <17448.49116.384380.67279@cse.unsw.edu.au>
+References: <17447.15298.158607.514090@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FNxZq-0006BK-NZ
-	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 11:40:34 -0800
-Received: from e32.co.us.ibm.com ([32.97.110.150])
+	id 1FO68n-0007ve-DZ
+	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 20:49:13 -0800
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FNxZp-0004TJ-HX
-	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 11:40:34 -0800
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e32.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k2RJePag020762
-	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 14:40:25 -0500
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by westrelay02.boulder.ibm.com (8.12.10/NCO/VER6.8) with ESMTP id k2RJbHUw265074
-	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 12:37:17 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11/8.13.3) with ESMTP id k2RJePal024999
-	for <nfs@lists.sourceforge.net>; Mon, 27 Mar 2006 12:40:25 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1143486523.28645.51.camel@lade.trondhjem.org>
+	id 1FO68m-0004RW-3U
+	for nfs@lists.sourceforge.net; Mon, 27 Mar 2006 20:49:13 -0800
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 5C7391C81C
+	for <nfs@lists.sourceforge.net>; Tue, 28 Mar 2006 06:49:03 +0200 (CEST)
+To: nfs@lists.sourceforge.net
+In-Reply-To: message from Neil Brown on Monday March 27
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,43 +35,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, 2006-03-27 at 14:08 -0500, Trond Myklebust wrote:
-> On Mon, 2006-03-27 at 10:57 -0800, Frank Filz wrote:
-> > Signed-off by: Frank Filz
-> > 
-> > diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
-> > --- a/include/linux/nfsd/nfsfh.h
-> > +++ b/include/linux/nfsd/nfsfh.h
-> > @@ -328,7 +328,7 @@ fh_lock(struct svc_fh *fhp)
-> >  static inline void
-> >  fh_unlock(struct svc_fh *fhp)
-> >  {
-> > -	if (!fhp->fh_dentry)
-> > +	if (!fhp || !fhp->fh_dentry)
-> >  		printk(KERN_ERR "fh_unlock: fh not verified!\n");
-> >  
-> >  	if (fhp->fh_locked) {
+On Monday March 27, neilb@suse.de wrote:
 > 
-> Huh???
+> I'm still hoping to put out a new nfs-utils before Easter, but not
+> finding the time I wanted....
 > 
-> Firstly, if fhp is NULL, then fhp->fh_locked is going to Oops too.
+> Anyway, there is now an -rc3 on sourceforge and in
+>    http://www.kernel.org/pub/linux/utils/nfs/
 > 
-> Secondly, if fhp is NULL, then we really _ought_ to Oops in fh_unlock(),
-> 'cos that would be a nasty evil coding ERROR that needs to be analysed
-> and debugged.
+> I plan to make it -final next week unless some problems appear.
+> 
+> NeilBrown
 
-Oops, I must have been half asleep there.
+Uhmm.... -rc3 was a bit of a mess.  Forget about it.
+-rc4 is out there now, try that instead.
 
-I misread the Coverity error. What it was actually complaining about was
-that the code tested for NULL fh_dentry and then passed it to
-fill_post_wcc, not to mention that right after the call to
-fill_post_wcc, it dereferences fh_dentry.
+Sorry for the noise.
 
-Back to the drawing board on this one.
-
-Frank
-
-
+NeilBrown
 
 
 -------------------------------------------------------
