@@ -1,118 +1,96 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: [NFS] [PATCH] knfsd: Correct reserved reply space for read requests.
-Date: Thu, 30 Mar 2006 09:58:44 -0800
-Message-ID: <OF66A2887E.D01D36C5-ON88257141.0061C8EF-88257141.00626357@us.ibm.com>
-References: <1060330055350.25337@suse.de>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Resubmit: [Patch 4/4] Coverity #324 and Coverity #323
+Date: Thu, 30 Mar 2006 09:20:39 -0800
+Message-ID: <1143739239.9451.38.camel@dyn9047022153>
+References: <1143485836.9451.31.camel@dyn9047022153>
+	 <1143486523.28645.51.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: Andrew Morton <akpm@osdl.org>, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net, nfs-admin@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1750923AbWC3SBL@vger.kernel.org>
-In-Reply-To: <1060330055350.25337@suse.de>
-To: NeilBrown <neilb@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain
+Cc: NFS List <nfs@lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FP3tM-0008Dm-8N
+	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 12:37:16 -0800
+Received: from over.co.us.ibm.com ([32.97.110.157])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FP3tL-0006ZM-05
+	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 12:37:15 -0800
+Received: from e34.co.us.ibm.com (e34.boulder.ibm.com [9.17.249.44])
+	by bldfb.esmtp.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k2UHH7W9022889
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <nfs@lists.sourceforge.net>; Thu, 30 Mar 2006 12:17:07 -0500
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e34.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k2UHGlC1006740
+	for <nfs@lists.sourceforge.net>; Thu, 30 Mar 2006 12:16:47 -0500
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay02.boulder.ibm.com (8.12.10/NCO/VER6.8) with ESMTP id k2UHDZS1263500
+	for <nfs@lists.sourceforge.net>; Thu, 30 Mar 2006 10:13:35 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11/8.13.3) with ESMTP id k2UHGg5g002540
+	for <nfs@lists.sourceforge.net>; Thu, 30 Mar 2006 10:16:42 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1143486523.28645.51.camel@lade.trondhjem.org>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi Neil
-Can we use this opportunity to change NFSSVC_MAXBLKSIZE from 32K to 64K to 
-match RPCSVC_MAXPAYLOAD. It makes real difference in I/O performance (we 
-will still be saving half the space we used to allocate :).
-Thanks, Marc. 
+On Mon, 2006-03-27 at 14:08 -0500, Trond Myklebust wrote:
+> Secondly, if fhp is NULL, then we really _ought_ to Oops in fh_unlock(),
+> 'cos that would be a nasty evil coding ERROR that needs to be analysed
+> and debugged.
 
-NeilBrown wrote on 03/29/2006 09:53:50 PM:
+Ok, I re-examined this. Looking at fh_lock, I see that the correct
+behavior is to return without locking when fh_dentry is NULL. I've also
+fixed Coverity #323, which is a similar issue in the same source file.
 
-> Single patch for nfsd in 2.6.16.  As the comment say, it is sensible
-> for this to sit in -mm for a while just in case.
-> 
-> ### Comments for Changeset
-> 
-> NFSd makes sure there is enough space to hold the maximum possible
-> reply before accepting a request.  The units for this maximum is
-> (4byte) words.  However in three places, particularly for read
-> request, the number given is a number of bytes.
-> 
-> This means too much space is reserved which is slightly wasteful.
-> 
-> This is the sort of patch that could uncover a deeper bug, and it is
-> not critical, so it would be best for it to spend a while in -mm 
-> before going in to mainline.
-> 
-> Discovered-by: "Eivind  Sarto" <ivan@kasenna.com>
-> 
-> Cc: "Eivind  Sarto" <ivan@kasenna.com>
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
-> ### Diffstat output
->  ./fs/nfsd/nfs3proc.c |    2 +-
->  ./fs/nfsd/nfs4proc.c |    2 +-
->  ./fs/nfsd/nfsproc.c  |    2 +-
->  3 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff ./fs/nfsd/nfs3proc.c~current~ ./fs/nfsd/nfs3proc.c
-> --- ./fs/nfsd/nfs3proc.c~current~   2006-03-30 16:48:30.000000000 +1100
-> +++ ./fs/nfsd/nfs3proc.c   2006-03-30 16:48:58.000000000 +1100
-> @@ -682,7 +682,7 @@ static struct svc_procedure      nfsd_proced
->    PROC(lookup,    dirop,      dirop,      fhandle2, RC_NOCACHE, 
-> ST+FH+pAT+pAT),
->    PROC(access,    access,   access,      fhandle,  RC_NOCACHE, 
-ST+pAT+1),
->    PROC(readlink, readlink,   readlink,   fhandle,  RC_NOCACHE, 
-> ST+pAT+1+NFS3_MAXPATHLEN/4),
-> -  PROC(read,    read,      read,      fhandle,  RC_NOCACHE, 
-> ST+pAT+4+NFSSVC_MAXBLKSIZE),
-> +  PROC(read,    read,      read,      fhandle,  RC_NOCACHE, 
-> ST+pAT+4+NFSSVC_MAXBLKSIZE/4),
->    PROC(write,    write,      write,      fhandle,  RC_REPLBUFF, 
-ST+WC+4),
->    PROC(create,    create,   create,      fhandle2, RC_REPLBUFF, 
-> ST+(1+FH+pAT)+WC),
->    PROC(mkdir,    mkdir,      create,      fhandle2, RC_REPLBUFF, 
-> ST+(1+FH+pAT)+WC),
-> 
-> diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
-> --- ./fs/nfsd/nfs4proc.c~current~   2006-03-30 16:48:30.000000000 +1100
-> +++ ./fs/nfsd/nfs4proc.c   2006-03-30 16:48:58.000000000 +1100
-> @@ -973,7 +973,7 @@ struct nfsd4_voidargs { int dummy; };
->   */
->  static struct svc_procedure      nfsd_procedures4[2] = {
->    PROC(null,    void,      void,      void,     RC_NOCACHE, 1),
-> -  PROC(compound, compound,   compound,   compound, RC_NOCACHE, 
-NFSD_BUFSIZE)
-> +  PROC(compound, compound,   compound,   compound, RC_NOCACHE, 
-> NFSD_BUFSIZE/4)
->  };
-> 
->  struct svc_version   nfsd_version4 = {
-> 
-> diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
-> --- ./fs/nfsd/nfsproc.c~current~   2006-03-30 16:48:30.000000000 +1100
-> +++ ./fs/nfsd/nfsproc.c   2006-03-30 16:48:58.000000000 +1100
-> @@ -553,7 +553,7 @@ static struct svc_procedure      nfsd_proced
->    PROC(none,    void,      void,      none,      RC_NOCACHE, ST),
->    PROC(lookup,    diropargs,   diropres,   fhandle,   RC_NOCACHE, 
-ST+FH+AT),
->    PROC(readlink, readlinkargs,   readlinkres,   none, 
-> RC_NOCACHE, ST+1+NFS_MAXPATHLEN/4),
-> -  PROC(read,    readargs,   readres,   fhandle,   RC_NOCACHE, 
-> ST+AT+1+NFSSVC_MAXBLKSIZE),
-> +  PROC(read,    readargs,   readres,   fhandle,   RC_NOCACHE, 
-> ST+AT+1+NFSSVC_MAXBLKSIZE/4),
->    PROC(none,    void,      void,      none,      RC_NOCACHE, ST),
->    PROC(write,    writeargs,   attrstat,   fhandle,   RC_REPLBUFF, 
-ST+AT),
->    PROC(create,    createargs,   diropres,   fhandle, 
-RC_REPLBUFF,ST+FH+AT),
-> 
-> 
-> -------------------------------------------------------
-> This SF.Net email is sponsored by xPML, a groundbreaking scripting 
-language
-> that extends applications into web and mobile media. Attend the live 
-webcast
-> and join the prime developer group breaking into this new coding 
-territory!
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Frank
+
+Signed-of by: Frank Filz
+
+diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
+--- a/include/linux/nfsd/nfsfh.h
++++ b/include/linux/nfsd/nfsfh.h
+@@ -218,7 +218,7 @@ void	fh_put(struct svc_fh *);
+ static __inline__ struct svc_fh *
+ fh_copy(struct svc_fh *dst, struct svc_fh *src)
+ {
+-	if (src->fh_dentry || src->fh_locked) {
++	if (src->fh_dentry && src->fh_locked) {
+ 		struct dentry *dentry = src->fh_dentry;
+ 		printk(KERN_ERR "fh_copy: copying %s/%s, already verified!\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name);
+@@ -328,8 +328,10 @@ fh_lock(struct svc_fh *fhp)
+ static inline void
+ fh_unlock(struct svc_fh *fhp)
+ {
+-	if (!fhp->fh_dentry)
++	if (!fhp->fh_dentry) {
+ 		printk(KERN_ERR "fh_unlock: fh not verified!\n");
++		return;
++	}
+ 
+ 	if (fhp->fh_locked) {
+ 		fill_post_wcc(fhp);
+
+
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
