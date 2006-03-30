@@ -1,25 +1,26 @@
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: Re: NFS/Kernel Problem: getfh failed: Operation not permitted
-Date: Thu, 30 Mar 2006 10:13:38 -0500 (EST)
-Message-ID: <Pine.LNX.4.64.0603301011160.18696@p34>
-References: <Pine.LNX.4.64.0603300813270.18696@p34>
- <1143728720.8074.41.camel@lade.trondhjem.org>  <Pine.LNX.4.64.0603300929340.18696@p34>
-  <1143729766.8074.49.camel@lade.trondhjem.org>  <Pine.LNX.4.64.0603300949000.18696@p34>
- <1143731364.8074.53.camel@lade.trondhjem.org>
+From: Olaf Kirch <okir@suse.de>
+Subject: NFS directio
+Date: Thu, 30 Mar 2006 17:15:44 +0200
+Message-ID: <20060330151544.GA11915@suse.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FOyqE-0005IA-QF
-	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 07:13:42 -0800
-Received: from lucidpixels.com ([66.45.37.187] ident=postfix)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FOyqD-0001gX-8o
-	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 07:13:42 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1143731364.8074.53.camel@lade.trondhjem.org>
+	id 1FOytg-0005iP-Km
+	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 07:17:16 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FOyte-0002fF-3w
+	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 07:17:16 -0800
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 67B851D0F6
+	for <nfs@lists.sourceforge.net>; Thu, 30 Mar 2006 17:17:10 +0200 (CEST)
+Resent-Message-ID: <20060330151710.GB11915@suse.de>
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,33 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 30 Mar 2006, Trond Myklebust wrote:
+In recent kernels, NFS direct IO limits the size of a request to
+4096 pages, ie 16M on most platforms. This causes growisofs from the
+dvd+rw-tools package (http://fy.chalmers.se/~appro/linux/DVD+RW/) to fail.
+Its builtin "dd" style function uses 32M buffers by default.
 
-> On Thu, 2006-03-30 at 09:50 -0500, Justin Piszcz wrote:
->> I tried an exportfs -rv and it did not help.  Any other suggestions?
->
-> Did the output from 'exportfs -rv' match with the contents
-> of /etc/exports? If so, did it also match with the contents
-> of /var/lib/nfs/xtab and /proc/fs/nfs/exports?
->
-> Cheers,
->  Trond
->
+It puzzled me a lot that it is returning -EFBIG, which means "file too
+big". At least that should be EINVAL, I think. EFBIG should be reserved
+for problems related to largefile support, IMO.
 
-In the /etc/exports file, I have an entry that looks like this:
-/path	specific-host-001(ro,root_squash,no_sync)
-/path	specific-host-002((ro,root_squash,no_sync)
-/path	*(ro,root_squash,no_sync)
+We can easily work around the problem by restricting the buffer size
+growisofs uses on NFS, but that feels strange. I think the right way
+would be to increase MAX_DIRECTIO_SIZE, and if someone submits a bigger
+request, to loop and do that in MAX_DIRECTIO_SIZE chunks.
 
-So while there are only three entries, there are:
+Comments?
 
-cat /proc/fs/nfs/exports | wc -> 566
-cat /var/lib/nfs/xtab | wc -> 564
-
-Entries per file.
-
-Is this more of a kernel or nfsutils issue at this point?
-
+Thanks,
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 
 -------------------------------------------------------
