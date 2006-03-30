@@ -1,28 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: timeo & retrans, smaller max timeout than 60 seconds?
-Date: Wed, 29 Mar 2006 16:02:10 -0500
-Message-ID: <1143666130.7957.27.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.64.0603290921500.2597@maggie.lkpg.cendio.se>
-	 <1143641272.7928.13.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.64.0603291625370.7796@maggie.lkpg.cendio.se>
-	 <1143644879.7928.44.camel@lade.trondhjem.org>
-	 <Pine.LNX.4.64.0603292058050.15464@maggie.lkpg.cendio.se>
-	 <1143665569.7957.24.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH] knfsd: Correct reserved reply space for read requests.
+Date: Thu, 30 Mar 2006 16:53:50 +1100
+Message-ID: <1060330055350.25337@suse.de>
+References: <20060330165307.25307.patches@notabene>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FOhoB-0001xr-CQ
-	for nfs@lists.sourceforge.net; Wed, 29 Mar 2006 13:02:27 -0800
-Received: from pat.uio.no ([129.240.10.6] ident=7411)
+	id 1FOq85-0004Vf-6t
+	for nfs@lists.sourceforge.net; Wed, 29 Mar 2006 21:55:33 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FOho9-0005Jv-SB
-	for nfs@lists.sourceforge.net; Wed, 29 Mar 2006 13:02:27 -0800
-To: Peter =?ISO-8859-1?Q?=C5strand?= <astrand@cendio.se>
-In-Reply-To: <1143665569.7957.24.camel@lade.trondhjem.org>
+	id 1FOq84-0001el-OM
+	for nfs@lists.sourceforge.net; Wed, 29 Mar 2006 21:55:33 -0800
+To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,27 +28,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2006-03-29 at 15:52 -0500, Trond Myklebust wrote:
-> It shouldn't mention major timeouts at all. The Solaris manpage
-> documents 'intr' as
-> 
->            intr | nointr
->                  Allow (do not allow) keyboard interrupts to kill
->                  a  process  that  is  hung  while  waiting for a
->                  response on  a  hard-mounted  file  system.  The
->                  default  is  intr,  which  makes it possible for
->                  clients to interrupt applications  that  may  be
->                  waiting for a remote mount.
-> 
-> which is pretty much what we aim to do too.
+Single patch for nfsd in 2.6.16.  As the comment say, it is sensible
+for this to sit in -mm for a while just in case.
 
-Sorry... The above thing mentions 'hard-mounted' too. As I said, we
-don't distinguish between hard and soft mounts when it comes to allowing
-clients to interrupt.
+### Comments for Changeset
 
-Cheers,
-  Trond
+NFSd makes sure there is enough space to hold the maximum possible
+reply before accepting a request.  The units for this maximum is
+(4byte) words.  However in three places, particularly for read
+request, the number given is a number of bytes.
 
+This means too much space is reserved which is slightly wasteful.
+
+This is the sort of patch that could uncover a deeper bug, and it is
+not critical, so it would be best for it to spend a while in -mm before going in to mainline.
+
+Discovered-by: "Eivind  Sarto" <ivan@kasenna.com>
+
+Cc: "Eivind  Sarto" <ivan@kasenna.com>
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/nfsd/nfs3proc.c |    2 +-
+ ./fs/nfsd/nfs4proc.c |    2 +-
+ ./fs/nfsd/nfsproc.c  |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff ./fs/nfsd/nfs3proc.c~current~ ./fs/nfsd/nfs3proc.c
+--- ./fs/nfsd/nfs3proc.c~current~	2006-03-30 16:48:30.000000000 +1100
++++ ./fs/nfsd/nfs3proc.c	2006-03-30 16:48:58.000000000 +1100
+@@ -682,7 +682,7 @@ static struct svc_procedure		nfsd_proced
+   PROC(lookup,	 dirop,		dirop,		fhandle2, RC_NOCACHE, ST+FH+pAT+pAT),
+   PROC(access,	 access,	access,		fhandle,  RC_NOCACHE, ST+pAT+1),
+   PROC(readlink, readlink,	readlink,	fhandle,  RC_NOCACHE, ST+pAT+1+NFS3_MAXPATHLEN/4),
+-  PROC(read,	 read,		read,		fhandle,  RC_NOCACHE, ST+pAT+4+NFSSVC_MAXBLKSIZE),
++  PROC(read,	 read,		read,		fhandle,  RC_NOCACHE, ST+pAT+4+NFSSVC_MAXBLKSIZE/4),
+   PROC(write,	 write,		write,		fhandle,  RC_REPLBUFF, ST+WC+4),
+   PROC(create,	 create,	create,		fhandle2, RC_REPLBUFF, ST+(1+FH+pAT)+WC),
+   PROC(mkdir,	 mkdir,		create,		fhandle2, RC_REPLBUFF, ST+(1+FH+pAT)+WC),
+
+diff ./fs/nfsd/nfs4proc.c~current~ ./fs/nfsd/nfs4proc.c
+--- ./fs/nfsd/nfs4proc.c~current~	2006-03-30 16:48:30.000000000 +1100
++++ ./fs/nfsd/nfs4proc.c	2006-03-30 16:48:58.000000000 +1100
+@@ -973,7 +973,7 @@ struct nfsd4_voidargs { int dummy; };
+  */
+ static struct svc_procedure		nfsd_procedures4[2] = {
+   PROC(null,	 void,		void,		void,	  RC_NOCACHE, 1),
+-  PROC(compound, compound,	compound,	compound, RC_NOCACHE, NFSD_BUFSIZE)
++  PROC(compound, compound,	compound,	compound, RC_NOCACHE, NFSD_BUFSIZE/4)
+ };
+ 
+ struct svc_version	nfsd_version4 = {
+
+diff ./fs/nfsd/nfsproc.c~current~ ./fs/nfsd/nfsproc.c
+--- ./fs/nfsd/nfsproc.c~current~	2006-03-30 16:48:30.000000000 +1100
++++ ./fs/nfsd/nfsproc.c	2006-03-30 16:48:58.000000000 +1100
+@@ -553,7 +553,7 @@ static struct svc_procedure		nfsd_proced
+   PROC(none,	 void,		void,		none,		RC_NOCACHE, ST),
+   PROC(lookup,	 diropargs,	diropres,	fhandle,	RC_NOCACHE, ST+FH+AT),
+   PROC(readlink, readlinkargs,	readlinkres,	none,		RC_NOCACHE, ST+1+NFS_MAXPATHLEN/4),
+-  PROC(read,	 readargs,	readres,	fhandle,	RC_NOCACHE, ST+AT+1+NFSSVC_MAXBLKSIZE),
++  PROC(read,	 readargs,	readres,	fhandle,	RC_NOCACHE, ST+AT+1+NFSSVC_MAXBLKSIZE/4),
+   PROC(none,	 void,		void,		none,		RC_NOCACHE, ST),
+   PROC(write,	 writeargs,	attrstat,	fhandle,	RC_REPLBUFF, ST+AT),
+   PROC(create,	 createargs,	diropres,	fhandle,	RC_REPLBUFF, ST+FH+AT),
 
 
 -------------------------------------------------------
