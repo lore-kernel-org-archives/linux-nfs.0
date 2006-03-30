@@ -1,61 +1,51 @@
-From: "linux-os \(Dick Johnson\)" <linux-os@analogic.com>
-Subject: Re: NFS/Kernel Problem: getfh failed: Operation not permitted
-Date: Thu, 30 Mar 2006 11:14:11 -0500
-Message-ID: <Pine.LNX.4.61.0603301111421.738@chaos.analogic.com>
-References: <Pine.LNX.4.64.0603300813270.18696@p34> <1143728720.8074.41.camel@lade.trondhjem.org> <Pine.LNX.4.64.0603300929340.18696@p34> <1143729766.8074.49.camel@lade.trondhjem.org> <Pine.LNX.4.64.0603300949000.18696@p34> <1143731364.8074.53.camel@lade.trondhjem.org> <Pine.LNX.4.64.0603301011160.18696@p34> <20060330153128.GB9811@unthought.net> <Pine.LNX.4.61.0603301053030.738@chaos.analogic.com> <20060330160521.GC9811@unthought.net>
-Reply-To: "linux-os \(Dick Johnson\)" <linux-os@analogic.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Re: NFS/Kernel Problem: getfh failed: Operation not permitted
+Date: Thu, 30 Mar 2006 11:18:06 -0500
+Message-ID: <442C04BE.5000602@RedHat.com>
+References: <Pine.LNX.4.64.0603300813270.18696@p34> <1143728720.8074.41.camel@lade.trondhjem.org> <Pine.LNX.4.64.0603300929340.18696@p34>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Justin Piszcz" <jpiszcz@lucidpixels.com>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	<linux-kernel@vger.kernel.org>, <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751159AbWC3QOR@vger.kernel.org>
-in-reply-to: <20060330160521.GC9811@unthought.net>
-To: "Jakob Oestergaard" <jakob@unthought.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FOzql-0004B7-1j
+	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 08:18:19 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FOzqj-0003hr-MA
+	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 08:18:19 -0800
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+In-Reply-To: <Pine.LNX.4.64.0603300929340.18696@p34>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+
+Justin Piszcz wrote:
+> Not running RH9, but running RHEL WS3, Taroon Update 4, however, the 
+> nfs-utils is 1.0.6-33EL, I know there were many fixes in 1.0.7+, could 
+> nfs-utils be the problem?  The kernel version in question is 
+> 2.4.21-31.ELa1smp.
+Try updating your nfs-utils to 1.0.6-43EL....
+
+steved.
 
 
-On Thu, 30 Mar 2006, Jakob Oestergaard wrote:
-
-> On Thu, Mar 30, 2006 at 10:58:08AM -0500, linux-os (Dick Johnson) wrote:
-> ...
->> This is my /etc/exports and it works fine with linux-2.6.15.4.
->> All the host names are local, inside the firewall, and need to
->> be looked-up over a W$<crap> name-server.
->>
->> #
->> /rmtboot/LinuxRoot	*(ro,async)
->> /root/Scanner	*(ro,no_root_squash,sync)
->> /tmp		*(rw,no_root_squash,sync)
->> /usr/src	quark(rw,no_root_squash,sync)
->> /usr/lib	quark(rw,no_root_squash,sync)
-> ...
->
-> Well lucky you  :)
->
-> I'm not saying it can't work. I'm just saying I've spent too much time
-> finding out the hard way that it does not necessarily work  :)
->
-> --
-
->
-> / jakob
->
-
-Well NFS is supposed to work like this. If it doesn't, you may
-have some far more serious problems, perhaps duplicate IP addresses,
-etc., that prevent proper resolution and subsequent connections.
-It has nothing to do with luck.
-
-Cheers,
-Dick Johnson
-Penguin : Linux version 2.6.15.4 on an i686 machine (5589.42 BogoMips).
-Warning : 98.36% of all statistics are fiction, book release in April.
-_
-
-
-****************************************************************
-The information transmitted in this message is confidential and may be privileged.  Any review, retransmission, dissemination, or other use of this information by persons or entities other than the intended recipient is prohibited.  If you are not the intended recipient, please notify Analogic Corporation immediately - by replying to this message or by sending an email to DeliveryErrors@analogic.com - and destroy all copies of this information, including any attachments, without reading or disclosing them.
-
-Thank you.
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
