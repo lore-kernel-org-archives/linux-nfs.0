@@ -1,24 +1,25 @@
-From: Olaf Kirch <okir@suse.de>
+From: Chuck Lever <cel@citi.umich.edu>
 Subject: Re: NFS directio
-Date: Fri, 31 Mar 2006 16:58:49 +0200
-Message-ID: <20060331145849.GF18629@suse.de>
-References: <20060330151544.GA11915@suse.de> <1143734612.8093.8.camel@lade.trondhjem.org> <20060331074900.GC32461@suse.de> <12E368A4-2262-4EBF-8769-581DB3500A36@citi.umich.edu>
+Date: Fri, 31 Mar 2006 10:50:26 -0500
+Message-ID: <442D4FC2.7060109@citi.umich.edu>
+References: <20060330151544.GA11915@suse.de> <1143734612.8093.8.camel@lade.trondhjem.org> <20060331074900.GC32461@suse.de> <12E368A4-2262-4EBF-8769-581DB3500A36@citi.umich.edu> <20060331145849.GF18629@suse.de>
+Reply-To: cel@citi.umich.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
 	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FPL5S-0000yA-JB
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 06:58:54 -0800
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1FPLtY-00072Q-HR
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 07:50:40 -0800
+Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FPL5S-0001C6-FS
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 06:58:54 -0800
-To: Chuck Lever <cel@citi.umich.edu>
-In-Reply-To: <12E368A4-2262-4EBF-8769-581DB3500A36@citi.umich.edu>
+	id 1FPLtX-0006Xs-Dd
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 07:50:40 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20060331145849.GF18629@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,37 +33,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, Mar 31, 2006 at 09:35:34AM -0500, Chuck Lever wrote:
-> the check isn't in 2.6.16.  it was removed sometime after 2.6.5.
+Olaf Kirch wrote:
+> On Fri, Mar 31, 2006 at 09:35:34AM -0500, Chuck Lever wrote:
+>> the check isn't in 2.6.16.  it was removed sometime after 2.6.5.
+> 
+> It is still in the 2.6.16 tree I'm looking at; else I wouldn't ask :)
 
-It is still in the 2.6.16 tree I'm looking at; else I wouldn't ask :)
+it's been in my trees since 2.6.13 or even earlier, my mistake.
 
-linux/fs/nfs/direct.c has this:
+that change is part of the aio+dio patches that were just included in 
+2.6.17-rc1.  instead of creating a single patch for this change, you 
+should consider taking those patches, since they were tested as a unit.
 
-#define MAX_DIRECTIO_SIZE       (4096UL << PAGE_SHIFT)
-...
-static inline int
-nfs_get_user_pages(int rw, unsigned long user_addr, size_t size,
-                struct page ***pages)
-{
-        int result = -ENOMEM;
-        unsigned long page_count;
-        size_t array_size;
+if you can guarantee that atomic_t is 32-bits on every platform you 
+support, then it should be save to change that #define to 2^31. 
+otherwise, the work to eliminate the limit entirely has already been 
+done by the above-mentioned patches.
 
-        /* set an arbitrary limit to prevent type overflow */
-        /* XXX: this can probably be as large as INT_MAX */
-        if (size > MAX_DIRECTIO_SIZE) {
-                *pages = NULL;
-                return -EFBIG;
-        }
-
-
-
-
-Olaf
 -- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+corporate:	<cel at netapp dot com>
+personal:	<chucklever at bigfoot dot com>
 
 
 -------------------------------------------------------
