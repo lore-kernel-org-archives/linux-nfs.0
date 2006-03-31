@@ -1,29 +1,23 @@
-From: Genco YILMAZ <gyilmaz@beriltech.com>
-Subject: 230GB partition mount problem
-Date: Fri, 31 Mar 2006 11:48:39 +0300
-Message-ID: <442CECE7.1040806@beriltech.com>
+From: Vincent Roqueta <vincent.roqueta@bull.net>
+Subject: Re: 230GB partition mount problem
+Date: Fri, 31 Mar 2006 10:57:21 +0200
+Message-ID: <200603311057.21433.vincent.roqueta@bull.net>
+References: <442CECE7.1040806@beriltech.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-9; format=flowed
+Content-Type: text/plain;
+  charset="iso-8859-9"
+Cc: Genco YILMAZ <gyilmaz@beriltech.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FPFJB-0002tP-6F
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 00:48:41 -0800
-Received: from mail.posta.tc ([85.111.0.146] helo=mira.yonlendir.net)
+	id 1FPFOo-0003XQ-18
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 00:54:30 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FPFJA-0002zQ-Vc
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 00:48:41 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by mira.yonlendir.net (Postfix) with ESMTP id BC35321B598
-	for <nfs@lists.sourceforge.net>; Fri, 31 Mar 2006 11:48:37 +0300 (EEST)
-Received: from mira.yonlendir.net ([127.0.0.1])
- by localhost (mira.yonlendir.net [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 26723-01 for <nfs@lists.sourceforge.net>;
- Fri, 31 Mar 2006 11:48:37 +0300 (EEST)
-Received: from [192.168.1.3] (xdfk.beriltech.com [81.214.141.112])
-	by mira.yonlendir.net (Postfix) with ESMTP id 353DA21B4D8
-	for <nfs@lists.sourceforge.net>; Fri, 31 Mar 2006 11:48:37 +0300 (EEST)
+	id 1FPFOm-0007Nm-JK
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 00:54:30 -0800
 To: nfs@lists.sourceforge.net
+In-Reply-To: <442CECE7.1040806@beriltech.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,40 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello,
-   I have mounted a partition from NFS server. The partitions on the 
-server is
+Le Vendredi 31 Mars 2006 10:48, Genco YILMAZ a =E9crit=A0:
+> Hello,
+>    I have mounted a partition from NFS server. The partitions on the
+> server is
+>
+> /var/images/apachelogs
+> /var/images/www/uploads
+>
+> /var/images is a directory on the / filesystem
+> apachelogs(ext3) is a 230GB partition with block size 1024KB and inode
+> count 30519296
+> uploads is a reiserfs file system.
+>
+> My problem is :
+>        I mount /var/images directory to the client machine through NFS
+> server and I can see uploads folder but even if I have given all the
+> permissions on the source folder I cannot see any subdirectory in the
+> apachelogs folder as if there is nothing in it.
+>
+> My mount options:
+> noauto,nolock,nosuid,noexec,rw,hard,intr,rsize=3D1024,wsize=3D1024 0 0
+> Server parameters exportfs: (rw,sync,no_subtree_check,no_root_squash)
+Try with "nohide" option ?
 
-/var/images/apachelogs
-/var/images/www/uploads
-
-/var/images is a directory on the / filesystem
-apachelogs(ext3) is a 230GB partition with block size 1024KB and inode 
-count 30519296
-uploads is a reiserfs file system.
-
-My problem is :
-       I mount /var/images directory to the client machine through NFS 
-server and I can see uploads folder but even if I have given all the 
-permissions on the source folder I cannot see any subdirectory in the 
-apachelogs folder as if there is nothing in it.
-
-My mount options: 
-noauto,nolock,nosuid,noexec,rw,hard,intr,rsize=1024,wsize=1024 0 0
-Server parameters exportfs: (rw,sync,no_subtree_check,no_root_squash)
-
-I dont understand why one partition is reachable but the other one is 
-not. I have search in FAQ whether there is any inode limitations or not 
-but I havent seen any clue.
-
-Any help is really appreciated.
-
-Thanks in advance.
-
-
-
-
-
+Vincent
 
 
 -------------------------------------------------------
