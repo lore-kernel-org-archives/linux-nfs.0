@@ -1,27 +1,24 @@
-From: Chris Osicki <osk@admin.swisscom-mobile.ch>
-Subject: Q: NFS server cluster
-Date: Fri, 31 Mar 2006 16:02:17 +0200
-Message-ID: <20060331160217.1734f710@mwdsp001.swissptt.ch>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <cel@citi.umich.edu>
+Subject: Re: NFS directio
+Date: Fri, 31 Mar 2006 09:35:34 -0500
+Message-ID: <12E368A4-2262-4EBF-8769-581DB3500A36@citi.umich.edu>
+References: <20060330151544.GA11915@suse.de> <1143734612.8093.8.camel@lade.trondhjem.org> <20060331074900.GC32461@suse.de>
+Mime-Version: 1.0 (Apple Message framework v746.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FPKA9-0002iw-Jo
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 05:59:41 -0800
-Received: from outmail3.swisscom.com ([138.190.3.30] helo=mrz.swissptt.ch)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	id 1FPKjC-0006pw-Db
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 06:35:54 -0800
+Received: from citi.umich.edu ([141.211.133.111])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FPKA8-00027W-8i
-	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 05:59:41 -0800
-Received: from mwdsp001.swissptt.ch (mwdsp001.swissptt.ch [10.221.40.203])
-	by mrz.swissptt.ch with ESMTP id k2VDxPSs007815
-	(using TLSv1/SSLv3 with cipher EDH-RSA-DES-CBC3-SHA (168 bits) verified NO)
-	for <nfs@lists.sourceforge.net>; Fri, 31 Mar 2006 15:59:30 +0200 (MEST)
-Received: from mwdsp001.swissptt.ch (localhost [127.0.0.1])
-	by mwdsp001.swissptt.ch (8.13.4/8.13.4) with ESMTP id k2VE2HsL031992
-	for <nfs@lists.sourceforge.net>; Fri, 31 Mar 2006 16:02:21 +0200
-To: nfs@lists.sourceforge.net
+	id 1FPKj9-0003Pm-Md
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 06:35:54 -0800
+In-Reply-To: <20060331074900.GC32461@suse.de>
+To: Olaf Kirch <okir@suse.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,61 +32,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi
 
-I've setup a two nodes Linux Cluster (Service Guard) as a NFS server.
-They share storage which comes from two Clariions and do host based 
-mirroring (RAID1) using the standard Linux RAID driver: md.
-So, when activating I assemble the array with mdadm --assemble,
-then I activate LVM by running vgchange -ay then I mount the
-LVOLs and export them. Everything's fine.
-My testclient mounts the exported filesystem and then runs a program 
-which opens a file on the NFS-mounted filesystem and writes every
-second few words into it.
+On Mar 31, 2006, at 2:49 AM, Olaf Kirch wrote:
 
-Now if I initiate a fail-over (on the currently active node: unexport,
-umount, vgchange -an, mdadm --stop and activate second node as
-describe above) I get two kind of behaviour on the client:
+> On Thu, Mar 30, 2006 at 11:03:32AM -0500, Trond Myklebust wrote:
+>> MAX_DIRECTIO_SIZE is gone from Linus' tree. I don't think we have any
+>> limits on the size of the buffer that users can feed to us apart from
+>> those set by mm/filemap.c:generic_write_checks().
+>
+> So you're saying we can safely remove this check in 2.6.16?
 
-1. Client doesn't notice the fail-over and I see it really happily 
-   writing to the file (I checked on the server)
+the check isn't in 2.6.16.  it was removed sometime after 2.6.5.
 
-2. Client hangs for about nine minutes (during this time I get a "NFS
-   server mstlnfsv1 not responding still trying" when trying to read
-   this file and then the client recovers.
-
-Few minutes later (sorry for being not precise, I've just started my
-experimenting) the clients reports:
-
-NFS getattr failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS write failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-Error writing to /mnt/osk/testfile: Permission denied
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-NFS commit failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-
-Now I cannot access this file:
-
-ls -l /mnt/osk/testfile
-NFS getattr failed for server mstlnfsv1: error 7 (RPC: Authentication error)
-ls: /mnt/osk/testfile: Permission denied
+-- 
+corporate:   < cel at netapp dot com >
+personal:    < chucklever at bigfoot dot com >
 
 
-The testclient is a Sparc/Solaris10 machine.
 
-Is there anything I can do to eliminate this behaviour?
-If I understand correctly the problem is on the server side for the
-client nothing changes, the same IP-address to talk to, the same
-filesystem/filehandle. Or am I missing something.
-
-I would be very thankfull for any help.
-
-Regards,
-Chris
 
 
 -------------------------------------------------------
