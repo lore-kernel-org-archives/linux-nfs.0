@@ -1,23 +1,29 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: NFS directio
-Date: Fri, 31 Mar 2006 09:49:00 +0200
-Message-ID: <20060331074900.GC32461@suse.de>
-References: <20060330151544.GA11915@suse.de> <1143734612.8093.8.camel@lade.trondhjem.org>
+From: Genco YILMAZ <gyilmaz@beriltech.com>
+Subject: 230GB partition mount problem
+Date: Fri, 31 Mar 2006 11:48:39 +0300
+Message-ID: <442CECE7.1040806@beriltech.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-9; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FPENX-0004tn-G7
-	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 23:49:07 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FPENW-0002dt-AU
-	for nfs@lists.sourceforge.net; Thu, 30 Mar 2006 23:49:07 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1143734612.8093.8.camel@lade.trondhjem.org>
+	id 1FPFJB-0002tP-6F
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 00:48:41 -0800
+Received: from mail.posta.tc ([85.111.0.146] helo=mira.yonlendir.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FPFJA-0002zQ-Vc
+	for nfs@lists.sourceforge.net; Fri, 31 Mar 2006 00:48:41 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by mira.yonlendir.net (Postfix) with ESMTP id BC35321B598
+	for <nfs@lists.sourceforge.net>; Fri, 31 Mar 2006 11:48:37 +0300 (EEST)
+Received: from mira.yonlendir.net ([127.0.0.1])
+ by localhost (mira.yonlendir.net [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 26723-01 for <nfs@lists.sourceforge.net>;
+ Fri, 31 Mar 2006 11:48:37 +0300 (EEST)
+Received: from [192.168.1.3] (xdfk.beriltech.com [81.214.141.112])
+	by mira.yonlendir.net (Postfix) with ESMTP id 353DA21B4D8
+	for <nfs@lists.sourceforge.net>; Fri, 31 Mar 2006 11:48:37 +0300 (EEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,17 +37,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, Mar 30, 2006 at 11:03:32AM -0500, Trond Myklebust wrote:
-> MAX_DIRECTIO_SIZE is gone from Linus' tree. I don't think we have any
-> limits on the size of the buffer that users can feed to us apart from
-> those set by mm/filemap.c:generic_write_checks().
+Hello,
+   I have mounted a partition from NFS server. The partitions on the 
+server is
 
-So you're saying we can safely remove this check in 2.6.16?
+/var/images/apachelogs
+/var/images/www/uploads
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+/var/images is a directory on the / filesystem
+apachelogs(ext3) is a 230GB partition with block size 1024KB and inode 
+count 30519296
+uploads is a reiserfs file system.
+
+My problem is :
+       I mount /var/images directory to the client machine through NFS 
+server and I can see uploads folder but even if I have given all the 
+permissions on the source folder I cannot see any subdirectory in the 
+apachelogs folder as if there is nothing in it.
+
+My mount options: 
+noauto,nolock,nosuid,noexec,rw,hard,intr,rsize=1024,wsize=1024 0 0
+Server parameters exportfs: (rw,sync,no_subtree_check,no_root_squash)
+
+I dont understand why one partition is reachable but the other one is 
+not. I have search in FAQ whether there is any inode limitations or not 
+but I havent seen any clue.
+
+Any help is really appreciated.
+
+Thanks in advance.
+
+
+
+
+
 
 
 -------------------------------------------------------
