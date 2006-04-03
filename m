@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 011 of 16] knfsd: svcrpc: WARN() instead of returning an error from svc_take_page
-Date: Mon, 3 Apr 2006 15:19:01 +1000
-Message-ID: <1060403051901.1857@suse.de>
+Subject: [PATCH 014 of 16] knfsd: nfsd4: add missing rpciod_down()
+Date: Mon, 3 Apr 2006 15:19:15 +1000
+Message-ID: <1060403051915.1893@suse.de>
 References: <20060403151452.1567.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FQHUh-0005Up-3J
-	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:20:51 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1FQHUu-0005XJ-SJ
+	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:21:04 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FQHUf-0004UW-Er
-	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:20:51 -0700
+	id 1FQHUu-0008SH-43
+	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:21:04 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,44 +29,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-Every caller of svc_take_page ignores its return value and assumes it
-succeeded.  So just WARN() instead of returning an ignored error.  This
-would have saved some time debugging a recent nfsd4 problem.
+We should be shutting down rpciod for the callback channel when we shut down
+the server.
 
-If there are still failure cases here, then the result is probably that we
-overwrite an earlier part of the reply while xdr-encoding.
-
-While the corrupted reply is a nasty bug, it would be worse to panic here
-and create the possibility of a remote DOS; hence WARN() instead of BUG().
+Also note that we do rpciod_up() and create the callback client *before*
+setting cb_set--the cb_set only determines whether the initial null was
+succesful.  So cb_set is not a reliable determiner of whether we need to
+clean up, only cb_client is.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./include/linux/sunrpc/svc.h |    6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ ./fs/nfsd/nfs4state.c |   21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
 
-diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
---- ./include/linux/sunrpc/svc.h~current~	2006-04-03 15:12:15.000000000 +1000
-+++ ./include/linux/sunrpc/svc.h	2006-04-03 15:12:15.000000000 +1000
-@@ -197,15 +197,13 @@ svc_take_res_page(struct svc_rqst *rqstp
- 	return rqstp->rq_respages[rqstp->rq_resused++];
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2006-04-03 15:12:16.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2006-04-03 15:12:16.000000000 +1000
+@@ -330,22 +330,29 @@ put_nfs4_client(struct nfs4_client *clp)
  }
  
--static inline int svc_take_page(struct svc_rqst *rqstp)
-+static inline void svc_take_page(struct svc_rqst *rqstp)
+ static void
++shutdown_callback_client(struct nfs4_client *clp)
++{
++	struct rpc_clnt *clnt = clp->cl_callback.cb_client;
++
++	/* shutdown rpc client, ending any outstanding recall rpcs */
++	if (clnt) {
++		clp->cl_callback.cb_client = NULL;
++		rpc_shutdown_client(clnt);
++		rpciod_down();
++	}
++}
++
++static void
+ expire_client(struct nfs4_client *clp)
  {
--	if (rqstp->rq_arghi <= rqstp->rq_argused)
--		return -ENOMEM;
-+	WARN_ON(rqstp->rq_arghi <= rqstp->rq_argused);
- 	rqstp->rq_arghi--;
- 	rqstp->rq_respages[rqstp->rq_resused] =
- 		rqstp->rq_argpages[rqstp->rq_arghi];
- 	rqstp->rq_resused++;
--	return 0;
- }
+ 	struct nfs4_stateowner *sop;
+ 	struct nfs4_delegation *dp;
+-	struct nfs4_callback *cb = &clp->cl_callback;
+-	struct rpc_clnt *clnt = clp->cl_callback.cb_client;
+ 	struct list_head reaplist;
  
- static inline void svc_pushback_allpages(struct svc_rqst *rqstp)
+ 	dprintk("NFSD: expire_client cl_count %d\n",
+ 	                    atomic_read(&clp->cl_count));
+ 
+-	/* shutdown rpc client, ending any outstanding recall rpcs */
+-	if (atomic_read(&cb->cb_set) == 1 && clnt) {
+-		rpc_shutdown_client(clnt);
+-		clnt = clp->cl_callback.cb_client = NULL;
+-	}
++	shutdown_callback_client(clp);
+ 
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&recall_lock);
 
 
 -------------------------------------------------------
