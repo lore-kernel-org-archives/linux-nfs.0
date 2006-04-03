@@ -1,19 +1,19 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 006 of 16] knfsd: nfsd: nfsd_setuser doesn't really need to modify rqstp->rq_cred.
-Date: Mon, 3 Apr 2006 15:18:33 +1000
-Message-ID: <1060403051833.1797@suse.de>
+Subject: [PATCH 010 of 16] knfsd: svcrpc: gss: don't call svc_take_page unnecessarily
+Date: Mon, 3 Apr 2006 15:18:56 +1000
+Message-ID: <1060403051856.1845@suse.de>
 References: <20060403151452.1567.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FQHUI-0005Tb-CG
-	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:20:26 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1FQHUa-0005UP-UB
+	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:20:44 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FQHUG-0008Jl-HR
-	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:20:26 -0700
+	id 1FQHUa-0004Tk-By
+	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:20:44 -0700
 To: Andrew Morton <akpm@osdl.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -29,102 +29,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
-In addition to setting the processes filesystem id's, nfsd_setuser also
-modifies the value of the rq_cred which stores the id's that originally
-came from the rpc call, for example to reflect root squashing.
+We're using svc_take_page here to get another page for the tail in case one
+wasn't already allocated.  But there isn't always guaranteed to be another
+page available.
 
-There's no real reason to do that--the only case where rqstp->rq_cred 
-is actually used later on is in the NFSv4 SETCLIENTID/SETCLIENTID_CONFIRM
-operations, and there the results are the opposite of what we want--those
-two operations don't deal with the filesystem at all, they only record the
-credentials used with the rpc call for later reference (so that we may
-require the same credentials be used on later operations), and the
-credentials shouldn't vary just because there was or wasn't a previous
-operation in the compound that referred to some export  
+Also fix a typo that made us check the tail buffer for space when we meant
+to be checking the head buffer.
 
-This fixes a bug which caused mounts from Solaris clients to fail.
-
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/auth.c |   46 +++++++++++++++++++++++-----------------------
- 1 file changed, 23 insertions(+), 23 deletions(-)
+ ./net/sunrpc/auth_gss/svcauth_gss.c |   14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff ./fs/nfsd/auth.c~current~ ./fs/nfsd/auth.c
---- ./fs/nfsd/auth.c~current~	2006-04-03 15:12:09.000000000 +1000
-+++ ./fs/nfsd/auth.c	2006-04-03 15:12:09.000000000 +1000
-@@ -14,46 +14,46 @@
- 
- int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
- {
--	struct svc_cred	*cred = &rqstp->rq_cred;
-+	struct svc_cred	cred = rqstp->rq_cred;
- 	int i;
- 	int ret;
- 
- 	if (exp->ex_flags & NFSEXP_ALLSQUASH) {
--		cred->cr_uid = exp->ex_anon_uid;
--		cred->cr_gid = exp->ex_anon_gid;
--		put_group_info(cred->cr_group_info);
--		cred->cr_group_info = groups_alloc(0);
-+		cred.cr_uid = exp->ex_anon_uid;
-+		cred.cr_gid = exp->ex_anon_gid;
-+		cred.cr_group_info = groups_alloc(0);
- 	} else if (exp->ex_flags & NFSEXP_ROOTSQUASH) {
- 		struct group_info *gi;
--		if (!cred->cr_uid)
--			cred->cr_uid = exp->ex_anon_uid;
--		if (!cred->cr_gid)
--			cred->cr_gid = exp->ex_anon_gid;
--		gi = groups_alloc(cred->cr_group_info->ngroups);
-+		if (!cred.cr_uid)
-+			cred.cr_uid = exp->ex_anon_uid;
-+		if (!cred.cr_gid)
-+			cred.cr_gid = exp->ex_anon_gid;
-+		gi = groups_alloc(cred.cr_group_info->ngroups);
- 		if (gi)
--			for (i = 0; i < cred->cr_group_info->ngroups; i++) {
--				if (!GROUP_AT(cred->cr_group_info, i))
-+			for (i = 0; i < cred.cr_group_info->ngroups; i++) {
-+				if (!GROUP_AT(cred.cr_group_info, i))
- 					GROUP_AT(gi, i) = exp->ex_anon_gid;
- 				else
--					GROUP_AT(gi, i) = GROUP_AT(cred->cr_group_info, i);
-+					GROUP_AT(gi, i) = GROUP_AT(cred.cr_group_info, i);
- 			}
--		put_group_info(cred->cr_group_info);
--		cred->cr_group_info = gi;
--	}
-+		cred.cr_group_info = gi;
-+	} else
-+		get_group_info(cred.cr_group_info);
- 
--	if (cred->cr_uid != (uid_t) -1)
--		current->fsuid = cred->cr_uid;
-+	if (cred.cr_uid != (uid_t) -1)
-+		current->fsuid = cred.cr_uid;
- 	else
- 		current->fsuid = exp->ex_anon_uid;
--	if (cred->cr_gid != (gid_t) -1)
--		current->fsgid = cred->cr_gid;
-+	if (cred.cr_gid != (gid_t) -1)
-+		current->fsgid = cred.cr_gid;
- 	else
- 		current->fsgid = exp->ex_anon_gid;
- 
--	if (!cred->cr_group_info)
-+	if (!cred.cr_group_info)
- 		return -ENOMEM;
--	ret = set_current_groups(cred->cr_group_info);
--	if ((cred->cr_uid)) {
-+	ret = set_current_groups(cred.cr_group_info);
-+	put_group_info(cred.cr_group_info);
-+	if ((cred.cr_uid)) {
- 		cap_t(current->cap_effective) &= ~CAP_NFSD_MASK;
- 	} else {
- 		cap_t(current->cap_effective) |= (CAP_NFSD_MASK &
+diff ./net/sunrpc/auth_gss/svcauth_gss.c~current~ ./net/sunrpc/auth_gss/svcauth_gss.c
+--- ./net/sunrpc/auth_gss/svcauth_gss.c~current~	2006-04-03 15:12:14.000000000 +1000
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-04-03 15:12:14.000000000 +1000
+@@ -1122,18 +1122,20 @@ svcauth_gss_release(struct svc_rqst *rqs
+ 					integ_len))
+ 			BUG();
+ 		if (resbuf->page_len == 0
+-			&& resbuf->tail[0].iov_len + RPC_MAX_AUTH_SIZE
++			&& resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE
+ 				< PAGE_SIZE) {
+ 			BUG_ON(resbuf->tail[0].iov_len);
+ 			/* Use head for everything */
+ 			resv = &resbuf->head[0];
+ 		} else if (resbuf->tail[0].iov_base == NULL) {
+-			/* copied from nfsd4_encode_read */
+-			svc_take_page(rqstp);
+-			resbuf->tail[0].iov_base = page_address(rqstp
+-					->rq_respages[rqstp->rq_resused-1]);
+-			rqstp->rq_restailpage = rqstp->rq_resused-1;
++			if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE
++					> PAGE_SIZE)
++				goto out_err;
++			resbuf->tail[0].iov_base =
++				resbuf->head[0].iov_base
++				+ resbuf->head[0].iov_len;
+ 			resbuf->tail[0].iov_len = 0;
++			rqstp->rq_restailpage = 0;
+ 			resv = &resbuf->tail[0];
+ 		} else {
+ 			resv = &resbuf->tail[0];
 
 
 -------------------------------------------------------
