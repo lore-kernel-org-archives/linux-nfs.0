@@ -1,58 +1,142 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [NFS] [PATCH] knfsd: Correct reserved reply space for read requests.
-Date: Mon, 3 Apr 2006 13:45:49 +1000
-Message-ID: <17456.39533.920110.831056@cse.unsw.edu.au>
-References: <17456.30621.579579.483287@cse.unsw.edu.au>
-	<OF8E2FDC8A.57540B9E-ON88257145.0010DA43-88257145.0012B720@us.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964832AbWDCDrj@vger.kernel.org>
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: message from Marc Eshel on Sunday April 2
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 001 of 16] knfsd: locks: flag NFSv4-owned locks
+Date: Mon, 3 Apr 2006 15:18:06 +1000
+Message-ID: <1060403051806.1723@suse.de>
+References: <20060403151452.1567.patches@notabene>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FQHTq-0005Nx-4O
+	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:19:58 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FQHTp-0004HV-BL
+	for nfs@lists.sourceforge.net; Sun, 02 Apr 2006 22:19:58 -0700
+To: Andrew Morton <akpm@osdl.org>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Sunday April 2, eshel@almaden.ibm.com wrote:
-> nfs-admin@lists.sourceforge.net wrote on 04/02/2006 06:17:17 PM:
-> 
-> > On Thursday March 30, eshel@almaden.ibm.com wrote:
-> > > Hi Neil
-> > > Can we use this opportunity to change NFSSVC_MAXBLKSIZE from 32K to 
-> 64K to 
-> > > match RPCSVC_MAXPAYLOAD. It makes real difference in I/O performance 
-> (we 
-> > > will still be saving half the space we used to allocate :).
-> > > Thanks, Marc. 
-> > 
-> > Maybe... but why not 128K ??
->  
-> Yes, It would be nice to be able to match the Linux client side that can 
-> go to 1MB. 
-> 
-> > There is certainly room to increase NFSSVC_MAXBLKSIZE, but I feel that
-> > it needs to be done together with a more detailed look at consequences
-> > in the network layer, particularly TCP window sizes.  I wouldn't mind
-> > making a CONFIG_ tunable without that detailed look, but making it a
-> > fixed change I feel less comfortable about.
-> 
-> Like you said it will need match more work to do it right and also not 
-> waste space for all RPC request to which the maximum possible size is 
-> allocated up front. But until than way not take advantage of this minor 
-> change that can give us significant performance improvement. I run with 
-> NFSSVC_MAXBLKSIZE set to 64K (the only change I made) and saw 10%-15% 
-> improvement for NFS reads. Is there anyone out there that is looking at 
-> making this improvement ?
 
-It was a fairly soft reservation of space, and we never actually tried
-to use it all.
-I don't see a clear problem with just making the change you mention,
-but until I have thought through the implications (or until someone
-else has and convinces me) I don't feel comfortable making the change.
+Use the fl_lmops field to identify which locks are ours, instead of trying
+to look them up in our private hash.  This is safer and more efficient.
 
-It's on my todo list, but that doesn't promise a lot :-(
-If someone else wants to try to convince me it is safe, and mention
-tcp window sizes a couple of time, I'll probably be happy with it.
+Earlier versions of this patch used a lock flag instead, but Trond pointed
+out that adding a new flag for each lock manager wasn't going to scale
+well, and suggested this approach instead; a separate patch converts lockd
+to using fl_lmops in the same way.
 
-NeilBrown
+In the NFSv4 case this looks like a bit of a hack, since the NFSv4 server
+isn't currently actually defining a lock_manager_operations struct, so we
+end up defining one *just* to serve as a cookie to identify our locks.
+
+But it works, and we actually do expect to start using the
+lock_manager_operations at some point anyway.
+
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/nfsd/nfs4state.c |   38 ++++++++++++++++----------------------
+ 1 file changed, 16 insertions(+), 22 deletions(-)
+
+diff ./fs/nfsd/nfs4state.c~current~ ./fs/nfsd/nfs4state.c
+--- ./fs/nfsd/nfs4state.c~current~	2006-04-03 15:12:03.000000000 +1000
++++ ./fs/nfsd/nfs4state.c	2006-04-03 15:12:03.000000000 +1000
+@@ -2495,36 +2495,27 @@ nfs4_transform_lock_offset(struct file_l
+ 		lock->fl_end = OFFSET_MAX;
+ }
+ 
+-static int
+-nfs4_verify_lock_stateowner(struct nfs4_stateowner *sop, unsigned int hashval)
+-{
+-	struct nfs4_stateowner *local = NULL;
+-	int status = 0;
+-			        
+-	if (hashval >= LOCK_HASH_SIZE)
+-		goto out;
+-	list_for_each_entry(local, &lock_ownerid_hashtbl[hashval], so_idhash) {
+-		if (local == sop) {
+-			status = 1;
+-			goto out;
+-		}
+-	}
+-out:
+-	return status;
+-}
+-
++/* Hack!: For now, we're defining this just so we can use a pointer to it
++ * as a unique cookie to identify our (NFSv4's) posix locks. */
++struct lock_manager_operations nfsd_posix_mng_ops  = {
++};
+ 
+ static inline void
+ nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
+ {
+-	struct nfs4_stateowner *sop = (struct nfs4_stateowner *) fl->fl_owner;
+-	unsigned int hval = lockownerid_hashval(sop->so_id);
++	struct nfs4_stateowner *sop;
++	unsigned int hval;
+ 
+-	deny->ld_sop = NULL;
+-	if (nfs4_verify_lock_stateowner(sop, hval)) {
++	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
++		sop = (struct nfs4_stateowner *) fl->fl_owner;
++		hval = lockownerid_hashval(sop->so_id);
+ 		kref_get(&sop->so_ref);
+ 		deny->ld_sop = sop;
+ 		deny->ld_clientid = sop->so_client->cl_clientid;
++	} else {
++		deny->ld_sop = NULL;
++		deny->ld_clientid.cl_boot = 0;
++		deny->ld_clientid.cl_id = 0;
+ 	}
+ 	deny->ld_start = fl->fl_start;
+ 	deny->ld_length = ~(u64)0;
+@@ -2736,6 +2727,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
+ 	file_lock.fl_pid = current->tgid;
+ 	file_lock.fl_file = filp;
+ 	file_lock.fl_flags = FL_POSIX;
++	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+ 
+ 	file_lock.fl_start = lock->lk_offset;
+ 	if ((lock->lk_length == ~(u64)0) || 
+@@ -2841,6 +2833,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, stru
+ 		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
+ 	file_lock.fl_pid = current->tgid;
+ 	file_lock.fl_flags = FL_POSIX;
++	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+ 
+ 	file_lock.fl_start = lockt->lt_offset;
+ 	if ((lockt->lt_length == ~(u64)0) || LOFF_OVERFLOW(lockt->lt_offset, lockt->lt_length))
+@@ -2900,6 +2893,7 @@ nfsd4_locku(struct svc_rqst *rqstp, stru
+ 	file_lock.fl_pid = current->tgid;
+ 	file_lock.fl_file = filp;
+ 	file_lock.fl_flags = FL_POSIX; 
++	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+ 	file_lock.fl_start = locku->lu_offset;
+ 
+ 	if ((locku->lu_length == ~(u64)0) || LOFF_OVERFLOW(locku->lu_offset, locku->lu_length))
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
