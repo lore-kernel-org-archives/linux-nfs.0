@@ -1,101 +1,80 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Re: [PATCH 011 of 16] knfsd: svcrpc: WARN() instead of returning an error from svc_take_page
-Date: Mon, 3 Apr 2006 22:26:13 -0400
-Message-ID: <20060404022613.GB6365@fieldses.org>
-References: <20060403151452.1567.patches@notabene> <1060403051901.1857@suse.de> <200604040002.22544.ioe-lkml@rameria.de>
+From: Chris Osicki <osk@admin.swisscom-mobile.ch>
+Subject: Re: Q: NFS server cluster
+Date: Tue, 4 Apr 2006 15:12:47 +0200
+Message-ID: <20060404151247.081c0c22@mwdsp001>
+References: <20060331160217.1734f710@mwdsp001.swissptt.ch>
+	<1143893766.13560.9.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964966AbWDDC0U@vger.kernel.org>
-To: Ingo Oeser <ioe-lkml@rameria.de>
-In-Reply-To: <200604040002.22544.ioe-lkml@rameria.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=US-ASCII
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FQlLR-00080J-MD
+	for nfs@lists.sourceforge.net; Tue, 04 Apr 2006 06:13:17 -0700
+Received: from outmail3.swisscom.com ([138.190.3.30] helo=mrz.swissptt.ch)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44)
+	id 1FQlLP-0001Hn-No
+	for nfs@lists.sourceforge.net; Tue, 04 Apr 2006 06:13:17 -0700
+Received: from mwdsp001.swissptt.ch (mwdsp001.swissptt.ch [10.221.40.203])
+	by mrz.swissptt.ch with ESMTP id k34DCos6006895
+	(using TLSv1/SSLv3 with cipher EDH-RSA-DES-CBC3-SHA (168 bits) verified NO)
+	for <nfs@lists.sourceforge.net>; Tue, 4 Apr 2006 15:12:50 +0200 (MEST)
+Received: from mwdsp001 (localhost [127.0.0.1])
+	by mwdsp001.swissptt.ch (8.13.4/8.13.4) with ESMTP id k34DCme8011516
+	for <nfs@lists.sourceforge.net>; Tue, 4 Apr 2006 15:12:48 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1143893766.13560.9.camel@localhost.localdomain>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, Apr 04, 2006 at 12:02:21AM +0200, Ingo Oeser wrote:
-> On Monday, 3. April 2006 07:19, you wrote:
-> > diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
-> > --- ./include/linux/sunrpc/svc.h~current~	2006-04-03 15:12:15.000000000 +1000
-> > +++ ./include/linux/sunrpc/svc.h	2006-04-03 15:12:15.000000000 +1000
-> > @@ -197,15 +197,13 @@ svc_take_res_page(struct svc_rqst *rqstp
-> >  	return rqstp->rq_respages[rqstp->rq_resused++];
-> >  }
-> >  
-> > -static inline int svc_take_page(struct svc_rqst *rqstp)
-> > +static inline void svc_take_page(struct svc_rqst *rqstp)
-> >  {
-> > -	if (rqstp->rq_arghi <= rqstp->rq_argused)
-> > -		return -ENOMEM;
-> > +	WARN_ON(rqstp->rq_arghi <= rqstp->rq_argused);
-> >  	rqstp->rq_arghi--;
-> >  	rqstp->rq_respages[rqstp->rq_resused] =
-> >  		rqstp->rq_argpages[rqstp->rq_arghi];
-> >  	rqstp->rq_resused++;
-> > -	return 0;
-> >  }
+On Sat, 01 Apr 2006 07:16:06 -0500
+Jeff Layton <jtlayton@poochiereds.net> wrote:
+
+> On Fri, 2006-03-31 at 16:02 +0200, Chris Osicki wrote:
+> > Is there anything I can do to eliminate this behaviour?
+> > If I understand correctly the problem is on the server side for the
+> > client nothing changes, the same IP-address to talk to, the same
+> > filesystem/filehandle. Or am I missing something.
+> > 
 > 
-> What will prevent underflow of ->rq_arghi and overflow of ->rq_resused here?
+> Be sure the blockdev has the same device major/minor number on both
+> hosts, though it sounds like you may already have checked that.
 > 
-> Before that change, this code would return without 
-> modifying both members here on error.
+> Otherwise, this sounds a lot like an issue with ARP. When you float IP
+> addresses you need to have the new address owner send gratuitous ARPs so
+> that its neighbors update their caches. Make sure your failover software
+> is doing this, and that the client and/or router isn't ignoring them.
 > 
-> Now this code makes the error worse with each call.
+> -- Jeff
 > 
-> Just ignore me, if this is ok :-)
+> 
 
-No, you're right, apologies.  The results could be worse than if we'd
-just BUG()'d there.
 
-So we should probably either just bite the bullet and make that a BUG(),
-or add back the return.  The latter option appended in the form of a
-replacement patch....
+Thanks for your reply, Jeff. 
+The problem was self-induced. My fail-over script trying to free the 
+filesystem (on the server) in order to umount it incorrectly used
+"fuser" and killed the rpc.mountd.  It works as expected now.
 
---b.
+Regards,
+Chris
 
-svcrpc: WARN() instead of returning an error from svc_take_page
 
-Every caller of svc_take_page ignores its return value and assumes it
-succeeded.  So just WARN() instead of returning an ignored error.  This
-would have saved some time debugging a recent nfsd4 problem.
-
-If there are still failure cases here, then the result is probably that we
-overwrite an earlier part of the reply while xdr-encoding.
-
-While the corrupted reply is a nasty bug, it would be worse to panic here
-and create the possibility of a remote DOS; hence WARN() instead of BUG().
-
-Thanks to Ingo Oeser for noticing a bug in an earlier version of this
-patch.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
-
- include/linux/sunrpc/svc.h |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 50cab2a..5035643 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -197,15 +197,16 @@ svc_take_res_page(struct svc_rqst *rqstp
- 	return rqstp->rq_respages[rqstp->rq_resused++];
- }
- 
--static inline int svc_take_page(struct svc_rqst *rqstp)
-+static inline void svc_take_page(struct svc_rqst *rqstp)
- {
--	if (rqstp->rq_arghi <= rqstp->rq_argused)
--		return -ENOMEM;
-+	if (rqstp->rq_arghi <= rqstp->rq_argused) {
-+		WARN_ON(1);
-+		return;
-+	}
- 	rqstp->rq_arghi--;
- 	rqstp->rq_respages[rqstp->rq_resused] =
- 		rqstp->rq_argpages[rqstp->rq_arghi];
- 	rqstp->rq_resused++;
--	return 0;
- }
- 
- static inline void svc_pushback_allpages(struct svc_rqst *rqstp)
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
