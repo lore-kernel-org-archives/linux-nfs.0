@@ -1,53 +1,101 @@
-From: "David Berg" <drberg1000@gmail.com>
-Subject: NFS Home directories
-Date: Mon, 3 Apr 2006 17:02:52 -0500
-Message-ID: <c79cfc560604031502i1b0b7589n93795cf0e516fec2@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] Re: [PATCH 011 of 16] knfsd: svcrpc: WARN() instead of returning an error from svc_take_page
+Date: Mon, 3 Apr 2006 22:26:13 -0400
+Message-ID: <20060404022613.GB6365@fieldses.org>
+References: <20060403151452.1567.patches@notabene> <1060403051901.1857@suse.de> <200604040002.22544.ioe-lkml@rameria.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FQX8S-0000Q8-6L
-	for nfs@lists.sourceforge.net; Mon, 03 Apr 2006 15:02:56 -0700
-Received: from wproxy.gmail.com ([64.233.184.224])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FQX8R-0004oH-0O
-	for nfs@lists.sourceforge.net; Mon, 03 Apr 2006 15:02:56 -0700
-Received: by wproxy.gmail.com with SMTP id i34so1199329wra
-        for <nfs@lists.sourceforge.net>; Mon, 03 Apr 2006 15:02:53 -0700 (PDT)
-To: nfs@lists.sourceforge.net
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, Andrew Morton <akpm@osdl.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964966AbWDDC0U@vger.kernel.org>
+To: Ingo Oeser <ioe-lkml@rameria.de>
+In-Reply-To: <200604040002.22544.ioe-lkml@rameria.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-SSBrbm93IHRoaXMgaXMgYSBwcmV0dHkgc3RhbmRhcmQgdXNlIG9mIE5GUyBhbmQgdGhlcmUgaGFz
-IHRvIGJlIGEgbWluaQp0dXRvcmlhbCByZWdhcmRpbmcgaXQuICBIb3dldmVyLCBJIGhhdmVuJ3Qg
-YmVlbiBhYmxlIHRvIGZpbmQgYW55IHRoYXQKYnJpbmcgdXAgdGhlIGlzc3VlIG9mIHdoYXQgaGFw
-cGVucyB3aGVuIHRoZSBuZXR3b3JrIGlzIG5vdCBhdmFpbGFibGUuIApJIGFsc28gd2FudCB0byBt
-YWtlIHN1cmUgdGhpcyBpcyBkb25lIHNlY3VyZWx5LgoKRG9lcyBhbnlvbmUga25vdyBvZiB3aGVy
-ZSBJIG1pZ2h0IGZpbmQgYSBob3d0byBhbG9uZyB0aGVzZSBsaW5lcz8gIE9yLAppcyB0aGlzIHNv
-IHN0cmFpZ2h0IGZvcndhcmQgdGhhdCBJIHNob3VsZCBqdXN0IGZpbmQgb3V0IGhvdyB0byBtb3Vu
-dAp0aGUgZGlyZWN0b3J5IHNlY3VybHkgYW5kIGxvb2sgYXQgcnN5bmM/ICBJIGhhdmUgbG9va2Vk
-IGZvciB0aGUgaG93dG8Kb24gZ29vZ2xlIHdpdGggbm8gc3VjY2Vzcy4gIEkgaGF2ZW4ndCBsb29r
-ZWQgYXQgdGhlIGluZGl2aWR1YWwKc29mdHdhcmUgcGFja2FnZSdzIGRvY3VtZW50YXRpb24gYXMg
-SSB3YXMgc3VyZSB0aGlzIGhvd3RvIHdvdWxkIGV4aXN0LgoKVGhhbmtzIGluIGFkdmFuY2UuCgot
-LURhdmUK
+On Tue, Apr 04, 2006 at 12:02:21AM +0200, Ingo Oeser wrote:
+> On Monday, 3. April 2006 07:19, you wrote:
+> > diff ./include/linux/sunrpc/svc.h~current~ ./include/linux/sunrpc/svc.h
+> > --- ./include/linux/sunrpc/svc.h~current~	2006-04-03 15:12:15.000000000 +1000
+> > +++ ./include/linux/sunrpc/svc.h	2006-04-03 15:12:15.000000000 +1000
+> > @@ -197,15 +197,13 @@ svc_take_res_page(struct svc_rqst *rqstp
+> >  	return rqstp->rq_respages[rqstp->rq_resused++];
+> >  }
+> >  
+> > -static inline int svc_take_page(struct svc_rqst *rqstp)
+> > +static inline void svc_take_page(struct svc_rqst *rqstp)
+> >  {
+> > -	if (rqstp->rq_arghi <= rqstp->rq_argused)
+> > -		return -ENOMEM;
+> > +	WARN_ON(rqstp->rq_arghi <= rqstp->rq_argused);
+> >  	rqstp->rq_arghi--;
+> >  	rqstp->rq_respages[rqstp->rq_resused] =
+> >  		rqstp->rq_argpages[rqstp->rq_arghi];
+> >  	rqstp->rq_resused++;
+> > -	return 0;
+> >  }
+> 
+> What will prevent underflow of ->rq_arghi and overflow of ->rq_resused here?
+> 
+> Before that change, this code would return without 
+> modifying both members here on error.
+> 
+> Now this code makes the error worse with each call.
+> 
+> Just ignore me, if this is ok :-)
 
+No, you're right, apologies.  The results could be worse than if we'd
+just BUG()'d there.
 
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+So we should probably either just bite the bullet and make that a BUG(),
+or add back the return.  The latter option appended in the form of a
+replacement patch....
+
+--b.
+
+svcrpc: WARN() instead of returning an error from svc_take_page
+
+Every caller of svc_take_page ignores its return value and assumes it
+succeeded.  So just WARN() instead of returning an ignored error.  This
+would have saved some time debugging a recent nfsd4 problem.
+
+If there are still failure cases here, then the result is probably that we
+overwrite an earlier part of the reply while xdr-encoding.
+
+While the corrupted reply is a nasty bug, it would be worse to panic here
+and create the possibility of a remote DOS; hence WARN() instead of BUG().
+
+Thanks to Ingo Oeser for noticing a bug in an earlier version of this
+patch.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+
+ include/linux/sunrpc/svc.h |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 50cab2a..5035643 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -197,15 +197,16 @@ svc_take_res_page(struct svc_rqst *rqstp
+ 	return rqstp->rq_respages[rqstp->rq_resused++];
+ }
+ 
+-static inline int svc_take_page(struct svc_rqst *rqstp)
++static inline void svc_take_page(struct svc_rqst *rqstp)
+ {
+-	if (rqstp->rq_arghi <= rqstp->rq_argused)
+-		return -ENOMEM;
++	if (rqstp->rq_arghi <= rqstp->rq_argused) {
++		WARN_ON(1);
++		return;
++	}
+ 	rqstp->rq_arghi--;
+ 	rqstp->rq_respages[rqstp->rq_resused] =
+ 		rqstp->rq_argpages[rqstp->rq_arghi];
+ 	rqstp->rq_resused++;
+-	return 0;
+ }
+ 
+ static inline void svc_pushback_allpages(struct svc_rqst *rqstp)
