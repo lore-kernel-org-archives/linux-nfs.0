@@ -1,20 +1,20 @@
-From: "Associe a sua empresa" <carimbos@netcabo.pt>
-Subject: ao Mundial 2006
-Date: Wed, 5 Apr 2006 11:07:25 +0100
-Message-ID: <3848-2200643510725468@comp-zzh3b8r>
-Mime-Version: 1.0
-Content-Type: multipart/related;
-	boundary="----=_NextPart_255818463351588910725588"
+From: =?GB2312?B?NNTCMTUtMTbJz7qjLzIxLTIyye7b2g==?= <shetbest@tom.com>
+Subject: =?GB2312?B?QUTUy9PDRVhDRUy4xL34ssbO8bncwO26zcrQs6HTqs/6?=
+Date: Wed, 5 Apr 2006 22:54:41 +0000 (UTC)
+Message-ID: <E1FRGsl-0008GA-4j@mail.sourceforge.net>
+Reply-To: zdm827@tom.com
+Content-Type: text/html;
+	charset="gb2312"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FR4vK-00052r-6t
-	for nfs@lists.sourceforge.net; Wed, 05 Apr 2006 03:07:38 -0700
-Received: from smtpa1.netcabo.pt ([212.113.174.16] helo=exch01smtp03.hdi.tvcabo)
+	id 1FRGsn-0005AI-0v
+	for nfs@lists.sourceforge.net; Wed, 05 Apr 2006 15:53:49 -0700
+Received: from [222.44.70.195] (helo=tom.com)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FR4vI-0000iP-2r
-	for nfs@lists.sourceforge.net; Wed, 05 Apr 2006 03:07:38 -0700
-To: nfs@lists.sourceforge.net
+	id 1FRGsl-0008GA-4j
+	for nfs@lists.sourceforge.net; Wed, 05 Apr 2006 15:53:49 -0700
+To: "nfs" <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,540 +27,287 @@ List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Date: Mon, 10 Apr 2006 06:54:58 +0800
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_255818463351588910725588
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_255828463451588910725588"
-
-------=_NextPart_255828463451588910725588
-Content-type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: quoted-printable
-
-
-  Carimbos=2Enet
-Carimbos e Cart&otilde;es de Visita  Associe a sua empresa
-a este evento
- Campeonato Mundial Futebol 2006=20
-  =20
-  =20
-Tinteiros Compat&iacute;veis
-Toners Compat&iacute;veis
-
-Carimbos comuns
-a partir de 5,5 &euro;
-Carimbos autom&aacute;ticos
-a partir de 8,8 &euro;
-Cart&otilde;es de visita
-a partir de 9 &euro;
-Identificadores=20
-a partir de 6,5 &euro;
-
-Contacto
-por email,=20
-por Tlm: 91 280 75 86
-ou pelo Skype=20
-
-=20
-   Aumente receitas
-  Seja nosso parceiro
-Todo o material para promo&ccedil;&atilde;o
-F&aacute;cil de iniciar=2E
-Adira j&aacute;
-
-+ GANHE MAIS +
-  =20
-    Marque a sua correspond&ecirc;ncia=20
-com um carimbo alusivo ao mundial=2E
-  Fa&ccedil;a algo memor&aacute;vel=2E
-Pelos seus clientes=2E
-E por si=2E
-V&aacute;rios modelos
-A partir de 5,5 euros
-
-SURPREENDA-OS !
- =20
- =20
-
-  TINTEIROS COMPAT&Iacute;VEIS=20
-   PROMO&Ccedil;&Atilde;O TEMPOR&Aacute;RIA
-3 unidades hp45A por 29,00 &euro;=20
-normalmente 34,20&euro;
-Tinteiro Compativel 45 A
-Aproveite,=20
-n&atilde;o precisa de enviar os vazios=2ECarimbos=2Enet online desde 1999 =
-=20
-N&atilde;o desejo receber mais informa=E7=F5es
-
-------=_NextPart_255828463451588910725588
-Content-Type: text/html; charset=windows-1252
-Content-Transfer-Encoding: quoted-printable
-
-
-
-
-
-<body bgcolor=3D"#FFFFFF">
-<table width=3D"600" border=3D"0" cellspacing=3D"0" cellpadding=3D"3" alig=
-n=3D"center">
-  <tr>=20
-    <td height=3D"55" valign=3D"middle" align=3D"center" width=3D"150"><fo=
-nt size=3D"3"><b><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=
-=3D"5"><a href=3D"http://www=2Ecarimbos=2Enet"><font color=3D"#CC0000">Car=
-imbos=2Enet</font></a></font><font face=3D"Verdana, Arial, Helvetica, sans=
--serif" color=3D"#CC0000" size=3D"5"><br>
-      <font size=3D"1" color=3D"#666666">Carimbos e Cart&otilde;es de Visi=
-ta</font></font></b></font></td>
-    <td valign=3D"bottom" align=3D"left" height=3D"55">=20
-      <div align=3D"center"><font color=3D"#ffffff"><font face=3D"Arial, H=
-elvetica, sans-serif" size=3D"3"><b><font color=3D"#ffffff"><font face=3D"=
-Arial, Helvetica, sans-serif" size=3D"3"><b><font color=3D"#ffffff"><font =
-face=3D"Arial, Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Ar=
-ial, Helvetica, sans-serif" size=3D"2"><b><font size=3D"5" color=3D"#0000F=
-F"><a href=3D"http://www=2Ecarimbos=2Enet/carimbos=5Fcampeonato=5Fmundial=5F=
-2006=2Ephp">Associe=20
-        a sua empresa<br>
-        a este evento</a></font><font size=3D"5" color=3D"#0000FF"><br>
-        </font><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, san=
-s-serif" size=3D"3"><b><font color=3D"#ffffff"><font face=3D"Arial, Helvet=
-ica, sans-serif" size=3D"3"><b><font color=3D"#ffffff"><font face=3D"Arial=
-, Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetic=
-a, sans-serif" size=3D"2"><b><font color=3D"#0000FF" size=3D"3">=20
-        <font color=3D"#009900">Campeonato Mundial <font color=3D"#CC0000"=
->Futebol=20
-        2006</font></font></font></b></font></font></font></b></font></fon=
-t></b></font></font></b></font></font></font></b></font></font></b></font>=
-</font></div>
-    </td>
-    <td valign=3D"bottom" align=3D"left" height=3D"55"><a href=3D"http://w=
-ww=2Ecarimbos=2Enet/carimbos=5Fcampeonato=5Fmundial=5F2006=2Ephp"><img src=
-=3D"cid:292760-22006435105416693425@comp-zzh3b8r" width=3D"70" height=3D"7=
-9" border=3D"0"></a></td>
-  </tr>
-</table>
-<table width=3D"600" border=3D"0" cellspacing=3D"0" cellpadding=3D"3" bgco=
-lor=3D"#CC0000" bordercolor=3D"#000000" align=3D"center">
-  <tr>=20
-    <td valign=3D"middle" align=3D"left">=20
-      <div align=3D"left"></div>
-    </td>
-  </tr>
-</table>
-<table width=3D"600" border=3D"0" cellspacing=3D"3" cellpadding=3D"3" bgco=
-lor=3D"#FFCC00" bordercolor=3D"#000000" align=3D"center">
-  <tr>=20
-    <td valign=3D"top" align=3D"center" width=3D"35%" bgcolor=3D"#FFFF99" =
-height=3D"471">=20
-      <div align=3D"center"><br>
-        <b><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"=
- color=3D"#0000FF"><font size=3D"1" color=3D"#CC0000"><font color=3D"#ffff=
-ff"><font face=3D"Arial, Helvetica, sans-serif" size=3D"3"><font face=3D"V=
-erdana, Arial, Helvetica, sans-serif" size=3D"2"><font size=3D"2" face=3D"=
-Arial, Helvetica, sans-serif"><font color=3D"#ffffff"><font face=3D"Arial,=
- Helvetica, sans-serif" size=3D"3"><font face=3D"Geneva, Arial, Helvetica,=
- san-serif" color=3D"#000000"><font size=3D"2"><b><font face=3D"Verdana, A=
-rial, Helvetica, sans-serif" size=3D"2"><a href=3D"http://www=2Ecarimbos=2E=
-net/tinteiros=5Ftonners=2Ephp"><b><font size=3D"3">T</font>inteiros=20
-        Compat&iacute;veis</b></a><b><br>
-        <a href=3D"http://www=2Ecarimbos=2Enet/tinteiros=5Ftonners=2Ephp">=
-<font size=3D"3">T</font>oners=20
-        Compat&iacute;veis</a><br>
-        <br>
-        <a href=3D"http://www=2Ecarimbos=2Enet/carimbos=2Ephp"><font size=3D=
-"3">C</font>arimbos=20
-        comuns</a><br>
-        <font size=3D"1" color=3D"#CC0000">a partir de 5,5 &euro;</font><b=
-r>
-        <a href=3D"http://www=2Ecarimbos=2Enet/carimbos=5Fautomaticos=2Eph=
-p"><font size=3D"3">C</font>arimbos=20
-        autom&aacute;ticos</a><br>
-        <font size=3D"1" color=3D"#CC0000">a partir de 8,8 &euro;</font><b=
-r>
-        <a href=3D"http://www=2Ecarimbos=2Enet/cartoes=2Ephp"><font size=3D=
-"3">C</font>art&otilde;es=20
-        de visita</a><br>
-        <font size=3D"1" color=3D"#CC0000">a partir de 9 &euro;</font><br>=
-
-        <a href=3D"http://www=2Ecarimbos=2Enet/identificador=2Ephp"><font =
-size=3D"3">I</font>dentificadores</a>=20
-        </b></font><br>
-        <font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><b=
-><font size=3D"1" color=3D"#CC0000">a=20
-        partir de 6,5 &euro;</font></b></font><br>
-        <font size=3D"1"><br>
-        Contacto</font><br>
-        <a href=3D"mailto:mail@carimbos=2Enet">por email</a>, <br>
-        por Tlm: 91 280 75 86<br>
-        ou pelo <a href=3D"skype:eduardo=5Fm=5Fgomes=3Fcall">Skype</a></b>=
-</font></font></font></font></font><font color=3D"#000000">=20
-        <br>
-        <br>
-        </font></font></font></font></font></font></b>=20
-        <table width=3D"98%" border=3D"1" cellspacing=3D"3" cellpadding=3D=
-"3" bordercolor=3D"#FFFFFF" bgcolor=3D"#CC0000">
-          <tr>=20
-            <td align=3D"center" bgcolor=3D"#FFFF33" height=3D"32"><font c=
-olor=3D"#000000" title=3D"Como receber a sua encomenda de carimbos e cart=F5=
-es de visita" size=3D"2" face=3D"Verdana, Arial, Helvetica, sans-serif"><b=
->=20
-              <font size=3D"3">Aumente receitas</font></b></font></td>
-          </tr>
-          <tr>=20
-            <td align=3D"center" height=3D"58"><font color=3D"#000000" tit=
-le=3D"Como receber a sua encomenda de carimbos e cart=F5es de visita" size=
-=3D"2" face=3D"Verdana, Arial, Helvetica, sans-serif"><font color=3D"#FFFF=
-FF"><b><font size=3D"4">S</font><font size=3D"3">eja=20
-              nosso parceiro</font></b></font></font><font title=3D"Saiba =
-como ter sucesso em 2006" size=3D"2" face=3D"Verdana, Arial, Helvetica, sa=
-ns-serif"><b><font color=3D"#FFCC00" size=3D"1"><br>
-              Todo o material para promo&ccedil;&atilde;o<br>
-              F&aacute;cil de iniciar=2E</font><font color=3D"#000000"><br=
+<html>
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dgb2312"=
 >
-              </font><a href=3D"http://www=2Ecarimbos=2Enet/parceiro=2Ephp=
-"><font color=3D"#FFFFFF">Adira=20
-              j&aacute;</font><br>
-              <br>
-              </a></b><a href=3D"http://www=2Ecarimbos=2Enet/parceiro=2Eph=
-p"><font color=3D"#FFFFFF" size=3D"4">+=20
-              GANHE MAIS +</font></a><b><br>
-              </b></font></td>
+<title>=CE=DE=B1=EA=CC=E2=CE=C4=B5=B5</title>
+<style type=3D"text/css">
+<!--
+.td {
+	font-size: 12px;
+	color: #313131;
+	line-height: 20px;
+	font-family: "Arial", "Helvetica", "sans-serif";
+}
+-->
+</style>
+</head>
+
+<body leftmargin=3D"0" background=3D"http://bo.sohu.com//images/img200405=
+02/dj_bg.gif">
+<table width=3D"100%" border=3D"0" cellspacing=3D"0" cellpadding=3D"0">
+  <tr>
+    <td height=3D"31" background=3D"http://igame.sina.com.cn/club/images/=
+topmenu/topMenu_8.gif" class=3D"td"><div align=3D"center"><font color=3D"=
+#FFFFFF">=D6=F7=B0=EC=B5=A5=CE=BB=A3=BA
+		=D2=D7=CC=DA=C6=F3=D2=B5=B9=DC=C0=ED=D7=C9=D1=AF=D3=D0=CF=DE=B9=AB=CB=BE=
+</font></div></td>
+  </tr>
+</table>
+<br>
+<table width=3D"684" border=3D"0" align=3D"center" cellpadding=3D"0" cell=
+spacing=3D"0" height=3D"1287">
+  <tr>
+    <td height=3D"71" bgcolor=3D"#8C8C8C">=20
+      <div align=3D"center">=20
+        <table width=3D"100%" border=3D"0" cellspacing=3D"1" cellpadding=3D=
+"0" height=3D"76">
+          <tr>
+            <td height=3D"74" bgcolor=3D"#F3F3F3"><div align=3D"center">
+				<span lang=3D"zh-cn"><font size=3D"6">=D4=CB=D3=C3EXCEL=B4=D9=BD=F8=B2=
+=C6=CE=F1=B9=DC=C0=ED=BA=CD=CA=D0=B3=A1=D3=AA=CF=FA</font></span></div></=
+td>
           </tr>
         </table>
-        <b><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"=
- color=3D"#0000FF"><font size=3D"1" color=3D"#CC0000"><font size=3D"2" col=
-or=3D"#000000">=20
-        </font></font></font></b></div>
-    </td>
-    <td valign=3D"top" align=3D"center" width=3D"65%" height=3D"471">=20
-      <table width=3D"98%" border=3D"0" cellspacing=3D"2" cellpadding=3D"2=
-" align=3D"center">
+      </div></td>
+  </tr>
+  <tr>
+    <td height=3D"1211" bgcolor=3D"#FFFFFF"> <div align=3D"center">=20
+        <table width=3D"99%" border=3D"0" cellspacing=3D"0" cellpadding=3D=
+"0" height=3D"48">
+          <tr>=20
+            <td width=3D"17%" height=3D"22" bgcolor=3D"#BF0000" class=3D"=
+td">=20
+              <div align=3D"center"><font color=3D"#FFFFFF">[=BF=CE =B3=CC=
+ =B1=B3 =BE=B0]</font></div></td>                      =20
+            <td width=3D"83%" class=3D"td" height=3D"22">=A1=A1</td>
+          </tr>
+          <tr>=20
+            <td height=3D"26" colspan=3D"2" class=3D"td">
+              <p ALIGN=3D"JUSTIFY"><font LANG=3D"ZH-CN">
+              &nbsp;&nbsp;&nbsp;&nbsp; </font><font color=3D"#000000" siz=
+e=3D"2">    =20
+				=B2=BB=B9=DC=C4=FA=D4=DA=CA=B2=C3=B4=B8=DA=CE=BB=C9=CF=B9=A4=D7=F7=A3=
+=AC=C0=FB=D3=C3Excel=B5=E7=D7=D3=B1=ED=B8=F1=BD=F8=D0=D0=CA=FD=BE=DD=B7=D6=
+=CE=F6=BC=B8=BA=F5=D2=D1=BE=AD=B3=C9=CE=AA=C3=BF=B8=F6=BE=AD=C0=ED=C8=CB=B5=
+=C4=B1=D8=B1=B8=B9=A4=BE=DF=A3=AC=D3=C8=C6=E4=CA=C7=D4=DA=B2=C6=CE=F1=BA=CD=
+=D3=AA=CF=FA=B9=DC=C0=ED=C9=CF=A3=AC=B5=E7=D7=D3=B1=ED=B8=F1=C4=DC=B9=BB=B0=
+=EF=D6=FA=C4=E3=C9=B8=D1=A1=CA=FD=BE=DD=A1=A2=B7=D6=CE=F6=CA=FD=BE=DD=B2=A2=
+=D6=C6=D7=F7=B9=DC=C0=ED=CD=BC=B1=ED=A1=A3=C8=E7=B9=FB=C4=E3=B4=F2=CB=E3=C0=
+=FB=D3=C3Excel=CC=E1=B8=DF=B9=A4=D7=F7=D6=CA=C1=BF=BA=CD=D0=A7=C2=CA=A3=AC=
+=C4=C7=C3=B4=D5=E2=B8=F6=BF=CE=B3=CC=BE=CD=CA=C7=CE=AA=C4=E3=B6=A8=D6=C6=B5=
+=C4=A1=A3<br>
+				</font><b><font color=3D"#ff0000" size=3D"2">=C5=E0 =D1=B5 =CA=D5 =D2=
+=E6=A3=BA</font></b><font color=3D"#000000" size=3D"2"><br>
+				=CC=E1=B8=DFEXCEL=CA=B5=BC=CA=B2=D9=D7=F7=C4=DC=C1=A6=A3=AC=CC=E1=B8=DF=
+=B9=A4=D7=F7=D0=A7=C2=CA=A3=BB<br>
+				=D5=C6=CE=D5=C8=E7=BA=CE=C0=FB=D3=C3=B8=F7=D6=D6=BA=AF=CA=FD=BD=A8=C1=
+=A2=CA=FD=D1=A7=C4=A3=D0=CD=BD=F8=D0=D0=B8=DF=D0=A7=B2=C6=CE=F1=B7=D6=CE=F6=
+=A3=BB<br>
+				=D5=C6=CE=D5=BF=EC=CB=D9=CA=B5=CF=D6=B2=FA=C6=B7=A1=A2=BF=CD=BB=A7=B7=
+=D6=C0=E0=B5=C4=B7=BD=B7=A8=A3=AC=CA=B9=B9=AB=CB=BE=D0=A7=D2=E6=B1=B6=D4=F6=
+=A3=BB<br>
+				=D5=C6=CE=D5=BD=A8=C1=A2=B6=E0=D2=F2=CB=D8=C1=BF=B1=BE=C0=FB=C3=F4=B8=
+=D0=B7=D6=CE=F6=C4=A3=D0=CD=A3=AC=CA=B9=C4=E3=D6=B1=B9=DB=B5=D8=B7=A2=CF=D6=
+=D7=EE=BC=D1=D3=AF=C0=FB=C4=A3=CA=BD=A3=BB<br>
+				=D5=C6=CE=D5=C0=FB=D3=C3=B8=F7=D6=D6=D4=A4=B2=E2=B9=A4=BE=DF=A3=AC=D1=
+=B0=D5=D2=D3=AA=CF=FA=B7=BD=B0=B8=A3=BB<br>
+				=D5=C6=CE=D5=C8=E7=BA=CE=D6=C6=D7=F7=C1=EE=C0=CF=B0=E5=C2=FA=D2=E2=B5=
+=C4=B8=F7=C0=E0=CD=BC=B1=ED</font><font LANG=3D"ZH-CN"><font size=3D"2"><=
+span style=3D"mso-bidi-font-size: 9.0pt; mso-bidi-font-family: Times New =
+Roman; mso-font-kerning: 1.0pt; mso-ansi-language: EN-US; mso-fareast-lan=
+guage: ZH-CN; mso-bidi-language: AR-SA">=A1=A3</span></font> </font></td>=
+=20
+          </tr>
+        </table>
+      </div>
+      <div align=3D"center" style=3D"width: 671; height: 1"> </div>
+      <div align=3D"center">=20
+        <table width=3D"99%" height=3D"84" border=3D"0" cellpadding=3D"0"=
+ cellspacing=3D"0">
+          <tr>=20
+            <td width=3D"17%" height=3D"20" bgcolor=3D"#0080C0" class=3D"=
+td"> <div align=3D"center"><font color=3D"#FFFFFF">[=BF=CE               =
+       =20
+                =B3=CC =B4=F3 =B8=D9]</font></div></td>                  =
+   =20
+            <td width=3D"83%" class=3D"td">=A1=A1</td>
+          </tr>
+          <tr>=20
+            <td height=3D"64" colspan=3D"2" class=3D"td"> <p>
+			<font size=3D"2"><b>=D2=BB=A1=A2 EXCEL=B2=D9=D7=F7=BC=BC=C7=C9</b></fo=
+nt><font color=3D"#000000" size=3D"2"><br>    =20
+			=CA=FD=BE=DD=B4=A6=C0=ED=A3=BA<br>
+			=CA=FD=BE=DD=CA=E4=C8=EB=A1=A2=CA=FD=BE=DD=B8=F1=CA=BD=A1=A2=BD=A8=C1=A2=
+=B9=AB=CA=BD=A1=A2=CA=FD=BE=DD=B1=E0=BC=AD=A1=A2=B5=F7=D3=C3=BA=AF=CA=FD=A3=
+=A8=BB=F9=B1=BE=BA=AF=CA=FD=A1=A2=C2=DF=BC=AD=A1=A2=CD=B3=BC=C6=A1=A2=CA=FD=
+=BE=DD=BF=E2=A1=A2=B2=C6=CE=F1=C0=E0=B5=C8=A3=A9=A1=A2=CD=BC=B1=ED=D6=C6=D7=
+=F7<br>
+			=CA=FD=BE=DD=B9=DC=C0=ED=A3=BA<br>
+			=C5=C5=D0=F2=A1=A2=C9=B8=D1=A1=A1=A2=BC=C7=C2=BC=B5=A5=A1=A2=B7=D6=C0=E0=
+=BB=E3=D7=DC<br>
+			=CA=FD=BE=DD=B7=D6=CE=F6=A3=BA<br>
+			=CA=FD=BE=DD=CD=B8=CA=D3=B1=ED(=CD=BC)=A1=A2=CA=FD=BE=DD=C3=F4=B8=D0=B7=
+=D6=CE=F6=A1=A2=B5=A5=B1=E4=C1=BF=C7=F3=BD=E2=A1=A2=C4=A3=C4=E2=D4=CB=CB=E3=
+=B1=ED=A1=A2=B7=BD=B0=B8=B9=DC=C0=ED=C6=F7=A1=A2=B9=E6=BB=AE=C7=F3=BD=E2<=
+br>
+			<br>
+			</font><font size=3D"2"><b>=B6=FE=A1=A2=C8=E7=BA=CE=D4=CB=D3=C3=CD=BC=B1=
+=ED=BD=F8=D0=D0=CF=FA=CA=DB/=B2=C6=CE=F1=CA=FD=BE=DD=B7=D6=CE=F6=BA=CD=B1=
+=A8=B8=E6</b></font><font color=3D"#000000" size=3D"2"><br>
+			=D4=F5=D1=F9=BF=EC=CB=D9=B4=B4=BD=A8=B3=F6=C4=E3=D0=E8=D2=AA=B5=C4=CD=BC=
+=B1=ED<br>
+			=C8=E7=BA=CE=B4=B4=BD=A8=B6=AF=CC=AC=CD=BC<br>
+			=C8=E7=BA=CE=D2=F2=B5=D8=D6=C6=D2=CB=B5=D8=CA=B9=D3=C3=CD=BC=B1=ED<br>
+			=C6=F3=D2=B5=CF=FA=CA=DB=D2=B5=BC=A8=B5=C4=CD=BC=B1=ED=B1=ED=B4=EF<br>
+			=B2=FA=C6=B7=CA=D0=B3=A1=D5=BC=D3=D0=C2=CA=B5=C4=CD=BC=B1=ED=B1=ED=B4=EF=
+<br>
+			=CF=FA=CA=DB=B3=C9=B1=BE=D5=BC=B2=FA=C6=B7=D7=DC=B3=C9=B1=BE=B5=C4=CD=BC=
+=B1=ED=B1=ED=B4=EF<br>
+			=B4=FA=C0=ED=C9=CC=BC=B0=CF=FA=CA=DB=B4=FA=B1=ED=B5=C4=CF=FA=CA=DB=D2=B5=
+=BC=A8=B5=C4=CD=BC=B1=ED=B1=ED=B4=EF<br>
+			=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=B7=D6=CE=F6=CA=D0=B3=A1=B5=F7=B2=E9=CE=CA=
+=BE=ED<br>
+			=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=D6=C6=D7=F7=BA=CD=B7=D6=CE=F6=CF=FA=CA=DB=
+=B1=A8=B1=ED<br>
+			=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=D6=C6=D7=F7=BA=CD=B7=D6=CE=F6=B2=C6=CE=F1=
+=B1=A8=B1=ED<br>
+			<br>
+			</font><font size=3D"2"><b>=C8=FD=A1=A2=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=BD=
+=F8=D0=D0=CF=FA=CA=DB=BA=CD=B2=C6=CE=F1=B9=DC=C0=ED</b></font><font color=
+=3D"#000000" size=3D"2"><br>
+			=B3=C9=B1=BE=B7=D1=D3=C3=B7=D6=CE=F6=D3=EB=B9=DC=C0=ED<br>
+			=CF=FA=CA=DB=D2=B5=CE=F1=B9=DC=C0=ED=D3=EB=BE=F6=B2=DF<br>
+			=B6=AF=CC=AC=B1=BE=C1=BF=C0=FB=C4=A3=D0=CD=B7=D6=CE=F6<br>
+			=B9=CC=B6=A8=D7=CA=B2=FA=D5=DB=BE=C9=BC=C6=CB=E3<br>
+			=B9=A4=D7=CA=BC=B0=B8=F6=C8=CB=CB=F9=B5=C3=CB=B0=BC=C6=CB=E3<br>
+			=CF=D6=BD=F0=C8=D5=B1=A8=BC=B0=CF=D6=BD=F0=C1=F7=C1=BF=B1=ED=B5=C4=B1=E0=
+=D6=C6<br>
+			=D3=C9=D7=CA=B2=FA=B8=BA=D5=AE=B1=ED=D7=D4=B6=AF=C9=FA=B3=C9=CF=D6=BD=F0=
+=C1=F7=C1=BF=B1=ED<br>
+			=B9=A4=D7=CA=A1=A2=B9=CC=B6=A8=D7=CA=B2=FA=CD=B6=D7=CA=A1=A2=D5=DB=BE=C9=
+=B7=BD=B0=B8=C9=B8=D1=A1=B5=C8=CA=B5=BC=CA=D4=CB=D3=C3=C4=A3=B0=E5=BD=A8=C1=
+=A2=BA=CD=D3=A6=D3=C3=B7=D6=CE=F6<br>
+			=C1=BF=B1=BE=C0=FB=B7=D6=CE=F6=A1=A2=BB=D8=B9=E9=B7=D6=CE=F6=A1=A2=B7=BD=
+=B0=B8=D4=A4=B2=E2=A1=A2=CF=FA=CA=DB=BF=CD=BB=A7=B2=FA=C6=B7=B7=D6=CE=F6=B5=
+=C8=CA=B5=D5=BD=D1=DD=C1=B7<br>
+			=B6=A8=D0=D4=D6=B8=B1=EA=B5=C4=B6=A8=C1=BF=BB=AF=B7=D6=CE=F6=BC=BC=CA=F5=
+=D3=A6=D3=C3=B5=C4=C4=A3=C4=E2=D1=DD=C1=B7<br>
+			=D4=CB=D3=C3=CA=FD=BE=DD=CD=B8=CA=D3=B1=ED=A3=A8=CD=BC=A3=A9=BD=F8=D0=D0=
+=BE=AD=D3=AA=B7=D6=CE=F6=B5=C4=B7=D6=CE=F6=CB=BC=C2=B7=BA=CD=C4=A3=C4=E2=D1=
+=DD=C1=B7<br>
+			=CD=B6=D7=CA=CF=EE=C4=BF=C6=C0=BC=DB=D3=EB=BE=F6=B2=DF</font><br>
+            =A1=A1</p></td>
+          </tr>
+        </table>
+        <table width=3D"99%" height=3D"84" border=3D"0" cellpadding=3D"0"=
+ cellspacing=3D"0">
+          <tr>=20
+            <td width=3D"17%" height=3D"20" bgcolor=3D"#0080C0" class=3D"=
+td">=20
+              <div align=3D"center"><font color=3D"#FFFFFF">[=B5=BC =CA=A6=
+ =BC=F2 =BD=E9]</font></div></td>                    =20
+            <td width=3D"83%" class=3D"td">=A1=A1</td>
+          </tr>
+          <tr>=20
+            <td height=3D"64" colspan=3D"2" class=3D"td"> <p>&nbsp;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    =20
+			<font color=3D"#FF0000">&nbsp; </font><font color=3D"#000000">
+			<font color=3D"#ff0000">Mr Wang </font>
+			=A3=AC=B9=DC=C0=ED=B9=A4=B3=CC=CB=B6=CA=BF=A1=A2=B8=DF=BC=B6=BE=AD=BC=C3=
+=CA=A6=A3=AC=B9=FA=BC=CA=D6=B0=D2=B5=C5=E0=D1=B5=CA=A6=D0=AD=BB=E1=C8=CF=D6=
+=A4=D6=B0=D2=B5=C5=E0=D1=B5=CA=A6=A3=AC=C0=FA=C8=CE=BF=E7=B9=FA=B9=AB=CB=BE=
+=C9=FA=B2=FA=B8=BA=D4=F0=C8=CB=A1=A2=B9=A4=D2=B5=B9=A4=B3=CC=BE=AD=C0=ED=A1=
+=A2=B9=DC=C0=ED=BB=E1=BC=C6=B7=D6=CE=F6=CA=A6=A1=A2=D3=AA=D4=CB=D7=DC=BC=E0=
+=B5=C8=B8=DF=BC=B6=B9=DC=C0=ED=D6=B0=CE=F1=B6=E0=C4=EA=A3=AC=CD=AC=CA=B1=BB=
+=B9=B5=A3=C8=CE     =20
+			&lt; =BC=DB=D6=B5=B9=A4=B3=CC &gt; =D4=D3=D6=BE=C9=F3=B8=E5=C8=CB=A1=A2=
+=C1=C9=C4=FE=CA=A1=D3=AA=BF=DA=CA=D0=C9=CC=D2=B5=D2=F8=D0=D0=B6=C0=C1=A2=B6=
+=AD=CA=C2=B5=C8=D6=B0=CE=F1=A3=AC=B6=D4=C6=F3=D2=B5=B9=DC=C0=ED=D3=D0=BD=CF=
+=C9=EE=C8=EB=B5=C4=D1=D0=BE=BF=A1=A3     =20
+			=CD=F5=C0=CF=CA=A6=D6=F7=D2=AA=B4=D3=CA=C2=B3=C9=B1=BE=BF=D8=D6=C6=A1=A2=
+=B2=C6=CE=F1=B9=DC=C0=ED=A1=A2=B9=DC=C0=ED=BB=E1=BC=C6=BE=F6=B2=DF=B5=C8=BF=
+=CE=B3=CC=B5=C4=BD=B2=CA=DA=A3=AC=CE=AA IBM =A1=A2 TDK     =20
+			=A1=A2=CB=C9=CF=C2=A1=A2=BF=C9=BF=DA=BF=C9=C0=D6=A1=A2=BF=B5=CA=A6=B8=B5=
+=A1=A2=BB=E3=D4=B4=B9=FB=D6=AD=A1=A2=D1=A9=BD=F2=C6=A1=BE=C6=A1=A2=BC=AA=B0=
+=D9=C0=FB=CA=B3=C6=B7=A1=A2=B9=DA=BD=DD=B5=E7=D7=D3=A1=A2 INTEX =C3=F7=B4=
+=EF=CB=DC=BD=BA=A1=A2=D5=FD=D0=C2=CF=F0=BD=BA=A1=A2=C3=C0=B9=FA ITT     =20
+			=BC=AF=CD=C5=A1=A2=B9=E3=C9=CF=BF=C6=BC=BC=A1=A2=C3=C0=B5=C4=BF=D5=B5=F7=
+=A1=A2=D6=D0=D0=CB=CD=A8=D1=B6=A1=A2=BE=A9=D0=C5=CD=A8=D0=C5=A1=A2=C1=AA=CF=
+=EB=B5=E7=C4=D4=A3=AC=D3=A6=D3=C3=B2=C4=C1=CF ( =D6=D0=B9=FA ) =B9=AB=CB=BE=
+=A1=A2=B0=AC=BF=CB=C9=AD -     =20
+			=BD=F0=C9=BD=CA=AF=BB=AF=A1=A2=D6=D0=B9=FA=BB=AF=B9=A4=BD=F8=B3=F6=BF=DA=
+=B9=AB=CB=BE=A1=A2=D5=FD=B4=F3=BC=AF=CD=C5=B4=F3=B8=A3=CB=C7=C1=CF=A1=A2=CF=
+=C3=BB=AA=BC=AF=CD=C5=A1=A2=B2=D3=C0=A4=B9=C9=B7=DD=A1=A2NEC =B6=AB=BD=F0=
+=B5=E7=D7=D3=A1=A2=CC=AB=D4=AD=B8=D6=CC=FA=BC=AF=CD=C5=A1=A2 PHILIPS     =
+=20
+			=A1=A2=C9=EE=DB=DA=BF=AA=B7=A2=BF=C6=BC=BC=A1=A2=B4=F3=C0=E4=CD=F5=D4=CB=
+=CA=E4=D6=C6=C0=E4=A1=A2=C8=FD=D1=F3=BB=AA=C7=BF=A1=A2 TCL     =20
+			=A1=A2=C3=C0=B5=C4=C6=FB=B3=B5=A1=A2=C9=CF=BA=A3=B1=B4=B6=FB=B0=A2=B6=FB=
+=BF=A8=CC=D8=A1=A2=CC=EC=BD=F2=D4=FA=C5=AC=CE=F7=A1=A2=C9=CF=BA=A3=BF=A8=B2=
+=A9=CC=D8=B5=C8=D6=AA=C3=FB=C6=F3=D2=B5=CC=E1=B9=A9=CF=EE=C4=BF=B8=A8=B5=BC=
+=BB=F2=D7=A8=CC=E2=C5=E0=D1=B5=A1=A3=CD=F5=C0=CF=CA=A6=CA=DA=BF=CE=BE=AD=D1=
+=E9=B7=E1=B8=BB=A3=AC=B7=E7=B8=F1=D3=C4=C4=AC=DA=B6=D0=B3=A1=A2=C2=DF=BC=AD=
+=C7=E5=CE=FA=A1=A2=B9=FD=B3=CC=BB=A5=B6=AF=A3=AC=B0=B8=C0=FD=C9=FA=B6=AF=A1=
+=A2=C9=EE=CA=DC=D1=A7=D4=B1=CF=B2=B0=AE</font>=A1=A3<font color=3D"#FF000=
+0"> </font>           =20
+              </p></td>
+          </tr>
+        </table>
+      </div>
+      <div align=3D"center">=20
+        <table width=3D"669" border=3D"0" cellpadding=3D"0" cellspacing=3D=
+"0" height=3D"57">
+          <tr>=20
+            <td width=3D"132" height=3D"26" bgcolor=3D"#0080C0" class=3D"=
+td"> <div align=3D"center"><font color=3D"#FFFFFF">[=CA=B1=BC=E4/=B5=D8=B5=
+=E3/=C1=AA=CF=B5=B7=BD=CA=BD]</font></div></td>
+            <td width=3D"536" class=3D"td" height=3D"26">=A1=A1</td>
+          </tr>
+          <tr>=20
+            <td height=3D"31" colspan=3D"2" class=3D"td" width=3D"669">=20
+              <p><b>&nbsp;</b><font size=3D"2"> 4=D4=C215-16=C8=D5=A3=A8=D6=
+=DC=C1=F9/=C8=D5=A3=A9<b>=B5=D8=B5=E3: =20
+              </b></font>=C9=CF=BA=A3&nbsp;&nbsp;&nbsp; <font size=3D"2">=
+<b>&nbsp;&nbsp;&nbsp;&nbsp;</b>21-22=C8=D5(=D6=DC=CE=E5/=C1=F9)   =20
+              <b>=B5=D8=B5=E3: </b>=C9=EE=DB=DA&nbsp;&nbsp;&nbsp;&nbsp;<b=
+> </b>1980=D4=AA/=C8=CB&nbsp;&nbsp;&nbsp;&nbsp;=CB=C4=C8=CB=D2=D4=C9=CF=B2=
+=CE=BC=D3=A3=AC=D4=F9=CB=CD=D2=BB=C3=FB=C3=FB=B6=EE-</font> =20
+          </p>
+              </td>
+          </tr>
+        </table>
+      </div>
+      <table width=3D"99%" height=3D"51" border=3D"0" align=3D"center" ce=
+llpadding=3D"0" cellspacing=3D"0">
         <tr>=20
-          <td width=3D"100" align=3D"center" valign=3D"top" height=3D"79">=
-<font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D=
-"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" si=
-ze=3D"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-seri=
-f" size=3D"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans=
--serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" si=
-ze=3D"2"><b><font size=3D"3" color=3D"#000000"><a href=3D"http://www=2Ecar=
-imbos=2Enet/carimbos=5Fcampeonato=5Fmundial=5F2006=2Ephp"><img src=3D"cid:=
-167801-22006435105416693426@comp-zzh3b8r" width=3D"100" height=3D"100" bor=
-der=3D"0"></a></font></b></font></font></font></font></font><font face=3D"=
-Verdana, Arial, Helvetica, sans-serif" size=3D"2"><b></b></font></font></f=
-ont></font></font></td>
-          <td height=3D"79" align=3D"left" valign=3D"top">=20
-            <h3><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sa=
-ns-serif" size=3D"3"><font size=3D"3" face=3D"Verdana, Arial, Helvetica, s=
-ans-serif"><b><font color=3D"#CC0000" size=3D"5"><font face=3D"Verdana, Ar=
-ial, Helvetica, sans-serif" size=3D"2"><b><font size=3D"4">Marque=20
-              a sua correspond&ecirc;ncia</font> <br>
-              <font color=3D"#000000">com um carimbo alusivo ao mundial</f=
-ont></b><font color=3D"#000000">=2E</font></font></font></b></font></font>=
-</font></h3>
-          </td>
+          <td height=3D"51" class=3D"td"> <font size=3D"2"><b>&nbsp;=B5=E7=
+=BB=B0=A3=BA</b>021-51187126&nbsp;  =20
+            0755-61309052&nbsp;&nbsp; =D0=BB=D0=A1=BD=E3&nbsp;&nbsp; =D7=A2=
+:=C8=E7=C4=FA=B2=BB=D0=E8=D2=AA=B4=CB=D3=CA=BC=FE,=C7=EB=BB=D8=D0=C5  =20
+            xlh010@tom.com=B2=A2=D4=DA=B1=EA=CC=E2=D7=A2=C3=F7=B6=A9=CD=CB=
+</font></td>     =20
         </tr>
-      </table>
-      <table width=3D"98%" border=3D"0" cellspacing=3D"2" cellpadding=3D"2=
-" align=3D"center">
-        <tr>=20
-          <td height=3D"130" align=3D"center" valign=3D"top"><font color=3D=
-"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D"3"><font col=
-or=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D"3"><fon=
-t color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D"3"=
-><font size=3D"3" face=3D"Verdana, Arial, Helvetica, sans-serif"><b><font =
-color=3D"#CC0000" size=3D"5"><font face=3D"Verdana, Arial, Helvetica, sans=
--serif" size=3D"2"><b><font size=3D"4" color=3D"#00CC00">Fa&ccedil;a=20
-            algo<font color=3D"#000000"> memor&aacute;vel=2E</font></font>=
-</b></font></font><font color=3D"#000000"><br>
-            Pelos seus clientes=2E<br>
-            E por si=2E<br>
-            </font><font color=3D"#ffffff"><font face=3D"Arial, Helvetica,=
- sans-serif" size=3D"3"><font color=3D"#ffffff"><font face=3D"Arial, Helve=
-tica, sans-serif" size=3D"3"><font color=3D"#ffffff"><font face=3D"Arial, =
-Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetica,=
- sans-serif" size=3D"2" color=3D"#000099"><b><font size=3D"1">V&aacute;rio=
-s=20
-            modelos</font><br>
-            <font size=3D"3" color=3D"#CC0000">A partir de 5,5 euros</font=
-></b></font></font></font></font></font></font></font><font color=3D"#0000=
-00"><br>
-            <br>
-            </font></b></font></font><font face=3D"Arial, Helvetica, sans-=
-serif"><font face=3D"Verdana, Arial, Helvetica, sans-serif"><b><font color=
-=3D"#000000"><font size=3D"4"><a href=3D"http://www=2Ecarimbos=2Enet/carim=
-bos=5Fcampeonato=5Fmundial=5F2006=2Ephp">SURPREENDA-OS=20
-            !</a></font></font></b></font></font><font face=3D"Arial, Helv=
-etica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetica, san=
-s-serif" size=3D"2"><b><br>
-            </b></font></font></font></font></font></font></font></td>
-          <td width=3D"100" align=3D"left" valign=3D"top" height=3D"130">=20=
-
-            <h3><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sa=
-ns-serif" size=3D"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetic=
-a, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-se=
-rif" size=3D"2"><b><a href=3D"http://www=2Ecarimbos=2Enet/carimbos=5Fcampe=
-onato=5Fmundial=5F2006=2Ephp"><img src=3D"cid:268412-22006435105416693427@=
-comp-zzh3b8r" width=3D"100" height=3D"150" border=3D"0"></a></b></font></f=
-ont></font></font></font></h3>
-          </td>
-        </tr>
-      </table>
-      <p><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-seri=
-f" size=3D"3"><font face=3D"Geneva, Arial, Helvetica, san-serif" color=3D"=
-#000000"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-seri=
-f" size=3D"3"><font face=3D"Geneva, Arial, Helvetica, san-serif" color=3D"=
-#000000"></font></font></font><font size=3D"2">=20
-        </font></font></font></font> </p>
-      <table width=3D"98%" border=3D"0" cellspacing=3D"2" cellpadding=3D"2=
-" align=3D"center" bgcolor=3D"#FFFFCC">
-        <tr>=20
-          <td colspan=3D"2" align=3D"center" valign=3D"top" height=3D"21">=
-<font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D=
-"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" si=
-ze=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><=
-b><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=
-=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><b>=
-<font size=3D"3" color=3D"#000000"><font color=3D"#ffffff"><font face=3D"A=
-rial, Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helv=
-etica, sans-serif" size=3D"2"><font color=3D"#ffffff"><font face=3D"Arial,=
- Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetica=
-, sans-serif" size=3D"2"><b><font size=3D"3" color=3D"#000000"></font></b>=
-</font></font></font></font></font></font></font></b></font></font></font>=
-<font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D=
-"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" si=
-ze=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><=
-b><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=
-=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><b>=
-<font size=3D"3" color=3D"#000000"><font color=3D"#ffffff"><font face=3D"A=
-rial, Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helv=
-etica, sans-serif" size=3D"2"><font color=3D"#ffffff"><font face=3D"Arial,=
- Helvetica, sans-serif" size=3D"3"><font face=3D"Verdana, Arial, Helvetica=
-, sans-serif" size=3D"2"><b></b></font></font></font></font></font></font>=
-</font></b></font></font></font></b></font></font></font></font></font><fo=
-nt color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D"3=
-"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=
-=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><b>=
-<font size=3D"3" color=3D"#000000"></font></b></font></font></font></font>=
-</font><font size=3D"3" color=3D"#000000"></font></b></font></font></font>=
-</font></font><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans=
--serif" size=3D"3"><font face=3D"Arial, Helvetica, sans-serif" size=3D"1">=
-<font size=3D"2" color=3D"#FFFFFF" face=3D"Verdana, Arial, Helvetica, sans=
--serif"><b><font color=3D"#000000" size=3D"4">TINTEIROS=20
-            COMPAT&Iacute;VEIS </font></b></font></font></font></font></td=
->
-        </tr>
-        <tr>=20
-          <td width=3D"60" align=3D"center" valign=3D"top" height=3D"86"><=
-font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" size=3D=
-"3"><font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" si=
-ze=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"><=
-b><font size=3D"3" color=3D"#000000"><a href=3D"http://www=2Ecarimbos=2Ene=
-t/tinteiros=5Fpromo=2Ephp"><img src=3D"cid:320743-22006435105416693428@com=
-p-zzh3b8r" width=3D"37" height=3D"80" border=3D"0"></a></font></b></font><=
-/font></font></font></font></td>
-          <td height=3D"86"><font color=3D"#ffffff"><font face=3D"Arial, H=
-elvetica, sans-serif" size=3D"3"><font face=3D"Arial, Helvetica, sans-seri=
-f" size=3D"1"><font size=3D"2" color=3D"#FFFFFF" face=3D"Verdana, Arial, H=
-elvetica, sans-serif"><b><font color=3D"#000000"><font color=3D"#CC0000">P=
-ROMO&Ccedil;&Atilde;O=20
-            TEMPOR&Aacute;RIA</font><br>
-            <font size=3D"4">3</font> unidades hp45A por 29,00 &euro; <fon=
-t size=3D"1" color=3D"#CC0000"><br>
-            normalmente 34,20</font></font><font face=3D"Arial, Helvetica,=
- sans-serif" size=3D"1" color=3D"#CC0000"><font face=3D"Verdana, Arial, He=
-lvetica, sans-serif"><b>&euro;</b></font></font><font color=3D"#000000"></=
-font></b></font></font><font face=3D"Verdana, Arial, Helvetica, sans-serif=
-" size=3D"2"><b><br>
-            <font color=3D"#000000">Tinteiro Compativel 45 A</font><br>
-            <font color=3D"#000000" size=3D"4"><a href=3D"http://www=2Ecar=
-imbos=2Enet/tinteiros=5Fpromo=2Ephp">Aproveite</a></font><a href=3D"http:/=
-/www=2Ecarimbos=2Enet/tinteiros=5Fpromo=2Ephp"><font color=3D"#000000">,=20=
-
-            </font></a><font color=3D"#000000"><br>
-            n&atilde;o precisa de enviar os vazios=2E</font></b></font></f=
-ont></font></td>
-        </tr>
-      </table>
-      <font color=3D"#ffffff"><font face=3D"Arial, Helvetica, sans-serif" =
-size=3D"3"><font face=3D"Verdana, Arial, Helvetica, sans-serif" size=3D"2"=
-><font color=3D"#000000">Carimbos=2Enet<b>=20
-      online desde 1999</b></font></font></font></font></td>
+      </table> </td>
   </tr>
 </table>
-<div align=3D"center">=20
-  <p><font size=3D"1" face=3D"Arial, Helvetica, sans-serif"><a href=3D"mai=
-lto:=3FSubject=3DAnular%20Carimbos&CC=3Dmail@carimbos=2Enet&body=3DQueiram=
-%20retirar%20este%20email%20da%20v/%20lista">N&atilde;o=20
-    desejo </a>receber mais informa=E7=F5es</font></p>
- =20
-</div>
 
-
-------=_NextPart_255828463451588910725588--
-
-------=_NextPart_255818463351588910725588
-Content-Type: image/jpeg; name="fi.jpg"
-Content-Transfer-Encoding: base64
-Content-Description: fi.jpg
-Content-Id: <292760-22006435105416693425@comp-zzh3b8r>
-
-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
-/9k=
-------=_NextPart_255818463351588910725588
-Content-Type: image/gif; name="envelope.gif"
-Content-Transfer-Encoding: base64
-Content-Description: envelope.gif
-Content-Id: <167801-22006435105416693426@comp-zzh3b8r>
-
-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
-------=_NextPart_255818463351588910725588
-Content-Type: image/jpeg; name="mundi.jpg"
-Content-Transfer-Encoding: base64
-Content-Description: mundi.jpg
-Content-Id: <268412-22006435105416693427@comp-zzh3b8r>
-
-/9j/4AAQSkZJRgABAQEASABIAAD/2wBDABQQEBkSGScXFycyJh8mMi4mJiYmLj41NTU1NT5EQUFB
-QUFBRERERERERERERERERERERERERERERERERERERET/2wBDARUZGSAcICYYGCY2JiAmNkQ2Kys2
-REREQjVCRERERERERERERERERERERERERERERERERERERERERERERERERET/wAARCACWAGQDAREA
-AhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAAMCBAUGAf/EAD0QAAEDAgMEBwUGBAcAAAAAAAEA
-AgMEERIhMQUUQVETIjJSYYGRIzNCcXIVFrHB0fBikqHhNENTgsLS8v/EABkBAQEBAQEBAAAAAAAA
-AAAAAAACAQMEBf/EACwRAAIBAwIGAQQCAwEAAAAAAAABAgMREiExExQiQVFSMmFxgZEEQqGx0eH/
-2gAMAwEAAhEDEQA/APamrlZK9rXZBxAXkdCl6I8k/wCRUUmshW/z95ZwKXoiOZq+wb9P3k4FP0Rn
-NVfYN/n7ycCl6Ic1V9g3+bvJwKXohzVX2Dfp+8nApeiHNVfYN+n7y3gUvRG8zV9g36bvLOBT9EOa
-q+wb9N3k4FL0RnM1fYN/m7ycCl6Ic1V9g3+fvJwKXohzVX2Pd/m7ycCl6Ic1V9hkdXM4XxLeBS9E
-d4fyKjW4iu9/J9RXZnkq/N/c0n7HabYDrx5Zaeqqx34K7CKahY8SB98bXFotlosIjTWt90NZsxjn
-kWIaHkf7Q2/4pYrhL/ImKjjaZhN/lkAZka/IFCFTXVl2LzNkQlrXm9nBmV+J1W2OvBjuQbs6lezE
-3PnZ97ZXyyzSxnCg9hZoqbHhz0uczy45ZLLGcOF7EJtl9HDI/PE13VH8ISxMqVk33MpYeUEALAWI
-tFp6YbHlb7+T6ijIqfN/c2TTFzsETnNsMVxizyHPL0VHqxu9NCH2ec+jke0Ow4stSdUsZh4kyBon
-SD3zi0DMEfD4eiWJwv8A2IVFLNTN6RspxEhhOnyRmOLj1KX0GCilvYSvy6uY4/8AXLVLFYv2Yiak
-NNGTHIer1rWsLg2P4rCXHFXTKe+z/wCo71WHDiS8izPITcuN7W14ITm/ItCAQAsBYh7K09MNgrM6
-iT6ijIqfN/c0H0jmSxR9I+zr3z0stO+PUlk9RzaEw6vce0LXytnbTiFpWFu5CTZ3RZiR5y0bmR4/
-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
-4vogP//Z
-------=_NextPart_255818463351588910725588
-Content-Type: image/gif; name="tintt.gif"
-Content-Transfer-Encoding: base64
-Content-Description: tintt.gif
-Content-Id: <320743-22006435105416693428@comp-zzh3b8r>
-
-R0lGODlhJQBQAMQAACgtLausqlBaXv//zHN1c8DIyT5ISdXFQKWVUP///z1Abi02PoaFm1ZkaOHh
-4UxOcv4BAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAQU
-AP8ALAAAAAAlAFAAAAX/4CCOZEkeqKmu7IEgQRyjKEHQKTvSCOP/hJ/Q9jAYGoeWi2FrCoG2RkOw
-WBgXhNWhoahWjQaBWAwuC6RoQ1KEIwAAi3f1TX+Dz2i0gLBnEwwKXV5xdYMLYnmJUntJCIVlZV53
-ipRIA46PkFdyeJWJKAxwXoWGnJ6KDAducKJ1hXadp1KpAqKEhl8Gb7GyDTe6uq5Wkbu9eTe1c4aQ
-cYfGaDcIBla4uHC8slkHVJrd189SWZfD3ZFh4H0DB9Pk5UbYnukDBNXLY+ji47b198/yCIRc7Ts3
-xdi/erjO8eklgMEIBIIQVmkQoECAM/D0OBQBMZDHjx4XMEiQoACejFM2/14K9KCly5cPRJI0yVAl
-Apg4H3QZWfLkKZs5cSrgSRNRpYYPg8IcOhOlxocKXn50qQBAgKY1oeoEGWgQAwcFaMoSECCpg7No
-w6oN8OArWKeLynJ8QLKu3bo+zoo9RTbp3b8J8r41elTuJbqA7fpQ26+w37pgCzhQ7NYkYUp95yo2
-QkBvYAaMLyvKfFjxxJJXF4dtjNnwTQcECgQ20iAB2ARBQjsl/Zpi4NMOUldmvUiP6wewrwYIZ1ty
-EL3EC8Y165vkWdsVgzQVLX3K8eQkA0xGXSDvau6deNNlcLUAgavkzVseQz/98QIGrsKWjT3A88H1
-Naaee/rFZl12wwUo4P9xkN0VHGwJKmifX8G9Z1dYEEIn4YSa/fEHT7ZN9t98Chpn1i5vTFahe6BZ
-FMaGY3ynSwMpWidZAzwF8CKM6s3mYWTX4RjejjAyWJJ5MVgEXgI68ijGd9YlZiGTRG7oWlQt+WKD
-D0kqAB8DVUroWjXCLCCee04++ZBEg/gSppVrysHmPWmOKSdCRyBS55q5sJPQFGmqyZEkDehSzZtF
-xmmFAIYmFGiMfH6B56OCjsPmF5TydimmlBp2QFV31oOogvntkMylowZY6kP7TBroqmw0KtE79Zkx
-Bqwi0OMnM7ncCganZBjGRke8ljMHHYsGa4ILL7wQhA+FRhJQHTviqoRTKnK0IlCyjAqrgwihCLRt
-td5+G664j9xarg6rHCsut9aaa4e2Ar1oxLosnAuAEa4EM4wV+K7gRjD1XuEFWQl8W0IAPTRBRjcU
-jafwxDIwIaRdIQAAOw==
-------=_NextPart_255818463351588910725588--
-
+</body>
+</html>
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
+ge
+that extends applications into web and mobile media. Attend the live webc=
+ast
+and join the prime developer group breaking into this new coding territor=
+y!
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
+121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
