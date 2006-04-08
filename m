@@ -1,18 +1,23 @@
-From: Moritz Kiese <mbk@mytum.de>
-Subject: rpc.mountd: getfh failed: Operation not permitted (longish)
-Date: Fri, 7 Apr 2006 17:08:18 +0200 (CEST)
-Message-ID: <Pine.BSO.4.63.0604071647220.880@wodka.lkn.ei.tum.de>
+From: Jeff Layton <jtlayton@poochiereds.net>
+Subject: [PATCH] 2.4 nfs cache consistency problem with mmap'ed files
+Date: Fri, 07 Apr 2006 22:59:33 -0400
+Message-ID: <1144465173.6389.36.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain
+Cc: marcelo.tosatti@cyclades.com
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FRsZS-0008DG-Id
-	for nfs@lists.sourceforge.net; Fri, 07 Apr 2006 08:08:22 -0700
-Received: from mailrelay2.lrz-muenchen.de ([129.187.254.102])
+	id 1FS3gI-0003gx-MC
+	for nfs@lists.sourceforge.net; Fri, 07 Apr 2006 20:00:10 -0700
+Received: from imf20aec.mail.bellsouth.net ([205.152.59.68])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FRsZQ-0004Od-EE
-	for nfs@lists.sourceforge.net; Fri, 07 Apr 2006 08:08:22 -0700
+	id 1FS3gE-0006eb-92
+	for nfs@lists.sourceforge.net; Fri, 07 Apr 2006 20:00:10 -0700
+Received: from ibm62aec.bellsouth.net ([72.148.41.34])
+          by imf20aec.mail.bellsouth.net with ESMTP
+          id <20060408025929.LBVP16763.imf20aec.mail.bellsouth.net@ibm62aec.bellsouth.net>
+          for <nfs@lists.sourceforge.net>; Fri, 7 Apr 2006 22:59:29 -0400
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -27,695 +32,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Greetings,
+This problem was reported to Red Hat and while fixing it for RHEL3, I
+noticed that it was also a problem in the 2.4 git tree. The steps to
+reproduce are a bit convoluted, so hopefully I'm explaining this well
+enough. Let me know if you need clarification:
 
-this one started to itch badly in the last couple of days: One of our main 
-NFS servers (arak) starts to refuse automounts to some of our clients (in 
-this case aperol) --- while these clients are (at least seemingly) 
-randomly selected, once they are the only thing that helps is
+1) on a server create a file in an exported directory with some data in
+it:
 
- 	* exportfs -va or -rv
- 	* restarting the nfsserver process
+$ echo 1 > testfile
 
-Sometimes it takes months for this to reappear (fairly constant over 
-kernel revisions ;), some other times (like today) I had to restart the 
-nfsd for the third time...
+2) on an NFS client have a program mmap the file and access the data via
+the mmap (effectively loading the pagecache with data from the server),
+then have the program go to sleep indefinitely.
 
-The kernel version is SuSEs flavour of 2.6.5 on 9.1.
-NFS Utils version is 1.0.6
+3) on the server, make a change to the file:
 
-/etc/exports:
-/export/home    10.152.4.0/255.255.255.0(rw,async) 10.152.4.1(rw,async,no_root_squash)
-/export/home2   10.152.4.0/255.255.255.0(rw,async) 10.152.13.0/255.255.255.0(rw,async) 10.152.4.1(rw,async,no_root_squash)
-/export2        10.152.4.0/255.255.255.0(rw,async) 10.152.13.0/255.255.255.0(rw,async) 10.152.4.1(rw,async,no_root_squash)
+$ echo 2 > testfile
 
-/etc/fstab:
-/dev/sda2            /                    reiserfs   acl,user_xattr        1 1
-/dev/sda1            swap                 swap       pri=42                0 0
-/dev/sdb1            /export              reiserfs   usrquota,nosuid       1 2
-devpts               /dev/pts             devpts     mode=0620,gid=5       0 0
-proc                 /proc                proc       defaults              0 0
-usbfs                /proc/bus/usb        usbfs      noauto                0 0
-sysfs                /sys                 sysfs      noauto                0 0
-/dev/cdrecorder      /media/cdrecorder    subfs      fs=cdfss,ro,procuid,nosuid,nodev,exec,iocharset=utf8 0 0
-/dev/fd0             /media/floppy        subfs      fs=floppyfss,procuid,nodev,nosuid,sync 0 0
+4) on the client, have another process cause a read:
 
-/var/log/messages says:
-Apr  7 16:42:50 arak rpc.mountd: getfh failed: Operation not permitted
-Apr  7 16:42:50 arak rpc.mountd: authenticated mount request from aperol.lkn.ei.tum.de:678 for /export/home/hartmann (/export/home)
-Apr  7 16:42:50 arak rpc.mountd: getfh failed: Operation not permitted
-Apr  7 16:42:50 arak rpc.mountd: authenticated mount request from aperol.lkn.e-technik.tu-muenchen.de:680 for /export/home/hartmann (/export/home)
+$ cat /nfs/mounted/directory/testfile
 
-The strace -f of rpc.mountd:
-0065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\254\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\te-techni"..., 
-53, 0) = 53
-10065 gettimeofday({1144420970, 548182}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [243])         = 0
-10065 recvfrom(7, 
-"\375\254\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\te-techn"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 243
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 145, 0) = 145
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, 
-"\200\0\0\0343#\252\336\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = 1 (in [4])
-10065 accept(4, {sa_family=AF_INET, sin_port=htons(674), 
-sin_addr=inet_addr("10.152.4.5")}, [16]) = 6
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "\200\0\0d3gC\204\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0"..., 
-4000) = 104
-10065 open("/etc/hosts.allow", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=2639, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.allow\n# See `man tc"..., 4096) = 2639
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 open("/etc/hosts.deny", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=149, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.deny\n# See `man tcp"..., 4096) = 149
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/var/lib/nfs/etab", {st_mode=S_IFREG|0644, st_size=1334, 
-...}) = 0
-10065 lstat64("/export", {st_mode=S_IFDIR|0755, st_size=160, ...}) = 0
-10065 lstat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 lstat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\255\1\0\0\1\0\0\0\0\0\0\0015\0014\003152\00210\7i"..., 
-41, 0) = 41
-10065 gettimeofday({1144420970, 561738}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [296])         = 0
-10065 recvfrom(7, 
-"\375\255\205\200\0\1\0\2\0\3\0\5\0015\0014\003152\0021"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 296
-10065 close(7)                          = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\256\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\2ei\3tum\2d"..., 
-38, 0) = 38
-10065 gettimeofday({1144420970, 562811}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [228])         = 0
-10065 recvfrom(7, 
-"\375\256\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\2ei\3tum"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 228
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 130, 0) = 130
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, 
-"\200\0\0\0343gC\204\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = 1 (in [4])
-10065 accept(4, {sa_family=AF_INET, sin_port=htons(676), 
-sin_addr=inet_addr("10.152.4.5")}, [16]) = 6
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "\200\0\0dY\231 s\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0"..., 
-4000) = 104
-10065 open("/etc/hosts.allow", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=2639, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.allow\n# See `man tc"..., 4096) = 2639
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 open("/etc/hosts.deny", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=149, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.deny\n# See `man tcp"..., 4096) = 149
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/var/lib/nfs/etab", {st_mode=S_IFREG|0644, st_size=1334, 
-...}) = 0
-10065 lstat64("/export", {st_mode=S_IFDIR|0755, st_size=160, ...}) = 0
-10065 lstat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 lstat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\257\1\0\0\1\0\0\0\0\0\0\0015\0014\003152\00210\7i"..., 
-41, 0) = 41
-10065 gettimeofday({1144420970, 576371}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [296])         = 0
-10065 recvfrom(7, 
-"\375\257\205\200\0\1\0\2\0\3\0\5\0015\0014\003152\0021"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 296
-10065 close(7)                          = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\260\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\te-techni"..., 
-53, 0) = 53
-10065 gettimeofday({1144420970, 577460}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [243])         = 0
-10065 recvfrom(7, 
-"\375\260\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\te-techn"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 243
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 145, 0) = 145
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, "\200\0\0\34Y\231 
-s\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = 1 (in [4])
-10065 accept(4, {sa_family=AF_INET, sin_port=htons(678), 
-sin_addr=inet_addr("10.152.4.5")}, [16]) = 6
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "\200\0\0dN\361\251\f\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0"..., 
-4000) = 104
-10065 open("/etc/hosts.allow", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=2639, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.allow\n# See `man tc"..., 4096) = 2639
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 open("/etc/hosts.deny", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=149, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.deny\n# See `man tcp"..., 4096) = 149
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/var/lib/nfs/etab", {st_mode=S_IFREG|0644, st_size=1334, 
-...}) = 0
-10065 lstat64("/export", {st_mode=S_IFDIR|0755, st_size=160, ...}) = 0
-10065 lstat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 lstat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\261\1\0\0\1\0\0\0\0\0\0\0015\0014\003152\00210\7i"..., 
-41, 0) = 41
-10065 gettimeofday({1144420970, 591121}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [296])         = 0
-10065 recvfrom(7, 
-"\375\261\205\200\0\1\0\2\0\3\0\5\0015\0014\003152\0021"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 296
-10065 close(7)                          = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\262\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\2ei\3tum\2d"..., 
-38, 0) = 38
-10065 gettimeofday({1144420970, 592160}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [228])         = 0
-10065 recvfrom(7, 
-"\375\262\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\2ei\3tum"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 228
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 130, 0) = 130
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, 
-"\200\0\0\34N\361\251\f\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = 1 (in [4])
-10065 accept(4, {sa_family=AF_INET, sin_port=htons(680), 
-sin_addr=inet_addr("10.152.4.5")}, [16]) = 6
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "\200\0\0d\31D8\242\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3"..., 
-4000) = 104
-10065 open("/etc/hosts.allow", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=2639, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.allow\n# See `man tc"..., 4096) = 2639
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 open("/etc/hosts.deny", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=149, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.deny\n# See `man tcp"..., 4096) = 149
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/var/lib/nfs/etab", {st_mode=S_IFREG|0644, st_size=1334, 
-...}) = 0
-10065 lstat64("/export", {st_mode=S_IFDIR|0755, st_size=160, ...}) = 0
-10065 lstat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 lstat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\263\1\0\0\1\0\0\0\0\0\0\0015\0014\003152\00210\7i"..., 
-41, 0) = 41
-10065 gettimeofday({1144420970, 605630}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [296])         = 0
-10065 recvfrom(7, 
-"\375\263\205\200\0\1\0\2\0\3\0\5\0015\0014\003152\0021"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 296
-10065 close(7)                          = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\264\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\te-techni"..., 
-53, 0) = 53
-10065 gettimeofday({1144420970, 606660}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [243])         = 0
-10065 recvfrom(7, 
-"\375\264\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\te-techn"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 243
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 145, 0) = 145
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, 
-"\200\0\0\34\31D8\242\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = 1 (in [4])
-10065 accept(4, {sa_family=AF_INET, sin_port=htons(682), 
-sin_addr=inet_addr("10.152.4.5")}, [16]) = 6
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, 
-"\200\0\0d\17\362\253\36\0\0\0\0\0\0\0\2\0\1\206\245\0\0"..., 4000) = 104
-10065 open("/etc/hosts.allow", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=2639, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.allow\n# See `man tc"..., 4096) = 2639
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 open("/etc/hosts.deny", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=149, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.deny\n# See `man tcp"..., 4096) = 149
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/var/lib/nfs/etab", {st_mode=S_IFREG|0644, st_size=1334, 
-...}) = 0
-10065 lstat64("/export", {st_mode=S_IFDIR|0755, st_size=160, ...}) = 0
-10065 lstat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 lstat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\265\1\0\0\1\0\0\0\0\0\0\0015\0014\003152\00210\7i"..., 
-41, 0) = 41
-10065 gettimeofday({1144420970, 620107}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [296])         = 0
-10065 recvfrom(7, 
-"\375\265\205\200\0\1\0\2\0\3\0\5\0015\0014\003152\0021"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 296
-10065 close(7)                          = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\266\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\2ei\3tum\2d"..., 
-38, 0) = 38
-10065 gettimeofday({1144420970, 621138}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [228])         = 0
-10065 recvfrom(7, 
-"\375\266\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\2ei\3tum"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 228
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 130, 0) = 130
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, 
-"\200\0\0\34\17\362\253\36\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = 1 (in [4])
-10065 accept(4, {sa_family=AF_INET, sin_port=htons(684), 
-sin_addr=inet_addr("10.152.4.5")}, [16]) = 6
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "\200\0\0dJv\202:\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0"..., 
-4000) = 104
-10065 open("/etc/hosts.allow", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=2639, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.allow\n# See `man tc"..., 4096) = 2639
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 open("/etc/hosts.deny", O_RDONLY) = 7
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=149, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "# /etc/hosts.deny\n# See `man tcp"..., 4096) = 149
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/var/lib/nfs/etab", {st_mode=S_IFREG|0644, st_size=1334, 
-...}) = 0
-10065 lstat64("/export", {st_mode=S_IFDIR|0755, st_size=160, ...}) = 0
-10065 lstat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 lstat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\267\1\0\0\1\0\0\0\0\0\0\0015\0014\003152\00210\7i"..., 
-41, 0) = 41
-10065 gettimeofday({1144420970, 634581}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [296])         = 0
-10065 recvfrom(7, 
-"\375\267\205\200\0\1\0\2\0\3\0\5\0015\0014\003152\0021"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 296
-10065 close(7)                          = 0
-10065 open("/etc/hosts", O_RDONLY)      = 7
-10065 fcntl64(7, F_GETFD)               = 0
-10065 fcntl64(7, F_SETFD, FD_CLOEXEC)   = 0
-10065 fstat64(7, {st_mode=S_IFREG|0644, st_size=688, ...}) = 0
-10065 mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 
--1, 0) = 0x40018000
-10065 read(7, "#\n# hosts         This file desc"..., 4096) = 688
-10065 read(7, "", 4096)                 = 0
-10065 close(7)                          = 0
-10065 munmap(0x40018000, 4096)          = 0
-10065 stat64("/etc/resolv.conf", {st_mode=S_IFREG|0644, st_size=114, ...}) 
-= 0
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 7
-10065 connect(7, {sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, 28) = 0
-10065 send(7, "\375\270\1\0\0\1\0\0\0\0\0\0\6aperol\3lkn\te-techni"..., 
-53, 0) = 53
-10065 gettimeofday({1144420970, 635767}, NULL) = 0
-10065 poll([{fd=7, events=POLLIN, revents=POLLIN}], 1, 5000) = 1
-10065 ioctl(7, FIONREAD, [243])         = 0
-10065 recvfrom(7, 
-"\375\270\205\200\0\1\0\1\0\3\0\5\6aperol\3lkn\te-techn"..., 1024, 0, 
-{sa_family=AF_INET, sin_port=htons(53), 
-sin_addr=inet_addr("10.156.33.53")}, [16]) = 243
-10065 close(7)                          = 0
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<13>Apr  7 16:42:50 rpc.mountd: "..., 145, 0) = 145
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 stat64("/export/home/hartmann", {st_mode=S_IFDIR|0755, 
-st_size=13088, ...}) = 0
-10065 stat64("/export/home", {st_mode=S_IFDIR|0755, st_size=1312, ...}) = 
-0
-10065 nfsservctl(0x8, 0xbfffd3dc, 0x8059a80) = -1 EPERM (Operation not 
-permitted)
-10065 time([1144420970])                = 1144420970
-10065 rt_sigaction(SIGPIPE, {0x400f8f60, [], 0}, {SIG_IGN}, 8) = 0
-10065 send(5, "<12>Apr  7 16:42:50 rpc.mountd: "..., 69, 0) = 69
-10065 rt_sigaction(SIGPIPE, {SIG_IGN}, NULL, 8) = 0
-10065 write(6, 
-"\200\0\0\34Jv\202:\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 32) = 32
-10065 select(1024, [3 4 6], NULL, NULL, NULL) = 1 (in [6])
-10065 poll([{fd=6, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-10065 read(6, "", 4000)                 = 0
-10065 close(6)                          = 0
-10065 select(1024, [3 4], NULL, NULL, NULL) = ? ERESTARTNOHAND (To be 
-restarted)
-10065 --- SIGTERM (Terminated) @ 0 (0) ---
-10065 socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 6
-10065 --- SIGCONT (Continued) @ 0 (0) ---
-10065 ioctl(6, 0x8912, 0xbfffcf80)      = 0
-10065 ioctl(6, 0x8913, 0xbfffcf88)      = 0
-10065 close(6)                          = 0
+You'll get the originally cached data (the 1), since the file is still
+mmap'ed. This is expected.
 
-I'd be glad about any ideas on this...
+5) on the client, kill the program that has the file mmap'ed and cat the
+file again. You will still get the original file contents (the "1"
+here).
 
-Best regards,
- 	Moritz.
+The file is no longer mmap'ed, the data in the file and the mtime has
+changed since the last OTW read, but the client will not invalidate the
+cache for subsequent reads.
+
+What's happening is that in step 4, the __nfs_refresh_inode function
+updates NFS_CACHE_MTIME. But, because the file is still mmap'ed,
+invalidate_inode_pages is not completely successful. So on the next pass
+through, it assumes the cached data is good when it isn't.
+
+The attached patch fixes this by checking whether the clean_pages list
+for the inode is empty after invalidate_inode_pages is called. If not,
+then we set a new nfs_i flag (NFS_INO_MAPPED). Then, on the next pass
+through this function, we check the status of this flag and if it's set,
+we clear it and set invalid=1 so that the function will make another
+attempt at invalidating the cache.
+
+This fixed the problem on my test rig. Comments and/or suggestions are
+welcome.
+
+-- Jeff
+
+-----------[snip]-----------
+
+--- linux-2.4/fs/nfs/inode.c.nfs-cache-fix
++++ linux-2.4/fs/nfs/inode.c
+@@ -1047,6 +1047,13 @@ __nfs_refresh_inode(struct inode *inode,
+ 		invalid = 0;
+ 	}
+ 
++	/* set the invalid flag if the last attempt at invalidating
++	 * the inode didn't empty the clean_pages list */
++	if ( NFS_FLAGS(inode) & NFS_INO_MAPPED) {
++		NFS_FLAGS(inode) &= ~NFS_INO_MAPPED;
++		invalid = 1;
++	}
++
+ 	/*
+ 	 * If we have pending writebacks, things can get
+ 	 * messy.
+@@ -1092,6 +1099,12 @@ __nfs_refresh_inode(struct inode *inode,
+ 		NFS_ATTRTIMEO(inode) = NFS_MINATTRTIMEO(inode);
+ 		NFS_ATTRTIMEO_UPDATE(inode) = jiffies;
+ 		invalidate_inode_pages(inode);
++		if (! list_empty(&inode->i_mapping->clean_pages)) {
++			dfprintk(PAGECACHE,
++				 "NFS: clean_pages for %x/%d is not empty\n",
++				 inode->i_dev, inode->i_ino);
++			NFS_FLAGS(inode) |= NFS_INO_MAPPED;
++		}
+ 		memset(NFS_COOKIEVERF(inode), 0, sizeof(NFS_COOKIEVERF(inode)));
+ 	} else if (time_after(jiffies, NFS_ATTRTIMEO_UPDATE(inode)+NFS_ATTRTIMEO(inode))) {
+ 		if ((NFS_ATTRTIMEO(inode) <<= 1) > NFS_MAXATTRTIMEO(inode))
+--- linux-2.4/include/linux/nfs_fs_i.h.nfs-cache-fix
++++ linux-2.4/include/linux/nfs_fs_i.h
+@@ -85,6 +85,7 @@ struct nfs_inode_info {
+ #define NFS_INO_REVALIDATING	0x0004		/* revalidating attrs */
+ #define NFS_IS_SNAPSHOT		0x0010		/* a snapshot file */
+ #define NFS_INO_FLUSH		0x0020		/* inode is due for flushing */
++#define NFS_INO_MAPPED		0x0040		/* page invalidation failed */
+ 
+ /*
+  * NFS lock info
+
+
 
 
 -------------------------------------------------------
