@@ -1,23 +1,24 @@
 From: Jeff Layton <jtlayton@poochiereds.net>
-Subject: [PATCH] 2.4 nfs cache consistency problem with mmap'ed files
-Date: Fri, 07 Apr 2006 22:59:33 -0400
-Message-ID: <1144465173.6389.36.camel@localhost.localdomain>
+Subject: [PATCH 2.4.33-pre2] 2.4 nfs cache consistency problem with mmap'ed
+ files
+Date: Sat, 08 Apr 2006 07:43:29 -0400
+Message-ID: <1144496609.5573.17.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: marcelo.tosatti@cyclades.com
+Cc: linux-kernel@vger.kernel.org, marcelo.tosatti@cyclades.com
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FS3gI-0003gx-MC
-	for nfs@lists.sourceforge.net; Fri, 07 Apr 2006 20:00:10 -0700
-Received: from imf20aec.mail.bellsouth.net ([205.152.59.68])
+	id 1FSBqn-0005tg-Qh
+	for nfs@lists.sourceforge.net; Sat, 08 Apr 2006 04:43:33 -0700
+Received: from imf24aec.mail.bellsouth.net ([205.152.59.72])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FS3gE-0006eb-92
-	for nfs@lists.sourceforge.net; Fri, 07 Apr 2006 20:00:10 -0700
-Received: from ibm62aec.bellsouth.net ([72.148.41.34])
-          by imf20aec.mail.bellsouth.net with ESMTP
-          id <20060408025929.LBVP16763.imf20aec.mail.bellsouth.net@ibm62aec.bellsouth.net>
-          for <nfs@lists.sourceforge.net>; Fri, 7 Apr 2006 22:59:29 -0400
+	id 1FSBql-0003JZ-Gp
+	for nfs@lists.sourceforge.net; Sat, 08 Apr 2006 04:43:33 -0700
+Received: from ibm70aec.bellsouth.net ([72.148.41.34])
+          by imf24aec.mail.bellsouth.net with ESMTP
+          id <20060408114320.WGCA13772.imf24aec.mail.bellsouth.net@ibm70aec.bellsouth.net>
+          for <nfs@lists.sourceforge.net>; Sat, 8 Apr 2006 07:43:20 -0400
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -32,10 +33,10 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This problem was reported to Red Hat and while fixing it for RHEL3, I
-noticed that it was also a problem in the 2.4 git tree. The steps to
-reproduce are a bit convoluted, so hopefully I'm explaining this well
-enough. Let me know if you need clarification:
+A customer of Red Hat reported a problem with cache invalidation when
+using mmapped files over NFS with the 2.4 kernel. The steps to reproduce
+this are a bit convoluted, so hopefully I'm explaining this well enough.
+Let me know if you need clarification:
 
 1) on a server create a file in an exported directory with some data in
 it:
@@ -62,27 +63,20 @@ file again. You will still get the original file contents (the "1"
 here).
 
 The file is no longer mmap'ed, the data in the file and the mtime has
-changed since the last OTW read, but the client will not invalidate the
-cache for subsequent reads.
+changed since the last on the wire read, but the client will not
+invalidate the cache for subsequent reads.
 
 What's happening is that in step 4, the __nfs_refresh_inode function
 updates NFS_CACHE_MTIME. But, because the file is still mmap'ed,
 invalidate_inode_pages is not completely successful. So on the next pass
-through, it assumes the cached data is good when it isn't.
+through, it assumes the cached data is up to date when it isn't.
 
-The attached patch fixes this by checking whether the clean_pages list
-for the inode is empty after invalidate_inode_pages is called. If not,
-then we set a new nfs_i flag (NFS_INO_MAPPED). Then, on the next pass
-through this function, we check the status of this flag and if it's set,
-we clear it and set invalid=1 so that the function will make another
-attempt at invalidating the cache.
+This patch fixes this by checking whether the clean_pages list
+for the inode is empty after invalidate_inode_pages is called. If it's
+not then we set a flag so on the next pass through it automatically
+flags the data as invalid.
 
-This fixed the problem on my test rig. Comments and/or suggestions are
-welcome.
-
--- Jeff
-
------------[snip]-----------
+Signed-off-by: Jeff Layton <jtlayton@poochiereds.net>
 
 --- linux-2.4/fs/nfs/inode.c.nfs-cache-fix
 +++ linux-2.4/fs/nfs/inode.c
