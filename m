@@ -1,23 +1,30 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs over 2tb limitation
-Date: Sat, 08 Apr 2006 15:01:02 -0400
-Message-ID: <1144522862.8195.39.camel@lade.trondhjem.org>
-References: <E80C016468F5454E93FBC2FBF2F93AE47FB4F6@EINSTEIN.idg.idgrup.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: NFS directio
+Date: Sun, 9 Apr 2006 22:38:27 +1000
+Message-ID: <17465.67.550070.247218@cse.unsw.edu.au>
+References: <20060330151544.GA11915@suse.de>
+	<1143734612.8093.8.camel@lade.trondhjem.org>
+	<20060331074900.GC32461@suse.de>
+	<12E368A4-2262-4EBF-8769-581DB3500A36@citi.umich.edu>
+	<20060331145849.GF18629@suse.de>
+	<442D4FC2.7060109@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Olaf Kirch <okir@suse.de>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FSIgX-00018v-VC
-	for nfs@lists.sourceforge.net; Sat, 08 Apr 2006 12:01:25 -0700
-Received: from pat.uio.no ([129.240.10.6] ident=7411)
+	id 1FSZDk-0003RN-6o
+	for nfs@lists.sourceforge.net; Sun, 09 Apr 2006 05:40:48 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FSIgW-0007AS-Ko
-	for nfs@lists.sourceforge.net; Sat, 08 Apr 2006 12:01:26 -0700
-To: Julio Prada <julio.prada@idgrup.com>
-In-Reply-To: <E80C016468F5454E93FBC2FBF2F93AE47FB4F6@EINSTEIN.idg.idgrup.com>
+	id 1FSZDi-0005pN-U5
+	for nfs@lists.sourceforge.net; Sun, 09 Apr 2006 05:40:48 -0700
+To: cel@citi.umich.edu
+In-Reply-To: message from Chuck Lever on Friday March 31
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,27 +38,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 2006-04-07 at 09:34 +0200, Julio Prada wrote:
-> Hello,
->=20
-> =20
->=20
-> The scenario is a Hp clustered gateway that theorically can virtualize
-> up to 16TB, and it seems that the limitation it=E2=80=99s on NFS client t=
-hat
-> only can reach up to 2TB on large filesystems.
+On Friday March 31, cel@citi.umich.edu wrote:
+> Olaf Kirch wrote:
+> > On Fri, Mar 31, 2006 at 09:35:34AM -0500, Chuck Lever wrote:
+> >> the check isn't in 2.6.16.  it was removed sometime after 2.6.5.
+> > 
+> > It is still in the 2.6.16 tree I'm looking at; else I wouldn't ask :)
+> 
+> it's been in my trees since 2.6.13 or even earlier, my mistake.
+> 
+> that change is part of the aio+dio patches that were just included in 
+> 2.6.17-rc1.  instead of creating a single patch for this change, you 
+> should consider taking those patches, since they were tested as a unit.
+> 
+> if you can guarantee that atomic_t is 32-bits on every platform you 
+> support, then it should be save to change that #define to 2^31. 
+> otherwise, the work to eliminate the limit entirely has already been 
+> done by the above-mentioned patches.
 
-Nope. That is completely wrong. The NFS client neither knows nor cares
-about the size of your filesystem. If you have > 2TB accessible on the
-server, then the client can and will use it.
+(Coming into the conversation a bit late....)
 
-What is true, though, is that if you compile without CONFIG_LBD (or
-CONFIG_LSF on 2.6.17-rc1) then the statfs() and statvfs() system calls
-will incapable of displaying more than 2TB.
-IOW: 'df' will display some incorrectly small size.
+What about the kmalloc in nfs_get_user_pages:
 
-Cheers,
-  Trond
+	array_size = (page_count * sizeof(struct page *));
+	*pages = kmalloc(array_size, GFP_KERNEL);
+
+With a page_count of 1024, this allocates one page (on 32bit) which is
+easy.
+With a page_count of 4096 (the previous MAX_DIRECTIO_SIZE)), this
+allocates 4 consecutive pages, which won't always succeed.
+
+If you want to go higher than that (which was the point of the start
+of this thread) then you need a large-order allocation which doesn't
+(in my understanding) have a good chance of success due to
+fragmentation.
+
+So I guess my question is: how hard would it be to use a more scalable
+data structure so that very large IO sizes would be reliably
+practical?
+
+NeilBrown
 
 
 
