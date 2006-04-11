@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: RFC [PATCH 2/6] VFS: Add shrink_submounts()
-Date: Tue, 11 Apr 2006 14:05:32 -0400
-Message-ID: <20060411180532.12579.11543.stgit@lade.trondhjem.org>
+Subject: RFC [PATCH 4/6] NFS: Store the file system "fsid" value in the NFS
+	super block.
+Date: Tue, 11 Apr 2006 14:05:37 -0400
+Message-ID: <20060411180537.12579.66535.stgit@lade.trondhjem.org>
 References: <20060411174543.12579.94699.stgit@lade.trondhjem.org>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
@@ -21,201 +22,207 @@ List-ID: <nfs.lists.sourceforge.net>
 
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Allow a submount to be marked as being 'shrinkable' by means of the
-vfsmount->mnt_flags, and then add a function 'shrink_submounts()' which
-attempts to recursively unmount these submounts.
+This should enable us to detect if we are crossing a mountpoint in the
+case where the server is exporting "nohide" mounts.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/namespace.c        |  124 +++++++++++++++++++++++++++++++++++++++----=
-------
- include/linux/mount.h |    3 +
- 2 files changed, 102 insertions(+), 25 deletions(-)
+ fs/nfs/idmap.c            |    1 -
+ fs/nfs/inode.c            |    8 ++++++++
+ fs/nfs/nfs2xdr.c          |    3 ++-
+ fs/nfs/nfs3xdr.c          |    3 ++-
+ fs/nfs/nfs4xdr.c          |    4 ++--
+ include/linux/nfs_fs.h    |    5 +++--
+ include/linux/nfs_fs_sb.h |    1 +
+ include/linux/nfs_page.h  |    1 -
+ include/linux/nfs_xdr.h   |   19 ++++++++++++-------
+ 9 files changed, 30 insertions(+), 15 deletions(-)
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 2c5f1f8..7bff436 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1166,13 +1166,46 @@ static void expire_mount(struct vfsmount
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 3fab5b0..b81e7ed 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -47,7 +47,6 @@ #include <linux/sunrpc/clnt.h>
+ #include <linux/workqueue.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+=20
+-#include <linux/nfs_fs_sb.h>
+ #include <linux/nfs_fs.h>
+=20
+ #include <linux/nfs_idmap.h>
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index cfcc585..bf9d404 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -253,6 +253,7 @@ nfs_get_root(struct super_block *sb, str
+ 		return ERR_PTR(error);
+ 	}
+=20
++	server->fsid =3D fsinfo->fattr->fsid;
+ 	return nfs_fhget(sb, rootfh, fsinfo->fattr);
  }
 =20
- /*
-+ * go through the vfsmounts we've just consigned to the graveyard to
-+ * - check that they're still dead
-+ * - delete the vfsmount from the appropriate namespace under lock
-+ * - dispose of the corpse
-+ */
-+static void expire_mount_list(struct list_head *graveyard, struct list_h=
-ead *mounts)
-+{
-+	struct namespace *namespace;
-+	struct vfsmount *mnt;
-+
-+	while (!list_empty(graveyard)) {
-+		LIST_HEAD(umounts);
-+		mnt =3D list_entry(graveyard->next, struct vfsmount, mnt_expire);
-+		list_del_init(&mnt->mnt_expire);
-+
-+		/* don't do anything if the namespace is dead - all the
-+		 * vfsmounts from it are going away anyway */
-+		namespace =3D mnt->mnt_namespace;
-+		if (!namespace || !namespace->root)
-+			continue;
-+		get_namespace(namespace);
-+
-+		spin_unlock(&vfsmount_lock);
-+		down_write(&namespace_sem);
-+		expire_mount(mnt, mounts, &umounts);
-+		up_write(&namespace_sem);
-+		release_mounts(&umounts);
-+		mntput(mnt);
-+		put_namespace(namespace);
-+		spin_lock(&vfsmount_lock);
-+	}
-+}
-+
-+/*
-  * process a list of expirable mountpoints with the intent of discarding=
- any
-  * mountpoints that aren't in use and haven't been touched since last we=
- came
-  * here
+@@ -1514,6 +1515,7 @@ out:
   */
- void mark_mounts_for_expiry(struct list_head *mounts)
+ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr=
+)
  {
--	struct namespace *namespace;
- 	struct vfsmount *mnt, *next;
- 	LIST_HEAD(graveyard);
++	struct nfs_server *server;
+ 	struct nfs_inode *nfsi =3D NFS_I(inode);
+ 	loff_t cur_isize, new_isize;
+ 	unsigned int	invalid =3D 0;
+@@ -1531,6 +1533,12 @@ static int nfs_update_inode(struct inode
+ 	 */
+ 	if ((inode->i_mode & S_IFMT) !=3D (fattr->mode & S_IFMT))
+ 		goto out_changed;
++
++	server =3D NFS_SERVER(inode);
++	/* Update the fsid if and only if this is the root directory */
++	if (inode =3D=3D inode->i_sb->s_root->d_inode
++			&& !nfs_fsid_equal(&server->fsid, &fattr->fsid))
++		server->fsid =3D fattr->fsid;
 =20
-@@ -1196,38 +1229,79 @@ void mark_mounts_for_expiry(struct list_
- 		list_move(&mnt->mnt_expire, &graveyard);
- 	}
+ 	/*
+ 	 * Update the read time so we don't revalidate too often.
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index f0015fa..a7ed88f 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -131,7 +131,8 @@ xdr_decode_fattr(u32 *p, struct nfs_fatt
+ 	fattr->du.nfs2.blocksize =3D ntohl(*p++);
+ 	rdev =3D ntohl(*p++);
+ 	fattr->du.nfs2.blocks =3D ntohl(*p++);
+-	fattr->fsid_u.nfs3 =3D ntohl(*p++);
++	fattr->fsid.major =3D ntohl(*p++);
++	fattr->fsid.minor =3D 0;
+ 	fattr->fileid =3D ntohl(*p++);
+ 	p =3D xdr_decode_time(p, &fattr->atime);
+ 	p =3D xdr_decode_time(p, &fattr->mtime);
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index ec23361..f70eee2 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -166,7 +166,8 @@ xdr_decode_fattr(u32 *p, struct nfs_fatt
+ 	if (MAJOR(fattr->rdev) !=3D major || MINOR(fattr->rdev) !=3D minor)
+ 		fattr->rdev =3D 0;
 =20
--	/*
--	 * go through the vfsmounts we've just consigned to the graveyard to
--	 * - check that they're still dead
--	 * - delete the vfsmount from the appropriate namespace under lock
--	 * - dispose of the corpse
--	 */
--	while (!list_empty(&graveyard)) {
--		LIST_HEAD(umounts);
--		mnt =3D list_entry(graveyard.next, struct vfsmount, mnt_expire);
--		list_del_init(&mnt->mnt_expire);
-+	expire_mount_list(&graveyard, mounts);
-=20
--		/* don't do anything if the namespace is dead - all the
--		 * vfsmounts from it are going away anyway */
--		namespace =3D mnt->mnt_namespace;
--		if (!namespace || !namespace->root)
-+	spin_unlock(&vfsmount_lock);
-+}
-+
-+EXPORT_SYMBOL_GPL(mark_mounts_for_expiry);
-+
-+/*
-+ * Ripoff of 'select_parent()'
-+ *
-+ * search the list of submounts for a given mountpoint, and move any
-+ * shrinkable submounts to the 'graveyard' list.
-+ */
-+static int select_submounts(struct vfsmount *parent, struct list_head *g=
-raveyard)
-+{
-+	struct vfsmount *this_parent =3D parent;
-+	struct list_head *next;
-+	int found =3D 0;
-+
-+repeat:
-+	next =3D this_parent->mnt_mounts.next;
-+resume:
-+	while (next !=3D &this_parent->mnt_mounts) {
-+		struct list_head *tmp =3D next;
-+		struct vfsmount *mnt =3D list_entry(tmp, struct vfsmount, mnt_child);
-+
-+		next =3D tmp->next;
-+		if (!(mnt->mnt_flags & MNT_SHRINKABLE))
- 			continue;
--		get_namespace(namespace);
-+		/*
-+		 * Descend a level if the d_mounts list is non-empty.
-+		 */
-+		if (!list_empty(&mnt->mnt_mounts)) {
-+			this_parent =3D mnt;
-+			goto repeat;
-+		}
-=20
--		spin_unlock(&vfsmount_lock);
--		down_write(&namespace_sem);
--		expire_mount(mnt, mounts, &umounts);
--		up_write(&namespace_sem);
--		release_mounts(&umounts);
--		mntput(mnt);
--		put_namespace(namespace);
--		spin_lock(&vfsmount_lock);
-+		if (!propagate_mount_busy(mnt, 1)) {
-+			mntget(mnt);
-+			list_move_tail(&mnt->mnt_expire, graveyard);
-+			found++;
-+		}
- 	}
-+	/*
-+	 * All done at this level ... ascend and resume the search
-+	 */
-+	if (this_parent !=3D parent) {
-+		next =3D this_parent->mnt_child.next;
-+		this_parent =3D this_parent->mnt_parent;
-+		goto resume;
-+	}
-+	return found;
-+}
-+
-+/*
-+ * process a list of expirable mountpoints with the intent of discarding=
- any
-+ * submounts of a specific parent mountpoint
-+ */
-+void shrink_submounts(struct vfsmount *mountpoint, struct list_head *mou=
-nts)
-+{
-+	LIST_HEAD(graveyard);
-+	int found;
-=20
-+	spin_lock(&vfsmount_lock);
-+
-+	/* extract submounts of 'mountpoint' from the expiration list */
-+	while ((found =3D select_submounts(mountpoint, &graveyard)) !=3D 0)
-+		expire_mount_list(&graveyard, mounts);
-+
- 	spin_unlock(&vfsmount_lock);
+-	p =3D xdr_decode_hyper(p, &fattr->fsid_u.nfs3);
++	p =3D xdr_decode_hyper(p, &fattr->fsid.major);
++	fattr->fsid.minor =3D 0;
+ 	p =3D xdr_decode_hyper(p, &fattr->fileid);
+ 	p =3D xdr_decode_time3(p, &fattr->atime);
+ 	p =3D xdr_decode_time3(p, &fattr->mtime);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 7c5d70e..7270d12 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2217,7 +2217,7 @@ static int decode_attr_symlink_support(s
+ 	return 0;
  }
 =20
--EXPORT_SYMBOL_GPL(mark_mounts_for_expiry);
-+EXPORT_SYMBOL_GPL(shrink_submounts);
+-static int decode_attr_fsid(struct xdr_stream *xdr, uint32_t *bitmap, st=
+ruct nfs4_fsid *fsid)
++static int decode_attr_fsid(struct xdr_stream *xdr, uint32_t *bitmap, st=
+ruct nfs_fsid *fsid)
+ {
+ 	uint32_t *p;
 =20
- /*
-  * Some copy_from_user() implementations do not return the exact number =
-of
-diff --git a/include/linux/mount.h b/include/linux/mount.h
-index aff68c3..9b4e007 100644
---- a/include/linux/mount.h
-+++ b/include/linux/mount.h
-@@ -23,6 +23,8 @@ #define MNT_NOEXEC	0x04
- #define MNT_NOATIME	0x08
- #define MNT_NODIRATIME	0x10
+@@ -2863,7 +2863,7 @@ static int decode_getfattr(struct xdr_st
+ 		goto xdr_error;
+ 	if ((status =3D decode_attr_size(xdr, bitmap, &fattr->size)) !=3D 0)
+ 		goto xdr_error;
+-	if ((status =3D decode_attr_fsid(xdr, bitmap, &fattr->fsid_u.nfs4)) !=3D=
+ 0)
++	if ((status =3D decode_attr_fsid(xdr, bitmap, &fattr->fsid)) !=3D 0)
+ 		goto xdr_error;
+ 	if ((status =3D decode_attr_fileid(xdr, bitmap, &fattr->fileid)) !=3D 0=
+)
+ 		goto xdr_error;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c71227d..83e2b8a 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -16,8 +16,6 @@ #include <linux/pagemap.h>
+ #include <linux/rwsem.h>
+ #include <linux/wait.h>
 =20
-+#define MNT_SHRINKABLE	0x100
+-#include <linux/nfs_fs_sb.h>
+-
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/clnt.h>
+@@ -27,6 +25,9 @@ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_xdr.h>
 +
- #define MNT_SHARED	0x1000	/* if the vfsmount is a shared mount */
- #define MNT_UNBINDABLE	0x2000	/* if the vfsmount is a unbindable mount *=
-/
- #define MNT_PNODE_MASK	0x3000	/* propogation flag mask */
-@@ -84,6 +86,7 @@ extern int do_add_mount(struct vfsmount=20
- 			int mnt_flags, struct list_head *fslist);
++#include <linux/nfs_fs_sb.h>
++
+ #include <linux/rwsem.h>
+ #include <linux/mempool.h>
 =20
- extern void mark_mounts_for_expiry(struct list_head *mounts);
-+extern void shrink_submounts(struct vfsmount *mountpoint, struct list_he=
-ad *mounts);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 65dec21..6b4a13c 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -35,6 +35,7 @@ struct nfs_server {
+ 	char *			hostname;	/* remote hostname */
+ 	struct nfs_fh		fh;
+ 	struct sockaddr_in	addr;
++	struct nfs_fsid		fsid;
+ 	unsigned long		mount_time;	/* when this fs was mounted */
+ #ifdef CONFIG_NFS_V4
+ 	/* Our own IP address, as a null-terminated string.
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 66e2ed6..4cee1f8 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -13,7 +13,6 @@ #define _LINUX_NFS_PAGE_H
+ #include <linux/list.h>
+ #include <linux/pagemap.h>
+ #include <linux/wait.h>
+-#include <linux/nfs_fs_sb.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/nfs_xdr.h>
 =20
- extern spinlock_t vfsmount_lock;
- extern dev_t name_to_dev_t(char *name);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c483e23..906c462 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -14,11 +14,19 @@ #define NFS_MAX_FILE_IO_SIZE	(1048576U)
+ #define NFS_DEF_FILE_IO_SIZE	(4096U)
+ #define NFS_MIN_FILE_IO_SIZE	(1024U)
+=20
+-struct nfs4_fsid {
+-	__u64 major;
+-	__u64 minor;
++struct nfs_fsid {
++	uint64_t		major;
++	uint64_t		minor;
+ };
+=20
++/*
++ * Helper for checking equality between 2 fsids.
++ */
++static inline int nfs_fsid_equal(const struct nfs_fsid *a, const struct =
+nfs_fsid *b)
++{
++	return a->major =3D=3D b->major && a->minor =3D=3D b->minor;
++}
++
+ struct nfs_fattr {
+ 	unsigned short		valid;		/* which fields are valid */
+ 	__u64			pre_size;	/* pre_op_attr.size	  */
+@@ -40,10 +48,7 @@ struct nfs_fattr {
+ 		} nfs3;
+ 	} du;
+ 	dev_t			rdev;
+-	union {
+-		__u64		nfs3;		/* also nfs2 */
+-		struct nfs4_fsid nfs4;
+-	} fsid_u;
++	struct nfs_fsid		fsid;
+ 	__u64			fileid;
+ 	struct timespec		atime;
+ 	struct timespec		mtime;
