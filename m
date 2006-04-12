@@ -1,25 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: fileid changed messages appearing after upgrade
-	to	2.6.16.1
-Date: Wed, 12 Apr 2006 01:59:50 -0400
-Message-ID: <1144821590.8069.12.camel@lade.trondhjem.org>
-References: <443C69CB.4060503@google.com>
-	 <1144811431.8069.6.camel@lade.trondhjem.org>  <443C7E70.6090905@google.com>
+From: Moritz Kiese <mbk@mytum.de>
+Subject: Re: rpc.mountd: getfh failed: Operation not permitted (longish)
+Date: Wed, 12 Apr 2006 11:24:37 +0200 (CEST)
+Message-ID: <Pine.BSO.4.63.0604121121440.880@wodka.lkn.ei.tum.de>
+References: <Pine.BSO.4.63.0604071647220.880@wodka.lkn.ei.tum.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FTYOn-0001Z3-Oc
-	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 23:00:17 -0700
-Received: from pat.uio.no ([129.240.10.6] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FTYOm-0004k2-E7
-	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 23:00:18 -0700
-To: Vince Busam <vbusam@google.com>
-In-Reply-To: <443C7E70.6090905@google.com>
+	id 1FTbab-00072L-Vk
+	for nfs@lists.sourceforge.net; Wed, 12 Apr 2006 02:24:41 -0700
+Received: from mailrelay1.lrz-muenchen.de ([129.187.254.106])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FTbaa-0003Pm-GW
+	for nfs@lists.sourceforge.net; Wed, 12 Apr 2006 02:24:42 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <Pine.BSO.4.63.0604071647220.880@wodka.lkn.ei.tum.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,17 +29,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2006-04-11 at 21:13 -0700, Vince Busam wrote:
-> Trond Myklebust wrote:
-> > What did you upgrade? The client or the server?
-> 
-> Just the client, which is where this warning started showing up.
+Greetings again,
 
-What is the server setup?
+just as a followup: One of the other admins here reconfigured our DNS to 
+not return two different names in reverse lookups. This might have cured 
+the problem.
 
-Cheers,
-  Trond
-
+Best regards,
+ 	Moritz.
 
 
 -------------------------------------------------------
