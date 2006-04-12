@@ -1,110 +1,45 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: RFC [PATCH 1/6] VFS: Add GPL_EXPORTED function vfs_kern_mount()
-Date: Tue, 11 Apr 2006 14:05:30 -0400
-Message-ID: <20060411180530.12579.19894.stgit@lade.trondhjem.org>
-References: <20060411174543.12579.94699.stgit@lade.trondhjem.org>
-Content-Type: text/plain; charset=utf-8; format=fixed
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <20060411174543.12579.94699.stgit@lade.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+From: "Neateye" <nitaigouranga@aol.com>
+Subject: Gouranga
+Date: Wed, 12 Apr 2006 02:26:57 +0100
+Message-ID: <55479274.20060412022657@aol.com>
+Reply-To: "Neateye" <nitaigouranga@aol.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FTU3b-00063n-Hs
+	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 18:22:07 -0700
+Received: from 212-248-196-192.dial.cleanweb.co.uk ([212.248.196.192] helo=mx-ha01.web.de)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FTU3Z-00060X-EJ
+	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 18:22:07 -0700
+To: "Nfs" <nfs@lists.sf.net>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Call out Gouranga be happy!
+Gouranga Gouranga Gouranga
+That which brings the highest happiness...
 
-do_kern_mount() does not allow the kernel to use private mount interfaces
-without exposing the same interfaces to userland. The problem is that the
-filesystem is referenced by name, thus meaning that it and its mount
-interface must be registered in the global filesystem list.
 
-vfs_kern_mount() passes the struct file_system_type as an explicit
-parameter in order to overcome this limitation.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
 
- fs/super.c            |   22 +++++++++++++++-------
- include/linux/mount.h |    5 +++++
- 2 files changed, 20 insertions(+), 7 deletions(-)
-
-diff --git a/fs/super.c b/fs/super.c
-index a66f66b..848be4f 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -800,16 +800,12 @@ struct super_block *get_sb_single(struct
- EXPORT_SYMBOL(get_sb_single);
-=20
- struct vfsmount *
--do_kern_mount(const char *fstype, int flags, const char *name, void *dat=
-a)
-+vfs_kern_mount(struct file_system_type *type, int flags, const char *nam=
-e, void *data)
- {
--	struct file_system_type *type =3D get_fs_type(fstype);
- 	struct super_block *sb =3D ERR_PTR(-ENOMEM);
- 	struct vfsmount *mnt;
- 	int error;
- 	char *secdata =3D NULL;
--
--	if (!type)
--		return ERR_PTR(-ENODEV);
-=20
- 	mnt =3D alloc_vfsmnt(name);
- 	if (!mnt)
-@@ -841,7 +837,6 @@ do_kern_mount(const char *fstype, int fl
- 	mnt->mnt_parent =3D mnt;
- 	up_write(&sb->s_umount);
- 	free_secdata(secdata);
--	put_filesystem(type);
- 	return mnt;
- out_sb:
- 	up_write(&sb->s_umount);
-@@ -852,8 +847,21 @@ out_free_secdata:
- out_mnt:
- 	free_vfsmnt(mnt);
- out:
--	put_filesystem(type);
- 	return (struct vfsmount *)sb;
-+}
-+
-+EXPORT_SYMBOL_GPL(vfs_kern_mount);
-+
-+struct vfsmount *
-+do_kern_mount(const char *fstype, int flags, const char *name, void *dat=
-a)
-+{
-+	struct file_system_type *type =3D get_fs_type(fstype);
-+	struct vfsmount *mnt;
-+	if (!type)
-+		return ERR_PTR(-ENODEV);
-+	mnt =3D vfs_kern_mount(type, flags, name, data);
-+	put_filesystem(type);
-+	return mnt;
- }
-=20
- EXPORT_SYMBOL_GPL(do_kern_mount);
-diff --git a/include/linux/mount.h b/include/linux/mount.h
-index b7472ae..aff68c3 100644
---- a/include/linux/mount.h
-+++ b/include/linux/mount.h
-@@ -73,6 +73,11 @@ extern struct vfsmount *alloc_vfsmnt(con
- extern struct vfsmount *do_kern_mount(const char *fstype, int flags,
- 				      const char *name, void *data);
-=20
-+struct file_system_type;
-+extern struct vfsmount *vfs_kern_mount(struct file_system_type *type,
-+				      int flags, const char *name,
-+				      void *data);
-+
- struct nameidata;
-=20
- extern int do_add_mount(struct vfsmount *newmnt, struct nameidata *nd,
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
