@@ -1,46 +1,71 @@
-From: Ryan Richter <ryan@tau.solarneutrino.net>
-Subject: lockd oopses continue with 2.6.16.1
-Date: Wed, 12 Apr 2006 13:20:29 -0400
-Message-ID: <20060412172028.GA12637@tau.solarneutrino.net>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] fs/nfsd/nfs4acl.c: remove the unused EXPORT_SYMBOL's
+Date: Wed, 12 Apr 2006 22:56:33 +0200
+Message-ID: <20060412205633.GF6517@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932269AbWDLRUh@vger.kernel.org>
-To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FTmP1-00021o-ME
+	for nfs@lists.sourceforge.net; Wed, 12 Apr 2006 13:57:27 -0700
+Received: from emailhub.stusta.mhn.de ([141.84.69.5] helo=mailout.stusta.mhn.de)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FTmOz-0002uT-Sr
+	for nfs@lists.sourceforge.net; Wed, 12 Apr 2006 13:57:27 -0700
+To: neilb@cse.unsw.edu.au
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I'm still seeing lockd oopses after server reboots:
+This patch removes the unused EXPORT_SYMBOL's from fs/nfsd/nfs4acl.c.
 
-Unable to handle kernel paging request at 00002b8134a867a0 RIP: 
-<ffffffff801bfdb1>{nlmclnt_mark_reclaim+67}
-PGD 0 
-Oops: 0000 [1] 
-CPU 0 
-Modules linked in:
-Pid: 1182, comm: lockd Not tainted 2.6.16.1 #2
-RIP: 0010:[<ffffffff801bfdb1>] <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67}
-RSP: 0018:ffff81007dd25e70  EFLAGS: 00010206
-RAX: 00002b8134a86788 RBX: ffff81007d53e480 RCX: ffff81007e3807f8
-RDX: ffff81007e380800 RSI: 000000000000005f RDI: ffff81007d53e480
-RBP: ffff81007f265400 R08: 00000000fffffffa R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000011
-R13: 0000000000000004 R14: 0000000000000010 R15: ffffffff803c3e20
-FS:  00002ad3fb57a4a0(0000) GS:ffffffff80490000(0000) knlGS:00000000f6e519e0
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00002b8134a867a0 CR3: 000000007e2e0000 CR4: 00000000000006e0
-Process lockd (pid: 1182, threadinfo ffff81007dd24000, task ffff81007f85e710)
-Stack: ffffffff801bfe68 ffff81007d53e480 ffffffff801c6601 3256cc844d030002 
-       0000000000000000 0000000000000004 ffff81007ec65000 ffff81007ec650a0 
-       ffffffff803c4ea0 ffff81007dd1f014 
-Call Trace: <ffffffff801bfe68>{nlmclnt_recovery+139}
-       <ffffffff801c6601>{nlm4svc_proc_sm_notify+188} <ffffffff80312a2b>{svc_process+871}
-       <ffffffff801c1a19>{lockd+344} <ffffffff801c18c1>{lockd+0}
-       <ffffffff801c18c1>{lockd+0} <ffffffff8010b01e>{child_rip+8}
-       <ffffffff801c18c1>{lockd+0} <ffffffff801c18c1>{lockd+0}
-       <ffffffff8010b016>{child_rip+0}
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
-RIP <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67} RSP <ffff81007dd25e70>
-CR2: 00002b8134a867a0
+---
 
--ryan
+ fs/nfsd/nfs4acl.c |    8 --------
+ 1 file changed, 8 deletions(-)
+
+--- linux-2.6.17-rc1-mm2-full/fs/nfsd/nfs4acl.c.old	2006-04-12 22:42:17.000000000 +0200
++++ linux-2.6.17-rc1-mm2-full/fs/nfsd/nfs4acl.c	2006-04-12 22:42:29.000000000 +0200
+@@ -821,9 +821,6 @@
+ 	return -1;
+ }
+ 
+-EXPORT_SYMBOL(nfs4_acl_posix_to_nfsv4);
+-EXPORT_SYMBOL(nfs4_acl_nfsv4_to_posix);
+-
+ struct nfs4_acl *
+ nfs4_acl_new(void)
+ {
+@@ -947,8 +944,3 @@
+ 	}
+ }
+ 
+-EXPORT_SYMBOL(nfs4_acl_new);
+-EXPORT_SYMBOL(nfs4_acl_free);
+-EXPORT_SYMBOL(nfs4_acl_add_ace);
+-EXPORT_SYMBOL(nfs4_acl_get_whotype);
+-EXPORT_SYMBOL(nfs4_acl_write_who);
+
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
