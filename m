@@ -1,25 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: ANNOUNCE: nfs-utils 1.0.8 (final)
-Date: Wed, 12 Apr 2006 13:19:44 +1000
-Message-ID: <17468.29136.672049.677855@cse.unsw.edu.au>
+From: Vince Busam <vbusam@google.com>
+Subject: Re: fileid changed messages appearing after upgrade to	2.6.16.1
+Date: Tue, 11 Apr 2006 21:13:36 -0700
+Message-ID: <443C7E70.6090905@google.com>
+References: <443C69CB.4060503@google.com> <1144811431.8069.6.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FTVu3-0001g6-K9
-	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 20:20:23 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1FTWjp-0007H2-8t
+	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 21:13:53 -0700
+Received: from smtp-out.google.com ([216.239.45.12])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FTVu2-0002yL-8e
-	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 20:20:23 -0700
-Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 9A85BF074
-	for <nfs@lists.sourceforge.net>; Wed, 12 Apr 2006 05:20:17 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1FTWjo-00036I-1V
+	for nfs@lists.sourceforge.net; Tue, 11 Apr 2006 21:13:53 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1144811431.8069.6.camel@lade.trondhjem.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,30 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+Trond Myklebust wrote:
+> What did you upgrade? The client or the server?
 
+Just the client, which is where this warning started showing up.
 
-I have made a final release of  nfs-utils 1.0.8
+> What mount options etc,
 
-It can be downloaded from 
-  http://sourceforge.net/project/showfiles.php?group_id=14
-or
-  http://www.{countrycode}.kernel.org/pub/linux/utils/nfs/
+rw,nosuid,tcp,rsize=8192,wsize=8192,intr,bg (nfsv3)
 
-It is over a year since the last release of nfs-utils and there are 
-quite a lot of changes in 1.0.7. Most of these are bug fixes and minor
-functionality improvements.  NFSv4 and GSS support has seen a lot
-of work and should be more stable.
+I haven't been able to narrow down what happened in userspace to cause 
+this, and haven't seen any ill effects to userspace programs.
 
-Possibly the most visible change is a rework of how makefiles are managed.
-
-This release requires libnfsidmap, libevent, and a krb5 instalation to compile
-properly.  If these are not available, and you don't require nfsv4 or gss support
-configure with "--disable-nfsv4 --disable-gss".
-See README for more details.
-
-Have a merry, and safe, Easter.
-
-NeilBrown 12-April-2006
+Vince
 
 
 -------------------------------------------------------
