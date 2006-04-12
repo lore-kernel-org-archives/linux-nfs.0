@@ -1,49 +1,46 @@
-From: Moritz Kiese <mbk@mytum.de>
-Subject: Re: rpc.mountd: getfh failed: Operation not permitted (longish)
-Date: Wed, 12 Apr 2006 11:24:37 +0200 (CEST)
-Message-ID: <Pine.BSO.4.63.0604121121440.880@wodka.lkn.ei.tum.de>
-References: <Pine.BSO.4.63.0604071647220.880@wodka.lkn.ei.tum.de>
+From: Ryan Richter <ryan@tau.solarneutrino.net>
+Subject: lockd oopses continue with 2.6.16.1
+Date: Wed, 12 Apr 2006 13:20:29 -0400
+Message-ID: <20060412172028.GA12637@tau.solarneutrino.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FTbab-00072L-Vk
-	for nfs@lists.sourceforge.net; Wed, 12 Apr 2006 02:24:41 -0700
-Received: from mailrelay1.lrz-muenchen.de ([129.187.254.106])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FTbaa-0003Pm-GW
-	for nfs@lists.sourceforge.net; Wed, 12 Apr 2006 02:24:42 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.BSO.4.63.0604071647220.880@wodka.lkn.ei.tum.de>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=utf-8
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932269AbWDLRUh@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Greetings again,
+I'm still seeing lockd oopses after server reboots:
 
-just as a followup: One of the other admins here reconfigured our DNS to 
-not return two different names in reverse lookups. This might have cured 
-the problem.
+Unable to handle kernel paging request at 00002b8134a867a0 RIP: 
+<ffffffff801bfdb1>{nlmclnt_mark_reclaim+67}
+PGD 0 
+Oops: 0000 [1] 
+CPU 0 
+Modules linked in:
+Pid: 1182, comm: lockd Not tainted 2.6.16.1 #2
+RIP: 0010:[<ffffffff801bfdb1>] <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67}
+RSP: 0018:ffff81007dd25e70  EFLAGS: 00010206
+RAX: 00002b8134a86788 RBX: ffff81007d53e480 RCX: ffff81007e3807f8
+RDX: ffff81007e380800 RSI: 000000000000005f RDI: ffff81007d53e480
+RBP: ffff81007f265400 R08: 00000000fffffffa R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000011
+R13: 0000000000000004 R14: 0000000000000010 R15: ffffffff803c3e20
+FS:  00002ad3fb57a4a0(0000) GS:ffffffff80490000(0000) knlGS:00000000f6e519e0
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00002b8134a867a0 CR3: 000000007e2e0000 CR4: 00000000000006e0
+Process lockd (pid: 1182, threadinfo ffff81007dd24000, task ffff81007f85e710)
+Stack: ffffffff801bfe68 ffff81007d53e480 ffffffff801c6601 3256cc844d030002 
+       0000000000000000 0000000000000004 ffff81007ec65000 ffff81007ec650a0 
+       ffffffff803c4ea0 ffff81007dd1f014 
+Call Trace: <ffffffff801bfe68>{nlmclnt_recovery+139}
+       <ffffffff801c6601>{nlm4svc_proc_sm_notify+188} <ffffffff80312a2b>{svc_process+871}
+       <ffffffff801c1a19>{lockd+344} <ffffffff801c18c1>{lockd+0}
+       <ffffffff801c18c1>{lockd+0} <ffffffff8010b01e>{child_rip+8}
+       <ffffffff801c18c1>{lockd+0} <ffffffff801c18c1>{lockd+0}
+       <ffffffff8010b016>{child_rip+0}
 
-Best regards,
- 	Moritz.
+Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
+RIP <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67} RSP <ffff81007dd25e70>
+CR2: 00002b8134a867a0
 
-
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-ryan
