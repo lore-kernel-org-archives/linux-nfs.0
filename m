@@ -1,56 +1,69 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: lockd oopses continue with 2.6.16.1
-Date: Thu, 13 Apr 2006 11:33:12 -0400
-Message-ID: <1144942392.25298.6.camel@lade.trondhjem.org>
-References: <20060412172028.GA12637@tau.solarneutrino.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs-utils 1.0.8 build failure
+Date: Thu, 13 Apr 2006 11:51:52 -0400
+Message-ID: <20060413155152.GA29358@fieldses.org>
+References: <1144915146.32160.26.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1750952AbWDMPd0@vger.kernel.org>
-To: Ryan Richter <ryan@tau.solarneutrino.net>
-In-Reply-To: <20060412172028.GA12637@tau.solarneutrino.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FU46v-0006NP-2D
+	for nfs@lists.sourceforge.net; Thu, 13 Apr 2006 08:51:57 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FU46u-0005di-RO
+	for nfs@lists.sourceforge.net; Thu, 13 Apr 2006 08:51:57 -0700
+To: Andrew Zhukov <zhukov@tst.spb.su>
+In-Reply-To: <1144915146.32160.26.camel@localhost.localdomain>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Wed, 2006-04-12 at 13:20 -0400, Ryan Richter wrote:
-> I'm still seeing lockd oopses after server reboots:
+On Thu, Apr 13, 2006 at 10:59:06AM +0300, Andrew Zhukov wrote:
+> I tried to build fine "mount" for "mount -t nfs". I mean the one which
+> wouldn't complain "mount is older/newer than the kernel"...
 > 
-> Unable to handle kernel paging request at 00002b8134a867a0 RIP: 
-> <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67}
-> PGD 0 
-> Oops: 0000 [1] 
-> CPU 0 
-> Modules linked in:
-> Pid: 1182, comm: lockd Not tainted 2.6.16.1 #2
-> RIP: 0010:[<ffffffff801bfdb1>] <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67}
-> RSP: 0018:ffff81007dd25e70  EFLAGS: 00010206
-> RAX: 00002b8134a86788 RBX: ffff81007d53e480 RCX: ffff81007e3807f8
-> RDX: ffff81007e380800 RSI: 000000000000005f RDI: ffff81007d53e480
-> RBP: ffff81007f265400 R08: 00000000fffffffa R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000011
-> R13: 0000000000000004 R14: 0000000000000010 R15: ffffffff803c3e20
-> FS:  00002ad3fb57a4a0(0000) GS:ffffffff80490000(0000) knlGS:00000000f6e519e0
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 00002b8134a867a0 CR3: 000000007e2e0000 CR4: 00000000000006e0
-> Process lockd (pid: 1182, threadinfo ffff81007dd24000, task ffff81007f85e710)
-> Stack: ffffffff801bfe68 ffff81007d53e480 ffffffff801c6601 3256cc844d030002 
->        0000000000000000 0000000000000004 ffff81007ec65000 ffff81007ec650a0 
->        ffffffff803c4ea0 ffff81007dd1f014 
-> Call Trace: <ffffffff801bfe68>{nlmclnt_recovery+139}
->        <ffffffff801c6601>{nlm4svc_proc_sm_notify+188} <ffffffff80312a2b>{svc_process+871}
->        <ffffffff801c1a19>{lockd+344} <ffffffff801c18c1>{lockd+0}
->        <ffffffff801c18c1>{lockd+0} <ffffffff8010b01e>{child_rip+8}
->        <ffffffff801c18c1>{lockd+0} <ffffffff801c18c1>{lockd+0}
->        <ffffffff8010b016>{child_rip+0}
+> First I tried to build it on x86 RedHat 9.
 > 
-> Code: 48 39 78 18 75 13 8b 81 8c 00 00 00 a8 01 74 09 83 c8 02 89 
-> RIP <ffffffff801bfdb1>{nlmclnt_mark_reclaim+67} RSP <ffff81007dd25e70>
-> CR2: 00002b8134a867a0
+> 1. ./configure without restriction won't work... I have to use: 
 > 
+> ./configure --build=arm-linux-uclibc --enable-nfsv4=no --enable-nfsv3=no
+> --enable-gss=no
+> 
+> 2. make fails:
+> 
+> ...
+> Making all in include
+> make[2]: Entering directory `/tmp/nfs-utils-1.0.8/support/include'
 
-Does the following patch (applies on top of 2.6.17-rc1) help?
+Note that nfs-utils doesn't provide the nfs "mount" program.  You want
+util-linux for that.  And those mount version complaints can be safely
+ignored anyway.
 
-http://client.linux-nfs.org/Linux-2.6.x/2.6.17-rc1/linux-2.6.17-010-fix_nlm_reclaim_races.dif
+The kernel oopses in nfs_lookup are a separate issue, I don't know
+what's causing those.  So you're building in an nfs-mounted directory on
+a client with a 2.6.10 kernel?  Could you try a more recent kernel?
 
-Cheers,
-  Trond
+--b.
+
+
+-------------------------------------------------------
+This SF.Net email is sponsored by xPML, a groundbreaking scripting language
+that extends applications into web and mobile media. Attend the live webcast
+and join the prime developer group breaking into this new coding territory!
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
