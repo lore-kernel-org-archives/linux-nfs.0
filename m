@@ -1,24 +1,24 @@
-From: Stephen Hemminger <shemminger@osdl.org>
-Subject: Re: No UDP NFS over bridges in Linux 2.6.16.x?
-Date: Fri, 14 Apr 2006 14:00:34 -0700
-Message-ID: <20060414140034.2fd7100c@localhost.localdomain>
-References: <20060414135321.53e60516@dxpl.pdx.osdl.net>
-	<20060414205815.15338.qmail@web52911.mail.yahoo.com>
+From: Stephen Carville <stephen@totalflood.com>
+Subject: Re: NFS3 in RHEL3
+Date: Fri, 14 Apr 2006 14:20:31 -0700
+Message-ID: <4440121F.5020704@totalflood.com>
+References: <443F37FA.2060402@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bridge@osdl.org, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FUVPD-0006LS-8k
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 14:00:39 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1FUVPB-00060I-Kr
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 14:00:39 -0700
-To: Chris Rankin <rankincj@yahoo.com>
-In-Reply-To: <20060414205815.15338.qmail@web52911.mail.yahoo.com>
+	id 1FUViU-0008Or-Bj
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 14:20:34 -0700
+Received: from [208.57.204.2] (helo=mail.totalflood.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FUViT-0001sI-N2
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 14:20:34 -0700
+Received: from [192.168.124.232] (pellucidar.totalflood.com [192.168.124.232])
+	by mail.totalflood.com (Un-Exchange Mail Version 9.7.2.4) with ESMTP id D1340540A8
+	for <nfs@lists.sourceforge.net>; Fri, 14 Apr 2006 14:20:31 -0700 (PDT)
+To: NFS List <nfs@lists.sourceforge.net>
+In-Reply-To: <443F37FA.2060402@oracle.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,17 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 14 Apr 2006 21:58:15 +0100 (BST)
-Chris Rankin <rankincj@yahoo.com> wrote:
-
-> --- Stephen Hemminger <shemminger@osdl.org> wrote:
-> > What is the mtu of eth0 and eth1 on the bridge?
+shashi wrote:
+> Hi
 > 
-> 1500 on both eth0 and eth1, and on the actual bridge device too.
+> A small doubt about NFS3 in Linux . If i mount a NFS share (From NetApp
+>  , ONTAP 6.5 ) on a Linux machine with only ro,nolock options , then
+> still the NFS mount options like
+> bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are still applied ? If they
+> are applied , how can i check is those are applied or not ?
+> 
+> In my Linux box , after mounting with only ro,nolock options .....
+> 
+> [root@<hostname>]# mount | grep < Mount point>
+> <NFS server> on < Mount point >  type nfs (ro,nolock,addr=144.20.129.248)
+> 
+> In this case , is other other options like
+> bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are applied ? if they are
+> applied , what are the default values ?
+> 
+> Please answer to my question.
+> 
 
-Are you doing brouting or filtering? or vlan's?
-Are the ethernet devices on the bridge doing hardware checksumming?
-What version of kernel and configuration are running on the bridge?
+"man nfs" lists the options and their defaults
+
+-- 
+Stephen Carville <stephen@totalflood.com>
+Unix and Network Admin
+Nationwide Totalflood
+6033 W. Century Blvd
+Los Angeles, CA 90045
+310-342-3602
 
 
 -------------------------------------------------------
