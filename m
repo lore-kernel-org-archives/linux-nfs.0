@@ -1,24 +1,22 @@
-From: Chuck Lever <cel@citi.umich.edu>
-Subject: Re: NFS3 in RHEL3
-Date: Fri, 14 Apr 2006 18:12:22 -0400
-Message-ID: <44401E46.10006@citi.umich.edu>
-References: <443F37FA.2060402@oracle.com> <4440121F.5020704@totalflood.com>
-Reply-To: cel@citi.umich.edu
+From: Chris Rankin <rankincj@yahoo.com>
+Subject: Re: No UDP NFS over bridges in Linux 2.6.16.x?
+Date: Fri, 14 Apr 2006 23:13:12 +0100 (BST)
+Message-ID: <20060414221312.64298.qmail@web52901.mail.yahoo.com>
+References: <20060414140034.2fd7100c@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: bridge@osdl.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FUWWf-0005Cx-Q4
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 15:12:25 -0700
-Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FUWWe-00024l-BC
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 15:12:25 -0700
-To: Stephen Carville <stephen@totalflood.com>
-In-Reply-To: <4440121F.5020704@totalflood.com>
+	id 1FUWXv-0005Jc-At
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 15:13:43 -0700
+Received: from web52901.mail.yahoo.com ([206.190.49.11])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FUWXq-0004gU-TB
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 15:13:40 -0700
+To: Stephen Hemminger <shemminger@osdl.org>
+In-Reply-To: <20060414140034.2fd7100c@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,47 +30,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Stephen Carville wrote:
-> shashi wrote:
->> Hi
->>
->> A small doubt about NFS3 in Linux . If i mount a NFS share (From NetApp
->>  , ONTAP 6.5 ) on a Linux machine with only ro,nolock options , then
->> still the NFS mount options like
->> bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are still applied ? If they
->> are applied , how can i check is those are applied or not ?
->>
->> In my Linux box , after mounting with only ro,nolock options .....
->>
->> [root@<hostname>]# mount | grep < Mount point>
->> <NFS server> on < Mount point >  type nfs (ro,nolock,addr=144.20.129.248)
->>
->> In this case , is other other options like
->> bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are applied ? if they are
->> applied , what are the default values ?
->>
->> Please answer to my question.
->>
-> 
-> "man nfs" lists the options and their defaults
+--- Stephen Hemminger <shemminger@osdl.org> wrote:
+> Are you doing brouting or filtering? or vlan's?
+> Are the ethernet devices on the bridge doing hardware checksumming?
+> What version of kernel and configuration are running on the bridge?
 
-Hi Stephen-
+The gateway is running 2.6.16.2, and all its ethernet devices are e100s. =
+They might well do
+hardware checksumming, but the configuration used to work fine. There is =
+no brouting / ebfilters,
+and I don't think that there's any vlan either (on the basis that I can't=
+ have it if I don't know
+what it is ;-).)
 
-It's been my experience that the man pages on Linux are often quite out 
-of date, and sometimes don't match the actual behavior of the commands 
-available in each distribution.  Thus I recommend using a network trace 
-to make sure.
+Cheers,
+Chris
 
--- 
-corporate:	<cel at netapp dot com>
-personal:	<chucklever at bigfoot dot com>
+
+
+=09
+=09
+	=09
+___________________________________________________________=20
+Yahoo! Messenger - NEW crystal clear PC to PC calling worldwide with voic=
+email http://uk.messenger.yahoo.com
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
+ge
+that extends applications into web and mobile media. Attend the live webc=
+ast
+and join the prime developer group breaking into this new coding territor=
+y!
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
+121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
