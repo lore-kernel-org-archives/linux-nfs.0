@@ -1,24 +1,26 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: NFSv3/4 and Kerberos.
-Date: Thu, 13 Apr 2006 16:37:05 -0400
-Message-ID: <4d569c330604131337l495b9b4lb39cd7a580ec98ea@mail.gmail.com>
-References: <2b585fc90604131147t3ffa7abemc9f50f76a7a0d3a6@mail.gmail.com>
+From: shashi <shashi.boddula@oracle.com>
+Subject: NFS3 in RHEL3
+Date: Fri, 14 Apr 2006 11:19:46 +0530
+Message-ID: <443F37FA.2060402@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FUABB-0006dT-P7
-	for nfs@lists.sourceforge.net; Thu, 13 Apr 2006 15:20:45 -0700
-Received: from nproxy.gmail.com ([64.233.182.189])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FUABA-0006Jx-E6
-	for nfs@lists.sourceforge.net; Thu, 13 Apr 2006 15:20:45 -0700
-Received: by nproxy.gmail.com with SMTP id l36so1175876nfa
-        for <nfs@lists.sourceforge.net>; Thu, 13 Apr 2006 15:20:40 -0700 (PDT)
-To: "Christopher Smith" <csmithere@gmail.com>
-In-Reply-To: <2b585fc90604131147t3ffa7abemc9f50f76a7a0d3a6@mail.gmail.com>
+	id 1FUHCf-0004qt-6P
+	for nfs@lists.sourceforge.net; Thu, 13 Apr 2006 22:50:45 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44)
+	id 1FUHCf-0002NH-3u
+	for nfs@lists.sourceforge.net; Thu, 13 Apr 2006 22:50:45 -0700
+Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
+	by agminet01.oracle.com (Switch-3.1.7/Switch-3.1.7) with ESMTP id k3E5oZ2b031948
+	for <nfs@lists.sourceforge.net>; Fri, 14 Apr 2006 00:50:36 -0500
+Received: from [152.69.168.146] (sboddula-idc.idc.oracle.com [152.69.168.146])
+	by rgmgw2.us.oracle.com (Switch-3.1.7/Switch-3.1.7) with ESMTP id k3E5oXKX031759
+	for <nfs@lists.sourceforge.net>; Thu, 13 Apr 2006 23:50:34 -0600
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,32 +34,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This sounds kind of familiar, but it has been quite a while since I've
-dealt with this level of code.
+Hi
 
-Is cmsmith-ntap both nfs client and nfs server?  Any errors from the
-server (rpc.svcgssd)?
+A small doubt about NFS3 in Linux . If i mount a NFS share (From NetApp
+ , ONTAP 6.5 ) on a Linux machine with only ro,nolock options , then
+still the NFS mount options like
+bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are still applied ? If they
+are applied , how can i check is those are applied or not ?
 
-This *might* be related.  Each machine should only have its own keys
-in its keytab.  (If katana is the nfs client, it should not have
-cmsmith-ntap's key, which it is using, in its keytab.)
+In my Linux box , after mounting with only ro,nolock options .....
 
-K.C.
+[root@<hostname>]# mount | grep < Mount point>
+<NFS server> on < Mount point >  type nfs (ro,nolock,addr=144.20.129.248)
 
+In this case , is other other options like
+bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are applied ? if they are
+applied , what are the default values ?
 
-On 4/13/06, Christopher Smith <csmithere@gmail.com> wrote:
-> Folks--
->
-> I'm working on doing some testing of NFSv3 and NFSv4, and I'm running
-> into the following error (shown from rpc.gssd -vvv -f):
->
-> rpcsec_gss: xdr_rpc_gss_init_args: encode success (token 0x9e7b550:531)
-> rpcsec_gss: in authgss_refresh()
-> rpcsec_gss: gss_init_sec_context: A token was invalid - No error
-> rpcsec_gss: in authgss_destroy()
-> rpcsec_gss: in authgss_destroy_context()
-> WARNING: Failed to create krb5 context for user with uid 0 for server
-> cmsmith-ntap.hq.example.com
+Please answer to my question.
+
+-- 
+Thanks & Regards,
+Shashi Kanth,SSCP(ISO/IEC17024)
 
 
 -------------------------------------------------------
