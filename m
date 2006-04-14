@@ -1,24 +1,29 @@
-From: Stephen Hemminger <shemminger@osdl.org>
-Subject: Re: No UDP NFS over bridges in Linux 2.6.16.x?
-Date: Fri, 14 Apr 2006 15:17:45 -0700
-Message-ID: <20060414151745.062981e0@localhost.localdomain>
-References: <20060414140034.2fd7100c@localhost.localdomain>
-	<20060414221312.64298.qmail@web52901.mail.yahoo.com>
+From: Garrick Staples <garrick@usc.edu>
+Subject: Re: NFS3 in RHEL3
+Date: Fri, 14 Apr 2006 16:38:58 -0700
+Message-ID: <20060414233858.GJ18673@polop.usc.edu>
+References: <443F37FA.2060402@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bridge@osdl.org, nfs@lists.sourceforge.net
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="HO6W8Bs67z/y6Z+3"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FUWbw-0005hu-Fw
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 15:17:52 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	id 1FUXsS-0005eA-5T
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 16:39:00 -0700
+Received: from polop.usc.edu ([128.125.10.9])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FUWbv-0006DE-Mp
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 15:17:52 -0700
-To: Chris Rankin <rankincj@yahoo.com>
-In-Reply-To: <20060414221312.64298.qmail@web52901.mail.yahoo.com>
+	id 1FUXsR-0005aZ-1z
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 16:39:00 -0700
+Received: from polop.usc.edu (localhost.localdomain [127.0.0.1])
+	by polop.usc.edu (8.12.11.20060308/8.12.11) with ESMTP id k3ENcwAw010494
+	for <nfs@lists.sourceforge.net>; Fri, 14 Apr 2006 16:38:58 -0700
+Received: (from garrick@localhost)
+	by polop.usc.edu (8.12.11.20060308/8.12.11/Submit) id k3ENcwvR010492
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 16:38:58 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <443F37FA.2060402@oracle.com>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,21 +37,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 14 Apr 2006 23:13:12 +0100 (BST)
-Chris Rankin <rankincj@yahoo.com> wrote:
 
-> --- Stephen Hemminger <shemminger@osdl.org> wrote:
-> > Are you doing brouting or filtering? or vlan's?
-> > Are the ethernet devices on the bridge doing hardware checksumming?
-> > What version of kernel and configuration are running on the bridge?
-> 
-> The gateway is running 2.6.16.2, and all its ethernet devices are e100s. They might well do
-> hardware checksumming, but the configuration used to work fine. There is no brouting / ebfilters,
-> and I don't think that there's any vlan either (on the basis that I can't have it if I don't know
-> what it is ;-).)
-> 
+--HO6W8Bs67z/y6Z+3
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-If you have the patience, then "git bisect" will pin down the regression.
+On Fri, Apr 14, 2006 at 11:19:46AM +0530, shashi alleged:
+> Hi
+>=20
+> A small doubt about NFS3 in Linux . If i mount a NFS share (From NetApp
+>  , ONTAP 6.5 ) on a Linux machine with only ro,nolock options , then
+> still the NFS mount options like
+> bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are still applied ? If they
+> are applied , how can i check is those are applied or not ?
+>=20
+> In my Linux box , after mounting with only ro,nolock options .....
+>=20
+> [root@<hostname>]# mount | grep < Mount point>
+> <NFS server> on < Mount point >  type nfs (ro,nolock,addr=3D144.20.129.24=
+8)
+>=20
+> In this case , is other other options like
+> bg,intr,hard,timeo,wsize,rsize,nfsvers,tcp are applied ? if they are
+> applied , what are the default values ?
+
+Look in /proc/mounts for the actual options applied to the mount.
+
+--=20
+Garrick Staples, Linux/HPCC Administrator
+University of Southern California
+
+--HO6W8Bs67z/y6Z+3
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.3 (GNU/Linux)
+
+iD8DBQFEQDKS0SBUxJbm9HMRAu3WAJwPCuQuGd5dzeNBuvKQZJBTqO80sQCgnRLN
+heTStw4z6CQu8QyyK+rl2cI=
+=LHId
+-----END PGP SIGNATURE-----
+
+--HO6W8Bs67z/y6Z+3--
 
 
 -------------------------------------------------------
