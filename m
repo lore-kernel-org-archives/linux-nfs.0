@@ -1,23 +1,22 @@
-From: Stephen Hemminger <shemminger@osdl.org>
+From: Chris Rankin <rankincj@yahoo.com>
 Subject: Re: No UDP NFS over bridges in Linux 2.6.16.x?
-Date: Fri, 14 Apr 2006 09:40:42 -0700
-Message-ID: <20060414094042.2a36d377@localhost.localdomain>
-References: <20060414134220.25554.qmail@web52903.mail.yahoo.com>
+Date: Fri, 14 Apr 2006 20:26:56 +0100 (BST)
+Message-ID: <20060414192656.870.qmail@web52914.mail.yahoo.com>
+References: <20060414094042.2a36d377@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-1
 Cc: bridge@osdl.org, nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FURLf-0004WV-6M
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 09:40:43 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1FURLe-0002lP-UW
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 09:40:43 -0700
-To: Chris Rankin <rankincj@yahoo.com>
-In-Reply-To: <20060414134220.25554.qmail@web52903.mail.yahoo.com>
+	id 1FUTwd-00050M-TU
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 12:27:03 -0700
+Received: from web52914.mail.yahoo.com ([206.190.49.24])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FUTwc-0000T4-EV
+	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 12:27:03 -0700
+To: Stephen Hemminger <shemminger@osdl.org>
+In-Reply-To: <20060414094042.2a36d377@localhost.localdomain>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,47 +30,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Fri, 14 Apr 2006 14:42:20 +0100 (BST)
-Chris Rankin <rankincj@yahoo.com> wrote:
+--- Stephen Hemminger <shemminger@osdl.org> wrote:
+> Most likely the problem is that the MTU on the two devices in the bridg=
+e is different.
+> The bridge will silently drop packets if they are too large for the des=
+tination port (it's in
+> the 802.1d standard). TCP has path mtu discovery and is smart enough to=
+ recover.  UDP doesn't do
+> that.
 
-> Hi,
-> 
-> I have 2 servers which are connected to a gateway machine. The gateway and one server are running
-> Linux 2.6.16.2, while the third machine is running 2.6.16.5. The two ethernet ports on the gateway
-> which are connected to the servers are combined into a single ethernet bridge device.
-> 
-> Ever since 2.6.16, I have noticed that I can no longer cross-mount the two servers' /home
-> directories via UDP NFS. Which is to say that the mount command succeeds, but that trying to
-> access the filesystem makes the process hang and the "NFS server not responding" message to appear
-> in the console log. This is true regardless of which machine is the NFS server and which is the
-> NFS client.
-> 
-> It all works fine if I use TCP NFS instead.
-> 
-> Also, UDP NFS works OK between any server and the gateway itself, so it only goes wrong when UDP
-> NFS traffic is forwarded across the bridge. (I have not changed my firewall rules, which just tell
-> the gateway to forward all traffic coming in from the bridge device anyway.)
-> 
-> Can anyone reproduce this, please? I obviously have a workaround (using TCP instead of UDP) but it
-> sounds like there's a bug somewhere.
-> 
-> Cheers,
-> Chris
+Hi,
 
-Most likely the problem is that the MTU on the two devices in the bridge is different.
-The bridge will silently drop packets if they are too large for the destination port (it's in the 802.1d
-standard). TCP has path mtu discovery and is smart enough to recover.  UDP doesn't do
-that.
+Thanks for the top about the dangers of NFS and UDP. However, I don't thi=
+nk that the MTU is the
+problem. All the ethernet devices (including the bridge) have an MTU of 1=
+500, and according to my
+routing table, only the default route has a lower MTU. Both servers are c=
+onfigured like this:
 
-Anyway don't run NFS over UDP unless you want data corruption.  There are sequence number wraparound
-issues that are unsolvable when running NFS over UDP/IP and faster links.
+192.168.0.0/24 dev eth0  proto kernel  scope link  src 192.168.0.x
+169.254.0.0/16 dev eth0  scope link
+default via 192.168.0.1 dev eth0  src 192.168.0.x  advmss 1452
+
+eth0      Link encap:Ethernet  HWaddr nn:nn:nn:nn:nn:nn
+          inet addr:192.168.0.x  Bcast:192.168.0.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:6817 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:4951 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:1840267 (1.7 MiB)  TX bytes:678873 (662.9 KiB)
+          Base address:0xdcc0 Memory:ff6e0000-ff700000
+
+So all traffic between 192.168.0.x machines should be routed with an MTU =
+of 1500.
+
+Cheers,
+Chris
+
+
+
+	=09
+___________________________________________________________=20
+Switch an email account to Yahoo! Mail, you could win FIFA World Cup tick=
+ets. http://uk.mail.yahoo.com
+
+
+	=09
+___________________________________________________________=20
+Switch an email account to Yahoo! Mail, you could win FIFA World Cup tick=
+ets. http://uk.mail.yahoo.com
 
 
 -------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
+This SF.Net email is sponsored by xPML, a groundbreaking scripting langua=
+ge
+that extends applications into web and mobile media. Attend the live webc=
+ast
+and join the prime developer group breaking into this new coding territor=
+y!
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D110944&bid=3D241720&dat=3D=
+121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
