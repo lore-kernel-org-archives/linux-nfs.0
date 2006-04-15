@@ -1,51 +1,49 @@
-From: Stephen Hemminger <shemminger@osdl.org>
-Subject: Re: No UDP NFS over bridges in Linux 2.6.16.x?
-Date: Fri, 14 Apr 2006 22:17:59 -0700
-Message-ID: <44408207.1070404@osdl.org>
-References: <20060414235008.66335.qmail@web52913.mail.yahoo.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: Re: [NFS] [RFC: 2.6 patch] net/sunrpc/: possible cleanups
+Date: Sat, 15 Apr 2006 23:32:15 +0200
+Message-ID: <20060415213215.GN15022@stusta.de>
+References: <044B81DE141D7443BCE91E8F44B3C1E288E4FC@exsvl02.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: bridge@osdl.org, nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FUdAb-0008O8-EB
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 22:18:05 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44)
-	id 1FUdAa-0007ax-5X
-	for nfs@lists.sourceforge.net; Fri, 14 Apr 2006 22:18:05 -0700
-To: Chris Rankin <rankincj@yahoo.com>
-In-Reply-To: <20060414235008.66335.qmail@web52913.mail.yahoo.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: David Miller <davem@davemloft.net>, neilb@cse.unsw.edu.au,
+	trond.myklebust@fys.uio.no, linux-kernel@vger.kernel.org,
+	nfs@lists.sourceforge.net, netdev@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+To: "Lever, Charles" <Charles.Lever@netapp.com>
+In-Reply-To: <044B81DE141D7443BCE91E8F44B3C1E288E4FC@exsvl02.hq.netapp.com>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Then get a packet trace of a failing session with tcpdump. You may need 
-to get two, one
-one the client and one on the server to be able to see which packet 
-isn't getting past the
-bridge.
+On Thu, Oct 06, 2005 at 07:13:14AM -0700, Lever, Charles wrote:
 
-There are tools to santize tcpdump files if you are paranoid about IP 
-adresses, etc.
+> actually, can we hold off on this change?  the RPC transport switch will
+> eventually need most of those EXPORT_SYMBOLs.
+>...
+> > This patch was already sent on:
+> > - 30 May 2005
+> > - 7 May 2005
+>...
 
+One year has passed since I sent this patch the first time, and with the 
+exception that it needs re-diff'ing it still applies.
 
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Charles, are the changes you are talking about that might need them 
+available in the very near future?
+
+If not, I'd suggest to remove them and re-add them when code using them 
+will be included in the kernel (reverting parts or all of my patch 
+should be trivial).
+
+This way, they'll not continue to uselessly making the kernel image 
+larger.
+
+cu
+Adrian
+
+-- 
+
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
+
