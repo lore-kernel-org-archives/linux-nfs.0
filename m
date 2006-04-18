@@ -1,21 +1,22 @@
-From: "LLLActive@GMX.Net" <LLLActive@GMX.Net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: can't umount nfs4 share
-Date: Tue, 18 Apr 2006 17:37:25 +0200
-Message-ID: <1145374646.25073.45.camel@L10-WS-AWS1.AWS>
+Date: Tue, 18 Apr 2006 12:29:12 -0400
+Message-ID: <1145377753.8115.20.camel@lade.trondhjem.org>
 References: <1145373792.25073.39.camel@L10-WS-AWS1.AWS>
-Reply-To: LLLActive@GMX.Net
 Mime-Version: 1.0
 Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FVsGl-0001W7-Pk
-	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 08:37:35 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FVsGk-0006mf-Aq
-	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 08:37:35 -0700
-To: nfs@lists.sourceforge.net
+	id 1FVt54-0007Do-1O
+	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 09:29:34 -0700
+Received: from pat.uio.no ([129.240.10.6] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FVt52-00020T-MA
+	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 09:29:34 -0700
+To: LLLActive@GMX.Net
 In-Reply-To: <1145373792.25073.39.camel@L10-WS-AWS1.AWS>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -31,22 +32,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 On Tue, 2006-04-18 at 17:23 +0200, LLLActive@GMX.Net wrote:
-
-
+> Hi,
+> 
+> I have a problem that on a production system I can not umount a nfs4
+> share. The NFS4 Server is not available anymore. When I try
+> umount /nfs4share the response is:
+> 
+> # umount: /nfs4share: device is busy
+> 
+> there is nothing accessing the share. 
+> 
+> with a ls -l /nfs4share the response is:
+> 
+> # /bin/ls: /nfs4share: Stale NFS file handle
+> 
+> with umount -f the response is:
+> 
+> # umount2: Device or resource busy
+> # umount: /nfs4share: device is busy
+> # umount2: Device or resource busy
+> # umount: /nfs4share: device is busy
+> 
+> When I look with 'mc' (midnight commander), there is a file or directory
+> called ~nfs4share with 0 size and dated Jan 1 1970. It can't be deleted.
+> 
+> How do I get rid of it or get the share unmounted without shutting down
+> the system?
+> 
 > Strangely, when the NFS Server returns, I can remount it with 
 > mount -t nfs4 192.168.1.2:/ /nfs4share/ //
 > -orsize=32768,wsize=32768,timeo=14,intr
 > 
 > and write to it again, but not unmount it.
-> 
 
-On a second attempt, it did not work again with remounting it as NFS4.
-It now says it is already mounted. With YAST I can mount it as NFS3 to
-the old directory and read but not write. When removing it with YAST,
-the stale file handles return with the old state of affairs.
+Try
 
-:-/
-Al
+lsof +D /nfs4share
+
+in order to identify the processes that are using that mountpoint, then
+kill them off before retrying 'umount -f /nfs4share' a couple more
+times.
+
+If all else fails, you can hide the mount using 'umount -l /nfs4share'.
+
+Cheers,
+  Trond
 
 
 
