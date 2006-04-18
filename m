@@ -1,26 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: ANNOUNCE: nfs-utils 1.0.8 (final)
-Date: Tue, 18 Apr 2006 17:02:30 +1000
-Message-ID: <17476.36614.447440.49789@cse.unsw.edu.au>
-References: <17468.29136.672049.677855@cse.unsw.edu.au>
-	<x6ek0018da@gzp>
-	<17474.64699.722635.687707@cse.unsw.edu.au>
-	<x6d5ff4bgl@gzp>
+From: "LLLActive@GMX.Net" <LLLActive@GMX.Net>
+Subject: can't umount nfs4 share
+Date: Tue, 18 Apr 2006 17:23:12 +0200
+Message-ID: <1145373792.25073.39.camel@L10-WS-AWS1.AWS>
+Reply-To: LLLActive@GMX.Net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FVkEe-0005al-7e
-	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 00:02:52 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FVkEb-0000Q4-Qt
-	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 00:02:52 -0700
-To: "Gabor Z. Papp" <gzp@papp.hu>
-In-Reply-To: message from Gabor Z. Papp on Tuesday April 18
+	id 1FVs33-0008Pp-8q
+	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 08:23:25 -0700
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FVs2y-0008Cj-Bu
+	for nfs@lists.sourceforge.net; Tue, 18 Apr 2006 08:23:25 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,34 +28,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tuesday April 18, gzp@papp.hu wrote:
-> * Neil Brown <neilb@suse.de>:
-> 
-> | > Probably my glibc is outdated, but works well. ;-)
-> 
-> | Probably it is.  It doesn't work well enough for nfs-utils :-(
-> 
-> | ifaddrs.h was added to glibc in July 2002, which I think was about
-> | 2.2.6.
-> 
-> Thought 2.2.5 was the latest from the 2.2 series. At least I can't see
-> 2.2.6 on gnu.org. Anyway, I know its old and outdated for the current
-> tools, so I'm not complaining. ;-)
+Hi,
 
-Dunno... I looked through the changelog for glibc and there seemed to
-be references to 2.2.6, but I don't know what they mean..
-> 
-> | I guess we should get 'configure' to check for ifaddrs, and exclude
-> | the code that uses it if not available.
-> 
-> | For now you can try backing out the following patch.
-> 
-> Compiles fine.
+I have a problem that on a production system I can not umount a nfs4
+share. The NFS4 Server is not available anymore. When I try
+umount /nfs4share the response is:
 
-Cool.  1.0.9 will auto-detect the relevant include files and leave
-that code out if it cannot be compiled.
+# umount: /nfs4share: device is busy
 
-NeilBrown
+there is nothing accessing the share. 
+
+with a ls -l /nfs4share the response is:
+
+# /bin/ls: /nfs4share: Stale NFS file handle
+
+with umount -f the response is:
+
+# umount2: Device or resource busy
+# umount: /nfs4share: device is busy
+# umount2: Device or resource busy
+# umount: /nfs4share: device is busy
+
+When I look with 'mc' (midnight commander), there is a file or directory
+called ~nfs4share with 0 size and dated Jan 1 1970. It can't be deleted.
+
+How do I get rid of it or get the share unmounted without shutting down
+the system?
+
+Strangely, when the NFS Server returns, I can remount it with 
+mount -t nfs4 192.168.1.2:/ /nfs4share/ //
+-orsize=32768,wsize=32768,timeo=14,intr
+
+and write to it again, but not unmount it.
+
+
+:-)
+Al
+
 
 
 -------------------------------------------------------
