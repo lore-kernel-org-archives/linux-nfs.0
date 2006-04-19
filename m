@@ -1,24 +1,25 @@
-From: "Tony" <tony@games-master.co.uk>
-Subject: RE: Newbie NFS permissions question.
-Date: Wed, 19 Apr 2006 15:50:41 +0100
-Message-ID: <200604191447.k3JElkPE008657@main.games-master.co.uk>
-References: <44463DE1.3070308@RedHat.com>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: slow performance -- how to diagnose
+Date: Wed, 19 Apr 2006 16:14:05 -0400
+Message-ID: <1145477646.12854.152.camel@pc>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-w5hXIUOQYty4rFCPf6KU"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FWE1P-0007tq-Qv
-	for nfs@lists.sourceforge.net; Wed, 19 Apr 2006 07:51:11 -0700
-Received: from [213.253.152.202] (helo=main.games-master.co.uk)
+	id 1FWJ43-00022d-VH
+	for nfs@lists.sourceforge.net; Wed, 19 Apr 2006 13:14:15 -0700
+Received: from linux.interlinx.bc.ca ([66.11.173.224])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FWE1L-0000oE-5b
-	for nfs@lists.sourceforge.net; Wed, 19 Apr 2006 07:51:12 -0700
-To: "'Steve Dickson'" <SteveD@redhat.com>
-In-Reply-To: <44463DE1.3070308@RedHat.com>
+	id 1FWJ42-0001PD-7u
+	for nfs@lists.sourceforge.net; Wed, 19 Apr 2006 13:14:15 -0700
+Received: from pc.interlinx.bc.ca (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 9E657D8D78
+	for <nfs@lists.sourceforge.net>; Wed, 19 Apr 2006 16:14:06 -0400 (EDT)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,76 +33,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Looks like I'm running version 3.=0A=
-I'll try the 'no_root_squash' option, just installing 2 new boxes so I'll=
-=0A=
-try it on them.=0A=
-=0A=
-Thanks=0A=
-Tony=0A=
-=0A=
------Original Message-----=0A=
-From: nfs-admin@lists.sourceforge.net=0A=
-[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Steve Dickson=0A=
-Sent: 19 April 2006 14:41=0A=
-To: Tony=0A=
-Cc: nfs@lists.sourceforge.net=0A=
-Subject: Re: [NFS] Newbie NFS permissions question.=0A=
-=0A=
-=0A=
-=0A=
-Tony wrote:=0A=
-> I've used NFS in the past but only for file sharing, but now I need to=20=
-=0A=
-> use it in a live environment for uses email/web etc across load balanced=
-=20=0A=
-> servers.=0A=
->=20=0A=
-> The problem I have is that the maildirs have to be owned by the user=20=
-=0A=
-> they belong to as does the web content.=0A=
->=20=0A=
-> However when I mount an NFS share on both servers it's mounted as root=20=
-=0A=
-> with full permissions.=0A=
-What NFS version are you using 2, 3 or 4?=0A=
-=0A=
->=20=0A=
-> The problem is every file/directory created in the mounted NFS share is=
-=20=0A=
-> also created owned by root, even when I try to change the permission to=
-=20=0A=
-> a different owner or try to chmod a file or directory it doesn't do=20=0A=
-> anything.=0A=
-Setting the 'no_root_squash' export option on the server might help...=0A=
-=0A=
-steved.=0A=
-=0A=
-=0A=
--------------------------------------------------------=0A=
-Using Tomcat but need to do more? Need to support web services, security?=
-=0A=
-Get stuff done quickly with pre-integrated technology to make your job=0A=
-easier=0A=
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo=
-=0A=
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=120709&bid&3057&dat=121642=0A=
-_______________________________________________=0A=
-NFS maillist  -  NFS@lists.sourceforge.net=0A=
-https://lists.sourceforge.net/lists/listinfo/nfs=0A=
-=0A=
---=20=0A=
-This message has been scanned for viruses and=0A=
-dangerous content by MailScanner, and is=0A=
-believed to be clean.=0A=
-=0A=
-=0A=
-=0A=
---=20=0A=
-This message has been scanned for viruses and=0A=
-dangerous content by MailScanner, and is=0A=
-believed to be clean.=0A=
-=0A=
+
+--=-w5hXIUOQYty4rFCPf6KU
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+I'm experiencing some slow performance that I have done some initial
+diagnosis as per http://nfs.sourceforge.net/nfs-howto/performance.html
+but not sure where to go from here.
+
+I have tried both UDP and TCP and in fact UDP performance seems to be
+slightly worse.
+
+The connection between a client and the server is gige and seems to
+perform pretty close to such using ttcp:
+
+ttcp-t: 819200000 bytes in 7.368 real seconds =3D 848.299 Mbit/sec +++
+ttcp-t: 819200000 bytes in 7.01 real seconds =3D 891.19 Mbit/sec +++
+
+The first is from client to server and the second server to client.
+Both seem reasonable.
+
+The speed of the disk on the server using a simple dd test:
+
+# time dd if=3D/dev/zero of=3Dfile bs=3D1M count=3D4000
+4000+0 records in
+4000+0 records out
+
+real    2m28.756s
+user    0m0.024s
+sys     0m17.141s
+
+(1024*1024*4000)/148.7/(1024*1024)*8 =3D=3D 26.899 MB/sec =3D=3D 215.192Mbi=
+t/s
+
+But from an NFS client...
+
+# rsh client5 "(cd $(pwd);time dd if=3D/dev/zero of=3Dfile bs=3D1M count=3D=
+1000)"
+1000+0 records in
+1000+0 records out
+
+real    1m21.036s
+user    0m0.006s
+sys     0m1.982s
+
+(1024*1024*1000)/81.036/(1024*1024) =3D=3D 12.340 MB/sec
+
+Any ideas where to look?
+
+b.
+
+--=20
+My other computer is your Microsoft Windows server.
+
+Brian J. Murrell
+
+--=-w5hXIUOQYty4rFCPf6KU
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2.2 (GNU/Linux)
+
+iD8DBQBERpoNl3EQlGLyuXARAneEAJwJ1+/lXB9Me6RzeGEyhpAEZGsSagCcDTGf
+nXVy6OF10gGsqCvb989nC/k=
+=9fyQ
+-----END PGP SIGNATURE-----
+
+--=-w5hXIUOQYty4rFCPf6KU--
+
 
 
 -------------------------------------------------------
