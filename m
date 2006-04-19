@@ -1,32 +1,56 @@
-From: Daniel Drake <dsd@gentoo.org>
-Subject: Re: [PATCH] sunrpc svc: be quieter
-Date: Wed, 19 Apr 2006 12:14:51 +0100
-Message-ID: <44461BAB.9080301@gentoo.org>
-References: <20060305005532.5E7A0870504@zog.reactivated.net>	 <Pine.LNX.4.61.0603051451590.30115@yvahk01.tjqt.qr>	 <1141678330.31680.13.camel@lade.trondhjem.org>	 <441733C0.5040605@gentoo.org> <1142371759.7987.27.camel@lade.trondhjem.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Newbie kernel questions: Failed to mount >=256 mounts for
+ FC4/FC5: can't read superblock
+Date: Wed, 19 Apr 2006 09:37:16 -0400
+Message-ID: <44463D0C.4030008@RedHat.com>
+References: <20060418195736.67158.qmail@web36710.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: Jan Engelhardt <jengelh@linux01.gwdg.de>, neilb@cse.unsw.edu.au,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	okir@monad.swb.de
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1750861AbWDSLBN@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-In-Reply-To: <1142371759.7987.27.camel@lade.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: fedora-list@redhat.com, nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FWCs5-0007nC-SN
+	for nfs@lists.sourceforge.net; Wed, 19 Apr 2006 06:37:29 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FWCs4-0007bI-LE
+	for nfs@lists.sourceforge.net; Wed, 19 Apr 2006 06:37:29 -0700
+To: Robinson Tiemuqinke <hahaha_30k@yahoo.com>
+In-Reply-To: <20060418195736.67158.qmail@web36710.mail.mud.yahoo.com>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
-> I can't see that authorising calls to prog==0 could ever be useful (what
-> would that mean?), but proc==0 is another matter: that is precisely the
-> NULL procedure call that I mentioned above.
 
-Just to let you know, I did cook up a patch but the user has gone 
-unresponsive (it's an important production server so finding downtime is 
-hard).
 
-Here is the patch if you are interested: 
-http://bugs.gentoo.org/attachment.cgi?id=82195&action=view
+Robinson Tiemuqinke wrote:
+> Hi,
+> 
+>  Just found there was a problem to mount many mounts
+> on FC4/FC5: total mounts can not exceed 256.
+Please post a a binary bzip2 tethereal trace
+to https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=185571
 
-If/when he responds, I'll remove the 2nd hunk and submit the patch properly.
+tia,
 
-Thanks,
-Daniel
+steved.
+
+
+-------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
