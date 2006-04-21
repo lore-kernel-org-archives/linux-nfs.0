@@ -1,19 +1,21 @@
-From: =?iso-8859-1?q?mathar=20philips?= <mathar_philips2@yahoo.co.in>
-Subject: My Dear
-Date: Fri, 21 Apr 2006 15:16:17 +0530 (IST)
-Message-ID: <20060421094617.94089.qmail@web8905.mail.in.yahoo.com>
-Reply-To: m_philips@myway.com
+From: Jens Beyer <jbe@webde.de>
+Subject: nfsd triggered (?) kernel BUG at fs/inode:1057
+Date: Fri, 21 Apr 2006 11:58:32 +0200
+Message-ID: <20060421095832.GA15203@pcnocjb.dlan.cinetic.de>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="0-1173719917-1145612777=:93544"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FWsDc-0003ah-20
-	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 02:46:28 -0700
-Received: from web8905.mail.in.yahoo.com ([203.84.221.33])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FWsDa-0005Qo-Cp
-	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 02:46:28 -0700
+	id 1FWsPP-0004wD-1A
+	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 02:58:39 -0700
+Received: from mailgate01.web.de ([217.72.192.251])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FWsPO-0001Nd-HV
+	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 02:58:39 -0700
+Received: from pcnocjb.int.cinetic.de (pcnocjb.int.cinetic.de [172.17.73.12])
+	by mailgate01.web.de (Postfix) with ESMTP id 3F00D281078
+	for <nfs@lists.sourceforge.net>; Fri, 21 Apr 2006 11:58:32 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -28,114 +30,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
---0-1173719917-1145612777=:93544
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
 
-I have a new email address!You can now email me at: mathar_philips2@yahoo=
-.co.in
+Hi,
 
-My Dear
+I am currently trying to investigate a BUG wich occured on one of 
+our nfs-servers last night; I am not sure if this is more NFS-related 
+or rather a problem of the underlaying filesystem (XFS). Could you 
+give me some advice on it?
 
+The System is an HP DL360g4, SLES9 with an vanilla Kernel + drbd 
++ qlogic-drivers serving NFS files from FC-attached SATA-raids. Locally, 
+the filesystem  as still accessible after the BUG occured but all 
+nfs-clients hung within few minutes. Later, the (local) unmount of 
+the filesystem failed (then the node was stonith', so no further 
+investigation possible).
 
+Thanks,
+Jens
 
-My Name is Mrs. Mathar Philips,
+Apr 21 01:10:19 store03 kernel: [293568.899931] ------------[ cut here ]------------
+Apr 21 01:10:19 store03 kernel: [293568.899942] kernel BUG at fs/inode.c:1057!
+Apr 21 01:10:19 store03 kernel: [293568.899947] invalid operand: 0000 [#1]
+Apr 21 01:10:19 store03 kernel: [293568.899951] SMP 
+Apr 21 01:10:19 store03 kernel: [293568.899956] Modules linked in: nfs nfsd lockd nfs_acl sunrpc xfs exportfs softdog floppy nvram autofs4 e1000 piix tg3 md_mod dm_mod drbd ide_cd cdrom ide_core sg sd_mod qla2400 qla2xxx_conf qla2xxx firmware_class
+Apr 21 01:10:19 store03 kernel: [293568.899993] CPU:    1
+Apr 21 01:10:19 store03 kernel: [293568.899995] EIP:    0060:[<c017b0e1>]    Not tainted VLI
+Apr 21 01:10:19 store03 kernel: [293568.899997] EFLAGS: 00010202   (2.6.15.6-QLw) 
+Apr 21 01:10:19 store03 kernel: [293568.900009] EIP is at generic_delete_inode+0xd6/0x139
+Apr 21 01:10:19 store03 kernel: [293568.900013] eax: c4bd57b8   ebx: 00000000   ecx: 00000003   edx: d989a7b0
+Apr 21 01:10:19 store03 kernel: [293568.900017] esi: d989a614   edi: 00000000   ebp: cbddf714   esp: edd3be90
+Apr 21 01:10:19 store03 kernel: [293568.900021] ds: 007b   es: 007b   ss: 0068
+Apr 21 01:10:19 store03 kernel: [293568.900025] Process nfsd (pid: 17691, threadinfo=edd3a000 task=ed92c580)
+Apr 21 01:10:19 store03 kernel: [293568.900028] Stack: d989a614 00000000 00000000 d989a614 cbddf70c c017b327 d989a614 c031a690 
+Apr 21 01:10:19 store03 kernel: [293568.900038]        d989a614 c0179457 d989a614 00000400 00000000 00000000 00000000 e525e9dc 
+Apr 21 01:10:19 store03 kernel: [293568.900047]        cbddf70c ffffc000 c0171265 cbddf70c cbddf70c 00000000 cbddf70c d9c04a04 
+Apr 21 01:10:19 store03 kernel: [293568.900057] Call Trace:
+Apr 21 01:10:19 store03 kernel: [293568.900063]  [<c017b327>] iput+0x5f/0x7a
+Apr 21 01:10:19 store03 kernel: [293568.900070]  [<c0179457>] d_delete+0xfe/0x13c
+Apr 21 01:10:19 store03 kernel: [293568.900076]  [<c0171265>] vfs_unlink+0x18b/0x1bc
+Apr 21 01:10:19 store03 kernel: [293568.900083]  [<f0ea78ec>] nfsd_unlink+0x16f/0x261 [nfsd]
+Apr 21 01:10:19 store03 kernel: [293568.900098]  [<f0eae14a>] nfsd3_proc_remove+0x8a/0xc4 [nfsd]
+Apr 21 01:10:19 store03 kernel: [293568.900112]  [<f0ea1751>] nfsd_dispatch+0x13a/0x20d [nfsd]
+Apr 21 01:10:19 store03 kernel: [293568.900123]  [<fbdb6f09>] svc_process+0x278/0x65f [sunrpc]
+Apr 21 01:10:19 store03 kernel: [293568.900145]  [<f0ea1478>] nfsd+0x1ba/0x359 [nfsd]
+Apr 21 01:10:19 store03 kernel: [293568.900164]  [<f0ea12be>] nfsd+0x0/0x359 [nfsd]
+Apr 21 01:10:19 store03 kernel: [293568.900180]  [<c0101139>] kernel_thread_helper+0x5/0xb
+Apr 21 01:10:19 store03 kernel: [293568.900190] Code: 89 50 04 c7 06 00 00 00 00 c7 46 04 00 00 00 00 b8 90 a6 31 c0 e8 0c 32 14 00 89 34 24 e8 97 05 00 00 83 be 9c 01 00 00 20 74 08 <0f> 0b 21 04 cf c1 2d c0 89 74 24 18 83 c4 0c 5b 5e e9 7c ed ff 
 
-
-going through your profile on the internet I deen it necessary to contact=
-you based on your country's strong financial neutral ground for foreign
-
-investors,also with the idea of investing through you
-
-
-
-My good aim of contacting you is to solicited your corporation as my fore=
-ignpartner for the investment of $5,000.000 (FIVE MILLION DOLLARS )into a=
- lucrative=20
-
-business inyour country, due to the insecured situation here in Zimbabwe,=
- regarding the
-
-declaration made by president Robert Mugabe asking all white farmers of Z=
-imbabwe to evacuate and surrender farm lands / properties to black
-
-indigenous farmers, this is one of the basic factors that lead to the sus=
-pension of Zimbabwe from the Common Wealth Heads of States in March=20
-
-2002,after several court cases here and the International Court of Justic=
-e, 6 months later my husband and only child was short dead by some unknow=
-n
-
-person, things became worst when our farm land where invaded and confisca=
-ted by blacks, God knows how I escaped to hiding till today with the help=
-=20
-
-of my lawyer who also will be working with you to see that this funds are=
- transferred to you directly as I may not be disposed all the time.=20
-
-
-Read more on this site
-
-http://www.humanrightsfirst.org/media/2003_alerts/1208.htm
-
-
-
-Please direct your reply=20
-
-Barrister David Oliver
-
-Email: davidoliver11@m yway.com
-
-Tel 2348025622656
-
-
-I have given him the instruction with documents as regards this transfer
-
-
-God bless you
-
-
-Mathar Philips
-
-- mathar philips
-
-
---0-1173719917-1145612777=:93544
-Content-Type: text/html; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-<div style=3D"border: solid 1px #cccccc; width:448px; background-color:wh=
-ite; margin:10px 0px;";><table border=3D0 cellspacing=3D0 cellpadding=3D0=
- width=3D"448"><tr><td class=3Dtablot background=3D"http://us.i1.yimg.com=
-/us.yimg.com/i/us/pim/gr/gr_announce_1.gif" valign=3Dcenter height=3D57><=
-big style=3D"padding:10px;">I have a new email address!</big></td></tr></=
-table><div style=3D"padding:10px;">You can now email me at: <b>mathar_phi=
-lips2@yahoo.co.in</b><br><br><span style=3D"color:green;">My Dear<br><br>=
-<br><br>My Name is Mrs. Mathar Philips,<br><br><br>going through your pro=
-file on the internet I deen it necessary to contactyou based on your coun=
-try's strong financial neutral ground for foreign<br><br>investors,also w=
-ith the idea of investing through you<br><br><br><br>My good aim of conta=
-cting you is to solicited your corporation as my foreignpartner for the i=
-nvestment of $5,000.000 (FIVE MILLION DOLLARS )into a lucrative <br><br>b=
-usiness inyour country, due to the insecured situation here in Zimbabwe, =
-regarding the<br><br>declaration made by president Robert Mugabe asking a=
-ll white farmers of Zimbabwe to evacuate and surrender farm lands / prope=
-rties to black<br><br>indigenous farmers, this is one of the basic factor=
-s that lead to the suspension of Zimbabwe from the Common Wealth Heads of=
- States in March <br><br>2002,after several court cases here and the Inte=
-rnational Court of Justice, 6 months later my husband and only child was =
-short dead by some unknown<br><br>person, things became worst when our fa=
-rm land where invaded and confiscated by blacks, God knows how I escaped =
-to hiding till today with the help <br><br>of my lawyer who also will be =
-working with you to see that this funds are transferred to you directly a=
-s I may not be disposed all the time. <br><br><br>Read more on this site<=
-br><br>http://www.humanrightsfirst.org/media/2003_alerts/1208.htm<br><br>=
-<br><br>Please direct your reply <br><br>Barrister David Oliver<br><br>Em=
-ail: davidoliver11@m yway.com<br><br>Tel 2348025622656<br><br><br>I have =
-given him the instruction with documents as regards this transfer<br><br>=
-<br>God bless you<br><br><br>Mathar Philips</span><br><br>- <span style=3D=
-"color:green;">mathar philips</span></div></div>
---0-1173719917-1145612777=:93544--
 
 
 -------------------------------------------------------
