@@ -1,22 +1,28 @@
-From: Jens Beyer <jbe@webde.de>
-Subject: nfsd triggered (?) kernel BUG at fs/inode:1057
-Date: Fri, 21 Apr 2006 11:58:32 +0200
-Message-ID: <20060421095832.GA15203@pcnocjb.dlan.cinetic.de>
+From: "REVD.FR THOMAS DOUGLAS" <Revdouglas@katamail.com>
+Subject: YOUR AWAITING PAYMENT
+Date: Fri, 21 Apr 2006 14:47:01 -0500
+Message-ID: <felababa$196.207.246.49$.444936dc.4d562.5c2f.502@yuma.onspeed.com>
+Reply-To: "REVD.FR THOMAS DOUGLAS" <Revdouglas@katamail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed;
+	boundary="qzsoft_directmail_seperator"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FWsPP-0004wD-1A
-	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 02:58:39 -0700
-Received: from mailgate01.web.de ([217.72.192.251])
+	id 1FX1cN-0006an-FA
+	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 12:48:39 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FX1cN-00030g-Id
+	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 12:48:39 -0700
+Received: from lb2.onspeed.com ([72.3.137.84] helo=yuma.onspeed.com)
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FWsPO-0001Nd-HV
-	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 02:58:39 -0700
-Received: from pcnocjb.int.cinetic.de (pcnocjb.int.cinetic.de [172.17.73.12])
-	by mailgate01.web.de (Postfix) with ESMTP id 3F00D281078
-	for <nfs@lists.sourceforge.net>; Fri, 21 Apr 2006 11:58:32 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	id 1FX1cM-0003ro-7O
+	for nfs@lists.sourceforge.net; Fri, 21 Apr 2006 12:48:39 -0700
+Received: from sina.com (localhost [127.0.0.1])
+	by yuma.onspeed.com (8.12.11.20060308/8.12.11) with SMTP id k3LJl1YU029230
+	for <nfs@lists.sourceforge.net>; Fri, 21 Apr 2006 14:47:16 -0500
+To: nfs <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,52 +36,89 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+--qzsoft_directmail_seperator
+Content-Type: text/plain;
+	charset="DEFAULT"
+Content-Transfer-Encoding: base64
 
-Hi,
+T0ZGSUNFIE9GIFJFVkQuRlIgVEhPTUFTIERPVUdMQVMKRElSRUNUT1IgU1BFQ0lBTCBEVVRJRVMs
+IFVOSVRFRCBOQVRJT05TIE9SR0FOSVNBVElPTgpJTiBDT05KVU5DVElPTiBXSVRIIFRIRSBJTlRF
+Uk5BVElPTkFMIE1PTkVUQVJZIEZVTkQKV09STEQgQkFOSyBGQUNULUZJTkRJTkcgJiBTUEVDSUFM
+IERVVElFUyBPRkZJQ0UKREFLQVIsIFNFTkVHQUwuClRFTDogICsyMjEgNDE4MzMxNwpFbWFpbDpS
+ZXZkb3VnbGFzQGthdGFtYWlsLmNvbQogCkRlYXIgRnJpZW5kLgogCkkgYW0gUmV2ZC4gRnIuIFRo
+b21hcyBEb3VnbGFzLCBhIHNlbmlvciBzdGFmZiB3aXRoIHRoZSBXb3JsZCBCYW5rIGZhY3QgZmlu
+ZGluZyAmIHNwZWNpYWwgZHV0aWVzIG9mZmljZS4gSSBhbSB3cml0aW5nIHlvdSB0aGlzIGxldHRl
+ciBiYXNlZCBvbiB0aGUgZmFjdCB0aGF0IGNvb2wgcGVubnkgaXMgYmV0dGVyIHRoYW4gbWlsbGlv
+bnMgb2YgZG9sbGFycyBtZWFucyBpdCdzIGJldHRlciBmb3Igb25lIHRvIGxpdmUgYW5kIGRpZSBw
+b29yIGhvbmVzdCBtYW4gdGhhbiBhIHJpY2ggZGlzaG9uZXN0IG9uZS4KIApJIGFuZCB0aGUgQ2hp
+ZWYgc2VjdXJpdHkgb2ZmaWNlciAoQ1NPKSBvZiB0aGlzIG9yZ2FuaXNhdGlvbiBoYXZlIGFycmFu
+Z2VkIHdpdGggYW4gb2ZmaWNlciBpbiB0aGUgY29tcHV0ZXIgc2VjdGlvbiB0aGUgcGVyc29uIG9m
+IEVuZ2luZWVyIFBldGVyIENsaWZmIHRvIGJyaW5nIG91dCBwYXJ0IG9mIHlvdXIgdG90YWwgcGVu
+ZGluZyBwYXltZW50IHdpdGggcmVmZXJlbmNlIG51bWJlciAoTE0tMDUtMzcxKSBhbW91bnRpbmcg
+dG8gVVMkMTAgbWlsbGlvbi4gV2h5IHdlIGRpZCB0aGlzIGlzIGJlY2F1c2UgYWNjb3JkaW5nIHRv
+IGluZm9ybWF0aW9uIGdhdGhlcmVkIGZyb20gdGhlIGJhbmuScyBzZWN1cml0eSBjb21wdXRlciwg
+eW91IGhhdmUgYmVlbiB3YWl0aW5nIGZvciBhIGxvbmcgdGltZSB0byByZWNlaXZlIHRoaXMgcGF5
+bWVudCB3aXRob3V0IHN1Y2Nlc3MuIEFzIEkgZm91bmQgb3V0IHRoYXQgeW91IGhhdmUgYWxtb3N0
+IG1ldCBhbGwgdGhlIHN0YXR1dG9yeSByZXF1aXJlbWVudHMgaW4gcmVzcGVjdCBvZiB5b3VyIHBl
+bmRpbmcgcGF5bWVudC4gVGhlIHByb2JsZW1zIHlvdSBhcmUgaGF2aW5nIGlzIHRoYXQgb2YgaW50
+ZXJlc3QgZ3JvdXBzLiBBIGxvdCBvZiBwZW9wbGUgYXJlIGludGVyZXN0ZWQgaW4geW91ciBwYXlt
+ZW50IGFuZCB0aG9zZSBwZW9wbGUgYXJlIG1lcmVseSBkb2luZyBwYXBlciB3b3JrcyB3aXRoIHlv
+dSBhbmQgdGhhdCBleHBsYWlucyB3aHkgeW91IHJlY2VpdmUgZGlmZmVyZW50IGtpbmRzIG9mIHVu
+dHJ1ZSBmYXggYW5kIHBob25lIG1lc3NhZ2VzIGZyb20gZGlmZmVyZW50IHBlb3BsZSBldmVyeWRh
+eS4gQWxzbyB3ZSBmb3VuZCBvdXQgdGhhdCBzb21lIG9mIHRoZSBvZmZpY2lhbHMgb2YgdGhlIHBh
+cmFzdGF0YWxzIGhhdmUgYmVlbiBleHRvcnRpbmcgYSBsb3Qgb2YgbW9uZXkgZnJvbSB5b3Ugd2l0
+aCB0aGUgcHJldGV4dCBvZiBoZWxwaW5nIHlvdSByZWNlaXZlIHlvdXIgbW9uZXkuIEkgY2FuIGFz
+c3VyZSB5b3UgdGhpcyB3aWxsIGtlZXAgaGFwcGVuaW5nIGlmIHlvdSBkbyBub3QgZG8gYXdheSB3
+aXRoIHRob3NlIG9mZmljZXJzLiBGb3Igc2VjdXJpdHkgcmVhc29ucyB5b3UgZG8gbm90IGhhdmUg
+dG8gdGVsbCBhbnlib2R5IHRoYXQgeW91ciBoYXZlIHlvdXIgcGF5bWVudCBvbiB0aGUgd2F5IHVu
+dGlsIHRoZSBwYXltZW50IGdldHMgdG8geW91LgogClRoZSBzYWlkIHBheW1lbnQgaXMgYmVlbiBh
+cnJhbmdlZCBpbiBhIHNlY3VyaXR5LXByb29mIGJveCB3ZWlnaGluZyA3NWtnLiBJbiBvcmRlciB0
+byBnZXQgdGhpcyBib3ggc2hpcHBlZCB0byB5b3UgSSBhbmQgdGhlIChDU08pIFllc3RlcmRheSB3
+ZW50IHRvIHRoaXMgZm91ciBjb3VyaWVyIGNvbXBhbmllcyBEaGwsIEVtcywgRmVkRXggYW5kIFVw
+cyB0byBtYWtlIGFycmFuZ2VtZW50cyBvbiBob3cgdG8gZ2V0IHRoZSBib3ggc2hpcHBlZCB0byB5
+b3UgYnkgY291cmllciwgYnV0IHRvIG5vIGF2YWlsIHRoZSBhYm92ZSBjb3VyaWVyIGNvbXBhbmll
+cyBhbGwgbWFkZSB1cyB0byB1bmRlcnN0YW5kIHRoYXQgdGhleSB3aWxsIGhhdmUgdG8gb3BlbiB0
+aGUgYm94IGZvciBpbnNwZWN0aW9uIGJ5IHRoZSBjdXN0b21zIGJlZm9yZSBzaGlwbWVudC4gVGhp
+cyBpcyBzb21ldGhpbmcgd2Ugd2FudCB0byBhdm9pZCBiZWNhdXNlIHRoaXMgYm94IGlzIGJlZW4g
+cGFkZGVkIHdpdGggc3ludGhldGljIG55bG9uIGFuZCB0byBvcGVuIGl0IHlvdSB3aWxsIGhhdmUg
+dG8gY3V0IHRoZSBwYWQgYmVmb3JlIHlvdSB3aWxsIG1lZXQgdGhlIGJ1dHRvbiB0aGF0IHlvdSB3
+aWxsIHByZXNzIHRvIG9wZW4gdGhlIGRpYWwgY29kZS1sb2NrLiBUaGVyZSBpcyBubyB3YXkgeW91
+IGNhbiBvcGVuIHRoZSBib3ggYW5kIGJlIGFibGUgdG8gY2xvc2UgaXQgYWdhaW4gYmVjYXVzZSBp
+dCB3YXMgcGFkZGVkIHdpdGggbWFjaGluZS4gV2UgdG9sZCB0aGUgY291cmllciBzZXJ2aWNlcyB0
+aGF0IHRoZSBib3ggY29udGFpbmVkIGZpbG0gbWF0ZXJpYWxzIGFuZCB3aGVuIG9wZW4gd2lsbCBz
+cG9pbCB0aGUgbWF0ZXJpYWxzLiA8TjogQj4gd2UgZGlkIG5vdCBkZWNsYXJlIG1vbmV5IGJlY2F1
+c2UgY291cmllciBkb2VzIG5vdCBjYXJyeSBtb25leS4KIApUb2RheSBhIGZyaWVuZCBvZiBtaW5l
+IHdobyBpcyBhIGRpcGxvbWF0IGRpc2Nsb3NlZCB0byBtZSB0aGF0IHRoZXJlIGlzIGEgc2VjdXJp
+dHkgY291cmllciBzZXJ2aWNlIGNvbXBhbnkgdGhhdCBpcyBzcGVjaWFsaXNlZCBpbiBzZW5kaW5n
+IGRpcGxvbWF0aWMgbWF0ZXJpYWxzIGFuZCBpbmZvcm1hdGlvbiBmcm9tIG9uZSBjb3VudHJ5IHRv
+IGFub3RoZXIsIHdoaWNoIGFsc28gaGFzIGRpcGxvbWF0aWMgaW1tdW5pdHkgYW5kIGNvbnNpZ25t
+ZW50IHN1Y2ggYXMgdGhpcyBjYW5ub3QgYmUgY2hlY2tlZCBieSBhbnkgY3VzdG9tcyBhbnl3aGVy
+ZSBpbiB0aGUgd29ybGQuIEkgaGF2ZSB0aGVyZWZvcmUgbWV0IHRoZSBvZmZpY2lhbCBvZiB0aGUg
+c2VjdXJpdHkgY291cmllciBzZXJ2aWNlIGFuZCBjb25jbHVkZWQgc2hpcHBpbmcgYXJyYW5nZW1l
+bnQgd2l0aCB0aGVtLCB3aGljaCB0aGV5IHdpbGwgY29tbWVuY2UgYXMgc29vbiBhcyBJIGhhdmUg
+eW91ciBnbyBhaGVhZCBvcmRlci4gVGhlIGRpcGxvbWF0IHdobyB3aWxsIGJlIGJyaW5nIGluIHRo
+aXMgY29uc2lnbm1lbnQgdG8geW91IGlzIGFuIGV4cGVydCBhbmQgaGFzIGJlZW4gaW4gdGhpcyBs
+aW5lIG9mIHdvcmsgZm9yIG1hbnkgeWVhcnMgbm93IHNvIHdlIGhhdmUgTm90dGluZyB0byB3b3Jy
+eSBhYm91dC4gQWZ0ZXIgYWxsIGFycmFuZ2VtZW50cyB3ZSBoYXZlIGNvbmNsdWRlZCB0aGF0IHlv
+dSBtdXN0IGRvbmF0ZSBGaXZlIEh1bmRyZWQgVGhvdXNhbmQgVW5pdGVkIFN0YXRlcyBkb2xsYXJz
+IChVUyQ1MDAsMDAwLjAwKSB0byBhbnkgY2hhcml0eSBvcmdhbmlzYXRpb24gSSBkZXNpZ25hdGUg
+YXMgc29vbiBhcyB5b3UgcmVjZWl2ZSB5b3VyIG1vbmV5LiBUbyB0aGlzIGVmZmVjdCwgeW91IHdp
+bGwgc2VuZCB0byB1cyBhIHByb21pc3Nvcnkgbm90ZSBmb3IgdGhlIGRvbmF0aW9uIGFsb25nIHdp
+dGggeW91ciBhZGRyZXNzIHdoZXJlIHlvdSB3aWxsIGxpa2UgdGhlIGJveCB0byBiZSBkZWxpdmVy
+ZWQgdG8gYnkgdGhlIGNvdXJpZXIuIFBsZWFzZSBtYWludGFpbiB0b3Btb3N0IHNlY3JlY3kgYXMg
+aXQgbWF5IGNhdXNlIGEgbG90IG9mIHByb2JsZW1zIGlmIGZvdW5kIG91dCB0aGF0IHdlIGFyZSB1
+c2luZyB0aGlzIHdheSB0byBoZWxwIHlvdS4gWW91IGFyZSBhZHZpc2VkIG5vdCB0byBpbmZvcm0g
+YW55b25lIGFib3V0IHRoaXMgdW50aWwgeW91IHJlY2VpdmVkIHlvdXIgbW9uZXkuIEFtIGhlbHBp
+bmcgeW91IG9uIHRoaXMgYmVjYXVzZSBzb21ldGhpbmcgaW4gbWUgaXMgdGVsbHMgbWUgdGhhdCB5
+b3UgYXJlIGFuIGhvbmVzdCBwZXJzb24uIFdoZW4geW91IGNvbmNsdWRlIHRoaXMgYW5kIHlvdSBz
+ZW5kIG91ciBwcm9taXNlLCB3ZSB3aWxsIGhlbHAgdG8gc2hpcCB0aGUgZmluYWwgcGFydCBvZiB5
+b3VyIG1vbmV5IHRvIHlvdS4KICAgICAgICAgICAgICAgICAgICAgICAgCk1heSBHb2QgYmUgd2l0
+aCB5b3UgYXMgaSB3YWl0IGZvciB5b3VyIHJlc3BvbnNlIEZlZWwgZnJlZSB0byBjYWxsIG1lIGlm
+IHlvdSB3aWxsIGxpa2UgdXMgdG8gZGlzY3VzZXMgbW9yZSBvbiB0aGlzIFRFTDogKzIyMSA0MTgz
+MzE3LgogCllvdXJzIEZhaXRoZnVsbHkKUmV2ZC4gRnIuIFRob21hcyBEb3VnbGFzCkRpcmVjdG9y
+LCBTcGVjaWFsIER1dGllcy4gVU5PL1dCRiAgICAK
 
-I am currently trying to investigate a BUG wich occured on one of 
-our nfs-servers last night; I am not sure if this is more NFS-related 
-or rather a problem of the underlaying filesystem (XFS). Could you 
-give me some advice on it?
-
-The System is an HP DL360g4, SLES9 with an vanilla Kernel + drbd 
-+ qlogic-drivers serving NFS files from FC-attached SATA-raids. Locally, 
-the filesystem  as still accessible after the BUG occured but all 
-nfs-clients hung within few minutes. Later, the (local) unmount of 
-the filesystem failed (then the node was stonith', so no further 
-investigation possible).
-
-Thanks,
-Jens
-
-Apr 21 01:10:19 store03 kernel: [293568.899931] ------------[ cut here ]------------
-Apr 21 01:10:19 store03 kernel: [293568.899942] kernel BUG at fs/inode.c:1057!
-Apr 21 01:10:19 store03 kernel: [293568.899947] invalid operand: 0000 [#1]
-Apr 21 01:10:19 store03 kernel: [293568.899951] SMP 
-Apr 21 01:10:19 store03 kernel: [293568.899956] Modules linked in: nfs nfsd lockd nfs_acl sunrpc xfs exportfs softdog floppy nvram autofs4 e1000 piix tg3 md_mod dm_mod drbd ide_cd cdrom ide_core sg sd_mod qla2400 qla2xxx_conf qla2xxx firmware_class
-Apr 21 01:10:19 store03 kernel: [293568.899993] CPU:    1
-Apr 21 01:10:19 store03 kernel: [293568.899995] EIP:    0060:[<c017b0e1>]    Not tainted VLI
-Apr 21 01:10:19 store03 kernel: [293568.899997] EFLAGS: 00010202   (2.6.15.6-QLw) 
-Apr 21 01:10:19 store03 kernel: [293568.900009] EIP is at generic_delete_inode+0xd6/0x139
-Apr 21 01:10:19 store03 kernel: [293568.900013] eax: c4bd57b8   ebx: 00000000   ecx: 00000003   edx: d989a7b0
-Apr 21 01:10:19 store03 kernel: [293568.900017] esi: d989a614   edi: 00000000   ebp: cbddf714   esp: edd3be90
-Apr 21 01:10:19 store03 kernel: [293568.900021] ds: 007b   es: 007b   ss: 0068
-Apr 21 01:10:19 store03 kernel: [293568.900025] Process nfsd (pid: 17691, threadinfo=edd3a000 task=ed92c580)
-Apr 21 01:10:19 store03 kernel: [293568.900028] Stack: d989a614 00000000 00000000 d989a614 cbddf70c c017b327 d989a614 c031a690 
-Apr 21 01:10:19 store03 kernel: [293568.900038]        d989a614 c0179457 d989a614 00000400 00000000 00000000 00000000 e525e9dc 
-Apr 21 01:10:19 store03 kernel: [293568.900047]        cbddf70c ffffc000 c0171265 cbddf70c cbddf70c 00000000 cbddf70c d9c04a04 
-Apr 21 01:10:19 store03 kernel: [293568.900057] Call Trace:
-Apr 21 01:10:19 store03 kernel: [293568.900063]  [<c017b327>] iput+0x5f/0x7a
-Apr 21 01:10:19 store03 kernel: [293568.900070]  [<c0179457>] d_delete+0xfe/0x13c
-Apr 21 01:10:19 store03 kernel: [293568.900076]  [<c0171265>] vfs_unlink+0x18b/0x1bc
-Apr 21 01:10:19 store03 kernel: [293568.900083]  [<f0ea78ec>] nfsd_unlink+0x16f/0x261 [nfsd]
-Apr 21 01:10:19 store03 kernel: [293568.900098]  [<f0eae14a>] nfsd3_proc_remove+0x8a/0xc4 [nfsd]
-Apr 21 01:10:19 store03 kernel: [293568.900112]  [<f0ea1751>] nfsd_dispatch+0x13a/0x20d [nfsd]
-Apr 21 01:10:19 store03 kernel: [293568.900123]  [<fbdb6f09>] svc_process+0x278/0x65f [sunrpc]
-Apr 21 01:10:19 store03 kernel: [293568.900145]  [<f0ea1478>] nfsd+0x1ba/0x359 [nfsd]
-Apr 21 01:10:19 store03 kernel: [293568.900164]  [<f0ea12be>] nfsd+0x0/0x359 [nfsd]
-Apr 21 01:10:19 store03 kernel: [293568.900180]  [<c0101139>] kernel_thread_helper+0x5/0xb
-Apr 21 01:10:19 store03 kernel: [293568.900190] Code: 89 50 04 c7 06 00 00 00 00 c7 46 04 00 00 00 00 b8 90 a6 31 c0 e8 0c 32 14 00 89 34 24 e8 97 05 00 00 83 be 9c 01 00 00 20 74 08 <0f> 0b 21 04 cf c1 2d c0 89 74 24 18 83 c4 0c 5b 5e e9 7c ed ff 
+--qzsoft_directmail_seperator--
 
 
 
