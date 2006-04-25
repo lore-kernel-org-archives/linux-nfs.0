@@ -1,23 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Parallel I/O with NFS
-Date: Tue, 25 Apr 2006 10:00:05 -0400
-Message-ID: <1145973605.8193.16.camel@lade.trondhjem.org>
-References: <D11A31EB48BE1143B78A4C284CD80D4803D0EC99@HOEXMB2.conoco.net>
+From: christophe.caron@jouy.inra.fr
+Subject: Small UDP frame
+Date: Tue, 25 Apr 2006 18:20:41 +0200 (CEST)
+Message-ID: <Pine.SOC.4.62.0604251811440.23035@diamant>
+Reply-To: christophe.caron@jouy.inra.fr
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FYO5a-00013x-33
-	for nfs@lists.sourceforge.net; Tue, 25 Apr 2006 07:00:26 -0700
-Received: from pat.uio.no ([129.240.10.6] ident=7411)
+	id 1FYQHY-0000nO-Mz
+	for nfs@lists.sourceforge.net; Tue, 25 Apr 2006 09:20:56 -0700
+Received: from diorite.jouy.inra.fr ([138.102.119.181])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FYO5Y-0004qh-8m
-	for nfs@lists.sourceforge.net; Tue, 25 Apr 2006 07:00:26 -0700
-To: "Mosher, Chuck C." <Chuck.C.Mosher@conocophillips.com>
-In-Reply-To: <D11A31EB48BE1143B78A4C284CD80D4803D0EC99@HOEXMB2.conoco.net>
+	id 1FYQHW-0001M9-3z
+	for nfs@lists.sourceforge.net; Tue, 25 Apr 2006 09:20:56 -0700
+Received: from diamant (diamant [138.102.1.1])
+	by diorite.jouy.inra.fr (/8.13.6) with ESMTP id k3PGKexN023216
+	for <nfs@lists.sourceforge.net>; Tue, 25 Apr 2006 18:20:40 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,38 +32,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2006-04-25 at 08:09 -0500, Mosher, Chuck C. wrote:
-> Gents,
-> 
-> A common pattern in parallel computing is to have a number of tasks
-> (from 2-1000) open the same file, and each writes a non-overlapping
-> section of the file.  As the write proceeds, "strips" of the file are
-> written by each task, with holes in between tasks, until the complete
-> file has been written.
-> 
-> We've been using this pattern for may years. We recently began testing
-> Fedora Core 4, and are now seeing "holes" left in these files. Reading
-> the archives for the "Data coherency trouble with multiple clients,
-> on2.6.14-rc5", it seems to me that I have a similar problem. I've seen
-> references to using "O_DIRECT" to solve this problem, but it is not
-> clear to me how this would work. Would I have to restructure my code
-> to write data on aligned 512 byte blocks ?
 
-O_DIRECT over NFS does not require any special alignment. The only
-restriction is that you cannot combine O_DIRECT and O_APPEND (lack of
-support for uncached append() is a restriction of the NFS protocol).
+Hello
 
-> Our current applications are written in Java, and use the
-> java.nio.channels package.  I'd like to stay "pure java" if at all
-> possible. I can write a native method to access the file descriptor
-> for the java channel, but that would be a bit of a hack. Is there a
-> way I can open or mount the file to have it revert to the behavior in
-> earlier releases ?
+We've a cluster under Sun Grid Engine with a data NFS server and we've 
+some performance problems on the server (it seems this is IO problems).
 
-Won't java support the O_DIRECT open flag?
+It seems we've also many,many smalls UDP packets between the node and the 
+NFS server (5000 packet in 10 seconds...)
 
-Cheers,
-  Trond
+#tcpdump -v host server
+18:13:26.212996 IP (tos 0x0, ttl  64, id 54076, offset 0, flags [DF], 
+length: 140) server.nfs > n46.797: UDP, length: 112
+18:13:26.213459 IP (tos 0x0, ttl  64, id 42208, offset 0, flags [DF], 
+length: 140) n46.797 > server.nfs: UDP, length: 112
+
+Actually i've no more idea about the performance problems. NFS which block 
+IO ? How could i get more information about this network trafic ?
+
+The data partition is mounted with noatime option.
+
+Any clue ?
+
+thanks
+
+cc
+
+
+Prenez note de ma nouvelle adresse : christophe.caron@jouy.inra.fr
+
+***********************************************************
+  Christophe Caron - INRA
+  Mathematique, Informatique et Genome
+  Domaine de Vilvert 78350 Jouy-en-Josas
+  Web: http://migale.jouy.inra.fr/
+  Tel: 01-34-65-28-88  Email: christophe.caron@jouy.inra.fr 
+***********************************************************
 
 
 
