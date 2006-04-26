@@ -1,105 +1,55 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH][RFC] NFS: Improving the access cache
-Date: Wed, 26 Apr 2006 13:01:58 -0400
-Message-ID: <444FA786.90606@redhat.com>
-References: <444EC96B.80400@RedHat.com>	 <1146056601.8177.34.camel@lade.trondhjem.org> <444F7250.2070200@redhat.com>	 <1146060112.8177.72.camel@lade.trondhjem.org> <444F8096.2070308@redhat.com> <1146066250.8474.18.camel@lade.trondhjem.org>
+From: Venkat Ram Reddy <reddy@apache-da.com>
+Subject: rpc.mountd dies under heavy load
+Date: Wed, 26 Apr 2006 10:10:30 -0700
+Message-ID: <444FA986.7040709@apache-da.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Steve Dickson <SteveD@redhat.com>, nfs@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1146066250.8474.18.camel@lade.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FYnXH-0007TW-EQ
+	for nfs@lists.sourceforge.net; Wed, 26 Apr 2006 10:10:43 -0700
+Received: from [64.157.93.84] (helo=mailhost.apache-da.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FYnXF-0004UB-U5
+	for nfs@lists.sourceforge.net; Wed, 26 Apr 2006 10:10:43 -0700
+Received: from [192.168.1.123] (dmz [192.168.10.1])
+	by mailhost.apache-da.com (8.13.4/8.13.4) with ESMTP id k3QHAUib019753
+	for <nfs@lists.sourceforge.net>; Wed, 26 Apr 2006 10:10:30 -0700
+To: nfs@lists.sourceforge.net
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Trond Myklebust wrote:
+Hi All,
 
->On Wed, 2006-04-26 at 10:15 -0400, Peter Staubach wrote:
->  
->
->>>What situations? AFAIA the number of processes in a typical setup are
->>>almost always far smaller than the number of cached inodes.
->>>
->>> 
->>>
->>>      
->>>
->>The situation that doesn't scale is one where there are many different
->>users on the system.  It is the situation where there are more then just
->>a few users per file.  This can happen on compute servers or systems
->>used for timesharing sorts of purposes.
->>    
->>
->
->Yes, but the number of users <= number of processes which even on those
->systems is almost always much, much less than the number of cached
->inodes.
->
->  
->
+I have a lsf farm with 20 running jobs writing data to a nfs exported 
+disk. This causes high load average ( 15-20 ) on the nfs server, and 
+rpc.mountd dies. What could be the problem? My nfs server is RHEL AS3.0 
+AMD64 and has nfs-utils-1.0.6-42EL.
 
-There isn't a 1-to-1 correspondence between processes and files.  A single
-process accesses many different files and many of the processes will be
-accessing the same files.  Shared libraries are easy examples of files
-which are accessed by multiple processes and processes themselves access
-multiple shared libraries.
+Thanks
 
->>>For instance on my laptop, I'm currently running 146 processes, but
->>>according to /proc/slabinfo I'm caching 330000 XFS inodes + 141500 ext3
->>>inodes.
->>>If I were to assume that a typical nfsroot system will show roughly the
->>>same behaviour, then it would mean that a typical bucket in Steve's 256
->>>hash entry table will contain at least 2000 entries that I need to
->>>search through every time I want to do an access call.
->>>
->>>      
->>>
->>For such a system, there needs to be more than 256 hash buckets.  The number
->>of the access cache hash buckets needs to be on scale with the number of 
->>hash
->>buckets used for similarly sized caches and tables.
->>    
->>
->
->The inode cache is the only similarly sized cache I can think of.
->
->That is set either by the user, or it takes a default value of (total
->memory size) / 2^14 buckets (see alloc_large_system_hash). On a 1Gb
->system, that makes the default hash table size ~ 65536 entries. I can't
->see people wanting to put up with a 256K static hash table for access
->caching too.
->
->  
->
+-- 
+Venkat Ram Reddy
 
-I think that if the performance benefits warrant such a cache, then it is
-worth it.  It is a very small percentage of the real memory on the system.
 
-Previous, informal, studies showed that caching access privileges like
-this was good at short circuiting 90%+ of access calls.
 
-However, we could always divide this further when sizing the access
-cache.  If we assume that 1/2 or 1/4 or some percentage of the files
-accessed will be on NFS mounted file systems, then the access cache just
-needs to be based on the number of NFS inodes, not the total number of
-inodes.
 
->Furthermore, note that the inode cache is only searched when
->initialising a dentry. It is not searched on _every_ traversal of a path
->element.
->
-
-Very true, which points out the importance of getting the access to the 
-access
-cache correct and fast.  The number of entries in the access cache will 
-be at
-least the number of NFS inodes in the system and could be much higher 
-depending
-upon whether the system is single-user, desktop style system, or a 
-multi-user
-shared system.  The key to making this cache cheap is to make the hash 
-algorithm
-cheap and keeping the hash chains short.
-
-       ps
+-------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
