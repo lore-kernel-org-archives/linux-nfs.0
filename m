@@ -1,64 +1,75 @@
-From: "Daniel Amthor" <da@lonx.net>
-Subject: Re: NFS refusing to perform when backup ISDN link is up
-Date: Sat, 11 Mar 2006 09:03:31 +0100 (CET)
-Message-ID: <61900.172.180.51.9.1142064211.squirrel@otto.lonx.net>
-References: <47324.62.159.242.114.1141983018.squirrel@otto.lonx.net>
-    <1142001156.8041.5.camel@lade.trondhjem.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH][RFC] NFS: Improving the access cache
+Date: Wed, 26 Apr 2006 10:51:27 -0400
+Message-ID: <444F88EF.5090105@RedHat.com>
+References: <444EC96B.80400@RedHat.com> <17486.64825.942642.594218@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FHz4n-0003fl-6K
-	for nfs@lists.sourceforge.net; Sat, 11 Mar 2006 00:03:49 -0800
-Received: from subzero.webdirekt.de ([195.243.240.4] ident=postfix)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FHz4m-0002yh-R7
-	for nfs@lists.sourceforge.net; Sat, 11 Mar 2006 00:03:49 -0800
-In-Reply-To: <1142001156.8041.5.camel@lade.trondhjem.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-Hi ,
-thanks for that and quite right.
-
-> rpc.mountd and rpc.statd both need BIND lookup services in order to
-> resolve the entries in /etc/exports. If those are running over the ISDN
-> link, then that might explain some of the issues you are seeing.
-The issue was along these lines, but a  little more involved and I though=
-t
-I'd let the list know.  One of the DNS is local and two remote. rpc.mount=
-d
-tries to look up the non-fqdns, DNS delivers "servfail" and tries the nex=
-t
-server, with long DNS timeout. Solution was to use the "domain"-statement
-in resolv.conf instead of the "search"-directive. Then lookups take place
-for the right fqdn and stay with the local DNS. To fiurther improve the
-scene I implemented a caching nameserver on the NFS-Server.
-Thanks for your help
-
-Cheers
-Dan
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17486.64825.942642.594218@cse.unsw.edu.au>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
 
 
--------------------------------------------------------
-This SF.Net email is sponsored by xPML, a groundbreaking scripting language
-that extends applications into web and mobile media. Attend the live webcast
-and join the prime developer group breaking into this new coding territory!
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=110944&bid=241720&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Neil Brown wrote:
+> - There is no upper bound imposed on the size of the cache, and no way
+>   for memory pressure to shrink the cache except indirectly by
+>   discarding inodes.
+>   I cannot see this being exploitable as getting access to lots of
+>   credentials would be hard for any given user.  However I feel that
+>   some cleaning might be in order.
+I guess there is no upper bound checking because I didn't see any type
+of boundary checking the server hashing code I stoled 8-) Or maybe
+I just missed it... Is there an example and what would trigger
+this cleanup?
+
+> - The nfs_zap_access_cache call isn't cheap.  If that could be
+>   amortised somehow it would be good.  Maybe use some version tagging
+>   so that when an inode is reused the access entry will no longer
+>   match in some way.  Then just clean the table by periodic scans that
+>   discard based on timeout information ?
+yes.. I did realize that ifs_zap_access_cache would be expensive...
+and I think there might be an issue with holding the access_hash lock
+spin lock while calling put_rpccred() since it can also take out
+another spin lock... Maybe I just spin through the table marking
+entries for deletion and then let somebody else clean them up??
+Is there already a clean up process that I would us? I don't
+recall one...
+
+> 
+> It occurs to me that the large majority of inodes will only be
+> accessed by a single user and so need not reside in the cache.
+> 
+> So how about having a single "struct nfs_access_entry" pointer in the
+> inode.
+> When we do a lookup we look there first.
+> When we want to add an entry, we try to add it there first.
+> When we end up with two current access entries for the same inode,
+> only then do we insert them into the hash.
+To rephrase to make sure I understand....
+1) P1(uid=1) creates an access pointer in the nfs_inode
+2) P2(uid=2) sees the access pointer is not null so it adds them both
+    to the table, right?
+
+> We would need to be able to tell from the inode whether anything is
+> hashed or not.  This could simply be if the nfs_access_entry point is
+> non-null, and its hashlist it non-empty.  Or we could just use a bit
+> flag somewhere.
+So I guess it would be something like:
+if (nfs_inode->access == null)
+     set nfs_inode->access
+if (nfs_inode->access =! NULL && nfs_inode->access_hash == empty)
+     move both pointer into hast able.
+if (nfs_inode->access == null && nfs_inode->access_hash != empty)
+     use hastable.
+
+But now the question is how would I know when there is only one
+entry in the table? Or do we just let the hash table "drain"
+naturally and when it become empty we start with the nfs_inode->access
+pointer again... Is this close to what your thinking??
+
+steved.
+
