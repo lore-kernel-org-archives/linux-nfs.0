@@ -1,55 +1,80 @@
-From: Venkat Ram Reddy <reddy@apache-da.com>
-Subject: rpc.mountd dies under heavy load
-Date: Wed, 26 Apr 2006 10:10:30 -0700
-Message-ID: <444FA986.7040709@apache-da.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH][RFC] NFS: Improving the access cache
+Date: Thu, 27 Apr 2006 08:32:42 +1000
+Message-ID: <17487.62730.16297.979429@cse.unsw.edu.au>
+References: <444EC96B.80400@RedHat.com>
+	<17486.64825.942642.594218@cse.unsw.edu.au>
+	<444F88EF.5090105@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FYnXH-0007TW-EQ
-	for nfs@lists.sourceforge.net; Wed, 26 Apr 2006 10:10:43 -0700
-Received: from [64.157.93.84] (helo=mailhost.apache-da.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FYnXF-0004UB-U5
-	for nfs@lists.sourceforge.net; Wed, 26 Apr 2006 10:10:43 -0700
-Received: from [192.168.1.123] (dmz [192.168.10.1])
-	by mailhost.apache-da.com (8.13.4/8.13.4) with ESMTP id k3QHAUib019753
-	for <nfs@lists.sourceforge.net>; Wed, 26 Apr 2006 10:10:30 -0700
-To: nfs@lists.sourceforge.net
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: message from Steve Dickson on Wednesday April 26
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi All,
+On Wednesday April 26, SteveD@redhat.com wrote:
+> 
+> 
+> Neil Brown wrote:
+> > - There is no upper bound imposed on the size of the cache, and no way
+> >   for memory pressure to shrink the cache except indirectly by
+> >   discarding inodes.
+> >   I cannot see this being exploitable as getting access to lots of
+> >   credentials would be hard for any given user.  However I feel that
+> >   some cleaning might be in order.
+> I guess there is no upper bound checking because I didn't see any type
+> of boundary checking the server hashing code I stoled 8-) Or maybe
+> I just missed it... Is there an example and what would trigger
+> this cleanup?
 
-I have a lsf farm with 20 running jobs writing data to a nfs exported 
-disk. This causes high load average ( 15-20 ) on the nfs server, and 
-rpc.mountd dies. What could be the problem? My nfs server is RHEL AS3.0 
-AMD64 and has nfs-utils-1.0.6-42EL.
+You can register a 'shrinker' which gets called then the vm wants to
+reclaim memory.  See mm/vmscan.c
+It gets passed the number of items you should try to discard, and
+returned the number of items that are left.
 
-Thanks
+And if you arrange to do all the freeing in batches using the
+shrinker, you could use RCU to make all the searches and additions
+lockless (Well, you still need rcu_read_lock, but that is super light
+weight).  That would be fun :-)
 
--- 
-Venkat Ram Reddy
+> > 
+> > It occurs to me that the large majority of inodes will only be
+> > accessed by a single user and so need not reside in the cache.
+> > 
+> > So how about having a single "struct nfs_access_entry" pointer in the
+> > inode.
+> > When we do a lookup we look there first.
+> > When we want to add an entry, we try to add it there first.
+> > When we end up with two current access entries for the same inode,
+> > only then do we insert them into the hash.
+> To rephrase to make sure I understand....
+> 1) P1(uid=1) creates an access pointer in the nfs_inode
+> 2) P2(uid=2) sees the access pointer is not null so it adds them both
+>     to the table, right?
+> 
 
+Exactly.
 
+> > We would need to be able to tell from the inode whether anything is
+> > hashed or not.  This could simply be if the nfs_access_entry point is
+> > non-null, and its hashlist it non-empty.  Or we could just use a bit
+> > flag somewhere.
+> So I guess it would be something like:
+> if (nfs_inode->access == null)
+>      set nfs_inode->access
+> if (nfs_inode->access =! NULL && nfs_inode->access_hash == empty)
+>      move both pointer into hast able.
+> if (nfs_inode->access == null && nfs_inode->access_hash != empty)
+>      use hastable.
+> 
+> But now the question is how would I know when there is only one
+> entry in the table? Or do we just let the hash table "drain"
+> naturally and when it become empty we start with the nfs_inode->access
+> pointer again... Is this close to what your thinking??
 
+Yes.  Spot on.  Once some inode has 'spilled' into the hash table
+there isn't a lot to gain by "unspilling" it.
 
--------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NeilBrown
