@@ -1,62 +1,52 @@
-From: Neil Brown <neilb@suse.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH][RFC] NFS: Improving the access cache
-Date: Wed, 26 Apr 2006 14:55:21 +1000
-Message-ID: <17486.64825.942642.594218@cse.unsw.edu.au>
+Date: Wed, 26 Apr 2006 09:03:21 -0400
+Message-ID: <1146056601.8177.34.camel@lade.trondhjem.org>
 References: <444EC96B.80400@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: message from Steve Dickson on Tuesday April 25
+In-Reply-To: <444EC96B.80400@RedHat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Tuesday April 25, SteveD@redhat.com wrote:
+On Tue, 2006-04-25 at 21:14 -0400, Steve Dickson wrote:
 > Currently the NFS client caches ACCESS information on a per uid basis
-> which fall apart when different process with different uid consistently
+> which fall apart when different process with different uid consistent=
+ly
 > access the same directory. The end result being a storm of needless
 > ACCESS calls...
-> 
+>=20
 > The attached patch used a hash table to store the nfs_access_entry
 > entires which cause the ACCESS request to only happen when the
 > attributes timeout.. The table is indexed by the addition of the
 > nfs_inode pointer and the cr_uid in the cred structure which should
 > spread things out nicely for some decent scalability (although the
-> locking scheme may need to be reworked a bit). The table has 256 entries
+> locking scheme may need to be reworked a bit). The table has 256 entr=
+ies
 > of struct list_head giving it a total size of 2k.
-> 
-> The patch is based on Trond's GIT tree...
-> 
-> Comments?
 
-- There is no upper bound imposed on the size of the cache, and no way
-  for memory pressure to shrink the cache except indirectly by
-  discarding inodes.
-  I cannot see this being exploitable as getting access to lots of
-  credentials would be hard for any given user.  However I feel that
-  some cleaning might be in order.
-- The nfs_zap_access_cache call isn't cheap.  If that could be
-  amortised somehow it would be good.  Maybe use some version tagging
-  so that when an inode is reused the access entry will no longer
-  match in some way.  Then just clean the table by periodic scans that
-  discard based on timeout information ?
+Instead of having the field 'id', why don't you let the nfs_inode keep =
+a
+small (hashed?) list of all the nfs_access_entry objects that refer to
+it? That would speed up searches for cached entries.
 
-It occurs to me that the large majority of inodes will only be
-accessed by a single user and so need not reside in the cache.
+I agree with Neil's assessment that we need a bound on the size of the
+cache. In fact, enforcing a bound is pretty much the raison d'=C3=AAtre=
+ for a
+global table (by which I mean that if we don't need a bound, then we
+might as well cache everything in the nfs_inode).
+How about rather changing that hash table into an LRU list, then adding
+a shrinker callback (using set_shrinker()) to allow the VM to free up
+entries when memory pressure dictates that it must?
 
-So how about having a single "struct nfs_access_entry" pointer in the
-inode.
-When we do a lookup we look there first.
-When we want to add an entry, we try to add it there first.
-When we end up with two current access entries for the same inode,
-only then do we insert them into the hash.
-We would need to be able to tell from the inode whether anything is
-hashed or not.  This could simply be if the nfs_access_entry point is
-non-null, and its hashlist it non-empty.  Or we could just use a bit
-flag somewhere.
+Cheers,
+  Trond
 
-I suspect this would keep the cache much smaller, and some of my other
-concerns might then become irrelevant.
-
-NeilBrown
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
