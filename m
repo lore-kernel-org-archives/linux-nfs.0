@@ -1,32 +1,13 @@
-From: "Michael Lackner" <thrawn@xin.at>
-Subject: Re: Update: NFS over a Win2k Server NAT Router with "DMZ":nfs: server not responding, still trying
-Date: Thu, 27 Apr 2006 20:40:24 +0200
-Message-ID: <002601c66a2a$0be49be0$0200a8c0@novastorm>
-References: <005401c66a19$2a6f6d30$0200a8c0@novastorm> <000401c66a21$154a8c70$0200a8c0@novastorm> <1146160972.8101.12.camel@lade.trondhjem.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: [PATCH] NFS server subtree_check returns dubious value
+Date: Thu, 27 Apr 2006 14:45:56 -0400
+Message-ID: <44511164.4080303@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=original
+Content-Type: multipart/mixed;
+ boundary="------------070204080600050601050005"
+Cc: NFS@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZBPh-0002Is-7J
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:40:29 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FZBPh-0007EU-93
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:40:29 -0700
-Received: from 83-64-254-60.bruck-mur.xdsl-line.inode.at ([83.64.254.60] helo=xin.at)
-	by mail.sourceforge.net with esmtps (TLSv1:RC4-MD5:128)
-	(Exim 4.44)
-	id 1FZBPe-0003Xg-R2
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:40:29 -0700
-Received: from novastorm by xin.at
-	(MDaemon.PRO.v8.1.3.R)
-	with ESMTP id md50000005503.msg
-	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 20:40:16 +0200
-To: <nfs@lists.sourceforge.net>
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,55 +21,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hello.
+This is a multi-part message in MIME format.
+--------------070204080600050601050005
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Maybe that might help resolving the issue? I did some tcpdump on client
-and fileserver. As expected, after the nfs readdir, there is no response
-coming from the fileserver.
+Hi.
 
-On the fileserver itself i found this:
-===
-20:23:57.283012 CLIENTBEHINDNAT.3938904570 > FILESERVER.nfs: 164 readdirplus [|nfs] (DF) (ttl 63, id 9683, len 192)
-20:23:57.283241 FILESERVER > CLIENTBEHINDNAT: udp (frag 9306:268@2960) (ttl 64, len 288)
-20:23:57.283245 FILESERVER > CLIENTBEHINDNAT: udp (frag 9306:1480@1480+) (ttl 64, len 1500)
-20:23:57.283249 FILESERVER.nfs > CLIENTBEHINDNAT.3938904570: reply ok 1472 readdirplus POST: DIR 40711 ids 505/505 [|nfs] (frag 
-9306:1480@0+) (ttl 64, len 1500)
-20:23:57.284227 CLIENTBEHINDNAT > FILESERVER: icmp: CLIENTBEHINDNAT unreachable - need to frag (mtu 1500) (ttl 128, id 4037, len 56)
-===
+Attached is a patch which addresses a problem found when a Linux NFS server
+uses the "subtree_check" export option.
 
-What's that ICMP doing there? I don't quite understand the meaning
-of that output, but it seems as if nfs is relying on that ICMP packets
-reaching their target to work? Or maybe i'm wrong and the router just
-drops the returning packages (thats what you meant?)
+The "subtree_check" NFS export option was designed to prohibit a client from
+using a file handle for which it should not have permission.  The algorithm
+used is to ensure that the entire path to the file being referenced is
+accessible to the user attempting to use the file handle.  If some part of
+the path is not accessible, then the operation is aborted and the 
+appropriate
+version of ESTALE is returned to the NFS client.
 
-> If TCP support has been compiled into the kernel, then it should be
-> running, in which case 'rpcinfo -t <server> nfs' should confirm it.
+The error, ESTALE, is unfortunate in that it causes NFS clients to make
+certain assumptions about the continued existence of the file.  They assume
+that the file no longer exists and refuse to attempt to access it again.
+In this case, the file really does exist, but access was denied by the
+server for a particular user.
 
-rpcinfo -t <fileserver> nfs says:
-==
-rpcinfo: RPC: Program not registered
-program 100003 is not available
-==
+A better error to return would be an EACCES sort of error.  This would
+inform the client that the particular operation that it was attempting
+was not allowed, without the nasty side effects of the ESTALE error.
 
-However...
+    Thanx...
 
-rpcinfo -p <fileserver> | grep nfs says:
-==
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-==
+       ps
 
-(Server is definitly up, other machines from the same network segment
-as the server are mounting and reading/writing ok.)
+Signed-off-by: Peter Staubach <staubach@redhat.com>
 
-Thanks.
+--------------070204080600050601050005
+Content-Type: text/plain;
+ name="devel.today"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="devel.today"
 
-Best Regards
-Michael Lackner
-University of Leoben
-Chair for Information Technology, IT Administration 
+--- linux-2.6.16.x86_64/fs/exportfs/expfs.c.org
++++ linux-2.6.16.x86_64/fs/exportfs/expfs.c
+@@ -102,7 +102,7 @@ find_exported_dentry(struct super_block 
+ 		if (acceptable(context, result))
+ 			return result;
+ 		if (S_ISDIR(result->d_inode->i_mode)) {
+-			/* there is no other dentry, so fail */
++			err = -EACCES;
+ 			goto err_result;
+ 		}
+ 
 
-
+--------------070204080600050601050005--
 
 
 -------------------------------------------------------
