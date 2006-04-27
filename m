@@ -1,31 +1,32 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Update: NFS over a Win2k Server NAT Router with
-	"DMZ":nfs: server not responding, still trying
-Date: Thu, 27 Apr 2006 14:26:23 -0400
-Message-ID: <1146162383.8101.30.camel@lade.trondhjem.org>
-References: <005401c66a19$2a6f6d30$0200a8c0@novastorm>
-	 <000401c66a21$154a8c70$0200a8c0@novastorm>
-	 <1146160972.8101.12.camel@lade.trondhjem.org>
-	 <001101c66a26$adfb58f0$0200a8c0@novastorm>
+From: "Michael Lackner" <thrawn@xin.at>
+Subject: Re: Update: NFS over a Win2k Server NAT Router with "DMZ":nfs: server not responding, still trying
+Date: Thu, 27 Apr 2006 20:40:24 +0200
+Message-ID: <002601c66a2a$0be49be0$0200a8c0@novastorm>
+References: <005401c66a19$2a6f6d30$0200a8c0@novastorm> <000401c66a21$154a8c70$0200a8c0@novastorm> <1146160972.8101.12.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	format=flowed;
+	charset="iso-8859-1";
+	reply-type=original
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZBCD-0000eK-Nr
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:26:33 -0700
+	id 1FZBPh-0002Is-7J
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:40:29 -0700
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FZBCD-000775-Ms
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:26:33 -0700
-Received: from pat.uio.no ([129.240.10.6] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	id 1FZBPh-0007EU-93
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:40:29 -0700
+Received: from 83-64-254-60.bruck-mur.xdsl-line.inode.at ([83.64.254.60] helo=xin.at)
+	by mail.sourceforge.net with esmtps (TLSv1:RC4-MD5:128)
 	(Exim 4.44)
-	id 1FZBCD-0007wP-4M
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:26:33 -0700
-To: Michael Lackner <thrawn@xin.at>
-In-Reply-To: <001101c66a26$adfb58f0$0200a8c0@novastorm>
+	id 1FZBPe-0003Xg-R2
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:40:29 -0700
+Received: from novastorm by xin.at
+	(MDaemon.PRO.v8.1.3.R)
+	with ESMTP id md50000005503.msg
+	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 20:40:16 +0200
+To: <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,18 +40,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2006-04-27 at 20:16 +0200, Michael Lackner wrote:
+Hello.
 
-> I'm afraid, the nfs server on "fileserver" doesn't even support tcp. There should be
-> experimental tcp support for nfs in kernel 2.4.20 already, but i don't know if this 
-> feature is activated in RH9. How can i check if my nfs server supports tcp and how 
-> can i activate tcp, if so? By default, nfsd runs only on udp on that machine.
+Maybe that might help resolving the issue? I did some tcpdump on client
+and fileserver. As expected, after the nfs readdir, there is no response
+coming from the fileserver.
 
-If TCP support has been compiled into the kernel, then it should be
-running, in which case 'rpcinfo -t <server> nfs' should confirm it.
+On the fileserver itself i found this:
+===
+20:23:57.283012 CLIENTBEHINDNAT.3938904570 > FILESERVER.nfs: 164 readdirplus [|nfs] (DF) (ttl 63, id 9683, len 192)
+20:23:57.283241 FILESERVER > CLIENTBEHINDNAT: udp (frag 9306:268@2960) (ttl 64, len 288)
+20:23:57.283245 FILESERVER > CLIENTBEHINDNAT: udp (frag 9306:1480@1480+) (ttl 64, len 1500)
+20:23:57.283249 FILESERVER.nfs > CLIENTBEHINDNAT.3938904570: reply ok 1472 readdirplus POST: DIR 40711 ids 505/505 [|nfs] (frag 
+9306:1480@0+) (ttl 64, len 1500)
+20:23:57.284227 CLIENTBEHINDNAT > FILESERVER: icmp: CLIENTBEHINDNAT unreachable - need to frag (mtu 1500) (ttl 128, id 4037, len 56)
+===
 
-Cheers,
-  Trond
+What's that ICMP doing there? I don't quite understand the meaning
+of that output, but it seems as if nfs is relying on that ICMP packets
+reaching their target to work? Or maybe i'm wrong and the router just
+drops the returning packages (thats what you meant?)
+
+> If TCP support has been compiled into the kernel, then it should be
+> running, in which case 'rpcinfo -t <server> nfs' should confirm it.
+
+rpcinfo -t <fileserver> nfs says:
+==
+rpcinfo: RPC: Program not registered
+program 100003 is not available
+==
+
+However...
+
+rpcinfo -p <fileserver> | grep nfs says:
+==
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+==
+
+(Server is definitly up, other machines from the same network segment
+as the server are mounting and reading/writing ok.)
+
+Thanks.
+
+Best Regards
+Michael Lackner
+University of Leoben
+Chair for Information Technology, IT Administration 
+
 
 
 
