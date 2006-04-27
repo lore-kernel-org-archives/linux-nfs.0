@@ -1,24 +1,24 @@
-From: Mathieu Chouquet-Stringer <ml2news@free.fr>
+From: Mathieu Chouquet-Stringer <mchouque@free.fr>
 Subject: NFS mount point not responding with 2.6.16 on Alpha
-Date: Thu, 27 Apr 2006 20:53:49 +0200
-Message-ID: <20060427185349.GA8617@bigip.bigip.mine.nu>
+Date: Thu, 27 Apr 2006 19:21:46 +0200
+Message-ID: <20060427172146.GA2235@bigip.bigip.mine.nu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZCTx-0001O9-Bk
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:48:57 -0700
+	id 1FZCzY-0004qN-Ks
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 13:21:36 -0700
 Received: from smtp13.wanadoo.fr ([193.252.22.54])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FZCTw-0000Iz-W0
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:48:57 -0700
-Received: from smtp13.wanadoo.fr (mwinf1304 [172.22.144.26])
-	by mwinf1310.wanadoo.fr (SMTP Server) with ESMTP id 133FD1C041DF
-	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 20:56:34 +0200 (CEST)
+	id 1FZCzY-00024c-26
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 13:21:36 -0700
+Received: from smtp13.wanadoo.fr (mwinf1307 [172.22.144.37])
+	by mwinf1305.wanadoo.fr (SMTP Server) with ESMTP id 35B241C079FA
+	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 19:24:33 +0200 (CEST)
 Received: from me-wanadoo.net (localhost [127.0.0.1])
-	by mwinf1304.wanadoo.fr (SMTP Server) with ESMTP id 4E7A370000A5
-	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 20:54:50 +0200 (CEST)
+	by mwinf1307.wanadoo.fr (SMTP Server) with ESMTP id 8B98370000BF
+	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 19:22:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -88,7 +88,7 @@ produce a full tcpdump output.
 Cheers,
 
 -- 
-Mathieu Chouquet-Stringer
+Mathieu Chouquet-Stringer                         mchouque@free.fr
 
 
 
