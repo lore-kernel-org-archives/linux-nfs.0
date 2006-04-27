@@ -1,27 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Update: NFS over a Win2k Server NAT Router with
-	"DMZ":nfs: server not responding, still trying
-Date: Thu, 27 Apr 2006 15:06:54 -0400
-Message-ID: <1146164814.8101.44.camel@lade.trondhjem.org>
-References: <005401c66a19$2a6f6d30$0200a8c0@novastorm>
-	 <000401c66a21$154a8c70$0200a8c0@novastorm>
-	 <1146160972.8101.12.camel@lade.trondhjem.org>
-	 <002601c66a2a$0be49be0$0200a8c0@novastorm>
+From: Mathieu Chouquet-Stringer <ml2news@free.fr>
+Subject: NFS mount point not responding with 2.6.16 on Alpha
+Date: Thu, 27 Apr 2006 21:31:54 +0200
+Message-ID: <20060427193154.GA10532@bigip.bigip.mine.nu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZBpW-0005LS-JI
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:07:10 -0700
-Received: from pat.uio.no ([129.240.10.6] ident=7411)
+	id 1FZCDe-00085E-97
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:32:06 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FZCDe-0007aA-8Z
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:32:06 -0700
+Received: from amarseille-252-1-152-247.w86-216.abo.wanadoo.fr ([86.216.111.247] helo=bigip.bigip.mine.nu)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FZBpU-0004Gq-Vd
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:07:10 -0700
-To: Michael Lackner <thrawn@xin.at>
-In-Reply-To: <002601c66a2a$0be49be0$0200a8c0@novastorm>
+	id 1FZCDc-0008Uu-Pi
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:32:06 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,40 +32,110 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Thu, 2006-04-27 at 20:40 +0200, Michael Lackner wrote:
-> Hello.
-> 
-> Maybe that might help resolving the issue? I did some tcpdump on client
-> and fileserver. As expected, after the nfs readdir, there is no response
-> coming from the fileserver.
-> 
-> On the fileserver itself i found this:
-> ===
-> 20:23:57.283012 CLIENTBEHINDNAT.3938904570 > FILESERVER.nfs: 164 readdirplus [|nfs] (DF) (ttl 63, id 9683, len 192)
-> 20:23:57.283241 FILESERVER > CLIENTBEHINDNAT: udp (frag 9306:268@2960) (ttl 64, len 288)
-> 20:23:57.283245 FILESERVER > CLIENTBEHINDNAT: udp (frag 9306:1480@1480+) (ttl 64, len 1500)
-> 20:23:57.283249 FILESERVER.nfs > CLIENTBEHINDNAT.3938904570: reply ok 1472 readdirplus POST: DIR 40711 ids 505/505 [|nfs] (frag 
-> 9306:1480@0+) (ttl 64, len 1500)
-> 20:23:57.284227 CLIENTBEHINDNAT > FILESERVER: icmp: CLIENTBEHINDNAT unreachable - need to frag (mtu 1500) (ttl 128, id 4037, len 56)
-> ===
-> 
-> What's that ICMP doing there? I don't quite understand the meaning
-> of that output, but it seems as if nfs is relying on that ICMP packets
-> reaching their target to work? Or maybe i'm wrong and the router just
-> drops the returning packages (thats what you meant?)
+	Hello,
 
-The ICMP message is telling the server that the fragments are not
-reaching the client.
+I've been using NFS for quite some time now and starting a couple of
+months ago (can't recall exactly when), I've been having issues with one
+of my servers.
 
-If you can't use TCP, then I suggest you try mounting using rsize=1024.
-That means that the client will issue smaller read/readdir requests
-which should normally pass through the firewall without requiring
-fragmentation. You will see a significant performance penalty compared
-to clients that are behind the firewall, though...
+The box in question is an Alpha (ev56 on a LX164 mb) - bar - running
+knfsd on vanilla 2.6.16 (gentoo 1.6.14 - 2006.0) with /etc/exports
+looking as follow:
+
+/somemountpoint		someclients(rw,no_root_squash,async)
+
+The problem can manifest itself in 2 (related) ways:
+- I can mount somemountpoint fine on different linux boxes (ia32 or
+  sparc64 based), manually or using autofs4, but after some time
+  (something like 15-20 minutes, it doesn't matter wether the mount
+  point is idle or not) the mountpoint will hang (ie trying to access
+  it, by using df or whatever you can think of) and in the logs, I'll
+  get the following:
+
+Apr 27 18:32:15 foo kernel: nfs: server bar not responding, still trying
+
+- or the initial mount command will hang with an identical message as
+  above
+
+In both cases, I can 'unhang' the whole mess by trying to mount
+bar:/somemountpoint on server foo.  By "trying" I meant I don't even
+have to mount it, just issuing a mount command looking like this:
+
+mount bar:/somemountpoint /somedirthatdoesntevenexist
+
+will unfreeze the process.
+
+
+When I use autofs, I get more or less the same behaviour: automount just
+hangs while trying to lstat64 the local mount point.  Running the above
+mount command will correct the problem.
+
+The interesting part is that with the same kernel version, it only
+happens with the alpha being the server.
+
+Here's a typical tcpdump output from the client to the server, when the
+thing is hung (df is running):
+
+20:58:38.414238 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:39.118267 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:40.518379 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:43.318715 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
+20:58:44.018787 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:49.619500 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
+20:58:51.019655 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:51.719753 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
+20:58:52.419828 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:53.820003 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
+20:58:55.220205 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
+20:58:58.020527 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
+
+
+Here I issue the mount command:
+
+20:58:59.793008 IP foo.4681 > bar.sunrpc: S 2492793988:2492793988(0) win 5840 <mss 1460,sackOK,timestamp 180392442 0,nop,wscale 4>
+20:58:59.793310 IP bar.sunrpc > foo.4681: S 1555530554:1555530554(0) ack 2492793989 win 5792 <mss 1460,sackOK,timestamp 564344226 180392442,nop,wscale 2>
+20:58:59.793441 IP foo.4681 > bar.sunrpc: . ack 1 win 365 <nop,nop,timestamp 180392442 564344226>
+20:58:59.793911 IP foo.4681 > bar.sunrpc: P 1:45(44) ack 1 win 365 <nop,nop,timestamp 180392442 564344226>
+20:58:59.794097 IP bar.sunrpc > foo.4681: . ack 45 win 1448 <nop,nop,timestamp 564344227 180392442>
+20:58:59.794793 IP bar.sunrpc > foo.4681: P 1:401(400) ack 45 win 1448 <nop,nop,timestamp 564344228 180392442>
+20:58:59.794858 IP foo.4681 > bar.sunrpc: . ack 401 win 432 <nop,nop,timestamp 180392442 564344228>
+20:58:59.795046 IP bar.sunrpc > foo.4681: P 401:517(116) ack 45 win 1448 <nop,nop,timestamp 564344228 180392442>
+20:58:59.795109 IP foo.4681 > bar.sunrpc: . ack 517 win 432 <nop,nop,timestamp 180392442 564344228>
+20:58:59.795262 IP foo.4681 > bar.sunrpc: F 45:45(0) ack 517 win 432 <nop,nop,timestamp 180392442 564344228>
+20:58:59.795510 IP bar.sunrpc > foo.4681: F 517:517(0) ack 46 win 1448 <nop,nop,timestamp 564344229 180392442>
+20:58:59.795597 IP foo.4681 > bar.sunrpc: . ack 518 win 432 <nop,nop,timestamp 180392442 564344229>
+20:58:59.795875 IP foo.898 > bar.969: UDP, length 84
+20:58:59.843990 IP bar.969 > foo.898: UDP, length 56
+20:58:59.845058 IP foo.900 > bar.sunrpc: UDP, length 56
+20:58:59.845656 IP bar.sunrpc > foo.900: UDP, length 28
+20:58:59.866673 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.866957 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.867184 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.867495 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.867742 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.867968 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.868171 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.868388 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.868608 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.868849 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.869072 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.869313 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+20:58:59.869538 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
+
+
+And at this point everything is back to normal (well sort of)...
+
+
+I've tried to pinpoint the problem but so far I've got admit I've been
+quite unsucessfull (note that when it happens, all the services:
+portmap, rpc, mountd, and so on are running).  So my first question
+would be: where do I begin?  (more tcpdump or raising nfsd/rpc debug
+level)?
 
 Cheers,
-  Trond
 
+-- 
+Mathieu Chouquet-Stringer
 
 
 -------------------------------------------------------
