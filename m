@@ -1,32 +1,25 @@
-From: "Michael Lackner" <thrawn@xin.at>
-Subject: Update: NFS over a Win2k Server NAT Router with "DMZ": nfs: server not responding, still trying
-Date: Thu, 27 Apr 2006 19:36:14 +0200
-Message-ID: <000401c66a21$154a8c70$0200a8c0@novastorm>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Update: NFS over a Win2k Server NAT Router with "DMZ":
+	nfs: server not responding, still trying
+Date: Thu, 27 Apr 2006 14:02:52 -0400
+Message-ID: <1146160972.8101.12.camel@lade.trondhjem.org>
 References: <005401c66a19$2a6f6d30$0200a8c0@novastorm>
+	 <000401c66a21$154a8c70$0200a8c0@novastorm>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=response
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZAPm-0003eq-D7
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 10:36:30 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FZAPm-0006jn-DT
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 10:36:30 -0700
-Received: from 83-64-254-60.bruck-mur.xdsl-line.inode.at ([83.64.254.60] helo=xin.at)
-	by mail.sourceforge.net with esmtps (TLSv1:RC4-MD5:128)
+	id 1FZApV-0006Zg-03
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:03:05 -0700
+Received: from pat.uio.no ([129.240.10.6] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
 	(Exim 4.44)
-	id 1FZAPh-00023r-T2
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 10:36:30 -0700
-Received: from novastorm by xin.at
-	(MDaemon.PRO.v8.1.3.R)
-	with ESMTP id md50000005495.msg
-	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 19:36:08 +0200
-To: <nfs@lists.sourceforge.net>
+	id 1FZApT-0001Vh-Cc
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 11:03:05 -0700
+To: Michael Lackner <thrawn@xin.at>
+In-Reply-To: <000401c66a21$154a8c70$0200a8c0@novastorm>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,23 +33,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Greetings again.
+On Thu, 2006-04-27 at 19:36 +0200, Michael Lackner wrote:
+> Greetings again.
+> 
+> A little update to the Situation as described in the mail before...
+> 
+> I now tried a "touch" on my NFS mounts, and to my surprise it worked. So i can
+> even write to NFS mounted directories from within the private network. But i still
+> cannot read...  
+> 
+> When mounting soft, i get input/output errors when trying ls, no matter what values i
+> set timeo and retrans to..  I also tried different values for rsize, down to 1024. Doesn't
+> work either..
 
-A little update to the Situation as described in the mail before...
+If the problem is that READ and READDIR requests are getting lost, then
+it might be due to your firewall nixing the UDP fragments (recall that
+fragments don't have information about port numbers etc).
 
-I now tried a "touch" on my NFS mounts, and to my surprise it worked. So i can
-even write to NFS mounted directories from within the private network. But i still
-cannot read...  
+I'd suggest trying TCP instead.
 
-When mounting soft, i get input/output errors when trying ls, no matter what values i
-set timeo and retrans to..  I also tried different values for rsize, down to 1024. Doesn't
-work either..
-
-Thanks again 
-Best Regards
-Michael Lackner
-University of Leoben
-Chair for Information Technology, IT Administration
+Cheers,
+  Trond
 
 
 
