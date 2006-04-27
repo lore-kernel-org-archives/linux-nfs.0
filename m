@@ -1,23 +1,24 @@
 From: Mathieu Chouquet-Stringer <ml2news@free.fr>
 Subject: NFS mount point not responding with 2.6.16 on Alpha
-Date: Thu, 27 Apr 2006 21:31:54 +0200
-Message-ID: <20060427193154.GA10532@bigip.bigip.mine.nu>
+Date: Thu, 27 Apr 2006 20:53:49 +0200
+Message-ID: <20060427185349.GA8617@bigip.bigip.mine.nu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZCDe-00085E-97
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:32:06 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FZCDe-0007aA-8Z
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:32:06 -0700
-Received: from amarseille-252-1-152-247.w86-216.abo.wanadoo.fr ([86.216.111.247] helo=bigip.bigip.mine.nu)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FZCDc-0008Uu-Pi
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:32:06 -0700
+	id 1FZCTx-0001O9-Bk
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:48:57 -0700
+Received: from smtp13.wanadoo.fr ([193.252.22.54])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FZCTw-0000Iz-W0
+	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 12:48:57 -0700
+Received: from smtp13.wanadoo.fr (mwinf1304 [172.22.144.26])
+	by mwinf1310.wanadoo.fr (SMTP Server) with ESMTP id 133FD1C041DF
+	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 20:56:34 +0200 (CEST)
+Received: from me-wanadoo.net (localhost [127.0.0.1])
+	by mwinf1304.wanadoo.fr (SMTP Server) with ESMTP id 4E7A370000A5
+	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 20:54:50 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -73,69 +74,22 @@ mount command will correct the problem.
 The interesting part is that with the same kernel version, it only
 happens with the alpha being the server.
 
-Here's a typical tcpdump output from the client to the server, when the
-thing is hung (df is running):
-
-20:58:38.414238 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:39.118267 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:40.518379 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:43.318715 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
-20:58:44.018787 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:49.619500 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
-20:58:51.019655 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:51.719753 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
-20:58:52.419828 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:53.820003 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
-20:58:55.220205 IP foo.425107490 > bar.nfs: 92 fsstat [|nfs]
-20:58:58.020527 IP foo.425107491 > bar.nfs: 92 fsstat [|nfs]
-
-
-Here I issue the mount command:
-
-20:58:59.793008 IP foo.4681 > bar.sunrpc: S 2492793988:2492793988(0) win 5840 <mss 1460,sackOK,timestamp 180392442 0,nop,wscale 4>
-20:58:59.793310 IP bar.sunrpc > foo.4681: S 1555530554:1555530554(0) ack 2492793989 win 5792 <mss 1460,sackOK,timestamp 564344226 180392442,nop,wscale 2>
-20:58:59.793441 IP foo.4681 > bar.sunrpc: . ack 1 win 365 <nop,nop,timestamp 180392442 564344226>
-20:58:59.793911 IP foo.4681 > bar.sunrpc: P 1:45(44) ack 1 win 365 <nop,nop,timestamp 180392442 564344226>
-20:58:59.794097 IP bar.sunrpc > foo.4681: . ack 45 win 1448 <nop,nop,timestamp 564344227 180392442>
-20:58:59.794793 IP bar.sunrpc > foo.4681: P 1:401(400) ack 45 win 1448 <nop,nop,timestamp 564344228 180392442>
-20:58:59.794858 IP foo.4681 > bar.sunrpc: . ack 401 win 432 <nop,nop,timestamp 180392442 564344228>
-20:58:59.795046 IP bar.sunrpc > foo.4681: P 401:517(116) ack 45 win 1448 <nop,nop,timestamp 564344228 180392442>
-20:58:59.795109 IP foo.4681 > bar.sunrpc: . ack 517 win 432 <nop,nop,timestamp 180392442 564344228>
-20:58:59.795262 IP foo.4681 > bar.sunrpc: F 45:45(0) ack 517 win 432 <nop,nop,timestamp 180392442 564344228>
-20:58:59.795510 IP bar.sunrpc > foo.4681: F 517:517(0) ack 46 win 1448 <nop,nop,timestamp 564344229 180392442>
-20:58:59.795597 IP foo.4681 > bar.sunrpc: . ack 518 win 432 <nop,nop,timestamp 180392442 564344229>
-20:58:59.795875 IP foo.898 > bar.969: UDP, length 84
-20:58:59.843990 IP bar.969 > foo.898: UDP, length 56
-20:58:59.845058 IP foo.900 > bar.sunrpc: UDP, length 56
-20:58:59.845656 IP bar.sunrpc > foo.900: UDP, length 28
-20:58:59.866673 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.866957 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.867184 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.867495 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.867742 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.867968 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.868171 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.868388 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.868608 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.868849 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.869072 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.869313 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-20:58:59.869538 IP bar.nfs > foo.425107490: reply ok 84 fsstat [|nfs]
-
-
-And at this point everything is back to normal (well sort of)...
-
-
 I've tried to pinpoint the problem but so far I've got admit I've been
 quite unsucessfull (note that when it happens, all the services:
 portmap, rpc, mountd, and so on are running).  So my first question
-would be: where do I begin?  (more tcpdump or raising nfsd/rpc debug
-level)?
+would be: where do I begin?  (tcpdump or raising nfsd/rpc debug level)?
+
+FWIW I remember running tcpdump and I was seeing traffic originating
+from the client going to the server and I wasn't getting any reply.
+Sadly I haven't kept the traces, so I can't remember whether the traffic
+was rpc based or not, bottom line take this with a grain of salt until I
+produce a full tcpdump output.
 
 Cheers,
 
 -- 
 Mathieu Chouquet-Stringer
+
 
 
 -------------------------------------------------------
