@@ -1,27 +1,19 @@
-From: "Jim Dennis" <jdennis@cadence.com>
-Subject: RE: NFS digest: Re: Update: NFS over a Win2k Server NAT Router with
-Date: Thu, 27 Apr 2006 13:46:13 -0700
-Message-ID: <920746F6DF728345915EF4D6DA610D0F011123EE@MAILSJ2.global.cadence.com>
+From: Payal Rathod <payal-nfs@scriptkitchen.com>
+Subject: nfs client hanging
+Date: Fri, 28 Apr 2006 09:28:53 -0400
+Message-ID: <20060428132853.GA4431@tranquility.scriptkitchen.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FZDNf-0007fx-7W
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 13:46:31 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FZDNf-00086M-8y
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 13:46:31 -0700
-Received: from isvw3.cadence.com ([158.140.2.61] helo=mx-sanjose2.Cadence.COM)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FZDNd-0003pi-VI
-	for nfs@lists.sourceforge.net; Thu, 27 Apr 2006 13:46:31 -0700
-Received: from MAILSJ2.global.cadence.com (localhost [127.0.0.1])
-	by mx-sanjose2.Cadence.COM (8.12.9/8.12.9) with ESMTP id k3RKkSjI022783
-	for <nfs@lists.sourceforge.net>; Thu, 27 Apr 2006 13:46:29 -0700 (PDT)
-To: <nfs@lists.sourceforge.net>
+	id 1FZT1r-0007za-SK
+	for nfs@lists.sourceforge.net; Fri, 28 Apr 2006 06:29:03 -0700
+Received: from tranquility.scriptkitchen.com ([209.82.178.130] ident=qmailr)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FZT1m-00081s-BC
+	for nfs@lists.sourceforge.net; Fri, 28 Apr 2006 06:28:59 -0700
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,55 +27,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-=20
-> Message: 11
-> From: "Michael Lackner" <thrawn@xin.at>
-> Subject: Re: [NFS] Update: NFS over a Win2k Server NAT Router with
-"DMZ":nfs: server not responding, still trying
+Hi,
+I am trying out NFS server on Mandrake 10.0 machine. I have /etc/exports 
+as,
+/home/test/ 192.168.10.101(ro,sync)
 
-> Hello.
+# cat /etc/hosts.allow
+portmap: 192.168.10.0/255.255.255.0
 
-> Maybe that might help resolving the issue? I did some tcpdump on
-client
-> and fileserver. As expected, after the nfs readdir, there is no
-response
-> coming from the fileserver.
+# cat /etc/hosts.deny
+telnetd:192.168.10.1
 
-> On the fileserver itself i found this:
-> =3D=3D=3D
- ...
-> 20:23:57.284227 CLIENTBEHINDNAT > FILESERVER: icmp: CLIENTBEHINDNAT
-unreachable - need to frag (mtu 1500) (ttl 128, id 4037, len 56)
-> =3D=3D=3D
+>From 192.168.10.101 I do,
+mount 192.168.10.100:/home/test/ /mnt/tmp/
 
-What's that ICMP doing there?=20
+But the client hangs up for a very long time. What is wrong? On syslog 
+of 192.168.10.100 I see,
+Apr 28 09:18:40 designs rpc.mountd: authenticated mount request from 
+192.168.10.101:916 for /home/test (/home/test)
 
- Michael Lackner,
+The rpcinfo is given below. Can anyone tell what is wrong with the 
+setup?
+With warm regards,
+-Payal
 
- That's from a kernel feature called "Path MTU discovery"
 
- Linux and other modern TCP/IP stacks try to negotiate the optimal MTU
-for any given connection
- by use of the IP "DF" (don't fragment) option.  Packets are initially
-set to the local interface
- MTU with DF ... and the TCP/IP subsystem then listens for these ICMP
-"need to fragment" responses.
- It then tries a lower MTU and re-sends the dropped packets.
 
- Bad, broken, stupid firewalls and packet filters block these PMTU ICMP
-responses which then causes
- problems such as yours.
 
- Thanks for playing.  Fix the firewall (get Microsoft to correct the
-issue ... be it in the
- configuration or the code itself). A Google search on PMTU and/or the
-phrase "path MTU discovery"
- or PMTU-D should return a number of useful documents on the topic.
-Here's the first couple that
- looked good to me: http://alive.znep.com/~marcs/mtu/ and
-http://www.netheaven.com/pmtu.html.
+# rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100005    1   udp    651  mountd
+    100005    1   tcp    654  mountd
+    100005    2   udp    651  mountd
+    100005    2   tcp    654  mountd
+    100005    3   udp    651  mountd
+    100005    3   tcp    654  mountd
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100021    1   udp   1087  nlockmgr
+    100021    3   udp   1087  nlockmgr
+    100021    4   udp   1087  nlockmgr
+    100021    1   tcp   1084  nlockmgr
+    100021    3   tcp   1084  nlockmgr
+    100021    4   tcp   1084  nlockmgr
+    100024    1   udp    660  status
+    100024    1   tcp    663  status
 
-JDennis
+
 
 
 -------------------------------------------------------
