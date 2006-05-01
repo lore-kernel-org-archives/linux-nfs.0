@@ -1,117 +1,79 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: [RFC] Multiple server selection and replicated mount failover
-Date: Wed, 24 May 2006 13:05:28 +0800 (WST)
-Message-ID: <Pine.LNX.4.64.0605241240200.3730@raven.themaw.net>
-References: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] fs/nfsd/nfs4acl.c: remove the unused EXPORT_SYMBOL's
+Date: Mon, 1 May 2006 09:11:22 +0200
+Message-ID: <20060501071122.GB3570@stusta.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	autofs mailing list <autofs@linux.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FaSZq-0000cS-8t
+	for nfs@lists.sourceforge.net; Mon, 01 May 2006 00:12:14 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FaSZq-0005d9-5E
+	for nfs@lists.sourceforge.net; Mon, 01 May 2006 00:12:14 -0700
+Received: from emailhub.stusta.mhn.de ([141.84.69.5] helo=mailout.stusta.mhn.de)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FaSZp-0006P1-JT
+	for nfs@lists.sourceforge.net; Mon, 01 May 2006 00:12:14 -0700
+To: Andrew Morton <akpm@osdl.org>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Tue, 2 May 2006, Ian Kent wrote:
+This patch removes the unused EXPORT_SYMBOL's from fs/nfsd/nfs4acl.c.
 
-> 
-> Hi all,
-> 
-> For some time now I have had code in autofs that attempts to select an 
-> appropriate server from a weighted list to satisfy server priority 
-> selection and Replicated Server requirements. The code has been 
-> problematic from the beginning and is still incorrect largely due to me 
-> not merging the original patch well and also not fixing it correctly 
-> afterward.
-> 
-> So I'd like to have this work properly and to do that I also need to 
-> consider read-only NFS mount fail over.
-> 
-> The rules for server selection are, in order of priority (I believe):
-> 
-> 1) Hosts on the local subnet.
-> 2) Hosts on the local network.
-> 3) Hosts on other network.
-> 
-> Each of these proximity groups is made up of the largest number of 
-> servers supporting a given NFS protocol version. For example if there were 
-> 5 servers and 4 supported v3 and 2 supported v2 then the candidate group 
-> would be made up of the 4 supporting v3. Within the group of candidate 
-> servers the one with the best response time is selected. Selection 
-> within a proximity group can be further influenced by a zero based weight 
-> associated with each host. The higher the weight (a cost really) the less 
-> likely a server is to be selected. I'm not clear on exactly how he weight 
-> influences the selection, so perhaps someone who is familiar with this 
-> could explain it?
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-I've re-written the server selection code now and I believe it works 
-correctly.
+---
 
-> 
-> Apart from mount time server selection read-only replicated servers need 
-> to be able to fail over to another server if the current one becomes 
-> unavailable. 
-> 
-> The questions I have are:
-> 
-> 1) What is the best place for each part of this process to be
->    carried out.
->    - mount time selection.
->    - read-only mount fail over.
+This patch was already sent on:
+- 12 Apr 2006
 
-I think mount time selection should be done in mount and I believe the 
-failover needs to be done in the kernel against the list established with 
-the user space selection. The list should only change when a umount 
-and then a mount occurs (surely this is the only practical way to do it 
-?).
+ fs/nfsd/nfs4acl.c |    8 --------
+ 1 file changed, 8 deletions(-)
 
-The code that I now have for the selection process can potentially improve 
-the code used by patches to mount for probing NFS servers and doing this 
-once in one place has to be better than doing it in automount and mount.
-
-The failover is another story.
-
-It seems to me that there are two similar ways to do this:
-
-1) Pass a list of address and path entries to NFS at mount time and 
-intercept errors, identify if the host is down and if it is select and 
-mount another server.
-
-2) Mount each member of the list with the best one on top and intercept 
-errors, identify if the host is down and if it is select another from the 
-list of mounts and put it atop the mounts. Maintaining the ordering with 
-this approach could be difficult.
-
-With either of these approaches handling open files and held locks appears 
-to be the the difficult part.
-
-Anyone have anything to contribute on how I could handle this or problems 
-that I will encounter?
+--- linux-2.6.17-rc1-mm2-full/fs/nfsd/nfs4acl.c.old	2006-04-12 22:42:17.000000000 +0200
++++ linux-2.6.17-rc1-mm2-full/fs/nfsd/nfs4acl.c	2006-04-12 22:42:29.000000000 +0200
+@@ -821,9 +821,6 @@
+ 	return -1;
+ }
+ 
+-EXPORT_SYMBOL(nfs4_acl_posix_to_nfsv4);
+-EXPORT_SYMBOL(nfs4_acl_nfsv4_to_posix);
+-
+ struct nfs4_acl *
+ nfs4_acl_new(void)
+ {
+@@ -947,8 +944,3 @@
+ 	}
+ }
+ 
+-EXPORT_SYMBOL(nfs4_acl_new);
+-EXPORT_SYMBOL(nfs4_acl_free);
+-EXPORT_SYMBOL(nfs4_acl_add_ace);
+-EXPORT_SYMBOL(nfs4_acl_get_whotype);
+-EXPORT_SYMBOL(nfs4_acl_write_who);
 
 
-snip ..
 
-> 
-> 3) Is there any existing work available that anyone is aware
->    of that could be used as a reference.
 
-Still wondering about this.
-
-> 
-> 4) How does NFS v4 fit into this picture as I believe that some
->    of this functionality is included within the protocol.
-
-And this.
-
-NFS v4 appears quite different so should I be considering this for v2 and 
-v3 only?
-
-> 
-> Any comments or suggestions or reference code would be very much 
-> appreciated.
-
-Still.
-
-Ian
-
+-------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
