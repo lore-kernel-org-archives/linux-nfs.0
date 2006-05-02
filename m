@@ -1,68 +1,71 @@
-From: Ian Kent <raven@themaw.net>
-Subject: [RFC] Multiple server selection and replicated mount failover
-Date: Tue, 2 May 2006 13:56:47 +0800 (WST)
-Message-ID: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH][RFC] NFS: Improving the access cache
+Date: Tue, 02 May 2006 05:49:39 -0400
+Message-ID: <44572B33.4070100@RedHat.com>
+References: <444EC96B.80400@RedHat.com>	<17486.64825.942642.594218@cse.unsw.edu.au>	<444F88EF.5090105@RedHat.com> <17487.62730.16297.979429@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	autofs mailing list <autofs@linux.kernel.org>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 To: nfs@lists.sourceforge.net
+In-Reply-To: <17487.62730.16297.979429@cse.unsw.edu.au>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
+Neil Brown wrote:
+>>To rephrase to make sure I understand....
+>>1) P1(uid=1) creates an access pointer in the nfs_inode
+>>2) P2(uid=2) sees the access pointer is not null so it adds them both
+>>    to the table, right?
+>>
+> 
+> 
+> Exactly.
+> 
+> 
+>>>We would need to be able to tell from the inode whether anything is
+>>>hashed or not.  This could simply be if the nfs_access_entry point is
+>>>non-null, and its hashlist it non-empty.  Or we could just use a bit
+>>>flag somewhere.
+>>
+>>So I guess it would be something like:
+>>if (nfs_inode->access == null)
+>>     set nfs_inode->access
+>>if (nfs_inode->access =! NULL && nfs_inode->access_hash == empty)
+>>     move both pointer into hast able.
+>>if (nfs_inode->access == null && nfs_inode->access_hash != empty)
+>>     use hastable.
+>>
+>>But now the question is how would I know when there is only one
+>>entry in the table? Or do we just let the hash table "drain"
+>>naturally and when it become empty we start with the nfs_inode->access
+>>pointer again... Is this close to what your thinking??
+> 
+> 
+> Yes.  Spot on.  Once some inode has 'spilled' into the hash table
+> there isn't a lot to gain by "unspilling" it.
+Talking with Trond, he would like to do something slightly different
+which I'll outline here to make sure we are all on the same page....
 
-Hi all,
+Basically we would maintain one global hlist (i.e. link list) that
+would contain all of the cached entries; then each nfs_inode would
+have its own LRU hlist that would contain entries that are associated
+with that nfs_inode. So each entry would be on two lists, the
+global hlist and hlist in the nfs_inode.
 
-For some time now I have had code in autofs that attempts to select an 
-appropriate server from a weighted list to satisfy server priority 
-selection and Replicated Server requirements. The code has been 
-problematic from the beginning and is still incorrect largely due to me 
-not merging the original patch well and also not fixing it correctly 
-afterward.
+We would govern memory consumption by only allowing 30 entries
+on any one hlist in the nfs_inode and by registering the globe
+hlist with the VFS shrinker which will cause the list to be prune
+when memory is needed. So this means, when the 31st entry was added
+to the hlist in the nfs_inode, the least recently used entry would
+be removed.
 
-So I'd like to have this work properly and to do that I also need to 
-consider read-only NFS mount fail over.
+Locking might be a bit tricky, but do able... To make this scalable,
+I would think we would need global read/write spin_lock. The read_lock()
+would be taken when the hlist in the inode was searched and the
+write_lock() would taken when the hlist in the inode was changed
+and when the global list was prune.
 
-The rules for server selection are, in order of priority (I believe):
+Comments?
 
-1) Hosts on the local subnet.
-2) Hosts on the local network.
-3) Hosts on other network.
-
-Each of these proximity groups is made up of the largest number of 
-servers supporting a given NFS protocol version. For example if there were 
-5 servers and 4 supported v3 and 2 supported v2 then the candidate group 
-would be made up of the 4 supporting v3. Within the group of candidate 
-servers the one with the best response time is selected. Selection 
-within a proximity group can be further influenced by a zero based weight 
-associated with each host. The higher the weight (a cost really) the less 
-likely a server is to be selected. I'm not clear on exactly how he weight 
-influences the selection, so perhaps someone who is familiar with this 
-could explain it?
-
-Apart from mount time server selection read-only replicated servers need 
-to be able to fail over to another server if the current one becomes 
-unavailable. 
-
-The questions I have are:
-
-1) What is the best place for each part of this process to be
-   carried out.
-   - mount time selection.
-   - read-only mount fail over.
-
-2) What mechanisms would be best to use for the selection process.
-
-3) Is there any existing work available that anyone is aware
-   of that could be used as a reference.
-
-4) How does NFS v4 fit into this picture as I believe that some
-   of this functionality is included within the protocol.
-
-Any comments or suggestions or reference code would be very much 
-appreciated.
-
-Ian
-
-
+steved.
