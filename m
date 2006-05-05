@@ -1,23 +1,27 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Re: [PATCH][RFC] NFS: Improving the access cache
-Date: Fri, 05 May 2006 10:59:30 -0400
-Message-ID: <445B6852.5010509@redhat.com>
-References: <444EC96B.80400@RedHat.com>	<17486.64825.942642.594218@cse.unsw.edu.au>	<444F88EF.5090105@RedHat.com> <17487.62730.16297.979429@cse.unsw.edu.au> <44572B33.4070100@RedHat.com> <445834CB.4050408@citi.umich.edu> <445B5C2D.5040404@RedHat.com> <445B66E6.7030700@redhat.com>
+From: "Jeffrey B. Layton" <laytonjb@charter.net>
+Subject: Status of NFSv4?
+Date: Fri, 05 May 2006 12:26:23 -0400
+Message-ID: <445B7CAF.1080909@charter.net>
+Reply-To: laytonjb@charter.net
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Steve Dickson <SteveD@redhat.com>, cel@citi.umich.edu,
-	nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fc1mR-0003MN-0x
-	for nfs@lists.sourceforge.net; Fri, 05 May 2006 07:59:43 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
+	id 1Fc394-0006lD-0V
+	for nfs@lists.sourceforge.net; Fri, 05 May 2006 09:27:10 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fc393-0006C2-QW
+	for nfs@lists.sourceforge.net; Fri, 05 May 2006 09:27:09 -0700
+Received: from mxsf37.cluster1.charter.net ([209.225.28.162])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Fc1mH-0008HE-Df
-	for nfs@lists.sourceforge.net; Fri, 05 May 2006 07:59:40 -0700
-To: Peter Staubach <staubach@redhat.com>
-In-Reply-To: <445B66E6.7030700@redhat.com>
+	id 1Fc391-0007tS-E1
+	for nfs@lists.sourceforge.net; Fri, 05 May 2006 09:27:09 -0700
+Received: from mxip13a.cluster1.charter.net (mxip13a.cluster1.charter.net [209.225.28.143])
+	by mxsf37.cluster1.charter.net (8.12.11/8.12.11) with ESMTP id k45GQvtO005632
+	for <nfs@lists.sourceforge.net>; Fri, 5 May 2006 12:26:57 -0400
+To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +35,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Peter Staubach wrote:
+Hello,
 
->
-> You can't just go to out_nowait here, can you?  What happens if something
-> happened to the file while you were asleep?  Or an entry could be 
-> added to
+   I hate to bother everyone but I'm getting some conflicting
+information so I thought I would go right to the source :)
+What's the status of NFSv4 in Linux? I know it's been in there
+for a while, but are people using it regularly? What's the status
+of NFSv4 in general?
 
+TIA!
 
-Opps, that would be "could not be added"...
-
-> the cache for some reason such as kmalloc failure?  I would suggest going
-> back to the top and starting the process all over again.
-
-
-    Sorry...
-
-       ps
+Jeff
 
 
 -------------------------------------------------------
