@@ -1,76 +1,185 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Folder in NFS-Share-Permission denied-but the user is group member
-Date: Fri, 5 May 2006 21:45:01 +1000
-Message-ID: <17499.15037.908665.125536@cse.unsw.edu.au>
-References: <445B30FD.9040103@vwi.tu-dresden.de>
+From: Greg Banks <gnb@sgi.com>
+Subject: [PATCH,RESEND] make knfsd interact cleanly with HSMs
+Date: Fri, 5 May 2006 21:52:54 +1000
+Message-ID: <20060505115254.GA13916@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FbykE-0002nk-9z
-	for nfs@lists.sourceforge.net; Fri, 05 May 2006 04:45:14 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FbykE-0000MR-9r
-	for nfs@lists.sourceforge.net; Fri, 05 May 2006 04:45:14 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FbykD-0005o9-Vf
-	for nfs@lists.sourceforge.net; Fri, 05 May 2006 04:45:14 -0700
-To: kolbe@vwi.tu-dresden.de
-In-Reply-To: message from Steffen Kolbe on Friday May 5
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Friday May 5, kolbe@vwi.tu-dresden.de wrote:
-> Hi,
-> 
-> - a client has mounted some nfs shares
-> - in these shares are folders wich are owned by different groups
-> - rights of these folders are 2770
-> - getent group: user is member in these groups (on server and client via 
-> ldap)
-> 
-> but access to these folders says "Permission denied"
-> 
-> - if I copy the folder to local disk this error does not occur and the 
-> user has access
-> 
-> NFS-Server: Debian amd64 with nfs-kernel-server 1.0.7-12
-> NFS-Client: Debian i386 with nfs-common 1.0.7-11
-> 
-> Can anybody help, where I should search ?
+G'day,
 
-How many groups in the user a member of?  If >16, that could be the
-problem.  NFS requests only carry the first 16 groups.
+The NFSv3 protocol specifies an error, NFS3ERR_JUKEBOX, which a server
+should return when an I/O operation will take a very long time.
+This causes a different pattern of retries in clients, and avoids
+a number of serious problems associated with I/Os which take longer
+than an RPC timeout.  The Linux knfsd server has code to generate the
+jukebox error and many NFS clients are known to have working code to
+handle it.
 
-Otherwise, capture a tcpdump trace and post that somewhere.
+One scenario in which a server should emit the JUKEBOX error is when
+a file data which the client is attempting to access is managed by
+an HSM (Hierarchical Storage Manager) and is not present on the disk
+and needs to be brought in from tape.  Due to the nature of tapes this
+operation can take minutes rather than the milliseconds normally seen
+for local file data.
 
-  on client
-   tcpdump -s 1500 -w /tmp/trace host CLIENT and host SERVER and port 2049
-  then try to access file.
+Currently the Linux knfsd handles this situation poorly.  A READ NFS
+call will cause the nfsd thread handling it to block until the file
+is available, without sending a reply to the NFS client.  After a
+few seconds the client retries, and this second READ call causes
+another nfsd to block behind the first one.  A few seconds later and
+the client's retries have blocked *all* the nfsd threads, and all NFS
+service from the server stops until the original file arrives on disk.
 
-NeilBrown
+WRITEs and SETATTRs which truncate the file are marginally better, in
+that the knfsd dupcache will catch the retries and drop them without
+blocking an nfsd (the dupcache *will* catch the retries because the
+cache entry remains in RC_INPROG state and is not reused until the
+first call finishes).  However the first call still blocks, so given
+WRITEs to enough offline files the server can still be locked up.
+
+There are also client-side implications, depending on the client
+implementation.  For example, on a Linux client an RPC retry loop uses
+an RPC request slot, so reads from enough separate offline files can
+lock up a mountpoint.
+
+This patch seeks to remedy the interaction between knfsd and HSMs by
+providing mechanisms to allow knfsd to tell an underlying filesystem
+(which supports HSMs) not to block for reads, writes and truncates
+of offline files.  It's a port of a Linux 2.4 patch used in SGI's
+ProPack distro since 2004 and in SLES9 since SP2.  The patch:
+
+*  provides a new ATTR_NO_BLOCK flag which the kernel can
+   use to tell a filesystem's inode_ops->setattr() operation not
+   to block when truncating an offline file.  XFS already obeys
+   this flag (inside a #ifdef)
+
+*  changes knfsd to provide ATTR_NO_BLOCK when it does the VFS
+   calls to implement the SETATTR NFS call.
+
+*  changes knfsd to supply the O_NONBLOCK flag in the temporary
+   struct file it uses for VFS reads and writes, in order to ask
+   the filesystem not to block when reading or writing an offline
+   file.  XFS already obeys this new semantic for O_NONBLOCK
+   (and in SLES9 so does JFS).
+
+*  adds code to translate the -EAGAIN the filesystem returns when
+   it would have blocked, to the -ETIMEDOUT that knfsd expects.
 
 
--------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+(SLES9 patch Acked-by: okir@suse.de)
+---
+
+This is a resend of
+
+http://marc.theaimsgroup.com/?l=linux-nfs&m=111087383132762&w=2
+
+
+ fs/nfsd/vfs.c      |   33 +++++++++++++++++++++++++++++++--
+ include/linux/fs.h |    1 +
+ 2 files changed, 32 insertions(+), 2 deletions(-)
+
+Index: linux/fs/nfsd/vfs.c
+===================================================================
+--- linux.orig/fs/nfsd/vfs.c	2006-05-05 19:49:38.434101243 +1000
++++ linux/fs/nfsd/vfs.c	2006-05-05 21:00:22.568841897 +1000
+@@ -327,6 +327,16 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 			goto out_nfserr;
+ 		}
+ 		DQUOT_INIT(inode);
++
++
++		/*
++		 * Tell a Hierarchical Storage Manager (e.g. via DMAPI) to
++		 * return EAGAIN when an action would take minutes instead of
++		 * milliseconds so that NFS can reply to the client with
++		 * NFSERR_JUKEBOX instead of blocking an nfsd thread.
++		 */
++		if (rqstp->rq_vers >= 3)
++			iap->ia_valid |= ATTR_NO_BLOCK;
+ 	}
+ 
+ 	imode = inode->i_mode;
+@@ -349,6 +359,9 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 	if (!check_guard || guardtime == inode->i_ctime.tv_sec) {
+ 		fh_lock(fhp);
+ 		err = notify_change(dentry, iap);
++		/* to get NFSERR_JUKEBOX on the wire, need -ETIMEDOUT */
++		if (err == -EAGAIN)
++			err = -ETIMEDOUT;
+ 		err = nfserrno(err);
+ 		fh_unlock(fhp);
+ 	}
+@@ -834,6 +847,10 @@ nfsd_vfs_read(struct svc_rqst *rqstp, st
+ 	if (ra && ra->p_set)
+ 		file->f_ra = ra->p_ra;
+ 
++	/* Support HSMs -- see comment in nfsd_setattr() */
++	if (rqstp->rq_vers >= 3)
++		file->f_flags |= O_NONBLOCK;
++
+ 	if (file->f_op->sendfile) {
+ 		svc_pushback_unused_pages(rqstp);
+ 		err = file->f_op->sendfile(file, &offset, *count,
+@@ -859,8 +876,12 @@ nfsd_vfs_read(struct svc_rqst *rqstp, st
+ 		*count = err;
+ 		err = 0;
+ 		fsnotify_access(file->f_dentry);
+-	} else 
++	} else {
++		/* to get NFSERR_JUKEBOX on the wire, need -ETIMEDOUT */
++		if (err == -EAGAIN)
++			err = -ETIMEDOUT;
+ 		err = nfserrno(err);
++	}
+ out:
+ 	return err;
+ }
+@@ -918,6 +939,10 @@ nfsd_vfs_write(struct svc_rqst *rqstp, s
+ 	if (stable && !EX_WGATHER(exp))
+ 		file->f_flags |= O_SYNC;
+ 
++	/* Support HSMs -- see comment in nfsd_setattr() */
++	if (rqstp->rq_vers >= 3)
++		file->f_flags |= O_NONBLOCK;
++
+ 	/* Write the data. */
+ 	oldfs = get_fs(); set_fs(KERNEL_DS);
+ 	err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
+@@ -970,8 +995,12 @@ nfsd_vfs_write(struct svc_rqst *rqstp, s
+ 	dprintk("nfsd: write complete err=%d\n", err);
+ 	if (err >= 0)
+ 		err = 0;
+-	else 
++	else {
++		/* to get NFSERR_JUKEBOX on the wire, need -ETIMEDOUT */
++		if (err == -EAGAIN)
++			err = -ETIMEDOUT;
+ 		err = nfserrno(err);
++	}
+ out:
+ 	return err;
+ }
+Index: linux/include/linux/fs.h
+===================================================================
+--- linux.orig/include/linux/fs.h	2006-05-05 19:49:40.587127963 +1000
++++ linux/include/linux/fs.h	2006-05-05 21:00:22.569818326 +1000
+@@ -273,6 +273,7 @@ typedef void (dio_iodone_t)(struct kiocb
+ #define ATTR_KILL_SUID	2048
+ #define ATTR_KILL_SGID	4096
+ #define ATTR_FILE	8192
++#define ATTR_NO_BLOCK	32768	/* Return EAGAIN and don't block on long truncates */
+ 
+ /*
+  * This is the Inode Attributes structure, used for notify_change().  It
+
+
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
