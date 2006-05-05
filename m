@@ -1,185 +1,365 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [PATCH,RESEND] make knfsd interact cleanly with HSMs
-Date: Fri, 5 May 2006 21:52:54 +1000
-Message-ID: <20060505115254.GA13916@sgi.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [NFS] Re: [PATCH][RFC] NFS: Improving the access cache
+Date: Fri, 05 May 2006 10:07:41 -0400
+Message-ID: <445B5C2D.5040404@RedHat.com>
+References: <444EC96B.80400@RedHat.com>	<17486.64825.942642.594218@cse.unsw.edu.au>	<444F88EF.5090105@RedHat.com> <17487.62730.16297.979429@cse.unsw.edu.au> <44572B33.4070100@RedHat.com> <445834CB.4050408@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>
+Content-Type: multipart/mixed;
+ boundary="------------080403020808040804040507"
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
+To: cel@citi.umich.edu
+In-Reply-To: <445834CB.4050408@citi.umich.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-G'day,
+This is a multi-part message in MIME format.
+--------------080403020808040804040507
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-The NFSv3 protocol specifies an error, NFS3ERR_JUKEBOX, which a server
-should return when an I/O operation will take a very long time.
-This causes a different pattern of retries in clients, and avoids
-a number of serious problems associated with I/Os which take longer
-than an RPC timeout.  The Linux knfsd server has code to generate the
-jukebox error and many NFS clients are known to have working code to
-handle it.
+Here is the second attempt at improving the access cache. I believe
+all of the concerns from the first patch have been addressed.
 
-One scenario in which a server should emit the JUKEBOX error is when
-a file data which the client is attempting to access is managed by
-an HSM (Hierarchical Storage Manager) and is not present on the disk
-and needs to be brought in from tape.  Due to the nature of tapes this
-operation can take minutes rather than the milliseconds normally seen
-for local file data.
+Chuck Lever wrote:
+> 
+> 1.  We already have cache shrinkage built in: when an inode is purged 
+> due to cache shrinkage, the access cache for that inode is purged as 
+> well.  In other words, there is already a mechanism for external memory 
+> pressure to shrink this cache.  I don't see a strong need to complicate 
+> matters by adding more cache shrinkage than already exists with normal 
+> inode and dentry cache shrinkage.
+I agree... so there no extra code to shrink this cache.
 
-Currently the Linux knfsd handles this situation poorly.  A READ NFS
-call will cause the nfsd thread handling it to block until the file
-is available, without sending a reply to the NFS client.  After a
-few seconds the client retries, and this second READ call causes
-another nfsd to block behind the first one.  A few seconds later and
-the client's retries have blocked *all* the nfsd threads, and all NFS
-service from the server stops until the original file arrives on disk.
+> 
+> 2.  Use a radix tree per inode.  
+Using radix trees actual makes things much simpler... Good idea, imo.
 
-WRITEs and SETATTRs which truncate the file are marginally better, in
-that the knfsd dupcache will catch the retries and drop them without
-blocking an nfsd (the dupcache *will* catch the retries because the
-cache entry remains in RC_INPROG state and is not reused until the
-first call finishes).  However the first call still blocks, so given
-WRITEs to enough offline files the server can still be locked up.
+> 
+> 3.  Instead of serializing by spinning, you should use a semaphore. 
+I turns out that spin lock are probably better protecting this cache
+because while looking up the cache entry I might have to discard the
+entry, so I would have to upgrade a read semaphore to a write one which
+is a bit messy and not needed imho... But I do agree with you about
+global locks, so I added the spin lock to the nfs_inode.
 
-There are also client-side implications, depending on the client
-implementation.  For example, on a Linux client an RPC retry loop uses
-an RPC request slot, so reads from enough separate offline files can
-lock up a mountpoint.
+> 
+> You will need to serialize on-the-wire requests with accesses to the 
+> cache, and such wire requests will need the waiting processes to sleep, 
+> not spin.
+True... so I use added a bit to the nfs_inode flags that will
+serialize over-the-write request similar to how getattrs are.
 
-This patch seeks to remedy the interaction between knfsd and HSMs by
-providing mechanisms to allow knfsd to tell an underlying filesystem
-(which supports HSMs) not to block for reads, writes and truncates
-of offline files.  It's a port of a Linux 2.4 patch used in SGI's
-ProPack distro since 2004 and in SLES9 since SP2.  The patch:
+> 
+> 4.  You will need some mechanism for ensuring that the contents of the 
+> access cache are "up to date".  
+This cache is tied to the attribute cache and when that times out
+or is invalided, the cache entry is discarded... With my testing,
+this seems to just fine.
 
-*  provides a new ATTR_NO_BLOCK flag which the kernel can
-   use to tell a filesystem's inode_ops->setattr() operation not
-   to block when truncating an offline file.  XFS already obeys
-   this flag (inside a #ifdef)
+> 
+> 5.  You need to handle ESTALE. 
+True... and this patch does.
 
-*  changes knfsd to provide ATTR_NO_BLOCK when it does the VFS
-   calls to implement the SETATTR NFS call.
+Comments?
 
-*  changes knfsd to supply the O_NONBLOCK flag in the temporary
-   struct file it uses for VFS reads and writes, in order to ask
-   the filesystem not to block when reading or writing an offline
-   file.  XFS already obeys this new semantic for O_NONBLOCK
-   (and in SLES9 so does JFS).
-
-*  adds code to translate the -EAGAIN the filesystem returns when
-   it would have blocked, to the -ETIMEDOUT that knfsd expects.
+steved.
 
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-(SLES9 patch Acked-by: okir@suse.de)
----
+--------------080403020808040804040507
+Content-Type: text/x-patch;
+ name="mynfs-2.6-accesscache-radixtree.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="mynfs-2.6-accesscache-radixtree.patch"
 
-This is a resend of
+This patch improves the caching of ACCESS information by storing
+the information in radix tree. It also serializes over-the-wire
+ACCESS calls. The patch greatly decreases the number of ACCESS 
+calls when processes with different uids access the same directory.
 
-http://marc.theaimsgroup.com/?l=linux-nfs&m=111087383132762&w=2
-
-
- fs/nfsd/vfs.c      |   33 +++++++++++++++++++++++++++++++--
- include/linux/fs.h |    1 +
- 2 files changed, 32 insertions(+), 2 deletions(-)
-
-Index: linux/fs/nfsd/vfs.c
-===================================================================
---- linux.orig/fs/nfsd/vfs.c	2006-05-05 19:49:38.434101243 +1000
-+++ linux/fs/nfsd/vfs.c	2006-05-05 21:00:22.568841897 +1000
-@@ -327,6 +327,16 @@ nfsd_setattr(struct svc_rqst *rqstp, str
- 			goto out_nfserr;
- 		}
- 		DQUOT_INIT(inode);
+Signed-off-by: Steve Dickson <steved@redhat.com>
+----------------------------------------------------
+--- mynfs-2.6/fs/nfs/nfs4proc.c.orig	2006-05-03 11:25:58.000000000 -0400
++++ mynfs-2.6/fs/nfs/nfs4proc.c	2006-05-04 15:17:11.000000000 -0400
+@@ -785,6 +785,10 @@ static int _nfs4_do_access(struct inode 
+ 	status = _nfs4_proc_access(inode, &cache);
+ 	if (status != 0)
+ 		return status;
 +
-+
-+		/*
-+		 * Tell a Hierarchical Storage Manager (e.g. via DMAPI) to
-+		 * return EAGAIN when an action would take minutes instead of
-+		 * milliseconds so that NFS can reply to the client with
-+		 * NFSERR_JUKEBOX instead of blocking an nfsd thread.
-+		 */
-+		if (rqstp->rq_vers >= 3)
-+			iap->ia_valid |= ATTR_NO_BLOCK;
- 	}
- 
- 	imode = inode->i_mode;
-@@ -349,6 +359,9 @@ nfsd_setattr(struct svc_rqst *rqstp, str
- 	if (!check_guard || guardtime == inode->i_ctime.tv_sec) {
- 		fh_lock(fhp);
- 		err = notify_change(dentry, iap);
-+		/* to get NFSERR_JUKEBOX on the wire, need -ETIMEDOUT */
-+		if (err == -EAGAIN)
-+			err = -ETIMEDOUT;
- 		err = nfserrno(err);
- 		fh_unlock(fhp);
- 	}
-@@ -834,6 +847,10 @@ nfsd_vfs_read(struct svc_rqst *rqstp, st
- 	if (ra && ra->p_set)
- 		file->f_ra = ra->p_ra;
- 
-+	/* Support HSMs -- see comment in nfsd_setattr() */
-+	if (rqstp->rq_vers >= 3)
-+		file->f_flags |= O_NONBLOCK;
-+
- 	if (file->f_op->sendfile) {
- 		svc_pushback_unused_pages(rqstp);
- 		err = file->f_op->sendfile(file, &offset, *count,
-@@ -859,8 +876,12 @@ nfsd_vfs_read(struct svc_rqst *rqstp, st
- 		*count = err;
- 		err = 0;
- 		fsnotify_access(file->f_dentry);
--	} else 
-+	} else {
-+		/* to get NFSERR_JUKEBOX on the wire, need -ETIMEDOUT */
-+		if (err == -EAGAIN)
-+			err = -ETIMEDOUT;
- 		err = nfserrno(err);
-+	}
++	/* Zero masks are turned into a negative entry */
++	if (!cache.mask) 
++		cache.mask |= ~mask;
+ 	nfs_access_add_cache(inode, &cache);
  out:
- 	return err;
- }
-@@ -918,6 +939,10 @@ nfsd_vfs_write(struct svc_rqst *rqstp, s
- 	if (stable && !EX_WGATHER(exp))
- 		file->f_flags |= O_SYNC;
+ 	if ((cache.mask & mask) == mask)
+--- mynfs-2.6/fs/nfs/inode.c.orig	2006-05-03 11:25:58.000000000 -0400
++++ mynfs-2.6/fs/nfs/inode.c	2006-05-05 09:35:20.000000000 -0400
+@@ -170,14 +170,11 @@ static void
+ nfs_clear_inode(struct inode *inode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct rpc_cred *cred;
  
-+	/* Support HSMs -- see comment in nfsd_setattr() */
-+	if (rqstp->rq_vers >= 3)
-+		file->f_flags |= O_NONBLOCK;
-+
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
- 	err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
-@@ -970,8 +995,12 @@ nfsd_vfs_write(struct svc_rqst *rqstp, s
- 	dprintk("nfsd: write complete err=%d\n", err);
- 	if (err >= 0)
- 		err = 0;
--	else 
-+	else {
-+		/* to get NFSERR_JUKEBOX on the wire, need -ETIMEDOUT */
-+		if (err == -EAGAIN)
-+			err = -ETIMEDOUT;
- 		err = nfserrno(err);
-+	}
- out:
- 	return err;
+ 	nfs_wb_all(inode);
+ 	BUG_ON (!list_empty(&nfsi->open_files));
+ 	nfs_zap_acl_cache(inode);
+-	cred = nfsi->cache_access.cred;
+-	if (cred)
+-		put_rpccred(cred);
++	nfs_zap_access_cache(inode);
+ 	BUG_ON(atomic_read(&nfsi->data_updates) != 0);
  }
-Index: linux/include/linux/fs.h
-===================================================================
---- linux.orig/include/linux/fs.h	2006-05-05 19:49:40.587127963 +1000
-+++ linux/include/linux/fs.h	2006-05-05 21:00:22.569818326 +1000
-@@ -273,6 +273,7 @@ typedef void (dio_iodone_t)(struct kiocb
- #define ATTR_KILL_SUID	2048
- #define ATTR_KILL_SGID	4096
- #define ATTR_FILE	8192
-+#define ATTR_NO_BLOCK	32768	/* Return EAGAIN and don't block on long truncates */
  
+@@ -940,7 +937,6 @@ nfs_fhget(struct super_block *sb, struct
+ 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
+ 		nfsi->attrtimeo_timestamp = jiffies;
+ 		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
+-		nfsi->cache_access.cred = NULL;
+ 
+ 		unlock_new_inode(inode);
+ 	} else
+@@ -1039,7 +1035,7 @@ static int nfs_wait_schedule(void *word)
  /*
-  * This is the Inode Attributes structure, used for notify_change().  It
+  * Wait for the inode to get unlocked.
+  */
+-static int nfs_wait_on_inode(struct inode *inode)
++int nfs_wait_on_inode(struct inode *inode, int bit)
+ {
+ 	struct rpc_clnt	*clnt = NFS_CLIENT(inode);
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -1047,20 +1043,20 @@ static int nfs_wait_on_inode(struct inod
+ 	int error;
+ 
+ 	rpc_clnt_sigmask(clnt, &oldmask);
+-	error = wait_on_bit_lock(&nfsi->flags, NFS_INO_REVALIDATING,
++	error = wait_on_bit_lock(&nfsi->flags, bit,
+ 					nfs_wait_schedule, TASK_INTERRUPTIBLE);
+ 	rpc_clnt_sigunmask(clnt, &oldmask);
+ 
+ 	return error;
+ }
+ 
+-static void nfs_wake_up_inode(struct inode *inode)
++void nfs_wake_up_inode(struct inode *inode, int bit)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 
+-	clear_bit(NFS_INO_REVALIDATING, &nfsi->flags);
++	clear_bit(bit, &nfsi->flags);
+ 	smp_mb__after_clear_bit();
+-	wake_up_bit(&nfsi->flags, NFS_INO_REVALIDATING);
++	wake_up_bit(&nfsi->flags, bit);
+ }
+ 
+ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+@@ -1235,7 +1231,7 @@ __nfs_revalidate_inode(struct nfs_server
+ 	if (NFS_STALE(inode))
+  		goto out_nowait;
+ 
+-	status = nfs_wait_on_inode(inode);
++	status = nfs_wait_on_inode(inode, NFS_INO_REVALIDATING);
+ 	if (status < 0)
+ 		goto out;
+ 	if (NFS_STALE(inode)) {
+@@ -1283,7 +1279,7 @@ __nfs_revalidate_inode(struct nfs_server
+ 		(long long)NFS_FILEID(inode));
+ 
+  out:
+-	nfs_wake_up_inode(inode);
++	nfs_wake_up_inode(inode, NFS_INO_REVALIDATING);
+ 
+  out_nowait:
+ 	unlock_kernel();
+@@ -2874,6 +2870,8 @@ static void init_once(void * foo, kmem_c
+ 		INIT_LIST_HEAD(&nfsi->commit);
+ 		INIT_LIST_HEAD(&nfsi->open_files);
+ 		INIT_RADIX_TREE(&nfsi->nfs_page_tree, GFP_ATOMIC);
++		INIT_RADIX_TREE(&nfsi->access_cache, GFP_ATOMIC);
++		spin_lock_init(&nfsi->access_lock);
+ 		atomic_set(&nfsi->data_updates, 0);
+ 		nfsi->ndirty = 0;
+ 		nfsi->ncommit = 0;
+--- mynfs-2.6/fs/nfs/dir.c.orig	2006-05-03 11:25:58.000000000 -0400
++++ mynfs-2.6/fs/nfs/dir.c	2006-05-05 09:34:47.000000000 -0400
+@@ -1636,35 +1636,67 @@ out:
+ 	return error;
+ }
+ 
+-int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res)
++int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, 
++	struct nfs_access_entry *res)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct nfs_access_entry *cache = &nfsi->cache_access;
++	int invalid = (nfsi->cache_validity & NFS_INO_INVALID_ACCESS);
++	struct nfs_access_entry *cache;
++	int expired;
++
++	spin_lock(&nfsi->access_lock);
++	cache = (struct nfs_access_entry *)
++		radix_tree_lookup(&nfsi->access_cache, cred->cr_uid);
++
++	if (cache) {
++		expired = time_after(jiffies, 
++				cache->jiffies + NFS_ATTRTIMEO(inode));
++		if (expired || invalid) {
++			(void)radix_tree_delete(&nfsi->access_cache, cred->cr_uid);
++			spin_unlock(&nfsi->access_lock);
++			put_rpccred(cache->cred);
++			kfree(cache);
++			goto nolock;
++		}
++		memcpy(res, cache, sizeof(*res));
++		spin_unlock(&nfsi->access_lock);
++		return 0;
++	}
++	spin_unlock(&nfsi->access_lock);
+ 
+-	if (cache->cred != cred
+-			|| time_after(jiffies, cache->jiffies + NFS_ATTRTIMEO(inode))
+-			|| (nfsi->cache_validity & NFS_INO_INVALID_ACCESS))
+-		return -ENOENT;
+-	memcpy(res, cache, sizeof(*res));
+-	return 0;
++nolock:
++	return -ENOENT;
+ }
+ 
+ void nfs_access_add_cache(struct inode *inode, struct nfs_access_entry *set)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct nfs_access_entry *cache = &nfsi->cache_access;
+-
+-	if (cache->cred != set->cred) {
+-		if (cache->cred)
+-			put_rpccred(cache->cred);
+-		cache->cred = get_rpccred(set->cred);
++	struct nfs_access_entry *cache = NULL;
++	uid_t cr_uid = set->cred->cr_uid;
++	int error;
++
++	cache = (struct nfs_access_entry *)kmalloc(sizeof(*cache), GFP_KERNEL);
++	if (!cache)
++		return;
++
++	spin_lock(&nfsi->access_lock);
++	error = radix_tree_insert(&nfsi->access_cache, cr_uid, cache);
++	if (error) {
++		spin_unlock(&nfsi->access_lock);
++		kfree(cache);
++		return;
+ 	}
+-	/* FIXME: replace current access_cache BKL reliance with inode->i_lock */
++
++	cache->cred = get_rpccred(set->cred);
++	cache->jiffies = jiffies;
++	cache->mask = set->mask;
++	spin_unlock(&nfsi->access_lock);
++
+ 	spin_lock(&inode->i_lock);
+ 	nfsi->cache_validity &= ~NFS_INO_INVALID_ACCESS;
+ 	spin_unlock(&inode->i_lock);
+-	cache->jiffies = set->jiffies;
+-	cache->mask = set->mask;
++
++	return;
+ }
+ 
+ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
+@@ -1674,19 +1706,42 @@ static int nfs_do_access(struct inode *i
+ 
+ 	status = nfs_access_get_cached(inode, cred, &cache);
+ 	if (status == 0)
+-		goto out;
++		goto out_nowait;
++
++	if (test_and_set_bit(NFS_INO_ACCESS, &NFS_FLAGS(inode))) {
++		status = nfs_wait_on_inode(inode, NFS_INO_ACCESS);
++		if (status < 0)
++			return status;
++
++		nfs_access_get_cached(inode, cred, &cache);
++		goto out_nowait;
++	}
+ 
+ 	/* Be clever: ask server to check for all possible rights */
+ 	cache.mask = MAY_EXEC | MAY_WRITE | MAY_READ;
+ 	cache.cred = cred;
+-	cache.jiffies = jiffies;
+ 	status = NFS_PROTO(inode)->access(inode, &cache);
+-	if (status != 0)
++	if (status != 0) {
++		if (status == -ESTALE) {
++			nfs_zap_caches(inode);
++			if (!S_ISDIR(inode->i_mode))
++				set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
++		}
++		nfs_wake_up_inode(inode, NFS_INO_ACCESS);
+ 		return status;
++	}
++
++	/* Zero masks are turned into a negative entry */
++	if (!cache.mask) 
++		cache.mask |= ~mask;
+ 	nfs_access_add_cache(inode, &cache);
+-out:
++
++	nfs_wake_up_inode(inode, NFS_INO_ACCESS);
++
++out_nowait:
+ 	if ((cache.mask & mask) == mask)
+ 		return 0;
++
+ 	return -EACCES;
+ }
+ 
+--- mynfs-2.6/include/linux/nfs_fs.h.orig	2006-05-03 11:26:19.000000000 -0400
++++ mynfs-2.6/include/linux/nfs_fs.h	2006-05-05 09:34:08.000000000 -0400
+@@ -145,7 +145,8 @@ struct nfs_inode {
+ 	 */
+ 	atomic_t		data_updates;
+ 
+-	struct nfs_access_entry	cache_access;
++	struct radix_tree_root	access_cache;
++	spinlock_t access_lock;
+ #ifdef CONFIG_NFS_V3_ACL
+ 	struct posix_acl	*acl_access;
+ 	struct posix_acl	*acl_default;
+@@ -199,6 +200,7 @@ struct nfs_inode {
+ #define NFS_INO_REVALIDATING	(0)		/* revalidating attrs */
+ #define NFS_INO_ADVISE_RDPLUS	(1)		/* advise readdirplus */
+ #define NFS_INO_STALE		(2)		/* possible stale inode */
++#define NFS_INO_ACCESS		(3)		/* checking access bits */
+ 
+ static inline struct nfs_inode *NFS_I(struct inode *inode)
+ {
+@@ -256,6 +258,17 @@ static inline int NFS_USE_READDIRPLUS(st
+ 	return test_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
+ }
+ 
++static inline void nfs_zap_access_cache(struct inode *inode)
++{
++	struct nfs_access_entry *cache;
++
++	cache = radix_tree_delete(&NFS_I(inode)->access_cache, inode->i_uid);
++	if (cache) {
++		put_rpccred(cache->cred);
++		kfree(cache);
++	}
++}
++
+ /**
+  * nfs_save_change_attribute - Returns the inode attribute change cookie
+  * @inode - pointer to inode
+@@ -299,6 +312,8 @@ extern int nfs_attribute_timeout(struct 
+ extern int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode);
+ extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
+ extern void nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping);
++extern int nfs_wait_on_inode(struct inode *inode, int bit);
++extern void nfs_wake_up_inode(struct inode *inode, int bit);
+ extern int nfs_setattr(struct dentry *, struct iattr *);
+ extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr);
+ extern void nfs_begin_attr_update(struct inode *);
 
-
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+--------------080403020808040804040507--
