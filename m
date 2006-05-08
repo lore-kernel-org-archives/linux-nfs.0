@@ -1,49 +1,41 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH,RESEND] make knfsd interact cleanly with HSMs
-Date: Mon, 8 May 2006 11:13:06 +1000
-Message-ID: <17502.39714.775234.337995@cse.unsw.edu.au>
-References: <20060505115254.GA13916@sgi.com>
+Subject: Re: [NFS] Re: [PATCH][RFC] NFS: Improving the access cache
+Date: Mon, 8 May 2006 12:44:14 +1000
+Message-ID: <17502.45182.130630.119304@cse.unsw.edu.au>
+References: <444EC96B.80400@RedHat.com>
+	<17486.64825.942642.594218@cse.unsw.edu.au>
+	<444F88EF.5090105@RedHat.com>
+	<17487.62730.16297.979429@cse.unsw.edu.au>
+	<44572B33.4070100@RedHat.com>
+	<445834CB.4050408@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>
+Cc: Steve Dickson <SteveD@redhat.com>, nfs@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: message from Greg Banks on Friday May 5
+To: cel@citi.umich.edu
+In-Reply-To: message from Chuck Lever on Wednesday May 3
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Friday May 5, gnb@sgi.com wrote:
+On Wednesday May 3, cel@citi.umich.edu wrote:
 > 
-> This patch seeks to remedy the interaction between knfsd and HSMs by
-> providing mechanisms to allow knfsd to tell an underlying filesystem
-> (which supports HSMs) not to block for reads, writes and truncates
-> of offline files.  It's a port of a Linux 2.4 patch used in SGI's
-> ProPack distro since 2004 and in SLES9 since SP2.  The patch:
+> For the sake of discussion, let me propose some design alternatives.
 > 
-> *  provides a new ATTR_NO_BLOCK flag which the kernel can
->    use to tell a filesystem's inode_ops->setattr() operation not
->    to block when truncating an offline file.  XFS already obeys
->    this flag (inside a #ifdef)
-> 
-> *  changes knfsd to provide ATTR_NO_BLOCK when it does the VFS
->    calls to implement the SETATTR NFS call.
-> 
-> *  changes knfsd to supply the O_NONBLOCK flag in the temporary
->    struct file it uses for VFS reads and writes, in order to ask
->    the filesystem not to block when reading or writing an offline
->    file.  XFS already obeys this new semantic for O_NONBLOCK
->    (and in SLES9 so does JFS).
-> 
-> *  adds code to translate the -EAGAIN the filesystem returns when
->    it would have blocked, to the -ETIMEDOUT that knfsd expects.
+> 1.  We already have cache shrinkage built in: when an inode is purged 
+> due to cache shrinkage, the access cache for that inode is purged as 
+> well.  In other words, there is already a mechanism for external memory 
+> pressure to shrink this cache.  I don't see a strong need to complicate 
+> matters by adding more cache shrinkage than already exists with normal 
+> inode and dentry cache shrinkage.
 > 
 
-Yes, I'm happy with this.  All the changes make sense and look right.
+If you have one particular file that is use regularly - and so never
+falls out of cache - and is uses occasionally by every single user in
+you system, then that one inode could contribute to thousands of
+access cache items that will never be purged.
 
-Thanks for persisting with it.
-
-I'll send it on up the chain...
+This is why I thought that some sort of cleaning of the access cache
+was important.
 
 NeilBrown
-
