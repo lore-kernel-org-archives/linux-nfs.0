@@ -1,44 +1,54 @@
-From: Nathan Scott <nathans@sgi.com>
-Subject: Re: [NFS] [PATCH,RESEND] make knfsd interact cleanly with HSMs
-Date: Mon, 8 May 2006 21:37:48 +1000
-Message-ID: <20060508213748.A2084950@wobbly.melbourne.sgi.com>
-References: <20060505115254.GA13916@sgi.com> <20060508064255.GA8614@infradead.org> <17503.10386.171006.392544@cse.unsw.edu.au>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [NFS] Re: [PATCH][RFC] NFS: Improving the access cache
+Date: Mon, 08 May 2006 10:07:40 -0400
+Message-ID: <445F50AC.1070306@redhat.com>
+References: <444EC96B.80400@RedHat.com>	<17486.64825.942642.594218@cse.unsw.edu.au>	<444F88EF.5090105@RedHat.com> <17487.62730.16297.979429@cse.unsw.edu.au> <44572B33.4070100@RedHat.com> <445834CB.4050408@citi.umich.edu> <445B5C2D.5040404@RedHat.com> <445B66E6.7030700@redhat.com> <445CB41A.9040400@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, Greg Banks <gnb@sgi.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17503.10386.171006.392544@cse.unsw.edu.au>; from neilb@suse.de on Mon, May 08, 2006 at 09:16:34PM +1000
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <445CB41A.9040400@RedHat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, May 08, 2006 at 09:16:34PM +1000, Neil Brown wrote:
-> On Monday May 8, hch@infradead.org wrote:
-> > NACK.  As long as we have no HSM support in the tree there's no reason to
-> > add this.  From the kernel's point it's just untested and unused code that
-> > can break.
-> 
-> Greg: you seemed to suggest that there was already code in XFS that
-> could make use of this.  If that is so: could you point us to it
-> please.
+Steve Dickson wrote:
 
-The code in question is in fs/xfs/linux-2.6/xfs_iops.c::xfs_vn_setattr,
-fs/xfs/xfs_dmapi.h::AT_DELAY_FLAG, and its users in xfs_setattr and
-xfs_free_file_space and one or two other spots in XFS.  The DMAPI code
-(driver, outside XFS) can be found in the XFS CVS tree on oss.sgi.com.
+> Peter Staubach wrote:
+>
+>>>>
+>>>> 2.  Use a radix tree per inode.  
+>>>
+>>>
+>>>
+>>> Using radix trees actual makes things much simpler... Good idea, imo.
+>>>
+>>
+>> It does seem like a good idea, although just using the uid is not 
+>> sufficient
+>> to identify the correct access cache entry.  The group and groups 
+>> list must
+>> also be used.  Can the radix tree implementation support this?
+>
+> We could use (nfsi + uid) as the index... but its not clear what that
+> would buys us... And the group and group list were never part of the
+> cache in the first place.... is this something you feel needs to be
+> added or am I just not understanding.... 
 
-> Alternately, if this will only be used by future patches, please feel
-> free to add this patch to that set, and add
 
-The DMAPI code was released at the same time as XFS, but it seems to
-be a spec that is not widely used (unsurprising since not may people
-have tape robots doing their bidding) and, perhaps more importantly,
-its not viewed as a particularly clean spec by, erm, certain kernel
-developers. ;)
+Yes, I believe that the entire user identification, uid, gid, groups list,
+needs to be used to identify the correct cache entry.  An easy example of
+differing access rights, but with the same uid, is an application which is
+setgid.
 
-cheers.
+I believe that the "key" to the cache entry should be the entire user
+identification that the NFS server sees and uses when calculating access
+rights.  Using the uid as part of a hash key is okay and probably a good
+idea, but I don't think that the uid is sufficient to completely identify
+a specific cache entry.
 
--- 
-Nathan
+Given this, then I suspect that the current access cache is broken...
+
+    Thanx...
+
+       ps
