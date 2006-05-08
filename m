@@ -1,110 +1,49 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [NFS] Re: [PATCH][RFC] NFS: Improving the access cache
-Date: Sat, 06 May 2006 10:35:06 -0400
-Message-ID: <445CB41A.9040400@RedHat.com>
-References: <444EC96B.80400@RedHat.com>	<17486.64825.942642.594218@cse.unsw.edu.au>	<444F88EF.5090105@RedHat.com> <17487.62730.16297.979429@cse.unsw.edu.au> <44572B33.4070100@RedHat.com> <445834CB.4050408@citi.umich.edu> <445B5C2D.5040404@RedHat.com> <445B66E6.7030700@redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH,RESEND] make knfsd interact cleanly with HSMs
+Date: Mon, 8 May 2006 11:13:06 +1000
+Message-ID: <17502.39714.775234.337995@cse.unsw.edu.au>
+References: <20060505115254.GA13916@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: nfs@lists.sourceforge.net
-In-Reply-To: <445B66E6.7030700@redhat.com>
+To: Greg Banks <gnb@sgi.com>
+In-Reply-To: message from Greg Banks on Friday May 5
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Peter Staubach wrote:
->>>
->>> 2.  Use a radix tree per inode.  
->>
->>
->> Using radix trees actual makes things much simpler... Good idea, imo.
->>
+On Friday May 5, gnb@sgi.com wrote:
 > 
-> It does seem like a good idea, although just using the uid is not sufficient
-> to identify the correct access cache entry.  The group and groups list must
-> also be used.  Can the radix tree implementation support this?
-We could use (nfsi + uid) as the index... but its not clear what that
-would buys us... And the group and group list were never part of the
-cache in the first place.... is this something you feel needs to be
-added or am I just not understanding....
-
->> static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, 
->> int mask)
->> @@ -1674,19 +1706,42 @@ static int nfs_do_access(struct inode *i
->>
->>     status = nfs_access_get_cached(inode, cred, &cache);
->>     if (status == 0)
->> -        goto out;
->> +        goto out_nowait;
->> +
->> +    if (test_and_set_bit(NFS_INO_ACCESS, &NFS_FLAGS(inode))) {
->> +        status = nfs_wait_on_inode(inode, NFS_INO_ACCESS);
->> +        if (status < 0)
->> +            return status;
->> +
->> +        nfs_access_get_cached(inode, cred, &cache);
->> +        goto out_nowait;
->>  
->>
+> This patch seeks to remedy the interaction between knfsd and HSMs by
+> providing mechanisms to allow knfsd to tell an underlying filesystem
+> (which supports HSMs) not to block for reads, writes and truncates
+> of offline files.  It's a port of a Linux 2.4 patch used in SGI's
+> ProPack distro since 2004 and in SLES9 since SP2.  The patch:
 > 
-> You can't just go to out_nowait here, can you?  What happens if something
-> happened to the file while you were asleep?  
-point... after the nfs_wait_on_inode() call, nfs_access_get_cached()
-will be retried ala...
-
-static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int 
-mask)
-{
-     struct nfs_access_entry cache;
-     int status;
-
-retry:
-     status = nfs_access_get_cached(inode, cred, &cache);
-     if (status == 0)
-         goto out_nowait;
-
-     if (test_and_set_bit(NFS_INO_ACCESS, &NFS_FLAGS(inode))) {
-         status = nfs_wait_on_inode(inode, NFS_INO_ACCESS);
-         if (status < 0)
-             return status;
-
-         goto retry;
-     }
-
-
-
->> +static inline void nfs_zap_access_cache(struct inode *inode)
->> +{
->> +    struct nfs_access_entry *cache;
->> +
->> +    cache = radix_tree_delete(&NFS_I(inode)->access_cache, 
->> inode->i_uid);
->>  
->>
+> *  provides a new ATTR_NO_BLOCK flag which the kernel can
+>    use to tell a filesystem's inode_ops->setattr() operation not
+>    to block when truncating an offline file.  XFS already obeys
+>    this flag (inside a #ifdef)
 > 
-> Do you need to be hold access_lock here?
-Yes...
-
+> *  changes knfsd to provide ATTR_NO_BLOCK when it does the VFS
+>    calls to implement the SETATTR NFS call.
 > 
->> +    if (cache) {
->> +        put_rpccred(cache->cred);
->> +        kfree(cache);
->> +    }
->>  
->>
+> *  changes knfsd to supply the O_NONBLOCK flag in the temporary
+>    struct file it uses for VFS reads and writes, in order to ask
+>    the filesystem not to block when reading or writing an offline
+>    file.  XFS already obeys this new semantic for O_NONBLOCK
+>    (and in SLES9 so does JFS).
 > 
-> What happens if there was more than 1 entry in the cache?
-I thought that since nfs_clear_inode() is called for
-each and every inode that cache would drain "naturally"
-but that turns out to be a bit brain dead... :-\
+> *  adds code to translate the -EAGAIN the filesystem returns when
+>    it would have blocked, to the -ETIMEDOUT that knfsd expects.
+> 
 
-The problem is there does not seems to be a radix tree interface
-that will simply destroy the tree... It appears you need to know
-at least the beginning index and since the indexes in this tree are
-not symmetrical I'm not sure that would even help...
+Yes, I'm happy with this.  All the changes make sense and look right.
 
-Anybody.... Is there a way to destroy a radix tree without
-known any of the indexes?
+Thanks for persisting with it.
 
-steved.
+I'll send it on up the chain...
+
+NeilBrown
 
