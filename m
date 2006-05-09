@@ -1,73 +1,59 @@
-From: "Shankar Anand" <shanand@novell.com>
-Subject: Re: nfsstat for NFSv4
-Date: Tue, 09 May 2006 07:52:55 -0600
-Message-ID: <4460EC0F.AD69.00CC.0@novell.com>
-References: <4452537B.AD69.00CC.0@novell.com> <445B8B54.AD69.00CC.0@novell.com>
-	<445F9F92.AD69.00CC.0@novell.com>
-	<20060508222531.GA4849@fieldses.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: trace attached - Re: Folder in NFS-Share-Permission denied-but the user is group member
+Date: Tue, 9 May 2006 10:01:34 +0200
+Message-ID: <20060509080134.GA20216@janus>
+References: <445B30FD.9040103@vwi.tu-dresden.de> <17499.15037.908665.125536@cse.unsw.edu.au> <445F05BD.8010503@vwi.tu-dresden.de> <17503.11043.7670.762241@cse.unsw.edu.au> <445F3A91.2030809@vwi.tu-dresden.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: , gam3@gam3.net, G.AllenMorrisIII@linux-nfs.org,
-	Charles Lever <Charles.Lever@netapp.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>,<nfsv4@linux-nfs.org>,
-	<nfs@lists.sourceforge.net>
-In-Reply-To: <20060508222531.GA4849@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FdNA8-0005l6-AD
+	for nfs@lists.sourceforge.net; Tue, 09 May 2006 01:01:44 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
+	id 1FdNA8-0002cs-5J
+	for nfs@lists.sourceforge.net; Tue, 09 May 2006 01:01:44 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1FdNA5-0000DV-UR
+	for nfs@lists.sourceforge.net; Tue, 09 May 2006 01:01:44 -0700
+To: Steffen Kolbe <kolbe@vwi.tu-dresden.de>
+In-Reply-To: <445F3A91.2030809@vwi.tu-dresden.de>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Mon, May 08, 2006 at 02:33:21PM +0200, Steffen Kolbe wrote:
 
-> "J. Bruce Fields" <bfields@fieldses.org> 5/9/2006 3:55:31 am >>>
->>On Mon, May 08, 2006 at 08:14:19AM -0600, Shankar Anand wrote:
->> I have added some code for NFSv4 server statistics for individual
-NFSv4
->> operations. I will submitting that to the NFS community soon.
-> 
->> I have some questions:
->> 1. I noticed in Allen's patch for nfsstat for NFSv4 statistics that
-he
->> has taken into account only 32 NFSv4 operations. Do you have any
-reasons
->> for leaving out the other operations (like PUTFH, SECINFO, SAVEFH)?
+[...]
+
+> .....so the user is in 25 groups, hmmmmm...... but I've no real chance 
+> to reduce them. I think the system groups + ~30 network groups for some 
+> users is minimum I need.
+
+Have a look at http://www.frankvm.com/nfs-ngroups/
 
 
-> At a guess: PUTFH and SAVEFH aren't particularly interesting, and
-> SECINFO isn't implemented yet on the server (and isn't used yet on
-the
-> client).
+-- 
+Frank
 
-But the problem with this is that we skip operations in between,  
-which breaks the order of the operations given in the RFC i.e. the
-linear order
-in which the statistics are captured in the NFSv4 server.
-Just want to know why this was done when capturing the count for an
-extra
-procedure does not require much extra effort, going by the existing
-code and 
-actually causes a break in the list of operation numbers.
 
->> 2. I understand that in NFSv3 server we write the statistics into
->> /proc/net/rpc/nfsd in the same order as the RPC procedure numbers.
-Using
->> the same logic, I have written the NFSv4 statistics to be logged
-into
->> /proc/net/rpc/nfsd in the same order in which the operations are
-listed
->> in the NFSv4 RFC. But the NFSv4 client statistics that are getting
->> printed in Allen's patch seem to be of a different order. Why was
-this
->> decided to be so?
-
-It would be great if someone can answer this too.
-
-Regards,
-Shankar
+-------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
