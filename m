@@ -1,26 +1,21 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: trace attached - Re: Folder in NFS-Share-Permission denied-but the user is group member
-Date: Tue, 9 May 2006 10:01:34 +0200
-Message-ID: <20060509080134.GA20216@janus>
-References: <445B30FD.9040103@vwi.tu-dresden.de> <17499.15037.908665.125536@cse.unsw.edu.au> <445F05BD.8010503@vwi.tu-dresden.de> <17503.11043.7670.762241@cse.unsw.edu.au> <445F3A91.2030809@vwi.tu-dresden.de>
+From: "Felipe Contreras" <felipe.contreras@gmail.com>
+Subject: Map to different uid/gid
+Date: Tue, 9 May 2006 17:04:21 -0500
+Message-ID: <94a0d4530605091504y388d2938jcfb45ea627a7d7a5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FdNA8-0005l6-AD
-	for nfs@lists.sourceforge.net; Tue, 09 May 2006 01:01:44 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1FdNA8-0002cs-5J
-	for nfs@lists.sourceforge.net; Tue, 09 May 2006 01:01:44 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FdaJf-0004zZ-Gv
+	for nfs@lists.sourceforge.net; Tue, 09 May 2006 15:04:27 -0700
+Received: from py-out-1112.google.com ([64.233.166.177])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FdNA5-0000DV-UR
-	for nfs@lists.sourceforge.net; Tue, 09 May 2006 01:01:44 -0700
-To: Steffen Kolbe <kolbe@vwi.tu-dresden.de>
-In-Reply-To: <445F3A91.2030809@vwi.tu-dresden.de>
+	id 1FdaJe-0003z6-47
+	for nfs@lists.sourceforge.net; Tue, 09 May 2006 15:04:27 -0700
+Received: by py-out-1112.google.com with SMTP id x31so839835pye
+        for <nfs@lists.sourceforge.net>; Tue, 09 May 2006 15:04:21 -0700 (PDT)
+To: NFS <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,19 +29,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, May 08, 2006 at 02:33:21PM +0200, Steffen Kolbe wrote:
+Hi everybody,
 
-[...]
+I have searched in several places and asked people, and I haven't
+found if it's possible to map to a different uid/gid.
 
-> .....so the user is in 25 groups, hmmmmm...... but I've no real chance 
-> to reduce them. I think the system groups + ~30 network groups for some 
-> users is minimum I need.
+Let's say locally I'm uid 500 and gid 500 but I want to mount a NFS
+share and be able to act as if I were uid 1000 gid 1000 (My user on
+the server), that way I don't have to change anything in my box.
 
-Have a look at http://www.frankvm.com/nfs-ngroups/
+Is that possible?
 
-
--- 
-Frank
+--
+Felipe Contreras
 
 
 -------------------------------------------------------
