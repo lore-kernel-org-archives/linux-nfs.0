@@ -1,71 +1,103 @@
-From: "Shankar Anand" <shanand@novell.com>
-Subject: Re: nfsstat for NFSv4
-Date: Wed, 10 May 2006 05:19:21 -0600
-Message-ID: <44621990.AD69.00CC.0@novell.com>
-References: <4452537B.AD69.00CC.0@novell.com> <445B8B54.AD69.00CC.0@novell.com>
-	<445F9F92.AD69.00CC.0@novell.com>
-	<20060508222531.GA4849@fieldses.org>
-	<4460EC0F.AD69.00CC.0@novell.com>
+From: mehta kiran <kiranmehta1981@yahoo.com>
+Subject: Re: nfs export from mount point with --bind ?
+Date: Wed, 10 May 2006 04:34:31 -0700 (PDT)
+Message-ID: <20060510113431.15419.qmail@web51604.mail.yahoo.com>
+References: <44618C81.5050503@vwi.tu-dresden.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "G.Allen Morris III" <gam3@gam3.net>,
-	Charles Lever <Charles.Lever@netapp.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>,<nfsv4@linux-nfs.org>,
-	<nfs@lists.sourceforge.net>
-In-Reply-To: <4460EC0F.AD69.00CC.0@novell.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset=iso-8859-1
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Fdmxh-0005MG-On
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 04:34:37 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fdmxh-0001RE-NM
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 04:34:37 -0700
+Received: from web51604.mail.yahoo.com ([206.190.38.209])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1Fdmxh-0003Nq-0Z
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 04:34:37 -0700
+To: kolbe@vwi.tu-dresden.de, nfs@lists.sourceforge.net
+In-Reply-To: <44618C81.5050503@vwi.tu-dresden.de>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-*Sorry I am repeating my previous email as it was badly cluttered*
+Try exporting with "nohide" option. That would make
+children filesystem visible to client.
 
-Hi,
+--- Steffen Kolbe <kolbe@vwi.tu-dresden.de> wrote:
 
-> "J. Bruce Fields" <bfields@fieldses.org> 5/9/2006 3:55:31 am >>>
->> On Mon, May 08, 2006 at 08:14:19 AM Shankar Anand wrote:
->> I have added some code for NFSv4 server statistics for 
->> individual NFSv4 operations. I will submitting that to the 
->> NFS community soon.
+> A server has mounted some luns (partitions) from a
+> fc-storage to different
+> mount points in the system.
+> These are mounted for export via 'mount --bind'
+> under an /export folder.
+> Is it possible to export only these /export folder
+> via NFS or can I only=20
+> export
+> every "sub mount point (=3D --bind) in /exports" with
+> the NFS kernel server?
+>=20
+> The user server can this, but he hangs some times
+> (Debian AMD64). So I=20
+> changed
+> to the kernel server whitch works stable. But he
+> seems not to export=20
+> folders
+> which are mounted via --bind under a "master
+> export". If I mount these=20
+> master
+> folder to a client, the folder is empty.
+>=20
+> Is their a solutions or special option for this
+> available?
+>=20
+> Thanks
+> Steffen
+>=20
+>=20
+>
+-------------------------------------------------------
+> Using Tomcat but need to do more? Need to support
+> web services, security?
+> Get stuff done quickly with pre-integrated
+> technology to make your job easier
+> Download IBM WebSphere Application Server v.1.0.1
+> based on Apache Geronimo
+>
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D=
+121642
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
->> I have some questions:
->> 1. I noticed in Allen's patch for nfsstat for NFSv4 statistics 
->> that he has taken into account only 32 NFSv4 operations. 
->> Do you have any reasons for leaving out the other 
->> operations (like PUTFH, SECINFO, SAVEFH)?
 
-> At a guess: PUTFH and SAVEFH aren't particularly interesting, 
-> and SECINFO isn't implemented yet on the server 
-> (and isn't used yet on the client).
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
 
-But the problem with this is that we skip operations in 
-between, which breaks the order of the operations given 
-in the RFC i.e. the linear order in which the statistics are 
-captured in the NFSv4 server.
 
-Just want to know why this was done when capturing 
-the count for an extra procedure does not require much 
-extra effort, going by the existing code and actually 
-causes a break in the list of operation numbers.
-
->> 2. I understand that in NFSv3 server we write the statistics 
->> into /proc/net/rpc/nfsd in the same order as the RPC 
->> procedure numbers. Using the same logic, I have written 
->> the NFSv4 statistics to be logged into /proc/net/rpc/nfsd 
->> in the same  order in which the operations are listed in 
->> the NFSv4 RFC. 
->> But the NFSv4 client statistics that are getting printed in 
->> Allen's patch seem to be of a different order. 
->> Why was this decided to be so?
-
-It would be great if someone can answer this too.
-
-Regards,
-Shankar
+-------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job ea=
+sier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronim=
+o
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D=
+121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
