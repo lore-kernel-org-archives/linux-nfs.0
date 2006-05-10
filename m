@@ -1,21 +1,34 @@
-From: "Gregory Hickey" <dup@rscds.co.uk>
-Subject: status symbol
-Date: Wed, 10 May 2006 09:11:26 -0700
-Message-ID: <001d01c6744c$b01f8554$1d971142@dkcav.iw>
+From: Lin Feng Shen <shenlinf@cn.ibm.com>
+Subject: [PATCH 1/1] NFS: fix error handling on access_ok in compat_sys_nfsservctl
+Date: Thu, 11 May 2006 00:44:54 +0800
+Message-ID: <44621886.7060606@cn.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/related;
-	type="multipart/alternative";
-	boundary="----=_NextPart_000_0019_01C67412.03C0AD04"
+Content-Type: text/html; charset=ISO-8859-1
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FdrJr-0002JH-UL
-	for nfs@lists.sourceforge.net; Wed, 10 May 2006 09:13:47 -0700
-Received: from pool-71-102-148-55.snloca.dsl-w.verizon.net ([71.102.148.55] helo=66-17-49-66.biz.snlo.arrival.net)
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FdrJo-0001jG-Ak
-	for nfs@lists.sourceforge.net; Wed, 10 May 2006 09:13:47 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1FdroW-0005nn-Mb
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 09:45:28 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FdroW-0004Fm-Ls
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 09:45:28 -0700
+Received: from ausmtp04.au.ibm.com ([202.81.18.152])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FdroT-00032d-QE
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 09:45:28 -0700
+Received: from sd0208e0.au.ibm.com (d23rh904.au.ibm.com [202.81.18.202])
+	by ausmtp04.au.ibm.com (8.13.6/8.13.5) with ESMTP id k4AGttci218568
+	for <nfs@lists.sourceforge.net>; Thu, 11 May 2006 02:55:55 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.250.242])
+	by sd0208e0.au.ibm.com (8.12.10/NCO/VER6.8) with ESMTP id k4AGmLhX244350
+	for <nfs@lists.sourceforge.net>; Thu, 11 May 2006 02:48:26 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11/8.13.3) with ESMTP id k4AGj1QU007451
+	for <nfs@lists.sourceforge.net>; Thu, 11 May 2006 02:45:01 +1000
+To: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,217 +42,195 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This is a multi-part message in MIME format.
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>From: Lin Feng Shen <a class="moz-txt-link-rfc2396E" href="mailto:shenlinf@cn.ibm.com">&lt;shenlinf@cn.ibm.com&gt;</a>
 
-------=_NextPart_000_0019_01C67412.03C0AD04
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_001A_01C67412.03C0AD18"
+Functions compat_nfs_svc_trans, compat_nfs_clnt_trans, compat_nfs_exp_trans,
+compat_nfs_getfd_trans and compat_nfs_getfs_trans, which are called by
+compat_sys_nfsservctl(fs/compat.c), don't handle the return value of
+access_ok properly. access_ok return 1 when the addr is valid, and 0
+when it's not, but these functions have the reversed understanding. When the
+address is valid, they always return -EFAULT to compat_sys_nfsservctl.
 
+An example is to run /usr/sbin/rpc.nfsd(32bit program on Power5). It doesn't
+function as expected. strace showes that nfsservctl returns -EFAULT.
 
-------=_NextPart_001_001A_01C67412.03C0AD18
-Content-Type: text/plain;
-	charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
+The patch fixes this by correcting the error handling on the return value of
+access_ok in the five functions. It is created against linux-2.6.17-rc3-git16.
 
+Signed-off-by: Lin Feng Shen <a class="moz-txt-link-rfc2396E" href="mailto:shenlinf@cn.ibm.com">&lt;shenlinf@cn.ibm.com&gt;</a>
+--- 
 
-------=_NextPart_001_001A_01C67412.03C0AD18
-Content-Type: text/html;
-	charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dwindows-1252">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2><IMG alt=3D"" hspace=3D0=20
-src=3D"cid:001801c6744c$b01f84f0$1d971142@dkcav.iw" align=3Dbaseline=20
-border=3D0></FONT></DIV>
-</BODY></HTML>
-
-------=_NextPart_001_001A_01C67412.03C0AD18--
-
-------=_NextPart_000_0019_01C67412.03C0AD04
-Content-Type: image/gif;
-	name="touch-and-go.gif"
-Content-Transfer-Encoding: base64
-Content-ID: <001801c6744c$b01f84f0$1d971142@dkcav.iw>
-
-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
-AAA7
-
-------=_NextPart_000_0019_01C67412.03C0AD04--
+--- linux-2.6.17-rc3-git16/fs/compat.c.orig	2006-05-09 09:07:38.000000000 -0500
++++ linux-2.6.17-rc3-git16/fs/compat.c	2006-05-09 09:21:00.000000000 -0500
+@@ -2032,101 +2032,96 @@ union compat_nfsctl_res {
+ 
+ static int compat_nfs_svc_trans(struct nfsctl_arg *karg, struct compat_nfsctl_arg __user *arg)
+ {
+-	int err;
+-
+-	err = access_ok(VERIFY_READ, &amp;arg-&gt;ca32_svc, sizeof(arg-&gt;ca32_svc));
+-	err |= get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version);
+-	err |= __get_user(karg-&gt;ca_svc.svc_port, &amp;arg-&gt;ca32_svc.svc32_port);
+-	err |= __get_user(karg-&gt;ca_svc.svc_nthreads, &amp;arg-&gt;ca32_svc.svc32_nthreads);
+-	return (err) ? -EFAULT : 0;
++	if(!access_ok(VERIFY_READ, &amp;arg-&gt;ca32_svc, sizeof(arg-&gt;ca32_svc)) ||
++	    get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version) ||
++	    __get_user(karg-&gt;ca_svc.svc_port, &amp;arg-&gt;ca32_svc.svc32_port) ||
++	    __get_user(karg-&gt;ca_svc.svc_nthreads, &amp;arg-&gt;ca32_svc.svc32_nthreads))
++		return -EFAULT;
++	return 0;
+ }
+ 
+ static int compat_nfs_clnt_trans(struct nfsctl_arg *karg, struct compat_nfsctl_arg __user *arg)
+ {
+-	int err;
+-
+-	err = access_ok(VERIFY_READ, &amp;arg-&gt;ca32_client, sizeof(arg-&gt;ca32_client));
+-	err |= get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_client.cl_ident[0],
++	if(!access_ok(VERIFY_READ, &amp;arg-&gt;ca32_client, sizeof(arg-&gt;ca32_client)) ||
++	    get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version) ||
++	    __copy_from_user(&amp;karg-&gt;ca_client.cl_ident[0],
+ 			  &amp;arg-&gt;ca32_client.cl32_ident[0],
+-			  NFSCLNT_IDMAX);
+-	err |= __get_user(karg-&gt;ca_client.cl_naddr, &amp;arg-&gt;ca32_client.cl32_naddr);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_client.cl_addrlist[0],
++			  NFSCLNT_IDMAX) ||
++	    __get_user(karg-&gt;ca_client.cl_naddr, &amp;arg-&gt;ca32_client.cl32_naddr) ||
++	    __copy_from_user(&amp;karg-&gt;ca_client.cl_addrlist[0],
+ 			  &amp;arg-&gt;ca32_client.cl32_addrlist[0],
+-			  (sizeof(struct in_addr) * NFSCLNT_ADDRMAX));
+-	err |= __get_user(karg-&gt;ca_client.cl_fhkeytype,
+-		      &amp;arg-&gt;ca32_client.cl32_fhkeytype);
+-	err |= __get_user(karg-&gt;ca_client.cl_fhkeylen,
+-		      &amp;arg-&gt;ca32_client.cl32_fhkeylen);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_client.cl_fhkey[0],
++			  (sizeof(struct in_addr) * NFSCLNT_ADDRMAX)) ||
++	    __get_user(karg-&gt;ca_client.cl_fhkeytype,
++		      &amp;arg-&gt;ca32_client.cl32_fhkeytype) ||
++	    __get_user(karg-&gt;ca_client.cl_fhkeylen,
++		      &amp;arg-&gt;ca32_client.cl32_fhkeylen) ||
++	    __copy_from_user(&amp;karg-&gt;ca_client.cl_fhkey[0],
+ 			  &amp;arg-&gt;ca32_client.cl32_fhkey[0],
+-			  NFSCLNT_KEYMAX);
++			  NFSCLNT_KEYMAX))
++		return -EFAULT;
+ 
+-	return (err) ? -EFAULT : 0;
++	return 0;
+ }
+ 
+ static int compat_nfs_exp_trans(struct nfsctl_arg *karg, struct compat_nfsctl_arg __user *arg)
+ {
+-	int err;
+-
+-	err = access_ok(VERIFY_READ, &amp;arg-&gt;ca32_export, sizeof(arg-&gt;ca32_export));
+-	err |= get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_export.ex_client[0],
++	if(!access_ok(VERIFY_READ, &amp;arg-&gt;ca32_export, sizeof(arg-&gt;ca32_export)) ||
++	    get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version) ||
++	    __copy_from_user(&amp;karg-&gt;ca_export.ex_client[0],
+ 			  &amp;arg-&gt;ca32_export.ex32_client[0],
+-			  NFSCLNT_IDMAX);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_export.ex_path[0],
++			  NFSCLNT_IDMAX) ||
++	    __copy_from_user(&amp;karg-&gt;ca_export.ex_path[0],
+ 			  &amp;arg-&gt;ca32_export.ex32_path[0],
+-			  NFS_MAXPATHLEN);
+-	err |= __get_user(karg-&gt;ca_export.ex_dev,
+-		      &amp;arg-&gt;ca32_export.ex32_dev);
+-	err |= __get_user(karg-&gt;ca_export.ex_ino,
+-		      &amp;arg-&gt;ca32_export.ex32_ino);
+-	err |= __get_user(karg-&gt;ca_export.ex_flags,
+-		      &amp;arg-&gt;ca32_export.ex32_flags);
+-	err |= __get_user(karg-&gt;ca_export.ex_anon_uid,
+-		      &amp;arg-&gt;ca32_export.ex32_anon_uid);
+-	err |= __get_user(karg-&gt;ca_export.ex_anon_gid,
+-		      &amp;arg-&gt;ca32_export.ex32_anon_gid);
++			  NFS_MAXPATHLEN) ||
++	    __get_user(karg-&gt;ca_export.ex_dev,
++		      &amp;arg-&gt;ca32_export.ex32_dev) ||
++	    __get_user(karg-&gt;ca_export.ex_ino,
++		      &amp;arg-&gt;ca32_export.ex32_ino) ||
++	    __get_user(karg-&gt;ca_export.ex_flags,
++		      &amp;arg-&gt;ca32_export.ex32_flags) ||
++	    __get_user(karg-&gt;ca_export.ex_anon_uid,
++		      &amp;arg-&gt;ca32_export.ex32_anon_uid) ||
++	    __get_user(karg-&gt;ca_export.ex_anon_gid,
++		      &amp;arg-&gt;ca32_export.ex32_anon_gid))
++		return -EFAULT;
+ 	SET_UID(karg-&gt;ca_export.ex_anon_uid, karg-&gt;ca_export.ex_anon_uid);
+ 	SET_GID(karg-&gt;ca_export.ex_anon_gid, karg-&gt;ca_export.ex_anon_gid);
+ 
+-	return (err) ? -EFAULT : 0;
++	return 0;
+ }
+ 
+ static int compat_nfs_getfd_trans(struct nfsctl_arg *karg, struct compat_nfsctl_arg __user *arg)
+ {
+-	int err;
+-
+-	err = access_ok(VERIFY_READ, &amp;arg-&gt;ca32_getfd, sizeof(arg-&gt;ca32_getfd));
+-	err |= get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_getfd.gd_addr,
++	if(!access_ok(VERIFY_READ, &amp;arg-&gt;ca32_getfd, sizeof(arg-&gt;ca32_getfd)) ||
++	    get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version) ||
++	    __copy_from_user(&amp;karg-&gt;ca_getfd.gd_addr,
+ 			  &amp;arg-&gt;ca32_getfd.gd32_addr,
+-			  (sizeof(struct sockaddr)));
+-	err |= __copy_from_user(&amp;karg-&gt;ca_getfd.gd_path,
++			  (sizeof(struct sockaddr))) ||
++	    __copy_from_user(&amp;karg-&gt;ca_getfd.gd_path,
+ 			  &amp;arg-&gt;ca32_getfd.gd32_path,
+-			  (NFS_MAXPATHLEN+1));
+-	err |= __get_user(karg-&gt;ca_getfd.gd_version,
+-		      &amp;arg-&gt;ca32_getfd.gd32_version);
++			  (NFS_MAXPATHLEN+1)) ||
++	    __get_user(karg-&gt;ca_getfd.gd_version,
++		      &amp;arg-&gt;ca32_getfd.gd32_version))
++		return -EFAULT;
+ 
+-	return (err) ? -EFAULT : 0;
++	return 0;
+ }
+ 
+ static int compat_nfs_getfs_trans(struct nfsctl_arg *karg, struct compat_nfsctl_arg __user *arg)
+ {
+-	int err;
+-
+-	err = access_ok(VERIFY_READ, &amp;arg-&gt;ca32_getfs, sizeof(arg-&gt;ca32_getfs));
+-	err |= get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version);
+-	err |= __copy_from_user(&amp;karg-&gt;ca_getfs.gd_addr,
++	if(!access_ok(VERIFY_READ, &amp;arg-&gt;ca32_getfs, sizeof(arg-&gt;ca32_getfs)) ||
++	    get_user(karg-&gt;ca_version, &amp;arg-&gt;ca32_version) ||
++	    __copy_from_user(&amp;karg-&gt;ca_getfs.gd_addr,
+ 			  &amp;arg-&gt;ca32_getfs.gd32_addr,
+-			  (sizeof(struct sockaddr)));
+-	err |= __copy_from_user(&amp;karg-&gt;ca_getfs.gd_path,
++			  (sizeof(struct sockaddr))) ||
++	    __copy_from_user(&amp;karg-&gt;ca_getfs.gd_path,
+ 			  &amp;arg-&gt;ca32_getfs.gd32_path,
+-			  (NFS_MAXPATHLEN+1));
+-	err |= __get_user(karg-&gt;ca_getfs.gd_maxlen,
+-		      &amp;arg-&gt;ca32_getfs.gd32_maxlen);
++			  (NFS_MAXPATHLEN+1)) ||
++	    __get_user(karg-&gt;ca_getfs.gd_maxlen,
++		      &amp;arg-&gt;ca32_getfs.gd32_maxlen))
++		return -EFAULT;
+ 
+-	return (err) ? -EFAULT : 0;
++	return 0;
+ }
+ 
+ /* This really doesn't need translations, we are only passing</pre>
+</body>
+</html>
 
 
 
