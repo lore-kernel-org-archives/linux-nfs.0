@@ -1,39 +1,18 @@
-From: Steffen Kolbe <kolbe@vwi.tu-dresden.de>
-Subject: nfs export from mount point with --bind ?
-Date: Wed, 10 May 2006 08:47:29 +0200
-Message-ID: <44618C81.5050503@vwi.tu-dresden.de>
-Reply-To: kolbe@vwi.tu-dresden.de
+From: nthost-mailer-daemon@nthost.ru
+Subject: failure notice
+Date: 10 May 2006 08:03:55 -0000
+Message-ID: <E1Fdjcd-0003CL-I0@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Type: multipart/mixed; boundary="1147248235nthost.ru1677750"
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FdiTz-00054u-EA
-	for nfs@lists.sourceforge.net; Tue, 09 May 2006 23:47:39 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FdiTz-0008Ad-06
-	for nfs@lists.sourceforge.net; Tue, 09 May 2006 23:47:39 -0700
-Received: from rks36.urz.tu-dresden.de ([141.30.66.166] helo=mailgate.urz.tu-dresden.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FdiTw-0002eu-HC
-	for nfs@lists.sourceforge.net; Tue, 09 May 2006 23:47:39 -0700
-Received: from [127.0.0.1] (helo=localhost)
-	  by mailgate.urz.tu-dresden.de with esmtp (exim-4.51)
-	  for <nfs@lists.sourceforge.net>
-	  id 1FdiTq-0007nU-A6; Wed, 10 May 2006 08:47:30 +0200
-Received: from mailgate.urz.tu-dresden.de ([127.0.0.1])
- by localhost (rks36 [127.0.0.1]) (amavisd-new, port 10024) with ESMTP
- id 17688-448 for <nfs@lists.sourceforge.net>;
- Wed, 10 May 2006 08:47:29 +0200 (MEST)
-Received: from [141.30.186.11] (helo=vwitme011.vwi.vkw.tu-dresden.de)
-	  by mailgate.urz.tu-dresden.de with esmtp (exim-4.51)
-	  for <nfs@lists.sourceforge.net>
-	  id 1FdiTp-0007nP-Qy; Wed, 10 May 2006 08:47:29 +0200
-Received: from vwitme048.vwi.vkw.tu-dresden.de ([141.30.186.48])
-	by vwitme011.vwi.vkw.tu-dresden.de with esmtp (Exim 4.52)
-	id 1FdiTk-0007BC-2y
-	for nfs@lists.sourceforge.net; Wed, 10 May 2006 08:47:24 +0200
+	id 1Fdjce-0002eU-V7
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 01:00:40 -0700
+Received: from mail5.nthost.ru ([217.147.29.211] helo=mail2.nthost.ru)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1Fdjcd-0003CL-I0
+	for nfs@lists.sourceforge.net; Wed, 10 May 2006 01:00:41 -0700
 To: nfs@lists.sourceforge.net
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
@@ -48,25 +27,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-A server has mounted some luns (partitions) from a fc-storage to different
-mount points in the system.
-These are mounted for export via 'mount --bind' under an /export folder.
-Is it possible to export only these /export folder via NFS or can I only 
-export
-every "sub mount point (= --bind) in /exports" with the NFS kernel server?
+--1147248235nthost.ru1677750
 
-The user server can this, but he hangs some times (Debian AMD64). So I 
-changed
-to the kernel server whitch works stable. But he seems not to export 
-folders
-which are mounted via --bind under a "master export". If I mount these 
-master
-folder to a client, the folder is empty.
+Hi. This is the qmail-send program at nthost.ru.
+I'm afraid I wasn't able to deliver your message to the following addresses.
+This is a permanent error; I've given up. Sorry it didn't work out.
 
-Is their a solutions or special option for this available?
+<julia@cruiz.ru>:
+Sorry, no mailbox here by that name. vpopmail (#5.1.1)
 
-Thanks
-Steffen
+--- Enclosed are the original headers of the message.
+
+--1147248235nthost.ru1677750
+Content-Type: message/rfc822
+
+Return-Path: <nfs@lists.sourceforge.net>
+Received: (qmail 96069 invoked by uid 399); 10 May 2006 08:03:54 -0000
+Received: from localhost by mail.nthost.ru
+	with SpamAssassin (version 3.1.0);
+	Wed, 10 May 2006 12:03:55 +0400
+From: nfs@lists.sourceforge.net
+To: olga@cruiz.ru
+Subject: *****SPAM***** Mail Delivery (failure olga@cruiz.ru)
+Date: Wed, 10 May 2006 12:00:34 +0400
+X-Spam-Flag: YES
+X-Spam-Checker-Version: SpamAssassin 3.1.0 (2005-09-13) on localhost
+X-Spam-Level: ********
+X-Spam-Status: Yes, score=8.0 required=2.0 tests=ADDRESS_IN_SUBJECT,
+	EXTRA_MPART_TYPE,HTML_MESSAGE,MIME_HTML_MOSTLY,MIME_QP_LONG_LINE,
+	MISSING_MIMEOLE,MPART_ALT_DIFF,PRIORITY_NO_NAME autolearn=disabled
+	version=3.1.0
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----------=_44619E6B.08804474"
+
+(Body supressed)
+
+
+--1147248235nthost.ru1677750--
 
 
 -------------------------------------------------------
