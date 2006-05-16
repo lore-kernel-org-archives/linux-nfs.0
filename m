@@ -1,29 +1,35 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: [2.6 patch] fs/nfsd/nfs4acl.c: remove the unused EXPORT_SYMBOL's
-Date: Tue, 16 May 2006 19:43:43 +0200
-Message-ID: <20060516174343.GC10077@stusta.de>
+From: "Tradebit System" <info@tradebit.com>
+Subject: SPAM stuff....
+Date: Tue, 16 May 2006 17:29:36 +0200
+Message-ID: <071f01c678fd$8a634b60$0700a8c0@muelleimer>
+References: <000801c67742$a4ae9725$4bb0bb54@btbuks>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@cse.unsw.edu.au, nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fg3c6-0003R9-BI
-	for nfs@lists.sourceforge.net; Tue, 16 May 2006 10:45:42 -0700
+	id 1Fg1Ub-0005Hy-Sx
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 08:29:49 -0700
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fg3c6-0006GV-AM
-	for nfs@lists.sourceforge.net; Tue, 16 May 2006 10:45:42 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	id 1Fg1Ub-000531-Pl
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 08:29:49 -0700
+Received: from aibo.runbox.com ([193.71.199.94])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
 	(Exim 4.44)
-	id 1Fg3c6-0000gA-0g
-	for nfs@lists.sourceforge.net; Tue, 16 May 2006 10:45:42 -0700
-Received: from emailhub.stusta.mhn.de ([141.84.69.5] helo=mailout.stusta.mhn.de)
-	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
-	id 1Fg3c3-0003Xh-Uy
-	for nfs@lists.sourceforge.net; Tue, 16 May 2006 10:45:41 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1Fg1Ua-0007ut-7m
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 08:29:49 -0700
+Received: from [10.9.9.161] (helo=patch.runbox.com ident=Debian-exim)
+	by greyhound.runbox.com with esmtp (Exim 4.34)
+	id 1Fg1US-00082i-Sd
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 17:29:40 +0200
+Received: from [84.168.168.17] (helo=muelleimer)
+	by patch.runbox.com with esmtpa  (uid:433466 )  (Exim 4.50)
+	id 1Fg1US-0003Bv-Ia
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 17:29:40 +0200
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <000801c67742$a4ae9725$4bb0bb54@btbuks>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,40 +43,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-This patch removes the unused EXPORT_SYMBOL's from fs/nfsd/nfs4acl.c.
+>	From: nfs-admin@lists.sourceforge.net
+[mailto:nfs-admin@lists.sourceforge.net] On Behalf Of Dorothy Walton
+>	Sent: Sunday, May 14, 2006 12:30 PM
+>	To: nfs@lists.sourceforge.net
+>	Subject: [NFS] notice
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
-
----
-
-This patch was already sent on:
-- 1 May 2006
-- 12 Apr 2006
-
- fs/nfsd/nfs4acl.c |    8 --------
- 1 file changed, 8 deletions(-)
-
---- linux-2.6.17-rc1-mm2-full/fs/nfsd/nfs4acl.c.old	2006-04-12 22:42:17.000000000 +0200
-+++ linux-2.6.17-rc1-mm2-full/fs/nfsd/nfs4acl.c	2006-04-12 22:42:29.000000000 +0200
-@@ -821,9 +821,6 @@
- 	return -1;
- }
+Folks,
  
--EXPORT_SYMBOL(nfs4_acl_posix_to_nfsv4);
--EXPORT_SYMBOL(nfs4_acl_nfsv4_to_posix);
--
- struct nfs4_acl *
- nfs4_acl_new(void)
- {
-@@ -947,8 +944,3 @@
- 	}
- }
+that stuff (SPAM) seems to increase in the last days on this list...
  
--EXPORT_SYMBOL(nfs4_acl_new);
--EXPORT_SYMBOL(nfs4_acl_free);
--EXPORT_SYMBOL(nfs4_acl_add_ace);
--EXPORT_SYMBOL(nfs4_acl_get_whotype);
--EXPORT_SYMBOL(nfs4_acl_write_who);
+Do they (the spammers) don't need to signup to be able to send?
+That would mean, they do it manually?
+
+Are these email addresses deleted once they send that crap?
+
+Just curious,
+
+Ralf Schwoebel
+http://www.tradebit.com/
+
+
 
 
 
