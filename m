@@ -1,186 +1,231 @@
 From: "Shankar Anand" <shanand@novell.com>
-Subject: PATCH[2/2] Display nfsv4 server operations statistics
-Date: Tue, 16 May 2006 01:10:28 -0600
-Message-ID: <4469C83D.AD69.00CC.0@novell.com>
+Subject: PATCH [1/2] Capture nfsv4 server operations statistics
+Date: Tue, 16 May 2006 01:11:18 -0600
+Message-ID: <4469C86F.AD69.00CC.0@novell.com>
+References: <4469C82B.AD69.00CC.0@novell.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=__PartCBEEEBF4.0__="
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: <nfsv4@linux-nfs.org>,<nfs@lists.sourceforge.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="=__Part381D1806.0__="
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Fftgo-0003QR-Sa
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 00:09:54 -0700
+Received: from lucius.provo.novell.com ([137.65.81.172])
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Fftgo-00084p-EL
+	for nfs@lists.sourceforge.net; Tue, 16 May 2006 00:09:54 -0700
+To: <nfs@lists.sourceforge.net>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 This is a MIME message. If you are reading this text, you may want to 
 consider changing to a mail reader or gateway that understands how to 
 properly handle MIME multipart messages.
 
---=__PartCBEEEBF4.0__=
+--=__Part381D1806.0__=
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
-This patch adds code to nfsstat to read /proc/net/rpc/nfsd for nfsv4
-server statistics and print them.
+This patch adds a nfs4 operations count array to nfsd_stats structure.
+The count is  incremented in nfsd4_proc_compound() where all the
+operations
+are handled by the nfsv4 server. This count of individual nfsv4
+operations
+is also entered into /proc filesystem. 
 
 Submitted by: Shankar Anand <shanand@novell.com>
 
-diff -aurp nfs-utils-1.0.8.old/utils/nfsstat/nfsstat.c
-nfs-utils-1.0.8/utils/nfsstat/nfsstat.c
---- nfs-utils-1.0.8.old/utils/nfsstat/nfsstat.c	2005-12-20
-09:42:47.000000000 +0530
-+++ nfs-utils-1.0.8/utils/nfsstat/nfsstat.c	2006-05-16
-16:56:18.000000000 +0530
-@@ -29,6 +29,7 @@ static unsigned int	svcv3info[24];	/* NF
- static unsigned int	cltv3info[24];	/* NFSv3 call counts ([0] == 22)
-*/
- static unsigned int	svcv4info[4];	/* NFSv4 call counts ([0] == 2)
-*/
- static unsigned int	cltv4info[34];	/* NFSv4 call counts ([0] == 32)
-*/
-+static unsigned int	svcv4opinfo[39];/* NFSv4 call counts ([0] == 37)
-*/
- static unsigned int	svcnetinfo[5];	/* 0  # of received packets
- 					 * 1  UDP packets
- 					 * 2  TCP packets
-@@ -99,6 +100,16 @@ static const char *	nfscltv4name[32] = {
- 	"statfs",    "readlink",  "readdir", "server_caps",
-"delegreturn",
- };
+diff -aurp linux-2.6.17-rc2.old/fs/nfsd/nfs4proc.c
+linux-2.6.17-rc2/fs/nfsd/nfs4proc.c
+--- linux-2.6.17-rc2.old/fs/nfsd/nfs4proc.c	2006-04-19
+08:30:49.000000000 +0530
++++ linux-2.6.17-rc2/fs/nfsd/nfs4proc.c	2006-05-15
+21:05:00.000000000 +0530
+@@ -54,6 +54,7 @@
+ #include <linux/nfsd/state.h>
+ #include <linux/nfsd/xdr4.h>
+ #include <linux/nfs4_acl.h>
++#include <linux/nfsd/stats.h>
  
-+static const char *     nfssvrv4opname[37] = {
-+        "access",    "close",       "commit",   "create",      
-"delegpurge", "delegreturn",
-+        "getattr",   "getfh",       "link",     "lock",        
-"lockt",      "locku",
-+        "lookup",    "lookup_root", "nverify",  "open",        
-"openattr",   "open_conf",
-+        "open_dgrd", "putfh",       "putpubfh", "putrootfh",   
-"read",       "readdir",
-+        "readlink",  "remove",      "rename",   "renew",       
-"restorefh",  "savefh",
-+        "secinfo",   "setattr",     "setcltid", "setcltidconf",
-"verify",     "write",
-+        "rellockowner"
-+};
-+
- typedef struct statinfo {
- 	char		*tag;
- 	int		nrvals;
-@@ -115,6 +126,7 @@ static statinfo		svcinfo[] = {
- 	{ "proc2",      STRUCTSIZE(svcv2info),  svcv2info  },
- 	{ "proc3",      STRUCTSIZE(svcv3info),  svcv3info  },
- 	{ "proc4",      STRUCTSIZE(svcv4info),  svcv4info  },
-+	{ "proc4ops",   STRUCTSIZE(svcv4opinfo),svcv4opinfo},
- 	{ NULL,         0,                      NULL       }
- };
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
  
-@@ -381,11 +393,16 @@ main(int argc, char **argv)
- 				"Server nfs v3:\n",
- 				nfsv3name, svcv3info + 1,
-sizeof(nfsv3name)/sizeof(char *)
- 				);
--			if ((opt_prt & PRNT_V4) || ((opt_prt &
-PRNT_AUTO) && svcv4info[0] && svcv4info[svcv4info[0]+1] !=
-svcv4info[0]))
-+			if ((opt_prt & PRNT_V4) || ((opt_prt &
-PRNT_AUTO) && svcv4info[0] && svcv4info[svcv4info[0]+1] !=
-svcv4info[0])) {
- 				print_callstats(
- 				"Server nfs v4:\n",
- 				nfssvrv4name, svcv4info + 1,
-sizeof(nfssvrv4name)/sizeof(char *)
- 				);
-+				print_callstats(
-+				"Server nfs v4 operations:\n",
-+				nfssvrv4opname, svcv4opinfo + 1,
-sizeof(nfssvrv4opname)/sizeof(char *)
-+				);
-+			}
- 		}
+@@ -930,6 +931,10 @@ encode_op:
+ 		/* XXX Ugh, we need to get rid of this kind of special
+case: */
+ 		if (op->opnum == OP_READ && op->u.read.rd_filp)
+ 			fput(op->u.read.rd_filp);
++		
++		/* Maintaining count for each nfsv4 operation */
++		if ( (op->opnum >= OP_ACCESS) && ( (op->opnum -
+OP_ACCESS) < NFS4_NUMOPS) )
++			nfsdstats.nfs4_opcount[op->opnum -
+OP_ACCESS]++;
  	}
  
+ out:
+diff -aurp linux-2.6.17-rc2.old/fs/nfsd/stats.c
+linux-2.6.17-rc2/fs/nfsd/stats.c
+--- linux-2.6.17-rc2.old/fs/nfsd/stats.c	2006-04-19
+08:30:49.000000000 +0530
++++ linux-2.6.17-rc2/fs/nfsd/stats.c	2006-05-15 21:13:31.000000000
++0530
+@@ -72,6 +72,12 @@ static int nfsd_proc_show(struct seq_fil
+ 	/* show my rpc info */
+ 	svc_seq_show(seq, &nfsd_svcstats);
+ 
++	/* show count for individual nfsv4 operations */
++	seq_printf(seq,"proc4ops %u", NFS4_NUMOPS);
++	for (i=0; i<NFS4_NUMOPS; i++)
++		seq_printf(seq, " %u", nfsdstats.nfs4_opcount[i]);
++
++	seq_putc(seq, '\n');
+ 	return 0;
+ }
+ 
+@@ -91,7 +97,12 @@ static const struct file_operations nfsd
+ void
+ nfsd_stat_init(void)
+ {
++	int i;
+ 	svc_proc_register(&nfsd_svcstats, &nfsd_proc_fops);
++
++	/* Initialising nfsv4 operations counters */
++	for (i=0; i<NFS4_NUMOPS; i++)
++		nfsdstats.nfs4_opcount[i] = 0;
+ }
+ 
+ void
+diff -aurp linux-2.6.17-rc2.old/include/linux/nfsd/stats.h
+linux-2.6.17-rc2/include/linux/nfsd/stats.h
+--- linux-2.6.17-rc2.old/include/linux/nfsd/stats.h	2006-04-19
+08:30:49.000000000 +0530
++++ linux-2.6.17-rc2/include/linux/nfsd/stats.h	2006-05-15
+18:12:30.000000000 +0530
+@@ -9,6 +9,8 @@
+ #ifndef LINUX_NFSD_STATS_H
+ #define LINUX_NFSD_STATS_H
+ 
++#define NFS4_NUMOPS	37	 
++
+ struct nfsd_stats {
+ 	unsigned int	rchits;		/* repcache hits */
+ 	unsigned int	rcmisses;	/* repcache hits */
+@@ -27,6 +29,7 @@ struct nfsd_stats {
+ 	unsigned int	ra_size;	/* size of ra cache */
+ 	unsigned int	ra_depth[11];	/* number of times ra entry was
+found that deep
+ 					 * in the cache (10percentiles).
+[10] = not found */
++	unsigned int	nfs4_opcount[NFS4_NUMOPS];	/* count of
+individual nfsv4 operations */
+ };
+ 
+ /* thread usage wraps very million seconds (approx one fortnight) */
 
 
---=__PartCBEEEBF4.0__=
-Content-Type: text/plain; name="nfs-utils-1.0.8-display-nfs4-server-stats.diff"
+--=__Part381D1806.0__=
+Content-Type: text/plain; name="linux-2.6.17-rc2-add-nfs4-server-stats.diff"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="nfs-utils-1.0.8-display-nfs4-server-stats.diff"
+Content-Disposition: attachment; filename="linux-2.6.17-rc2-add-nfs4-server-stats.diff"
 
-This patch adds code to nfsstat to read /proc/net/rpc/nfsd for nfsv4 server statistics and print them.
+This patch adds a nfs4 operations count array to nfsd_stats structure.
+The count is  incremented in nfsd4_proc_compound() where all the operations
+are handled by the nfsv4 server. This count of individual nfsv4 operations
+is also entered into /proc filesystem. 
 
 Submitted by: Shankar Anand <shanand@novell.com>
 
-diff -aurp nfs-utils-1.0.8.old/utils/nfsstat/nfsstat.c nfs-utils-1.0.8/utils/nfsstat/nfsstat.c
---- nfs-utils-1.0.8.old/utils/nfsstat/nfsstat.c	2005-12-20 09:42:47.000000000 +0530
-+++ nfs-utils-1.0.8/utils/nfsstat/nfsstat.c	2006-05-16 16:56:18.000000000 +0530
-@@ -29,6 +29,7 @@ static unsigned int	svcv3info[24];	/* NF
- static unsigned int	cltv3info[24];	/* NFSv3 call counts ([0] == 22) */
- static unsigned int	svcv4info[4];	/* NFSv4 call counts ([0] == 2) */
- static unsigned int	cltv4info[34];	/* NFSv4 call counts ([0] == 32) */
-+static unsigned int	svcv4opinfo[39];/* NFSv4 call counts ([0] == 37) */
- static unsigned int	svcnetinfo[5];	/* 0  # of received packets
- 					 * 1  UDP packets
- 					 * 2  TCP packets
-@@ -99,6 +100,16 @@ static const char *	nfscltv4name[32] = {
- 	"statfs",    "readlink",  "readdir", "server_caps", "delegreturn",
- };
+diff -aurp linux-2.6.17-rc2.old/fs/nfsd/nfs4proc.c linux-2.6.17-rc2/fs/nfsd/nfs4proc.c
+--- linux-2.6.17-rc2.old/fs/nfsd/nfs4proc.c	2006-04-19 08:30:49.000000000 +0530
++++ linux-2.6.17-rc2/fs/nfsd/nfs4proc.c	2006-05-15 21:05:00.000000000 +0530
+@@ -54,6 +54,7 @@
+ #include <linux/nfsd/state.h>
+ #include <linux/nfsd/xdr4.h>
+ #include <linux/nfs4_acl.h>
++#include <linux/nfsd/stats.h>
  
-+static const char *     nfssvrv4opname[37] = {
-+        "access",    "close",       "commit",   "create",       "delegpurge", "delegreturn",
-+        "getattr",   "getfh",       "link",     "lock",         "lockt",      "locku",
-+        "lookup",    "lookup_root", "nverify",  "open",         "openattr",   "open_conf",
-+        "open_dgrd", "putfh",       "putpubfh", "putrootfh",    "read",       "readdir",
-+        "readlink",  "remove",      "rename",   "renew",        "restorefh",  "savefh",
-+        "secinfo",   "setattr",     "setcltid", "setcltidconf", "verify",     "write",
-+        "rellockowner"
-+};
-+
- typedef struct statinfo {
- 	char		*tag;
- 	int		nrvals;
-@@ -115,6 +126,7 @@ static statinfo		svcinfo[] = {
- 	{ "proc2",      STRUCTSIZE(svcv2info),  svcv2info  },
- 	{ "proc3",      STRUCTSIZE(svcv3info),  svcv3info  },
- 	{ "proc4",      STRUCTSIZE(svcv4info),  svcv4info  },
-+	{ "proc4ops",   STRUCTSIZE(svcv4opinfo),svcv4opinfo},
- 	{ NULL,         0,                      NULL       }
- };
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
  
-@@ -381,11 +393,16 @@ main(int argc, char **argv)
- 				"Server nfs v3:\n",
- 				nfsv3name, svcv3info + 1, sizeof(nfsv3name)/sizeof(char *)
- 				);
--			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && svcv4info[0] && svcv4info[svcv4info[0]+1] != svcv4info[0]))
-+			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && svcv4info[0] && svcv4info[svcv4info[0]+1] != svcv4info[0])) {
- 				print_callstats(
- 				"Server nfs v4:\n",
- 				nfssvrv4name, svcv4info + 1, sizeof(nfssvrv4name)/sizeof(char *)
- 				);
-+				print_callstats(
-+				"Server nfs v4 operations:\n",
-+				nfssvrv4opname, svcv4opinfo + 1, sizeof(nfssvrv4opname)/sizeof(char *)
-+				);
-+			}
- 		}
+@@ -930,6 +931,10 @@ encode_op:
+ 		/* XXX Ugh, we need to get rid of this kind of special case: */
+ 		if (op->opnum == OP_READ && op->u.read.rd_filp)
+ 			fput(op->u.read.rd_filp);
++		
++		/* Maintaining count for each nfsv4 operation */
++		if ( (op->opnum >= OP_ACCESS) && ( (op->opnum - OP_ACCESS) < NFS4_NUMOPS) )
++			nfsdstats.nfs4_opcount[op->opnum - OP_ACCESS]++;
  	}
  
+ out:
+diff -aurp linux-2.6.17-rc2.old/fs/nfsd/stats.c linux-2.6.17-rc2/fs/nfsd/stats.c
+--- linux-2.6.17-rc2.old/fs/nfsd/stats.c	2006-04-19 08:30:49.000000000 +0530
++++ linux-2.6.17-rc2/fs/nfsd/stats.c	2006-05-15 21:13:31.000000000 +0530
+@@ -72,6 +72,12 @@ static int nfsd_proc_show(struct seq_fil
+ 	/* show my rpc info */
+ 	svc_seq_show(seq, &nfsd_svcstats);
+ 
++	/* show count for individual nfsv4 operations */
++	seq_printf(seq,"proc4ops %u", NFS4_NUMOPS);
++	for (i=0; i<NFS4_NUMOPS; i++)
++		seq_printf(seq, " %u", nfsdstats.nfs4_opcount[i]);
++
++	seq_putc(seq, '\n');
+ 	return 0;
+ }
+ 
+@@ -91,7 +97,12 @@ static const struct file_operations nfsd
+ void
+ nfsd_stat_init(void)
+ {
++	int i;
+ 	svc_proc_register(&nfsd_svcstats, &nfsd_proc_fops);
++
++	/* Initialising nfsv4 operations counters */
++	for (i=0; i<NFS4_NUMOPS; i++)
++		nfsdstats.nfs4_opcount[i] = 0;
+ }
+ 
+ void
+diff -aurp linux-2.6.17-rc2.old/include/linux/nfsd/stats.h linux-2.6.17-rc2/include/linux/nfsd/stats.h
+--- linux-2.6.17-rc2.old/include/linux/nfsd/stats.h	2006-04-19 08:30:49.000000000 +0530
++++ linux-2.6.17-rc2/include/linux/nfsd/stats.h	2006-05-15 18:12:30.000000000 +0530
+@@ -9,6 +9,8 @@
+ #ifndef LINUX_NFSD_STATS_H
+ #define LINUX_NFSD_STATS_H
+ 
++#define NFS4_NUMOPS	37	 
++
+ struct nfsd_stats {
+ 	unsigned int	rchits;		/* repcache hits */
+ 	unsigned int	rcmisses;	/* repcache hits */
+@@ -27,6 +29,7 @@ struct nfsd_stats {
+ 	unsigned int	ra_size;	/* size of ra cache */
+ 	unsigned int	ra_depth[11];	/* number of times ra entry was found that deep
+ 					 * in the cache (10percentiles). [10] = not found */
++	unsigned int	nfs4_opcount[NFS4_NUMOPS];	/* count of individual nfsv4 operations */
+ };
+ 
+ /* thread usage wraps very million seconds (approx one fortnight) */
 
---=__PartCBEEEBF4.0__=
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+--=__Part381D1806.0__=--
 
+
+-------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---=__PartCBEEEBF4.0__=--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
