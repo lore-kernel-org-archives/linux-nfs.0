@@ -1,24 +1,21 @@
-From: Jeremy <jeremy@smokehabanos.com>
-Subject: Re: Annoying exports problem
-Date: Wed, 17 May 2006 16:45:10 -0700
-Message-ID: <C0910396.33950%jeremy@smokehabanos.com>
-References: <17515.45754.770170.922929@cse.unsw.edu.au>
+From: Rudi Starcevic <tech@wildcash.com>
+Subject: Re: time_out_leases + 2.6 problem?
+Date: Thu, 18 May 2006 15:13:47 +1000
+Message-ID: <446C028B.2040605@wildcash.com>
+References: <446916B1.8040202@wildcash.com> <17513.7432.642102.868775@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FgVgf-0008Fs-Fh
-	for nfs@lists.sourceforge.net; Wed, 17 May 2006 16:44:17 -0700
-Received: from mail.hoofty.com ([216.224.120.253])
+	id 1Fgapn-0003yN-Dz
+	for nfs@lists.sourceforge.net; Wed, 17 May 2006 22:14:03 -0700
+Received: from mail1.mailhostingservice.com ([216.154.198.171])
 	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FgVgf-0008Pg-Dy
-	for nfs@lists.sourceforge.net; Wed, 17 May 2006 16:44:17 -0700
-To: Neil Brown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <17515.45754.770170.922929@cse.unsw.edu.au>
+	id 1Fgapl-00074F-VJ
+	for nfs@lists.sourceforge.net; Wed, 17 May 2006 22:14:03 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <17513.7432.642102.868775@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,54 +30,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
 
+Hi,
 
+> Servers also seem to be using the user-space nfs server.  What this
+> intentional?  If so, why?
+> If not, try install nfs-kernel-server and using that instead.  It is
+> likely to work better.
+I'm not intentionaly using the nfs-user-server.
 
-On 5/17/06 4:33 PM, "Neil Brown" <neilb@suse.de> wrote:
-
-> On Wednesday May 17, bfields@fieldses.org wrote:
->> On Wed, May 17, 2006 at 04:39:04PM +1000, Neil Brown wrote:
->>> On Tuesday May 16, jeremy@smokehabanos.com wrote:
->>>> I actually got it to work in the little time since my initial post.  The
->>>> only way I could do it was to export both the root filesystem and the
->>>> individual directories within the /storage.  So it looks like this:
->>>> 
->>>> /storage       *(rw,no_root_squash,async)
->>>> /storage/space0       *(rw,no_root_squash,async,no_subtree_check,nohide)
->>>> /storage/space1       *(rw,no_root_squash,async,no_subtree_check,nohide)
->>>> /storage/space2       *(rw,no_root_squash,async,no_subtree_check,nohide)
->>>> /storage/space3       *(rw,no_root_squash,async,no_subtree_check,nohide)
->>>> /storage/space4       *(rw,no_root_squash,async,no_subtree_check,nohide)
->>>> /storage/space5       *(rw,no_root_squash,async,no_subtree_check,nohide)
->>> 
->>> This works too
->>> Putting 'crossmnt' on the first line should remove the need for the
->>> remaining lines.
->> 
->> It should remove the need for the nohide option on those lines, but I
->> think the export lines will still be required.  Is that not how it's
->> meant to work?
+I've setup nfs-kernel-server on the problem machine and will roll
+out nfs-kernel-server acrosss the other 15.
+>>Would upgrading to a new kernel help this?
 > 
-> Not sure... it is a while since I have looked at that code.
-> 
-> But maybe the key issue is not so much how it is "meant to work", but
-> how we "want it to work".
-> I suspect it would be very valuable and no harm to allow
-> 
->    /storage       *(rw,no_root_squash,async,crossmnt)
-> 
-> to export everything below /storage, including other filesystems.
+> Given how old 2.6.8 is, and upgrade is certainly worth a try.
 
-That's exactly what I was looking for.  I see a bunch of references to
-crossmnt basically saying it was never implemented.  Maybe still the case?
+Am using 2.6.16, latest, kernel too.
 
-Thanks
--jeremy
+Thanks very much for the advise.
 
-> 
-> I've put it on my todo list to look into one day.
-> 
-> NeilBrown
-
+-- 
+Thank you.
+Regards,
+Rudi
 
 
 
