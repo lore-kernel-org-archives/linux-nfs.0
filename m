@@ -1,217 +1,184 @@
-From: parinay <parinay@gmail.com>
-Subject: Re: PyNFS
-Date: Wed, 24 May 2006 13:07:34 +0530
-Message-ID: <ea2ed4af0605240037h6f706bcre628a991de7b96a7@mail.gmail.com>
-References: <ea2ed4af0605232059r56854793s8b7fef615dc587d3@mail.gmail.com>
-	 <Pine.LNX.4.64.0605240919340.6128@maggie.lkpg.cendio.se>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [NFS] Re: [RFC] Multiple server selection and replicated mount
+ failover
+Date: Wed, 24 May 2006 09:02:42 -0400
+Message-ID: <44745972.2010305@redhat.com>
+References: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net> <Pine.LNX.4.64.0605241240200.3730@raven.themaw.net>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_155324_18475350.1148456254859"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Finw2-0007aW-Ir
-	for nfs@lists.sourceforge.net; Wed, 24 May 2006 00:37:38 -0700
-Received: from wx-out-0102.google.com ([66.249.82.203])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Finw0-0004EK-U0
-	for nfs@lists.sourceforge.net; Wed, 24 May 2006 00:37:38 -0700
-Received: by wx-out-0102.google.com with SMTP id s10so804527wxc
-        for <nfs@lists.sourceforge.net>; Wed, 24 May 2006 00:37:35 -0700 (PDT)
-To: "=?ISO-8859-1?Q?Peter_=C5strand?=" <astrand@cendio.se>
-In-Reply-To: <Pine.LNX.4.64.0605240919340.6128@maggie.lkpg.cendio.se>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-
-------=_Part_155324_18475350.1148456254859
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Cc: nfs@lists.sourceforge.net,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	autofs mailing list <autofs@linux.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Ian Kent <raven@themaw.net>
+In-Reply-To: <Pine.LNX.4.64.0605241240200.3730@raven.themaw.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Peter,
-Sorry to bother you.
-I am attempting to run, PyNFS and it is giving me tracebacks, I dont know
-python at all.
-Can you help me, getting it run ?
+Ian Kent wrote:
 
-Following are the things that I have tried,
-                    -As per the steps, executed, rpcgen.py  nfs4.x and
-./setup.py install
-                    -The binaries are installed @ ~python/bin
-
-Hereafter i I try to run the nfs4stest, it give this trace back.Same is the
-case for test_tree_net.py
-
-My objective is to run this , on NetApp filer, from Linux/solaris NFS
-client.
-Please let me know, If I am missing something or If you want some more
-information on this.
-Awaiting.
-
-thanks & regards
-parina
-
------------------snippet---------------------------------------------------=
----------
-[zorba@akam bin]$ ./test_tree_net.py 10.55.63.1 /mnt/test/
-sys:1: DeprecationWarning: Non-ASCII character '\xc5' in file
-./test_tree_net.py on line 5, but no encoding declared; see
-http://www.python.org/peps/pep-0263.html for details
-10.55.63.1 None
-Traceback (most recent call last):
-  File "./test_tree_net.py", line 426, in ?
-    main(ncl, directory)
-  File "./test_tree_net.py", line 91, in main
-    ncl.init_connection()
-  File "/root/python/lib/python/nfs4lib.py", line 538, in init_connection
-
-  File "/root/python/lib/python/nfs4lib.py", line 793, in check_result
-
-nfs4lib.BadCompoundRes: operation OP_SETCLIENTID returned result
-NFS4ERR_INVAL
-[zorba@akam bin]
-
-[zorba@akam bin]$ ./nfs4stest.py nfs://myfiler:2049  -t -v st_lock
-
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-ERROR: LOCK range over 32 bits should work or return NFS4ERR_BAD_RANGE
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "/root/python/lib/python/nfs4st/st_lock.py", line 12, in setUp
-    self.init_connection()
-  File "/root/python/lib/python/nfs4st/base_st_classes.py", line 540, in
-init_connection
-    self.failIfRaises(rpc.RPCException, ncl.init_connection,*args,**kwargs)
-  File "/root/python/lib/python/nfs4st/base_st_classes.py", line 493, in
-failIfRaises
-    self.fail(e)
-  File "/usr/src/build/475206-i386/install/usr/lib/python2.3/unittest.py",
-line 270, in fail
-    raise self.failureException, msg
-AssertionError: operation OP_SETCLIENTID returned result NFS4ERR_INVAL
-
-On 5/24/06, Peter =C5strand <astrand@cendio.se> wrote:
+>On Tue, 2 May 2006, Ian Kent wrote:
 >
-> > Any help on PyNFS for NFSv2 NFSv3 ??
-> > I have downloaded  PyNFS for NFSv4.In process of onfiguring and running
-it.
-> > Any help on that will also be very much helpfull.
+>  
 >
-> I haven't looked at PyNFS for two years, but then, I was able to generate
-> Python code for the mount protocol, by using rpcgen.py. This "mount
-> client" can be found in the UNFS3 CVS.
+>>Hi all,
+>>
+>>For some time now I have had code in autofs that attempts to select an 
+>>appropriate server from a weighted list to satisfy server priority 
+>>selection and Replicated Server requirements. The code has been 
+>>problematic from the beginning and is still incorrect largely due to me 
+>>not merging the original patch well and also not fixing it correctly 
+>>afterward.
+>>
+>>So I'd like to have this work properly and to do that I also need to 
+>>consider read-only NFS mount fail over.
+>>
+>>The rules for server selection are, in order of priority (I believe):
+>>
+>>1) Hosts on the local subnet.
+>>2) Hosts on the local network.
+>>3) Hosts on other network.
+>>
+>>Each of these proximity groups is made up of the largest number of 
+>>servers supporting a given NFS protocol version. For example if there were 
+>>5 servers and 4 supported v3 and 2 supported v2 then the candidate group 
+>>would be made up of the 4 supporting v3. Within the group of candidate 
+>>servers the one with the best response time is selected. Selection 
+>>within a proximity group can be further influenced by a zero based weight 
+>>associated with each host. The higher the weight (a cost really) the less 
+>>likely a server is to be selected. I'm not clear on exactly how he weight 
+>>influences the selection, so perhaps someone who is familiar with this 
+>>could explain it?
+>>    
+>>
 >
-> Don't know about the rest of NFSv2/v3, though.
+>I've re-written the server selection code now and I believe it works 
+>correctly.
 >
-> Kind regards,
-> --
-> Peter =C5strand           ThinLinc Chief Developer
-> Cendio                  http://www.cendio.se
-> Teknikringen 3
-> 583 30 Link=F6ping        Phone: +46-13-21 46 00
+>  
+>
+>>Apart from mount time server selection read-only replicated servers need 
+>>to be able to fail over to another server if the current one becomes 
+>>unavailable. 
+>>
+>>The questions I have are:
+>>
+>>1) What is the best place for each part of this process to be
+>>   carried out.
+>>   - mount time selection.
+>>   - read-only mount fail over.
+>>    
+>>
+>
+>I think mount time selection should be done in mount and I believe the 
+>failover needs to be done in the kernel against the list established with 
+>the user space selection. The list should only change when a umount 
+>and then a mount occurs (surely this is the only practical way to do it 
+>?).
+>
+>The code that I now have for the selection process can potentially improve 
+>the code used by patches to mount for probing NFS servers and doing this 
+>once in one place has to be better than doing it in automount and mount.
+>
+>The failover is another story.
+>
+>It seems to me that there are two similar ways to do this:
+>
+>1) Pass a list of address and path entries to NFS at mount time and 
+>intercept errors, identify if the host is down and if it is select and 
+>mount another server.
+>
+>2) Mount each member of the list with the best one on top and intercept 
+>errors, identify if the host is down and if it is select another from the 
+>list of mounts and put it atop the mounts. Maintaining the ordering with 
+>this approach could be difficult.
+>
+>With either of these approaches handling open files and held locks appears 
+>to be the the difficult part.
+>
+>Anyone have anything to contribute on how I could handle this or problems 
+>that I will encounter?
+>
+>  
 >
 
+It seems to me that there is one other way which is similiar to #1 except
+that instead of passing path entries to NFS at mount time, pass in file
+handles.  This keeps all of the MOUNT protocol processing at the user
+level and does not require the kernel to learn anything about the MOUNT
+protocol.  It also allows a reasonable list to be constructed, with
+checking to ensure that all the servers support the same version of the
+NFS protocol, probably that all of the server support the same transport
+protocol, etc.
 
---=20
-easy is right
-begin right and you're easy
-continue easy and you're right
-the right way to go easy is to forget the right way
-and forget that the going is easy....
+>snip ..
+>
+>  
+>
+>>3) Is there any existing work available that anyone is aware
+>>   of that could be used as a reference.
+>>    
+>>
+>
+>Still wondering about this.
+>
+>  
+>
 
-------=_Part_155324_18475350.1148456254859
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Well, there is the Solaris support.
 
-Peter,<br>Sorry to bother you.<br>I am attempting to run, PyNFS and it is g=
-iving me tracebacks, I dont know python at all.<br>Can you help me, getting=
- it run ?<br><br>Following are the things that I have tried,<br>&nbsp;&nbsp=
-;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
-bsp;&nbsp;&nbsp;&nbsp;&nbsp; -As per the steps, executed,=20
-rpcgen.py&nbsp;&nbsp;nfs4.x and ./setup.py install<br>&nbsp;&nbsp;&nbsp;&nb=
-sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp; -The binaries are installed @ ~python/bin<br><br>Hereaft=
-er i I try to run the nfs4stest, it give this trace back.Same is the case f=
-or test_tree_net.py<br><br>
-My objective is to run this , on NetApp filer, from Linux/solaris NFS clien=
-t.<br>Please let me know, If I am missing something or If you want some mor=
-e information on this.<br>Awaiting.<br><br>thanks &amp; regards<br>parina
-<br><br>-----------------snippet-------------------------------------------=
------------------<br>[zorba@akam bin]$ ./test_tree_net.py <a href=3D"http:/=
-/10.55.63.1">10.55.63.1</a> /mnt/test/<br>sys:1: DeprecationWarning: Non-AS=
-CII character '\xc5' in file ./test_tree_net.py on line 5, but no encoding =
-declared; see=20
-<a href=3D"http://www.python.org/peps/pep-0263.html">http://www.python.org/=
-peps/pep-0263.html</a> for details<br><a href=3D"http://10.55.63.1">10.55.6=
-3.1</a> None<br>Traceback (most recent call last):<br>&nbsp;&nbsp;File &quo=
-t;./test_tree_net.py&quot;, line 426, in ?
-<br>&nbsp;&nbsp;&nbsp;&nbsp;main(ncl, directory)<br>&nbsp;&nbsp;File &quot;=
-./test_tree_net.py&quot;, line 91, in main<br>&nbsp;&nbsp;&nbsp;&nbsp;ncl.i=
-nit_connection()<br>&nbsp;&nbsp;File &quot;/root/python/lib/python/nfs4lib.=
-py&quot;, line 538, in init_connection<br><br>&nbsp;&nbsp;File &quot;/root/=
-python/lib/python/nfs4lib.py&quot;, line 793, in check_result
-<br><br>nfs4lib.BadCompoundRes: operation OP_SETCLIENTID returned result NF=
-S4ERR_INVAL<br>[zorba@akam bin]<br><br>[zorba@akam bin]$ ./nfs4stest.py nfs=
-://myfiler:2049&nbsp;&nbsp;-t -v st_lock <br><br>=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-<br>ERROR: LOCK range over 32 bits should work or return NFS4ERR_BAD_RANGE<=
-br>----------------------------------------------------------------------<b=
-r>Traceback (most recent call last):<br>&nbsp;&nbsp;File &quot;/root/python=
-/lib/python/nfs4st/st_lock.py&quot;, line 12, in setUp
-<br>&nbsp;&nbsp;&nbsp;&nbsp;self.init_connection()<br>&nbsp;&nbsp;File &quo=
-t;/root/python/lib/python/nfs4st/base_st_classes.py&quot;, line 540, in ini=
-t_connection<br>&nbsp;&nbsp;&nbsp;&nbsp;self.failIfRaises(rpc.RPCException,=
- ncl.init_connection,*args,**kwargs)<br>&nbsp;&nbsp;File &quot;/root/python=
-/lib/python/nfs4st/base_st_classes.py&quot;, line 493, in failIfRaises
-<br>&nbsp;&nbsp;&nbsp;&nbsp;self.fail(e)<br>&nbsp;&nbsp;File &quot;/usr/src=
-/build/475206-i386/install/usr/lib/python2.3/unittest.py&quot;, line 270, i=
-n fail<br>&nbsp;&nbsp;&nbsp;&nbsp;raise self.failureException, msg<br>Asser=
-tionError: operation OP_SETCLIENTID returned result NFS4ERR_INVAL
-<br><br>On 5/24/06, Peter =C5strand &lt;<a href=3D"mailto:astrand@cendio.se=
-">astrand@cendio.se</a>&gt; wrote:<br>&gt; <br>&gt; &gt; Any help on PyNFS =
-for NFSv2 NFSv3 ??<br>&gt; &gt; I have downloaded&nbsp;&nbsp;PyNFS for NFSv=
-4.In process of onfiguring and running it.
-<br>&gt; &gt; Any help on that will also be very much helpfull.<br>&gt; <br=
->&gt; I haven't looked at PyNFS for two years, but then, I was able to gene=
-rate<br>&gt; Python code for the mount protocol, by using rpcgen.py. This &=
-quot;mount
-<br>&gt; client&quot; can be found in the UNFS3 CVS.<br>&gt; <br>&gt; Don't=
- know about the rest of NFSv2/v3, though.<br>&gt; <br>&gt; Kind regards,<br=
->&gt; --<br>&gt; Peter =C5strand&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp; ThinLinc Chief Developer<br>&gt; Cendio&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
-sp;&nbsp;&nbsp;
-<a href=3D"http://www.cendio.se">http://www.cendio.se</a><br>&gt; Teknikrin=
-gen 3<br>&gt; 583 30 Link=F6ping&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;Phone: +46-13-21 46 00<br>&gt; <br><br><br>-- <br>easy is right<br>beg=
-in right and you're easy<br>continue easy and you're right
-<br>the right way to go easy is to forget the right way<br>and forget that =
-the going is easy....<br><br>
+>>4) How does NFS v4 fit into this picture as I believe that some
+>>   of this functionality is included within the protocol.
+>>    
+>>
+>
+>And this.
+>
+>NFS v4 appears quite different so should I be considering this for v2 and 
+>v3 only?
+>
+>  
+>
+>>Any comments or suggestions or reference code would be very much 
+>>appreciated.
+>>    
+>>
 
-------=_Part_155324_18475350.1148456254859--
+The Solaris support works by passing a list of structs containing server
+information down into the kernel at mount time.  This makes normal mounting
+just a subset of the replicated support because a normal mount would just
+contain a list of a single entry.
 
+When the Solaris client gets a timeout from an RPC, it checks to see whether
+this file and mount are failover'able.  This checks to see whether there are
+alternate servers in the list and could contain a check to see if there are
+locks existing on the file.  If there are locks, then don't failover.  The
+alternative to doing this is to attempt to move the lock, but this could
+be problematic because there would be no guarantee that the new lock could
+be acquired.
 
--------------------------------------------------------
-All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications in
-the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Anyway, if the file is failover'able, then a new server is chosen from the
+list and the file handle associated with the file is remapped to the
+equivalent file on the new server.  This is done by repeating the lookups
+done to get the original file handle.  Once the new file handle is acquired,
+then some minimal checks are done to try to ensure that the files are the
+"same".  This is probably mostly checking to see whether the sizes of the
+two files are the same.
+
+Please note that this approach contains the interesting aspect that
+files are only failed over when they need to be and are not failed over
+proactively.  This can lead to the situation where processes using the
+the file system can be talking to many of the different underlying
+servers, all at the sametime.  If a server goes down and then comes back
+up before a process, which was talking to that server, notices, then it
+will just continue to use that server, while another process, which
+noticed the failed server, may have failed over to a new server.
+
+The key ingredient to this approach, I think, is a list of servers and
+information about them, and then information for each active NFS inode
+that keeps track of the pathname used to discover the file handle and
+also the server which is being currently used by the specific file.
+
+    Thanx...
+
+       ps
