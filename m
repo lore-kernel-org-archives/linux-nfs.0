@@ -1,91 +1,80 @@
-From: Usha Ketineni <ketineni@us.ibm.com>
-Subject: [PATCH]: Fix sparse warning in vfs.c
-Date: Wed, 24 May 2006 14:27:52 -0700
-Message-ID: <4474CFD8.6060000@us.ltcfwd.linux.ibm.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [autofs] Re: [NFS] Re: [RFC] Multiple server selection and
+	replicated mount failover
+Date: Thu, 25 May 2006 11:56:26 +0800
+Message-ID: <1148529386.2704.22.camel@raven.themaw.net>
+References: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net>
+	 <Pine.LNX.4.64.0605241240200.3730@raven.themaw.net>
+	 <1148488156.5872.42.camel@lade.trondhjem.org>
+	 <x49ac97cnja.fsf@segfault.boston.redhat.com>
+	 <1148495501.11732.8.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------070004040304010300050801"
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fj0tu-0000CN-MK
-	for nfs@lists.sourceforge.net; Wed, 24 May 2006 14:28:18 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fj0tu-0001O7-HG
-	for nfs@lists.sourceforge.net; Wed, 24 May 2006 14:28:18 -0700
-Received: from e4.ny.us.ibm.com ([32.97.182.144])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Fj0tq-00058d-BN
-	for nfs@lists.sourceforge.net; Wed, 24 May 2006 14:28:15 -0700
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e4.ny.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k4OLRvQm005378
-	for <nfs@lists.sourceforge.net>; Wed, 24 May 2006 17:27:57 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.12.10/NCO/VER6.8) with ESMTP id k4OLRvMa090098
-	for <nfs@lists.sourceforge.net>; Wed, 24 May 2006 17:27:57 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k4OLRvdF028316
-	for <nfs@lists.sourceforge.net>; Wed, 24 May 2006 17:27:57 -0400
-Received: from [127.0.0.1] (IBM-RF40CZ9KB83.beaverton.ibm.com [9.47.22.61])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k4OLRtsg028260
-	for <nfs@lists.sourceforge.net>; Wed, 24 May 2006 17:27:56 -0400
-To: nfs@lists.sourceforge.net
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: text/plain
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1148495501.11732.8.camel@lade.trondhjem.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
---------------070004040304010300050801
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Wed, 2006-05-24 at 14:31 -0400, Trond Myklebust wrote:
+> On Wed, 2006-05-24 at 13:58 -0400, Jeff Moyer wrote:
+> > ==> Regarding [autofs] Re: [NFS] Re: [RFC] Multiple server selection and replicated mount failover; Trond Myklebust <trond.myklebust@fys.uio.no> adds:
+> > 
+> > trond.myklebust> On Wed, 2006-05-24 at 13:05 +0800, Ian Kent wrote:
+> > >> > 4) How does NFS v4 fit into this picture as I believe that some
+> > >> >    of this functionality is included within the protocol.
+> > >> 
+> > >> And this.
+> > >> 
+> > >> NFS v4 appears quite different so should I be considering this for v2 and 
+> > >> v3 only?
+> > 
+> > trond.myklebust> NFSv4 has full support for migration/replication in the
+> > trond.myklebust> protocol. If a filesystem fails on a given server, then
+> > trond.myklebust> the server itself will tell the client where it can find
+> > trond.myklebust> the replicas. There should be no need to provide that
+> > trond.myklebust> information at mount time.
+> > 
+> > And what happens when the server disappears?
+> 
+> There are 2 strategies for dealing with that:
+> 
+> Firstly, we can maintain a cache of the list of replica volumes (we can
+> request the list of replicas when we mount the original volume).
+> 
+> Secondly, there are plans to add a backup list of failover servers in a
+> specialised DNS record. This strategy could be made to work for NFSv2/v3
+> too.
+> 
 
-Below trivial fix casts __user attribute to avoid sparse warning
+I see. That would work fine.
 
+Personally, I'm not keen on using DNS for this as it adds another
+source, separate from the original source, that needs to be kept up to
+date.
 
+Unfortunately, in many environments it's not possible to deploy new
+services, often for several years after they become available. So there
+is a need to do this for v2 and v3 in the absence of v4. We at least
+need to support the mount syntax used in other industry OSs to round out
+the v2 and v3 implementation, so using mount seems the logical thing to
+do. I think this would also fit in well with v4 in that, as you mention
+above, the replica information needs to be gathered at mount time.
 
+I have the opportunity to spend some time on this now.
 
---------------070004040304010300050801
-Content-Type: text/plain;
- name="patch_sparse_warnings"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="patch_sparse_warnings"
+Ideally I would like to fit in with the work that is being done for v4
+as much as possible. For example I noticed references to a struct
+nfs_fs_locations in you patch set which may be useful for the
+information I need. However, I haven't spotted anything that relates to
+fail detection and fail over itself (ok I know you said your working on
+it) so perhaps I can contribute to this in a way that could help your v4
+work. So what's you plan for this?
 
-Signed-off-by: Usha Ketineni<uketinen@us.ibm.com>
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1383,7 +1383,7 @@ nfsd_readlink(struct svc_rqst *rqstp, st
- 	 */
- 
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
--	err = inode->i_op->readlink(dentry, buf, *lenp);
-+	err = inode->i_op->readlink(dentry, (char __user *)buf, *lenp);
- 	set_fs(oldfs);
- 
- 	if (err < 0)
-
---------------070004040304010300050801--
+Ian
 
 
-
--------------------------------------------------------
-All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications in
-the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
