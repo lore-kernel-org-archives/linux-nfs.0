@@ -1,28 +1,26 @@
-From: Neil Brown <neilb@suse.de>
+From: mehta kiran <kiranmehta1981@yahoo.com>
 Subject: Re: 2.4 vs 2.6
-Date: Fri, 26 May 2006 17:30:56 +1000
-Message-ID: <17526.44720.169339.729336@cse.unsw.edu.au>
-References: <a9ed420f0605250035i31a8925cv454d3ca15d7cab91@mail.gmail.com>
-	<17526.44653.228663.713864@cse.unsw.edu.au>
+Date: Fri, 26 May 2006 01:19:05 -0700 (PDT)
+Message-ID: <20060526081905.73641.qmail@web51609.mail.yahoo.com>
+References: <17526.44653.228663.713864@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net, Vijay Chauhan <kernel.vijay@gmail.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FjWml-00034t-IW
-	for nfs@lists.sourceforge.net; Fri, 26 May 2006 00:31:03 -0700
+	id 1FjXXO-0000Mc-4R
+	for nfs@lists.sourceforge.net; Fri, 26 May 2006 01:19:14 -0700
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FjWml-0008VV-9x
-	for nfs@lists.sourceforge.net; Fri, 26 May 2006 00:31:03 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FjWmk-0000DE-TA
-	for nfs@lists.sourceforge.net; Fri, 26 May 2006 00:31:03 -0700
-To: "Vijay Chauhan" <kernel.vijay@gmail.com>,
-	nfs@lists.sourceforge.net
-In-Reply-To: message from Neil Brown on Friday May 26
+	id 1FjXXN-00044v-Tg
+	for nfs@lists.sourceforge.net; Fri, 26 May 2006 01:19:13 -0700
+Received: from web51609.mail.yahoo.com ([206.190.38.214])
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FjXXL-0004nv-HR
+	for nfs@lists.sourceforge.net; Fri, 26 May 2006 01:19:14 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17526.44653.228663.713864@cse.unsw.edu.au>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,36 +34,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Friday May 26, neilb@suse.de wrote:
+Hi,
+
+1. I noticed that 2.6 kernel is not aware of=20
+   exportfs until client tries to mount. It only
+   after this that proc nfsd filesystem shows this
+   in list of exports due to upcall.
+   Was 2.4 kernel aware of exportfs when the
+   filesystem was first exported or mounted ?
+
+2. Can you let me know advantage 2.6 export approach
+   over 2.4 export approach ?=20
+   Is this approach required due to=20
+   security/authentication integration with NFS(say=20
+   ip->name conversion for security ) ?
+
+Thanks,
+ kiran
+
+--- Neil Brown <neilb@suse.de> wrote:
+
 > On Thursday May 25, kernel.vijay@gmail.com wrote:
 > > Hi,
-> > Can anyone tell me what are the differences in the linux kernel 2.4 version
+> > Can anyone tell me what are the differences in the
+> linux kernel 2.4 version
 > > and 2.6 version related to NFS implementation
-> 
+>=20
 > How much detail do you want?
-> 
-> Apart from adding NFSv4, the main difference is the authentication
+>=20
+> Apart from adding NFSv4, the main difference is the
+> authentication
 > cache with support for up-calls.
-> In 2.4, exportfs and mountd had to tell the kernel about any export
+> In 2.4, exportfs and mountd had to tell the kernel
+> about any export
 > information that it might need to know.
-> In 2.6, the kernel can ask mountd, and mountd will provide information
+> In 2.6, the kernel can ask mountd, and mountd will
+> provide information
 > on-demand.
-> 
+>=20
 > NeilBrown
+>=20
+>=20
+>
+-------------------------------------------------------
+> All the advantages of Linux Managed Hosting--Without
+> the Cost and Risk!
+> Fully trained technicians. The highest number of Red
+> Hat certifications in
+> the hosting industry. Fanatical Support. Click to
+> learn more
+>
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D107521&bid=3D248729&dat=3D=
+121642
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>=20
 
-Ofcourse, that is just the server.  There have been lots of changes to
-the client as well including RPCSEC support and much much more.
 
-What exactly do you need to know?
-
-NeilBrown
+__________________________________________________
+Do You Yahoo!?
+Tired of spam?  Yahoo! Mail has the best spam protection around=20
+http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
 All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications in
+Fully trained technicians. The highest number of Red Hat certifications i=
+n
 the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D107521&bid=3D248729&dat=3D=
+121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
