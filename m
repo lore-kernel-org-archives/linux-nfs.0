@@ -1,26 +1,32 @@
-From: mehta kiran <kiranmehta1981@yahoo.com>
-Subject: Re: 2.4 vs 2.6
-Date: Fri, 26 May 2006 01:19:05 -0700 (PDT)
-Message-ID: <20060526081905.73641.qmail@web51609.mail.yahoo.com>
-References: <17526.44653.228663.713864@cse.unsw.edu.au>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Problems with fh_fsid_type=3 exports (device minor id > 255)
+Date: Fri, 26 May 2006 11:48:39 -0700
+Message-ID: <1148669319.12795.44.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs@lists.sourceforge.net, Vijay Chauhan <kernel.vijay@gmail.com>
+Content-Type: text/plain
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FjXXO-0000Mc-4R
-	for nfs@lists.sourceforge.net; Fri, 26 May 2006 01:19:14 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FjXXN-00044v-Tg
-	for nfs@lists.sourceforge.net; Fri, 26 May 2006 01:19:13 -0700
-Received: from web51609.mail.yahoo.com ([206.190.38.214])
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1FjXXL-0004nv-HR
-	for nfs@lists.sourceforge.net; Fri, 26 May 2006 01:19:14 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17526.44653.228663.713864@cse.unsw.edu.au>
+	id 1FjhKB-00051X-5k
+	for nfs@lists.sourceforge.net; Fri, 26 May 2006 11:46:15 -0700
+Received: from e34.co.us.ibm.com ([32.97.110.152])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FjhK6-0000xe-TA
+	for nfs@lists.sourceforge.net; Fri, 26 May 2006 11:46:12 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e34.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k4QIk5Iw017576
+	for <nfs@lists.sourceforge.net>; Fri, 26 May 2006 14:46:05 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay04.boulder.ibm.com (8.12.10/NCO/VER6.8) with ESMTP id k4QIk4k7140556
+	for <nfs@lists.sourceforge.net>; Fri, 26 May 2006 12:46:04 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k4QIk4Vt028340
+	for <nfs@lists.sourceforge.net>; Fri, 26 May 2006 12:46:04 -0600
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k4QIk3sX027775
+	for <nfs@lists.sourceforge.net>; Fri, 26 May 2006 12:46:04 -0600
+To: NFS List <nfs@lists.sourceforge.net>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,77 +40,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+I having a problem with the 2.6.9 kernel and mounting file systems with
+a minor device id > 255 where the mount fails. It seems like the file
+handle is never cached. We are able to proceed if fsid is specified
+in /etc/exports. nfs-utils version is 1.0.6.
 
-1. I noticed that 2.6 kernel is not aware of=20
-   exportfs until client tries to mount. It only
-   after this that proc nfsd filesystem shows this
-   in list of exports due to upcall.
-   Was 2.4 kernel aware of exportfs when the
-   filesystem was first exported or mounted ?
+Have others seen this problem and is there a fix in a later kernel?
 
-2. Can you let me know advantage 2.6 export approach
-   over 2.4 export approach ?=20
-   Is this approach required due to=20
-   security/authentication integration with NFS(say=20
-   ip->name conversion for security ) ?
+I've been trying to follow the fh_compose and fh_verify code to
+understand this, but I don't see where there's a difference between type
+3 file handles and type 1 file handles (fsid specified in /etc/exports)
+that could cause a problem. When I add a little bit of debug messages, I
+see that expkey_parse is being called as a result of a system call for
+the type 1 handles, but not for the type 3 handles.
 
-Thanks,
- kiran
+Thanks
 
---- Neil Brown <neilb@suse.de> wrote:
-
-> On Thursday May 25, kernel.vijay@gmail.com wrote:
-> > Hi,
-> > Can anyone tell me what are the differences in the
-> linux kernel 2.4 version
-> > and 2.6 version related to NFS implementation
->=20
-> How much detail do you want?
->=20
-> Apart from adding NFSv4, the main difference is the
-> authentication
-> cache with support for up-calls.
-> In 2.4, exportfs and mountd had to tell the kernel
-> about any export
-> information that it might need to know.
-> In 2.6, the kernel can ask mountd, and mountd will
-> provide information
-> on-demand.
->=20
-> NeilBrown
->=20
->=20
->
--------------------------------------------------------
-> All the advantages of Linux Managed Hosting--Without
-> the Cost and Risk!
-> Fully trained technicians. The highest number of Red
-> Hat certifications in
-> the hosting industry. Fanatical Support. Click to
-> learn more
->
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D107521&bid=3D248729&dat=3D=
-121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->=20
+Frank Filz
 
 
-__________________________________________________
-Do You Yahoo!?
-Tired of spam?  Yahoo! Mail has the best spam protection around=20
-http://mail.yahoo.com=20
 
 
 -------------------------------------------------------
 All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications i=
-n
+Fully trained technicians. The highest number of Red Hat certifications in
 the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D107521&bid=3D248729&dat=3D=
-121642
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
