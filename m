@@ -1,111 +1,74 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: 2.4 vs 2.6
-Date: Mon, 29 May 2006 15:55:19 +1000
-Message-ID: <17530.36039.227704.325645@cse.unsw.edu.au>
-References: <17526.44653.228663.713864@cse.unsw.edu.au>
-	<20060526081905.73641.qmail@web51609.mail.yahoo.com>
-	<20060526193118.GB17761@fieldses.org>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [autofs] Re: [NFS] Re: [RFC] Multiple server selection and
+ replicated mount failover
+Date: Mon, 29 May 2006 15:31:59 +0800 (WST)
+Message-ID: <Pine.LNX.4.64.0605291525010.3436@raven.themaw.net>
+References: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net>
+ <Pine.LNX.4.64.0605241240200.3730@raven.themaw.net> <44745972.2010305@redhat.com>
+ <6cpsi36tkf.fsf@sumu.lexma.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: mehta kiran <kiranmehta1981@yahoo.com>,
-	nfs@lists.sourceforge.net, Vijay Chauhan <kernel.vijay@gmail.com>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fkaiy-0006KV-Ao
-	for nfs@lists.sourceforge.net; Sun, 28 May 2006 22:55:32 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fkaiy-0007Zf-5x
-	for nfs@lists.sourceforge.net; Sun, 28 May 2006 22:55:32 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1Fkaix-0002GB-Jr
-	for nfs@lists.sourceforge.net; Sun, 28 May 2006 22:55:32 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Friday May 26
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Peter Staubach <staubach@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "John T. Kohl" <jtk@us.ibm.com>
+In-Reply-To: <6cpsi36tkf.fsf@sumu.lexma.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Friday May 26, bfields@fieldses.org wrote:
-> On Fri, May 26, 2006 at 01:19:05AM -0700, mehta kiran wrote:
-> > Hi,
-> > 
-> > 1. I noticed that 2.6 kernel is not aware of 
-> >    exportfs until client tries to mount. It only
-> >    after this that proc nfsd filesystem shows this
-> >    in list of exports due to upcall.
-> >    Was 2.4 kernel aware of exportfs when the
-> >    filesystem was first exported or mounted ?
-> > 
-> > 2. Can you let me know advantage 2.6 export approach
-> >    over 2.4 export approach ? 
-> >    Is this approach required due to 
-> >    security/authentication integration with NFS(say 
-> >    ip->name conversion for security ) ?
+On Thu, 24 May 2006, John T. Kohl wrote:
+
+> >>>>> "PS" == Peter Staubach <staubach@redhat.com> writes:
 > 
-> The kernel has to know whether an incoming IP address matches, say,
-> "*.umich.edu."  But we don't want to add an entire DNS client
-> implementation to the kernel.  And we also can't preload the kernel with
-> every possible IP address that might match *.umich.edu.  So we allow
-> the kernel to ask mountd for that information when it needs it.
+> PS> When the Solaris client gets a timeout from an RPC, it checks to see
+> PS> whether this file and mount are failover'able.  This checks to see
+> PS> whether there are alternate servers in the list and could contain a
+> PS> check to see if there are locks existing on the file.  If there are
+> PS> locks, then don't failover.  The alternative to doing this is to
+> PS> attempt to move the lock, but this could be problematic because
+> PS> there would be no guarantee that the new lock could be acquired.
 > 
-> This isn't actually necessary for an NFSv2/v3 server, because mountd
-> always gets a "mount" request from any client before the kernel gets any
-> NFS requests from that client, so mountd can tell the kernel about the
-> new client then.
-
-Not exactly necessary, but without it we depend on 'rmtab' to record
-which clients have the filesystem mounted across a server reboot, and
-it is not possible to maintain an rmtab file reliably.
-
+> PS> Anyway, if the file is failover'able, then a new server is chosen
+> PS> from the list and the file handle associated with the file is
+> PS> remapped to the equivalent file on the new server.  This is done by
+> PS> repeating the lookups done to get the original file handle.  Once
+> PS> the new file handle is acquired, then some minimal checks are done
+> PS> to try to ensure that the files are the "same".  This is probably
+> PS> mostly checking to see whether the sizes of the two files are the
+> PS> same.
 > 
-> But NFSv4 clients don't contact mountd first.  Neither do v2/v3 clients
-> that are failing over from another server.  So you need the upcalls to
-> handle those cases.
+> PS> Please note that this approach contains the interesting aspect that
+> PS> files are only failed over when they need to be and are not failed over
+> PS> proactively.  This can lead to the situation where processes using the
+> PS> the file system can be talking to many of the different underlying
+> PS> servers, all at the sametime.  If a server goes down and then comes back
+> PS> up before a process, which was talking to that server, notices, then it
+> PS> will just continue to use that server, while another process, which
+> PS> noticed the failed server, may have failed over to a new server.
 > 
-> That justifies the auth_unix_ip upcall, anyway; I'm less sure about the
-> others.
+> If you have multiple processes talking to different server replicas, can
+> you then get cases where the processes aren't sharing the same files given
+> the same name?
+> 
+> Process "A" looks up /mount/a/b/c/file.c (using server 1) opens it and
+> starts working on it.  It then sits around doing nothing for a while.
+> 
+> Process "B" cd's to /mount/a/b, gets a timeout, fails over to server 2,
+> and then looks up "c/file.c" which will be referencing the object on
+> server 2 ?
+> 
+> A & B then try locking to cooperate...
+> 
+> Are replicas only useful for read-only copies?  If they're read-only, do
+> locks even make sense?
 
-The nfsd.fh upcall - which maps a file-handle-fragment to a directory -
-can be used to implementing on-demand loading of filesystems,
-e.g. CDroms from a CD library.  We don't actually do that now, but we
-could.
-It also means that if a filesystem isn't currently being used by a
-client, (where 'currently' means in the last 30 minutes I think), then
-you can unmount it without having to unexport it.  This is (arguably?)
-a good thing.
+Apps will take locks whether it makes sense or not.
+So refusing to fail-over if locks are held is likely the best approach.
 
-nfsd.export is needed because once auth.unix.ip and nfsd.fh have
-provided their information - it combines the two together to get
-export options.
+The case of replica filesystems themselves being updated could give rise 
+to some interesting difficulties.
 
-auth.domain was a mistake that is gone in recent kernels.
+Ian
 
-That leaves nfs4.nametoid and nfs4.idtoname.  I'm sure they do
-something useful.... :-)
-
-Hope that completes the clarification.
-
-NeilBrown
-
-
--------------------------------------------------------
-All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications in
-the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
