@@ -1,23 +1,26 @@
-From: Theo Markettos <nfs@markettos.org.uk>
-Subject: Multiple heterogeneous NFS servers on one machine
-Date: Mon, 29 May 2006 19:24:00 +0100
-Message-ID: <20060529182400.GQ13353@chiark.greenend.org.uk>
+From: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+Subject: Re: Multiple heterogeneous NFS servers on one machine
+Date: Mon, 29 May 2006 20:50:14 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0605292046470.13557@maggie.lkpg.cendio.se>
+References: <20060529182400.GQ13353@chiark.greenend.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1424731465-1148928614=:13557"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FkmPU-0003bc-QU
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 11:24:12 -0700
-Received: from chiark.greenend.org.uk ([193.201.200.170])
+	id 1Fkmop-0006SH-KL
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 11:50:23 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fkmop-0004rB-Hn
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 11:50:23 -0700
+Received: from mail.cendio.se ([193.12.253.69])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FkmPL-0008VC-Dw
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 11:24:03 -0700
-Received: by chiark.greenend.org.uk (Debian Exim 3.36 #1) with local
-	(return-path theom@chiark.greenend.org.uk)
-	id 1FkmPI-0006EG-00
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 19:24:00 +0100
-To: nfs@lists.sourceforge.net
+	id 1Fkmoo-0001to-9s
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 11:50:23 -0700
+To: Theo Markettos <nfs@markettos.org.uk>
+In-Reply-To: <20060529182400.GQ13353@chiark.greenend.org.uk>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,45 +34,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-I need to run two different NFS servers on the same 2.6 Linux machine.  This
-is because I need the --re-export option from Debian's 'nfs-user-server'
-package, and I also need an NFS 3 server, for which I'm using Linux's kernel
-mode server.  I've been trying to work out a way of doing this.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-My NFS clients can be told which ports mountd and nfsd are listening on, so
-it should be straightforward.  However I can't seem to get portmap out of
-the equation.  When I run just the kernel server, it works.  It also works
-if I tell my client explicitly which ports the kernel server mountd/nfsd are
-listening on.  However if I run just mountd and nfsd from the user mode
-server, without portmap, my client is giving RPC failures.  More confusingly
-if I run them when the kernel server is also running, neither work.  Killing
-user mode nfsd makes the kernel server work again.
+--789237761-1424731465-1148928614=:13557
+Content-Type: TEXT/PLAIN; charset=iso-8859-1; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
-So I think something is breaking portmap.  I've hacked the source of the
-user mode server mountd/nfsd to not call svc_register() (see man 3 rpc) in
-an attempt to not confuse portmap with two NFS servers running at once. 
-This at least means the kernel server works, but the user mode server
-doesn't.
 
-I'm still getting RPC errors when I run user mode mountd/nfsd without the
-kernel server after this modification, and running portmap doesn't help.
+> I need to run two different NFS servers on the same 2.6 Linux machine. =
+ This
+> is because I need the --re-export option from Debian's 'nfs-user-server=
+'
+> package, and I also need an NFS 3 server, for which I'm using Linux's k=
+ernel
+> mode server.  I've been trying to work out a way of doing this.
 
-Is it possible to run NFS without portmap?  Or are there any other
-suggestions for running two NFS servers on the same machine?  I thought
-about giving the machine two IP addresses, but neither server has an option
-to listen on a specific interface.  Or is there some way that the kernel NFS
-server can export already mounted remote directories (ie machine B exports
-directory containing filesystem mounted from machine A, where machine A's
-directory may be mounted with some random non-NFS network filesystem), which
-was the need for --re-export in the first place?
+> Is it possible to run NFS without portmap?
 
-Thanks
-Theo
+Sure. With unfs3, just use the "-p" option. You can use the same or=20
+different ports for the NFS and MOUNT service. Typically, I run unfs3=20
+with:
 
--- 
-Theo Markettos                 theo@markettos.org.uk
-Clare Hall, Cambridge          atm26@cam.ac.uk
-CB3 9AL, UK                    http://www.markettos.org.uk/
+unfsd -n 4711 -m 4711 -p
+
+When mounting you need to use the port=3D and mountport=3D options.
+
+Kind regards,
+--=20
+Peter =C5strand		ThinLinc Chief Developer
+Cendio			http://www.cendio.se
+Teknikringen 3
+583 30 Link=F6ping        Phone: +46-13-21 46 00
+--789237761-1424731465-1148928614=:13557--
 
 
 -------------------------------------------------------
