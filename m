@@ -1,25 +1,22 @@
-From: Theo Markettos <nfs@markettos.org.uk>
+From: Bernd Schubert <bernd-schubert@gmx.de>
 Subject: Re: Multiple heterogeneous NFS servers on one machine
-Date: Mon, 29 May 2006 20:18:51 +0100
-Message-ID: <20060529191851.GC30710@chiark.greenend.org.uk>
-References: <20060529182400.GQ13353@chiark.greenend.org.uk> <Pine.LNX.4.64.0605292046470.13557@maggie.lkpg.cendio.se>
+Date: Mon, 29 May 2006 21:36:16 +0200
+Message-ID: <200605292136.16422.bernd-schubert@gmx.de>
+References: <20060529182400.GQ13353@chiark.greenend.org.uk> <Pine.LNX.4.64.0605292046470.13557@maggie.lkpg.cendio.se> <20060529191851.GC30710@chiark.greenend.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FknGQ-0000uh-KD
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 12:18:54 -0700
-Received: from chiark.greenend.org.uk ([193.201.200.170])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FknGP-0006Qv-39
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 12:18:54 -0700
-Received: by chiark.greenend.org.uk (Debian Exim 3.36 #1) with local
-	(return-path theom@chiark.greenend.org.uk)
-	id 1FknGN-0002Es-00
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 20:18:51 +0100
+	id 1FknXZ-0002hp-F5
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 12:36:37 -0700
+Received: from mail.gmx.de ([213.165.64.20] helo=mail.gmx.net)
+	by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1FknXX-0001pX-PT
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 12:36:37 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <Pine.LNX.4.64.0605292046470.13557@maggie.lkpg.cendio.se>
+In-Reply-To: <20060529191851.GC30710@chiark.greenend.org.uk>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,29 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, May 29, 2006 at 08:50:14PM +0200, Peter ?strand wrote:
-> 
-> >Is it possible to run NFS without portmap?
-> 
-> Sure. With unfs3, just use the "-p" option. You can use the same or 
-> different ports for the NFS and MOUNT service. Typically, I run unfs3 
-> with:
-> 
-> unfsd -n 4711 -m 4711 -p
+> shepherd:~#  mount -t nfs -o port=3D1299,mountport=3D1289,tcp ordovician:=
+/nc
+> /mnt/
+>
+> mount: ordovician:/nc failed, reason given by server: unknown nfs status
+> return value: 22
+>
+> The same happened if I tried to mount from the local machine, or tried ud=
+p.
+> At this point I gave up with unfs3.  Any suggestions as to why that error
+> is happening?
 
-Which is interesting, because I tried unfs3 (giving them distinct port
-numbers for NFS and MOUNT) and got:
+Anything in the logs of the Server? If the problem persist, can you could=20
+start unfsd with '-p', so that it does't detach from the terminal.
+Whats are your current unfs3 options?  Have you already tried to put port a=
+nd=20
+mountport on the same portnumber (with unfs3 its suggested anyway).
 
-shepherd:~#  mount -t nfs -o port=1299,mountport=1289,tcp ordovician:/nc /mnt/
+You may also want to read:
 
-mount: ordovician:/nc failed, reason given by server: unknown nfs status
-return value: 22
+http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/nfs-root-howto/disk=
+less-nfs-howto.txt
 
-The same happened if I tried to mount from the local machine, or tried udp. 
-At this point I gave up with unfs3.  Any suggestions as to why that error is
-happening?
+If you find something need to be explained more in detail, just tell me.
 
-Theo
+
+Cheers,
+	Bernd
+
+
+
+=2D-=20
+Bernd Schubert
+PCI / Theoretische Chemie
+Universit=E4t Heidelberg
+INF 229
+69120 Heidelberg
+
 
 
 -------------------------------------------------------
