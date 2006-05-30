@@ -1,22 +1,24 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: Multiple heterogeneous NFS servers on one machine
-Date: Mon, 29 May 2006 23:15:23 +0200
-Message-ID: <200605292315.23951.bernd-schubert@gmx.de>
-References: <20060529182400.GQ13353@chiark.greenend.org.uk> <200605292136.16422.bernd-schubert@gmx.de> <20060529204252.GD30710@chiark.greenend.org.uk>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: 2.4 vs 2.6
+Date: Tue, 30 May 2006 11:12:08 +1000
+Message-ID: <20060530011208.GB12818@sgi.com>
+References: <17526.44653.228663.713864@cse.unsw.edu.au> <20060526081905.73641.qmail@web51609.mail.yahoo.com> <20060526193118.GB17761@fieldses.org> <17530.36039.227704.325645@cse.unsw.edu.au> <20060529160236.GC6832@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>,
+	mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net,
+	Vijay Chauhan <kernel.vijay@gmail.com>
 Return-path: <nfs-admin@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fkp5J-0004Es-DQ
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 14:15:33 -0700
-Received: from mail.gmx.de ([213.165.64.20] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1Fkp5H-0000Ni-ON
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 14:15:33 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20060529204252.GD30710@chiark.greenend.org.uk>
+	id 1Fksmj-0005Br-8a
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 18:12:37 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Fksmi-0001Cr-Th
+	for nfs@lists.sourceforge.net; Mon, 29 May 2006 18:12:37 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20060529160236.GC6832@fieldses.org>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,76 +32,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
->
-> OK, I get:
-> ordovician:/tmp/nfs-user-server-2.2beta47# unfsd -n 1599 -m 1599 -p -d
-> UNFS3 unfsd 0.9.13 (C) 2004 Pascal Schmidt <der.eremit@email.de>
-> /home: ip 172.21.115.2 mask 255.255.255.255 options 4
-> /home: ip 127.0.0.1 mask 255.255.255.255 options 4
-> /nc: ip 172.21.115.0 mask 255.255.255.0 options 2
-> /: ip 172.21.115.2 mask 255.255.255.255 options 2
-> /store: ip 172.21.115.2 mask 255.255.255.255 options 4
-> /store: ip 127.0.0.1 mask 255.255.255.255 options 4
-> 172.21.115.14 attempted mount with unsupported protocol version
-> 172.21.115.12 attempted mount with unsupported protocol version
->
-> (tried the command I posted from two different machines)
+On Mon, May 29, 2006 at 12:02:36PM -0400, J. Bruce Fields wrote:
+> On Mon, May 29, 2006 at 03:55:19PM +1000, Neil Brown wrote:
+> > Not exactly necessary, but without it we depend on 'rmtab' to record
+> > which clients have the filesystem mounted across a server reboot, and
+> > it is not possible to maintain an rmtab file reliably.
+> 
+> Oh, right.  Hm.  I don't actually understand exactly what the obstacles
+> are to maintaining it reliably, though intuitively it's easy to believe
+> that it's impossible.  Is the problem just clients that die and never
+> come back, or are there inherent race coditions updating the rmtab on
+> unmount?
 
-Can you add mountvers=3D3,nolock as described in my howto?=20
+Clients can also ignore network errors when they unmount, or do
+some kind of forced unmount which doesn't send an RPC to mountd.
+Because clients still work regardless of whether the serverside state
+is cleaned up, umount is effectively optional.
 
->
-> If I append ,nfsvers=3D3 to the mount options, it hangs for about 5-10 mi=
-ns
-> then succeeds without further log output.  (Linux 2.4.26 and 2.6.15.4
-> respectively, both Debian stable).
+So rmtab is not only unreliable but tends to accumulate cruft.  I've
+seen reports of rmtab growing to over 500 megabytes (admittedly not
+on a Linux box, but the principle is the same).
 
-If it still waits this long time, after adding the options above, could you=
-=20
-capture via ethereal and look whats going on? The nfsvers=3D3 option is als=
-o=20
-still important as the default option is nfsvers=3D2, which is not supporte=
-d by=20
-unfs3.=20
+> > nfsd.export is needed because once auth.unix.ip and nfsd.fh have
+> > provided their information - it combines the two together to get
+> > export options.
+> 
+> I don't see why this *has* to be done on demand, though, unless the
+> export table is extremely large and only sparsely used.  I might be
+> missing something.
 
->
-> If I try to connect from the NFS client on my RISC OS machine it says "NFS
-> call failed (Operation is not supported)" which looking at the source mea=
-ns
-> it's got a code 10004, NFSERR_NOTSUPP, from the RPC mechanism.  That's wi=
-th
-> it in NFS 3 mode - in NFS 2 mode it just says "Unknown error" which, when=
- I
-> make it output the number, is 22.  I have the source for this client so  I
-> can make it output more information if you can suggest what would be of
-> help.
+/mnt/data *.domain1.company.com(ro,sync) *.domain2.company.com(rw,sync)
 
-An ethereal capture (and the sources ) would be helpfull in that case. My n=
-fs=20
-protocol knowlegde got a bit rosty, but I need to refresh it anyway to fini=
-sh=20
-my pending patches for unfs3 (if I only had the time to write them :(  )
+Also, ISTR that the combination of the nohide export option and
+a client wildcard didn't work properly in 2.4 and the kernel upcall
+to mountd in 2.6 fixed that.
 
->
-> > You may also want to read:
-> >
-> > http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/nfs-root-howto/=
-di
-> >skless-nfs-howto.txt
->
-> Thanks, that's very useful.  Sounds like unfs is the way to go, if only I
-> can persuade it to work with my clients.
-
-Cheers,
-	Bernd
-
-
-=2D-=20
-Bernd Schubert
-PCI / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
 -------------------------------------------------------
