@@ -1,59 +1,72 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.4 vs 2.6
-Date: Mon, 29 May 2006 21:59:18 -0400
-Message-ID: <20060530015918.GA27940@fieldses.org>
-References: <17526.44653.228663.713864@cse.unsw.edu.au> <20060526081905.73641.qmail@web51609.mail.yahoo.com> <20060526193118.GB17761@fieldses.org> <17530.36039.227704.325645@cse.unsw.edu.au> <20060529160236.GC6832@fieldses.org> <20060530011208.GB12818@sgi.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [autofs] Re: [NFS] Re: [RFC] Multiple server selection and replicated mount failover
+Date: Tue, 30 May 2006 08:02:03 -0400
+Message-ID: <x49mzczwwjo.fsf@redhat.com>
+References: <Pine.LNX.4.64.0605021257500.3868@raven.themaw.net>
+	<Pine.LNX.4.64.0605241240200.3730@raven.themaw.net>
+	<44745972.2010305@redhat.com> <6cpsi36tkf.fsf@sumu.lexma.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>,
-	mehta kiran <kiranmehta1981@yahoo.com>, nfs@lists.sourceforge.net,
-	Vijay Chauhan <kernel.vijay@gmail.com>
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FktW1-0001I0-0n
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 18:59:25 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44)
-	id 1FktVz-0004If-Pa
-	for nfs@lists.sourceforge.net; Mon, 29 May 2006 18:59:25 -0700
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20060530011208.GB12818@sgi.com>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Cc: Peter Staubach <staubach@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	autofs mailing list <autofs@linux.kernel.org>,
+	nfs@lists.sourceforge.net, Ian Kent <raven@themaw.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: jtk@us.ibm.com (John T. Kohl)
+In-Reply-To: <6cpsi36tkf.fsf@sumu.lexma.ibm.com> (John T. Kohl's message of "24 May 2006 16:45:04 -0400")
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, May 30, 2006 at 11:12:08AM +1000, Greg Banks wrote:
-> On Mon, May 29, 2006 at 12:02:36PM -0400, J. Bruce Fields wrote:
-> > I don't see why this *has* to be done on demand, though, unless the
-> > export table is extremely large and only sparsely used.  I might be
-> > missing something.
-> 
-> /mnt/data *.domain1.company.com(ro,sync) *.domain2.company.com(rw,sync)
+==> Regarding [autofs] Re: [NFS] Re: [RFC] Multiple server selection and replicated mount failover; jtk@us.ibm.com (John T. Kohl) adds:
 
-I realize that the ip->client-name mapping is too large to preload into
-the kernel.
+>>>>>> "PS" == Peter Staubach <staubach@redhat.com> writes:
+PS> When the Solaris client gets a timeout from an RPC, it checks to see
+PS> whether this file and mount are failover'able.  This checks to see
+PS> whether there are alternate servers in the list and could contain a
+PS> check to see if there are locks existing on the file.  If there are
+PS> locks, then don't failover.  The alternative to doing this is to
+PS> attempt to move the lock, but this could be problematic because there
+PS> would be no guarantee that the new lock could be acquired.
 
-It's the (path, client-name) --> export options that I wonder about.
+PS> Anyway, if the file is failover'able, then a new server is chosen from
+PS> the list and the file handle associated with the file is remapped to
+PS> the equivalent file on the new server.  This is done by repeating the
+PS> lookups done to get the original file handle.  Once the new file handle
+PS> is acquired, then some minimal checks are done to try to ensure that
+PS> the files are the "same".  This is probably mostly checking to see
+PS> whether the sizes of the two files are the same.
 
---b.
+PS> Please note that this approach contains the interesting aspect that
+PS> files are only failed over when they need to be and are not failed over
+PS> proactively.  This can lead to the situation where processes using the
+PS> the file system can be talking to many of the different underlying
+PS> servers, all at the sametime.  If a server goes down and then comes
+PS> back up before a process, which was talking to that server, notices,
+PS> then it will just continue to use that server, while another process,
+PS> which noticed the failed server, may have failed over to a new server.
 
+jtk> If you have multiple processes talking to different server replicas,
+jtk> can you then get cases where the processes aren't sharing the same
+jtk> files given the same name?
 
--------------------------------------------------------
-All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications in
-the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+jtk> Process "A" looks up /mount/a/b/c/file.c (using server 1) opens it and
+jtk> starts working on it.  It then sits around doing nothing for a while.
+
+jtk> Process "B" cd's to /mount/a/b, gets a timeout, fails over to server
+jtk> 2, and then looks up "c/file.c" which will be referencing the object
+jtk> on server 2 ?
+
+jtk> A & B then try locking to cooperate...
+
+jtk> Are replicas only useful for read-only copies?  If they're read-only,
+jtk> do locks even make sense?
+
+In the docs I've read, the replicated failover only works for read-only
+file systems.  You can have a replicated server entry for read-write file
+systems, but only one of those will be mounted by the automounter.  To
+change servers would require a timeout (unmount) and subsequent lookup
+(mount).
+
+I don't think we need to try to kill ourselves by making this too complex.
+
+-Jeff
