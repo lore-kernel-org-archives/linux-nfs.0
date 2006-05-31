@@ -1,25 +1,31 @@
-From: Theo Markettos <nfs@markettos.org.uk>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Multiple heterogeneous NFS servers on one machine
-Date: Wed, 31 May 2006 12:42:55 +0100
-Message-ID: <20060531114254.GE30710@chiark.greenend.org.uk>
-References: <20060529182400.GQ13353@chiark.greenend.org.uk> <200605292136.16422.bernd-schubert@gmx.de> <20060529204252.GD30710@chiark.greenend.org.uk> <200605292315.23951.bernd-schubert@gmx.de>
+Date: Wed, 31 May 2006 15:09:48 -0400
+Message-ID: <1149102588.32074.21.camel@lade.trondhjem.org>
+References: <20060529182400.GQ13353@chiark.greenend.org.uk>
+	 <200605292136.16422.bernd-schubert@gmx.de>
+	 <20060529204252.GD30710@chiark.greenend.org.uk>
+	 <200605292315.23951.bernd-schubert@gmx.de>
+	 <20060531114254.GE30710@chiark.greenend.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7] helo=sc8-sf-list1.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FlP6L-0004yL-TQ
-	for nfs@lists.sourceforge.net; Wed, 31 May 2006 04:43:01 -0700
-Received: from chiark.greenend.org.uk ([193.201.200.170])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FlP6K-0001Km-48
-	for nfs@lists.sourceforge.net; Wed, 31 May 2006 04:43:01 -0700
-Received: by chiark.greenend.org.uk (Debian Exim 3.36 #1) with local
-	(return-path theom@chiark.greenend.org.uk)
-	id 1FlP6F-0004Pg-00
-	for nfs@lists.sourceforge.net; Wed, 31 May 2006 12:42:55 +0100
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200605292315.23951.bernd-schubert@gmx.de>
+	id 1FlWcO-0002wi-Cd
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 12:44:36 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
+	id 1FlW5K-0002Ir-PJ
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 12:10:26 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FlW5K-0005T9-6x
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 12:10:26 -0700
+To: Theo Markettos <nfs@markettos.org.uk>
+In-Reply-To: <20060531114254.GE30710@chiark.greenend.org.uk>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,55 +39,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-On Mon, May 29, 2006 at 11:15:23PM +0200, Bernd Schubert wrote:
-> >
-> Can you add mountvers=3,nolock as described in my howto? 
-
-Ah, thanks.  That succeeds instantly.
-
-> > If I try to connect from the NFS client on my RISC OS machine it says "NFS
-> > call failed (Operation is not supported)" which looking at the source means
-> > it's got a code 10004, NFSERR_NOTSUPP, from the RPC mechanism.  That's with
-> > it in NFS 3 mode - in NFS 2 mode it just says "Unknown error" which, when I
-> > make it output the number, is 22.  I have the source for this client so  I
-> > can make it output more information if you can suggest what would be of
-> > help.
+On Wed, 2006-05-31 at 12:42 +0100, Theo Markettos wrote:
+> On Mon, May 29, 2006 at 11:15:23PM +0200, Bernd Schubert wrote:
+> > >
+> > Can you add mountvers=3,nolock as described in my howto? 
 > 
-> An ethereal capture (and the sources ) would be helpfull in that case. My nfs 
-> protocol knowlegde got a bit rosty, but I need to refresh it anyway to finish 
-> my pending patches for unfs3 (if I only had the time to write them :(  )
+> Ah, thanks.  That succeeds instantly.
+> 
+> > > If I try to connect from the NFS client on my RISC OS machine it says "NFS
+> > > call failed (Operation is not supported)" which looking at the source means
+> > > it's got a code 10004, NFSERR_NOTSUPP, from the RPC mechanism.  That's with
+> > > it in NFS 3 mode - in NFS 2 mode it just says "Unknown error" which, when I
+> > > make it output the number, is 22.  I have the source for this client so  I
+> > > can make it output more information if you can suggest what would be of
+> > > help.
+> > 
+> > An ethereal capture (and the sources ) would be helpfull in that case. My nfs 
+> > protocol knowlegde got a bit rosty, but I need to refresh it anyway to finish 
+> > my pending patches for unfs3 (if I only had the time to write them :(  )
+> 
+> OK, Ethereal capture can be found at:
+> http://www.harbinge.com/temp/nfs-ethereal.libpcap (raw dump file)
+> http://www.harbinge.com/temp/nfs-ethereal.txt (text explanation)
+> 
+> Briefly, the client is 172.21.115.2 (iapetus) and the server 172.21.115.12
+> (ordovician).  There a bit of random ARP and broadcast traffic in there too
+> that I didn't manage to filter out.  Both NFS and MOUNT were listening on
+> port 1599.
+> 
+> Source is in:
+> http://www.harbinge.com/temp/sunfish-108.zip
+> 
+> For historical reasons files are named c/foo rather than foo.c.  Much of the
+> RPC code is generated by perl script ProcessSpec from XDR specifications
+> (see makefile) - I've put the output .c and .h files in the archive so it's
+> easier for you to poke around.  Function names in caps are usually RPC calls.
+> 
+> The code that initiates the connection is func_newimage() in
+> imageentry_newimage.c.  This then calls
+> imageentry_func.c/func_newimage_mount() that calls MOUNT.
+> 
+> Another entry point I think then calls imageentry_func.c/func_readdirinfo()
+> that calls imageentry_common.c/filename_to_finfo() which fires off some
+> LOOKUP commands.  Then back in func_readdirinfo() we call READDIRPLUS which
+> gives up back error 10004.
+> 
+> Aha, right.  It seems unfs3 doesn't support READDIRPLUS.  I'll see if the
+> client can be modified to call READDIR only.
 
-OK, Ethereal capture can be found at:
-http://www.harbinge.com/temp/nfs-ethereal.libpcap (raw dump file)
-http://www.harbinge.com/temp/nfs-ethereal.txt (text explanation)
+_IF_ unfs3 is returning the correct error when we call READDIRPLUS (i.e.
+NFS3ERR_NOTSUP == 10004), then the client will already automatically
+fall back to using READDIR only.
 
-Briefly, the client is 172.21.115.2 (iapetus) and the server 172.21.115.12
-(ordovician).  There a bit of random ARP and broadcast traffic in there too
-that I didn't manage to filter out.  Both NFS and MOUNT were listening on
-port 1599.
+  Trond
 
-Source is in:
-http://www.harbinge.com/temp/sunfish-108.zip
-
-For historical reasons files are named c/foo rather than foo.c.  Much of the
-RPC code is generated by perl script ProcessSpec from XDR specifications
-(see makefile) - I've put the output .c and .h files in the archive so it's
-easier for you to poke around.  Function names in caps are usually RPC calls.
-
-The code that initiates the connection is func_newimage() in
-imageentry_newimage.c.  This then calls
-imageentry_func.c/func_newimage_mount() that calls MOUNT.
-
-Another entry point I think then calls imageentry_func.c/func_readdirinfo()
-that calls imageentry_common.c/filename_to_finfo() which fires off some
-LOOKUP commands.  Then back in func_readdirinfo() we call READDIRPLUS which
-gives up back error 10004.
-
-Aha, right.  It seems unfs3 doesn't support READDIRPLUS.  I'll see if the
-client can be modified to call READDIR only.
-
-Thanks
-Theo
 
 
 -------------------------------------------------------
