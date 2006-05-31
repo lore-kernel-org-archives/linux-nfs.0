@@ -1,29 +1,25 @@
-From: Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
-Subject: nfs4 client hangs in D state
-Date: Tue, 30 May 2006 17:05:57 +0200
-Message-ID: <200605301705.59293.marc.dietrich@ap.physik.uni-giessen.de>
+From: Theo Markettos <nfs@markettos.org.uk>
+Subject: Re: Multiple heterogeneous NFS servers on one machine
+Date: Wed, 31 May 2006 12:42:55 +0100
+Message-ID: <20060531114254.GE30710@chiark.greenend.org.uk>
+References: <20060529182400.GQ13353@chiark.greenend.org.uk> <200605292136.16422.bernd-schubert@gmx.de> <20060529204252.GD30710@chiark.greenend.org.uk> <200605292315.23951.bernd-schubert@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fl5nf-0005KU-In
-	for nfs@lists.sourceforge.net; Tue, 30 May 2006 08:06:27 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fl5nf-000311-BQ
-	for nfs@lists.sourceforge.net; Tue, 30 May 2006 08:06:27 -0700
-Received: from merkurneu.hrz.uni-giessen.de ([134.176.2.3])
+	id 1FlP6L-0004yL-TQ
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 04:43:01 -0700
+Received: from chiark.greenend.org.uk ([193.201.200.170])
 	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Fl5ne-0003lF-Ru
-	for nfs@lists.sourceforge.net; Tue, 30 May 2006 08:06:27 -0700
-Received: from [134.176.2.191] by merkurneu.hrz.uni-giessen.de with ESMTP for nfs@lists.sourceforge.net; Tue, 30 May 2006 17:06:03 +0200
-Received: from hermes.hrz.uni-giessen.de (hermes.hrz.uni-giessen.de [134.176.2.15])
-	by mailgw12.hrz.uni-giessen.de (Postfix) with ESMTP id 4D5082C8A4B
-	for <nfs@lists.sourceforge.net>; Tue, 30 May 2006 17:05:58 +0200 (CEST)
-Received: from fb07-iapwap2.physik.uni-giessen.de by hermes.hrz.uni-giessen.de with ESMTP for nfs@lists.sourceforge.net; Tue, 30 May 2006 17:06:00 +0200
+	id 1FlP6K-0001Km-48
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 04:43:01 -0700
+Received: by chiark.greenend.org.uk (Debian Exim 3.36 #1) with local
+	(return-path theom@chiark.greenend.org.uk)
+	id 1FlP6F-0004Pg-00
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 12:42:55 +0100
 To: nfs@lists.sourceforge.net
+In-Reply-To: <200605292315.23951.bernd-schubert@gmx.de>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,75 +33,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
+On Mon, May 29, 2006 at 11:15:23PM +0200, Bernd Schubert wrote:
+> >
+> Can you add mountvers=3,nolock as described in my howto? 
 
-Hi,
+Ah, thanks.  That succeeds instantly.
 
-one of my fresh installed SuSE 10.1 clients frequently hangs when copying d=
-ata=20
-from the (fresh installed SuSE 10.1) nfs4 server. I still can login as root=
-,=20
-but access to the mounted directories is impossible.=20
-alt-sys-t gives that:
+> > If I try to connect from the NFS client on my RISC OS machine it says "NFS
+> > call failed (Operation is not supported)" which looking at the source means
+> > it's got a code 10004, NFSERR_NOTSUPP, from the RPC mechanism.  That's with
+> > it in NFS 3 mode - in NFS 2 mode it just says "Unknown error" which, when I
+> > make it output the number, is 22.  I have the source for this client so  I
+> > can make it output more information if you can suggest what would be of
+> > help.
+> 
+> An ethereal capture (and the sources ) would be helpfull in that case. My nfs 
+> protocol knowlegde got a bit rosty, but I need to refresh it anyway to finish 
+> my pending patches for unfs3 (if I only had the time to write them :(  )
 
- c9a61f34 cf25ea60 0000000a cc68c16c cc68c030 9c939900 003dece3 00000000
-        c5933a6c c013d1ba 15ef3c00 00000000 c9a61f74 00000001 cc68cab0=20
-00000000
-        c0119596 00000006 ffffffff cc68c030 00000001 cc68c0f0 00000001=20
-00000000
- Call Trace:
-  [<c013d1ba>] __handle_mm_fault+0x6ca/0x75b
-  [<c0119596>] do_wait+0x813/0x8e3
-  [<c0158df2>] do_ioctl+0x3a/0x49
-  [<c01149a3>] default_wake_function+0x0/0xc
-  [<c011968d>] sys_wait4+0x27/0x2a
-  [<c01196a3>] sys_waitpid+0x13/0x17
-  [<c01029db>] sysenter_past_esp+0x54/0x79
- cp            S CC68CBEC     0 15571  15535                     (NOTLB)
- c4f79cd4 c4f79cdc 00000008 cc68cbec cc68cab0 9cd0a200 003dece3 00000000
-        00000000 00000000 003d0900 00000000 c4f79d24 00000000 c4f79d2c=20
-c12003b0
-        d0b3c7ee c027258d d0b3c7d1 c4f79d24 cf2f321c c4f79d20 00000000=20
-c0272627
- Call Trace:
-  [<d0b3c7ee>] nfs4_wait_bit_interruptible+0x1d/0x22 [nfs]
-  [<c027258d>] __wait_on_bit+0x33/0x58
-  [<d0b3c7d1>] nfs4_wait_bit_interruptible+0x0/0x22 [nfs]
-  [<c0272627>] out_of_line_wait_on_bit+0x75/0x7d
-  [<d0b3c7d1>] nfs4_wait_bit_interruptible+0x0/0x22 [nfs]
-  [<c0125995>] wake_bit_function+0x0/0x3f
-  [<d0b384aa>] nfs4_wait_clnt_recover+0x43/0x57 [nfs]
-  [<d0b3c34d>] nfs4_open_revalidate+0xaf/0x395 [nfs]
-  [<d0b2b5fe>] nfs_open_revalidate+0x80/0xfc [nfs]
-  [<c015550b>] do_lookup+0x10a/0x135
-  [<c0156e6f>] __link_path_walk+0x6c1/0xab6
-  [<c01607b9>] mntput_no_expire+0x11/0x59
-  [<c01572ab>] link_path_walk+0x47/0xb9
-  [<c01575cc>] do_path_lookup+0x198/0x1e6
-  [<c0157e6c>] __path_lookup_intent_open+0x42/0x72
-  [<c0157eeb>] path_lookup_open+0xf/0x13
-  [<c0157fae>] open_namei+0x62/0x4e4
-  [<c01523bb>] vfs_stat_fd+0x15/0x3c
-  [<c014987d>] do_filp_open+0x1d/0x32
-  [<c01498d0>] do_sys_open+0x3e/0xb0
-  [<c014996f>] sys_open+0x16/0x18
-  [<c01029db>] sysenter_past_esp+0x54/0x79
- 134.176.19.12 D CC68016C     0 15572      5                2500 (L-TLB)
+OK, Ethereal capture can be found at:
+http://www.harbinge.com/temp/nfs-ethereal.libpcap (raw dump file)
+http://www.harbinge.com/temp/nfs-ethereal.txt (text explanation)
 
-Anything I can do to debug this further?
-This seems to happen only on this single machine. All others (also SuSE 10.=
-1)=20
-are running well (up to now). Maybe a configure problem?
+Briefly, the client is 172.21.115.2 (iapetus) and the server 172.21.115.12
+(ordovician).  There a bit of random ARP and broadcast traffic in there too
+that I didn't manage to filter out.  Both NFS and MOUNT were listening on
+port 1599.
 
-Greetings
+Source is in:
+http://www.harbinge.com/temp/sunfish-108.zip
 
-	marc
+For historical reasons files are named c/foo rather than foo.c.  Much of the
+RPC code is generated by perl script ProcessSpec from XDR specifications
+(see makefile) - I've put the output .c and .h files in the archive so it's
+easier for you to poke around.  Function names in caps are usually RPC calls.
 
+The code that initiates the connection is func_newimage() in
+imageentry_newimage.c.  This then calls
+imageentry_func.c/func_newimage_mount() that calls MOUNT.
 
-=2D-=20
-	"Das feindliche Lager tr=E4gt die alleinige Schuld am Krieg."
-		 Lord Arthur Ponsonby, "Falsehood in Wartime: Propaganda Lies of the Firs=
-t=20
-World War", 1928
+Another entry point I think then calls imageentry_func.c/func_readdirinfo()
+that calls imageentry_common.c/filename_to_finfo() which fires off some
+LOOKUP commands.  Then back in func_readdirinfo() we call READDIRPLUS which
+gives up back error 10004.
+
+Aha, right.  It seems unfs3 doesn't support READDIRPLUS.  I'll see if the
+client can be modified to call READDIR only.
+
+Thanks
+Theo
 
 
 -------------------------------------------------------
