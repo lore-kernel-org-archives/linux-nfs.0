@@ -1,60 +1,99 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [NFS] [RFC] NLM lock failover admin interface
-Date: Wed, 14 Jun 2006 02:54:51 -0400
-Message-ID: <1150268091.28264.75.camel@localhost.localdomain>
-References: <1150089943.26019.18.camel@localhost.localdomain>
-	<17550.11870.186706.36949@cse.unsw.edu.au>
-Reply-To: linux clustering <linux-cluster@redhat.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Re: Problems with fh_fsid_type=3 exports (device minor id >
+	255)
+Date: Wed, 31 May 2006 15:48:39 -0700
+Message-ID: <1149115719.12795.49.camel@dyn9047022153>
+References: <1148669319.12795.44.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-cluster@redhat.com, nfs@lists.sourceforge.net
-Return-path: <linux-cluster-bounces@redhat.com>
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17550.11870.186706.36949@cse.unsw.edu.au>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cluster>
-List-Post: <mailto:linux-cluster@redhat.com>
-List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
-Sender: linux-cluster-bounces@redhat.com
-Errors-To: linux-cluster-bounces@redhat.com
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-admin@lists.sourceforge.net>
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FlZS2-0005kf-S7
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 15:46:06 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FlZS2-00024Q-OP
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 15:46:06 -0700
+Received: from e33.co.us.ibm.com ([32.97.110.151])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FlZS0-0003I8-Hv
+	for nfs@lists.sourceforge.net; Wed, 31 May 2006 15:46:06 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e33.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k4VMjCdQ020354
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <nfs@lists.sourceforge.net>; Wed, 31 May 2006 18:45:12 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id k4VMjCxw156906
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Wed, 31 May 2006 16:45:12 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k4VMjBa6016932
+	for <nfs@lists.sourceforge.net>; Wed, 31 May 2006 16:45:12 -0600
+To: NFS List <nfs@lists.sourceforge.net>, Neil Brown <neilb@suse.de>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1148669319.12795.44.camel@dyn9047022153>
+Sender: nfs-admin@lists.sourceforge.net
+Errors-To: nfs-admin@lists.sourceforge.net
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Id: Discussion of NFS under Linux development,
+	interoperability,
+	and testing. <nfs.lists.sourceforge.net>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Hi,
+On Fri, 2006-05-26 at 11:48 -0700, Frank Filz wrote:
+> I having a problem with the 2.6.9 kernel and mounting file systems with
+> a minor device id > 255 where the mount fails. It seems like the file
+> handle is never cached. We are able to proceed if fsid is specified
+> in /etc/exports. nfs-utils version is 1.0.6.
+> 
+> Have others seen this problem and is there a fix in a later kernel?
+> 
+> I've been trying to follow the fh_compose and fh_verify code to
+> understand this, but I don't see where there's a difference between type
+> 3 file handles and type 1 file handles (fsid specified in /etc/exports)
+> that could cause a problem. When I add a little bit of debug messages, I
+> see that expkey_parse is being called as a result of a system call for
+> the type 1 handles, but not for the type 3 handles.
 
-KABI (kernel application binary interface) commitment is a big thing
-from our end - so I would like to focus more on the interface agreement
-before jumping into coding and implementation details. 
+I've trudged my way through the code, and I think I've found the
+problem. The problem seems to be the way the kernel and nfs-utils expect
+the fsid to be coded. The kernel uses this code to encode:
 
->   One is the multiple-lockd-threads idea.
+	unsigned major = MAJOR(dev);
+	unsigned minor = MINOR(dev);
+	return (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
 
-Assume we still have this on the table.... Could I expect the admin
-interface goes thru rpc.lockd command (man page and nfs-util code
-changes) ? The modified command will take similar options as rpc.statd;
-more specifically, the -n, -o, and -p (see "man rpc.statd"). To pass the
-individual IP (socket address) to kernel, we'll need nfsctl with struct
-nfsctl_svc modified.
+The user space uses this code to decode:
 
-For the kernel piece, since we're there anyway, could we have the
-individual lockd IP interface passed to SM (statd) (in SM_MON call) ?
-This would allow statd to structure its SM files based on each lockd IP
-address, an important part of lock recovery.
+		memcpy(&dev, fsid, 4);
+		memcpy(&inode, fsid+4, 4);
+		major = (dev & 0xfff00) >> 8;
+		minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
 
->   One is to register a callback when an interface is shut down.
+I think when the entry is exported into the kernel, the fsid is also
+going to be wrong.
 
-Haven't checked out (linux) socket interface yet. I'm very fuzzy how
-this can be done. Anyone has good ideas ? 
+The question I have is should I fix this in the kernel or in nfs-utils?
 
->   Another (possibly the best) is to arrange a new signal for lockd
->   which say "Drop any locks which were sent to IP addresses that are
->   no longer valid local addresses".
+Thanks
 
-Very appealing - but the devil's always in the details. How to decide
-which IP address is no longer valid ? Or how does lockd know about these
-IP addresses ? And how to associate one particular IP address with the
-"struct nlm_file" entries within nlm_files list ? Need few more days to
-sort this out (or any one already has ideas in mind ?).
+Frank Filz
 
--- Wendy
+
+
+
+-------------------------------------------------------
+All the advantages of Linux Managed Hosting--Without the Cost and Risk!
+Fully trained technicians. The highest number of Red Hat certifications in
+the hosting industry. Fanatical Support. Click to learn more
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
