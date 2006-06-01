@@ -1,57 +1,62 @@
-From: Theo Markettos <theo@markettos.org.uk>
-Subject: Re: Multiple heterogeneous NFS servers on one machine
-Date: Thu, 1 Jun 2006 21:37:35 +0100
-Message-ID: <20060601203735.GF30710@chiark.greenend.org.uk>
-References: <20060529182400.GQ13353@chiark.greenend.org.uk> <200605292136.16422.bernd-schubert@gmx.de> <20060529204252.GD30710@chiark.greenend.org.uk> <200605292315.23951.bernd-schubert@gmx.de> <20060531114254.GE30710@chiark.greenend.org.uk> <1149102588.32074.21.camel@lade.trondhjem.org>
+From: "Steinar H. Gunderson" <sesse@debian.org>
+Subject: Re: Fusing Debian patches back into nfs-utils
+Date: Fri, 2 Jun 2006 00:09:54 +0200
+Message-ID: <20060601220954.GA6739@uio.no>
+References: <20060601155929.GA890@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FltvI-00056p-7J
-	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 13:37:40 -0700
-Received: from chiark.greenend.org.uk ([193.201.200.170])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1FltvG-0001Ow-Tv
-	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 13:37:40 -0700
-Received: by chiark.greenend.org.uk (Debian Exim 3.36 #1) with local
-	(return-path theom@chiark.greenend.org.uk)
-	id 1FltvD-0006yS-00
-	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 21:37:35 +0100
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7]
+	helo=sc8-sf-list1.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FlvUu-0000hr-C7
+	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 15:18:32 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
+	id 1FlvMX-0000rA-2g
+	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 15:09:53 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FlvMU-0006ZH-5Y
+	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 15:09:53 -0700
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1FlvMQ-00039z-1B
+	for nfs@lists.sourceforge.net; Fri, 02 Jun 2006 00:09:46 +0200
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1FlvMY-0001lJ-00
+	for <nfs@lists.sourceforge.net>; Fri, 02 Jun 2006 00:09:54 +0200
 To: nfs@lists.sourceforge.net
-In-Reply-To: <1149102588.32074.21.camel@lade.trondhjem.org>
-Sender: nfs-admin@lists.sourceforge.net
-Errors-To: nfs-admin@lists.sourceforge.net
+In-Reply-To: <20060601155929.GA890@uio.no>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Id: Discussion of NFS under Linux development,
-	interoperability,
-	and testing. <nfs.lists.sourceforge.net>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 List-Post: <mailto:nfs@lists.sourceforge.net>
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, May 31, 2006 at 03:09:48PM -0400, Trond Myklebust wrote:
-> _IF_ unfs3 is returning the correct error when we call READDIRPLUS (i.e.
-> NFS3ERR_NOTSUP == 10004), then the client will already automatically
-> fall back to using READDIR only.
+On Thu, Jun 01, 2006 at 05:59:29PM +0200, Steinar H. Gunderson wrote:
+>  - fix_anonuid_and_anongid.diff: The current code uses -2 for default
+>    anonymous uid and gid, in the hope that it will be equivalent to 65534.
+>    However, on systems with 32-bit uids and gids, this returns another value
+>    entirely, which gives rise to an unpredictable default uid and gid (which
+>    probably doesn't match what's in passwd and group). This patch fixes the
+>    code and documentation to use 65534 explicitly instead.
 
-Exactly, but it isn't.  It (Sunfish) is just reporting the error then giving
-up.  I've asked the author and he says it wouldn't be too hard to modify the
-client to use READDIR all the time, except for a performance hit, but it
-would be harder to make it fall back.  I'm going to have a look at how I can
-modify it when I next have some spare time.
+I just noticed this patch is incomplete; you'll also need to make the same
+change in utils/exportfs/exportfs.c. The extra patch is trivial, though, but
+I missed it the first time. :-)
 
-Theo
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 
--------------------------------------------------------
-All the advantages of Linux Managed Hosting--Without the Cost and Risk!
-Fully trained technicians. The highest number of Red Hat certifications in
-the hosting industry. Fanatical Support. Click to learn more
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
