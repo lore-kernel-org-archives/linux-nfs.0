@@ -1,22 +1,44 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Re: NFS synchronization problems on Beowulf cluster
-Date: Thu, 01 Jun 2006 13:22:48 -0400
-Message-ID: <447F2268.4090401@redhat.com>
-References: <loom.20060531T205740-641@post.gmane.org> <loom.20060601T155144-450@post.gmane.org> <447EF8CA.3020200@redhat.com> <loom.20060601T164005-982@post.gmane.org> <447F0E3D.9070809@redhat.com> <loom.20060601T175939-701@post.gmane.org>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [PATCH] expkey_parse doesn't handle type 3 exports (was Re: [NFS]
+ Problems with fh_fsid_type=3 exports (device minor id > 255))
+Date: Thu, 01 Jun 2006 10:51:59 -0700
+Message-ID: <1149184319.12795.63.camel@dyn9047022153>
+References: <1148669319.12795.44.camel@dyn9047022153>
+	 <1149115719.12795.49.camel@dyn9047022153>
+	 <1149117333.12795.53.camel@dyn9047022153>
+	 <17534.24605.250498.8288@cse.unsw.edu.au>
+	 <1149175424.12795.57.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: NFS List <nfs@lists.sourceforge.net>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-admin@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91] helo=mail.sourceforge.net)
+Received: from [10.3.1.94] (helo=sc8-sf-list2-new.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FlqtC-0003Rw-Qs
-	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 10:23:18 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Flqt8-0004Pb-FU
-	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 10:23:15 -0700
-To: Mario Storti <mstorti@intec.unl.edu.ar>
-In-Reply-To: <loom.20060601T175939-701@post.gmane.org>
+	id 1FlrHb-0005gd-MA
+	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 10:48:31 -0700
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92] helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FlrHa-0004an-DW
+	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 10:48:30 -0700
+Received: from e31.co.us.ibm.com ([32.97.110.149])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44)
+	id 1FlrHZ-0007jg-7x
+	for nfs@lists.sourceforge.net; Thu, 01 Jun 2006 10:48:30 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e31.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k51HmM9A004191
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <nfs@lists.sourceforge.net>; Thu, 1 Jun 2006 13:48:23 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by westrelay02.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id k51HmMBI234300
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Thu, 1 Jun 2006 11:48:22 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k51HmMGv007449
+	for <nfs@lists.sourceforge.net>; Thu, 1 Jun 2006 11:48:22 -0600
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <1149175424.12795.57.camel@dyn9047022153>
 Sender: nfs-admin@lists.sourceforge.net
 Errors-To: nfs-admin@lists.sourceforge.net
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,58 +52,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 
-Mario Storti wrote:
+On Thu, 2006-06-01 at 08:23 -0700, Frank Filz wrote:
+> On Thu, 2006-06-01 at 13:33 +1000, Neil Brown wrote:
+> > On Wednesday May 31, ffilzlnx@us.ibm.com wrote:
+> > > 
+> > > Oops, I'm horribly confused... The above code actually is right, well
+> > 
+> > :-)  I'm glad you got your problem sorted!
+> > 
+> > > mostly, I think it actually should be:
+> > > 
+> > > > 		major = (dev & 0xff00) >> 8;
+> > > > 		minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
+> > > 
+> > 
+> > No, major is 12 bits, minor is 20 bits. So the original code is
+> > correct.
+> 
+> With a bit more sleep, I see that now. Thanks.
+> 
+> What version of nfs-utils did this show up in? It looks like the
+> situation is just a mis-match of nfs-utils and kernel.
 
->Peter Staubach <staubach <at> redhat.com> writes:
->
->  
->
->>I see from the `nfsstat' output that this job mix is _very_ heavily write
->>intensive.  I might suspect that this may be contributing to the issue
->>being seen.  The consistency for files is very relaxed when those files
->>are being written to.
->>    
->>
->
->The `nfsstat' results that I sent were cumulative. I learn now that in
->theory we can zero them with `-z', but it seems not to work. Perhaps
->there is some intense traffic when the slaves boot but not at the time
->of making the `experiment'.  At that time the NFS traffic es
->_extremely_ low. We change only a small text file (for reference it's
->my ~/.bashrc) and check if the changes are reflected in the
->nodes. There are no applications running at the nodes. 
->
->  
->
+I tried the 1.0.8 version of rpc.mountd, and things almost worked, but
+the mount still failed. I looked at expkey_parse, and discovered it
+doesn't handle type 3 exports. The following patch fixes the problem:
 
-I wouldn't have thought that there would be intense write activity when
-the systems are booting.  I could see lots of read activity, but the
-stats didn't show that much compared with the number of writes.
+Signed-Off-By: Frank Filz <ffilzlnx@us.ibm.com>
 
->>Are any special mount parameters being used?
->>    
->>
->
->No, we tried vers=2 for forcing version 2, also tried `noac'. Also
->tried `async/sync' at the server side. None had effect on the
->problem. `noac' of course reflected in a lack of efficiency, but the
->problem persists. 
->
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -132,7 +132,7 @@ static int expkey_parse(struct cache_det
+ 	if (*ep)
+ 		goto out;
+ 	dprintk("found fsidtype %d\n", fsidtype);
+-	if (fsidtype > 2)
++	if (fsidtype > 3)
+ 		goto out;
+ 	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) <= 0)
+ 		goto out;
 
-I wouldn't think that sync/async would have any effect on this sort
-of consistency.  Those options more control when the data/metadata is
-actually flushed to stable storage, whether before the server responds
-to the specific request or sometime after.
 
-Can you get a raw tethereal capture file which shows the issue?  Perhaps
-a capture which includes reading the original contents of the file and
-then reading it again after the file is modified on the server or by
-another client?  Perhaps from that we can get some clues as to where the
-problem might be.
-
-    Thanx...
-
-       ps
 
 
 -------------------------------------------------------
