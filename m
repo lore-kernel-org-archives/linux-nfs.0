@@ -1,26 +1,26 @@
-From: Damian Pietras <daper@daper.net>
-Subject: NFS4 and host restrictions
-Date: Mon, 5 Jun 2006 11:23:21 +0200
-Message-ID: <20060605092321.GA25450@daper.net>
+From: Dan Ohnesorg <Dan@ohnesorg.cz>
+Subject: Group write not working in 2.6.16.X
+Date: Mon, 5 Jun 2006 17:54:27 +0200
+Message-ID: <20060605155427.GQ27961@ohnesorg.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
 	helo=sc8-sf-list2.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FnBIx-0004ru-UK
-	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 02:23:23 -0700
+	id 1FnHhr-000753-G2
+	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 09:13:31 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FnBIx-0006Bb-NF
-	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 02:23:23 -0700
-Received: from dust.daper.net ([83.16.99.170] helo=daper.net ident=postfix)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FnBIx-0003p7-2U
-	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 02:23:23 -0700
-Received: from amd.dmp (amd.dmp [172.16.5.1])
-	by daper.net (Postfix) with ESMTP id 1AAE54DA2B
-	for <nfs@lists.sourceforge.net>; Mon,  5 Jun 2006 11:23:15 +0200 (CEST)
+	id 1FnHhr-0000q8-FT
+	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 09:13:31 -0700
+Received: from ns.rudna.net ([212.20.112.2] helo=gate.rudna.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FnHhp-0003ik-QE
+	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 09:13:31 -0700
+Received: from dan.ohnesorg.cz (dan.int.rudna.net [10.7.7.7])
+	by gate.rudna.net (Postfix) with ESMTP id E82832090E0C0
+	for <nfs@lists.sourceforge.net>; Mon,  5 Jun 2006 17:54:25 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,42 +34,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
 
-I'm trying to work out how to restrict access to NFS4 directories by
-client IP.
+I have found strange problem with nfs after upgrading from kernel 2.6.14 to
+2.6.16.
 
-What I want to achive is something like that:
+System on both ends is Debian Sarge with all patches. We use user space nfs
+server.
 
-/nfs4 - virtual root
-/nfs4/host1dir
-/nfs4/host2dir
+Problem is, that a file with group write permission is not writable by this
+group, lets have a server called server and client called client, on server
+export directory /data/export
 
-I want to restrict access for /nfs4/host1dir to host1 only and for
-/nfs4/host2dir to host2.
+server# cat /etc/exports
+/data/export              192.168.0.2/255.255.255.255(rw,no_root_squash,sync)
 
-I've tried few configurations in /etc/exportfs and nothing works, for example:
+and mount them on client
 
-/nfs4 *(rw,sync,fsid=0)
-/nfs4/host1dir host1(rw,sync)
-/nfs4/host2dir host2(rw,sync)
+client# mount -t nfs server:/data/export /mnt/data
 
-This allows anyone to mount /nfs4/host1dir and /nfs4/host2dir
+than try on client
 
-And this:
-/nfs4 i127.0.0.1(rw,sync,fsid=0)
-/nfs4/host1dir host1(rw,sync)
-/nfs4/host2dir host2(rw,sync)
+client# cd /mnt/data
+client# echo "Hi" > file.txt
+client# chmod g+w file.txt
+client# su - someuser
+client$ cd /mnt/data
+client$ echo "Hi2" >> file.txt
+-su: test: Permission denied
 
-nobody is allowed to mount anything.
+this problem occures only with kernel 2.6.16 on client side, after reboot to
+2.6.14 the append works great with same configuration. Another important hit
+is, that the problem is only in directory, where the nfs tree is mounted, on
+subdirectories is everythink working properly.
 
-I can't figure it out and I couldn't find any information how it's
-supposed to work. Can you help me?
+Is this bug or are oldes kernels buggy and now is the situation corrected?
 
-I'm using nfs-utils 1.0.7.
-
--- 
-Damian Pietras
+cheers
+dan
 
 
 _______________________________________________
