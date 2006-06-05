@@ -1,23 +1,27 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 004 of 14] knfsd: Ignore ref_fh when crossing a
-	mountpoint.
-Date: Tue, 27 Jun 2006 17:19:56 +1000
-Message-ID: <1060627071956.26636@suse.de>
-References: <20060627171533.26405.patches@notabene>
+From: Damian Pietras <daper@daper.net>
+Subject: NFS4 and host restrictions
+Date: Mon, 5 Jun 2006 11:23:21 +0200
+Message-ID: <20060605092321.GA25450@daper.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FnBIx-0004ru-UK
+	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 02:23:23 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fv7rf-0006Hr-W8
-	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 00:20:04 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fv7rf-0007CE-6l
-	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 00:20:04 -0700
-To: Andrew Morton <akpm@osdl.org>
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FnBIx-0006Bb-NF
+	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 02:23:23 -0700
+Received: from dust.daper.net ([83.16.99.170] helo=daper.net ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FnBIx-0003p7-2U
+	for nfs@lists.sourceforge.net; Mon, 05 Jun 2006 02:23:23 -0700
+Received: from amd.dmp (amd.dmp [172.16.5.1])
+	by daper.net (Postfix) with ESMTP id 1AAE54DA2B
+	for <nfs@lists.sourceforge.net>; Mon,  5 Jun 2006 11:23:15 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,52 +34,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hi,
 
-nfsd tries to return to a client the same sort of filehandle as was
-used by the client.  This removes some filehandle aliasing issues and
-means that a server upgrade followed by a downgrade will not confused
-clients not restarted during that time.
+I'm trying to work out how to restrict access to NFS4 directories by
+client IP.
 
-However when crossing a mountpoint, the filehandle used for one
-filesystem doesn't provide any useful information on what sort of
-filehandle should be used on the other, and can provide misleading
-information.  So if the reference filehandle is on a different
-filesystem to the one being generated, ignore it.
+What I want to achive is something like that:
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+/nfs4 - virtual root
+/nfs4/host1dir
+/nfs4/host2dir
 
-### Diffstat output
- ./fs/nfsd/nfsfh.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+I want to restrict access for /nfs4/host1dir to host1 only and for
+/nfs4/host2dir to host2.
 
-diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
---- .prev/fs/nfsd/nfsfh.c	2006-06-27 12:16:05.000000000 +1000
-+++ ./fs/nfsd/nfsfh.c	2006-06-27 12:16:27.000000000 +1000
-@@ -312,8 +312,8 @@ int
- fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry, struct svc_fh *ref_fh)
- {
- 	/* ref_fh is a reference file handle.
--	 * if it is non-null, then we should compose a filehandle which is
--	 * of the same version, where possible.
-+	 * if it is non-null and for the same filesystem, then we should compose
-+	 * a filehandle which is of the same version, where possible.
- 	 * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
- 	 * Then create a 32byte filehandle using nfs_fhbase_old
- 	 *
-@@ -332,7 +332,7 @@ fh_compose(struct svc_fh *fhp, struct sv
- 		parent->d_name.name, dentry->d_name.name,
- 		(inode ? inode->i_ino : 0));
- 
--	if (ref_fh) {
-+	if (ref_fh && ref_fh->fh_export == exp) {
- 		ref_fh_version = ref_fh->fh_handle.fh_version;
- 		if (ref_fh_version == 0xca)
- 			ref_fh_fsid_type = 0;
+I've tried few configurations in /etc/exportfs and nothing works, for example:
 
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+/nfs4 *(rw,sync,fsid=0)
+/nfs4/host1dir host1(rw,sync)
+/nfs4/host2dir host2(rw,sync)
+
+This allows anyone to mount /nfs4/host1dir and /nfs4/host2dir
+
+And this:
+/nfs4 i127.0.0.1(rw,sync,fsid=0)
+/nfs4/host1dir host1(rw,sync)
+/nfs4/host2dir host2(rw,sync)
+
+nobody is allowed to mount anything.
+
+I can't figure it out and I couldn't find any information how it's
+supposed to work. Can you help me?
+
+I'm using nfs-utils 1.0.7.
+
+-- 
+Damian Pietras
+
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
