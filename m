@@ -1,47 +1,59 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [NFS] [PATCH] NFS server does not update mtime on	setattr	request
-Date: Wed, 07 Jun 2006 13:41:32 -0400
-Message-ID: <44870FCC.4060300@redhat.com>
-References: <4485C3FE.5070504@redhat.com>	 <1149658707.27298.10.camel@localhost> <4486E662.5080900@redhat.com>	 <20060607151754.GB23954@fieldses.org>  <4486F020.3030707@redhat.com>	 <1149694742.26188.6.camel@localhost>  <4486F479.90406@redhat.com> <1149700624.26188.15.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	NFS List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1750883AbWFGRqr@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1149700624.26188.15.camel@localhost>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: "Christopher M. Smith" <csmithere@gmail.com>
+Subject: Update to the NFS Howto
+Date: Mon, 5 Jun 2006 13:00:06 -0400
+Message-ID: <6AF36215-733E-42C0-9395-B836740E50FB@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v750)
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fo6PU-0003lZ-66
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 15:21:56 -0700
+Received: from py-out-1112.google.com ([64.233.166.183])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fo6PT-0004fD-47
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 15:21:56 -0700
+Received: by py-out-1112.google.com with SMTP id i49so342662pyi
+	for <nfs@lists.sourceforge.net>; Wed, 07 Jun 2006 15:21:50 -0700 (PDT)
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond Myklebust wrote:
+All--
 
->On Wed, 2006-06-07 at 11:44 -0400, Peter Staubach wrote:
->
->  
->
->>I am curious about how this would break truncate?
->>    
->>
->
->According to SuSv43, truncate should result in changes to
->mtime/ctime/suid/sgid if and only if the file size changes. The
->combination of disabling the client caching and always setting
->mtime/ctime on the server will therefore clearly break truncate.
->
+I have put a draft update of the NFS-Howto up on the  
+nfs,sourceforge.net website.  It contains no new content, but  
+encompasses the following changes:
 
-Okay, I see that.
+1. A slightly different CSS style sheet to enhance its readability.
+2. It has been updated to DocBook XML v4.2.
 
-Someone should probably alert the Solaris folks that they might have a 
-bug in
-their NFS clients.  I suspect that they are only sending over the size 
-element
-in some of the over the wire SETATTR calls when they really should be 
-sending
-the size and mtime elements.  This might head off a potential customer issue
-where they blaim Linux instead of Solaris.
+The draft is located here:
 
-    Thanx...
+http://nfs.sourceforge.net/nfs-howtov4/
 
-       ps
+Please let me know if you have any questions or comments.  If I have  
+not heard negative feedback by the end of the week, I will migrate  
+the new content to be the primary version.
+
+Thank you for your time.
+
+Best,
+CMS
+--
+Christopher M. Smith
+csmithere@gmail.com
+
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
