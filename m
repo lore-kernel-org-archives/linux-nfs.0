@@ -1,47 +1,94 @@
-From: =?iso-2022-jp?B?Zmdn?= <fsf@yahoo.co.kr>
-Subject: =?iso-2022-jp?b?GyRCSGA9dyRyQSokVjRwPWAkSCRPISYhJiEmGyhC?=
-Date: Tue,  6 Jun 2006 03:29:11 -0700 (PDT)
-Message-ID: <E1FnYo8-0005JU-BQ@mail.sourceforge.net>
-Reply-To: dfky@yahoo.co.kr
+From: Peter Staubach <staubach@redhat.com>
+Subject: [PATCH] NFS server does not update mtime on setattr request
+Date: Tue, 06 Jun 2006 14:05:50 -0400
+Message-ID: <4485C3FE.5070504@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-2022-jp"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FnYo8-0004G7-MK
-	for nfs@lists.sourceforge.net; Tue, 06 Jun 2006 03:29:08 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FnYo8-0000FH-O5
-	for nfs@lists.sourceforge.net; Tue, 06 Jun 2006 03:29:08 -0700
-Received: from [222.169.109.196] (helo=lists.sourceforge.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1FnYo8-0005JU-BQ
-	for nfs@lists.sourceforge.net; Tue, 06 Jun 2006 03:29:08 -0700
-To: <nfs@lists.sourceforge.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: multipart/mixed;
+ boundary="------------090003010804040206090900"
+Cc: NFS List <nfs@lists.sourceforge.net>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1750844AbWFFSGK@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Neil Brown <neilb@suse.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-萌え系・・・トキメキますか？
-http://acooo.com/doka/
-人妻さんのせつなさ・・・同情しますか？
-http://acooo.com/doka/
-★★★
-jionn@mail.china.com
+This is a multi-part message in MIME format.
+--------------090003010804040206090900
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
+Hi.
 
+Attached aer two patches to address two halves of a problem where NFS does
+not update the mtime when an existing file is opened with O_TRUNC.  The
+mtime does not get updated when the file is already zero length, although
+it should.
 
+On the NFS client side, there was an optimization added which attempted
+to avoid an over the wire call if the size of the file was not going to
+change.  This would be great, except for the side effect of the mtime
+on the file needing to change anyway.  The solution is just to issue the
+over the wire call anyway, which, as a side effect, updates the mtime and
+ctime fields.
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+On the NFS server side, there was a change to the routine, inode_setattr(),
+which now relies upon the caller to set the ATTR_MTIME and ATTR_CTIME
+flags in ia_valid in addition to the ATTR_SIZE.  Previously, this routine
+would force these bits on if the size of the file was not changing.  Now,
+this routine relies upon the caller to specify all of the fields which need
+to be updated.
+
+Comments?
+
+    Thanx...
+
+       ps
+
+Signed-off-by: Peter Staubach <staubach@redhat.com>
+
+--------------090003010804040206090900
+Content-Type: text/plain;
+ name="nfs_client_mtime.devel"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfs_client_mtime.devel"
+
+--- linux-2.6.16.x86_64/fs/nfs/inode.c.org
++++ linux-2.6.16.x86_64/fs/nfs/inode.c
+@@ -947,11 +947,6 @@ nfs_setattr(struct dentry *dentry, struc
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSSETATTR);
+ 
+-	if (attr->ia_valid & ATTR_SIZE) {
+-		if (!S_ISREG(inode->i_mode) || attr->ia_size == i_size_read(inode))
+-			attr->ia_valid &= ~ATTR_SIZE;
+-	}
+-
+ 	/* Optimization: if the end result is no change, don't RPC */
+ 	attr->ia_valid &= NFS_VALID_ATTRS;
+ 	if (attr->ia_valid == 0)
+
+--------------090003010804040206090900
+Content-Type: text/plain;
+ name="nfs_server_mtime.devel"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfs_server_mtime.devel"
+
+--- linux-2.6.16.x86_64/fs/nfsd/vfs.c.org
++++ linux-2.6.16.x86_64/fs/nfsd/vfs.c
+@@ -327,6 +327,11 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 			goto out_nfserr;
+ 		}
+ 		DQUOT_INIT(inode);
++		/*
++		 * Make sure that the mtime changes even if the file
++		 * size doesn't actually change.
++		 */
++		iap->ia_valid |= ATTR_MTIME | ATTR_CTIME;
+ 	}
+ 
+ 	imode = inode->i_mode;
+
+--------------090003010804040206090900--
