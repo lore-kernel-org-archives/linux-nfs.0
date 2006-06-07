@@ -1,30 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS server does not update mtime on setattr
-	request
-Date: Wed, 07 Jun 2006 01:38:26 -0400
-Message-ID: <1149658707.27298.10.camel@localhost>
-References: <4485C3FE.5070504@redhat.com>
+From: Grzegorz Tylenda <beh@freya.dsv.agh.edu.pl>
+Subject: nfs client performance - 2.4 vs 2.6
+Date: Wed, 7 Jun 2006 14:14:30 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0606071256140.17804@freya.dsv.agh.edu.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, NFS List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fnql4-0003vr-5R
-	for nfs@lists.sourceforge.net; Tue, 06 Jun 2006 22:39:10 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fnql4-0002QI-36
-	for nfs@lists.sourceforge.net; Tue, 06 Jun 2006 22:39:10 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fnql2-0006Ij-QY
-	for nfs@lists.sourceforge.net; Tue, 06 Jun 2006 22:39:10 -0700
-To: Peter Staubach <staubach@redhat.com>
-In-Reply-To: <4485C3FE.5070504@redhat.com>
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fnwvm-0004gS-6W
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 05:14:38 -0700
+Received: from freya.dsv.agh.edu.pl ([149.156.124.22] ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fnwvj-0003xc-Mf
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 05:14:38 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by freya.dsv.agh.edu.pl (Postfix) with ESMTP id 8CD9D133956
+	for <nfs@lists.sourceforge.net>; Wed,  7 Jun 2006 14:14:32 +0200 (CEST)
+Received: from freya.dsv.agh.edu.pl ([127.0.0.1])
+	by localhost (freya.dsv.agh.edu.pl [127.0.0.1]) (amavisd-new,
+	port 10024) with ESMTP id 27989-03 for <nfs@lists.sourceforge.net>;
+	Wed,  7 Jun 2006 14:14:30 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by freya.dsv.agh.edu.pl (Postfix) with ESMTP id DDC72A51E7
+	for <nfs@lists.sourceforge.net>; Wed,  7 Jun 2006 14:14:30 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,38 +36,124 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-06-06 at 14:05 -0400, Peter Staubach wrote:
+Hello,
 
-> On the NFS client side, there was an optimization added which attempted
-> to avoid an over the wire call if the size of the file was not going to
-> change.  This would be great, except for the side effect of the mtime
-> on the file needing to change anyway.  The solution is just to issue the
-> over the wire call anyway, which, as a side effect, updates the mtime and
-> ctime fields.
 
-Vetoed!
+I noticed that after kernel version was changed from 2.4 to 2.6 
+on clients connecting to filer, number of nfs ops on the filer heavily 
+increase (about 40%). Overall filer load increase too. Statistic for both kernel series are very 
+different.
 
-The current code gets it quite right: if someone calls open(O_TRUNC),
-then may_open() calls do_truncate() with the ATTR_MTIME|ATTR_CTIME flags
-set. That will cause the client to do the right thing _regardless_ of
-the size optimisation.
 
-> On the NFS server side, there was a change to the routine, inode_setattr(),
-> which now relies upon the caller to set the ATTR_MTIME and ATTR_CTIME
-> flags in ia_valid in addition to the ATTR_SIZE.  Previously, this routine
-> would force these bits on if the size of the file was not changing.  Now,
-> this routine relies upon the caller to specify all of the fields which need
-> to be updated.
+For example for 2 identical servers doing the same work, wchich differs 
+only in kernel version generetes drasticly different number of 
+NFSOPS:
 
-Also wrong.
+12.456.678.8 	2.4-server            NFSOPS =     280165 ( 0%)
+12.456.678.9 	2.6-server            NFSOPS =    3357591 ( 2%)
 
-This change causes the server to do entirely the wrong thing for
-truncate()/ftruncate() calls: in the SuSv3 spec, a call that fails to
-change the file length is supposed to leave the file entirely unchanged:
-that includes mtime/ctime as well as suid/sgid bits.
 
-Cheers,
-  Trond
+Per host statistics looks like that (NFSv2 are cuted off, since I use 
+NFSv3 only):
+
+filer*> nfsstat -h 2.4-server
+
+Client: 12.456.678.8 (2.4-server) 
+------------------------------------
+
+Server rpc:
+TCP:
+calls       badcalls    nullrecv    badlen      xdrcall
+280355      0           0           0           0
+
+UDP:
+calls       badcalls    nullrecv    badlen      xdrcall
+0           0           0           0           0
+
+Server nfs:
+calls       badcalls
+280355      0
+
+
+Server nfs V3:
+null       getattr    setattr    lookup     access     readlink   read
+0 0%       131820 47% 0 0%       88459 32%  47558 17%  18 0%      12500 4%
+write      create     mkdir      symlink    mknod      remove     rmdir
+0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
+rename     link       readdir    readdir+   fsstat     fsinfo     pathconf
+0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
+commit
+0 0%
+
+Read request stats (version 3)
+0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
+16K-32767  32K-65535  64K-131071
+0          0          0          0          3910       8590       0 
+0          0
+Write request stats (version 3)
+0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
+16K-32767  32K-65535  64K-131071
+0          0          0          0          0          0          0 
+0          0
+
+
+
+filer*> nfsstat -h 2.6-server
+
+Client: 12.456.678.9 (2.6-server) 
+------------------------------------
+
+Server rpc:
+TCP:
+calls       badcalls    nullrecv    badlen      xdrcall
+3365218     0           0           0           0
+
+UDP:
+calls       badcalls    nullrecv    badlen      xdrcall
+0           0           0           0           0
+
+Server nfs:
+calls       badcalls
+3365218     0
+
+Server nfs V3:
+null       getattr    setattr    lookup     access     readlink   read
+0 0%       52092 2%   0 0%       51149 2%   3253489 97% 6 0%       8482 0%
+write      create     mkdir      symlink    mknod      remove     rmdir
+0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
+rename     link       readdir    readdir+   fsstat     fsinfo     pathconf
+0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
+commit
+0 0%
+
+Read request stats (version 3)
+0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
+16K-32767  32K-65535  64K-131071
+330        207        342        593        860        6150       0 
+0          0
+Write request stats (version 3)
+0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
+16K-32767  32K-65535  64K-131071
+0          0          0          0          0          0          0 
+0          0
+
+
+
+As you can see on 2.6 kernel, about 97% are "access" request, while on 
+2.4 "access" are only 17%. Where this differences came 
+from? Why 2.6 kernels generates 10x more request then 2.4?
+
+Client mounting opions are:
+ro,v3,rsize=8192,wsize=8192,acregmin=85,acregmax=180,acdirmin=85,acdirmax=180,hard,intr,nocto,lock,proto=tcp
+
+Changin rsize and wsize to 32k does not help, also different version of 
+2.6 series does not make a diffrence (curently 2.6.16.18) :(
+
+I will be grateful for any help.
+
+-- 
+Best regards
+Grzesiek Tylenda
 
 
 
