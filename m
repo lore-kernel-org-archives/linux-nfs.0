@@ -1,28 +1,32 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs client performance - 2.4 vs 2.6
-Date: Wed, 07 Jun 2006 11:10:44 -0400
-Message-ID: <1149693044.26188.3.camel@localhost>
-References: <Pine.LNX.4.64.0606071256140.17804@freya.dsv.agh.edu.pl>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NFS server does not update mtime on setattr
+	request
+Date: Wed, 7 Jun 2006 11:17:54 -0400
+Message-ID: <20060607151754.GB23954@fieldses.org>
+References: <4485C3FE.5070504@redhat.com> <1149658707.27298.10.camel@localhost>
+	<4486E662.5080900@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@suse.de>, NFS List <nfs@lists.sourceforge.net>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7]
-	helo=sc8-sf-list1.sourceforge.net)
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FnzhC-0004P1-Me
-	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 08:11:46 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	id 1Fnznq-0005CU-0W
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 08:18:38 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1FnzhC-0005rY-BD
-	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 08:11:46 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Fnznq-0007h1-25
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 08:18:38 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fnzh0-00010Y-6k
-	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 08:11:46 -0700
-To: Grzegorz Tylenda <beh@freya.dsv.agh.edu.pl>
-In-Reply-To: <Pine.LNX.4.64.0606071256140.17804@freya.dsv.agh.edu.pl>
+	(Exim 4.44) id 1FnznK-0004Zy-0z
+	for nfs@lists.sourceforge.net; Wed, 07 Jun 2006 08:18:08 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <4486E662.5080900@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,132 +39,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-06-07 at 14:14 +0200, Grzegorz Tylenda wrote:
-> Hello,
-> 
-> 
-> I noticed that after kernel version was changed from 2.4 to 2.6 
-> on clients connecting to filer, number of nfs ops on the filer heavily 
-> increase (about 40%). Overall filer load increase too. Statistic for both kernel series are very 
-> different.
-> 
-> 
-> For example for 2 identical servers doing the same work, wchich differs 
-> only in kernel version generetes drasticly different number of 
-> NFSOPS:
-> 
-> 12.456.678.8 	2.4-server            NFSOPS =     280165 ( 0%)
-> 12.456.678.9 	2.6-server            NFSOPS =    3357591 ( 2%)
-> 
-> 
-> Per host statistics looks like that (NFSv2 are cuted off, since I use 
-> NFSv3 only):
-> 
-> filer*> nfsstat -h 2.4-server
-> 
-> Client: 12.456.678.8 (2.4-server) 
-> ------------------------------------
-> 
-> Server rpc:
-> TCP:
-> calls       badcalls    nullrecv    badlen      xdrcall
-> 280355      0           0           0           0
-> 
-> UDP:
-> calls       badcalls    nullrecv    badlen      xdrcall
-> 0           0           0           0           0
-> 
-> Server nfs:
-> calls       badcalls
-> 280355      0
-> 
-> 
-> Server nfs V3:
-> null       getattr    setattr    lookup     access     readlink   read
-> 0 0%       131820 47% 0 0%       88459 32%  47558 17%  18 0%      12500 4%
-> write      create     mkdir      symlink    mknod      remove     rmdir
-> 0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
-> rename     link       readdir    readdir+   fsstat     fsinfo     pathconf
-> 0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
-> commit
-> 0 0%
-> 
-> Read request stats (version 3)
-> 0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
-> 16K-32767  32K-65535  64K-131071
-> 0          0          0          0          3910       8590       0 
-> 0          0
-> Write request stats (version 3)
-> 0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
-> 16K-32767  32K-65535  64K-131071
-> 0          0          0          0          0          0          0 
-> 0          0
-> 
-> 
-> 
-> filer*> nfsstat -h 2.6-server
-> 
-> Client: 12.456.678.9 (2.6-server) 
-> ------------------------------------
-> 
-> Server rpc:
-> TCP:
-> calls       badcalls    nullrecv    badlen      xdrcall
-> 3365218     0           0           0           0
-> 
-> UDP:
-> calls       badcalls    nullrecv    badlen      xdrcall
-> 0           0           0           0           0
-> 
-> Server nfs:
-> calls       badcalls
-> 3365218     0
-> 
-> Server nfs V3:
-> null       getattr    setattr    lookup     access     readlink   read
-> 0 0%       52092 2%   0 0%       51149 2%   3253489 97% 6 0%       8482 0%
-> write      create     mkdir      symlink    mknod      remove     rmdir
-> 0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
-> rename     link       readdir    readdir+   fsstat     fsinfo     pathconf
-> 0 0%       0 0%       0 0%       0 0%       0 0%       0 0%       0 0%
-> commit
-> 0 0%
-> 
-> Read request stats (version 3)
-> 0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
-> 16K-32767  32K-65535  64K-131071
-> 330        207        342        593        860        6150       0 
-> 0          0
-> Write request stats (version 3)
-> 0-511      512-1023   1K-2047    2K-4095    4K-8191    8K-16383 
-> 16K-32767  32K-65535  64K-131071
-> 0          0          0          0          0          0          0 
-> 0          0
-> 
-> 
-> 
-> As you can see on 2.6 kernel, about 97% are "access" request, while on 
-> 2.4 "access" are only 17%. Where this differences came 
-> from? Why 2.6 kernels generates 10x more request then 2.4?
-> 
-> Client mounting opions are:
-> ro,v3,rsize=8192,wsize=8192,acregmin=85,acregmax=180,acdirmin=85,acdirmax=180,hard,intr,nocto,lock,proto=tcp
-> 
-> Changin rsize and wsize to 32k does not help, also different version of 
-> 2.6 series does not make a diffrence (curently 2.6.16.18) :(
-> 
-> I will be grateful for any help.
+On Wed, Jun 07, 2006 at 10:44:50AM -0400, Peter Staubach wrote:
+> I saw that wording too and assumed what I think that you assumed.  I
+> assumed that that meant that if the new size is equal to the old size,
+> then nothing should be changed.  However, that does not seem to be how
+> those words are to be interpreted.  They are to be interpreted as "if
+> the new length of the file can be successfully set, then the
+> mtime/ctime should be changed".
 
+What's the basis for that interpretation?  The language seems extremely
+clear:
 
-2.4 kernels did not use 'access' to check for permissions except in the
-case of root access, but relied (wrongly!) on the mode bits.
+	"On successful completion, if the file size is changed, these
+	functions will mark for update the st_ctime and st_mtime fields
+	of the file, and if the file is a regular file, the S_ISUID and
+	S_ISGID bits of the file mode may be cleared."
 
-2.6 kernels do use access, but are supposed to cache the results. What
-kind of a workload are you running on these clients?
+Why are you concerned about this?  Do you have an actual application
+that breaks?
 
-Cheers,
-  Trond
-
+--b.
 
 
 _______________________________________________
