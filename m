@@ -1,24 +1,25 @@
-From: "Madhan P" <PMadhan@novell.com>
-Subject: Re: [Linux-cluster] [RFC] NLM lock failover admin	interface
-Date: Mon, 12 Jun 2006 10:58:23 -0600
-Message-ID: <448DEA87.C935.0084.1@novell.com>
-References: <1150089943.26019.18.camel@localhost.localdomain>
-	<20060612150053.GC31596@fieldses.org> <448D8BF7.7010105@redhat.com>
-	<448DE1C1.C935.0084.1@novell.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Linux-cluster] [RFC] NLM lock failover admin interface
+Date: Mon, 12 Jun 2006 13:23:02 -0400
+Message-ID: <448DA2F6.8080605@RedHat.com>
+References: <1150089943.26019.18.camel@localhost.localdomain>	<20060612150053.GC31596@fieldses.org>
+	<448D8BF7.7010105@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux clustering <linux-cluster@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux clustering <linux-cluster@redhat.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FppkX-00014A-2P
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:58:50 -0700
-Received: from lucius.provo.novell.com ([137.65.81.172])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FppkX-0001J4-3M
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:58:49 -0700
-To: <nfs@lists.sourceforge.net>
-In-Reply-To: <448DE1C1.C935.0084.1@novell.com>
+	id 1Fpq8D-0003GI-6b
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 10:23:17 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fpq8C-00079W-34
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 10:23:17 -0700
+To: Wendy Cheng <wcheng@redhat.com>
+In-Reply-To: <448D8BF7.7010105@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,57 +32,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-For what it's worth, would second this approach of using a flag to
-unexport and associating the cleanup with that.  Another quick hack we
-used was to store the NSM entries on a standard location on the
-respective exported filesystem, so that notification is sent once the
-filesystem comes back online on the destination server and is exported
-again.  BTW, this was not on Linux. It was a  simple solution providing
-the necessary active/active and active/passive cluster support.
-
-- Madhan
-
->>> On 6/12/2006 at 9:14:55 pm, in message
-<448D8BF7.7010105@redhat.com>, Wendy
-Cheng <wcheng@redhat.com> wrote:
-> J. Bruce Fields wrote:
-> 
->>On Mon, Jun 12, 2006 at 01:25:43AM -0400, Wendy Cheng wrote:
->>  
->>
->>>2. Adding a new flag into "exportfs" command, say "h", such that
->>>
->>>   "exportfs -uh *:/export_path"
->>>
->>>would un-export the entry and drop the NLM locks associated with
-the
->>>entry.
->>>    
->>>
->>
->>What does the kernel interface end up looking like in that case?
->>
->>  
->>
-> Happy to see this new exportfs command gets positive response - it
-was 
-> our original pick too.
-> 
-> Uploaded is part of a draft version of 2.4 base kernel patch - we're
-
-> cleaning up 2.6 patches at this moment. It basically adds a new
-export 
-> flag (NFSEXP_FOLOCK - note that ex_flags is an int but is currently
-only 
-> defined up to 16 bits) so nfs-util and kernel can communicate.
-> 
-> The nice thing about this approach is the recovery part - the
-take-over 
-> server can use the counter part command to export and set grace
-period 
+Wendy Cheng wrote:
+> The nice thing about this approach is the recovery part - the take-over 
+> server can use the counter part command to export and set grace period 
 > for one particular interface within the same system call.
-> 
-> -- Wendy
+Actually this is a pretty clean and simple interface... imho..
+The only issue I had was adding a flag to an older version and then
+having to carry that flag forward... So if this interface is
+accepted and added to the mainline nfs-utils (which it should be.. imho)
+that fact it is so clean and simple would make the back porting fairly
+trivial...
+
+steved.
 
 
 _______________________________________________
