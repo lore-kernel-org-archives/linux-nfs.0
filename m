@@ -1,52 +1,62 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [RFC] NLM lock failover admin interface
-Date: Mon, 12 Jun 2006 02:11:04 -0400
-Message-ID: <1150092664.26180.19.camel@localhost.localdomain>
-References: <1150089943.26019.18.camel@localhost.localdomain>
-Reply-To: linux clustering <linux-cluster@redhat.com>
+From: Grzegorz Tylenda <beh@freya.dsv.agh.edu.pl>
+Subject: Re: nfs client performance - 2.4 vs 2.6
+Date: Mon, 12 Jun 2006 11:01:47 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0606121045440.22123@freya.dsv.agh.edu.pl>
+References: <Pine.LNX.4.64.0606071256140.17804@freya.dsv.agh.edu.pl>
+	<1149693044.26188.3.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-Return-path: <linux-cluster-bounces@redhat.com>
-To: linux clustering <linux-cluster@redhat.com>
-In-Reply-To: <1150089943.26019.18.camel@localhost.localdomain>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cluster>
-List-Post: <mailto:linux-cluster@redhat.com>
-List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
-Sender: linux-cluster-bounces@redhat.com
-Errors-To: linux-cluster-bounces@redhat.com
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FpiJ3-0007G1-V0
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 02:01:57 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FpiJ3-0006bd-QK
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 02:01:57 -0700
+Received: from freya.dsv.agh.edu.pl ([149.156.124.22] ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpiJ1-0004tZ-9X
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 02:01:57 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1149693044.26188.3.camel@localhost>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-06-12 at 01:25 -0400, Wendy Cheng wrote:
-> NFS v2/v3 active-active NLM lock failover has been an issue with our
-> cluster suite. With current implementation, it (cluster suite) is trying
-> to carry the workaround as much as it can with user mode scripts where,
-> upon failover, on taken-over server, it:
-> 
-> 1. Tear down virtual IP.
-> 2. Unexport the subject NFS export.
-> 3. Signal lockd to drop the locks.
-> 4. Un-mount filesystem if needed.
-> 
-> There are many other issues (such as /var/lib/nfs/statd/sm file, etc)
-> but this particular post is to further refine step 3 to avoid the 50
-> second global (default) grace period for all NFS exports; i.e., we would
-> like to be able to selectively drop locks (only) associated with the
-> requested exports without disrupting other NFS services. 
-> 
-> We've done some prototype (coding) works but would like to search for
-> community consensus on the admin interface if possible. 
 
-While ping-pong the emails with our base kernel folks to choose
-between /proc, or exportfs, or nfsctl (internally within the company -
-mostly with steved and staubach), Peter suggested to try out multiple
-lockd(s) to handle different NFS exports. In that case, we may require
-to change a big portion of lockd kernel code. I prefer not going that
-far since lockd failover is our cluster suite's immediate issue.
-However, if this approach can get everyone's vote, we'll comply.
 
--- Wendy
+On Wed, 7 Jun 2006, Trond Myklebust wrote:
+
+>
+> 2.4 kernels did not use 'access' to check for permissions except in the
+> case of root access, but relied (wrongly!) on the mode bits.
+>
+> 2.6 kernels do use access, but are supposed to cache the results. What
+> kind of a workload are you running on these clients?
+
+
+These clients are webservers. All content are read from filer, where files 
+do not change often.
+
+
+--
+best regards,
+Grzesiek Tylenda
+
+
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
