@@ -1,25 +1,26 @@
-From: "Christopher Smith" <csmithere@gmail.com>
-Subject: Re: Update to the NFS Howto
-Date: Mon, 12 Jun 2006 09:33:07 -0400
-Message-ID: <2b585fc90606120633n746a8a6ex9d6105c23a872bc3@mail.gmail.com>
-References: <4489840C0200006B0000515A@lucius.provo.novell.com>
-	<2b585fc90606120403w755dfe76gb185ca135eed3732@mail.gmail.com>
+From: "Stanley, Jon" <Jon.Stanley@savvis.net>
+Subject: Re: [Linux-cluster] [RFC] NLM lock failover admin interface
+Date: Mon, 12 Jun 2006 09:45:03 -0500
+Message-ID: <9A6FE0FCC2B29846824C5CD81C6647B902207776@s228130hz1ew08.apptix-01.savvis.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FpmXZ-00065f-1m
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 06:33:13 -0700
-Received: from py-out-1112.google.com ([64.233.166.178])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpmXY-0007J4-Ns
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 06:33:13 -0700
-Received: by py-out-1112.google.com with SMTP id x31so1689898pye
-	for <nfs@lists.sourceforge.net>; Mon, 12 Jun 2006 06:33:07 -0700 (PDT)
-To: "Chakravarthi P" <pchakravarthi@novell.com>
-In-Reply-To: <2b585fc90606120403w755dfe76gb185ca135eed3732@mail.gmail.com>
+	id 1FpnfG-0004Bw-9J
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 07:45:14 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FpnfG-0000v3-8m
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 07:45:14 -0700
+Received: from out001.apptix.savvis.net ([216.91.32.44]
+	helo=out001a.email.savvis.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpnfG-0004EW-5s
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 07:45:14 -0700
+To: "linux clustering" <linux-cluster@redhat.com>,
+	<nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,105 +33,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chax--
+ 
 
-Thank you very much for what you have submitted.  A few comments:
+> -----Original Message-----
+> From: linux-cluster-bounces@redhat.com 
+> [mailto:linux-cluster-bounces@redhat.com] On Behalf Of Wendy Cheng
+> Sent: Monday, June 12, 2006 12:26 AM
+> To: nfs@lists.sourceforge.net
+> Cc: linux-cluster@redhat.com
+> Subject: [Linux-cluster] [RFC] NLM lock failover admin interface
+> 
+NOTE - I don't use NFS functionality in Cluster Suite, so my coments may
+be entirely meaningless.
 
-a) Some of the information tin the README is general to Linux, and
-applies to all 2.6 implementations.
-b) Some of the information here applies to SuSE specifically.
-c) The Kerberos configuration section applies to both NFS Version 3 as
-well as NFS Version 4.
+> 
+> 1. /proc interface, say writing the fsid into a /proc directory entry
+> would end up dropping all NLM locks associated with the NFS 
+> export that
+> has fsid in its /etc/exports file.
 
-What I would suggest is we do the following:
+This would defintely have it's advantages for people who know what
+they're doing - they could drop all locks without unexporting the
+filesystem.  However, it also gives people the opportunity to shoot
+themselves in the foot - by eliminating locks that are needed.  After
+weighing the pros and cons, I really don't think that any method
+accessible via /proc is a good idea.
 
-* Break out the portions that apply specifically to NFS Version 4 into
-sections 3 and 4 of the HOWTO for server and client configuration.
-* Break out the Kerberos documentation you've generated into a
-subsection of the Security portion of the HOWTO, since it applies to
-all NFS versions.
-* Add notation where specific SuSE related configuration is required.
+> 
+> 2. Adding a new flag into "exportfs" command, say "h", such that
+> 
+>    "exportfs -uh *:/export_path"
+> 
+> would un-export the entry and drop the NLM locks associated with the
+> entry.
+> 
 
-Either you or I can do this.  Its up to you.
+This is the best of the three, IMHO.  Gives you the safety of *knowing*
+that the filesystem was unexported before dropping the locks, and
+preventing folks from shooting themselves in the foot.
 
-Is this acceptable?
-
-Best,
-CMS
-
-On 6/12/06, Christopher Smith <csmithere@gmail.com> wrote:
-> Chax--
->
-> I'm in the process of reviewing the content of the README you have
-> submitted, and I will get back to you shortly.
->
-> Best,
-> CMS
->
-> On 6/9/06, Chakravarthi P <pchakravarthi@novell.com> wrote:
-> > All-
-> >
-> >    we have compiled a README for setting up NFSv4 client
-> >    and server which works well on SLES.
-> >    Can this be inclused as part of nfs-howto
-> >    mentioned here.
-> >    Please look through the attached README
-> >
-> >    thanx
-> >    chax.
-> >
-> > >>> On 6/5/2006 at 10:30:06 pm, in message
-> > <6AF36215-733E-42C0-9395-B836740E50FB@gmail.com>, "Christopher M. Smith"
-> > <csmithere@gmail.com> wrote:
-> > > All--
-> > >
-> > > I have put a draft update of the NFS-Howto up on the
-> > > nfs,sourceforge.net website.  It contains no new content, but
-> > > encompasses the following changes:
-> > >
-> > > 1. A slightly different CSS style sheet to enhance its readability.
-> > > 2. It has been updated to DocBook XML v4.2.
-> > >
-> > > The draft is located here:
-> > >
-> > > http://nfs.sourceforge.net/nfs-howtov4/
-> > >
-> > > Please let me know if you have any questions or comments.  If I have
-> > > not heard negative feedback by the end of the week, I will migrate
-> > > the new content to be the primary version.
-> > >
-> > > Thank you for your time.
-> > >
-> > > Best,
-> > > CMS
-> > > --
-> > > Christopher M. Smith
-> > > csmithere@gmail.com
-> > >
-> > >
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nf
-> >
-> >
-> >
-> >
-> >
->
->
-> --
-> CMS
-> --
-> Christopher M. Smith
-> csmithere@gmail.com
->
-
-
--- 
-CMS
---
-Christopher M. Smith
-csmithere@gmail.com
+The other option that was mentioned, a separate lockd for each fs, is
+also a good idea - but would require a lot of coding no doubt, and
+introduce more instability into what I already preceive as an unstable
+NFS subsystem in Linux (I *refuse* to use Linux as an NFS server and
+instead go with Solaris - I've had *really* bad experiences with Linux
+NFS under load - but that's getting OT).
 
 
 _______________________________________________
