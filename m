@@ -1,108 +1,78 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: [patch] see also exports(5) in nfsd(8)
-Date: Sat, 10 Jun 2006 11:30:05 -0400
-Message-ID: <200606101130.06312.vapier@gentoo.org>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: [RFC] NLM lock failover admin interface
+Date: Mon, 12 Jun 2006 01:25:43 -0400
+Message-ID: <1150089943.26019.18.camel@localhost.localdomain>
+Reply-To: linux clustering <linux-cluster@redhat.com>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_+VuiEEOHkXdPTug"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fp5Ld-0004HG-Hv
-	for nfs@lists.sourceforge.net; Sat, 10 Jun 2006 08:26:01 -0700
-Received: from smtp.gentoo.org ([140.211.166.183])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fp5Ld-0007YW-Ax
-	for nfs@lists.sourceforge.net; Sat, 10 Jun 2006 08:26:01 -0700
-Received: from home.wh0rd.org (localhost [127.0.0.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp.gentoo.org (Postfix) with ESMTP id 6EC1164B0A
-	for <nfs@lists.sourceforge.net>; Sat, 10 Jun 2006 15:26:00 +0000 (UTC)
+Content-Type: text/plain
+Cc: linux-cluster@redhat.com
+Return-path: <linux-cluster-bounces@redhat.com>
 To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
+	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/linux-cluster>
+List-Post: <mailto:linux-cluster@redhat.com>
+List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
+	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
+Sender: linux-cluster-bounces@redhat.com
+Errors-To: linux-cluster-bounces@redhat.com
+List-ID: <nfs.lists.sourceforge.net>
 
---Boundary-00=_+VuiEEOHkXdPTug
-Content-Type: multipart/signed; boundary="nextPart1837312.2h1bUD9dTK";
-	protocol="application/pgp-signature"; micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
+NFS v2/v3 active-active NLM lock failover has been an issue with our
+cluster suite. With current implementation, it (cluster suite) is trying
+to carry the workaround as much as it can with user mode scripts where,
+upon failover, on taken-over server, it:
 
---nextPart1837312.2h1bUD9dTK
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+1. Tear down virtual IP.
+2. Unexport the subject NFS export.
+3. Signal lockd to drop the locks.
+4. Un-mount filesystem if needed.
 
-simple patch to add exports(5) to the SEE ALSO list in the nfsd(8) man page
--mike
+There are many other issues (such as /var/lib/nfs/statd/sm file, etc)
+but this particular post is to further refine step 3 to avoid the 50
+second global (default) grace period for all NFS exports; i.e., we would
+like to be able to selectively drop locks (only) associated with the
+requested exports without disrupting other NFS services. 
 
---nextPart1837312.2h1bUD9dTK
-Content-Type: application/pgp-signature
+We've done some prototype (coding) works but would like to search for
+community consensus on the admin interface if possible. We've tried out
+the following:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.3 (GNU/Linux)
+1. /proc interface, say writing the fsid into a /proc directory entry
+would end up dropping all NLM locks associated with the NFS export that
+has fsid in its /etc/exports file.
 
-iQIVAwUARIrlfkFjO5/oN/WBAQIWDhAAofHIMFcKcACC9YDfLLjdaVpyqc+WWszX
-68bPr7Y/UZIZrzOnRn9IIro96BZBVz4tGp9BsVQx6wZcy53gMlSYcNYJpMSBrSaL
-0eJI3fBvAC4YUyLAH+5x1MQllhxizDq9PB9CbdFgGahtm3nsGtiUrIGTbdln6Y/K
-OdAsu28NQhr6d34d7Y17emanXct36/q8rYeZuxvADyX7lNibAGRblMdvOmLccikh
-3qcPWg3JNytTIYBHRwls/zTLoiqUySnn9B1qmcRTQQogTv2dpowympwpP4QDk4pt
-yiol/fqYN3mgIctYVwuq/uRQAfhHgD4XqPpc4eZ3BTV1zXnTjFhu2cPMXlriaNRG
-VGNdDLii0F7xgg0HrX/ss8F9yGOqbFWHW/0cYGs9eY3Ql0o98iQe2IlaTvgsSRCg
-S5mpQ+A0xtwHm03siwTEB5zMMmJDMkFpg81zXpHZoTnCL/1LT9LASlUSJNw34rKG
-NI4ruWvQMFrBZzX2ocTJl3TGoYpsEF1uZomSL3FQ5uT+WkhzOQI1Xui/1K1YBSCr
-ge6OMO4KunGdIBeqk7rEuXzUAhEwtf0VGBftqm4EL38D0hSZAewZ6664Uywxf8pV
-kNWlrjBT1OWs4UqH0hjvz0WOJSSiq1xffdXeLeanjJu2fjliQqB+9JXRmH30hgec
-bW48B7Wfnvo=
-=0YAC
------END PGP SIGNATURE-----
+2. Adding a new flag into "exportfs" command, say "h", such that
 
---nextPart1837312.2h1bUD9dTK--
+   "exportfs -uh *:/export_path"
 
---Boundary-00=_+VuiEEOHkXdPTug
-Content-Type: text/x-diff; charset="us-ascii";
-	name="nfsd-man-see-also-exports.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
-	filename="nfsd-man-see-also-exports.patch"
+would un-export the entry and drop the NLM locks associated with the
+entry.
 
---- utils/nfsd/nfsd.man
-+++ utils/nfsd/nfsd.man
-@@ -38,6 +38,7 @@ the
- program.
- .SH SEE ALSO
- .BR rpc.mountd (8),
-+.BR exports (5),
- .BR exportfs (8),
- .BR rpc.rquotad (8),
- .BR nfsstat (8).
+3. Add a new nfsctl by re-using a 2.4 kernel flag (NFSCTL_FOLOCKS) where
+it takes:
 
---Boundary-00=_+VuiEEOHkXdPTug
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+   struct nfsctl_folocks {
+        int           type;
+        unsigned int  fsid;
+        unsigned int  devno;
+   }
 
+as input argument. Depending on "type", the kernel call would drop the
+locks associated with either the fsid, or devno. 
 
---Boundary-00=_+VuiEEOHkXdPTug
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+The core of the implementation is a new cloned version of
+nlm_traverse_files() where it searches the "nlm_files" list one by one
+to compare the fsid (or devno) based on nlm_file.f_handle field. A
+helper function is also implemented to extract the fsid (or devno) from
+f_handle.
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+The new function is planned to allow failover to abort if the file can't
+be closed. We may also put the file locks back if abort occurs.
 
---Boundary-00=_+VuiEEOHkXdPTug--
+Would appreciate comments on the above admin interface. As soon as the
+external interface can be finalized, the code will be submitted for
+review.
+
+-- Wendy
