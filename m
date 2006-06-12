@@ -1,102 +1,95 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [NFS] [RFC] NLM lock failover admin interface
-Date: Mon, 12 Jun 2006 11:44:55 -0400
-Message-ID: <448D8BF7.7010105@redhat.com>
+From: "Madhan P" <PMadhan@novell.com>
+Subject: Re: [Linux-cluster] [RFC] NLM lock failover admin	interface
+Date: Mon, 12 Jun 2006 10:20:57 -0600
+Message-ID: <448DE1C1.C935.0084.1@novell.com>
 References: <1150089943.26019.18.camel@localhost.localdomain>
-	<20060612150053.GC31596@fieldses.org>
-Reply-To: linux clustering <linux-cluster@redhat.com>
+	<20060612150053.GC31596@fieldses.org> <448D8BF7.7010105@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070400020506070406000205"
-Cc: nfs@lists.sourceforge.net,
-	linux clustering <linux-cluster@redhat.com>
-Return-path: <linux-cluster-bounces@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20060612150053.GC31596@fieldses.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cluster>
-List-Post: <mailto:linux-cluster@redhat.com>
-List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
-Sender: linux-cluster-bounces@redhat.com
-Errors-To: linux-cluster-bounces@redhat.com
-List-ID: <nfs.lists.sourceforge.net>
-
-This is a multi-part message in MIME format.
---------------070400020506070406000205
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-J. Bruce Fields wrote:
-
->On Mon, Jun 12, 2006 at 01:25:43AM -0400, Wendy Cheng wrote:
->  
->
->>2. Adding a new flag into "exportfs" command, say "h", such that
->>
->>   "exportfs -uh *:/export_path"
->>
->>would un-export the entry and drop the NLM locks associated with the
->>entry.
->>    
->>
->
->What does the kernel interface end up looking like in that case?
->
->  
->
-Happy to see this new exportfs command gets positive response - it was 
-our original pick too.
-
-Uploaded is part of a draft version of 2.4 base kernel patch - we're 
-cleaning up 2.6 patches at this moment. It basically adds a new export 
-flag (NFSEXP_FOLOCK - note that ex_flags is an int but is currently only 
-defined up to 16 bits) so nfs-util and kernel can communicate.
-
-The nice thing about this approach is the recovery part - the take-over 
-server can use the counter part command to export and set grace period 
-for one particular interface within the same system call.
-
--- Wendy
-
---------------070400020506070406000205
-Content-Type: text/plain;
- name="gfs_nlm.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="gfs_nlm.patch"
-
---- linux-2.4.21-43.EL/fs/nfsd/export.c	2006-05-14 17:16:21.000000000 -0400
-+++ linux/fs/nfsd/export.c	2006-05-29 02:13:29.000000000 -0400
-@@ -388,6 +388,10 @@ exp_unexport(struct nfsctl_export *nxp)
- 			exp_do_unexport(exp);
- 			err = 0;
- 		}
-+		if (nxp->ex_flags & NFSEXP_FOLOCK) {
-+			dprintk("exp_unexport: nfsd_lockd_unexport called\n");
-+			nfsd_lockd_unexport(clp);
-+		}
- 	}
- 
- 	exp_unlock();
---- linux-2.4.21-43.EL/include/linux/nfsd/export.h	2006-05-14 17:23:57.000000000 -0400
-+++ linux/include/linux/nfsd/export.h	2006-05-29 02:12:07.000000000 -0400
-@@ -42,7 +42,7 @@
- #define NFSEXP_FSID			0x2000
- #define NFSEXP_NOACL			0x8000	/* turn off acl support */
- #define NFSEXP_ALLFLAGS		0xFFFF
--
-+#define NFSEXP_FOLOCK			0x00010000	/* NLM lock failover */
- 
- #ifdef __KERNEL__
- 
-
---------------070400020506070406000205
 Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: linux clustering <linux-cluster@redhat.com>,
+	nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FppAf-00065Y-Bv
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:21:45 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FppAf-0000q0-ES
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:21:45 -0700
+Received: from lucius.provo.novell.com ([137.65.81.172])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FppAf-00057L-5D
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:21:45 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Wendy Cheng" <wcheng@redhat.com>
+In-Reply-To: <448D8BF7.7010105@redhat.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
+
+For what it's worth, would second this approach of using a flag to
+unexport and associating the cleanup with that.  Another quick hack we
+used was to store the NSM entries on a standard location on the
+respective exported filesystem, so that notification is sent once the
+filesystem comes back online on the destination server and is exported
+again.  BTW, this was not on Linux. It was a  simple solution providing
+the necessary active/active and active/passive cluster support.
+
+- Madhan
+
+>>> On 6/12/2006 at 9:14:55 pm, in message
+<448D8BF7.7010105@redhat.com>, Wendy
+Cheng <wcheng@redhat.com> wrote:
+> J. Bruce Fields wrote:
+> 
+>>On Mon, Jun 12, 2006 at 01:25:43AM -0400, Wendy Cheng wrote:
+>>  
+>>
+>>>2. Adding a new flag into "exportfs" command, say "h", such that
+>>>
+>>>   "exportfs -uh *:/export_path"
+>>>
+>>>would un-export the entry and drop the NLM locks associated with
+the
+>>>entry.
+>>>    
+>>>
+>>
+>>What does the kernel interface end up looking like in that case?
+>>
+>>  
+>>
+> Happy to see this new exportfs command gets positive response - it
+was 
+> our original pick too.
+> 
+> Uploaded is part of a draft version of 2.4 base kernel patch - we're
+
+> cleaning up 2.6 patches at this moment. It basically adds a new
+export 
+> flag (NFSEXP_FOLOCK - note that ex_flags is an int but is currently
+only 
+> defined up to 16 bits) so nfs-util and kernel can communicate.
+> 
+> The nice thing about this approach is the recovery part - the
+take-over 
+> server can use the counter part command to export and set grace
+period 
+> for one particular interface within the same system call.
+> 
+> -- Wendy
 
 
---------------070400020506070406000205--
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
