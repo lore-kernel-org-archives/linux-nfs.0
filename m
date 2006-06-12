@@ -1,30 +1,24 @@
 From: "Madhan P" <PMadhan@novell.com>
 Subject: Re: [Linux-cluster] [RFC] NLM lock failover admin	interface
-Date: Mon, 12 Jun 2006 10:20:57 -0600
-Message-ID: <448DE1C1.C935.0084.1@novell.com>
+Date: Mon, 12 Jun 2006 10:58:23 -0600
+Message-ID: <448DEA87.C935.0084.1@novell.com>
 References: <1150089943.26019.18.camel@localhost.localdomain>
 	<20060612150053.GC31596@fieldses.org> <448D8BF7.7010105@redhat.com>
+	<448DE1C1.C935.0084.1@novell.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux clustering <linux-cluster@redhat.com>,
-	nfs@lists.sourceforge.net
+Cc: linux clustering <linux-cluster@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FppAf-00065Y-Bv
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:21:45 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FppAf-0000q0-ES
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:21:45 -0700
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FppkX-00014A-2P
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:58:50 -0700
 Received: from lucius.provo.novell.com ([137.65.81.172])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FppAf-00057L-5D
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:21:45 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Wendy Cheng" <wcheng@redhat.com>
-In-Reply-To: <448D8BF7.7010105@redhat.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FppkX-0001J4-3M
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 09:58:49 -0700
+To: <nfs@lists.sourceforge.net>
+In-Reply-To: <448DE1C1.C935.0084.1@novell.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
