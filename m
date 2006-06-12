@@ -1,21 +1,26 @@
 From: Amit Gud <agud@redhat.com>
-Subject: [PATCH 1 / 1] Move NFS mount code from util-linux to
+Subject: [PATCH 2 / 2] Move NFS mount code from util-linux to
  nfs-utils - take2
-Date: Mon, 12 Jun 2006 19:06:36 -0400
-Message-ID: <448DF37C.4000109@redhat.com>
+Date: Mon, 12 Jun 2006 19:08:27 -0400
+Message-ID: <448DF3EB.7010601@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030808060907050504050702"
-Cc: gud@eth.net, nfs@lists.sourceforge.net,
+Content-Type: multipart/mixed; boundary="------------000502050306070705090704"
+Cc: Amit Gud <gud@eth.net>, nfs@lists.sourceforge.net,
 	Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FpvRV-0007RG-0x
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 16:03:33 -0700
+	id 1FpvTA-0007ck-TU
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 16:05:16 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1FpvTA-0007xJ-RD
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 16:05:16 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpvRU-0007tL-N4
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 16:03:33 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpvT7-0003On-BA
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 16:05:16 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -30,14 +35,10 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------030808060907050504050702
+--------------000502050306070705090704
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Neil,
-
-It avoids code duplication (of parsing the options and error checking) 
-if we don't branch two different binaries for the NFSv4 and older versions.
 
 
 AG
@@ -46,707 +47,40 @@ May the source be with you.
 http://www.cis.ksu.edu/~gud
 
 
---------------030808060907050504050702
+--------------000502050306070705090704
 Content-Type: text/plain;
- name="nfsmount-migration-to-nfsutils-v4.patch"
-Content-Disposition: inline; filename="nfsmount-migration-to-nfsutils-v4.patch"
+	name="nfsmount-migration-to-nfsutils-support-v4.patch"
+Content-Disposition: inline;
+	filename="nfsmount-migration-to-nfsutils-support-v4.patch"
 Content-Transfer-Encoding: quoted-printable
 X-MIME-Autoconverted: from 8bit to quoted-printable by mx1.redhat.com id
-	k5CN3Iad013435
+	k5CN59hX014106
 
-Adds the mount directory and the code to mount and umount the NFS file sy=
-stem.
+Adds the support functions needed for mount and umount. This functionalit=
+y will someday be available in the form of shared mount library.
 
 
 Signed-off-by: Amit Gud <agud@redhat.com>
 Signed-off-by: Steve Dickson <steved@redhat.com>
 
 ---
-diff -uprN nfs-utils-1.0.8/utils/Makefile.am nfs-utils-1.0.8-ag/utils/Mak=
-efile.am
---- nfs-utils-1.0.8/utils/Makefile.am	2006-03-26 19:30:08.000000000 -0500
-+++ nfs-utils-1.0.8-ag/utils/Makefile.am	2006-06-12 17:56:53.725636000 -0=
-400
-@@ -14,6 +14,10 @@ if CONFIG_GSS
- OPTDIRS +=3D gssd
- endif
-=20
-+if CONFIG_NOMOUNT
-+OPTDIRS +=3D mount
-+endif
-+
- SUBDIRS =3D \
- 	exportfs \
- 	lockd \
-diff -uprN nfs-utils-1.0.8/utils/mount/Makefile.am nfs-utils-1.0.8-ag/uti=
-ls/mount/Makefile.am
---- nfs-utils-1.0.8/utils/mount/Makefile.am	1969-12-31 19:00:00.000000000=
- -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/Makefile.am	2006-06-12 15:09:22.646612=
-000 -0400
-@@ -0,0 +1,38 @@
-+## Process this file with automake to produce Makefile.in
-+
-+man8_MANS	=3D mount.nfs.man umount.nfs.man
-+
-+sbin_PROGRAMS	=3D mount.nfs
-+EXTRA_DIST =3D nfsmount.x $(man8_MANS)
-+mount_nfs_SOURCES =3D mount.c nfsmount.c nfs4mount.c nfsumount.c \
-+		  nfsmount_xdr.c mount_constants.h nfs4_mount.h nfsmount.h \
-+		  nfs_mount4.h
-+
-+mount_nfs_LDADD =3D ../../support/nfs/libnfs.a
-+
-+MAINTAINERCLEANFILES =3D Makefile.in
-+
-+install-exec-hook:
-+	(cd $(DESTDIR)$(sbindir) && \
-+	  ln -sf $(sbin_PROGRAMS) mount.nfs4 && \
-+	  ln -sf $(sbin_PROGRAMS) umount.nfs && \
-+	  ln -sf $(sbin_PROGRAMS) umount.nfs4)
-+uninstall-hook:
-+	(cd $(DESTDIR)$(sbindir) && \
-+	    rm -f mount.nfs4 umount.nfs umount.nfs4)
-+
-+
-+install-man-links:
-+	(cd $(DESTDIR)$(man8dir) && \
-+	  for m in $(man8_MANS) $(dist_man8_MANS) $(nodist_man8_MANS); do \
-+	    inst=3D`echo $$m | sed -e 's/man$$/8/'`; \
-+	    rm -f $$inst ; \
-+	  done)
-+
-+uninstall-man-links:
-+	(cd $(DESTDIR)$(man8dir) && \
-+	  for m in $(man8_MANS) $(dist_man8_MANS) $(nodist_man8_MANS); do \
-+	    inst=3D`echo $$m | sed -e 's/man$$/8/'`; \
-+	    rm -f $$inst ; \
-+	  done)
-+
-diff -uprN nfs-utils-1.0.8/utils/mount/mount.c nfs-utils-1.0.8-ag/utils/m=
-ount/mount.c
---- nfs-utils-1.0.8/utils/mount/mount.c	1969-12-31 19:00:00.000000000 -05=
-00
-+++ nfs-utils-1.0.8-ag/utils/mount/mount.c	2006-06-12 15:09:22.652611000 =
--0400
-@@ -0,0 +1,387 @@
-+/*
-+ * mount.c -- Linux NFS mount
-+ *
-+ * Copyright (C) 2006 Amit Gud <agud@redhat.com>
-+ *
-+ * - Basic code and wrapper around mount and umount code of NFS.
-+ *   Based on util-linux/mount/mount.c.
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ */
-+
-+#include "config.h"
-+#include <unistd.h>
-+#include <sys/types.h>
-+#include <stdio.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <sys/mount.h>
-+#include <getopt.h>
-+#include <mntent.h>
-+
-+#include "fstab.h"
-+#include "xcommon.h"
-+#include "mount_constants.h"
-+#include "nfs_paths.h"
-+
-+#include "nfs_mount.h"
-+#include "nfs4_mount.h"
-+#include "nfsumount.h"
-+#include "nfsmount.h"
-+
-+char *progname;
-+int nomtab;
-+int verbose;
-+int mounttype;
-+
-+static struct option longopts[] =3D {
-+  { "fake", 0, 0, 'f' },
-+  { "help", 0, 0, 'h' },
-+  { "no-mtab", 0, 0, 'n' },
-+  { "read-only", 0, 0, 'r' },
-+  { "ro", 0, 0, 'r' },
-+  { "verbose", 0, 0, 'v' },
-+  { "version", 0, 0, 'V' },
-+  { "read-write", 0, 0, 'w' },
-+  { "rw", 0, 0, 'w' },
-+  { "options", 1, 0, 'o' },
-+  { "nfsvers", 1, 0, 't' },
-+  { "bind", 0, 0, 128 },
-+  { "replace", 0, 0, 129 },
-+  { "after", 0, 0, 130 },
-+  { "before", 0, 0, 131 },
-+  { "over", 0, 0, 132 },
-+  { "move", 0, 0, 133 },
-+  { "rbind", 0, 0, 135 },
-+  { NULL, 0, 0, 0 }
-+};
-+
-+/* Map from -o and fstab option strings to the flag argument to mount(2)=
-.  */
-+struct opt_map {
-+  const char *opt;              /* option name */
-+  int  skip;                    /* skip in mtab option string */
-+  int  inv;                     /* true if flag value should be inverted=
- */
-+  int  mask;                    /* flag mask value */
-+};
-+
-+static const struct opt_map opt_map[] =3D {
-+  { "defaults", 0, 0, 0         },      /* default options */
-+  { "ro",       1, 0, MS_RDONLY },      /* read-only */
-+  { "rw",       1, 1, MS_RDONLY },      /* read-write */
-+  { "exec",     0, 1, MS_NOEXEC },      /* permit execution of binaries =
-*/
-+  { "noexec",   0, 0, MS_NOEXEC },      /* don't execute binaries */
-+  { "suid",     0, 1, MS_NOSUID },      /* honor suid executables */
-+  { "nosuid",   0, 0, MS_NOSUID },      /* don't honor suid executables =
-*/
-+  { "dev",      0, 1, MS_NODEV  },      /* interpret device files  */
-+  { "nodev",    0, 0, MS_NODEV  },      /* don't interpret devices */
-+  { "sync",     0, 0, MS_SYNCHRONOUS},  /* synchronous I/O */
-+  { "async",    0, 1, MS_SYNCHRONOUS},  /* asynchronous I/O */
-+  { "dirsync",  0, 0, MS_DIRSYNC},      /* synchronous directory modific=
-ations */
-+  { "remount",  0, 0, MS_REMOUNT},      /* Alter flags of mounted FS */
-+  { "bind",     0, 0, MS_BIND   },      /* Remount part of tree elsewher=
-e */
-+  { "rbind",    0, 0, MS_BIND|MS_REC }, /* Idem, plus mounted subtrees *=
-/
-+
-+  /* add new options here */
-+#ifdef MS_NOSUB
-+  { "sub",      0, 1, MS_NOSUB  },      /* allow submounts */
-+  { "nosub",    0, 0, MS_NOSUB  },      /* don't allow submounts */
-+#endif
-+#ifdef MS_SILENT
-+  { "quiet",    0, 0, MS_SILENT    },   /* be quiet  */
-+  { "loud",     0, 1, MS_SILENT    },   /* print out messages. */
-+#endif
-+#ifdef MS_MANDLOCK
-+  { "mand",     0, 0, MS_MANDLOCK },    /* Allow mandatory locks on this=
- FS */
-+  { "nomand",   0, 1, MS_MANDLOCK },    /* Forbid mandatory locks on thi=
-s FS */
-+#endif
-+#ifdef MS_NOATIME
-+  { "atime",    0, 1, MS_NOATIME },     /* Update access time */
-+  { "noatime",  0, 0, MS_NOATIME },     /* Do not update access time */
-+#endif
-+#ifdef MS_NODIRATIME
-+  { "diratime", 0, 1, MS_NODIRATIME },  /* Update dir access times */
-+  { "nodiratime", 0, 0, MS_NODIRATIME },/* Do not update dir access time=
-s */
-+#endif
-+  { NULL,	0, 0, 0		}
-+};
-+
-+/* Try to build a canonical options string.  */
-+static char * fix_opts_string (int flags, const char *extra_opts) {
-+	const struct opt_map *om;
-+	char *new_opts;
-+
-+	new_opts =3D xstrdup((flags & MS_RDONLY) ? "ro" : "rw");
-+	for (om =3D opt_map; om->opt !=3D NULL; om++) {
-+		if (om->skip)
-+			continue;
-+		if (om->inv || !om->mask || (flags & om->mask) !=3D om->mask)
-+			continue;
-+		new_opts =3D xstrconcat3(new_opts, ",", om->opt);
-+		flags &=3D ~om->mask;
-+	}
-+	if (extra_opts && *extra_opts) {
-+		new_opts =3D xstrconcat3(new_opts, ",", extra_opts);
-+	}
-+	return new_opts;
-+}
-+
-+
-+int add_mtab(char *fsname, char *mount_point, char *fstype, int flags, c=
-har *opts, int freq, int passno)
-+{
-+	struct mntent ment;
-+	int fd;
-+	FILE *mtab;
-+
-+	ment.mnt_fsname =3D fsname;
-+	ment.mnt_dir =3D mount_point;
-+	ment.mnt_type =3D fstype;
-+	ment.mnt_opts =3D fix_opts_string(flags, opts);
-+	ment.mnt_freq =3D 0;
-+	ment.mnt_passno=3D 0;
-+
-+	if ((fd =3D open(MOUNTED"~", O_RDWR|O_CREAT|O_EXCL, 0600)) =3D=3D -1)	{
-+		fprintf(stderr, "Can't get "MOUNTED"~ lock file");
-+		return 1;
-+	}
-+        close(fd);
-+
-+        if ((mtab =3D setmntent(MOUNTED, "a+")) =3D=3D NULL) {
-+		fprintf(stderr, "Can't open " MOUNTED);
-+		return 1;
-+	}
-+
-+        if (addmntent(mtab, &ment) =3D=3D 1) {
-+		fprintf(stderr, "Can't write mount entry");
-+		return 1;
-+	}
-+
-+        if (fchmod(fileno(mtab), 0644) =3D=3D -1) {
-+		fprintf(stderr, "Can't set perms on " MOUNTED);
-+		return 1;
-+	}
-+
-+	endmntent(mtab);
-+
-+	if (unlink(MOUNTED"~") =3D=3D -1) {
-+		fprintf(stderr, "Can't remove "MOUNTED"~");
-+		return 1;
-+	}
-+
-+	return 0;
-+}
-+
-+int do_mount_syscall(char *spec, char *node, char *type, int flags, void=
- *data)
-+{
-+	return mount(spec, node, type, flags, data);
-+}
-+
-+void mount_usage()
-+{
-+	printf("usage: %s remotetarget dir [-rvVwfnh] [-t version] [-o nfsoptio=
-ns]\n", progname);
-+	printf("options:\n\t-r\t\tMount file system readonly\n");
-+	printf("\t-v\t\tVerbose\n");
-+	printf("\t-V\t\tPrint version\n");
-+	printf("\t-w\t\tMount file system read-write\n");
-+	printf("\t-f\t\tFake mount, don't actually mount\n");
-+	printf("\t-n\t\tDo not update /etc/mtab\n");
-+	printf("\t-h\t\tPrint this help\n");
-+	printf("\tversion\t\tnfs4 - NFS version 4, nfs - older NFS version supp=
-orted\n");
-+	printf("\tnfsoptions\tRefer mount.nfs(8) or nfs(5)\n\n");
-+}
-+
-+static inline void
-+parse_opt(const char *opt, int *mask, char *extra_opts, int len) {
-+	const struct opt_map *om;
-+
-+	for (om =3D opt_map; om->opt !=3D NULL; om++) {
-+		if (!strcmp (opt, om->opt)) {
-+			if (om->inv)
-+				*mask &=3D ~om->mask;
-+			else
-+				*mask |=3D om->mask;
-+			return;
-+		}
-+	}
-+
-+	len -=3D strlen(extra_opts);
-+
-+	if (*extra_opts && --len > 0)
-+		strcat(extra_opts, ",");
-+
-+	if ((len -=3D strlen(opt)) > 0)
-+		strcat(extra_opts, opt);
-+}
-+
-+/* Take -o options list and compute 4th and 5th args to mount(2).  flags
-+   gets the standard options (indicated by bits) and extra_opts all the =
-rest */
-+static void parse_opts (const char *options, int *flags, char **extra_op=
-ts)
-+{
-+	if (options !=3D NULL) {
-+		char *opts =3D xstrdup(options);
-+		char *opt;
-+		int len =3D strlen(opts) + 20;
-+
-+		*extra_opts =3D xmalloc(len);
-+		**extra_opts =3D '\0';
-+
-+		for (opt =3D strtok(opts, ","); opt; opt =3D strtok(NULL, ","))
-+			parse_opt(opt, flags, *extra_opts, len);
-+
-+		free(opts);
-+	}
-+
-+}
-+
-+static void mount_error(char *node)
-+{
-+	switch(errno) {
-+		case ENOTDIR:
-+			printf("%s: mount point %s is not a directory\n", progname, node);
-+			break;
-+		case EBUSY:
-+			printf("%s: %s is already mounted or busy\n", progname, node);
-+			break;
-+		case ENOENT:
-+			printf("%s: mount point %s does not exist\n", progname, node);
-+			break;
-+		default:
-+			printf("%s: %s\n", progname, strerror(errno));
-+	}
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	int c, flags =3D 0, nfs_mount_vers =3D 0, mnt_err =3D 1, fake =3D 0;
-+	char *spec, *mount_point, *extra_opts =3D NULL;
-+	char *mount_opts =3D NULL, *p;
-+
-+	progname =3D argv[0];
-+	if ((p =3D strrchr(progname, '/')) !=3D NULL)
-+		progname =3D p+1;
-+
-+	if (getuid() !=3D 0) {
-+		printf("%s: only root can do that.\n", progname);
-+		exit(1);
-+	}
-+
-+	if(!strncmp(progname, "umount", strlen("umount"))) {
-+		if(argc < 2) {
-+			umount_usage();
-+			exit(1);
-+		}
-+		return(nfsumount(argc, argv));
-+	}
-+
-+	if ((argc < 2)) {
-+		mount_usage();
-+		exit(1);
-+	}
-+
-+	if(argv[1][0] =3D=3D '-') {
-+		if(argv[1][1] =3D=3D 'V')
-+			printf("%s ("PACKAGE_STRING")\n", progname);
-+		else
-+			mount_usage();
-+		return 0;
-+	}
-+
-+	while ((c =3D getopt_long (argc - 2, argv + 2, "rt:vVwfno:h",
-+				longopts, NULL)) !=3D -1) {
-+		switch (c) {
-+		case 'r':
-+			flags |=3D MS_RDONLY;
-+			break;
-+		case 't':
-+			nfs_mount_vers =3D (strncmp(optarg, "nfs4", 4)) ? 0 : 4;
-+			break;
-+		case 'v':
-+			++verbose;
-+			break;
-+		case 'V':
-+			printf("%s: ("PACKAGE_STRING")\n", progname);
-+			return 0;
-+		case 'w':
-+			flags &=3D ~MS_RDONLY;
-+			break;
-+		case 'f':
-+			++fake;
-+			break;
-+		case 'n':
-+			++nomtab;
-+			break;
-+		case 'o':              /* specify mount options */
-+			if (mount_opts)
-+				mount_opts =3D xstrconcat3(mount_opts, ",", optarg);
-+			else
-+				mount_opts =3D xstrdup(optarg);
-+			break;
-+		case 128: /* bind */
-+			mounttype =3D MS_BIND;
-+			break;
-+		case 129: /* replace */
-+			mounttype =3D MS_REPLACE;
-+			break;
-+		case 130: /* after */
-+			mounttype =3D MS_AFTER;
-+			break;
-+		case 131: /* before */
-+			mounttype =3D MS_BEFORE;
-+			break;
-+		case 132: /* over */
-+			mounttype =3D MS_OVER;
-+			break;
-+		case 133: /* move */
-+			mounttype =3D MS_MOVE;
-+			break;
-+		case 135: /* rbind */
-+			mounttype =3D MS_BIND | MS_REC;
-+			break;
-+		case 'h':
-+		default:
-+			mount_usage();
-+			exit(1);
-+		}
-+	}
-+
-+	spec =3D argv[1];
-+	mount_point =3D canonicalize(argv[2]);
-+=09
-+	parse_opts(mount_opts, &flags, &extra_opts);
-+
-+	if (!strcmp(progname, "mount.nfs4") || nfs_mount_vers =3D=3D 4) {
-+		nfs_mount_vers =3D 4;
-+		mnt_err =3D nfs4mount(spec, mount_point, &flags, &extra_opts, &mount_o=
-pts, 0);
-+	}
-+	else {
-+		if (!strcmp(progname, "mount.nfs")) {
-+			mnt_err =3D nfsmount(spec, mount_point, &flags,
-+					&extra_opts, &mount_opts, &nfs_mount_vers, 0);
-+		}
-+	}
-+
-+	if (!mnt_err && !fake) {
-+		mnt_err =3D do_mount_syscall(spec, mount_point, nfs_mount_vers =3D=3D =
-4 ? "nfs4" : "nfs", flags, mount_opts);
-+	=09
-+		if(mnt_err) {
-+			mount_error(mount_point);
-+			exit(-1);
-+		}
-+
-+		if(!nomtab)
-+			add_mtab(spec, mount_point, nfs_mount_vers =3D=3D 4 ? "nfs4" : "nfs",
-+				 flags, extra_opts, 0, 0);
-+	}
-+
-+	return 0;
-+}
-+
-diff -uprN nfs-utils-1.0.8/utils/mount/mount_constants.h nfs-utils-1.0.8-=
-ag/utils/mount/mount_constants.h
---- nfs-utils-1.0.8/utils/mount/mount_constants.h	1969-12-31 19:00:00.000=
-000000 -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/mount_constants.h	2006-06-12 15:09:22.=
-658611000 -0400
-@@ -0,0 +1,53 @@
-+#ifndef _NFS_MOUNT_CONSTANTS_H
-+#define _NFS_MOUNT_CONSTANTS_H
-+
-+#ifndef MS_DIRSYNC
-+#define MS_DIRSYNC	128	/* Directory modifications are synchronous */
-+#endif
-+
-+#ifndef MS_ACTION_MASK
-+#define	MS_ACTION_MASK	0x380
-+/* Remount, but new filesystem may be different from old. Atomic
-+   (i.e. there is no interval when nothing is mounted at the mountpoint).
-+   If new fs differs from the old one and old is busy - -EBUSY. */
-+#define	MS_REPLACE	0x080	/* 128 */
-+/* After, Before: as soon as we get unions these will add a new member
-+   in the end or beginning of the chain. Fail if there is a stack
-+   on the mountpoint. */
-+#define	MS_AFTER	0x100	/* 256 */
-+#define	MS_BEFORE	0x180
-+/* Over: if nothing mounted on a mountpoint - same as if none of these
-+flags had been set; if we have a union with more than one element - fail=
-;
-+if we have a stack or plain mount - mount atop of it, forming a stack. *=
-/
-+#define	MS_OVER		0x200	/* 512 */
-+#endif
-+#ifndef MS_NOATIME
-+#define MS_NOATIME	0x400	/* 1024: Do not update access times. */
-+#endif
-+#ifndef MS_NODIRATIME
-+#define MS_NODIRATIME   0x800	/* 2048: Don't update directory access tim=
-es */
-+#endif
-+#ifndef MS_BIND
-+#define	MS_BIND		0x1000	/* 4096: Mount existing tree also elsewhere */
-+#endif
-+#ifndef MS_MOVE
-+#define MS_MOVE		0x2000	/* 8192: Atomically move tree */
-+#endif
-+#ifndef MS_REC
-+#define MS_REC		0x4000	/* 16384: Recursive loopback */
-+#endif
-+#ifndef MS_VERBOSE
-+#define MS_VERBOSE	0x8000	/* 32768 */
-+#endif
-+/*
-+ * Magic mount flag number. Had to be or-ed to the flag values.
-+ */
-+#ifndef MS_MGC_VAL
-+#define MS_MGC_VAL 0xC0ED0000	/* magic flag number to indicate "new" fla=
-gs */
-+#endif
-+#ifndef MS_MGC_MSK
-+#define MS_MGC_MSK 0xffff0000	/* magic flag number mask */
-+#endif
-+
-+#endif /* _NFS_MOUNT_CONSTANTS_H */
-+
-diff -uprN nfs-utils-1.0.8/utils/mount/mount.nfs.man nfs-utils-1.0.8-ag/u=
-tils/mount/mount.nfs.man
---- nfs-utils-1.0.8/utils/mount/mount.nfs.man	1969-12-31 19:00:00.0000000=
-00 -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/mount.nfs.man	2006-06-12 15:09:22.6636=
-12000 -0400
-@@ -0,0 +1,100 @@
-+.\"@(#)mount.nfs.8"
-+.TH MOUNT.NFS 8 "5 Jun 2006"
-+.SH NAME
-+mount.nfs, mount.nfs4 \- mount a Network File System
-+.SH SYNOPSIS
-+.BI "mount.nfs" " remotetarget dir" " [\-rvVwfnh ] [\-t " version "] [\-=
-o " options "]
-+.SH DESCRIPTION
-+.BR mount.nfs
-+is a part of=20
-+.BR nfs (5)
-+utilities package, which provides NFS client functionality.
-+
-+.BR mount.nfs=20
-+is meant to be used by the
-+.BR mount (8)
-+command for mounting NFS shares. This subcommand, however, can also be u=
-sed as a standalone command with limited functionality.
-+
-+.BR mount.nfs4=20
-+is used for mounting NFSv4 file system, while=20
-+.BR mount.nfs=20
-+is used to mount NFS file systems versions 3 or 2.
-+.I remotetarget=20
-+is a server share usually in the form of=20
-+.BR servername:/path/to/share.
-+.I dir=20
-+is the directory on which the file system is to be mounted.
-+
-+.SH OPTIONS
-+.TP
-+.BI "\-r"
-+Mount file system readonly.
-+.TP
-+.BI "\-v"
-+Be verbose.
-+.TP
-+.BI "\-V"
-+Print version.
-+.TP
-+.BI "\-w"
-+Mount file system read-write.
-+.TP
-+.BI "\-f"
-+Fake mount. Don't actually call the mount system call.
-+.TP
-+.BI "\-n"
-+Do not update=20
-+.I /etc/mtab.=20
-+By default, an entry is created in=20
-+.I /etc/mtab=20
-+for every mounted file system. Use this option to skip making an entry.
-+.TP
-+.BI "\-h"
-+Print help message.
-+.TP
-+.BI "version"
-+Specify NFS file system version. Either
-+.BR nfs4=20
-+or=20
-+.BR nfs.
-+If the command is=20
-+.BR mount.nfs4=20
-+or the=20
-+.I vfstype=20
-+option of=20
-+.BR mount(8)=20
-+command is nfs4, then version 4 is used, else version 3 or 2 is used.
-+.TP
-+.BI "nfsoptions"
-+Refer to=20
-+.BR nfs(5)
-+or
-+.BR mount(8)=20
-+manual pages.
-+
-+.SH NOTE
-+For further information please refer=20
-+.BR nfs (5)
-+and
-+.BR mount (8)
-+manual pages.
-+
-+.SH FILES
-+.TP 18n
-+.I /etc/fstab
-+file system table
-+.TP
-+.I /etc/mtab
-+table of mounted file systems
-+
-+.PD
-+.SH "SEE ALSO"
-+.BR nfs (5),
-+.BR mount (8),
-+
-+.SH BUGS
-+Please notify current developers of NFS of any bugs in the current softw=
-are or mail nfs@lists.sourceforge.net
-+
-+.SH "AUTHOR"
-+Amit Gud <agud@redhat.com>
-+
-diff -uprN nfs-utils-1.0.8/utils/mount/nfs4mount.c nfs-utils-1.0.8-ag/uti=
-ls/mount/nfs4mount.c
---- nfs-utils-1.0.8/utils/mount/nfs4mount.c	1969-12-31 19:00:00.000000000=
- -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfs4mount.c	2006-06-12 15:09:22.670611=
-000 -0400
-@@ -0,0 +1,444 @@
-+/*
-+ * nfs4mount.c -- Linux NFS mount
-+ * Copyright (C) 2002 Trond Myklebust <trond.myklebust@fys.uio.no>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * Note: this file based on the original nfsmount.c
+diff -uprN nfs-utils-1.0.8/support/include/conn.h nfs-utils-1.0.8-ag/supp=
+ort/include/conn.h
+--- nfs-utils-1.0.8/support/include/conn.h	1969-12-31 19:00:00.000000000 =
+-0500
++++ nfs-utils-1.0.8-ag/support/include/conn.h	2006-06-12 15:09:32.1218610=
+00 -0400
+@@ -0,0 +1,42 @@
++/*=20
++ * conn.h -- Connection routines for NFS mount / umount code.
 + *
 + * 2006-06-06 Amit Gud <agud@redhat.com>
-+ * - Moved to nfs-utils/utils/mount from util-linux/mount.
++ * - Moved code snippets here from util-linux/mount
 + */
 +
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <netdb.h>
-+#include <time.h>
-+#include <sys/stat.h>
-+#include <netinet/in.h>
-+#include <arpa/inet.h>
-+#include <rpc/auth.h>
-+#include <rpc/rpc.h>
++#ifndef _CONN_H
++#define _CONN_H
++
 +#ifdef HAVE_RPCSVC_NFS_PROT_H
 +#include <rpcsvc/nfs_prot.h>
 +#else
@@ -754,2769 +88,1502 @@ ls/mount/nfs4mount.c
 +#define nfsstat nfs_stat
 +#endif
 +
-+#include "nls.h"
-+#include "conn.h"
-+#include "xcommon.h"
++#include <rpc/pmap_prot.h>
++#include <rpc/clnt.h>
 +
-+#include "nfs4_mount.h"
-+#include "nfs_mount.h"
++#define MNT_SENDBUFSIZE ((u_int)2048)
++#define MNT_RECVBUFSIZE ((u_int)1024)
 +
-+#if defined(VAR_LOCK_DIR)
-+#define DEFAULT_DIR VAR_LOCK_DIR
++typedef struct {
++	char **hostname;
++	struct sockaddr_in saddr;
++	struct pmap pmap;
++} clnt_addr_t;
++
++/* RPC call timeout values */
++static const struct timeval TIMEOUT =3D { 20, 0 };
++static const struct timeval RETRY_TIMEOUT =3D { 3, 0 };
++
++int clnt_ping(struct sockaddr_in *, const u_long, const u_long, const u_=
+int);
++u_long nfsvers_to_mnt(const u_long);
++u_long mntvers_to_nfs(const u_long);
++int get_socket(struct sockaddr_in *, u_int, int);
++CLIENT * mnt_openclnt(clnt_addr_t *, int *);
++void mnt_closeclnt(CLIENT *, int);
++
++#endif /* _CONN_H */
++
+diff -uprN nfs-utils-1.0.8/support/include/fstab.h nfs-utils-1.0.8-ag/sup=
+port/include/fstab.h
+--- nfs-utils-1.0.8/support/include/fstab.h	1969-12-31 19:00:00.000000000=
+ -0500
++++ nfs-utils-1.0.8-ag/support/include/fstab.h	2006-06-12 15:09:32.126862=
+000 -0400
+@@ -0,0 +1,24 @@
++#ifndef _NFS_FSTAB_H
++#define _NFS_FSTAB_H
++
++#include "nfs_mntent.h"
++
++int mtab_is_writable(void);
++int mtab_does_not_exist(void);
++
++struct mntentchn {
++	struct mntentchn *nxt, *prev;
++	nfs_mntent_t m;
++};
++
++struct mntentchn *mtab_head (void);
++struct mntentchn *getmntoptfile (const char *file);
++struct mntentchn *getmntdirbackward (const char *dir, struct mntentchn *=
+mc);
++struct mntentchn *getmntdevbackward (const char *dev, struct mntentchn *=
+mc);
++
++void lock_mtab (void);
++void unlock_mtab (void);
++void update_mtab (const char *special, nfs_mntent_t *with);
++
++#endif /* _NFS_FSTAB_H */
++
+diff -uprN nfs-utils-1.0.8/support/include/Makefile.am nfs-utils-1.0.8-ag=
+/support/include/Makefile.am
+--- nfs-utils-1.0.8/support/include/Makefile.am	2005-12-19 23:12:43.00000=
+0000 -0500
++++ nfs-utils-1.0.8-ag/support/include/Makefile.am	2006-06-12 15:09:32.13=
+0862000 -0400
+@@ -3,9 +3,13 @@
+ SUBDIRS =3D nfs rpcsvc sys
+=20
+ noinst_HEADERS =3D \
++	conn.h \
+ 	exportfs.h \
++	fstab.h \
+ 	ha-callout.h \
+ 	misc.h \
++	nfs_mntent.h \
++	nfs_paths.h \
+ 	nfslib.h \
+ 	rpcdispatch.h \
+ 	rpcmisc.h \
+@@ -15,6 +19,7 @@ noinst_HEADERS =3D \
+ 	xio.h \
+ 	xlog.h \
+ 	xmalloc.h \
++	xcommon.h \
+ 	ypupdate.h
+=20
+ MAINTAINERCLEANFILES =3D Makefile.in
+diff -uprN nfs-utils-1.0.8/support/include/nfs_mntent.h nfs-utils-1.0.8-a=
+g/support/include/nfs_mntent.h
+--- nfs-utils-1.0.8/support/include/nfs_mntent.h	1969-12-31 19:00:00.0000=
+00000 -0500
++++ nfs-utils-1.0.8-ag/support/include/nfs_mntent.h	2006-06-12 15:09:32.1=
+36861000 -0400
+@@ -0,0 +1,34 @@
++/*
++ * 2006-06-08 Amit Gud <agud@redhat.com>
++ * - Moved code snippets here from util-linux/mount/my_mntent.h
++ */
++
++#ifndef _NFS_MNTENT_H
++#define _NFS_MNTENT_H
++
++typedef struct nfs_mntent_s {
++	const char *mnt_fsname;
++	const char *mnt_dir;
++	const char *mnt_type;
++	const char *mnt_opts;
++	int mnt_freq;
++	int mnt_passno;
++} nfs_mntent_t;
++
++#define ERR_MAX 5
++
++typedef struct mntFILEstruct {
++	FILE *mntent_fp;
++	char *mntent_file;
++	int mntent_lineno;
++	int mntent_errs;
++	int mntent_softerrs;
++} mntFILE;
++
++mntFILE *nfs_setmntent (const char *file, char *mode);
++void nfs_endmntent (mntFILE *mfp);
++int nfs_addmntent (mntFILE *mfp, nfs_mntent_t *mnt);
++struct nfs_mntent *my_getmntent (mntFILE *mfp);
++nfs_mntent_t *nfs_getmntent (mntFILE *mfp);
++
++#endif /* _NFS_MNTENT_H */
+diff -uprN nfs-utils-1.0.8/support/include/nfs_paths.h nfs-utils-1.0.8-ag=
+/support/include/nfs_paths.h
+--- nfs-utils-1.0.8/support/include/nfs_paths.h	1969-12-31 19:00:00.00000=
+0000 -0500
++++ nfs-utils-1.0.8-ag/support/include/nfs_paths.h	2006-06-12 15:09:32.14=
+1863000 -0400
+@@ -0,0 +1,11 @@
++#ifndef _NFS_PATHS_H
++#define _NFS_PATHS_H
++
++#ifndef _PATH_MOUNTED
++#define _PATH_MOUNTED "/etc/fstab"
++#endif
++#define MOUNTED_LOCK	_PATH_MOUNTED "~"
++#define MOUNTED_TEMP	_PATH_MOUNTED ".tmp"
++
++#endif /* _NFS_PATHS_H */
++
+diff -uprN nfs-utils-1.0.8/support/include/nls.h nfs-utils-1.0.8-ag/suppo=
+rt/include/nls.h
+--- nfs-utils-1.0.8/support/include/nls.h	1969-12-31 19:00:00.000000000 -=
+0500
++++ nfs-utils-1.0.8-ag/support/include/nls.h	2006-06-12 15:09:32.14786100=
+0 -0400
+@@ -0,0 +1,27 @@
++/*=20
++ * 2006-06-08 Amit Gud <agud@redhat.com>
++ * - Copied to nfs-utils/support/include from util-linux/mount
++ */
++
++#ifndef LOCALEDIR
++#define LOCALEDIR "/usr/share/locale"
++#endif
++
++#ifdef ENABLE_NLS
++# include <libintl.h>
++# define _(Text) gettext (Text)
++# ifdef gettext_noop
++#  define N_(String) gettext_noop (String)
++# else
++#  define N_(String) (String)
++# endif
 +#else
-+#define DEFAULT_DIR "/var/lock/subsys"
++# undef bindtextdomain
++# define bindtextdomain(Domain, Directory) /* empty */
++# undef textdomain
++# define textdomain(Domain) /* empty */
++# define _(Text) (Text)
++# define N_(Text) (Text)
 +#endif
 +
-+extern int verbose;
 +
-+char *IDMAPLCK =3D DEFAULT_DIR "/rpcidmapd";
-+#define idmapd_check() do { \
-+	if (access(IDMAPLCK, F_OK)) { \
-+		printf(_("Warning: rpc.idmapd appears not to be running.\n" \
-+			"         All uids will be mapped to the nobody uid.\n")); \
-+	} \
-+} while(0);
-+
-+char *GSSDLCK =3D DEFAULT_DIR "/rpcgssd";
-+#define gssd_check() do { \
-+		if (access(GSSDLCK, F_OK)) { \
-+			printf(_("Warning: rpc.gssd appears not to be running.\n")); \
-+		} \
-+} while(0);=20
-+
-+#ifndef NFS_PORT
-+#define NFS_PORT 2049
-+#endif
-+
-+struct {
-+	char    *flavour;
-+	int     fnum;
-+} flav_map[] =3D {
-+	{ "krb5",	RPC_AUTH_GSS_KRB5	},
-+	{ "krb5i",	RPC_AUTH_GSS_KRB5I	},
-+	{ "krb5p",	RPC_AUTH_GSS_KRB5P	},
-+	{ "lipkey",	RPC_AUTH_GSS_LKEY	},
-+	{ "lipkey-i",	RPC_AUTH_GSS_LKEYI	},
-+	{ "lipkey-p",	RPC_AUTH_GSS_LKEYP	},
-+	{ "spkm3",	RPC_AUTH_GSS_SPKM	},
-+	{ "spkm3i",	RPC_AUTH_GSS_SPKMI	},
-+	{ "spkm3p",	RPC_AUTH_GSS_SPKMP	},
-+	{ "unix",	AUTH_UNIX		},
-+	{ "sys",	AUTH_SYS		},
-+	{ "null",	AUTH_NULL		},
-+	{ "none",	AUTH_NONE		},
-+};
-+
-+#define FMAPSIZE		(sizeof(flav_map)/sizeof(flav_map[0]))
-+#define MAX_USER_FLAVOUR	16
-+
-+static int parse_sec(char *sec, int *pseudoflavour)
-+{
-+	int i, num_flavour =3D 0;
-+
-+	for (sec =3D strtok(sec, ":"); sec; sec =3D strtok(NULL, ":")) {
-+		if (num_flavour >=3D MAX_USER_FLAVOUR) {
-+			fprintf(stderr,
-+				_("mount: maximum number of security flavors "
-+				  "exceeded\n"));
-+			return 0;
-+		}
-+		for (i =3D 0; i < FMAPSIZE; i++) {
-+			if (strcmp(sec, flav_map[i].flavour) =3D=3D 0) {
-+				pseudoflavour[num_flavour++] =3D flav_map[i].fnum;
-+				break;
-+			}
-+		}
-+		if (i =3D=3D FMAPSIZE) {
-+			fprintf(stderr,
-+				_("mount: unknown security type %s\n"), sec);
-+			return 0;
-+		}
-+	}
-+	if (!num_flavour)
-+		fprintf(stderr,
-+			_("mount: no security flavors passed to sec=3D option\n"));
-+	return num_flavour;
-+}
-+
-+static int parse_devname(char *hostdir, char **hostname, char **dirname)
-+{
-+	char *s;
-+
-+	if (!(s =3D strchr(hostdir, ':'))) {
-+		fprintf(stderr,
-+			_("mount: "
-+			  "directory to mount not in host:dir format\n"));
-+		return -1;
-+	}
-+	*hostname =3D hostdir;
-+	*dirname =3D s + 1;
-+	*s =3D '\0';
-+	/* Ignore all but first hostname in replicated mounts
-+	   until they can be fully supported. (mack@sgi.com) */
-+	if ((s =3D strchr(hostdir, ','))) {
-+		*s =3D '\0';
-+		fprintf(stderr,
-+			_("mount: warning: "
-+			  "multiple hostnames not supported\n"));
-+	}
-+	return 0;
-+}
-+
-+static int fill_ipv4_sockaddr(const char *hostname, struct sockaddr_in *=
-addr)
-+{
-+	struct hostent *hp;
-+	addr->sin_family =3D AF_INET;
-+
-+	if (inet_aton(hostname, &addr->sin_addr))
-+		return 0;
-+	if ((hp =3D gethostbyname(hostname)) =3D=3D NULL) {
-+		fprintf(stderr, _("mount: can't get address for %s\n"),
-+			hostname);
-+		return -1;
-+	}
-+	if (hp->h_length > sizeof(struct in_addr)) {
-+		fprintf(stderr,
-+			_("mount: got bad hp->h_length\n"));
-+		hp->h_length =3D sizeof(struct in_addr);
-+	}
-+	memcpy(&addr->sin_addr, hp->h_addr, hp->h_length);
-+	return 0;
-+}
-+
-+static int get_my_ipv4addr(char *ip_addr, int len)
-+{
-+	char myname[1024];
-+	struct sockaddr_in myaddr;
-+
-+	if (gethostname(myname, sizeof(myname))) {
-+		fprintf(stderr, _("mount: can't determine client address\n"));
-+		return -1;
-+	}
-+	if (fill_ipv4_sockaddr(myname, &myaddr))
-+		return -1;
-+	snprintf(ip_addr, len, "%s", inet_ntoa(myaddr.sin_addr));
-+	ip_addr[len-1] =3D '\0';
-+	return 0;
-+}
-+
-+int nfs4mount(const char *spec, const char *node, int *flags,
-+	      char **extra_opts, char **mount_opts,
-+	      int running_bg)
-+{
-+	static struct nfs4_mount_data data;
-+	static char hostdir[1024];
-+	static char ip_addr[16] =3D "127.0.0.1";
-+	static struct sockaddr_in server_addr;
-+	static int pseudoflavour[MAX_USER_FLAVOUR];
-+	int num_flavour =3D 0;
-+
-+	char *hostname, *dirname, *old_opts;
-+	char new_opts[1024];
-+	char *opt, *opteq;
-+	char *s;
-+	int val;
-+	int bg, soft, intr;
-+	int nocto, noac;
-+	int retry;
-+	int retval;
-+	time_t timeout, t;
-+
-+	retval =3D EX_FAIL;
-+	if (strlen(spec) >=3D sizeof(hostdir)) {
-+		fprintf(stderr, _("mount: "
-+				  "excessively long host:dir argument\n"));
-+		goto fail;
-+	}
-+	strcpy(hostdir, spec);
-+	if (parse_devname(hostdir, &hostname, &dirname))
-+		goto fail;
-+
-+	if (fill_ipv4_sockaddr(hostname, &server_addr))
-+		goto fail;
-+	if (get_my_ipv4addr(ip_addr, sizeof(ip_addr)))
-+		goto fail;
-+
-+	/* add IP address to mtab options for use when unmounting */
-+	s =3D inet_ntoa(server_addr.sin_addr);
-+	old_opts =3D *extra_opts;
-+	if (!old_opts)
-+		old_opts =3D "";
-+	if (strlen(old_opts) + strlen(s) + 10 >=3D sizeof(new_opts)) {
-+		fprintf(stderr, _("mount: "
-+				  "excessively long option argument\n"));
-+		goto fail;
-+	}
-+	snprintf(new_opts, sizeof(new_opts), "%s%saddr=3D%s",
-+		 old_opts, *old_opts ? "," : "", s);
-+	*extra_opts =3D xstrdup(new_opts);
-+
-+	/* Set default options.
-+	 * rsize/wsize and timeo are left 0 in order to
-+	 * let the kernel decide.
-+	 */
-+	memset(&data, 0, sizeof(data));
-+	data.retrans	=3D 3;
-+	data.acregmin	=3D 3;
-+	data.acregmax	=3D 60;
-+	data.acdirmin	=3D 30;
-+	data.acdirmax	=3D 60;
-+	data.proto	=3D IPPROTO_TCP;
-+
-+	bg =3D 0;
-+	soft =3D 0;
-+	intr =3D NFS4_MOUNT_INTR;
-+	nocto =3D 0;
-+	noac =3D 0;
-+	retry =3D 10000;		/* 10000 minutes ~ 1 week */
-+
-+	/*
-+	 * NFSv4 specifies that the default port should be 2049
-+	 */
-+	server_addr.sin_port =3D htons(NFS_PORT);
-+
-+	/* parse options */
-+
-+	for (opt =3D strtok(old_opts, ","); opt; opt =3D strtok(NULL, ",")) {
-+		if ((opteq =3D strchr(opt, '=3D'))) {
-+			val =3D atoi(opteq + 1);=09
-+			*opteq =3D '\0';
-+			if (!strcmp(opt, "rsize"))
-+				data.rsize =3D val;
-+			else if (!strcmp(opt, "wsize"))
-+				data.wsize =3D val;
-+			else if (!strcmp(opt, "timeo"))
-+				data.timeo =3D val;
-+			else if (!strcmp(opt, "retrans"))
-+				data.retrans =3D val;
-+			else if (!strcmp(opt, "acregmin"))
-+				data.acregmin =3D val;
-+			else if (!strcmp(opt, "acregmax"))
-+				data.acregmax =3D val;
-+			else if (!strcmp(opt, "acdirmin"))
-+				data.acdirmin =3D val;
-+			else if (!strcmp(opt, "acdirmax"))
-+				data.acdirmax =3D val;
-+			else if (!strcmp(opt, "actimeo")) {
-+				data.acregmin =3D val;
-+				data.acregmax =3D val;
-+				data.acdirmin =3D val;
-+				data.acdirmax =3D val;
-+			}
-+			else if (!strcmp(opt, "retry"))
-+				retry =3D val;
-+			else if (!strcmp(opt, "port"))
-+				server_addr.sin_port =3D htons(val);
-+			else if (!strcmp(opt, "proto")) {
-+				if (!strncmp(opteq+1, "tcp", 3))
-+					data.proto =3D IPPROTO_TCP;
-+				else if (!strncmp(opteq+1, "udp", 3))
-+					data.proto =3D IPPROTO_UDP;
-+				else
-+					printf(_("Warning: Unrecognized proto=3D option.\n"));
-+			} else if (!strcmp(opt, "clientaddr")) {
-+				if (strlen(opteq+1) >=3D sizeof(ip_addr))
-+					printf(_("Invalid client address %s"),
-+								opteq+1);
-+				strncpy(ip_addr,opteq+1, sizeof(ip_addr));
-+				ip_addr[sizeof(ip_addr)-1] =3D '\0';
-+			} else if (!strcmp(opt, "sec")) {
-+				num_flavour =3D parse_sec(opteq+1, pseudoflavour);
-+				if (!num_flavour)
-+					goto fail;
-+			} else if (!strcmp(opt, "addr")) {
-+				/* ignore */;
-+			} else {
-+				printf(_("unknown nfs mount parameter: "
-+					 "%s=3D%d\n"), opt, val);
-+				goto fail;
-+			}
-+		} else {
-+			val =3D 1;
-+			if (!strncmp(opt, "no", 2)) {
-+				val =3D 0;
-+				opt +=3D 2;
-+			}
-+			if (!strcmp(opt, "bg"))=20
-+				bg =3D val;
-+			else if (!strcmp(opt, "fg"))=20
-+				bg =3D !val;
-+			else if (!strcmp(opt, "soft"))
-+				soft =3D val;
-+			else if (!strcmp(opt, "hard"))
-+				soft =3D !val;
-+			else if (!strcmp(opt, "intr"))
-+				intr =3D val;
-+			else if (!strcmp(opt, "cto"))
-+				nocto =3D !val;
-+			else if (!strcmp(opt, "ac"))
-+				noac =3D !val;
-+			else {
-+				printf(_("unknown nfs mount option: "
-+					 "%s%s\n"), val ? "" : "no", opt);
-+				goto fail;
-+			}
-+		}
-+	}
-+
-+	data.flags =3D (soft ? NFS4_MOUNT_SOFT : 0)
-+		| (intr ? NFS4_MOUNT_INTR : 0)
-+		| (nocto ? NFS4_MOUNT_NOCTO : 0)
-+		| (noac ? NFS4_MOUNT_NOAC : 0);
-+
-+	/*
-+	 * Give a warning if the rpc.idmapd daemon is not running
-+	 */
-+	idmapd_check();
-+
-+	if (num_flavour =3D=3D 0)
-+		pseudoflavour[num_flavour++] =3D AUTH_UNIX;
-+	else {
-+		/*
-+		 * ditto with rpc.gssd daemon
-+		 */
-+		gssd_check();
-+	}
-+	data.auth_flavourlen =3D num_flavour;
-+	data.auth_flavours =3D pseudoflavour;
-+
-+	data.client_addr.data =3D ip_addr;
-+	data.client_addr.len =3D strlen(ip_addr);
-+
-+	data.mnt_path.data =3D dirname;
-+	data.mnt_path.len =3D strlen(dirname);
-+
-+	data.hostname.data =3D hostname;
-+	data.hostname.len =3D strlen(hostname);
-+	data.host_addr =3D (struct sockaddr *)&server_addr;
-+	data.host_addrlen =3D sizeof(server_addr);
-+
-+#ifdef NFS_MOUNT_DEBUG
-+	printf("rsize =3D %d, wsize =3D %d, timeo =3D %d, retrans =3D %d\n",
-+	       data.rsize, data.wsize, data.timeo, data.retrans);
-+	printf("acreg (min, max) =3D (%d, %d), acdir (min, max) =3D (%d, %d)\n"=
-,
-+	       data.acregmin, data.acregmax, data.acdirmin, data.acdirmax);
-+	printf("port =3D %d, bg =3D %d, retry =3D %d, flags =3D %.8x\n",
-+	       ntohs(server_addr.sin_port), bg, retry, data.flags);
-+	printf("soft =3D %d, intr =3D %d, nocto =3D %d, noac =3D %d\n",
-+	       (data.flags & NFS4_MOUNT_SOFT) !=3D 0,
-+	       (data.flags & NFS4_MOUNT_INTR) !=3D 0,
-+	       (data.flags & NFS4_MOUNT_NOCTO) !=3D 0,
-+	       (data.flags & NFS4_MOUNT_NOAC) !=3D 0);
-+
-+	if (num_flavour > 0) {
-+		int pf_cnt, i;
-+
-+		printf("sec =3D ");
-+		for (pf_cnt =3D 0; pf_cnt < num_flavour; pf_cnt++) {
-+			for (i =3D 0; i < FMAPSIZE; i++) {
-+				if (flav_map[i].fnum =3D=3D pseudoflavour[pf_cnt]) {
-+					printf("%s", flav_map[i].flavour);
-+					break;
-+				}
-+			}
-+			printf("%s", (pf_cnt < num_flavour-1) ? ":" : "\n");
-+		}
-+	}
-+	printf("proto =3D %s\n", (data.proto =3D=3D IPPROTO_TCP) ? "tcp" : "udp=
-");
-+#endif
-+
-+	timeout =3D time(NULL) + 60 * retry;
-+	data.version =3D NFS4_MOUNT_VERSION;
-+	for (;;) {
-+		if (verbose) {
-+			fprintf(stderr,=20
-+				"mount: pinging: prog %d vers %d prot %s port %d\n",=20
-+				NFS_PROGRAM, 4, data.proto =3D=3D IPPROTO_UDP ? "udp" : "tcp",=20
-+				ntohs(server_addr.sin_port));
-+		}
-+		clnt_ping(&server_addr, NFS_PROGRAM, 4, data.proto);
-+		if (rpc_createerr.cf_stat =3D=3D RPC_SUCCESS)
-+			break;
-+
-+		switch(rpc_createerr.cf_stat){
-+		case RPC_TIMEDOUT:
-+			break;
-+		case RPC_SYSTEMERROR:
-+			if (errno =3D=3D ETIMEDOUT)
-+				break;
-+		default:
-+			mount_errors(hostname, 0, bg);
-+			goto fail;
-+		}
-+		t =3D time(NULL);
-+		if (t >=3D timeout) {
-+			mount_errors(hostname, 0, bg);
-+			goto fail;
-+		}
-+		mount_errors(hostname, 1, bg);
-+		continue;
-+	}
-+
-+	*mount_opts =3D (char *) &data;
-+	/* clean up */
-+	return 0;
-+
-+fail:
-+	return retval;
-+}
-diff -uprN nfs-utils-1.0.8/utils/mount/nfs4_mount.h nfs-utils-1.0.8-ag/ut=
-ils/mount/nfs4_mount.h
---- nfs-utils-1.0.8/utils/mount/nfs4_mount.h	1969-12-31 19:00:00.00000000=
-0 -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfs4_mount.h	2006-06-12 15:09:22.67561=
-2000 -0400
-@@ -0,0 +1,85 @@
-+#ifndef _LINUX_NFS4_MOUNT_H
-+#define _LINUX_NFS4_MOUNT_H
-+
+diff -uprN nfs-utils-1.0.8/support/include/xcommon.h nfs-utils-1.0.8-ag/s=
+upport/include/xcommon.h
+--- nfs-utils-1.0.8/support/include/xcommon.h	1969-12-31 19:00:00.0000000=
+00 -0500
++++ nfs-utils-1.0.8-ag/support/include/xcommon.h	2006-06-12 15:09:32.1528=
+61000 -0400
+@@ -0,0 +1,48 @@
 +/*
-+ *  linux/include/linux/nfs4_mount.h
-+ *
-+ *  Copyright (C) 2002  Trond Myklebust
-+ *
-+ *  structure passed from user-space to kernel-space during an nfsv4 mou=
-nt
-+ */
-+
-+/*
-+ * WARNING!  Do not delete or change the order of these fields.  If
-+ * a new field is required then add it to the end.  The version field
-+ * tracks which fields are present.  This will ensure some measure of
-+ * mount-to-kernel version compatibility.  Some of these aren't used yet
-+ * but here they are anyway.
-+ */
-+#define NFS4_MOUNT_VERSION	1
-+
-+struct nfs_string {
-+	unsigned int len;
-+	const char* data;
-+};
-+
-+struct nfs4_mount_data {
-+	int version;				/* 1 */
-+	int flags;				/* 1 */
-+	int rsize;				/* 1 */
-+	int wsize;				/* 1 */
-+	int timeo;				/* 1 */
-+	int retrans;				/* 1 */
-+	int acregmin;				/* 1 */
-+	int acregmax;				/* 1 */
-+	int acdirmin;				/* 1 */
-+	int acdirmax;				/* 1 */
-+
-+	/* see the definition of 'struct clientaddr4' in RFC3010 */
-+	struct nfs_string client_addr;		/* 1 */
-+
-+	/* Mount path */
-+	struct nfs_string mnt_path;		/* 1 */
-+
-+	/* Server details */
-+	struct nfs_string hostname;		/* 1 */
-+	/* Server IP address */
-+	unsigned int host_addrlen;		/* 1 */
-+	struct sockaddr* host_addr;		/* 1 */
-+
-+	/* Transport protocol to use */
-+	int proto;				/* 1 */
-+
-+	/* Pseudo-flavours to use for authentication. See RFC2623 */
-+	int auth_flavourlen;			/* 1 */
-+	int *auth_flavours;			/* 1 */
-+};
-+
-+/* bits in the flags field */
-+/* Note: the fields that correspond to existing NFSv2/v3 mount options
-+ * 	 should mirror the values from include/linux/nfs_mount.h
-+ */
-+
-+#define NFS4_MOUNT_SOFT		0x0001	/* 1 */
-+#define NFS4_MOUNT_INTR		0x0002	/* 1 */
-+#define NFS4_MOUNT_NOCTO	0x0010	/* 1 */
-+#define NFS4_MOUNT_NOAC		0x0020	/* 1 */
-+#define NFS4_MOUNT_STRICTLOCK	0x1000	/* 1 */
-+#define NFS4_MOUNT_FLAGMASK	0xFFFF
-+
-+/* pseudoflavors: */
-+
-+#define RPC_AUTH_GSS_KRB5       390003
-+#define RPC_AUTH_GSS_KRB5I      390004
-+#define RPC_AUTH_GSS_KRB5P      390005
-+#define RPC_AUTH_GSS_LKEY       390006
-+#define RPC_AUTH_GSS_LKEYI      390007
-+#define RPC_AUTH_GSS_LKEYP      390008
-+#define RPC_AUTH_GSS_SPKM       390009
-+#define RPC_AUTH_GSS_SPKMI      390010
-+#define RPC_AUTH_GSS_SPKMP      390011
-+
-+int nfs4mount(const char *, const char *, int *, char **,
-+	char **, int);
-+
-+#endif
-diff -uprN nfs-utils-1.0.8/utils/mount/nfsmount.c nfs-utils-1.0.8-ag/util=
-s/mount/nfsmount.c
---- nfs-utils-1.0.8/utils/mount/nfsmount.c	1969-12-31 19:00:00.000000000 =
--0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfsmount.c	2006-06-12 15:09:22.6856120=
-00 -0400
-@@ -0,0 +1,1244 @@
-+/*
-+ * nfsmount.c -- Linux NFS mount
-+ * Copyright (C) 1993 Rick Sladkey <jrs@world.std.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * Wed Feb  8 12:51:48 1995, biro@yggdrasil.com (Ross Biro): allow all p=
-ort
-+ * numbers to be specified on the command line.
-+ *
-+ * Fri, 8 Mar 1996 18:01:39, Swen Thuemmler <swen@uni-paderborn.de>:
-+ * Omit the call to connect() for Linux version 1.3.11 or later.
-+ *
-+ * Wed Oct  1 23:55:28 1997: Dick Streefland <dick_streefland@tasking.co=
-m>
-+ * Implemented the "bg", "fg" and "retry" mount options for NFS.
-+ *
-+ * 1999-02-22 Arkadiusz Mi=B6kiewicz <misiek@pld.ORG.PL>
-+ * - added Native Language Support
-+ *=20
-+ * Modified by Olaf Kirch and Trond Myklebust for new NFS code,
-+ * plus NFSv3 stuff.
++ * xcommon.h -- Support function prototypes. Functions are in xcommon.c.
 + *
 + * 2006-06-06 Amit Gud <agud@redhat.com>
-+ * - Moved with modifcations to nfs-utils/utils/mount from util-linux/mo=
-unt.
++ * - Moved code snippets  from mount/sundries.h of util-linux
++ *   and merged code from support/nfs/xmalloc.c by Olaf Kirch <okir@mona=
+d.swb.de> here.
 + */
 +
-+/*
-+ * nfsmount.c,v 1.1.1.1 1993/11/18 08:40:51 jrs Exp
-+ */
++#ifndef _XMALLOC_H
++#define _MALLOC_H
 +
-+#include <ctype.h>
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <string.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <signal.h>
++#include <stdarg.h>
 +#include <stdlib.h>
++#include <string.h>
++
++#define streq(s, t)	(strcmp ((s), (t)) =3D=3D 0)
++
++/* Functions in sundries.c that are used in mount.c and umount.c  */=20
++char *canonicalize (const char *path);
++void nfs_error (const char *fmt, ...);
++void *xmalloc (size_t size);
++void *xrealloc(void *p, size_t size);
++void xfree(void *);
++char *xstrdup (const char *s);
++char *xstrndup (const char *s, int n);
++char *xstrconcat2 (const char *, const char *);
++char *xstrconcat3 (const char *, const char *, const char *);
++char *xstrconcat4 (const char *, const char *, const char *, const char =
+*);
++void die (int errcode, const char *fmt, ...);
++
++extern void die(int err, const char *fmt, ...);
++extern void (*at_die)(void);
++
++/* exit status - bits below are ORed */
++#define EX_USAGE	1	/* incorrect invocation or permission */
++#define EX_SYSERR	2	/* out of memory, cannot fork, ... */
++#define EX_SOFTWARE	4	/* internal mount bug or wrong version */
++#define EX_USER		8	/* user interrupt */
++#define EX_FILEIO      16	/* problems writing, locking, ... mtab/fstab *=
+/
++#define EX_FAIL	       32	/* mount failure */
++#define EX_SOMEOK      64	/* some mount succeeded */
++#define EX_BG         256       /* retry in background (internal only) *=
+/
++
++#endif /* XMALLOC_H */
+diff -uprN nfs-utils-1.0.8/support/include/xmalloc.h nfs-utils-1.0.8-ag/s=
+upport/include/xmalloc.h
+--- nfs-utils-1.0.8/support/include/xmalloc.h	1999-10-18 19:21:12.0000000=
+00 -0400
++++ nfs-utils-1.0.8-ag/support/include/xmalloc.h	2006-06-12 15:09:32.1568=
+63000 -0400
+@@ -1,16 +1 @@
+-/*
+- * xmalloc	Module for memory allocation. Drop in your
+- *		debugging malloc module if you feel like it.
+- *
+- * Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
+- */
+-
+-#ifndef XMALLOC_H
+-#define XMALLOC_H
+-
+-void	*xmalloc(size_t size);
+-void	*xrealloc(void *ptr, size_t size);
+-char	*xstrdup(const char *s);
+-void	xfree(void *ptr);
+-
+-#endif /* XMALLOC_H */
++#include "xcommon.h"
+diff -uprN nfs-utils-1.0.8/support/nfs/conn.c nfs-utils-1.0.8-ag/support/=
+nfs/conn.c
+--- nfs-utils-1.0.8/support/nfs/conn.c	1969-12-31 19:00:00.000000000 -050=
+0
++++ nfs-utils-1.0.8-ag/support/nfs/conn.c	2006-06-12 15:09:32.164861000 -=
+0400
+@@ -0,0 +1,211 @@
++/*
++ * conn.c -- NFS client mount / umount connection code support functions
++ *
++ * 2006-06-06 Amit Gud <agud@redhat.com>
++ * - Moved code snippets to nfs-utils/support/nfs from util-linux/mount/=
+nfsmount.c
++ *
++ */
++
 +#include <errno.h>
-+#include <netdb.h>
-+#include <time.h>
 +#include <rpc/rpc.h>
 +#include <rpc/pmap_prot.h>
 +#include <rpc/pmap_clnt.h>
 +#include <sys/socket.h>
-+#include <sys/time.h>
-+#include <sys/utsname.h>
 +#include <sys/stat.h>
 +#include <netinet/in.h>
 +#include <arpa/inet.h>
-+#include <mntent.h>
-+#include <sys/mount.h>
-+#include <paths.h>
-+#include <syslog.h>
 +
 +#include "conn.h"
-+#include "xcommon.h"
-+#include "nfsmount.h"
-+#include "nfsumount.h"
-+#include "nfs_mount.h"
-+#include "mount_constants.h"
-+#include "nls.h"
 +
-+#ifdef HAVE_RPCSVC_NFS_PROT_H
-+#include <rpcsvc/nfs_prot.h>
-+#else
-+#include <linux/nfs.h>
-+#define nfsstat nfs_stat
-+#endif
-+
-+#ifndef NFS_PORT
-+#define NFS_PORT 2049
-+#endif
-+#ifndef NFS_FHSIZE
-+#define NFS_FHSIZE 32
-+#endif
-+
-+static char *nfs_strerror(int stat);
-+
-+#define MAKE_VERSION(p,q,r)	(65536*(p) + 256*(q) + (r))
-+#define MAX_NFSPROT ((nfs_mount_version >=3D 4) ? 3 : 2)
-+#define MAX_MNTPROT ((nfs_mount_version >=3D 4) ? 3 : 2)
-+#define HAVE_RELIABLE_TCP (nfs_mount_version >=3D 4)
-+
-+#ifndef HAVE_INET_ATON
-+#define inet_aton(a,b) (0)
-+#endif
-+
-+typedef dirpath mnt2arg_t;
-+typedef dirpath mnt3arg_t;
-+typedef dirpath mntarg_t;
-+
-+typedef struct fhstatus  mnt2res_t;
-+typedef struct mountres3 mnt3res_t;
-+typedef union {
-+	mnt2res_t nfsv2;
-+	mnt3res_t nfsv3;
-+} mntres_t;
-+
-+static char errbuf[BUFSIZ];
-+static char *erreob =3D &errbuf[BUFSIZ];
 +extern int verbose;
 +
-+/* Convert RPC errors into strings */
-+int rpc_strerror(int);
-+int rpc_strerror(int spos)
++/* Map an NFS version into the corresponding Mountd version */
++u_long nfsvers_to_mnt(const u_long vers)
 +{
-+	int cf_stat =3D rpc_createerr.cf_stat;=20
-+	int pos=3D0, cf_errno =3D rpc_createerr.cf_error.re_errno;
-+	char *ptr, *estr =3D clnt_sperrno(cf_stat);
-+	char *tmp;
-+
-+	if (estr) {
-+		if ((ptr =3D index(estr, ':')))
-+			estr =3D ++ptr;
-+
-+		tmp =3D &errbuf[spos];
-+		if (cf_stat =3D=3D RPC_SYSTEMERROR)
-+			pos =3D snprintf(tmp, (erreob - tmp),=20
-+				"System Error: %s", strerror(cf_errno));
-+		else
-+			pos =3D snprintf(tmp, (erreob - tmp), "RPC Error:%s", estr);
-+	}
-+	return (pos);
-+}
-+void mount_errors(char *, int, int);
-+void mount_errors(char *server, int will_retry, int bg)
-+{
-+	int pos =3D 0;
-+	char *tmp;
-+	static int onlyonce =3D 0;
-+
-+	tmp =3D &errbuf[pos];
-+	if (bg)=20
-+		pos =3D snprintf(tmp, (erreob - tmp),=20
-+			"mount to NFS server '%s' failed: ", server);
-+	else
-+		pos =3D snprintf(tmp, (erreob - tmp),=20
-+			"mount: mount to NFS server '%s' failed: ", server);
-+
-+	tmp =3D &errbuf[pos];
-+	if (rpc_createerr.cf_stat =3D=3D RPC_TIMEDOUT) {
-+		pos =3D snprintf(tmp, (erreob - tmp), "timed out %s",=20
-+			will_retry ? "(retrying)" : "(giving up)");
-+	} else {
-+		pos +=3D rpc_strerror(pos);
-+		tmp =3D &errbuf[pos];
-+		if (bg) {
-+			pos =3D snprintf(tmp, (erreob - tmp), " %s",
-+				will_retry ? "(retrying)" : "(giving up)");
-+		}
-+	}
-+	if (bg) {
-+		if (onlyonce++ < 1)
-+			openlog("mount", LOG_CONS|LOG_PID, LOG_AUTH);
-+		syslog(LOG_ERR, "%s.", errbuf);
-+	} else
-+		fprintf(stderr, "%s.\n", errbuf);
++	static const u_long nfs_to_mnt[] =3D { 0, 0, 1, 3 };
++	if (vers <=3D 3)
++		return nfs_to_mnt[vers];
++	return 0;
 +}
 +
-+/* Define the order in which to probe for UDP/TCP services */
-+enum plist {
-+	use_tcp =3D 0,
-+	udp_tcp,
-+	udp_only,
-+};
-+static const u_int *
-+proto_probelist(enum plist list)
++/* Map a Mountd version into the corresponding NFS version */
++u_long mntvers_to_nfs(const u_long vers)
 +{
-+	static const u_int probe_udp_tcp[] =3D { IPPROTO_UDP, IPPROTO_TCP, 0 };
-+	static const u_int probe_both[] =3D { IPPROTO_TCP, IPPROTO_UDP, 0 };
-+	static const u_int probe_udponly[] =3D { IPPROTO_UDP, 0 };
-+
-+	if (list =3D=3D use_tcp)
-+		return probe_both;
-+	if (list =3D=3D udp_tcp)
-+		return probe_udp_tcp;
-+	return probe_udponly;
-+}
-+
-+/* Define the order in which NFS versions are probed on portmapper */
-+static const u_long *
-+nfs_probelist(const int vers)
-+{
-+	static const u_long nfs2_probe[] =3D { 2, 0};
-+	static const u_long nfs3_probe[] =3D { 3, 2, 0};
-+	switch (vers) {
-+	case 3:
-+		return nfs3_probe;
-+	default:
-+		return nfs2_probe;
-+	}
-+}
-+
-+/* Define the order in which Mountd versions are probed on portmapper */
-+static const u_long *
-+mnt_probelist(const int vers)
-+{
-+	static const u_long mnt1_probe[] =3D { 1, 2, 0 };
-+	static const u_long mnt3_probe[] =3D { 3, 1, 2, 0 };
-+	switch (vers) {
-+	case 3:
-+		return mnt3_probe;
-+	default:
-+		return mnt1_probe;
-+	}
-+}
-+
-+static int
-+linux_version_code(void) {
-+	struct utsname my_utsname;
-+	int p, q, r;
-+
-+	if (uname(&my_utsname) =3D=3D 0) {
-+		p =3D atoi(strtok(my_utsname.release, "."));
-+		q =3D atoi(strtok(NULL, "."));
-+		r =3D atoi(strtok(NULL, "."));
-+		return MAKE_VERSION(p,q,r);
-+	}
++	static const u_long mnt_to_nfs[] =3D { 0, 2, 2, 3 };
++	if (vers <=3D 3)
++		return mnt_to_nfs[vers];
 +	return 0;
 +}
 +
 +/*
-+ * Unfortunately, the kernel prints annoying console messages
-+ * in case of an unexpected nfs mount version (instead of
-+ * just returning some error).  Therefore we'll have to try
-+ * and figure out what version the kernel expects.
-+ *
-+ * Variables:
-+ *	NFS_MOUNT_VERSION: these nfsmount sources at compile time
-+ *	nfs_mount_version: version this source and running kernel can handle
++ * Create a socket that is locally bound to a=20
++ * reserve or non-reserve port. For any failures,
++ * RPC_ANYSOCK is returned which will cause=20
++ * the RPC code to create the socket instead.=20
 + */
-+int nfs_mount_version =3D NFS_MOUNT_VERSION;
-+
-+int
-+find_kernel_nfs_mount_version(void) {
-+	static int kernel_version =3D -1;
-+	int mnt_version =3D NFS_MOUNT_VERSION;
-+
-+	if (kernel_version =3D=3D -1)
-+		kernel_version =3D linux_version_code();
-+
-+	if (kernel_version) {
-+	     if (kernel_version < MAKE_VERSION(2,1,32))
-+		  mnt_version =3D 1;
-+	     else if (kernel_version < MAKE_VERSION(2,2,18))
-+		  mnt_version =3D 3;
-+	     else if (kernel_version < MAKE_VERSION(2,3,0))
-+		  mnt_version =3D 4; /* since 2.2.18pre9 */
-+	     else if (kernel_version < MAKE_VERSION(2,3,99))
-+		  mnt_version =3D 3;
-+	     else if (kernel_version < MAKE_VERSION(2,6,3))
-+		  mnt_version =3D 4;
-+	     else
-+		  mnt_version =3D 6;
-+	}
-+	if (mnt_version > NFS_MOUNT_VERSION)
-+	     mnt_version =3D NFS_MOUNT_VERSION;
-+	return mnt_version;
-+}
-+
-+int nfs_gethostbyname(const char *, struct sockaddr_in *);
-+int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
++int get_socket(struct sockaddr_in *saddr, u_int p_prot, int resvp)
 +{
-+	struct hostent *hp;
++	int so, cc, type;
++	struct sockaddr_in laddr;
++	socklen_t namelen =3D sizeof(laddr);
 +
-+	saddr->sin_family =3D AF_INET;
-+	if (!inet_aton(hostname, &saddr->sin_addr)) {
-+		if ((hp =3D gethostbyname(hostname)) =3D=3D NULL) {
-+			fprintf(stderr, _("mount: can't get address for %s\n"),
-+				hostname);
-+			return 0;
-+		} else {
-+			if (hp->h_length > sizeof(*saddr)) {
-+				fprintf(stderr,
-+					_("mount: got bad hp->h_length\n"));
-+				hp->h_length =3D sizeof(*saddr);
++	type =3D (p_prot =3D=3D IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM);
++	if ((so =3D socket (AF_INET, type, p_prot)) < 0) {
++		rpc_createerr.cf_stat =3D RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno =3D errno;
++		if (verbose) {
++			fprintf(stderr,=20
++				"mount: Unable to create %s socket: errno %d (%s)\n",
++				p_prot =3D=3D IPPROTO_UDP ? "UDP" : "TCP",=20
++				errno, strerror(errno));
++		}
++		return RPC_ANYSOCK;
++	}
++	laddr.sin_family =3D AF_INET;
++	laddr.sin_port =3D 0;
++	laddr.sin_addr.s_addr =3D htonl(INADDR_ANY);
++	if (resvp) {
++		if (bindresvport(so, &laddr) < 0) {
++			rpc_createerr.cf_stat =3D RPC_SYSTEMERROR;
++			rpc_createerr.cf_error.re_errno =3D errno;
++			if (verbose) {
++				fprintf(stderr,=20
++					"mount: Unable to bindresvport %s socket: errno %d (%s)\n",
++					p_prot =3D=3D IPPROTO_UDP ? "UDP" : "TCP",=20
++					errno, strerror(errno));
 +			}
-+			memcpy(&saddr->sin_addr, hp->h_addr, hp->h_length);
++			close(so);
++			return RPC_ANYSOCK;
++		}
++	} else {
++		cc =3D bind(so, (struct sockaddr *)&laddr, namelen);
++		if (cc < 0) {
++			rpc_createerr.cf_stat =3D RPC_SYSTEMERROR;
++			rpc_createerr.cf_error.re_errno =3D errno;
++			if (verbose) {
++				fprintf(stderr,=20
++					"mount: Unable to bind to %s socket: errno %d (%s)\n",
++					p_prot =3D=3D IPPROTO_UDP ? "UDP" : "TCP",=20
++					errno, strerror(errno));
++			}
++			close(so);
++			return RPC_ANYSOCK;
 +		}
 +	}
-+	return 1;
++	if (type =3D=3D SOCK_STREAM) {
++		cc =3D connect(so, (struct sockaddr *)saddr, namelen);
++		if (cc < 0) {
++			rpc_createerr.cf_stat =3D RPC_SYSTEMERROR;
++			rpc_createerr.cf_error.re_errno =3D errno;
++			if (verbose) {
++				fprintf(stderr,=20
++					"mount: Unable to connect to %s:%d, errno %d (%s)\n",
++					inet_ntoa(saddr->sin_addr), ntohs(saddr->sin_port),
++					errno, strerror(errno));
++			}
++			close(so);
++			return RPC_ANYSOCK;
++		}
++	}
++	return so;
 +}
 +
 +/*
-+ * getport() is very similar to pmap_getport() with
-+ * the exception this version uses a non-reserve ports=20
-+ * instead of reserve ports since reserve ports
-+ * are not needed for pmap requests.
++ * Sigh... getport() doesn't actually check the version number.
++ * In order to make sure that the server actually supports the service
++ * we're requesting, we open and RPC client, and fire off a NULL
++ * RPC call.
 + */
-+static u_short
-+getport(
-+	struct sockaddr_in *saddr,=20
-+	u_long prog,=20
-+	u_long vers,=20
-+	u_int prot)
++int
++clnt_ping(struct sockaddr_in *saddr, const u_long prog, const u_long ver=
+s,
++	  const u_int prot)
 +{
-+	u_short port;
-+	int    socket;
-+	CLIENT *clnt =3D NULL;
-+	struct pmap parms;
-+	enum clnt_stat stat;
++	CLIENT *clnt=3DNULL;
++	int sock, stat;
++	static char clnt_res;
 +
-+	saddr->sin_port =3D htons (PMAPPORT);
-+	socket =3D get_socket(saddr, prot, FALSE);
++	rpc_createerr.cf_stat =3D stat =3D errno =3D 0;
++	sock =3D get_socket(saddr, prot, FALSE);
++	if (sock =3D=3D RPC_ANYSOCK && errno =3D=3D ETIMEDOUT) {
++		/*
++		 * TCP timeout. Bubble up the error to see=20
++		 * how it should be handled.
++		 */
++		rpc_createerr.cf_stat =3D RPC_TIMEDOUT;
++		goto out_bad;
++	}
 +
-+	switch (prot) {
++	switch(prot) {
 +	case IPPROTO_UDP:
-+		clnt =3D clntudp_bufcreate(saddr,
-+					 PMAPPROG, PMAPVERS, TIMEOUT, &socket,
-+					 UDPMSGSIZE, UDPMSGSIZE);
++		clnt =3D clntudp_bufcreate(saddr, prog, vers,
++					 RETRY_TIMEOUT, &sock,
++					 RPCSMALLMSGSIZE, RPCSMALLMSGSIZE);
 +		break;
 +	case IPPROTO_TCP:
-+		clnt =3D clnttcp_create(saddr,
-+			PMAPPROG, PMAPVERS, &socket, 50, 500);
-+		break;
-+	}
-+	if (clnt !=3D NULL) {
-+		parms.pm_prog =3D prog;
-+		parms.pm_vers =3D vers;
-+		parms.pm_prot =3D prot;
-+		parms.pm_port =3D 0;    /* not needed or used */
-+
-+		stat =3D clnt_call(clnt, PMAPPROC_GETPORT, (xdrproc_t)xdr_pmap,
-+			(caddr_t)&parms, (xdrproc_t)xdr_u_short, (caddr_t)&port, TIMEOUT);
-+		if (stat) {
-+			clnt_geterr(clnt, &rpc_createerr.cf_error);
-+			rpc_createerr.cf_stat =3D stat;
-+		}
-+		clnt_destroy(clnt);
-+		if (stat !=3D RPC_SUCCESS)
-+			port =3D 0;
-+		else if (port =3D=3D 0)
-+			rpc_createerr.cf_stat =3D RPC_PROGNOTREGISTERED;
-+	}
-+	if (socket !=3D 1)
-+		close(socket);
-+
-+	return port;
-+}
-+
-+/*
-+ * Use the portmapper to discover whether or not the service we want is
-+ * available. The lists 'versions' and 'protos' define ordered sequences
-+ * of service versions and udp/tcp protocols to probe for.
-+ */
-+static int
-+probe_port(clnt_addr_t *server,=20
-+	   const u_long *versions,
-+	   const u_int *protos)
-+{
-+	struct sockaddr_in *saddr =3D &server->saddr;
-+	struct pmap *pmap =3D &server->pmap;
-+	const u_long prog =3D pmap->pm_prog, *p_vers;
-+	const u_int prot =3D (u_int)pmap->pm_prot,
-+		*p_prot;
-+	const u_short port =3D (u_short) pmap->pm_port;
-+	u_long vers =3D pmap->pm_vers;
-+	u_short p_port;
-+	p_prot =3D prot ? &prot : protos;
-+	p_vers =3D vers ? &vers : versions;
-+	rpc_createerr.cf_stat =3D 0;
-+	for (;;) {
-+		saddr->sin_port =3D htons(PMAPPORT);
-+		p_port =3D getport(saddr, prog, *p_vers, *p_prot);
-+		if (p_port) {
-+			if (!port || port =3D=3D p_port) {
-+				saddr->sin_port =3D htons(p_port);
-+				if (verbose) {
-+					fprintf(stderr,=20
-+						"mount: trying %s prog %ld vers %ld prot %s port %d\n",=20
-+						inet_ntoa(saddr->sin_addr), prog, *p_vers,
-+						*p_prot =3D=3D IPPROTO_UDP ? "udp" : "tcp", p_port);
-+				}
-+				if (clnt_ping(saddr, prog, *p_vers, *p_prot))
-+					goto out_ok;
-+				if (rpc_createerr.cf_stat =3D=3D RPC_TIMEDOUT)
-+					goto out_bad;
-+			}
-+		}
-+		if (rpc_createerr.cf_stat !=3D RPC_PROGNOTREGISTERED)=20
-+			goto out_bad;
-+
-+		if (!prot) {
-+			if (*++p_prot)
-+				continue;
-+			p_prot =3D protos;
-+		}
-+		if (vers =3D=3D pmap->pm_vers) {
-+			p_vers =3D versions;
-+			vers =3D 0;
-+		}
-+		if (vers || !*++p_vers)
-+			break;
-+	}
-+out_bad:
-+	return 0;
-+
-+ out_ok:
-+	if (!vers)
-+		pmap->pm_vers =3D *p_vers;
-+	if (!prot)
-+		pmap->pm_prot =3D *p_prot;
-+	if (!port)
-+		pmap->pm_port =3D p_port;
-+	rpc_createerr.cf_stat =3D 0;
-+	return 1;
-+}
-+
-+static int
-+probe_nfsport(clnt_addr_t *nfs_server)
-+{
-+	const struct pmap *pmap =3D &nfs_server->pmap;
-+	const u_long *probe_vers;
-+	const u_int *probe_prot;
-+
-+	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
-+		return 1;
-+	probe_vers =3D nfs_probelist(MAX_NFSPROT);
-+	probe_prot =3D proto_probelist(HAVE_RELIABLE_TCP ? use_tcp : udp_only);
-+	return probe_port(nfs_server, probe_vers, probe_prot);
-+}
-+
-+int probe_mntport(clnt_addr_t *mnt_server)
-+{
-+	const struct pmap *pmap =3D &mnt_server->pmap;
-+	const u_long *probe_vers;
-+	const u_int *probe_prot;
-+
-+	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
-+		return 1;
-+	probe_vers =3D mnt_probelist(MAX_MNTPROT);
-+	probe_prot =3D proto_probelist(HAVE_RELIABLE_TCP ? udp_tcp : udp_only);
-+	return probe_port(mnt_server, probe_vers, probe_prot);
-+}
-+
-+static int
-+probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
-+{
-+	struct pmap *nfs_pmap =3D &nfs_server->pmap;
-+	struct pmap *mnt_pmap =3D &mnt_server->pmap;
-+	struct pmap save_nfs, save_mnt;
-+	int res;
-+	const u_long *probe_vers;
-+
-+	if (mnt_pmap->pm_vers && !nfs_pmap->pm_vers)
-+		nfs_pmap->pm_vers =3D mntvers_to_nfs(mnt_pmap->pm_vers);
-+	else if (nfs_pmap->pm_vers && !mnt_pmap->pm_vers)
-+		mnt_pmap->pm_vers =3D nfsvers_to_mnt(nfs_pmap->pm_vers);
-+	if (nfs_pmap->pm_vers)
-+		goto version_fixed;
-+	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
-+	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
-+	for (probe_vers =3D mnt_probelist(MAX_MNTPROT); *probe_vers; probe_vers=
-++) {
-+		nfs_pmap->pm_vers =3D mntvers_to_nfs(*probe_vers);
-+		if ((res =3D probe_nfsport(nfs_server) !=3D 0)) {
-+			mnt_pmap->pm_vers =3D nfsvers_to_mnt(nfs_pmap->pm_vers);
-+			if ((res =3D probe_mntport(mnt_server)) !=3D 0)
-+				return 1;
-+			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
-+		}
-+		switch (rpc_createerr.cf_stat) {
-+		case RPC_PROGVERSMISMATCH:
-+		case RPC_PROGNOTREGISTERED:
-+			break;
-+		default:
-+			goto out_bad;
-+		}
-+		memcpy(nfs_pmap, &save_nfs, sizeof(*nfs_pmap));
-+	}
-+ out_bad:
-+	return 0;
-+ version_fixed:
-+	if (!probe_nfsport(nfs_server))
-+		goto out_bad;
-+	return probe_mntport(mnt_server);
-+}
-+
-+static inline enum clnt_stat
-+nfs3_mount(CLIENT *clnt, mnt3arg_t *mnt3arg, mnt3res_t *mnt3res)
-+{
-+	return clnt_call(clnt, MOUNTPROC3_MNT,
-+			 (xdrproc_t) xdr_dirpath, (caddr_t) mnt3arg,
-+			 (xdrproc_t) xdr_mountres3, (caddr_t) mnt3res,
-+			 TIMEOUT);
-+}
-+
-+static inline enum clnt_stat
-+nfs2_mount(CLIENT *clnt, mnt2arg_t *mnt2arg, mnt2res_t *mnt2res)
-+{
-+	return clnt_call(clnt, MOUNTPROC_MNT,
-+			 (xdrproc_t) xdr_dirpath, (caddr_t) mnt2arg,
-+			 (xdrproc_t) xdr_fhstatus, (caddr_t) mnt2res,
-+			 TIMEOUT);
-+}
-+
-+static int
-+nfs_call_mount(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server,
-+	       mntarg_t *mntarg, mntres_t *mntres)
-+{
-+	CLIENT *clnt;
-+	enum clnt_stat stat;
-+	int msock;
-+
-+	if (!probe_bothports(mnt_server, nfs_server))
-+		goto out_bad;
-+
-+	clnt =3D mnt_openclnt(mnt_server, &msock);
-+	if (!clnt)
-+		goto out_bad;
-+	/* make pointers in xdr_mountres3 NULL so
-+	 * that xdr_array allocates memory for us
-+	 */
-+	memset(mntres, 0, sizeof(*mntres));
-+	switch (mnt_server->pmap.pm_vers) {
-+	case 3:
-+		stat =3D nfs3_mount(clnt, mntarg, &mntres->nfsv3);
-+		break;
-+	case 2:
-+	case 1:
-+		stat =3D nfs2_mount(clnt, mntarg, &mntres->nfsv2);
++		clnt =3D clnttcp_create(saddr, prog, vers, &sock,
++				      RPCSMALLMSGSIZE, RPCSMALLMSGSIZE);
 +		break;
 +	default:
 +		goto out_bad;
 +	}
-+	if (stat !=3D RPC_SUCCESS) {
++	if (!clnt)
++		goto out_bad;
++	memset(&clnt_res, 0, sizeof(clnt_res));
++	stat =3D clnt_call(clnt, NULLPROC,
++			 (xdrproc_t)xdr_void, (caddr_t)NULL,
++			 (xdrproc_t)xdr_void, (caddr_t)&clnt_res,
++			 TIMEOUT);
++	if (stat) {
 +		clnt_geterr(clnt, &rpc_createerr.cf_error);
 +		rpc_createerr.cf_stat =3D stat;
 +	}
-+	mnt_closeclnt(clnt, msock);
++	clnt_destroy(clnt);
++	if (sock !=3D -1)
++		close(sock);
++
 +	if (stat =3D=3D RPC_SUCCESS)
 +		return 1;
++
 + out_bad:
 +	return 0;
 +}
 +
-+static int
-+parse_options(char *old_opts, struct nfs_mount_data *data,
-+	      int *bg, int *retry, clnt_addr_t *mnt_server,
-+	      clnt_addr_t *nfs_server, char *new_opts, const int opt_size)
++CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
 +{
 +	struct sockaddr_in *mnt_saddr =3D &mnt_server->saddr;
 +	struct pmap *mnt_pmap =3D &mnt_server->pmap;
-+	struct pmap *nfs_pmap =3D &nfs_server->pmap;
-+	int len;
-+	char *opt, *opteq;
-+	char *mounthost =3D NULL;
-+	char cbuf[128];
++	CLIENT *clnt =3D NULL;
 +
-+	data->flags =3D 0;
-+	*bg =3D 0;
++	/* contact the mount daemon via TCP */
++	mnt_saddr->sin_port =3D htons((u_short)mnt_pmap->pm_port);
++	*msock =3D get_socket(mnt_saddr, mnt_pmap->pm_prot, TRUE);
 +
-+	len =3D strlen(new_opts);
-+	for (opt =3D strtok(old_opts, ","); opt; opt =3D strtok(NULL, ",")) {
-+		if (strlen(opt) >=3D sizeof(cbuf))
-+			goto bad_parameter;
-+		if ((opteq =3D strchr(opt, '=3D')) && isdigit(opteq[1])) {
-+			int val =3D atoi(opteq + 1);=09
-+			*opteq =3D '\0';
-+/* printf("opt=3D%s\n", opt); */
-+			if (!strcmp(opt, "rsize"))
-+				data->rsize =3D val;
-+			else if (!strcmp(opt, "wsize"))
-+				data->wsize =3D val;
-+			else if (!strcmp(opt, "timeo"))
-+				data->timeo =3D val;
-+			else if (!strcmp(opt, "retrans"))
-+				data->retrans =3D val;
-+			else if (!strcmp(opt, "acregmin"))
-+				data->acregmin =3D val;
-+			else if (!strcmp(opt, "acregmax"))
-+				data->acregmax =3D val;
-+			else if (!strcmp(opt, "acdirmin"))
-+				data->acdirmin =3D val;
-+			else if (!strcmp(opt, "acdirmax"))
-+				data->acdirmax =3D val;
-+			else if (!strcmp(opt, "actimeo")) {
-+				data->acregmin =3D val;
-+				data->acregmax =3D val;
-+				data->acdirmin =3D val;
-+				data->acdirmax =3D val;
-+			}
-+			else if (!strcmp(opt, "retry"))
-+				*retry =3D val;
-+			else if (!strcmp(opt, "port"))
-+				nfs_pmap->pm_port =3D val;
-+			else if (!strcmp(opt, "mountport"))
-+			        mnt_pmap->pm_port =3D val;
-+			else if (!strcmp(opt, "mountprog"))
-+				mnt_pmap->pm_prog =3D val;
-+			else if (!strcmp(opt, "mountvers"))
-+				mnt_pmap->pm_vers =3D val;
-+			else if (!strcmp(opt, "mounthost"))
-+				mounthost=3Dxstrndup(opteq+1, strcspn(opteq+1," \t\n\r,"));
-+			else if (!strcmp(opt, "nfsprog"))
-+				nfs_pmap->pm_prog =3D val;
-+			else if (!strcmp(opt, "nfsvers") ||
-+				 !strcmp(opt, "vers")) {
-+				nfs_pmap->pm_vers =3D val;
-+				opt =3D "nfsvers";
-+#if NFS_MOUNT_VERSION >=3D 2
-+			} else if (!strcmp(opt, "namlen")) {
-+				if (nfs_mount_version >=3D 2)
-+					data->namlen =3D val;
-+				else
-+					goto bad_parameter;
-+#endif
-+			} else if (!strcmp(opt, "addr")) {
-+				/* ignore */;
-+				continue;
-+ 			} else
-+				goto bad_parameter;
-+			sprintf(cbuf, "%s=3D%s,", opt, opteq+1);
-+		} else if (opteq) {
-+			*opteq =3D '\0';
-+			if (!strcmp(opt, "proto")) {
-+				if (!strcmp(opteq+1, "udp")) {
-+					nfs_pmap->pm_prot =3D IPPROTO_UDP;
-+					mnt_pmap->pm_prot =3D IPPROTO_UDP;
-+#if NFS_MOUNT_VERSION >=3D 2
-+					data->flags &=3D ~NFS_MOUNT_TCP;
-+				} else if (!strcmp(opteq+1, "tcp") &&
-+					   nfs_mount_version > 2) {
-+					nfs_pmap->pm_prot =3D IPPROTO_TCP;
-+					mnt_pmap->pm_prot =3D IPPROTO_TCP;
-+					data->flags |=3D NFS_MOUNT_TCP;
-+#endif
-+				} else
-+					goto bad_parameter;
-+#if NFS_MOUNT_VERSION >=3D 5
-+			} else if (!strcmp(opt, "sec")) {
-+				char *secflavor =3D opteq+1;
-+				/* see RFC 2623 */
-+				if (nfs_mount_version < 5) {
-+					printf(_("Warning: ignoring sec=3D%s option\n"), secflavor);
-+					continue;
-+				} else if (!strcmp(secflavor, "sys"))
-+					data->pseudoflavor =3D AUTH_SYS;
-+				else if (!strcmp(secflavor, "krb5"))
-+					data->pseudoflavor =3D AUTH_GSS_KRB5;
-+				else if (!strcmp(secflavor, "krb5i"))
-+					data->pseudoflavor =3D AUTH_GSS_KRB5I;
-+				else if (!strcmp(secflavor, "krb5p"))
-+					data->pseudoflavor =3D AUTH_GSS_KRB5P;
-+				else if (!strcmp(secflavor, "lipkey"))
-+					data->pseudoflavor =3D AUTH_GSS_LKEY;
-+				else if (!strcmp(secflavor, "lipkey-i"))
-+					data->pseudoflavor =3D AUTH_GSS_LKEYI;
-+				else if (!strcmp(secflavor, "lipkey-p"))
-+					data->pseudoflavor =3D AUTH_GSS_LKEYP;
-+				else if (!strcmp(secflavor, "spkm3"))
-+					data->pseudoflavor =3D AUTH_GSS_SPKM;
-+				else if (!strcmp(secflavor, "spkm3i"))
-+					data->pseudoflavor =3D AUTH_GSS_SPKMI;
-+				else if (!strcmp(secflavor, "spkm3p"))
-+					data->pseudoflavor =3D AUTH_GSS_SPKMP;
-+				else {
-+					printf(_("Warning: Unrecognized security flavor %s.\n"),
-+						secflavor);
-+					goto bad_parameter;
-+				}
-+				data->flags |=3D NFS_MOUNT_SECFLAVOUR;
-+#endif
-+			} else if (!strcmp(opt, "mounthost"))
-+			        mounthost=3Dxstrndup(opteq+1,
-+						   strcspn(opteq+1," \t\n\r,"));
-+			 else if (!strcmp(opt, "context")) {
-+ 				char *context =3D opteq + 1;
-+ 			=09
-+ 				if (strlen(context) > NFS_MAX_CONTEXT_LEN) {
-+ 					printf(_("context parameter exceeds limit of %d\n"),
-+ 						 NFS_MAX_CONTEXT_LEN);
-+					goto bad_parameter;
-+ 				}
-+ 				strncpy(data->context, context, NFS_MAX_CONTEXT_LEN);
-+ 			} else
-+				goto bad_parameter;
-+			sprintf(cbuf, "%s=3D%s,", opt, opteq+1);
-+		} else {
-+			int val =3D 1;
-+			if (!strncmp(opt, "no", 2)) {
-+				val =3D 0;
-+				opt +=3D 2;
-+			}
-+			if (!strcmp(opt, "bg"))=20
-+				*bg =3D val;
-+			else if (!strcmp(opt, "fg"))=20
-+				*bg =3D !val;
-+			else if (!strcmp(opt, "soft")) {
-+				data->flags &=3D ~NFS_MOUNT_SOFT;
-+				if (val)
-+					data->flags |=3D NFS_MOUNT_SOFT;
-+			} else if (!strcmp(opt, "hard")) {
-+				data->flags &=3D ~NFS_MOUNT_SOFT;
-+				if (!val)
-+					data->flags |=3D NFS_MOUNT_SOFT;
-+			} else if (!strcmp(opt, "intr")) {
-+				data->flags &=3D ~NFS_MOUNT_INTR;
-+				if (val)
-+					data->flags |=3D NFS_MOUNT_INTR;
-+			} else if (!strcmp(opt, "posix")) {
-+				data->flags &=3D ~NFS_MOUNT_POSIX;
-+				if (val)
-+					data->flags |=3D NFS_MOUNT_POSIX;
-+			} else if (!strcmp(opt, "cto")) {
-+				data->flags &=3D ~NFS_MOUNT_NOCTO;
-+				if (!val)
-+					data->flags |=3D NFS_MOUNT_NOCTO;
-+			} else if (!strcmp(opt, "ac")) {
-+				data->flags &=3D ~NFS_MOUNT_NOAC;
-+				if (!val)
-+					data->flags |=3D NFS_MOUNT_NOAC;
-+#if NFS_MOUNT_VERSION >=3D 2
-+			} else if (!strcmp(opt, "tcp")) {
-+				data->flags &=3D ~NFS_MOUNT_TCP;
-+				if (val) {
-+					if (nfs_mount_version < 2)
-+						goto bad_option;
-+					nfs_pmap->pm_prot =3D IPPROTO_TCP;
-+					mnt_pmap->pm_prot =3D IPPROTO_TCP;
-+					data->flags |=3D NFS_MOUNT_TCP;
-+				} else {
-+					mnt_pmap->pm_prot =3D IPPROTO_UDP;
-+					nfs_pmap->pm_prot =3D IPPROTO_UDP;
-+				}
-+			} else if (!strcmp(opt, "udp")) {
-+				data->flags &=3D ~NFS_MOUNT_TCP;
-+				if (!val) {
-+					if (nfs_mount_version < 2)
-+						goto bad_option;
-+					nfs_pmap->pm_prot =3D IPPROTO_TCP;
-+					mnt_pmap->pm_prot =3D IPPROTO_TCP;
-+					data->flags |=3D NFS_MOUNT_TCP;
-+				} else {
-+					nfs_pmap->pm_prot =3D IPPROTO_UDP;
-+					mnt_pmap->pm_prot =3D IPPROTO_UDP;
-+				}
-+#endif
-+#if NFS_MOUNT_VERSION >=3D 3
-+			} else if (!strcmp(opt, "lock")) {
-+				data->flags &=3D ~NFS_MOUNT_NONLM;
-+				if (!val) {
-+					if (nfs_mount_version < 3)
-+						goto bad_option;
-+					data->flags |=3D NFS_MOUNT_NONLM;
-+				}
-+#endif
-+#if NFS_MOUNT_VERSION >=3D 4
-+			} else if (!strcmp(opt, "broken_suid")) {
-+				data->flags &=3D ~NFS_MOUNT_BROKEN_SUID;
-+				if (val) {
-+					if (nfs_mount_version < 4)
-+						goto bad_option;
-+					data->flags |=3D NFS_MOUNT_BROKEN_SUID;
-+				}
-+			} else if (!strcmp(opt, "acl")) {
-+				data->flags &=3D ~NFS_MOUNT_NOACL;
-+				if (!val)
-+					data->flags |=3D NFS_MOUNT_NOACL;
-+#endif
-+			} else {
-+			bad_option:
-+				printf(_("Unsupported nfs mount option: "
-+					 "%s%s\n"), val ? "" : "no", opt);
-+				goto out_bad;
-+			}
-+			sprintf(cbuf, val ? "%s,":"no%s,", opt);
-+		}
-+		len +=3D strlen(cbuf);
-+		if (len >=3D opt_size) {
-+			printf(_("mount: excessively long option argument\n"));
-+			goto out_bad;
-+		}
-+		strcat(new_opts, cbuf);
++	switch (mnt_pmap->pm_prot) {
++	case IPPROTO_UDP:
++		clnt =3D clntudp_bufcreate(mnt_saddr,
++					 mnt_pmap->pm_prog, mnt_pmap->pm_vers,
++					 RETRY_TIMEOUT, msock,
++					 MNT_SENDBUFSIZE, MNT_RECVBUFSIZE);
++		break;
++	case IPPROTO_TCP:
++		clnt =3D clnttcp_create(mnt_saddr,
++				      mnt_pmap->pm_prog, mnt_pmap->pm_vers,
++				      msock,
++				      MNT_SENDBUFSIZE, MNT_RECVBUFSIZE);
++		break;
 +	}
-+	/* See if the nfs host =3D mount host. */
-+	if (mounthost) {
-+		if (!nfs_gethostbyname(mounthost, mnt_saddr))
-+			goto out_bad;
-+		*mnt_server->hostname =3D mounthost;
++	if (clnt) {
++		/* try to mount hostname:dirname */
++		clnt->cl_auth =3D authunix_create_default();
++		return clnt;
 +	}
-+	return 1;
-+ bad_parameter:
-+	printf(_("Bad nfs mount parameter: %s\n"), opt);
-+ out_bad:
-+	return 0;
++	return NULL;
 +}
 +
-+static inline int
-+nfsmnt_check_compat(const struct pmap *nfs_pmap, const struct pmap *mnt_=
-pmap)
++void mnt_closeclnt(CLIENT *clnt, int msock)
 +{
-+	if (nfs_pmap->pm_vers &&=20
-+		(nfs_pmap->pm_vers > MAX_NFSPROT || nfs_pmap->pm_vers < 2)) {
-+		if (nfs_pmap->pm_vers =3D=3D 4)
-+			fprintf(stderr, _("'vers=3D4' is not supported.  "
-+				"Use '-t nfs4' instead.\n"));
-+		else
-+			fprintf(stderr, _("NFS version %ld is not supported.\n"),=20
-+				nfs_pmap->pm_vers);
-+		goto out_bad;
++	auth_destroy(clnt->cl_auth);
++	clnt_destroy(clnt);
++	close(msock);
++}
++
+diff -uprN nfs-utils-1.0.8/support/nfs/fstab.c nfs-utils-1.0.8-ag/support=
+/nfs/fstab.c
+--- nfs-utils-1.0.8/support/nfs/fstab.c	1969-12-31 19:00:00.000000000 -05=
+00
++++ nfs-utils-1.0.8-ag/support/nfs/fstab.c	2006-06-12 15:09:32.171861000 =
+-0400
+@@ -0,0 +1,487 @@
++/* 1999-02-22 Arkadiusz Mi=B6kiewicz <misiek@pld.ORG.PL>
++ * - added Native Language Support
++ * Sun Mar 21 1999 - Arnaldo Carvalho de Melo <acme@conectiva.com.br>
++ * - fixed strerr(errno) in gettext calls
++ *
++ * 2006-06-08 Amit Gud <agud@redhat.com>
++ * - Moved code to nfs-utils/support/nfs from util-linux/mount.
++ */
++
++#include <errno.h>
++#include <stdio.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <mntent.h>
++
++#include "fstab.h"
++#include "xcommon.h"
++#include "nfs_mntent.h"
++#include "nfs_paths.h"
++#include "nls.h"
++
++#define LOCK_TIMEOUT	10
++#define streq(s, t)	(strcmp ((s), (t)) =3D=3D 0)
++#define PROC_MOUNTS		"/proc/mounts"
++
++extern int verbose;
++
++/* Information about mtab. ------------------------------------*/
++static int have_mtab_info =3D 0;
++static int var_mtab_does_not_exist =3D 0;
++static int var_mtab_is_a_symlink =3D 0;
++
++static void
++get_mtab_info(void) {
++	struct stat mtab_stat;
++
++	if (!have_mtab_info) {
++		if (lstat(MOUNTED, &mtab_stat))
++			var_mtab_does_not_exist =3D 1;
++		else if (S_ISLNK(mtab_stat.st_mode))
++			var_mtab_is_a_symlink =3D 1;
++		have_mtab_info =3D 1;
 +	}
-+	if (mnt_pmap->pm_vers > MAX_MNTPROT) {
-+		fprintf(stderr, _("NFS mount version %ld s not supported.\n"),=20
-+			mnt_pmap->pm_vers);
-+		goto out_bad;
-+	}
-+	return 1;
-+ out_bad:
-+	return 0;
 +}
 +
 +int
-+nfsmount(const char *spec, const char *node, int *flags,
-+	 char **extra_opts, char **mount_opts, int *nfs_mount_vers,
-+	 int running_bg)
-+{
-+	static char *prev_bg_host;
-+	char hostdir[1024];
-+	char *hostname, *dirname, *old_opts, *mounthost =3D NULL;
-+	char new_opts[1024], cbuf[1024];
-+	static struct nfs_mount_data data;
-+	int val;
-+	static int doonce =3D 0;
++mtab_does_not_exist(void) {
++	get_mtab_info();
++	return var_mtab_does_not_exist;
++}
 +
-+	clnt_addr_t mnt_server =3D { &mounthost, };
-+	clnt_addr_t nfs_server =3D { &hostname, };
-+	struct sockaddr_in *nfs_saddr =3D &nfs_server.saddr;
-+	struct pmap  *mnt_pmap =3D &mnt_server.pmap,=20
-+		     *nfs_pmap =3D &nfs_server.pmap;
-+	struct pmap  save_mnt, save_nfs;
++static int
++mtab_is_a_symlink(void) {
++        get_mtab_info();
++        return var_mtab_is_a_symlink;
++}
 +
-+	int fsock;
++int
++mtab_is_writable() {
++	int fd;
 +
-+	mntres_t mntres;
++	/* Should we write to /etc/mtab upon an update?
++	   Probably not if it is a symlink to /proc/mounts, since that
++	   would create a file /proc/mounts in case the proc filesystem
++	   is not mounted. */
++	if (mtab_is_a_symlink())
++		return 0;
 +
-+	struct stat statbuf;
-+	char *s;
-+	int bg, retry;
-+	int retval;
-+	time_t t;
-+	time_t prevt;
-+	time_t timeout;
++	fd =3D open(MOUNTED, O_RDWR | O_CREAT, 0644);
++	if (fd >=3D 0) {
++		close(fd);
++		return 1;
++	} else
++		return 0;
++}
 +
-+	/* The version to try is either specified or 0
-+	   In case it is 0 we tell the caller what we tried */
-+	if (!*nfs_mount_vers)
-+		*nfs_mount_vers =3D find_kernel_nfs_mount_version();
-+	nfs_mount_version =3D *nfs_mount_vers;
++/* Contents of mtab and fstab ---------------------------------*/
 +
-+	retval =3D EX_FAIL;
-+	fsock =3D -1;
-+	if (strlen(spec) >=3D sizeof(hostdir)) {
-+		fprintf(stderr, _("mount: "
-+				  "excessively long host:dir argument\n"));
-+		goto fail;
++struct mntentchn mounttable;
++static int got_mtab =3D 0;
++
++static void read_mounttable(void);
++
++struct mntentchn *
++mtab_head() {
++	if (!got_mtab)
++		read_mounttable();
++	return &mounttable;
++}
++
++static void
++my_free(const void *s) {
++	if (s)
++		free((void *) s);
++}
++
++static void
++discard_mntentchn(struct mntentchn *mc0) {
++	struct mntentchn *mc, *mc1;
++
++	for (mc =3D mc0->nxt; mc && mc !=3D mc0; mc =3D mc1) {
++		mc1 =3D mc->nxt;
++		my_free(mc->m.mnt_fsname);
++		my_free(mc->m.mnt_dir);
++		my_free(mc->m.mnt_type);
++		my_free(mc->m.mnt_opts);
++		free(mc);
 +	}
-+	strcpy(hostdir, spec);
-+	if ((s =3D strchr(hostdir, ':'))) {
-+		hostname =3D hostdir;
-+		dirname =3D s + 1;
-+		*s =3D '\0';
-+		/* Ignore all but first hostname in replicated mounts
-+		   until they can be fully supported. (mack@sgi.com) */
-+		if ((s =3D strchr(hostdir, ','))) {
-+			*s =3D '\0';
-+			fprintf(stderr,
-+				_("mount: warning: "
-+				  "multiple hostnames not supported\n"));
++}
++
++static void
++read_mntentchn(mntFILE *mfp, const char *fnam, struct mntentchn *mc0) {
++	struct mntentchn *mc =3D mc0;
++	nfs_mntent_t *mnt;
++
++	while ((mnt =3D nfs_getmntent(mfp)) !=3D NULL) {
++		if (!streq(mnt->mnt_type, MNTTYPE_IGNORE)) {
++			mc->nxt =3D (struct mntentchn *) xmalloc(sizeof(*mc));
++			mc->nxt->prev =3D mc;
++			mc =3D mc->nxt;
++			mc->m =3D *mnt;
++			mc->nxt =3D mc0;
 +		}
-+	} else {
-+		fprintf(stderr,
-+			_("mount: "
-+			  "directory to mount not in host:dir format\n"));
-+		goto fail;
++	}
++	mc0->prev =3D mc;
++	if (ferror(mfp->mntent_fp)) {
++		int errsv =3D errno;
++		nfs_error(_("warning: error reading %s: %s"),
++		      fnam, strerror (errsv));
++		mc0->nxt =3D mc0->prev =3D NULL;
++	}
++	nfs_endmntent(mfp);
++}
++
++/*
++ * Read /etc/mtab.  If that fails, try /proc/mounts.
++ * This produces a linked list. The list head mounttable is a dummy.
++ * Return 0 on success.
++ */
++static void
++read_mounttable() {
++        mntFILE *mfp;
++        const char *fnam;
++        struct mntentchn *mc =3D &mounttable;
++
++        got_mtab =3D 1;
++        mc->nxt =3D mc->prev =3D NULL;
++
++        fnam =3D MOUNTED;
++        mfp =3D nfs_setmntent (fnam, "r");
++        if (mfp =3D=3D NULL || mfp->mntent_fp =3D=3D NULL) {
++                int errsv =3D errno;
++                fnam =3D PROC_MOUNTS;
++                mfp =3D nfs_setmntent (fnam, "r");
++                if (mfp =3D=3D NULL || mfp->mntent_fp =3D=3D NULL) {
++                        nfs_error(_("warning: can't open %s: %s"),
++                              MOUNTED, strerror (errsv));
++                        return;
++                }
++                if (verbose)
++                        printf (_("mount: could not open %s - "
++                                  "using %s instead\n"),
++                                MOUNTED, PROC_MOUNTS);
++        }
++        read_mntentchn(mfp, fnam, mc);
++}
++
++/*
++ * Given the directory name NAME, and the place MCPREV we found it last =
+time,
++ * try to find more occurrences.
++ */=20
++struct mntentchn *
++getmntdirbackward (const char *name, struct mntentchn *mcprev) {
++	struct mntentchn *mc, *mc0;
++
++	mc0 =3D mtab_head();
++	if (!mcprev)
++		mcprev =3D mc0;
++	for (mc =3D mcprev->prev; mc && mc !=3D mc0; mc =3D mc->prev)
++		if (streq(mc->m.mnt_dir, name))
++			return mc;
++	return NULL;
++}
++
++/*
++ * Given the device name NAME, and the place MCPREV we found it last tim=
+e,
++ * try to find more occurrences.
++ */=20
++struct mntentchn *
++getmntdevbackward (const char *name, struct mntentchn *mcprev) {
++	struct mntentchn *mc, *mc0;
++
++	mc0 =3D mtab_head();
++	if (!mcprev)
++		mcprev =3D mc0;
++	for (mc =3D mcprev->prev; mc && mc !=3D mc0; mc =3D mc->prev)
++		if (streq(mc->m.mnt_fsname, name))
++			return mc;
++	return NULL;
++}
++
++/* Updating mtab ----------------------------------------------*/
++
++/* Flag for already existing lock file. */
++static int we_created_lockfile =3D 0;
++static int lockfile_fd =3D -1;
++
++/* Flag to indicate that signals have been set up. */
++static int signals_have_been_setup =3D 0;
++
++/* Ensure that the lock is released if we are interrupted.  */
++extern char *strsignal(int sig);	/* not always in <string.h> */
++
++static void
++handler (int sig) {
++     die(EX_USER, "%s", strsignal(sig));
++}
++
++static void
++setlkw_timeout (int sig) {
++     /* nothing, fcntl will fail anyway */
++}
++
++/* Remove lock file.  */
++void
++unlock_mtab (void) {
++	if (we_created_lockfile) {
++		close(lockfile_fd);
++		lockfile_fd =3D -1;
++		unlink (MOUNTED_LOCK);
++		we_created_lockfile =3D 0;
++	}
++}
++
++/* Create the lock file.
++   The lock file will be removed if we catch a signal or when we exit. *=
+/
++/* The old code here used flock on a lock file /etc/mtab~ and deleted
++   this lock file afterwards. However, as rgooch remarks, that has a
++   race: a second mount may be waiting on the lock and proceed as
++   soon as the lock file is deleted by the first mount, and immediately
++   afterwards a third mount comes, creates a new /etc/mtab~, applies
++   flock to that, and also proceeds, so that the second and third mount
++   now both are scribbling in /etc/mtab.
++   The new code uses a link() instead of a creat(), where we proceed
++   only if it was us that created the lock, and hence we always have
++   to delete the lock afterwards. Now the use of flock() is in principle
++   superfluous, but avoids an arbitrary sleep(). */
++
++/* Where does the link point to? Obvious choices are mtab and mtab~~.
++   HJLu points out that the latter leads to races. Right now we use
++   mtab~.<pid> instead. Use 20 as upper bound for the length of %d. */
++#define MOUNTLOCK_LINKTARGET		MOUNTED_LOCK "%d"
++#define MOUNTLOCK_LINKTARGET_LTH	(sizeof(MOUNTED_LOCK)+20)
++
++void
++lock_mtab (void) {
++	int tries =3D 100000, i;
++	char linktargetfile[MOUNTLOCK_LINKTARGET_LTH];
++
++	at_die =3D unlock_mtab;
++
++	if (!signals_have_been_setup) {
++		int sig =3D 0;
++		struct sigaction sa;
++
++		sa.sa_handler =3D handler;
++		sa.sa_flags =3D 0;
++		sigfillset (&sa.sa_mask);
++ =20
++		while (sigismember (&sa.sa_mask, ++sig) !=3D -1
++		       && sig !=3D SIGCHLD) {
++			if (sig =3D=3D SIGALRM)
++				sa.sa_handler =3D setlkw_timeout;
++			else
++				sa.sa_handler =3D handler;
++			sigaction (sig, &sa, (struct sigaction *) 0);
++		}
++		signals_have_been_setup =3D 1;
 +	}
 +
-+	if (!nfs_gethostbyname(hostname, nfs_saddr))
-+		goto fail;
-+	mounthost =3D hostname;
-+	memcpy (&mnt_server.saddr, nfs_saddr, sizeof (mnt_server.saddr));
++	sprintf(linktargetfile, MOUNTLOCK_LINKTARGET, getpid ());
 +
-+	/* add IP address to mtab options for use when unmounting */
-+
-+	s =3D inet_ntoa(nfs_saddr->sin_addr);
-+	old_opts =3D *extra_opts;
-+	if (!old_opts)
-+		old_opts =3D "";
-+
-+	/* Set default options.
-+	 * rsize/wsize (and bsize, for ver >=3D 3) are left 0 in order to
-+	 * let the kernel decide.
-+	 * timeo is filled in after we know whether it'll be TCP or UDP. */
-+	memset(&data, 0, sizeof(data));
-+	data.acregmin	=3D 3;
-+	data.acregmax	=3D 60;
-+	data.acdirmin	=3D 30;
-+	data.acdirmax	=3D 60;
-+#if NFS_MOUNT_VERSION >=3D 2
-+	data.namlen	=3D NAME_MAX;
-+#endif
-+	data.pseudoflavor =3D AUTH_SYS;
-+
-+	bg =3D 0;
-+	retry =3D 10000;		/* 10000 minutes ~ 1 week */
-+
-+	memset(mnt_pmap, 0, sizeof(*mnt_pmap));
-+	mnt_pmap->pm_prog =3D MOUNTPROG;
-+	memset(nfs_pmap, 0, sizeof(*nfs_pmap));
-+	nfs_pmap->pm_prog =3D NFS_PROGRAM;
-+
-+	/* parse options */
-+	new_opts[0] =3D 0;
-+	if (!parse_options(old_opts, &data, &bg, &retry, &mnt_server, &nfs_serv=
-er,
-+			   new_opts, sizeof(new_opts)))
-+		goto fail;
-+	if (!nfsmnt_check_compat(nfs_pmap, mnt_pmap))
-+		goto fail;
++	i =3D open (linktargetfile, O_WRONLY|O_CREAT, 0);
++	if (i < 0) {
++		int errsv =3D errno;
++		/* linktargetfile does not exist (as a file)
++		   and we cannot create it. Read-only filesystem?
++		   Too many files open in the system?
++		   Filesystem full? */
++		die (EX_FILEIO, _("can't create lock file %s: %s "
++						  "(use -n flag to override)"),
++			 linktargetfile, strerror (errsv));
++	}
++	close(i);
 +=09
-+	if (retry =3D=3D 10000 && !bg)
-+		retry =3D 2; /* reset for fg mounts */
-+=09
++	/* Repeat until it was us who made the link */
++	while (!we_created_lockfile) {
++		struct flock flock;
++		int errsv, j;
 +
-+#ifdef NFS_MOUNT_DEBUG
-+	printf("rsize =3D %d, wsize =3D %d, timeo =3D %d, retrans =3D %d\n",
-+	       data.rsize, data.wsize, data.timeo, data.retrans);
-+	printf("acreg (min, max) =3D (%d, %d), acdir (min, max) =3D (%d, %d)\n"=
-,
-+	       data.acregmin, data.acregmax, data.acdirmin, data.acdirmax);
-+	printf("port =3D %d, bg =3D %d, retry =3D %d, flags =3D %.8x\n",
-+	       nfs_pmap->pm_port, bg, retry, data.flags);
-+	printf("mountprog =3D %d, mountvers =3D %d, nfsprog =3D %d, nfsvers =3D=
- %d\n",
-+	       mnt_pmap->pm_prog, mnt_pmap->pm_vers,
-+	       nfs_pmap->pm_prog, nfs_pmap->pm_vers);
-+	printf("soft =3D %d, intr =3D %d, posix =3D %d, nocto =3D %d, noac =3D =
-%d ",
-+	       (data.flags & NFS_MOUNT_SOFT) !=3D 0,
-+	       (data.flags & NFS_MOUNT_INTR) !=3D 0,
-+	       (data.flags & NFS_MOUNT_POSIX) !=3D 0,
-+	       (data.flags & NFS_MOUNT_NOCTO) !=3D 0,
-+	       (data.flags & NFS_MOUNT_NOAC) !=3D 0);
-+#if NFS_MOUNT_VERSION >=3D 2
-+	printf("tcp =3D %d ",
-+	       (data.flags & NFS_MOUNT_TCP) !=3D 0);
-+#endif
-+#if NFS_MOUNT_VERSION >=3D 4
-+	printf("noacl =3D %d ", (data.flags & NFS_MOUNT_NOACL) !=3D 0);
-+#endif
-+#if NFS_MOUNT_VERSION >=3D 5
-+	printf("sec =3D %u ", data.pseudoflavor);
-+#endif
-+	printf("\n");
-+#endif
++		j =3D link(linktargetfile, MOUNTED_LOCK);
++		errsv =3D errno;
 +
-+	data.version =3D nfs_mount_version;
-+	*mount_opts =3D (char *) &data;
++		if (j =3D=3D 0)
++			we_created_lockfile =3D 1;
 +
-+	if (*flags & MS_REMOUNT)
-+		goto out_ok;
++		if (j < 0 && errsv !=3D EEXIST) {
++			(void) unlink(linktargetfile);
++			die (EX_FILEIO, _("can't link lock file %s: %s "
++			     "(use -n flag to override)"),
++			     MOUNTED_LOCK, strerror (errsv));
++		}
 +
-+	/*
-+	 * If the previous mount operation on the same host was
-+	 * backgrounded, and the "bg" for this mount is also set,
-+	 * give up immediately, to avoid the initial timeout.
-+	 */
-+	if (bg && !running_bg &&
-+	    prev_bg_host && strcmp(hostname, prev_bg_host) =3D=3D 0) {
-+		if (retry > 0)
-+			retval =3D EX_BG;
-+		return retval;
++		lockfile_fd =3D open (MOUNTED_LOCK, O_WRONLY);
++
++		if (lockfile_fd < 0) {
++			int errsv =3D errno;
++			/* Strange... Maybe the file was just deleted? */
++			if (errno =3D=3D ENOENT && tries-- > 0) {
++				if (tries % 200 =3D=3D 0)
++					usleep(30);
++				continue;
++			}
++			(void) unlink(linktargetfile);
++			die (EX_FILEIO, _("can't open lock file %s: %s "
++			     "(use -n flag to override)"),
++			     MOUNTED_LOCK, strerror (errsv));
++		}
++
++		flock.l_type =3D F_WRLCK;
++		flock.l_whence =3D SEEK_SET;
++		flock.l_start =3D 0;
++		flock.l_len =3D 0;
++
++		if (j =3D=3D 0) {
++			/* We made the link. Now claim the lock. */
++			if (fcntl (lockfile_fd, F_SETLK, &flock) =3D=3D -1) {
++				if (verbose) {
++				    int errsv =3D errno;
++				    printf(_("Can't lock lock file %s: %s\n"),
++					   MOUNTED_LOCK, strerror (errsv));
++				}
++				/* proceed anyway */
++			}
++			(void) unlink(linktargetfile);
++		} else {
++			static int tries =3D 0;
++
++			/* Someone else made the link. Wait. */
++			alarm(LOCK_TIMEOUT);
++			if (fcntl (lockfile_fd, F_SETLKW, &flock) =3D=3D -1) {
++				int errsv =3D errno;
++				(void) unlink(linktargetfile);
++				die (EX_FILEIO, _("can't lock lock file %s: %s"),
++				     MOUNTED_LOCK, (errno =3D=3D EINTR) ?
++				     _("timed out") : strerror (errsv));
++			}
++			alarm(0);
++			/* Limit the number of iterations - maybe there
++			   still is some old /etc/mtab~ */
++			++tries;
++			if (tries % 200 =3D=3D 0)
++			   usleep(30);
++			if (tries > 100000) {
++				(void) unlink(linktargetfile);
++				close(lockfile_fd);
++				die (EX_FILEIO, _("Cannot create link %s\n"
++						  "Perhaps there is a stale lock file?\n"),
++					 MOUNTED_LOCK);
++ 			}
++			close(lockfile_fd);
++		}
++	}
++}
++
++/*
++ * Update the mtab.
++ *  Used by umount with null INSTEAD: remove the last DIR entry.
++ *  Used by mount upon a remount: update option part,
++ *   and complain if a wrong device or type was given.
++ *   [Note that often a remount will be a rw remount of /
++ *    where there was no entry before, and we'll have to believe
++ *    the values given in INSTEAD.]
++ */
++
++void
++update_mtab (const char *dir, nfs_mntent_t *instead) {
++	mntFILE *mfp, *mftmp;
++	const char *fnam =3D MOUNTED;
++	struct mntentchn mtabhead;	/* dummy */
++	struct mntentchn *mc, *mc0, *absent =3D NULL;
++
++	if (mtab_does_not_exist() || !mtab_is_writable())
++		return;
++
++	lock_mtab();
++
++	/* having locked mtab, read it again */
++	mc0 =3D mc =3D &mtabhead;
++	mc->nxt =3D mc->prev =3D NULL;
++
++	mfp =3D nfs_setmntent(fnam, "r");
++	if (mfp =3D=3D NULL || mfp->mntent_fp =3D=3D NULL) {
++		int errsv =3D errno;
++		nfs_error (_("cannot open %s (%s) - mtab not updated"),
++		       fnam, strerror (errsv));
++		goto leave;
 +	}
 +
-+	/* create mount deamon client */
++	read_mntentchn(mfp, fnam, mc);
 +
-+	/*
-+	 * The following loop implements the mount retries. On the first
-+	 * call, "running_bg" is 0. When the mount times out, and the
-+	 * "bg" option is set, the exit status EX_BG will be returned.
-+	 * For a backgrounded mount, there will be a second call by the
-+	 * child process with "running_bg" set to 1.
-+	 *
-+	 * The case where the mount point is not present and the "bg"
-+	 * option is set, is treated as a timeout. This is done to
-+	 * support nested mounts.
-+	 *
-+	 * The "retry" count specified by the user is the number of
-+	 * minutes to retry before giving up.
-+	 *
-+	 * Only the first error message will be displayed.
-+	 */
-+	timeout =3D time(NULL) + 60 * retry;
-+	prevt =3D 0;
-+	t =3D 30;
-+	val =3D 1;
-+
-+	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
-+	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
-+	for (;;) {
-+		if (bg && stat(node, &statbuf) =3D=3D -1) {
-+			/* no mount point yet - sleep */
-+			if (running_bg) {
-+				sleep(val);	/* 1, 2, 4, 8, 16, 30, ... */
-+				val *=3D 2;
-+				if (val > 30)
-+					val =3D 30;
++	/* find last occurrence of dir */
++	for (mc =3D mc0->prev; mc && mc !=3D mc0; mc =3D mc->prev)
++		if (streq(mc->m.mnt_dir, dir))
++			break;
++	if (mc && mc !=3D mc0) {
++		if (instead =3D=3D NULL) {
++			/* An umount - remove entry */
++			if (mc && mc !=3D mc0) {
++				mc->prev->nxt =3D mc->nxt;
++				mc->nxt->prev =3D mc->prev;
++				free(mc);
 +			}
 +		} else {
-+			int stat;
-+			/* be careful not to use too many CPU cycles */
-+			if (t - prevt < 30)
-+				sleep(30);
-+
-+			stat =3D nfs_call_mount(&mnt_server, &nfs_server,
-+					      &dirname, &mntres);
-+			if (stat)
-+				break;
-+			memcpy(nfs_pmap, &save_nfs, sizeof(*nfs_pmap));
-+			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
-+			prevt =3D t;
++			/* A remount */
++			mc->m.mnt_opts =3D instead->mnt_opts;
 +		}
-+		if (!bg) {
-+			switch(rpc_createerr.cf_stat){
-+			case RPC_TIMEDOUT:
-+				break;
-+			case RPC_SYSTEMERROR:
-+				if (errno =3D=3D ETIMEDOUT)
-+					break;
-+			default:
-+				mount_errors(*nfs_server.hostname, 0, bg);
-+		        goto fail;
-+			}
-+			t =3D time(NULL);
-+			if (t >=3D timeout) {
-+				mount_errors(*nfs_server.hostname, 0, bg);
-+				goto fail;
-+			}
-+			mount_errors(*nfs_server.hostname, 1, bg);
-+			continue;
-+		}
-+		if (!running_bg) {
-+			prev_bg_host =3D xstrdup(hostname);
-+			if (retry > 0)
-+				retval =3D EX_BG;
-+			goto fail;
-+		}
-+		t =3D time(NULL);
-+		if (t >=3D timeout) {
-+			mount_errors(*nfs_server.hostname, 0, bg);
-+			goto fail;
-+		}
-+		if (doonce++ < 1)
-+			mount_errors(*nfs_server.hostname, 1, bg);
++	} else if (instead) {
++		/* not found, add a new entry */
++		absent =3D xmalloc(sizeof(*absent));
++		absent->m =3D *instead;
++		absent->nxt =3D mc0;
++		absent->prev =3D mc0->prev;
++		mc0->prev =3D absent;
++		if (mc0->nxt =3D=3D NULL)
++			mc0->nxt =3D absent;
 +	}
 +
-+	if (nfs_pmap->pm_vers =3D=3D 2) {
-+		if (mntres.nfsv2.fhs_status !=3D 0) {
-+			fprintf(stderr,
-+				_("mount: %s:%s failed, reason given by server: %s\n"),
-+				hostname, dirname,
-+				nfs_strerror(mntres.nfsv2.fhs_status));
-+			goto fail;
++	/* write chain to mtemp */
++	mftmp =3D nfs_setmntent (MOUNTED_TEMP, "w");
++	if (mftmp =3D=3D NULL || mftmp->mntent_fp =3D=3D NULL) {
++		int errsv =3D errno;
++		nfs_error (_("cannot open %s (%s) - mtab not updated"),
++		       MOUNTED_TEMP, strerror (errsv));
++		goto leave;
++	}
++
++	for (mc =3D mc0->nxt; mc && mc !=3D mc0; mc =3D mc->nxt) {
++		if (nfs_addmntent(mftmp, &(mc->m)) =3D=3D 1) {
++			int errsv =3D errno;
++			die (EX_FILEIO, _("error writing %s: %s"),
++			     MOUNTED_TEMP, strerror (errsv));
 +		}
-+		memcpy(data.root.data,
-+		       (char *) mntres.nfsv2.fhstatus_u.fhs_fhandle,
-+		       NFS_FHSIZE);
-+#if NFS_MOUNT_VERSION >=3D 4
-+		data.root.size =3D NFS_FHSIZE;
-+		memcpy(data.old_root.data,
-+		       (char *) mntres.nfsv2.fhstatus_u.fhs_fhandle,
-+		       NFS_FHSIZE);
-+#endif
-+	} else {
-+#if NFS_MOUNT_VERSION >=3D 4
-+		mountres3_ok *mountres;
-+		fhandle3 *fhandle;
-+		int i, *flavor, yum =3D 0;
-+		if (mntres.nfsv3.fhs_status !=3D 0) {
-+			fprintf(stderr,
-+				_("mount: %s:%s failed, reason given by server: %s\n"),
-+				hostname, dirname,
-+				nfs_strerror(mntres.nfsv3.fhs_status));
-+			goto fail;
-+		}
-+#if NFS_MOUNT_VERSION >=3D 5
-+		mountres =3D &mntres.nfsv3.mountres3_u.mountinfo;
-+		i =3D mountres->auth_flavours.auth_flavours_len;
-+		if (i <=3D 0)=20
-+			goto noauth_flavours;
-+
-+		flavor =3D mountres->auth_flavours.auth_flavours_val;
-+		while (--i >=3D 0) {
-+			if (flavor[i] =3D=3D data.pseudoflavor)
-+				yum =3D 1;
-+#ifdef NFS_MOUNT_DEBUG
-+			printf("auth flavor %d: %d\n",
-+				i, flavor[i]);
-+#endif
-+		}
-+		if (!yum) {
-+			fprintf(stderr,
-+				"mount: %s:%s failed, "
-+				"security flavor not supported\n",
-+				hostname, dirname);
-+			/* server has registered us in mtab, send umount */
-+			nfs_call_umount(&mnt_server, &dirname);
-+			goto fail;
-+		}
-+noauth_flavours:
-+#endif
-+		fhandle =3D &mntres.nfsv3.mountres3_u.mountinfo.fhandle;
-+		memset(data.old_root.data, 0, NFS_FHSIZE);
-+		memset(&data.root, 0, sizeof(data.root));
-+		data.root.size =3D fhandle->fhandle3_len;
-+		memcpy(data.root.data,
-+		       (char *) fhandle->fhandle3_val,
-+		       fhandle->fhandle3_len);
-+
-+		data.flags |=3D NFS_MOUNT_VER3;
-+#endif
 +	}
 +
-+	/* create nfs socket for kernel */
++	discard_mntentchn(mc0);
 +
-+	if (nfs_pmap->pm_prot =3D=3D IPPROTO_TCP)
-+		fsock =3D socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-+	else
-+		fsock =3D socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-+	if (fsock < 0) {
-+		perror(_("nfs socket"));
-+		goto fail;
++	if (fchmod (fileno (mftmp->mntent_fp),
++		    S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) < 0) {
++		int errsv =3D errno;
++		fprintf(stderr, _("error changing mode of %s: %s\n"),
++			MOUNTED_TEMP, strerror (errsv));
 +	}
-+	if (bindresvport(fsock, 0) < 0) {
-+		perror(_("nfs bindresvport"));
-+		goto fail;
-+	}
-+#ifdef NFS_MOUNT_DEBUG
-+	printf(_("using port %d for nfs deamon\n"), nfs_pmap->pm_port);
-+#endif
-+	nfs_saddr->sin_port =3D htons(nfs_pmap->pm_port);
-+	/*
-+	 * connect() the socket for kernels 1.3.10 and below only,
-+	 * to avoid problems with multihomed hosts.
-+	 * --Swen
-+	 */
-+	if (linux_version_code() <=3D 66314
-+	    && connect(fsock, (struct sockaddr *) nfs_saddr,
-+		       sizeof (*nfs_saddr)) < 0) {
-+		perror(_("nfs connect"));
-+		goto fail;
++	nfs_endmntent (mftmp);
++
++	{ /*
++	   * If mount is setuid and some non-root user mounts sth,
++	   * then mtab.tmp might get the group of this user. Copy uid/gid
++	   * from the present mtab before renaming.
++	   */
++	    struct stat sbuf;
++	    if (stat (MOUNTED, &sbuf) =3D=3D 0)
++		chown (MOUNTED_TEMP, sbuf.st_uid, sbuf.st_gid);
 +	}
 +
-+#if NFS_MOUNT_VERSION >=3D 2
-+	if (nfs_pmap->pm_prot =3D=3D IPPROTO_TCP)
-+		data.flags |=3D NFS_MOUNT_TCP;
-+	else
-+		data.flags &=3D ~NFS_MOUNT_TCP;
-+#endif
-+
-+	/* prepare data structure for kernel */
-+
-+	data.fd =3D fsock;
-+	memcpy((char *) &data.addr, (char *) nfs_saddr, sizeof(data.addr));
-+	strncpy(data.hostname, hostname, sizeof(data.hostname));
-+
-+ out_ok:
-+	/* Ensure we have enough padding for the following strcat()s */
-+	if (strlen(new_opts) + strlen(s) + 30 >=3D sizeof(new_opts)) {
-+		fprintf(stderr, _("mount: "
-+				  "excessively long option argument\n"));
-+		goto fail;
++	/* rename mtemp to mtab */
++	if (rename (MOUNTED_TEMP, MOUNTED) < 0) {
++		int errsv =3D errno;
++		fprintf(stderr, _("can't rename %s to %s: %s\n"),
++			MOUNTED_TEMP, MOUNTED, strerror(errsv));
 +	}
 +
-+	snprintf(cbuf, sizeof(cbuf)-1, "addr=3D%s", s);
-+	strcat(new_opts, cbuf);
-+
-+	*extra_opts =3D xstrdup(new_opts);
-+	return 0;
-+
-+	/* abort */
-+ fail:
-+	if (fsock !=3D -1)
-+		close(fsock);
-+	return retval;
++ leave:
++	unlock_mtab();
 +}
-+
-+/*
-+ * We need to translate between nfs status return values and
-+ * the local errno values which may not be the same.
-+ *
-+ * Andreas Schwab <schwab@LS5.informatik.uni-dortmund.de>: change errno:
-+ * "after #include <errno.h> the symbol errno is reserved for any use,
-+ *  it cannot even be used as a struct tag or field name".
-+ */
-+
-+#ifndef EDQUOT
-+#define EDQUOT	ENOSPC
-+#endif
-+
-+static struct {
-+	enum nfsstat stat;
-+	int errnum;
-+} nfs_errtbl[] =3D {
-+	{ NFS_OK,		0		},
-+	{ NFSERR_PERM,		EPERM		},
-+	{ NFSERR_NOENT,		ENOENT		},
-+	{ NFSERR_IO,		EIO		},
-+	{ NFSERR_NXIO,		ENXIO		},
-+	{ NFSERR_ACCES,		EACCES		},
-+	{ NFSERR_EXIST,		EEXIST		},
-+	{ NFSERR_NODEV,		ENODEV		},
-+	{ NFSERR_NOTDIR,	ENOTDIR		},
-+	{ NFSERR_ISDIR,		EISDIR		},
-+#ifdef NFSERR_INVAL
-+	{ NFSERR_INVAL,		EINVAL		},	/* that Sun forgot */
-+#endif
-+	{ NFSERR_FBIG,		EFBIG		},
-+	{ NFSERR_NOSPC,		ENOSPC		},
-+	{ NFSERR_ROFS,		EROFS		},
-+	{ NFSERR_NAMETOOLONG,	ENAMETOOLONG	},
-+	{ NFSERR_NOTEMPTY,	ENOTEMPTY	},
-+	{ NFSERR_DQUOT,		EDQUOT		},
-+	{ NFSERR_STALE,		ESTALE		},
-+#ifdef EWFLUSH
-+	{ NFSERR_WFLUSH,	EWFLUSH		},
-+#endif
-+	/* Throw in some NFSv3 values for even more fun (HP returns these) */
-+	{ 71,			EREMOTE		},
-+
-+	{ -1,			EIO		}
-+};
-+
-+static char *nfs_strerror(int stat)
-+{
-+	int i;
-+	static char buf[256];
-+
-+	for (i =3D 0; nfs_errtbl[i].stat !=3D -1; i++) {
-+		if (nfs_errtbl[i].stat =3D=3D stat)
-+			return strerror(nfs_errtbl[i].errnum);
-+	}
-+	sprintf(buf, _("unknown nfs status return value: %d"), stat);
-+	return buf;
-+}
-diff -uprN nfs-utils-1.0.8/utils/mount/nfs_mount.h nfs-utils-1.0.8-ag/uti=
-ls/mount/nfs_mount.h
---- nfs-utils-1.0.8/utils/mount/nfs_mount.h	1969-12-31 19:00:00.000000000=
+diff -uprN nfs-utils-1.0.8/support/nfs/Makefile.am nfs-utils-1.0.8-ag/sup=
+port/nfs/Makefile.am
+--- nfs-utils-1.0.8/support/nfs/Makefile.am	2005-12-19 23:12:44.000000000=
  -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfs_mount.h	2006-06-12 15:09:22.691611=
++++ nfs-utils-1.0.8-ag/support/nfs/Makefile.am	2006-06-12 15:09:32.175861=
 000 -0400
-@@ -0,0 +1,84 @@
-+/*
-+ * We want to be able to compile mount on old kernels in such a way
-+ * that the binary will work well on more recent kernels.
-+ * Thus, if necessary we teach nfsmount.c the structure of new fields
-+ * that will come later.
-+ *
-+ * Moreover, the new kernel includes conflict with glibc includes
-+ * so it is easiest to ignore the kernel altogether (at compile time).
-+ */
-+
-+#ifndef _NFS_MOUNT_H
-+#define _NFS_MOUNT_H
-+
-+#include <netinet/in.h>
-+#include <arpa/inet.h>
-+
-+#define NFS_MOUNT_VERSION	6
-+#define NFS_MAX_CONTEXT_LEN	256
-+
-+struct nfs2_fh {
-+        char                    data[32];
-+};
-+struct nfs3_fh {
-+        unsigned short          size;
-+        unsigned char           data[64];
-+};
-+
-+struct nfs_mount_data {
-+	int		version;		/* 1 */
-+	int		fd;			/* 1 */
-+	struct nfs2_fh	old_root;		/* 1 */
-+	int		flags;			/* 1 */
-+	int		rsize;			/* 1 */
-+	int		wsize;			/* 1 */
-+	int		timeo;			/* 1 */
-+	int		retrans;		/* 1 */
-+	int		acregmin;		/* 1 */
-+	int		acregmax;		/* 1 */
-+	int		acdirmin;		/* 1 */
-+	int		acdirmax;		/* 1 */
-+	struct sockaddr_in addr;		/* 1 */
-+	char		hostname[256];		/* 1 */
-+	int		namlen;			/* 2 */
-+	unsigned int	bsize;			/* 3 */
-+	struct nfs3_fh	root;			/* 4 */
-+	int		pseudoflavor;		/* 5 */
-+	char    context[NFS_MAX_CONTEXT_LEN + 1]; /* 6 */
-+
-+};
-+
-+/* bits in the flags field */
-+
-+#define NFS_MOUNT_SOFT		0x0001	/* 1 */
-+#define NFS_MOUNT_INTR		0x0002	/* 1 */
-+#define NFS_MOUNT_SECURE	0x0004	/* 1 */
-+#define NFS_MOUNT_POSIX		0x0008	/* 1 */
-+#define NFS_MOUNT_NOCTO		0x0010	/* 1 */
-+#define NFS_MOUNT_NOAC		0x0020	/* 1 */
-+#define NFS_MOUNT_TCP		0x0040	/* 2 */
-+#define NFS_MOUNT_VER3		0x0080	/* 3 */
-+#define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
-+#define NFS_MOUNT_NONLM		0x0200	/* 3 */
-+#define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
-+#define NFS_MOUNT_NOACL     0x0800  /* 4 */
-+#define NFS_MOUNT_SECFLAVOUR	0x2000	/* 5 */
-+
-+/* security pseudoflavors */
-+
-+#ifndef AUTH_GSS_KRB5
-+#define AUTH_GSS_KRB5		390003
-+#define AUTH_GSS_KRB5I		390004
-+#define AUTH_GSS_KRB5P		390005
-+#define AUTH_GSS_LKEY		390006
-+#define AUTH_GSS_LKEYI		390007
-+#define AUTH_GSS_LKEYP		390008
-+#define AUTH_GSS_SPKM		390009
-+#define AUTH_GSS_SPKMI		390010
-+#define AUTH_GSS_SPKMP		390011
-+#endif
-+
-+int nfsmount(const char *, const char *, int *, char **, char **, int *,=
- int);
-+void mount_errors(char *, int, int);
-+
-+#endif /* _NFS_MOUNT_H */
-diff -uprN nfs-utils-1.0.8/utils/mount/nfsmount.x nfs-utils-1.0.8-ag/util=
-s/mount/nfsmount.x
---- nfs-utils-1.0.8/utils/mount/nfsmount.x	1969-12-31 19:00:00.000000000 =
--0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfsmount.x	2006-06-12 15:09:22.6976110=
-00 -0400
-@@ -0,0 +1,336 @@
-+%/*
-+% * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
-+% * unrestricted use provided that this legend is included on all tape
-+% * media and as a part of the software program in whole or part.  Users
-+% * may copy or modify Sun RPC without charge, but are not authorized
-+% * to license or distribute it to anyone else except as part of a produ=
-ct or
-+% * program developed by the user or with the express written consent of
-+% * Sun Microsystems, Inc.
-+% *
-+% * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING T=
-HE
-+% * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
-+% * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTIC=
-E.
-+% *
-+% * Sun RPC is provided with no support and without any obligation on th=
-e
-+% * part of Sun Microsystems, Inc. to assist in its use, correction,
-+% * modification or enhancement.
-+% *
-+% * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
-+% * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
-+% * OR ANY PART THEREOF.
-+% *
-+% * In no event will Sun Microsystems, Inc. be liable for any lost reven=
-ue
-+% * or profits or other special, indirect and consequential damages, eve=
-n if
-+% * Sun has been advised of the possibility of such damages.
-+% *
-+% * Sun Microsystems, Inc.
-+% * 2550 Garcia Avenue
-+% * Mountain View, California  94043
-+% */
-+
-+%/*
-+% * Copyright (c) 1985, 1990 by Sun Microsystems, Inc.
-+% */
-+%
-+%/* from @(#)mount.x	1.3 91/03/11 TIRPC 1.0 */
-+
-+/*
-+ * Protocol description for the mount program
-+ */
-+
-+#ifdef RPC_HDR
-+%#ifndef _rpcsvc_mount_h
-+%#define _rpcsvc_mount_h
-+#endif
-+
-+#ifdef RPC_CLNT
-+%#include <string.h>		/* for memset() */
-+#endif
-+%#include <asm/types.h>
-+
-+const MNTPATHLEN =3D 1024;	/* maximum bytes in a pathname argument */
-+const MNTNAMLEN =3D 255;		/* maximum bytes in a name argument */
-+const FHSIZE =3D 32;		/* size in bytes of a file handle */
-+const FHSIZE3 =3D 64;		/* size in bytes of a file handle */
-+
-+/*
-+ * The fhandle is the file handle that the server passes to the client.
-+ * All file operations are done using the file handles to refer to a fil=
-e
-+ * or a directory. The file handle can contain whatever information the
-+ * server needs to distinguish an individual file.
-+ */
-+typedef opaque fhandle[FHSIZE];=09
-+typedef opaque fhandle3<FHSIZE3>;
-+
-+enum mountstat3 {
-+	MNT_OK			=3D 0,		/* no error */
-+	MNT3ERR_PERM		=3D 1,		/* not owner */
-+	MNT3ERR_NOENT		=3D 2,		/* No such file or directory */
-+	MNT3ERR_IO		=3D 5,		/* I/O error */
-+	MNT3ERR_ACCES		=3D 13,		/* Permission denied */
-+	MNT3ERR_NOTDIR		=3D 20,		/* Not a directory */
-+	MNT3ERR_INVAL		=3D 22,		/* Invalid argument */
-+	MNT3ERR_NAMETOOLONG	=3D 63,		/* File name too long */
-+	MNT3ERR_NOTSUPP		=3D 10004,	/* Operation not supported */
-+	MNT3ERR_SERVERFAULT	=3D 10006		/* A failure on the server */
-+};
-+
-+/*
-+ * If a status of zero is returned, the call completed successfully, and=
+@@ -2,9 +2,9 @@
 =20
-+ * a file handle for the directory follows. A non-zero status indicates
-+ * some sort of error. The status corresponds with UNIX error numbers.
-+ */
-+union fhstatus switch (unsigned fhs_status) {
-+case 0:
-+	fhandle fhs_fhandle;
-+default:
-+	void;
-+};
+ noinst_LIBRARIES =3D libnfs.a
+ libnfs_a_SOURCES =3D exports.c rmtab.c xio.c rpcmisc.c rpcdispatch.c \
+-		   xlog.c xmalloc.c wildmat.c nfssvc.c nfsclient.c \
++		   xlog.c xcommon.c wildmat.c nfssvc.c nfsclient.c \
+ 		   nfsexport.c getfh.c nfsctl.c lockdsvc.c \
+-		   svc_socket.c cacheio.c closeall.c
++		   svc_socket.c cacheio.c closeall.c conn.c fstab.c nfs_mntent.c
+=20
+ MAINTAINERCLEANFILES =3D Makefile.in
+=20
+diff -uprN nfs-utils-1.0.8/support/nfs/nfs_mntent.c nfs-utils-1.0.8-ag/su=
+pport/nfs/nfs_mntent.c
+--- nfs-utils-1.0.8/support/nfs/nfs_mntent.c	1969-12-31 19:00:00.00000000=
+0 -0500
++++ nfs-utils-1.0.8-ag/support/nfs/nfs_mntent.c	2006-06-12 15:09:32.18186=
+1000 -0400
+@@ -0,0 +1,226 @@
++/* Private version of the libc *mntent() routines. */
++/* Note slightly different prototypes. */
 +
-+struct mountres3_ok {
-+	fhandle3 fhandle;
-+	int auth_flavours<>;
-+};
-+
-+union mountres3 switch (mountstat3 fhs_status) {
-+case MNT_OK:
-+	mountres3_ok mountinfo;
-+default:
-+	void;
-+};
-+
-+/*
-+ * The type dirpath is the pathname of a directory
-+ */
-+typedef string dirpath<MNTPATHLEN>;
-+
-+/*
-+ * The type name is used for arbitrary names (hostnames, groupnames)
-+ */
-+typedef string name<MNTNAMLEN>;
-+
-+/*
-+ * A list of who has what mounted
-+ */
-+typedef struct mountbody *mountlist;
-+struct mountbody {
-+	name ml_hostname;
-+	dirpath ml_directory;
-+	mountlist ml_next;
-+};
-+
-+/*
-+ * A list of netgroups
-+ */
-+typedef struct groupnode *groups;
-+struct groupnode {
-+	name gr_name;
-+	groups gr_next;
-+};
-+
-+/*
-+ * A list of what is exported and to whom
-+ */
-+typedef struct exportnode *exports;
-+struct exportnode {
-+	dirpath ex_dir;
-+	groups ex_groups;
-+	exports ex_next;
-+};
-+
-+/*
-+ * POSIX pathconf information
-+ */
-+struct ppathcnf {
-+	int	pc_link_max;	/* max links allowed */
-+	short	pc_max_canon;	/* max line len for a tty */
-+	short	pc_max_input;	/* input a tty can eat all at once */
-+	short	pc_name_max;	/* max file name length (dir entry) */
-+	short	pc_path_max;	/* max path name length (/x/y/x/.. ) */
-+	short	pc_pipe_buf;	/* size of a pipe (bytes) */
-+	u_char	pc_vdisable;	/* safe char to turn off c_cc[i] */
-+	char	pc_xxx;		/* alignment padding; cc_t =3D=3D char */
-+	short	pc_mask[2];	/* validity and boolean bits */
-+};
-+
-+program MOUNTPROG {
-+	/*
-+	 * Version one of the mount protocol communicates with version two
-+	 * of the NFS protocol. The only connecting point is the fhandle=20
-+	 * structure, which is the same for both protocols.
-+	 */
-+	version MOUNTVERS {
-+		/*
-+		 * Does no work. It is made available in all RPC services
-+		 * to allow server reponse testing and timing
-+		 */
-+		void
-+		MOUNTPROC_NULL(void) =3D 0;
-+
-+		/*=09
-+		 * If fhs_status is 0, then fhs_fhandle contains the
-+	 	 * file handle for the directory. This file handle may
-+		 * be used in the NFS protocol. This procedure also adds
-+		 * a new entry to the mount list for this client mounting
-+		 * the directory.
-+		 * Unix authentication required.
-+		 */
-+		fhstatus=20
-+		MOUNTPROC_MNT(dirpath) =3D 1;
-+
-+		/*
-+		 * Returns the list of remotely mounted filesystems. The=20
-+		 * mountlist contains one entry for each hostname and=20
-+		 * directory pair.
-+		 */
-+		mountlist
-+		MOUNTPROC_DUMP(void) =3D 2;
-+
-+		/*
-+		 * Removes the mount list entry for the directory
-+		 * Unix authentication required.
-+		 */
-+		void
-+		MOUNTPROC_UMNT(dirpath) =3D 3;
-+
-+		/*
-+		 * Removes all of the mount list entries for this client
-+		 * Unix authentication required.
-+		 */
-+		void
-+		MOUNTPROC_UMNTALL(void) =3D 4;
-+
-+		/*
-+		 * Returns a list of all the exported filesystems, and which
-+		 * machines are allowed to import it.
-+		 */
-+		exports
-+		MOUNTPROC_EXPORT(void)  =3D 5;
-+
-+		/*
-+		 * Identical to MOUNTPROC_EXPORT above
-+		 */
-+		exports
-+		MOUNTPROC_EXPORTALL(void) =3D 6;
-+	} =3D 1;
-+
-+	/*
-+	 * Version two of the mount protocol communicates with version two
-+	 * of the NFS protocol.
-+	 * The only difference from version one is the addition of a POSIX
-+	 * pathconf call.
-+	 */
-+	version MOUNTVERS_POSIX {
-+		/*
-+		 * Does no work. It is made available in all RPC services
-+		 * to allow server reponse testing and timing
-+		 */
-+		void
-+		MOUNTPROC_NULL(void) =3D 0;
-+
-+		/*=09
-+		 * If fhs_status is 0, then fhs_fhandle contains the
-+	 	 * file handle for the directory. This file handle may
-+		 * be used in the NFS protocol. This procedure also adds
-+		 * a new entry to the mount list for this client mounting
-+		 * the directory.
-+		 * Unix authentication required.
-+		 */
-+		fhstatus=20
-+		MOUNTPROC_MNT(dirpath) =3D 1;
-+
-+		/*
-+		 * Returns the list of remotely mounted filesystems. The=20
-+		 * mountlist contains one entry for each hostname and=20
-+		 * directory pair.
-+		 */
-+		mountlist
-+		MOUNTPROC_DUMP(void) =3D 2;
-+
-+		/*
-+		 * Removes the mount list entry for the directory
-+		 * Unix authentication required.
-+		 */
-+		void
-+		MOUNTPROC_UMNT(dirpath) =3D 3;
-+
-+		/*
-+		 * Removes all of the mount list entries for this client
-+		 * Unix authentication required.
-+		 */
-+		void
-+		MOUNTPROC_UMNTALL(void) =3D 4;
-+
-+		/*
-+		 * Returns a list of all the exported filesystems, and which
-+		 * machines are allowed to import it.
-+		 */
-+		exports
-+		MOUNTPROC_EXPORT(void)  =3D 5;
-+
-+		/*
-+		 * Identical to MOUNTPROC_EXPORT above
-+		 */
-+		exports
-+		MOUNTPROC_EXPORTALL(void) =3D 6;
-+
-+		/*
-+		 * POSIX pathconf info (Sun hack)
-+		 */
-+		ppathcnf
-+		MOUNTPROC_PATHCONF(dirpath) =3D 7;
-+	} =3D 2;
-+	version MOUNT_V3 {
-+		/*
-+		 * Does no work. It is made available in all RPC services
-+		 * to allow server reponse testing and timing
-+		 */
-+		void
-+		MOUNTPROC3_NULL(void) =3D 0;
-+
-+		/*=09
-+		 * If fhs_status is 0, then fhs_fhandle contains the
-+	 	 * file handle for the directory. This file handle may
-+		 * be used in the NFS protocol. This procedure also adds
-+		 * a new entry to the mount list for this client mounting
-+		 * the directory.
-+		 * Unix authentication required.
-+		 */
-+		mountres3
-+		MOUNTPROC3_MNT(dirpath) =3D 1;
-+
-+		/*
-+		 * Returns the list of remotely mounted filesystems. The=20
-+		 * mountlist contains one entry for each hostname and=20
-+		 * directory pair.
-+		 */
-+		mountlist
-+		MOUNTPROC3_DUMP(void) =3D 2;
-+
-+		/*
-+		 * Removes the mount list entry for the directory
-+		 * Unix authentication required.
-+		 */
-+		void
-+		MOUNTPROC3_UMNT(dirpath) =3D 3;
-+
-+		/*
-+		 * Removes all of the mount list entries for this client
-+		 * Unix authentication required.
-+		 */
-+		void
-+		MOUNTPROC3_UMNTALL(void) =3D 4;
-+
-+		/*
-+		 * Returns a list of all the exported filesystems, and which
-+		 * machines are allowed to import it.
-+		 */
-+		exports
-+		MOUNTPROC3_EXPORT(void)  =3D 5;
-+
-+	} =3D 3;
-+} =3D 100005;
-+
-+#ifdef RPC_HDR
-+%#endif /*!_rpcsvc_mount_h*/
-+#endif
-diff -uprN nfs-utils-1.0.8/utils/mount/nfsumount.c nfs-utils-1.0.8-ag/uti=
-ls/mount/nfsumount.c
---- nfs-utils-1.0.8/utils/mount/nfsumount.c	1969-12-31 19:00:00.000000000=
- -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfsumount.c	2006-06-12 15:09:22.704611=
-000 -0400
-@@ -0,0 +1,392 @@
-+/*
-+ * nfsumount.c -- Linux NFS umount
-+ * Copyright (C) 2006 Amit Gud <agud@redhat.com>
++/* 1999-02-22 Arkadiusz Mi=B6kiewicz <misiek@pld.ORG.PL>
++ * - added Native Language Support
 + *
-+ * - Basic code and wrapper around NFS umount code originally
-+ *   in util-linux/mount/nfsmount.c
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
++ * 2006-06-08 Amit Gud <agud@redhat.com>
++ * - Moved to nfs-utils/support/nfs from util-linux/mount
 + */
 +
 +#include <stdio.h>
-+#include <errno.h>
-+#include <getopt.h>
-+#include <mntent.h>
-+#include <sys/mount.h>
-+#include <ctype.h>
++#include <string.h>		/* for index */
++#include <ctype.h>		/* for isdigit */
++#include <sys/stat.h>		/* for umask */
 +
-+#include "xcommon.h"
-+#include "fstab.h"
++#include "nfs_mntent.h"
 +#include "nls.h"
-+#include "conn.h"
++#include "xcommon.h"
 +
-+#include "mount_constants.h"
-+#include "nfsmount.h"
-+#include "nfsumount.h"
++/* Unfortunately the classical Unix /etc/mtab and /etc/fstab
++   do not handle directory names containing spaces.
++   Here we mangle them, replacing a space by \040.
++   What do other Unices do? */
 +
-+#if !defined(MNT_FORCE)
-+/* dare not try to include <linux/mount.h> -- lots of errors */
-+#define MNT_FORCE 1
-+#endif
++static unsigned char need_escaping[] =3D { ' ', '\t', '\n', '\\' };
 +
-+#if !defined(MNT_DETACH)
-+#define MNT_DETACH 2
-+#endif
++static char *
++mangle(const unsigned char *s) {
++	char *ss, *sp;
++	int n;
 +
-+extern char *progname;
-+extern int nfs_mount_version;
-+extern int nomtab;
-+extern int verbose;
-+int force;
-+int lazy;
-+int remount;
-+
-+extern int find_kernel_nfs_mount_version(void);
-+extern int probe_mntport(clnt_addr_t *);
-+extern int nfs_gethostbyname(const char *, struct sockaddr_in *);
-+
-+static inline enum clnt_stat
-+nfs3_umount(dirpath *argp, CLIENT *clnt)
-+{
-+	static char clnt_res;
-+	memset (&clnt_res, 0, sizeof(clnt_res));
-+	return clnt_call(clnt, MOUNTPROC_UMNT,
-+			 (xdrproc_t) xdr_dirpath, (caddr_t)argp,
-+			 (xdrproc_t) xdr_void, (caddr_t) &clnt_res,
-+			 TIMEOUT);
-+}
-+
-+static inline enum clnt_stat
-+nfs2_umount(dirpath *argp, CLIENT *clnt)
-+{
-+	static char clnt_res;
-+	memset (&clnt_res, 0, sizeof(clnt_res));
-+	return clnt_call(clnt, MOUNTPROC_UMNT,
-+			 (xdrproc_t) xdr_dirpath, (caddr_t)argp,
-+			 (xdrproc_t) xdr_void, (caddr_t) &clnt_res,
-+			 TIMEOUT);
-+}
-+
-+int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
-+{
-+	CLIENT *clnt;
-+	enum clnt_stat res =3D 0;
-+	int msock;
-+
-+	clnt =3D mnt_openclnt(mnt_server, &msock);
-+	if (!clnt)
-+		goto out_bad;
-+	switch (mnt_server->pmap.pm_vers) {
-+	case 3:
-+		res =3D nfs3_umount(argp, clnt);
-+		break;
-+	case 2:
-+	case 1:
-+		res =3D nfs2_umount(argp, clnt);
-+		break;
-+	default:
-+		break;
++	n =3D strlen(s);
++	ss =3D sp =3D xmalloc(4*n+1);
++	while(1) {
++		for (n =3D 0; n < sizeof(need_escaping); n++) {
++			if (*s =3D=3D need_escaping[n]) {
++				*sp++ =3D '\\';
++				*sp++ =3D '0' + ((*s & 0300) >> 6);
++				*sp++ =3D '0' + ((*s & 070) >> 3);
++				*sp++ =3D '0' + (*s & 07);
++				goto next;
++			}
++		}
++		*sp++ =3D *s;
++		if (*s =3D=3D 0)
++			break;
++	next:
++		s++;
 +	}
-+	mnt_closeclnt(clnt, msock);
-+	if (res =3D=3D RPC_SUCCESS)
-+		return 1;
-+ out_bad:
-+	return 0;
++	return ss;
 +}
 +
-+u_int get_mntproto(const char *);
-+u_int
-+get_mntproto(const char *dirname)
-+{
-+	FILE *mtab;
-+	struct mntent mntbuf;
-+	char tmpbuf[BUFSIZ];
-+	u_int proto =3D IPPROTO_TCP; /* assume tcp */
++static int
++is_space_or_tab (char c) {
++	return (c =3D=3D ' ' || c =3D=3D '\t');
++}
 +
-+	 mtab =3D setmntent ("/proc/mounts", "r");
-+	 if (mtab =3D=3D NULL)
-+	 	mtab =3D setmntent (_PATH_MOUNTED, "r");
-+	if (mtab =3D=3D NULL)
-+		return proto;
++static char *
++skip_spaces(char *s) {
++	while (is_space_or_tab(*s))
++		s++;
++	return s;
++}
 +
-+	while(getmntent_r(mtab, &mntbuf, tmpbuf, sizeof (tmpbuf))) {
-+		if (strcmp(mntbuf.mnt_type, "nfs"))
-+			continue;
-+		if (strcmp(dirname,  mntbuf.mnt_fsname))
-+			continue;
-+		if (hasmntopt(&mntbuf, "udp"))
-+			proto =3D IPPROTO_UDP;
-+		break;
++static char *
++skip_nonspaces(char *s) {
++	while (*s && !is_space_or_tab(*s))
++		s++;
++	return s;
++}
++
++#define isoctal(a) (((a) & ~7) =3D=3D '0')
++
++/* returns malloced pointer - no more strdup required */
++static char *
++unmangle(char *s) {
++	char *ret, *ss, *sp;
++
++	ss =3D skip_nonspaces(s);
++	ret =3D sp =3D xmalloc(ss-s+1);
++	while(s !=3D ss) {
++		if (*s =3D=3D '\\' && isoctal(s[1]) && isoctal(s[2]) && isoctal(s[3]))=
+ {
++			*sp++ =3D 64*(s[1] & 7) + 8*(s[2] & 7) + (s[3] & 7);
++			s +=3D 4;
++		} else
++			*sp++ =3D *s++;
 +	}
-+	endmntent (mtab);
-+
-+	return proto;
-+}
-+
-+/* complain about a failed umount */
-+static void complain(int err, const char *dev) {
-+  switch (err) {
-+    case ENXIO:
-+      nfs_error (_("umount: %s: invalid block device"), dev); break;
-+    case EINVAL:
-+      nfs_error (_("umount: %s: not mounted"), dev); break;
-+    case EIO:
-+      nfs_error (_("umount: %s: can't write superblock"), dev); break;
-+    case EBUSY:
-+     /* Let us hope fstab has a line "proc /proc ..."
-+        and not "none /proc ..."*/
-+      nfs_error (_("umount: %s: device is busy"), dev); break;
-+    case ENOENT:
-+      nfs_error (_("umount: %s: not found"), dev); break;
-+    case EPERM:
-+      nfs_error (_("umount: %s: must be superuser to umount"), dev); bre=
-ak;
-+    case EACCES:
-+      nfs_error (_("umount: %s: block devices not permitted on fs"), dev=
-); break;
-+    default:
-+      nfs_error (_("umount: %s: %s"), dev, strerror (err)); break;
-+  }
-+}
-+
-+int add_mtab2(const char *spec, const char *node, const char *type,
-+		const char *opts, struct mntentchn *mc)
-+{
-+	int umnt_err, umnt_err2, res;
-+
-+        umnt_err =3D umnt_err2 =3D 0;
-+        if (lazy) {
-+                res =3D umount2 (node, MNT_DETACH);
-+                if (res < 0)
-+                        umnt_err =3D errno;
-+                goto writemtab;
-+        }
-+
-+        if (force) {
-+                res =3D umount2 (node, MNT_FORCE);
-+                if (res =3D=3D -1) {
-+                        int errsv =3D errno;
-+                        perror("umount2");
-+                        errno =3D errsv;
-+                        if (errno =3D=3D ENOSYS) {
-+                                if (verbose)
-+                                        printf(_("no umount2, trying umo=
-unt...\n"));
-+                                res =3D umount (node);
-+                        }
-+                }
-+        } else
-+                res =3D umount (node);
-+
-+        if (res < 0) {
-+                umnt_err =3D errno;
-+                /* A device might have been mounted on a node that has s=
-ince
-+                   been deleted or renamed, so if node fails, also try s=
-pec. */
-+                /* Note that this is incorrect in case spec was mounted
-+                   several times. */
-+                /* if (umnt_err =3D=3D ENOENT || umnt_err =3D=3D EINVAL)=
- */
-+                if (umnt_err !=3D EBUSY && strcmp(node, spec)) {
-+                        if (verbose)
-+                                printf (_("could not umount %s - trying =
-%s instead\n"),
-+                                        node, spec);
-+                        res =3D umount (spec);
-+                        if (res < 0)
-+                                umnt_err2 =3D errno;
-+                       /* Do not complain about remote NFS mount points =
-*/
-+                        if (errno =3D=3D ENOENT && index(spec, ':'))
-+                                umnt_err2 =3D 0;
-+                }
-+        }
-+
-+        if (res < 0 && remount && (umnt_err =3D=3D EBUSY || umnt_err2 =3D=
-=3D EBUSY)) {
-+                /* Umount failed - let us try a remount */
-+                res =3D mount(spec, node, NULL,
-+                            MS_MGC_VAL | MS_REMOUNT | MS_RDONLY, NULL);
-+                if (res =3D=3D 0) {
-+                        nfs_mntent_t remnt;
-+                        fprintf(stderr,
-+                                _("umount: %s busy - remounted read-only=
-\n"),
-+                                spec);
-+                        remnt.mnt_type =3D remnt.mnt_fsname =3D NULL;
-+                        remnt.mnt_dir =3D xstrdup(node);
-+                        remnt.mnt_opts =3D xstrdup("ro");
-+                        if (!nomtab)
-+                                update_mtab(node, &remnt);
-+                        return 0;
-+                } else if (errno !=3D EBUSY) {    /* hmm ... */
-+                        perror("remount");
-+                        fprintf(stderr,
-+                                _("umount: could not remount %s read-onl=
-y\n"),
-+                                spec);
-+                }
-+        }
-+
-+        if (res >=3D 0) {
-+                /* Umount succeeded */
-+                if (verbose)
-+                        printf (_("%s umounted\n"), spec);
-+        }
-+
-+ writemtab:
-+        if (!nomtab &&
-+            (umnt_err =3D=3D 0 || umnt_err =3D=3D EINVAL || umnt_err =3D=
-=3D ENOENT)) {
-+               update_mtab (node, NULL);
-+        }
-+
-+        if (res >=3D 0)
-+                return 0;
-+
-+        if (umnt_err2)
-+                complain(umnt_err2, spec);
-+        if (umnt_err && umnt_err !=3D umnt_err2)
-+                complain(umnt_err, node);
-+        return 1;
++	*sp =3D 0;
++	return ret;
 +}
 +
 +/*
-+ * Returns 1 if everything went well, else 0.
++ * fstat'ing the file and allocating a buffer holding all of it
++ * may be a bad idea: if the file is /proc/mounts, the stat
++ * returns 0.
++ * (On the other hand, mangling and unmangling is meaningless
++ *  for /proc/mounts.)
 + */
-+int _nfsumount(const char *spec, const char *opts)
-+{
-+	char *hostname;
-+	char *dirname;
-+	clnt_addr_t mnt_server =3D { &hostname, };
-+	struct pmap *pmap =3D &mnt_server.pmap;
-+	char *p;
 +
-+	nfs_mount_version =3D find_kernel_nfs_mount_version();
-+	if (spec =3D=3D NULL || (p =3D strchr(spec,':')) =3D=3D NULL)
-+		goto out_bad;
-+	hostname =3D xstrndup(spec, p-spec);
-+	dirname =3D xstrdup(p+1);
-+#ifdef NFS_MOUNT_DEBUG
-+	printf(_("host: %s, directory: %s\n"), hostname, dirname);
-+#endif
++mntFILE *
++nfs_setmntent (const char *file, char *mode) {
++	mntFILE *mfp =3D xmalloc(sizeof(*mfp));
++	mode_t old_umask =3D umask(077);
 +
-+	if (opts && (p =3D strstr(opts, "addr=3D"))) {
-+		char *q;
-+
-+		free(hostname);
-+		p +=3D 5;
-+		q =3D p;
-+		while (*q && *q !=3D ',') q++;
-+		hostname =3D xstrndup(p,q-p);
-+	}
-+
-+	if (opts && (p =3D strstr(opts, "mounthost=3D"))) {
-+		char *q;
-+
-+		free(hostname);
-+		p +=3D 10;
-+		q =3D p;
-+		while (*q && *q !=3D ',') q++;
-+		hostname =3D xstrndup(p,q-p);
-+	}
-+
-+	pmap->pm_prog =3D MOUNTPROG;
-+	pmap->pm_vers =3D MOUNTVERS;
-+	pmap->pm_prot =3D get_mntproto(spec);
-+	if (opts && (p =3D strstr(opts, "mountprog=3D")) && isdigit(*(p+10)))
-+		pmap->pm_prog =3D atoi(p+10);
-+	if (opts && (p =3D strstr(opts, "mountport=3D")) && isdigit(*(p+10)))
-+		pmap->pm_port =3D atoi(p+10);
-+	if (opts && (p =3D strstr(opts, "nfsvers=3D")) && isdigit(*(p+8)))
-+		pmap->pm_vers =3D nfsvers_to_mnt(atoi(p+8));
-+	if (opts && (p =3D strstr(opts, "mountvers=3D")) && isdigit(*(p+10)))
-+		pmap->pm_vers =3D atoi(p+10);
-+
-+	if (!nfs_gethostbyname(hostname, &mnt_server.saddr))
-+		goto out_bad;
-+	if (!probe_mntport(&mnt_server))
-+		goto out_bad;
-+	return nfs_call_umount(&mnt_server, &dirname);
-+ out_bad:
-+	printf("%s: %s: not found or not mounted\n", progname, spec);
-+	return 0;
++	mfp->mntent_fp =3D fopen(file, mode);
++	umask(old_umask);
++	mfp->mntent_file =3D xstrdup(file);
++	mfp->mntent_errs =3D (mfp->mntent_fp =3D=3D NULL);
++	mfp->mntent_softerrs =3D 0;
++	mfp->mntent_lineno =3D 0;
++	return mfp;
 +}
 +
-+static struct option umount_longopts[] =3D
-+{
-+  { "force", 0, 0, 'f' },
-+  { "help", 0, 0, 'h' },
-+  { "no-mtab", 0, 0, 'n' },
-+  { "verbose", 0, 0, 'v' },
-+  { "read-only", 0, 0, 'r' },
-+  { NULL, 0, 0, 0 }
-+};
-+
-+void umount_usage()
-+{
-+	printf("usage: %s dir [-fvnrlh]\n", progname);
-+	printf("options:\n\t-f\t\tforce unmount\n");
-+	printf("\t-v\t\tverbose\n");
-+	printf("\t-n\t\tDo not update /etc/mtab\n");
-+	printf("\t-r\t\tremount\n");
-+	printf("\t-l\t\tlazy unmount\n");
-+	printf("\t-h\t\tprint this help\n\n");
++void
++nfs_endmntent (mntFILE *mfp) {
++	if (mfp) {
++		if (mfp->mntent_fp)
++			fclose(mfp->mntent_fp);
++		if (mfp->mntent_file)
++			free(mfp->mntent_file);
++		free(mfp);
++	}
 +}
 +
-+int nfsumount(int argc, char *argv[])
-+{
-+	int c, ret;
-+	char *spec;
-+	struct mntentchn *mc;
++int
++nfs_addmntent (mntFILE *mfp, nfs_mntent_t *mnt) {
++	char *m1, *m2, *m3, *m4;
++	int res;
 +
-+	spec =3D argv[1];
++	if (fseek (mfp->mntent_fp, 0, SEEK_END))
++		return 1;			/* failure */
 +
-+	argv +=3D 1;
-+	argc -=3D 1;
++	m1 =3D mangle(mnt->mnt_fsname);
++	m2 =3D mangle(mnt->mnt_dir);
++	m3 =3D mangle(mnt->mnt_type);
++	m4 =3D mangle(mnt->mnt_opts);
 +
-+	while ((c =3D getopt_long (argc, argv, "fvnrlh",
-+				umount_longopts, NULL)) !=3D -1) {
++	res =3D fprintf (mfp->mntent_fp, "%s %s %s %s %d %d\n",
++		       m1, m2, m3, m4, mnt->mnt_freq, mnt->mnt_passno);
 +
-+		switch (c) {
-+		case 'f':
-+			++force;
-+			break;
-+		case 'v':
-+			++verbose;
-+			break;
-+		case 'n':
-+			++nomtab;
-+			break;
-+		case 'r':
-+			++remount;
-+			break;
-+		case 'l':
-+			++lazy;
-+			break;
-+		case 'h':
-+		default:
-+			umount_usage();
-+			return 0;
++	free(m1);
++	free(m2);
++	free(m3);
++	free(m4);
++	return (res < 0) ? 1 : 0;
++}
++
++/* Read the next entry from the file fp. Stop reading at an incorrect en=
+try. */
++nfs_mntent_t *
++nfs_getmntent (mntFILE *mfp) {
++	static char buf[4096];
++	static nfs_mntent_t me;
++	char *s;
++
++ again:
++	if (mfp->mntent_errs || mfp->mntent_softerrs >=3D ERR_MAX)
++		return NULL;
++
++	/* read the next non-blank non-comment line */
++	do {
++		if (fgets (buf, sizeof(buf), mfp->mntent_fp) =3D=3D NULL)
++			return NULL;
++
++		mfp->mntent_lineno++;
++		s =3D index (buf, '\n');
++		if (s =3D=3D NULL) {
++			/* Missing final newline?  Otherwise extremely */
++			/* long line - assume file was corrupted */
++			if (feof(mfp->mntent_fp)) {
++				fprintf(stderr, _("[mntent]: warning: no final "
++					"newline at the end of %s\n"),
++					mfp->mntent_file);
++				s =3D index (buf, 0);
++			} else {
++				mfp->mntent_errs =3D 1;
++				goto err;
++			}
 +		}
-+	}
++		*s =3D 0;
++		if (--s >=3D buf && *s =3D=3D '\r')
++			*s =3D 0;
++		s =3D skip_spaces(buf);
++	} while (*s =3D=3D '\0' || *s =3D=3D '#');
 +
-+	mc =3D getmntdirbackward(spec, NULL);
-+	if (!mc)
-+		mc =3D getmntdevbackward(spec, NULL);
-+	if (!mc && verbose)
-+		printf(_("Could not find %s in mtab\n"), spec);
++	me.mnt_fsname =3D unmangle(s);
++	s =3D skip_nonspaces(s);
++	s =3D skip_spaces(s);
++	me.mnt_dir =3D unmangle(s);
++	s =3D skip_nonspaces(s);
++	s =3D skip_spaces(s);
++	me.mnt_type =3D unmangle(s);
++	s =3D skip_nonspaces(s);
++	s =3D skip_spaces(s);
++	me.mnt_opts =3D unmangle(s);
++	s =3D skip_nonspaces(s);
++	s =3D skip_spaces(s);
 +
-+	if(mc) {
-+		ret =3D _nfsumount(mc->m.mnt_fsname, mc->m.mnt_opts);
-+		if(ret)
-+			ret =3D add_mtab2(mc->m.mnt_fsname, mc->m.mnt_dir,
-+				mc->m.mnt_type, mc->m.mnt_opts, mc);
-+	}
-+	else {
-+		ret =3D _nfsumount(spec, NULL);
-+		if(ret)
-+			ret =3D add_mtab2(spec, spec, spec, spec, NULL);
-+	}
++	if (isdigit(*s)) {
++		me.mnt_freq =3D atoi(s);
++		while(isdigit(*s)) s++;
++	} else
++		me.mnt_freq =3D 0;
++	if(*s && !is_space_or_tab(*s))
++		goto err;
 +
-+	return(ret);
++	s =3D skip_spaces(s);
++	if(isdigit(*s)) {
++		me.mnt_passno =3D atoi(s);
++		while(isdigit(*s)) s++;
++	} else
++		me.mnt_passno =3D 0;
++	if(*s && !is_space_or_tab(*s))
++		goto err;
++
++	/* allow more stuff, e.g. comments, on this line */
++
++	return &me;
++
++ err:
++	mfp->mntent_softerrs++;
++	fprintf(stderr, _("[mntent]: line %d in %s is bad%s\n"),
++		mfp->mntent_lineno, mfp->mntent_file,
++		(mfp->mntent_errs || mfp->mntent_softerrs >=3D ERR_MAX) ?
++		_("; rest of file ignored") : "");
++	goto again;
++}
+diff -uprN nfs-utils-1.0.8/support/nfs/xcommon.c nfs-utils-1.0.8-ag/suppo=
+rt/nfs/xcommon.c
+--- nfs-utils-1.0.8/support/nfs/xcommon.c	1969-12-31 19:00:00.000000000 -=
+0500
++++ nfs-utils-1.0.8-ag/support/nfs/xcommon.c	2006-06-12 15:09:32.18786100=
+0 -0400
+@@ -0,0 +1,185 @@
++/*
++ * xcommon.c - various functions put together to avoid basic error check=
+ing.
++ *
++ * added fcntl locking by Kjetil T. (kjetilho@math.uio.no) - aeb, 950927
++ *
++ * 1999-02-22 Arkadiusz Mi=B6kiewicz <misiek@pld.ORG.PL>
++ * - added Native Language Support
++ *
++ * 2006-06-06 Amit Gud <agud@redhat.com>
++ * - Moved code snippets here from mount/sundries.c of util-linux
++ *   and merged code from support/nfs/xmalloc.c by Olaf Kirch <okir@mona=
+d.swb.de> here.
++ */
++
++#include <unistd.h>
++#include <ctype.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "xcommon.h"
++#include "nls.h"	/* _() */
++
++void (*at_die)(void ) =3D NULL;
++
++char *
++xstrndup (const char *s, int n) {
++     char *t;
++
++     if (s =3D=3D NULL)
++	  die (EX_SOFTWARE, _("bug in xstrndup call"));
++
++     t =3D xmalloc(n+1);
++     strncpy(t,s,n);
++     t[n] =3D 0;
++
++     return t;
 +}
 +
-diff -uprN nfs-utils-1.0.8/utils/mount/nfsumount.h nfs-utils-1.0.8-ag/uti=
-ls/mount/nfsumount.h
---- nfs-utils-1.0.8/utils/mount/nfsumount.h	1969-12-31 19:00:00.000000000=
- -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/nfsumount.h	2006-06-12 15:09:22.709611=
-000 -0400
-@@ -0,0 +1,11 @@
-+#ifndef _NFS_UMOUNT_H
-+#define _NFS_UMOUNT_H
++char *
++xstrconcat2 (const char *s, const char *t) {
++     char *res;
 +
-+#include "conn.h"
-+#include "nfsmount.h"
++     if (!s) s =3D "";
++     if (!t) t =3D "";
++     res =3D xmalloc(strlen(s) + strlen(t) + 1);
++     strcpy(res, s);
++     strcat(res, t);
++     return res;
++}
 +
-+int nfsumount(int, char **);
-+int nfs_call_umount(clnt_addr_t *, dirpath *);
-+void umount_usage();
++/* frees its first arg - typical use: s =3D xstrconcat3(s,t,u); */
++char *
++xstrconcat3 (const char *s, const char *t, const char *u) {
++     char *res;
 +
++     if (!s) s =3D "";
++     if (!t) t =3D "";
++     if (!u) u =3D "";
++     res =3D xmalloc(strlen(s) + strlen(t) + strlen(u) + 1);
++     strcpy(res, s);
++     strcat(res, t);
++     strcat(res, u);
++     free((void *) s);
++     return res;
++}
++
++/* frees its first arg - typical use: s =3D xstrconcat4(s,t,u,v); */
++char *
++xstrconcat4 (const char *s, const char *t, const char *u, const char *v)=
+ {
++     char *res;
++
++     if (!s) s =3D "";
++     if (!t) t =3D "";
++     if (!u) u =3D "";
++     if (!v) v =3D "";
++     res =3D xmalloc(strlen(s) + strlen(t) + strlen(u) + strlen(v) + 1);
++     strcpy(res, s);
++     strcat(res, t);
++     strcat(res, u);
++     strcat(res, v);
++     free((void *) s);
++     return res;
++}
++
++/* Non-fatal error.  Print message and return.  */
++/* (print the message in a single printf, in an attempt
++    to avoid mixing output of several threads) */
++void
++nfs_error (const char *fmt, ...) {
++     va_list args;
++     char *fmt2;
++
++     fmt2 =3D xstrconcat2 (fmt, "\n");
++     va_start (args, fmt);
++     vfprintf (stderr, fmt2, args);
++     va_end (args);
++     free (fmt2);
++}
++
++/* Make a canonical pathname from PATH.  Returns a freshly malloced stri=
+ng.
++   It is up the *caller* to ensure that the PATH is sensible.  i.e.
++   canonicalize ("/dev/fd0/.") returns "/dev/fd0" even though ``/dev/fd0=
+/.''
++   is not a legal pathname for ``/dev/fd0''.  Anything we cannot parse
++   we return unmodified.   */
++char *canonicalize (const char *path) {
++	char canonical[PATH_MAX+2];
++
++	if (path =3D=3D NULL)
++		return NULL;
++
++#if 1
++	if (streq(path, "none") ||
++	    streq(path, "proc") ||
++	    streq(path, "devpts"))
++		return xstrdup(path);
 +#endif
-diff -uprN nfs-utils-1.0.8/utils/mount/umount.nfs.man nfs-utils-1.0.8-ag/=
-utils/mount/umount.nfs.man
---- nfs-utils-1.0.8/utils/mount/umount.nfs.man	1969-12-31 19:00:00.000000=
-000 -0500
-+++ nfs-utils-1.0.8-ag/utils/mount/umount.nfs.man	2006-06-12 15:09:22.714=
-612000 -0400
-@@ -0,0 +1,74 @@
-+.\"@(#)mount.nfs.8"
-+.TH UMOUNT.NFS 8 "6 Jun 2006"
-+.SH NAME
-+umount.nfs, umount.nfs4 \- unmount a Network File System
-+.SH SYNOPSIS
-+.BI "umount.nfs" " dir" " [\-fvnrlh ]"
-+.SH DESCRIPTION
-+.BR umount.nfs
-+and
-+.BR umount.nfs4
-+are a part of=20
-+.BR nfs (5)
-+utilities package, which provides NFS client functionality.
++	if (realpath (path, canonical))
++		return xstrdup(canonical);
 +
-+.BR umount.nfs4=20
-+and
-+.BR umount.nfs
-+are meant to be used by the
-+.BR umount (8)
-+command for unmounting NFS shares. This subcommand, however, can also be=
- used as a standalone command with limited functionality.
++	return xstrdup(path);
++}
 +
-+.I dir=20
-+is the directory on which the file system is mounted.
++/* Fatal error.  Print message and exit.  */
++void
++die(int err, const char *fmt, ...) {
++	va_list args;
 +
-+.SH OPTIONS
-+.TP
-+.BI "\-f"
-+Force unmount the file system in case of unreachable NFS system.
-+.TP
-+.BI "\-v"
-+Be verbose.
-+.TP
-+.BI "\-n"
-+Do not update=20
-+.I /etc/mtab.=20
-+By default, an entry is created in=20
-+.I /etc/mtab=20
-+for every mounted file system. Use this option to skip deleting an entry.
-+.TP
-+.BI "\-r"
-+In case unmounting fails, try to mount read-only.
-+.TP
-+.BI "\-l"
-+Lazy unmount. Detach the file system from the file system hierarchy now,=
- and cleanup all references to the file system as soon as it is not busy =
-anymore.
-+.TP
-+.BI "\-h"
-+Print help message.
++	va_start(args, fmt);
++	vfprintf(stderr, fmt, args);
++	fprintf(stderr, "\n");
++	va_end(args);
 +
-+.SH NOTE
-+For further information please refer=20
-+.BR nfs (5)
-+and
-+.BR umount (8)
-+manual pages.
++	if (at_die)
++		(*at_die)();
 +
-+.SH FILES
-+.TP 18n
-+.I /etc/fstab
-+file system table
-+.TP
-+.I /etc/mtab
-+table of mounted file systems
++	exit(err);
++}
 +
-+.PD
-+.SH "SEE ALSO"
-+.BR nfs (5),
-+.BR umount (8),
++static void
++die_if_null(void *t) {
++	if (t =3D=3D NULL)
++		die(EX_SYSERR, _("not enough memory"));
++}
 +
-+.SH BUGS
-+Please notify current developers of NFS of any bugs in the current softw=
-are or mail nfs@lists.sourceforge.net
++void *
++xmalloc (size_t size) {
++	void *t;
 +
-+.SH "AUTHOR"
-+Amit Gud <agud@redhat.com>
++	if (size =3D=3D 0)
++		return NULL;
 +
---- nfs-utils-1.0.8/configure.in	2006-04-11 22:55:51.000000000 -0400
-+++ nfs-utils-1.0.8-ag/configure.in	2006-06-12 18:14:08.534639000 -0400
-@@ -107,6 +107,13 @@ AC_ARG_ENABLE(rquotad,
- 	fi
- 	AM_CONDITIONAL(CONFIG_RQUOTAD, [test "$enable_rquotad" =3D "yes"])
-=20
-+AC_ARG_WITH(mount,
-+	[AC_HELP_STRING([--without-mount],
-+			[Create mount.nfs and do not use the util-linux mount(8) functionalit=
-y. By default it doesn't.])],
-+	use_mount=3D$withval,
-+	use_mount=3Dyes)
-+	AM_CONDITIONAL(CONFIG_NOMOUNT, [test "$use_mount" =3D "no"])
++	t =3D malloc(size);
++	die_if_null(t);
 +
- # Check whether user wants TCP wrappers support
- AC_TCP_WRAPPERS
-=20
-@@ -313,6 +320,7 @@ AC_CONFIG_FILES([
- 	utils/gssd/Makefile
- 	utils/idmapd/Makefile
- 	utils/lockd/Makefile
-+	utils/mount/Makefile
- 	utils/mountd/Makefile
- 	utils/nfsd/Makefile
- 	utils/nfsstat/Makefile
---- nfs-utils-1.0.8/ChangeLog	2006-04-11 22:55:50.000000000 -0400
-+++ nfs-utils-1.0.8-ag/ChangeLog	2006-06-12 18:21:33.277295000 -0400
-@@ -1,3 +1,7 @@
-+2006-06-12 Amit Gud <agud@redhat.com>
-+	Added the mount functionality from util-linux.
-+	Added --without-mount configure option.
++	return t;
++}
 +
- 2006-04-12 NeilBrown <neilb@suse.de>
- 	Set version to 1.0.8,=20
- 	aclocal -I aclocal ; autoheader ; automake ; autoconf
++void *
++xrealloc (void *p, size_t size) {
++	void *t;
++
++	t =3D realloc(p, size);
++	die_if_null(t);
++
++	return t;
++}
++
++void
++xfree(void *ptr)
++{
++	free(ptr);
++}
++
++char *
++xstrdup (const char *s) {
++	char *t;
++
++	if (s =3D=3D NULL)
++		return NULL;
++
++	t =3D strdup(s);
++	die_if_null(t);
++
++	return t;
++}
+diff -uprN nfs-utils-1.0.8/support/nfs/xmalloc.c nfs-utils-1.0.8-ag/suppo=
+rt/nfs/xmalloc.c
+--- nfs-utils-1.0.8/support/nfs/xmalloc.c	2005-12-19 23:12:44.000000000 -=
+0500
++++ nfs-utils-1.0.8-ag/support/nfs/xmalloc.c	1969-12-31 19:00:00.00000000=
+0 -0500
+@@ -1,50 +0,0 @@
+-/*
+- * support/nfs/xmalloc.c
+- *
+- * malloc with NULL checking.
+- *
+- * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+- */
+-
+-#ifdef HAVE_CONFIG_H
+-#include <config.h>
+-#endif
+-
+-#include <stdlib.h>
+-#include <string.h>
+-#include "xmalloc.h"
+-#include "xlog.h"
+-
+-void *
+-xmalloc(size_t size)
+-{
+-	void	*ptr;
+-
+-	if (!(ptr =3D malloc(size)))
+-		xlog(L_FATAL, "malloc: out of memory");
+-	return ptr;
+-}
+-
+-void *
+-xrealloc(void *ptr, size_t size)
+-{
+-	if (!(ptr =3D realloc(ptr, size)))
+-		xlog(L_FATAL, "realloc: out of memory");
+-	return ptr;
+-}
+-
+-void
+-xfree(void *ptr)
+-{
+-	free(ptr);
+-}
+-
+-char *
+-xstrdup(const char *str)
+-{
+-	char	*ret;
+-
+-	if (!(ret =3D strdup(str)))
+-		xlog(L_FATAL, "strdup: out of memory");
+-	return ret;
+-}
 
---------------030808060907050504050702
+--------------000502050306070705090704
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 
---------------030808060907050504050702
+--------------000502050306070705090704
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -3526,4 +1593,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------030808060907050504050702--
+--------------000502050306070705090704--
