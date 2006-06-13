@@ -1,32 +1,27 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: [PATCH 2 / 2] Move NFS mount code
-	from	util-linux	tonfs-utils - take2
-Date: Tue, 13 Jun 2006 21:12:49 +0800
-Message-ID: <1150204369.2854.1.camel@raven.themaw.net>
-References: <448DF3EB.7010601@redhat.com>
-	<1150166500.3061.27.camel@raven.themaw.net> <448E32AD.3070204@eth.net>
+From: "Christopher Smith" <csmithere@gmail.com>
+Subject: Re: Update to the NFS Howto
+Date: Tue, 13 Jun 2006 09:50:52 -0400
+Message-ID: <2b585fc90606130650p344f4a4j363146a54304fcc8@mail.gmail.com>
+References: <4489840C0200006B0000515A@lucius.provo.novell.com>
+	<2b585fc90606120403w755dfe76gb185ca135eed3732@mail.gmail.com>
+	<2b585fc90606120633n746a8a6ex9d6105c23a872bc3@mail.gmail.com>
+	<448EDD93.2C84.006B.0@novell.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, bunk@stusta.de,
-	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
-	Amit Gud <agud@redhat.com>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fq8hg-0002Hr-Pp
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 06:13:08 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fq8hg-0007l6-QI
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 06:13:08 -0700
-Received: from ihug-mail.icp-qv1-irony4.iinet.net.au ([203.59.1.198]
-	helo=mail-ihug.icp-qv1-irony4.iinet.net.au)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fq8he-0004Vw-9l
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 06:13:08 -0700
-To: Amit Gud <gud@eth.net>
-In-Reply-To: <448E32AD.3070204@eth.net>
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fq9ID-0005XT-Kn
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 06:50:53 -0700
+Received: from py-out-1112.google.com ([64.233.166.183])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fq9ID-0003YW-HM
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 06:50:53 -0700
+Received: by py-out-1112.google.com with SMTP id x31so134934pye
+	for <nfs@lists.sourceforge.net>; Tue, 13 Jun 2006 06:50:52 -0700 (PDT)
+To: "Chakravarthi P" <pchakravarthi@novell.com>
+In-Reply-To: <448EDD93.2C84.006B.0@novell.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,29 +34,142 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-06-12 at 23:36 -0400, Amit Gud wrote:
-> Ian Kent wrote:
-> > Hi Amit,
-> > 
-> > I see that the mtab locking here has the patches that should make it
-> > work properly (at least I believe that is the case) but if that same fix
-> > is not implemented in the util-linux code base then the problem will
-> > persist.
-> > 
-> > Perhaps Adrian Bunk should be involved in this since he will ultimately
-> > need to update util-linux as well?
-> > 
-> 
-> util-linux already uses this locking protocol (which is included in the 
-> patches), in fact that code is duplicated now in nfs-utils. But theres 
-> code like the samba client (mount.cifs), that doesn't follow this and 
-> have implemented some different mechanism.
+Chax--
 
-My point is that the code in util-linux does not do the locking properly
-and if it is not fixed then the locking here isn't worth anything.
+Thanks!  Please let me know if you need a hand or want any assistance.
 
-Ian
+Best,
+CMS
 
+On 6/13/06, Chakravarthi P <pchakravarthi@novell.com> wrote:
+> CMS,
+>
+>   your suggestions are very useful and valid. I will incorporate them
+>   and provide you with snippets of what needs to be added in the
+> various sections
+>   of the howto and leave it to you to modify as required and update
+>   the webpage.
+>   there was another suggestion that came in the meanwhile.
+>   So will incorporate that also and send the snippets as suggested
+>   at the earliest.
+>   thanx once again.
+>
+> regards
+> chax.
+>
+> >>> "Christopher Smith" <csmithere@gmail.com> 06/12/06 7:03 pm >>>
+> Chax--
+>
+> Thank you very much for what you have submitted.  A few comments:
+>
+> a) Some of the information tin the README is general to Linux, and
+> applies to all 2.6 implementations.
+> b) Some of the information here applies to SuSE specifically.
+> c) The Kerberos configuration section applies to both NFS Version 3 as
+> well as NFS Version 4.
+>
+> What I would suggest is we do the following:
+>
+> * Break out the portions that apply specifically to NFS Version 4 into
+> sections 3 and 4 of the HOWTO for server and client configuration.
+> * Break out the Kerberos documentation you've generated into a
+> subsection of the Security portion of the HOWTO, since it applies to
+> all NFS versions.
+> * Add notation where specific SuSE related configuration is required.
+>
+> Either you or I can do this.  Its up to you.
+>
+> Is this acceptable?
+>
+> Best,
+> CMS
+>
+> On 6/12/06, Christopher Smith <csmithere@gmail.com> wrote:
+> > Chax--
+> >
+> > I'm in the process of reviewing the content of the README you have
+> > submitted, and I will get back to you shortly.
+> >
+> > Best,
+> > CMS
+> >
+> > On 6/9/06, Chakravarthi P <pchakravarthi@novell.com> wrote:
+> > > All-
+> > >
+> > >    we have compiled a README for setting up NFSv4 client
+> > >    and server which works well on SLES.
+> > >    Can this be inclused as part of nfs- howto
+> > >    mentioned here.
+> > >    Please look through the attached README
+> > >
+> > >    thanx
+> > >    chax.
+> > >
+> > > >>> On 6/5/2006 at 10:30:06 pm, in message
+> > > <6AF36215- 733E- 42C0- 9395- B836740E50FB@gmail.com>, "Christopher
+> M. Smith"
+> > > <csmithere@gmail.com> wrote:
+> > > > All--
+> > > >
+> > > > I have put a draft update of the NFS- Howto up on the
+> > > > nfs,sourceforge.net website.  It contains no new content, but
+> > > > encompasses the following changes:
+> > > >
+> > > > 1. A slightly different CSS style sheet to enhance its
+> readability.
+> > > > 2. It has been updated to DocBook XML v4.2.
+> > > >
+> > > > The draft is located here:
+> > > >
+> > > > http://nfs.sourceforge.net/nfs- howtov4/
+> > > >
+> > > > Please let me know if you have any questions or comments.  If I
+> have
+> > > > not heard negative feedback by the end of the week, I will
+> migrate
+> > > > the new content to be the primary version.
+> > > >
+> > > > Thank you for your time.
+> > > >
+> > > > Best,
+> > > > CMS
+> > > > --
+> > > > Christopher M. Smith
+> > > > csmithere@gmail.com
+> > > >
+> > > >
+> > > > _______________________________________________
+> > > > NFS maillist  -   NFS@lists.sourceforge.net
+> > > > https://lists.sourceforge.net/lists/listinfo/nf
+> > >
+> > >
+> > >
+> > >
+> > >
+> >
+> >
+> > --
+> > CMS
+> > --
+> > Christopher M. Smith
+> > csmithere@gmail.com
+> >
+>
+>
+> --
+> CMS
+> --
+> Christopher M. Smith
+> csmithere@gmail.com
+>
+>
+
+
+-- 
+CMS
+--
+Christopher M. Smith
+csmithere@gmail.com
 
 
 _______________________________________________
