@@ -1,30 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC] NLM lock failover admin interface
-Date: Tue, 13 Jun 2006 17:08:13 +1000
-Message-ID: <17550.25693.507553.731606@cse.unsw.edu.au>
-References: <1150089943.26019.18.camel@localhost.localdomain>
-	<17550.11870.186706.36949@cse.unsw.edu.au>
-	<1150182012.27203.42.camel@localhost.localdomain>
+From: <bt.email.antivirus@bt.com>
+Subject: BT Messaging Anti-Virus Alert
+Date: Tue, 13 Jun 2006 08:31:07 +0100
+Message-ID: <000c01c68ebb$55962690$aba420d9@domain1.systemhost.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-cluster@redhat.com
+Content-Type: multipart/mixed; boundary="===============2019230210=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
 	helo=sc8-sf-list2.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fq30j-0004jC-LX
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:08:25 -0700
+	id 1Fq3Ms-0006eK-1H
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:31:18 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1Fq30j-0003hs-OO
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:08:25 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fq30i-0004df-B1
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:08:25 -0700
-To: Wendy Cheng <wcheng@redhat.com>
-In-Reply-To: message from Wendy Cheng on Tuesday June 13
+	id 1Fq3Mr-0005WW-S7
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:31:17 -0700
+Received: from smtp5.smtp.bt.com ([217.32.164.139])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fq3Mq-00019C-F6
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:31:17 -0700
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,25 +31,151 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday June 13, wcheng@redhat.com wrote:
-> >   One is to register a callback when an interface is shut down.
-> >   Another (possibly the best) is to arrange a new signal for lockd
-> >   which say "Drop any locks which were sent to IP addresses that are
-> >   no longer valid local addresses".
-> 
-> These, again, give individual filesystem no freedom to adjust what they
-> need upon failover. But I'll check them out this week - maybe there are
-> good socket layer hooks that I overlook. 
-> 
+This is a multi-part message in MIME format.
 
-Can you say more about what sort of adjustments an individual filesystem
-might want the freedom to make?  It might help me understand the
-issues better.
+--===============2019230210==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_000D_01C68EC3.B75A8E90"
+Content-Class: urn:content-classes:message
 
-Thanks,
-NeilBrown
+This is a multi-part message in MIME format.
 
+------=_NextPart_000_000D_01C68EC3.B75A8E90
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Notification Of Blocked e-mail - This message is intended for BT
+employees only. 
+All other recipients: Please ignore this message and accept our apology
+for any inconvenience (N.B. the links below are private).
+
+An e-mail (summarised below) has been blocked at the BT e-mail gateway
+because it contained an attachment of a potentially dangerous type
+<http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm>  or
+a computer virus. 
+
+Date/Time:       "13 Jun 2006 08:31:07" 
+From:              "nfs-bounces@lists.sourceforge.net" 
+Subject:           "[NFS] ezmlm response" 
+Blocked file:     "[Message Body]" 
+Virus Name:     "Exploit-MIME.gen.c" 
+
+
+
+BT Employees: If there is a legitimate business requirement for this
+e-mail, please ask the originator to re-send it. You must advise them to
+follow the special instructions, which you will find at this location
+<http://antivirus.intra.bt.com/zippass.htm>  for re-sending e-mail of
+this type. They should also ensure that the e-mail is virus-free.
+
+More information on blocked attachments can be found at
+http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm
+<http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm> 
+
+Please do not reply to this email. Thank you.
+
+
+BT Teamconnect Enterprise Solutions 
+
+British Telecommunications plc
+Registered office: 81 Newgate Street London EC1A 7AJ
+Registered in England no. 1800000 
+This electronic message contains information from British
+Telecommunications plc which may be privileged or confidential. 
+If you are not the intended recipient be aware that any disclosure,
+copying, distribution or use of the contents of this information is
+prohibited. 
+
+Generated by: C05
+ 
+
+
+------=_NextPart_000_000D_01C68EC3.B75A8E90
+Content-Type: text/html;
+	charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Notification Of Blocked e-mail</title>
+</head>
+
+<body>
+
+<b><font color="#ff0000" size="2" face="Arial"><u>
+<p>Notification Of Blocked e-mail - This message is intended for BT employees 
+only. <br>
+All other recipients: Please ignore this message and accept our apology for any 
+inconvenience (N.B. the links below are private).</p>
+</u></font><font face="Arial" size="2">
+<p>An e-mail (summarised below) has been blocked at the BT e-mail gateway 
+because it contained an attachment of a </font></b><font face="Arial" size="2">
+<a href="http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm">
+<font color="#0000ff"><u>potentially dangerous type</u></font></a> <b>or a 
+computer virus. <font face="Arial"><br>
+</font></b><font color="#000080" size="2"><br>
+
+Date/Time: &nbsp; &nbsp; &nbsp; "13 Jun 2006 08:31:07" <BR>
+From: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;"nfs-bounces@lists.sourceforge.net" <BR>
+Subject: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "[NFS] ezmlm response" <BR>
+Blocked file: &nbsp; &nbsp; "[Message Body]" <BR>
+Virus Name: &nbsp; &nbsp; "Exploit-MIME.gen.c" <BR><BR>
+
+<b><font color="#ff0000">
+<p>BT Employees:</font> </b>If there is a legitimate business requirement for 
+this e-mail, please ask the originator to re-send it. You must advise them to 
+follow the special instructions, which you will find at
+<a href="http://antivirus.intra.bt.com/zippass.htm"><font color="#0000ff"><u>
+this location</u></font></a> for re-sending e-mail of this type. They should also 
+ensure that the e-mail is virus-free.</p>
+<p>More information on blocked attachments can be found at
+<a href="http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm">
+<font color="#0000ff"><u>
+http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm</u></font></a></p>
+<b>
+<p>Please do not reply to this email. Thank you.<br>
+<br>
+<br>
+<i>BT Teamconnect Enterprise Solutions</i> <br>
+<br>
+</b><font size="1">British Telecommunications plc<br>
+Registered office: 81 Newgate Street London EC1A 7AJ<br>
+Registered in England no. 1800000 <br>
+This electronic message contains information from British Telecommunications plc 
+which may be privileged or confidential. <br>
+If you are not the intended recipient be aware that any disclosure, copying, 
+distribution or use of the contents of this information is prohibited. </p>
+</font></font><b><font face="Arial" size="1" color="#808080">
+<p>Generated by: C05</font><font face="Arial" size="2" color="#808080"><br>
+&nbsp;</p>
+</font></b>
+
+</body>
+
+</html>
+
+------=_NextPart_000_000D_01C68EC3.B75A8E90--
+
+
+--===============2019230210==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+
+--===============2019230210==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2019230210==--
