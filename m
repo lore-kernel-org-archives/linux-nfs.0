@@ -1,31 +1,23 @@
-From: Amit Gud <gud@eth.net>
-Subject: Re: [PATCH 2 / 2] Move NFS mount code from
- util-linux	tonfs-utils - take2
-Date: Mon, 12 Jun 2006 23:36:13 -0400
-Message-ID: <448E32AD.3070204@eth.net>
-References: <448DF3EB.7010601@redhat.com>
-	<1150166500.3061.27.camel@raven.themaw.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: The host->h_inuse NLM's nlm_gc_hosts()
+Date: Tue, 13 Jun 2006 13:46:18 +1000
+Message-ID: <17550.13578.412413.13818@cse.unsw.edu.au>
+References: <1149494058.5424.164.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, bunk@stusta.de,
-	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
-	Amit Gud <agud@redhat.com>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FpzeI-00048q-QP
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:33:02 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FpzeI-0003eu-MA
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:33:02 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpzeH-0000ya-9L
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:33:02 -0700
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: <1150166500.3061.27.camel@raven.themaw.net>
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FpzrJ-0005Hu-Sr
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:46:29 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FpzrI-0001PC-LC
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:46:30 -0700
+To: Wendy Cheng <wcheng@redhat.com>
+In-Reply-To: message from Wendy Cheng on Monday June 5
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,29 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Ian Kent wrote:
-> Hi Amit,
+On Monday June 5, wcheng@redhat.com wrote:
 > 
-> I see that the mtab locking here has the patches that should make it
-> work properly (at least I believe that is the case) but if that same fix
-> is not implemented in the util-linux code base then the problem will
-> persist.
+> So in theory, from #193, the lockhost->h_inuse is supposed to get set
+> back to 1. However, I'm wondering whether the fl->fl_owner would get
+> overwritten anywhere by (task_struct *)current->files in various other
+> code paths so we could end up updating different structures ? This could
+> allow the host gets freed such that nlmsvc_invalidate_all() will no
+> longer find this host ?
 > 
-> Perhaps Adrian Bunk should be involved in this since he will ultimately
-> need to update util-linux as well?
+> Will keep doing this bug hunt tomorrow but wondering someone knows this
+> code well can assure me that this won't happen ? Many thanks in advance.
 > 
 
-util-linux already uses this locking protocol (which is included in the 
-patches), in fact that code is duplicated now in nfs-utils. But theres 
-code like the samba client (mount.cifs), that doesn't follow this and 
-have implemented some different mechanism.
+It certainly shouldn't happen, but I cannot promise it won't - if
+there is a bug somewhere.
 
 
-AG
--- 
-May the source be with you.
-http://www.cis.ksu.edu/~gud
+> Also the assumption here is that by sending lockd a (any) signal would
+> kickoff nlmsvc_invalidate_all() to remove the locks. Is this a correct
+> assumption ?
 
+Not 'any' signal - only SIGKILL.  All other signals are blocked for
+lockd.
+
+NeilBrown
 
 
 _______________________________________________
