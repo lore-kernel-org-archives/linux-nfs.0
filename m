@@ -1,65 +1,61 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [NFS] [RFC] NLM lock failover admin interface
-Date: Tue, 13 Jun 2006 03:00:11 -0400
-Message-ID: <1150182012.27203.42.camel@localhost.localdomain>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC] NLM lock failover admin interface
+Date: Tue, 13 Jun 2006 17:08:13 +1000
+Message-ID: <17550.25693.507553.731606@cse.unsw.edu.au>
 References: <1150089943.26019.18.camel@localhost.localdomain>
 	<17550.11870.186706.36949@cse.unsw.edu.au>
-Reply-To: linux clustering <linux-cluster@redhat.com>
+	<1150182012.27203.42.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-cluster@redhat.com, nfs@lists.sourceforge.net
-Return-path: <linux-cluster-bounces@redhat.com>
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17550.11870.186706.36949@cse.unsw.edu.au>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cluster>
-List-Post: <mailto:linux-cluster@redhat.com>
-List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
-Sender: linux-cluster-bounces@redhat.com
-Errors-To: linux-cluster-bounces@redhat.com
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-cluster@redhat.com
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
+	helo=sc8-sf-list2.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fq30j-0004jC-LX
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:08:25 -0700
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
+	id 1Fq30j-0003hs-OO
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:08:25 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Fq30i-0004df-B1
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 00:08:25 -0700
+To: Wendy Cheng <wcheng@redhat.com>
+In-Reply-To: message from Wendy Cheng on Tuesday June 13
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-06-13 at 13:17 +1000, Neil Brown wrote:
-
-> So:
->  I think if we really want to "remove all NFS locks on a filesystem",
->  we could probably tie it into umount - maybe have lockd register some
->  callback which gets called just before s_op->umount_begin.
-
-The "umount_begin" idea was one time on my list but got discarded. The
-thought was that nfsd was not a filesystem, neither was lockd. How to
-register something with VFS umount for non-filesystem kernel modules ?
-Invent another autofs-like pseudo filesystem ? Mostly, not every
-filesystem would like to get un-mounted upon failover (GFS, for example,
-does not get un-mounted by our cluster suite upon failover).
-
->  If we want to remove all locks that arrived on a particular
->  interface, then we should arrange to do exactly that.  There are a
->  number of different options here. 
->   One is the multiple-lockd-threads idea.
-
-Certainly a good option. To make it happen, we still need admin
-interface. How to pass IP address from user mode into kernel - care to
-give this some suggestions if you have them handy ? Should socket ports
-get dynamics assigned ? Will we have scalibility issues ? 
- 
->   One is to register a callback when an interface is shut down.
->   Another (possibly the best) is to arrange a new signal for lockd
->   which say "Drop any locks which were sent to IP addresses that are
->   no longer valid local addresses".
-
-These, again, give individual filesystem no freedom to adjust what they
-need upon failover. But I'll check them out this week - maybe there are
-good socket layer hooks that I overlook. 
-
+On Tuesday June 13, wcheng@redhat.com wrote:
+> >   One is to register a callback when an interface is shut down.
+> >   Another (possibly the best) is to arrange a new signal for lockd
+> >   which say "Drop any locks which were sent to IP addresses that are
+> >   no longer valid local addresses".
 > 
-> So those are my thoughts.  Do any of them seem reasonable to you?
+> These, again, give individual filesystem no freedom to adjust what they
+> need upon failover. But I'll check them out this week - maybe there are
+> good socket layer hooks that I overlook. 
 > 
 
-The comments are greatly appreciated. And hopefully we can reach
-agreement soon.   
+Can you say more about what sort of adjustments an individual filesystem
+might want the freedom to make?  It might help me understand the
+issues better.
 
--- Wendy
+Thanks,
+NeilBrown
+
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
