@@ -1,30 +1,23 @@
-From: Amit Gud <agud@redhat.com>
-Subject: Re: [PATCH 1 / 1] Move NFS mount code from util-linux
- to	nfs-utils - take2
-Date: Mon, 12 Jun 2006 23:15:02 -0400
-Message-ID: <448E2DB6.6050209@redhat.com>
-References: <448DF37C.4000109@redhat.com>
-	<1150165495.3061.19.camel@raven.themaw.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC] NLM lock failover admin interface
+Date: Tue, 13 Jun 2006 13:17:50 +1000
+Message-ID: <17550.11870.186706.36949@cse.unsw.edu.au>
+References: <1150089943.26019.18.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, gud@eth.net,
-	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+Cc: linux-cluster@redhat.com, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FpzK6-0002TV-58
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:12:10 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FpzK6-00022i-Bf
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:12:10 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FpzK4-0005dB-WF
-	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:12:10 -0700
-To: Ian Kent <raven@themaw.net>
-In-Reply-To: <1150165495.3061.19.camel@raven.themaw.net>
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FpzPn-0002uR-79
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:18:03 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FpzPk-0004GI-QA
+	for nfs@lists.sourceforge.net; Mon, 12 Jun 2006 20:18:03 -0700
+To: Wendy Cheng <wcheng@redhat.com>
+In-Reply-To: message from Wendy Cheng on Monday June 12
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,30 +30,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Ian Kent wrote:
-> On Mon, 2006-06-12 at 19:06 -0400, Amit Gud wrote:
->> Neil,
->>
->> It avoids code duplication (of parsing the options and error checking) 
->> if we don't branch two different binaries for the NFSv4 and older versions.
->>
+On Monday June 12, wcheng@redhat.com wrote:
+> NFS v2/v3 active-active NLM lock failover has been an issue with our
+> cluster suite. With current implementation, it (cluster suite) is trying
+> to carry the workaround as much as it can with user mode scripts where,
+> upon failover, on taken-over server, it:
 > 
->> +
->> +		if(!nomtab)
->> +			add_mtab(spec, mount_point, nfs_mount_vers == 4 ? "nfs4" : "nfs",
->> +				 flags, extra_opts, 0, 0);
+> 1. Tear down virtual IP.
+> 2. Unexport the subject NFS export.
+> 3. Signal lockd to drop the locks.
+> 4. Un-mount filesystem if needed.
 > 
-> If mtab~ is busy won't this cause mtab to get out of sync?
-> 
+...
+>                                                                 we would
+> like to be able to selectively drop locks (only) associated with the
+> requested exports without disrupting other NFS services. 
 
-Cannot really spin over until the file lock is achieved, it may 
-potentially never be.
+There seems to be an unstated assumption here that there is one
+virtual IP per exported filesystem.  Is that true?
 
+Assuming it is and that I understand properly what you want to do....
 
-AG
--- 
-May the source be with you.
-http://www.cis.ksu.edu/~gud
+I think that maybe the right thing to do is *not* drop the locks on a
+particular filesystem, but to drop the locks made to a particular
+virtual IP.
+
+Then it would make a lot of sense to have one lockd thread per IP, and
+signal the lockd in order to drop the locks.
+True: that might be more code.  But if it is the right thing to do,
+then it should be done that way.
+
+On the other hand, I can see a value in removing all the locks for a
+particular filesytem quite independent of failover requirements.
+If I want to force-unmount a filesystem, I need to unexport it, and I
+need to kill all the locks.  Currently you can only remove locks from
+all filesystems, which might not be ideal.
+
+I'm not at all keen on the NFSEXP_FOLOCK flag to exp_unexport, as that
+is an interface that I would like to discard eventually.  The
+preferred mechanism for exporting filesystems is to flush the
+appropriate 'cache', and allow it to be repopulated with whatever is
+still valid via upcalls to mountd.
+
+So:
+ I think if we really want to "remove all NFS locks on a filesystem",
+ we could probably tie it into umount - maybe have lockd register some
+ callback which gets called just before s_op->umount_begin.
+
+ If we want to remove all locks that arrived on a particular
+ interface, then we should arrange to do exactly that.  There are a
+ number of different options here. 
+  One is the multiple-lockd-threads idea.
+  One is to register a callback when an interface is shut down.
+  Another (possibly the best) is to arrange a new signal for lockd
+  which say "Drop any locks which were sent to IP addresses that are
+  no longer valid local addresses".
+
+So those are my thoughts.  Do any of them seem reasonable to you?
+
+NeilBrown
 
 
 
