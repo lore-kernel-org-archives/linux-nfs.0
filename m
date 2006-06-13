@@ -1,7 +1,7 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: 2.4 vs 2.6
-Date: Tue, 13 Jun 2006 16:42:25 -0400
-Message-ID: <20060613204225.GB26315@fieldses.org>
+Date: Wed, 14 Jun 2006 09:22:43 +1000
+Message-ID: <17551.18627.173187.415226@cse.unsw.edu.au>
 References: <17526.44653.228663.713864@cse.unsw.edu.au>
 	<20060526081905.73641.qmail@web51609.mail.yahoo.com>
 	<20060526193118.GB17761@fieldses.org>
@@ -10,6 +10,7 @@ References: <17526.44653.228663.713864@cse.unsw.edu.au>
 	<20060530011208.GB12818@sgi.com>
 	<20060530015918.GA27940@fieldses.org>
 	<17550.12582.742528.454837@cse.unsw.edu.au>
+	<20060613204225.GB26315@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: mehta kiran <kiranmehta1981@yahoo.com>,
@@ -19,19 +20,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
 	helo=sc8-sf-list2.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FqFis-0002Nf-BH
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 13:42:50 -0700
+	id 1FqIDo-0007k7-3t
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 16:22:56 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FqFis-0002zY-7k
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 13:42:50 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1FqIDn-0007Ox-Uo
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 16:22:55 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FqFir-0003Fp-P5
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 13:42:50 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17550.12582.742528.454837@cse.unsw.edu.au>
+	(Exim 4.44) id 1FqIDn-0001tT-DG
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 16:22:55 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: message from J. Bruce Fields on Tuesday June 13
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,41 +45,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Jun 13, 2006 at 01:29:42PM +1000, Neil Brown wrote:
-> Having the mapping permanently in the kernel rather than filled in on
-> demand would mean that:
+On Tuesday June 13, bfields@fieldses.org wrote:
 > 
->  - the filesystem has to be mounted the whole time, and we cannot do
->    any on-demand mounting (based on fsid) - not that we currently do.
->    This is a fairly small point however.
+> Just to be clear--I'm definitely not on some crusade to change all this.
+> I'm just curious about the motivation for the design; thanks for the
+> explanation.
 
-Fair enough.
+Not the caped crusader then :-)
 
->    If a request arrives from a host which is in both 'somehosts' and
->    'otherhosts', then what name do you give to the kernel for that IP
->    address?
->    We currently say the IP address maps to 
->           @somehosts+@otherhosts
->    (or something like that) and then tell the kernel any of the
->    following as required:
->           /export1 @somehosts+@otherhosts  -> rw,root_squash
->           /export1 @somehosts  -> rw,root_squash
->           /export2 @somehosts+@otherhosts  -> ro,no_root_squash
->           /export2 @otherhosts  -> ro,no_root_squash
+Oh! you wanted the motivation?  I thought you wanted the justification!
+Completely different things you know.....
 
-The kernel could of course just split these plus+separated+name+lists
-itself before mapping to export options.  But I guess the point is that
-in cases such as the above there's a policy decision that's better made
-in userspace.  OK.
+The motivation was that I needed to do upcalls to remove the rmtab
+problem, so it seemed 'obvious' to use upcalls for everything and
+create a caching structure that could be use generally.  I cannot say
+that I considered every cache and asked myself if it could be static
+or not.  Had I thought more fully about such things I might not have
+included the 'client' in the key for the fh -> path mapping.  But it
+seemed like the right idea at the time, and I didn't have anyone
+questioning my design decisions.  Looking back, I wish I had!
 
-> Hopefully you can see that giving a full (path, client-name ) ->
-> export mapping the kernel in advance is not practical.
 
-Just to be clear--I'm definitely not on some crusade to change all this.
-I'm just curious about the motivation for the design; thanks for the
-explanation.
-
---b.
+NeilBrown
 
 
 _______________________________________________
