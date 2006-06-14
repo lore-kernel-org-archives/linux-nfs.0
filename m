@@ -1,19 +1,19 @@
-From: Neil Brown <neilb@suse.de>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: 2.4 vs 2.6
-Date: Wed, 14 Jun 2006 14:18:35 +1000
-Message-ID: <17551.36379.163043.483208@cse.unsw.edu.au>
+Date: Wed, 14 Jun 2006 14:36:17 +1000
+Message-ID: <1150259776.22282.1675.camel@hole.melbourne.sgi.com>
 References: <17526.44653.228663.713864@cse.unsw.edu.au>
 	<20060526081905.73641.qmail@web51609.mail.yahoo.com>
 	<20060526193118.GB17761@fieldses.org>
 	<17530.36039.227704.325645@cse.unsw.edu.au>
-	<20060529160236.GC6832@fieldses.org>
-	<20060530011208.GB12818@sgi.com>
+	<20060529160236.GC6832@fieldses.org> <20060530011208.GB12818@sgi.com>
 	<20060530015918.GA27940@fieldses.org>
 	<17550.12582.742528.454837@cse.unsw.edu.au>
 	<20060613204225.GB26315@fieldses.org>
 	<1150248571.22282.1450.camel@hole.melbourne.sgi.com>
 	<20060614021555.GA13425@fieldses.org>
 	<1150251745.22282.1520.camel@hole.melbourne.sgi.com>
+	<17551.36379.163043.483208@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
@@ -21,22 +21,16 @@ Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Vijay Chauhan <kernel.vijay@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list2-b.sourceforge.net ([10.3.1.8]
-	helo=sc8-sf-list2.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FqMqC-0006SH-HS
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:18:52 -0700
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list2.sourceforge.net with esmtp (Exim 4.30)
-	id 1FqMqC-0005O3-Jy
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:18:52 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FqMqC-0003t8-0Q
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:18:52 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: message from Greg Banks on Wednesday June 14
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FqN7F-0007sy-1N
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:36:29 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FqN7F-0005B0-1Q
+	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:36:29 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17551.36379.163043.483208@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -49,30 +43,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday June 14, gnb@melbourne.sgi.com wrote:
-> On Wed, 2006-06-14 at 12:15, J. Bruce Fields wrote:
-> > On Wed, Jun 14, 2006 at 11:29:31AM +1000, Greg Banks wrote:
+On Wed, 2006-06-14 at 14:18, Neil Brown wrote:
+> On Wednesday June 14, gnb@melbourne.sgi.com wrote:
+> > On Wed, 2006-06-14 at 12:15, J. Bruce Fields wrote:
+> > > On Wed, Jun 14, 2006 at 11:29:31AM +1000, Greg Banks wrote:
+> > 
+> > > This should be trivially fixable, shouldn't it?  (Actually, can you run
+> > > multiple concurrent mountd's right now?)
+> > 
+> > I believe the kernel cache could can handle multiple readers
+> > and writers (Neil?)  but there's only one portmap registration,
+> > so all the client RPCs will go to the last mountd started.
 > 
-> > This should be trivially fixable, shouldn't it?  (Actually, can you run
-> > multiple concurrent mountd's right now?)
+> Yes, the kernel caches can handle multiple reader/writers quite
+> transparently.
 > 
-> I believe the kernel cache could can handle multiple readers
-> and writers (Neil?)  but there's only one portmap registration,
-> so all the client RPCs will go to the last mountd started.
+> As rpc service is fairly stateless, it should be possible to get
+> mountd to fork N times after registering the service and before
+> entering the loop.
 
-Yes, the kernel caches can handle multiple reader/writers quite
-transparently.
+Sounds relatively simple, assuming libc's svc_* code is fork-safe.
 
-As rpc service is fairly stateless, it should be possible to get
-mountd to fork N times after registering the service and before
-entering the loop.  All of the state of significance lives in files or
-in the kernel, and the file access is already done with locking, so it
-should "just work" - though some review and testing would not go
-astray of course.
+>   All of the state of significance lives in files or
+> in the kernel, and the file access is already done with locking, so it
+> should "just work" - though some review and testing would not go
+> astray of course.
+> 
+> Did we have a volunteer :-)
 
-Did we have a volunteer :-)
+I have this terrible feeling that you do ;-)
 
-NeilBrown
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
+
+
 
 
 _______________________________________________
