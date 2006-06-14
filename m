@@ -1,86 +1,60 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: 2.4 vs 2.6
-Date: Wed, 14 Jun 2006 14:36:17 +1000
-Message-ID: <1150259776.22282.1675.camel@hole.melbourne.sgi.com>
-References: <17526.44653.228663.713864@cse.unsw.edu.au>
-	<20060526081905.73641.qmail@web51609.mail.yahoo.com>
-	<20060526193118.GB17761@fieldses.org>
-	<17530.36039.227704.325645@cse.unsw.edu.au>
-	<20060529160236.GC6832@fieldses.org> <20060530011208.GB12818@sgi.com>
-	<20060530015918.GA27940@fieldses.org>
-	<17550.12582.742528.454837@cse.unsw.edu.au>
-	<20060613204225.GB26315@fieldses.org>
-	<1150248571.22282.1450.camel@hole.melbourne.sgi.com>
-	<20060614021555.GA13425@fieldses.org>
-	<1150251745.22282.1520.camel@hole.melbourne.sgi.com>
-	<17551.36379.163043.483208@cse.unsw.edu.au>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [NFS] [RFC] NLM lock failover admin interface
+Date: Wed, 14 Jun 2006 02:54:51 -0400
+Message-ID: <1150268091.28264.75.camel@localhost.localdomain>
+References: <1150089943.26019.18.camel@localhost.localdomain>
+	<17550.11870.186706.36949@cse.unsw.edu.au>
+Reply-To: linux clustering <linux-cluster@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	mehta kiran <kiranmehta1981@yahoo.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Vijay Chauhan <kernel.vijay@gmail.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FqN7F-0007sy-1N
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:36:29 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FqN7F-0005B0-1Q
-	for nfs@lists.sourceforge.net; Tue, 13 Jun 2006 21:36:29 -0700
+Content-Type: text/plain
+Cc: linux-cluster@redhat.com, nfs@lists.sourceforge.net
+Return-path: <linux-cluster-bounces@redhat.com>
 To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17551.36379.163043.483208@cse.unsw.edu.au>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+In-Reply-To: <17550.11870.186706.36949@cse.unsw.edu.au>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
+	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/linux-cluster>
+List-Post: <mailto:linux-cluster@redhat.com>
+List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
+	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
+Sender: linux-cluster-bounces@redhat.com
+Errors-To: linux-cluster-bounces@redhat.com
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, 2006-06-14 at 14:18, Neil Brown wrote:
-> On Wednesday June 14, gnb@melbourne.sgi.com wrote:
-> > On Wed, 2006-06-14 at 12:15, J. Bruce Fields wrote:
-> > > On Wed, Jun 14, 2006 at 11:29:31AM +1000, Greg Banks wrote:
-> > 
-> > > This should be trivially fixable, shouldn't it?  (Actually, can you run
-> > > multiple concurrent mountd's right now?)
-> > 
-> > I believe the kernel cache could can handle multiple readers
-> > and writers (Neil?)  but there's only one portmap registration,
-> > so all the client RPCs will go to the last mountd started.
-> 
-> Yes, the kernel caches can handle multiple reader/writers quite
-> transparently.
-> 
-> As rpc service is fairly stateless, it should be possible to get
-> mountd to fork N times after registering the service and before
-> entering the loop.
+Hi,
 
-Sounds relatively simple, assuming libc's svc_* code is fork-safe.
+KABI (kernel application binary interface) commitment is a big thing
+from our end - so I would like to focus more on the interface agreement
+before jumping into coding and implementation details. 
 
->   All of the state of significance lives in files or
-> in the kernel, and the file access is already done with locking, so it
-> should "just work" - though some review and testing would not go
-> astray of course.
-> 
-> Did we have a volunteer :-)
+>   One is the multiple-lockd-threads idea.
 
-I have this terrible feeling that you do ;-)
+Assume we still have this on the table.... Could I expect the admin
+interface goes thru rpc.lockd command (man page and nfs-util code
+changes) ? The modified command will take similar options as rpc.statd;
+more specifically, the -n, -o, and -p (see "man rpc.statd"). To pass the
+individual IP (socket address) to kernel, we'll need nfsctl with struct
+nfsctl_svc modified.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+For the kernel piece, since we're there anyway, could we have the
+individual lockd IP interface passed to SM (statd) (in SM_MON call) ?
+This would allow statd to structure its SM files based on each lockd IP
+address, an important part of lock recovery.
 
+>   One is to register a callback when an interface is shut down.
 
+Haven't checked out (linux) socket interface yet. I'm very fuzzy how
+this can be done. Anyone has good ideas ? 
 
+>   Another (possibly the best) is to arrange a new signal for lockd
+>   which say "Drop any locks which were sent to IP addresses that are
+>   no longer valid local addresses".
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Very appealing - but the devil's always in the details. How to decide
+which IP address is no longer valid ? Or how does lockd know about these
+IP addresses ? And how to associate one particular IP address with the
+"struct nlm_file" entries within nlm_files list ? Need few more days to
+sort this out (or any one already has ideas in mind ?).
+
+-- Wendy
