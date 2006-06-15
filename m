@@ -1,45 +1,75 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [NFS] Re: [RFC] NLM lock failover admin interface
-Date: Thu, 15 Jun 2006 11:09:41 -0400
-Message-ID: <44917835.40805@redhat.com>
-References: <1150089943.26019.18.camel@localhost.localdomain>
-	<17550.11870.186706.36949@cse.unsw.edu.au>
-	<1150268091.28264.75.camel@localhost.localdomain>
-	<1150293654.28264.91.camel@localhost.localdomain>
-	<20060615140743.36CDC1BBAD@citi.umich.edu>
-Reply-To: linux clustering <linux-cluster@redhat.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Re: [PATCH 0 / 1] Move NFS mount code from
+	util-linux	to	nfs-utils - take2
+Date: Thu, 15 Jun 2006 10:41:38 -0700
+Message-ID: <1150393298.3565.2.camel@dyn9047022153>
+References: <448DF279.8090005@redhat.com>  <44918BDD.2C84.006B.0@novell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux clustering <linux-cluster@redhat.com>
-Return-path: <linux-cluster-bounces@redhat.com>
-To: "William A.(Andy) Adamson" <andros@citi.umich.edu>
-In-Reply-To: <20060615140743.36CDC1BBAD@citi.umich.edu>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cluster>
-List-Post: <mailto:linux-cluster@redhat.com>
-List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
-Sender: linux-cluster-bounces@redhat.com
-Errors-To: linux-cluster-bounces@redhat.com
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FqvqP-0000KX-Ox
+	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 10:41:25 -0700
+Received: from e35.co.us.ibm.com ([32.97.110.153])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FqvqO-0001Ov-MY
+	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 10:41:26 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
+	[9.17.195.11])
+	by e35.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k5FHfDBJ012331
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <nfs@lists.sourceforge.net>; Thu, 15 Jun 2006 13:41:13 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay02.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id
+	k5FHewI6285060
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Thu, 15 Jun 2006 11:40:58 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k5FHfDK9004291
+	for <nfs@lists.sourceforge.net>; Thu, 15 Jun 2006 11:41:13 -0600
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k5FHfCtZ004246
+	for <nfs@lists.sourceforge.net>; Thu, 15 Jun 2006 11:41:12 -0600
+To: NFS List <nfs@lists.sourceforge.net>
+In-Reply-To: <44918BDD.2C84.006B.0@novell.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-William A.(Andy) Adamson wrote:
+On Thu, 2006-06-15 at 05:10 -0600, Chakravarthi P wrote:
+> +			break;
+> +		case 't':
+> +			nfs_mount_vers = (strncmp(optarg, "nfs4", 4)) ?
+> 0 : 4;
+> +			break;
+> 
+> 2.  i dont think a -t option makes sense for mount.nfs  
+>      mount.nfs itself says it is a nfs file system
+>      you can pick up the version from -o nfsvers=4  to cater to nfs
+> version
+>      -t is by legacy meant for specifying the filesystem type.
 
->this discusion has centered around removing the locks of an export.
->we also want the interface to ge able to remove the locks owned by a single 
->client. this is needed to enable client migration between replica's or between 
->nodes in a cluster file system. it is not acceptable to place an entire export 
->in grace just to move a small number of clients.
->
->  
->
-Andy,
+-t nfs4 is required for compatibility with existing scripts
+and /etc/fstab entries.
 
-Gotcha ... forgot about NFS V4. BTW, the discussion has moved back to 
-/proc interface. I agree we need to add one more layer of granularity 
-into it. Glad you caught this flaw.
+Frank
 
--- Wendy
+
+
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
