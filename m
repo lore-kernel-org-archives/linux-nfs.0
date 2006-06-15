@@ -1,23 +1,19 @@
-From: "Chakravarthi P" <pchakravarthi@novell.com>
-Subject: Re: [PATCH 0 / 1] Move NFS mount code from util-linux
-	to	nfs-utils - take2
-Date: Thu, 15 Jun 2006 05:10:24 -0600
-Message-ID: <44918BDD.2C84.006B.0@novell.com>
-References: <448DF279.8090005@redhat.com>
+From: "Jerold Hood" <JeroldHood@mail.ru>
+Subject: Your money, moon-white
+Date: Thu, 15 Jun 2006 12:02:26 -0240
+Message-ID: <662161c80604xbbrcncyp6ifqdp3vbo1grqpmwu8kyfa@mxs.mail.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FqpiY-0006MS-HZ
-	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 04:08:54 -0700
-Received: from lucius.provo.novell.com ([137.65.81.172])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FqpiY-0002Lg-FT
-	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 04:08:54 -0700
-To: "Amit Gud" <agud@redhat.com>, "Neil Brown" <neilb@suse.de>
-In-Reply-To: <448DF279.8090005@redhat.com>
+	id 1FqqYN-0002Sm-Fq
+	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 05:02:27 -0700
+Received: from [83.110.21.171] (helo=mail.0451.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FqqYJ-0006iU-2m
+	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 05:02:27 -0700
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,125 +26,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Even if you have no erectin problems SOFT CIAzLIS 
+would help you to make BETTER SE  X MORE OFTEN!
+and to bring  unimagnable plesure to her.
 
-in mount.c :
+Just disolve half a pil under your tongue 
+and get ready for action in 15 minutes. 
 
-+void mount_usage()
-+{
-+	printf("usage: %s remotetarget dir [-rvVwfnh] [-t version] [-o
-nfsoptions]\n", progname);
-+	printf("options:\n\t-r\t\tMount file system readonly\n");
-+	printf("\t-v\t\tVerbose\n");
-+	printf("\t-V\t\tPrint version\n");
-+	printf("\t-w\t\tMount file system read-write\n");
+The tests showed that the majority of men 
+after taking this medic ation were able to have 
+PERFECT ER ECTI ON during 36 hours!
 
-1. isn't it generally a good practice to have usage message over stderr
-?
-so the user doesn't miss it. even if he chances to redirect the output
-...
-just a suggestion.
+VISIT US, AND GET OUR SPECIAL 70% DISC OUNT OFER!
 
+http://ojrkcc.motivefood.com/?76415185
 
-+			break;
-+		case 't':
-+			nfs_mount_vers = (strncmp(optarg, "nfs4", 4)) ?
-0 : 4;
-+			break;
+=====
+that this was what they were doing.
+course. But that could be fixed. Everything could be fixed now. Alive. I lit
+with the easy telepathy that  these  gulls  used  instead  of  screes  and
+was still puttering around with his stuff. He had loaded, locked, and sealed
+not Heinlein  or  Bradbury or  Clarke, but  Stanislaw Lem, a  Pole; that the
+cotton. As soon as the helicopter pulled at it, there was a pssst! We looked
 
-2.  i dont think a -t option makes sense for mount.nfs  
-     mount.nfs itself says it is a nfs file system
-     you can pick up the version from -o nfsvers=4  to cater to nfs
-version
-     -t is by legacy meant for specifying the filesystem type.
-      
-      i also don't see why bind and other options need to be there for
-mount.nfs
-
-
-+
-+int add_mtab(char *fsname, char *mount_point, char *fstype, int flags,
-char *opts, int freq, int passno)
-+{
-
-3. felt that there can be just be one function called mtab_update that
-can be kept in 
-    the common utility source files you had so that both umount and
-mount code can use it.
-
-in nfs4mount.c
-+#if defined(VAR_LOCK_DIR)
-+#define DEFAULT_DIR VAR_LOCK_DIR
-+#else
-+#define DEFAULT_DIR "/var/lock/subsys"
-+#endif
-+
-+extern int verbose;
-+
-+char *IDMAPLCK = DEFAULT_DIR "/rpcidmapd";
-+#define idmapd_check() do { \
-+	if (access(IDMAPLCK, F_OK)) { \
-+		printf(_("Warning: rpc.idmapd appears not to be
-running.\n" \
-+			"         All uids will be mapped to the nobody
-uid.\n")); \
-+	} \
-+} while(0);
-+
-+char *GSSDLCK = DEFAULT_DIR "/rpcgssd";
-+#define gssd_check() do { \
-+		if (access(GSSDLCK, F_OK)) { \
-+			printf(_("Warning: rpc.gssd appears not to be
-running.\n")); \
-+		} \
-+} while(0); 
-
-
-4. very nice thing to do ... warn the user if idmapd and gssd are not
-running.
-    But then idmapd on suse doesn't seem to be writing into
-/var/lock/subsys ... 
-    Is /var/lock/subsys/  the standard way for daemons to show their
-existence. ?
-    or is creation of  /var/run/<daemon_name>  a standard ?
-    then idmapd scripts might need some change .. or else ..
-    code needs some modification here to be able to work fine in all
-distros ...
-
-in nfsumount.c :
-
-+	spec = argv[1];
-+
-+	argv += 1;
-+	argc -= 1;
-+
-+	while ((c = getopt_long (argc, argv, "fvnrlh",
-+				umount_longopts, NULL)) != -1) {
-
- it'll be nice if you include -a option and have all nfs or nfs4 mounts
-umounted on calling
- umount.nfs -a 
- this is should be easy enough with an appropriate mtab utility
-function.
-
-
- thanks
- chax.
-
-
-
-    
-
-
-
-
-P. S. Chakravarthi
-Senior Software Engineer
-pchakravarthi@novell.com
-Phone: 25731856 Extn: 3198
-
-Novell Inc.
-Software for the Open Enterprise
-
+your whole body, from wingtip  to  wingtip,  is  nothing  more  than  your
+     "Listen," I said to Kirill, still looking at the  canisters.  "Did  you
 
 
 _______________________________________________
