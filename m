@@ -1,58 +1,50 @@
-From: "Jerold Hood" <JeroldHood@mail.ru>
-Subject: Your money, moon-white
-Date: Thu, 15 Jun 2006 12:02:26 -0240
-Message-ID: <662161c80604xbbrcncyp6ifqdp3vbo1grqpmwu8kyfa@mxs.mail.ru>
+From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
+Subject: Re: [NFS] Re: [RFC] NLM lock failover admin interface
+Date: Thu, 15 Jun 2006 10:07:43 -0400
+Message-ID: <20060615140743.36CDC1BBAD@citi.umich.edu>
+References: <1150089943.26019.18.camel@localhost.localdomain>
+	<17550.11870.186706.36949@cse.unsw.edu.au>
+	<1150268091.28264.75.camel@localhost.localdomain>
+	<1150293654.28264.91.camel@localhost.localdomain>
+Reply-To: linux clustering <linux-cluster@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FqqYN-0002Sm-Fq
-	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 05:02:27 -0700
-Received: from [83.110.21.171] (helo=mail.0451.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FqqYJ-0006iU-2m
-	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 05:02:27 -0700
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux clustering <linux-cluster@redhat.com>
+Return-path: <linux-cluster-bounces@redhat.com>
+To: Wendy Cheng <wcheng@redhat.com>
+In-reply-to: <1150293654.28264.91.camel@localhost.localdomain> 
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
+	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/linux-cluster>
+List-Post: <mailto:linux-cluster@redhat.com>
+List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
+	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
+Sender: linux-cluster-bounces@redhat.com
+Errors-To: linux-cluster-bounces@redhat.com
+List-ID: <nfs.lists.sourceforge.net>
 
-Even if you have no erectin problems SOFT CIAzLIS 
-would help you to make BETTER SE  X MORE OFTEN!
-and to bring  unimagnable plesure to her.
+this discusion has centered around removing the locks of an export.
+we also want the interface to ge able to remove the locks owned by a single 
+client. this is needed to enable client migration between replica's or between 
+nodes in a cluster file system. it is not acceptable to place an entire export 
+in grace just to move a small number of clients.
 
-Just disolve half a pil under your tongue 
-and get ready for action in 15 minutes. 
+-->Andy
 
-The tests showed that the majority of men 
-after taking this medic ation were able to have 
-PERFECT ER ECTI ON during 36 hours!
+wcheng@redhat.com said:
+> On Wed, 2006-06-14 at 02:54 -0400, Wendy Cheng wrote:
+> 
+> Assume we still have this on the table.... Could I expect the admin
+> interface goes thru rpc.lockd command (man page and nfs-util code
+> changes) ? The modified command will take similar options as rpc.statd;
+> more specifically, the -n, -o, and -p (see "man rpc.statd"). To pass the
+> individual IP (socket address) to kernel, we'll need nfsctl with struct
+> nfsctl_svc modified.
+>
+> I want to make sure people catch this. Here we're talking about NFS system
+> call interface changes. We need either a new NFS syscall or altering the
+> existing nfsctl_svc structure.
 
-VISIT US, AND GET OUR SPECIAL 70% DISC OUNT OFER!
-
-http://ojrkcc.motivefood.com/?76415185
-
-=====
-that this was what they were doing.
-course. But that could be fixed. Everything could be fixed now. Alive. I lit
-with the easy telepathy that  these  gulls  used  instead  of  screes  and
-was still puttering around with his stuff. He had loaded, locked, and sealed
-not Heinlein  or  Bradbury or  Clarke, but  Stanislaw Lem, a  Pole; that the
-cotton. As soon as the helicopter pulled at it, there was a pssst! We looked
-
-your whole body, from wingtip  to  wingtip,  is  nothing  more  than  your
-     "Listen," I said to Kirill, still looking at the  canisters.  "Did  you
-
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+> -- Wendy
