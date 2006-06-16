@@ -1,110 +1,62 @@
-From: "William A.(Andy) Adamson" <andros@citi.umich.edu>
-Subject: Re: [NFS] Re: [RFC] NLM lock failover admin interface
-Date: Fri, 16 Jun 2006 11:39:04 -0400
-Message-ID: <20060616153904.6A9A21BCBD@citi.umich.edu>
-References: <1150089943.26019.18.camel@localhost.localdomain>
-	<17550.11870.186706.36949@cse.unsw.edu.au>
-	<1150268091.28264.75.camel@localhost.localdomain>
-	<1150293654.28264.91.camel@localhost.localdomain>
-	<20060615140743.36CDC1BBAD@citi.umich.edu>
-	<17554.19245.914383.436585@cse.unsw.edu.au>
-Reply-To: linux clustering <linux-cluster@redhat.com>
+From: Bryce Harrington <bryce@osdl.org>
+Subject: Re: Google Summer of Code and NFSv4
+Date: Fri, 16 Jun 2006 11:21:16 -0700
+Message-ID: <20060616182116.GC21726@osdl.org>
+References: <20060427214838.GR24981@osdl.org> <20060505182549.GA20459@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux clustering <linux-cluster@redhat.com>,
-	nfs@lists.sourceforge.net
-Return-path: <linux-cluster-bounces@redhat.com>
-To: Neil Brown <neilb@suse.de>
-In-reply-to: <17554.19245.914383.436585@cse.unsw.edu.au> 
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cluster>
-List-Post: <mailto:linux-cluster@redhat.com>
-List-Help: <mailto:linux-cluster-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cluster>,
-	<mailto:linux-cluster-request@redhat.com?subject=subscribe>
-Sender: linux-cluster-bounces@redhat.com
-Errors-To: linux-cluster-bounces@redhat.com
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfsv4@linux-nfs.org
+In-Reply-To: <20060505182549.GA20459@osdl.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <nfs.lists.sourceforge.net>
 
-> On Thursday June 15, andros@citi.umich.edu wrote:
-> > this discusion has centered around removing the locks of an export.
-> > we also want the interface to ge able to remove the locks owned by a single 
-> > client. this is needed to enable client migration between replica's or between 
-> > nodes in a cluster file system. it is not acceptable to place an entire export 
-> > in grace just to move a small number of clients.
-> 
-> Hmmmm....
-> You want to remove all the locks owned by a particular client
-> with the intension of reclaiming those locks against a different NFS
-> server (on a cluster filesystem)
-> and you don't want to put the whole filesystem into grace mode while
-> doing it.
-> 
-> Is that correct?
+Hi all,
 
-yes.
+The announcement went out earlier this week that OSDL is mentoring
+several students in the Google Summer of Code program:
 
-> 
-> Sounds extremely racy to me.  Suppose some other client takes a
-> conflicting lock between dropping them on one server and claiming them
-> on the other?  That would be bad.  The purpose of the grace mode is
-> precisely to avoid this sort of race.
+ http://www.osdl.org/newsroom/press_releases/2006/2006_06_13_beverton.html
 
-the idea is that the underlying file system can place only the files with 
-locks held by the migrating client(s) into grace, leaving all other files for 
-normal operation. the migrating (nfsv4) client then reclaims opens, locks and 
-delegations on the new server. its just reducing the scope of the grace period.
+Dipankar Sarkar from the Indian Institute of Technology, will be working
+with us on NFSv4 testing.  His project is to create a robustness test
+for NFSv4 using NetEm to emulate various network issues (dropped or
+delayed packets, partitions, etc.) with various NFSv4 features
+(kerberos, acl, delegation, etc.) turned off/on.  This test will be
+integrated into Crucible so we will be able to run it as part of the
+regular regression tests.
 
-> 
-> It would seem that what you "really" want to do is to tell the cluster
-> filesystem to migrate the locks to a different node and some how tell
-> lockd about out.
+Dipankar's also been keeping a blog so we can follow his progress:
+http://nfs4osdl.wordpress.com/
 
-what we really want is for the cluster file system to share the locks between 
-the original node and the new node. then the client can simply be redirected 
-and no grace period or reclaim is needed. this is much harder to code than a 
-reduced grace period as describe above. from what we hear, lustre has this 
-functionality.
+Bryce
 
-either way, the files with locks held by the migrating client need to be 
-identified by both the lock manager (lockd/nfsv4 server) and the underlying fs.
-
-> 
-> Is there a comprehensive design document about how this is going to
-> work, because I'm feeling doubtful.
-
-we have a work in progress - it's not done but may help describe our thinking.
-
-http://wiki.linux-nfs.org/index.php/Recovery_and_migration
-
-> 
-> For the 'between replicas' case - I'm not sure locking makes sense.
-> Locking on a read-only filesystem is pretty pointless, and presumably
-> replicas are read-only???
-
-nope. we have a promising prototye read/write replica scheme that we are 
-testing.
-
-http://www.citi.umich.edu/techreports/reports/citi-tr-06-3.pdf
-
-i agree this is an outlying case....
-
-but another immediate consumer of such an iterface would be an administator 
-who needs to remove the locks for a client.
-
--->Andy
-
-> 
-> Basically, dropping locks that are expected to be picked up again,
-> without putting the whole filesystem into a grace period simply
-> doesn't sound workable to me.
-> 
-> Am I missing something?
-> 
-> NeilBrown
-> 
-> 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+> On Thu, Apr 27, 2006 at 02:48:38PM -0700, Bryce Harrington wrote:
+> > Hi all,
+> > 
+> > Google runs a "Summer of Code" project to employ college students to
+> > work on open source projects for the summer.  OSDL has signed up as a
+> > mentoring organization this year for a few different things, including
+> > Linux NFSv4.
+> > 
+> > If you are a student and interested in working on NFSv4 for the summer,
+> > you can find more information at http://developer.osdl.org/dev/soc/ and 
+> > http://code.google.com/summerofcode.html .  Proposals can be sent in
+> > between May 1st and May 8th.
+> > 
+> > I've volunteered to be a mentor for any testing projects around NFSv4;
+> > there's a couple ideas I listed on the above link, but if you have
+> > a better idea for a testing project, please feel free to propose that.
+> > In either case, please feel free to contact me off-list to work out
+> > details.
+> > 
+> > Bryce
