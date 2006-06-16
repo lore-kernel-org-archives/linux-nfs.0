@@ -1,37 +1,29 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: multiple mountds  (was: 2.4 vs 2.6)
-Date: Fri, 16 Jun 2006 13:52:57 +1000
-Message-ID: <17554.11033.204807.586772@cse.unsw.edu.au>
-References: <17526.44653.228663.713864@cse.unsw.edu.au>
-	<20060526081905.73641.qmail@web51609.mail.yahoo.com>
-	<20060526193118.GB17761@fieldses.org>
-	<17530.36039.227704.325645@cse.unsw.edu.au>
-	<20060529160236.GC6832@fieldses.org>
-	<20060530011208.GB12818@sgi.com>
-	<20060530015918.GA27940@fieldses.org>
-	<17550.12582.742528.454837@cse.unsw.edu.au>
-	<20060613204225.GB26315@fieldses.org>
-	<1150248571.22282.1450.camel@hole.melbourne.sgi.com>
-	<20060614021555.GA13425@fieldses.org>
-	<1150251745.22282.1520.camel@hole.melbourne.sgi.com>
-	<17551.36379.163043.483208@cse.unsw.edu.au>
-	<1150259776.22282.1675.camel@hole.melbourne.sgi.com>
-	<1150289285.22282.2202.camel@hole.melbourne.sgi.com>
+Subject: Re: [Linux-cluster] Re: [RFC] NLM lock failover
+	admin	interface
+Date: Fri, 16 Jun 2006 16:09:49 +1000
+Message-ID: <17554.19245.914383.436585@cse.unsw.edu.au>
+References: <1150089943.26019.18.camel@localhost.localdomain>
+	<17550.11870.186706.36949@cse.unsw.edu.au>
+	<1150268091.28264.75.camel@localhost.localdomain>
+	<1150293654.28264.91.camel@localhost.localdomain>
+	<20060615140743.36CDC1BBAD@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: linux clustering <linux-cluster@redhat.com>,
+	nfs@lists.sourceforge.net, Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fr5OS-0001L2-Ru
-	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 20:53:12 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1Fr7Ww-00042K-7Y
+	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 23:10:06 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fr5OQ-00026F-NW
-	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 20:53:13 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: message from Greg Banks on Wednesday June 14
+	(Exim 4.44) id 1Fr7Wu-0001VA-G7
+	for nfs@lists.sourceforge.net; Thu, 15 Jun 2006 23:10:06 -0700
+To: "William A.(Andy) Adamson" <andros@citi.umich.edu>
+In-Reply-To: message from William A.(Andy) Adamson on Thursday June 15
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,22 +36,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday June 14, gnb@melbourne.sgi.com wrote:
-> 
-> How about the attached patch against nfs-utils tot?  It
-> adds a -t option to set the number of forked workers.
-> Default is 1 thread, i.e. the old behaviour.
-> 
+On Thursday June 15, andros@citi.umich.edu wrote:
+> this discusion has centered around removing the locks of an export.
+> we also want the interface to ge able to remove the locks owned by a single 
+> client. this is needed to enable client migration between replica's or between 
+> nodes in a cluster file system. it is not acceptable to place an entire export 
+> in grace just to move a small number of clients.
 
-Looks perfect, thanks.
-I've added it to the git at 
-    http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=summary
-    git://linux-nfs.org/nfs-utils
+Hmmmm....
+You want to remove all the locks owned by a particular client
+with the intension of reclaiming those locks against a different NFS
+server (on a cluster filesystem)
+and you don't want to put the whole filesystem into grace mode while
+doing it.
 
-Documentation and everything.  No Changelog though... I should do that
-at some stage.
+Is that correct?
 
-Thanks,
+Sounds extremely racy to me.  Suppose some other client takes a
+conflicting lock between dropping them on one server and claiming them
+on the other?  That would be bad.  The purpose of the grace mode is
+precisely to avoid this sort of race.
+
+It would seem that what you "really" want to do is to tell the cluster
+filesystem to migrate the locks to a different node and some how tell
+lockd about out.
+
+Is there a comprehensive design document about how this is going to
+work, because I'm feeling doubtful.
+
+For the 'between replicas' case - I'm not sure locking makes sense.
+Locking on a read-only filesystem is pretty pointless, and presumably
+replicas are read-only???
+
+Basically, dropping locks that are expected to be picked up again,
+without putting the whole filesystem into a grace period simply
+doesn't sound workable to me.
+
+Am I missing something?
 
 NeilBrown
 
