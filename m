@@ -1,62 +1,106 @@
-From: Bryce Harrington <bryce@osdl.org>
-Subject: Re: Google Summer of Code and NFSv4
-Date: Fri, 16 Jun 2006 11:21:16 -0700
-Message-ID: <20060616182116.GC21726@osdl.org>
-References: <20060427214838.GR24981@osdl.org> <20060505182549.GA20459@osdl.org>
+From: "Nida M" <nidajm@gmail.com>
+Subject: On NFS mounted file system access time not updated
+Date: Sat, 17 Jun 2006 17:34:35 +0530
+Message-ID: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed; boundary="===============0908324773=="
 Cc: nfs@lists.sourceforge.net
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: nfsv4@linux-nfs.org
-In-Reply-To: <20060505182549.GA20459@osdl.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FrZXZ-0005Dq-1C
+	for nfs@lists.sourceforge.net; Sat, 17 Jun 2006 05:04:37 -0700
+Received: from nz-out-0102.google.com ([64.233.162.207])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FrZXZ-0003Qs-0V
+	for nfs@lists.sourceforge.net; Sat, 17 Jun 2006 05:04:37 -0700
+Received: by nz-out-0102.google.com with SMTP id x7so882623nzc
+	for <nfs@lists.sourceforge.net>; Sat, 17 Jun 2006 05:04:35 -0700 (PDT)
+To: neil@brown.name
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
+--===============0908324773==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_104411_30622257.1150545875435"
 
-The announcement went out earlier this week that OSDL is mentoring
-several students in the Google Summer of Code program:
+------=_Part_104411_30622257.1150545875435
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
- http://www.osdl.org/newsroom/press_releases/2006/2006_06_13_beverton.html
+Hi
 
-Dipankar Sarkar from the Indian Institute of Technology, will be working
-with us on NFSv4 testing.  His project is to create a robustness test
-for NFSv4 using NetEm to emulate various network issues (dropped or
-delayed packets, partitions, etc.) with various NFSv4 features
-(kerberos, acl, delegation, etc.) turned off/on.  This test will be
-integrated into Crucible so we will be able to run it as part of the
-regular regression tests.
+I am phasing a problem on MIPS platform for kernel 2.6.16 that,
+on NFS mounted file system the atime is not getting updated.
 
-Dipankar's also been keeping a blog so we can follow his progress:
-http://nfs4osdl.wordpress.com/
+To test this i have written a test program ,in which I am doing a read(),
+and then I do a stat() to check the changed attribute of the file being
+read.
+But I found the access time [atime]  is not getting updated..
 
-Bryce
+For 2.6 kernel has any patch is released to fix this problem ..?
+I need to fix this problem .. Can Anybody help me in this..??
 
-> On Thu, Apr 27, 2006 at 02:48:38PM -0700, Bryce Harrington wrote:
-> > Hi all,
-> > 
-> > Google runs a "Summer of Code" project to employ college students to
-> > work on open source projects for the summer.  OSDL has signed up as a
-> > mentoring organization this year for a few different things, including
-> > Linux NFSv4.
-> > 
-> > If you are a student and interested in working on NFSv4 for the summer,
-> > you can find more information at http://developer.osdl.org/dev/soc/ and 
-> > http://code.google.com/summerofcode.html .  Proposals can be sent in
-> > between May 1st and May 8th.
-> > 
-> > I've volunteered to be a mentor for any testing projects around NFSv4;
-> > there's a couple ideas I listed on the above link, but if you have
-> > a better idea for a testing project, please feel free to propose that.
-> > In either case, please feel free to contact me off-list to work out
-> > details.
-> > 
-> > Bryce
+
+
+
+
+~ Nida
+
+------=_Part_104411_30622257.1150545875435
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+<div>Hi</div>
+<div>&nbsp;</div>
+<div>I am phasing a problem on MIPS platform for kernel 2.6.16 that, </div>
+<div>on NFS mounted file system the atime is not getting updated.</div>
+<div>&nbsp;</div>
+<div>To test this i have written a test program ,in which I am doing a read(), </div>
+<div>and then I do a stat() to check the changed attribute of the file being read.</div>
+<div>But I found the access time [atime]&nbsp; is not getting updated..</div>
+<div>&nbsp;</div>
+<div>For 2.6 kernel has any patch is released to fix this problem ..?</div>
+<div>I need to fix this problem&nbsp;.. Can&nbsp;Anybody help me in this..??</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>~ Nida</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+
+------=_Part_104411_30622257.1150545875435--
+
+
+--===============0908324773==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+
+--===============0908324773==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0908324773==--
