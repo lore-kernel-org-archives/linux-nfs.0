@@ -1,22 +1,23 @@
-From: "Nida M" <nidajm@gmail.com>
-Subject: On NFS mounted file system access time not updated
-Date: Sat, 17 Jun 2006 17:34:35 +0530
-Message-ID: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: On NFS mounted file system access time not updated
+Date: Sun, 18 Jun 2006 15:46:40 -0400
+Message-ID: <1150660000.6771.189.camel@lade.trondhjem.org>
+References: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0908324773=="
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: neil@brown.name, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FrZXZ-0005Dq-1C
-	for nfs@lists.sourceforge.net; Sat, 17 Jun 2006 05:04:37 -0700
-Received: from nz-out-0102.google.com ([64.233.162.207])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FrZXZ-0003Qs-0V
-	for nfs@lists.sourceforge.net; Sat, 17 Jun 2006 05:04:37 -0700
-Received: by nz-out-0102.google.com with SMTP id x7so882623nzc
-	for <nfs@lists.sourceforge.net>; Sat, 17 Jun 2006 05:04:35 -0700 (PDT)
-To: neil@brown.name
+	id 1Fs3Ef-0000n6-LR
+	for nfs@lists.sourceforge.net; Sun, 18 Jun 2006 12:47:05 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Fs3Ee-0006uM-Im
+	for nfs@lists.sourceforge.net; Sun, 18 Jun 2006 12:47:05 -0700
+To: Nida M <nidajm@gmail.com>
+In-Reply-To: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,78 +30,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0908324773==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_104411_30622257.1150545875435"
+On Sat, 2006-06-17 at 17:34 +0530, Nida M wrote:
+> Hi
+>  
+> I am phasing a problem on MIPS platform for kernel 2.6.16 that, 
+> on NFS mounted file system the atime is not getting updated.
+>  
+> To test this i have written a test program ,in which I am doing a
+> read(), 
+> and then I do a stat() to check the changed attribute of the file
+> being read.
+> But I found the access time [atime]  is not getting updated..
+>  
+> For 2.6 kernel has any patch is released to fix this problem ..?
+> I need to fix this problem .. Can Anybody help me in this..??
 
-------=_Part_104411_30622257.1150545875435
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+If the client reads the file from its own cache the atime does not get
+updated on the server.
 
-Hi
-
-I am phasing a problem on MIPS platform for kernel 2.6.16 that,
-on NFS mounted file system the atime is not getting updated.
-
-To test this i have written a test program ,in which I am doing a read(),
-and then I do a stat() to check the changed attribute of the file being
-read.
-But I found the access time [atime]  is not getting updated..
-
-For 2.6 kernel has any patch is released to fix this problem ..?
-I need to fix this problem .. Can Anybody help me in this..??
+  Trond
 
 
-
-
-
-~ Nida
-
-------=_Part_104411_30622257.1150545875435
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-<div>Hi</div>
-<div>&nbsp;</div>
-<div>I am phasing a problem on MIPS platform for kernel 2.6.16 that, </div>
-<div>on NFS mounted file system the atime is not getting updated.</div>
-<div>&nbsp;</div>
-<div>To test this i have written a test program ,in which I am doing a read(), </div>
-<div>and then I do a stat() to check the changed attribute of the file being read.</div>
-<div>But I found the access time [atime]&nbsp; is not getting updated..</div>
-<div>&nbsp;</div>
-<div>For 2.6 kernel has any patch is released to fix this problem ..?</div>
-<div>I need to fix this problem&nbsp;.. Can&nbsp;Anybody help me in this..??</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>~ Nida</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-
-------=_Part_104411_30622257.1150545875435--
-
-
---===============0908324773==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-
---===============0908324773==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0908324773==--
