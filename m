@@ -1,25 +1,42 @@
-From: "Nida M" <nidajm@gmail.com>
-Subject: Re: On NFS mounted file system access time not updated
-Date: Mon, 19 Jun 2006 13:20:24 +0530
-Message-ID: <b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
-References: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
-	<1150660000.6771.189.camel@lade.trondhjem.org>
+From: Michael Halcrow <mhalcrow@us.ibm.com>
+Subject: Possible bugs in nfs-utils
+Date: Mon, 19 Jun 2006 15:30:25 -0500
+Message-ID: <20060619203025.GA7102@us.ibm.com>
+Reply-To: Michael Halcrow <mhalcrow@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1258285474=="
-Cc: neil@brown.name, nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============1102585691=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FsEWg-0001Mh-6M
-	for nfs@lists.sourceforge.net; Mon, 19 Jun 2006 00:50:26 -0700
-Received: from nz-out-0102.google.com ([64.233.162.204])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FsEWg-0007yO-4r
-	for nfs@lists.sourceforge.net; Mon, 19 Jun 2006 00:50:26 -0700
-Received: by nz-out-0102.google.com with SMTP id x7so1136123nzc
-	for <nfs@lists.sourceforge.net>; Mon, 19 Jun 2006 00:50:24 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1150660000.6771.189.camel@lade.trondhjem.org>
+	id 1FsQOK-0003nc-Rh
+	for nfs@lists.sourceforge.net; Mon, 19 Jun 2006 13:30:36 -0700
+Received: from e4.ny.us.ibm.com ([32.97.182.144])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FsQOK-00067B-Cy
+	for nfs@lists.sourceforge.net; Mon, 19 Jun 2006 13:30:37 -0700
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k5JKUTUl002639
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <nfs@lists.sourceforge.net>; Mon, 19 Jun 2006 16:30:29 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id
+	k5JKUTx1262666
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Mon, 19 Jun 2006 16:30:29 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k5JKUTYP007801
+	for <nfs@lists.sourceforge.net>; Mon, 19 Jun 2006 16:30:29 -0400
+Received: from localhost.localdomain (dyn95340152.austin.ibm.com [9.53.40.152])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k5JKUT3U007792
+	for <nfs@lists.sourceforge.net>; Mon, 19 Jun 2006 16:30:29 -0400
+Received: from mhalcrow by localhost.localdomain with local (Exim 4.50)
+	id 1FsQO9-0001tX-P1
+	for nfs@lists.sourceforge.net; Mon, 19 Jun 2006 15:30:25 -0500
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,122 +49,174 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1258285474==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_115793_20413496.1150703424118"
 
-------=_Part_115793_20413496.1150703424118
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+--===============1102585691==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="5mCyUwZo2JvN/JJP"
 Content-Disposition: inline
 
-Thanks for the reply.
 
- >>If the client reads the file from its own cache the atime does not get
->>updated on the server.
-
- This was the case in my test program. I am reading the same 4KB block all
-the time.
-
-Now i have modified it  such that, the client does the read of 1KB at
-first,later on the reading increased by 1KB.
-
-And the results are:
-atime updated  for the first read  and the  time elapsed 1 sec.
- for the remaining read ATIME is updated  only after  60 sec.
-
-
-How to make sure that the atime is updated for every read.
-
-Thanks in advance.
-
-
-
-~Nida
-
-
-
-
-
-
-
-
-On 6/19/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->
-> On Sat, 2006-06-17 at 17:34 +0530, Nida M wrote:
-> > Hi
-> >
-> > I am phasing a problem on MIPS platform for kernel 2.6.16 that,
-> > on NFS mounted file system the atime is not getting updated.
-> >
-> > To test this i have written a test program ,in which I am doing a
-> > read(),
-> > and then I do a stat() to check the changed attribute of the file
-> > being read.
-> > But I found the access time [atime]  is not getting updated..
-> >
-> > For 2.6 kernel has any patch is released to fix this problem ..?
-> > I need to fix this problem .. Can Anybody help me in this..??
->
-> If the client reads the file from its own cache the atime does not get
-> updated on the server.
->
-> Trond
->
->
-
-------=_Part_115793_20413496.1150703424118
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+--5mCyUwZo2JvN/JJP
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
-<div>Thanks for the reply.</div>
-<div>&nbsp;</div>
-<div>&nbsp;&gt;&gt;If the client reads the file from its own cache the atime does not get<br>&gt;&gt;updated on the server.</div>
-<div>&nbsp;</div>
-<div>
-<div>This was the case in my test program. I am reading the same 4KB block all the time.</div>
-<div>&nbsp;</div>
-<div>Now i have modified&nbsp;it&nbsp; such that, the client does the read of 1KB at first,later on the reading&nbsp;increased by 1KB.</div>
-<div>&nbsp;</div>
-<div>And the results are:</div>
-<div>atime updated&nbsp; for the first read&nbsp; and the &nbsp;time elapsed 1 sec.</div>
-<div>
-<div>for the remaining read ATIME is updated&nbsp; only&nbsp;after&nbsp;&nbsp;60 sec.</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>How to make sure that the atime is updated for every read.</div>
-<div>&nbsp;</div>
-<div>Thanks in advance.</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>~Nida</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div>
-<div>&nbsp;</div></div></div></div>
-<div>&nbsp;</div>
-<div>&nbsp;</div>
-<div><br>&nbsp;</div>
-<div><span class="gmail_quote">On 6/19/06, <b class="gmail_sendername">Trond Myklebust</b> &lt;<a href="mailto:trond.myklebust@fys.uio.no">trond.myklebust@fys.uio.no</a>&gt; wrote:</span>
-<blockquote class="gmail_quote" style="PADDING-LEFT: 1ex; MARGIN: 0px 0px 0px 0.8ex; BORDER-LEFT: #ccc 1px solid">On Sat, 2006-06-17 at 17:34 +0530, Nida M wrote:<br>&gt; Hi<br>&gt;<br>&gt; I am phasing a problem on MIPS platform for kernel 
-2.6.16 that,<br>&gt; on NFS mounted file system the atime is not getting updated.<br>&gt;<br>&gt; To test this i have written a test program ,in which I am doing a<br>&gt; read(),<br>&gt; and then I do a stat() to check the changed attribute of the file
-<br>&gt; being read.<br>&gt; But I found the access time [atime]&nbsp;&nbsp;is not getting updated..<br>&gt;<br>&gt; For 2.6 kernel has any patch is released to fix this problem ..?<br>&gt; I need to fix this problem .. Can Anybody help me in this..??
-<br><br>If the client reads the file from its own cache the atime does not get<br>updated on the server.<br><br>Trond<br><br></blockquote></div><br>
+I ran nfs-utils through the Coverity source code scanner, and the
+following items were flagged that I thought might merit a second
+glance (source from util-linux-2.13-pre7.tar.bz2). Those with a more
+intimate knowledge of the code base can probably help out in
+determining whether some of these really are problematic:
 
-------=_Part_115793_20413496.1150703424118--
+---
+support/nfs/svc_socket.c::svc_socket():
+
+If ret == 0 and rpcp == NULL, then servp is checked for non-NULL
+status before it is initialized.
+---
+
+---
+utils/rquotad/rquota_server.c::getquotainfo():
+
+qfpathname may be leaked.
+---
+
+---
+utils/statd/notlist.c::nlist_new():
+
+new may be leaked here:
+        if (!(NL_MY_NAME(new) = xstrdup(my_name))
+                        || !(NL_MON_NAME(new) = xstrdup(mon_name)))
+                return NULL;
+---
+
+---
+tools/rpcgen/rpc_parse.c::get_definition():
+
+defp may be leaked on tok.kind == TOK_EOF.
+---
+
+---
+utils/idmapd/cfg.c::conf_get_tag_list():
+
+node may be leaked here:
+        if (!node->field)
+          goto cleanup;
+...
+ cleanup:
+  if (list)
+    conf_free_list (list);
+  return 0;
+
+Same issue in conf_get_list().
+---
+
+---
+support/misc/mountpoint.c::is_mountpoint():
+
+No check for NULL result from malloc here:
+        dotdot = malloc(strlen(path)+4);
+        strcat(strcpy(dotdot, path), "/..");
+
+dotdot not freed prior to return.
+---
+
+---
+utils/idmapd/cfg.c::conf_remove():
+
+Dereference NULL pointer:
+  node = conf_trans_node (transaction, CONF_REMOVE);
+  if (!node)
+    goto fail;
+...
+ fail:
+  if (node->section)
+    free (node->section);
+---
+
+---
+tools/rpcgen/rpc_parse.c::def_const():
+
+Dead code here:
+    flag=0;
+    if(peekscan(TOK_CASE,&tok))
+      {
+
+        do
+          {
+            scan2(TOK_IDENT, TOK_CHARCONST, &tok);
+            cases->contflag=1;  /* continued case statement */
+            *tailp = cases;
+            tailp = &cases->next;
+            cases = ALLOC(case_list);
+            cases->case_name = tok.str;
+            scan(TOK_COLON, &tok);
+
+          }while(peekscan(TOK_CASE,&tok));
+      }
+    else
+      if(flag)
+        {
+
+          *tailp = cases;
+          tailp = &cases->next;
+          cases = ALLOC(case_list);
+        };
+
+It looks like flag will always be 0 at the if(flag) check.
+---
+
+---
+utils/idmapd/idmapd.c::mydaemon():
+
+tempfd not checked (not likely to be a problem for /dev/null, but just
+in case):
+                tempfd = open("/dev/null", O_RDWR);
+                dup2(tempfd, 0);
+---
+
+---
+support/nfs/cacheio.c::cache_flush():
+
+Return value not checked:
+stat(_PATH_ETAB, &stb);
+---
+
+---
+tools/rpcgen/rpc_scan.c::docppline():
+
+Return without freeing storage.
+---
+
+Thanks,
+Mike
+
+--5mCyUwZo2JvN/JJP
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iQEVAwUBRJcJYdtAhTFtyodpAQKERggAk8L0Gek9+Yk/D84NiiA/9SsHX6q3sJhF
+XPrZpMPGZQNFo4vVnA4FjCMP+kqnkYap2rVpk3UM0KQDXkY9muHUFBfccUCLUkCA
+RWY3HLW1W5l6AStzJJmxwHetcZeNdk/w4IXv7GLluRMpP0SkOy6s4O0SkDR78wNJ
+CkUAY1RBsgqgTSpQrLsuladvsGrKv2l4fp4rh6Jx/SWhTEJDbC7ZMwa9H79d5XT/
+H9b88Z2On1zm94XBR55Zd4x4pfur/rXDd9P8r/Cpe0ou19Qwlph365on0QL5VEfn
+FcbEZ/6F0im28Yqkg2LWGhPVO12OId1NCzws4SosK6Z3Z7mX9JPRTQ==
+=qzTz
+-----END PGP SIGNATURE-----
+
+--5mCyUwZo2JvN/JJP--
 
 
---===============1258285474==
+--===============1102585691==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 
---===============1258285474==
+--===============1102585691==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -157,4 +226,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1258285474==--
+--===============1102585691==--
