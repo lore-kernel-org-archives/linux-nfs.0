@@ -1,23 +1,25 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: 32 bit stat() on a 64 bit kernel failing on a large NFS
-	filesystem?
-Date: Tue, 20 Jun 2006 13:30:09 +0200
-Message-ID: <200606201330.09563.bernd-schubert@gmx.de>
-References: <4497D670.2040900@moving-picture.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: On NFS mounted file system access time not updated
+Date: Tue, 20 Jun 2006 08:47:13 -0400
+Message-ID: <1150807633.14850.1.camel@lade.trondhjem.org>
+References: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
+	<1150660000.6771.189.camel@lade.trondhjem.org>
+	<b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
+Cc: neil@brown.name, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FseQA-0003An-S2
-	for nfs@lists.sourceforge.net; Tue, 20 Jun 2006 04:29:26 -0700
-Received: from mail.gmx.net ([213.165.64.21])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1FseQA-0001xB-CL
-	for nfs@lists.sourceforge.net; Tue, 20 Jun 2006 04:29:27 -0700
-To: nfs@lists.sourceforge.net,
-	James Pearson <james-p@moving-picture.com>
-In-Reply-To: <4497D670.2040900@moving-picture.com>
+	id 1Fsfdj-0001SI-B4
+	for nfs@lists.sourceforge.net; Tue, 20 Jun 2006 05:47:31 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Fsfdj-0000tf-9h
+	for nfs@lists.sourceforge.net; Tue, 20 Jun 2006 05:47:31 -0700
+To: Nida M <nidajm@gmail.com>
+In-Reply-To: <b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,41 +32,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday 20 June 2006 13:05, James Pearson wrote:
-> I recently found a problem running a 32bit (i686) binary on a 64bit
-> (x86_64) kernel that fails when stat'ing any file on a multi-TB NFS
-> clustered file system (a non-Linux file system).
->
-> stat() returns EOVERFLOW (Value too large for defined data type)
->
-> The same 32bit binary running on a 32bit kernel stat'ing the same files
-> works OK.
->
-> In both cases, I'm using RHEL4 based distros on the clients (I also
-> tried a generic 2.6.16.x kernel on the 64 bit client, but that made no
-> difference).
->
-> We can work round the problem by either making sure the binary is
-> compiled with _FILE_OFFSET_BITS set to 64, or configuring the NFS file
-> server to use 32 bit 'file IDs'.
->
-> My question are:
->
-> Is this a 'bug' or 'feature' with using a 32 bit app on a 64 bit kernel?
->
-> If it's a 'feature', can anyone explain why it works in this way?
+On Mon, 2006-06-19 at 13:20 +0530, Nida M wrote:
 
-I already had the same problem, just see this thread:
+>  
+> How to make sure that the atime is updated for every read.
 
-http://lkml.org/lkml/2005/2/28/172
+You would have to either use O_DIRECT reads (i.e. uncached reads) or you
+would have to call utimes() after every read. Either way that will
+seriously slow down your application.
 
--- =
-
-Bernd Schubert
-PCI / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
+Cheers,
+  Trond
 
 
 
