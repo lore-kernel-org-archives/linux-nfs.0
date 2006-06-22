@@ -1,25 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: On NFS mounted file system access time not updated
-Date: Tue, 20 Jun 2006 08:47:13 -0400
-Message-ID: <1150807633.14850.1.camel@lade.trondhjem.org>
-References: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
-	<1150660000.6771.189.camel@lade.trondhjem.org>
-	<b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: Possible bugs in nfs-utils
+Date: Thu, 22 Jun 2006 18:05:20 +1000
+Message-ID: <1150963520.20487.511.camel@hole.melbourne.sgi.com>
+References: <20060619203025.GA7102@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neil@brown.name, nfs@lists.sourceforge.net
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fsfdj-0001SI-B4
-	for nfs@lists.sourceforge.net; Tue, 20 Jun 2006 05:47:31 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fsfdj-0000tf-9h
-	for nfs@lists.sourceforge.net; Tue, 20 Jun 2006 05:47:31 -0700
-To: Nida M <nidajm@gmail.com>
-In-Reply-To: <b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
+	id 1FtKC3-0005Ny-4o
+	for nfs@lists.sourceforge.net; Thu, 22 Jun 2006 01:05:39 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FtKC2-0002uQ-UX
+	for nfs@lists.sourceforge.net; Thu, 22 Jun 2006 01:05:39 -0700
+To: Michael Halcrow <mhalcrow@us.ibm.com>
+In-Reply-To: <20060619203025.GA7102@us.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,20 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-06-19 at 13:20 +0530, Nida M wrote:
+On Tue, 2006-06-20 at 06:30, Michael Halcrow wrote:
+> I ran nfs-utils through the Coverity source code scanner, and the
+> following items were flagged that I thought might merit a second
+> glance (source from util-linux-2.13-pre7.tar.bz2). Those with a more
+> intimate knowledge of the code base can probably help out in
+> determining whether some of these really are problematic:
 
->  
-> How to make sure that the atime is updated for every read.
+Some of these look worth fixing.  Neil, I have a bunch of
+trivial nfs-utils compile warnings fixes waiting to be
+pushed, shall I add these in too?
 
-You would have to either use O_DIRECT reads (i.e. uncached reads) or you
-would have to call utimes() after every read. Either way that will
-seriously slow down your application.
-
-Cheers,
-  Trond
-
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 
+
+All the advantages of Linux Managed Hosting--Without the Cost and Risk!
+Fully trained technicians. The highest number of Red Hat certifications in
+the hosting industry. Fanatical Support. Click to learn more
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=107521&bid=248729&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
