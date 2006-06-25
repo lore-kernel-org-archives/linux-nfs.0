@@ -1,24 +1,26 @@
-From: Linus Torvalds <torvalds@osdl.org>
-Subject: Re: [GIT] Please pull NFS updates...
-Date: Sun, 25 Jun 2006 12:28:21 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0606251218500.3747@g5.osdl.org>
-References: <1151232744.13127.40.camel@lade.trondhjem.org>
+From: "Simon Matthews" <simon.d.matthews+nfs@gmail.com>
+Subject: Re: Number of nfsd processes?
+Date: Sun, 25 Jun 2006 13:13:52 -0700
+Message-ID: <40b437200606251313t649fc76agd352e88c9a2bd252@mail.gmail.com>
+References: <40b437200606241759u3ec0ccd7q578c1ac476d498d9@mail.gmail.com>
+	<17566.23170.136301.392306@cse.unsw.edu.au>
+	<1151242251.23280.5.camel@pc>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FuaHl-0007r8-I9
-	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 12:28:45 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1FuaHl-0000hZ-In
-	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 12:28:45 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1151232744.13127.40.camel@lade.trondhjem.org>
+	id 1FuazT-000328-7G
+	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 13:13:55 -0700
+Received: from py-out-1112.google.com ([64.233.166.179])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FuazS-0001PZ-1u
+	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 13:13:55 -0700
+Received: by py-out-1112.google.com with SMTP id f28so1163268pyf
+	for <nfs@lists.sourceforge.net>; Sun, 25 Jun 2006 13:13:52 -0700 (PDT)
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
+In-Reply-To: <1151242251.23280.5.camel@pc>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,49 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Brian (and others):
 
+On 6/25/06, Brian J. Murrell <brian@interlinx.bc.ca> wrote:
+> Neil,
+>
+> Your description was a bit ungrokkable.  Let me try to put some real
+> world values to it and try to make it out...
 
-On Sun, 25 Jun 2006, Trond Myklebust wrote:
-> 
-> Please pull from the repository at
-> 
->    git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
+Here are my numbers:
+more /proc/net/rpc/nfsd
+rc 58145 148831950 678877510
+fh 126136 0 0 0 0
+io 3843561989 2872416345
+th 64 750787 29187.339 10107.193 6025.710 3273.713 3225.384 1680.524
+725.219 1305.846 780.037 3180.079
+....
 
-This is broken.
+Do these numbers ever get re-set? For example, I have re-started the
+nfs server process (to increas the number of nfsd processes), but I
+suspec the numbers merely keep aggregating, so they don't show what is
+happening now (with 64 processes).
 
-	  CC      fs/nfs/nfs2xdr.o
-	In file included from fs/nfs/nfs2xdr.c:28:
-	fs/nfs/internal.h:7: error: redefinition of 'struct nfs_clone_mount'
-	fs/nfs/internal.h:99: error: redefinition of 'nfs4_path'
-	fs/nfs/internal.h:99: error: previous definition of 'nfs4_path' was here
-	fs/nfs/internal.h:113: error: redefinition of 'nfs_devname'
-	fs/nfs/internal.h:113: error: previous definition of 'nfs_devname' was here
-	fs/nfs/internal.h:122: error: redefinition of 'nfs_block_bits'
-	fs/nfs/internal.h:122: error: previous definition of 'nfs_block_bits' was here
-	fs/nfs/internal.h:141: error: redefinition of 'nfs_calc_block_size'
-	fs/nfs/internal.h:141: error: previous definition of 'nfs_calc_block_size' was here
-	fs/nfs/internal.h:151: error: redefinition of 'nfs_block_size'
-	fs/nfs/internal.h:151: error: previous definition of 'nfs_block_size' was here
-	fs/nfs/internal.h:165: error: redefinition of 'nfs_super_set_maxbytes'
-	fs/nfs/internal.h:165: error: previous definition of 'nfs_super_set_maxbytes' was here
-	fs/nfs/internal.h:175: error: redefinition of 'valid_ipaddr4'
-	fs/nfs/internal.h:175: error: previous definition of 'valid_ipaddr4' was here
-	make[2]: *** [fs/nfs/nfs2xdr.o] Error 1
-	make[1]: *** [fs/nfs] Error 2
-	make: *** [fs] Error 2
-
-Looks like a merge error, causing that "internal.h" file to be included
-twice. 
-
-Alternatively, you're applying patches without "--fuzz=0", which allowed
-Andrew's "git-nfs-build-fixes" patch to be applied wice.
-
-In either case, it came from your tree, and had apparently never even
-been compile-tested. 
-
-Tssk, tssk..
-
-		Linus
+Regards,
+Simon
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
