@@ -1,28 +1,24 @@
-From: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Subject: Re: Number of nfsd processes?
-Date: Sun, 25 Jun 2006 09:30:50 -0400
-Message-ID: <1151242251.23280.5.camel@pc>
-References: <40b437200606241759u3ec0ccd7q578c1ac476d498d9@mail.gmail.com>
-	<17566.23170.136301.392306@cse.unsw.edu.au>
+From: Linus Torvalds <torvalds@osdl.org>
+Subject: Re: [GIT] Please pull NFS updates...
+Date: Sun, 25 Jun 2006 12:28:21 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0606251218500.3747@g5.osdl.org>
+References: <1151232744.13127.40.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1804751643=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FuUhX-0001wq-Gs
-	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 06:30:59 -0700
-Received: from linux.interlinx.bc.ca ([66.11.173.224])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FuUhW-00050Z-A0
-	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 06:30:59 -0700
-Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
-	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
-	(No client certificate requested)
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id 002BBCBC20
-	for <nfs@lists.sourceforge.net>; Sun, 25 Jun 2006 09:30:51 -0400 (EDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <17566.23170.136301.392306@cse.unsw.edu.au>
+	id 1FuaHl-0007r8-I9
+	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 12:28:45 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1FuaHl-0000hZ-In
+	for nfs@lists.sourceforge.net; Sun, 25 Jun 2006 12:28:45 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1151232744.13127.40.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,119 +32,53 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
---===============1804751643==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature";
-	boundary="=-dL9bZ/UTDBD54nGGN860"
 
+On Sun, 25 Jun 2006, Trond Myklebust wrote:
+> 
+> Please pull from the repository at
+> 
+>    git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
 
---=-dL9bZ/UTDBD54nGGN860
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+This is broken.
 
-Neil,
+	  CC      fs/nfs/nfs2xdr.o
+	In file included from fs/nfs/nfs2xdr.c:28:
+	fs/nfs/internal.h:7: error: redefinition of 'struct nfs_clone_mount'
+	fs/nfs/internal.h:99: error: redefinition of 'nfs4_path'
+	fs/nfs/internal.h:99: error: previous definition of 'nfs4_path' was here
+	fs/nfs/internal.h:113: error: redefinition of 'nfs_devname'
+	fs/nfs/internal.h:113: error: previous definition of 'nfs_devname' was here
+	fs/nfs/internal.h:122: error: redefinition of 'nfs_block_bits'
+	fs/nfs/internal.h:122: error: previous definition of 'nfs_block_bits' was here
+	fs/nfs/internal.h:141: error: redefinition of 'nfs_calc_block_size'
+	fs/nfs/internal.h:141: error: previous definition of 'nfs_calc_block_size' was here
+	fs/nfs/internal.h:151: error: redefinition of 'nfs_block_size'
+	fs/nfs/internal.h:151: error: previous definition of 'nfs_block_size' was here
+	fs/nfs/internal.h:165: error: redefinition of 'nfs_super_set_maxbytes'
+	fs/nfs/internal.h:165: error: previous definition of 'nfs_super_set_maxbytes' was here
+	fs/nfs/internal.h:175: error: redefinition of 'valid_ipaddr4'
+	fs/nfs/internal.h:175: error: previous definition of 'valid_ipaddr4' was here
+	make[2]: *** [fs/nfs/nfs2xdr.o] Error 1
+	make[1]: *** [fs/nfs] Error 2
+	make: *** [fs] Error 2
 
-Your description was a bit ungrokkable.  Let me try to put some real
-world values to it and try to make it out...
+Looks like a merge error, causing that "internal.h" file to be included
+twice. 
 
-On Sun, 2006-06-25 at 19:42 +1000, Neil Brown wrote:
-> Look at the line starting 'th'.
+Alternatively, you're applying patches without "--fuzz=0", which allowed
+Andrew's "git-nfs-build-fixes" patch to be applied wice.
 
-th 32 1439 108.420 17.016 6.044 3.724 2.464 0.296 0.256 0.280  0.672
+In either case, it came from your tree, and had apparently never even
+been compile-tested. 
 
->  The first number is the number of threads
+Tssk, tssk..
 
-Yup, 32 of them.
-
->  The second is the number of times the a thread has started handling
->   a request when all other threads were busy
-
-1439 in my case.  I guess ideally you want this number quite low.  How
-low is low enough?
-
->  The remainder are the number of seconds when
->     0-10% of threads were in use
-
-108.420 seconds in my example.  By and far the largest value with the
-next one being only 17.016 seconds.
-
->    10-20% of threads were in user
-
-17.016 seconds
-
->    20-30%
-
-6.044
-
->     ...
->    90-100%
-
-0.672
-
-Quite low indeed, yes?
-
->=20
->  From this you should be able to get an idea of how many threads
->  are getting used.
->  Ideally, the top few numbers
-
-What do you mean by the "top few numbers"
-
->  should be very small compared with the
->  earlier numbers.
-
-What do you mean by the "earlier numbers"?
-
->   If they are, increase the number of threads.
-
-So, should I increase threads?
-
->  I usually run with 128, but there are probably 100-200 clients, but
->  they aren't very busy clients.
-
-Any WAGs (or better) on the "cost" of a thread?
-
-b.
-
---=20
-My other computer is your Microsoft Windows server.
-
-Brian J. Murrell
-
---=-dL9bZ/UTDBD54nGGN860
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2.2 (GNU/Linux)
-
-iD8DBQBEnpAKl3EQlGLyuXARAvJdAJkBaontPx19h5605NMNd3PA9rNwzgCgiT8W
-WUv2qtHaxvd7gtmxRwpzBdQ=
-=ekGJ
------END PGP SIGNATURE-----
-
---=-dL9bZ/UTDBD54nGGN860--
-
-
-
---===============1804751643==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+		Linus
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============1804751643==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1804751643==--
