@@ -1,58 +1,52 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Problems with POSIX ACL <=> NFSv4 ACL mapping in mainline
-Date: Mon, 26 Jun 2006 12:57:41 -0600
-Message-ID: <20060626185741.GV5817@schatzie.adilger.int>
-References: <200606231745.23344.agruen@suse.de> <200606261730.09827.agruen@suse.de> <20060626175213.GU5817@schatzie.adilger.int> <200606262007.56097.agruen@suse.de>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 0/5] Enable extra optimisations on fcntl(F_UNLCK)
+	requests on NFS
+Date: Mon, 26 Jun 2006 19:29:36 -0400
+Message-ID: <20060626232936.6059.50399.stgit@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Marius Aamodt Eriksen <marius@umich.edu>,
-	Jeff Sedlak <jsedlak@umich.edu>, linux-fsdevel@vger.kernel.org,
-	nfs@lists.sourceforge.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Andreas Gruenbacher <agruen@suse.de>
-In-Reply-To: <200606262007.56097.agruen@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Fv0Wp-0001nU-9b
+	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:30:03 -0700
+Received: from dh134.citi.umich.edu ([141.211.133.134] helo=lade.trondhjem.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fv0Wp-0003Hg-9d
+	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:30:03 -0700
+To: linux-kernel@vger.kernel.org
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Jun 26, 2006  20:07 +0200, Andreas Gruenbacher wrote:
-> On Monday, 26 June 2006 19:52, Andreas Dilger wrote:
-> > On Jun 26, 2006  17:30 +0200, Andreas Gruenbacher wrote:
-> > > The result were errors when copying files with cp -p (which preserves
-> > > xattrs).
-> >
-> > Is that true of "cp" in general, or only SuSE "cp"?
-> 
-> It's our cp only right now.
-> 
-> > We get problems with 
-> > Lustre when root is copying files, because SuSE cp is incorrectly trying to
-> > copy all of the EAs by default.  If I have an EA that is specific to a
-> > file I don't necessarily want it to be copied.
-> 
-> There's a blacklist in libattr which we could add Lustre attributes to.
+Hi,
 
-I figured as much after digging through the SLES-patched cp, I just hadn't
-gotten as far as grabbing the libattr source and seeing what that was.  Is
-this blacklist specific to the SLES libattr, or is this in the released
-version?
+The following set of patches enables the NFS client to determine more
+accurately whether or not it needs to send an NLM/NFSv4 unlock request
+if the process has outstanding posix or flock locks:
+The current heuristic just assumes that if inode->i_flock is non-null, then
+we should always spam the server with an unlock request upon close().
 
-> A blacklist somewhere in /etc would be even better though I guess.
+The patchset introduces a new flag to the posix_lock_file()/flock_lock_file()
+interfaces that tells them to return -ENOENT if an F_UNLCK request results in
+no action.
 
-Definitely, yes.  Given that libselinx gropes around in a several files
-already, adding one more won't hurt.  Something like /etc/libattr.conf?
+Cheers,
+  Trond
 
-> > It would probably be preferrable that cp only copy EAs that it understands.
-> 
-> What to do with unknown attributes? Warn? Err out?
-
-Warn once, maybe with pointer to /etc/libattr.conf for adding to include or
-exclude list.  Given that copying file attributes isn't guaranteed in any
-case, we can probably safely live without copying everything.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
-
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
