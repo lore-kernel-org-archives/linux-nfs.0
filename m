@@ -1,7 +1,9 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/2] NFS: Fix NFS page_state usage
-Date: Mon, 26 Jun 2006 19:32:04 -0400
-Message-ID: <20060626233204.6228.86324.stgit@lade.trondhjem.org>
+Subject: [PATCH 2/2] NFS: missing
+	set_page_writeback()/end_page_writeback() in nfs_cancel_requests
+Date: Mon, 26 Jun 2006 19:32:07 -0400
+Message-ID: <20060626233206.6228.95805.stgit@lade.trondhjem.org>
+References: <20060626233204.6228.86324.stgit@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
@@ -9,12 +11,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fv0Yn-00025R-8F
-	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:32:05 -0700
+	id 1Fv0Yp-00026C-NR
+	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:32:07 -0700
 Received: from dh134.citi.umich.edu ([141.211.133.134] helo=lade.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fv0Yn-0004qQ-Aj
-	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:32:05 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fv0Yp-0004qo-Jf
+	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:32:08 -0700
 To: linux-kernel@vger.kernel.org
+In-Reply-To: <20060626233204.6228.86324.stgit@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,36 +32,59 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-The introduction of the FLUSH_INVALIDATE argument to nfs_sync_inode_wait()
-can cause the nr_unstable page state counter to be corrupted. Fix by
-moving the call to sub_page_state() to inside nfs_scan_commit().
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/write.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/write.c |   22 +++++++++++++++++++---
+ 1 files changed, 19 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b383fdd..d054f12 100644
+index d054f12..fe3eb36 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -636,6 +636,7 @@ nfs_scan_commit(struct inode *inode, str
- 	if (nfsi->ncommit != 0) {
- 		res = nfs_scan_list(nfsi, &nfsi->commit, dst, idx_start, npages);
- 		nfsi->ncommit -= res;
-+		sub_page_state(nr_unstable,res);
- 		if ((nfsi->ncommit == 0) != list_empty(&nfsi->commit))
- 			printk(KERN_ERR "NFS: desynchronized value of nfs_i.ncommit.\n");
- 	}
-@@ -1434,7 +1435,6 @@ static void nfs_commit_done(struct rpc_t
- 		nfs_clear_page_writeback(req);
- 		res++;
- 	}
--	sub_page_state(nr_unstable,res);
+@@ -579,7 +579,23 @@ static int nfs_wait_on_requests(struct i
+ 	return ret;
  }
  
- static const struct rpc_call_ops nfs_commit_ops = {
+-static void nfs_cancel_requests(struct list_head *head)
++static void nfs_cancel_dirty_list(struct list_head *head)
++{
++	struct nfs_page *req;
++	while(!list_empty(head)) {
++		req = nfs_list_entry(head->next);
++		nfs_list_remove_request(req);
++		/* Hack, cough, splutter!
++		 * Wretched borken mm requires us to do this...
++		 */
++		set_page_writeback(req->wb_page);
++		end_page_writeback(req->wb_page);
++		nfs_inode_remove_request(req);
++		nfs_clear_page_writeback(req);
++	}
++}
++
++static void nfs_cancel_commit_list(struct list_head *head)
+ {
+ 	struct nfs_page *req;
+ 	while(!list_empty(head)) {
+@@ -1503,7 +1519,7 @@ int nfs_sync_inode_wait(struct inode *in
+ 		if (pages != 0) {
+ 			spin_unlock(&nfsi->req_lock);
+ 			if (how & FLUSH_INVALIDATE)
+-				nfs_cancel_requests(&head);
++				nfs_cancel_dirty_list(&head);
+ 			else
+ 				ret = nfs_flush_list(inode, &head, pages, how);
+ 			spin_lock(&nfsi->req_lock);
+@@ -1516,7 +1532,7 @@ int nfs_sync_inode_wait(struct inode *in
+ 			break;
+ 		if (how & FLUSH_INVALIDATE) {
+ 			spin_unlock(&nfsi->req_lock);
+-			nfs_cancel_requests(&head);
++			nfs_cancel_commit_list(&head);
+ 			spin_lock(&nfsi->req_lock);
+ 			continue;
+ 		}
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
