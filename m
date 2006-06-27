@@ -1,23 +1,26 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 014 of 14] knfsd: svcrpc: gss: server-side
-	implementation of rpcsec_gss privacy.
-Date: Tue, 27 Jun 2006 17:20:48 +1000
-Message-ID: <1060627072048.26757@suse.de>
-References: <20060627171533.26405.patches@notabene>
+From: "Alex Kelly" <alex@oxygencomputers.co.uk>
+Subject: NFS root with ethernet bonding freezes on 2.4
+Date: Tue, 27 Jun 2006 11:07:48 +0100
+Message-ID: <20060627100741.B399F13F5A@guybrush.innercrew.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="===============1025308664=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fv7sW-0006Qx-J9
-	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 00:20:56 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fv7sV-0007SI-O8
-	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 00:20:56 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1FvAU3-00049N-N7
+	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 03:07:51 -0700
+Received: from mcr-smtp-002.bulldogdsl.com ([212.158.248.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FvAU3-0004u6-4A
+	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 03:07:51 -0700
+Received: from guybrush.innercrew.co.uk (host-84-9-58-78.bulldogdsl.com
+	[84.9.58.78])
+	by mcr-smtp-002.bulldogdsl.com (Postfix) with ESMTP id E6163846B1B
+	for <nfs@lists.sourceforge.net>; Tue, 27 Jun 2006 11:07:41 +0100 (BST)
+Received: from orinoco (unknown [172.16.0.104])
+	by guybrush.innercrew.co.uk (Postfix) with ESMTP id B399F13F5A
+	for <nfs@lists.sourceforge.net>; Tue, 27 Jun 2006 11:07:41 +0100 (BST)
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,234 +33,297 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+This is a multi-part message in MIME format.
 
+--===============1025308664==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0043_01C699D9.EC97C480"
 
-Server-side implementation of rpcsec_gss privacy, which enables encryption
-of the payload of every rpc request and response.
+This is a multi-part message in MIME format.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+------=_NextPart_000_0043_01C699D9.EC97C480
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 
-### Diffstat output
- ./net/sunrpc/auth_gss/svcauth_gss.c |  154 ++++++++++++++++++++++++++++++++++--
- ./net/sunrpc/svc.c                  |    1 
- 2 files changed, 148 insertions(+), 7 deletions(-)
+Hi,
 
-diff .prev/net/sunrpc/auth_gss/svcauth_gss.c ./net/sunrpc/auth_gss/svcauth_gss.c
---- .prev/net/sunrpc/auth_gss/svcauth_gss.c	2006-06-27 15:05:11.000000000 +1000
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-06-27 15:07:54.000000000 +1000
-@@ -832,6 +832,74 @@ out:
- 	return stat;
- }
  
-+static inline int
-+total_buf_len(struct xdr_buf *buf)
-+{
-+	return buf->head[0].iov_len + buf->page_len + buf->tail[0].iov_len;
-+}
-+
-+static void
-+fix_priv_head(struct xdr_buf *buf, int pad)
-+{
-+	if (buf->page_len == 0) {
-+		/* We need to adjust head and buf->len in tandem in this
-+		 * case to make svc_defer() work--it finds the original
-+		 * buffer start using buf->len - buf->head[0].iov_len. */
-+		buf->head[0].iov_len -= pad;
-+	}
-+}
-+
-+static int
-+unwrap_priv_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct gss_ctx *ctx)
-+{
-+	u32 priv_len, maj_stat;
-+	int pad, saved_len, remaining_len, offset;
-+
-+	rqstp->rq_sendfile_ok = 0;
-+
-+	priv_len = ntohl(svc_getu32(&buf->head[0]));
-+	if (rqstp->rq_deferred) {
-+		/* Already decrypted last time through! The sequence number
-+		 * check at out_seq is unnecessary but harmless: */
-+		goto out_seq;
-+	}
-+	/* buf->len is the number of bytes from the original start of the
-+	 * request to the end, where head[0].iov_len is just the bytes
-+	 * not yet read from the head, so these two values are different: */
-+	remaining_len = total_buf_len(buf);
-+	if (priv_len > remaining_len)
-+		return -EINVAL;
-+	pad = remaining_len - priv_len;
-+	buf->len -= pad;
-+	fix_priv_head(buf, pad);
-+
-+	/* Maybe it would be better to give gss_unwrap a length parameter: */
-+	saved_len = buf->len;
-+	buf->len = priv_len;
-+	maj_stat = gss_unwrap(ctx, 0, buf);
-+	pad = priv_len - buf->len;
-+	buf->len = saved_len;
-+	buf->len -= pad;
-+	/* The upper layers assume the buffer is aligned on 4-byte boundaries.
-+	 * In the krb5p case, at least, the data ends up offset, so we need to
-+	 * move it around. */
-+	/* XXX: This is very inefficient.  It would be better to either do
-+	 * this while we encrypt, or maybe in the receive code, if we can peak
-+	 * ahead and work out the service and mechanism there. */
-+	offset = buf->head[0].iov_len % 4;
-+	if (offset) {
-+		buf->buflen = RPCSVC_MAXPAYLOAD;
-+		xdr_shift_buf(buf, offset);
-+		fix_priv_head(buf, pad);
-+	}
-+	if (maj_stat != GSS_S_COMPLETE)
-+		return -EINVAL;
-+out_seq:
-+	if (ntohl(svc_getu32(&buf->head[0])) != seq)
-+		return -EINVAL;
-+	return 0;
-+}
-+
- struct gss_svc_data {
- 	/* decoded gss client cred: */
- 	struct rpc_gss_wire_cred	clcred;
-@@ -1047,7 +1115,14 @@ svcauth_gss_accept(struct svc_rqst *rqst
- 			svc_putu32(resv, 0);
- 			break;
- 		case RPC_GSS_SVC_PRIVACY:
--			/* currently unsupported */
-+			if (unwrap_priv_data(rqstp, &rqstp->rq_arg,
-+					gc->gc_seq, rsci->mechctx))
-+				goto auth_err;
-+			/* placeholders for length and seq. number: */
-+			svcdata->body_start = resv->iov_base + resv->iov_len;
-+			svc_putu32(resv, 0);
-+			svc_putu32(resv, 0);
-+			break;
- 		default:
- 			goto auth_err;
- 		}
-@@ -1089,9 +1164,8 @@ svcauth_gss_wrap_resp_integ(struct svc_r
- 	gsd->body_start = NULL;
- 	/* move accept_stat to right place: */
- 	memcpy(p, p + 2, 4);
--	/* don't wrap in failure case: */
--	/* Note: counting on not getting here if call was not even
--	 * accepted! */
-+	/* Don't wrap in failure case: */
-+	/* Counting on not getting here if call was not even accepted! */
- 	if (*p != rpc_success) {
- 		resbuf->head[0].iov_len -= 2 * 4;
- 		goto out;
-@@ -1138,6 +1212,65 @@ out_err:
- 	return stat;
- }
- 
-+static inline int
-+svcauth_gss_wrap_resp_priv(struct svc_rqst *rqstp)
-+{
-+	struct gss_svc_data *gsd = (struct gss_svc_data *)rqstp->rq_auth_data;
-+	struct rpc_gss_wire_cred *gc = &gsd->clcred;
-+	struct xdr_buf *resbuf = &rqstp->rq_res;
-+	struct page **inpages = NULL;
-+	u32 *p;
-+	int offset, *len;
-+	int pad;
-+
-+	p = gsd->body_start;
-+	gsd->body_start = NULL;
-+	/* move accept_stat to right place: */
-+	memcpy(p, p + 2, 4);
-+	/* Don't wrap in failure case: */
-+	/* Counting on not getting here if call was not even accepted! */
-+	if (*p != rpc_success) {
-+		resbuf->head[0].iov_len -= 2 * 4;
-+		return 0;
-+	}
-+	p++;
-+	len = p++;
-+	offset = (u8 *)p - (u8 *)resbuf->head[0].iov_base;
-+	*p++ = htonl(gc->gc_seq);
-+	inpages = resbuf->pages;
-+	/* XXX: Would be better to write some xdr helper functions for
-+	 * nfs{2,3,4}xdr.c that place the data right, instead of copying: */
-+	if (resbuf->tail[0].iov_base && rqstp->rq_restailpage == 0) {
-+		BUG_ON(resbuf->tail[0].iov_base >= resbuf->head[0].iov_base
-+							+ PAGE_SIZE);
-+		BUG_ON(resbuf->tail[0].iov_base < resbuf->head[0].iov_base);
-+		if (resbuf->tail[0].iov_len + resbuf->head[0].iov_len
-+				+ 2 * RPC_MAX_AUTH_SIZE > PAGE_SIZE)
-+			return -ENOMEM;
-+		memmove(resbuf->tail[0].iov_base + RPC_MAX_AUTH_SIZE,
-+			resbuf->tail[0].iov_base,
-+			resbuf->tail[0].iov_len);
-+		resbuf->tail[0].iov_base += RPC_MAX_AUTH_SIZE;
-+	}
-+	if (resbuf->tail[0].iov_base == NULL) {
-+		if (resbuf->head[0].iov_len + 2*RPC_MAX_AUTH_SIZE > PAGE_SIZE)
-+			return -ENOMEM;
-+		resbuf->tail[0].iov_base = resbuf->head[0].iov_base
-+			+ resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE;
-+		resbuf->tail[0].iov_len = 0;
-+		rqstp->rq_restailpage = 0;
-+	}
-+	if (gss_wrap(gsd->rsci->mechctx, offset, resbuf, inpages))
-+		return -ENOMEM;
-+	*len = htonl(resbuf->len - offset);
-+	pad = 3 - ((resbuf->len - offset - 1)&3);
-+	p = (u32 *)(resbuf->tail[0].iov_base + resbuf->tail[0].iov_len);
-+	memset(p, 0, pad);
-+	resbuf->tail[0].iov_len += pad;
-+	resbuf->len += pad;
-+	return 0;
-+}
-+
- static int
- svcauth_gss_release(struct svc_rqst *rqstp)
- {
-@@ -1152,15 +1285,22 @@ svcauth_gss_release(struct svc_rqst *rqs
- 	if (gsd->body_start == NULL)
- 		goto out;
- 	/* normally not set till svc_send, but we need it here: */
--	resbuf->len = resbuf->head[0].iov_len
--		+ resbuf->page_len + resbuf->tail[0].iov_len;
-+	/* XXX: what for?  Do we mess it up the moment we call svc_putu32
-+	 * or whatever? */
-+	resbuf->len = total_buf_len(resbuf);
- 	switch (gc->gc_svc) {
- 	case RPC_GSS_SVC_NONE:
- 		break;
- 	case RPC_GSS_SVC_INTEGRITY:
--		svcauth_gss_wrap_resp_integ(rqstp);
-+		stat = svcauth_gss_wrap_resp_integ(rqstp);
-+		if (stat)
-+			goto out_err;
- 		break;
- 	case RPC_GSS_SVC_PRIVACY:
-+		stat = svcauth_gss_wrap_resp_priv(rqstp);
-+		if (stat)
-+			goto out_err;
-+		break;
- 	default:
- 		goto out_err;
- 	}
 
-diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2006-06-27 15:07:01.000000000 +1000
-+++ ./net/sunrpc/svc.c	2006-06-27 15:07:54.000000000 +1000
-@@ -280,6 +280,7 @@ svc_process(struct svc_serv *serv, struc
- 	rqstp->rq_res.page_base = 0;
- 	rqstp->rq_res.page_len = 0;
- 	rqstp->rq_res.buflen = PAGE_SIZE;
-+	rqstp->rq_res.tail[0].iov_base = NULL;
- 	rqstp->rq_res.tail[0].iov_len = 0;
- 	/* Will be turned off only in gss privacy case: */
- 	rqstp->rq_sendfile_ok = 1;
+I've recently been trying to set up Ethernet bonding for failover on a
+system which has a host NFS system from which thin clients Etherboot. I am
+trying to set up the bonding on the thin client end.
+
+ 
+
+Initially everything works ok. However if I run an iperf server ('iperf -s')
+at one end and then loop through iperf bidirectional tests from the other
+('for i in $(seq 1 10000); do echo $i; iperf -c host -d; done') the
+networking on the client locks up after around 900 iterations (+- ~20). A
+similar result is achieved by generating large amounts of traffic by
+continually sshing a file from one machine to /dev/null on the other too, so
+it would seem that the problem is not in the method of testing.
+
+ 
+
+The bonding is set up with the parameters 'mode=1 arp_ip_target=192.168.0.1
+arp_interval=100' where 192.168.0.1 is the IP of the NFS/Etherboot host.
+While running the tests I have only been connecting one of the Ethernet
+devices to simplify things. The same problem occurs with both connected
+though. I have also tried connecting client and server directly with a
+crossover to eliminate switching problems. I have also tried running the
+bandwidth tests to a 3rd machine and using a 3rd machine as the
+arp_ip_target.
+
+ 
+
+This has been tested using kernels 2.4.18, 2.4.24 & 2.4.32 on both server
+and client. The hardware tested is a PC104 embedded board (Compulab 786
+Base) with dual Intel 82559ER chips using the e100 driver. I have also tried
+with also with a 3Com 3C905B-TX. The 3Com board has also been tested in an
+ASRock K7S41GX motherboard with the same result.
+
+ 
+
+Using Etherboot to load the kernel on the client but then mounting all
+filesystems from a local disk works fine. The filesystem used to test this
+was an identical copy of that being exported via NFS with the exception of
+the fstab.
+
+ 
+
+In my most recent tests there seems to be no problem running 2.6.17.1 on the
+host and 2.6.12 on the client machines. I have had to upgrade modutils and
+add module-init-tools to run a 2.6 kernel though so am in the process of
+re-testing using 2.4 to ensure that the original problem still occurs after
+these changes. Unfortunately each run of this test takes some time :-)
+
+ 
+
+Anyone with any experience of this, or just any suggestions, would be much
+appreciated.
+
+ 
+
+Thanks
+
+ 
+
+Alex
+
+
+------=_NextPart_000_0043_01C699D9.EC97C480
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+<html>
+
+<head>
+<meta http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Dus-ascii">
+<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered)">
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.EmailStyle17
+	{font-family:Arial;
+	color:windowtext;}
+@page Section1
+	{size:612.0pt 792.0pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
+
+<div class=3DSection1>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>Hi,</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>I&#8217;ve recently been trying to set up =
+Ethernet bonding
+for failover on a system which has a host NFS system from which thin =
+clients
+Etherboot. I am trying to set up the bonding on the thin client =
+end.</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>Initially everything works ok. However if I =
+run an
+iperf server (&#8216;iperf &#8211;s&#8217;) at one end and then loop =
+through
+iperf bidirectional tests from the other (&#8216;for i in $(seq 1 =
+10000); do echo
+$i; iperf &#8211;c host &#8211;d; done&#8217;) the networking on the =
+client
+locks up after around 900 iterations (+- ~20). A similar result is =
+achieved by
+generating large amounts of traffic by continually sshing a file from =
+one
+machine to /dev/null on the other too, so it would seem that the problem =
+is not
+in the method of testing.</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>The bonding is set up with the parameters =
+&#8216;mode=3D1
+arp_ip_target=3D192.168.0.1 arp_interval=3D100&#8217; where 192.168.0.1 =
+is the IP
+of the NFS/Etherboot host. While running the tests I have only been =
+connecting
+one of the Ethernet devices to simplify things. The same problem occurs =
+with
+both connected though. I have also tried connecting client and server =
+directly
+with a crossover to eliminate switching problems. I have also tried =
+running the
+bandwidth tests to a 3<sup>rd</sup> machine and using a 3<sup>rd</sup> =
+machine
+as the arp_ip_target.</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>This has been tested using kernels 2.4.18, =
+2.4.24
+&amp; 2.4.32 on both server and client. The hardware tested is a PC104 =
+embedded
+board (Compulab 786 Base) with dual Intel 82559ER chips using the e100 =
+driver.
+I have also tried with also with a 3Com 3C905B-TX. The 3Com board has =
+also been
+tested in an ASRock K7S41GX motherboard with the same =
+result.</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>Using Etherboot to load the kernel on the =
+client but
+then mounting all filesystems from a local disk works fine. The =
+filesystem used
+to test this was an identical copy of that being exported via NFS with =
+the
+exception of the fstab.</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>In my most recent tests there seems to be no =
+problem
+running 2.6.17.1 on the host and 2.6.12 on the client machines. I have =
+had to
+upgrade modutils and add module-init-tools to run a 2.6 kernel though so =
+am in
+the process of re-testing using 2.4 to ensure that the original problem =
+still
+occurs after these changes. Unfortunately each run of this test takes =
+some time
+</span></font><font size=3D2 face=3DWingdings><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Wingdings'>J</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>Anyone with any experience of this, or just =
+any
+suggestions, would be much appreciated.</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>Thanks</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>&nbsp;</span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span lang=3DEN-GB =
+style=3D'font-size:
+10.0pt;font-family:Arial'>Alex</span></font></p>
+
+</div>
+
+</body>
+
+</html>
+
+------=_NextPart_000_0043_01C699D9.EC97C480--
+
+
+
+--===============1025308664==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============1025308664==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1025308664==--
