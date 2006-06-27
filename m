@@ -1,23 +1,21 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/2] NFS: missing
-	set_page_writeback()/end_page_writeback() in nfs_cancel_requests
-Date: Mon, 26 Jun 2006 19:32:07 -0400
-Message-ID: <20060626233206.6228.95805.stgit@lade.trondhjem.org>
-References: <20060626233204.6228.86324.stgit@lade.trondhjem.org>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 14] knfsd: Introduction
+Date: Tue, 27 Jun 2006 17:19:34 +1000
+Message-ID: <20060627171533.26405.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fv0Yp-00026C-NR
-	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:32:07 -0700
-Received: from dh134.citi.umich.edu ([141.211.133.134] helo=lade.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fv0Yp-0004qo-Jf
-	for nfs@lists.sourceforge.net; Mon, 26 Jun 2006 16:32:08 -0700
-To: linux-kernel@vger.kernel.org
-In-Reply-To: <20060626233204.6228.86324.stgit@lade.trondhjem.org>
+	id 1Fv7rP-0006EV-H9
+	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 00:19:47 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Fv7rO-00076s-Df
+	for nfs@lists.sourceforge.net; Tue, 27 Jun 2006 00:19:47 -0700
+To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,61 +28,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+Following are 14 assorted patches for nfsd.
+Patches are against 2.6.17-mm2 and are suitable for inclusion in 2.6.18.
 
- fs/nfs/write.c |   22 +++++++++++++++++++---
- 1 files changed, 19 insertions(+), 3 deletions(-)
+Primarily minor bug fixes.
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index d054f12..fe3eb36 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -579,7 +579,23 @@ static int nfs_wait_on_requests(struct i
- 	return ret;
- }
- 
--static void nfs_cancel_requests(struct list_head *head)
-+static void nfs_cancel_dirty_list(struct list_head *head)
-+{
-+	struct nfs_page *req;
-+	while(!list_empty(head)) {
-+		req = nfs_list_entry(head->next);
-+		nfs_list_remove_request(req);
-+		/* Hack, cough, splutter!
-+		 * Wretched borken mm requires us to do this...
-+		 */
-+		set_page_writeback(req->wb_page);
-+		end_page_writeback(req->wb_page);
-+		nfs_inode_remove_request(req);
-+		nfs_clear_page_writeback(req);
-+	}
-+}
-+
-+static void nfs_cancel_commit_list(struct list_head *head)
- {
- 	struct nfs_page *req;
- 	while(!list_empty(head)) {
-@@ -1503,7 +1519,7 @@ int nfs_sync_inode_wait(struct inode *in
- 		if (pages != 0) {
- 			spin_unlock(&nfsi->req_lock);
- 			if (how & FLUSH_INVALIDATE)
--				nfs_cancel_requests(&head);
-+				nfs_cancel_dirty_list(&head);
- 			else
- 				ret = nfs_flush_list(inode, &head, pages, how);
- 			spin_lock(&nfsi->req_lock);
-@@ -1516,7 +1532,7 @@ int nfs_sync_inode_wait(struct inode *in
- 			break;
- 		if (how & FLUSH_INVALIDATE) {
- 			spin_unlock(&nfsi->req_lock);
--			nfs_cancel_requests(&head);
-+			nfs_cancel_commit_list(&head);
- 			spin_lock(&nfsi->req_lock);
- 			continue;
- 		}
+Last three patches are initial support for RPC privacy (i.e. decrypt
+the RPC request and encrypt the reply).  This code is sub-optimal in
+several ways (memcopys ...) which will probably get tidied up once we
+determine the best way to do so.
+
+Thanks,
+NeilBrown
+
+ [PATCH 001 of 14] knfsd: Improve the test for cross-device-rename in nfsd
+ [PATCH 002 of 14] knfsd: Fixing missing 'expkey' support for fsid type 3
+ [PATCH 003 of 14] knfsd: Remove noise about filehandle being uptodate.
+ [PATCH 004 of 14] knfsd: Ignore ref_fh when crossing a mountpoint.
+ [PATCH 005 of 14] knfsd: nfsd4: fix open_confirm locking
+ [PATCH 006 of 14] knfsd: nfsd: call nfsd_setuser() on fh_compose(), fix nfsd4 permissions problem
+ [PATCH 007 of 14] knfsd: nfsd4: remove superfluous grace period checks
+ [PATCH 008 of 14] knfsd: nfsd: fix misplaced fh_unlock() in nfsd_link()
+ [PATCH 009 of 14] knfsd: svcrpc: gss: simplify rsc_parse()
+ [PATCH 010 of 14] knfsd: nfsd4: fix some open argument tests
+ [PATCH 011 of 14] knfsd: nfsd4: fix open flag passing
+ [PATCH 012 of 14] knfsd: svcrpc: Simplify nfsd rpcsec_gss integrity code
+ [PATCH 013 of 14] knfsd: nfsd: mark rqstp to prevent use of sendfile in privacy case
+ [PATCH 014 of 14] knfsd: svcrpc: gss: server-side implementation of rpcsec_gss privacy.
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
