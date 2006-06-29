@@ -1,40 +1,24 @@
-From: Chris Abbey <cablnx@us.ibm.com>
-Subject: [PATCH] CONFIG_NFSD_TCP actually impacts clients
-Date: Thu, 29 Jun 2006 15:22:46 -0500
-Message-ID: <200606291522.46235.cablnx@us.ibm.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [RFC PATCH 1/3] NLM lock failover - lock release
+Date: Thu, 29 Jun 2006 17:49:04 -0400
+Message-ID: <44A44AD0.7080506@redhat.com>
+References: <44A417E7.5090500@redhat.com>
+	<76bd70e30606291211t338164adq985e43726da51e59@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fw32P-0007LC-7R
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 13:22:57 -0700
-Received: from e36.co.us.ibm.com ([32.97.110.154])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fw32P-0004b4-6B
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 13:22:57 -0700
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com
-	[9.17.195.106])
-	by e36.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k5TKMod5009050
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 16:22:50 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id
-	k5TKN51T179780
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 14:23:06 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k5TKMmuQ003102
-	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 14:22:48 -0600
-Received: from bezerkwookie.rchland.ibm.com (bezerkwookie.rchland.ibm.com
-	[9.10.86.237])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k5TKMkYW003048
-	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 14:22:46 -0600
-To: nfs@lists.sourceforge.net
+	id 1Fw4Nx-0006nm-FE
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 14:49:17 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fw4Nw-0007Ji-EN
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 14:49:17 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <76bd70e30606291211t338164adq985e43726da51e59@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -47,88 +31,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-CONFIG_NFSD_TCP's name, description and dependency information imply
-that it only impacts nfs servers. However in fs/lockd/svc.c this config option
-gaurds binding lockd to tcp as well as udp. (If CONFIG_NFSD_TCP is not set, 
-then lockd will not bind to tcp.) If a kernel is configured as NFS client 
-only, such as for an embeddeed system, then this will cause locking to fail
-on nfs mounts using TCP instead of UDP. Callers to F_SETLK will fail with
-errno = 37 when trying to lock: "No locks available".
+Chuck Lever wrote:
 
-This patch changes the name, description, help text and dependency for
-CONFIG_NFSD_TCP to accurately reflect it's usage. The main change is really 
-the removal of 'depends on NFSD', the rest is just cleanup.
+>On 6/29/06, Wendy Cheng <wcheng@redhat.com> wrote:
+>  
+>
+>>The patch piggy-backs the logic into "rq_daddr" field of struct svc_rqst
+>>where NFS server ip address is stored. Upon writing IPv4 address in
+>>standard dot notation into /proc/fs/nfsd/nlm_unlock, the logic will
+>>examine NLM's global nlm_files list and subsequently unlock the
+>>associated file if server ip address matches.
+>>
+>>Due to the size of rq_daddr (u32), we would not be able to support IPV6
+>>for this round of changes. Another to-do item is to enable client:server
+>>ip pairs to allow NFS V4 failover.
+>>    
+>>
+>
+>FYI: I have a patch in my IPv6 patchset that increases the size of
+>this field specifically in order to hold an IPv6 address.  See:
+>
+>   http://oss.oracle.com/~cel/linux-2.6/2.6.17/patches/52-svc-rq_daddr.diff
+>
+>for the individual patch, and surrounding patches for more context.
+>
+>  
+>
+ok, thanks ...
 
-IBM LTC Bugzilla #24739
-
-Signed-off-by: Chris Abbey <cablnx@us.ibm.com>
-
----
-
- Kconfig       |   10 +++++-----
- lockd/svc.c   |    2 +-
- nfsd/nfssvc.c |    2 +-
- 3 files changed, 7 insertions(+), 7 deletions(-)
-diff -purN linux-2.6.16.20-virgin/fs/Kconfig linux-2.6.16.20/fs/Kconfig
---- linux-2.6.16.20-virgin/fs/Kconfig	2006-06-05 12:18:23.000000000 -0500
-+++ linux-2.6.16.20/fs/Kconfig	2006-06-16 19:09:15.000000000 -0500
-@@ -1484,7 +1484,7 @@ config NFSD_V3_ACL
- config NFSD_V4
- 	bool "Provide NFSv4 server support (EXPERIMENTAL)"
- 	depends on NFSD_V3 && EXPERIMENTAL
--	select NFSD_TCP
-+	select NFS_TCP
- 	select CRYPTO_MD5
- 	select CRYPTO
- 	select FS_POSIX_ACL
-@@ -1494,12 +1494,12 @@ config NFSD_V4
- 	  should only be used if you are interested in helping to test NFSv4.
- 	  If unsure, say N.
- 
--config NFSD_TCP
--	bool "Provide NFS server over TCP support"
--	depends on NFSD
-+config NFS_TCP
-+	bool "Provide NFS services over TCP"
- 	default y
- 	help
--	  If you want your NFS server to support TCP connections, say Y here.
-+	  If you want your NFS server to support TCP connections, or your NFS
-+	  clients to be able to lock over a TCP connection, then say Y here.
- 	  TCP connections usually perform better than the default UDP when
- 	  the network is lossy or congested.  If unsure, say Y.
- 
-diff -purN linux-2.6.16.20-virgin/fs/lockd/svc.c 
-linux-2.6.16.20/fs/lockd/svc.c
---- linux-2.6.16.20-virgin/fs/lockd/svc.c	2006-06-05 12:18:23.000000000 -0500
-+++ linux-2.6.16.20/fs/lockd/svc.c	2006-06-16 19:08:40.000000000 -0500
-@@ -243,7 +243,7 @@ lockd_up(void)
- 	}
- 
- 	if ((error = svc_makesock(serv, IPPROTO_UDP, nlm_udpport)) < 0 
--#ifdef CONFIG_NFSD_TCP
-+#ifdef CONFIG_NFS_TCP
- 	 || (error = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport)) < 0
- #endif
- 		) {
-diff -purN linux-2.6.16.20-virgin/fs/nfsd/nfssvc.c 
-linux-2.6.16.20/fs/nfsd/nfssvc.c
---- linux-2.6.16.20-virgin/fs/nfsd/nfssvc.c	2006-06-05 12:18:23.000000000 
--0500
-+++ linux-2.6.16.20/fs/nfsd/nfssvc.c	2006-06-16 19:08:40.000000000 -0500
-@@ -205,7 +205,7 @@ nfsd_svc(unsigned short port, int nrserv
- 		if (error < 0)
- 			goto failure;
- 
--#ifdef CONFIG_NFSD_TCP
-+#ifdef CONFIG_NFS_TCP
- 		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
- 		if (error < 0)
- 			goto failure;
+-- Wendy
 
 -- 
-The value of Open Standards is only evident to Open Minds.
-
+S. Wendy Cheng
+wcheng@redhat.com
 
 
 Using Tomcat but need to do more? Need to support web services, security?
