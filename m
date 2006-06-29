@@ -1,27 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: On NFS mounted file system access time not updated
-Date: Thu, 29 Jun 2006 09:39:39 -0400
-Message-ID: <1151588379.17300.6.camel@lade.trondhjem.org>
-References: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
-	<1150660000.6771.189.camel@lade.trondhjem.org>
-	<b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
-	<1150807633.14850.1.camel@lade.trondhjem.org>
-	<b01966ec0606290623u186c16abw62bd5b81df2570a0@mail.gmail.com>
+From: Filipe Brandenburger <branden@terra.com.br>
+Subject: Re: Reading 64k blocks at a time
+Date: Thu, 29 Jun 2006 10:48:36 -0300
+Message-ID: <20060629104451.1D6A.BRANDEN@terra.com.br>
+References: <20060628143949.1D55.BRANDEN@terra.com.br>
+	<1151522618.29569.38.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neil@brown.name, nfs@lists.sourceforge.net
+Cc: f.soto@terra.com.br
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FvwkW-0003gu-2i
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:40:04 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FvwkT-0004J4-Sv
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:40:04 -0700
-To: Nida M <nidajm@gmail.com>
-In-Reply-To: <b01966ec0606290623u186c16abw62bd5b81df2570a0@mail.gmail.com>
+	id 1Fvwsp-0004P4-Qd
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:48:39 -0700
+Received: from buniche.hst.terra.com.br ([200.176.10.197])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fvwsn-0008P8-P2
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:48:40 -0700
+Received: from ladigue.hst.terra.com.br (ladigue.hst.terra.com.br
+	[200.176.10.10])
+	by buniche.hst.terra.com.br (Postfix) with ESMTP id 1C0EF3DD8EC9
+	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 10:48:36 -0300 (BRT)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1151522618.29569.38.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,36 +34,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2006-06-29 at 18:53 +0530, Nida M wrote:
-> > You would have to either use O_DIRECT reads (i.e. uncached reads) or you
-> > would have to call utimes() after every read. Either way that will
-> > seriously slow down your application.
-> >
+
+Hello,
+
+* Wed, 28 Jun 2006 15:23:37 -0400, Trond Myklebust <trond.myklebust@fys.uio.no>:
+> > The problem is that when I try to fetch the first 1kb of several big
+> > files, it gets really slow... I wonder, is there some way to change this
+> > behaviour or tune it on the O.S. so that I don't have to read that much
+> > to get that little information?
 > 
-> The read page cache timeout "attrtimeo" value is 60. Where it will refresh
-> the local cache after every 60 second.
+> 'man posix_fadvise()'
 > 
-> How to reduce the timeout value in the kernel source?
+> Cheers,
+>   Trond
 
-Huh? The attribute cache is controlled in userland by the ac* mount
-options. 'man 5 nfs'.
+Thanks a lot for your answer, this really seems to be what I'm looking
+for.
 
-In any case, the attribute cache will automatically be invalidated
-whenever some user action requires it.
+However, I tried a lot of settings (setting POSIX_FADV_RANDOM on all
+file, setting POSIX_FADV_NOREUSE, setting POSIX_FADV_DONTNEED, setting
+it starting on a 8k boundary, etc.), but nothing seemed to change the
+behaviour...
 
-> I need to reduce the timeout upto the point where it will update the atime
-> frequently and it will not degrade the performance also.
+I tried to google for more information on how to use this posix_fadvise,
+I found some things about increasing the performance of Postgresql on
+local filesystems (ext3, etc.), but not much further...
 
-Sorry, but frequent atime updates and performance are incompatible
-requirements: if you want frequent atime updates, then that will
-necessarily degrade performance.
+Could you please help me a little more and give me some more small hint on it?
 
-Whether or not the resulting slowdown is at an acceptable level very
-much depends on your application, though. Perhaps you can indeed find a
-balance that works for you.
-
-Cheers,
-  Trond
+Thank you very much,
+Filipe Brandenburger
 
 
 Using Tomcat but need to do more? Need to support web services, security?
