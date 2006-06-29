@@ -1,27 +1,27 @@
-From: "Nida M" <nidajm@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: On NFS mounted file system access time not updated
-Date: Thu, 29 Jun 2006 18:53:10 +0530
-Message-ID: <b01966ec0606290623u186c16abw62bd5b81df2570a0@mail.gmail.com>
+Date: Thu, 29 Jun 2006 09:39:39 -0400
+Message-ID: <1151588379.17300.6.camel@lade.trondhjem.org>
 References: <b01966ec0606170504p1575f325y560aa3b764dc47a2@mail.gmail.com>
 	<1150660000.6771.189.camel@lade.trondhjem.org>
 	<b01966ec0606190050r48757400x98945f58f1032283@mail.gmail.com>
 	<1150807633.14850.1.camel@lade.trondhjem.org>
+	<b01966ec0606290623u186c16abw62bd5b81df2570a0@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neil@brown.name, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FvwUC-0002HG-Iu
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:23:12 -0700
-Received: from wr-out-0506.google.com ([64.233.184.233])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FvwUB-0005Lk-Lv
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:23:12 -0700
-Received: by wr-out-0506.google.com with SMTP id i3so171015wra
-	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 06:23:10 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1150807633.14850.1.camel@lade.trondhjem.org>
+	id 1FvwkW-0003gu-2i
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:40:04 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FvwkT-0004J4-Sv
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 06:40:04 -0700
+To: Nida M <nidajm@gmail.com>
+In-Reply-To: <b01966ec0606290623u186c16abw62bd5b81df2570a0@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,21 +34,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> You would have to either use O_DIRECT reads (i.e. uncached reads) or you
-> would have to call utimes() after every read. Either way that will
-> seriously slow down your application.
->
+On Thu, 2006-06-29 at 18:53 +0530, Nida M wrote:
+> > You would have to either use O_DIRECT reads (i.e. uncached reads) or you
+> > would have to call utimes() after every read. Either way that will
+> > seriously slow down your application.
+> >
+> 
+> The read page cache timeout "attrtimeo" value is 60. Where it will refresh
+> the local cache after every 60 second.
+> 
+> How to reduce the timeout value in the kernel source?
 
-The read page cache timeout "attrtimeo" value is 60. Where it will refresh
-the local cache after every 60 second.
+Huh? The attribute cache is controlled in userland by the ac* mount
+options. 'man 5 nfs'.
 
-How to reduce the timeout value in the kernel source?
+In any case, the attribute cache will automatically be invalidated
+whenever some user action requires it.
 
-I need to reduce the timeout upto the point where it will update the atime
-frequently and it will not degrade the performance also.
+> I need to reduce the timeout upto the point where it will update the atime
+> frequently and it will not degrade the performance also.
 
+Sorry, but frequent atime updates and performance are incompatible
+requirements: if you want frequent atime updates, then that will
+necessarily degrade performance.
 
-~Nida
+Whether or not the resulting slowdown is at an acceptable level very
+much depends on your application, though. Perhaps you can indeed find a
+balance that works for you.
+
+Cheers,
+  Trond
+
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
