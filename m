@@ -1,24 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC PATCH 1/3] NLM lock failover - lock release
-Date: Thu, 29 Jun 2006 19:06:37 -0400
-Message-ID: <1151622397.6405.5.camel@lade.trondhjem.org>
-References: <44A417E7.5090500@redhat.com>
+Subject: Re: [PATCH] CONFIG_NFSD_TCP actually impacts clients
+Date: Thu, 29 Jun 2006 19:11:01 -0400
+Message-ID: <1151622661.6405.9.camel@lade.trondhjem.org>
+References: <200606291522.46235.cablnx@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fw5b8-0004lJ-6c
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 16:06:58 -0700
+	id 1Fw5fE-0005Cn-7H
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 16:11:12 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fw5b7-00079j-N1
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 16:06:58 -0700
-To: Wendy Cheng <wcheng@redhat.com>
-In-Reply-To: <44A417E7.5090500@redhat.com>
+	(Exim 4.44) id 1Fw5fC-00084a-Rd
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 16:11:12 -0700
+To: Chris Abbey <cablnx@us.ibm.com>
+In-Reply-To: <200606291522.46235.cablnx@us.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,82 +30,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2006-06-29 at 14:11 -0400, Wendy Cheng wrote:
-> The patch piggy-backs the logic into "rq_daddr" field of struct svc_rqst 
-> where NFS server ip address is stored. Upon writing IPv4 address in 
-> standard dot notation into /proc/fs/nfsd/nlm_unlock, the logic will 
-> examine NLM's global nlm_files list and subsequently unlock the 
-> associated file if server ip address matches.
+On Thu, 2006-06-29 at 15:22 -0500, Chris Abbey wrote:
+> CONFIG_NFSD_TCP's name, description and dependency information imply
+> that it only impacts nfs servers. However in fs/lockd/svc.c this config option
+> gaurds binding lockd to tcp as well as udp. (If CONFIG_NFSD_TCP is not set, 
+> then lockd will not bind to tcp.) If a kernel is configured as NFS client 
+> only, such as for an embeddeed system, then this will cause locking to fail
+> on nfs mounts using TCP instead of UDP. Callers to F_SETLK will fail with
+> errno = 37 when trying to lock: "No locks available".
 > 
-> Due to the size of rq_daddr (u32), we would not be able to support IPV6 
-> for this round of changes. Another to-do item is to enable client:server 
-> ip pairs to allow NFS V4 failover.
-> 
-> 
-> 
-> 
-> plain text document attachment (gfs_nlm_unlock.patch)
->  fs/lockd/svcsubs.c          |   58 ++++++++++++++++++++++++++++++++++++++++----
->  fs/nfsd/nfsctl.c            |   54 ++++++++++++++++++++++++++++++++++++++++
->  include/linux/lockd/bind.h  |    5 +++
->  include/linux/lockd/lockd.h |    3 ++
->  net/sunrpc/svcsock.c        |    5 +++
->  5 files changed, 120 insertions(+), 5 deletions(-)
-> 
-> --- linux-2.6.17/include/linux/lockd/lockd.h	2006-06-17 21:49:35.000000000 -0400
-> +++ linux-2.6.17-1/include/linux/lockd/lockd.h	2006-06-27 10:58:47.000000000 -0400
-> @@ -105,6 +105,7 @@ struct nlm_file {
->  	unsigned int		f_count;	/* reference count */
->  	struct semaphore	f_sema;		/* avoid concurrent access */
->  	int		       	f_hash;		/* hash of f_handle */
-> +	__u32			f_iaddr;	/* server ip for failover */
->  };
->  
->  /*
-> @@ -133,6 +134,7 @@ struct nlm_block {
->  #define NLM_ACT_CHECK		0		/* check for locks */
->  #define NLM_ACT_MARK		1		/* mark & sweep */
->  #define NLM_ACT_UNLOCK		2		/* release all locks */
-> +#define NLM_ACT_FO_UNLOCK	3		/* failover release locks */
->  
->  /*
->   * Global variables
-> @@ -196,6 +198,7 @@ void		  nlm_release_file(struct nlm_file
->  void		  nlmsvc_mark_resources(void);
->  void		  nlmsvc_free_host_resources(struct nlm_host *);
->  void		  nlmsvc_invalidate_all(void);
-> +int 		  nlmsvc_fo_unlock(struct in_addr *);
->  
->  static __inline__ struct inode *
->  nlmsvc_file_inode(struct nlm_file *file)
-> --- linux-2.6.17/net/sunrpc/svcsock.c	2006-06-17 21:49:35.000000000 -0400
-> +++ linux-2.6.17-1/net/sunrpc/svcsock.c	2006-06-27 10:58:47.000000000 -0400
-> @@ -454,6 +454,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
->  	struct msghdr	msg;
->  	struct socket	*sock;
->  	int		len, alen;
-> +	struct sockaddr_in   daddr;
->  
->  	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
->  	sock = rqstp->rq_sock->sk_sock;
-> @@ -474,6 +475,10 @@ svc_recvfrom(struct svc_rqst *rqstp, str
->  	alen = sizeof(rqstp->rq_addr);
->  	sock->ops->getname(sock, (struct sockaddr *)&rqstp->rq_addr, &alen, 1);
->  
-> +	/* add server ip for nlm lock failover */
-> +	sock->ops->getname(sock, (struct sockaddr *)&daddr, &alen, 0);
-> +	rqstp->rq_daddr = daddr.sin_addr.s_addr;
-> +
+> This patch changes the name, description, help text and dependency for
+> CONFIG_NFSD_TCP to accurately reflect it's usage. The main change is really 
+> the removal of 'depends on NFSD', the rest is just cleanup.
 
-Hmm.... Why would you want to do this on every receive when you could
-just store the ip address in the struct svc_sock once and for all?
-
-That said, how do you envisage this working in the cases where the
-socket is bound to INADDR_ANY?
+Good point, but it seems to me that it would make sense to have
+CONFIG_NFS_FS automatically select it.
 
 Cheers,
   Trond
 
+> IBM LTC Bugzilla #24739
+> 
+> Signed-off-by: Chris Abbey <cablnx@us.ibm.com>
+> 
+> ---
+> 
+>  Kconfig       |   10 +++++-----
+>  lockd/svc.c   |    2 +-
+>  nfsd/nfssvc.c |    2 +-
+>  3 files changed, 7 insertions(+), 7 deletions(-)
+> diff -purN linux-2.6.16.20-virgin/fs/Kconfig linux-2.6.16.20/fs/Kconfig
+> --- linux-2.6.16.20-virgin/fs/Kconfig	2006-06-05 12:18:23.000000000 -0500
+> +++ linux-2.6.16.20/fs/Kconfig	2006-06-16 19:09:15.000000000 -0500
+> @@ -1484,7 +1484,7 @@ config NFSD_V3_ACL
+>  config NFSD_V4
+>  	bool "Provide NFSv4 server support (EXPERIMENTAL)"
+>  	depends on NFSD_V3 && EXPERIMENTAL
+> -	select NFSD_TCP
+> +	select NFS_TCP
+>  	select CRYPTO_MD5
+>  	select CRYPTO
+>  	select FS_POSIX_ACL
+> @@ -1494,12 +1494,12 @@ config NFSD_V4
+>  	  should only be used if you are interested in helping to test NFSv4.
+>  	  If unsure, say N.
+>  
+> -config NFSD_TCP
+> -	bool "Provide NFS server over TCP support"
+> -	depends on NFSD
+> +config NFS_TCP
+> +	bool "Provide NFS services over TCP"
+>  	default y
+>  	help
+> -	  If you want your NFS server to support TCP connections, say Y here.
+> +	  If you want your NFS server to support TCP connections, or your NFS
+> +	  clients to be able to lock over a TCP connection, then say Y here.
+>  	  TCP connections usually perform better than the default UDP when
+>  	  the network is lossy or congested.  If unsure, say Y.
+>  
+> diff -purN linux-2.6.16.20-virgin/fs/lockd/svc.c 
+> linux-2.6.16.20/fs/lockd/svc.c
+> --- linux-2.6.16.20-virgin/fs/lockd/svc.c	2006-06-05 12:18:23.000000000 -0500
+> +++ linux-2.6.16.20/fs/lockd/svc.c	2006-06-16 19:08:40.000000000 -0500
+> @@ -243,7 +243,7 @@ lockd_up(void)
+>  	}
+>  
+>  	if ((error = svc_makesock(serv, IPPROTO_UDP, nlm_udpport)) < 0 
+> -#ifdef CONFIG_NFSD_TCP
+> +#ifdef CONFIG_NFS_TCP
+>  	 || (error = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport)) < 0
+>  #endif
+>  		) {
+> diff -purN linux-2.6.16.20-virgin/fs/nfsd/nfssvc.c 
+> linux-2.6.16.20/fs/nfsd/nfssvc.c
+> --- linux-2.6.16.20-virgin/fs/nfsd/nfssvc.c	2006-06-05 12:18:23.000000000 
+> -0500
+> +++ linux-2.6.16.20/fs/nfsd/nfssvc.c	2006-06-16 19:08:40.000000000 -0500
+> @@ -205,7 +205,7 @@ nfsd_svc(unsigned short port, int nrserv
+>  		if (error < 0)
+>  			goto failure;
+>  
+> -#ifdef CONFIG_NFSD_TCP
+> +#ifdef CONFIG_NFS_TCP
+>  		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
+>  		if (error < 0)
+>  			goto failure;
+> 
 
 
 Using Tomcat but need to do more? Need to support web services, security?
