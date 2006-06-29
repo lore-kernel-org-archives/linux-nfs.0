@@ -1,27 +1,25 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: Re: Reading 64k blocks at a time
-Date: Thu, 29 Jun 2006 14:51:27 -0300
-Message-ID: <20060629144917.1D73.BRANDEN@terra.com.br>
-References: <20060629104451.1D6A.BRANDEN@terra.com.br>
-	<1151590716.17300.17.camel@lade.trondhjem.org>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: [RFC PATCH 1/3] NLM lock failover - lock release
+Date: Thu, 29 Jun 2006 14:11:51 -0400
+Message-ID: <44A417E7.5090500@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: f.soto@terra.com.br
+Content-Type: multipart/mixed; boundary="------------050108030405050307010107"
+Cc: Lon Hohberger <lhh@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fw0fw-0002Y6-Gn
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 10:51:36 -0700
-Received: from burta.hst.terra.com.br ([200.176.10.199])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fw0fu-0004tM-FZ
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 10:51:36 -0700
-Received: from caliope.hst.terra.com.br (caliope.hst.terra.com.br
-	[200.176.10.8])
-	by burta.hst.terra.com.br (Postfix) with ESMTP id 98C374B78203
-	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 14:51:28 -0300 (BRT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1151590716.17300.17.camel@lade.trondhjem.org>
+	id 1Fw0zn-0004ZS-4S
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 11:12:07 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fw0zm-0001P8-Pz
+	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 11:12:07 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k5TIC0Ha014380
+	for <nfs@lists.sourceforge.net>; Thu, 29 Jun 2006 14:12:00 -0400
+To: nfs@lists.sourceforge.net, cluster-devel@redhat.com
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,36 +32,330 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------050108030405050307010107
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hi, there.
+The patch piggy-backs the logic into "rq_daddr" field of struct svc_rqst 
+where NFS server ip address is stored. Upon writing IPv4 address in 
+standard dot notation into /proc/fs/nfsd/nlm_unlock, the logic will 
+examine NLM's global nlm_files list and subsequently unlock the 
+associated file if server ip address matches.
 
-* Thu, 29 Jun 2006 10:18:36 -0400, Trond Myklebust <trond.myklebust@fys.uio.no>:
-> fd = open('foo', O_RDONLY);
-> posix_fadvise(fd, 0, 8192, POSIX_FADV_RANDOM); // turn off readahead
-> read(fd, buffer, 8192);
-> close(fd);
-> ....
+Due to the size of rq_daddr (u32), we would not be able to support IPV6 
+for this round of changes. Another to-do item is to enable client:server 
+ip pairs to allow NFS V4 failover.
 
-Thanks, it really worked. However, I saw that it did two 4k reads
-instead of one 8k read. I tweeked it a little more and came up with
-this:
 
-     posix_fadvise(fd, 0, 8192, POSIX_FADV_NOREUSE);
-     posix_fadvise(fd, 8193, 0, POSIX_FADV_RANDOM);
 
-which had the desired effect of doing only one 8k read with no prefetch
-or read-ahead.
 
-Thank you very much for your time.
 
-Regards,
-Filipe Brandenburger
+--------------050108030405050307010107
+Content-Type: text/plain;
+ name="gfs_nlm_unlock.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="gfs_nlm_unlock.patch"
 
+ fs/lockd/svcsubs.c          |   58 ++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfsctl.c            |   54 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/lockd/bind.h  |    5 +++
+ include/linux/lockd/lockd.h |    3 ++
+ net/sunrpc/svcsock.c        |    5 +++
+ 5 files changed, 120 insertions(+), 5 deletions(-)
+
+--- linux-2.6.17/include/linux/lockd/lockd.h	2006-06-17 21:49:35.000000000 -0400
++++ linux-2.6.17-1/include/linux/lockd/lockd.h	2006-06-27 10:58:47.000000000 -0400
+@@ -105,6 +105,7 @@ struct nlm_file {
+ 	unsigned int		f_count;	/* reference count */
+ 	struct semaphore	f_sema;		/* avoid concurrent access */
+ 	int		       	f_hash;		/* hash of f_handle */
++	__u32			f_iaddr;	/* server ip for failover */
+ };
+ 
+ /*
+@@ -133,6 +134,7 @@ struct nlm_block {
+ #define NLM_ACT_CHECK		0		/* check for locks */
+ #define NLM_ACT_MARK		1		/* mark & sweep */
+ #define NLM_ACT_UNLOCK		2		/* release all locks */
++#define NLM_ACT_FO_UNLOCK	3		/* failover release locks */
+ 
+ /*
+  * Global variables
+@@ -196,6 +198,7 @@ void		  nlm_release_file(struct nlm_file
+ void		  nlmsvc_mark_resources(void);
+ void		  nlmsvc_free_host_resources(struct nlm_host *);
+ void		  nlmsvc_invalidate_all(void);
++int 		  nlmsvc_fo_unlock(struct in_addr *);
+ 
+ static __inline__ struct inode *
+ nlmsvc_file_inode(struct nlm_file *file)
+--- linux-2.6.17/net/sunrpc/svcsock.c	2006-06-17 21:49:35.000000000 -0400
++++ linux-2.6.17-1/net/sunrpc/svcsock.c	2006-06-27 10:58:47.000000000 -0400
+@@ -454,6 +454,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	struct msghdr	msg;
+ 	struct socket	*sock;
+ 	int		len, alen;
++	struct sockaddr_in   daddr;
+ 
+ 	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+ 	sock = rqstp->rq_sock->sk_sock;
+@@ -474,6 +475,10 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	alen = sizeof(rqstp->rq_addr);
+ 	sock->ops->getname(sock, (struct sockaddr *)&rqstp->rq_addr, &alen, 1);
+ 
++	/* add server ip for nlm lock failover */
++	sock->ops->getname(sock, (struct sockaddr *)&daddr, &alen, 0);
++	rqstp->rq_daddr = daddr.sin_addr.s_addr;
++
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+ 		rqstp->rq_sock, iov[0].iov_base, iov[0].iov_len, len);
+ 
+--- linux-2.6.17/fs/lockd/svcsubs.c	2006-06-17 21:49:35.000000000 -0400
++++ linux-2.6.17-1/fs/lockd/svcsubs.c	2006-06-28 14:55:33.000000000 -0400
+@@ -20,6 +20,8 @@
+ #include <linux/lockd/share.h>
+ #include <linux/lockd/sm_inter.h>
+ 
++#include <linux/module.h>
++
+ #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
+ 
+ 
+@@ -124,6 +126,10 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
+ 	file->f_next = nlm_files[hash];
+ 	nlm_files[hash] = file;
+ 
++	/* fill in f_iaddr for nlm lock failover */
++	file->f_iaddr = rqstp->rq_daddr;
++	dprintk("lockd: file->f_iaddr = %u.%u.%u.%u\n", NIPQUAD(file->f_iaddr));
++
+ found:
+ 	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
+ 	*result = file;
+@@ -235,18 +241,38 @@ nlm_inspect_file(struct nlm_host *host, 
+  * Loop over all files in the file table.
+  */
+ static int
+-nlm_traverse_files(struct nlm_host *host, int action)
++nlm_traverse_files(struct nlm_host *host, struct in_addr *serv, int action)
+ {
+ 	struct nlm_file	*file, **fp;
+-	int		i;
++	int		i, act=action;
+ 
+ 	mutex_lock(&nlm_file_mutex);
+ 	for (i = 0; i < FILE_NRHASH; i++) {
+ 		fp = nlm_files + i;
+ 		while ((file = *fp) != NULL) {
++
++			/*
++		 	 * NLM lock failover:
++		 	 *      Upon NLM_ACT_FO_UNLOCK, compare the
++		 	 *      server in_addr (f_iaddr) with requested
++		 	 *      serv. If match is found, the lock will 
++			 *	be released via NLM_ACT_UNLOCK.
++		 	 */
++			if (unlikely(action == NLM_ACT_FO_UNLOCK)) {
++				dprintk("lockd: fo file check %u.%u.%u.%u\n",
++					NIPQUAD(serv->s_addr));
++				if (serv->s_addr != file->f_iaddr) {
++					fp = &file->f_next;
++					continue;
++				}
++				dprintk("lockd: fo found match file 0x%x\n",
++					(int) file);
++				act  = NLM_ACT_UNLOCK;
++			}
++
+ 			/* Traverse locks, blocks and shares of this file
+ 			 * and update file->f_locks count */
+-			if (nlm_inspect_file(host, file, action)) {
++			if (nlm_inspect_file(host, file, act)) {
+ 				mutex_unlock(&nlm_file_mutex);
+ 				return 1;
+ 			}
+@@ -254,6 +280,8 @@ nlm_traverse_files(struct nlm_host *host
+ 			/* No more references to this file. Let go of it. */
+ 			if (!file->f_blocks && !file->f_locks
+ 			 && !file->f_shares && !file->f_count) {
++				dprintk("lockd: fo_unlock close file=0x%x\n", 
++					(int) file);
+ 				*fp = file->f_next;
+ 				nlmsvc_ops->fclose(file->f_file);
+ 				kfree(file);
+@@ -301,7 +329,7 @@ nlmsvc_mark_resources(void)
+ {
+ 	dprintk("lockd: nlmsvc_mark_resources\n");
+ 
+-	nlm_traverse_files(NULL, NLM_ACT_MARK);
++	nlm_traverse_files(NULL, NULL, NLM_ACT_MARK);
+ }
+ 
+ /*
+@@ -312,7 +340,7 @@ nlmsvc_free_host_resources(struct nlm_ho
+ {
+ 	dprintk("lockd: nlmsvc_free_host_resources\n");
+ 
+-	if (nlm_traverse_files(host, NLM_ACT_UNLOCK))
++	if (nlm_traverse_files(host, NULL, NLM_ACT_UNLOCK))
+ 		printk(KERN_WARNING
+ 			"lockd: couldn't remove all locks held by %s",
+ 			host->h_name);
+@@ -332,3 +360,23 @@ nlmsvc_invalidate_all(void)
+ 		nlm_release_host(host);
+ 	}
+ }
++
++EXPORT_SYMBOL(nlmsvc_fo_unlock);
++
++/*
++ * release locks associated with an IP upon failover
++ */
++int
++nlmsvc_fo_unlock(struct in_addr *serv_ip)
++{
++	struct nlm_host clnt;
++
++	/* To do:
++	 * prepare nlm_host for nfs V4 client 
++	 */
++	memset(&clnt, 0, sizeof(struct nlm_host));
++
++	/* drop the locks */
++	return (nlm_traverse_files(NULL, serv_ip, NLM_ACT_FO_UNLOCK)); 
++}
++
+--- linux-2.6.17/include/linux/lockd/bind.h	2006-06-17 21:49:35.000000000 -0400
++++ linux-2.6.17-1/include/linux/lockd/bind.h	2006-06-27 10:58:51.000000000 -0400
+@@ -33,4 +33,9 @@ extern int	nlmclnt_proc(struct inode *, 
+ extern int	lockd_up(void);
+ extern void	lockd_down(void);
+ 
++/*
++ * NLM failover
++ */
++extern int     nlmsvc_fo_unlock(struct in_addr *);
++
+ #endif /* LINUX_LOCKD_BIND_H */
+--- linux-2.6.17/fs/nfsd/nfsctl.c	2006-06-17 21:49:35.000000000 -0400
++++ linux-2.6.17-1/fs/nfsd/nfsctl.c	2006-06-27 23:37:05.000000000 -0400
+@@ -34,6 +34,10 @@
+ #include <linux/nfsd/syscall.h>
+ #include <linux/nfsd/interface.h>
+ 
++/* nlm failover */
++#include <linux/in.h>
++#include <linux/lockd/bind.h>
++
+ #include <asm/uaccess.h>
+ 
+ unsigned int nfsd_versbits = ~0;
+@@ -52,6 +56,7 @@ enum {
+ 	NFSD_Getfs,
+ 	NFSD_List,
+ 	NFSD_Fh,
++	NFSD_Nlm_unlock,
+ 	NFSD_Threads,
+ 	NFSD_Versions,
+ 	/*
+@@ -82,6 +87,11 @@ static ssize_t write_leasetime(struct fi
+ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
+ #endif
+ 
++/*
++ * NLM lock failover
++ */
++static ssize_t do_nlm_fo_unlock(struct file *file, char *buf, size_t size);
++
+ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+ 	[NFSD_Svc] = write_svc,
+ 	[NFSD_Add] = write_add,
+@@ -91,6 +101,7 @@ static ssize_t (*write_op[])(struct file
+ 	[NFSD_Getfd] = write_getfd,
+ 	[NFSD_Getfs] = write_getfs,
+ 	[NFSD_Fh] = write_filehandle,
++	[NFSD_Nlm_unlock] = do_nlm_fo_unlock,
+ 	[NFSD_Threads] = write_threads,
+ 	[NFSD_Versions] = write_versions,
+ #ifdef CONFIG_NFSD_V4
+@@ -335,6 +346,48 @@ static ssize_t write_filehandle(struct f
+ 	return mesg - buf;	
+ }
+ 
++extern __u32 in_aton(const char *str);
++
++int __get_nlm_host(char *buf, size_t size, struct in_addr *host_addr)
++{
++	/* sanity check */
++	if (size <= 0) return -EINVAL;
++
++	/* The ip is passed from nfsctl_transaction_write() 
++	 * where simple_transaction_get() "copy_from_user()"
++	 * into buf. Convert the string into a valid ip addr.
++	 */
++	host_addr->s_addr = in_aton(buf);
++	printk("nfsd: __get_nlm_host (%u.%u.%u.%u)\n",
++		NIPQUAD(host_addr->s_addr));
++	return 0;
++}
++
++static ssize_t do_nlm_fo_unlock(struct file *file, char *buf, size_t size)
++{
++	struct in_addr serv_addr;
++	int rc;
++
++	/* convert string into a valid ip */
++	rc = __get_nlm_host(buf, size, &serv_addr);
++	if (rc) {
++		printk("nfsd: do_nlm_ip_unlock invalid ip(%s)\n", buf);
++		return rc;
++	}
++
++	/* call nlm to release the locks */
++	rc = nlmsvc_fo_unlock(&serv_addr);
++	if (rc) {
++		printk("nfsd: nlmsvc_fo_unlock return rc=%d\n", rc);
++		return rc;
++	}
++
++	/* done */
++	sprintf(buf, "nlm ip unlock released for %u.%u.%u.%u\n",
++		NIPQUAD(serv_addr.s_addr));
++	return strlen(buf);
++}
++
+ extern int nfsd_nrthreads(void);
+ 
+ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+@@ -483,6 +536,7 @@ static int nfsd_fill_super(struct super_
+ 		[NFSD_Getfs] = {".getfs", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
+ 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
++		[NFSD_Nlm_unlock] = {"nlm_unlock", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
+ #ifdef CONFIG_NFSD_V4
+
+--------------050108030405050307010107
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--------------050108030405050307010107
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050108030405050307010107--
