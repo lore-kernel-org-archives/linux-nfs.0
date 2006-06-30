@@ -1,28 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC PATCH 1/3] NLM lock failover - lock release
-Date: Fri, 30 Jun 2006 14:59:50 +1000
-Message-ID: <17572.44998.120392.197263@cse.unsw.edu.au>
-References: <44A417E7.5090500@redhat.com>
-	<1151622397.6405.5.camel@lade.trondhjem.org>
-	<1151639830.5642.23.camel@localhost.localdomain>
-	<17572.42316.253063.636685@cse.unsw.edu.au>
-	<1151642309.5714.13.camel@lade.trondhjem.org>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH] CONFIG_NFSD_TCP actually impacts clients
+Date: Fri, 30 Jun 2006 08:38:47 -0400
+Message-ID: <76bd70e30606300538h6351dbffrdefe694dc99d12c7@mail.gmail.com>
+References: <200606291522.46235.cablnx@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net, Wendy Cheng <wcheng@redhat.com>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FwB6t-0008Gq-OR
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 22:00:07 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FwB6r-0002ty-OH
-	for nfs@lists.sourceforge.net; Thu, 29 Jun 2006 22:00:08 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: message from Trond Myklebust on Friday June 30
+	id 1FwIGn-0004YI-FD
+	for nfs@lists.sourceforge.net; Fri, 30 Jun 2006 05:38:49 -0700
+Received: from nz-out-0102.google.com ([64.233.162.195])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FwIGm-0005h4-Ht
+	for nfs@lists.sourceforge.net; Fri, 30 Jun 2006 05:38:49 -0700
+Received: by nz-out-0102.google.com with SMTP id 40so365046nzk
+	for <nfs@lists.sourceforge.net>; Fri, 30 Jun 2006 05:38:47 -0700 (PDT)
+To: "Chris Abbey" <cablnx@us.ibm.com>
+In-Reply-To: <200606291522.46235.cablnx@us.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,34 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday June 30, trond.myklebust@fys.uio.no wrote:
-> On Fri, 2006-06-30 at 14:15 +1000, Neil Brown wrote:
-> 
-> > The socket can only be bound to INADDR_ANY for UDP, and in that case
-> > we already set rq_daddr correctly.
-> 
-> As I understand it, Wendy is considering the case of a multi-homed
-> server. She wants to record the IP address on which we received the
-> datagram so that she knows which locks to invalidate in the case of a
-> migration of that particular IP address onto another server.
-> 
-> My point is that she won't get that information if the socket is bound
-> to INADDR_ANY, as would be the case for a UDP socket.
+Hi Chris-
 
-Yes.  But that code fragment covered the TCP case only.
-The extra called to ->getname was placed in svc_recvfrom which is only
-called from svc_tcp_recvfrom, not from svc_udp_recvfrom (Yes, I agree
-there is room for confusion there).
-svc_udp_recvfrom already has
-	rqstp->rq_addr.sin_addr.s_addr = skb->nh.iph->saddr;
-	rqstp->rq_daddr = skb->nh.iph->daddr;
+On 6/29/06, Chris Abbey <cablnx@us.ibm.com> wrote:
+> -config NFSD_TCP
+> -       bool "Provide NFS server over TCP support"
+> -       depends on NFSD
+> +config NFS_TCP
+> +       bool "Provide NFS services over TCP"
 
-so it sets rq_daddr correctly as each packet is received.
-rq_daddr was never set for requests received via TCP because it was
-never used for tcp (it was used only to set the source address for UDP
-replies).
+There's been plenty of user confusion in the past about server versus
+client TCP support, so I would prefer more precise wording here.  This
+new summary almost implies that the NFS client (not the lock manager)
+is affected too.  How about something more specific like:
 
-NeilBrown
+"Provide NFS and NLM server over TCP support"
+
+Also, the name of the config option might be confusing as well...
+"NFS_" is usually reserved for client-only.  I suggest NFSD_NLM_TCP.
+
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
