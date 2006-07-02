@@ -1,22 +1,13 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: query about kernel 2.4.21-37.ELsmp
-Date: Sun, 02 Jul 2006 11:11:26 -0400
-Message-ID: <1151853086.2656.3.camel@tleilax.poochiereds.net>
-References: <20060608042448.97900.qmail@web51615.mail.yahoo.com>
+From: "Curtis Sawyer" <CurtisSawyer@mail.ru>
+Subject: Your cash, Ogeechee lime
+Date: Sun, 2 Jul 2006 17:00:38 +0000 (UTC)
+Message-ID: <97492195.20060702170029@mail.ru>
+Reply-To: Curtis Sawyer <CurtisSawyer@mail.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fx3cA-00076q-Dp
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 08:12:02 -0700
-Received: from ms-smtp-02.southeast.rr.com ([24.25.9.101])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fx3c9-0002OF-6a
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 08:12:02 -0700
-To: mehta kiran <kiranmehta1981@yahoo.com>
-In-Reply-To: <20060608042448.97900.qmail@web51615.mail.yahoo.com>
+Date: Sun, 2 Jul 2006 17:00:29 -0060
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,29 +20,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-06-07 at 21:24 -0700, mehta kiran wrote:
-> Hi,
->     From where can i get information about all the
-> bugs
->     which were there in redhat kernel 2.4.21-37.ELsmp
-> ?
->     I want to know if there existed a bug which
->     did not allow unmounting of device which was once
->     nfs exported and accessed by clients
-> 
-> Thanks,
->  kiran
+Even if you have no erectin problems SOFT CIAzLIS 
+would help you to make BETTER SE  X MORE OFTEN!
+and to bring  unimagnable plesure to her.
 
-2.4.21-45.EL and greater (and hence U8) should have a fix for this
-problem. See:
+Just disolve half a pil under your tongue 
+and get ready for action in 15 minutes. 
 
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=167636
+The tests showed that the majority of men 
+after taking this medic ation were able to have 
+PERFECT ER ECTI ON during 36 hours!
 
-for more info.
+VISIT US, AND GET OUR SPECIAL 70% DISC OUNT OFER!
 
--- Jeff
+http://mttllb.hiderode.com/?67294463
 
+==========
+normal gull. It would make everyone happier.
+to see that my advice wasn't  wasted on you. Why, that's marvelous.  You can
+     There was a moment of chaos in the young bird. "What's going on? Am I
+You'll be saying good-bye yet!  We  were off. The institute was on our right
+to avoid the youngster, Fletcher Lynd Seagull snapped hard to the left, at
+happened  to Shorty Lyndon.  That  worked.  They didn't  even ask  what  had
 
+he moved.
+There didn't seem to be anything on the map, but who trusts maps?
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
