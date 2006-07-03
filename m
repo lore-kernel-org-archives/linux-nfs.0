@@ -1,26 +1,26 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 003 of 6] knfsd: Remove nfsd_versbits as intermediate
-	storage for desired versions.
-Date: Mon, 3 Jul 2006 16:19:24 +1000
-Message-ID: <1060703061924.7125@suse.de>
+Subject: [PATCH 005 of 6] knfsd: Define new nfsdfs file: portlist -
+	contains list of ports.
+Date: Mon, 3 Jul 2006 16:19:34 +1000
+Message-ID: <1060703061934.7149@suse.de>
 References: <20060703161408.7009.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FxHmR-0004iu-DF
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:35 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1FxHmc-0004kS-5k
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:46 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FxHmP-0003oN-J5
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:35 -0700
+	(Exim 4.44) id 1FxHmb-0007at-LN
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:46 -0700
 Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id C3E56EF03
-	for <nfs@lists.sourceforge.net>; Mon,  3 Jul 2006 08:19:31 +0200 (CEST)
+	by mx1.suse.de (Postfix) with ESMTP id D4B73EF02
+	for <nfs@lists.sourceforge.net>; Mon,  3 Jul 2006 08:19:43 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -35,261 +35,147 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-We have an array 'nfsd_version' which lists the available versions
-of nfsd, and 'nfsd_versions' (poor choice there :-() which lists
-the currently active versions.
+This file will list all ports that nfsd has open.
+Default when TCP enabled will be
+   ipv4 udp 0.0.0.0 2049
+   ipv4 tcp 0.0.0.0 2049
 
-Then we have a bitmap - nfsd_versbits which says which versions are
-wanted.  The bits in this bitset cause content to be copied from
-nfsd_version to nfsd_versions when nfsd starts.
+Later, the list of ports will be settable.
 
-This patch removes nfsd_versbits and moves information directly from
-nfsd_version to nfsd_versions when requests for version changes arrive.
-
-Note that this doesn't make it possible to change versions while the
-server is running.  This is because serv->sv_xdrsize is calculated when
-a service is created, and used then threads are created, and xdrsize
-depends on the active versions.
+'portlist' chosen rather than 'ports', to avoid unnecessary confusion with
+non-mainline patches which created 'ports' with different semantics.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfsctl.c             |   18 +++----
- ./fs/nfsd/nfssvc.c             |   93 ++++++++++++++++++++++-------------------
- ./include/linux/nfsd/nfsd.h    |    4 +
- ./include/linux/nfsd/syscall.h |   17 -------
- 4 files changed, 62 insertions(+), 70 deletions(-)
+ ./fs/nfsd/nfsctl.c               |   19 +++++++++++++++++++
+ ./include/linux/sunrpc/svcsock.h |    1 +
+ ./net/sunrpc/svcsock.c           |   37 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 57 insertions(+)
 
 diff .prev/fs/nfsd/nfsctl.c ./fs/nfsd/nfsctl.c
---- .prev/fs/nfsd/nfsctl.c	2006-07-03 15:00:32.000000000 +1000
-+++ ./fs/nfsd/nfsctl.c	2006-07-03 15:01:17.000000000 +1000
-@@ -35,8 +35,6 @@
- 
- #include <asm/uaccess.h>
- 
--unsigned int nfsd_versbits = ~0;
--
- /*
-  *	We have a single directory with 9 nodes in it.
-  */
-@@ -372,6 +370,10 @@ static ssize_t write_versions(struct fil
- 
- 	if (size>0) {
- 		if (nfsd_serv)
-+			/* Cannot change versions without updating
-+			 * nfsd_serv->sv_xdrsize, and reallocing
-+			 * rq_argp and rq_resp
-+			 */
- 			return -EBUSY;
- 		if (buf[size-1] != '\n')
- 			return -EINVAL;
-@@ -390,10 +392,7 @@ static ssize_t write_versions(struct fil
- 			case 2:
- 			case 3:
- 			case 4:
--				if (sign != '-')
--					NFSCTL_VERSET(nfsd_versbits, num);
--				else
--					NFSCTL_VERUNSET(nfsd_versbits, num);
-+				nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
- 				break;
- 			default:
- 				return -EINVAL;
-@@ -404,16 +403,15 @@ static ssize_t write_versions(struct fil
- 		/* If all get turned off, turn them back on, as
- 		 * having no versions is BAD
- 		 */
--		if ((nfsd_versbits & NFSCTL_VERALL)==0)
--			nfsd_versbits = NFSCTL_VERALL;
-+		nfsd_reset_versions();
- 	}
- 	/* Now write current state into reply buffer */
- 	len = 0;
- 	sep = "";
- 	for (num=2 ; num <= 4 ; num++)
--		if (NFSCTL_VERISSET(NFSCTL_VERALL, num)) {
-+		if (nfsd_vers(num, NFSD_AVAIL)) {
- 			len += sprintf(buf+len, "%s%c%d", sep,
--				       NFSCTL_VERISSET(nfsd_versbits, num)?'+':'-',
-+				       nfsd_vers(num, NFSD_TEST)?'+':'-',
- 				       num);
- 			sep = " ";
- 		}
-
-diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
---- .prev/fs/nfsd/nfssvc.c	2006-07-03 15:00:32.000000000 +1000
-+++ ./fs/nfsd/nfssvc.c	2006-07-03 14:50:11.000000000 +1000
-@@ -117,6 +117,32 @@ struct svc_program		nfsd_program = {
- 
- };
- 
-+int nfsd_vers(int vers, enum vers_op change)
-+{
-+	if (vers < NFSD_MINVERS || vers >= NFSD_NRVERS)
-+		return -1;
-+	switch(change) {
-+	case NFSD_SET:
-+		nfsd_versions[vers] = nfsd_version[vers];
-+		break;
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+		if (vers < NFSD_ACL_NRVERS)
-+			nfsd_acl_version[vers] = nfsd_acl_version[vers];
-+#endif
-+	case NFSD_CLEAR:
-+		nfsd_versions[vers] = NULL;
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+		if (vers < NFSD_ACL_NRVERS)
-+			nfsd_acl_version[vers] = NULL;
-+#endif
-+		break;
-+	case NFSD_TEST:
-+		return nfsd_versions[vers] != NULL;
-+	case NFSD_AVAIL:
-+		return nfsd_version[vers] != NULL;
-+	}
-+	return 0;
-+}
- /*
-  * Maximum number of nfsd processes
-  */
-@@ -147,16 +173,36 @@ static void nfsd_last_thread(struct svc_
- 		nfsd_export_flush();
- 	}
+--- .prev/fs/nfsd/nfsctl.c	2006-07-03 15:46:47.000000000 +1000
++++ ./fs/nfsd/nfsctl.c	2006-07-03 15:46:44.000000000 +1000
+@@ -27,6 +27,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfsd_idmap.h>
+ #include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/svcsock.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ #include <linux/nfsd/xdr.h>
+@@ -51,6 +52,7 @@ enum {
+ 	NFSD_Fh,
+ 	NFSD_Threads,
+ 	NFSD_Versions,
++	NFSD_Ports,
+ 	/*
+ 	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
+ 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
+@@ -74,6 +76,7 @@ static ssize_t write_getfs(struct file *
+ static ssize_t write_filehandle(struct file *file, char *buf, size_t size);
+ static ssize_t write_threads(struct file *file, char *buf, size_t size);
+ static ssize_t write_versions(struct file *file, char *buf, size_t size);
++static ssize_t write_ports(struct file *file, char *buf, size_t size);
+ #ifdef CONFIG_NFSD_V4
+ static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
+ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
+@@ -90,6 +93,7 @@ static ssize_t (*write_op[])(struct file
+ 	[NFSD_Fh] = write_filehandle,
+ 	[NFSD_Threads] = write_threads,
+ 	[NFSD_Versions] = write_versions,
++	[NFSD_Ports] = write_ports,
+ #ifdef CONFIG_NFSD_V4
+ 	[NFSD_Leasetime] = write_leasetime,
+ 	[NFSD_RecoveryDir] = write_recoverydir,
+@@ -419,6 +423,20 @@ static ssize_t write_versions(struct fil
+ 	return len;
  }
-+
-+void nfsd_reset_versions(void)
+ 
++static ssize_t write_ports(struct file *file, char *buf, size_t size)
 +{
-+	int found_one = 0;
-+	int i;
-+
-+	for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++) {
-+		if (nfsd_program.pg_vers[i])
-+			found_one = 1;
-+	}
-+
-+	if (!found_one) {
-+		for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++)
-+			nfsd_program.pg_vers[i] = nfsd_version[i];
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
-+			nfsd_acl_program.pg_vers[i] =
-+				nfsd_acl_version[i];
-+#endif
-+	}
++	/* for now, ignore what was written and just
++	 * return known ports
++	 * AF proto address port
++	 */
++	int len = 0;
++	lock_kernel();
++	if (nfsd_serv)
++		len = svc_sock_names(buf, nfsd_serv);
++	unlock_kernel();
++	return len;
 +}
 +
- int
- nfsd_svc(unsigned short port, int nrservs)
- {
- 	int	error;
--	int	found_one, i;
- 	struct list_head *victim;
- 	
- 	lock_kernel();
--	dprintk("nfsd: creating service: vers 0x%x\n",
--		nfsd_versbits);
-+	dprintk("nfsd: creating service\n");
- 	error = -EINVAL;
- 	if (nrservs <= 0)
- 		nrservs = 0;
-@@ -171,46 +217,7 @@ nfsd_svc(unsigned short port, int nrserv
- 	if (error<0)
- 		goto out;
- 	if (!nfsd_serv) {
--		/*
--		 * Use the nfsd_ctlbits to define which
--		 * versions that will be advertised.
--		 * If nfsd_ctlbits doesn't list any version,
--		 * export them all.
--		 */
--		found_one = 0;
--
--		for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++) {
--			if (NFSCTL_VERISSET(nfsd_versbits, i)) {
--				nfsd_program.pg_vers[i] = nfsd_version[i];
--				found_one = 1;
--			} else
--				nfsd_program.pg_vers[i] = NULL;
--		}
--
--		if (!found_one) {
--			for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++)
--				nfsd_program.pg_vers[i] = nfsd_version[i];
--		}
--
--
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
--		found_one = 0;
--
--		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++) {
--			if (NFSCTL_VERISSET(nfsd_versbits, i)) {
--				nfsd_acl_program.pg_vers[i] =
--					nfsd_acl_version[i];
--				found_one = 1;
--			} else
--				nfsd_acl_program.pg_vers[i] = NULL;
--		}
--
--		if (!found_one) {
--			for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
--				nfsd_acl_program.pg_vers[i] =
--					nfsd_acl_version[i];
--		}
--#endif
-+		nfsd_reset_versions();
+ #ifdef CONFIG_NFSD_V4
+ extern time_t nfs4_leasetime(void);
  
- 		atomic_set(&nfsd_busy, 0);
- 		error = -ENOMEM;
+@@ -482,6 +500,7 @@ static int nfsd_fill_super(struct super_
+ 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
++		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+ #ifdef CONFIG_NFSD_V4
+ 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
 
-diff .prev/include/linux/nfsd/nfsd.h ./include/linux/nfsd/nfsd.h
---- .prev/include/linux/nfsd/nfsd.h	2006-07-03 15:00:32.000000000 +1000
-+++ ./include/linux/nfsd/nfsd.h	2006-07-03 14:48:36.000000000 +1000
-@@ -140,6 +140,10 @@ struct posix_acl *nfsd_get_posix_acl(str
- int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
- #endif
+diff .prev/include/linux/sunrpc/svcsock.h ./include/linux/sunrpc/svcsock.h
+--- .prev/include/linux/sunrpc/svcsock.h	2006-07-03 15:46:47.000000000 +1000
++++ ./include/linux/sunrpc/svcsock.h	2006-07-03 15:46:44.000000000 +1000
+@@ -61,5 +61,6 @@ int		svc_recv(struct svc_serv *, struct 
+ int		svc_send(struct svc_rqst *);
+ void		svc_drop(struct svc_rqst *);
+ void		svc_sock_update_bufs(struct svc_serv *serv);
++int		svc_sock_names(char *buf, struct svc_serv *serv);
  
-+enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
-+int nfsd_vers(int vers, enum vers_op change);
-+void nfsd_reset_versions(void);
+ #endif /* SUNRPC_SVCSOCK_H */
+
+diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+--- .prev/net/sunrpc/svcsock.c	2006-07-03 15:46:47.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2006-07-03 15:46:44.000000000 +1000
+@@ -429,6 +429,43 @@ out:
+ }
+ 
+ /*
++ * Report socket names for nfsdfs
++ */
++int one_sock_name(char *buf, struct svc_sock *svsk)
++{
++	int len;
++	switch(svsk->sk_sk->sk_family) {
++	case AF_INET:
++		len = sprintf(buf, "ipv4 %s %u.%u.%u.%u %d\n",
++			      svsk->sk_sk->sk_protocol==IPPROTO_UDP?
++			      "udp" : "tcp",
++			      NIPQUAD(inet_sk(svsk->sk_sk)->rcv_saddr),
++			      inet_sk(svsk->sk_sk)->num);
++		break;
++	default: len = sprintf(buf, "*unknown-%d*\n",
++			       svsk->sk_sk->sk_family);
++	}
++	return len;
++}
 +
- 
- /* 
-  * NFSv4 State
-
-diff .prev/include/linux/nfsd/syscall.h ./include/linux/nfsd/syscall.h
---- .prev/include/linux/nfsd/syscall.h	2006-07-03 15:00:32.000000000 +1000
-+++ ./include/linux/nfsd/syscall.h	2006-07-03 13:21:25.000000000 +1000
-@@ -38,21 +38,6 @@
- #define NFSCTL_GETFD		7	/* get an fh by path (used by mountd) */
- #define	NFSCTL_GETFS		8	/* get an fh by path with max FH len */
- 
--/*
-- * Macros used to set version
-- */
--#define NFSCTL_VERSET(_cltbits, _v)   ((_cltbits) |=  (1 << (_v)))
--#define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << (_v)))
--#define NFSCTL_VERISSET(_cltbits, _v) ((_cltbits) & (1 << (_v)))
--
--#if defined(CONFIG_NFSD_V4)
--#define	NFSCTL_VERALL	(0x1c /* 0b011100 */)
--#elif defined(CONFIG_NFSD_V3)
--#define	NFSCTL_VERALL	(0x0c /* 0b001100 */)
--#else
--#define	NFSCTL_VERALL	(0x04 /* 0b000100 */)
--#endif
--
- /* SVC */
- struct nfsctl_svc {
- 	unsigned short		svc_port;
-@@ -134,8 +119,6 @@ extern int		exp_delclient(struct nfsctl_
- extern int		exp_export(struct nfsctl_export *nxp);
- extern int		exp_unexport(struct nfsctl_export *nxp);
- 
--extern unsigned int nfsd_versbits;
--
- #endif /* __KERNEL__ */
- 
- #endif /* NFSD_SYSCALL_H */
++int
++svc_sock_names(char *buf, struct svc_serv *serv)
++{
++	struct svc_sock *svsk;
++	int len = 0;
++
++	if (!serv) return 0;
++	spin_lock(&serv->sv_lock);
++	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
++		int onelen = one_sock_name(buf+len, svsk);
++		len += onelen;
++	}
++	spin_unlock(&serv->sv_lock);
++	return len;
++}
++EXPORT_SYMBOL(svc_sock_names);
++
++/*
+  * Check input queue length
+  */
+ static int
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
