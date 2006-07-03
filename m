@@ -1,24 +1,21 @@
-From: Neil Brown <neilb@suse.de>
-Subject: nfs-utils 1.0.9-rc1 - hopefully -final in a week
-Date: Mon, 3 Jul 2006 10:22:02 +1000
-Message-ID: <17576.25386.427824.894874@cse.unsw.edu.au>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: [PATCH] SGI 954233: fix fencepost error in
+	_shift_data_right_pages
+Date: Mon, 03 Jul 2006 13:32:30 +1000
+Message-ID: <1151897549.20487.858.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Greg Banks <gnb@melbourne.sgi.com>,
-	Kevin Coffman <kwc@citi.umich.edu>,
-	"Steinar H. Gunderson" <sesse@debian.org>,
-	Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FxCCg-0001sk-Ep
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 17:22:18 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FxCCf-0006Lx-Bh
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 17:22:18 -0700
-To: nfs@lists.sourceforge.net
+	id 1FxFB4-00009N-WE
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 20:32:51 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FxFB4-00005b-3A
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 20:32:51 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +28,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+G'day,
 
-Hi,
- I'd like to put out nfs-utils-1.0.9 by the end of the week.
-There is (or will soon be) a -pre1 in
-  http://www.kernel.org/pub/linux/utils/nfs/
-and
-  git://linux-nfs.org/nfs-utils
+This fixes a panic doing the first READDIR or READDIRPLUS call when:
 
-Recent changes can been seen at
-   http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=log
-  
-If anyone cares to do some testing that would be great.
+* the client is ia64 or any platform that actually implements
+  flush_dcache_page(), and
 
-If anyone has patches that are ready and that I haven't included, now
-might be a good time to send them to me.
+* the server returns fsinfo.dtpref >= client's PAGE_SIZE, and
 
-If they aren't quite ready, don't rush - I'd like to put out
-releases a little more often than once per year (which is what it was
-a for a while) so there will be another chance in a month or two or
-three.
+* the server does *not* return post-op attributes for the directory
+  in the READDIR reply.
 
-NeilBrown
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+---
+
+ net/sunrpc/xdr.c |    6 ++++++
+ 1 files changed, 6 insertions(+)
+
+Index: linux/net/sunrpc/xdr.c
+===================================================================
+--- linux.orig/net/sunrpc/xdr.c	2006-06-18 11:49:35.000000000 +1000
++++ linux/net/sunrpc/xdr.c	2006-06-30 20:40:38.043474230 +1000
+@@ -188,6 +188,12 @@ _shift_data_right_pages(struct page **pa
+ 	pgto_base &= ~PAGE_CACHE_MASK;
+ 	pgfrom_base &= ~PAGE_CACHE_MASK;
+ 
++	if (pgto_base == 0) {
++		/* don't flush *pgto, it points beyond valid page*'s */
++		pgto_base = PAGE_CACHE_SIZE;
++		pgto--;
++	}
++
+ 	do {
+ 		/* Are any pointers crossing a page boundary? */
+ 		if (pgto_base == 0) {
+
+
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
+
+
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
