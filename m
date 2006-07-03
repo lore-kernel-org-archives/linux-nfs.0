@@ -1,8 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 002 of 6] knfsd: Be more selective in which sockets
-	lockd listens on.
-Date: Mon, 3 Jul 2006 16:19:19 +1000
-Message-ID: <1060703061919.7113@suse.de>
+Subject: [PATCH 001 of 6] knfsd: Add a callback for when last rpc
+	thread finishes.
+Date: Mon, 3 Jul 2006 16:19:11 +1000
+Message-ID: <1060703061911.7099@suse.de>
 References: <20060703161408.7009.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,17 +10,17 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FxHmK-0004iV-9l
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:28 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1FxHmI-0004iL-Ff
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:26 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1FxHmJ-0003ma-L6
-	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:28 -0700
-Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(Exim 4.44) id 1FxHmH-0003ll-SS
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 23:19:26 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id D3B25EEE7
-	for <nfs@lists.sourceforge.net>; Mon,  3 Jul 2006 08:19:25 +0200 (CEST)
+	by mx2.suse.de (Postfix) with ESMTP id CB1B31D945
+	for <nfs@lists.sourceforge.net>; Mon,  3 Jul 2006 08:19:19 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -35,249 +35,173 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Currently lockd listens on UDP always, and TCP if CONFIG_NFSD_TCP 
-is set.
-
-However as lockd performs services of the client as well, this is a
-problem.  If CONFIG_NfSD_TCP is not set, and a tcp mount is used, the
-server will not be able to call back to lockd.
-
-So:
- - add an option to lockd_up saying which protocol is needed
- - Always open sockets for which an explicit port was given, otherwise
-   only open a socket of the type required
- - Change nfsd to do one lockd_up per socket rather than one per thread.
-
-This
- - removes the dependancy on CONFIG_NFSD_TCP
- - means that lockd may open sockets other than at startup
- - means that lockd will *not* listen on UDP if the only
-   mounts are TCP mount (and nfsd hasn't started).
-
-The latter is the only one that concerns me at all - I don't know if
-this might be a problem with some servers.
-
+nfsd has some cleanup that it wants to do when the last thread
+exits, and there will shortly be some more.
+So collect this all into one place and define a callback for
+an rpc service to call when the service is about to be destroyed.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/lockd/clntlock.c        |    2 -
- ./fs/lockd/svc.c             |   47 ++++++++++++++++++++++++++++++++++++-------
- ./fs/nfs/super.c             |    6 +++--
- ./fs/nfsd/nfssvc.c           |   16 +++++++++-----
- ./include/linux/lockd/bind.h |    2 -
- 5 files changed, 56 insertions(+), 17 deletions(-)
-
-diff .prev/fs/lockd/clntlock.c ./fs/lockd/clntlock.c
---- .prev/fs/lockd/clntlock.c	2006-07-03 12:32:30.000000000 +1000
-+++ ./fs/lockd/clntlock.c	2006-07-03 12:24:17.000000000 +1000
-@@ -202,7 +202,7 @@ reclaimer(void *ptr)
- 	/* This one ensures that our parent doesn't terminate while the
- 	 * reclaim is in progress */
- 	lock_kernel();
--	lockd_up();
-+	lockd_up(0);
- 
- 	nlmclnt_prepare_reclaim(host);
- 	/* First, reclaim all locks that have been marked. */
+ ./fs/lockd/svc.c             |    2 +-
+ ./fs/nfsd/nfssvc.c           |   39 +++++++++++++++++----------------------
+ ./include/linux/sunrpc/svc.h |    8 +++++++-
+ ./net/sunrpc/svc.c           |    7 ++++++-
+ 4 files changed, 31 insertions(+), 25 deletions(-)
 
 diff .prev/fs/lockd/svc.c ./fs/lockd/svc.c
---- .prev/fs/lockd/svc.c	2006-07-03 12:32:30.000000000 +1000
-+++ ./fs/lockd/svc.c	2006-07-03 12:43:02.000000000 +1000
-@@ -31,6 +31,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
-+#include <net/ip.h>
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
+--- .prev/fs/lockd/svc.c	2006-07-03 12:23:23.000000000 +1000
++++ ./fs/lockd/svc.c	2006-07-03 12:19:59.000000000 +1000
+@@ -236,7 +236,7 @@ lockd_up(void)
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
  
-@@ -46,6 +47,7 @@ EXPORT_SYMBOL(nlmsvc_ops);
- static DEFINE_MUTEX(nlmsvc_mutex);
- static unsigned int		nlmsvc_users;
- static pid_t			nlmsvc_pid;
-+static struct svc_serv		*nlmsvc_serv;
- int				nlmsvc_grace_period;
- unsigned long			nlmsvc_timeout;
- 
-@@ -112,6 +114,7 @@ lockd(struct svc_rqst *rqstp)
- 	 * Let our maker know we're running.
- 	 */
- 	nlmsvc_pid = current->pid;
-+	nlmsvc_serv = serv;
- 	complete(&lockd_start_done);
- 
- 	daemonize("lockd");
-@@ -189,6 +192,7 @@ lockd(struct svc_rqst *rqstp)
- 			nlmsvc_invalidate_all();
- 		nlm_shutdown_hosts();
- 		nlmsvc_pid = 0;
-+		nlmsvc_serv = NULL;
- 	} else
- 		printk(KERN_DEBUG
- 			"lockd: new process, skipping host shutdown\n");
-@@ -205,11 +209,42 @@ lockd(struct svc_rqst *rqstp)
- 	module_put_and_exit(0);
- }
- 
-+
-+static int find_socket(struct svc_serv *serv, int proto)
-+{
-+	struct svc_sock *svsk;
-+	int found = 0;
-+	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
-+		if (svsk->sk_sk->sk_protocol == proto) {
-+			found = 1;
-+			break;
-+		}
-+	return found;
-+}
-+
-+static int make_socks(struct svc_serv *serv, int proto)
-+{
-+	/* Make any sockets that are needed but not present.
-+	 * If nlm_udpport or nlm_tcpport were set as module
-+	 * options, make those sockets unconditionally
-+	 */
-+	int err = 0;
-+	if (proto == IPPROTO_UDP || nlm_udpport)
-+		if (!find_socket(serv, IPPROTO_UDP))
-+			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport);
-+	if (err)
-+		return err;
-+	if (proto == IPPROTO_TCP || nlm_tcpport)
-+		if (!find_socket(serv, IPPROTO_TCP))
-+			err= svc_makesock(serv, IPPROTO_TCP, nlm_tcpport);
-+	return err;
-+}
-+
- /*
-  * Bring up the lockd process if it's not already up.
-  */
- int
--lockd_up(void)
-+lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
- {
- 	static int		warned;
- 	struct svc_serv *	serv;
-@@ -224,8 +259,10 @@ lockd_up(void)
- 	/*
- 	 * Check whether we're already up and running.
- 	 */
--	if (nlmsvc_pid)
-+	if (nlmsvc_pid) {
-+		error = make_socks(nlmsvc_serv, proto);
+ 	error = -ENOMEM;
+-	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE);
++	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
  		goto out;
-+	}
- 
- 	/*
- 	 * Sanity check: if there's no pid,
-@@ -242,11 +279,7 @@ lockd_up(void)
- 		goto out;
- 	}
- 
--	if ((error = svc_makesock(serv, IPPROTO_UDP, nlm_udpport)) < 0 
--#ifdef CONFIG_NFSD_TCP
--	 || (error = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport)) < 0
--#endif
--		) {
-+	if ((error = make_socks(serv, proto)) < 0) {
- 		if (warned++ == 0) 
- 			printk(KERN_WARNING
- 				"lockd_up: makesock failed, error=%d\n", error);
-
-diff .prev/fs/nfs/super.c ./fs/nfs/super.c
---- .prev/fs/nfs/super.c	2006-07-03 12:32:30.000000000 +1000
-+++ ./fs/nfs/super.c	2006-07-03 12:44:25.000000000 +1000
-@@ -867,7 +867,8 @@ nfs_fill_super(struct super_block *sb, s
- 
- 	/* Start lockd here, before we might error out */
- 	if (!(server->flags & NFS_MOUNT_NONLM))
--		lockd_up();
-+		lockd_up((server->flags & NFS_MOUNT_TCP)
-+			 ? IPPROTO_TCP : IPPROTO_UDP);
- 
- 	server->namelen  = data->namlen;
- 	server->hostname = kmalloc(strlen(data->hostname) + 1, GFP_KERNEL);
-@@ -1110,7 +1111,8 @@ static struct super_block *nfs_clone_sb(
- 	nfs_copy_fh(&server->fh, data->fh);
- 	sb = sget(&nfs_fs_type, nfs_compare_super, nfs_set_super, server);
- 	if (!IS_ERR(sb) && sb->s_root == NULL && !(server->flags & NFS_MOUNT_NONLM))
--		lockd_up();
-+		lockd_up((server->flags & NFS_MOUNT_TCP)
-+			 ? IPPROTO_TCP : IPPROTO_UDP);
- 	return sb;
- }
- 
 
 diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
---- .prev/fs/nfsd/nfssvc.c	2006-07-03 12:32:30.000000000 +1000
-+++ ./fs/nfsd/nfssvc.c	2006-07-03 12:28:28.000000000 +1000
-@@ -134,6 +134,9 @@ static int killsig = 0; /* signal that w
- static void nfsd_last_thread(struct svc_serv *serv)
+--- .prev/fs/nfsd/nfssvc.c	2006-07-03 12:23:23.000000000 +1000
++++ ./fs/nfsd/nfssvc.c	2006-07-03 12:23:42.000000000 +1000
+@@ -130,11 +130,25 @@ int nfsd_nrthreads(void)
+ 		return nfsd_serv->sv_nrthreads;
+ }
+ 
++static int killsig = 0; /* signal that was used to kill last nfsd */
++static void nfsd_last_thread(struct svc_serv *serv)
++{
++	/* When last nfsd thread exits we need to do some clean-up */
++	nfsd_serv = NULL;
++	nfsd_racache_shutdown();
++	nfs4_state_shutdown();
++
++	printk(KERN_WARNING "nfsd: last server has exited\n");
++	if (killsig != SIG_NOCLEAN) {
++		printk(KERN_WARNING "nfsd: unexporting all filesystems\n");
++		nfsd_export_flush();
++	}
++}
+ int
+ nfsd_svc(unsigned short port, int nrservs)
  {
- 	/* When last nfsd thread exits we need to do some clean-up */
-+	struct svc_sock *svsk;
-+	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
-+		lockd_down();
- 	nfsd_serv = NULL;
- 	nfsd_racache_shutdown();
- 	nfs4_state_shutdown();
-@@ -217,11 +220,16 @@ nfsd_svc(unsigned short port, int nrserv
- 		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
- 		if (error < 0)
- 			goto failure;
--
-+		error = lockd_up(IPPROTO_UDP);
-+		if (error < 0)
-+			goto failure;
- #ifdef CONFIG_NFSD_TCP
- 		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
- 		if (error < 0)
- 			goto failure;
-+		error = lockd_up(IPPROTO_TCP);
-+		if (error < 0)
-+			goto failure;
- #endif
- 		do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	} else
-@@ -305,8 +313,6 @@ nfsd(struct svc_rqst *rqstp)
- 
- 	nfsdstats.th_cnt++;
- 
--	lockd_up();				/* start lockd */
--
- 	me.task = current;
- 	list_add(&me.list, &nfsd_list);
- 
-@@ -363,13 +369,11 @@ nfsd(struct svc_rqst *rqstp)
- 				break;
- 		killsig = signo;
- 	}
--	/* Clear signals before calling lockd_down() and svc_exit_thread() */
-+	/* Clear signals before calling svc_exit_thread() */
- 	flush_signals(current);
- 
+ 	int	error;
+-	int	none_left, found_one, i;
++	int	found_one, i;
+ 	struct list_head *victim;
+ 	
  	lock_kernel();
+@@ -197,7 +211,7 @@ nfsd_svc(unsigned short port, int nrserv
  
--	/* Release lockd */
--	lockd_down();
+ 		atomic_set(&nfsd_busy, 0);
+ 		error = -ENOMEM;
+-		nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE);
++		nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE, nfsd_last_thread);
+ 		if (nfsd_serv == NULL)
+ 			goto out;
+ 		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
+@@ -231,13 +245,7 @@ nfsd_svc(unsigned short port, int nrserv
+ 		nrservs++;
+ 	}
+  failure:
+-	none_left = (nfsd_serv->sv_nrthreads == 1);
+ 	svc_destroy(nfsd_serv);		/* Release server */
+-	if (none_left) {
+-		nfsd_serv = NULL;
+-		nfsd_racache_shutdown();
+-		nfs4_state_shutdown();
+-	}
+  out:
+ 	unlock_kernel();
+ 	return error;
+@@ -353,7 +361,7 @@ nfsd(struct svc_rqst *rqstp)
+ 			if (sigismember(&current->pending.signal, signo) &&
+ 			    !sigismember(&current->blocked, signo))
+ 				break;
+-		err = signo;
++		killsig = signo;
+ 	}
+ 	/* Clear signals before calling lockd_down() and svc_exit_thread() */
+ 	flush_signals(current);
+@@ -362,19 +370,6 @@ nfsd(struct svc_rqst *rqstp)
+ 
+ 	/* Release lockd */
+ 	lockd_down();
+-
+-	/* Check if this is last thread */
+-	if (serv->sv_nrthreads==1) {
+-		
+-		printk(KERN_WARNING "nfsd: last server has exited\n");
+-		if (err != SIG_NOCLEAN) {
+-			printk(KERN_WARNING "nfsd: unexporting all filesystems\n");
+-			nfsd_export_flush();
+-		}
+-		nfsd_serv = NULL;
+-	        nfsd_racache_shutdown();	/* release read-ahead cache */
+-		nfs4_state_shutdown();
+-	}
  	list_del(&me.list);
  	nfsdstats.th_cnt --;
  
 
-diff .prev/include/linux/lockd/bind.h ./include/linux/lockd/bind.h
---- .prev/include/linux/lockd/bind.h	2006-07-03 12:40:37.000000000 +1000
-+++ ./include/linux/lockd/bind.h	2006-07-03 12:40:46.000000000 +1000
-@@ -30,7 +30,7 @@ extern struct nlmsvc_binding *	nlmsvc_op
-  * Functions exported by the lockd module
+diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
+--- .prev/net/sunrpc/svc.c	2006-07-03 12:23:23.000000000 +1000
++++ ./net/sunrpc/svc.c	2006-07-03 12:15:14.000000000 +1000
+@@ -26,7 +26,8 @@
+  * Create an RPC service
   */
- extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
--extern int	lockd_up(void);
-+extern int	lockd_up(int proto);
- extern void	lockd_down(void);
+ struct svc_serv *
+-svc_create(struct svc_program *prog, unsigned int bufsize)
++svc_create(struct svc_program *prog, unsigned int bufsize,
++	   void (*shutdown)(struct svc_serv *serv))
+ {
+ 	struct svc_serv	*serv;
+ 	int vers;
+@@ -40,6 +41,7 @@ svc_create(struct svc_program *prog, uns
+ 	serv->sv_nrthreads = 1;
+ 	serv->sv_stats     = prog->pg_stats;
+ 	serv->sv_bufsz	   = bufsize? bufsize : 4096;
++	serv->sv_shutdown  = shutdown;
+ 	xdrsize = 0;
+ 	while (prog) {
+ 		prog->pg_lovers = prog->pg_nvers-1;
+@@ -92,6 +94,9 @@ svc_destroy(struct svc_serv *serv)
+ 				  sk_list);
+ 		svc_delete_socket(svsk);
+ 	}
++	if (serv->sv_shutdown)
++		serv->sv_shutdown(serv);
++
+ 	while (!list_empty(&serv->sv_permsocks)) {
+ 		svsk = list_entry(serv->sv_permsocks.next,
+ 				  struct svc_sock,
+
+diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
+--- .prev/include/linux/sunrpc/svc.h	2006-07-03 12:23:23.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2006-07-03 12:03:25.000000000 +1000
+@@ -42,6 +42,11 @@ struct svc_serv {
+ 	int			sv_tmpcnt;	/* count of temporary sockets */
  
- #endif /* LINUX_LOCKD_BIND_H */
+ 	char *			sv_name;	/* service name */
++
++	void			(*sv_shutdown)(struct svc_serv *serv);
++						/* Callback to use when last thread
++						 * exits.
++						 */
+ };
+ 
+ /*
+@@ -311,7 +316,8 @@ typedef void		(*svc_thread_fn)(struct sv
+ /*
+  * Function prototypes.
+  */
+-struct svc_serv *  svc_create(struct svc_program *, unsigned int);
++struct svc_serv *  svc_create(struct svc_program *, unsigned int,
++			      void (*shutdown)(struct svc_serv*));
+ int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
+ void		   svc_exit_thread(struct svc_rqst *);
+ void		   svc_destroy(struct svc_serv *);
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
