@@ -1,12 +1,23 @@
-From: "Curtis Sawyer" <CurtisSawyer@mail.ru>
-Subject: Your cash, Ogeechee lime
-Date: Sun, 2 Jul 2006 17:00:38 +0000 (UTC)
-Message-ID: <97492195.20060702170029@mail.ru>
-Reply-To: Curtis Sawyer <CurtisSawyer@mail.ru>
+From: Neil Brown <neilb@suse.de>
+Subject: nfs-utils 1.0.9-rc1 - hopefully -final in a week
+Date: Mon, 3 Jul 2006 10:22:02 +1000
+Message-ID: <17576.25386.427824.894874@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Greg Banks <gnb@melbourne.sgi.com>,
+	Kevin Coffman <kwc@citi.umich.edu>,
+	"Steinar H. Gunderson" <sesse@debian.org>,
+	Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Date: Sun, 2 Jul 2006 17:00:29 -0060
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FxCCg-0001sk-Ep
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 17:22:18 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FxCCf-0006Lx-Bh
+	for nfs@lists.sourceforge.net; Sun, 02 Jul 2006 17:22:18 -0700
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -20,31 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Even if you have no erectin problems SOFT CIAzLIS 
-would help you to make BETTER SE  X MORE OFTEN!
-and to bring  unimagnable plesure to her.
 
-Just disolve half a pil under your tongue 
-and get ready for action in 15 minutes. 
+Hi,
+ I'd like to put out nfs-utils-1.0.9 by the end of the week.
+There is (or will soon be) a -pre1 in
+  http://www.kernel.org/pub/linux/utils/nfs/
+and
+  git://linux-nfs.org/nfs-utils
 
-The tests showed that the majority of men 
-after taking this medic ation were able to have 
-PERFECT ER ECTI ON during 36 hours!
+Recent changes can been seen at
+   http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=log
+  
+If anyone cares to do some testing that would be great.
 
-VISIT US, AND GET OUR SPECIAL 70% DISC OUNT OFER!
+If anyone has patches that are ready and that I haven't included, now
+might be a good time to send them to me.
 
-http://mttllb.hiderode.com/?67294463
+If they aren't quite ready, don't rush - I'd like to put out
+releases a little more often than once per year (which is what it was
+a for a while) so there will be another chance in a month or two or
+three.
 
-==========
-normal gull. It would make everyone happier.
-to see that my advice wasn't  wasted on you. Why, that's marvelous.  You can
-     There was a moment of chaos in the young bird. "What's going on? Am I
-You'll be saying good-bye yet!  We  were off. The institute was on our right
-to avoid the youngster, Fletcher Lynd Seagull snapped hard to the left, at
-happened  to Shorty Lyndon.  That  worked.  They didn't  even ask  what  had
-
-he moved.
-There didn't seem to be anything on the map, but who trusts maps?
+NeilBrown
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
