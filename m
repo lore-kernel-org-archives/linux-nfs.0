@@ -1,28 +1,26 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: nfs-utils 1.0.9-rc1 - hopefully -final in a week
-Date: Tue, 04 Jul 2006 19:09:08 +1000
-Message-ID: <1152004148.18333.237.camel@hole.melbourne.sgi.com>
-References: <17576.25386.427824.894874@cse.unsw.edu.au>
-	<1151912016.18333.4.camel@hole.melbourne.sgi.com>
-	<17577.47377.412223.132567@cse.unsw.edu.au>
-	<1151986622.18333.189.camel@hole.melbourne.sgi.com>
-	<17578.7443.955689.245120@cse.unsw.edu.au>
-	<1151999796.18333.210.camel@hole.melbourne.sgi.com>
-	<17578.10401.213907.725679@cse.unsw.edu.au>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 001 of 6] knfsd: Add a callback for when last rpc
+	thread finishes.
+Date: Tue, 4 Jul 2006 12:56:46 +0100
+Message-ID: <20060704115646.GA2661@infradead.org>
+References: <20060703161408.7009.patches@notabene> <1060703061911.7099@suse.de>
+	<20060703221233.GA14273@infradead.org>
+	<17577.47939.950315.755604@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FxguC-0007iI-H2
-	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 02:09:16 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FxguB-0000Ic-J1
-	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 02:09:16 -0700
+	id 1FxjWN-00058P-FX
+	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 04:56:51 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FxjWM-0001Fo-GM
+	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 04:56:51 -0700
 To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17578.10401.213907.725679@cse.unsw.edu.au>
+In-Reply-To: <17577.47939.950315.755604@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,25 +33,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-07-04 at 18:36, Neil Brown wrote:
-> On Tuesday July 4, gnb@melbourne.sgi.com wrote:
-> > Then there's the type-punned pointer warning.  I hate those.
+On Tue, Jul 04, 2006 at 10:50:11AM +1000, Neil Brown wrote:
+> > Any chance you could convert all these svc threads to the kthread_
+> > infrastructure before further complicating the already nasy interactions
+> > it has with it's users?
 > 
-> Here is a trick that google helped me find.  I hope it isn't worse
-> that the disease :-)
+> Maybe .... could you remind me of the particular value of kthread_
+> (other than general consistency which is obviously a good thing) to
+> make sure I leverage it during the conversion.
 
-Looks fine.
-
-> All in .git now, thanks.
-
-Yay, no warnings ;-)
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
-
+ - it makes sure the threads are spawned by kevent so they are independent
+   from the enviroment of the caller.  This is important for all the ongoin
+   container work aswell as to avoid possible security issues.
+ - it reduced complexity for thread creation and stopping a lot and thus
+   eliminates various bugs crept in all over the place
+(- we want to remove the kernel_thread export so people stop opencoding it
+   in new code)
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
