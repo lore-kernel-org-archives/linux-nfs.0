@@ -1,19 +1,24 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: client oddity
-Date: Tue, 4 Jul 2006 18:21:47 +0200
-Message-ID: <200607041821.48887.bernd-schubert@gmx.de>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfs-utils 1.0.9-rc1 - hopefully -final in a week
+Date: Wed, 5 Jul 2006 16:03:02 +1000
+Message-ID: <17579.22038.267510.116270@cse.unsw.edu.au>
+References: <17576.25386.427824.894874@cse.unsw.edu.au>
+	<44AACDA6.AD69.00CC.0@novell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FxneB-0005Jc-LS
-	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 09:21:11 -0700
-Received: from mail.gmx.de ([213.165.64.21] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1FxneA-0002QE-8M
-	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 09:21:12 -0700
-To: nfs@lists.sourceforge.net
+	id 1Fy0Tj-0005DP-Am
+	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 23:03:15 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Fy0Tj-0006yx-9C
+	for nfs@lists.sourceforge.net; Tue, 04 Jul 2006 23:03:15 -0700
+To: "Shankar Anand" <shanand@novell.com>
+In-Reply-To: message from Shankar Anand on Tuesday July 4
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,98 +31,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Tuesday July 4, shanand@novell.com wrote:
+> 
+> The patch attached here reads /proc/net/rpc/nfsd for nfsv4 server
+> statistics and displays them.
+> 
+> To maintain uniformity with older nfs versions operations 0 1 and 2
+> are also printed though they are not used by nfsv4.
 
-my collegue just showed me something very strange:
+Good..
 
-bernd@zuse bernd>ll -id /home/frank/work/mctdh83
-668731 drwxr-xr-x  14 frank user 560 2006-05-18 14:41 /home/frank/work/mctd=
-h83
+> @@ -115,6 +126,7 @@ static statinfo		svcinfo[] = {
+>  	{ "proc2",      STRUCTSIZE(svcv2info),  svcv2info  },
+>  	{ "proc3",      STRUCTSIZE(svcv3info),  svcv3info  },
+>  	{ "proc4",      STRUCTSIZE(svcv4info),  svcv4info  },
+> +	{ "proc4ops",   STRUCTSIZE(svcv4opinfo),svcv4opinfo},
+>  	{ NULL,         0,                      NULL       }
+>  };
+>  
 
-bernd@gauss bernd>ll -id /home/frank/work/mctdh83
-15685682 drwxr-xr-x  14 frank user 584 2006-07-04 16:17 /home/frank/work/mc=
-tdh83
+As it is called 'proc4ops', does that mean it will apply to all
+minor-versions, or do we expect a
+	proc4.1ops
 
-bernd@hamilton1 bernd>ll -id /home/frank/work/mctdh83
-15685682 drwxr-xr-x  14 frank user 584 2006-07-04 16:17 /home/frank/work/mc=
-tdh83
+for NFSv4.1?  Or maybe proc4ops.1 ??
 
-bernd@hamilton1 bernd>ll -id /home/frank/work/mctdh83.old
-668731 drwxr-xr-x  14 frank user 560 2006-05-18 14:41 /home/frank/work/mctd=
-h83.old
+It doesn't really matter one way or the other, but I would like to
+know that the issue has been considered, and to know what the current
+decision is.
 
-and on zuse also for mctdh83.old:
+(Meanwhile, The current patch is in .git waiting for the 1.0.9
+release).
 
-bernd@zuse bernd>ll -id /home/frank/work/mctdh83.old
-668731 drwxr-xr-x  14 frank user 560 2006-05-18 14:41 /home/frank/work/mctd=
-h83.old
-
-
-So on zuse mctdh83 is just like a directory hard linked to mctdh83.old
-
-
-Here zuse and gauss are NFS clients of the server hamilton.
-
-Renaming mctdh83 to mctdh83.0 will give correct results on client zuse =
-
-(and other clients and server):
-
-15685682 drwxr-xr-x  14 frank user 584 2006-07-04 16:17 /home/frank/work/mc=
-tdh83.0
-  668731 drwxr-xr-x  14 frank user 560 2006-05-18 14:41 /home/frank/work/mc=
-tdh83.old
-
-Renaming mctdh83.0 back to mctdh83 will give back the oddity on host zuse.
-
-
-The inode generation numbers are also different, =
-
-
-bernd@hamilton1 inode_gen>./get_igen /home/frank/work/mctdh83
-/home/frank/work/mctdh83: 74340560
-
-bernd@hamilton1 inode_gen>./get_igen /home/frank/work/mctdh83.old
-/home/frank/work/mctdh83.old: 177886
-
-I also already checked that /home/frank/work/mctdh83 is also *no* bind moun=
-t.
-
-After =
-
-cp -a mctdh83.old  mctdh83.old.test
-mv mctdh83.old.test mctdh83.old
-the problems on client zuse disappeared.
-
-
-Any idea whats going on here? So far I couldn't reproduce for other =
-
-directories.
-
-bernd@zuse bernd>uname -a
-Linux zuse 2.6.16.1-tc3 #2 SMP PREEMPT Thu Mar 30 14:18:59 CEST 2006 i686 G=
-NU/Linux
-
--tc3 is only for internal configuration purposes, this is just a vanilla ke=
-rnel.
-
-Thanks,
-	Bernd
-
--- =
-
-Bernd Schubert
-PCI / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-
+NeilBrown
 
 Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easi=
-er
+Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
-21642
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
