@@ -1,7 +1,8 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 001 of 3] knfsd: Add some missing newlines in printks
-Date: Thu, 06 Jul 2006 15:16:07 +1000
-Message-ID: <1152162966.18333.361.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 002 of 3] knfsd: Remove an unused variable from
+	e_show()
+Date: Thu, 06 Jul 2006 15:17:41 +1000
+Message-ID: <1152163061.18333.364.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -9,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FyMEa-0007ih-4f
-	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:17:04 -0700
+	id 1FyMFH-0007kK-FS
+	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:17:47 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyMEY-0007Fb-5y
-	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:17:04 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyMFH-0007W7-JD
+	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:17:47 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,55 +28,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Add some missing newlines in printks.
+knfsd: Remove an unused variable from e_show().
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- fs/nfsd/export.c       |    2 +-
- fs/nfsd/nfs4callback.c |    2 +-
- fs/nfsd/nfs4proc.c     |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ fs/nfsd/export.c |    2 --
+ 1 files changed, 2 deletions(-)
 
 Index: linus-git/fs/nfsd/export.c
 ===================================================================
---- linus-git.orig/fs/nfsd/export.c	2006-07-05 15:54:31.471525922 +1000
-+++ linus-git/fs/nfsd/export.c	2006-07-06 12:17:25.500087628 +1000
-@@ -370,7 +370,7 @@ static int check_export(struct inode *in
- 	 */
- 	if (!(inode->i_sb->s_type->fs_flags & FS_REQUIRES_DEV) &&
- 	    !(flags & NFSEXP_FSID)) {
--		dprintk("exp_export: export of non-dev fs without fsid");
-+		dprintk("exp_export: export of non-dev fs without fsid\n");
- 		return -EINVAL;
+--- linus-git.orig/fs/nfsd/export.c	2006-07-06 12:17:25.500087628 +1000
++++ linus-git/fs/nfsd/export.c	2006-07-06 12:47:49.949013131 +1000
+@@ -1178,7 +1178,6 @@ static int e_show(struct seq_file *m, vo
+ {
+ 	struct cache_head *cp = p;
+ 	struct svc_export *exp = container_of(cp, struct svc_export, h);
+-	svc_client *clp;
+ 
+ 	if (p == (void *)1) {
+ 		seq_puts(m, "# Version 1.1\n");
+@@ -1186,7 +1185,6 @@ static int e_show(struct seq_file *m, vo
+ 		return 0;
  	}
- 	if (!inode->i_sb->s_export_op) {
-Index: linus-git/fs/nfsd/nfs4callback.c
-===================================================================
---- linus-git.orig/fs/nfsd/nfs4callback.c	2006-07-05 15:54:31.474455230 +1000
-+++ linus-git/fs/nfsd/nfs4callback.c	2006-07-06 12:17:25.500087628 +1000
-@@ -131,7 +131,7 @@ xdr_error:                              
- #define READ_BUF(nbytes)  do { \
- 	p = xdr_inline_decode(xdr, nbytes); \
- 	if (!p) { \
--		dprintk("NFSD: %s: reply buffer overflowed in line %d.", \
-+		dprintk("NFSD: %s: reply buffer overflowed in line %d.\n", \
- 			__FUNCTION__, __LINE__); \
- 		return -EIO; \
- 	} \
-Index: linus-git/fs/nfsd/nfs4proc.c
-===================================================================
---- linus-git.orig/fs/nfsd/nfs4proc.c	2006-07-05 15:54:31.476408102 +1000
-+++ linus-git/fs/nfsd/nfs4proc.c	2006-07-06 12:17:25.501064063 +1000
-@@ -600,7 +600,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, st
- 			&setattr->sa_stateid, CHECK_FH | WR_STATE, NULL);
- 		nfs4_unlock_state();
- 		if (status) {
--			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!");
-+			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
- 		}
- 	}
+ 
+-	clp = exp->ex_client;
+ 	cache_get(&exp->h);
+ 	if (cache_check(&svc_export_cache, &exp->h, NULL))
+ 		return 0;
 
 
 Greg
