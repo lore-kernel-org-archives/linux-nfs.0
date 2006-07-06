@@ -1,8 +1,8 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 002 of 3] knfsd: Remove an unused variable from
-	e_show()
-Date: Thu, 06 Jul 2006 15:17:41 +1000
-Message-ID: <1152163061.18333.364.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 003 of 3] knfsd: Remove an unused variable
+	from	auth_unix_lookup()
+Date: Thu, 06 Jul 2006 15:19:26 +1000
+Message-ID: <1152163165.18333.367.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -10,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FyMFH-0007kK-FS
-	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:17:47 -0700
+	id 1FyMGy-0007ts-2j
+	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:19:32 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyMFH-0007W7-JD
-	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:17:47 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyMGy-0007qa-6C
+	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:19:32 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,37 +28,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Remove an unused variable from e_show().
+knfsd: Remove an unused variable from auth_unix_lookup()
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- fs/nfsd/export.c |    2 --
- 1 files changed, 2 deletions(-)
+ net/sunrpc/svcauth_unix.c |    5 +----
+ 1 files changed, 1 insertion(+), 4 deletions(-)
 
-Index: linus-git/fs/nfsd/export.c
+Index: linus-git/net/sunrpc/svcauth_unix.c
 ===================================================================
---- linus-git.orig/fs/nfsd/export.c	2006-07-06 12:17:25.500087628 +1000
-+++ linus-git/fs/nfsd/export.c	2006-07-06 12:47:49.949013131 +1000
-@@ -1178,7 +1178,6 @@ static int e_show(struct seq_file *m, vo
+--- linus-git.orig/net/sunrpc/svcauth_unix.c	2006-07-05 15:55:57.889034008 +1000
++++ linus-git/net/sunrpc/svcauth_unix.c	2006-07-06 12:56:03.790962262 +1000
+@@ -348,12 +348,9 @@ int auth_unix_forget_old(struct auth_dom
+ 
+ struct auth_domain *auth_unix_lookup(struct in_addr addr)
  {
- 	struct cache_head *cp = p;
- 	struct svc_export *exp = container_of(cp, struct svc_export, h);
--	svc_client *clp;
+-	struct ip_map key, *ipm;
++	struct ip_map *ipm;
+ 	struct auth_domain *rv;
  
- 	if (p == (void *)1) {
- 		seq_puts(m, "# Version 1.1\n");
-@@ -1186,7 +1185,6 @@ static int e_show(struct seq_file *m, vo
- 		return 0;
- 	}
+-	strcpy(key.m_class, "nfsd");
+-	key.m_addr = addr;
+-
+ 	ipm = ip_map_lookup("nfsd", addr);
  
--	clp = exp->ex_client;
- 	cache_get(&exp->h);
- 	if (cache_check(&svc_export_cache, &exp->h, NULL))
- 		return 0;
+ 	if (!ipm)
 
 
-Greg
+Greg.
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 I don't speak for SGI.
