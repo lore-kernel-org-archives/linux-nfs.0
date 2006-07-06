@@ -1,21 +1,23 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 003 of 3] knfsd: Remove an unused variable
-	from	auth_unix_lookup()
-Date: Thu, 06 Jul 2006 15:19:26 +1000
-Message-ID: <1152163165.18333.367.camel@hole.melbourne.sgi.com>
+From: Ian Grant <Ian.Grant@cl.cam.ac.uk>
+Subject: Help with UDP NFS firewall rules
+Date: Thu, 6 Jul 2006 16:51:58 +0100
+Message-ID: <20060706165158.37943b1a.Ian.Grant@cl.cam.ac.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FyMGy-0007ts-2j
-	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:19:32 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyMGy-0007qa-6C
-	for nfs@lists.sourceforge.net; Wed, 05 Jul 2006 22:19:32 -0700
-To: Neil Brown <neilb@suse.de>
+	id 1FyW9A-0004WY-V6
+	for nfs@lists.sourceforge.net; Thu, 06 Jul 2006 08:52:08 -0700
+Received: from mta2.cl.cam.ac.uk ([128.232.0.14]
+	ident=[zV+7F+VMUQw3ki9pUCA2HHhwTuT4rb0t])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyW9A-0006gP-4k
+	for nfs@lists.sourceforge.net; Thu, 06 Jul 2006 08:52:09 -0700
+Received: from fenton.cl.cam.ac.uk ([128.232.8.60])
+	by mta2.cl.cam.ac.uk with smtp (Exim 3.092 #1) id 1FyW90-0001WH-00
+	for nfs@lists.sourceforge.net; Thu, 06 Jul 2006 16:51:58 +0100
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,40 +30,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Remove an unused variable from auth_unix_lookup()
+Dear NFS people,
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
----
+I am trying to access NFS services running on a 2.4.20 kernel, using UDP. The client is running SUSE 9.3 with kernel 2.6.11.4-21.12 and iptables acting as a firewall.
 
- net/sunrpc/svcauth_unix.c |    5 +----
- 1 files changed, 1 insertion(+), 4 deletions(-)
+The problem is that the nfsd on the server sends UDP replies to random ports <1024 on the client. Is there a way to fix the port chosen on the client end so that I can make a hole in the firewall for it?
 
-Index: linus-git/net/sunrpc/svcauth_unix.c
-===================================================================
---- linus-git.orig/net/sunrpc/svcauth_unix.c	2006-07-05 15:55:57.889034008 +1000
-+++ linus-git/net/sunrpc/svcauth_unix.c	2006-07-06 12:56:03.790962262 +1000
-@@ -348,12 +348,9 @@ int auth_unix_forget_old(struct auth_dom
- 
- struct auth_domain *auth_unix_lookup(struct in_addr addr)
- {
--	struct ip_map key, *ipm;
-+	struct ip_map *ipm;
- 	struct auth_domain *rv;
- 
--	strcpy(key.m_class, "nfsd");
--	key.m_addr = addr;
--
- 	ipm = ip_map_lookup("nfsd", addr);
- 
- 	if (!ipm)
-
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
-
+Ian Grant
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
