@@ -1,27 +1,39 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: nfs-utils 1.0.9-rc1 - hopefully -final in a week
-Date: Fri, 07 Jul 2006 07:13:28 -0400
-Message-ID: <44AE41D8.5040302@RedHat.com>
-References: <17576.25386.427824.894874@cse.unsw.edu.au>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Question about the nocto option in 2.4 and 2.6
+Date: Fri, 07 Jul 2006 10:37:01 -0700
+Message-ID: <1152293821.5385.2.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020701060709040304090203"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7]
-	helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FyoMq-0003Bq-OY
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 04:19:28 -0700
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1FyoFf-00049u-S1
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 04:12:03 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FyoFe-0000jx-N9
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 04:12:03 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17576.25386.427824.894874@cse.unsw.edu.au>
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1FyuGD-0005C8-QT
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 10:37:01 -0700
+Received: from e33.co.us.ibm.com ([32.97.110.151])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1FyuGD-0002PF-P8
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 10:37:02 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com
+	[9.17.195.106])
+	by e33.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k67Hatdg019420
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <nfs@lists.sourceforge.net>; Fri, 7 Jul 2006 13:36:55 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id
+	k67HbIGF153390
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Fri, 7 Jul 2006 11:37:18 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k67Has2L028421
+	for <nfs@lists.sourceforge.net>; Fri, 7 Jul 2006 11:36:54 -0600
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k67HasMG028408
+	for <nfs@lists.sourceforge.net>; Fri, 7 Jul 2006 11:36:54 -0600
+To: NFS List <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,171 +46,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------020701060709040304090203
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+I'm consulting on an issue where we are seeing an increase in network
+traffic between 2.4.21 and 2.6.9 kernels with the use of the nocto
+option. This is raising a performance concern.
 
-Hey Neil,
+I'm wondering what has changed with this option between the two kernel
+levels.
 
-Neil Brown wrote:
-> Hi,
->  I'd like to put out nfs-utils-1.0.9 by the end of the week.
-> There is (or will soon be) a -pre1 in
->   http://www.kernel.org/pub/linux/utils/nfs/
-> and
->   git://linux-nfs.org/nfs-utils
-> 
-> Recent changes can been seen at
->    http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=log
->   
-> If anyone cares to do some testing that would be great.
-
-Well using the nfs-utils-1.0.9-pre1 tarball from kernel.org
-and the recent kernel patch set you posted here is what I found.
-
-Starting and stopping nfsds did not kill neither the
-TCP or UDP connections. There were two problems with this.
-One, rpc.nfsd was incorrectly increasing nfsd_serv->sv_nrthreads
-in nfsd_svc() by calling nfsd_create_serv(); (Note: another side effect
-of this problem was only 7 nfsd process were start instead of 8)
-So the solution I've come up with is to only  have nfsd_create_serv()
-called when it needs to... basically:
-     if (nfsd_serv == NULL) {
-         error = nfsd_create_serv();
-         if (error)
-             goto out;
-     }
-
-The second problem was an oops that occurred when the sv_nrthreads was
-incremented correctly... and Neil your going to love this one... ;-)
-
-In svc_delete_socket(), sock_release() was being called with a
-socket that was already closed... The socket was closed by the
-previous sockfd_put() when svsk->sk_sock->file != NULL... So
-the code changed from
-     if (svsk->sk_sock->file)
-         sockfd_put(svsk->sk_sock);
-     sock_release(svsk->sk_sock);
-to
-     if (svsk->sk_sock->file)
-         sockfd_put(svsk->sk_sock);
-     else
-         sock_release(svsk->sk_sock);
-
-The reason Neil is going to love this is I asked him to
-make this change because in my previous testing, the only
-way I could get the connections to come down was to
-always call sock_release() even after the fput() of the
-file pointer... So it appears in Neil's rewrite, fput()
-is actually doing the release which is how it should work...
-
-Once I got the connections to come up and down as expected, I
-noticed I could not turn off any versions...
-
-In the patches I sent Neil, I had to reverse the order of when
-nfssvc_setfds() and nfssvc_versbits() were called in rpc.nfsd.
-But in Neil's patch it appears nfssvc_versbits() is expect
-to be called before nfssvc_setfds(). After I switching the
-order of those calls... things started to work as expected..
-
-That patches are attached....
-
-steved.
+Thanks
+Frank Filz
 
 
---------------020701060709040304090203
-Content-Type: text/x-patch;
- name="kernel-2.6.17-nfsd109.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="kernel-2.6.17-nfsd109.patch"
-
-Don't let rpc.nfsd incorrectly increase the nfsd_serv->sv_nrthreads
-and stop sockets from being released twice by only calling sock_release()
-on socket that don't have file pointer associated with them.
-
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
--------------------------
-
---- linux-2.6.17.i686/fs/nfsd/nfssvc.c.orig	2006-07-06 17:47:22.000000000 -0400
-+++ linux-2.6.17.i686/fs/nfsd/nfssvc.c	2006-07-07 06:15:21.000000000 -0400
-@@ -265,9 +265,11 @@ nfsd_svc(unsigned short port, int nrserv
- 
- 	nfsd_reset_versions();
- 
--	error = nfsd_create_serv();
--	if (error)
--		goto out;
-+	if (nfsd_serv == NULL) {
-+		error = nfsd_create_serv();
-+		if (error)
-+			goto out;
-+	}
- 	error = nfsd_init_socks(port);
- 	if (error)
- 		goto failure;
---- linux-2.6.17.i686/net/sunrpc/svcsock.c.orig	2006-07-06 17:47:22.000000000 -0400
-+++ linux-2.6.17.i686/net/sunrpc/svcsock.c	2006-07-07 05:41:04.000000000 -0400
-@@ -1525,7 +1525,8 @@ svc_delete_socket(struct svc_sock *svsk)
- 		spin_unlock_bh(&serv->sv_lock);
- 		if (svsk->sk_sock->file)
- 			sockfd_put(svsk->sk_sock);
--		sock_release(svsk->sk_sock);
-+		else
-+			sock_release(svsk->sk_sock);
- 		kfree(svsk);
- 	} else {
- 		spin_unlock_bh(&serv->sv_lock);
-
---------------020701060709040304090203
-Content-Type: text/x-patch;
- name="nfs-utils-1.0.9-pre1-vers.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="nfs-utils-1.0.9-pre1-vers.patch"
-
-nfssvc_versbits() has to be called before nfssvc_setfds()
-for the version processing to work correctly
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
--------------------------
-
---- nfs-utils-1.0.9-pre1/support/nfs/nfssvc.c.orig	2006-07-02 20:02:03.000000000 -0400
-+++ nfs-utils-1.0.9-pre1/support/nfs/nfssvc.c	2006-07-07 06:10:01.000000000 -0400
-@@ -135,10 +135,10 @@ nfssvc(int port, int nrservs, unsigned i
- 	struct nfsctl_arg	arg;
- 	int fd;
- 
--	nfssvc_setfds(port, protobits, haddr);
--
- 	nfssvc_versbits(versbits);
- 
-+	nfssvc_setfds(port, protobits, haddr);
-+
- 	fd = open(NFSD_THREAD_FILE, O_WRONLY);
- 	if (fd < 0)
- 		fd = open("/proc/fs/nfs/threads", O_WRONLY);
-
---------------020701060709040304090203
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---------------020701060709040304090203
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------020701060709040304090203--
