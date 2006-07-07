@@ -1,25 +1,24 @@
 From: "Steinar H. Gunderson" <sesse@debian.org>
 Subject: Re: [PATCH] Fix NFS mount options in mount.nfs
-Date: Fri, 7 Jul 2006 20:31:47 +0200
-Message-ID: <20060707183147.GA3292@uio.no>
-References: <44AE9DC7.4050606@redhat.com> <20060707174542.GA2953@uio.no>
-	<44AEA1FE.6080402@redhat.com>
+Date: Fri, 7 Jul 2006 20:40:09 +0200
+Message-ID: <20060707184009.GA3338@uio.no>
+References: <44AE9DC7.4050606@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
 	Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fyv8J-0001bc-Pg
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 11:32:55 -0700
+	id 1FyvGJ-0002OD-Mu
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 11:41:11 -0700
 Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fyv8I-0008Dk-O4
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 11:32:56 -0700
+	(Exim 4.44) id 1FyvGI-0002kE-HX
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 11:41:12 -0700
 To: Amit Gud <agud@redhat.com>
-In-Reply-To: <44AEA1FE.6080402@redhat.com>
+In-Reply-To: <44AE9DC7.4050606@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,15 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jul 07, 2006 at 02:03:42PM -0400, Amit Gud wrote:
-> I tested with options like 
-> noauto,async,_netdev,nodiratime,users,dirsync,noatime,nodev,mand,group,owner,suid,user,exec,rw,soft,intr 
-> and it apparently worked OK. This isn't regressively tested though. I would 
-> like to see this patch tested in the environment mentioned in 
-> http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=376839 .
+FWIW, this part is wrong:
 
-I'll make an upload to Debian; the current state is quite broken anyhow, so I
-guess it can't hurt. :-)
+>  install-exec-hook:
+>         (cd $(DESTDIR)$(sbindir) && \
+> -         ln -sf $(sbin_PROGRAMS) mount.nfs4 && \
+> -         ln -sf $(sbin_PROGRAMS) umount.nfs && \
+> -         ln -sf $(sbin_PROGRAMS) umount.nfs4)
+> +         chmod +s $(sbin_PROGRAMS) && \
+> +         cp $(sbin_PROGRAMS) /sbin/mount.nfs4 && \
+> +         cp $(sbin_PROGRAMS) /sbin/umount.nfs && \
+> +         cp $(sbin_PROGRAMS) /sbin/umount.nfs4)
+
+You cannot expect to be able to put stuff directly into /sbin, you'll have to
+heed $(DESTDIR).
 
 /* Steinar */
 -- 
