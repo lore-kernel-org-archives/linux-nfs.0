@@ -1,24 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: nfs-utils-1.0.9 released.
-Date: Sat, 8 Jul 2006 10:21:45 +1000
-Message-ID: <17582.64153.783145.814158@cse.unsw.edu.au>
+From: "Lisha Latshaw" <lisha@americanpeptide.com>
+Subject: ciuah VIAGjRA
+Date: Fri, 7 Jul 2006 17:29:22 -0700
+Message-ID: <000001c6a225$8f17d030$a417a8c0@rdk3>
+Reply-To: Lisha Latshaw <lisha@americanpeptide.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0386380809=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fz0a3-0005iC-3h
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 17:21:55 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fz0a1-00051p-QV
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 17:21:55 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 46FFE1EC06
-	for <nfs@lists.sourceforge.net>; Sat,  8 Jul 2006 02:21:51 +0200 (CEST)
+	id 1Fz0dZ-000626-Uu
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 17:25:34 -0700
+Received: from [87.223.172.153] (helo=americanpeptide.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Fz0dZ-0005oW-Ky
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 17:25:34 -0700
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,43 +27,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
 
-I've just released nfs-utils-1.0.9.
-You should be able to find it on sourceforge,
-   http://sourceforge.net/project/showfiles.php?group_id=14
-kernel.org
-   http://www.kernel.org/pub/linux/utils/nfs/
-and in git
-   git://linux-nfs.org/nfs-utils
+--===============0386380809==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0001_01C6A1EA.E2B8F830"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0001_01C6A1EA.E2B8F830
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+Hi,
+=20
+VIAGzRA from $ 3, 33
+VALIzUM from $ 1, 21
+AMBIzEN
+CIALzIS from $ 3, 75
+=20
+http://www.snupakolderiy.com
+
+=20
+whatever of cutting through the goblin-chains and setting all the
+prisoners free as quickly as possible. This swords name was Glamdring
+the Foe-hammer, if you remember. The goblins just called it Beater, and
 
 
-- Added 'mount.nfs' utility which can be used as a mount helper
-  to mount nfs filesystems.  This requires 
-     ./configure --enable-mount
+------=_NextPart_000_0001_01C6A1EA.E2B8F830
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-  It is not enabled by default as it does not yet support 'user' mounts. 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Dus-ascii">
+<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV>Hi,</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>VIAGzRA from $ 3, 33<BR>VALIzUM from $ 1, 21<BR>AMBIzEN<BR>CIALzIS =
+from $ 3, 75</DIV>
+<DIV>&nbsp;</DIV>
+<DIV><A =
+href=3D"http://www.snupakolderiy.com">http://www.snupakolderiy.com</A><BR=
+></DIV>
+<DIV>&nbsp;</DIV>
+<DIV>whatever of cutting through the goblin-chains and setting all =
+the<BR>
+prisoners free as quickly as possible. This swords name was =
+Glamdring<BR>
+the Foe-hammer, if you remember. The goblins just called it Beater, =
+and<BR></DIV></BODY></HTML>
+------=_NextPart_000_0001_01C6A1EA.E2B8F830--
 
-- Makefile/autoconf tidyups
-- No compiles with no warnings
-- deleted debian/* at request of debian maintainer
-- deleted assorted other unused files
-- mountd can be run multi-threaded for configurations with many hundreds
-  of clients (mountd -t 20).  Default is single-threaded
-- Support for selection NFS version to be exported, and protocol to
-  use.  This requires kernel patches that should be in linux 2.6.19.
-- Use 65534 rather than -2 for default anon.  This makes no difference in many
-  cases, but is important in some.
-- New utility 'rpcdebug' for controlled kernel 'debug' options for nfs and nfsd.
-- nfsstat reports NFSv4 operation statistics that should be available in
-  linux 2.6.18.
-- assorted other fixes
 
-NeilBrown
+
+
+
+--===============0386380809==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0386380809==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0386380809==--
