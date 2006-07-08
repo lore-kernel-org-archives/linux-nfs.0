@@ -1,9 +1,10 @@
-From: "Chuck Lever" <chucklever@gmail.com>
+From: Amit Gud <agud@redhat.com>
 Subject: Re: [PATCH] Fix NFS mount options in mount.nfs
-Date: Sat, 8 Jul 2006 14:56:37 -0400
-Message-ID: <76bd70e30607081156u75d8bd28oda7432eab6d82c5d@mail.gmail.com>
-References: <44AE9DC7.4050606@redhat.com> <20060707174542.GA2953@uio.no>
+Date: Sat, 08 Jul 2006 15:12:26 -0400
+Message-ID: <44B0039A.2050501@redhat.com>
+References: <44AE9DC7.4050606@redhat.com> <20060707174542.GA2953@uio.no>	
 	<44AEA1FE.6080402@redhat.com>
+	<76bd70e30607081156u75d8bd28oda7432eab6d82c5d@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
@@ -13,15 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1FzHyq-00053G-Ui
-	for nfs@lists.sourceforge.net; Sat, 08 Jul 2006 11:56:41 -0700
-Received: from nf-out-0910.google.com ([64.233.182.186])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FzHyq-0002VT-1q
-	for nfs@lists.sourceforge.net; Sat, 08 Jul 2006 11:56:41 -0700
-Received: by nf-out-0910.google.com with SMTP id b2so223285nfe
-	for <nfs@lists.sourceforge.net>; Sat, 08 Jul 2006 11:56:37 -0700 (PDT)
-To: "Amit Gud" <agud@redhat.com>
-In-Reply-To: <44AEA1FE.6080402@redhat.com>
+	id 1FzIAS-0006FG-36
+	for nfs@lists.sourceforge.net; Sat, 08 Jul 2006 12:08:40 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1FzIAQ-0005JV-3A
+	for nfs@lists.sourceforge.net; Sat, 08 Jul 2006 12:08:40 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <76bd70e30607081156u75d8bd28oda7432eab6d82c5d@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,28 +33,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 7/7/06, Amit Gud <agud@redhat.com> wrote:
-> Steinar H. Gunderson wrote:
-> > Thanks, that should clean up most of the problems. How well is this tested?
-> >
->
-> The problem was the options that are meant solely for the mount utility,
-> like remount or noauto, were being passed further down to the syscall.
-> These options should be handled within the mount utility only and should
-> not be passed further.
->
-> I tested with options like
-> noauto,async,_netdev,nodiratime,users,dirsync,noatime,nodev,mand,group,owner,suid,user,exec,rw,soft,intr
-> and it apparently worked OK. This isn't regressively tested though. I
-> would like to see this patch tested in the environment mentioned in
-> http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=376839 .
+Chuck Lever wrote:
+> 
+> How does this change affect the mount options that show up in
+> /proc/mounts and /proc/self/mountstats?
 
-How does this change affect the mount options that show up in
-/proc/mounts and /proc/self/mountstats?
+IMO, it wouldn't affect at all. We are just trying to change the 
+user-space binaries, the stuff going in the kernel is still the same.
 
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
+
+AG--
+May the source be with you.
+http://www.cis.ksu.edu/~gud
+
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
