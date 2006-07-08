@@ -1,35 +1,21 @@
-From: Sam Falkner <Sam.Falkner@Sun.COM>
-Subject: Re: NFSv4 ACL and POSIX interaction / mask,
- draft-ietf-nfsv4-acls-00 not ready
-Date: Fri, 07 Jul 2006 21:45:38 -0600
-Message-ID: <B2F139E8-41BB-4657-B6FD-6738331C57E1@Sun.COM>
-References: <200607032310.15252.agruen@suse.de>
-	<200607071355.30624.agruen@suse.de>
+From: Amit Gud <agud@redhat.com>
+Subject: [PATCH] Fix NFS mount options in mount.nfs v3
+Date: Sat, 08 Jul 2006 00:47:36 -0400
+Message-ID: <44AF38E8.2010207@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Brian Pawlowski <beepy@netapp.com>,
-	Spencer Shepler <spencer.shepler@Sun.COM>, nfs@lists.sourceforge.net,
-	Lisa Week <Lisa.Week@Sun.COM>
+Content-Type: multipart/mixed; boundary="------------010707010005010106050705"
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
+	"Steinar H. Gunderson" <sesse@debian.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fz3kx-0005NC-4c
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 20:45:23 -0700
-Received: from brmea-mail-2.sun.com ([192.18.98.43])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fz3kv-0007mM-Ji
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 20:45:23 -0700
-Received: from fe-amer-04.sun.com ([192.18.108.178])
-	by brmea-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id
-	k683jIwE017402
-	for <nfs@lists.sourceforge.net>; Fri, 7 Jul 2006 21:45:20 -0600 (MDT)
-Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
-	(Sun Java System Messaging Server 6.2-4.02 (built Sep  9 2005))
-	id <0J2200D01EKH6400@mail-amer.sun.com>
-	(original mail from Sam.Falkner@Sun.COM) for nfs@lists.sourceforge.net;
-	Fri, 07 Jul 2006 21:45:18 -0600 (MDT)
-In-reply-to: <200607071355.30624.agruen@suse.de>
-To: nfsv4@ietf.org
+	id 1Fz4fg-0001o1-PE
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 21:44:00 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Fz4fe-0003JR-8Q
+	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 21:44:01 -0700
+To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,577 +28,509 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Jul 7, 2006, at 5:55 AM, Andreas Gruenbacher wrote:
-
-> On Monday, 3. July 2006 23:10, Andreas Gruenbacher wrote:
->> Hello,
->>
->> I have been thinking about the problems of interaction between  
->> NFSv4 ACLs
->> and POSIX, and particularly about the issue of masking permissions  
->> through
->> chmod and after creating files or directories.
->
-> Here is a follow-up after some personal feedback from Sam. I  
-> believe that
-> draft-ietf-nfsv4-acls-00 is not ready to become part of the NFSv4  
-> Minor
-> Version 1 RFC: some assumptions are not correct from a POSIX point  
-> of view,
-> and the way how chmod and file create modes are applied to NFSv4  
-> ACLs is weak
-> and not guaranteed to be correct.
-
-I disagree -- see below.
-
-> I will first try to clarify some of the points I tried to make in  
-> the previous
-> posting and point out deficiencies in draft-ietf-nfsv4-acls-00.  
-> Then I will
-> propose an alternative design which is more correct than  
-> introducing DENY
-> entries to mask permissions. (As a bonus, it is easier to  
-> implement. too.)
->
->> On a UNIX system that supports NFSv4 ACLs natively, I think we  
->> should try
->> to accept as wide a range of NFSv4 ACLs as possible, but we must  
->> make sure
->> that we can preserve POSIX semantics. In particular, this means  
->> that ACLs
->> may contain ACEs for users other than OWNER@, GROUP@, and  
->> EVERYONE@, and
->> that chmod(2) must continue to provide the same kinds of  
->> guarantees as
->> without NFSv4 ACLs.
->>
->> I am assuming here that NFSv4 ACLs shall be an additional rather  
->> than an
->> alternate file access control mechanism in the POSIX sense:  
->> Alternate file
->> access control mechanisms must ``be enabled only by explicit user  
->> action,
->> on a per-file basis by the file owner or a user with the appropriate
->> privilege'', and must ``be disabled for a file after the file  
->> permission
->> bits are changed for that file with chmod( )'' according to POSIX.  
->> In other
->> words, newly created files or directories would have alternate  
->> file access
->> control mechanisms disabled. This would render NFSv4 ACLs essentially
->> useless for UNIX processes, because they would almost always be  
->> disabled,
->> and would only work for remote processes until a POSIX process  
->> chmods a
->> file or creates a directory, which wouldn't get us very far.
->
-> As Sam pointed out, a subset of NFSv4 ACLs maps to an additional  
-> file access
-> control mechanism, while the rest goes beyond that, and therefore  
-> is an
-> alternate file access control mechanism.
-
-Yes -- ALLOW ACEs are alternate file access control, and DENY ACEs  
-are additional file access control.
-
-> It is important to understand how POSIX defines additional file  
-> access control
-> mechanisms:
->
-> [] 3.4 Additional File Access Control Mechanism
-> [] An implementation-defined mechanism that is layered upon the  
-> access control
-> []  mechanisms defined here, but which do not grant permissions  
-> beyond those
-> []  defined herein, although they may further restrict them.
->
-> In other words, when a file has just been created and after chmod,  
-> the file
-> mode permission bits define an upper bound to the permissions  
-> granted to
-> anyone on the system, and nobody has additional permissions.  
-> Additional
-> permissions (as an alternate file access control mechanism) may be
-> enabled explicitly, but the next chmod must disable them again.
-
-The use of the word "Additional" is confusing in the above  
-sentence.  :-)  I think you mean "more", or similar, but "Additional"  
-has a very specific meaning which (I think) isn't what you mean.
-
-> We can classify the permissions that NFSv4 ACLs grant into  
-> additional and
-> alternate mechanisms as follows: everything covered by the POSIX
-> read/write/execute permissions (such as ACE4_READ_DATA, but also
-> ACE4_APPEND_DATA) is additional, while everything beyond that (such as
-> ACE4_WRITE_OWNER) is alternate.
-
-Note well: this is quite different from draft-ietf-nfsv4- 
-minorversion1-03.txt, i.e. this is an alternate proposal.
-
-> Under this definition, all NFSv4 ACLs that
-> grant no more than ACE4_READ_DATA, ACE4_LIST_DIRECTORY,  
-> ACE4_WRITE_DATA,
-> ACE4_ADD_FILE, ACE4_APPEND_DATA, ACE4_ADD_SUBDIRECTORY,
-> ACE4_READ_NAMED_ATTRS, ACE4_WRITE_NAMED_ATTRS, ACE4_EXECUTE,
-> ACE4_READ_ATTRIBUTES, ACE4_WRITE_ATTRIBUTES, ACE4_READ_ACL, and
-> ACE4_SYNCHRONIZE would count as additional access control  
-> mechanisms. All
-> others with ACE4_WRITE_ACL, ACE4_WRITE_OWNER, ACE4_DELETE_CHILD, and
-> ACE4_DELETE are alternate.
-
-I don't understand what is gained by this designation of additional  
-access control mechanisms.  If you really say that this ACL:
-
-OWNER@:read_data:allow
-friend@your.com:read_data:allow
-
-is additional file access control, then what is the mode on such a  
-file?  Unless the mode says "group can read", then friend@your.com  
-wouldn't be able to read, if the ACL is additional file access  
-control.  What if you want friend@your.com to be able to read, but  
-you don't want the file's owning group to read?
-
-> As said already, the POSIX file mode permission bits define the  
-> permissions of
-> three classes: owner, group, and other. An additional file access  
-> control
-> mechanism may only further restrict the permissions granted to  
-> those classes.
-
-> To map NFSv4 ACLs to an additional file access control mechanism,
-
->  - we must map each NFSv4 ACL entry to exactly one of the three  
-> classes.
->
->  - we must ensure that the ACL does not grant any permissions that  
-> go beyond
->    the class permissions after a chmod or create.
-
-Additional File Access Control must not grant beyond the class  
-permissions *ever*, not just after create or chmod.
-
->  - in particular, we must ensure that the ACL grants no "alternate"
->    permissions after a chmod or create.
-
-I don't understand this; you began this section with "To map NFSv4  
-ACLs to an additional...", but here, you seem to be describing ACLs  
-as an alternate file access control mechanism.
-
-> We are free to provide mechanisms by which more permissions may be  
-> enabled by
-> explicit user action, on a per-file basis by the file owner or a  
-> user with
-> the appropriate privilege, according to POSIX.
-
->
-> The POSIX definitions of the three file permission classes are:
->
-> [] 3.173 File Owner Class
-> [] The property of a file indicating access permissions for a  
-> process related
-> [] to the user identification of a process. A process is in the  
-> file owner
-> [] class of a file if the effective user ID of the process matches  
-> the user ID
-> [] of the file.
->
-> [] 3.166 File Group Class
-> [] The property of a file indicating access permissions for a process
-> [] related to the group identification of a process. A process is in
-> [] the file group class of a file if the process is not in the file  
-> owner
-> [] class and if the effective group ID or one of the supplementary  
-> group
-> [] IDs of the process matches the group ID associated with the  
-> file. Other
-> [] members of the class may be implementation-defined.
->
-> [] 3.172 File Other Class
-> [] The property of a file indicating access permissions for a  
-> process related
-> [] to the user and group identification of a process. A process is  
-> in the file
-> [] other class of a file if the process is not in the file owner  
-> class or file
-> [] group class.
->
-> The key fact in these definitions is that an implementation may define
-> additional members of the File Group Class, while the other classes  
-> are not
-> extensible.
->
-> Under this definition, we end up with the following mapping:
->
->  - OWNER@ entries are in the File Owner Class,
->  - EVERYONE@ entries are in the File Other Class,
-
-No, I don't think EVERYONE@ is in the File Other Class.  Given this ACL:
-
-EVERYONE@:read_data:deny
-OWNER@:read_data:allow
-
-the owner would NOT be able to read.  In other words, file owner  
-class and file group class are also affected by EVERYONE@ ACEs.
-
->  - every other entry is in the File Group Class(*).
-
-including EVERYONE@.  ;-)
-
->  (*) User entries for the user who is the current file owner are a  
-> special
->      case: due to how the NFSv4 ACL permission check algorithm is  
-> specified,
->      I believe that they should be put in the OWNER@ class.
-
-The current minorversion1 draft has a similar design constraint.
-
->> Note that this definition is in line with POSIX 1003.1e draft 17  
->> [2], while
->> it conflicts with the IETF NFS Version 4 ACLs draft [1], which  
->> associates
->> only GROUP@ entries with the group file mode permission bits in  
->> section
->> 5.1. The relevant text of IETF NFS Version 4 ACLs draft [1] is  
->> also found
->> in NFSv4 Minor Version 1 [4].
->
-> Section 5.1 of [1] needs to be fixed: we must set the permission  
-> bits so that
-> they are a superset of the permissions of all the entries in the  
-> respective
-> class. (We cannot represent permissions that are not supersets of
-> POSIX read, write, execute in the class, but that is not a problem,  
-> as we will
-> see later.)
-
-We must do so carefully.  I'm not convinced that a superset is the  
-best way to go, but we should talk about this later.
-
-> Non-monotonic permissions
-> =========================
->
-> Note that with arbitrary NFSV4 ACLs, the permissions granted to a  
-> process from
-> multiple ACL entries will accumulate. This means that permissions  
-> across
-> multiple classes may accumulate as well. This can be prevented with  
-> DENY
-> entries in the ACL, e.g.,
->
-> 	OWNER@:mask1::ALLOW
-> 	OWNER@:^mask1::DENY
-> 	user@domain:mask2::ALLOW
-> 	group@domain:mask3:ACE4_IDENTIFIER_GROUP:ALLOW
-> 	user@domain:^mask2::DENY
-> 	group@domain:^mask3:ACE4_IDENTIFIER_GROUP:DENY
-> 	EVERYONE:mask4::ALLOW
->
-> This means that we will not have to deal with this special case  
-> when computing
-> the file mode permission bits, and we can achieve consistency by  
-> forcing ACLs
-> to be "well structured".
-
-Yuck!  I'm glad you're not proposing this as a general NFSv4 ACL  
-model.  :-)
-
-> We could also leave this as an implementation consideration: ACLs  
-> which are
-> not "well structured" in the above sense will grant permissions  
-> that go
-> beyond what an additional access control mechanism may grant *only*  
-> for
-> non-monotonic file mode permission bits. With non-monotonic I mean  
-> file mode
-> permission bits which grant more permissions to the group class  
-> than to the
-> owner class, or more permissions to the other class than to the  
-> group class.
-
-I'm sorry, I just don't follow that paragraph.
-
->> We want chmod(2) to be non-destructive, so that a chmod to a more
->> restrictive mode and back to the original mode will leave the file  
->> with the
->> same permissions as before the changes.
->>
->> [...]
->>
->> POSIX ACLs have solved the non-destructiveness problem by  
->> introducing a
->> mask ACL entry: the mask entry applies to all group class entries,  
->> and
->> defines an upper bound to the permissions those entries may grant.  
->> POSIX
->> ACLs only have ACL entries that allow permissions, and only  
->> specify READ,
->> WRITE, and EXECUTE permissions. Therefore, the owner class and  
->> other class
->> permissions are the permissions granted to the owner and to others,
->> respectively. (Note the difference between these others and NFSv4's
->> EVERYONE@ special identifier).
->>
->> The mask concept is not part of NFSv4 ACLs. Marius A. Eriksen and  
->> others
->> have proposed to emulate the POSIX ACL mask entry by prepending (with
->> exception of OWNER@ and EVERYONE@ ACEs) each ALLOW ACE with a DENY  
->> ACE for
->> the same user, group, or special identifier as in the ALLOW ACE. The
->> permissions in the DENY ACE are set so that the entry denies the
->> permissions not granted by the mask.
->
-> Internet draft-ietf-nfsv4-acls-00.txt [1] uses the same mechanism  
-> to implement
-> masking.
->
->> Unless we accept a very specific form of NFSv4 ACLs only (which would
->> contradict the goal stated at the top of this message, and which  
->> would mean
->> that interoperability with anything but POSIX ACLs would become  
->> difficult),
->> there is no easy way to tell DENY entries introduced to emulate  
->> the mask
->> from DENY entries added by hand.
-
-I would refute this; see below.
-
->> This has two potential consequences:
->>
->>  - First, if we fail to identify such a mask-emulation DENY entry,  
->> we may
->> end up inserting another such entry. We might end up doing so  
->> repeatedly.
-
-But we will not ever fail to identify such a mask-emulation DENY  
-entry, when it is one that was created by a previous chmod.  Only in  
-a degenerate case of modify-acl-carefully, chmod, modify-acl- 
-carefully, chmod, etc., would you get a growing ACL problem.
-
->>  - Second, we may take a user-provided DENY entry for a mask- 
->> emulation DENY
->> entry, and clear mask bits from that entry. This would contradict the
->> user's intention. So the approach of inserting mask-emulation DENY  
->> entries
->> is not good enough in general.
-
-A user-provided DENY entry would have to fit into a very specific and  
-somewhat nonsensical form in order to be misidentified.  Here's an  
-example:
-
-samf@sun.com:read_data:deny
-samf@sun.com:read_data:allow
-
-If a "chmod 444" were done, the deny ACE above would be modified.   
-Any other cases of chmod modifying a user-provided ACE would have to  
-be essentially the same as the above example.  I think that that's an  
-acceptable situation.
-
->> (Mapping between NFSv4 and POSIX ACLs does
->> not have this problem, because POSIX ACLs don't have DENY ACEs.)
-
-> Therefore, the mechanism described in section 5.3 is not suitable  
-> for our
-> purposes, and we need to replace it with something better.
-
-I don't agree that 5.3 is not suitable, but I would love to see  
-something better.
-
->> In my opinion, there are two possible solutions for this problem:  
->> we can
->> (1) devise a special kind of NFSv4 ACL entry that we will  
->> recognize as mask
->> entry, or (2) give the owner/group/other class permission bits higher
->> priority than the ACL entries, and only allow permissions that are  
->> allowed
->> by both the ACEs and their associated classes.
-
-Yikes -- I don't like either of the above solutions; let's look at  
-the third...
-
-> A third option exists as well which fits in very well with POSIX  
-> and can be
-> implemented in NFSv4 in a backward compatible way.
->
-> Alternative Proposal
-> ====================
->
-> Instead of adding DENY entries to the ACL for the purpose of  
-> masking, attach
-> three optional attributes to each file: owner_class_mask,  
-> group_class_mask,
-> and other_class_mask. When those attributes are present, they  
-> define which
-> permissions in an ACE are effective.
->
-> Each ACE is is restricted by one of these mask attributes in each  
-> access
-> check:
->
->  - OWNER@ entries and entries for the user@domain that currently  
-> owns the file
->    are restricted by owner_class_mask.
->
->  - EVERYONE@ entries are restricted by other_class_mask.
->
->  - All other entries are restricted by group_class_mask.
->
-> The effective permissions are computed as the bitwise and (&) of  
-> the ACE mask
-> and the associated class_mask attribute.
-
-I take it you mean that "the effective access mask bits for ACEs of  
-type ALLOW"?
-
-> When doing a chmod(2) or when applying a create mask, the  
-> owner_class_mask,
-> group_class_mask, and other_class_mask attributes are modified  
-> according to
-> the owner class, group class, and other class permissions of the mode
-> parameter as follows:
->
->  - The POSIX read permission implies the ACE4_READ_DATA,  
-> ACE4_READ_ATTRIBUTES,
-> ACE4_READ_ACL, and ACE4_SYNCHRONIZE bitmask flags.
->
->  - The POSIX write permission implies the ACE4_WRITE_DATA,  
-> ACE4_APPEND_DATA,
-> ACE4_WRITE_ATTRIBUTES, ACE4_DELETE_CHILD, and ACE4_SYNCHRONIZE  
-> bitmask flags.
-
-I'm not sure I agree about ACE4_WRITE_ATTRIBUTES, but that's a minor  
-detail.
-
->  - The POSIX execute permission implies the ACE4_EXECUTE mask.
-
-> This saves us from bloating ACLs with DENY entries, is more  
-> efficient when
-> doing a chmod, and also saves us from destroying permissions in  
-> user provided
-> DENY entries.
-
-Yes, but at the cost of adding new file attributes...  Don't get me  
-wrong, I do see merit in this proposal, but I don't know if it'll be  
-acceptable.
-
-> When an ACL is set, then set all mask attributes to the values  
-> provided in the
-> same SETATTR operation, and set the remaining mask attributes to  
-> the union of
-> all ALLOW ACL entries in the ACL that the class applies to.
-
-This doesn't take the ordering of the ACL into account; is this your  
-intention?  So
-
-GROUP@:read_data/write_data:DENY
-GROUP@:read_data/write_data:ALLOW
-
-would result in a group_class_mask of read_data|write_data, right?   
-(I'm not saying it's wrong, I'm just making sure I understand.)
-
-> Without any further changes, NFSv4 clients not aware of the three  
-> optional
-> attributes would not be aware of the restrictions imposed by those  
-> masks when
-> querying for the ACL. This would create an interoperability  
-> problem, and
-> possible security holes. To solve this problem, we can extend the  
-> GETATTR
-> operation as follows:
->
-> When a client requests the ACL attribute, check if it also requests  
-> one or
-> more of the three optional owner_class_mask, group_class_mask, or
-> other_class_mask attributes. If it does, then send the requested  
-> attributes
-> as they are. If the client requests only the ACL without any of the  
-> masks,
-> return an ACL with only effective mask flags set, and with all  
-> other flags
-> removed.
-
-I assume you mean in the ALLOW ACEs only, right?
-
-> Alternate permissions in the ACL can be enabled by either setting  
-> an ACL
-> without providing full mask entries, or by setting the appropriate  
-> bit(s) in
-> the corresponding mask entry or entries.
-
-Yes, I think I understand.
-
-> When comparing POSIX ACLs and the NFSv4 ACL + mask attributes as  
-> proposed
-> here, one obvious difference is that POSIX ACLs have only one mask  
-> entry,
-> while I propose three mask entries here. The reason for this is  
-> that POSIX
-> ACLs can at most grant read, write, and execute permissions, and so  
-> with
-> POSIX ACLs, the File Owner Class permissions are always identical  
-> to the
-> permissions granted to the owner, and the File Other Class  
-> permissions are
-> always identical to the permissions granted to others. With NFSv4  
-> ACLs,
-> OWNER@ and EVERYONE@ entries may grant additional permissions that  
-> go beyond
-> what POSIX read, write, and execute can grant, and we need a  
-> mechanism so
-> that those alternate permissions can be turned off by chmod and  
-> during file
-> create without destroying the permissions.
-
-Given that EVERYONE@ is not equivalent to the POSIX "other" class, it  
-could be trimmed down to two.
-
-> I would appreciate if you could take this alternative proposal into
-> consideration when deciding how to proceed with NFSv4 Minor
-> Version 1 at next week's IETF 66 meeting.
-
-This proposal certainly has its merits.  I have doubts about the  
-feasibility of adding two or three new file attributes, and new as- 
-yet-unimplemented semantics, into the minorversion1 draft.  I have  
-doubts about how this would be implemented on a Windows-based server.
-
-The current design specified in draft-ietf-nfsv4-minorversion1-03.txt  
-has implementation experience -- it's released in Solaris 10 update  
-3, a shipping product.  It meets strict POSIX requirements for those  
-implementations that choose to conform to POSIX.  I believe it's  
-fully implementable on a Windows-based server.
-
-I too hope that this can be discussed at IETF 66.
-
-- Sam
-
->
->
-> Thanks and best regards,
-> Andreas
->
->> REFERENCES
->>
->> [1] Sam Falkner et al.: NFS Version 4 ACLs, draft-ietf-nfsv4- 
->> acls-00.txt
->>
->> [2] POSIX 1003.1e/2c draft 17 (withdrawn),
->> http://wt.xpilot.org/publications/posix.1e
->>
->> [3] Marius Aamodt Eriksen et al.: Mapping Between NFSv4 and Posix  
->> Draft
->> ACLs, draft-ietf-nfsv4-acl-mapping-04.txt
->>
->> [4] Spencer Shepler (editor): NFSv4 Minor Version 1,
->> draft-ietf-nfsv4-minorversion1-03.txt
->
-> -- 
-> Andreas Gruenbacher <agruen@suse.de>
-> Novell / SUSE Labs
-
+This is a multi-part message in MIME format.
+--------------010707010005010106050705
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+
+
+AG
+-- 
+May the source be with you.
+http://www.cis.ksu.edu/~gud
+
+
+--------------010707010005010106050705
+Content-Type: text/plain;
+ name="fix-mount-options-v3.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="fix-mount-options-v3.patch"
+
+If the 'user' or 'users' mount option is specified on commandline, verify with /etc/fstab if it is really specified. Setuid bit is still ON and should remain ON since mount drops the root privileges.
+
+I've given this patch a good hammering, but not exhaustive by any means.  
+
+Based on 1.0.9.
+
+
+Signed-off-by: Amit Gud <agud@redhat.com>
+
+---
+diff -uprN -X dontdiff nfs-utils/support/include/fstab.h nfs-utils-ag/support/include/fstab.h
+--- nfs-utils/support/include/fstab.h	2006-07-02 17:34:57.000000000 -0400
++++ nfs-utils-ag/support/include/fstab.h	2006-07-07 23:29:17.000000000 -0400
+@@ -3,6 +3,10 @@
+ 
+ #include "nfs_mntent.h"
+ 
++#ifndef _PATH_FSTAB
++#define _PATH_FSTAB "/etc/fstab"
++#endif
++
+ int mtab_is_writable(void);
+ int mtab_does_not_exist(void);
+ 
+@@ -16,6 +20,10 @@ struct mntentchn *getmntoptfile (const c
+ struct mntentchn *getmntdirbackward (const char *dir, struct mntentchn *mc);
+ struct mntentchn *getmntdevbackward (const char *dev, struct mntentchn *mc);
+ 
++struct mntentchn *fstab_head (void);
++struct mntentchn *getfsfile (const char *file);
++struct mntentchn *getfsspec (const char *spec);
++
+ void lock_mtab (void);
+ void unlock_mtab (void);
+ void update_mtab (const char *special, nfs_mntent_t *with);
+diff -uprN -X dontdiff nfs-utils/support/include/nfs_mntent.h nfs-utils-ag/support/include/nfs_mntent.h
+--- nfs-utils/support/include/nfs_mntent.h	2006-07-02 17:34:57.000000000 -0400
++++ nfs-utils-ag/support/include/nfs_mntent.h	2006-07-07 22:40:01.000000000 -0400
+@@ -7,10 +7,10 @@
+ #define _NFS_MNTENT_H
+ 
+ typedef struct nfs_mntent_s {
+-	const char *mnt_fsname;
+-	const char *mnt_dir;
+-	const char *mnt_type;
+-	const char *mnt_opts;
++	char *mnt_fsname;
++	char *mnt_dir;
++	char *mnt_type;
++	char *mnt_opts;
+ 	int mnt_freq;
+ 	int mnt_passno;
+ } nfs_mntent_t;
+diff -uprN -X dontdiff nfs-utils/support/nfs/fstab.c nfs-utils-ag/support/nfs/fstab.c
+--- nfs-utils/support/nfs/fstab.c	2006-07-02 17:34:57.000000000 -0400
++++ nfs-utils-ag/support/nfs/fstab.c	2006-07-07 23:29:06.000000000 -0400
+@@ -78,10 +78,10 @@ mtab_is_writable() {
+ 
+ /* Contents of mtab and fstab ---------------------------------*/
+ 
+-struct mntentchn mounttable;
+-static int got_mtab = 0;
++struct mntentchn mounttable, fstab;
++static int got_mtab = 0, got_fstab = 0;
+ 
+-static void read_mounttable(void);
++static void read_mounttable(void), read_fstab(void);
+ 
+ struct mntentchn *
+ mtab_head() {
+@@ -96,6 +96,13 @@ my_free(const void *s) {
+ 		free((void *) s);
+ }
+ 
++struct mntentchn *
++fstab_head() {
++	if (!got_fstab)
++		read_fstab();
++	return &fstab;
++}
++
+ static void
+ discard_mntentchn(struct mntentchn *mc0) {
+ 	struct mntentchn *mc, *mc1;
+@@ -167,6 +174,26 @@ read_mounttable() {
+         read_mntentchn(mfp, fnam, mc);
+ }
+ 
++static void
++read_fstab() {
++	mntFILE *mfp = NULL;
++	const char *fnam;
++	struct mntentchn *mc = &fstab;
++
++	got_fstab = 1;
++	mc->nxt = mc->prev = NULL;
++
++	fnam = _PATH_FSTAB;
++	mfp = nfs_setmntent (fnam, "r");
++	if (mfp == NULL || mfp->mntent_fp == NULL) {
++		int errsv = errno;
++		error(_("warning: can't open %s: %s"),
++			_PATH_FSTAB, strerror (errsv));
++		return;
++	}
++	read_mntentchn(mfp, fnam, mc);
++}
++
+ /*
+  * Given the directory name NAME, and the place MCPREV we found it last time,
+  * try to find more occurrences.
+@@ -201,6 +228,30 @@ getmntdevbackward (const char *name, str
+ 	return NULL;
+ }
+ 
++/* Find the dir FILE in fstab.  */
++struct mntentchn *
++getfsfile (const char *file) {
++	struct mntentchn *mc, *mc0;
++
++	mc0 = fstab_head();
++	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt)
++		if (streq(mc->m.mnt_dir, file))
++			return mc;
++	return NULL;
++}
++
++/* Find the device SPEC in fstab.  */
++struct mntentchn *
++getfsspec (const char *spec) {
++	struct mntentchn *mc, *mc0;
++
++	mc0 = fstab_head();
++	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt)
++		if (streq(mc->m.mnt_fsname, spec))
++			return mc;
++	return NULL;
++}
++
+ /* Updating mtab ----------------------------------------------*/
+ 
+ /* Flag for already existing lock file. */
+diff -uprN -X dontdiff nfs-utils/utils/mount/Makefile.am nfs-utils-ag/utils/mount/Makefile.am
+--- nfs-utils/utils/mount/Makefile.am	2006-07-02 17:34:58.000000000 -0400
++++ nfs-utils-ag/utils/mount/Makefile.am	2006-07-07 15:06:26.000000000 -0400
+@@ -14,9 +14,10 @@ MAINTAINERCLEANFILES = Makefile.in
+ 
+ install-exec-hook:
+ 	(cd $(DESTDIR)$(sbindir) && \
+-	  ln -sf $(sbin_PROGRAMS) mount.nfs4 && \
+-	  ln -sf $(sbin_PROGRAMS) umount.nfs && \
+-	  ln -sf $(sbin_PROGRAMS) umount.nfs4)
++	  chmod +s $(sbin_PROGRAMS) && \
++	  cp -p $(sbin_PROGRAMS) mount.nfs4 && \
++	  cp -p $(sbin_PROGRAMS) umount.nfs && \
++	  cp -p $(sbin_PROGRAMS) umount.nfs4)
+ uninstall-hook:
+ 	(cd $(DESTDIR)$(sbindir) && \
+ 	    rm -f mount.nfs4 umount.nfs umount.nfs4)
+diff -uprN -X dontdiff nfs-utils/utils/mount/mount.c nfs-utils-ag/utils/mount/mount.c
+--- nfs-utils/utils/mount/mount.c	2006-07-02 17:34:58.000000000 -0400
++++ nfs-utils-ag/utils/mount/mount.c	2006-07-07 23:46:20.000000000 -0400
+@@ -28,6 +28,7 @@
+ #include <sys/mount.h>
+ #include <getopt.h>
+ #include <mntent.h>
++#include <pwd.h>
+ 
+ #include "fstab.h"
+ #include "xcommon.h"
+@@ -74,6 +75,12 @@ struct opt_map {
+   int  mask;                    /* flag mask value */
+ };
+ 
++/* Custom mount options for our own purposes.  */
++/* Maybe these should now be freed for kernel use again */
++#define MS_DUMMY	0x00000000
++#define MS_USERS	0x40000000
++#define MS_USER		0x20000000
++
+ static const struct opt_map opt_map[] = {
+   { "defaults", 0, 0, 0         },      /* default options */
+   { "ro",       1, 0, MS_RDONLY },      /* read-only */
+@@ -90,6 +97,18 @@ static const struct opt_map opt_map[] = 
+   { "remount",  0, 0, MS_REMOUNT},      /* Alter flags of mounted FS */
+   { "bind",     0, 0, MS_BIND   },      /* Remount part of tree elsewhere */
+   { "rbind",    0, 0, MS_BIND|MS_REC }, /* Idem, plus mounted subtrees */
++  { "auto",     0, 0, MS_DUMMY },       /* Can be mounted using -a */
++  { "noauto",   0, 0, MS_DUMMY },       /* Can  only be mounted explicitly */
++  { "users",    0, 0, MS_USERS  },      /* Allow ordinary user to mount */
++  { "nousers",  0, 1, MS_USERS  },      /* Forbid ordinary user to mount */
++  { "user",     0, 0, MS_USER   },      /* Allow ordinary user to mount */
++  { "nouser",   0, 1, MS_USER   },      /* Forbid ordinary user to mount */
++  { "owner",    0, 0, MS_DUMMY  },      /* Let the owner of the device mount */
++  { "noowner",  0, 0, MS_DUMMY  },      /* Device owner has no special privs */
++  { "group",    0, 0, MS_DUMMY  },      /* Let the group of the device mount */
++  { "nogroup",  0, 0, MS_DUMMY  },      /* Device group has no special privs */
++  { "_netdev",  0, 0, MS_DUMMY},        /* Device requires network */
++  { "comment",  0, 0, MS_DUMMY},        /* fstab comment only (kudzu,_netdev)*/
+ 
+   /* add new options here */
+ #ifdef MS_NOSUB
+@@ -104,6 +123,7 @@ static const struct opt_map opt_map[] = 
+   { "mand",     0, 0, MS_MANDLOCK },    /* Allow mandatory locks on this FS */
+   { "nomand",   0, 1, MS_MANDLOCK },    /* Forbid mandatory locks on this FS */
+ #endif
++  { "loop",     1, 0, MS_DUMMY   },      /* use a loop device */
+ #ifdef MS_NOATIME
+   { "atime",    0, 1, MS_NOATIME },     /* Update access time */
+   { "noatime",  0, 0, MS_NOATIME },     /* Do not update access time */
+@@ -121,6 +141,12 @@ static char * fix_opts_string (int flags
+ 	char *new_opts;
+ 
+ 	new_opts = xstrdup((flags & MS_RDONLY) ? "ro" : "rw");
++	if (flags & MS_USER) {
++		struct passwd *pw = getpwuid(getuid());
++		if(pw)
++			new_opts = xstrconcat3(new_opts, ",user=", pw->pw_name);
++	}
++	
+ 	for (om = opt_map; om->opt != NULL; om++) {
+ 		if (om->skip)
+ 			continue;
+@@ -132,9 +158,20 @@ static char * fix_opts_string (int flags
+ 	if (extra_opts && *extra_opts) {
+ 		new_opts = xstrconcat3(new_opts, ",", extra_opts);
+ 	}
++
+ 	return new_opts;
+ }
+ 
++void copy_mntent(struct mntent *ment, nfs_mntent_t *nment)
++{
++	/* Not sure why nfs_mntent_t should exist */
++	strcpy(nment->mnt_fsname, ment->mnt_fsname);
++	strcpy(nment->mnt_dir, ment->mnt_dir);
++	strcpy(nment->mnt_type, ment->mnt_type);
++	strcpy(nment->mnt_opts, ment->mnt_opts);
++	nment->mnt_freq = ment->mnt_freq;
++	nment->mnt_passno = ment->mnt_passno;
++}
+ 
+ int add_mtab(char *fsname, char *mount_point, char *fstype, int flags, char *opts, int freq, int passno)
+ {
+@@ -146,8 +183,16 @@ int add_mtab(char *fsname, char *mount_p
+ 	ment.mnt_dir = mount_point;
+ 	ment.mnt_type = fstype;
+ 	ment.mnt_opts = fix_opts_string(flags, opts);
+-	ment.mnt_freq = 0;
+-	ment.mnt_passno= 0;
++	ment.mnt_freq = freq;
++	ment.mnt_passno= passno;
++
++	if(flags & MS_REMOUNT) {
++		nfs_mntent_t nment;
++		
++		copy_mntent(&ment, &nment);
++		update_mtab(nment.mnt_dir, &nment);
++		return 0;
++	}
+ 
+ 	if ((fd = open(MOUNTED"~", O_RDWR|O_CREAT|O_EXCL, 0600)) == -1)	{
+ 		fprintf(stderr, "Can't get "MOUNTED"~ lock file");
+@@ -242,20 +287,56 @@ static void parse_opts (const char *opti
+ 
+ }
+ 
++/*
++ * Look for an option in a comma-separated list
++ */
++int
++contains(const char *list, const char *s) {
++	int n = strlen(s);
++
++	while (*list) {
++		if (strncmp(list, s, n) == 0 &&
++		  (list[n] == 0 || list[n] == ','))
++			return 1;
++		while (*list && *list++ != ',') ;
++	}
++	return 0;
++}
++
++/*
++ * If list contains "user=peter" and we ask for "user=", return "peter"
++ */
++char *
++get_value(const char *list, const char *s) {
++	const char *t;
++	int n = strlen(s);
++
++	while (*list) {
++		if (strncmp(list, s, n) == 0) {
++			s = t = list+n;
++			while (*s && *s != ',')
++				s++;
++			return xstrndup(t, s-t);
++		}
++		while (*list && *list++ != ',') ;
++	}
++	return 0;
++}
++
+ static void mount_error(char *node)
+ {
+ 	switch(errno) {
+ 		case ENOTDIR:
+-			printf("%s: mount point %s is not a directory\n", progname, node);
++			fprintf(stderr, "%s: mount point %s is not a directory\n", progname, node);
+ 			break;
+ 		case EBUSY:
+-			printf("%s: %s is already mounted or busy\n", progname, node);
++			fprintf(stderr, "%s: %s is already mounted or busy\n", progname, node);
+ 			break;
+ 		case ENOENT:
+-			printf("%s: mount point %s does not exist\n", progname, node);
++			fprintf(stderr, "%s: mount point %s does not exist\n", progname, node);
+ 			break;
+ 		default:
+-			printf("%s: %s\n", progname, strerror(errno));
++			fprintf(stderr, "%s: %s\n", progname, strerror(errno));
+ 	}
+ }
+ 
+@@ -264,16 +345,13 @@ int main(int argc, char *argv[])
+ 	int c, flags = 0, nfs_mount_vers = 0, mnt_err = 1, fake = 0;
+ 	char *spec, *mount_point, *extra_opts = NULL;
+ 	char *mount_opts = NULL, *p;
++	struct mntentchn *mc;
++	uid_t uid = getuid();
+ 
+ 	progname = argv[0];
+ 	if ((p = strrchr(progname, '/')) != NULL)
+ 		progname = p+1;
+ 
+-	if (getuid() != 0) {
+-		printf("%s: only root can do that.\n", progname);
+-		exit(1);
+-	}
+-
+ 	if(!strncmp(progname, "umount", strlen("umount"))) {
+ 		if(argc < 2) {
+ 			umount_usage();
+@@ -355,9 +433,33 @@ int main(int argc, char *argv[])
+ 
+ 	spec = argv[1];
+ 	mount_point = canonicalize(argv[2]);
+-	
++
+ 	parse_opts(mount_opts, &flags, &extra_opts);
+ 
++	if (uid != 0 && !(flags & MS_USERS) && !(flags & MS_USER)) {
++		fprintf(stderr, "%s: permission denied\n", progname);
++		exit(1);
++	}
++
++	if ((flags & MS_USER || flags & MS_USERS) && uid != 0) {
++		/* check if fstab has entry, and further see if the user or users option is given */
++		if ((mc = getfsspec(spec)) == NULL &&
++		    (mc = getfsfile(spec)) == NULL) {
++			fprintf(stderr, "%s: permission denied - invalid option\n", progname);
++			exit(1);
++		}
++		else {
++			if((flags & MS_USER) && !contains(mc->m.mnt_opts, "user")) {
++				fprintf(stderr, "%s: permission denied - invalid option\n", progname);
++				exit(1);
++			}
++			if((flags & MS_USERS) && !contains(mc->m.mnt_opts, "users")) {
++				fprintf(stderr, "%s: permission denied - invalid option\n", progname);
++				exit(1);
++			}
++		}
++	}
++
+ 	if (!strcmp(progname, "mount.nfs4") || nfs_mount_vers == 4) {
+ 		nfs_mount_vers = 4;
+ 		mnt_err = nfs4mount(spec, mount_point, &flags, &extra_opts, &mount_opts, 0);
+@@ -370,16 +472,19 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ 	if (!mnt_err && !fake) {
+-		mnt_err = do_mount_syscall(spec, mount_point, nfs_mount_vers == 4 ? "nfs4" : "nfs", flags, mount_opts);
++		if(!(flags & MS_REMOUNT)) {
++			mnt_err = do_mount_syscall(spec, mount_point,
++					nfs_mount_vers == 4 ? "nfs4" : "nfs", flags, mount_opts);
+ 		
+-		if(mnt_err) {
+-			mount_error(mount_point);
+-			exit(-1);
++			if(mnt_err) {
++				mount_error(mount_point);
++				exit(-1);
++			}
+ 		}
+-
+-		if(!nomtab)
++		if(!nomtab) {
+ 			add_mtab(spec, mount_point, nfs_mount_vers == 4 ? "nfs4" : "nfs",
+ 				 flags, extra_opts, 0, 0);
++		}
+ 	}
+ 
+ 	return 0;
+diff -uprN -X dontdiff nfs-utils/utils/mount/nfs_mount.h nfs-utils-ag/utils/mount/nfs_mount.h
+--- nfs-utils/utils/mount/nfs_mount.h	2006-07-02 17:34:58.000000000 -0400
++++ nfs-utils-ag/utils/mount/nfs_mount.h	2006-07-07 22:38:15.000000000 -0400
+@@ -80,5 +80,7 @@ struct nfs_mount_data {
+ 
+ int nfsmount(const char *, const char *, int *, char **, char **, int *, int);
+ void mount_errors(char *, int, int);
++int contains(const char *, const char *);
++char *get_value(const char *, const char *);
+ 
+ #endif /* _NFS_MOUNT_H */
+diff -uprN -X dontdiff nfs-utils/utils/mount/nfsumount.c nfs-utils-ag/utils/mount/nfsumount.c
+--- nfs-utils/utils/mount/nfsumount.c	2006-07-02 17:34:58.000000000 -0400
++++ nfs-utils-ag/utils/mount/nfsumount.c	2006-07-07 23:24:03.000000000 -0400
+@@ -23,12 +23,14 @@
+ #include <mntent.h>
+ #include <sys/mount.h>
+ #include <ctype.h>
++#include <pwd.h>
+ 
+ #include "xcommon.h"
+ #include "fstab.h"
+ #include "nls.h"
+ #include "conn.h"
+ 
++#include "nfs_mount.h"
+ #include "mount_constants.h"
+ #include "mount.h"
+ #include "nfsumount.h"
+@@ -307,7 +309,7 @@ int _nfsumount(const char *spec, const c
+ 		goto out_bad;
+ 	return nfs_call_umount(&mnt_server, &dirname);
+  out_bad:
+-	printf("%s: %s: not found or not mounted\n", progname, spec);
++	fprintf(stderr, "%s: %s: not found or not mounted\n", progname, spec);
+ 	return 0;
+ }
+ 
+@@ -376,6 +378,21 @@ int nfsumount(int argc, char *argv[])
+ 		printf(_("Could not find %s in mtab\n"), spec);
+ 
+ 	if(mc) {
++		if(contains(mc->m.mnt_opts, "user") && getuid() != 0) {
++			struct passwd *pw = getpwuid(getuid());
++			if(!pw || strcmp(pw->pw_name, get_value(mc->m.mnt_opts, "user="))) {
++				fprintf(stderr, "%s: permission denied to unmount %s\n",
++						progname, spec);
++				exit(1);
++			}
++		} else {
++			if(!contains(mc->m.mnt_opts, "users") && getuid() != 0) {
++				fprintf(stderr, "%s: only root can unmount %s from %s\n",
++						progname, mc->m.mnt_fsname, mc->m.mnt_dir);
++				exit(1);
++			}
++		}
++
+ 		ret = _nfsumount(mc->m.mnt_fsname, mc->m.mnt_opts);
+ 		if(ret)
+ 			ret = add_mtab2(mc->m.mnt_fsname, mc->m.mnt_dir,
+
+--------------010707010005010106050705
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--------------010707010005010106050705
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------010707010005010106050705--
