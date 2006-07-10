@@ -1,101 +1,62 @@
-From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
-Subject: Function `xmalloc' implicitly converted to pointer at
-	mountpoint.c:25
-Date: Tue, 11 Jul 2006 09:14:50 +1000
-Message-ID: <20060710231450.GB11009@debianrules.debiancolombia.org>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: Re: NFSv4 ACL and POSIX interaction / mask,
+	draft-ietf-nfsv4-acls-00 not ready
+Date: Tue, 11 Jul 2006 01:48:25 +0200
+Message-ID: <200607110148.25788.agruen@suse.de>
+References: <C98692FD98048C41885E0B0FACD9DFB8028CEAAC@exnane01.hq.netapp.com>
+	<200607101007.43824.agruen@suse.de>
+	<20060710142445.GB978@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0837102381=="
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G050W-0004hU-U8
-	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 16:17:44 -0700
-Received: from cpe-60-224-176-117.vic.bigpond.net.au ([60.224.176.117]
-	helo=elida.v7w.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1G050V-0003nB-U3
-	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 16:17:41 -0700
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Sam Falkner <Sam.Falkner@sun.com>, Lisa Week <Lisa.Week@sun.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, "Noveck, Dave" <Dave.Noveck@netapp.com>,
+	Spencer Shepler <spencer.shepler@sun.com>,
+	Brian Pawlowski <beepy@netapp.com>
+Return-path: <nfsv4-bounces@ietf.org>
+To: nfsv4@ietf.org
+In-Reply-To: <20060710142445.GB978@fieldses.org>
+List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Errors-To: nfsv4-bounces@ietf.org
+List-ID: <nfs.lists.sourceforge.net>
 
+On Monday, 10. July 2006 16:24, J. Bruce Fields wrote:
+> On Mon, Jul 10, 2006 at 10:07:43AM +0200, Andreas Gruenbacher wrote:
+> >  - define mechanisms which can be used to achieve *full* POSIX compliance
+> > of NFSv4.1 ACLs, on systems which implement a POSIX compliant ACL model,
+>
+> All of these "POSIX" requirements (including the language about
+> additional and alternate access control mechanisms) are from the one
+> draft, right?
 
---===============0837102381==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="24zk1gE8NUlDmwG9"
-Content-Disposition: inline
+No, *none* of what I am referring to as POSIX requirements is from 1003.1e 
+draft 17 (withdrawn) or from other drafts, it's all from IEEE Std 1003.1, 
+2004 edition (which is IEEE Std 1003.1-2001 (POSIX) with corrigenda).
 
+Look up the following sections in the definitions volume:
 
---24zk1gE8NUlDmwG9
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+3.4 Additional File Access Control Mechanism
+3.12 Alternate File Access Control Mechanism
+3.166 File Group Class
+3.172 File Other CLass
+3.173 File Owner Class
+3.174 File Permission Bits
+4.4 File Access Permissions
 
-Hello,
+Andreas
 
-I have received debian bug report #377724 [0]. It is about "a
-problem that will cause your package to segfault on architectures
-where the size of a pointer is greater than the size of an integer,
-such as ia64 and amd64". =20
-
-The message is:
-
-Function `xmalloc' implicitly converted to pointer at mountpoint.c:25
-
-[0] http://bugs.debian.org/377724
-
-Best Regards,
-
-An=EDbal Monsalve Salazar
---=20
-http://v7w.com/anibal
-
---24zk1gE8NUlDmwG9
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.3 (GNU/Linux)
-
-iD4DBQFEst9qiKF4f8PxWcoRAggaAJ0XIw7iq00mg0NS87LxOn3+a+rYxgCY2pb5
-b0DfZ/zYBE1tw7OvezI0TA==
-=WBRu
------END PGP SIGNATURE-----
-
---24zk1gE8NUlDmwG9--
-
-
---===============0837102381==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-
---===============0837102381==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- 
+Andreas Gruenbacher <agruen@suse.de>
+Novell / SUSE Labs
 
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0837102381==--
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www1.ietf.org/mailman/listinfo/nfsv4
