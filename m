@@ -1,228 +1,132 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: Re: NFSv4 ACL and POSIX interaction / mask,
-	draft-ietf-nfsv4-acls-00 not ready
-Date: Mon, 10 Jul 2006 23:09:31 +0200
-Message-ID: <200607102309.31515.agruen@suse.de>
-References: <200607032310.15252.agruen@suse.de>
-	<B2F139E8-41BB-4657-B6FD-6738331C57E1@Sun.COM>
-	<6C45838C-9240-4422-AFCC-A65173D763DB@Sun.COM>
-Reply-To: nfsv4@ietf.org
+From: Usha Ketineni <uketinen@us.ibm.com>
+Subject: nfs-utils-1.0.9 compilation failed!
+Date: Mon, 10 Jul 2006 15:10:17 -0700
+Message-ID: <OF7F9FF7E6.DBB070D5-ON882571A7.00785158-882571A7.0079CB32@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Cc: Brian Pawlowski <beepy@netapp.com>,
-	Spencer Shepler <spencer.shepler@sun.com>,
-	nfs@lists.sourceforge.net, nfsv4@ietf.org
-Return-path: <nfsv4-bounces@ietf.org>
-To: Lisa Week <Lisa.Week@sun.com>
-In-Reply-To: <6C45838C-9240-4422-AFCC-A65173D763DB@Sun.COM>
-List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Errors-To: nfsv4-bounces@ietf.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1934236823=="
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G03xS-0007KF-Dh
+	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 15:10:26 -0700
+Received: from e31.co.us.ibm.com ([32.97.110.149])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G03xR-0008Ie-FV
+	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 15:10:26 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
+	[9.17.195.11])
+	by e31.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k6AMAJ9b000480
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <nfs@lists.sourceforge.net>; Mon, 10 Jul 2006 18:10:19 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by westrelay02.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id
+	k6AMAJfG302732
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Mon, 10 Jul 2006 16:10:19 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k6AMAIS1019854
+	for <nfs@lists.sourceforge.net>; Mon, 10 Jul 2006 16:10:18 -0600
+Received: from d03nm116.boulder.ibm.com (d03nm116.boulder.ibm.com
+	[9.17.195.142])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k6AMAIDg019848
+	for <nfs@lists.sourceforge.net>; Mon, 10 Jul 2006 16:10:18 -0600
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Lisa,
+This is a multipart message in MIME format.
+--===============1934236823==
+Content-Type: multipart/alternative;
+	boundary="=_alternative 0079CB2E882571A7_="
 
-On Saturday, 08 July 2006 08:51, Lisa Week wrote:
-> Hi Andreas,
->
-> I have a couple additional questions and comments.  See those inline...
->
-> [...]
->
-> For example, if we have the following ACL:
->      lisa@sun.com:ACE4_WRITE_ACL:deny
->
-> 		or even
->
->      lisa@sun.com:ACE4_WRITE_OWNER:allow
->
-> Upon chmod we would have to disable them (however an implementation
-> chooses to) and effectively remove it.
+This is a multipart message in MIME format.
+--=_alternative 0079CB2E882571A7_=
+Content-Type: text/plain; charset="US-ASCII"
 
-In my proposal with the owner_class_mask, group_class_mask, and 
-other_class_mask attributes, the chmod does not remove any mask bits from the 
-ACEs, it sets the mask attributes to reflect the chmod mode parameter. The 
-permission check algorithm only considers the effective permissions. So the 
-mask attributes define which permissions are enabled and which are disabled.
+Hi,
 
-> The thing that I have a problem with here is the fact that the
-> changing of the file permission bits will affect what access has been
-> defined in the ACL for things such as ACE4_WRITE_OWNER,
-> ACE4_WRITE_ACL, etc.  A user setting the file permission bits is not
-> saying anything about what they want to be done with any ACEs that
-> include the ACE4_WRITE_OWNER mask bit.  Why would we want to mess
-> with them?
+Compilation of nfs-utils-1.0.9 failed with the below error on my machine.
+I don't see the function "write_oid()" being defined in the source code.
+Anyone hit this error or am I missing something? 
 
-It's quite simple: ACE4_WRITE_OWNER is an alternate access control mechanism 
-under POSIX, no matter how we look at it. POSIX says that a chmod must disable 
-alternate access control mechanisms, and it says that additional access 
-control mechanisms may only introduce further restrictions. So a chmod will 
-disable ACE4_WRITE_ACL and ACE4_WRITE_OWNER access, in both proposals.
-
-> 2.) So, what if an ACE contained a mixture of the access mask bits
-> that are alternate and additional?
->
-> Would we allow having ACE4_READ_DATA and ACE4_WRITE_ACL in the same
-> ACE?  What would happen to an ACE such as this upon chmod?
-
-Of course we allow such ACEs. In fact, any NFSv4 ACL is allowed(*). Chmod does 
-not touch the ACL, it adjusts the mask attributes so that only bits allowed 
-by the respective class (File Owner Class, File Group Class, File Other 
-Class) will be set in the mask attributes. Because only bits set both in an 
-ACE and in the associated mask attribute are effective, all other permissions 
-will automatically be disabled. Your proposal achieves the same effect by 
-prepending ALLOW entries with DENY entries that deny masked permissions.
-
-(*) See the well-formed ACLs and non-monotonic permissions discussion in the 
-previous mails for why we may want to enforce a specific form of ACLs for 
-full POSIX compliance, and in which conditions this matters.
-
-> I'll restate it because it is important: EVERYONE@ is not equivalent
-> to the File Other Class.  I believe the original intention was to
-> have it be equivalent to one the Windows "well known sid":   http://
-> msdn.microsoft.com/library/default.asp?url=/library/en-us/secauthz/
-> security/well_known_sid_type.asp
-
-EVERYONE@ in NFSv4 ACLs indeed matches EVERYONE@ in Windows ACLs.
-
-> Really with NFSv4 ACLs, the only way we have the equivalent of a File
-> Other Class is if the EVERYONE@ entries come at the end of the ACL.
-
-Again, that's what I discussed as part of well-formed ACLs and non-monotonic 
-permissions. Think of it this way:
-
-We classify ACEs as follows:
-
-  - OWNER@ entries and user@domain entries for the user who currently owns
-    a file are in the File Owner Class,
-
-  - EVERYONE@ entries are in the File Other Class,
-
-  - all other entries are in the File Group Class.
-
-Well-formed NFSv4 ACLs include DENY entries which make sure that the 
-permissions granted to each class (File Owner Class, File Group Class, File 
-Other Class) are isolated, and permissions granted to one class will not 
-"swap over" to another class. In particular, this means that nobody in the 
-File Owner and File Group classes will be granted any permissions from an 
-EVERYONE@ ACE.
-
-Arbitrary NFSv4 ACLs are not "well-formed" in this sense. They do not isolate 
-the classes, and permissions from several classes may accumulate.
-
-So, for strict POSIX compliance, we much make sure that ACLs are well-formed 
-if both is true:
-
- - they are inherited or chmod'ed
-
- - and the mask applied to the ACL is non-monotonic
-
-In all other cases (when an ACL is set, or when the permissions are monotonic) 
-we will still be within the bounds of POSIX, and so we don't need to care.
-
-So I'll restate that EVERYONE@ entries *are* in the File Other Class. Whether 
-or not permissions may "swap over" from one class to another is determined by 
-whether or not an ACL is "well-formed". This is an aspect orthogonal to the 
-classification, to be dealt with separately. No other classification can fix 
-the well-formedness aspect.
-
-> Again, EVERYONE@ is not equivalent to the File Other Class.
-> Depending on where an ACE pertaining to EVERYONE@ is in the ACL, it
-> could even refer to the owner and the owning group.
-
-Wrong in my opinion: with an ACL that simply consists of a single EVERYONE@ 
-ACE, the other permissions will apply to all classes, but that's because the 
-ACL is not well-formed, not because EVERYONE@ is classified wrong.
-
-> Sorry, but I don't think I understand.  Andreas, what do you mean by
-> "Alternate" permissions in that sentence?
-
-Here is a table of NFSv4 ACL mask bits and their classification. Mask bits are 
-classified as Additional if they are either always permitted under POSIX 
-(indicated as None in the table), or if they are equivalent to or a subset of 
-a POSIX permission (indicated as Read, Write, Execute in the table). Mask 
-bits are classified as Alternate if POSIX permissions cannot grant this 
-permission (e.g., the equvalent of WRITE_ACL is implicitly granted to the 
-owner, but there is no way to grant WRITE_ACL to an arbitrary other user).
-
-READ_DATA               Additional (Read)
-LIST_DIRECTORY          Additional (Read)
-WRITE_DATA              Additional (Write)
-ADD_FILE                Additional (Write)
-APPEND_DATA             Additional (Write)
-ADD_SUBDIRECTORY        Additional (Write)
-READ_NAMED_ATTRS        Additional (Read) (**)
-WRITE_NAMED_ATTRS       Additional (Write) (**)
-EXECUTE                 Additional (Execute)
-DELETE_CHILD            Additional (Write)
-READ_ATTRIBUTES         Additional (None)
-WRITE_ATTRIBUTES        Alternate
-DELETE                  Alternate
-READ_ACL                Additional (None)
-WRITE_ACL               Alternate
-WRITE_OWNER             Alternate
-SYNCHRONIZE             Additional (None)
-
-> It is unclear to me as to 
-> what happens to the access mask bits outside of the following:
-> (collectively, these are the access mask bits that make up the POSIX
-> read, write and execute permissions)
-> ACE4_READ_DATA, ACE4_READ_ATTRIBUTES, ACE4_READ_ACL, ACE4_SYNCHRONIZE
-> ACE4_WRITE_DATA, ACE4_APPEND_DATA, ACE4_WRITE_ATTRIBUTES,
-> ACE4_DELETE_CHILD and ACE4_EXECUTE
->
-> The remaining ones are:
-> ACE4_WRITE_ACL, ACE4_WRITE_OWNER, ACE4_DELETE, ACE4_READ_NAMED_ATTRS
-> and ACE4_WRITE_NAMED_ATTRS
-
-(**) I think that Read and Write imply ACE4_READ_NAMED_ATTRS and 
-ACE4_WRITE_NAMED_ATTRS on Solaris, respectively, but I'm not sure. In case 
-they are not, they would indeed count as Alternate.
-
-> Are these "remaining ones" also given representation in the masks?
-
-Yes. Alternate permissions must be subject to the mask attributes, because we 
-must be able to disable them upon chmod and ACL inheritance. We can turn them 
-back on later by setting the corresponding bitflags in the mask attributes 
-(explicitly, or implicitly by setting a new ACL without also providing mask 
-attributes, see further below).
-
-POSIX does not require that alternate file access mechanisms be either on or 
-off completely (i.e., an on/off switch); we are free to turn alternate 
-permissions on or off individually. (We must turn them all off upon chmod and 
-permission inheritance, but that should be clear by now.)
-
-> Actually, I think what is confusing me is that before, when talking
-> about Additional and Alternate file access control mechanisms, you
-> said that: " All others with ACE4_WRITE_ACL, ACE4_WRITE_OWNER,
-> ACE4_DELETE_CHILD, and ACE4_DELETE are alternate."
->
-> I just wonder how that statement  relates to the statement that
-> "Alternate permissions in the ACL can be enabled by either setting an
-> ACL without providing full mask entries, or by setting the
-> appropriate bit(s) in the corresponding mask entry or entries."
-
-My proposal was that a SETATTR of ACL that does not also set the mask 
-attributes should automatically set all unspecified mask attributes to the 
-union of all the ALLOW ACEs in the respective class. In other words, when a 
-NFSv4.0 client executes an ACL SETATTR, all the ALLOW permissions in the ACL 
-will automatically get set in the respective mask attributes as well, and 
-will be effective. POSIX allows this behavior.
+gssd-context_mit.o(.text+0x268): In function `serialize_krb5_ctx':
+/home/ketineni/nfs-utils-1.0.9/utils/gssd/context_mit.c:346: undefined 
+reference to `write_oid'
+collect2: ld returned 1 exit status
+make[2]: *** [gssd] Error 1
+make[2]: Leaving directory `/home/ketineni/nfs-utils-1.0.9/utils/gssd'
+make[1]: *** [all-recursive] Error 1
+make[1]: Leaving directory `/home/ketineni/nfs-utils-1.0.9/utils'
+make: *** [all-recursive] Error 1
 
 
-Andreas
+Thanks
+Usha
+--=_alternative 0079CB2E882571A7_=
+Content-Type: text/html; charset="US-ASCII"
 
--- 
-Andreas Gruenbacher <agruen@suse.de>
-Novell / SUSE Labs
+
+<br><font size=2 face="Courier New">Hi,</font>
+<br>
+<br><font size=2 face="Courier New">Compilation of nfs-utils-1.0.9 failed
+with the below error on my machine.</font>
+<br><font size=2 face="Courier New">I don't see the function &quot;write_oid()&quot;
+being defined in the source code.</font>
+<br><font size=2 face="Courier New">Anyone hit this error or am I missing
+something? </font>
+<br>
+<br><font size=2 face="Courier New">gssd-context_mit.o(.text+0x268): In
+function `serialize_krb5_ctx':</font>
+<br><font size=2 face="Courier New">/home/ketineni/nfs-utils-1.0.9/utils/gssd/context_mit.c:346:
+undefined reference to `write_oid'</font>
+<br><font size=2 face="Courier New">collect2: ld returned 1 exit status</font>
+<br><font size=2 face="Courier New">make[2]: *** [gssd] Error 1</font>
+<br><font size=2 face="Courier New">make[2]: Leaving directory `/home/ketineni/nfs-utils-1.0.9/utils/gssd'</font>
+<br><font size=2 face="Courier New">make[1]: *** [all-recursive] Error
+1</font>
+<br><font size=2 face="Courier New">make[1]: Leaving directory `/home/ketineni/nfs-utils-1.0.9/utils'</font>
+<br><font size=2 face="Courier New">make: *** [all-recursive] Error 1</font>
+<br>
+<br>
+<br><font size=2 face="sans-serif">Thanks</font>
+<br><font size=2 face="sans-serif">Usha</font>
+--=_alternative 0079CB2E882571A7_=--
+
+
+--===============1934236823==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+
+--===============1934236823==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 _______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www1.ietf.org/mailman/listinfo/nfsv4
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1934236823==--
