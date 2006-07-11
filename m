@@ -1,37 +1,36 @@
 From: Sam Falkner <Sam.Falkner@Sun.COM>
 Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
  draft-ietf-nfsv4-acls-00 not ready
-Date: Tue, 11 Jul 2006 08:29:21 -0400
-Message-ID: <67359DB9-6E3E-49E7-A8F6-3FB34DCC3440@Sun.COM>
+Date: Tue, 11 Jul 2006 08:44:42 -0400
+Message-ID: <7C3E0D57-F0ED-4702-B24B-CF3E366FAF5D@Sun.COM>
 References: <200607032310.15252.agruen@suse.de>
-	<200607110215.53496.agruen@suse.de>
-	<3E4B637E-57AC-4E2B-A2C8-EDCFF35A5D84@Sun.COM>
-	<200607111005.22200.agruen@suse.de>
+	<200607110050.57449.agruen@suse.de>
+	<BCB7A126-5749-406A-A730-48B64C41402B@Sun.COM>
+	<200607111045.43779.agruen@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Lisa Week <Lisa.Week@Sun.COM>, nfsv4@ietf.org,
-	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
-	Spencer Shepler <spencer.shepler@Sun.COM>,
-	Brian Pawlowski <beepy@netapp.com>
+Cc: Brian Pawlowski <beepy@netapp.com>,
+	Spencer Shepler <Spencer.Shepler@Sun.COM>, nfs@lists.sourceforge.net,
+	nfsv4@ietf.org, Lisa Week <Lisa.Week@Sun.COM>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G0HMk-0008Op-Gn
-	for nfs@lists.sourceforge.net; Tue, 11 Jul 2006 05:29:26 -0700
+	id 1G0Hbc-0001Rs-3A
+	for nfs@lists.sourceforge.net; Tue, 11 Jul 2006 05:44:48 -0700
 Received: from brmea-mail-4.sun.com ([192.18.98.36])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G0HMj-0000uq-FG
-	for nfs@lists.sourceforge.net; Tue, 11 Jul 2006 05:29:26 -0700
-Received: from fe-amer-01.sun.com ([192.18.108.175])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G0Hbb-0004SN-Rz
+	for nfs@lists.sourceforge.net; Tue, 11 Jul 2006 05:44:48 -0700
+Received: from fe-amer-05.sun.com ([192.18.108.179])
 	by brmea-mail-4.sun.com (8.13.6+Sun/8.12.9) with ESMTP id
-	k6BCTOrp021150
-	for <nfs@lists.sourceforge.net>; Tue, 11 Jul 2006 06:29:24 -0600 (MDT)
+	k6BCijtv000580
+	for <nfs@lists.sourceforge.net>; Tue, 11 Jul 2006 06:44:45 -0600 (MDT)
 Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
 	(Sun Java System Messaging Server 6.2-4.02 (built Sep  9 2005))
-	id <0J2800401NTSRQ00@mail-amer.sun.com>
+	id <0J2800I01OQ7XB00@mail-amer.sun.com>
 	(original mail from Sam.Falkner@Sun.COM) for nfs@lists.sourceforge.net;
-	Tue, 11 Jul 2006 06:29:24 -0600 (MDT)
-In-reply-to: <200607111005.22200.agruen@suse.de>
+	Tue, 11 Jul 2006 06:44:45 -0600 (MDT)
+In-reply-to: <200607111045.43779.agruen@suse.de>
 To: Andreas Gruenbacher <agruen@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -45,75 +44,169 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Jul 11, 2006, at 4:45 AM, Andreas Gruenbacher wrote:
 
-On Jul 11, 2006, at 4:05 AM, Andreas Gruenbacher wrote:
-
-> On Tuesday, 11. July 2006 07:42, Sam Falkner wrote:
->>>> I think having chmod be functional, i.e. chmod 770 gives write
->>>> permission to the owning group, and an "ls -l" shows "rwxrwx---",
->>>> would be best by far.
+> On Tuesday, 11. July 2006 08:17, Sam Falkner wrote:
+>> On Jul 10, 2006, at 5:50 PM, Andreas Gruenbacher wrote:
+>>> On Monday, 10. July 2006 15:29, Sam Falkner wrote:
+>>>> On Jul 9, 2006, at 10:22 AM, Andreas Gruenbacher wrote:
+>>>>> On Saturday, 8. July 2006 05:45, Sam Falkner wrote:
+>>>>>> On Jul 7, 2006, at 5:55 AM, Andreas Gruenbacher wrote:
+>>>>>>> On Monday, 3. July 2006 23:10, Andreas Gruenbacher wrote:
+>>>>>
+>>>>> Here are some facts to back my points: Let's assume that a file  
+>>>>> inherits
+>>>>> the following ACL when being created (I am using ^(...) here  
+>>>>> with the
+>>>>> meaning of "all bitflags except ..."):
+>>>>>
+>>>>> 	OWNER@:READ_DATA/WRITE_DATA::ALLOW
+>>>>> 	OWNER@:^(READ_DATA/WRITE_DATA)::DENY
+>>>>> 	GROUP@:READ_DATA::ALLOW
+>>>>> 	user@domain:READ_DATA/WRITE_DATA::ALLOW
+>>>>> 	GROUP@:^READ_DATA::DENY
+>>>>> 	user@domain:^(READ_DATA/WRITE_DATA)::DENY
+>>>>> 	EVERYONE@:READ_DATA::ALLOW
+>>>>>
+>>>>> This acl is "well structured" in the POSIX sense: OWNER@ will  
+>>>>> only get
+>>>>> the owner permissions and none of the other permissions,  
+>>>>> user@domain
+>>>>> and GROUP@ will only get the permissions intended for them, and  
+>>>>> only
+>>>>> others (neither OWNER@ nor user@domain nor GROUP@) will get  
+>>>>> EVERYONE@
+>>>>> permissions; in other words, the acl is even correct for non- 
+>>>>> monotonic
+>>>>> permissions.
+>>>>>
+>>>>> According to section 5.1 of draft-ietf-nfsv4-acls [1], the  
+>>>>> resulting
+>>>>> file mode permission bits for this acl shall be rw-r--r--.
+>>>>
+>>>> Your proposal would give this mode: rw-rw-r--.  I think we should
+>>>> consider this more carefully.
+>>>>
+>>>>> After a chmod or a file create, alternate file access control  
+>>>>> mechanisms
+>>>>> must be disabled and only additional file access control  
+>>>>> mechanisms may
+>>>>> remain active. According to POSIX, additional file access control
+>>>>> mechanisms require that no user may be granted more permissions  
+>>>>> than the
+>>>>> respective file classes permit. In this case, user@domain  
+>>>>> clearly is not
+>>>>> in the File Owner Class. (According to POSIX, user@domain must  
+>>>>> be in the
+>>>>> File Group Class.) The user@domain user is granted WRITE_DATA  
+>>>>> though,
+>>>>> which is *incorrect* from a POSIX point of view.
+>>>>
+>>>> No, it is not granted WRITE_DATA after a chmod().  After a chmod  
+>>>> 644,
+>>>> there will be a "user@domain:WRITE_DATA::DENY" prepended.  This is
+>>>> well defined in the current minorversion1.  So it is not "incorrect
+>>>> from a POSIX point of view."
 >>>
->>> It screws you when you want to give the owning group fewer  
->>> permissions
->>> than other users in the File Group Class. This can be worked  
->>> around by
->>> creating a dummy group with no members, or one group that only  
->>> contains
->>> a single user for each user, and changing the owning group of  
->>> files, but
->>> the owning group already has other defined uses in POSIX (think  
->>> of SETGID
->>> for files and directories), and so it's not desirable and not always
->>> possible to change the owning group to such a dummy group.
+>>> Now that I look at the example again, I realize that I didn't
+>>> define the create mode. With create mode 640 or less permissive,
+>>> everything is fine. Let's assume create mode 664 though: then the  
+>>> file
+>>> mode permission bits will still come out as rw-r--r--, but the  
+>>> ACL will
+>>> grant WRITE_DATA to user@domain. That's the case I meant, and  
+>>> this case is
+>>> not POSIX compliant.
 >>
->> No -- if you want owning group to have fewer permissions than other
->> users, you're using an ACL.  You use tools that manipulate ACLs.
+>> Wrong.  The file mode permission bits will be rw-rw-r--.  There is no
+>> problem with POSIX compliance.
 >
-> Sorry, but while this may look like a good idea at first, it  
-> doesn't work very
-> well. Let's look at an example:
+> Ah. And why should that be according to draft-ietf-nfsv4-acls-00?  
+> Because the
+> group file mode permission bits write through to GROUP@ entries,  
+> and so the
+> rw- group permissions in the create mask elevate the permissions  
+> given to the
+> owning group in the ACL?
 >
-> 	OWNER@:READ_DATA/WRITE_DATA::ALLOW
-> 	GROUP@:READ_DATA/WRITE_DATA::ALLOW
-> 	user@domain:READ_DATA/WRITE_DATA::ALLOW
-> 	EVERYONE:READ_DATA::ALLOW
+> I hope that my reply from Tue, 11 Jul 2006 10:05:21 +0200 made it  
+> clear that
+> writing through to the GROUP@ entries causes POSIX applications to
+> accidentally remove restrictions from an ACL, and so we really must  
+> not do
+> that. The same argument applies to writing through to OWNER@ and  
+> EVERYONE@
+> entries, by the way. The "The final six ACEs are adjusted according  
+> to the
+> incoming mode" section of the algorithm described in 5.3 is a  
+> really bad
+> idea.
 >
-> The mode is rw-rw-r--. Now we use ACL tools to change the ACL to  
-> give the
-> owning group fewer permissions than user@domain as you say:
+>>>>> Next, let's assume than an ACL contains the following pair of  
+>>>>> user-
+>>>>> provided entries:
+>>>>>
+>>>>> 	GROUP@:WRITE_DATA::DENY
+>>>>> 	GROUP@:READ_DATA::ALLOW
+>>>>>
+>>>>> Clearly the user's intention is to deny WRITE_DATA access to  
+>>>>> GROUP@.
+>>>>
+>>>> Yes, that *was* the user's intention, at the time the user set the
+>>>> ACL.
+>>>
+>>> Hm... not the best example because GROUP@ is the owning group, which
+>>> corresponds to the group file mode permission bits in traditional
+>>> POSIX. The problem is more difficult to see in this case, but I  
+>>> argue
+>>> that the owhning group permissions and the group file mode  
+>>> permission
+>>> bits are not the same with ACLs: the file group mode permission bits
+>>> restrict GROUP@ entries, and all user@domain and group@domain  
+>>> entries
+>>> in the acl. For the sake of this example, substitute GROUP@ with
+>>> user@domain though, and you'll see the problem more clearly: a user
+>>> adds an explicit user@domain:WRITE_DATA::DENY entry to an acl which
+>>> is followed by a user@domain:READ_DATA::ALLOW entry. After a  
+>>> chmod to
+>>> 664 for example, this user suddenly has write access. The
+>>> user clearly did not intend this to happen.
+>>
+>> No -- after the chmod, the DENY still stands, unaltered.
 >
-> 	OWNER@:READ_DATA/WRITE_DATA::ALLOW
-> 	GROUP@:READ_DATA::ALLOW
-> 	user@domain:READ_DATA/WRITE_DATA::ALLOW
-> 	EVERYONE:READ_DATA::ALLOW
+> Great Sam, you have trapped me with another special case that is  
+> there only
+> because of those pesky mask DENY entries: "the mask bits are a  
+> subset of the
+> mask bits of the current ACE" [1].
 
-> The mode must still be rw-rw-r-- because otherwise, user@domain  
-> wouldn't have
-> WRITE_DATA access. Now a nasty, evil POSIX application that doesn't  
-> know
-> anything about ACLs comes along and does a chmod(file, 0600), chmod 
-> (file,
-> 0664). What should be the appropriate result? If changing the group  
-> file mode
-> permission bits writes through to the GROUP@ entry as you say, then  
-> we would
-> end up with the following *effective* permissions:
+I trapped you, but not out of malice.  The fact that you fell into  
+the trap proves a point.  You tried to give an example as a  
+reasonable pair of ACEs that a user would set, and fell into the trap  
+of having the design deal with your ACEs correctly.  The design is to  
+only manipulate DENY entries if the follow a very specific pattern, a  
+pattern that an end-user is unlikely to set.  In other words, the  
+design avoids manipulating DENYs unless the DENYs are redundant.
+
+> My point still holds, just that the following ALLOW ACE must have  
+> the denied
+> WRITE_DATA permission set as well:
 >
-> 	OWNER@:READ_DATA/WRITE_DATA::ALLOW
-> 	GROUP@:READ_DATA/WRITE_DATA::ALLOW
+> 	user@domain:WRITE_DATA::DENY
 > 	user@domain:READ_DATA/WRITE_DATA::ALLOW
-> 	EVERYONE:READ_DATA::ALLOW
 
-That's not how Solaris works either.  Sorry, I should have explained  
-it better.  In Solaris using POSIX-draft ACLs, chmod() changes both  
-the group permissions and the mask, simultaneously.  I now understand  
-why you were hesitant to have chmod affect the group permissions, but  
-having it affect both mask and group solves both problems.
+Yes, there, the chmod would change the DENY ACE.  So if an end-user  
+really did say WRITE_DATA:DENY, WRITE_DATA:ALLOW, albeit with other  
+bits, then yes, the ACL can change as a result of the chmod.
 
-I realize that I'm talking about POSIX-draft ACLs, but the same  
-design principles work for NFSv4 ACLs.  chmod() affects the GROUP@  
-permissions directly, and also affects the mask, no matter how the  
-mask is implemented.
+> Do you *still* disagree?
+
+I don't disagree that the DENY would be changed by a chmod(), but I  
+do disagree that it's a major flaw.
+
+I would rather live with the flaw of having redundant user-supplied  
+ACEs manipulated upon chmod than to add new file attributes that  
+NFSv4.0 clients and servers won't know about.
 
 - Sam
 
