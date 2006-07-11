@@ -1,111 +1,108 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: Re: NFSv4 ACL and POSIX interaction / mask,
-	draft-ietf-nfsv4-acls-00 not ready
-Date: Tue, 11 Jul 2006 02:01:42 +0200
-Message-ID: <200607110201.43319.agruen@suse.de>
-References: <200607032310.15252.agruen@suse.de>
-	<B0F5507F-A317-44F7-B6A3-A5005542A631@Sun.COM>
-	<20060710141541.GA978@fieldses.org>
+From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
+Subject: Re: nfs-utils-1.0.9 compilation failed!
+Date: Tue, 11 Jul 2006 10:06:48 +1000
+Message-ID: <20060711000648.GE11009@debianrules.debiancolombia.org>
+References: <4d569c330607101604u62a240edo6116c589ac4dc780@mail.gmail.com>
+	<OF985C22F0.D508648E-ON882571A7.00808418-882571A7.00839C72@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Sam Falkner <Sam.Falkner@sun.com>, Lisa Week <Lisa.Week@sun.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
-	Spencer Shepler <spencer.shepler@sun.com>,
-	Brian Pawlowski <beepy@netapp.com>
-Return-path: <nfsv4-bounces@ietf.org>
-To: nfsv4@ietf.org
-In-Reply-To: <20060710141541.GA978@fieldses.org>
-List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Errors-To: nfsv4-bounces@ietf.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============0106984382=="
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G05mC-0000LC-5a
+	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 17:07:03 -0700
+Received: from cpe-60-224-176-117.vic.bigpond.net.au ([60.224.176.117]
+	helo=elida.v7w.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1G05mB-0006kt-4d
+	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 17:06:56 -0700
+To: nfs@lists.sourceforge.net
+In-Reply-To: <OF985C22F0.D508648E-ON882571A7.00808418-882571A7.00839C72@us.ibm.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday, 10. July 2006 16:15, J. Bruce Fields wrote:
-> On Mon, Jul 10, 2006 at 07:29:56AM -0600, Sam Falkner wrote:
-> > On Jul 9, 2006, at 10:22 AM, Andreas Gruenbacher wrote:
-> > >According to section 5.1 of draft-ietf-nfsv4-acls [1], the
-> > >resulting file mode
-> > >permission bits for this acl shall be rw-r--r--.
-> >
-> > Your proposal would give this mode: rw-rw-r--.  I think we should
-> > consider this more carefully.
+
+--===============0106984382==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="9l24NVCWtSuIVIod"
+Content-Disposition: inline
+
+
+--9l24NVCWtSuIVIod
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On Mon, Jul 10, 2006 at 04:57:30PM -0700, Usha Ketineni wrote:
+>nfs-bounces@lists.sourceforge.net wrote on 07/10/2006 04:04:46 PM:
 >
-> As Andreas says, this is what the posix draft would have you do.  It's
-> also what Linux (and, I assume, Solaris) do in the case of posix ACLs.
-
-We are not talking about the POSIX 1003.1e draft here, we are talking about 
-the real POSIX standard.
-
-> If the goals was compatibility with that posix draft, RFC3530 should
-> have specified that owner, other, and group bits be kept in sync with
-> (respectively) OWNER@, EVERYONE@, and the *maximum* of permissions given
-> to any other entity, rather than with OWNER@, EVERYONE@, and GROUP@.
-
-I argued why I think this is a misbelief, please scan for well-formed ACLs and 
-non-monotonic permissions.
-
-> > You would call it wrong that a chmod 770 would allow WRITE_DATA to
-> > members of the file's owning group?!  The  user did a chmod -- the
-> > user changed the permissions on the file!
+>>write_oid() should be defined in utils/gssd/write_bytes.h as an=20
+>>inline function.
 >
-> That is how posix acl's work; again, the group mode bit really
-> corresponds to the mask, not to the group acl entry:
->
-> 	bfields@pickle:~$ getfacl foo
-> 	# file: foo
-> 	# owner: bfields
-> 	# group: bfields
-> 	user::rw-
-> 	user:bfields:r--
-> 	group::r--
-> 	mask::r--
-> 	other::---
->
-> 	bfields@pickle:~$ chmod 770 foo
-> 	bfields@pickle:~$ getfacl foo
-> 	# file: foo
-> 	# owner: bfields
-> 	# group: bfields
-> 	user::rwx
-> 	user:bfields:r--
-> 	group::r--
-> 	mask::rwx
-> 	other::---
->
->
-> Of course, "posix" acls aren't really posix, and we could do something
-> else if seems simpler.  Neither behavior seems intuitive to me in all
-> situations.
+>hmm...I don't see it defined in write_bytes.h in the nfs-utils-1.0.9=20
+>source and hence the compilation error.
+>Just added it as inline function myself from the previous release and it=
+=20
+>compiled just fine.=20
+>I guess the nfs-utils-1.0.9 package is broken then.
 
-The issue is that you sometimes want to give the owning group fewer perissions 
-than say, user:bfields in the above example. You can only do that by 
-separating the owning group and mask permissions.
+It has been compiled successfully twice on 12 different arches. See:
 
-For this aspect of the problem (actually for all aspects except for those that 
-the DENY entries cause because they are sometimes difficult or impossible to 
-uniquely tell from other "ordinary" entries) it is totally irrelevant whether 
-the mask is represented as a mask:: acl entry as in POSIX ACLs, as a series 
-of DENY ACL entries, or as NFSv4 attributes.
+http://buildd.debian.org/build.php?pkg=3Dnfs-utils
 
-(POSIX ACLs only need one mask entry because they can never grant more than 
-rwx permissions anyway, and so the owner and other permissions are always 
-identical to the owner and other file mode permission bits. That's no longer 
-true with POSIX ACLs, and so there we also need mask entries for the owner 
-and for others.)
+>Thanks
+>Usha
 
-Andreas
+An=EDbal Monsalve Salazar
+--=20
+http://v7w.com/anibal
 
--- 
-Andreas Gruenbacher <agruen@suse.de>
-Novell / SUSE Labs
+--9l24NVCWtSuIVIod
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.3 (GNU/Linux)
+
+iD8DBQFEsuuYiKF4f8PxWcoRArFCAJ9jsNKpv/TTlpGKgNKTCSw04vJqHwCfaFne
+TwHTTxeMgSQxrXNvlEyHFqM=
+=pi/z
+-----END PGP SIGNATURE-----
+
+--9l24NVCWtSuIVIod--
+
+
+--===============0106984382==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+
+--===============0106984382==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 _______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www1.ietf.org/mailman/listinfo/nfsv4
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0106984382==--
