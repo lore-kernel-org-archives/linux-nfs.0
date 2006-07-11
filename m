@@ -1,53 +1,135 @@
-From: "Maura Lutz" <TFGXLR@infusioninteractive.com>
-Subject: authdoc.doc
-Date: Tue, 11 Jul 2006 10:02:38 +0100
-Message-ID: <23041130090241.CFB7122DE@dexterous.starnetusa.net>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: Re: NFSv4 ACL and POSIX interaction / mask,
+	draft-ietf-nfsv4-acls-00 not ready
+Date: Tue, 11 Jul 2006 10:05:21 +0200
+Message-ID: <200607111005.22200.agruen@suse.de>
+References: <200607032310.15252.agruen@suse.de>
+	<200607110215.53496.agruen@suse.de>
+	<3E4B637E-57AC-4E2B-A2C8-EDCFF35A5D84@Sun.COM>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G0DCs-0001hm-Cz
-	for nfs@lists.sourceforge.net; Tue, 11 Jul 2006 01:02:58 -0700
-Received: from [60.211.166.69] (helo=66.35.250.206)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1G0DCp-0003UU-RW
-	for nfs@lists.sourceforge.net; Tue, 11 Jul 2006 01:02:58 -0700
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Lisa Week <Lisa.Week@sun.com>, nfsv4@ietf.org,
+	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
+	Spencer Shepler <spencer.shepler@sun.com>,
+	Brian Pawlowski <beepy@netapp.com>
+Return-path: <nfsv4-bounces@ietf.org>
+To: Sam Falkner <Sam.Falkner@sun.com>
+In-Reply-To: <3E4B637E-57AC-4E2B-A2C8-EDCFF35A5D84@Sun.COM>
+List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Errors-To: nfsv4-bounces@ietf.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Sensationall revoolution in medicine!
+On Tuesday, 11. July 2006 07:42, Sam Falkner wrote:
+> >> I think having chmod be functional, i.e. chmod 770 gives write
+> >> permission to the owning group, and an "ls -l" shows "rwxrwx---",
+> >> would be best by far.
+> >
+> > It screws you when you want to give the owning group fewer permissions
+> > than other users in the File Group Class. This can be worked around by
+> > creating a dummy group with no members, or one group that only contains
+> > a single user for each user, and changing the owning group of files, but
+> > the owning group already has other defined uses in POSIX (think of SETG=
+ID
+> > for files and directories), and so it's not desirable and not always
+> > possible to change the owning group to such a dummy group.
+>
+> No -- if you want owning group to have fewer permissions than other
+> users, you're using an ACL.  You use tools that manipulate ACLs.
 
-E''nlarge your p''enis up to 10 cm or up to 4 inches!
+Sorry, but while this may look like a good idea at first, it doesn't work v=
+ery=20
+well. Let's look at an example:
 
-Its h'erbal solution what hasnt side effect, but has 100% guaranted results!
+	OWNER@:READ_DATA/WRITE_DATA::ALLOW
+	GROUP@:READ_DATA/WRITE_DATA::ALLOW
+	user@domain:READ_DATA/WRITE_DATA::ALLOW
+	EVERYONE:READ_DATA::ALLOW
 
-Dont lose your chance and but know wihtout doubts, you will be impressed with results!
+The mode is rw-rw-r--. Now we use ACL tools to change the ACL to give the=20
+owning group fewer permissions than user@domain as you say:
 
-Clisk here: http://baruinc.net
+	OWNER@:READ_DATA/WRITE_DATA::ALLOW
+	GROUP@:READ_DATA::ALLOW
+	user@domain:READ_DATA/WRITE_DATA::ALLOW
+	EVERYONE:READ_DATA::ALLOW
 
+The mode must still be rw-rw-r-- because otherwise, user@domain wouldn't ha=
+ve=20
+WRITE_DATA access. Now a nasty, evil POSIX application that doesn't know=20
+anything about ACLs comes along and does a chmod(file, 0600), chmod(file,=20
+0664). What should be the appropriate result? If changing the group file mo=
+de=20
+permission bits writes through to the GROUP@ entry as you say, then we woul=
+d=20
+end up with the following *effective* permissions:
 
+	OWNER@:READ_DATA/WRITE_DATA::ALLOW
+	GROUP@:READ_DATA/WRITE_DATA::ALLOW
+	user@domain:READ_DATA/WRITE_DATA::ALLOW
+	EVERYONE:READ_DATA::ALLOW
 
+(The effective permissions are the same no matter how permissions are maske=
+d=20
+in the ACL, be it via DENY ACEs or via masks. In the case of DENY ACEs, the=
+=20
+ACL would contain DENY entries, but those wouldn't mask any permissions in=
+=20
+this case. The example is slightly more difficult to think through with DEN=
+Y=20
+ACEs because they contain some redudancy and potential for inconsistencies,=
+=20
+but the result is the same.)
 
-beagle absorptive electricity ma suzerain deferrable away) bladderwort
-dutchman evacuate complainant irrepressible adhere foggy corner-back sleuth
+=46rom the POSIX application's point of view, the file has the same permiss=
+ions=20
+before and after the chmod. The POSIX application cannot be held guilty;=20
+after all it doesn't know about ACLs by definition. Yet the acl actually=20
+grants more permissions after the chmods, and the change we did to give the=
+=20
+owning group fewer permissions with ACL tools is lost. This can be quite=20
+serious.
 
+We can play the same example with MAY_WRITE vs. MAY_APPEND: if the group fi=
+le=20
+mode permission bits write through to the owning group permissions, a POSIX=
+=20
+chmod may convert a MAY_APPEND owning group ACE into a MAY_WRITE owning gro=
+up=20
+ACE.
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+> Solaris' POSIX-draft ACLs have the property that chmod works (i.e.
+> you can set group permissions), and you use setfacl if you want to
+> change other entries. It's perfectly easy to have owning group have=20
+> fewer permissions than supplimental users.
+
+That's a bug, and draft 17 of POSIX 1003.1e (withdrawn) has this bug fixed.
+
+> The bottom line is that chmod must set the mode, rather than "set the
+> mode, unless there's some sort of ACL thingy, in which case the group
+> bits aren't the group bits but are instead the mask bits".
+
+We may be misunderstanding here: I agree that chmod must set the file mode=
+=20
+(permission bits as well as special bits). The point is that the group file=
+=20
+mode permission bits can no longer be the same as the owning group=20
+permissions with ACLs, or else innocent POSIX applications may cause=20
+unintended side effects as in the example.
+
+Andreas
+
+=2D-=20
+Andreas Gruenbacher <agruen@suse.de>
+Novell / SUSE Labs
+
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www1.ietf.org/mailman/listinfo/nfsv4
