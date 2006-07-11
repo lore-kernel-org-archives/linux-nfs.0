@@ -1,29 +1,23 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
-	draft-ietf-nfsv4-acls-00 not ready
-Date: Tue, 11 Jul 2006 02:48:37 +0200
-Message-ID: <200607110248.37374.agruen@suse.de>
-References: <200607032310.15252.agruen@suse.de>
-	<200607110201.43319.agruen@suse.de>
-	<20060711002826.GB1440@fieldses.org>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: Function `xmalloc' implicitly converted to pointer
+	at	mountpoint.c:25
+Date: Tue, 11 Jul 2006 13:49:02 +1000
+Message-ID: <1152589742.2863.0.camel@hole.melbourne.sgi.com>
+References: <20060710231450.GB11009@debianrules.debiancolombia.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Lisa Week <Lisa.Week@sun.com>, nfsv4@ietf.org,
-	Sam Falkner <Sam.Falkner@sun.com>, nfs@lists.sourceforge.net,
-	Spencer Shepler <spencer.shepler@sun.com>,
-	Brian Pawlowski <beepy@netapp.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G06TA-0005Rj-2S
-	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 17:51:20 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G06T8-0008Ot-U5
-	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 17:51:20 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20060711002826.GB1440@fieldses.org>
+	id 1G09FI-0005g0-Sq
+	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 20:49:13 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G09FI-0000uN-2K
+	for nfs@lists.sourceforge.net; Mon, 10 Jul 2006 20:49:13 -0700
+To: =?ISO-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
+In-Reply-To: <20060710231450.GB11009@debianrules.debiancolombia.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,47 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday, 11. July 2006 02:28, J. Bruce Fields wrote:
-> On Tue, Jul 11, 2006 at 02:01:42AM +0200, Andreas Gruenbacher wrote:
-> > The issue is that you sometimes want to give the owning group fewer
-> > perissions than say, user:bfields in the above example. You can only do
-> > that by separating the owning group and mask permissions.
-> >
-> > For this aspect of the problem (actually for all aspects except for those
-> > that the DENY entries cause because they are sometimes difficult or
-> > impossible to uniquely tell from other "ordinary" entries) it is totally
-> > irrelevant whether the mask is represented as a mask:: acl entry as in
-> > POSIX ACLs, as a series of DENY ACL entries, or as NFSv4 attributes.
-> >
-> > (POSIX ACLs only need one mask entry because they can never grant more
-> > than rwx permissions anyway, and so the owner and other permissions are
-> > always identical to the owner and other file mode permission bits. That's
-> > no longer true with POSIX ACLs, and so there we also need mask entries
-> > for the owner and for others.)
->
-> So you need this if and only if you want to be able to set OWNER@
-> permissions other than read, write, or execute, *and* want to be able to
-> recover from a chmod?
+On Tue, 2006-07-11 at 09:14, An=EDbal Monsalve Salazar wrote:
+> Function `xmalloc' implicitly converted to pointer at mountpoint.c:25
+> =
 
-I think I have answered this exhaustively in:
+> [0] http://bugs.debian.org/377724
 
-Subject: Re: [NFS] [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
-         draft-ietf-nfsv4-acls-00 not ready
-Date: Tue, 11 Jul 2006 02:44:30 +0200
-Message-Id: <200607110244.31010.agruen@suse.de>
+Fixed in the 1.0.9 release, by commit
 
-Andreas
+http://linux-nfs.org/cgi-bin/gitweb.cgi?p=3Dnfs-utils;a=3Dcommit;h=3D3bf702=
+b1a914b3867117b74d519c55fa68f4dc28
 
--- 
-Andreas Gruenbacher <agruen@suse.de>
-Novell / SUSE Labs
+Greg.
+-- =
+
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
+
+
 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
+Get stuff done quickly with pre-integrated technology to make your job easi=
+er
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
+21642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
