@@ -1,7 +1,7 @@
 From: Ian Kent <raven@themaw.net>
-Subject: Re: bug in linux mount? (says NetApp)
-Date: Thu, 13 Jul 2006 20:55:45 +0800
-Message-ID: <1152795345.23150.1.camel@raven.themaw.net>
+Subject: Re: [autofs] RE:  bug in linux mount? (says NetApp)
+Date: Thu, 13 Jul 2006 21:28:57 +0800
+Message-ID: <1152797337.23150.12.camel@raven.themaw.net>
 References: <A0674ED473ECE741B47C065D2FB6DC2008A785@BP1XEUEX029-C.bp1.ad.bp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G10jb-0002EZ-9c
-	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 05:56:03 -0700
-Received: from ihug-mail.icp-qv1-irony5.iinet.net.au ([203.59.1.199]
-	helo=mail-ihug.icp-qv1-irony5.iinet.net.au)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G10jZ-0004Tt-Ff
-	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 05:56:03 -0700
+	id 1G11Fd-00059V-07
+	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 06:29:09 -0700
+Received: from ihug-mail.icp-qv1-irony1.iinet.net.au ([203.59.1.195]
+	helo=mail-ihug.icp-qv1-irony1.iinet.net.au)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G11Fa-0004rN-7X
+	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 06:29:09 -0700
 To: "Murata, Dennis W (SAIC)" <dennis.murata@bp.com>
 In-Reply-To: <A0674ED473ECE741B47C065D2FB6DC2008A785@BP1XEUEX029-C.bp1.ad.bp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -40,6 +40,9 @@ On Wed, 2006-07-12 at 21:23 +0100, Murata, Dennis W (SAIC) wrote:
 > 
 > 	DAEMONOPTIONS="--timeout=60
 > rsize=32768,wsize=32768,tcp,timeo=600,retrans=2,bg"
+
+Oh .. don't background mount in autofs this will lead to problems.
+
 > 
 > We are using automount for all the nfs directories, nothing is listed in
 > the /etc/fstab.  The nis maps are legacy from Solaris, and we still use
@@ -50,9 +53,6 @@ On Wed, 2006-07-12 at 21:23 +0100, Murata, Dennis W (SAIC) wrote:
 > nfsserver:/vol/vol1/home/foo on /home/foo type nfs
 > (rw,nosuid,rsize=32768,wsize=32768,tcp,timeo=600,retrans=2,bg,intr,retry
 > =1000,vers=3,addr=XXX.XXX.XXX.XXX)
-
-Looks like you've answered your own question about the DAEMONOPTIONS.
-
 > 
 > The entry from /proc/mounts does not list the values for timeo or
 > retrans:
@@ -156,15 +156,10 @@ Looks like you've answered your own question about the DAEMONOPTIONS.
 > NFS maillist  -  NFS@lists.sourceforge.net
 > https://lists.sourceforge.net/lists/listinfo/nfs
 > 
-> 
-> -------------------------------------------------------------------------
-> Using Tomcat but need to do more? Need to support web services, security?
-> Get stuff done quickly with pre-integrated technology to make your job easier
-> Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 > _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+> autofs mailing list
+> autofs@linux.kernel.org
+> http://linux.kernel.org/mailman/listinfo/autofs
 
 
 -------------------------------------------------------------------------
