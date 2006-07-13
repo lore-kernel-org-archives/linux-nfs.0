@@ -1,24 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: bug in linux mount? (says NetApp)
-Date: Thu, 13 Jul 2006 09:37:51 -0400
-Message-ID: <1152797871.5678.51.camel@lade.trondhjem.org>
-References: <A0674ED473ECE741B47C065D2FB6DC2008A785@BP1XEUEX029-C.bp1.ad.bp.com>
+From: Janos Farkas <chexum+dev@gmail.com>
+Subject: nfs problems with 2.6.18-rc1
+Date: Thu, 13 Jul 2006 20:22:20 +0200
+Message-ID: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: autofs@linux.kernel.org, gregory.baker@amd.com,
-	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G11OQ-0005zh-K4
-	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 06:38:14 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G11OP-0008SQ-M1
-	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 06:38:15 -0700
-To: "Murata, Dennis W (SAIC)" <dennis.murata@bp.com>
-In-Reply-To: <A0674ED473ECE741B47C065D2FB6DC2008A785@BP1XEUEX029-C.bp1.ad.bp.com>
+	id 1G15pi-0007hB-C4
+	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 11:22:42 -0700
+Received: from wr-out-0506.google.com ([64.233.184.235])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G15ph-00019N-BM
+	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 11:22:42 -0700
+Received: by wr-out-0506.google.com with SMTP id i28so129072wra
+	for <nfs@lists.sourceforge.net>; Thu, 13 Jul 2006 11:22:38 -0700 (PDT)
+To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +28,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-07-12 at 21:23 +0100, Murata, Dennis W (SAIC) wrote:
-> The entry from /proc/mounts does not list the values for timeo or
-> retrans:
-> 
-> nfsserver:/vol/vol1/home/foo /home/foo nfs
-> rw,nosuid,v3,rsize=32768,wsize=32768,hard,intr,tcp,lock,addr=nfsserver 0
-> 0
-> 
-> Is this normal?
+Hi!
 
-Yes. If you have a recent kernel (2.6.17 or newer), I believe you should
-be able to check the full mount options using /proc/self/mountstats
+I recently updated two (old) hosts to 2.6.18-rc1, and started noticing
+weird things with the nfs mounted /home s.
 
-Cheers,
-  Trond
+I frequently face EACCESs where a few minutes ago there wasn't any
+problem, and after a retry everything does work again.
 
+An example that easily trips it is keeping mutt open
+on a single mailbox file (strace -tt| grep stat):
+
+20:04:08.393815 stat64("mailbox", {st_mode=S_IFREG|0600, st_size=401000, ...}) = 0
+20:08:41.859168 stat64("mailbox", {st_mode=S_IFREG|0600, st_size=401000, ...}) = 0
+20:09:30.975876 stat64("mailbox", 0xbfe8966c) = -1 EACCES (Permission denied)
+
+This results in a bit scary "Mailbox was corrupted!" message, but
+otherwise harmless.  Reopening the mailbox succeeds immediately.
+
+A sample session with an rsync session updating files on the nfs mounted
+/home/:
+
+-----
+> rsync...
+receiving file list ... done
+file1
+rsync: close failed on "/home/path/.file1.UgEmSh": Permission denied (13)
+rsync error: error in file IO (code 11) at receiver.c(628) [receiver]
+rsync: connection unexpectedly closed (2490 bytes received so far) [generator]
+rsync error: error in rsync protocol data stream (code 12) at io.c(471) [generator]
+> rsync...
+receiving file list ... done
+rsync: recv_generator: failed to stat "/home/path/file2": Permission denied (13)
+rsync: recv_generator: failed to stat "/home/path/file3": Permission denied (13)
+rsync: recv_generator: failed to stat "/home/path/file4": Permission denied (13)
+rsync: recv_generator: failed to stat "/home/path/file5": Permission denied (13)
+rsync: recv_generator: failed to stat "/home/path/file6": Permission denied (13)
+rsync: recv_generator: failed to stat "/home/path/file7": Permission denied (13)
+-----
+
+I also think this is related in the dmesg.  Think, because there's no
+other trace of any "read error" on the disks, and the comments in
+mm/filemap.c (but the message is not that much help to be sure of this).
+
+Reducing readahead size to 28K
+Reducing readahead size to 4K
+Reducing readahead size to 28K
+Reducing readahead size to 4K
+Reducing readahead size to 28K
+Reducing readahead size to 4K
+Reducing readahead size to 0K
+
+The relevant part of the /proc/mounts file:
+
+-----
+automount(pid1831) /home autofs rw 0 0
+HOST:/export/PATH /home/path nfs rw,vers=3,rsize=8192,wsize=8192,hard,intr,nolock,proto=udp,timeo=7,retrans=3,sec=sys,addr=HOST 0 0
+-----
+
+How can I help with tracing this?  git bisecting on these machines takes
+at least an hour per step, (and no reasonable connectivity either to
+compile elsewhere much quicker).
+
+Janos
 
 
 -------------------------------------------------------------------------
