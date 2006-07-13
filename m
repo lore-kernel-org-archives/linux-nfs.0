@@ -1,20 +1,20 @@
-From: "Ottman, Tom" <Tom.Ottman@nfsmt.com>
+From: "Gilman, Mark" <Mark.Gilman@nfsmt.com>
 Subject: Re: nfs problems with 2.6.18-rc1
-Date: Thu, 13 Jul 2006 14:15:23 -0600
-Message-ID: <ED449C7CEC5CA740AB9445940556EC521D8B@kal-l-crp-mal01.corp.nfs.add>
+Date: Thu, 13 Jul 2006 14:38:23 -0600
+Message-ID: <086A513A22ED0C45A71B4675494CB14D17CB25@nfs-exch01-mt.corp.nfs.add>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G17ap-00014H-M5
-	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 13:15:27 -0700
-Received: from outbound.nfsmt.com ([69.51.125.2]
-	helo=kal-l-crp-mal01.corp.nfs.add)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G17an-0002mm-Nt
-	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 13:15:28 -0700
-To: "Janos Farkas" <chexum+dev@gmail.com>,
+	id 1G17x6-0002va-Qm
+	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 13:38:28 -0700
+Received: from outbound.nfsmt.com ([69.51.125.2] helo=mail.nfsmt.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G17x5-0007dk-Ti
+	for nfs@lists.sourceforge.net; Thu, 13 Jul 2006 13:38:29 -0700
+To: "Ottman, Tom" <Tom.Ottman@nfsmt.com>,
+	"Janos Farkas" <chexum+dev@gmail.com>,
 	<linux-kernel@vger.kernel.org>, <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,6 +27,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
+
+Remove me too please.
+
+-----Original Message-----
+From: nfs-bounces@lists.sourceforge.net
+[mailto:nfs-bounces@lists.sourceforge.net] On Behalf Of Ottman, Tom
+Sent: Thursday, July 13, 2006 2:15 PM
+To: Janos Farkas; linux-kernel@vger.kernel.org;
+nfs@lists.sourceforge.net
+Subject: Re: [NFS] nfs problems with 2.6.18-rc1
 
 All of today I have been receiving your email strings, and I am not
 aware why.  
@@ -128,6 +138,21 @@ at least an hour per step, (and no reasonable connectivity either to
 compile elsewhere much quicker).
 
 Janos
+
+
+------------------------------------------------------------------------
+-
+Using Tomcat but need to do more? Need to support web services,
+security?
+Get stuff done quickly with pre-integrated technology to make your job
+easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache
+Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 
 ------------------------------------------------------------------------
