@@ -1,28 +1,21 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: Update to the NFS Howto
-Date: Fri, 14 Jul 2006 10:03:39 -0400
-Message-ID: <4d569c330607140703r3a81f30ds596235774e3af61b@mail.gmail.com>
-References: <4489840C0200006B0000515A@lucius.provo.novell.com>
-	<2b585fc90606120403w755dfe76gb185ca135eed3732@mail.gmail.com>
-	<2b585fc90606120633n746a8a6ex9d6105c23a872bc3@mail.gmail.com>
-	<44B7C69E.2C84.006B.0@novell.com>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Native NFSv4 ACLs on Linux
+Date: Fri, 14 Jul 2006 16:37:32 +0200
+Message-ID: <200607141637.32246.agruen@suse.de>
+Reply-To: nfsv4@ietf.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Christopher Smith <csmithere@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G1OGc-0004Lo-Db
-	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 07:03:42 -0700
-Received: from nf-out-0910.google.com ([64.233.182.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G1OGb-0006hh-BV
-	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 07:03:42 -0700
-Received: by nf-out-0910.google.com with SMTP id g2so191919nfe
-	for <nfs@lists.sourceforge.net>; Fri, 14 Jul 2006 07:03:39 -0700 (PDT)
-To: "Chakravarthi P" <pchakravarthi@novell.com>
-In-Reply-To: <44B7C69E.2C84.006B.0@novell.com>
+	id 1G1Ol3-000758-SP
+	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 07:35:11 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G1Ol2-0005CG-DP
+	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 07:35:09 -0700
+To: nfsv4@ietf.org, nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,107 +28,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Some quick comments:
+Hello,
 
-The following are more differences between suse and redhat:
+This is to announce a prototype that implements NFSv4 ACLs natively on Linux. 
+So far, the implementation supports NFSv4 ACLs on Ext3 filesystems. The code 
+is functional, but hasn't seen a whole lot of testing so far.
 
-suse                                 redhat
----------------------------             ------------------------------
-/etc/init.d/nfsserver             /etc/init.d/nfs
-/etc/init.d/gssd                   /etc/init.d/rpcgssd
-/etc/init.d/svcgssd              /etc/init.d/rpcsvcgssd
-/etc/init.d/idmapd               /etc/init.d/rpcidmapd
+NFSv4 ACLs per se do not map to the POSIX permission model and the extension 
+mechanisms that POSIX allows very well. Different designs to extend the 
+definition of NFSv4 ACLs in order to make them map better to POSIX have been 
+proposed. A conclusion which design to adopt for NFSv4 Minor Version 1 has 
+not been reached so far. See the nfsv4@ietf.org mailing list 
+(http://www1.ietf.org/mailman/listinfo/nfsv4) for discussions.
 
-In /etc/sysconfig/nfs:
+This prototype features a design that is relatively close to POSIX 1003.1e 
+draft 17 ACLs as implemented on many flavors of UNIX. Until a formal design 
+document is available, please refer to the discussion in the following two 
+threads on the nfsv4@ietf.org mailing list, and read the code: 
 
-NFS_SECURITY_GSS       SECURE_NFS
+  NFSv4 ACL and POSIX interaction / mask
+    http://www1.ietf.org/mail-archive/web/nfsv4/current/msg03268.html
 
-Leaving off the path entirely in the /etc/gssapi_mech.conf file may be
-a work-around for 32/64 compatibility:
+  NFSv4 ACL and POSIX interaction / mask, draft-ietf-nfsv4-acls-00 not ready
+    http://www1.ietf.org/mail-archive/web/nfsv4/current/msg03286.html
 
-# library                               initialization function
-# =================      ==========================
-# The MIT K5 gssapi library, use special function for initialization.
-libgssapi_krb5.so                 mechglue_internal_krb5_init
+The prototype itself is available at http://www.suse.de/~agruen/nfs4acl/, 
+along with some more information.
 
+Regards,
+Andreas
 
-The other idmapd mapping method is "umich_ldap", not "ldap_umich".
-
-Thanks,
-K.C.
-
-
-On 7/14/06, Chakravarthi P <pchakravarthi@novell.com> wrote:
->
-> Cms and all
->
->   there are 3 sections in the attached txt file for addressing 'howto'
-> -
->   specific to nfsv4 and kerberos.
->   i have marked a $$$ whenever something mentioned is suse specfic
->   or if it is not specific to NFSv4 but NFS in general.
->   please get back with your comments.
->
-> regards,
-> chax.
->
->
->
->
-> >>> On Mon, Jun 12, 2006 at  7:03 PM, in message
-> <2b585fc90606120633n746a8a6ex9d6105c23a872bc3@mail.gmail.com>,
-> "Christopher
-> Smith" <csmithere@gmail.com> wrote:
-> > Chax--
-> >
-> > Thank you very much for what you have submitted.  A few comments:
-> >
-> > a) Some of the information tin the README is general to Linux, and
-> > applies to all 2.6 implementations.
-> > b) Some of the information here applies to SuSE specifically.
-> > c) The Kerberos configuration section applies to both NFS Version 3
-> as
-> > well as NFS Version 4.
-> >
-> > What I would suggest is we do the following:
-> >
-> > * Break out the portions that apply specifically to NFS Version 4
-> into
-> > sections 3 and 4 of the HOWTO for server and client configuration.
-> > * Break out the Kerberos documentation you've generated into a
-> > subsection of the Security portion of the HOWTO, since it applies to
-> > all NFS versions.
-> > * Add notation where specific SuSE related configuration is
-> required.
-> >
-> > Either you or I can do this.  Its up to you.
-> >
-> > Is this acceptable?
-> >
-> > Best,
-> > CMS
-> >
-> >
->
->
->
->
->
->
-> -------------------------------------------------------------------------
-> Using Tomcat but need to do more? Need to support web services, security?
-> Get stuff done quickly with pre-integrated technology to make your job easier
-> Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
->
->
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
->
->
->
+-- 
+Andreas Gruenbacher <agruen@suse.de>
+Novell / SUSE Labs
 
 
 -------------------------------------------------------------------------
