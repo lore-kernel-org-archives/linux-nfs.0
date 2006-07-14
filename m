@@ -1,35 +1,31 @@
-From: Stefan Palme <kleiner@hora-obscura.de>
+From: Daniel Forrest <forrest@lmcg.wisc.edu>
 Subject: Re: disabling caching
-Date: Fri, 14 Jul 2006 17:13:43 +0200
-Message-ID: <1152890024.28625.70.camel@devel.office.ancoso-development.de>
+Date: Fri, 14 Jul 2006 10:27:57 -0500
+Message-ID: <20060714102757.A29831@yoda.lmcg.wisc.edu>
 References: <1152864752.28625.30.camel@devel.office.ancoso-development.de>
 	<20060714092612.GA11555@janus>
 	<1152870249.28636.34.camel@devel.office.ancoso-development.de>
 	<1152879442.28635.40.camel@devel.office.ancoso-development.de>
 	<1152879562.28633.42.camel@devel.office.ancoso-development.de>
 	<76bd70e30607140615x606fb651r61d09d636147336b@mail.gmail.com>
+	<1152890024.28625.70.camel@devel.office.ancoso-development.de>
+Reply-To: Daniel Forrest <forrest@lmcg.wisc.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G1PMT-0003le-V8
-	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 08:13:49 -0700
-Received: from moutng.kundenserver.de ([212.227.126.188])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G1PMS-0002NM-Lp
-	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 08:13:50 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by smtp.hora-obscura.de (Postfix) with ESMTP id 5959B878048
-	for <nfs@lists.sourceforge.net>; Fri, 14 Jul 2006 17:13:47 +0200 (CEST)
-Received: from devel.office.ancoso-development.de
-	(p54B98F43.dip0.t-ipconnect.de [84.185.143.67])
-	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
-	(No client certificate requested)
-	by smtp.hora-obscura.de (Postfix) with ESMTP id EEECA878022
-	for <nfs@lists.sourceforge.net>; Fri, 14 Jul 2006 17:13:44 +0200 (CEST)
-To: Linux NFS mailing list <nfs@lists.sourceforge.net>
-In-Reply-To: <76bd70e30607140615x606fb651r61d09d636147336b@mail.gmail.com>
+	id 1G1PaD-000537-ML
+	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 08:28:01 -0700
+Received: from mail.lmcg.wisc.edu ([144.92.101.145])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G1PaD-000697-NV
+	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 08:28:02 -0700
+To: Stefan Palme <kleiner@hora-obscura.de>
+In-Reply-To: <1152890024.28625.70.camel@devel.office.ancoso-development.de>;
+	from kleiner@hora-obscura.de on Fri, Jul 14, 2006 at 05:13:43PM
+	+0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,37 +38,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Stefan,
 
-> However, there is another alternative for your application.  NFS
-> implements "close-to-open" caching.  This means an "open()" will force
-> the client to revalidate its cache.  Since the *directory* is updated
-> during a create, you need to open() the directory to force a cache
-> refresh.  An opendir() on the directory containing the new file should
-> enable your application to see the freshly created file immediately.
+> Because my application is written in Python, I have no access to the
+> opendir()-syscall directly. But the Python-Function "listdir()" from 
+> the os module uses this syscall (according to the Python source code).
+> 
+> But after using listdir(), the problem still persists:
+> 
+> 
+>   callToRemoteApplicationToCreateFile('file1')
+>   os.listdir('/my/imported/directory')
+>   f = file('/my/imported/directory/file1')
+> 
+> --> "No such file or directory"
+> 
+> 
+> An "ls /my/imported/directory" shows the file. Are you sure, that
+> opendir() causes the cache refresh? If yes, the problem must be
+> on the Python-side, so I have to look there...
 
-Because my application is written in Python, I have no access to the
-opendir()-syscall directly. But the Python-Function "listdir()" from 
-the os module uses this syscall (according to the Python source code).
+What I have done in similar cases is the following:
 
-But after using listdir(), the problem still persists:
+1.) Remote site creates file1
+2.) Local site creates foo
+3.) Local site tries to link foo to file1 (this should fail)
+4.) Local site removes foo
+5.) Local site opens file1
 
+In bash the last 4 steps are:
 
-  callToRemoteApplicationToCreateFile('file1')
-  os.listdir('/my/imported/directory')
-  f = file('/my/imported/directory/file1')
+$ touch foo
+$ ln foo file1
+ln: `file1': File exists
+$ rm foo
+$ cat file1
 
---> "No such file or directory"
+Perhaps you could try something similar in Python?
 
-
-An "ls /my/imported/directory" shows the file. Are you sure, that
-opendir() causes the cache refresh? If yes, the problem must be
-on the Python-side, so I have to look there...
-
-thanks and regards
--stefan-
-
-
-
+-- 
+Dan
 
 
 -------------------------------------------------------------------------
