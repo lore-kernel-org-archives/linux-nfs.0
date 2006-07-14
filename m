@@ -1,23 +1,26 @@
-From: "Noveck, Dave" <Dave.Noveck@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [nfsv4] Re:  NFSv4 ACL and POSIX interaction / mask,
 	draft-ietf-nfsv4-acls-00 not ready
-Date: Fri, 14 Jul 2006 14:29:42 -0400
-Message-ID: <C98692FD98048C41885E0B0FACD9DFB8023DF690@exnane01.hq.netapp.com>
+Date: Fri, 14 Jul 2006 14:32:44 -0400
+Message-ID: <20060714183243.GF20999@fieldses.org>
+References: <C98692FD98048C41885E0B0FACD9DFB8023DF690@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Sam Falkner <Sam.Falkner@sun.com>, nfs@lists.sourceforge.net,
 	Spencer Shepler <spencer.shepler@sun.com>,
-	"Pawlowski,  Brian" <beepy@netapp.com>
+	"Pawlowski,  Brian" <beepy@netapp.com>, nfsv4@ietf.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G1SR6-00040M-JB
-	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 11:30:48 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G1SR3-0005sS-Pg
-	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 11:30:49 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>, <nfsv4@ietf.org>
+	id 1G1ST1-0004AD-ED
+	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 11:32:47 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G1ST1-0007Q4-HJ
+	for nfs@lists.sourceforge.net; Fri, 14 Jul 2006 11:32:47 -0700
+To: "Noveck, Dave" <Dave.Noveck@netapp.com>
+In-Reply-To: <C98692FD98048C41885E0B0FACD9DFB8023DF690@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +33,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I think in all the cases you mentioned, we a have situation in 
-which the set of attributes you ask for can effect whether you 
-get an error or not.  I'm not aware of any case in which you 
-will get different values for a single attribute (no error in 
-either case) based on whether you are asking for a different 
-attribute.  Other than things like asking for an attribute
-that doesn't exist will cause an error to be set in rdattr_error,
-but that is part of the function of rdattr_error.
+On Fri, Jul 14, 2006 at 02:29:42PM -0400, Noveck, Dave wrote:
+> I'm not aware of any case in which you 
+> will get different values for a single attribute (no error in 
+> either case) based on whether you are asking for a different 
+> attribute.
 
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-Sent: Friday, July 14, 2006 2:23 PM
-To: nfsv4@ietf.org
-Cc: Sam Falkner; Pawlowski, Brian; Spencer Shepler;
-nfs@lists.sourceforge.net
-Subject: Re: [nfsv4] Re: [NFS] NFSv4 ACL and POSIX interaction /
-mask,draft-ietf-nfsv4-acls-00 not ready
-
-
-On Fri, Jul 14, 2006 at 01:59:30PM -0400, J. Bruce Fields wrote:
-> For a client that doesn't support the new attributes, a server can
-apply
-> the mask attributes to the ACL before returning it.  I suppose a
-> multi-protocol server would do the same for CIFS clients.
-
-By the way, the proposed protocol behavior here is odd:  the server
-returns a different ACL depending on whether the client requested any of
-the new mask attributes in the same GETATTR.
-
-But I suppose there are other cases (rdattr_error, maybe some migration
-cases??) where what we return can depend in strange ways on which
-attributes were requested, so maybe it's not totally without precedent?
+Yeah, OK.  So, like I say, it's an odd thing to do.  I haven't managed
+to come up with any fundamental reason why it won't work, though.
 
 --b.
-
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www1.ietf.org/mailman/listinfo/nfsv4
 
 
 -------------------------------------------------------------------------
