@@ -1,25 +1,23 @@
-From: "Noveck, Dave" <Dave.Noveck@netapp.com>
-Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
-	draft-ietf-nfsv4-acls-00 not ready
-Date: Sun, 16 Jul 2006 09:10:43 -0400
-Message-ID: <C98692FD98048C41885E0B0FACD9DFB8029EFB06@exnane01.hq.netapp.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfs problems with 2.6.18-rc1
+Date: Mon, 17 Jul 2006 09:23:38 +1000
+Message-ID: <17594.51834.20365.820166@cse.unsw.edu.au>
+References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Lisa Week <Lisa.Week@Sun.COM>, nfsv4@ietf.org,
-	nfs@lists.sourceforge.net, Spencer Shepler <spencer.shepler@Sun.COM>,
-	Brian Pawlowski <beepy@netapp.com>,
-	Andreas Gruenbacher <agruen@suse.de>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G26Os-000382-6j
-	for nfs@lists.sourceforge.net; Sun, 16 Jul 2006 06:11:10 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G26Or-00037e-Ao
-	for nfs@lists.sourceforge.net; Sun, 16 Jul 2006 06:11:10 -0700
-To: "Sam Falkner" <Sam.Falkner@Sun.COM>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+	id 1G2FyD-0004Df-RE
+	for nfs@lists.sourceforge.net; Sun, 16 Jul 2006 16:24:17 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G2FyC-0004lw-Rb
+	for nfs@lists.sourceforge.net; Sun, 16 Jul 2006 16:24:18 -0700
+To: Janos Farkas <chexum+dev@gmail.com>
+In-Reply-To: message from Janos Farkas on Thursday July 13
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,69 +30,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-What does Solaris do about chmod +s?  Does it modify the ACL? 
+On Thursday July 13, chexum+dev@gmail.com wrote:
+> Hi!
+> 
+> I recently updated two (old) hosts to 2.6.18-rc1, and started noticing
+> weird things with the nfs mounted /home s.
 
------Original Message-----
-From: Sam Falkner [mailto:Sam.Falkner@Sun.COM] 
-Sent: Saturday, July 15, 2006 9:56 AM
-To: J. Bruce Fields
-Cc: Lisa Week; nfsv4@ietf.org; nfs@lists.sourceforge.net; Spencer
-Shepler; Pawlowski, Brian; Andreas Gruenbacher
-Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction /
-mask,draft-ietf-nfsv4-acls-00 not ready
+So this is both the client and the server that you upgraded?  That
+makes is harder to point the finger of blame :-)
 
-On Jul 11, 2006, at 9:46 AM, J. Bruce Fields wrote:
+> 
+> I frequently face EACCESs where a few minutes ago there wasn't any
+> problem, and after a retry everything does work again.
+> 
 
-> On Tue, Jul 11, 2006 at 08:29:21AM -0400, Sam Falkner wrote:
->> That's not how Solaris works either.  Sorry, I should have explained 
->> it better.  In Solaris using POSIX-draft ACLs, chmod() changes both 
->> the group permissions and the mask, simultaneously.  I now understand
+I wonder if that is pointing the finger at
 
->> why you were hesitant to have chmod affect the group permissions, but
+http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=8c7b389e532e964f07057dac8a56c43465544759
 
->> having it affect both mask and group solves both problems.
->
-> I think you're missing the point of his example.  The point is that a 
-> chmod-using application may expect the sequence chmod(600) chmod
-> (664) on
-> a file with mode 664 to be a no-op.
->
-> But if chmod() changes both group and mask bits ("owning group" and 
-> "group file class" bits) then this sequence isn't a no-op any more in 
-> his example.  It gives GROUP@ write permissions.
+as that is a recent change that returns 'EACCES'... but I cannot see
+that being relevant in this case as it only affects directories.
 
-Okay, understood.
+> 
+> How can I help with tracing this?  git bisecting on these machines takes
+> at least an hour per step, (and no reasonable connectivity either to
+> compile elsewhere much quicker).
 
-> So Andreas is trying to ensure the property that any sequence of 
-> chmod's that leaves the mode bits the same also leaves the ACL the 
-> same.  I agree that that's a nice property.
+The standard answer for tracing nfs problems if 'tcpdump'.
+e.g. 
+  tcpdump -s 0 -w /tmp/trace host $CLIENT and host $SERVER and port 2049
 
-Perhaps, but I think having chmod unable to set the mode to be a much
-more undesirable property, to put it mildly.
+that should show whether the error is coming from the server, or if
+the client is generating it all by itself.
+If you can get a reasonably small '/tmp/trace', compress it and attach
+it to an email.
 
-> What I'm not convinced of yet is that this is really worth caring 
-> about much.  Is this common application behavior?  Have there been 
-> complaints about this from people using Solaris's ACLs?
+Also turn on tracing. Something like:
+on server
+   echo 32767 > /proc/sys/sunrpc/nfsd_debug
+on client
+   echo 32767 > /proc/sys/sunrpc/nfs_debug
 
-I did some more research, and found that the Solaris chmod() system call
-does pretty much what Linux does -- the group permissions of
-chmod() affect the mask, not the group permission bits.  Originally, the
-chmod command did the chmod() system call, and not much else.
+You can be a bit more selective by only enabling individual flags.
+For the server, these are in include/linux/nfsd/debug.h
+You probably want FH, EXPORT AUTH PROC FILEOP
 
-There were many complaints about this.  So many that the chmod command
-line was changed to do the chmod() system call, and then, in the
-presence of an ACL, fix the permission bits.  In other words, the bug
-was fixed.
+For the client, they are near the end of include/linux/nfs_fs.h
+Not sure which to choose... maybe just all of them.
 
-I have found no complaints about the current Solaris behavior, where
-chmod affects group permissions.
-
-- Sam
-
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www1.ietf.org/mailman/listinfo/nfsv4
+NeilBrown
 
 
 -------------------------------------------------------------------------
