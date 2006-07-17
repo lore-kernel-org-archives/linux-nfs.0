@@ -1,23 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS synchronization problems on Beowulf cluster
-Date: Mon, 17 Jul 2006 14:49:18 -0400
-Message-ID: <1153162159.13961.3.camel@localhost>
-References: <m1hd1gksev.fsf@minerva.ceride.gov.ar>
+From: Amit Gud <agud@redhat.com>
+Subject: Re: Any document about Linux NFS
+Date: Mon, 17 Jul 2006 16:29:22 -0400
+Message-ID: <44BBF322.9000907@redhat.com>
+References: <e9aafa30607132253k73a131c8vc0caa4b169ee1648@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2Y9w-0003Ju-AM
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 11:49:37 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G2Y9w-0003tu-75
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 11:49:36 -0700
-To: Mario Storti <mstorti@intec.unl.edu.ar>
-In-Reply-To: <m1hd1gksev.fsf@minerva.ceride.gov.ar>
+	id 1G2Zej-0003xJ-O5
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 13:25:29 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2Zei-0006bk-H1
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 13:25:30 -0700
+To: fengcheng lu <sparking.lu@gmail.com>
+In-Reply-To: <e9aafa30607132253k73a131c8vc0caa4b169ee1648@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,42 +29,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-07-17 at 15:17 -0300, Mario Storti wrote:
-> Hi all, 
-> 
-> We have still problems with NFS in our Beowulf cluster. The original
-> post is here
-> 
-> http://thread.gmane.org/gmane.linux.nfs/9564/focus=9566
-> 
-> The news are that we reproduced the problem on Scientific Linux 4.2
-> and also without VNFS. In addition we have taken a tethereal capture
-> that may help in understanding the problem. 
-> 
-> In brief we have a Beowulf class cluster built on Scientific Linux
-> (Beryllium) 4.2, (kernel 2.6.9-22.0.1). The cluster is disk-less
-> (nodes don't have hard disks) based on the Warewulf package. NFS
-> traffic is reduced by using VNFS filesystems at the nodes. However we
-> reproduced the problem in a configuration with disks at the nodes. 
-> 
-> The problem is that for some files in user accounts if we make some
-> modifications to the file in the server, this changes are not seen in
-> the compute nodes. The NFS server is NFS3 and with the standard
-> configuration (8 instances of the server and default parameters). The
-> cluster has 20 nodes at this time, but we have made experiments with a
-> `cloned' cluster and even with only two nodes the problem persist.
-> 
-> The experiment is as follows: We change a text file in a user account
-> with Emacs and checking whether the change is seen in the compute
-> nodes. Sometimes the change is immediately seen in the compute nodes,
-> but many times some nodes don't see the change. 
-> 
+fengcheng lu wrote:
+> Hello all
+>  
+>        I want to study the Linux NFS codes (Kernel and Application). But 
+> Not any documents are found. It's a little difficult to just read the 
+> codes. Anybody know where I can get the Linux NFS  implementation document?
+>  
 
-This is a FAQ that has been well-publicised and discussed to death on
-this list:
-  http://nfs.sourceforge.net/#faq_a8
+For NFSD, theres one code commentary by Neil Brown: 
+http://www.cse.unsw.edu.au/~neilb/oss/linux-commentary/nfsd.html
 
-Trond
+For any part that you are unable to understand, google and/or ask in the 
+list and hope someone will answer.
+
+
+AG
+-- 
+May the source be with you.
+http://www.cis.ksu.edu/~gud
 
 
 -------------------------------------------------------------------------
