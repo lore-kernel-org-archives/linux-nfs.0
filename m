@@ -1,21 +1,23 @@
-From: Mario Fetka <mario-fetka@gmx.at>
-Subject: Re: Heimdal compile error
-Date: Mon, 17 Jul 2006 10:56:01 +0200
-Message-ID: <200607171056.01407.mario-fetka@gmx.at>
-References: <200607171049.31126.mario-fetka@gmx.at>
+From: Tony Reix <tony.reix@bull.net>
+Subject: Re: nfs problems with 2.6.18-rc1
+Date: Mon, 17 Jul 2006 11:03:46 +0200
+Message-ID: <1153127026.2871.12.camel@frecb000687.frec.bull.fr>
+References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: =?ISO-8859-1?Q?Aim=E9?= Le Rouzic <Aime.Le-Rouzic@bull.net>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2Ovr-0008Dl-IC
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 01:58:27 -0700
-Received: from mail.gmx.de ([213.165.64.21] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1G2Ovr-0003Z6-FM
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 01:58:28 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200607171049.31126.mario-fetka@gmx.at>
+	id 1G2P16-0000CK-92
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 02:03:52 -0700
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2P12-0004pG-Tn
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 02:03:52 -0700
+To: Janos Farkas <chexum+dev@gmail.com>
+In-Reply-To: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,95 +30,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-i forgot the error:
+Le jeudi 13 juillet 2006 =E0 20:22 +0200, Janos Farkas a =E9crit :
+> Hi!
+> =
 
-if 
-i686-pc-linux-gnu-gcc -DHAVE_CONFIG_H -I. -I. -I../../support/include  -I../../support/include -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -Wall  -pipe -O2 -pipe -march=pentium-m -fomit-frame-pointer -mfpmath=sse -I/usr/include/rpcsecgss -I/usr/include/gssglue   -I/usr/include/heimdal -I/usr/athena/include -O2 -pipe -march=pentium-m -fomit-frame-pointer -mfpmath=sse -MT 
-gssd-context_heimdal.o -MD -MP -MF ".deps/gssd-context_heimdal.Tpo" -c -o 
-gssd-context_heimdal.o `test -f 'context_heimdal.c' || 
-echo './'`context_heimdal.c; \
-        then 
-mv -f ".deps/gssd-context_heimdal.Tpo" ".deps/gssd-context_heimdal.Po"; else 
-rm -f ".deps/gssd-context_heimdal.Tpo"; exit 1; fi
-context_heimdal.c: In function 'write_heimdal_enc_key':
-context_heimdal.c:81: error: dereferencing pointer to incomplete type
-context_heimdal.c: In function 'write_heimdal_seq_key':
-context_heimdal.c:139: error: dereferencing pointer to incomplete type
-context_heimdal.c: In function 'serialize_krb5_ctx':
-context_heimdal.c:218: error: dereferencing pointer to incomplete type
-context_heimdal.c:218: error: 'LOCAL' undeclared (first use in this function)
-context_heimdal.c:218: error: (Each undeclared identifier is reported only 
-once
-context_heimdal.c:218: error: for each function it appears in.)
-context_heimdal.c:241: error: dereferencing pointer to incomplete type
-context_heimdal.c:241: error: dereferencing pointer to incomplete type
-context_heimdal.c:244: error: dereferencing pointer to incomplete type
-context_heimdal.c:244: error: dereferencing pointer to incomplete type
-context_heimdal.c:247: warning: dereferencing type-punned pointer will break 
-strict-aliasing rules
-make[2]: *** [gssd-context_heimdal.o] Error 1
-make[2]: Leaving directory 
-`/var/tmp/portage/nfs-utils-1.0.9/work/nfs-utils-1.0.9/utils/gssd'
-make[1]: *** [all-recursive] Error 1
-make[1]: Leaving directory 
-`/var/tmp/portage/nfs-utils-1.0.9/work/nfs-utils-1.0.9/utils'
-make: *** [all-recursive] Error 1
+> I recently updated two (old) hosts to 2.6.18-rc1, and started noticing
+> weird things with the nfs mounted /home s.
+> =
 
+> I frequently face EACCESs where a few minutes ago there wasn't any
+> problem, and after a retry everything does work again.
+> =
 
+....
 
-Am Montag, 17. Juli 2006 10:49 schrieb Mario Fetka:
-> the following patch corrects the error.
->
-> diff -urN nfs-utils-1.0.7.org/utils/gssd/context_heimdal.c
-> nfs-utils-1.0.7/utils/gssd/context_heimdal.c
-> --- nfs-utils-1.0.7.org/utils/gssd/context_heimdal.c    2005-07-10
-> 12:14:01.526867000 +0200
-> +++ nfs-utils-1.0.7/utils/gssd/context_heimdal.c        2005-07-10
-> 12:14:32.815110736 +0200
-> @@ -46,6 +46,20 @@
->  #include "gss_oids.h"
->  #include "write_bytes.h"
->
-> +typedef struct gss_ctx_id_t_desc_struct {
-> +  struct krb5_auth_context_data *auth_context;
-> +  gss_name_t source, target;
-> +  OM_uint32 flags;
-> +  enum { LOCAL = 1, OPEN = 2,
-> +         COMPAT_OLD_DES3 = 4,
-> +         COMPAT_OLD_DES3_SELECTED = 8,
-> +  } more_flags;
-> +  struct krb5_ticket *ticket;
-> +  OM_uint32 lifetime;
-> +  pthread_mutex_t ctx_id_mutex;
-> +  struct gss_msg_order *order;
-> +} gss_ctx_id_t_desc;
-> +
->  #define MAX_CTX_LEN 4096
->
->  int write_heimdal_keyblock(char **p, char *end, krb5_keyblock *key)
->
-> wfg
-> Mario
->
->
->
->
-> -------------------------------------------------------------------------
-> Using Tomcat but need to do more? Need to support web services, security?
-> Get stuff done quickly with pre-integrated technology to make your job
-> easier Download IBM WebSphere Application Server v.1.0.1 based on Apache
-> Geronimo
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Do you have the same problem with the last stable version (2.6.17-rc2)
+we have tested with in depth ?
+See:	http://nfsv4.bullopensource.org/
+
+Thanks,
+Tony
+
 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
+Get stuff done quickly with pre-integrated technology to make your job easi=
+er
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
+21642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
