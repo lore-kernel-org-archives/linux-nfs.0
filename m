@@ -1,20 +1,24 @@
-From: "Ulrich Windl" <ulrich.windl@rz.uni-regensburg.de>
-Subject: NFS export/mount problem ERR_ACCESS for exported mount point
-Date: Mon, 17 Jul 2006 14:31:27 +0200
-Message-ID: <44BB9F3D.14211.1695037@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: Heimdal compile error
+Date: Mon, 17 Jul 2006 09:25:20 -0400
+Message-ID: <4d569c330607170625t7b83e29ahe7e489cbe2a2decf@mail.gmail.com>
+References: <200607171049.31126.mario-fetka@gmx.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@cse.unsw.edu.au
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2SGi-00014z-Ck
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:32:12 -0700
-Received: from rrzmta2.rz.uni-regensburg.de ([132.199.1.17])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2SGi-0005IM-8y
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:32:12 -0700
-To: nfs@lists.sourceforge.net
+	id 1G2T6E-0005Yh-9p
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 06:25:26 -0700
+Received: from nf-out-0910.google.com ([64.233.182.184])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2T6B-0005pZ-4m
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 06:25:26 -0700
+Received: by nf-out-0910.google.com with SMTP id m19so488392nfc
+	for <nfs@lists.sourceforge.net>; Mon, 17 Jul 2006 06:25:21 -0700 (PDT)
+To: "Mario Fetka" <mario-fetka@gmx.at>
+In-Reply-To: <200607171049.31126.mario-fetka@gmx.at>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,44 +31,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+Thanks.  What version of Heimdal is this against?
 
-I have a problem with Linux (2.6.5-7.267-smp) not letting me mount a filesystem 
-via NFS that I have exported. The exported path is a mount point where some CIFS 
-filesystem is mounted.
+I haven't had time to test against heimdal since the libgssapi change.
+ Does the code work after you get it built?
 
-Reasoning:
-A specific CIFS filesystem (Windows/2003 Server) is needed on a bunch of servers, 
-so I'd prefer mounting CIFS only once on a dedicated host (linux), and from there 
-export it via NFS to the remaining clients (which are HP-UX with a poor CIFS 
-client).
+K.C.
 
-Unfortunately it doesn't work. Ethereal reveals:
-Portmap V2 GETPORT Call MOUNT(100005) V:2 UDP
-Portmap V2 GETPORT Reply Port:700
-MOUNT V2 NULL Call
-MOUNT V2 NULL Reply
-MOUNT V2 MNT Call /home/hyperspace/rkapoka1
-MOUNT V2 MNT Reply Error:ERR_ACCESS
-
-User Datagram Protocol, Src Port: epp (700), Dst Port: syslog-conn (601)
-Remote Procedure Call, Type:Reply XID:0x44bb2150
-Mount Service
-Program Version: 2
-V2 Procedure: MNT (1)
-Status: ERR_ACCESS (13)
-0000 00 30 6e 48 14 8d 00 0f 1f f9 4c d3 08 00 45 00 .0nH......L...E.
-0010 00 38 00 00 40 00 40 11 d1 03 84 c7 b0 12 84 c7 .8..@.@.........
-0020 b0 10 02 bc 02 59 00 24 69 e7 44 bb 21 50 00 00 .....Y.$i.D.!P..
-0030 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
-0040 00 00 00 00 00 0d ......
-
-I've heard rumour about some "--re-export" option, but that's not available in my 
-version of Linux. Any useful hints, tips, workarounds?
-
-Regards,
-Ulrich
-
+On 7/17/06, Mario Fetka <mario-fetka@gmx.at> wrote:
+> the following patch corrects the error.
+>
+> diff -urN nfs-utils-1.0.7.org/utils/gssd/context_heimdal.c
+> nfs-utils-1.0.7/utils/gssd/context_heimdal.c
+> --- nfs-utils-1.0.7.org/utils/gssd/context_heimdal.c    2005-07-10
+> 12:14:01.526867000 +0200
+> +++ nfs-utils-1.0.7/utils/gssd/context_heimdal.c        2005-07-10
+> 12:14:32.815110736 +0200
+> @@ -46,6 +46,20 @@
+>  #include "gss_oids.h"
+>  #include "write_bytes.h"
+>
+> +typedef struct gss_ctx_id_t_desc_struct {
+> +  struct krb5_auth_context_data *auth_context;
+> +  gss_name_t source, target;
+> +  OM_uint32 flags;
+> +  enum { LOCAL = 1, OPEN = 2,
+> +         COMPAT_OLD_DES3 = 4,
+> +         COMPAT_OLD_DES3_SELECTED = 8,
+> +  } more_flags;
+> +  struct krb5_ticket *ticket;
+> +  OM_uint32 lifetime;
+> +  pthread_mutex_t ctx_id_mutex;
+> +  struct gss_msg_order *order;
+> +} gss_ctx_id_t_desc;
+> +
+>  #define MAX_CTX_LEN 4096
+>
+>  int write_heimdal_keyblock(char **p, char *end, krb5_keyblock *key)
+>
+> wfg
+> Mario
+>
+>
+>
+>
+> -------------------------------------------------------------------------
+> Using Tomcat but need to do more? Need to support web services, security?
+> Get stuff done quickly with pre-integrated technology to make your job easier
+> Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
 
 
 -------------------------------------------------------------------------
