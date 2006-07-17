@@ -1,19 +1,25 @@
-From: Razvan Gavril <razvan.g@plutohome.com>
-Subject: [BUG] kmem_cache_create: duplicate cache nfsd4_stateowners
-Date: Mon, 17 Jul 2006 12:51:42 +0300
-Message-ID: <44BB5DAE.7080007@plutohome.com>
+From: Janos Farkas <chexum+dev@gmail.com>
+Subject: Re: nfs problems with 2.6.18-rc1
+Date: Mon, 17 Jul 2006 12:08:56 +0200
+Message-ID: <priv$efbe06145615$0a94d550eb@200607.gmail.com>
+References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
+	<17594.51834.20365.820166@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2PlX-0004WO-6x
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 02:51:51 -0700
-Received: from k2smtpout03-02.prod.mesa1.secureserver.net ([64.202.189.172])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1G2PlX-0007uL-48
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 02:51:51 -0700
-To: nfs@lists.sourceforge.net
+	id 1G2Q2l-00061g-71
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 03:09:39 -0700
+Received: from nf-out-0910.google.com ([64.233.182.185])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2Q2j-0003Rh-W7
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 03:09:39 -0700
+Received: by nf-out-0910.google.com with SMTP id m19so446191nfc
+	for <nfs@lists.sourceforge.net>; Mon, 17 Jul 2006 03:09:36 -0700 (PDT)
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17594.51834.20365.820166@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,119 +32,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On 2006-07-17 at 09:23:38, Neil Brown wrote:
+> On Thursday July 13, chexum+dev@gmail.com wrote:
+> > I recently updated two (old) hosts to 2.6.18-rc1, and started noticing
+> > weird things with the nfs mounted /home s.
+> So this is both the client and the server that you upgraded?  That
+> makes is harder to point the finger of blame :-)
 
-I couldn't get the nfs server running on one of my machine, and by 
-looking in dmesg, seams like there is a kernel problem. I use a 
-2.6.16.20 vanilla kernel but i remember getting the same error with a 
-2.6.17 kernel too, a week ago when trying to run rpc.nfsd. I couldn't 
-get any pattern to reproduce it yet but i got it more then once. If you 
-need any other info, please contact me.
+Yeah, smart thing :)  Thank you for the response!  When I have
+downgraded the server to 2.6.17, none of those errors happened again.
+(And I left the setup that way, because some programs have been
+corrupting their config files because of the spurious read errors --
+most notably zsh and firefox.)
 
+> I wonder if that is pointing the finger at
+> 
+> http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=8c7b389e532e964f07057dac8a56c43465544759
+> 
+> as that is a recent change that returns 'EACCES'... but I cannot see
+> that being relevant in this case as it only affects directories.
 
+As far as I can see, that patch is from May 21st, and went in 17-rc5,
+thus obviously 2.6.17 is newer than that...  But a bunch of nfs changes
+happened in 18-rc1.
 
-uname  -a :
----------------------------------
-Linux cpe-65 2.6.16.20-pluto-1-686 #1 Wed Jun 14 12:08:23 EDT 2006 i686 
-GNU/Linux
+> The standard answer for tracing nfs problems if 'tcpdump'.
+> e.g. 
+>   tcpdump -s 0 -w /tmp/trace host $CLIENT and host $SERVER and port 2049
+> 
+> that should show whether the error is coming from the server, or if
+> the client is generating it all by itself.
 
+Well, I tried that, but I couldn't see errors flying on the wire.  That
+would point to flaws in the 18-rc1 client (but only surfacing with an
+rc1 server?), or in my eyes :)
 
+> Also turn on tracing. Something like:
+> on server
+>    echo 32767 > /proc/sys/sunrpc/nfsd_debug
+> on client
+>    echo 32767 > /proc/sys/sunrpc/nfs_debug
+> 
+> You can be a bit more selective by only enabling individual flags.
+> For the server, these are in include/linux/nfsd/debug.h
+> You probably want FH, EXPORT AUTH PROC FILEOP
+> 
+> For the client, they are near the end of include/linux/nfs_fs.h
+> Not sure which to choose... maybe just all of them.
 
-dmesg :
----------------------------------
-Installing knfsd (copyright (C) 1996 okir@monad.swb.de).
-NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-NFSD: unable to find recovery directory /var/lib/nfs/v4recovery
-NFSD: starting 90-second grace period
-kmem_cache_create: duplicate cache nfsd4_stateowners
- [<c01584dd>] kmem_cache_create+0x4fd/0x560
- [<c01416c7>] __alloc_pages+0x57/0x320
- [<e10e4fb0>] nfsd4_init_slabs+0x30/0x120 [nfsd]
- [<e10e8d25>] nfs4_state_start+0x15/0x40 [nfsd]
- [<e10cc05e>] nfsd_svc+0x4e/0x290 [nfsd]
- [<e10cc827>] nfsctl_transaction_write+0x77/0xa0 [nfsd]
- [<c0186492>] sys_nfsservctl+0xc2/0x110
- [<c0102f79>] syscall_call+0x7/0xb
-Unable to handle kernel NULL pointer dereference at virtual address 00000018
- printing eip:
-e10cc155
-*pde = 00000000
-Oops: 0000 [#1]
-Modules linked in: nfsd exportfs lockd sunrpc capability commoncap 
-ide_generic ipt_TCPMSS ipt_MASQUERADE xt_tcpudp xt_mark xt_state 
-iptable_nat iptable_filter ip_tables x_tables autofs4 nvidia ipv6 
-af_packet ip_nat_irc ip_nat_ftp ip_nat ip_conntrack_irc ip_conntrack_ftp 
-ip_conntrack nfnetlink ivtv v4l1_compat cx88_dvb cx8802 cx88xx 
-cx88_vp3054_i2c mt352 dvb_pll or51132 video_buf_dvb dvb_core nxt200x 
-zl10353 cx24123 lgdt330x cx22702 ftdi_sio usbserial snd_seq_dummy 
-snd_seq_oss snd_seq_midi sd_mod snd_seq_midi_event snd_seq parport_pc 
-parport analog pcspkr snd_mpu401 psmouse bt878 rtc tuner tda9887 
-serio_raw floppy snd_via82xx gameport snd_ac97_codec snd_ac97_bus 
-snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd_page_alloc 
-snd_mpu401_uart snd_rawmidi snd_seq_device snd soundcore via_rhine 
-uhci_hcd i2c_viapro ehci_hcd ide_cd cdrom bttv video_buf firmware_class 
-usbcore ir_common sata_via compat_ioctl32 i2c_algo_bit libata 
-v4l2_common btcx_risc tveeprom scsi_mod i2c_core videodev shpchp 
-pci_hotplug 8139cp amd64_agp agpgart 8139too mii unix ext3 jbd mbcache 
-ide_disk generic via82cxxx ide_core evdev mousedev
-CPU:    0
-EIP:    0060:[<e10cc155>]    Tainted: P      VLI
-EFLAGS: 00010297   (2.6.16.20-pluto-1-686 #1)
-EIP is at nfsd_svc+0x145/0x290 [nfsd]
-eax: 00000000   ebx: 00000008   ecx: 000d9b72   edx: 00000000
-esi: 00000000   edi: 00000801   ebp: cfe4aa60   esp: ce6abf58
-ds: 007b   es: 007b   ss: 0068
-Process rpc.nfsd (pid: 9029, threadinfo=ce6aa000 task=d0f94a90)
-Stack: <0>e10f9904 00000006 00000801 00000002 cfe4aa40 00000000 e10cc827 
-00000801
-       00000008 00000008 00000000 cfe4aa40 c0186492 cfe4aa40 bfd1e9d4 
-00000008
-       cfe4aa60 00000000 bfd1e9d4 00000201 00000000 b7f09b90 bfd1e9dc 
-ce6aa000
-Call Trace:
- [<e10cc827>] nfsctl_transaction_write+0x77/0xa0 [nfsd]
- [<c0186492>] sys_nfsservctl+0xc2/0x110
- [<c0102f79>] syscall_call+0x7/0xb
-Code: 04 24 e8 5f 2e e6 ff 85 c0 89 c6 0f 88 81 00 00 00 c7 04 24 04 99 
-0f e1 e8 69 a4 03 df 89 f6 8d bc 27 00 00 00 00 a1 00 99 0f e1 <8b> 48 
-18 29 cb 8d 5b 01 85 db 7e 51 bf 00 97 0f e1 8d 76 00 8d
- <6>kjournald starting.  Commit interval 5 seconds
-EXT3-fs warning: maximal mount count reached, running e2fsck is recommended
-EXT3 FS on hdd1, internal journal
-EXT3-fs: mounted filesystem with ordered data mode.
-kjournald starting.  Commit interval 5 seconds
-EXT3 FS on hdb1, internal journal
-EXT3-fs: mounted filesystem with ordered data mode.
-EXT2-fs warning: mounting unchecked fs, running e2fsck is recommended
-kmem_cache_create: duplicate cache nfsd4_stateowners
- [<c01584dd>] kmem_cache_create+0x4fd/0x560
- [<c01416c7>] __alloc_pages+0x57/0x320
- [<e10e4fb0>] nfsd4_init_slabs+0x30/0x120 [nfsd]
- [<e10e8d25>] nfs4_state_start+0x15/0x40 [nfsd]
- [<e10cc05e>] nfsd_svc+0x4e/0x290 [nfsd]
- [<e10cc827>] nfsctl_transaction_write+0x77/0xa0 [nfsd]
- [<c0186492>] sys_nfsservctl+0xc2/0x110
- [<c0102f79>] syscall_call+0x7/0xb
-kmem_cache_create: duplicate cache nfsd4_stateowners
- [<c01584dd>] kmem_cache_create+0x4fd/0x560
- [<c01416c7>] __alloc_pages+0x57/0x320
- [<e10e4fb0>] nfsd4_init_slabs+0x30/0x120 [nfsd]
- [<e10e8d25>] nfs4_state_start+0x15/0x40 [nfsd]
- [<e10cc05e>] nfsd_svc+0x4e/0x290 [nfsd]
- [<e10cc827>] nfsctl_transaction_write+0x77/0xa0 [nfsd]
- [<c0186492>] sys_nfsservctl+0xc2/0x110
- [<c0102f79>] syscall_call+0x7/0xb
-kmem_cache_create: duplicate cache nfsd4_stateowners
- [<c01584dd>] kmem_cache_create+0x4fd/0x560
- [<c01416c7>] __alloc_pages+0x57/0x320
- [<e10e4fb0>] nfsd4_init_slabs+0x30/0x120 [nfsd]
- [<e10e8d25>] nfs4_state_start+0x15/0x40 [nfsd]
- [<e10cc05e>] nfsd_svc+0x4e/0x290 [nfsd]
- [<e10cc827>] nfsctl_transaction_write+0x77/0xa0 [nfsd]
- [<c0186492>] sys_nfsservctl+0xc2/0x110
- [<c0102f79>] syscall_call+0x7/0xb
+Thanks, that's probably what I've been looking for.  I'll try to debug
+this with a 2.6.18-rc2(client):2.6.17(server) and 2.6.18-rc2(both) setup
+later this day, but those machines are currently in the process of
+reorganizing their RAID config :)
 
---
-Razvan Gavril
+-- 
+Janos
+romfs is at http://romfs.sourceforge.net/
 
 
 -------------------------------------------------------------------------
