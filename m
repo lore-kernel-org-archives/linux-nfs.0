@@ -1,23 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSv3 and SYNC option
-Date: Mon, 17 Jul 2006 08:05:05 -0400
-Message-ID: <1153137905.5835.11.camel@localhost>
-References: <20060717091137.62C9221400D@rekin14.go2.pl>
+From: "Ulrich Windl" <ulrich.windl@rz.uni-regensburg.de>
+Subject: NFS export/mount problem ERR_ACCESS for exported mount point
+Date: Mon, 17 Jul 2006 14:31:27 +0200
+Message-ID: <44BB9F3D.14211.1695037@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: neilb@cse.unsw.edu.au
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2Rqm-0007JN-2q
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:05:24 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G2Rqh-0007xy-W6
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:05:24 -0700
-To: przemyslaw_sowa@o2.pl
-In-Reply-To: <20060717091137.62C9221400D@rekin14.go2.pl>
+	id 1G2SGi-00014z-Ck
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:32:12 -0700
+Received: from rrzmta2.rz.uni-regensburg.de ([132.199.1.17])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2SGi-0005IM-8y
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:32:12 -0700
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,30 +27,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-07-17 at 11:11 +0200, przemyslaw_sowa@o2.pl wrote:
-> Hello,
-> 
-> I'd like to know if the "sync" option in /etc/exports makes NFSv3 works
-> like NFSv2? I mean if it then always waits for the data to be written to
-> the drive before sending reply?
+Hi,
 
-No. The 'sync' option just ensures that all RPC calls that require data
-to be put to stable storage are honoured. The result is that you should
-be guaranteed correct recovery semantics in case of a server
-crash/reboot (which is what you want).
+I have a problem with Linux (2.6.5-7.267-smp) not letting me mount a filesystem 
+via NFS that I have exported. The exported path is a mount point where some CIFS 
+filesystem is mounted.
 
-> If not, is there any way to guarantee stable storage on the server (v3)
-> side (ex. client can mount with the async option)?
+Reasoning:
+A specific CIFS filesystem (Windows/2003 Server) is needed on a bunch of servers, 
+so I'd prefer mounting CIFS only once on a dedicated host (linux), and from there 
+export it via NFS to the remaining clients (which are HP-UX with a poor CIFS 
+client).
 
-Yes. NFSv3 has protocol support for safe server-side cached writes (this
-is the main reason why NFSv3 is considered to be faster than NFSv2). By
-"safe", I mean that there is no loss of data in the case of a server
-crash/reboot.
-This caching behaviour is enabled by default: no need for additional
-mount options.
+Unfortunately it doesn't work. Ethereal reveals:
+Portmap V2 GETPORT Call MOUNT(100005) V:2 UDP
+Portmap V2 GETPORT Reply Port:700
+MOUNT V2 NULL Call
+MOUNT V2 NULL Reply
+MOUNT V2 MNT Call /home/hyperspace/rkapoka1
+MOUNT V2 MNT Reply Error:ERR_ACCESS
 
-Cheers,
-  Trond
+User Datagram Protocol, Src Port: epp (700), Dst Port: syslog-conn (601)
+Remote Procedure Call, Type:Reply XID:0x44bb2150
+Mount Service
+Program Version: 2
+V2 Procedure: MNT (1)
+Status: ERR_ACCESS (13)
+0000 00 30 6e 48 14 8d 00 0f 1f f9 4c d3 08 00 45 00 .0nH......L...E.
+0010 00 38 00 00 40 00 40 11 d1 03 84 c7 b0 12 84 c7 .8..@.@.........
+0020 b0 10 02 bc 02 59 00 24 69 e7 44 bb 21 50 00 00 .....Y.$i.D.!P..
+0030 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+0040 00 00 00 00 00 0d ......
+
+I've heard rumour about some "--re-export" option, but that's not available in my 
+version of Linux. Any useful hints, tips, workarounds?
+
+Regards,
+Ulrich
 
 
 
