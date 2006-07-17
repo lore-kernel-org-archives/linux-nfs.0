@@ -1,26 +1,23 @@
-From: Janos Farkas <chexum+dev@gmail.com>
-Subject: Re: nfs problems with 2.6.18-rc1
-Date: Mon, 17 Jul 2006 13:25:26 +0200
-Message-ID: <priv$8d118c145616$a76e56732d@200607.shadow.banki.hu>
-References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
-	<1153127026.2871.12.camel@frecb000687.frec.bull.fr>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFSv3 and SYNC option
+Date: Mon, 17 Jul 2006 08:05:05 -0400
+Message-ID: <1153137905.5835.11.camel@localhost>
+References: <20060717091137.62C9221400D@rekin14.go2.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: =?iso-8859-1?Q?Aim=E9?= Le Rouzic <Aime.Le-Rouzic@bull.net>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2REb-0003rE-JA
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 04:25:57 -0700
-Received: from nf-out-0910.google.com ([64.233.182.185])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2REa-0006zL-KI
-	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 04:25:58 -0700
-Received: by nf-out-0910.google.com with SMTP id m19so460539nfc
-	for <nfs@lists.sourceforge.net>; Mon, 17 Jul 2006 04:25:54 -0700 (PDT)
-To: Tony Reix <tony.reix@bull.net>
-In-Reply-To: <1153127026.2871.12.camel@frecb000687.frec.bull.fr>
+	id 1G2Rqm-0007JN-2q
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:05:24 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G2Rqh-0007xy-W6
+	for nfs@lists.sourceforge.net; Mon, 17 Jul 2006 05:05:24 -0700
+To: przemyslaw_sowa@o2.pl
+In-Reply-To: <20060717091137.62C9221400D@rekin14.go2.pl>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,32 +30,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 2006-07-17 at 11:03:46, Tony Reix wrote:
-> Le jeudi 13 juillet 2006 ? 20:22 +0200, Janos Farkas a =E9crit :
-> > I recently updated two (old) hosts to 2.6.18-rc1, and started
-> > noticing
-> > weird things with the nfs mounted /home s.
-> >
-> > I frequently face EACCESs where a few minutes ago there wasn't any
-> > problem, and after a retry everything does work again.
-> Do you have the same problem with the last stable version (2.6.17-rc2)
-> we have tested with in depth ?
-> See:  http://nfsv4.bullopensource.org/
+On Mon, 2006-07-17 at 11:11 +0200, przemyslaw_sowa@o2.pl wrote:
+> Hello,
+> 
+> I'd like to know if the "sync" option in /etc/exports makes NFSv3 works
+> like NFSv2? I mean if it then always waits for the data to be written to
+> the drive before sending reply?
 
-Even stock 2.6.17 as server works for me with a 2.6.18-rc1 client (v3).
+No. The 'sync' option just ensures that all RPC calls that require data
+to be put to stable storage are honoured. The result is that you should
+be guaranteed correct recovery semantics in case of a server
+crash/reboot (which is what you want).
 
---
-Janos
-romfs is at http://romfs.sourceforge.net/
+> If not, is there any way to guarantee stable storage on the server (v3)
+> side (ex. client can mount with the async option)?
+
+Yes. NFSv3 has protocol support for safe server-side cached writes (this
+is the main reason why NFSv3 is considered to be faster than NFSv2). By
+"safe", I mean that there is no loss of data in the case of a server
+crash/reboot.
+This caching behaviour is enabled by default: no need for additional
+mount options.
+
+Cheers,
+  Trond
+
 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easi=
-er
+Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
-21642
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
