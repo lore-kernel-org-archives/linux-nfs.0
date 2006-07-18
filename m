@@ -1,26 +1,26 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: NFS export/mount problem ERR_ACCESS for exported mount
- point
-Date: Wed, 19 Jul 2006 08:53:00 +1000
-Message-ID: <17597.26188.641053.176665@cse.unsw.edu.au>
-References: <44BB9F3D.14211.1695037@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
-	<17596.8411.211050.655554@cse.unsw.edu.au>
-	<Pine.LNX.4.64.0607181716100.23497@maggie.lkpg.cendio.se>
+Subject: Re: nfs problems with 2.6.18-rc1
+Date: Wed, 19 Jul 2006 09:29:28 +1000
+Message-ID: <17597.28376.805867.197599@cse.unsw.edu.au>
+References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
+	<17594.51834.20365.820166@cse.unsw.edu.au>
+	<priv$efbe06145615$0a94d550eb@200607.gmail.com>
+	<priv$8d118c145627$464a3143cd@200607.shadow.banki.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G3Lf6-0007df-0M
-	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 16:41:04 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1G3Lf7-0007f5-E9
+	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 16:41:05 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G3Lf3-0003P6-Uu
-	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 16:41:04 -0700
-To: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
-In-Reply-To: message from Peter Åstrand on Tuesday July 18
+	(Exim 4.44) id 1G3Lf3-0003P2-Dj
+	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 16:41:02 -0700
+To: Janos Farkas <chexum+dev@gmail.com>
+In-Reply-To: message from Janos Farkas on Tuesday July 18
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,23 +33,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday July 18, astrand@cendio.se wrote:
-> On Tue, 18 Jul 2006, Neil Brown wrote:
+On Tuesday July 18, chexum+dev@gmail.com wrote:
+> > On 2006-07-17 at 09:23:38, Neil Brown wrote:
+> > > The standard answer for tracing nfs problems if 'tcpdump'.
+> > > e.g. 
+> > >   tcpdump -s 0 -w /tmp/trace host $CLIENT and host $SERVER and port 2049
+> > > 
+> > > that should show whether the error is coming from the server, or if
+> > > the client is generating it all by itself.
 > 
-> > The "user space" nfs server does have a --re-export option and it does
-> > work to some extent, but there are plenty of scenarios where it would
-> > perform very poorly or fail completely.
-> 
-> When you say "the user space nfs server", you mean Olaf Kirchs nfs-server 
-> (http://freshmeat.net/projects/nfs-server/), right? Any particular reason 
-> why you are recommending this one instead of UNFS3 
-> (http://freshmeat.net/projects/unfs3/)?
+> Closing in, I have a dump between these two machines running 18-rc2 that
+> has the error on the wire, but I'm not sure how much more would be
+> relevant:
 
-I'm not recommending anything in particular.  I didn't even realise
-there were two separate code bases.... I suspect they both come from
-common code started by Mark Shand years and years ago...
+Hmmm...
+Interesting, but confusing.
+The filehandle of the directory seems to keep changing.  Maybe tcpdump
+is showing too many bytes.  Access to the raw dump would help.
 
-It was more a general reference than a specific recommendation.
+> 13:37:51.254708 access fh Unknown/0100000100FD000002000000755104000AA487A20000001F0AA487A200030001 001f
+> 13:37:51.255375 reply ok 32 access ERROR: Permission denied attr:
+
+'access' should never return 'Permission denied' so there is
+definitely something wrong here.  I was expected nfserr_acces rather
+than nfserr_perm...
+The server logs at the same time would help a lot.
 
 NeilBrown
 
