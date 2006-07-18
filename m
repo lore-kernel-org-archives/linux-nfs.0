@@ -1,19 +1,26 @@
-From: Razvan Gavril <razvan.g@plutohome.com>
-Subject: Buf starting 2.6.16 - rpc: bad TCP reclen
-Date: Tue, 18 Jul 2006 14:36:01 +0300
-Message-ID: <44BCC7A1.30104@plutohome.com>
+From: Janos Farkas <chexum+dev@gmail.com>
+Subject: Re: nfs problems with 2.6.18-rc1
+Date: Tue, 18 Jul 2006 14:20:41 +0200
+Message-ID: <priv$8d118c145627$464a3143cd@200607.shadow.banki.hu>
+References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
+	<17594.51834.20365.820166@cse.unsw.edu.au>
+	<priv$efbe06145615$0a94d550eb@200607.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G2ns0-0002sW-Nn
-	for nfs@lists.sourceforge.net; Tue, 18 Jul 2006 04:36:08 -0700
-Received: from k2smtpout02-02.prod.mesa1.secureserver.net ([64.202.189.91])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1G2nrz-0002nw-Oi
-	for nfs@lists.sourceforge.net; Tue, 18 Jul 2006 04:36:09 -0700
-To: nfs@lists.sourceforge.net
+	id 1G2oZb-0006md-LV
+	for nfs@lists.sourceforge.net; Tue, 18 Jul 2006 05:21:11 -0700
+Received: from nf-out-0910.google.com ([64.233.182.186])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G2oZa-0003VQ-OU
+	for nfs@lists.sourceforge.net; Tue, 18 Jul 2006 05:21:11 -0700
+Received: by nf-out-0910.google.com with SMTP id m19so135587nfc
+	for <nfs@lists.sourceforge.net>; Tue, 18 Jul 2006 05:21:09 -0700 (PDT)
+To: Neil Brown <neilb@suse.de>, linux-kernel@vger.kernel.org,
+	nfs@lists.sourceforge.net
+In-Reply-To: <priv$efbe06145615$0a94d550eb@200607.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,77 +33,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I posted on the linux kernel mailing list but got no answer till now.
+> On 2006-07-17 at 09:23:38, Neil Brown wrote:
+> > The standard answer for tracing nfs problems if 'tcpdump'.
+> > e.g. 
+> >   tcpdump -s 0 -w /tmp/trace host $CLIENT and host $SERVER and port 2049
+> > 
+> > that should show whether the error is coming from the server, or if
+> > the client is generating it all by itself.
 
-I have a nfs server and some diskless computers that that have there 
-root mounted via  nfs from the server. In certain situations the 
-diskless computers fail to write correctly to their nfs mounted 
-filesystem (some files get corrupted). Looking into the nfs server's 
-dmesg, i see this messages:
+Closing in, I have a dump between these two machines running 18-rc2 that
+has the error on the wire, but I'm not sure how much more would be
+relevant:
 
-RPC: bad TCP reclen 0x5e9c5bec (non-terminal)
-RPC: bad TCP reclen 0x29db3277 (large)
-RPC: bad TCP reclen 0x698f6ccf (large)
-RPC: bad TCP reclen 0x336160a9 (large)
-RPC: bad TCP reclen 0x773ffdff (large)
-RPC: bad TCP reclen 0x231b8d5c (non-terminal)
-RPC: bad TCP reclen 0x39902af4 (large)
-RPC: bad TCP reclen 0x6048d9cc (non-terminal)
-RPC: bad TCP reclen 0x212f7e14 (non-terminal)
+(This is probably a successful stat() of the "mailbox" file (having the
+size of 39074 bytes))
 
-This errors start to happen when upgrading to 2.6.16 from 2.6.15 but the 
-problem is still present in 2.6.17 kernel. For now i tested like this:
+13:34:56.382832 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A20000002D
+13:34:56.383109 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
+13:34:56.383328 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A20000002D
+13:34:56.383556 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
+13:34:56.383723 access fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A20000002D 002d
+13:34:56.383951 reply ok 120 access attr: REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222475.000000 1153173671.000000 1153222475.000000 c 000d
+13:34:56.384241 setattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000
+13:34:56.384585 reply ok 144 setattr PRE: sz 39074 mtime 1153173671.000000 ctime 1153222475.000000 POST: REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222475.000000 1153173671.000000 1153222496.000000
+13:34:56.386376 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000
+13:34:56.387209 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
+13:34:56.387489 getattr fh Unknown/0100000100FD000002000000755104000AA487A2755104000AA487A200000000
+13:34:56.388137 reply ok 112 getattr DIR 40755 ids 2001/500 sz 4096
+13:34:56.388317 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000
+13:34:56.388560 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
 
-Client - Server - State
-------------------------
-2.6.15 - 2.6.15 - Works
-2.6.15 - 2.6.16 - Errors
-2.6.16 - 2.6.16 - Errors
-2.6.16 - 2.6.17 - Errors
-2.6.17 - 2.6.17 - Errors
+(... after a few lock files, reading through the whole file)
 
- From the looks of it the problem seems to be related to the nfs server 
-implemetation from the kernels newer that 2.6.15.
+13:34:56.392869 lookup fh Unknown/0100000100FD000002000000755104000AA487A2000000076D61696C626F7800 "mailbox"
+13:34:56.393129 reply ok 236 lookup fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000001 REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222475.000000 1153173671.000000 1153222496.000000 post dattr: DIR 40755 ids 2001/500 sz 4096 nlink 2 rdev 0/0 fsid fd00 fileid 45175 a/m/ctime 1153222413.000000 1153222496.000000 1153222496.000000
+13:34:56.393325 access fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A20000002D 002d
+13:34:56.393556 reply ok 120 access attr: REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222475.000000 1153173671.000000 1153222496.000000 c 000d
+13:34:56.393953 read fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000 8192 bytes @ 0
+13:34:56.393967 read fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000 8192 bytes @ 8192
+13:34:56.394631 reply ok 1472 read REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222496.000000 1153173671.000000 1153222496.000000 8192 bytes
+13:34:56.395717 reply ok 1472 read REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222496.000000 1153173671.000000 1153222496.000000 8192 bytes
+13:34:56.398241 read fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000 8192 bytes @ 16384
+13:34:56.398257 read fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000000 8192 bytes @ 24576
+13:34:56.398266 read fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A2000000006306 bytes @ 32768
+13:34:56.399338 reply ok 1472 read REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222496.000000 1153173671.000000 1153222496.000000 8192 bytes
+13:34:56.400120 reply ok 1472 read REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222496.000000 1153173671.000000 1153222496.000000 8192 bytes
+13:34:56.401822 reply ok 1472 read REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222496.000000 1153173671.000000 1153222496.000000 6306 bytes EOF
+13:34:56.403059 getattr fh Unknown/0100000100FD000002000000755104000AA487A2742049207468696E6B0A6162
+13:34:56.403359 reply ok 112 getattr DIR 40755 ids 2001/500 sz 4096
+13:34:56.403538 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A26B0A6162
+13:34:56.403743 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
+13:34:56.403931 lookup fh Unknown/0100000100FD000002000000755104000AA487A20000000C6D61696C626F782E "mailbox.lock"
+13:34:56.404298 reply ok 236 lookup fh Unknown/0100000200FD000002000000775104000EA487A2755104000AA487A200000001 REG 100000 ids 2001/500 sz 0 n link 1 rdev 0/0 fsid fd00 fileid 45177 a/m/ctime 1153222496.000000 1153222496.000000 1153222496.000000 post dattr: DIR 40755 ids 2001/500 sz 4096 nlink 2 rdev 0/0 fsid fd00 fileid 45175 a/m/ctime 1153222413.000000 1153222496.000000 1153222496.000000
+13:34:56.404484 remove fh Unknown/0100000100FD000002000000755104000AA487A20000000C6D61696C626F782E "mailbox.lock"
+13:34:56.404844 reply ok 120 remove PRE: POST: DIR 40755 ids 2001/500 sz 4096 nlink 2 rdev 0/0 fsid fd00 fileid 45175 a/m/ctime 1153222413.000000 1153222496.000000 1153222496.000000
+13:34:56.405728 lookup fh Unknown/0100000100FD000002000000755104000AA487A2000000076D61696C626F7800 "mailbox"
+13:34:56.406419 reply ok 236 lookup fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200000001 REG 100600 ids 2001/500 sz 39074 nlink 1 rdev 0/0 fsid fd00 fileid 45176 a/m/ctime 1153222496.000000 1153173671.000000 1153222496.000000 post dattr: DIR 40755 ids 2001/500 sz 4096 nlink 2 rdev 0/0 fsid fd00 fileid 45175 a/m/ctime 1153222413.000000 1153222496.000000 1153222496.000000
 
-Those corrupted writes on client + dmesg messages on the server are easy 
-to duplicate when using Debian on the client computers and running this 
-script in parallel on more that 1 client:
+(More operations, and pause.  After a while, pressing a key makes mutt to
+revalidate the mailbox file, nothing more skipped before the error)
 
-while /bin/true ;do
-        apt-get update
-        err=$?
-        [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+13:35:23.139297 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200030001
+13:35:23.139958 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
+13:36:29.902394 access fh Unknown/0100000100FD000002000000755104000AA487A20000001F0AA487A200030001 001f
+13:36:29.903109 reply ok 120 access attr: DIR 40755 ids 2001/500 sz 4096 nlink 2 rdev 0/0 fsid fd00 fileid 45175 a/m/ctime 1153222413.000000 1153222496.000000 1153222496.000000 c 001f
+13:36:29.903314 getattr fh Unknown/0100000200FD000002000000765104000BA487A2755104000AA487A200030001
+13:36:29.903603 reply ok 112 getattr REG 100600 ids 2001/500 sz 39074
+13:37:41.196223 getattr fh Unknown/0100000000FD000002000000000000000004517644BCC7600000000044BC08A7
+13:37:41.196678 reply ok 112 getattr DIR 40775 ids 0/0 sz 4096
+13:37:41.196903 getattr fh Unknown/0100000000FD000402000000000000000000000244BCA4790000000044A22F45
+13:37:41.197146 reply ok 112 getattr DIR 40755 ids 0/0 sz 1024
+13:37:41.197304 getattr fh Unknown/0100000000FD000102000000000000000000000244BCB6A80000000042CACA97
+13:37:41.197494 reply ok 112 getattr DIR 40755 ids 0/0 sz 4096
+13:37:51.254708 access fh Unknown/0100000100FD000002000000755104000AA487A20000001F0AA487A200030001 001f
+13:37:51.255375 reply ok 32 access ERROR: Permission denied attr:
+13:37:51.255924 access fh Unknown/0100000000FD0001020000000000001F0AA487A20000001F0AA487A200030001 001f
+13:37:51.256216 reply ok 120 access attr: DIR 40755 ids 0/0 sz 4096 nlink 4 rdev 0/0 fsid fd01 fileid 2 a/m/ctime 1153217912.000000 1139267032.000000 1139267032.000000 c 0003
+13:37:51.256434 getattr fh Unknown/0100000100FD00010200000001DC0500E909CCBB0000001F0AA487A200030001
+13:37:51.256655 reply ok 112 getattr DIR 40755 ids 0/0 sz 4096
+13:37:51.256821 access fh Unknown/0100000100FD00010200000001DC0500E909CCBB0000001F0AA487A200030001 001f
+13:37:51.257048 reply ok 120 access attr: DIR 40755 ids 0/0 sz 4096 nlink 3 rdev 0/0 fsid fd01 fileid 5dc01 a/m/ctime 1153217912.000000 1120496574.000000 1120496574.000000 c 0003
 
-        # you can replace gdb with any other package
-        apt-get -y install gdb
-        err=$?
-        [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+Apparently, the access that results in EACCESS is having the same
+filehandle as one above that suceeded, but it is an fh of the current
+directory that contained the mailbox.lock file (judging by the fileid).
+But it's still confusing to me.  I also have this in raw tcpdump
+format.  Would the client and/or server debug log be more helpful?
 
-        apt-get -y remove gdb
-        err=$?
-        [[ $err != 0 ]] && echo "Exiting $err" && exit $err
-
-        sleep $(( $RANDOM % 3 ))
-done
-
-After a couple o minutes (1-5min) apt should give a segmentation fault 
-because one of its state files got corrupted (/lib/dpkg/status or 
-other). FYI, the clients DON'T have any common files/dirs so a race 
-condition in apt can't be the cause. It's easy to see that for every apt 
-segfault on the client you'll have a rpc error message on the server.
-
-I also tried with some different script to reproduce the problem, for 
-example to copy a lot of files(small, big ..) from a nfs share to 
-another but the md5sum reported that every time the copying was 
-happening without corruption so using apt is the only solution to 
-reproduce the bug for now.
-
-I'm here if you need any other info related to this problem.
-
---
-Razvan Gavril
-
-
+Janos
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
