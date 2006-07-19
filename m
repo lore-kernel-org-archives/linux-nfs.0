@@ -1,22 +1,23 @@
-From: Mario Fetka <mario-fetka@gmx.at>
-Subject: Re: Heimdal compile error
-Date: Wed, 19 Jul 2006 15:50:31 +0200
-Message-ID: <200607191550.32050.mario-fetka@gmx.at>
-References: <200607171049.31126.mario-fetka@gmx.at>
-	<200607171056.01407.mario-fetka@gmx.at>
+From: Razvan Gavril <razvan.g@plutohome.com>
+Subject: Re: Bug starting 2.6.16 - rpc: bad TCP reclen
+Date: Wed, 19 Jul 2006 17:46:34 +0300
+Message-ID: <44BE45CA.3050603@plutohome.com>
+References: <44BCC7A1.30104@plutohome.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G3CRl-0004Aa-2a
-	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 06:50:41 -0700
-Received: from mail.gmx.de ([213.165.64.21] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1G3CRk-0006RZ-RM
-	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 06:50:41 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <200607171056.01407.mario-fetka@gmx.at>
+	id 1G3DJu-0000c6-SM
+	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 07:46:38 -0700
+Received: from k2smtpout01-02.prod.mesa1.secureserver.net ([64.202.189.89]
+	helo=k2smtpout01-01.prod.mesa1.secureserver.net)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1G3DJu-00009I-OQ
+	for nfs@lists.sourceforge.net; Wed, 19 Jul 2006 07:46:39 -0700
+To: Razvan Gavril <razvan.g@plutohome.com>
+In-Reply-To: <44BCC7A1.30104@plutohome.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,88 +30,161 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Am Montag, 17. Juli 2006 10:56 schrieb Mario Fetka:
-> i forgot the error:
+Razvan Gavril wrote:
+> I posted on the linux kernel mailing list but got no answer till now.
 >
-> if
-> i686-pc-linux-gnu-gcc -DHAVE_CONFIG_H -I. -I. -I../../support/include 
-> -I../../support/include -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -Wall  -pipe
-> -O2 -pipe -march=pentium-m -fomit-frame-pointer -mfpmath=sse
-> -I/usr/include/rpcsecgss -I/usr/include/gssglue   -I/usr/include/heimdal
-> -I/usr/athena/include -O2 -pipe -march=pentium-m -fomit-frame-pointer
-> -mfpmath=sse -MT gssd-context_heimdal.o -MD -MP -MF
-> ".deps/gssd-context_heimdal.Tpo" -c -o gssd-context_heimdal.o `test -f
-> 'context_heimdal.c' ||
-> echo './'`context_heimdal.c; \
->         then
-> mv -f ".deps/gssd-context_heimdal.Tpo" ".deps/gssd-context_heimdal.Po";
-> else rm -f ".deps/gssd-context_heimdal.Tpo"; exit 1; fi
-> context_heimdal.c: In function 'write_heimdal_enc_key':
-> context_heimdal.c:81: error: dereferencing pointer to incomplete type
-> context_heimdal.c: In function 'write_heimdal_seq_key':
-> context_heimdal.c:139: error: dereferencing pointer to incomplete type
-> context_heimdal.c: In function 'serialize_krb5_ctx':
-> context_heimdal.c:218: error: dereferencing pointer to incomplete type
-> context_heimdal.c:218: error: 'LOCAL' undeclared (first use in this
-> function) context_heimdal.c:218: error: (Each undeclared identifier is
-> reported only once
-> context_heimdal.c:218: error: for each function it appears in.)
-> context_heimdal.c:241: error: dereferencing pointer to incomplete type
-> context_heimdal.c:241: error: dereferencing pointer to incomplete type
-> context_heimdal.c:244: error: dereferencing pointer to incomplete type
-> context_heimdal.c:244: error: dereferencing pointer to incomplete type
-> context_heimdal.c:247: warning: dereferencing type-punned pointer will
-> break strict-aliasing rules
-> make[2]: *** [gssd-context_heimdal.o] Error 1
-> make[2]: Leaving directory
-> `/var/tmp/portage/nfs-utils-1.0.9/work/nfs-utils-1.0.9/utils/gssd'
-> make[1]: *** [all-recursive] Error 1
-> make[1]: Leaving directory
-> `/var/tmp/portage/nfs-utils-1.0.9/work/nfs-utils-1.0.9/utils'
-> make: *** [all-recursive] Error 1
+> I have a nfs server and some diskless computers that that have there 
+> root mounted via  nfs from the server. In certain situations the 
+> diskless computers fail to write correctly to their nfs mounted 
+> filesystem (some files get corrupted). Looking into the nfs server's 
+> dmesg, i see this messages:
 >
-> Am Montag, 17. Juli 2006 10:49 schrieb Mario Fetka:
-> > the following patch corrects the error.
-> >
-> > diff -urN nfs-utils-1.0.7.org/utils/gssd/context_heimdal.c
-> > nfs-utils-1.0.7/utils/gssd/context_heimdal.c
-> > --- nfs-utils-1.0.7.org/utils/gssd/context_heimdal.c    2005-07-10
-> > 12:14:01.526867000 +0200
-> > +++ nfs-utils-1.0.7/utils/gssd/context_heimdal.c        2005-07-10
-> > 12:14:32.815110736 +0200
-> > @@ -46,6 +46,20 @@
-> >  #include "gss_oids.h"
-> >  #include "write_bytes.h"
-> >
-> > +typedef struct gss_ctx_id_t_desc_struct {
-> > +  struct krb5_auth_context_data *auth_context;
-> > +  gss_name_t source, target;
-> > +  OM_uint32 flags;
-> > +  enum { LOCAL = 1, OPEN = 2,
-> > +         COMPAT_OLD_DES3 = 4,
-> > +         COMPAT_OLD_DES3_SELECTED = 8,
-> > +  } more_flags;
-> > +  struct krb5_ticket *ticket;
-> > +  OM_uint32 lifetime;
-> > +  pthread_mutex_t ctx_id_mutex;
-> > +  struct gss_msg_order *order;
-> > +} gss_ctx_id_t_desc;
-> > +
-> >  #define MAX_CTX_LEN 4096
-> >
-> >  int write_heimdal_keyblock(char **p, char *end, krb5_keyblock *key)
-> >
-> > wfg
-> > Mario
-> >
-this patch adds an internal only struct (starting with 0.7 internal only) to 
-nfs-utils..
+> RPC: bad TCP reclen 0x5e9c5bec (non-terminal)
+> RPC: bad TCP reclen 0x29db3277 (large)
+> RPC: bad TCP reclen 0x698f6ccf (large)
+> RPC: bad TCP reclen 0x336160a9 (large)
+> RPC: bad TCP reclen 0x773ffdff (large)
+> RPC: bad TCP reclen 0x231b8d5c (non-terminal)
+> RPC: bad TCP reclen 0x39902af4 (large)
+> RPC: bad TCP reclen 0x6048d9cc (non-terminal)
+> RPC: bad TCP reclen 0x212f7e14 (non-terminal)
+>
+> This errors start to happen when upgrading to 2.6.16 from 2.6.15 but the 
+> problem is still present in 2.6.17 kernel. For now i tested like this:
+>
+> Client - Server - State
+> ------------------------
+> 2.6.15 - 2.6.15 - Works
+> 2.6.15 - 2.6.16 - Errors
+> 2.6.16 - 2.6.16 - Errors
+> 2.6.16 - 2.6.17 - Errors
+> 2.6.17 - 2.6.17 - Errors
+>
+>  From the looks of it the problem seems to be related to the nfs server 
+> implemetation from the kernels newer that 2.6.15.
+>
+> Those corrupted writes on client + dmesg messages on the server are easy 
+> to duplicate when using Debian on the client computers and running this 
+> script in parallel on more that 1 client:
+>
+> while /bin/true ;do
+>         apt-get update
+>         err=$?
+>         [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+>
+>         # you can replace gdb with any other package
+>         apt-get -y install gdb
+>         err=$?
+>         [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+>
+>         apt-get -y remove gdb
+>         err=$?
+>         [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+>
+>         sleep $(( $RANDOM % 3 ))
+> done
+>
+> After a couple o minutes (1-5min) apt should give a segmentation fault 
+> because one of its state files got corrupted (/lib/dpkg/status or 
+> other). FYI, the clients DON'T have any common files/dirs so a race 
+> condition in apt can't be the cause. It's easy to see that for every apt 
+> segfault on the client you'll have a rpc error message on the server.
+>
+> I also tried with some different script to reproduce the problem, for 
+> example to copy a lot of files(small, big ..) from a nfs share to 
+> another but the md5sum reported that every time the copying was 
+> happening without corruption so using apt is the only solution to 
+> reproduce the bug for now.
+>
+> I'm here if you need any other info related to this problem.
+>
+> --
+> Razvan Gavril
+>
+>
+>
+> -------------------------------------------------------------------------
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+> opinions on IT & business topics through brief surveys -- and earn cash
+> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>   
+Razvan Gavril wrote:
+> I posted on the linux kernel mailing list but got no answer till now.
+>
+> I have a nfs server and some diskless computers that that have there 
+> root mounted via  nfs from the server. In certain situations the 
+> diskless computers fail to write correctly to their nfs mounted 
+> filesystem (some files get corrupted). Looking into the nfs server's 
+> dmesg, i see this messages:
+>
+> RPC: bad TCP reclen 0x5e9c5bec (non-terminal)
+> RPC: bad TCP reclen 0x29db3277 (large)
+> RPC: bad TCP reclen 0x698f6ccf (large)
+> RPC: bad TCP reclen 0x336160a9 (large)
+> RPC: bad TCP reclen 0x773ffdff (large)
+> RPC: bad TCP reclen 0x231b8d5c (non-terminal)
+> RPC: bad TCP reclen 0x39902af4 (large)
+> RPC: bad TCP reclen 0x6048d9cc (non-terminal)
+> RPC: bad TCP reclen 0x212f7e14 (non-terminal)
+>
+> This errors start to happen when upgrading to 2.6.16 from 2.6.15 but the 
+> problem is still present in 2.6.17 kernel. For now i tested like this:
+>
+> Client - Server - State
+> ------------------------
+> 2.6.15 - 2.6.15 - Works
+> 2.6.15 - 2.6.16 - Errors
+> 2.6.16 - 2.6.16 - Errors
+> 2.6.16 - 2.6.17 - Errors
+> 2.6.17 - 2.6.17 - Errors
+>
+>  From the looks of it the problem seems to be related to the nfs server 
+> implemetation from the kernels newer that 2.6.15.
+>
+> Those corrupted writes on client + dmesg messages on the server are easy 
+> to duplicate when using Debian on the client computers and running this 
+> script in parallel on more that 1 client:
+>
+> while /bin/true ;do
+>         apt-get update
+>         err=$?
+>         [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+>
+>         # you can replace gdb with any other package
+>         apt-get -y install gdb
+>         err=$?
+>         [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+>
+>         apt-get -y remove gdb
+>         err=$?
+>         [[ $err != 0 ]] && echo "Exiting $err" && exit $err
+>
+>         sleep $(( $RANDOM % 3 ))
+> done
+>
+> After a couple o minutes (1-5min) apt should give a segmentation fault 
+> because one of its state files got corrupted (/lib/dpkg/status or 
+> other). FYI, the clients DON'T have any common files/dirs so a race 
+> condition in apt can't be the cause. It's easy to see that for every apt 
+> segfault on the client you'll have a rpc error message on the server.
+>
+> I also tried with some different script to reproduce the problem, for 
+> example to copy a lot of files(small, big ..) from a nfs share to 
+> another but the md5sum reported that every time the copying was 
+> happening without corruption so using apt is the only solution to 
+> reproduce the bug for now.
+>
+> I'm here if you need any other info related to this problem.
+>
+>   
+Can someone at least confirm this bug and give me an idea where to start 
+debugging ?
 
-i am not skilled enought to do the fix in the right way. 
-could someone plz help
-
-wfg
-Mario
+Thanks
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
