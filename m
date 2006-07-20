@@ -1,68 +1,114 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFSv4 Active-Active Cluster Queries
-Date: Thu, 20 Jul 2006 09:52:06 -0400
-Message-ID: <20060720135206.GC20263@fieldses.org>
-References: <44BF54250200007F0000E3E0@lucius.provo.novell.com>
-	<44BF5EF80200007F0000E3E4@lucius.provo.novell.com>
-	<44BF5F580200007F0000E3E7@lucius.provo.novell.com>
-	<44BF5F8B0200007F0000E3EA@lucius.provo.novell.com>
-	<44BF607D0200007F0000E3ED@lucius.provo.novell.com>
-	<44BF6B4F0200007F0000E3F6@lucius.provo.novell.com>
-	<44BF6B870200007F0000E3F9@lucius.provo.novell.com>
-	<44BF6BA30200007F0000E3FC@lucius.provo.novell.com>
-	<44BF6BE60200007F0000E3FF@lucius.provo.novell.com>
-	<44BF6BE5.6FDC.007F.0@novell.com>
+From: Sam Falkner <Sam.Falkner@Sun.COM>
+Subject: Re: Re: NFSv4 ACL and POSIX interaction / mask,
+	draft-ietf-nfsv4-acls-00 not ready
+Date: Thu, 20 Jul 2006 16:57:10 -0600
+Message-ID: <00D8565E-6887-4214-A18B-325921051BBB@Sun.COM>
+References: <C98692FD98048C41885E0B0FACD9DFB8029EFFAD@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G3Yws-00032I-9X
-	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 06:52:19 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G3Ywl-0003Jm-Fd
-	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 06:52:12 -0700
-To: Rajat Upadhyaya <urajat@novell.com>
-In-Reply-To: <44BF6BE5.6FDC.007F.0@novell.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; format=flowed; delsp=yes; charset=US-ASCII
+Cc: Lisa Week <Lisa.Week@Sun.COM>, nfsv4@ietf.org,
+	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
+	Spencer Shepler <spencer.shepler@Sun.COM>, "Pawlowski,
+	Brian" <beepy@netapp.com>, Andreas Gruenbacher <agruen@suse.de>
+Return-path: <nfsv4-bounces@ietf.org>
+In-reply-to: <C98692FD98048C41885E0B0FACD9DFB8029EFFAD@exnane01.hq.netapp.com>
+To: "Noveck, Dave" <Dave.Noveck@netapp.com>
+List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Errors-To: nfsv4-bounces@ietf.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, Jul 20, 2006 at 12:11:26AM -0600, Rajat Upadhyaya wrote:
-> I have been working on setting up NFSv4 in cluster scenario. But when
-> it comes to an Active-Active setup, it seems there are a few problems. 
+On Jul 18, 2006, at 7:48 PM, Noveck, Dave wrote:
 
-Yes.  Even active-passive failover is problematic right now, mainly
-because the method we use for storing reboot recovery information
-(analagous to the state recorded by statd) is still in flux.
+> It seems like this is what most users would want.  It doesn't seem to
+> match what is specified in section 3.16.6.3 of draft-03.  That says
+> the acl is modified when you change the mode.
 
-We're aware of these problems and working on solving them.  There are
-some rough (possibly out of date notes) here:
+Right -- see below...
 
-http://wiki.linux-nfs.org/index.php/Cluster_Coherent_NFS_design
+> What does solaris do if you do a chmod specifying a numeric mode
+> whose value is the same as would be set by doing a chomod +s?  Does
+> that change the ACL?
 
-but those are more of interest to someone working on design of a
-solution than to someone trying to set up and use any of this (which we
-don't recommend doing yet).
+Sorry, I misunderstood your earlier question -- I was testing against  
+POSIX-draft ACLs, and not NFSv4 ACLs.  In the case of NFSv4 ACLs (on  
+ZFS), it does change the ACL, whether you use "+s" or "4xxx".  In my  
+test, it added a mask ACE for the supplemental user I had added  
+before, even though the mask didn't really mask anything in this case.
 
---b.
+As you pointed out, chmod doesn't necessarily have to modify the ACL  
+to set the setuid bit in the mode, unless the mode requires changes  
+to the ACL for POSIX conformance.  The mode might require changing  
+the ACL more times than is obvious, but the ACL specification  
+shouldn't require unnecessary changes to the ACL...
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+Here's an idea.  It's not an original idea, it's one that Bruce  
+proposed last April, and unfortunately his comments went unanswered  
+(mea culpa).
+
+The current ACL spec, in the minorversion1 draft and in the previous  
+ACL drafts, rigorously specifies mode/ACL interactions by specifying  
+algorithms.  Bruce had the comment that the spec read as though the  
+algorithm was mandatory.
+
+Rethinking, it would be preferable to have the ACL specification  
+specify requirements, and have the algorithms serve as examples.  Or,  
+rewrite the sections as requirements, and release algorithms outside  
+the minorversion1 draft, possibly through one or more informational  
+RFCs.  This would shorten the minorversion1 draft, without  
+invalidating the existing semantics.
+
+We'll try to have an initial draft of the ACL parts of the  
+minorversion1 document on August 7.  I'll also add an issue to nfs4- 
+editor.org.
+
+- Sam
+
+(Read on if you're interested in implications.)
+
+This would make it possible to craft different algorithms that can  
+still meet the ACL spec in minorversion1.  Take this example single- 
+ACE ACL as a starting point:
+
+EVERYONE@:read_data/execute::ALLOW
+
+and a starting mode of 0555.
+
+given a setattr of mode 4555 and no ACL, the new mode MUST become  
+4555, and the resulting ACL could legally be any of the following:
+
+(current algorithm)
+EVERYONE@:::ALLOW
+OWNER@:write_data/append_data::DENY
+OWNER@:read_data/write_xattr/execute/write_attributes/write_acl/ 
+write_owner::ALLOW
+GROUP@:write_data/append_data::DENY
+GROUP@:read_data/execute::ALLOW
+EVERYONE@:write_data/append_data/write_xattr/write_attributes/ 
+write_acl/write_owner::DENY
+EVERYONE@:read_data/read_xattr/execute/read_attributes/read_acl/ 
+synchronize::ALLOW
+
+or
+
+(simple ALLOW-only-when-possible algorithm)
+OWNER@:read_data/execute::ALLOW
+GROUP@:read_data/execute::ALLOW
+EVERYONE@:read_data/execute::ALLOW
+
+or
+
+(unchanged -- this algorithm is smart enough to see that no change  
+was necessary)
+EVERYONE@:read_data/execute::ALLOW
+
+
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www1.ietf.org/mailman/listinfo/nfsv4
