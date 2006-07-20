@@ -1,76 +1,62 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: NFSv4 Active-Active Cluster Queries
-Date: Thu, 20 Jul 2006 17:12:25 +1000
-Message-ID: <17599.11481.634050.489349@cse.unsw.edu.au>
-References: <44BCC5620200007F0000E2C6@lucius.provo.novell.com>
-	<44BCD1F80200007F0000E2CA@lucius.provo.novell.com>
-	<44BCE7BB0200007F0000E2E7@lucius.provo.novell.com>
-	<44BF54250200007F0000E3E0@lucius.provo.novell.com>
-	<44BF5EF80200007F0000E3E4@lucius.provo.novell.com>
-	<44BF5F580200007F0000E3E7@lucius.provo.novell.com>
-	<44BF5F8B0200007F0000E3EA@lucius.provo.novell.com>
-	<44BF607D0200007F0000E3ED@lucius.provo.novell.com>
-	<44BF6B4F0200007F0000E3F6@lucius.provo.novell.com>
-	<44BF6B870200007F0000E3F9@lucius.provo.novell.com>
-	<44BF6BA30200007F0000E3FC@lucius.provo.novell.com>
-	<44BF6BE60200007F0000E3FF@lucius.provo.novell.com>
-	<44BF6BE5.6FDC.007F.0@novell.com>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: nfs problems with 2.6.18-rc1
+Date: Thu, 20 Jul 2006 10:11:43 +0200
+Message-ID: <20060720081143.GA1408@janus>
+References: <priv$8d118c145575$b19af6759a@200607.shadow.banki.hu>
+	<17594.51834.20365.820166@cse.unsw.edu.au>
+	<priv$efbe06145615$0a94d550eb@200607.gmail.com>
+	<priv$8d118c145627$464a3143cd@200607.shadow.banki.hu>
+	<17597.28376.805867.197599@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "Rajat Upadhyaya" <urajat@novell.com>
-In-Reply-To: message from Rajat Upadhyaya on Thursday July 20
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Janos Farkas <chexum+dev@gmail.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G3TdQ-0007CN-Ma
+	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 01:11:52 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G3TdP-0005A1-PE
+	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 01:11:53 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17597.28376.805867.197599@cse.unsw.edu.au>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday July 20, urajat@novell.com wrote:
-> Hi,
+On Wed, Jul 19, 2006 at 09:29:28AM +1000, Neil Brown wrote:
+[...]
 > 
-> I have been working on setting up NFSv4 in cluster scenario. But when
-> it comes to an Active-Active setup, it seems there are a few problems. 
+> > 13:37:51.254708 access fh Unknown/0100000100FD000002000000755104000AA487A20000001F0AA487A200030001 001f
+> > 13:37:51.255375 reply ok 32 access ERROR: Permission denied attr:
 > 
-> In Active-Passive case, the /var/lib/nfs directory itself is moved to
-> shared storage & on the nodes in the cluster, symlinks are created
-> pointing to the location on shared storage. This isn't possible in case
-> of Active-Active setup. In this case, we will need to use scripts to
-> merge the information in /var/lib/nfs from the failed node with that on
-> the running one and then do a re-export. 
-> 
-> 1) From the High Availability wiki (http://wiki.linux-ha.org), I got to
-> this page -
-> http://chilli.linuxmds.com/~mschilli/NFS/active-active-nfs.html where
-> a method of setting up Active-Active NFS failover was described.
-> Basically a set of scripts is used to duplicate the rmtab entries on the
-> node that takes over the process during failover. Will this method hold
-> in case of NFSv4 too? What other data would need to be duplicated?
+> 'access' should never return 'Permission denied' so there is
+> definitely something wrong here.  I was expected nfserr_acces rather
+> than nfserr_perm...
 
-rmtab is simply not an issue - you can ignore it.
-Provided /proc/fs/nfsd is mounted, the contents of rmtab are ignored.
+Maybe a silly remark but:
 
-What is important is locking state.  For NFSv4, that means the 
-contents of /var/lib/nfs/v4recovery.  I don't know exactly how this is
-handled.
+	EACCES = Permission denied
+	EPERM = Operation not permitted
 
-> 
-> 3) Locking issues - revocation & reacquiring of locks.
+-- 
+Frank
 
-Wendy Cheng <wcheng@redhat.com> has been looking at what kernel/utils
-changes are needed to support this fully, though I think she is only
-looking at v3.
-
-> 
-> 4) I can see that there is some HA callout code in nfs-utils (under
-> support). Is this applicable for NFSv4 also?
-
-No.  Currently all v4 state is handled by the kernel, though that may change.
-
-NeilBrown
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
