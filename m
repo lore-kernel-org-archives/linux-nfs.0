@@ -1,23 +1,30 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: Bug starting 2.6.16 - rpc: bad TCP reclen
-Date: Thu, 20 Jul 2006 10:38:16 +0200
-Message-ID: <200607201038.16637.bernd-schubert@gmx.de>
-References: <44BCC7A1.30104@plutohome.com> <44BE5538.4080508@plutohome.com>
-	<17599.1679.768863.576310@cse.unsw.edu.au>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: NFS and partitioned md
+Date: Thu, 20 Jul 2006 11:07:36 +0200
+Message-ID: <20060720090736.GB1408@janus>
+References: <1151355145.4460.16.camel@archon.smoula-in.net>
+	<17568.31894.207153.563590@cse.unsw.edu.au>
+	<1151432312.11996.32.camel@reaver.netbox-in.cz>
+	<17571.19699.980491.970386@cse.unsw.edu.au>
+	<44BD2A29.8060405@dgreaves.com>
+	<1153253099.26360.3.camel@archon.smoula-in.net>
+	<17598.52873.335796.13969@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: Neil Brown <neilb@suse.de>, Chuck Lever <chucklever@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>,
+	David Greaves <david@dgreaves.com>, linux-kernel@vger.kernel.org,
+	Martin Filip <bugtraq@smoula.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G3U0e-0000qm-Js
-	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 01:35:52 -0700
-Received: from mail.gmx.de ([213.165.64.21] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1G3U0d-0002CG-C4
-	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 01:35:53 -0700
-To: nfs@lists.sourceforge.net
-In-Reply-To: <17599.1679.768863.576310@cse.unsw.edu.au>
+	id 1G3UVW-0003vI-5F
+	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 02:07:46 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G3UVV-00076t-7A
+	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 02:07:46 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17598.52873.335796.13969@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,64 +37,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> The message means that data on the TCP connection is corrupted.
-> With tcp, every RPC message is prefixed by a 4 byte header.
-> The msb of this number is set to one to show it is the last of a
-> sequence of fragments (we don't support multiple rpc-fragments).  The
-> rest of the number is the number of bytes in the RPC message.
-> This should be less than about 32000 as we don't support any messages
-> bigger than this.  You are seeing number with the msb clear, and
-> numbers bigger than 32000.
->
-> It is very probably that this is not the first corruption in the TCP
-> stream, just the first that is being reported.  I have no idea where
-> the corruption could be coming from.
->
+On Thu, Jul 20, 2006 at 10:30:01AM +1000, Neil Brown wrote:
+> On Tuesday July 18, bugtraq@smoula.net wrote:
+> > Hi,
+> > 
+> > my solution was to use fsid parameter for exports... maybe some other
+> > mechanism for selecting fsids could be created instead of fsid = device
+> > minor
+> 
+> Yes.  Better management of fsid is on my wishlist for nfs-utils.
+> Unfortunately I haven't had any really clever ideas yet.
 
-Wouldn't tcp errors corrected get corrected by the tcp checksum (retransmit=
-)? =
+I'd like to "virtualize" exports such that it is possible to transplant
+disks/partitions from one machine into another without having to bother
+with device numbering. One step in that direction is to derive the fsid
+from an IP address. The server machine needs an additional IP address
+for every export entry. This IP address is determined by deriving
+a hostname from the last pathname component of the export entry and
+resolving it. E.g. something like:
 
-At least thats what my text book is saying.
+/etc/exports:
+	/exported/path/name	*(rw,sync,no_root_squash,no_subtree_check,fsid="nfs-%s")
 
-We are occasionally seeing those messages, too. Don't know how to reproduce =
+This would set the fsid to the IP address of host "nfs-name".
 
-it, though. =
-
-
-on our fileserver fileserver: RPC: bad TCP reclen 0x040d0a0d (non-terminal)=
-  =
-
-on our compute cluster server: RPC: bad TCP reclen 0x2dacc6c9 (large)
-
-Here its not related to 2.6.16 only. The compute cluster server shows those =
-
-messages - both server and clients are using 2.6.15. Until recently it run =
-
-2.6.11 and we never had those messages that time.
-Our main fileserver is running 2.6.13, most clients still 2.6.11 and some =
-
-clients 2.6.16. As far as I remember, those messages began when we updated =
-
-the clients from 2.6.11 to 2.6.16.
-
-Thanks,
-	Bernd
-
--- =
-
-Bernd Schubert
-PCI / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-
+-- 
+Frank
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
