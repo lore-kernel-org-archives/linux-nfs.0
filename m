@@ -1,30 +1,28 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: NFS and partitioned md
-Date: Thu, 20 Jul 2006 11:07:36 +0200
-Message-ID: <20060720090736.GB1408@janus>
-References: <1151355145.4460.16.camel@archon.smoula-in.net>
-	<17568.31894.207153.563590@cse.unsw.edu.au>
-	<1151432312.11996.32.camel@reaver.netbox-in.cz>
-	<17571.19699.980491.970386@cse.unsw.edu.au>
-	<44BD2A29.8060405@dgreaves.com>
-	<1153253099.26360.3.camel@archon.smoula-in.net>
-	<17598.52873.335796.13969@cse.unsw.edu.au>
+From: Mario Storti <mstorti@intec.unl.edu.ar>
+Subject: Re: NFS synchronization problems on Beowulf cluster
+Date: 20 Jul 2006 07:49:53 -0300
+Message-ID: <m1y7uopn3i.fsf@minerva.ceride.gov.ar>
+References: <m1hd1gksev.fsf@minerva.ceride.gov.ar>
+	<1153162159.13961.3.camel@localhost>
+	<m1ejwjtb2t.fsf@minerva.ceride.gov.ar>
+	<1153230531.22180.7.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>,
-	David Greaves <david@dgreaves.com>, linux-kernel@vger.kernel.org,
-	Martin Filip <bugtraq@smoula.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G3UVW-0003vI-5F
-	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 02:07:46 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G3UVV-00076t-7A
-	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 02:07:46 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17598.52873.335796.13969@cse.unsw.edu.au>
+	id 1G3W8b-0004Vw-A6
+	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 03:52:13 -0700
+Received: from [200.9.237.134] (helo=intec.unl.edu.ar)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1G3W8b-0005m1-62
+	for nfs@lists.sourceforge.net; Thu, 20 Jul 2006 03:52:13 -0700
+Received: from minerva.ceride.gov.ar.ceride.gov.ar (localhost [127.0.0.1])
+	by intec.unl.edu.ar (8.12.8/8.12.8) with ESMTP id k6KBMum6016510
+	for <nfs@lists.sourceforge.net>; Thu, 20 Jul 2006 08:22:57 -0300
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1153230531.22180.7.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,32 +35,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jul 20, 2006 at 10:30:01AM +1000, Neil Brown wrote:
-> On Tuesday July 18, bugtraq@smoula.net wrote:
-> > Hi,
-> > 
-> > my solution was to use fsid parameter for exports... maybe some other
-> > mechanism for selecting fsids could be created instead of fsid = device
-> > minor
-> 
-> Yes.  Better management of fsid is on my wishlist for nfs-utils.
-> Unfortunately I haven't had any really clever ideas yet.
 
-I'd like to "virtualize" exports such that it is possible to transplant
-disks/partitions from one machine into another without having to bother
-with device numbering. One step in that direction is to derive the fsid
-from an IP address. The server machine needs an additional IP address
-for every export entry. This IP address is determined by deriving
-a hostname from the last pathname component of the export entry and
-resolving it. E.g. something like:
+>>>>> On Tue, 18 Jul 2006 09:48:51 -0400, 
+>>>>>      Trond Myklebust <trond.myklebust@fys.uio.no> said:
 
-/etc/exports:
-	/exported/path/name	*(rw,sync,no_root_squash,no_subtree_check,fsid="nfs-%s")
+> On Tue, 2006-07-18 at 08:19 -0300, Mario Storti wrote:
+>> > This is a FAQ that has been well-publicised and discussed to death on
+>> > this list:
+>> >   http://nfs.sourceforge.net/#faq_a8
+>> 
+>> I tried to mount with `nocto' and `noac' options without success. Also
+>> tried acregmax=0,acdirmax=0. We are trying to determine if there is
+>> some mistake in our configuration or if this is a `normal'
+>> behavior. Your post seems to suggest that this is a `normal' behavior.
+>> However, previously we had a cluster with RedHat 7.1 (kernel
+>> 2.2.16-22, NFS version 2) and we didn't had problems like this.  We
+>> tried to use NFS version 2 on the new cluster and the problem
+>> persists. So I think that this is problem with the configuration and we
+>> are still trying to solve the problem tuning the mount/server options.
 
-This would set the fsid to the IP address of host "nfs-name".
+> Please reread the article. This is _normal_ behaviour. NFS has never
+> been guaranteed to be cache coherent in this way.
 
--- 
-Frank
+> NFS checks its data cache on calls to open()/opendir(), and on taking a
+> lock. That is all.
+
+I tried to do a `ls -l' of the directory and the contents of the files
+are still out of sync. (I assume that `ls -l' does an `opendir()' call.)
+
+Perhaps these questions are too basic for this list. In that case,
+please redirect me to the appropriated list or newsgroup. 
+
+Thanks again, Mario
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
