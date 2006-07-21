@@ -1,24 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Fwd:  nfs-utils compilation failing?
-Date: Fri, 21 Jul 2006 17:46:07 +1000
-Message-ID: <17600.34367.859069.55173@cse.unsw.edu.au>
-References: <OF11F5EA29.FE9B4626-ON882571A8.0071F565-882571A8.0072D28A@us.ibm.com>
-	<4d569c330607112009o56e869cfr47d91ad9347ead3@mail.gmail.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: NFSv4 Active-Active Cluster Queries
+Date: Fri, 21 Jul 2006 13:27:07 -0400
+Message-ID: <44C10E6B.4070000@redhat.com>
+References: <44BCC5620200007F0000E2C6@lucius.provo.novell.com>	<44BCD1F80200007F0000E2CA@lucius.provo.novell.com>	<44BCE7BB0200007F0000E2E7@lucius.provo.novell.com>	<44BF54250200007F0000E3E0@lucius.provo.novell.com>	<44BF5EF80200007F0000E3E4@lucius.provo.novell.com>	<44BF5F580200007F0000E3E7@lucius.provo.novell.com>	<44BF5F8B0200007F0000E3EA@lucius.provo.novell.com>	<44BF607D0200007F0000E3ED@lucius.provo.novell.com>	<44BF6B4F0200007F0000E3F6@lucius.provo.novell.com>	<44BF6B870200007F0000E3F9@lucius.provo.novell.com>	<44BF6BA30200007F0000E3FC@lucius.provo.novell.com>	<44BF6BE60200007F0000E3FF@lucius.provo.novell.com>	<44BF6BE5.6FDC.007F.0@novell.com>
+	<17599.11481.634050.489349@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sf.net, Usha Ketineni <uketinen@us.ibm.com>
+Cc: Olaf Kirch <okir@suse.de>, nfsv4@linux-nfs.org,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G3pio-0000aF-O3
-	for nfs@lists.sourceforge.net; Fri, 21 Jul 2006 00:46:54 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G3pin-0002NK-Sa
-	for nfs@lists.sourceforge.net; Fri, 21 Jul 2006 00:46:55 -0700
-To: "Kevin Coffman" <kwc@citi.umich.edu>
-In-Reply-To: message from Kevin Coffman on Tuesday July 11
+	id 1G3yma-0004A2-4s
+	for nfs@lists.sourceforge.net; Fri, 21 Jul 2006 10:27:24 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G3yma-0007cG-AY
+	for nfs@lists.sourceforge.net; Fri, 21 Jul 2006 10:27:24 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17599.11481.634050.489349@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +31,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday July 11, kwc@citi.umich.edu wrote:
-> Crap.  This is my fault.  It is the result of re-ordering patches that
-> I submitted for 1.0.9.  I have the following in a patch that I haven't
-> submitted yet:
+Neil Brown wrote:
 
-:-(  That's a shame.
-It's in git and will be in whatever the next release is.
+>On Thursday July 20, urajat@novell.com wrote:
+>  
+>
+>>Hi,
+>>
+>>I have been working on setting up NFSv4 in cluster scenario. But when
+>>it comes to an Active-Active setup, it seems there are a few problems. 
+>>
+>>    
+>>
+>>3) Locking issues - revocation & reacquiring of locks.
+>>    
+>>
+>
+>Wendy Cheng <wcheng@redhat.com> has been looking at what kernel/utils
+>changes are needed to support this fully, though I think she is only
+>looking at v3.
+>
+>  
+>
+The v3 patches are currently under function verification tests using 
+RHCS cluser suite - so far so good 
+(http://people.redhat.com/wcheng/Patches/NLM/). After documenting the 
+procedure and restrictions, the formal submission (to nfs list) is 
+scheduled at end of this month.
+                                                                                
 
-NeilBrown
+Not sure what to do with V4 yet .. need to chat with CITI folks first.
+                                                                                
 
-> 
-> diff -puN utils/gssd/write_bytes.h~gssd_handle_cfx_context
-> utils/gssd/write_bytes.h
-> --- nfs-utils-1.0.9/utils/gssd/write_bytes.h~gssd_handle_cfx_context	2006-07-10
-> 14:46:13.929980000 -0400
-> +++ nfs-utils-1.0.9-kwc/utils/gssd/write_bytes.h	2006-07-10
-> 14:46:14.017955000 -0400
-> @@ -63,6 +63,19 @@ write_buffer(char **p, char *end, gss_bu
->  	return 0;
->  }
-> 
-> +inline static int
-> +write_oid(char **p, char *end, gss_OID_desc *arg)
-> +{
-> +	int len = (int)arg->length;		/* make an int out of size_t */
-> +	if (WRITE_BYTES(p, end, len))
-> +		return -1;
-> +	if (*p + arg->length > end)
-> +		return -1;
-> +	memcpy(*p, arg->elements, len);
-> +	*p += len;
-> +	return 0;
-> +}
-> +
->  static inline int
->  get_bytes(char **ptr, const char *end, void *res, int len)
->  {
-> 
+-- Wendy
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
