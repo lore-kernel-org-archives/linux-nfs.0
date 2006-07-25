@@ -1,8 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 001 of 9] knfsd: knfsd: Add some missing newlines in
-	printks
-Date: Tue, 25 Jul 2006 11:54:27 +1000
-Message-ID: <1060725015427.21909@suse.de>
+Subject: [PATCH 002 of 9] knfsd: knfsd: Remove an unused variable from
+	e_show().
+Date: Tue, 25 Jul 2006 11:54:32 +1000
+Message-ID: <1060725015432.21921@suse.de>
 References: <20060725114207.21779.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5C8b-0004a9-AE
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:09 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G5C8d-0004aE-Qz
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:12 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G5C8a-0003xa-88
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:09 -0700
+	(Exim 4.44) id 1G5C8d-0003yD-Pn
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:12 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -37,49 +37,28 @@ Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/export.c       |    2 +-
- ./fs/nfsd/nfs4callback.c |    2 +-
- ./fs/nfsd/nfs4proc.c     |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ ./fs/nfsd/export.c |    2 --
+ 1 file changed, 2 deletions(-)
 
 diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
 --- .prev/fs/nfsd/export.c	2006-07-24 14:33:06.000000000 +1000
-+++ ./fs/nfsd/export.c	2006-07-24 14:33:06.000000000 +1000
-@@ -370,7 +370,7 @@ static int check_export(struct inode *in
- 	 */
- 	if (!(inode->i_sb->s_type->fs_flags & FS_REQUIRES_DEV) &&
- 	    !(flags & NFSEXP_FSID)) {
--		dprintk("exp_export: export of non-dev fs without fsid");
-+		dprintk("exp_export: export of non-dev fs without fsid\n");
- 		return -EINVAL;
++++ ./fs/nfsd/export.c	2006-07-24 14:33:26.000000000 +1000
+@@ -1178,7 +1178,6 @@ static int e_show(struct seq_file *m, vo
+ {
+ 	struct cache_head *cp = p;
+ 	struct svc_export *exp = container_of(cp, struct svc_export, h);
+-	svc_client *clp;
+ 
+ 	if (p == (void *)1) {
+ 		seq_puts(m, "# Version 1.1\n");
+@@ -1186,7 +1185,6 @@ static int e_show(struct seq_file *m, vo
+ 		return 0;
  	}
- 	if (!inode->i_sb->s_export_op) {
-
-diff .prev/fs/nfsd/nfs4callback.c ./fs/nfsd/nfs4callback.c
---- .prev/fs/nfsd/nfs4callback.c	2006-07-24 14:33:06.000000000 +1000
-+++ ./fs/nfsd/nfs4callback.c	2006-07-24 14:33:06.000000000 +1000
-@@ -131,7 +131,7 @@ xdr_error:                              
- #define READ_BUF(nbytes)  do { \
- 	p = xdr_inline_decode(xdr, nbytes); \
- 	if (!p) { \
--		dprintk("NFSD: %s: reply buffer overflowed in line %d.", \
-+		dprintk("NFSD: %s: reply buffer overflowed in line %d.\n", \
- 			__FUNCTION__, __LINE__); \
- 		return -EIO; \
- 	} \
-
-diff .prev/fs/nfsd/nfs4proc.c ./fs/nfsd/nfs4proc.c
---- .prev/fs/nfsd/nfs4proc.c	2006-07-24 14:33:06.000000000 +1000
-+++ ./fs/nfsd/nfs4proc.c	2006-07-24 14:33:06.000000000 +1000
-@@ -600,7 +600,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, st
- 			&setattr->sa_stateid, CHECK_FH | WR_STATE, NULL);
- 		nfs4_unlock_state();
- 		if (status) {
--			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!");
-+			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
- 		}
- 	}
+ 
+-	clp = exp->ex_client;
+ 	cache_get(&exp->h);
+ 	if (cache_check(&svc_export_cache, &exp->h, NULL))
+ 		return 0;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
