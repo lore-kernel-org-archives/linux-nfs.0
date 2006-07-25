@@ -1,19 +1,19 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 001 of 11] knfsd: move tempsock aging to a timer
-Date: Tue, 25 Jul 2006 15:05:13 +1000
-Message-ID: <1153803913.21040.2.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 002 of 11] knfsd: convert sk_inuse to atomic_t
+Date: Tue, 25 Jul 2006 15:06:53 +1000
+Message-ID: <1153804013.21040.5.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5F6e-0002zs-6F
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:05:20 -0700
+	id 1G5F8E-00036G-UV
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:06:58 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5F6d-0002Vk-74
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:05:20 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5F8F-0005yq-33
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:06:59 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,210 +27,139 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Move the aging of RPC/TCP connection sockets from the main
-svc_recv() loop to a timer which uses a mark-and-sweep algorithm
-every 6 minutes.  This reduces the amount of work that needs to be
-done in the main RPC loop and the length of time we need to hold
-the (effectively global) svc_serv->sv_lock.
-
+knfsd: Convert the svc_sock->sk_inuse counter from an int protected
+by svc_serv->sv_lock, to an atomic.  This reduces the number of places
+we need to take the (effectively global) svc_serv->sv_lock.
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- include/linux/sunrpc/svc.h     |    1 
- include/linux/sunrpc/svcsock.h |    2 
- net/sunrpc/svc.c               |    3 
- net/sunrpc/svcsock.c           |   96 +++++++++++++++++++++---------
- 4 files changed, 76 insertions(+), 26 deletions(-)
+ include/linux/sunrpc/svcsock.h |    2 +-
+ net/sunrpc/svcsock.c           |   29 +++++++++++------------------
+ 2 files changed, 12 insertions(+), 19 deletions(-)
 
-Index: linus-git/include/linux/sunrpc/svc.h
-===================================================================
---- linus-git.orig/include/linux/sunrpc/svc.h	2006-07-05 15:55:39.692174436 +1000
-+++ linus-git/include/linux/sunrpc/svc.h	2006-07-24 16:11:01.433553624 +1000
-@@ -40,6 +40,7 @@ struct svc_serv {
- 	struct list_head	sv_permsocks;	/* all permanent sockets */
- 	struct list_head	sv_tempsocks;	/* all temporary sockets */
- 	int			sv_tmpcnt;	/* count of temporary sockets */
-+	struct timer_list	sv_temptimer;	/* timer for aging temporary sockets */
- 
- 	char *			sv_name;	/* service name */
- };
 Index: linus-git/include/linux/sunrpc/svcsock.h
 ===================================================================
---- linus-git.orig/include/linux/sunrpc/svcsock.h	2006-07-05 15:55:39.693150872 +1000
-+++ linus-git/include/linux/sunrpc/svcsock.h	2006-07-24 16:11:01.433553624 +1000
-@@ -31,6 +31,8 @@ struct svc_sock {
- #define	SK_DEAD		6			/* socket closed */
- #define	SK_CHNGBUF	7			/* need to change snd/rcv buffer sizes */
- #define	SK_DEFERRED	8			/* request on sk_deferred */
-+#define	SK_OLD		9			/* used for temp socket aging mark+sweep */
-+#define	SK_DETACHED	10			/* detached from tempsocks list */
+--- linus-git.orig/include/linux/sunrpc/svcsock.h	2006-07-24 16:11:01.433553624 +1000
++++ linus-git/include/linux/sunrpc/svcsock.h	2006-07-24 16:54:25.020894827 +1000
+@@ -21,7 +21,7 @@ struct svc_sock {
+ 	struct sock *		sk_sk;		/* INET layer */
  
- 	int			sk_reserved;	/* space on outq that is reserved */
- 
-Index: linus-git/net/sunrpc/svc.c
-===================================================================
---- linus-git.orig/net/sunrpc/svc.c	2006-07-24 15:14:46.987645180 +1000
-+++ linus-git/net/sunrpc/svc.c	2006-07-24 16:11:01.453551029 +1000
-@@ -57,6 +57,7 @@ svc_create(struct svc_program *prog, uns
- 	INIT_LIST_HEAD(&serv->sv_sockets);
- 	INIT_LIST_HEAD(&serv->sv_tempsocks);
- 	INIT_LIST_HEAD(&serv->sv_permsocks);
-+	init_timer(&serv->sv_temptimer);
- 	spin_lock_init(&serv->sv_lock);
- 
- 	/* Remove any stale portmap registrations */
-@@ -85,6 +86,8 @@ svc_destroy(struct svc_serv *serv)
- 	} else
- 		printk("svc_destroy: no threads for serv=%p!\n", serv);
- 
-+	del_timer_sync(&serv->sv_temptimer);
-+
- 	while (!list_empty(&serv->sv_tempsocks)) {
- 		svsk = list_entry(serv->sv_tempsocks.next,
- 				  struct svc_sock,
+ 	struct svc_serv *	sk_server;	/* service for this socket */
+-	unsigned int		sk_inuse;	/* use count */
++	atomic_t		sk_inuse;	/* use count */
+ 	unsigned long		sk_flags;
+ #define	SK_BUSY		0			/* enqueued/receiving */
+ #define	SK_CONN		1			/* conn pending */
 Index: linus-git/net/sunrpc/svcsock.c
 ===================================================================
---- linus-git.orig/net/sunrpc/svcsock.c	2006-07-24 15:14:46.987645180 +1000
-+++ linus-git/net/sunrpc/svcsock.c	2006-07-24 16:53:39.126813226 +1000
-@@ -73,6 +73,13 @@ static struct svc_deferred_req *svc_defe
- static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
- 
-+/* apparently the "standard" is that clients close
-+ * idle connections after 5 minutes, servers after
-+ * 6 minutes
-+ *   http://www.connectathon.org/talks96/nfstcp.pdf
-+ */
-+static int svc_conn_age_period = 6*60;
-+
- /*
-  * Queue up an idle server thread.  Must have serv->sv_lock held.
-  * Note: this is really a stack rather than a queue, so that we only
-@@ -1183,24 +1190,7 @@ svc_recv(struct svc_serv *serv, struct s
- 		return -EINTR;
- 
- 	spin_lock_bh(&serv->sv_lock);
--	if (!list_empty(&serv->sv_tempsocks)) {
--		svsk = list_entry(serv->sv_tempsocks.next,
--				  struct svc_sock, sk_list);
--		/* apparently the "standard" is that clients close
--		 * idle connections after 5 minutes, servers after
--		 * 6 minutes
--		 *   http://www.connectathon.org/talks96/nfstcp.pdf 
--		 */
--		if (get_seconds() - svsk->sk_lastrecv < 6*60
--		    || test_bit(SK_BUSY, &svsk->sk_flags))
--			svsk = NULL;
--	}
--	if (svsk) {
--		set_bit(SK_BUSY, &svsk->sk_flags);
--		set_bit(SK_CLOSE, &svsk->sk_flags);
--		rqstp->rq_sock = svsk;
--		svsk->sk_inuse++;
--	} else if ((svsk = svc_sock_dequeue(serv)) != NULL) {
-+	if ((svsk = svc_sock_dequeue(serv)) != NULL) {
+--- linus-git.orig/net/sunrpc/svcsock.c	2006-07-24 16:53:39.126813226 +1000
++++ linus-git/net/sunrpc/svcsock.c	2006-07-24 16:54:25.092885543 +1000
+@@ -205,7 +205,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 				"svc_sock_enqueue: server %p, rq_sock=%p!\n",
+ 				rqstp, rqstp->rq_sock);
  		rqstp->rq_sock = svsk;
- 		svsk->sk_inuse++;
- 		rqstp->rq_reserved = serv->sv_bufsz;	
-@@ -1245,13 +1235,7 @@ svc_recv(struct svc_serv *serv, struct s
- 		return -EAGAIN;
- 	}
- 	svsk->sk_lastrecv = get_seconds();
--	if (test_bit(SK_TEMP, &svsk->sk_flags)) {
--		/* push active sockets to end of list */
--		spin_lock_bh(&serv->sv_lock);
--		if (!list_empty(&svsk->sk_list))
--			list_move_tail(&svsk->sk_list, &serv->sv_tempsocks);
--		spin_unlock_bh(&serv->sv_lock);
--	}
-+	clear_bit(SK_OLD, &svsk->sk_flags);
+-		svsk->sk_inuse++;
++		atomic_inc(&svsk->sk_inuse);
+ 		rqstp->rq_reserved = serv->sv_bufsz;
+ 		svsk->sk_reserved += rqstp->rq_reserved;
+ 		wake_up(&rqstp->rq_wait);
+@@ -234,7 +234,7 @@ svc_sock_dequeue(struct svc_serv *serv)
+ 	list_del_init(&svsk->sk_ready);
  
- 	rqstp->rq_secure  = ntohs(rqstp->rq_addr.sin_port) < 1024;
- 	rqstp->rq_chandle.defer = svc_defer;
-@@ -1311,6 +1295,58 @@ svc_send(struct svc_rqst *rqstp)
+ 	dprintk("svc: socket %p dequeued, inuse=%d\n",
+-		svsk->sk_sk, svsk->sk_inuse);
++		svsk->sk_sk, atomic_read(&svsk->sk_inuse));
+ 
+ 	return svsk;
+ }
+@@ -284,17 +284,11 @@ void svc_reserve(struct svc_rqst *rqstp,
+ static inline void
+ svc_sock_put(struct svc_sock *svsk)
+ {
+-	struct svc_serv *serv = svsk->sk_server;
+-
+-	spin_lock_bh(&serv->sv_lock);
+-	if (!--(svsk->sk_inuse) && test_bit(SK_DEAD, &svsk->sk_flags)) {
+-		spin_unlock_bh(&serv->sv_lock);
++	if (atomic_dec_and_test(&svsk->sk_inuse) && test_bit(SK_DEAD, &svsk->sk_flags)) {
+ 		dprintk("svc: releasing dead socket\n");
+ 		sock_release(svsk->sk_sock);
+ 		kfree(svsk);
+ 	}
+-	else
+-		spin_unlock_bh(&serv->sv_lock);
  }
  
- /*
-+ * Timer function to close old temporary sockets, using
-+ * a mark-and-sweep algorithm.
-+ */
-+static void
-+svc_age_temp_sockets(unsigned long closure)
-+{
-+	struct svc_serv *serv = (struct svc_serv *)closure;
-+	struct svc_sock *svsk;
-+	struct list_head *le, *next;
-+	LIST_HEAD(to_be_aged);
-+
-+	dprintk("svc_age_temp_sockets\n");
-+
-+	if (!spin_trylock_bh(&serv->sv_lock)) {
-+		/* busy, try again 1 sec later */
-+		dprintk("svc_age_temp_sockets: busy\n");
-+		mod_timer(&serv->sv_temptimer, jiffies + HZ);
-+		return;
-+	}
-+
-+	list_for_each_safe(le, next, &serv->sv_tempsocks) {
-+		svsk = list_entry(le, struct svc_sock, sk_list);
-+
-+		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
-+			continue;
-+		if (svsk->sk_inuse || test_bit(SK_BUSY, &svsk->sk_flags))
-+			continue;
-+		svsk->sk_inuse++;
-+		list_move(le, &to_be_aged);
-+		set_bit(SK_CLOSE, &svsk->sk_flags);
-+		set_bit(SK_DETACHED, &svsk->sk_flags);
-+	}
-+	spin_unlock_bh(&serv->sv_lock);
-+
-+	while (!list_empty(&to_be_aged)) {
-+		le = to_be_aged.next;
-+		/* fiddling the sk_list node is safe 'cos we're SK_DETACHED */
-+		list_del_init(le);
-+		svsk = list_entry(le, struct svc_sock, sk_list);
-+
-+		dprintk("queuing svsk %p for closing, %lu seconds old\n",
-+			svsk, get_seconds() - svsk->sk_lastrecv);
-+
-+		/* a thread will dequeue and close it soon */
-+		svc_sock_enqueue(svsk);
-+		svc_sock_put(svsk);
-+	}
-+
-+	mod_timer(&serv->sv_temptimer, jiffies + svc_conn_age_period * HZ);
-+}
-+
-+/*
-  * Initialize socket for RPC use and create svc_sock struct
-  * XXX: May want to setsockopt SO_SNDBUF and SO_RCVBUF.
-  */
-@@ -1363,6 +1399,13 @@ svc_setup_socket(struct svc_serv *serv, 
- 		set_bit(SK_TEMP, &svsk->sk_flags);
- 		list_add(&svsk->sk_list, &serv->sv_tempsocks);
- 		serv->sv_tmpcnt++;
-+		if (serv->sv_temptimer.function == NULL) {
-+			/* setup timer to age temp sockets */
-+			serv->sv_temptimer.function = svc_age_temp_sockets;
-+			serv->sv_temptimer.data = (unsigned long)serv;
-+			serv->sv_temptimer.expires = jiffies + svc_conn_age_period * HZ;
-+			add_timer(&serv->sv_temptimer);
-+		}
- 	} else {
- 		clear_bit(SK_TEMP, &svsk->sk_flags);
- 		list_add(&svsk->sk_list, &serv->sv_permsocks);
-@@ -1446,7 +1489,8 @@ svc_delete_socket(struct svc_sock *svsk)
+ static void
+@@ -861,7 +855,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 					  struct svc_sock,
+ 					  sk_list);
+ 			set_bit(SK_CLOSE, &svsk->sk_flags);
+-			svsk->sk_inuse ++;
++			atomic_inc(&svsk->sk_inuse);
+ 		}
+ 		spin_unlock_bh(&serv->sv_lock);
  
+@@ -1192,7 +1186,7 @@ svc_recv(struct svc_serv *serv, struct s
  	spin_lock_bh(&serv->sv_lock);
+ 	if ((svsk = svc_sock_dequeue(serv)) != NULL) {
+ 		rqstp->rq_sock = svsk;
+-		svsk->sk_inuse++;
++		atomic_inc(&svsk->sk_inuse);
+ 		rqstp->rq_reserved = serv->sv_bufsz;	
+ 		svsk->sk_reserved += rqstp->rq_reserved;
+ 	} else {
+@@ -1224,7 +1218,7 @@ svc_recv(struct svc_serv *serv, struct s
+ 	spin_unlock_bh(&serv->sv_lock);
  
--	list_del_init(&svsk->sk_list);
-+	if (!test_and_set_bit(SK_DETACHED, &svsk->sk_flags))
-+		list_del_init(&svsk->sk_list);
- 	list_del_init(&svsk->sk_ready);
- 	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags))
+ 	dprintk("svc: server %p, socket %p, inuse=%d\n",
+-		 rqstp, svsk, svsk->sk_inuse);
++		 rqstp, svsk, atomic_read(&svsk->sk_inuse));
+ 	len = svsk->sk_recvfrom(rqstp);
+ 	dprintk("svc: got len=%d\n", len);
+ 
+@@ -1320,9 +1314,9 @@ svc_age_temp_sockets(unsigned long closu
+ 
+ 		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
+ 			continue;
+-		if (svsk->sk_inuse || test_bit(SK_BUSY, &svsk->sk_flags))
++		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY, &svsk->sk_flags))
+ 			continue;
+-		svsk->sk_inuse++;
++		atomic_inc(&svsk->sk_inuse);
+ 		list_move(le, &to_be_aged);
+ 		set_bit(SK_CLOSE, &svsk->sk_flags);
+ 		set_bit(SK_DETACHED, &svsk->sk_flags);
+@@ -1383,6 +1377,7 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
+ 	svsk->sk_server = serv;
++	atomic_set(&svsk->sk_inuse, 0);
+ 	svsk->sk_lastrecv = get_seconds();
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+ 	INIT_LIST_HEAD(&svsk->sk_ready);
+@@ -1496,7 +1491,7 @@ svc_delete_socket(struct svc_sock *svsk)
  		if (test_bit(SK_TEMP, &svsk->sk_flags))
+ 			serv->sv_tmpcnt--;
+ 
+-	if (!svsk->sk_inuse) {
++	if (!atomic_read(&svsk->sk_inuse)) {
+ 		spin_unlock_bh(&serv->sv_lock);
+ 		sock_release(svsk->sk_sock);
+ 		kfree(svsk);
+@@ -1574,10 +1569,8 @@ svc_defer(struct cache_req *req)
+ 		dr->argslen = rqstp->rq_arg.len >> 2;
+ 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
+ 	}
+-	spin_lock_bh(&rqstp->rq_server->sv_lock);
+-	rqstp->rq_sock->sk_inuse++;
++	atomic_inc(&rqstp->rq_sock->sk_inuse);
+ 	dr->svsk = rqstp->rq_sock;
+-	spin_unlock_bh(&rqstp->rq_server->sv_lock);
+ 
+ 	dr->handle.revisit = svc_revisit;
+ 	return &dr->handle;
 
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
