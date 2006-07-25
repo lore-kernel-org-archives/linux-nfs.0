@@ -1,21 +1,25 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 000 of 9] knfsd: Introduction
-Date: Tue, 25 Jul 2006 11:54:21 +1000
-Message-ID: <20060725114207.21779.patches@notabene>
+From: Steven Shiau <steven@nchc.org.tw>
+Subject: root over nfs4 ?
+Date: Tue, 25 Jul 2006 09:54:32 +0800
+Message-ID: <44C579D8.6030908@nchc.org.tw>
+Reply-To: steven@nchc.org.tw
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="===============0883357944=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5C8W-0004YG-Cq
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:04 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G5C8V-0003tZ-AT
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:04 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1G5C8a-0004a4-3y
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:08 -0700
+Received: from smtp.nchc.org.tw ([140.110.16.10])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5C8Y-0003sS-9V
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:08 -0700
+Received: from [140.110.59.180] (palm180.nchc.org.tw [140.110.59.180])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp.nchc.org.tw (Postfix) with ESMTP id 48854E6043
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jul 2006 09:54:56 +0800 (CST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,41 +32,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Following are 9 patches for knfsd in 2.6-18-rc1-mm2
-They should be held for 2.6.19.
+--===============0883357944==
+Content-Type: text/plain; charset=Big5
+Content-Transfer-Encoding: 7bit
 
-They comprise
- 3 trivial cleanups from Greg Banks
- Some fixes/cleanups to socket/version selection code.
- Adding a 'portlist' file to the 'nfsd' filesystem.
-  This can be used to open and close sockets used by the nfs server.
-  New sockets are created in user-space and passed down by writing
-   an 'fd' number.
-  Old sockets are closed by finding the appropriate name in 'portlist'
-  and writing it back to 'portlist' preceded by a '-'.
+Hi,
+Does anybody has any experience about root over nfs4 ?
+We found that more programs are necessary in root over nfs4 than root
+over nfs3.
+For NFS3, the initrd in the diskless environment, only program "mount"
+from busybox is necessary to mount the directory from nfs3 server.
+However, for NFS4, program "mount" from busybox (1.2.0) does not support
+nfs4, so the one from util-linux in necessary. Moreover, portmap and
+rpc.idmapd are necessary. Hence the idmapd.conf is necessary, too.
+Is that possible we can use some options to make it easier, such as in
+nfs3, option "nolock" is used to mount the read-only root.
 
-nfs-utils-1.0.9 can work with 'portlist' to e.g. control which
-protocol (udp or tcp) is used.  However it has other problems:
- rpc.nfsd 0
-will no longer stop all nfsd threads.  So there will be a 1.0.10 shortly.
+Any comment is welcome.
+Thanks in advance.
 
-NeilBrown
+-- 
+Steven Shiau <steven _at_ nchc org tw> <steven _at_ stevenshiau org>
+National Center for High-performance Computing, Taiwan.
+http://www.nchc.org.tw
+Public Key Server PGP Key ID: 9762755A
 
- [PATCH 001 of 9] knfsd: knfsd: Add some missing newlines in printks
- [PATCH 002 of 9] knfsd: knfsd: Remove an unused variable from e_show().
- [PATCH 003 of 9] knfsd: knfsd: Remove an unused variable from auth_unix_lookup()
- [PATCH 004 of 9] knfsd: Add a callback for when last rpc thread finishes.
- [PATCH 005 of 9] knfsd: Be more selective in which sockets lockd listens on.
- [PATCH 006 of 9] knfsd: Remove nfsd_versbits as intermediate storage for desired versions.
- [PATCH 007 of 9] knfsd: Separate out some parts of nfsd_svc, which start nfs servers.
- [PATCH 008 of 9] knfsd: Define new nfsdfs file: portlist - contains list of ports.
- [PATCH 009 of 9] knfsd: Allow sockets to be passed to nfsd via 'portlist'
+
+--===============0883357944==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0883357944==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0883357944==--
