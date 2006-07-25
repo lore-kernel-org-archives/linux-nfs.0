@@ -1,20 +1,30 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 000 of 11] knfsd: NUMAisation
-Date: Tue, 25 Jul 2006 15:27:54 +1000
-Message-ID: <1153805274.21040.38.camel@hole.melbourne.sgi.com>
+Subject: Re: [PATCH 002 of 9] knfsd: knfsd: Remove an
+	unused	variable	from e_show().
+Date: Tue, 25 Jul 2006 15:53:11 +1000
+Message-ID: <1153806790.21040.45.camel@hole.melbourne.sgi.com>
+References: <20060725114207.21779.patches@notabene>
+	<1060725015432.21921@suse.de>
+	<20060725041059.GA13294@filer.fsl.cs.sunysb.edu>
+	<17605.39934.963857.665398@cse.unsw.edu.au>
+	<1153801950.1547.657.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: Andrew Morton <akpm@osdl.org>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Josef Sipek <jsipek@fsl.cs.sunysb.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5FSb-0004vs-GV
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:28:01 -0700
+	id 1G5Fr6-00072P-6I
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:53:20 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5FSZ-0001Oz-KA
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:28:01 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5Fr4-0003IU-Et
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:53:20 -0700
 To: Neil Brown <neilb@suse.de>
+In-Reply-To: <1153801950.1547.657.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,39 +37,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-G'day,
+On Tue, 2006-07-25 at 14:32, Greg Banks wrote:
+> On Tue, 2006-07-25 at 14:20, Neil Brown wrote:
+> > On Tuesday July 25, jsipek@fsl.cs.sunysb.edu wrote:
+> > > On Tue, Jul 25, 2006 at 11:54:32AM +1000, NeilBrown wrote:
+> > > ...
+> > 
+> > Probably.  We just need a pointer value that is definitely not a
+> > pointer to a valid cache_head object, and is not NULL.
+> > (void*)1 seems a reasonable choice, but maybe #defineing something
+> > would help.
+> > 
+> > Patches welcome.
+> 
+> This trivial patch compiles.
 
-These 11 patches make the Linux NFS server scale gracefully
-on large NUMA and SMP machines.  The two basic approaches
-are to eliminate code (such as tempsock aging) from the main
-svc loop, and to move the hot locks and data structures from
-svc_serv into a new svc_pool which can be allocated per-node
-or per-cpu.
+But only applies to sles10 <sigh>.  Here's the version
+which applies to today's GIT.
+--
 
-These applied cleanly to Linus' GIT yesterday, but clash with
-today's set of 9 patches.  I'd appreciate advice in picking up
-those pieces, especially how patch your 007/9 interacts with
-my 008/11.
+knfsd: Use SEQ_START_TOKEN instead of hardcoded magic (void*)1.
 
-001 knfsd: move tempsock aging to timer
-002 knfsd: convert sk_inuse to atomic_t
-003 knfsd: use new lock for svc_sock deferred list
-004 knfsd: convert sk_reserved to atomic_t
-	These move various data structures out from the
-	protection of the svc_serv.sv_lock
-005 knfsd: test and set SK_BUSY atomically
-	This provides correct update for the SK_BUSY bit
-006 knfsd: split svc_serv into pools
-	The first major step: split off hot fields from svc_serv
-	into new svc_pool structure
-007 knfsd: add svc_get
-008 knfsd: add svc_set_num_threads
-009 knfsd: use svc_set_num_threads
-	Move management of nfsd threads from fs/nfsd to net/sunrpc
-010 knfsd: make pools numa aware 2
-	The second major step: a pool per node or cpu
-011 knfsd: allow admin to set nthreads per node
-	Admin interface to control #threads per pool
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+---
+
+ fs/nfsd/export.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+Index: linus-git/fs/nfsd/export.c
+===================================================================
+--- linus-git.orig/fs/nfsd/export.c	2006-07-25 14:55:28.000000000 +1000
++++ linus-git/fs/nfsd/export.c	2006-07-25 15:40:03.987257265 +1000
+@@ -1086,7 +1086,7 @@ static void *e_start(struct seq_file *m,
+ 	exp_readlock();
+ 	read_lock(&svc_export_cache.hash_lock);
+ 	if (!n--)
+-		return (void *)1;
++		return SEQ_START_TOKEN;
+ 	hash = n >> 32;
+ 	export = n & ((1LL<<32) - 1);
+ 
+@@ -1110,7 +1110,7 @@ static void *e_next(struct seq_file *m, 
+ 	struct cache_head *ch = p;
+ 	int hash = (*pos >> 32);
+ 
+-	if (p == (void *)1)
++	if (p == SEQ_START_TOKEN)
+ 		hash = 0;
+ 	else if (ch->next == NULL) {
+ 		hash++;
+@@ -1179,7 +1179,7 @@ static int e_show(struct seq_file *m, vo
+ 	struct cache_head *cp = p;
+ 	struct svc_export *exp = container_of(cp, struct svc_export, h);
+ 
+-	if (p == (void *)1) {
++	if (p == SEQ_START_TOKEN) {
+ 		seq_puts(m, "# Version 1.1\n");
+ 		seq_puts(m, "# Path Client(Flags) # IPs\n");
+ 		return 0;
+
 
 Greg.
 -- 
