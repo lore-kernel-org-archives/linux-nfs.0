@@ -1,37 +1,27 @@
-From: Josh Triplett <josht@us.ibm.com>
-Subject: [PATCH] [nfsd] Add lock annotations to e_start and e_stop
-Date: Tue, 25 Jul 2006 08:20:24 -0700
-Message-ID: <1153840824.12517.9.camel@josh-work.beaverton.ibm.com>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH 000 of 11] knfsd: NUMAisation
+Date: Tue, 25 Jul 2006 11:36:37 -0400
+Message-ID: <76bd70e30607250836v35110d6eo20043dccc4d284b7@mail.gmail.com>
+References: <1153805274.21040.38.camel@hole.melbourne.sgi.com>
+	<17605.50325.842862.8823@cse.unsw.edu.au>
+	<76bd70e30607250705h3e8c9eefjc794397e0c45a21b@mail.gmail.com>
+	<D29213A6-C328-4C88-8D6D-428F3FDF4F56@rgmadvisors.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	Neil Brown <neilb@cse.unsw.edu.au>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5Ohw-00067w-AQ
-	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 08:20:28 -0700
-Received: from e36.co.us.ibm.com ([32.97.110.154])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G5Ohw-0005cG-7h
-	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 08:20:28 -0700
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
-	[9.17.195.11])
-	by e36.co.us.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k6PFKMJU004714
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jul 2006 11:20:22 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by westrelay02.boulder.ibm.com (8.13.6/NCO/VER7.0) with ESMTP id
-	k6PFKMrH300928
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jul 2006 09:20:22 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k6PFKMEs025651
-	for <nfs@lists.sourceforge.net>; Tue, 25 Jul 2006 09:20:22 -0600
-To: linux-kernel@vger.kernel.org
+	id 1G5Oxb-0007gs-Dn
+	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 08:36:39 -0700
+Received: from nf-out-0910.google.com ([64.233.182.191])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5Oxb-0004TJ-AS
+	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 08:36:39 -0700
+Received: by nf-out-0910.google.com with SMTP id m19so257517nfc
+	for <nfs@lists.sourceforge.net>; Tue, 25 Jul 2006 08:36:37 -0700 (PDT)
+To: "Paul Jimenez" <pj@rgmadvisors.com>
+In-Reply-To: <D29213A6-C328-4C88-8D6D-428F3FDF4F56@rgmadvisors.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,38 +34,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-e_start acquires svc_export_cache.hash_lock, and e_stop releases it.  Add lock
-annotations to these two functions so that sparse can check callers for lock
-pairing, and so that sparse will not complain about these functions since they
-intentionally use locks in this manner.
+On 7/25/06, Paul Jimenez <pj@rgmadvisors.com> wrote:
+>
+> On Jul 25, 2006, at 9:05 AM, Chuck Lever wrote:
+>
+> > On 7/25/06, Neil Brown <neilb@suse.de> wrote:
+> >> On Tuesday July 25, gnb@melbourne.sgi.com wrote:
+> >>> G'day,
+> >>>
+> >>>
+> >>> 001 knfsd: move tempsock aging to timer
+> >>
+> >> Looks good.
+> >> Has the subtle side effect that when we reach our limit on the number
+> >> of permitted tcp connections, the one that is discarded is the one
+> >> that has been open the longest, rather than the one that has be
+> >> unused
+> >> for the longest.  The comment there says
+> >>                         /*
+> >>                          * Always select the oldest socket. It's
+> >> not fair,
+> >>                          * but so is life
+> >>                          */
+> >> so I guess it is still correct ('oldest' is ambiguous).  The new
+> >> situation is probably equally (un)fair - would you agree?
+> >
+> > Ouch.  IMO this will penalize long-running workloads unnecessarily,
+> > and will likely be much more of a performance hit for such workloads
+> > than would be gained by improving the CPU cache behavior on the
+> > server.
+> >
+> > The previous algorithm (close the least recently used socket) is
+> > more fair.
+>
+> OTOH, getting rid of the longest-open one may have beneficial side
+> effects by restarting state associated with that long-running task from
+> scratch, no?
 
-Signed-off-by: Josh Triplett <josh@freedesktop.org>
----
- fs/nfsd/export.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+What is being restarted is only the TCP connection.  Thus only network
+layer state is being reconstructed here.
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 01bc68c..6fe54eb 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1078,6 +1078,7 @@ exp_pseudoroot(struct auth_domain *clp, 
- /* Iterator */
- 
- static void *e_start(struct seq_file *m, loff_t *pos)
-+	__acquires(svc_export_cache.hash_lock)
- {
- 	loff_t n = *pos;
- 	unsigned hash, export;
-@@ -1131,6 +1132,7 @@ static void *e_next(struct seq_file *m, 
- }
- 
- static void e_stop(struct seq_file *m, void *p)
-+	__releases(svc_export_cache.hash_lock)
- {
- 	read_unlock(&svc_export_cache.hash_lock);
- 	exp_readunlock();
+In addition, we have field evidence that breaking an active NFS/TCP
+connection has lots of bad consequences.  The client is forced to
+retransmit any RPC requests that were active when the connection was
+dropped.  The client may reconnect on a different port number, which
+makes the duplicate reply cache unable to prevent reapplying
+non-idempotent RPC requests.  The combination invites data corruption
+or application crashes due to unexpected return codes (but I though I
+just created that file !?!).
 
+My vote is to zap the least recently used connection.  That is overall
+the safest compromise.
 
+> Restarting long-running workloads with a clean slate every so often
+> sounds like a good idea to me - I'm confident that the performance
+> and impact of shorter lived connections is better understood than
+> that of very long lived connections
+
+By your logic, we should kill anyone who reaches the age of 30 so they
+won't die of old age.
+
+I'd rather find those lingering bugs and fix them, instead of cover
+them up with a risky workaround.
+
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
