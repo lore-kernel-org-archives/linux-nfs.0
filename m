@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 009 of 9] knfsd: Allow sockets to be passed to nfsd
-	via 'portlist'
-Date: Tue, 25 Jul 2006 11:55:08 +1000
-Message-ID: <1060725015508.22007@suse.de>
+Subject: [PATCH 006 of 9] knfsd: Remove nfsd_versbits as intermediate
+	storage for desired versions.
+Date: Tue, 25 Jul 2006 11:54:52 +1000
+Message-ID: <1060725015452.21969@suse.de>
 References: <20060725114207.21779.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5C9E-0004eG-QE
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:48 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1G5C8z-0004cb-35
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:33 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G5C9E-0005ew-47
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:49 -0700
+	(Exim 4.44) id 1G5C8y-00043L-HF
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 18:55:33 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,244 +31,261 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Userspace should create and bind a socket (but not connectted)
-and write the 'fd' to portlist.  This will cause the nfs server
-to listen on that socket.
+We have an array 'nfsd_version' which lists the available versions
+of nfsd, and 'nfsd_versions' (poor choice there :-() which lists
+the currently active versions.
 
-To close a socket, the name of the socket - as read from 'portlist'
-can be written to 'portlist' with a preceding '-'.
+Then we have a bitmap - nfsd_versbits which says which versions are
+wanted.  The bits in this bitset cause content to be copied from
+nfsd_version to nfsd_versions when nfsd starts.
 
+This patch removes nfsd_versbits and moves information directly from
+nfsd_version to nfsd_versions when requests for version changes arrive.
+
+Note that this doesn't make it possible to change versions while the
+server is running.  This is because serv->sv_xdrsize is calculated when
+a service is created, and used when threads are created, and xdrsize
+depends on the active versions.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfsctl.c               |   59 +++++++++++++++++++++++++++++++++------
- ./fs/nfsd/nfssvc.c               |    4 --
- ./include/linux/nfsd/nfsd.h      |    1 
- ./include/linux/sunrpc/svcsock.h |    6 +++
- ./net/sunrpc/svcsock.c           |   49 +++++++++++++++++++++++++++++---
- 5 files changed, 102 insertions(+), 17 deletions(-)
+ ./fs/nfsd/nfsctl.c             |   18 +++----
+ ./fs/nfsd/nfssvc.c             |   93 ++++++++++++++++++++++-------------------
+ ./include/linux/nfsd/nfsd.h    |    4 +
+ ./include/linux/nfsd/syscall.h |   17 -------
+ 4 files changed, 62 insertions(+), 70 deletions(-)
 
 diff .prev/fs/nfsd/nfsctl.c ./fs/nfsd/nfsctl.c
---- .prev/fs/nfsd/nfsctl.c	2006-07-24 15:49:51.000000000 +1000
-+++ ./fs/nfsd/nfsctl.c	2006-07-24 17:24:17.000000000 +1000
-@@ -23,9 +23,11 @@
- #include <linux/pagemap.h>
- #include <linux/init.h>
- #include <linux/string.h>
-+#include <linux/ctype.h>
+--- .prev/fs/nfsd/nfsctl.c	2006-07-24 15:17:36.000000000 +1000
++++ ./fs/nfsd/nfsctl.c	2006-07-24 15:17:36.000000000 +1000
+@@ -35,8 +35,6 @@
  
- #include <linux/nfs.h>
- #include <linux/nfsd_idmap.h>
-+#include <linux/lockd/bind.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/nfsd/nfsd.h>
-@@ -425,16 +427,55 @@ static ssize_t write_versions(struct fil
+ #include <asm/uaccess.h>
  
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
--	/* for now, ignore what was written and just
--	 * return known ports
--	 * AF proto address port
-+	if (size == 0) {
-+		int len = 0;
-+		lock_kernel();
-+		if (nfsd_serv)
-+			len = svc_sock_names(buf, nfsd_serv, NULL);
-+		unlock_kernel();
-+		return len;
-+	}
-+	/* Either a single 'fd' number is written, in which
-+	 * case it must be for a socket of a supported family/protocol,
-+	 * and we use it as an nfsd socket, or
-+	 * A '-' followed by the 'name' of a socket in which case
-+	 * we close the socket.
- 	 */
--	int len = 0;
--	lock_kernel();
--	if (nfsd_serv)
--		len = svc_sock_names(buf, nfsd_serv);
--	unlock_kernel();
--	return len;
-+	if (isdigit(buf[0])) {
-+		char *mesg = buf;
-+		int fd;
-+		int err;
-+		err = get_int(&mesg, &fd);
-+		if (err)
-+			return -EINVAL;
-+		if (fd < 0)
-+			return -EINVAL;
-+		err = nfsd_create_serv();
-+		if (!err) {
-+			int proto = 0;
-+			err = svc_addsock(nfsd_serv, fd, buf, &proto);
-+			/* Decrease the count, but don't shutdown the
-+			 * the service
+-unsigned int nfsd_versbits = ~0;
+-
+ /*
+  *	We have a single directory with 9 nodes in it.
+  */
+@@ -372,6 +370,10 @@ static ssize_t write_versions(struct fil
+ 
+ 	if (size>0) {
+ 		if (nfsd_serv)
++			/* Cannot change versions without updating
++			 * nfsd_serv->sv_xdrsize, and reallocing
++			 * rq_argp and rq_resp
 +			 */
-+			if (err >= 0)
-+				lockd_up(proto);
-+			nfsd_serv->sv_nrthreads--;
-+		}
-+		return err;
-+	}
-+	if (buf[0] == '-') {
-+		char *toclose = kstrdup(buf+1, GFP_KERNEL);
-+		int len = 0;
-+		if (!toclose)
-+			return -ENOMEM;
-+		lock_kernel();
-+		if (nfsd_serv)
-+			len = svc_sock_names(buf, nfsd_serv, toclose);
-+		unlock_kernel();
-+		kfree(toclose);
-+		return len;
-+	}
-+	return -EINVAL;
- }
- 
- #ifdef CONFIG_NFSD_V4
+ 			return -EBUSY;
+ 		if (buf[size-1] != '\n')
+ 			return -EINVAL;
+@@ -390,10 +392,7 @@ static ssize_t write_versions(struct fil
+ 			case 2:
+ 			case 3:
+ 			case 4:
+-				if (sign != '-')
+-					NFSCTL_VERSET(nfsd_versbits, num);
+-				else
+-					NFSCTL_VERUNSET(nfsd_versbits, num);
++				nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
+ 				break;
+ 			default:
+ 				return -EINVAL;
+@@ -404,16 +403,15 @@ static ssize_t write_versions(struct fil
+ 		/* If all get turned off, turn them back on, as
+ 		 * having no versions is BAD
+ 		 */
+-		if ((nfsd_versbits & NFSCTL_VERALL)==0)
+-			nfsd_versbits = NFSCTL_VERALL;
++		nfsd_reset_versions();
+ 	}
+ 	/* Now write current state into reply buffer */
+ 	len = 0;
+ 	sep = "";
+ 	for (num=2 ; num <= 4 ; num++)
+-		if (NFSCTL_VERISSET(NFSCTL_VERALL, num)) {
++		if (nfsd_vers(num, NFSD_AVAIL)) {
+ 			len += sprintf(buf+len, "%s%c%d", sep,
+-				       NFSCTL_VERISSET(nfsd_versbits, num)?'+':'-',
++				       nfsd_vers(num, NFSD_TEST)?'+':'-',
+ 				       num);
+ 			sep = " ";
+ 		}
 
 diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
---- .prev/fs/nfsd/nfssvc.c	2006-07-24 15:49:51.000000000 +1000
-+++ ./fs/nfsd/nfssvc.c	2006-07-24 15:53:37.000000000 +1000
-@@ -196,7 +196,7 @@ void nfsd_reset_versions(void)
+--- .prev/fs/nfsd/nfssvc.c	2006-07-24 15:15:04.000000000 +1000
++++ ./fs/nfsd/nfssvc.c	2006-07-24 15:17:36.000000000 +1000
+@@ -117,6 +117,32 @@ struct svc_program		nfsd_program = {
+ 
+ };
+ 
++int nfsd_vers(int vers, enum vers_op change)
++{
++	if (vers < NFSD_MINVERS || vers >= NFSD_NRVERS)
++		return -1;
++	switch(change) {
++	case NFSD_SET:
++		nfsd_versions[vers] = nfsd_version[vers];
++		break;
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++		if (vers < NFSD_ACL_NRVERS)
++			nfsd_acl_version[vers] = nfsd_acl_version[vers];
++#endif
++	case NFSD_CLEAR:
++		nfsd_versions[vers] = NULL;
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++		if (vers < NFSD_ACL_NRVERS)
++			nfsd_acl_version[vers] = NULL;
++#endif
++		break;
++	case NFSD_TEST:
++		return nfsd_versions[vers] != NULL;
++	case NFSD_AVAIL:
++		return nfsd_version[vers] != NULL;
++	}
++	return 0;
++}
+ /*
+  * Maximum number of nfsd processes
+  */
+@@ -147,16 +173,36 @@ static void nfsd_last_thread(struct svc_
+ 		nfsd_export_flush();
+ 	}
  }
- 
- 
--static inline int nfsd_create_serv(void)
-+int nfsd_create_serv(void)
++
++void nfsd_reset_versions(void)
++{
++	int found_one = 0;
++	int i;
++
++	for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++) {
++		if (nfsd_program.pg_vers[i])
++			found_one = 1;
++	}
++
++	if (!found_one) {
++		for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++)
++			nfsd_program.pg_vers[i] = nfsd_version[i];
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
++			nfsd_acl_program.pg_vers[i] =
++				nfsd_acl_version[i];
++#endif
++	}
++}
++
+ int
+ nfsd_svc(unsigned short port, int nrservs)
  {
- 	int err = 0;
+ 	int	error;
+-	int	found_one, i;
+ 	struct list_head *victim;
+ 	
  	lock_kernel();
-@@ -211,8 +211,6 @@ static inline int nfsd_create_serv(void)
- 			       nfsd_last_thread);
- 	if (nfsd_serv == NULL)
- 		err = -ENOMEM;
--	else
--		nfsd_serv->sv_nrthreads++;
- 	unlock_kernel();
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	return err;
+-	dprintk("nfsd: creating service: vers 0x%x\n",
+-		nfsd_versbits);
++	dprintk("nfsd: creating service\n");
+ 	error = -EINVAL;
+ 	if (nrservs <= 0)
+ 		nrservs = 0;
+@@ -171,46 +217,7 @@ nfsd_svc(unsigned short port, int nrserv
+ 	if (error<0)
+ 		goto out;
+ 	if (!nfsd_serv) {
+-		/*
+-		 * Use the nfsd_ctlbits to define which
+-		 * versions that will be advertised.
+-		 * If nfsd_ctlbits doesn't list any version,
+-		 * export them all.
+-		 */
+-		found_one = 0;
+-
+-		for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++) {
+-			if (NFSCTL_VERISSET(nfsd_versbits, i)) {
+-				nfsd_program.pg_vers[i] = nfsd_version[i];
+-				found_one = 1;
+-			} else
+-				nfsd_program.pg_vers[i] = NULL;
+-		}
+-
+-		if (!found_one) {
+-			for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++)
+-				nfsd_program.pg_vers[i] = nfsd_version[i];
+-		}
+-
+-
+-#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+-		found_one = 0;
+-
+-		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++) {
+-			if (NFSCTL_VERISSET(nfsd_versbits, i)) {
+-				nfsd_acl_program.pg_vers[i] =
+-					nfsd_acl_version[i];
+-				found_one = 1;
+-			} else
+-				nfsd_acl_program.pg_vers[i] = NULL;
+-		}
+-
+-		if (!found_one) {
+-			for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
+-				nfsd_acl_program.pg_vers[i] =
+-					nfsd_acl_version[i];
+-		}
+-#endif
++		nfsd_reset_versions();
+ 
+ 		atomic_set(&nfsd_busy, 0);
+ 		error = -ENOMEM;
 
 diff .prev/include/linux/nfsd/nfsd.h ./include/linux/nfsd/nfsd.h
---- .prev/include/linux/nfsd/nfsd.h	2006-07-24 15:49:51.000000000 +1000
-+++ ./include/linux/nfsd/nfsd.h	2006-07-24 15:22:49.000000000 +1000
-@@ -143,6 +143,7 @@ int nfsd_set_posix_acl(struct svc_fh *, 
- enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
- int nfsd_vers(int vers, enum vers_op change);
- void nfsd_reset_versions(void);
-+int nfsd_create_serv(void);
+--- .prev/include/linux/nfsd/nfsd.h	2006-07-24 15:17:36.000000000 +1000
++++ ./include/linux/nfsd/nfsd.h	2006-07-24 15:17:36.000000000 +1000
+@@ -140,6 +140,10 @@ struct posix_acl *nfsd_get_posix_acl(str
+ int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
+ #endif
  
++enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
++int nfsd_vers(int vers, enum vers_op change);
++void nfsd_reset_versions(void);
++
  
  /* 
+  * NFSv4 State
 
-diff .prev/include/linux/sunrpc/svcsock.h ./include/linux/sunrpc/svcsock.h
---- .prev/include/linux/sunrpc/svcsock.h	2006-07-24 15:49:51.000000000 +1000
-+++ ./include/linux/sunrpc/svcsock.h	2006-07-24 15:22:49.000000000 +1000
-@@ -61,6 +61,10 @@ int		svc_recv(struct svc_serv *, struct 
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
--int		svc_sock_names(char *buf, struct svc_serv *serv);
-+int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
-+int		svc_addsock(struct svc_serv *serv,
-+			    int fd,
-+			    char *name_return,
-+			    int *proto);
+diff .prev/include/linux/nfsd/syscall.h ./include/linux/nfsd/syscall.h
+--- .prev/include/linux/nfsd/syscall.h	2006-07-24 15:17:36.000000000 +1000
++++ ./include/linux/nfsd/syscall.h	2006-07-24 15:17:36.000000000 +1000
+@@ -38,21 +38,6 @@
+ #define NFSCTL_GETFD		7	/* get an fh by path (used by mountd) */
+ #define	NFSCTL_GETFS		8	/* get an fh by path with max FH len */
  
- #endif /* SUNRPC_SVCSOCK_H */
-
-diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2006-07-24 15:49:51.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2006-07-25 11:25:50.000000000 +1000
-@@ -31,6 +31,7 @@
- #include <linux/slab.h>
- #include <linux/netdevice.h>
- #include <linux/skbuff.h>
-+#include <linux/file.h>
- #include <net/sock.h>
- #include <net/checksum.h>
- #include <net/ip.h>
-@@ -449,18 +450,23 @@ int one_sock_name(char *buf, struct svc_
- }
+-/*
+- * Macros used to set version
+- */
+-#define NFSCTL_VERSET(_cltbits, _v)   ((_cltbits) |=  (1 << (_v)))
+-#define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << (_v)))
+-#define NFSCTL_VERISSET(_cltbits, _v) ((_cltbits) & (1 << (_v)))
+-
+-#if defined(CONFIG_NFSD_V4)
+-#define	NFSCTL_VERALL	(0x1c /* 0b011100 */)
+-#elif defined(CONFIG_NFSD_V3)
+-#define	NFSCTL_VERALL	(0x0c /* 0b001100 */)
+-#else
+-#define	NFSCTL_VERALL	(0x04 /* 0b000100 */)
+-#endif
+-
+ /* SVC */
+ struct nfsctl_svc {
+ 	unsigned short		svc_port;
+@@ -134,8 +119,6 @@ extern int		exp_delclient(struct nfsctl_
+ extern int		exp_export(struct nfsctl_export *nxp);
+ extern int		exp_unexport(struct nfsctl_export *nxp);
  
- int
--svc_sock_names(char *buf, struct svc_serv *serv)
-+svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
- {
--	struct svc_sock *svsk;
-+	struct svc_sock *svsk, *closesk = NULL;
- 	int len = 0;
+-extern unsigned int nfsd_versbits;
+-
+ #endif /* __KERNEL__ */
  
- 	if (!serv) return 0;
- 	spin_lock(&serv->sv_lock);
- 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
- 		int onelen = one_sock_name(buf+len, svsk);
--		len += onelen;
-+		if (toclose && strcmp(toclose, buf+len) == 0)
-+			closesk = svsk;
-+		else
-+			len += onelen;
- 	}
- 	spin_unlock(&serv->sv_lock);
-+	if (closesk)
-+		svc_delete_socket(closesk);
- 	return len;
- }
- EXPORT_SYMBOL(svc_sock_names);
-@@ -1415,6 +1421,38 @@ svc_setup_socket(struct svc_serv *serv, 
- 	return svsk;
- }
- 
-+int svc_addsock(struct svc_serv *serv,
-+		int fd,
-+		char *name_return,
-+		int *proto)
-+{
-+	int err = 0;
-+	struct socket *so = sockfd_lookup(fd, &err);
-+	struct svc_sock *svsk = NULL;
-+
-+	if (!so)
-+		return err;
-+	if (so->sk->sk_family != AF_INET)
-+		err =  -EAFNOSUPPORT;
-+	else if (so->sk->sk_protocol != IPPROTO_TCP &&
-+	    so->sk->sk_protocol != IPPROTO_UDP)
-+		err =  -EPROTONOSUPPORT;
-+	else if (so->state > SS_UNCONNECTED)
-+		err = -EISCONN;
-+	else {
-+		svsk = svc_setup_socket(serv, so, &err, 1);
-+		if (svsk)
-+			err = 0;
-+	}
-+	if (err) {
-+		sockfd_put(so);
-+		return err;
-+	}
-+	if (proto) *proto = so->sk->sk_protocol;
-+	return one_sock_name(name_return, svsk);
-+}
-+EXPORT_SYMBOL_GPL(svc_addsock);
-+
- /*
-  * Create socket for RPC service.
-  */
-@@ -1492,7 +1530,10 @@ svc_delete_socket(struct svc_sock *svsk)
- 
- 	if (!svsk->sk_inuse) {
- 		spin_unlock_bh(&serv->sv_lock);
--		sock_release(svsk->sk_sock);
-+		if (svsk->sk_sock->file)
-+			sockfd_put(svsk->sk_sock);
-+		else
-+			sock_release(svsk->sk_sock);
- 		kfree(svsk);
- 	} else {
- 		spin_unlock_bh(&serv->sv_lock);
+ #endif /* NFSD_SYSCALL_H */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
