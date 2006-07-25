@@ -1,7 +1,8 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 002 of 11] knfsd: convert sk_inuse to atomic_t
-Date: Tue, 25 Jul 2006 15:06:53 +1000
-Message-ID: <1153804013.21040.5.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 003 of 11] knfsd: use new lock for svc_sock deferred
+	list
+Date: Tue, 25 Jul 2006 15:07:54 +1000
+Message-ID: <1153804074.21040.7.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -9,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5F8E-00036G-UV
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:06:58 -0700
+	id 1G5F9F-0003Bq-8l
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:08:01 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5F8F-0005yq-33
-	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:06:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5F9E-0006BX-9v
+	for nfs@lists.sourceforge.net; Mon, 24 Jul 2006 22:08:01 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,139 +28,91 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Convert the svc_sock->sk_inuse counter from an int protected
-by svc_serv->sv_lock, to an atomic.  This reduces the number of places
-we need to take the (effectively global) svc_serv->sv_lock.
+knfsd: Protect the svc_sock->sk_deferred list with a new
+lock svc_sock->sk_defer_lock instead of svc_serv->sv_lock.
+Using the more fine-grained lock reduces the number of places
+we need to take the svc_serv lock.
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    2 +-
- net/sunrpc/svcsock.c           |   29 +++++++++++------------------
- 2 files changed, 12 insertions(+), 19 deletions(-)
+ include/linux/sunrpc/svcsock.h |    1 +
+ net/sunrpc/svcsock.c           |   12 ++++++------
+ 2 files changed, 7 insertions(+), 6 deletions(-)
 
 Index: linus-git/include/linux/sunrpc/svcsock.h
 ===================================================================
---- linus-git.orig/include/linux/sunrpc/svcsock.h	2006-07-24 16:11:01.433553624 +1000
-+++ linus-git/include/linux/sunrpc/svcsock.h	2006-07-24 16:54:25.020894827 +1000
-@@ -21,7 +21,7 @@ struct svc_sock {
- 	struct sock *		sk_sk;		/* INET layer */
+--- linus-git.orig/include/linux/sunrpc/svcsock.h	2006-07-24 16:54:25.020894827 +1000
++++ linus-git/include/linux/sunrpc/svcsock.h	2006-07-24 16:59:07.008514424 +1000
+@@ -36,6 +36,7 @@ struct svc_sock {
  
- 	struct svc_serv *	sk_server;	/* service for this socket */
--	unsigned int		sk_inuse;	/* use count */
-+	atomic_t		sk_inuse;	/* use count */
- 	unsigned long		sk_flags;
- #define	SK_BUSY		0			/* enqueued/receiving */
- #define	SK_CONN		1			/* conn pending */
+ 	int			sk_reserved;	/* space on outq that is reserved */
+ 
++	spinlock_t		sk_defer_lock;	/* protects sk_deferred */
+ 	struct list_head	sk_deferred;	/* deferred requests that need to
+ 						 * be revisted */
+ 	struct mutex		sk_mutex;	/* to serialize sending data */
 Index: linus-git/net/sunrpc/svcsock.c
 ===================================================================
---- linus-git.orig/net/sunrpc/svcsock.c	2006-07-24 16:53:39.126813226 +1000
-+++ linus-git/net/sunrpc/svcsock.c	2006-07-24 16:54:25.092885543 +1000
-@@ -205,7 +205,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 				"svc_sock_enqueue: server %p, rq_sock=%p!\n",
- 				rqstp, rqstp->rq_sock);
- 		rqstp->rq_sock = svsk;
--		svsk->sk_inuse++;
-+		atomic_inc(&svsk->sk_inuse);
- 		rqstp->rq_reserved = serv->sv_bufsz;
- 		svsk->sk_reserved += rqstp->rq_reserved;
- 		wake_up(&rqstp->rq_wait);
-@@ -234,7 +234,7 @@ svc_sock_dequeue(struct svc_serv *serv)
- 	list_del_init(&svsk->sk_ready);
- 
- 	dprintk("svc: socket %p dequeued, inuse=%d\n",
--		svsk->sk_sk, svsk->sk_inuse);
-+		svsk->sk_sk, atomic_read(&svsk->sk_inuse));
- 
- 	return svsk;
- }
-@@ -284,17 +284,11 @@ void svc_reserve(struct svc_rqst *rqstp,
- static inline void
- svc_sock_put(struct svc_sock *svsk)
- {
--	struct svc_serv *serv = svsk->sk_server;
--
--	spin_lock_bh(&serv->sv_lock);
--	if (!--(svsk->sk_inuse) && test_bit(SK_DEAD, &svsk->sk_flags)) {
--		spin_unlock_bh(&serv->sv_lock);
-+	if (atomic_dec_and_test(&svsk->sk_inuse) && test_bit(SK_DEAD, &svsk->sk_flags)) {
- 		dprintk("svc: releasing dead socket\n");
- 		sock_release(svsk->sk_sock);
- 		kfree(svsk);
- 	}
--	else
--		spin_unlock_bh(&serv->sv_lock);
- }
- 
- static void
-@@ -861,7 +855,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 					  struct svc_sock,
- 					  sk_list);
- 			set_bit(SK_CLOSE, &svsk->sk_flags);
--			svsk->sk_inuse ++;
-+			atomic_inc(&svsk->sk_inuse);
- 		}
- 		spin_unlock_bh(&serv->sv_lock);
- 
-@@ -1192,7 +1186,7 @@ svc_recv(struct svc_serv *serv, struct s
- 	spin_lock_bh(&serv->sv_lock);
- 	if ((svsk = svc_sock_dequeue(serv)) != NULL) {
- 		rqstp->rq_sock = svsk;
--		svsk->sk_inuse++;
-+		atomic_inc(&svsk->sk_inuse);
- 		rqstp->rq_reserved = serv->sv_bufsz;	
- 		svsk->sk_reserved += rqstp->rq_reserved;
- 	} else {
-@@ -1224,7 +1218,7 @@ svc_recv(struct svc_serv *serv, struct s
- 	spin_unlock_bh(&serv->sv_lock);
- 
- 	dprintk("svc: server %p, socket %p, inuse=%d\n",
--		 rqstp, svsk, svsk->sk_inuse);
-+		 rqstp, svsk, atomic_read(&svsk->sk_inuse));
- 	len = svsk->sk_recvfrom(rqstp);
- 	dprintk("svc: got len=%d\n", len);
- 
-@@ -1320,9 +1314,9 @@ svc_age_temp_sockets(unsigned long closu
- 
- 		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
- 			continue;
--		if (svsk->sk_inuse || test_bit(SK_BUSY, &svsk->sk_flags))
-+		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY, &svsk->sk_flags))
- 			continue;
--		svsk->sk_inuse++;
-+		atomic_inc(&svsk->sk_inuse);
- 		list_move(le, &to_be_aged);
- 		set_bit(SK_CLOSE, &svsk->sk_flags);
- 		set_bit(SK_DETACHED, &svsk->sk_flags);
-@@ -1383,6 +1377,7 @@ svc_setup_socket(struct svc_serv *serv, 
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
+--- linus-git.orig/net/sunrpc/svcsock.c	2006-07-24 16:54:25.092885543 +1000
++++ linus-git/net/sunrpc/svcsock.c	2006-07-24 16:59:07.088504101 +1000
+@@ -46,6 +46,7 @@
+ /* SMP locking strategy:
+  *
+  * 	svc_serv->sv_lock protects most stuff for that service.
++ *	svc_sock->sk_defer_lock protects the svc_sock->sk_deferred list
+  *
+  *	Some flags can be set to certain values at any time
+  *	providing that certain rules are followed:
+@@ -1379,6 +1380,7 @@ svc_setup_socket(struct svc_serv *serv, 
  	svsk->sk_server = serv;
-+	atomic_set(&svsk->sk_inuse, 0);
+ 	atomic_set(&svsk->sk_inuse, 0);
  	svsk->sk_lastrecv = get_seconds();
++	spin_lock_init(&svsk->sk_defer_lock);
  	INIT_LIST_HEAD(&svsk->sk_deferred);
  	INIT_LIST_HEAD(&svsk->sk_ready);
-@@ -1496,7 +1491,7 @@ svc_delete_socket(struct svc_sock *svsk)
- 		if (test_bit(SK_TEMP, &svsk->sk_flags))
- 			serv->sv_tmpcnt--;
+ 	mutex_init(&svsk->sk_mutex);
+@@ -1524,7 +1526,6 @@ svc_makesock(struct svc_serv *serv, int 
+ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ {
+ 	struct svc_deferred_req *dr = container_of(dreq, struct svc_deferred_req, handle);
+-	struct svc_serv *serv = dreq->owner;
+ 	struct svc_sock *svsk;
  
--	if (!svsk->sk_inuse) {
-+	if (!atomic_read(&svsk->sk_inuse)) {
- 		spin_unlock_bh(&serv->sv_lock);
- 		sock_release(svsk->sk_sock);
- 		kfree(svsk);
-@@ -1574,10 +1569,8 @@ svc_defer(struct cache_req *req)
- 		dr->argslen = rqstp->rq_arg.len >> 2;
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
+ 	if (too_many) {
+@@ -1535,9 +1536,9 @@ static void svc_revisit(struct cache_def
+ 	dprintk("revisit queued\n");
+ 	svsk = dr->svsk;
+ 	dr->svsk = NULL;
+-	spin_lock_bh(&serv->sv_lock);
++	spin_lock_bh(&svsk->sk_defer_lock);
+ 	list_add(&dr->handle.recent, &svsk->sk_deferred);
+-	spin_unlock_bh(&serv->sv_lock);
++	spin_unlock_bh(&svsk->sk_defer_lock);
+ 	set_bit(SK_DEFERRED, &svsk->sk_flags);
+ 	svc_sock_enqueue(svsk);
+ 	svc_sock_put(svsk);
+@@ -1597,11 +1598,10 @@ static int svc_deferred_recv(struct svc_
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
+ {
+ 	struct svc_deferred_req *dr = NULL;
+-	struct svc_serv	*serv = svsk->sk_server;
+ 	
+ 	if (!test_bit(SK_DEFERRED, &svsk->sk_flags))
+ 		return NULL;
+-	spin_lock_bh(&serv->sv_lock);
++	spin_lock_bh(&svsk->sk_defer_lock);
+ 	clear_bit(SK_DEFERRED, &svsk->sk_flags);
+ 	if (!list_empty(&svsk->sk_deferred)) {
+ 		dr = list_entry(svsk->sk_deferred.next,
+@@ -1610,6 +1610,6 @@ static struct svc_deferred_req *svc_defe
+ 		list_del_init(&dr->handle.recent);
+ 		set_bit(SK_DEFERRED, &svsk->sk_flags);
  	}
--	spin_lock_bh(&rqstp->rq_server->sv_lock);
--	rqstp->rq_sock->sk_inuse++;
-+	atomic_inc(&rqstp->rq_sock->sk_inuse);
- 	dr->svsk = rqstp->rq_sock;
--	spin_unlock_bh(&rqstp->rq_server->sv_lock);
- 
- 	dr->handle.revisit = svc_revisit;
- 	return &dr->handle;
+-	spin_unlock_bh(&serv->sv_lock);
++	spin_unlock_bh(&svsk->sk_defer_lock);
+ 	return dr;
+ }
 
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
