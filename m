@@ -1,21 +1,29 @@
 From: Bernd Schubert <bernd.schubert@pci.uni-heidelberg.de>
-Subject: (no subject)
-Date: Wed, 26 Jul 2006 12:47:35 +0200
-Message-ID: <200607261247.35653.bernd.schubert@pci.uni-heidelberg.de>
+Subject: Re: protocol question
+Date: Wed, 26 Jul 2006 13:56:38 +0200
+Message-ID: <200607261356.38520.bernd.schubert@pci.uni-heidelberg.de>
+References: <200607261247.35653.bernd.schubert@pci.uni-heidelberg.de>
+	<1153914204.5656.13.camel@localhost>
 Reply-To: bernd-schubert@gmx.de
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5gvf-0005Bh-KC
-	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 03:47:55 -0700
+	id 1G5i0R-0002Md-Pi
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 04:56:51 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G5i0S-0007A8-1h
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 04:56:52 -0700
 Received: from relay2.uni-heidelberg.de ([129.206.210.211])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5gve-0007H6-9c
-	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 03:47:51 -0700
-To: nfs@lists.sourceforge.net
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1G5i0Q-0001Ln-NH
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 04:56:51 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1153914204.5656.13.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,47 +36,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+[Sorry that I forgot a proper subject first]
 
-I'm just looking into a nfs i/o error problem. The server for /etc is unfs3 =
+Hi Trond,
 
-and the client is 2.6.16. I need some help regarding the nfs protocol.
+thanks for your help,
 
-Probably after updating mozilla /etc/mozilla/mozillarc was rewritten, I als=
-o =
+On Wednesday 26 July 2006 13:43, Trond Myklebust wrote:
+> On Wed, 2006-07-26 at 12:47 +0200, Bernd Schubert wrote:
+[...]
+> > Ethereal shows that the getattr gives the correct results, but the read
+> > call gives an NFS3ERR_STALE.
+> > Should the client in this case drop its filehandle cache and entirely
+> > re-request the file from the server, or is the given i/o error ok?
+>
+> The ESTALE error is usually correct. The client should not be reopening
+> the file unless it can guarantee that the file is the same as the one
+> that was originally open()ed.
 
-guess the inode was recycled.
+But the client returns an i/o error to the userspace, is this correct?
 
-A 'ls /etc/mozilla/mozillarc' worked fine and showed the correct results.
-A 'cat /etc/mozilla/mozillarc' gave i/o errors.
+>
+> > From the point of the server, I guess, it already should return the
+> > NFS3ERR_STALE for the getattr call, shouldn't it? I will look into the
+> > sources to see why it didn't. (unfs3 was compiled with inode generation
+> > number support).
+>
+> Yes. Under the close-to-open caching model, the expectation is that the
+> filehandle will remain valid from the moment the successful GETATTR call
+> is sent in the first open() request until the last call to close(). If
+> unfs3 is caching filehandles, then it needs to use something like
+> inotify in order to figure out when to invalidate its cache.
 
-Ethereal shows that the getattr gives the correct results, but the read cal=
-l =
+Hmm, but the inode generation number should have changed, isn't it there fo=
+r =
 
-gives an NFS3ERR_STALE. =
+exactly this purpose? I also restarted unfs3 first, so it didn't have any =
 
-Should the client in this case drop its filehandle cache and entirely =
-
-re-request the file from the server, or is the given i/o error ok?
-
->From the point of the server, I guess, it already should return the =
-
-NFS3ERR_STALE for the getattr call, shouldn't it? I will look into the =
-
-sources to see why it didn't. (unfs3 was compiled with inode generation =
-
-number support).
-
-After an 'echo 3 > /proc/sys/vm/drop_caches' the problem was solved for now=
-, =
-
-of course.
+filehandles cached.
 
 
-Thanks in advance,
+Thanks again,
 	Bernd
-
-
 
 -- =
 
