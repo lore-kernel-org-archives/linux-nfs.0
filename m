@@ -1,99 +1,25 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH 009 of 9] knfsd: Allow sockets to be passed to nfsd via
- 'portlist'
-Date: Tue, 25 Jul 2006 23:53:09 -0700
-Message-ID: <20060725235309.8f30b28f.akpm@osdl.org>
-References: <20060725114207.21779.patches@notabene>
-	<1060725015508.22007@suse.de>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [NFS] [PATCH] [nfsd] Add lock annotations to e_start and e_stop
+Date: Wed, 26 Jul 2006 09:06:56 +0100
+Message-ID: <20060726080656.GA28346@infradead.org>
+References: <1153840824.12517.9.camel@josh-work.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1030424AbWGZGxU@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1060725015508.22007@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@osdl.org>,
+	nfs@lists.sourceforge.net, Neil Brown <neilb@cse.unsw.edu.au>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932512AbWGZIHB@vger.kernel.org>
+To: Josh Triplett <josht@us.ibm.com>
+In-Reply-To: <1153840824.12517.9.camel@josh-work.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, 25 Jul 2006 11:55:08 +1000
-NeilBrown <neilb@suse.de> wrote:
-
+On Tue, Jul 25, 2006 at 08:20:24AM -0700, Josh Triplett wrote:
+> e_start acquires svc_export_cache.hash_lock, and e_stop releases it.  Add lock
+> annotations to these two functions so that sparse can check callers for lock
+> pairing, and so that sparse will not complain about these functions since they
+> intentionally use locks in this manner.
 > 
-> Userspace should create and bind a socket (but not connectted)
-> and write the 'fd' to portlist.  This will cause the nfs server
-> to listen on that socket.
-> 
-> To close a socket, the name of the socket - as read from 'portlist'
-> can be written to 'portlist' with a preceding '-'.
-> 
+> Signed-off-by: Josh Triplett <josh@freedesktop.org>
 
-ick.  Is that the best API we can come up with?
-
-It's a privileged operation, but heck.  Do we perform validation on the fd
-to make sure that it's refers to a socket and not to /dev/fb0?
-
->  static ssize_t write_ports(struct file *file, char *buf, size_t size)
->  {
-> -	/* for now, ignore what was written and just
-> -	 * return known ports
-> -	 * AF proto address port
-> +	if (size == 0) {
-> +		int len = 0;
-> +		lock_kernel();
-> +		if (nfsd_serv)
-> +			len = svc_sock_names(buf, nfsd_serv, NULL);
-> +		unlock_kernel();
-> +		return len;
-> +	}
-> +	/* Either a single 'fd' number is written, in which
-> +	 * case it must be for a socket of a supported family/protocol,
-> +	 * and we use it as an nfsd socket, or
-> +	 * A '-' followed by the 'name' of a socket in which case
-> +	 * we close the socket.
->  	 */
-> -	int len = 0;
-> -	lock_kernel();
-> -	if (nfsd_serv)
-> -		len = svc_sock_names(buf, nfsd_serv);
-> -	unlock_kernel();
-> -	return len;
-> +	if (isdigit(buf[0])) {
-> +		char *mesg = buf;
-> +		int fd;
-> +		int err;
-> +		err = get_int(&mesg, &fd);
-> +		if (err)
-> +			return -EINVAL;
-> +		if (fd < 0)
-> +			return -EINVAL;
-> +		err = nfsd_create_serv();
-> +		if (!err) {
-> +			int proto = 0;
-> +			err = svc_addsock(nfsd_serv, fd, buf, &proto);
-> +			/* Decrease the count, but don't shutdown the
-> +			 * the service
-> +			 */
-> +			if (err >= 0)
-> +				lockd_up(proto);
-> +			nfsd_serv->sv_nrthreads--;
-> +		}
-> +		return err;
-> +	}
-> +	if (buf[0] == '-') {
-> +		char *toclose = kstrdup(buf+1, GFP_KERNEL);
-> +		int len = 0;
-> +		if (!toclose)
-> +			return -ENOMEM;
-> +		lock_kernel();
-> +		if (nfsd_serv)
-> +			len = svc_sock_names(buf, nfsd_serv, toclose);
-> +		unlock_kernel();
-> +		kfree(toclose);
-> +		return len;
-> +	}
-> +	return -EINVAL;
->  }
-
-<checks>
-
-OK, simple_transaction_get() guarantees that *buf is null-terminated.  It
-might be worth a comment to stop code-reviewers from freaking out ;)
+The Signed-off-by: line doesn't match the from line of this mail.  Is that
+any problem or fine in general?
