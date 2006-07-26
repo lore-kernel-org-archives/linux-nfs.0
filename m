@@ -1,30 +1,27 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 010 of 11] knfsd: make pools numa aware	(ifdefless)
-Date: Thu, 27 Jul 2006 11:18:07 +1000
-Message-ID: <1153963087.21040.1681.camel@hole.melbourne.sgi.com>
-References: <1153913457.21040.854.camel@hole.melbourne.sgi.com>
-	<20060726130553.GA25636@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: (no subject)
+Date: Wed, 26 Jul 2006 07:43:24 -0400
+Message-ID: <1153914204.5656.13.camel@localhost>
+References: <200607261247.35653.bernd.schubert@pci.uni-heidelberg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6PB1-0003pS-AC
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 03:02:54 -0700
+	id 1G6QU3-0002e7-Ve
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 04:26:24 -0700
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G66eu-0004my-NJ
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:16:17 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1G5uWG-00033d-9B
-	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 18:18:32 -0700
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20060726130553.GA25636@infradead.org>
+	(Exim 4.44) id 1G66uq-0000S1-3X
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:32:45 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41) id 1G5hnq-0007Eu-VO
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 04:43:51 -0700
+To: bernd-schubert@gmx.de
+In-Reply-To: <200607261247.35653.bernd.schubert@pci.uni-heidelberg.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,228 +34,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-07-26 at 23:05, Christoph Hellwig wrote:
-> > +struct svc_pool_map svc_pool_map = { .mode = -1, .init = 0 };
+On Wed, 2006-07-26 at 12:47 +0200, Bernd Schubert wrote:
+> Hi,
 > 
-> No need to set .init to zero, that's done implicitly by C language semantics.
+> I'm just looking into a nfs i/o error problem. The server for /etc is unfs3 
+> and the client is 2.6.16. I need some help regarding the nfs protocol.
+> 
+> Probably after updating mozilla /etc/mozilla/mozillarc was rewritten, I also 
+> guess the inode was recycled.
+> 
+> A 'ls /etc/mozilla/mozillarc' worked fine and showed the correct results.
+> A 'cat /etc/mozilla/mozillarc' gave i/o errors.
+> 
+> Ethereal shows that the getattr gives the correct results, but the read call 
+> gives an NFS3ERR_STALE. 
+> Should the client in this case drop its filehandle cache and entirely 
+> re-request the file from the server, or is the given i/o error ok?
 
-That's just me wanting to initialise booleans...Actually
-I could probably remove .init entirely and use (.mode < 0).
+The ESTALE error is usually correct. The client should not be reopening
+the file unless it can guarantee that the file is the same as the one
+that was originally open()ed.
 
-> Also the initializatio nwould look more readable if it was split over multiple
-> lines (especially if it grows more fields later on):
-> 
-> struct svc_pool_map svc_pool_map = {
-> 	.mode		= -1,
-> };
+> From the point of the server, I guess, it already should return the 
+> NFS3ERR_STALE for the getattr call, shouldn't it? I will look into the 
+> sources to see why it didn't. (unfs3 was compiled with inode generation 
+> number support).
 
-Ok, will do.
+Yes. Under the close-to-open caching model, the expectation is that the
+filehandle will remain valid from the moment the successful GETATTR call
+is sent in the first open() request until the last call to close(). If
+unfs3 is caching filehandles, then it needs to use something like
+inotify in order to figure out when to invalidate its cache.
 
-> Any chance you could avoid having the global struct non-static and only
-> access it by well defined procedural interfaces?
-
-I did that only because the svc_pool_for_cpu() inline needs to
-access it quickly in a main performance path from a different .c
-file.  Otherwise it would have been not a struct but a handful
-of static variables in svc.c.  See further comments below.
-
-> > +static unsigned int
-> > +svc_pool_map_init(void)
-> 
-> This function really needs to be split into a few subroutines.  In addition
-> the modes should have symbolic names.
-> 
-> enum {
-> 	SVC_MODE_NONE		= -1,
-> 	SVC_MODE_GLOBAL		= 0,
-> 	SVC_MODE_PERCPU		= 1,
-> 	SVC_MODE_PERNODE	= 2,
-> };
-
-Fair enough.  I was wondering whether anyone would care ;-)
-
-> /*
->  * Detect best pool mapping mode heuristically.
->  */
-> static int
-> svc_pool_choose_mode(void)
-> {
-> 	/*
-> 	 * If we actually have multiple NUMA nodes, split pools
-> 	 * on NUMA node boundaries.
-> 	 */
-> 	if (num_online_nodes() > 1)
-> 		return SVC_MODE_PERNODE;
-> 
-> 	/*
-> 	 * If we have an SMP machine with more than 2 CPUs, we want
-> 	 * to divide the pools on cpu boundaries.
-> 	 */
-> 	if (nr_cpus_node(any_online_node(node_online_map)) > 2)
-> 		return SVC_MODE_PERCPU;
-> 
-> 	/*
-> 	 * By default use one global pool.
-> 	 */
-> 	return SVC_MODE_GLOBAL;
-> }
-> 
-> static int
-> svc_pool_map_init_percpu(struct svc_pool_map *m)
-> {
-> 	unsigned int maxpools = num_possible_cpus();
-> 	unsigned int cpu, pidx = 0;
-> 
-> 	m->to_pool = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-> 	if (!m->to_pool)
-> 		goto out;
-> 
-> 	m->pool_to = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-> 	if (!m->pool_to)
-> 		goto out_free_to_pool;
-> 
-> 	for_each_online_cpu(cpu) {
-> 		BUG_ON(pidx > maxpools);
-> 		m->to_pool[cpu] = pidx;
-> 		m->pool_to[pidx] = cpu;
-> 		pidx++;
-> 	}
-> 
-> 	/*
-> 	 * CPUs brought online later all get mapped to pool0, sorry.
-> 	 */
-> 	m->npools = pidx;
-> 	return 0;
-> 
->  out_free_to_pool:
-> 	kfree(m->to_pool);
->  out:
-> 	return -ENOMEM;
-> }
-> 
-> static int
-> svc_pool_map_init_pernode(struct svc_pool_map *m)
-> {
-> 	unsigned int maxpools = num_possible_nodes();
-> 
-> 	m->to_pool = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-> 	if (!m->to_pool)
-> 		goto out;
-> 
-> 	m->pool_to = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-> 	if (!m->pool_to)
-> 		goto out_free_to_pool;
-> 
-> 	for_each_node_with_cpus(node) {
-> 		/* some architectures (e.g. SN2) have cpuless nodes */
-> 		BUG_ON(pidx > maxpools);
-> 		m->to_pool[node] = pidx;
-> 		m->pool_to[pidx] = node;
-> 		pidx++;
-> 	}
-> 
-> 	/*
-> 	 * Nodes brought online later all get mapped to pool0, sorry.
-> 	 */
-> 	m->npools = pidx;
-> 	return 0;
-> 
->  out_free_to_pool:
-> 	kfree(m->to_pool);
->  out:
-> 	return -ENOMEM;
-> }
-> 
-> static unsigned int
-> svc_pool_map_init(void)
-> {
-> 	struct svc_pool_map *m = &svc_pool_map;
-> 	int error;
-> 
-> 	if (m->init)
-> 		return m->npools;
-> 	m->init = 1;
-> 	m->npools = 1;
-> 
-> 	if (m->mode == SVC_MODE_NONE)
-> 		m->mode = svc_pool_choose_mode();
-> 
-> 	switch (m->mode) {
-> 	case SVC_MODE_PERCPU:
-> 		error = svc_pool_map_init_percpu(m);
-> 		if (error)
-> 			m->node = SVC_MODE_GLOBAL;
-> 		break;
-> 	case SVC_MODE_PERNODE:
-> 		error = svc_pool_map_init_pernode(m);
-> 		if (error)
-> 			m->node = SVC_MODE_GLOBAL;
-> 		break;
-> 	}
-> 
-> 	return m->npools;
-> }
-> 
-
-Very pretty.  I can see you had fun here ;-)
-
-> > +	switch (m->mode)
-> > +	{
-> > +	default:
-> > +	case 0:
-> 
-> 	switch (m->mode) {
-> 
-> should also use the enum values.
-> 
-> > +static inline struct svc_pool *svc_pool_for_cpu(struct svc_serv *serv, int cpu)
-> > +{
-> > +	struct svc_pool_map *m = &svc_pool_map;
-> > +	unsigned int pidx;
-> > +
-> > +	switch (m->mode) {
-> > +	default:
-> > +	case 0:
-> > +		pidx = 0;
-> > +		break;
-> > +	case 1:
-> > +		pidx = m->to_pool[cpu];
-> > +		break;
-> > +	case 2:
-> > +		pidx = m->to_pool[cpu_to_node(cpu)];
-> > +		break;
-> > +	}
-> > +	return &serv->sv_pools[pidx % serv->sv_nrpools];
-> > +}
-> 
-> I think this is too large to be inlined.
-
-Really?  I've seen recent gcc's inline far bigger functions
-without even being asked.   For example in net/sunrpc/xdr.c,
-_shift_data_right_pages() and _copy_to_pages() and
-_copy_from_pages() *all* get inlined into xdr_shrink_bufhead().
-
->   Moving it out of line would
-> also make &svc_pool_map static scope, aswell as the struct definition for
-> it.  
-
-Agreed.
-
-> I think this would be a useful encapsulation even independent of
-> whether the de-inling is worth it from the performance/codesize improvement
-> perspective.
-
-The function is used exactly once, so inlining it or not will have
-almost zero effect.  There will be a performance impact to de-inlining
-but probably very small indeed compared to the savings from splitting
-svc_serv.  So if you think it will make the code more readable I'll
-be happy to de-inline it.
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------------------------
