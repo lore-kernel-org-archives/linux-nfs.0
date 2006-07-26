@@ -1,30 +1,28 @@
-From: Bernd Schubert <bernd.schubert@pci.uni-heidelberg.de>
-Subject: Re: protocol question
-Date: Wed, 26 Jul 2006 17:32:23 +0200
-Message-ID: <200607261732.24191.bernd.schubert@pci.uni-heidelberg.de>
-References: <200607261247.35653.bernd.schubert@pci.uni-heidelberg.de>
-	<200607261356.38520.bernd.schubert@pci.uni-heidelberg.de>
-	<1153916394.5656.23.camel@localhost>
-Reply-To: bernd-schubert@gmx.de
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [ltc-perf] draft of nfs event hook
+Date: Wed, 26 Jul 2006 10:13:14 +0100
+Message-ID: <20060726091314.GA3739@infradead.org>
+References: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: varap@us.ibm.com, ltc-perf@linux.ibm.com,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G671C-0007HB-LT
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:39:18 -0700
+	id 1G677A-00081h-Jj
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:45:28 -0700
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G6718-0006C1-Mz
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:39:17 -0700
-Received: from relay.uni-heidelberg.de ([129.206.100.212])
+	(Exim 4.44) id 1G6779-0002n7-59
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:45:28 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
 	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41) id 1G5lNA-0001LY-8M
-	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 08:32:33 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1153916394.5656.23.camel@localhost>
+	(Exim 4.41) id 1G5fSF-00078r-Dx
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 02:13:26 -0700
+To: Xue Peng Li <xuepengl@cn.ibm.com>
+In-Reply-To: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,50 +35,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> > But the client returns an i/o error to the userspace, is this correct?
->
-> No. It will return an ESTALE to userspace in this case.
+On Wed, Jul 26, 2006 at 05:13:09PM +0800, Xue Peng Li wrote:
+> 
+> Hi folks,
+> 
+>   I am working on NFS trace hooks for SystemTap/LKET. These trace
+> hooks could be used for performance analyzing which will trace both
+> NFS client and server side activities.
+> 
+>   At the first step I need make sure that the trace hooks I defined
+> are appropriate and every trace hook probes the right places inside
+> the Kernel. So I will be appreciated if you could help me review the
+> following trace hooks.
 
-Sorry, I didn't express myself properly, it _did_ return i/o error.
+Please implement proper static traces based on something similar to the
+blktrace instead of wasting your time systemtap.
 
-[...]
-> Right. The inode generation number changes when the inode number is
-> reused. After that, any NFS rpc request containing the filehandle with
-> the old generation number should receive an immediate NFSERR3_STALE.
-
-> Oops. Actually, it would be more correct to say that the filehandle is
-> invalidated immediately once the file has been deleted on the server.
->
-> The generation number is there in order to ensure that the old
-> filehandle is not 'resurrected' when the inode number is reused.
-
-I need to have a look how Pascal actually used the generation numbers.
-
->
-> My point about inotify was merely a way to help enforce that in the case
-> where a userland-based server might want to cache filehandles. I've no
-> idea whether or not unfs3 actually does that sort of thing.
-
-There is a cache, but thats the part I so far never looked into.
-
-Thanks a lot for your help,
-	Bernd
-
--- =
-
-Bernd Schubert
-Physikalisch Chemisches Institut / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
-e-mail: bernd.schubert@pci.uni-heidelberg.de
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
