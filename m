@@ -1,70 +1,84 @@
-From: Li Guanglei <guanglei@cn.ibm.com>
-Subject: Re: [NFS] [ltc-perf] draft of nfs event hook
-Date: Fri, 28 Jul 2006 10:03:53 +0800
-Message-ID: <44C97089.3080901@cn.ibm.com>
-References: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com><44C8C631.40003@cn.ibm.com><76bd70e30607270829q500711c8k8e7dd6ba9a9b6dfe@mail.gmail.com> <44C94266.6070606@cn.ibm.com> <001301c6b1e8$bd7cf590$160b0a0a@ict25eacacc325>
+From: "Michael Han" <mhan@postini.com>
+Subject: default sunrpc.min_resvport
+Date: Wed, 26 Jul 2006 10:16:27 -0700
+Message-ID: <168996D6C4DFA945B032B63C0DEAA6BF0421E687@EXCHANGE1.postini.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "systemtap@sourceware.org" <systemtap@sourceware.org>,         nfs@lists.sourceforge.net
-Return-path: <systemtap-return-3839-gls-systemtap=m.gmane.org@sourceware.org>
-To: ZhaoYi <zhaoyi@ncic.ac.cn>
-In-Reply-To: <001301c6b1e8$bd7cf590$160b0a0a@ict25eacacc325>
-List-Unsubscribe: <mailto:systemtap-unsubscribe-gls-systemtap=m.gmane.org@sourceware.org>
-List-Subscribe: <mailto:systemtap-subscribe@sourceware.org>
-List-Post: <mailto:systemtap@sourceware.org>
-List-Help: <mailto:systemtap-help@sourceware.org>, <http://sourceware.org/lists.html#faqs>
-Sender: systemtap-owner@sourceware.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G6I0i-0006er-By
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 19:23:33 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G64ha-0001al-V3
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 05:10:58 -0700
+Received: from exprod8og50.obsmtp.com ([64.18.3.82])
+	by externalmx-1.sourceforge.net with smtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41) id 1G60I7-0007ec-OT
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 00:28:20 -0700
+Received: from exchsrvr3.postini.com (exchsrvr3.postini.com [172.16.0.56])
+	by thor.postinicorp.com (Postfix) with ESMTP id AE62F178B49
+	for <nfs@lists.sourceforge.net>; Wed, 26 Jul 2006 10:16:31 -0700 (PDT)
+To: <nfs@lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-ZhaoYi ??:
-> I think RPC is also needed to be listed, because in the current implementation of Linux NFS, RPC in the kernel is used by nfs only.
+I'm not sure if this has surfaced before for discussion (searching
+hasn't shown me any relevant threads), but the 2.6 kernel's new
+implementation of xprt_bindresvport can conflict with port 664 on
+IPMI-enabled hosts with a BMC. IPMI uses both ports 623 and 664 for
+communications, and several implementations appear to intercept all
+traffic for these ports and not permit them to pass to the standard
+packet driver (tcpdump in promiscuous mode shows no packets coming in).
 
-Although RPC is only used by NFS inside Kernel, I think NFS and RPC 
-fall into two different categories. A separate set of trace hooks for 
-RPC should be better.
+I know that in the discussions back in 2005/02 and 2005/07 of the patch
+that implements the new privileged port binding for NFS mount (I can't
+tell whose patch it is, perhaps Olaf Kirch's?), Charles Lever noted that
+the new sunrpc.min_resvport of 650 avoids conflicts with port 623. Is it
+worth increasing this default to 665 to avoid this port as well?
 
-- Guanglei
+If not, I just wanted to get this information onto the list, since I
+searched pretty heavily while researching the intermittent hangs I've
+been getting with my NFS mounts before finally nailing this to my IPMI
+BMCs. Manually setting sunrpc.min_resvport to 700 has stabilized NFS on
+my boxes. Thanks.
 
-> ----- Original Message ----- 
-> From: "Li Guanglei" <guanglei@cn.ibm.com>
-> To: "Chuck Lever" <chucklever@gmail.com>
-> Cc: <nfs@lists.sourceforge.net>; <systemtap@sourceware.org>
-> Sent: Friday, July 28, 2006 6:47 AM
-> Subject: Re: [NFS] [ltc-perf] draft of nfs event hook
-> 
-> 
->>> Have you done this with a local file system?  I assume yes, and that
->>> you just described the general approach you have taken with other file
->>> systems.  I think getting the same kind of data and trace points from
->>> the NFS client as you added to local file systems would be good.
->>>
->>> Capturing VFS and address space entry points is definitely useful and
->>> is similar to local file systems.  At the bottom of the NFS client is
->>> the RPC client, and it acts just like the block I/O layer does for
->>> local file systems.  Would you consider adding trace points in the
->>> LKET for the RPC client and server?
->>>
->>>>    What I didn't list about NFS operations includes authentication,
->>>> NFSv4 callback and RPC(I prefer to use a separate set of trace hooks
->>>> for RPC). I am not sure if these operations are also required to be
->>>> traced. If I missed some important functions or I listed some
->>>> redundant functions, please feel free to let me know. Any comments
->>>> will be highly appreciated.
->>>>
->> I didn't list RPC here because I think RPC is not only used by NFS and 
->> I need another set of RPC trace hooks to address the RPC server and 
->> client side operations. That will be my plan of the next set of trace 
->> hooks.
->>
->> - Guanglei
->>
->>
->> -------------------------------------------------------------------------
->> Take Surveys. Earn Cash. Influence the Future of IT
->> Join SourceForge.net's Techsay panel and you'll get the chance to share your
->> opinions on IT & business topics through brief surveys -- and earn cash
->> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
->> _______________________________________________
->> NFS maillist  -  NFS@lists.sourceforge.net
->> https://lists.sourceforge.net/lists/listinfo/nfs
->>
+Michael Han
+mhan@postini.com
+
+
+
+
+
+
+-----------------------------------------------------------
+This message may contain confidential and/or privileged 
+information. This information is intended to be read only
+by the individual or entity to whom it is addressed. If
+you are not the intended recipient, you are on notice that
+any review, disclosure, copying, distribution or use of
+the contents of this message is strictly prohibited. If
+you have received this message in error, please notify the
+sender immediately and delete or destroy any copy of this
+message.
+
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
