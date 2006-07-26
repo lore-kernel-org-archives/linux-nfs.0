@@ -1,27 +1,25 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 000 of 11] knfsd: NUMAisation
-Date: Wed, 26 Jul 2006 16:25:19 +1000
-Message-ID: <1153895119.21040.494.camel@hole.melbourne.sgi.com>
-References: <1153805274.21040.38.camel@hole.melbourne.sgi.com>
-	<17605.50325.842862.8823@cse.unsw.edu.au>
-	<76bd70e30607250705h3e8c9eefjc794397e0c45a21b@mail.gmail.com>
-	<D29213A6-C328-4C88-8D6D-428F3FDF4F56@rgmadvisors.com>
-	<76bd70e30607250836v35110d6eo20043dccc4d284b7@mail.gmail.com>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH 007 of 9] knfsd: Separate out some parts of
+ nfsd_svc, which start nfs servers.
+Date: Tue, 25 Jul 2006 23:42:02 -0700
+Message-ID: <20060725234202.078ecb48.akpm@osdl.org>
+References: <20060725114207.21779.patches@notabene>
+	<1060725015457.21981@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Paul Jimenez <pj@rgmadvisors.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G5cpt-0001r5-Kr
-	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 23:25:37 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G5cpt-0001AP-Sg
-	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 23:25:38 -0700
-To: Chuck Lever <chucklever@gmail.com>, Neil Brown <neilb@suse.de>
-In-Reply-To: <76bd70e30607250836v35110d6eo20043dccc4d284b7@mail.gmail.com>
+	id 1G5d5r-00037J-2I
+	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 23:42:07 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1G5d5q-00058I-9u
+	for nfs@lists.sourceforge.net; Tue, 25 Jul 2006 23:42:07 -0700
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1060725015457.21981@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,90 +32,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-07-26 at 01:36, Chuck Lever wrote:
-> On 7/25/06, Paul Jimenez <pj@rgmadvisors.com> wrote:
-> >
-> My vote is to zap the least recently used connection.  That is overall
-> the safest compromise.
+On Tue, 25 Jul 2006 11:54:57 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-Agreed.  The following patch (on top of my earlier patch 001) does
-that.  I've verified that it enforces the connection limit and
-doesn't kill the oldest socket.
---
+> 
+> Separate out the code for creating a new service, and for creating
+> initial sockets.
+> 
+> Some of these new functions will have multiple callers soon.
 
-sunrpc: when enforcing the TCP connection limit, choose exactly the
-least recently used TCP connection.  This is fairer than the new
-algorithm which was a side effect of the recent connection aging
-patch, and minimises the chances of closing an active connection
-(which is known to have adverse consequences).
+In which case they shouldn't be inlined, hmm?
 
-
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
----
-
- net/sunrpc/svcsock.c |   34 +++++++++++++++++++++++++++-------
- 1 files changed, 27 insertions(+), 7 deletions(-)
-
-Index: linus-git/net/sunrpc/svcsock.c
-===================================================================
---- linus-git.orig/net/sunrpc/svcsock.c	2006-07-26 15:33:32.989291299 +1000
-+++ linus-git/net/sunrpc/svcsock.c	2006-07-26 16:18:10.988508212 +1000
-@@ -798,6 +798,32 @@ svc_tcp_data_ready(struct sock *sk, int 
- 		wake_up_interruptible(sk->sk_sleep);
- }
- 
-+
-+/*
-+ * Find and return the Least Recently Used temp socket
-+ * on the serv.  Used to choose a victim when enforcing
-+ * connection limits.  The idea here is to avoid dropping
-+ * active connections, which is known to have adverse
-+ * effects.  Caller must own serv->sv_lock.
-+ */
-+static struct svc_sock *
-+svc_lru_temp_socket(struct svc_serv *serv)
-+{
-+	struct svc_sock *svsk;
-+	struct svc_sock *lru_svsk = NULL;
-+	unsigned long lru_when = 0;
-+
-+	list_for_each_entry(svsk, &serv->sv_tempsocks, sk_list) {
-+		unsigned long when = svsk->sk_lastrecv;
-+		if (lru_svsk == NULL || when < lru_when) {
-+			lru_svsk = svsk;
-+			lru_when = when;
-+		}
-+	}
-+
-+	return lru_svsk;
-+}
-+
- /*
-  * Accept a TCP connection
-  */
-@@ -896,13 +922,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 					NIPQUAD(sin.sin_addr.s_addr),
- 					ntohs(sin.sin_port));
- 			}
--			/*
--			 * Always select the oldest socket. It's not fair,
--			 * but so is life
--			 */
--			svsk = list_entry(serv->sv_tempsocks.prev,
--					  struct svc_sock,
--					  sk_list);
-+			svsk = svc_lru_temp_socket(serv);
- 			set_bit(SK_CLOSE, &svsk->sk_flags);
- 			svsk->sk_inuse ++;
- 		}
-
-
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
+> +static inline int nfsd_create_serv(void)
+> +{
+> +	int err = 0;
+> +	lock_kernel();
+> +	if (nfsd_serv) {
+> +		nfsd_serv->sv_nrthreads++;
+> +		unlock_kernel();
+> +		return 0;
+> +	}
+> +
+> +	atomic_set(&nfsd_busy, 0);
+> +	nfsd_serv = svc_create(&nfsd_program, NFSD_BUFSIZE,
+> +			       nfsd_last_thread);
+> +	if (nfsd_serv == NULL)
+> +		err = -ENOMEM;
+> +	else
+> +		nfsd_serv->sv_nrthreads++;
+> +	unlock_kernel();
+> +	do_gettimeofday(&nfssvc_boot);		/* record boot time */
+> +	return err;
+> +}
+> +
 
 
 -------------------------------------------------------------------------
