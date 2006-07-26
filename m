@@ -1,67 +1,51 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] [PATCH 009 of 9] knfsd: Allow sockets to be passed to nfsd via 'portlist'
-Date: Wed, 26 Jul 2006 16:41:42 -0400
-Message-ID: <20060726204142.GG31172@fieldses.org>
-References: <20060725114207.21779.patches@notabene> <1060725015508.22007@suse.de>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 010 of 11] knfsd: make pools numa aware (ifdefless)
+Date: Wed, 26 Jul 2006 14:06:47 +0100
+Message-ID: <20060726130647.GB25636@infradead.org>
+References: <1153913457.21040.854.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751138AbWGZUls@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1060725015508.22007@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G5rK2-0001eG-4w
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 14:53:45 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G5rJz-0000iS-1X
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 14:53:42 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
+	(Exim 4.41) id 1G5j6C-0005ng-Ae
+	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 06:06:53 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1153913457.21040.854.camel@hole.melbourne.sgi.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Jul 25, 2006 at 11:55:08AM +1000, NeilBrown wrote:
-> +		err = nfsd_create_serv();
-> +		if (!err) {
-> +			int proto = 0;
-> +			err = svc_addsock(nfsd_serv, fd, buf, &proto);
-> +			/* Decrease the count, but don't shutdown the
-> +			 * the service
-> +			 */
-> +			if (err >= 0)
-> +				lockd_up(proto);
-> +			nfsd_serv->sv_nrthreads--;
-....
-> @@ -211,8 +211,6 @@ static inline int nfsd_create_serv(void)
->  			       nfsd_last_thread);
->  	if (nfsd_serv == NULL)
->  		err = -ENOMEM;
-> -	else
-> -		nfsd_serv->sv_nrthreads++;
+And btw, any chance to fix your patchscript to say
 
-I don't understand these sv_nrthreads changes.
+[PATCH 10/11]
 
-> @@ -449,18 +450,23 @@ int one_sock_name(char *buf, struct svc_
->  }
->  
->  int
-> -svc_sock_names(char *buf, struct svc_serv *serv)
-> +svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
->  {
-> -	struct svc_sock *svsk;
-> +	struct svc_sock *svsk, *closesk = NULL;
->  	int len = 0;
->  
->  	if (!serv) return 0;
->  	spin_lock(&serv->sv_lock);
->  	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
->  		int onelen = one_sock_name(buf+len, svsk);
-> -		len += onelen;
-> +		if (toclose && strcmp(toclose, buf+len) == 0)
-> +			closesk = svsk;
-> +		else
-> +			len += onelen;
->  	}
->  	spin_unlock(&serv->sv_lock);
-> +	if (closesk)
-> +		svc_delete_socket(closesk);
+instead of the annoying 010?
 
-Am I missing something, or do we end up missing a lockd_down() in this
-case?  (Because nfsd_last_thread() isn't going to be calling
-lockd_down() for this thread now that we've removed it from
-sv_permsocks).
 
---b.
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
