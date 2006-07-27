@@ -1,60 +1,45 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Help in using tcpdump/etherreal in gathering NFS stats
-Date: Thu, 27 Jul 2006 10:53:15 +0100
-Message-ID: <44C88D0B.9080602@moving-picture.com>
+From: Li Guanglei <guanglei@cn.ibm.com>
+Subject: Re: [NFS] [ltc-perf] draft of nfs event hook
+Date: Fri, 28 Jul 2006 06:47:02 +0800
+Message-ID: <44C94266.6070606@cn.ibm.com>
+References: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com> 	 <44C8C631.40003@cn.ibm.com> <76bd70e30607270829q500711c8k8e7dd6ba9a9b6dfe@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6Doe-0007KL-UO
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 14:54:48 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G63gz-0007n9-SA
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 04:06:15 -0700
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1G62YS-0007lE-Do
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 02:53:21 -0700
-Received: from minion.mpc.local ([172.16.11.112] helo=moving-picture.com)
-	by moving-picture.com with esmtp (Exim 4.43) id 1G62YN-0003fk-2z
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 10:53:15 +0100
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "systemtap@sourceware.org" <systemtap@sourceware.org>,         nfs@lists.sourceforge.net
+Return-path: <systemtap-return-3837-gls-systemtap=m.gmane.org@sourceware.org>
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <76bd70e30607270829q500711c8k8e7dd6ba9a9b6dfe@mail.gmail.com>
+List-Unsubscribe: <mailto:systemtap-unsubscribe-gls-systemtap=m.gmane.org@sourceware.org>
+List-Subscribe: <mailto:systemtap-subscribe@sourceware.org>
+List-Post: <mailto:systemtap@sourceware.org>
+List-Help: <mailto:systemtap-help@sourceware.org>, <http://sourceware.org/lists.html#faqs>
+Sender: systemtap-owner@sourceware.org
+List-ID: <nfs.lists.sourceforge.net>
 
-I'm trying to work out which files on an NFS NAS (non-linux) box are 
-being accessed most frequently in an effort to get a better 
-understanding of some performance issues.
+> 
+> Have you done this with a local file system?  I assume yes, and that
+> you just described the general approach you have taken with other file
+> systems.  I think getting the same kind of data and trace points from
+> the NFS client as you added to local file systems would be good.
+> 
+> Capturing VFS and address space entry points is definitely useful and
+> is similar to local file systems.  At the bottom of the NFS client is
+> the RPC client, and it acts just like the block I/O layer does for
+> local file systems.  Would you consider adding trace points in the
+> LKET for the RPC client and server?
+> 
+>>
+>>    What I didn't list about NFS operations includes authentication,
+>> NFSv4 callback and RPC(I prefer to use a separate set of trace hooks
+>> for RPC). I am not sure if these operations are also required to be
+>> traced. If I missed some important functions or I listed some
+>> redundant functions, please feel free to let me know. Any comments
+>> will be highly appreciated.
+>>
 
-I'm mirroring the port that the NAS box is plugged into on a switch - so 
-I can use tcpdump on a Linux box to grab the traffic to/from the NAS box.
+I didn't list RPC here because I think RPC is not only used by NFS and 
+I need another set of RPC trace hooks to address the RPC server and 
+client side operations. That will be my plan of the next set of trace 
+hooks.
 
-However, my knowledge of using tcpdump and (t)ethereal is a bit limited 
-- so can anyone give me some pointers to what options I should be using 
-to capture information on what files are being accessed (stats and 
-reads/writes)? - I'm not even sure this is possible with these tools ...
-
-Thanks
-
-James Pearson
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+- Guanglei
