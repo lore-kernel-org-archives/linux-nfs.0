@@ -1,81 +1,416 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: Re: NFSv4 ACL and POSIX interaction / mask,
-	draft-ietf-nfsv4-acls-00 not ready
-Date: Thu, 27 Jul 2006 04:57:39 +0200
-Message-ID: <200607270457.39532.agruen@suse.de>
-References: <200607032310.15252.agruen@suse.de>
-	<A15E619E-E88C-420C-AEC4-4E7409F187F3@Sun.COM>
-	<200607270259.04405.agruen@suse.de>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: [PATCH 10/11] knfsd: make pools numa aware (V3)
+Date: Thu, 27 Jul 2006 17:38:41 +1000
+Message-ID: <1153985921.21040.1694.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Cc: Sam Falkner <Sam.Falkner@sun.com>, nfs@lists.sourceforge.net,
-	Spencer Shepler <spencer.shepler@sun.com>,
-	Brian Pawlowski <beepy@netapp.com>, nfsv4@ietf.org
-Return-path: <nfsv4-bounces@ietf.org>
-To: Lisa Week <Lisa.Week@sun.com>
-In-Reply-To: <200607270259.04405.agruen@suse.de>
-List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Errors-To: nfsv4-bounces@ietf.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G64ga-00019p-FU
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 05:09:52 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G64ga-00030Z-Ej
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 05:09:52 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1G60Sm-0001pt-W7
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 00:39:24 -0700
+To: Neil Brown <neilb@suse.de>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Lisa,
+G'day,
 
-On Thursday, 27. July 2006 02:59, Andreas Gruenbacher wrote:
-> Let's assume that ACE4_WRITE_OWNER was indeed outside of the access control
-> mechanisms defined by POSIX as a counter example. A POSIX application does
-> a chmod to mode 0600 (rw-------) in order to restrict access to the file
-> owner. After that, the application can perfectly well write information
-> that is confidential to the owner into the file -- after all, only the
-> owner will have access, right?
->
-> Well, not quite, because an ACL might still grant ACE4_WRITE_OWNER to some
-> other user on the system. That other user could simply take over ownership
-> of the file, and do whatever he wants with it. Here we have it, a perfect
-> security hole; all POSIX applications potentially broken!
->
-> Therefore, there cannot be any file access control mechanisms which are
-> neither defined by POSIX, nor additional or alternate.
+Another spin of this patch, with Christoph's feedback.  Changed:
 
-I forgot to mention that an analogous case can be made for additional file 
-access control mechanisms as well: POSIX applications cannot know which 
-additional file access control mechanisms a particular implementation may 
-support; they are free to rely on invariants under POSIX, such as a chmod 
-from one mode to another, which should be a no-op. Additional file access 
-control mechanisms must make sure that POSIX invariants will not change the 
-permissions granted.
+- added an enum for svc_pool mode
+- made struct svc_pool_map and its instance static to svc.c
+- initialisers one per line
+- de-inlined svc_pool_for_cpu()
+- split svc_pool_map_init() into multiple functions
 
-This contradicts with having a chmod write through to OWNER@, GROUP@, and 
-EVERYONE@ ACEs: consider the same ACE we had before with a file mode of 0740 
-(rwxr-----):
+--
 
-  OWNER@:READ_DATA/APPEND_DATA/EXECUTE::ALLOW
+knfsd: Actually implement multiple pools.  On NUMA machines, allocate
+a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
+global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
+on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
+have their cpu mask set to limit them to the CPUs in the svc_pool that
+owns them.
 
-If a chmod to 0640 and back to 0740 writes through to the OWNER@ ACE, the 
-entry will change to:
+This is the patch that allows an Altix to scale NFS traffic linearly
+beyond 4 CPUs and 4 NICs.
 
-  OWNER@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+Incorporates changes and feedback from Neil Brown, Trond Myklebust,
+and Christoph Hellwig.
 
-So a POSIX application has added mask flags in a supposed invariant. That's 
-also a security hole, but not one as severe as the first because the only 
-mask flag affected is APPEND_DATA (I believe).
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+---
 
-I have pointed this out before in Section 4.7. "Mode Changes and the OWNER@, 
-GROUP@, and EVERYONE@ ACEs".
+ include/linux/sunrpc/svc.h |    1 
+ net/sunrpc/svc.c           |  246 +++++++++++++++++++++++++++++++++-
+ net/sunrpc/svcsock.c       |    7 
+ 3 files changed, 252 insertions(+), 2 deletions(-)
 
-Andreas
+Index: linus-git/net/sunrpc/svc.c
+===================================================================
+--- linus-git.orig/net/sunrpc/svc.c	2006-07-26 16:50:25.802187916 +1000
++++ linus-git/net/sunrpc/svc.c	2006-07-27 13:11:21.551232017 +1000
+@@ -4,6 +4,10 @@
+  * High-level RPC service routines
+  *
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
++ *
++ * Multiple threads pools and NUMAisation
++ * Copyright (c) 2006 Silicon Graphics, Inc.
++ * by Greg Banks <gnb@melbourne.sgi.com>
+  */
+ 
+ #include <linux/linkage.h>
+@@ -25,6 +29,233 @@
+ #define RPC_PARANOIA 1
+ 
+ /*
++ * Mode for mapping cpus to pools.
++ */
++enum {
++	SVC_POOL_NONE = -1,	/* uninitialised, choose one of the others */
++	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
++				 * (legacy & UP mode) */
++	SVC_POOL_PERCPU,	/* one pool per cpu */
++	SVC_POOL_PERNODE	/* one pool per numa node */
++};
++
++/*
++ * Structure for mapping cpus to pools and vice versa.
++ * Setup once during sunrpc initialisation.
++ */
++static struct svc_pool_map {
++	int mode;			/* Note: int not enum to avoid
++					 * warnings about "enumeration value
++					 * not handled in switch" */
++	unsigned int npools;
++	unsigned int *pool_to;		/* maps pool id to cpu or node */
++	unsigned int *to_pool;		/* maps cpu or node to pool id */
++} svc_pool_map = {
++	.mode = SVC_POOL_NONE
++};
++
++
++/*
++ * Detect best pool mapping mode heuristically,
++ * according to the machine's topology.
++ */
++static int
++svc_pool_map_choose_mode(void)
++{
++	unsigned int node;
++
++	if (num_online_nodes() > 1) {
++		/*
++		 * Actually have multiple NUMA nodes,
++		 * so split pools on NUMA node boundaries
++		 */
++		return SVC_POOL_PERNODE;
++	}
++
++	node = any_online_node(node_online_map);
++	if (nr_cpus_node(node) > 2) {
++		/*
++		 * Non-trivial SMP, or CONFIG_NUMA on
++		 * non-NUMA hardware, e.g. with a generic
++		 * x86_64 kernel on Xeons.  In this case we
++		 * want to divide the pools on cpu boundaries.
++		 */
++		return SVC_POOL_PERCPU;
++	}
++
++	/* default: one global pool */
++	return SVC_POOL_GLOBAL;
++}
++
++/*
++ * Allocate the to_pool[] and pool_to[] arrays.
++ * Returns 0 on success or an errno.
++ */
++static int
++svc_pool_map_alloc_arrays(struct svc_pool_map *m, unsigned int maxpools)
++{
++	m->to_pool = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
++	if (!m->to_pool)
++		goto fail;
++	m->pool_to = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
++	if (!m->pool_to)
++		goto fail_free;
++
++	return 0;
++
++fail_free:
++	kfree(m->to_pool);
++fail:
++	return -ENOMEM;
++}
++
++/*
++ * Initialise the pool map for SVC_POOL_PERCPU mode.
++ * Returns number of pools or <0 on error.
++ */
++static int
++svc_pool_map_init_percpu(struct svc_pool_map *m)
++{
++	unsigned int maxpools = num_possible_cpus();
++	unsigned int pidx = 0;
++	unsigned int cpu;
++	int err;
++
++	err = svc_pool_map_alloc_arrays(m, maxpools);
++	if (err)
++		return err;
++
++	for_each_online_cpu(cpu) {
++		BUG_ON(pidx > maxpools);
++		m->to_pool[cpu] = pidx;
++		m->pool_to[pidx] = cpu;
++		pidx++;
++	}
++	/* cpus brought online later all get mapped to pool0, sorry */
++
++	return pidx;
++};
++
++
++/*
++ * Initialise the pool map for SVC_POOL_PERNODE mode.
++ * Returns number of pools or <0 on error.
++ */
++static int
++svc_pool_map_init_pernode(struct svc_pool_map *m)
++{
++	unsigned int maxpools = num_possible_nodes();
++	unsigned int pidx = 0;
++	unsigned int node;
++	int err;
++
++	err = svc_pool_map_alloc_arrays(m, maxpools);
++	if (err)
++		return err;
++
++	for_each_node_with_cpus(node) {
++		/* some architectures (e.g. SN2) have cpuless nodes */
++		BUG_ON(pidx > maxpools);
++		m->to_pool[node] = pidx;
++		m->pool_to[pidx] = node;
++		pidx++;
++	}
++	/* nodes brought online later all get mapped to pool0, sorry */
++
++	return pidx;
++}
++
++
++/*
++ * Build the global map of cpus to pools and vice versa.
++ */
++static unsigned int
++svc_pool_map_init(void)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	int npools = -1;
++
++	if (m->mode != SVC_POOL_NONE)
++		return m->npools;
++
++	m->mode = svc_pool_map_choose_mode();
++
++	switch (m->mode) {
++	case SVC_POOL_PERCPU:
++		npools = svc_pool_map_init_percpu(m);
++		break;
++	case SVC_POOL_PERNODE:
++		npools = svc_pool_map_init_pernode(m);
++		break;
++	}
++
++	if (npools < 0) {
++		/* default, or memory allocation failure */
++		npools = 1;
++		m->mode = SVC_POOL_GLOBAL;
++	}
++	m->npools = npools;
++
++	return m->npools;
++}
++
++/*
++ * Set the current thread's cpus_allowed mask so that it
++ * will only run on cpus in the given pool.
++ *
++ * Returns 1 and fills in oldmask iff a cpumask was applied.
++ */
++static inline int
++svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	unsigned int node; /* or cpu */
++
++	BUG_ON(m->mode == SVC_POOL_NONE);
++
++	switch (m->mode)
++	{
++	default:
++		return 0;
++	case SVC_POOL_PERCPU:
++		node = m->pool_to[pidx];
++		*oldmask = current->cpus_allowed;
++		set_cpus_allowed(current, cpumask_of_cpu(node));
++		return 1;
++	case SVC_POOL_PERNODE:
++		node = m->pool_to[pidx];
++		*oldmask = current->cpus_allowed;
++		set_cpus_allowed(current, node_to_cpumask(node));
++		return 1;
++	}
++}
++
++/*
++ * Use the mapping mode to choose a pool for a given CPU.
++ * Used when enqueueing an incoming RPC.  Always returns
++ * a non-NULL pool pointer.
++ */
++struct svc_pool *
++svc_pool_for_cpu(struct svc_serv *serv, int cpu)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	unsigned int pidx = 0;
++
++	BUG_ON(m->mode == SVC_POOL_NONE);
++
++	switch (m->mode) {
++	case SVC_POOL_PERCPU:
++		pidx = m->to_pool[cpu];
++		break;
++	case SVC_POOL_PERNODE:
++		pidx = m->to_pool[cpu_to_node(cpu)];
++		break;
++	}
++	return &serv->sv_pools[pidx % serv->sv_nrpools];
++}
++
++
++/*
+  * Create an RPC service
+  */
+ static struct svc_serv *
+@@ -103,8 +334,9 @@ svc_create_pooled(struct svc_program *pr
+ 		  svc_thread_fn func, int sig, struct module *mod)
+ {
+ 	struct svc_serv *serv;
++	unsigned int npools = svc_pool_map_init();
+ 
+-	serv = __svc_create(prog, bufsize, shutdown, /*npools*/1);
++	serv = __svc_create(prog, bufsize, shutdown, npools);
+ 
+ 	if (serv != NULL) {
+ 		serv->sv_function = func;
+@@ -207,12 +439,16 @@ svc_release_buffer(struct svc_rqst *rqst
+ 
+ /*
+  * Create a thread in the given pool.  Caller must hold BKL.
++ * On a NUMA or SMP machine, with a multi-pool serv, the thread
++ * will be restricted to run on the cpus belonging to the pool.
+  */
+ static int
+ __svc_create_thread(svc_thread_fn func, struct svc_serv *serv, struct svc_pool *pool)
+ {
+ 	struct svc_rqst	*rqstp;
+ 	int		error = -ENOMEM;
++	int		have_oldmask = 0;
++	cpumask_t	oldmask;
+ 
+ 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+ 	if (!rqstp)
+@@ -232,7 +468,15 @@ __svc_create_thread(svc_thread_fn func, 
+ 	spin_unlock_bh(&pool->sp_lock);
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
++
++	if (serv->sv_nrpools > 1)
++		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
++
+ 	error = kernel_thread((int (*)(void *)) func, rqstp, 0);
++
++	if (have_oldmask)
++		set_cpus_allowed(current, oldmask);
++
+ 	if (error < 0)
+ 		goto out_thread;
+ 	svc_sock_update_bufs(serv);
+Index: linus-git/net/sunrpc/svcsock.c
+===================================================================
+--- linus-git.orig/net/sunrpc/svcsock.c	2006-07-26 16:47:46.018822248 +1000
++++ linus-git/net/sunrpc/svcsock.c	2006-07-26 17:08:01.853054036 +1000
+@@ -151,8 +151,9 @@ static void
+ svc_sock_enqueue(struct svc_sock *svsk)
+ {
+ 	struct svc_serv	*serv = svsk->sk_server;
+-	struct svc_pool *pool = &serv->sv_pools[0];
++	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
++	int cpu;
+ 
+ 	if (!(svsk->sk_flags &
+ 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
+@@ -160,6 +161,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	if (test_bit(SK_DEAD, &svsk->sk_flags))
+ 		return;
+ 
++	cpu = get_cpu();
++	pool = svc_pool_for_cpu(svsk->sk_server, cpu);
++	put_cpu();
++
+ 	spin_lock_bh(&pool->sp_lock);
+ 
+ 	if (!list_empty(&pool->sp_threads) &&
+Index: linus-git/include/linux/sunrpc/svc.h
+===================================================================
+--- linus-git.orig/include/linux/sunrpc/svc.h	2006-07-26 16:49:47.615119695 +1000
++++ linus-git/include/linux/sunrpc/svc.h	2006-07-27 12:29:11.996063288 +1000
+@@ -368,5 +368,6 @@ int		   svc_process(struct svc_serv *, s
+ int		   svc_register(struct svc_serv *, int, unsigned short);
+ void		   svc_wake_up(struct svc_serv *);
+ void		   svc_reserve(struct svc_rqst *rqstp, int space);
++struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
+ 
+ #endif /* SUNRPC_SVC_H */
 
+
+
+Greg.
 -- 
-Andreas Gruenbacher <agruen@suse.de>
-Novell / SUSE Labs
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
+
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www1.ietf.org/mailman/listinfo/nfsv4
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
