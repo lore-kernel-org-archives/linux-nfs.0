@@ -1,25 +1,20 @@
 From: "Michael Han" <mhan@postini.com>
 Subject: Re: default sunrpc.min_resvport
-Date: Fri, 28 Jul 2006 10:05:24 -0700
-Message-ID: <168996D6C4DFA945B032B63C0DEAA6BF0421EA43@EXCHANGE1.postini.com>
+Date: Fri, 28 Jul 2006 10:58:36 -0700
+Message-ID: <168996D6C4DFA945B032B63C0DEAA6BF0421EA7D@EXCHANGE1.postini.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7]
-	helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6WDy-0003Ke-Aw
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:34:10 -0700
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1G6VmC-0004pU-Um
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:05:28 -0700
-Received: from exprod8og55.obsmtp.com ([64.18.3.92])
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G6Wbr-0006E9-7l
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:58:51 -0700
+Received: from exprod8og54.obsmtp.com ([64.18.3.90])
 	by mail.sourceforge.net with smtp (TLSv1:AES256-SHA:256) (Exim 4.44)
-	id 1G6VmC-0001Pm-Dc
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:05:28 -0700
+	id 1G6Wbi-0004jJ-AL
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:58:43 -0700
 To: "Chuck Lever" <chucklever@gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,54 +28,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> From Chuck Lever:
-> Raising the minimum port number is one way to avoid port number
-> collisions.  However, you are chopping away a lot of usable ports when
-> you do this, something that some sites can't afford.  Especially if
-> you use automounter, or expect your clients to support more than a
-> couple hundred NFS mounts at once, you will probably need the expanded
+>From Chuck Lever:
+> "For the record," some sites have a requirement for a larger 
 > port space.
 
-For my own peculiar requirements, a diminished number of privileged
-source ports is perfectly fine. I don't have hosts that mount a large
-number of shares, even though I do have an automount home in some cases
-(I just don't have enough users on my production systems to need this).
+Naturally they do. auto-home systems with thousands of users could
+easily cause this. I'm just pointing out that I'm satisfied with my own
+workaround.
  
-> A better way to eliminate the problem is to start a dummy daemon on
-> port 664 (or any other ports that the hardware might use
-> "transparently") so that the RPC client entirely avoids choosing those
-> port numbers.  I believe that some enterprise distributions (RHEL?  I
-> can't remember) have chosen to provide such daemons for just this
-> purpose.
+> The daemon actually wouldn't show up on the security scan.  The
+> hardware IPMI listener would, however.  The daemon is not visible on
+> the network because the IPMI listener diverts packets to that port.
 
-I saw that this was the suggested workaround from mailing list postings,
-but saw a reference to some kind of automount or mount bug that still
-ran afoul port 664 somehow. Anyway, a "fake" daemon would show up on
-security port scans and be one more thing to explain at audit time
-(paperwork avoidance is always a worthy goal in my view ;).
+Of course, you are correct. That's the crux of the problem I
+encountered. Silly me.
 
-> In the meantime, we should consider raising the default minimum port
-> number by 15 (or if we wanted to be particularly evil, we should chose
-> 666 and be done with it).
+> Other workarounds worth mentioning: disable IPMI in the hardware, or
+> don't use the built-in NIC for NFS traffic.
 
-That's why I suggested it. I'm not really sure adjusting port ranges is
-a good generalized-case solution, but the loss of 15 (or 16 for the more
-entertaining minimum value) usable ports doesn't seem likely to be
-meaningful.
+Yes. Another possible alternative is to divert IPMI traffic to an
+IPMI-only address. I'm not certain this works, but I know the SuperMicro
+BMCs support use of alternate MAC & IP. I just don't know if the port
+623/664 intercepts are promiscuous. I tried changing this on a hot
+system to no avail, but not after rebooting a system and all that good
+stuff.
 
-I notice that some NFS implementations can accept client mounts from
-non-privileged source ports (>= 1024). I'm not sure what the security
-ramifications are (off the top of my head, that doesn't seem appropriate
-for anyone relying on host-based security), but for truly large NFS
-setups, perhaps this might be something to consider? Or perhaps a scheme
-for re-using source ports may be feasible (or even using a single
-connection to plex multiple mounts from the same host as you'd see with
-an auto-home setup?).
+> Indeed.  I'm not familiar enough with IPMI to know if it listens on
+> both the UDP and the TCP port.
 
-Finally, fundamentally this seems to me a defect in the implmentation of
-IPMI BMCs. Shouldn't packets that cannot be processed by the BMC be
-passed to the standard kernel driver? Particularly for TCP, this seems
-like a good idea...
+I believe that in all implementations, IPMI only uses UDP
+conventionally, however the port allocation from IANA is for both
+transports and it appears that more than one implementation intercepts
+both transports (I've seen this issue referenced on systems using Intel
+NICs with IPMI support and on Sun x86 hardware). I'm pretty uneducated
+as far as IPMI goes, myself.
 
 -- 
 Michael Han
