@@ -1,20 +1,23 @@
-From: Amit Gud <agud@redhat.com>
-Subject: [PATCH] fix lazy and force umounts for mount.nfs
-Date: Fri, 28 Jul 2006 11:54:06 -0400
-Message-ID: <44CA331E.2080004@redhat.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] fix NFS mount.nfs options v4
+Date: Fri, 28 Jul 2006 12:57:30 -0400
+Message-ID: <44CA41FA.5060804@redhat.com>
+References: <44CA32CE.9030205@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090800000609080401010205"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6UbP-0002eb-3p
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 08:50:15 -0700
+	id 1G6Vem-0008TH-SF
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 09:57:57 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G6UbI-0001jJ-Hf
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 08:50:15 -0700
-To: Neil Brown <neilb@suse.de>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G6Vel-0008CT-Sa
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 09:57:49 -0700
+To: Amit Gud <agud@redhat.com>
+In-Reply-To: <44CA32CE.9030205@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,113 +30,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090800000609080401010205
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Amit Gud wrote:
 
+>
+> AG
+>
+>------------------------------------------------------------------------
+>
+>If the 'user' or 'users' mount option is specified on commandline, verify with 
+>/etc/fstab if it is really specified. Setuid bit is still ON and should remain
+>ON since mount drops the root privileges.
+>
+>I've given this patch a good hammering, but not exhaustive by any means.
+>
+>Signed-off-by: Amit Gud <agud@redhat.com>
+>Signed-off-by: Steve Dickson <steved@redhat.com>
+>
+>---
+>
+>
+>diff -uprN -X ../dontdiff nfs-utils/utils/mount/mount.c nfs-utils-ag/utils/mount/mount.c
+>--- nfs-utils/utils/mount/mount.c	2006-07-25 11:07:14.000000000 -0400
+>+++ nfs-utils-ag/utils/mount/mount.c	2006-07-28 10:19:54.000000000 -0400
+>@@ -355,9 +433,33 @@ int main(int argc, char *argv[])
+> 
+> 	spec = argv[1];
+> 	mount_point = canonicalize(argv[2]);
+>-	
+>+
+> 	parse_opts(mount_opts, &flags, &extra_opts);
+> 
+>+	if (uid != 0 && !(flags & MS_USERS) && !(flags & MS_USER)) {
+>+		fprintf(stderr, "%s: permission denied\n", progname);
+>+		exit(1);
+>+	}
+>+
+>+	if ((flags & MS_USER || flags & MS_USERS) && uid != 0) {
+>+		/* check if fstab has entry, and further see if the user or users option is given */
+>+		if ((mc = getfsspec(spec)) == NULL &&
+>+		    (mc = getfsfile(spec)) == NULL) {
+>+			fprintf(stderr, "%s: permission denied - invalid option\n", progname);
+>+			exit(1);
+>+		}
+>+		else {
+>+			if((flags & MS_USER) && !contains(mc->m.mnt_opts, "user")) {
+>+				fprintf(stderr, "%s: permission denied - invalid option\n", progname);
+>+				exit(1);
+>+			}
+>+			if((flags & MS_USERS) && !contains(mc->m.mnt_opts, "users")) {
+>+				fprintf(stderr, "%s: permission denied - invalid option\n", progname);
+>+				exit(1);
+>+			}
+>+		}
+>+	}
+>+
+> 	if (!strcmp(progname, "mount.nfs4") || nfs_mount_vers == 4) {
+> 		nfs_mount_vers = 4;
+> 		mnt_err = nfs4mount(spec, mount_point, &flags, &extra_opts, &mount_opts, 0);
+>  
+>
 
-AG
--- 
-May the source be with you.
-http://www.cis.ksu.edu/~gud
+It seems to me that these two "permission denied" messages may be somewhat
+less than completely helpful.  Would it be possible to be a little more
+explicit about why permission was being denied?
 
+    Thanx...
 
---------------090800000609080401010205
-Content-Type: text/plain;
- name="lazy-umount-fix-v1.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="lazy-umount-fix-v1.patch"
-
-Fixes lazy umount freezing when NFS server is down or unreachable. This
-enables lazy and force umounting possible without bothering the server.
-This is useful when NFS server is down or unreachable.
-
-
-Signed-off-by: Amit Gud <agud@redhat.com>
-Signed-off-by: Steve Dickson <steved@redhat.com>
-
----
-
---- nfs-utils/utils/mount/nfsumount.c	2006-07-25 11:10:45.000000000 -0400
-+++ nfs-utils-ag/utils/mount/nfsumount.c	2006-07-25 16:03:32.000000000 -0400
-@@ -100,9 +100,9 @@ int nfs_call_umount(clnt_addr_t *mnt_ser
- 	}
- 	mnt_closeclnt(clnt, msock);
- 	if (res == RPC_SUCCESS)
--		return 1;
-+		return 0;
-  out_bad:
--	return 0;
-+	return 1;
- }
- 
- u_int get_mntproto(const char *);
-@@ -251,9 +251,6 @@ int add_mtab2(const char *spec, const ch
-         return 1;
- }
- 
--/*
-- * Returns 1 if everything went well, else 0.
-- */
- int _nfsumount(const char *spec, const char *opts)
- {
- 	char *hostname;
-@@ -309,8 +306,8 @@ int _nfsumount(const char *spec, const c
- 		goto out_bad;
- 	return nfs_call_umount(&mnt_server, &dirname);
-  out_bad:
--	fprintf(stderr, "%s: %s: not found or not mounted\n", progname, spec);
--	return 0;
-+	fprintf(stderr, "%s: %s: not found / mounted or server not reachable\n", progname, spec);
-+	return 1;
- }
- 
- static struct option umount_longopts[] =
-@@ -393,14 +390,18 @@ int nfsumount(int argc, char *argv[])
- 			}
- 		}
- 
--		ret = _nfsumount(mc->m.mnt_fsname, mc->m.mnt_opts);
--		if(ret)
-+		ret = 0;
-+		if(!force && !lazy)
-+			ret = _nfsumount(mc->m.mnt_fsname, mc->m.mnt_opts);
-+		if(!ret)
- 			ret = add_mtab2(mc->m.mnt_fsname, mc->m.mnt_dir,
- 				mc->m.mnt_type, mc->m.mnt_opts, mc);
- 	}
- 	else {
--		ret = _nfsumount(spec, NULL);
--		if(ret)
-+		ret = 0;
-+		if(!force && !lazy)
-+			ret = _nfsumount(spec, NULL);
-+		if(!ret)
- 			ret = add_mtab2(spec, spec, spec, spec, NULL);
- 	}
- 
-
---------------090800000609080401010205
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+       ps
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------090800000609080401010205
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------090800000609080401010205--
