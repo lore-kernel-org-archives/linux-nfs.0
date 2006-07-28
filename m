@@ -1,23 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] fix NFS mount.nfs options v4
-Date: Fri, 28 Jul 2006 12:57:30 -0400
-Message-ID: <44CA41FA.5060804@redhat.com>
-References: <44CA32CE.9030205@redhat.com>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: default sunrpc.min_resvport
+Date: Fri, 28 Jul 2006 13:45:40 -0400
+Message-ID: <76bd70e30607281045x36c1f54fvd1fade41f3186156@mail.gmail.com>
+References: <Acax73tEH/h8g6AYSzKR6j1VBvcdsQAdEwfg>
+	<168996D6C4DFA945B032B63C0DEAA6BF0421EA43@EXCHANGE1.postini.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Steve Dickson <SteveD@redhat.com>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6Vem-0008TH-SF
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 09:57:57 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G6Vel-0008CT-Sa
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 09:57:49 -0700
-To: Amit Gud <agud@redhat.com>
-In-Reply-To: <44CA32CE.9030205@redhat.com>
+	id 1G6WPB-0004RW-BK
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:45:45 -0700
+Received: from nf-out-0910.google.com ([64.233.182.188])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G6WPB-0002ym-Bg
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:45:45 -0700
+Received: by nf-out-0910.google.com with SMTP id m19so257383nfc
+	for <nfs@lists.sourceforge.net>; Fri, 28 Jul 2006 10:45:41 -0700 (PDT)
+To: "Michael Han" <mhan@postini.com>
+In-Reply-To: <168996D6C4DFA945B032B63C0DEAA6BF0421EA43@EXCHANGE1.postini.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,73 +32,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Amit Gud wrote:
+On 7/28/06, Michael Han <mhan@postini.com> wrote:
+> > From Chuck Lever:
+> > Raising the minimum port number is one way to avoid port number
+> > collisions.  However, you are chopping away a lot of usable ports when
+> > you do this, something that some sites can't afford.  Especially if
+> > you use automounter, or expect your clients to support more than a
+> > couple hundred NFS mounts at once, you will probably need the expanded
+> > port space.
+>
+> For my own peculiar requirements, a diminished number of privileged
+> source ports is perfectly fine. I don't have hosts that mount a large
+> number of shares, even though I do have an automount home in some cases
+> (I just don't have enough users on my production systems to need this).
 
->
-> AG
->
->------------------------------------------------------------------------
->
->If the 'user' or 'users' mount option is specified on commandline, verify with 
->/etc/fstab if it is really specified. Setuid bit is still ON and should remain
->ON since mount drops the root privileges.
->
->I've given this patch a good hammering, but not exhaustive by any means.
->
->Signed-off-by: Amit Gud <agud@redhat.com>
->Signed-off-by: Steve Dickson <steved@redhat.com>
->
->---
->
->
->diff -uprN -X ../dontdiff nfs-utils/utils/mount/mount.c nfs-utils-ag/utils/mount/mount.c
->--- nfs-utils/utils/mount/mount.c	2006-07-25 11:07:14.000000000 -0400
->+++ nfs-utils-ag/utils/mount/mount.c	2006-07-28 10:19:54.000000000 -0400
->@@ -355,9 +433,33 @@ int main(int argc, char *argv[])
-> 
-> 	spec = argv[1];
-> 	mount_point = canonicalize(argv[2]);
->-	
->+
-> 	parse_opts(mount_opts, &flags, &extra_opts);
-> 
->+	if (uid != 0 && !(flags & MS_USERS) && !(flags & MS_USER)) {
->+		fprintf(stderr, "%s: permission denied\n", progname);
->+		exit(1);
->+	}
->+
->+	if ((flags & MS_USER || flags & MS_USERS) && uid != 0) {
->+		/* check if fstab has entry, and further see if the user or users option is given */
->+		if ((mc = getfsspec(spec)) == NULL &&
->+		    (mc = getfsfile(spec)) == NULL) {
->+			fprintf(stderr, "%s: permission denied - invalid option\n", progname);
->+			exit(1);
->+		}
->+		else {
->+			if((flags & MS_USER) && !contains(mc->m.mnt_opts, "user")) {
->+				fprintf(stderr, "%s: permission denied - invalid option\n", progname);
->+				exit(1);
->+			}
->+			if((flags & MS_USERS) && !contains(mc->m.mnt_opts, "users")) {
->+				fprintf(stderr, "%s: permission denied - invalid option\n", progname);
->+				exit(1);
->+			}
->+		}
->+	}
->+
-> 	if (!strcmp(progname, "mount.nfs4") || nfs_mount_vers == 4) {
-> 		nfs_mount_vers = 4;
-> 		mnt_err = nfs4mount(spec, mount_point, &flags, &extra_opts, &mount_opts, 0);
->  
->
+"For the record," some sites have a requirement for a larger port space.
 
-It seems to me that these two "permission denied" messages may be somewhat
-less than completely helpful.  Would it be possible to be a little more
-explicit about why permission was being denied?
+> > A better way to eliminate the problem is to start a dummy daemon on
+> > port 664 (or any other ports that the hardware might use
+> > "transparently") so that the RPC client entirely avoids choosing those
+> > port numbers.  I believe that some enterprise distributions (RHEL?  I
+> > can't remember) have chosen to provide such daemons for just this
+> > purpose.
+>
+> I saw that this was the suggested workaround from mailing list postings,
+> but saw a reference to some kind of automount or mount bug that still
+> ran afoul port 664 somehow. Anyway, a "fake" daemon would show up on
+> security port scans and be one more thing to explain at audit time
+> (paperwork avoidance is always a worthy goal in my view ;).
 
-    Thanx...
+The daemon actually wouldn't show up on the security scan.  The
+hardware IPMI listener would, however.  The daemon is not visible on
+the network because the IPMI listener diverts packets to that port.
 
-       ps
+Other workarounds worth mentioning: disable IPMI in the hardware, or
+don't use the built-in NIC for NFS traffic.
+
+> I notice that some NFS implementations can accept client mounts from
+> non-privileged source ports (>= 1024). I'm not sure what the security
+> ramifications are (off the top of my head, that doesn't seem appropriate
+> for anyone relying on host-based security), but for truly large NFS
+> setups, perhaps this might be something to consider? Or perhaps a scheme
+> for re-using source ports may be feasible (or even using a single
+> connection to plex multiple mounts from the same host as you'd see with
+> an auto-home setup?).
+
+For AUTH_SYS, the privileged port is expected, as a guarantee that the
+uid's passed in the requests are more or less trusted.  For AUTH_GSS,
+non-privileged ports are just fine to use, as long as the server
+supports it, and as long as dropping back to AUTH_SYS changes back to
+a privileged port.
+
+That's been considered, but is a low priority.
+
+> Finally, fundamentally this seems to me a defect in the implmentation of
+> IPMI BMCs. Shouldn't packets that cannot be processed by the BMC be
+> passed to the standard kernel driver? Particularly for TCP, this seems
+> like a good idea...
+
+Indeed.  I'm not familiar enough with IPMI to know if it listens on
+both the UDP and the TCP port.
+
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
