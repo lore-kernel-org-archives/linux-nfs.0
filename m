@@ -1,113 +1,70 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 002 of 2] knfsd: Make ext3 reject filehandles
-	referring to invalid inode numbers
-Date: Fri, 28 Jul 2006 10:31:30 +1000
-Message-ID: <1060728003130.15224@suse.de>
-References: <20060728102713.15132.patches@notabene>
+From: Li Guanglei <guanglei@cn.ibm.com>
+Subject: Re: [NFS] [ltc-perf] draft of nfs event hook
+Date: Fri, 28 Jul 2006 10:03:53 +0800
+Message-ID: <44C97089.3080901@cn.ibm.com>
+References: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com><44C8C631.40003@cn.ibm.com><76bd70e30607270829q500711c8k8e7dd6ba9a9b6dfe@mail.gmail.com> <44C94266.6070606@cn.ibm.com> <001301c6b1e8$bd7cf590$160b0a0a@ict25eacacc325>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6GH1-0005Vd-8C
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 17:32:15 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G6GH0-0000x7-L2
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 17:32:15 -0700
-To: Andrew Morton <akpm@osdl.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "systemtap@sourceware.org" <systemtap@sourceware.org>,         nfs@lists.sourceforge.net
+Return-path: <systemtap-return-3839-gls-systemtap=m.gmane.org@sourceware.org>
+To: ZhaoYi <zhaoyi@ncic.ac.cn>
+In-Reply-To: <001301c6b1e8$bd7cf590$160b0a0a@ict25eacacc325>
+List-Unsubscribe: <mailto:systemtap-unsubscribe-gls-systemtap=m.gmane.org@sourceware.org>
+List-Subscribe: <mailto:systemtap-subscribe@sourceware.org>
+List-Post: <mailto:systemtap@sourceware.org>
+List-Help: <mailto:systemtap-help@sourceware.org>, <http://sourceware.org/lists.html#faqs>
+Sender: systemtap-owner@sourceware.org
+List-ID: <nfs.lists.sourceforge.net>
 
+ZhaoYi ??:
+> I think RPC is also needed to be listed, because in the current implementation of Linux NFS, RPC in the kernel is used by nfs only.
 
-Inodes earlier than the 'first' inode (e.g. journal,
-resize) should be rejected early - except the root inode.
-Also inode numbers that are too big should be rejected early.
+Although RPC is only used by NFS inside Kernel, I think NFS and RPC 
+fall into two different categories. A separate set of trace hooks for 
+RPC should be better.
 
+- Guanglei
 
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/ext3/super.c |   43 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
-
-diff .prev/fs/ext3/super.c ./fs/ext3/super.c
---- .prev/fs/ext3/super.c	2006-07-28 10:18:55.000000000 +1000
-+++ ./fs/ext3/super.c	2006-07-28 10:25:20.000000000 +1000
-@@ -554,6 +554,48 @@ static int ext3_show_options(struct seq_
- 	return 0;
- }
- 
-+
-+static struct dentry *ext3_get_dentry(struct super_block *sb, void *vobjp)
-+{
-+	__u32 *objp = vobjp;
-+	unsigned long ino = objp[0];
-+	__u32 generation = objp[1];
-+	struct inode *inode;
-+	struct dentry *result;
-+
-+	if (ino != EXT3_ROOT_INO && ino < EXT3_FIRST_INO(sb))
-+		return ERR_PTR(-ESTALE);
-+	if (ino > le32_to_cpu(EXT3_SB(sb)->s_es->s_inodes_count))
-+		return ERR_PTR(-ESTALE);
-+
-+	/* iget isn't really right if the inode is currently unallocated!!
-+	 *
-+	 * ext3_read_inode will return a bad_inode if the inode had been deleted.
-+	 * so we should be safe.
-+	 *
-+	 * Currently we don't know the generation for parent directory, so
-+	 * a generation of 0 means "accept any"
-+	 */
-+	inode = iget(sb, ino);
-+	if (inode == NULL)
-+		return ERR_PTR(-ENOMEM);
-+	if (is_bad_inode(inode)
-+	    || (generation && inode->i_generation != generation)
-+		) {
-+		iput(inode);
-+		return ERR_PTR(-ESTALE);
-+	}
-+	/* now to find a dentry.
-+	 * If possible, get a well-connected one
-+	 */
-+	result = d_alloc_anon(inode);
-+	if (!result) {
-+		iput(inode);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	return result;
-+}
-+
- #ifdef CONFIG_QUOTA
- #define QTYPE2NAME(t) ((t)==USRQUOTA?"user":"group")
- #define QTYPE2MOPT(on, t) ((t)==USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
-@@ -622,6 +664,7 @@ static struct super_operations ext3_sops
- 
- static struct export_operations ext3_export_ops = {
- 	.get_parent = ext3_get_parent,
-+	.get_dentry = ext3_get_dentry,
- };
- 
- enum {
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+> ----- Original Message ----- 
+> From: "Li Guanglei" <guanglei@cn.ibm.com>
+> To: "Chuck Lever" <chucklever@gmail.com>
+> Cc: <nfs@lists.sourceforge.net>; <systemtap@sourceware.org>
+> Sent: Friday, July 28, 2006 6:47 AM
+> Subject: Re: [NFS] [ltc-perf] draft of nfs event hook
+> 
+> 
+>>> Have you done this with a local file system?  I assume yes, and that
+>>> you just described the general approach you have taken with other file
+>>> systems.  I think getting the same kind of data and trace points from
+>>> the NFS client as you added to local file systems would be good.
+>>>
+>>> Capturing VFS and address space entry points is definitely useful and
+>>> is similar to local file systems.  At the bottom of the NFS client is
+>>> the RPC client, and it acts just like the block I/O layer does for
+>>> local file systems.  Would you consider adding trace points in the
+>>> LKET for the RPC client and server?
+>>>
+>>>>    What I didn't list about NFS operations includes authentication,
+>>>> NFSv4 callback and RPC(I prefer to use a separate set of trace hooks
+>>>> for RPC). I am not sure if these operations are also required to be
+>>>> traced. If I missed some important functions or I listed some
+>>>> redundant functions, please feel free to let me know. Any comments
+>>>> will be highly appreciated.
+>>>>
+>> I didn't list RPC here because I think RPC is not only used by NFS and 
+>> I need another set of RPC trace hooks to address the RPC server and 
+>> client side operations. That will be my plan of the next set of trace 
+>> hooks.
+>>
+>> - Guanglei
+>>
+>>
+>> -------------------------------------------------------------------------
+>> Take Surveys. Earn Cash. Influence the Future of IT
+>> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+>> opinions on IT & business topics through brief surveys -- and earn cash
+>> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
+>>
