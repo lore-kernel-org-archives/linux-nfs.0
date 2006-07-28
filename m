@@ -1,24 +1,23 @@
-From: <Music@quay24h.com>
-Subject: Tha`nh La^p.  site  Music  rie^ng cua DAN CHOI VIET NAM
-Date: Fri, 28 Jul 2006 14:39:09 -0400
-Message-ID: <E1G6XEr-0007Ae-Gq@dime108.dizinc.com>
-Reply-To: Music@quay24h.com
+From: Amit Gud <agud@redhat.com>
+Subject: Re: [PATCH] fix NFS mount.nfs options v4
+Date: Fri, 28 Jul 2006 14:48:54 -0400
+Message-ID: <44CA5C16.4030402@redhat.com>
+References: <44CA32CE.9030205@redhat.com> <44CA41FA.5060804@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1592250602=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6XEn-0001Vo-Ue
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 11:39:05 -0700
-Received: from dime108.dizinc.com ([72.29.83.85])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G6XEf-0004Oq-6g
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 11:38:57 -0700
-Received: from nobody by dime108.dizinc.com with local (Exim 4.52)
-	id 1G6XEr-0007Ae-Gq
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 14:39:09 -0400
-To: nfs@lists.sourceforge.net
+	id 1G6XKC-0001xX-6m
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 11:44:40 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G6XKB-0007nc-CA
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 11:44:40 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <44CA41FA.5060804@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,94 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1592250602==
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+Peter Staubach wrote:
+> 
+> It seems to me that these two "permission denied" messages may be somewhat
+> less than completely helpful.  Would it be possible to be a little more
+> explicit about why permission was being denied?
+> 
 
-<!-- type =3D text -->
-
-<head>
-</head>
-
-<xbody>
-
-<p><a target=3D"_blank"  href=3D"http://gaixinh.biz" ><img border=3D"0"=20
-
-src=3D"http://www.gaixinh.biz/music/skin/hong/img/vieM.jpg"  width=3D"587=
-"=20
-
-height=3D"260"></a></p>
-
-<p>&nbsp;</p>
-
-<p><b><font size=3D"3" color=3D"#0000FF">Chao ban , Dien dan=20
-
-WwW.Quay24h.com </font></b></p>
-
-<p><b><font size=3D"3" color=3D"#0000FF">Dien dan moi co them music moi=20
-
-cac ban tham gia !</font></b></p>
-
-<p><b><font size=3D"3" color=3D"#0000FF">Cac ban hay dang ki tro thanh =20
-
-thanh vien de co the su dung  huong het moi quyen loi cua TV ( khong=20
-
-phai TV ko su dung duoc chuot phai )</font></b><b><font=20
-
-size=3D"3"></font></b></p>
-
-<p><a target=3D"_blank" =20
-
-href=3D"http://www.gaixinh.biz/music/register.php"=20
-
->http://www.gaixinh.biz/music/register.php</a></p>
-
-<p>Chung toi rat mong su dong gop y kien cung nhu su ung ho nhiet tinh=20
-
-cua cac ban !!</p>
-<p> BQT  WwW.QuAu24H.Com </p>
-</xbody>
+Yes possible. I was thinking of not letting the users know which user 
+mounted the export, but that is known by mount command anyways. So, yes 
+these messages could be more elaborate :)
 
 
+AG
+-- 
+May the source be with you.
+http://www.cis.ksu.edu/~gud
 
-
-
-				=09
-
-
-
-
-		  <!-- toctype =3D X-unknown -->
-		    		  		  <!-- toctype =3D text=20
-
--->
-		    <!-- text -->
-
-		    		 =20
-
-
-
-
-
---===============1592250602==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1592250602==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1592250602==--
