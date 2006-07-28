@@ -1,35 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: protocol question
-Date: Wed, 26 Jul 2006 08:24:10 -0400
-Message-ID: <1153916650.5656.27.camel@localhost>
-References: <200607261247.35653.bernd.schubert@pci.uni-heidelberg.de>
-	<1153914204.5656.13.camel@localhost>
-	<200607261356.38520.bernd.schubert@pci.uni-heidelberg.de>
-	<1153916394.5656.23.camel@localhost>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] knfsd: Fix stale file handle problem with
+	subtree_checking.
+Date: Fri, 28 Jul 2006 16:51:56 -0400
+Message-ID: <20060728205156.GB12183@fieldses.org>
+References: <20060728194103.7245.patches@notabene> <1060728094255.7278@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list1-b.sourceforge.net ([10.3.1.7]
-	helo=sc8-sf-list1.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6Z8o-0005YN-8m
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 13:41:02 -0700
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
-	by sc8-sf-list1.sourceforge.net with esmtp (Exim 4.30)
-	id 1G6Vsn-0000z7-Az
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 10:12:17 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G6ZJX-0006hK-1N
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 13:52:07 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G66WC-0005V9-3s
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 07:07:17 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41) id 1G5iRE-0006ht-AJ
-	for nfs@lists.sourceforge.net; Wed, 26 Jul 2006 05:24:33 -0700
-To: bernd-schubert@gmx.de
-In-Reply-To: <1153916394.5656.23.camel@localhost>
+	(Exim 4.44) id 1G6ZJR-0006rb-Ri
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 13:52:04 -0700
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1060728094255.7278@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,20 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-07-26 at 08:20 -0400, Trond Myklebust wrote:
-> Right. The inode generation number changes when the inode number is
-> reused. After that, any NFS rpc request containing the filehandle with
-> the old generation number should receive an immediate NFSERR3_STALE.
+On Fri, Jul 28, 2006 at 07:42:55PM +1000, NeilBrown wrote:
+> The following patch fixes a bug that was introduced since 2.6.17,
+> and should go in 2.6.18.
+> 
+> ### Comments for Changeset
+> 
+> A recent patch:
+> 
+>   h=7fc90ec93a5eb71f4b08403baf5ba7176b3ec6b1
+> 
+> moved the call to nfsd_setuser out of the 'find a dentry for a
+> filehandle' branch of fh_verify so that it would always be called.
+> 
+> This had the unfortunately side-effect of moving *after* the call
+> to decode_fh, so the prober fsuid was not set when nfsd_acceptable
+> was called, the 'permission' check did the wrong thing.
 
-Oops. Actually, it would be more correct to say that the filehandle is
-invalidated immediately once the file has been deleted on the server.
+Argh, sorry, thanks for the fix.
 
-The generation number is there in order to ensure that the old
-filehandle is not 'resurrected' when the inode number is reused.
+It'd be great if we could deprecate subtree checking some day in the
+distant future....
 
-Cheers,
-  Trond
+Would it be feasible to add filesystem support for some sort of
+subvolume-like thing that acted like a mountpoint (in the sense that it
+restricted hardlinks and renames) but that didn't require setting aside
+a separate partition?  I imagine that'd probably do what most people
+exporting subtrees want without forcing us to do dubious tricks with
+filehandles.
 
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
