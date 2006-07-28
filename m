@@ -1,45 +1,57 @@
-From: Li Guanglei <guanglei@cn.ibm.com>
-Subject: Re: [NFS] [ltc-perf] draft of nfs event hook
-Date: Fri, 28 Jul 2006 06:47:02 +0800
-Message-ID: <44C94266.6070606@cn.ibm.com>
-References: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com> 	 <44C8C631.40003@cn.ibm.com> <76bd70e30607270829q500711c8k8e7dd6ba9a9b6dfe@mail.gmail.com>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 2] knfsd: Don't allow bad file handles to cause
+	extX to go readonly
+Date: Fri, 28 Jul 2006 10:31:20 +1000
+Message-ID: <20060728102713.15132.patches@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "systemtap@sourceware.org" <systemtap@sourceware.org>,         nfs@lists.sourceforge.net
-Return-path: <systemtap-return-3837-gls-systemtap=m.gmane.org@sourceware.org>
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30607270829q500711c8k8e7dd6ba9a9b6dfe@mail.gmail.com>
-List-Unsubscribe: <mailto:systemtap-unsubscribe-gls-systemtap=m.gmane.org@sourceware.org>
-List-Subscribe: <mailto:systemtap-subscribe@sourceware.org>
-List-Post: <mailto:systemtap@sourceware.org>
-List-Help: <mailto:systemtap-help@sourceware.org>, <http://sourceware.org/lists.html#faqs>
-Sender: systemtap-owner@sourceware.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G6GGx-0005VS-0x
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 17:32:11 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G6GGw-0000t7-4s
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 17:32:11 -0700
+To: Andrew Morton <akpm@osdl.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-> 
-> Have you done this with a local file system?  I assume yes, and that
-> you just described the general approach you have taken with other file
-> systems.  I think getting the same kind of data and trace points from
-> the NFS client as you added to local file systems would be good.
-> 
-> Capturing VFS and address space entry points is definitely useful and
-> is similar to local file systems.  At the bottom of the NFS client is
-> the RPC client, and it acts just like the block I/O layer does for
-> local file systems.  Would you consider adding trace points in the
-> LKET for the RPC client and server?
-> 
->>
->>    What I didn't list about NFS operations includes authentication,
->> NFSv4 callback and RPC(I prefer to use a separate set of trace hooks
->> for RPC). I am not sure if these operations are also required to be
->> traced. If I missed some important functions or I listed some
->> redundant functions, please feel free to let me know. Any comments
->> will be highly appreciated.
->>
+Currently, and file handle with a bad inode number in it can cause
+ext2 to go to readonly (as it looks like a corrupted filesystem)
+and could allow remote access to ext3 special files like the journal.
 
-I didn't list RPC here because I think RPC is not only used by NFS and 
-I need another set of RPC trace hooks to address the RPC server and 
-client side operations. That will be my plan of the next set of trace 
-hooks.
+These patches give ext2/3 their own get_dentry method which checks the
+inode number early before other bits of the code can be freaked out by
+it.
 
-- Guanglei
+These are revised versions of earlier patches.  Rather than exporting
+export_iget, we open code it and simplify it slightly.  This avoids
+and extra module dependancy.
+
+NeilBrown
+
+To follow:
+ [PATCH 001 of 2] knfsd: Have ext2 reject file handles with bad inode numbers early.
+ [PATCH 002 of 2] knfsd: Make ext3 reject filehandles referring to invalid inode numbers
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
