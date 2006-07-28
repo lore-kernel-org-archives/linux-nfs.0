@@ -1,27 +1,26 @@
-From: "Michael Han" <mhan@postini.com>
-Subject: default sunrpc.min_resvport
-Date: Wed, 26 Jul 2006 10:16:27 -0700
-Message-ID: <168996D6C4DFA945B032B63C0DEAA6BF0421E687@EXCHANGE1.postini.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 005 of 9] knfsd: Be more selective in
+	which	sockets lockd listens on.
+Date: Fri, 28 Jul 2006 12:32:13 +1000
+Message-ID: <17609.30509.387670.585340@cse.unsw.edu.au>
+References: <20060725114207.21779.patches@notabene>
+	<1060725015447.21957@suse.de> <20060726191714.GE31172@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	Steve Dickson <SteveD@redhat.com>, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6I0i-0006er-By
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 19:23:33 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1G6IA5-0007WA-2h
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 19:33:13 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G64ha-0001al-V3
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 05:10:58 -0700
-Received: from exprod8og50.obsmtp.com ([64.18.3.82])
-	by externalmx-1.sourceforge.net with smtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41) id 1G60I7-0007ec-OT
-	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 00:28:20 -0700
-Received: from exchsrvr3.postini.com (exchsrvr3.postini.com [172.16.0.56])
-	by thor.postinicorp.com (Postfix) with ESMTP id AE62F178B49
-	for <nfs@lists.sourceforge.net>; Wed, 26 Jul 2006 10:16:31 -0700 (PDT)
-To: <nfs@lists.sourceforge.net>
+	(Exim 4.44) id 1G6IA3-0006eI-60
+	for nfs@lists.sourceforge.net; Thu, 27 Jul 2006 19:33:13 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: message from J. Bruce Fields on Wednesday July 26
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,45 +33,102 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I'm not sure if this has surfaced before for discussion (searching
-hasn't shown me any relevant threads), but the 2.6 kernel's new
-implementation of xprt_bindresvport can conflict with port 664 on
-IPMI-enabled hosts with a BMC. IPMI uses both ports 623 and 664 for
-communications, and several implementations appear to intercept all
-traffic for these ports and not permit them to pass to the standard
-packet driver (tcpdump in promiscuous mode shows no packets coming in).
+On Wednesday July 26, bfields@fieldses.org wrote:
+> On Tue, Jul 25, 2006 at 11:54:47AM +1000, NeilBrown wrote:
+> > @@ -112,6 +114,7 @@ lockd(struct svc_rqst *rqstp)
+> >  	 * Let our maker know we're running.
+> >  	 */
+> >  	nlmsvc_pid = current->pid;
+> > +	nlmsvc_serv = serv;
+> 
+> Nitpick: any reason not to just get rid of the local variable "serv"
+> after that?
 
-I know that in the discussions back in 2005/02 and 2005/07 of the patch
-that implements the new privileged port binding for NFS mount (I can't
-tell whose patch it is, perhaps Olaf Kirch's?), Charles Lever noted that
-the new sunrpc.min_resvport of 650 avoids conflicts with port 623. Is it
-worth increasing this default to 665 to avoid this port as well?
+Well... it is used two more times in that function.... but in both
+those cases it isn't really needed because we pass it to a function that
+also gets rqstp, serv is always rqstp->rq_server.  So there is room
+for cleaning up there ... patch to follow.
 
-If not, I just wanted to get this information onto the list, since I
-searched pretty heavily while researching the intermittent hangs I've
-been getting with my NFS mounts before finally nailing this to my IPMI
-BMCs. Manually setting sunrpc.min_resvport to 700 has stabilized NFS on
-my boxes. Thanks.
+> 
+> > @@ -224,8 +259,10 @@ lockd_up(void)
+> >  	/*
+> >  	 * Check whether we're already up and running.
+> >  	 */
+> > -	if (nlmsvc_pid)
+> > +	if (nlmsvc_pid) {
+> > +		error = make_socks(nlmsvc_serv, proto);
+> >  		goto out;
+> 
+> ...
+> 
+> > +	if ((error = make_socks(serv, proto)) < 0) {
+> >  		if (warned++ == 0) 
+> >  			printk(KERN_WARNING
+> >  				"lockd_up: makesock failed, error=%d\n", error);
+> 
+> The warning is printk'ed a little inconsistently.  (If we care, maybe it
+> should just go inside make_socks?)
 
-Michael Han
-mhan@postini.com
+So.  Do we care?  That's a hard one...  I guess we do.  I'll move the
+message into make_socks.
 
+> 
+> By the way, why don't most callers use the error returned from
+> lockd_up()?
 
+Most?  I could 2 out of 5.
+One of those is just getting an extra ref-count so it cannot fail.
+The other - in nfsctl - is simply carelessness on my part.
+I should fix that.... patch to follow.
 
+However...
+ One would expect that if lockd_up fails, a matching lockd_down
+wouldn't be needed.  However nlmsvc_users is unconditionally
+increased by lockd_up.  That's a worry.
 
+ - The nfs client will only call lockd_down if lockd_up succeeded.
+ - NFSD currently will call lockd_down either way.
+ - The lockd reclaimer ignores the return value and always calls
+    lockd_down.
 
+So the most common usage is to always call lockd_down, but I cannot
+help feeling that is wrong.  And 'fixing' the client code to do it
+that way would make it very ugly....
 
------------------------------------------------------------
-This message may contain confidential and/or privileged 
-information. This information is intended to be read only
-by the individual or entity to whom it is addressed. If
-you are not the intended recipient, you are on notice that
-any review, disclosure, copying, distribution or use of
-the contents of this message is strictly prohibited. If
-you have received this message in error, please notify the
-sender immediately and delete or destroy any copy of this
-message.
+Patch to follow :-)
 
+> 
+> > diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
+> > --- .prev/fs/nfsd/nfssvc.c	2006-07-24 15:14:31.000000000 +1000
+> > +++ ./fs/nfsd/nfssvc.c	2006-07-24 15:15:04.000000000 +1000
+> > @@ -134,6 +134,9 @@ static int killsig = 0; /* signal that w
+> >  static void nfsd_last_thread(struct svc_serv *serv)
+> >  {
+> >  	/* When last nfsd thread exits we need to do some clean-up */
+> > +	struct svc_sock *svsk;
+> > +	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
+> > +		lockd_down();
+> 
+> So I guess it's a minor point, but: we take the trouble to only open tcp
+> or udp sockets as necessary, but then won't close them down till all the
+> mounts and nfsd's go away at which point we close them all down.
+
+I thought about making that cleaner but couldn't quite motivate myself
+to do it.... and it can always be done later (?).
+
+> 
+> Would it be that bad just to always listen on both?
+
+Some people seem to want to only listen on one.
+Why?  Maybe a security thing?  
+So once you have opened a protocol once, the "horse has bolted" and
+closing it is no big deal?
+
+dunno... any else go opinions on this?
+
+Steve?
+
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
