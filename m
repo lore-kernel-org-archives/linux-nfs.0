@@ -1,80 +1,85 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 000 of 4] knfsd: Introduction
-Date: Fri, 28 Jul 2006 17:10:00 -0400
-Message-ID: <20060728211000.GA19563@fieldses.org>
-References: <20060728150606.29533.patches@notabene>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] knfsd: Fix stale file handle problem with
+	subtree_checking.
+Date: Sat, 29 Jul 2006 15:29:33 +1000
+Message-ID: <17610.62013.790217.817455@cse.unsw.edu.au>
+References: <20060728194103.7245.patches@notabene> <1060728094255.7278@suse.de>
+	<20060728205156.GB12183@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1161298AbWG1VKJ@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <20060728150606.29533.patches@notabene>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1G6hPL-0000Kb-GN
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 22:30:39 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G6hPK-0003cc-Eb
+	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 22:30:40 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: message from J. Bruce Fields on Friday July 28
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jul 28, 2006 at 03:09:40PM +1000, NeilBrown wrote:
-> Following are 4 patches for knfsd in 2.6-mm-latest.  They address some
-> issues found by Bruce Fields greatly appreciated patch review.  Thanks Bruce.
-> They (like the patches they build on) are *not* 2.6.18 material.
+On Friday July 28, bfields@fieldses.org wrote:
+> 
+> It'd be great if we could deprecate subtree checking some day in the
+> distant future....
 
-By the way, the one thing that looked to me like a real bug was the
-failure to do a lockd_down() when the user deletes a socket (comments
-resent below), which these patches don't seem to deal with.  Of course,
-it's entirely possible I just didn't understand something....
+The first step would be to stop it from being the default (as Trond
+has suggested a number of times :-)
 
---b.
+How about this.
+ I release a 1.0.10 shortly which addresses some 'portlist' related
+ breakage and prints a nasty warning if you have neither subtree_check
+ or no_subtree_check, but still defaults to subtree_check.
 
+ Then the next release will be 1.1.0 which prints the same warning,
+ but defaults the other way - and probably removed the warning if you
+ include neither sync not async.
 
-On Tue, Jul 25, 2006 at 11:55:08AM +1000, NeilBrown wrote:
-> +		err = nfsd_create_serv();
-> +		if (!err) {
-> +			int proto = 0;
-> +			err = svc_addsock(nfsd_serv, fd, buf, &proto);
-> +			/* Decrease the count, but don't shutdown the
-> +			 * the service
-> +			 */
-> +			if (err >= 0)
-> +				lockd_up(proto);
-> +			nfsd_serv->sv_nrthreads--;
-....
-> @@ -211,8 +211,6 @@ static inline int nfsd_create_serv(void)
->  			       nfsd_last_thread);
->  	if (nfsd_serv == NULL)
->  		err = -ENOMEM;
-> -	else
-> -		nfsd_serv->sv_nrthreads++;
+That should at least get subtree_check to be used less.
 
-I don't understand these sv_nrthreads changes.
+> 
+> Would it be feasible to add filesystem support for some sort of
+> subvolume-like thing that acted like a mountpoint (in the sense that it
+> restricted hardlinks and renames) but that didn't require setting aside
+> a separate partition?  I imagine that'd probably do what most people
+> exporting subtrees want without forcing us to do dubious tricks with
+> filehandles.
 
-> @@ -449,18 +450,23 @@ int one_sock_name(char *buf, struct svc_
->  }
->  
->  int
-> -svc_sock_names(char *buf, struct svc_serv *serv)
-> +svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
->  {
-> -	struct svc_sock *svsk;
-> +	struct svc_sock *svsk, *closesk = NULL;
->  	int len = 0;
->  
->  	if (!serv) return 0;
->  	spin_lock(&serv->sv_lock);
->  	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
->  		int onelen = one_sock_name(buf+len, svsk);
-> -		len += onelen;
-> +		if (toclose && strcmp(toclose, buf+len) == 0)
-> +			closesk = svsk;
-> +		else
-> +			len += onelen;
->  	}
->  	spin_unlock(&serv->sv_lock);
-> +	if (closesk)
-> +		svc_delete_socket(closesk);
+I think it is a great idea for a 'filesystem' to support multiple
+independent file-trees within the one storage set, which is roughly
+what you are saying I think (though probably not quite).
 
-Am I missing something, or do we end up missing a lockd_down() in this
-case?  (Because nfsd_last_thread() isn't going to be calling
-lockd_down() for this thread now that we've removed it from
-sv_permsocks).
+However I suspect that most people don't actually want subtrees.  They
+just get it as the default.  It isn't something that I would have
+implemented if I hadn't inherited the requirement, and no other OS
+that I know of provides that particular semantic.
 
---b.
+Maybe we should make it non-default, and then in one year, subtly
+break it (maybe reintroduce this bug) and see if anyone notices :-) 
+(No, that's unethical, I wouldn't do that - really ....)
+
+NeilBrown
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
