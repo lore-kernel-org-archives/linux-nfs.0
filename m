@@ -1,26 +1,33 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] knfsd: Fix stale file handle problem with
-	subtree_checking.
-Date: Sat, 29 Jul 2006 15:29:33 +1000
-Message-ID: <17610.62013.790217.817455@cse.unsw.edu.au>
-References: <20060728194103.7245.patches@notabene> <1060728094255.7278@suse.de>
-	<20060728205156.GB12183@fieldses.org>
+From: Amit Gud <agud@redhat.com>
+Subject: Re: [PATCH] fix lazy and force umounts for mount.nfs
+Date: Sat, 29 Jul 2006 03:20:41 -0400
+Message-ID: <44CB0C49.8050508@redhat.com>
+References: <44CA331E.2080004@redhat.com> <20060728162033.GP4324@polop.usc.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G6hPL-0000Kb-GN
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 22:30:39 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G6hPK-0003cc-Eb
-	for nfs@lists.sourceforge.net; Fri, 28 Jul 2006 22:30:40 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Friday July 28
+	id 1G6j3m-0008RN-VX
+	for nfs@lists.sourceforge.net; Sat, 29 Jul 2006 00:16:31 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G6j3l-0001uY-Tl
+	for nfs@lists.sourceforge.net; Sat, 29 Jul 2006 00:16:31 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k6T7GPLm024076
+	for <nfs@lists.sourceforge.net>; Sat, 29 Jul 2006 03:16:25 -0400
+Received: from mail.boston.redhat.com (mail.boston.redhat.com [172.16.76.12])
+	by int-mx1.corp.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k6T7GPsw002695
+	for <nfs@lists.sourceforge.net>; Sat, 29 Jul 2006 03:16:25 -0400
+Received: from [172.16.83.94] (dhcp83-94.boston.redhat.com [172.16.83.94])
+	by mail.boston.redhat.com (8.12.8/8.12.8) with ESMTP id k6T7GPAB003826
+	for <nfs@lists.sourceforge.net>; Sat, 29 Jul 2006 03:16:25 -0400
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20060728162033.GP4324@polop.usc.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,47 +40,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday July 28, bfields@fieldses.org wrote:
+Garrick Staples wrote:
+> On Fri, Jul 28, 2006 at 11:54:06AM -0400, Amit Gud alleged:
+>> +	fprintf(stderr, "%s: %s: not found / mounted or server not reachable\n", progname, spec);
 > 
-> It'd be great if we could deprecate subtree checking some day in the
-> distant future....
-
-The first step would be to stop it from being the default (as Trond
-has suggested a number of times :-)
-
-How about this.
- I release a 1.0.10 shortly which addresses some 'portlist' related
- breakage and prints a nasty warning if you have neither subtree_check
- or no_subtree_check, but still defaults to subtree_check.
-
- Then the next release will be 1.1.0 which prints the same warning,
- but defaults the other way - and probably removed the warning if you
- include neither sync not async.
-
-That should at least get subtree_check to be used less.
-
+> Call me dumb, but I don't know what "not found / mounted" means.  Is
+> there a comma missing?
 > 
-> Would it be feasible to add filesystem support for some sort of
-> subvolume-like thing that acted like a mountpoint (in the sense that it
-> restricted hardlinks and renames) but that didn't require setting aside
-> a separate partition?  I imagine that'd probably do what most people
-> exporting subtrees want without forcing us to do dubious tricks with
-> filehandles.
 
-I think it is a great idea for a 'filesystem' to support multiple
-independent file-trees within the one storage set, which is roughly
-what you are saying I think (though probably not quite).
+Its "not found or not mounted or server not reachable." Might rephrase it :)
 
-However I suspect that most people don't actually want subtrees.  They
-just get it as the default.  It isn't something that I would have
-implemented if I hadn't inherited the requirement, and no other OS
-that I know of provides that particular semantic.
 
-Maybe we should make it non-default, and then in one year, subtly
-break it (maybe reintroduce this bug) and see if anyone notices :-) 
-(No, that's unethical, I wouldn't do that - really ....)
+AG
+-- 
+May the source be with you.
+http://www.cis.ksu.edu/~gud
 
-NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
