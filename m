@@ -1,22 +1,25 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 010 of 11] knfsd: make rpc threads pools numa aware
-Date: Mon, 31 Jul 2006 10:42:34 +1000
-Message-ID: <1060731004234.29291@suse.de>
-References: <20060731103458.29040.patches@notabene>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 000 of 11] knfsd: NUMAisation
+Date: Mon, 31 Jul 2006 11:02:24 +1000
+Message-ID: <17613.22176.375521.692211@cse.unsw.edu.au>
+References: <1153805274.21040.38.camel@hole.melbourne.sgi.com>
+	<17605.50325.842862.8823@cse.unsw.edu.au>
+	<1153816400.21040.153.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7Lrl-0003vK-GZ
-	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 17:42:41 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1G7MBD-0005W8-Ri
+	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 18:02:47 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G7Lrk-00078i-Ue
-	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 17:42:42 -0700
-To: Andrew Morton <akpm@osdl.org>
+	(Exim 4.44) id 1G7MBD-0005HC-Ne
+	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 18:02:48 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Tuesday July 25
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,361 +32,117 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Tuesday July 25, gnb@melbourne.sgi.com wrote:
+> 
+> Ok, here are some (12 month old) numbers.  Test is an Altix A350
+> server, IRIX NFS clients mounting over TCP, 32K rsize, streaming
+> reads from separate files.  N is the number of NICs in the server,
+> the number of CPUs in the server, and the number of clients
+> (all 3 increased together).  The number of NUMA nodes is N/2.
+> 
+> N	Throughput, MiB/s	CPU usage, % (max=N*100)
+> 	Before	After		Before	After
+> ---	------	----		-----	-----
+> 4	312	435		350	228
+> 6	500	656		501	418
+> 8	562	804		690	589
+> 
 
-From: Greg Banks <gnb@melbourne.sgi.com>
+Thanks.  I like to see numbers.  These look good!
 
-knfsd: Actually implement multiple pools.  On NUMA machines, allocate
-a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
-global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
-on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
-have their cpu mask set to limit them to the CPUs in the svc_pool that
-owns them.
+> > 
+> > Feeling a little uneasy that the rule
+> >  must call svc_sock_enqueue after clearing SK_BUSY
+> > is not being obeyed....  
+> 
+> It's a bogus rule.  That comment doesn't really describe
+> the way SK_BUSY works at all.
+> 
 
-This is the patch that allows an Altix to scale NFS traffic linearly
-beyond 4 CPUs and 4 NICs.
+I'm not convinced.
 
-Incorporates changes and feedback from Neil Brown, Trond Myklebust,
-and Christoph Hellwig.
+If someone clears SK_BUSY outside of the spinlock (which hardly exists
+any more), then they need to make sure svc_sock_enqueue gets called,
+otherwise the socket might get lost with no-one to care about it.
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-Signed-off-by: Neil Brown <neilb@suse.de>
+With the code as it stands, suppose the wspace callback
+(svc_write_space) gets called on a different node immediately after
+svc_sock_enqueue has checked with svc_sock_wspace and found there
+wasn't enough space.
+svc_write_space calls svc_sock_enqueue and finds SK_BUSY set, and so
+leaves it alone.  then the original svc_sock_enqueue clears SK_BUSY
+and leaves the socket alone.  It should be queued at this point, but
+it isn't.
 
-### Diffstat output
- ./include/linux/sunrpc/svc.h |    1 
- ./net/sunrpc/svc.c           |  246 ++++++++++++++++++++++++++++++++++++++++++-
- ./net/sunrpc/svcsock.c       |    7 +
- 3 files changed, 252 insertions(+), 2 deletions(-)
+Now I suspect that another svc_write_space call will come along in a
+little while and move things along as SOCK_NOSPACE is still set, but
+I'm a little concerned about it anyway.
 
-diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
---- .prev/include/linux/sunrpc/svc.h	2006-07-31 10:30:30.000000000 +1000
-+++ ./include/linux/sunrpc/svc.h	2006-07-31 10:31:12.000000000 +1000
-@@ -369,5 +369,6 @@ int		   svc_process(struct svc_rqst *);
- int		   svc_register(struct svc_serv *, int, unsigned short);
- void		   svc_wake_up(struct svc_serv *);
- void		   svc_reserve(struct svc_rqst *rqstp, int space);
-+struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
- 
- #endif /* SUNRPC_SVC_H */
+Maybe we can move the test_and_set of SK_BUSY to after the space
+test.... but are there atomicity issues with the space test .... maybe
+we need to test space before and after grabbing SK_BUSY.... needs more
+thought I think.
 
-diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2006-07-31 10:30:30.000000000 +1000
-+++ ./net/sunrpc/svc.c	2006-07-31 10:31:30.000000000 +1000
-@@ -4,6 +4,10 @@
-  * High-level RPC service routines
-  *
-  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
-+ *
-+ * Multiple threads pools and NUMAisation
-+ * Copyright (c) 2006 Silicon Graphics, Inc.
-+ * by Greg Banks <gnb@melbourne.sgi.com>
-  */
- 
- #include <linux/linkage.h>
-@@ -25,6 +29,233 @@
- #define RPC_PARANOIA 1
+> > 
+> >  kmalloc + memset == kzalloc. Fixed.
+> >    I also took the assignment out of the if and removed
+> >    the unnecessary cast.
+> 
+> Sure.  Wouldn't kcalloc() be a better fit?
+> 
+Yes, I made that change.
+
+
+> I just noticed there's also a bogus comment added, can you
+> please apply this incremental patch?
+
+Sorry, forgot that (I've just sent them to Andrew:-().  
+I'll make sure it gets through at some point.
+
+> 
+> 
+> > > 007 knfsd: add svc_get
+> > 
+> > Yes... using nr_threads as a pseudo ref count really stinks.
+> > I wonder if we can make that go away.  Maybe have a 
+> > refcount separate from nr_threads, and nr_thread != 0 
+> > causes a refcount of 1...
+> 
+> Or just rename it sv_refcount and stop pretending it means
+> something else?  It seems silly to have two variables which
+> are almost exactly the same number, and where the difference
+> doesn't matter  (IIRC the only places it's actually used as
+> "number of threads" is for estimating upper bounds on socket
+> buffer space which is already pretty approximate).
+
+It it also used by svc_set_num_threads, where we subtract 1 before
+using it.
+
+Maybe it isn't worth worrying about...
+
+> 
+> > You remove a comment that you had previously added.  Why?
+> >   -- not fixed pending explanation...
+> 
+> Umm...where?
+
+Sorry.  You had added a comment, not removed one.  It still was
+out-of-context for that patch.  I moved it to the previous patch.
+It was this.
+
+@@ -69,7 +90,7 @@ svc_create(struct svc_program *prog, uns
+ }
  
  /*
-+ * Mode for mapping cpus to pools.
-+ */
-+enum {
-+	SVC_POOL_NONE = -1,	/* uninitialised, choose one of the others */
-+	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
-+				 * (legacy & UP mode) */
-+	SVC_POOL_PERCPU,	/* one pool per cpu */
-+	SVC_POOL_PERNODE	/* one pool per numa node */
-+};
-+
-+/*
-+ * Structure for mapping cpus to pools and vice versa.
-+ * Setup once during sunrpc initialisation.
-+ */
-+static struct svc_pool_map {
-+	int mode;			/* Note: int not enum to avoid
-+					 * warnings about "enumeration value
-+					 * not handled in switch" */
-+	unsigned int npools;
-+	unsigned int *pool_to;		/* maps pool id to cpu or node */
-+	unsigned int *to_pool;		/* maps cpu or node to pool id */
-+} svc_pool_map = {
-+	.mode = SVC_POOL_NONE
-+};
-+
-+
-+/*
-+ * Detect best pool mapping mode heuristically,
-+ * according to the machine's topology.
-+ */
-+static int
-+svc_pool_map_choose_mode(void)
-+{
-+	unsigned int node;
-+
-+	if (num_online_nodes() > 1) {
-+		/*
-+		 * Actually have multiple NUMA nodes,
-+		 * so split pools on NUMA node boundaries
-+		 */
-+		return SVC_POOL_PERNODE;
-+	}
-+
-+	node = any_online_node(node_online_map);
-+	if (nr_cpus_node(node) > 2) {
-+		/*
-+		 * Non-trivial SMP, or CONFIG_NUMA on
-+		 * non-NUMA hardware, e.g. with a generic
-+		 * x86_64 kernel on Xeons.  In this case we
-+		 * want to divide the pools on cpu boundaries.
-+		 */
-+		return SVC_POOL_PERCPU;
-+	}
-+
-+	/* default: one global pool */
-+	return SVC_POOL_GLOBAL;
-+}
-+
-+/*
-+ * Allocate the to_pool[] and pool_to[] arrays.
-+ * Returns 0 on success or an errno.
-+ */
-+static int
-+svc_pool_map_alloc_arrays(struct svc_pool_map *m, unsigned int maxpools)
-+{
-+	m->to_pool = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-+	if (!m->to_pool)
-+		goto fail;
-+	m->pool_to = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-+	if (!m->pool_to)
-+		goto fail_free;
-+
-+	return 0;
-+
-+fail_free:
-+	kfree(m->to_pool);
-+fail:
-+	return -ENOMEM;
-+}
-+
-+/*
-+ * Initialise the pool map for SVC_POOL_PERCPU mode.
-+ * Returns number of pools or <0 on error.
-+ */
-+static int
-+svc_pool_map_init_percpu(struct svc_pool_map *m)
-+{
-+	unsigned int maxpools = num_possible_cpus();
-+	unsigned int pidx = 0;
-+	unsigned int cpu;
-+	int err;
-+
-+	err = svc_pool_map_alloc_arrays(m, maxpools);
-+	if (err)
-+		return err;
-+
-+	for_each_online_cpu(cpu) {
-+		BUG_ON(pidx > maxpools);
-+		m->to_pool[cpu] = pidx;
-+		m->pool_to[pidx] = cpu;
-+		pidx++;
-+	}
-+	/* cpus brought online later all get mapped to pool0, sorry */
-+
-+	return pidx;
-+};
-+
-+
-+/*
-+ * Initialise the pool map for SVC_POOL_PERNODE mode.
-+ * Returns number of pools or <0 on error.
-+ */
-+static int
-+svc_pool_map_init_pernode(struct svc_pool_map *m)
-+{
-+	unsigned int maxpools = num_possible_nodes();
-+	unsigned int pidx = 0;
-+	unsigned int node;
-+	int err;
-+
-+	err = svc_pool_map_alloc_arrays(m, maxpools);
-+	if (err)
-+		return err;
-+
-+	for_each_node_with_cpus(node) {
-+		/* some architectures (e.g. SN2) have cpuless nodes */
-+		BUG_ON(pidx > maxpools);
-+		m->to_pool[node] = pidx;
-+		m->pool_to[pidx] = node;
-+		pidx++;
-+	}
-+	/* nodes brought online later all get mapped to pool0, sorry */
-+
-+	return pidx;
-+}
-+
-+
-+/*
-+ * Build the global map of cpus to pools and vice versa.
-+ */
-+static unsigned int
-+svc_pool_map_init(void)
-+{
-+	struct svc_pool_map *m = &svc_pool_map;
-+	int npools = -1;
-+
-+	if (m->mode != SVC_POOL_NONE)
-+		return m->npools;
-+
-+	m->mode = svc_pool_map_choose_mode();
-+
-+	switch (m->mode) {
-+	case SVC_POOL_PERCPU:
-+		npools = svc_pool_map_init_percpu(m);
-+		break;
-+	case SVC_POOL_PERNODE:
-+		npools = svc_pool_map_init_pernode(m);
-+		break;
-+	}
-+
-+	if (npools < 0) {
-+		/* default, or memory allocation failure */
-+		npools = 1;
-+		m->mode = SVC_POOL_GLOBAL;
-+	}
-+	m->npools = npools;
-+
-+	return m->npools;
-+}
-+
-+/*
-+ * Set the current thread's cpus_allowed mask so that it
-+ * will only run on cpus in the given pool.
-+ *
-+ * Returns 1 and fills in oldmask iff a cpumask was applied.
-+ */
-+static inline int
-+svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
-+{
-+	struct svc_pool_map *m = &svc_pool_map;
-+	unsigned int node; /* or cpu */
-+
-+	BUG_ON(m->mode == SVC_POOL_NONE);
-+
-+	switch (m->mode)
-+	{
-+	default:
-+		return 0;
-+	case SVC_POOL_PERCPU:
-+		node = m->pool_to[pidx];
-+		*oldmask = current->cpus_allowed;
-+		set_cpus_allowed(current, cpumask_of_cpu(node));
-+		return 1;
-+	case SVC_POOL_PERNODE:
-+		node = m->pool_to[pidx];
-+		*oldmask = current->cpus_allowed;
-+		set_cpus_allowed(current, node_to_cpumask(node));
-+		return 1;
-+	}
-+}
-+
-+/*
-+ * Use the mapping mode to choose a pool for a given CPU.
-+ * Used when enqueueing an incoming RPC.  Always returns
-+ * a non-NULL pool pointer.
-+ */
-+struct svc_pool *
-+svc_pool_for_cpu(struct svc_serv *serv, int cpu)
-+{
-+	struct svc_pool_map *m = &svc_pool_map;
-+	unsigned int pidx = 0;
-+
-+	BUG_ON(m->mode == SVC_POOL_NONE);
-+
-+	switch (m->mode) {
-+	case SVC_POOL_PERCPU:
-+		pidx = m->to_pool[cpu];
-+		break;
-+	case SVC_POOL_PERNODE:
-+		pidx = m->to_pool[cpu_to_node(cpu)];
-+		break;
-+	}
-+	return &serv->sv_pools[pidx % serv->sv_nrpools];
-+}
-+
-+
-+/*
-  * Create an RPC service
+- * Destroy an RPC service
++ * Destroy an RPC service.  Should be called with the BKL held
   */
- static struct svc_serv *
-@@ -105,8 +336,9 @@ svc_create_pooled(struct svc_program *pr
- 		  svc_thread_fn func, int sig, struct module *mod)
- {
- 	struct svc_serv *serv;
-+	unsigned int npools = svc_pool_map_init();
- 
--	serv = __svc_create(prog, bufsize, /*npools*/1, shutdown);
-+	serv = __svc_create(prog, bufsize, npools, shutdown);
- 
- 	if (serv != NULL) {
- 		serv->sv_function = func;
-@@ -209,6 +441,8 @@ svc_release_buffer(struct svc_rqst *rqst
- 
- /*
-  * Create a thread in the given pool.  Caller must hold BKL.
-+ * On a NUMA or SMP machine, with a multi-pool serv, the thread
-+ * will be restricted to run on the cpus belonging to the pool.
-  */
- static int
- __svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
-@@ -216,6 +450,8 @@ __svc_create_thread(svc_thread_fn func, 
- {
- 	struct svc_rqst	*rqstp;
- 	int		error = -ENOMEM;
-+	int		have_oldmask = 0;
-+	cpumask_t	oldmask;
- 
- 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
- 	if (!rqstp)
-@@ -235,7 +471,15 @@ __svc_create_thread(svc_thread_fn func, 
- 	spin_unlock_bh(&pool->sp_lock);
- 	rqstp->rq_server = serv;
- 	rqstp->rq_pool = pool;
-+
-+	if (serv->sv_nrpools > 1)
-+		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
-+
- 	error = kernel_thread((int (*)(void *)) func, rqstp, 0);
-+
-+	if (have_oldmask)
-+		set_cpus_allowed(current, oldmask);
-+
- 	if (error < 0)
- 		goto out_thread;
- 	svc_sock_update_bufs(serv);
+ void
+ svc_destroy(struct svc_serv *serv)
 
-diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2006-07-31 10:29:38.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2006-07-31 10:31:12.000000000 +1000
-@@ -151,8 +151,9 @@ static void
- svc_sock_enqueue(struct svc_sock *svsk)
- {
- 	struct svc_serv	*serv = svsk->sk_server;
--	struct svc_pool *pool = &serv->sv_pools[0];
-+	struct svc_pool *pool;
- 	struct svc_rqst	*rqstp;
-+	int cpu;
- 
- 	if (!(svsk->sk_flags &
- 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
-@@ -160,6 +161,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	if (test_bit(SK_DEAD, &svsk->sk_flags))
- 		return;
- 
-+	cpu = get_cpu();
-+	pool = svc_pool_for_cpu(svsk->sk_server, cpu);
-+	put_cpu();
-+
- 	spin_lock_bh(&pool->sp_lock);
- 
- 	if (!list_empty(&pool->sp_threads) &&
+
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
