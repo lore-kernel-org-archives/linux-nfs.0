@@ -1,76 +1,49 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH] 2.4 client - update d_cache when server
-	reports	ENOENT on	an NFS remove
-Date: Mon, 31 Jul 2006 07:37:42 -0400
-Message-ID: <1154345862.6328.1.camel@dantu.rdu.redhat.com>
-References: <1154117879.23316.19.camel@dantu.rdu.redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] knfsd: Fix stale file handle problem with subtree_checking.
+Date: Mon, 31 Jul 2006 12:16:33 -0400
+Message-ID: <20060731161633.GB11459@fieldses.org>
+References: <20060728194103.7245.patches@notabene> <1060728094255.7278@suse.de> <20060728205156.GB12183@fieldses.org> <17610.62013.790217.817455@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: mtosatti@redhat.com
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7W5r-0006hN-Nr
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 04:37:55 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7W5q-0004Kn-Vj
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 04:37:56 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k6VBbhgn010016
-	for <nfs@lists.sourceforge.net>; Mon, 31 Jul 2006 07:37:43 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k6VBbhJ1015945
-	for <nfs@lists.sourceforge.net>; Mon, 31 Jul 2006 07:37:43 -0400
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1154117879.23316.19.camel@dantu.rdu.redhat.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1030209AbWGaQQn@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17610.62013.790217.817455@cse.unsw.edu.au>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, 2006-07-28 at 16:17 -0400, Jeff Layton wrote:
-> Anuwat Phrukphicharn of HP discovered and patched this problem in
-> RHEL-3, and asked that I push it upstream.
->
-> --- linux-2.4.21/fs/nfs/dir.c.unlink-enoent
-> +++ linux-2.4.21/fs/nfs/dir.c
-> @@ -1023,7 +1023,10 @@ static int nfs_safe_remove(struct dentry
->  	if (inode)
->  		NFS_CACHEINV(inode);
->  	error = NFS_PROTO(dir)->remove(dir, &dentry->d_name);
-> -	if (error < 0)
-> +
-> +	/* if server returned ENOENT, assume that the dentry is already gone
-> +	 * and update the cache accordingly */
-> +	if (error < 0 && (error != -ENOENT))
->  		goto out;
->  	if (inode)
->  		inode->i_nlink--;
+On Sat, Jul 29, 2006 at 03:29:33PM +1000, Neil Brown wrote:
+> The first step would be to stop it from being the default (as Trond
+> has suggested a number of times :-)
 > 
+> How about this.
+>  I release a 1.0.10 shortly which addresses some 'portlist' related
+>  breakage and prints a nasty warning if you have neither subtree_check
+>  or no_subtree_check, but still defaults to subtree_check.
+> 
+>  Then the next release will be 1.1.0 which prints the same warning,
+>  but defaults the other way - and probably removed the warning if you
+>  include neither sync not async.
+> 
+> That should at least get subtree_check to be used less.
 
-Forgot to add the signoff line. Let me know if I need to resend the
-email in its entirety.
+Sounds good to me.  (Though for these kinds of changes I suppose it's
+the time elasped that matters more than the number of released
+versions--people probably upgrade every x months/years/whatever rather
+than every x versions.  By that criteria I think we might be making the
+subtree_check change a little fast, while the warning period for the
+sync change may already be overkill....)
 
-Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
+> I think it is a great idea for a 'filesystem' to support multiple
+> independent file-trees within the one storage set, which is roughly
+> what you are saying I think (though probably not quite).
+> 
+> However I suspect that most people don't actually want subtrees.  They
+> just get it as the default.  It isn't something that I would have
+> implemented if I hadn't inherited the requirement, and no other OS
+> that I know of provides that particular semantic.
 
+Could be.
 
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--b.
