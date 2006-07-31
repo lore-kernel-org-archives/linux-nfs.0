@@ -1,7 +1,7 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 011 of 11] knfsd: allow admin to set nthreads per node
-Date: Mon, 31 Jul 2006 10:42:39 +1000
-Message-ID: <1060731004239.29303@suse.de>
+Subject: [PATCH 010 of 11] knfsd: make rpc threads pools numa aware
+Date: Mon, 31 Jul 2006 10:42:34 +1000
+Message-ID: <1060731004234.29291@suse.de>
 References: <20060731103458.29040.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7Lrq-0003vl-Lu
-	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 17:42:46 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G7Lrl-0003vK-GZ
+	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 17:42:41 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G7Lrq-00079h-6M
-	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 17:42:47 -0700
+	(Exim 4.44) id 1G7Lrk-00078i-Ue
+	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 17:42:42 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,212 +32,358 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Greg Banks <gnb@melbourne.sgi.com>
 
-knfsd: Add /proc/fs/nfsd/pool_threads which allows the sysadmin (or
-a userspace daemon) to read and change the number of nfsd threads
-in each pool.  The format is a list of space-separated integers,
-one per pool.
+knfsd: Actually implement multiple pools.  On NUMA machines, allocate
+a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
+global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
+on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
+have their cpu mask set to limit them to the CPUs in the svc_pool that
+owns them.
+
+This is the patch that allows an Altix to scale NFS traffic linearly
+beyond 4 CPUs and 4 NICs.
+
+Incorporates changes and feedback from Neil Brown, Trond Myklebust,
+and Christoph Hellwig.
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfsctl.c |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++
- ./fs/nfsd/nfssvc.c |   74 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 144 insertions(+)
+ ./include/linux/sunrpc/svc.h |    1 
+ ./net/sunrpc/svc.c           |  246 ++++++++++++++++++++++++++++++++++++++++++-
+ ./net/sunrpc/svcsock.c       |    7 +
+ 3 files changed, 252 insertions(+), 2 deletions(-)
 
-diff .prev/fs/nfsd/nfsctl.c ./fs/nfsd/nfsctl.c
---- .prev/fs/nfsd/nfsctl.c	2006-07-31 10:29:37.000000000 +1000
-+++ ./fs/nfsd/nfsctl.c	2006-07-31 10:31:46.000000000 +1000
-@@ -54,6 +54,7 @@ enum {
- 	NFSD_List,
- 	NFSD_Fh,
- 	NFSD_Threads,
-+	NFSD_Pool_Threads,
- 	NFSD_Versions,
- 	NFSD_Ports,
- 	/*
-@@ -78,6 +79,7 @@ static ssize_t write_getfd(struct file *
- static ssize_t write_getfs(struct file *file, char *buf, size_t size);
- static ssize_t write_filehandle(struct file *file, char *buf, size_t size);
- static ssize_t write_threads(struct file *file, char *buf, size_t size);
-+static ssize_t write_pool_threads(struct file *file, char *buf, size_t size);
- static ssize_t write_versions(struct file *file, char *buf, size_t size);
- static ssize_t write_ports(struct file *file, char *buf, size_t size);
- #ifdef CONFIG_NFSD_V4
-@@ -95,6 +97,7 @@ static ssize_t (*write_op[])(struct file
- 	[NFSD_Getfs] = write_getfs,
- 	[NFSD_Fh] = write_filehandle,
- 	[NFSD_Threads] = write_threads,
-+	[NFSD_Pool_Threads] = write_pool_threads,
- 	[NFSD_Versions] = write_versions,
- 	[NFSD_Ports] = write_ports,
- #ifdef CONFIG_NFSD_V4
-@@ -363,6 +366,72 @@ static ssize_t write_threads(struct file
- 	return strlen(buf);
- }
+diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
+--- .prev/include/linux/sunrpc/svc.h	2006-07-31 10:30:30.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2006-07-31 10:31:12.000000000 +1000
+@@ -369,5 +369,6 @@ int		   svc_process(struct svc_rqst *);
+ int		   svc_register(struct svc_serv *, int, unsigned short);
+ void		   svc_wake_up(struct svc_serv *);
+ void		   svc_reserve(struct svc_rqst *rqstp, int space);
++struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
  
-+extern int nfsd_nrpools(void);
-+extern int nfsd_get_nrthreads(int n, int *);
-+extern int nfsd_set_nrthreads(int n, int *);
+ #endif /* SUNRPC_SVC_H */
+
+diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
+--- .prev/net/sunrpc/svc.c	2006-07-31 10:30:30.000000000 +1000
++++ ./net/sunrpc/svc.c	2006-07-31 10:31:30.000000000 +1000
+@@ -4,6 +4,10 @@
+  * High-level RPC service routines
+  *
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
++ *
++ * Multiple threads pools and NUMAisation
++ * Copyright (c) 2006 Silicon Graphics, Inc.
++ * by Greg Banks <gnb@melbourne.sgi.com>
+  */
+ 
+ #include <linux/linkage.h>
+@@ -25,6 +29,233 @@
+ #define RPC_PARANOIA 1
+ 
+ /*
++ * Mode for mapping cpus to pools.
++ */
++enum {
++	SVC_POOL_NONE = -1,	/* uninitialised, choose one of the others */
++	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
++				 * (legacy & UP mode) */
++	SVC_POOL_PERCPU,	/* one pool per cpu */
++	SVC_POOL_PERNODE	/* one pool per numa node */
++};
 +
-+static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
++/*
++ * Structure for mapping cpus to pools and vice versa.
++ * Setup once during sunrpc initialisation.
++ */
++static struct svc_pool_map {
++	int mode;			/* Note: int not enum to avoid
++					 * warnings about "enumeration value
++					 * not handled in switch" */
++	unsigned int npools;
++	unsigned int *pool_to;		/* maps pool id to cpu or node */
++	unsigned int *to_pool;		/* maps cpu or node to pool id */
++} svc_pool_map = {
++	.mode = SVC_POOL_NONE
++};
++
++
++/*
++ * Detect best pool mapping mode heuristically,
++ * according to the machine's topology.
++ */
++static int
++svc_pool_map_choose_mode(void)
 +{
-+	/* if size > 0, look for an array of number of threads per node
-+	 * and apply them  then write out number of threads per node as reply
-+	 */
-+	char *mesg = buf;
-+	int i;
-+	int rv;
-+	int len;
-+    	int npools = nfsd_nrpools();
-+	int *nthreads;
++	unsigned int node;
 +
-+	if (npools == 0) {
++	if (num_online_nodes() > 1) {
 +		/*
-+		 * NFS is shut down.  The admin can start it by
-+		 * writing to the threads file but NOT the pool_threads
-+		 * file, sorry.  Report zero threads.
++		 * Actually have multiple NUMA nodes,
++		 * so split pools on NUMA node boundaries
 +		 */
-+		strcpy(buf, "0\n");
-+		return strlen(buf);
++		return SVC_POOL_PERNODE;
 +	}
 +
-+	nthreads = kcalloc(npools, sizeof(int), GFP_KERNEL);
-+	if (nthreads == NULL)
-+		return -ENOMEM;
-+
-+	if (size > 0) {
-+		for (i = 0 ; i < npools ; i++) {
-+			rv = get_int(&mesg, &nthreads[i]);
-+			if (rv == -ENOENT)
-+				break;		/* fewer numbers than pools */
-+			if (rv)
-+				goto out_free;	/* syntax error */
-+			rv = -EINVAL;
-+			if (nthreads[i] < 0)
-+				goto out_free;
-+		}
-+		rv = nfsd_set_nrthreads(i, nthreads);
-+		if (rv)
-+			goto out_free;
++	node = any_online_node(node_online_map);
++	if (nr_cpus_node(node) > 2) {
++		/*
++		 * Non-trivial SMP, or CONFIG_NUMA on
++		 * non-NUMA hardware, e.g. with a generic
++		 * x86_64 kernel on Xeons.  In this case we
++		 * want to divide the pools on cpu boundaries.
++		 */
++		return SVC_POOL_PERCPU;
 +	}
 +
-+	rv = nfsd_get_nrthreads(npools, nthreads);
-+	if (rv)
-+		goto out_free;
-+
-+	mesg = buf;
-+	size = SIMPLE_TRANSACTION_LIMIT;
-+	for (i = 0 ; i < npools && size > 0 ; i++) {
-+		snprintf(mesg, size, "%d%c", nthreads[i], (i == npools-1 ? '\n' : ' '));
-+		len = strlen(mesg);
-+		size -= len;
-+		mesg += len;
-+	}
-+
-+	return (mesg-buf);
-+
-+out_free:
-+	kfree(nthreads);
-+	return rv;
++	/* default: one global pool */
++	return SVC_POOL_GLOBAL;
 +}
 +
- static ssize_t write_versions(struct file *file, char *buf, size_t size)
- {
- 	/*
-@@ -544,6 +613,7 @@ static int nfsd_fill_super(struct super_
- 		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
- 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
-+		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- #ifdef CONFIG_NFSD_V4
-
-diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
---- .prev/fs/nfsd/nfssvc.c	2006-07-31 10:31:08.000000000 +1000
-+++ ./fs/nfsd/nfssvc.c	2006-07-31 10:31:46.000000000 +1000
-@@ -238,6 +238,80 @@ static int nfsd_init_socks(int port)
- 	return 0;
- }
- 
-+int nfsd_nrpools(void)
++/*
++ * Allocate the to_pool[] and pool_to[] arrays.
++ * Returns 0 on success or an errno.
++ */
++static int
++svc_pool_map_alloc_arrays(struct svc_pool_map *m, unsigned int maxpools)
 +{
-+	if (nfsd_serv == NULL)
-+		return 0;
-+	else
-+		return nfsd_serv->sv_nrpools;
-+}
-+
-+int nfsd_get_nrthreads(int n, int *nthreads)
-+{
-+	int i = 0;
-+
-+	if (nfsd_serv != NULL) {
-+		for (i = 0 ; i < nfsd_serv->sv_nrpools && i < n ; i++)
-+			nthreads[i] = nfsd_serv->sv_pools[i].sp_nrthreads;
-+	}
++	m->to_pool = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
++	if (!m->to_pool)
++		goto fail;
++	m->pool_to = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
++	if (!m->pool_to)
++		goto fail_free;
 +
 +	return 0;
++
++fail_free:
++	kfree(m->to_pool);
++fail:
++	return -ENOMEM;
 +}
 +
-+int nfsd_set_nrthreads(int n, int *nthreads)
++/*
++ * Initialise the pool map for SVC_POOL_PERCPU mode.
++ * Returns number of pools or <0 on error.
++ */
++static int
++svc_pool_map_init_percpu(struct svc_pool_map *m)
 +{
-+	int i = 0;
-+	int tot = 0;
-+	int err = 0;
++	unsigned int maxpools = num_possible_cpus();
++	unsigned int pidx = 0;
++	unsigned int cpu;
++	int err;
 +
-+	if (nfsd_serv == NULL || n <= 0)
-+		return 0;
++	err = svc_pool_map_alloc_arrays(m, maxpools);
++	if (err)
++		return err;
 +
-+	if (n > nfsd_serv->sv_nrpools)
-+		n = nfsd_serv->sv_nrpools;
-+
-+	/* enforce a global maximum number of threads */
-+	tot = 0;
-+	for (i = 0 ; i < n ; i++) {
-+		if (nthreads[i] > NFSD_MAXSERVS)
-+			nthreads[i] = NFSD_MAXSERVS;
-+		tot += nthreads[i];
++	for_each_online_cpu(cpu) {
++		BUG_ON(pidx > maxpools);
++		m->to_pool[cpu] = pidx;
++		m->pool_to[pidx] = cpu;
++		pidx++;
 +	}
-+	if (tot > NFSD_MAXSERVS) {
-+		/* total too large: scale down requested numbers */
-+		for (i = 0 ; i < n && tot > 0 ; i++) {
-+		    	int new = nthreads[i] * NFSD_MAXSERVS / tot;
-+			tot -= (nthreads[i] - new);
-+			nthreads[i] = new;
-+		}
-+		for (i = 0 ; i < n && tot > 0 ; i++) {
-+			nthreads[i]--;
-+			tot--;
-+		}
++	/* cpus brought online later all get mapped to pool0, sorry */
++
++	return pidx;
++};
++
++
++/*
++ * Initialise the pool map for SVC_POOL_PERNODE mode.
++ * Returns number of pools or <0 on error.
++ */
++static int
++svc_pool_map_init_pernode(struct svc_pool_map *m)
++{
++	unsigned int maxpools = num_possible_nodes();
++	unsigned int pidx = 0;
++	unsigned int node;
++	int err;
++
++	err = svc_pool_map_alloc_arrays(m, maxpools);
++	if (err)
++		return err;
++
++	for_each_node_with_cpus(node) {
++		/* some architectures (e.g. SN2) have cpuless nodes */
++		BUG_ON(pidx > maxpools);
++		m->to_pool[node] = pidx;
++		m->pool_to[pidx] = node;
++		pidx++;
 +	}
++	/* nodes brought online later all get mapped to pool0, sorry */
 +
-+	/*
-+	 * There must always be a thread in pool 0; the admin
-+	 * can't shut down NFS completely using pool_threads.
-+	 */
-+	if (nthreads[0] == 0)
-+		nthreads[0] = 1;
-+
-+	/* apply the new numbers */
-+	lock_kernel();
-+	svc_get(nfsd_serv);
-+	for (i = 0 ; i < n ; i++) {
-+		err = svc_set_num_threads(nfsd_serv, &nfsd_serv->sv_pools[i],
-+				    	  nthreads[i]);
-+		if (err)
-+			break;
-+	}
-+	svc_destroy(nfsd_serv);
-+	unlock_kernel();
-+
-+	return err;
++	return pidx;
 +}
 +
- int
- nfsd_svc(unsigned short port, int nrservs)
++
++/*
++ * Build the global map of cpus to pools and vice versa.
++ */
++static unsigned int
++svc_pool_map_init(void)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	int npools = -1;
++
++	if (m->mode != SVC_POOL_NONE)
++		return m->npools;
++
++	m->mode = svc_pool_map_choose_mode();
++
++	switch (m->mode) {
++	case SVC_POOL_PERCPU:
++		npools = svc_pool_map_init_percpu(m);
++		break;
++	case SVC_POOL_PERNODE:
++		npools = svc_pool_map_init_pernode(m);
++		break;
++	}
++
++	if (npools < 0) {
++		/* default, or memory allocation failure */
++		npools = 1;
++		m->mode = SVC_POOL_GLOBAL;
++	}
++	m->npools = npools;
++
++	return m->npools;
++}
++
++/*
++ * Set the current thread's cpus_allowed mask so that it
++ * will only run on cpus in the given pool.
++ *
++ * Returns 1 and fills in oldmask iff a cpumask was applied.
++ */
++static inline int
++svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	unsigned int node; /* or cpu */
++
++	BUG_ON(m->mode == SVC_POOL_NONE);
++
++	switch (m->mode)
++	{
++	default:
++		return 0;
++	case SVC_POOL_PERCPU:
++		node = m->pool_to[pidx];
++		*oldmask = current->cpus_allowed;
++		set_cpus_allowed(current, cpumask_of_cpu(node));
++		return 1;
++	case SVC_POOL_PERNODE:
++		node = m->pool_to[pidx];
++		*oldmask = current->cpus_allowed;
++		set_cpus_allowed(current, node_to_cpumask(node));
++		return 1;
++	}
++}
++
++/*
++ * Use the mapping mode to choose a pool for a given CPU.
++ * Used when enqueueing an incoming RPC.  Always returns
++ * a non-NULL pool pointer.
++ */
++struct svc_pool *
++svc_pool_for_cpu(struct svc_serv *serv, int cpu)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	unsigned int pidx = 0;
++
++	BUG_ON(m->mode == SVC_POOL_NONE);
++
++	switch (m->mode) {
++	case SVC_POOL_PERCPU:
++		pidx = m->to_pool[cpu];
++		break;
++	case SVC_POOL_PERNODE:
++		pidx = m->to_pool[cpu_to_node(cpu)];
++		break;
++	}
++	return &serv->sv_pools[pidx % serv->sv_nrpools];
++}
++
++
++/*
+  * Create an RPC service
+  */
+ static struct svc_serv *
+@@ -105,8 +336,9 @@ svc_create_pooled(struct svc_program *pr
+ 		  svc_thread_fn func, int sig, struct module *mod)
  {
+ 	struct svc_serv *serv;
++	unsigned int npools = svc_pool_map_init();
+ 
+-	serv = __svc_create(prog, bufsize, /*npools*/1, shutdown);
++	serv = __svc_create(prog, bufsize, npools, shutdown);
+ 
+ 	if (serv != NULL) {
+ 		serv->sv_function = func;
+@@ -209,6 +441,8 @@ svc_release_buffer(struct svc_rqst *rqst
+ 
+ /*
+  * Create a thread in the given pool.  Caller must hold BKL.
++ * On a NUMA or SMP machine, with a multi-pool serv, the thread
++ * will be restricted to run on the cpus belonging to the pool.
+  */
+ static int
+ __svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+@@ -216,6 +450,8 @@ __svc_create_thread(svc_thread_fn func, 
+ {
+ 	struct svc_rqst	*rqstp;
+ 	int		error = -ENOMEM;
++	int		have_oldmask = 0;
++	cpumask_t	oldmask;
+ 
+ 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+ 	if (!rqstp)
+@@ -235,7 +471,15 @@ __svc_create_thread(svc_thread_fn func, 
+ 	spin_unlock_bh(&pool->sp_lock);
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
++
++	if (serv->sv_nrpools > 1)
++		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
++
+ 	error = kernel_thread((int (*)(void *)) func, rqstp, 0);
++
++	if (have_oldmask)
++		set_cpus_allowed(current, oldmask);
++
+ 	if (error < 0)
+ 		goto out_thread;
+ 	svc_sock_update_bufs(serv);
+
+diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+--- .prev/net/sunrpc/svcsock.c	2006-07-31 10:29:38.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2006-07-31 10:31:12.000000000 +1000
+@@ -151,8 +151,9 @@ static void
+ svc_sock_enqueue(struct svc_sock *svsk)
+ {
+ 	struct svc_serv	*serv = svsk->sk_server;
+-	struct svc_pool *pool = &serv->sv_pools[0];
++	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
++	int cpu;
+ 
+ 	if (!(svsk->sk_flags &
+ 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
+@@ -160,6 +161,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	if (test_bit(SK_DEAD, &svsk->sk_flags))
+ 		return;
+ 
++	cpu = get_cpu();
++	pool = svc_pool_for_cpu(svsk->sk_server, cpu);
++	put_cpu();
++
+ 	spin_lock_bh(&pool->sp_lock);
+ 
+ 	if (!list_empty(&pool->sp_threads) &&
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
