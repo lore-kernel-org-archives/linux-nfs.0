@@ -1,27 +1,20 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 010 of 11] knfsd: make rpc threads pools	numa	aware
-Date: Mon, 31 Jul 2006 15:54:57 +1000
-Message-ID: <1154325296.21040.1850.camel@hole.melbourne.sgi.com>
-References: <20060731103458.29040.patches@notabene>
-	<1060731004234.29291@suse.de> <20060730211454.ccf803f3.akpm@osdl.org>
-	<17613.35001.745409.144623@cse.unsw.edu.au>
-	<1154320957.21040.1836.camel@hole.melbourne.sgi.com>
+From: "Paul Hobbs" <pjhobbs@dowdingandmills.com>
+Subject: Segmentation Fault when trying to mount an NFS Filesystem
+Date: Mon, 31 Jul 2006 11:25:44 +0100
+Message-ID: <OBEILOALCFKJGICOCIFLKEBOCHAA.pjhobbs@dowdingandmills.com>
+Reply-To: pjhobbs@dowdingandmills.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7QkD-0003YD-3v
-	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 22:55:13 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7QkD-0007v6-6J
-	for nfs@lists.sourceforge.net; Sun, 30 Jul 2006 22:55:13 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <1154320957.21040.1836.camel@hole.melbourne.sgi.com>
+	id 1G7Uwp-0000RE-Hw
+	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 03:24:31 -0700
+Received: from relay1.dowdingandmills.com ([193.123.253.2])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7Uwo-0003So-D0
+	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 03:24:32 -0700
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,402 +27,193 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-07-31 at 14:42, Greg Banks wrote:
-> On Mon, 2006-07-31 at 14:36, Neil Brown wrote:
-> > On Sunday July 30, akpm@osdl.org wrote:
-> > > On Mon, 31 Jul 2006 10:42:34 +1000
-> > > NeilBrown <neilb@suse.de> wrote:
-> > > 
-> > > > +static int
-> > > > +svc_pool_map_init_percpu(struct svc_pool_map *m)
-> > > > +{
-> > > > +	unsigned int maxpools = num_possible_cpus();
-> > > > +	unsigned int pidx = 0;
-> > > > +	unsigned int cpu;
-> > > > +	int err;
-> > > > +
-> > > > +
-> > > 
-> > > That isn't right - it assumes that cpu_possible_map is not sparse.  If it
-> > > is sparse, we allocate undersized pools and then overindex them.
-> 
-> Umm, I think Andrew's right, num_possible_cpus() should be NR_CPUS.
 
-How about this version of the patch?  It replaces num_possible_cpus()
-with highest_possible_processor_id()+1 and similarly for nodes.
---
+Hi,
 
-knfsd: Actually implement multiple pools.  On NUMA machines, allocate
-a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
-global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
-on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
-have their cpu mask set to limit them to the CPUs in the svc_pool that
-owns them.
+I've read the NFS-HOWTO and have drawn a blank, please can you help?
 
-This is the patch that allows an Altix to scale NFS traffic linearly
-beyond 4 CPUs and 4 NICs.
+I need to share some cert files on another box, however I'm getting a
+Segmentation Fault
+whenever I attempt to mount the NFS share. This was all working fine for
+months until a
+change was made to a CNAME on our DNS Server. The CNAME was changed from
+pointing to
+192.168.99.11 to point at another server 192.168.99.23. Since then it has
+not worked, I
+can't see how this change could of messed things up on the NFS has I've
+always used the
+IP addresses.
 
-Incorporates changes and feedback from Neil Brown, Trond Myklebust,
-Christoph Hellwig and Andrew Morton.
+The other thing that is strange is that it works fine if I mount from
+192.168.99.99
+to 192.168.99.10, but does not work when mounting to 192.168.99.11. Both
+machines
+192.168.99.10 and 192.168.99.11 are the same build and configuration.
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
----
+All machines are connected locally using a Gigabit Switch on the same
+network 192.168.99.0.
 
- include/linux/sunrpc/svc.h |    1 
- net/sunrpc/svc.c           |  258 +++++++++++++++++++++++++++++++++-
- net/sunrpc/svcsock.c       |    7 
- 3 files changed, 264 insertions(+), 2 deletions(-)
+Can anyone please offer any advice?
 
-Index: linus-git/net/sunrpc/svc.c
-===================================================================
---- linus-git.orig/net/sunrpc/svc.c	2006-07-26 16:50:25.802187916 +1000
-+++ linus-git/net/sunrpc/svc.c	2006-07-31 15:08:59.999800051 +1000
-@@ -4,6 +4,10 @@
-  * High-level RPC service routines
-  *
-  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
-+ *
-+ * Multiple threads pools and NUMAisation
-+ * Copyright (c) 2006 Silicon Graphics, Inc.
-+ * by Greg Banks <gnb@melbourne.sgi.com>
-  */
- 
- #include <linux/linkage.h>
-@@ -25,6 +29,245 @@
- #define RPC_PARANOIA 1
- 
- /*
-+ * Mode for mapping cpus to pools.
-+ */
-+enum {
-+	SVC_POOL_NONE = -1,	/* uninitialised, choose one of the others */
-+	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
-+				 * (legacy & UP mode) */
-+	SVC_POOL_PERCPU,	/* one pool per cpu */
-+	SVC_POOL_PERNODE	/* one pool per numa node */
-+};
-+
-+/*
-+ * Structure for mapping cpus to pools and vice versa.
-+ * Setup once during sunrpc initialisation.
-+ */
-+static struct svc_pool_map {
-+	int mode;			/* Note: int not enum to avoid
-+					 * warnings about "enumeration value
-+					 * not handled in switch" */
-+	unsigned int npools;
-+	unsigned int *pool_to;		/* maps pool id to cpu or node */
-+	unsigned int *to_pool;		/* maps cpu or node to pool id */
-+} svc_pool_map = {
-+	.mode = SVC_POOL_NONE
-+};
-+
-+
-+/*
-+ * Detect best pool mapping mode heuristically,
-+ * according to the machine's topology.
-+ */
-+static int
-+svc_pool_map_choose_mode(void)
-+{
-+	unsigned int node;
-+
-+	if (num_online_nodes() > 1) {
-+		/*
-+		 * Actually have multiple NUMA nodes,
-+		 * so split pools on NUMA node boundaries
-+		 */
-+		return SVC_POOL_PERNODE;
-+	}
-+
-+	node = any_online_node(node_online_map);
-+	if (nr_cpus_node(node) > 2) {
-+		/*
-+		 * Non-trivial SMP, or CONFIG_NUMA on
-+		 * non-NUMA hardware, e.g. with a generic
-+		 * x86_64 kernel on Xeons.  In this case we
-+		 * want to divide the pools on cpu boundaries.
-+		 */
-+		return SVC_POOL_PERCPU;
-+	}
-+
-+	/* default: one global pool */
-+	return SVC_POOL_GLOBAL;
-+}
-+
-+/*
-+ * Allocate the to_pool[] and pool_to[] arrays.
-+ * Returns 0 on success or an errno.
-+ */
-+static int
-+svc_pool_map_alloc_arrays(struct svc_pool_map *m, unsigned int maxpools)
-+{
-+	m->to_pool = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-+	if (!m->to_pool)
-+		goto fail;
-+	m->pool_to = kcalloc(maxpools, sizeof(unsigned int), GFP_KERNEL);
-+	if (!m->pool_to)
-+		goto fail_free;
-+
-+	return 0;
-+
-+fail_free:
-+	kfree(m->to_pool);
-+fail:
-+	return -ENOMEM;
-+}
-+
-+/*
-+ * Initialise the pool map for SVC_POOL_PERCPU mode.
-+ * Returns number of pools or <0 on error.
-+ */
-+static int
-+svc_pool_map_init_percpu(struct svc_pool_map *m)
-+{
-+	unsigned int maxpools = highest_possible_processor_id()+1;
-+	unsigned int pidx = 0;
-+	unsigned int cpu;
-+	int err;
-+
-+	err = svc_pool_map_alloc_arrays(m, maxpools);
-+	if (err)
-+		return err;
-+
-+	for_each_online_cpu(cpu) {
-+		BUG_ON(pidx > maxpools);
-+		m->to_pool[cpu] = pidx;
-+		m->pool_to[pidx] = cpu;
-+		pidx++;
-+	}
-+	/* cpus brought online later all get mapped to pool0, sorry */
-+
-+	return pidx;
-+};
-+
-+static int
-+highest_possible_node_id(void)
-+{
-+	unsigned int node;
-+	unsigned int highest = 0;
-+
-+	for_each_node(node)
-+		highest = node;
-+
-+	return highest;
-+}
-+
-+
-+/*
-+ * Initialise the pool map for SVC_POOL_PERNODE mode.
-+ * Returns number of pools or <0 on error.
-+ */
-+static int
-+svc_pool_map_init_pernode(struct svc_pool_map *m)
-+{
-+	unsigned int maxpools = highest_possible_node_id()+1;
-+	unsigned int pidx = 0;
-+	unsigned int node;
-+	int err;
-+
-+	err = svc_pool_map_alloc_arrays(m, maxpools);
-+	if (err)
-+		return err;
-+
-+	for_each_node_with_cpus(node) {
-+		/* some architectures (e.g. SN2) have cpuless nodes */
-+		BUG_ON(pidx > maxpools);
-+		m->to_pool[node] = pidx;
-+		m->pool_to[pidx] = node;
-+		pidx++;
-+	}
-+	/* nodes brought online later all get mapped to pool0, sorry */
-+
-+	return pidx;
-+}
-+
-+
-+/*
-+ * Build the global map of cpus to pools and vice versa.
-+ */
-+static unsigned int
-+svc_pool_map_init(void)
-+{
-+	struct svc_pool_map *m = &svc_pool_map;
-+	int npools = -1;
-+
-+	if (m->mode != SVC_POOL_NONE)
-+		return m->npools;
-+
-+	m->mode = svc_pool_map_choose_mode();
-+
-+	switch (m->mode) {
-+	case SVC_POOL_PERCPU:
-+		npools = svc_pool_map_init_percpu(m);
-+		break;
-+	case SVC_POOL_PERNODE:
-+		npools = svc_pool_map_init_pernode(m);
-+		break;
-+	}
-+
-+	if (npools < 0) {
-+		/* default, or memory allocation failure */
-+		npools = 1;
-+		m->mode = SVC_POOL_GLOBAL;
-+	}
-+	m->npools = npools;
-+
-+	return m->npools;
-+}
-+
-+/*
-+ * Set the current thread's cpus_allowed mask so that it
-+ * will only run on cpus in the given pool.
-+ *
-+ * Returns 1 and fills in oldmask iff a cpumask was applied.
-+ */
-+static inline int
-+svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
-+{
-+	struct svc_pool_map *m = &svc_pool_map;
-+	unsigned int node; /* or cpu */
-+
-+	BUG_ON(m->mode == SVC_POOL_NONE);
-+
-+	switch (m->mode)
-+	{
-+	default:
-+		return 0;
-+	case SVC_POOL_PERCPU:
-+		node = m->pool_to[pidx];
-+		*oldmask = current->cpus_allowed;
-+		set_cpus_allowed(current, cpumask_of_cpu(node));
-+		return 1;
-+	case SVC_POOL_PERNODE:
-+		node = m->pool_to[pidx];
-+		*oldmask = current->cpus_allowed;
-+		set_cpus_allowed(current, node_to_cpumask(node));
-+		return 1;
-+	}
-+}
-+
-+/*
-+ * Use the mapping mode to choose a pool for a given CPU.
-+ * Used when enqueueing an incoming RPC.  Always returns
-+ * a non-NULL pool pointer.
-+ */
-+struct svc_pool *
-+svc_pool_for_cpu(struct svc_serv *serv, int cpu)
-+{
-+	struct svc_pool_map *m = &svc_pool_map;
-+	unsigned int pidx = 0;
-+
-+	BUG_ON(m->mode == SVC_POOL_NONE);
-+
-+	switch (m->mode) {
-+	case SVC_POOL_PERCPU:
-+		pidx = m->to_pool[cpu];
-+		break;
-+	case SVC_POOL_PERNODE:
-+		pidx = m->to_pool[cpu_to_node(cpu)];
-+		break;
-+	}
-+	return &serv->sv_pools[pidx % serv->sv_nrpools];
-+}
-+
-+
-+/*
-  * Create an RPC service
-  */
- static struct svc_serv *
-@@ -103,8 +346,9 @@ svc_create_pooled(struct svc_program *pr
- 		  svc_thread_fn func, int sig, struct module *mod)
- {
- 	struct svc_serv *serv;
-+	unsigned int npools = svc_pool_map_init();
- 
--	serv = __svc_create(prog, bufsize, shutdown, /*npools*/1);
-+	serv = __svc_create(prog, bufsize, shutdown, npools);
- 
- 	if (serv != NULL) {
- 		serv->sv_function = func;
-@@ -207,12 +451,16 @@ svc_release_buffer(struct svc_rqst *rqst
- 
- /*
-  * Create a thread in the given pool.  Caller must hold BKL.
-+ * On a NUMA or SMP machine, with a multi-pool serv, the thread
-+ * will be restricted to run on the cpus belonging to the pool.
-  */
- static int
- __svc_create_thread(svc_thread_fn func, struct svc_serv *serv, struct svc_pool *pool)
- {
- 	struct svc_rqst	*rqstp;
- 	int		error = -ENOMEM;
-+	int		have_oldmask = 0;
-+	cpumask_t	oldmask;
- 
- 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
- 	if (!rqstp)
-@@ -232,7 +480,15 @@ __svc_create_thread(svc_thread_fn func, 
- 	spin_unlock_bh(&pool->sp_lock);
- 	rqstp->rq_server = serv;
- 	rqstp->rq_pool = pool;
-+
-+	if (serv->sv_nrpools > 1)
-+		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
-+
- 	error = kernel_thread((int (*)(void *)) func, rqstp, 0);
-+
-+	if (have_oldmask)
-+		set_cpus_allowed(current, oldmask);
-+
- 	if (error < 0)
- 		goto out_thread;
- 	svc_sock_update_bufs(serv);
-Index: linus-git/net/sunrpc/svcsock.c
-===================================================================
---- linus-git.orig/net/sunrpc/svcsock.c	2006-07-26 16:47:46.018822248 +1000
-+++ linus-git/net/sunrpc/svcsock.c	2006-07-31 15:00:27.710150626 +1000
-@@ -151,8 +151,9 @@ static void
- svc_sock_enqueue(struct svc_sock *svsk)
- {
- 	struct svc_serv	*serv = svsk->sk_server;
--	struct svc_pool *pool = &serv->sv_pools[0];
-+	struct svc_pool *pool;
- 	struct svc_rqst	*rqstp;
-+	int cpu;
- 
- 	if (!(svsk->sk_flags &
- 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
-@@ -160,6 +161,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	if (test_bit(SK_DEAD, &svsk->sk_flags))
- 		return;
- 
-+	cpu = get_cpu();
-+	pool = svc_pool_for_cpu(svsk->sk_server, cpu);
-+	put_cpu();
-+
- 	spin_lock_bh(&pool->sp_lock);
- 
- 	if (!list_empty(&pool->sp_threads) &&
-Index: linus-git/include/linux/sunrpc/svc.h
-===================================================================
---- linus-git.orig/include/linux/sunrpc/svc.h	2006-07-26 16:49:47.615119695 +1000
-+++ linus-git/include/linux/sunrpc/svc.h	2006-07-31 15:00:28.946000862 +1000
-@@ -368,5 +368,6 @@ int		   svc_process(struct svc_serv *, s
- int		   svc_register(struct svc_serv *, int, unsigned short);
- void		   svc_wake_up(struct svc_serv *);
- void		   svc_reserve(struct svc_rqst *rqstp, int space);
-+struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
- 
- #endif /* SUNRPC_SVC_H */
+Many Thanks
+
+Paul
+
+----------------------------------------------------------------------------
+-------------
+
+NFS Server 1 - WORKS FINE (192.168.99.10)
+
+----------------------------------------------------------------------------
+-------------
+
+NFS Utils Version    : nfs-utils-0.3.1-68
+Kernel Version       : 2.4.18-64GB-SMP
+Distribution Version : SuSE Linux Enterprise Server v7
+
+
+dev:/ # rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp    840  status
+    100024    1   tcp    842  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp  33493  nlockmgr
+    100021    3   udp  33493  nlockmgr
+    100021    4   udp  33493  nlockmgr
+    100005    1   udp  33494  mountd
+    100005    1   tcp  40182  mountd
+    100005    2   udp  33494  mountd
+    100005    2   tcp  40182  mountd
+    100005    3   udp  33494  mountd
+    100005    3   tcp  40182  mountd
+
+
+dev:~ # cat /etc/exports
+/data/www/spooled/certs 192.168.99.99(ro,hide,sync,no_root_squash)
+
+
+dev:~ # exportfs -rv
+exporting 192.168.99.99:/data/www/spooled/certs
+
+
+dev:~ # cat /proc/fs/nfs/exports
+# Version 1.1
+# Path Client(Flags) # IPs
+/data/www/spooled/certs 192.168.99.99(ro,no_root_squash,sync,wdelay) #
+192.168.99.99
 
 
 
+----------------------------------------------------------------------------
+-------------
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+NFS Server 2 - DOES NOT WORK (192.168.99.11)
+
+----------------------------------------------------------------------------
+-------------
+
+NFS Utils Version    : nfs-utils-0.3.1-68
+Kernel Version       : 2.4.18-64GB-SMP
+Distribution Version : SuSE Linux Enterprise Server v7
+
+
+was:~ # rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp    854  status
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100024    1   tcp    856  status
+    100005    1   udp  33239  mountd
+    100005    1   tcp  36855  mountd
+    100021    1   udp  33240  nlockmgr
+    100005    2   udp  33239  mountd
+    100021    3   udp  33240  nlockmgr
+    100005    2   tcp  36855  mountd
+    100021    4   udp  33240  nlockmgr
+
+
+was:~ # cat /etc/exports
+/data/www/spooled/certs 192.168.99.99(ro,hide,sync,no_root_squash)
+
+
+was:~ # exportfs -rv
+exporting 192.168.99.99:/data/www/spooled/certs
+
+
+was:~ # cat /proc/fs/nfs/exports
+# Version 1.1
+# Path Client(Flags) # IPs
+/data/www/spooled/certs 192.168.99.99(ro,no_root_squash,sync,wdelay) #
+192.168.99.99
+
+
+
+----------------------------------------------------------------------------
+-------------
+
+NFS Client (192.168.99.99)
+
+----------------------------------------------------------------------------
+-------------
+
+NFS Utils Version    : nfs-utils-1.0.6-65.EL4
+Kernel Version       : 2.6.9-22.0.2.ELsmp
+Distribution Version : Red Hat Enterprise Linux ES release 4 (Nahant Update
+2)
+
+
+[root@cis ~]# rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  32768  status
+    100024    1   tcp  32768  status
+
+
+[root@cis ~]# mount -v -t nfs 192.168.99.10:/data/www/spooled/certs
+/u/www/certs
+192.168.99.10:/data/www/spooled/certs on /u/www/certs type nfs
+(rw,addr=192.168.99.10)
+
+
+[root@cis ~]# mount -v -t nfs 192.168.99.11:/data/www/spooled/certs
+/u/www/certs
+Segmentation fault
+
+
+
+----------------------------------------------------------------------------
+-------------
+
+Paul Hobbs
+Development Team Leader
+Dowding & Mills plc
+
+Telephone : +44 (0)121 766 6161 (x364)
+Fax       : +44 (0)121 773 9957
+Web       : http://www.dowdingandmills.com
+
+____________________________________________________________
+This E-mail message contains proprietary information
+that is intended only for the named recipient (s) some or
+all of which may be legally privileged or confidential.
+If you are not the intended recipient you must not use,
+disclose, distribute, copy, print or rely in any way on the
+content of this E-mail message. Dowding & Mills plc is not
+responsible for any personal opinions expressed in E-mails.
+While every effort has been made to ensure the attachments
+are virus-free, they must be checked before use, especially
+those containing encrypted data. Please notify the author of
+this E-mail message if you are not the intended recipient or
+if you have any other problems with this e-mail at the above
+e-mail address.
+
+Dowding & Mills plc Registered in England 160837
 
 
 
