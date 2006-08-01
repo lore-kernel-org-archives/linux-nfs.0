@@ -1,25 +1,29 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: librpcsecgss conflicts with clnt libc symbols
-Date: Mon, 31 Jul 2006 23:29:32 -0400
-Message-ID: <200607312329.33067.vapier@gentoo.org>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH 010 of 11] knfsd: make rpc threads pools numa aware
+Date: Mon, 31 Jul 2006 21:43:28 -0700
+Message-ID: <20060731214328.5770f1a5.akpm@osdl.org>
+References: <20060731103458.29040.patches@notabene>
+	<1060731004234.29291@suse.de>
+	<20060730211454.ccf803f3.akpm@osdl.org>
+	<17613.35001.745409.144623@cse.unsw.edu.au>
+	<1154320957.21040.1836.camel@hole.melbourne.sgi.com>
+	<1154325296.21040.1850.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0771140682=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7kwt-0006Li-WC
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 20:29:40 -0700
-Received: from smtp.gentoo.org ([140.211.166.183])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G7kws-0000Do-BK
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 20:29:40 -0700
-Received: from home.wh0rd.org (localhost [127.0.0.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp.gentoo.org (Postfix) with ESMTP id 10852642CE
-	for <nfs@lists.sourceforge.net>; Tue,  1 Aug 2006 03:29:34 +0000 (UTC)
-To: nfs@lists.sourceforge.net
+	id 1G7m6R-0003ms-6I
+	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 21:43:35 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1G7m6R-0002fL-Cm
+	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 21:43:35 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1154325296.21040.1850.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,81 +36,145 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0771140682==
-Content-Type: multipart/signed; boundary="nextPart1458906.uEfQvG1viG";
-	protocol="application/pgp-signature"; micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
+On Mon, 31 Jul 2006 15:54:57 +1000
+Greg Banks <gnb@melbourne.sgi.com> wrote:
 
---nextPart1458906.uEfQvG1viG
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+> On Mon, 2006-07-31 at 14:42, Greg Banks wrote:
+> > On Mon, 2006-07-31 at 14:36, Neil Brown wrote:
+> > > On Sunday July 30, akpm@osdl.org wrote:
+> > > > On Mon, 31 Jul 2006 10:42:34 +1000
+> > > > NeilBrown <neilb@suse.de> wrote:
+> > > > 
+> > > > > +static int
+> > > > > +svc_pool_map_init_percpu(struct svc_pool_map *m)
+> > > > > +{
+> > > > > +	unsigned int maxpools = num_possible_cpus();
+> > > > > +	unsigned int pidx = 0;
+> > > > > +	unsigned int cpu;
+> > > > > +	int err;
+> > > > > +
+> > > > > +
+> > > > 
+> > > > That isn't right - it assumes that cpu_possible_map is not sparse.  If it
+> > > > is sparse, we allocate undersized pools and then overindex them.
+> > 
+> > Umm, I think Andrew's right, num_possible_cpus() should be NR_CPUS.
+> 
+> How about this version of the patch?  It replaces num_possible_cpus()
+> with highest_possible_processor_id()+1 and similarly for nodes.
+> --
+> 
+> knfsd: Actually implement multiple pools.  On NUMA machines, allocate
+> a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
+> global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
+> on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
+> have their cpu mask set to limit them to the CPUs in the svc_pool that
+> owns them.
+> 
+> This is the patch that allows an Altix to scale NFS traffic linearly
+> beyond 4 CPUs and 4 NICs.
+> 
+> Incorporates changes and feedback from Neil Brown, Trond Myklebust,
+> Christoph Hellwig and Andrew Morton.
+> 
 
-the librpcsecgss duplicates some functions that the system libc normally=20
-provides ... in this case:
-clnt_create
-clnt_pcreateerror
-clnt_perrno
-clnt_perror
-clntraw_create
-clnt_spcreateerror
-clnt_sperrno
-clnt_sperror
-clnttcp_create
-clntudp_bufcreate
-clntudp_create
+Something has gone rather wrong here.
 
-is there a reason for this ?  i went through the ChangeLog and couldnt find=
-=20
-anything ... this stuff was added like between 0.7 and 0.8 but there doesnt=
-=20
-appear to be any mention of why ...
-=2Dmike
+> -	serv = __svc_create(prog, bufsize, shutdown, /*npools*/1);
+> +	serv = __svc_create(prog, bufsize, shutdown, npools);
 
---nextPart1458906.uEfQvG1viG
-Content-Type: application/pgp-signature
+__svc_create() is:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.4 (GNU/Linux)
+__svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+	   void (*shutdown)(struct svc_serv *serv))
 
-iQIVAwUARM7KnEFjO5/oN/WBAQJZMQ/7BCGhTRrmvrnCOLpMwANQkgckAHym7irv
-BnKSXJ5+xqu7RpzXrno4bdigJcdga8kNajdv/M34RyJPdhM/ogR0/XwIglwj6w/M
-anYCbGxKzJD3FttdJIHFAHl9+TZ4mjPGERAnazR/y+wLZm+hSsnbIY7TDHLnRh0l
-cY2q/3cPXt66KUH3yTUgQ7iivsFDBs1/iDWcgawNNvyFwsCKNHvOSomt4I+P/41J
-uzvykkMs/mv4CLHfsFw6CuXJLu88HloZ1l/dOjInPDl3nn3Wi7pEKOGVIKcgFbhQ
-ITcKLp46hnXzf2/c9lUjiW27rF+CzzQq4S0j5bb6B9cbXa68jAmt3l9hTFQ4Xo7I
-B2sGYmgvJo3fCARYBS3NNGuF4NnM0FzOb7vtkNaTMhbTvxbr3ATBYPw5OTOP4goM
-e3J9sCVxce+lkSDAyhd3J/5Rddq6CJhAmaC6yDWgq5UDkrdT5Up/DbdrPPKtzA92
-B24eWV7Wc62aoCDrv2CMKtT5TphvlwyPfm88UXuvTpjLqUq4No//q56tLC5PCcZ/
-y8OR0TKmI7XJ7QreJJTqL2gu3stE4dJtpM/zz4w38oo2uJOv3CwVdj4cPpf5MZJy
-nTPZMe0iz4/bZ2dbWAGje2LLkZvCj6onk1jAXBp+aA3ymWEmEox9c4r9BGpVi62B
-cDu3Yd/ZPt4=
-=hn+U
------END PGP SIGNATURE-----
+so heaven knows what tree you're patching.
 
---nextPart1458906.uEfQvG1viG--
+Incremental patches really are preferred.  So we can see what people are
+monkeying with ;)
+
+After fixing the rejects and cleaning a few things up, your proposed change
+amounts to:
+
+--- a/net/sunrpc/svc.c~knfsd-make-rpc-threads-pools-numa-aware-fix
++++ a/net/sunrpc/svc.c
+@@ -116,7 +116,7 @@ fail:
+ static int
+ svc_pool_map_init_percpu(struct svc_pool_map *m)
+ {
+-	unsigned int maxpools = num_possible_cpus();
++	unsigned int maxpools = highest_possible_processor_id() + 1;
+ 	unsigned int pidx = 0;
+ 	unsigned int cpu;
+ 	int err;
+@@ -136,6 +136,18 @@ svc_pool_map_init_percpu(struct svc_pool
+ 	return pidx;
+ };
+ 
++static int
++highest_possible_node_id(void)
++{
++	unsigned int node;
++	unsigned int highest = 0;
++
++	for_each_node(node)
++		highest = node;
++
++	return highest;
++}
++
+ 
+ /*
+  * Initialise the pool map for SVC_POOL_PERNODE mode.
+@@ -144,7 +156,7 @@ svc_pool_map_init_percpu(struct svc_pool
+ static int
+ svc_pool_map_init_pernode(struct svc_pool_map *m)
+ {
+-	unsigned int maxpools = num_possible_nodes();
++	unsigned int maxpools = highest_possible_node_id() + 1;
+ 	unsigned int pidx = 0;
+ 	unsigned int node;
+ 	int err;
+_
 
 
---===============0771140682==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Which shouldn't have compiled, due to the missing forward declaration.  And
+I'd be surprised if it worked very well with CONFIG_NUMA=n.  And it's
+naughty to be sneaking general library functions into the sunrpc code
+anyway.
+
+Please,
+
+- Write a standalone patch which adds highest_possible_node_id() to
+  lib/cpumask.c(?)
+
+  Make sure it's inside #ifdef CONFIG_NUMA
+
+  Remember to export it to modules.
+
+  Provide a !CONFIG_NUMA version in include/linux/nodemask.h which just
+  returns constant zero.
+
+  Consider doing something more efficient than the for_each_node() loop. 
+  Although I'm not sure what that would be, given that we don't have
+  find_last_bit().
+
+- Provide an incremental patch against
+  knfsd-make-rpc-threads-pools-numa-aware.patch which utilises
+  highest_possible_node_id().
+
+  A replacement patch will be grudgingly accepted, but I'll only go and
+  turn it into an incremental one, so you can't hide ;)
+
+- Test it real good.  Modular, non-modular, NUMA, non-NUMA, !SMP.
+
+Thanks.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0771140682==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0771140682==--
