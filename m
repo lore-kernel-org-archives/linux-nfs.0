@@ -1,24 +1,24 @@
 From: Wendy Cheng <wcheng@redhat.com>
-Subject: [PATCH 1/3] NLM lock failover
-Date: Mon, 31 Jul 2006 22:06:31 -0400
-Message-ID: <1154397991.3378.22.camel@localhost.localdomain>
+Subject: [PATCH 3/3] NLM lock failover
+Date: Mon, 31 Jul 2006 22:09:53 -0400
+Message-ID: <1154398193.3378.27.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-q8LJI/xe+FmNKijOo7Qx"
+Content-Type: multipart/mixed; boundary="=-hJyCCkahRk11YJhhRdP8"
 Cc: cluster-devel@redhat.com, lhh@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7jTH-0006zD-PE
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 18:54:59 -0700
+	id 1G7jWY-0007IK-9F
+	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 18:58:22 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7jTH-0004n7-HV
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 18:55:00 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7jWY-0005Xf-BP
+	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 18:58:22 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
 	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k711svZ9030820
-	for <nfs@lists.sourceforge.net>; Mon, 31 Jul 2006 21:54:57 -0400
+	k711wKft031780
+	for <nfs@lists.sourceforge.net>; Mon, 31 Jul 2006 21:58:20 -0400
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,588 +33,198 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
---=-q8LJI/xe+FmNKijOo7Qx
+--=-hJyCCkahRk11YJhhRdP8
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-This patch enables per ip NLM lock grace period. The implementation is
-based on a global single linked list nlm_servs that contains entries of
-per server ip info. It is expected this would not be a frequent event.
-The nlm_servs list should be short and the entries expire within a
-maximum of 50 seconds. The grace period setting follows the existing NLM
-grace period handling logic and is triggered via echoing the ipv4 dot
-address into /proc/fs/nfsd/nlm_set_ip_grace file.
+This kernel patch is tested out together with nfs-utils-1.0.8-rc4 and
+nfs-utils-lib-1.0.8. No changes are required for these two user mode
+packages. The kernel changes enable rpc.statd to add the correct taken-
+over IPv4 address in standard dot notation into the 3rd parameter of
+ha_callout program. Check out "man rpc.statd" for details.
 
 Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
 Signed-off-by: Lon Hohberger <lhh@redhat.com>
 
-fs/lockd/svc.c              |    8 +-
-fs/lockd/svc4proc.c         |   41 ++++++++++---
-fs/lockd/svcproc.c          |   43 +++++++++++---
-fs/lockd/svcsubs.c          |  133 +++++++++++++++++++++++++++++++++++++
-++++++ 
-fs/nfsd/nfsctl.c            |   36 +++++++++++
-include/linux/lockd/bind.h  |    3
-include/linux/lockd/lockd.h |   15 ++++
-7 files changed, 261 insertions(+), 18 deletions(-)
+fs/lockd/host.c                |    8 ++++++--
+fs/lockd/mon.c                 |   15 ++++++++++-----
+fs/lockd/svc4proc.c            |    3 ++-
+fs/lockd/svcproc.c             |    3 ++-
+include/linux/lockd/lockd.h    |    5 +++--
+include/linux/lockd/sm_inter.h |    1 +
+include/linux/sunrpc/svc.h     |    7 ++++---
+7 files changed, 28 insertions(+), 14 deletions(-)
 
 
 
 
---=-q8LJI/xe+FmNKijOo7Qx
-Content-Disposition: attachment; filename=gfs_nlm_ip_grace.patch
-Content-Type: text/x-patch; name=gfs_nlm_ip_grace.patch; charset=UTF-8
+--=-hJyCCkahRk11YJhhRdP8
+Content-Disposition: attachment; filename=gfs_statd.patch
+Content-Type: text/x-patch; name=gfs_statd.patch; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
---- linux-1/include/linux/lockd/lockd.h	2006-07-28 15:47:27.000000000 -0400
-+++ linux-2/include/linux/lockd/lockd.h	2006-07-28 15:51:49.000000000 -0400
-@@ -108,6 +108,13 @@ struct nlm_file {
- 	__u32			f_iaddr;	/* server ip for failover */
- };
- 
-+/* Server ip linked list for NLM lock failover */
-+struct nlm_serv {
-+	struct nlm_serv *	s_next;		/* linked list */
-+	unsigned long		s_grace_period;	/* per ip grace period */
-+	struct in_addr		s_ip;		/* server ip */
-+};
+--- linux-2/include/linux/sunrpc/svc.h	2006-07-28 15:50:20.000000000 -0400
++++ linux-3/include/linux/sunrpc/svc.h	2006-07-29 00:52:33.000000000 -0400
+@@ -101,8 +101,9 @@ static inline void svc_putu32(struct kve
+ 	*vp = val;
+ 	iov->iov_len += sizeof(u32);
+ }
+-
+ 	
++typedef __u32	svc_addr_t;
 +
  /*
-  * This is a server block (i.e. a lock requested by some client which
-  * couldn't be granted because of a conflicting lock).
-@@ -137,6 +144,13 @@ struct nlm_block {
- #define NLM_ACT_FO_UNLOCK	3		/* failover release locks */
+  * The context of a single thread, including the request currently being
+  * processed.
+@@ -138,8 +139,8 @@ struct svc_rqst {
+ 	unsigned short
+ 				rq_secure  : 1;	/* secure port */
  
- /*
-+ * Floating ip failover grace period check
-+ */
-+#define NLMSVC_FO_PASSTHRU	0
-+#define NLMSVC_FO_RECLAIM	1
-+#define NLMSVC_FO_BLOCK_ANY	2
-+
-+/*
-  * Global variables
+-
+-	__u32			rq_daddr;	/* dest addr of request - reply from here */
++	svc_addr_t		rq_daddr;	/* dest addr of request 
++						   - reply from here */
+ 
+ 	void *			rq_argp;	/* decoded arguments */
+ 	void *			rq_resp;	/* xdr'd results */
+--- linux-2/include/linux/lockd/lockd.h	2006-07-28 15:51:49.000000000 -0400
++++ linux-3/include/linux/lockd/lockd.h	2006-07-28 15:53:36.000000000 -0400
+@@ -39,12 +39,13 @@
+ struct nlm_host {
+ 	struct nlm_host *	h_next;		/* linked list (hash table) */
+ 	struct sockaddr_in	h_addr;		/* peer address */
++	svc_addr_t		h_server;    	/* server ip for NLM failover */
+ 	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
+ 	char			h_name[20];	/* remote hostname */
+ 	u32			h_version;	/* interface version */
+ 	unsigned short		h_proto;	/* transport proto */
+ 	unsigned short		h_reclaiming : 1,
+-				h_server     : 1, /* server side, not client side */
++				h_where      : 1,	
+ 				h_inuse      : 1,
+ 				h_killed     : 1,
+ 				h_monitored  : 1;
+@@ -180,7 +181,7 @@ int		  nlmclnt_reclaim(struct nlm_host *
   */
- extern struct rpc_program	nlm_program;
-@@ -199,6 +213,7 @@ void		  nlmsvc_mark_resources(void);
- void		  nlmsvc_free_host_resources(struct nlm_host *);
- void		  nlmsvc_invalidate_all(void);
- int 		  nlmsvc_fo_unlock(struct in_addr *);
-+int 		  nlmsvc_fo_check(__u32);
- 
- static __inline__ struct inode *
- nlmsvc_file_inode(struct nlm_file *file)
---- linux-1/fs/lockd/svcsubs.c	2006-07-28 15:47:28.000000000 -0400
-+++ linux-2/fs/lockd/svcsubs.c	2006-07-31 17:29:24.000000000 -0400
-@@ -62,6 +62,10 @@ static inline void nlm_debug_print_file(
- }
- #endif
- 
-+/* Global control structure for lock failover */
-+static DEFINE_MUTEX(nlm_ip_mutex);
-+struct nlm_serv *nlm_servs=NULL;
-+
- static inline unsigned int file_hash(struct nfs_fh *f)
- {
- 	unsigned int tmp=0;
-@@ -379,3 +383,132 @@ nlmsvc_fo_unlock(struct in_addr *serv_ip
- 	return (nlm_traverse_files(NULL, serv_ip, NLM_ACT_FO_UNLOCK)); 
- }
- 
-+extern unsigned long set_grace_period(void); /* see fs/lockd/svc.c */
-+
-+EXPORT_SYMBOL(nlmsvc_fo_setgrace);
-+
-+/*
-+ * Add serv_ip into global nlm_servs list.
-+ */
-+int
-+nlmsvc_fo_setgrace(struct in_addr *serv_ip)
-+{
-+	struct nlm_serv *per_ip, *entry;
-+
-+	/* allocate the entry */
-+	per_ip = kmalloc(sizeof(struct nlm_serv), GFP_KERNEL);
-+	if (per_ip == NULL) {
-+		printk("lockd: nlmsvc_fo_setgrace kmalloc fails\n");
-+		return(-ENOMEM);
-+	}
-+
-+	dprintk("lockd: nlmsvc_fo_setgrace ip=%u.%u.%u.%u jiffies=%lu\n",
-+		NIPQUAD(serv_ip->s_addr), jiffies);
-+
-+	/* fill in info */
-+	per_ip->s_grace_period = set_grace_period();
-+	per_ip->s_ip = *serv_ip;
-+
-+	/* link into the global list */
-+	mutex_lock(&nlm_ip_mutex);
-+
-+	entry = nlm_servs;
-+	per_ip->s_next = entry;
-+	nlm_servs = per_ip;
-+
-+	/* done */
-+	mutex_unlock(&nlm_ip_mutex);
-+	return 0;
-+}
-+
-+/* nlm_servs gargabe collection 
-+ *  - caller should hold nlm_ip_mutex
-+ */
-+static inline void
-+__nlm_servs_gc(struct nlm_serv *e_purge)
-+{
-+	struct nlm_serv *e_next;
-+
-+	while (e_purge) {
-+		e_next = e_purge->s_next;
-+		dprintk("lockd: nlm purge per ip (%u.%u.%u.%u) grace period at jiffies=%lu\n",
-+			NIPQUAD(e_purge->s_ip.s_addr), jiffies);
-+		kfree(e_purge);
-+		e_purge = e_next;
-+	}
-+}
-+
-+/* 
-+ * Reset global nlm_servs list 
-+ */
-+void 
-+nlmsvc_fo_reset_servs()
-+{
-+	struct nlm_serv *e_purge;
-+
-+	mutex_lock(&nlm_ip_mutex);
-+
-+	/* nothing to do */
-+	if (!nlm_servs) {
-+		mutex_unlock(&nlm_ip_mutex);
-+		return;
-+	}
-+
-+	dprintk("lockd: nlmsvc_fo_reset nlm_servs\n");
-+
-+	/* purge the entries */
-+	e_purge   = nlm_servs;
-+	nlm_servs = NULL;
-+	__nlm_servs_gc(e_purge);
-+
-+	mutex_unlock(&nlm_ip_mutex);
-+	return;
-+}
-+
-+/*
-+ * Check whether the ip is in the failover list: nlm_servs.
-+ */
-+int
-+nlmsvc_fo_check(__u32 this_ip)
-+{
-+	struct nlm_serv **e_top, *e_this, *e_purge=NULL;
-+	int rc=0;
-+
-+	dprintk("lockd: nlmsvc_fo_check (%u.%u.%u.%u)\n", NIPQUAD(this_ip));
-+
-+	mutex_lock(&nlm_ip_mutex);
-+
-+	/* no failover floating ip */
-+	if (!(e_this = nlm_servs))  {
-+		mutex_unlock(&nlm_ip_mutex);
-+		return 0;
-+	}
-+
-+	/* check to see whether this_ip is in nlm_servs list */
-+	e_top = &nlm_servs;
-+	while (e_this) {
-+		if (time_before(e_this->s_grace_period, jiffies)) {
-+			dprintk("lockd: nlmsvc %u.%u.%u.%u grace period expires\n",
-+				NIPQUAD(e_this->s_ip.s_addr));
-+			e_purge = e_this;
-+			break;
-+		} else if (e_this->s_ip.s_addr == this_ip) {
-+			dprintk("lockd: nlmsvc %u.%u.%u.%u in grace period\n",
-+				NIPQUAD(e_this->s_ip.s_addr));
-+			rc = 1;
-+		}
-+		e_top = &(e_this->s_next);
-+		e_this = e_this->s_next;
-+	}
-+
-+	/* piggy back nlm_servs garbage collection */
-+	if (e_purge) {
-+		*e_top = NULL;
-+		__nlm_servs_gc(e_purge);
-+	}
-+
-+	/* done */
-+	mutex_unlock(&nlm_ip_mutex);
-+	return rc;
-+}
-+
---- linux-1/include/linux/lockd/bind.h	2006-07-28 15:47:28.000000000 -0400
-+++ linux-2/include/linux/lockd/bind.h	2006-07-28 15:51:49.000000000 -0400
-@@ -37,5 +37,8 @@ extern void	lockd_down(void);
-  * NLM failover
+ struct nlm_host * nlmclnt_lookup_host(struct sockaddr_in *, int, int);
+ struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *);
+-struct nlm_host * nlm_lookup_host(int server, struct sockaddr_in *, int, int);
++struct nlm_host * nlm_lookup_host(svc_addr_t server, struct sockaddr_in *, int, int);
+ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
+ void		  nlm_rebind_host(struct nlm_host *);
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+--- linux-2/include/linux/lockd/sm_inter.h	2006-07-28 15:50:20.000000000 -0400
++++ linux-3/include/linux/lockd/sm_inter.h	2006-07-28 15:53:36.000000000 -0400
+@@ -25,6 +25,7 @@
   */
- extern int     nlmsvc_fo_unlock(struct in_addr *);
-+extern int     nlmsvc_fo_setgrace(struct in_addr *);
-+extern void    nlmsvc_fo_reset_servs(void);
-+
+ struct nsm_args {
+ 	u32		addr;		/* remote address */
++	u32		serv;		/* server ip address */
+ 	u32		prog;		/* RPC callback info */
+ 	u32		vers;
+ 	u32		proc;
+--- linux-2/fs/lockd/svc4proc.c	2006-07-28 15:51:49.000000000 -0400
++++ linux-3/fs/lockd/svc4proc.c	2006-07-29 00:53:56.000000000 -0400
+@@ -473,7 +473,8 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
+ 	} else {
+ 		/* If we run on an NFS server, delete all locks held by the client */
  
- #endif /* LINUX_LOCKD_BIND_H */
---- linux-1/fs/nfsd/nfsctl.c	2006-07-31 18:04:49.000000000 -0400
-+++ linux-2/fs/nfsd/nfsctl.c	2006-07-31 18:04:01.000000000 -0400
-@@ -56,6 +56,7 @@ enum {
- 	NFSD_List,
- 	NFSD_Fh,
- 	NFSD_Nlm_unlock,
-+	NFSD_Nlm_ipgrace,
- 	NFSD_Threads,
- 	NFSD_Versions,
- 	/*
-@@ -93,6 +94,7 @@ static ssize_t write_recoverydir(struct 
- #define NFSDDBG_FACILITY	NFSDDBG_CLUSTER
- 
- static ssize_t do_nlm_fo_unlock(struct file *file, char *buf, size_t size);
-+static ssize_t do_nlm_ip_grace(struct file *file, char *buf, size_t size);
- 
- static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Svc] = write_svc,
-@@ -104,6 +106,7 @@ static ssize_t (*write_op[])(struct file
- 	[NFSD_Getfs] = write_getfs,
- 	[NFSD_Fh] = write_filehandle,
- 	[NFSD_Nlm_unlock] = do_nlm_fo_unlock,
-+	[NFSD_Nlm_ipgrace] = do_nlm_ip_grace,
- 	[NFSD_Threads] = write_threads,
- 	[NFSD_Versions] = write_versions,
- #ifdef CONFIG_NFSD_V4
-@@ -362,9 +365,38 @@ int __get_nlm_host(char *buf, size_t siz
- 	host_addr->s_addr = in_aton(buf);
- 	dprintk("nfsd: __get_nlm_host (%u.%u.%u.%u)\n",
- 		NIPQUAD(host_addr->s_addr));
-+
- 	return 0;
- }
- 
-+static ssize_t do_nlm_ip_grace(struct file *file, char *buf, size_t size)
-+{
-+	struct in_addr serv_addr;
-+	int rc;
-+
-+	/* convert string into valid ip address */
-+	rc = __get_nlm_host(buf, size, &serv_addr);
-+	if (rc) {
-+		dprintk("do_nlm_ip_grace: invalid ip (%s)\n", buf);
-+		return rc;
-+	}
-+
-+	/* call nlm to set the grace period */
-+	rc = nlmsvc_fo_setgrace(&serv_addr);
-+	if (rc) {
-+		dprintk("nlmsvc_fo_setgrace return rc=%d\n", rc);
-+		return rc;
-+	}
-+
-+	dprintk("nlm set per ip grace period for %u.%u.%u.%u\n",
-+		NIPQUAD(serv_addr.s_addr));
-+
-+	/* done */
-+	sprintf(buf, "nlm set per ip grace period for %u.%u.%u.%u\n",
-+		NIPQUAD(serv_addr.s_addr));
-+	return strlen(buf);
-+}
-+
- static ssize_t do_nlm_fo_unlock(struct file *file, char *buf, size_t size)
- {
- 	struct in_addr serv_addr;
-@@ -384,6 +416,9 @@ static ssize_t do_nlm_fo_unlock(struct f
- 		return rc;
- 	}
- 
-+	dprintk("nlm ip unlock released for %u.%u.%u.%u\n",
-+		NIPQUAD(serv_addr.s_addr));
-+
- 	/* done */
- 	sprintf(buf, "nlm ip unlock released for %u.%u.%u.%u\n",
- 		NIPQUAD(serv_addr.s_addr));
-@@ -539,6 +574,7 @@ static int nfsd_fill_super(struct super_
- 		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
- 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Nlm_unlock] = {"nlm_unlock", &transaction_ops, S_IWUSR|S_IRUSR},
-+		[NFSD_Nlm_ipgrace] = {"nlm_set_ip_grace", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- #ifdef CONFIG_NFSD_V4
---- linux-1/fs/lockd/svc4proc.c	2006-07-28 15:46:04.000000000 -0400
-+++ linux-2/fs/lockd/svc4proc.c	2006-07-28 15:51:49.000000000 -0400
-@@ -21,12 +21,15 @@
- 
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-+extern struct nlm_serv *nlm_servs;
-+
- /*
-  * Obtain client and file from arguments
-  */
- static u32
- nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
--			struct nlm_host **hostp, struct nlm_file **filp)
-+			struct nlm_host **hostp, struct nlm_file **filp,
-+			int passthru_check)
- {
- 	struct nlm_host		*host = NULL;
- 	struct nlm_file		*file = NULL;
-@@ -37,6 +40,22 @@ nlm4svc_retrieve_args(struct svc_rqst *r
- 	if (!nlmsvc_ops)
- 		return nlm_lck_denied_nolocks;
- 
-+	/* Floating ip failover grace period */
-+	if (unlikely(nlm_servs)) {
-+		if (nlmsvc_fo_check(rqstp->rq_daddr)) {
-+			dprintk("lockd: nlm v4 fo passthru_check= %d\n", 
-+				passthru_check);
-+			switch (passthru_check) {
-+				case NLMSVC_FO_PASSTHRU:
-+					break;
-+				case NLMSVC_FO_RECLAIM:
-+					if (argp->reclaim) break;
-+				default:
-+					return nlm_lck_denied_grace_period;
-+			}
-+		}
-+	}
-+
- 	/* Obtain host handle */
- 	if (!(host = nlmsvc_lookup_host(rqstp))
- 	 || (argp->monitor && !host->h_monitored && nsm_monitor(host) < 0))
-@@ -95,7 +114,8 @@ nlm4svc_proc_test(struct svc_rqst *rqstp
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Now check for conflicting locks */
-@@ -125,7 +145,8 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file,
-+		NLMSVC_FO_RECLAIM)))
- 		return rpc_success;
- 
- #if 0
-@@ -168,7 +189,8 @@ nlm4svc_proc_cancel(struct svc_rqst *rqs
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Try to cancel request. */
-@@ -201,7 +223,8 @@ nlm4svc_proc_unlock(struct svc_rqst *rqs
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Now try to remove the lock */
-@@ -336,7 +359,8 @@ nlm4svc_proc_share(struct svc_rqst *rqst
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_RECLAIM)))
- 		return rpc_success;
- 
- 	/* Now try to create the share */
-@@ -369,7 +393,8 @@ nlm4svc_proc_unshare(struct svc_rqst *rq
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Now try to lock the file */
-@@ -404,7 +429,7 @@ nlm4svc_proc_free_all(struct svc_rqst *r
- 	struct nlm_host	*host;
- 
- 	/* Obtain client */
--	if (nlm4svc_retrieve_args(rqstp, argp, &host, NULL))
-+	if (nlm4svc_retrieve_args(rqstp, argp, &host, NULL, NLMSVC_FO_PASSTHRU))
- 		return rpc_success;
- 
- 	nlmsvc_free_host_resources(host);
---- linux-1/fs/lockd/svcproc.c	2006-07-28 15:46:04.000000000 -0400
-+++ linux-2/fs/lockd/svcproc.c	2006-07-28 15:51:49.000000000 -0400
-@@ -49,12 +49,15 @@ cast_to_nlm(u32 status, u32 vers)
- #define cast_status(status) (status)
- #endif
- 
-+extern struct nlm_serv *nlm_servs;
-+
- /*
-  * Obtain client and file from arguments
-  */
- static u32
- nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
--			struct nlm_host **hostp, struct nlm_file **filp)
-+			struct nlm_host **hostp, struct nlm_file **filp,
-+			int passthru_check)
- {
- 	struct nlm_host		*host = NULL;
- 	struct nlm_file		*file = NULL;
-@@ -65,6 +68,24 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
- 	if (!nlmsvc_ops)
- 		return nlm_lck_denied_nolocks;
- 
-+	/* Floating ip failover grace period */
-+	if (unlikely(nlm_servs)) {
-+		if (nlmsvc_fo_check(rqstp->rq_daddr)) {
-+
-+			dprintk("lockd: nlm fo passthru_check = %d\n", 
-+				passthru_check);
-+
-+			switch (passthru_check) {
-+				case NLMSVC_FO_PASSTHRU:
-+					break;
-+				case NLMSVC_FO_RECLAIM:
-+					if (argp->reclaim) break;
-+				default:
-+					return nlm_lck_denied_grace_period;
-+			}
-+		}
-+	}
-+
- 	/* Obtain host handle */
- 	if (!(host = nlmsvc_lookup_host(rqstp))
- 	 || (argp->monitor && !host->h_monitored && nsm_monitor(host) < 0))
-@@ -121,7 +142,8 @@ nlmsvc_proc_test(struct svc_rqst *rqstp,
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Now check for conflicting locks */
-@@ -152,7 +174,8 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp,
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_RECLAIM)))
- 		return rpc_success;
- 
- #if 0
-@@ -195,7 +218,8 @@ nlmsvc_proc_cancel(struct svc_rqst *rqst
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Try to cancel request. */
-@@ -228,7 +252,8 @@ nlmsvc_proc_unlock(struct svc_rqst *rqst
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Now try to remove the lock */
-@@ -365,7 +390,8 @@ nlmsvc_proc_share(struct svc_rqst *rqstp
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_RECLAIM)))
- 		return rpc_success;
- 
- 	/* Now try to create the share */
-@@ -398,7 +424,8 @@ nlmsvc_proc_unshare(struct svc_rqst *rqs
- 	}
- 
- 	/* Obtain client and file */
--	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
-+	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file,
-+			NLMSVC_FO_BLOCK_ANY)))
- 		return rpc_success;
- 
- 	/* Now try to unshare the file */
-@@ -433,7 +460,7 @@ nlmsvc_proc_free_all(struct svc_rqst *rq
- 	struct nlm_host	*host;
- 
- 	/* Obtain client */
--	if (nlmsvc_retrieve_args(rqstp, argp, &host, NULL))
-+	if (nlmsvc_retrieve_args(rqstp, argp, &host, NULL, NLMSVC_FO_PASSTHRU))
- 		return rpc_success;
- 
- 	nlmsvc_free_host_resources(host);
---- linux-1/fs/lockd/svc.c	2006-07-28 15:46:04.000000000 -0400
-+++ linux-2/fs/lockd/svc.c	2006-07-28 15:51:49.000000000 -0400
-@@ -71,7 +71,7 @@ static const int		nlm_port_min = 0, nlm_
- 
- static struct ctl_table_header * nlm_sysctl_table;
- 
--static unsigned long set_grace_period(void)
-+unsigned long set_grace_period(void)
- {
- 	unsigned long grace_period;
- 
-@@ -81,7 +81,6 @@ static unsigned long set_grace_period(vo
- 				/ nlm_timeout) * nlm_timeout * HZ;
- 	else
- 		grace_period = nlm_timeout * 5 * HZ;
--	nlmsvc_grace_period = 1;
- 	return grace_period + jiffies;
- }
- 
-@@ -129,6 +128,8 @@ lockd(struct svc_rqst *rqstp)
- 	nlmsvc_timeout = nlm_timeout * HZ;
- 
- 	grace_period_expire = set_grace_period();
-+	nlmsvc_grace_period = 1;
-+	(void) nlmsvc_fo_reset_servs();
- 
- 	/*
- 	 * The main request loop. We don't terminate until the last
-@@ -143,6 +144,8 @@ lockd(struct svc_rqst *rqstp)
- 			if (nlmsvc_ops) {
- 				nlmsvc_invalidate_all();
- 				grace_period_expire = set_grace_period();
-+				nlmsvc_grace_period = 1;
-+				(void) nlmsvc_fo_reset_servs();
- 			}
+-		if ((host = nlm_lookup_host(1, &saddr, prot, vers)) != NULL) {
++		if ((host = nlm_lookup_host(rqstp->rq_daddr, 
++				&saddr, prot, vers)) != NULL) {
+ 			nlmsvc_free_host_resources(host);
+ 			nlm_release_host(host);
  		}
+--- linux-2/fs/lockd/svcproc.c	2006-07-28 15:51:49.000000000 -0400
++++ linux-3/fs/lockd/svcproc.c	2006-07-28 15:53:36.000000000 -0400
+@@ -501,7 +501,8 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
+ 		}
+ 	} else {
+ 		/* If we run on an NFS server, delete all locks held by the client */
+-		if ((host = nlm_lookup_host(1, &saddr, prot, vers)) != NULL) {
++		if ((host = nlm_lookup_host(rqstp->rq_daddr, 
++				&saddr, prot, vers)) != NULL) {
+ 			nlmsvc_free_host_resources(host);
+ 			nlm_release_host(host);
+ 		}
+--- linux-2/fs/lockd/mon.c	2006-07-28 15:50:18.000000000 -0400
++++ linux-3/fs/lockd/mon.c	2006-07-29 00:54:58.000000000 -0400
+@@ -14,7 +14,6 @@
+ #include <linux/lockd/lockd.h>
+ #include <linux/lockd/sm_inter.h>
  
-@@ -189,6 +192,7 @@ lockd(struct svc_rqst *rqstp)
- 			nlmsvc_invalidate_all();
- 		nlm_shutdown_hosts();
- 		nlmsvc_pid = 0;
-+		(void) nlmsvc_fo_reset_servs();
- 	} else
- 		printk(KERN_DEBUG
- 			"lockd: new process, skipping host shutdown\n");
+-
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
+ 
+ static struct rpc_clnt *	nsm_create(void);
+@@ -47,7 +46,8 @@ nsm_mon_unmon(struct nlm_host *host, u32
+ 	}
+ 
+ 	args.addr = host->h_addr.sin_addr.s_addr;
+-	args.proto= (host->h_proto<<1) | host->h_server;
++	args.serv = host->h_server;
++	args.proto= (host->h_proto<<1) | host->h_where;
+ 	args.prog = NLM_PROGRAM;
+ 	args.vers = host->h_version;
+ 	args.proc = NLMPROC_NSM_NOTIFY;
+@@ -142,7 +142,7 @@ out_err:
+ static u32 *
+ xdr_encode_common(struct rpc_rqst *rqstp, u32 *p, struct nsm_args *argp)
+ {
+-	char	buffer[20];
++	char	buffer[100]; 
+ 
+ 	/*
+ 	 * Use the dotted-quad IP address of the remote host as
+@@ -151,8 +151,13 @@ xdr_encode_common(struct rpc_rqst *rqstp
+ 	 * so this works alright.
+ 	 */
+ 	sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->addr));
+-	if (!(p = xdr_encode_string(p, buffer))
+-	 || !(p = xdr_encode_string(p, system_utsname.nodename)))
++	if (!(p = xdr_encode_string(p, buffer)))
++		return ERR_PTR(-EIO);
++	if (argp->serv) 
++		sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->serv));
++	else 
++		sprintf(buffer, "%s", system_utsname.nodename);
++	if (!(p = xdr_encode_string(p, buffer)))
+ 		return ERR_PTR(-EIO);
+ 	*p++ = htonl(argp->prog);
+ 	*p++ = htonl(argp->vers);
+--- linux-2/fs/lockd/host.c	2006-07-28 15:50:18.000000000 -0400
++++ linux-3/fs/lockd/host.c	2006-07-28 15:53:36.000000000 -0400
+@@ -51,7 +51,7 @@ nlmclnt_lookup_host(struct sockaddr_in *
+ struct nlm_host *
+ nlmsvc_lookup_host(struct svc_rqst *rqstp)
+ {
+-	return nlm_lookup_host(1, &rqstp->rq_addr,
++	return nlm_lookup_host(rqstp->rq_daddr, &rqstp->rq_addr,
+ 			       rqstp->rq_prot, rqstp->rq_vers);
+ }
+ 
+@@ -59,7 +59,7 @@ nlmsvc_lookup_host(struct svc_rqst *rqst
+  * Common host lookup routine for server & client
+  */
+ struct nlm_host *
+-nlm_lookup_host(int server, struct sockaddr_in *sin,
++nlm_lookup_host(svc_addr_t server, struct sockaddr_in *sin,
+ 					int proto, int version)
+ {
+ 	struct nlm_host	*host, **hp;
+@@ -121,6 +121,10 @@ nlm_lookup_host(int server, struct socka
+ 	host->h_state      = 0;			/* pseudo NSM state */
+ 	host->h_nsmstate   = 0;			/* real NSM state */
+ 	host->h_server	   = server;
++	if (server) 
++		host->h_where = 1;
++	else
++		host->h_where = 0;
+ 	host->h_next       = nlm_hosts[hash];
+ 	nlm_hosts[hash]    = host;
+ 	INIT_LIST_HEAD(&host->h_lockowners);
 
---=-q8LJI/xe+FmNKijOo7Qx
+--=-hJyCCkahRk11YJhhRdP8
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -625,7 +235,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---=-q8LJI/xe+FmNKijOo7Qx
+--=-hJyCCkahRk11YJhhRdP8
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -635,4 +245,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---=-q8LJI/xe+FmNKijOo7Qx--
+--=-hJyCCkahRk11YJhhRdP8--
