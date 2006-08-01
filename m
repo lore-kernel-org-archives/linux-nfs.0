@@ -1,29 +1,25 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 010 of 11] knfsd: make rpc threads pools numa	aware
-Date: Tue, 01 Aug 2006 15:22:27 +1000
-Message-ID: <1154409726.21040.2082.camel@hole.melbourne.sgi.com>
-References: <20060731103458.29040.patches@notabene>
-	<1060731004234.29291@suse.de> <20060730211454.ccf803f3.akpm@osdl.org>
-	<17613.35001.745409.144623@cse.unsw.edu.au>
-	<1154320957.21040.1836.camel@hole.melbourne.sgi.com>
-	<1154325296.21040.1850.camel@hole.melbourne.sgi.com>
-	<20060731214328.5770f1a5.akpm@osdl.org>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
+	draft-ietf-nfsv4-acls-00 not ready
+Date: Tue, 1 Aug 2006 12:36:30 +0200
+Message-ID: <200608011236.30477.agruen@suse.de>
+References: <200607032310.15252.agruen@suse.de>
+	<200607270259.04405.agruen@suse.de> <44C9AF9B.60807@Sun.COM>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Cc: nfs@lists.sourceforge.net, nfsv4@ietf.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7miF-0006ur-GE
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 22:22:39 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7miF-0004CM-G3
-	for nfs@lists.sourceforge.net; Mon, 31 Jul 2006 22:22:40 -0700
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20060731214328.5770f1a5.akpm@osdl.org>
+	id 1G7rfZ-00015m-TN
+	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 03:40:14 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G7rfY-0006NY-9Y
+	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 03:40:14 -0700
+To: Lisa Week <Lisa.Week@sun.com>
+In-Reply-To: <44C9AF9B.60807@Sun.COM>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,314 +32,310 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-08-01 at 14:43, Andrew Morton wrote:
-> On Mon, 31 Jul 2006 15:54:57 +1000
-> Greg Banks <gnb@melbourne.sgi.com> wrote:
-> 
-> > On Mon, 2006-07-31 at 14:42, Greg Banks wrote:
-> > > On Mon, 2006-07-31 at 14:36, Neil Brown wrote:
-> > > > On Sunday July 30, akpm@osdl.org wrote:
-> > > > > On Mon, 31 Jul 2006 10:42:34 +1000
-> > > > > NeilBrown <neilb@suse.de> wrote:
-> > > > > 
-> > > > > > +static int
-> > > > > > +svc_pool_map_init_percpu(struct svc_pool_map *m)
-> > > > > > +{
-> > > > > > +	unsigned int maxpools = num_possible_cpus();
-> > > > > > +	unsigned int pidx = 0;
-> > > > > > +	unsigned int cpu;
-> > > > > > +	int err;
-> > > > > > +
-> > > > > > +
-> > > > > 
-> > > > > That isn't right - it assumes that cpu_possible_map is not sparse.  If it
-> > > > > is sparse, we allocate undersized pools and then overindex them.
-> > > 
-> > > Umm, I think Andrew's right, num_possible_cpus() should be NR_CPUS.
-> > 
-> > How about this version of the patch?  It replaces num_possible_cpus()
-> > with highest_possible_processor_id()+1 and similarly for nodes.
-> > --
-> > 
-> > knfsd: Actually implement multiple pools.  On NUMA machines, allocate
-> > a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
-> > global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
-> > on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
-> > have their cpu mask set to limit them to the CPUs in the svc_pool that
-> > owns them.
-> > 
-> > This is the patch that allows an Altix to scale NFS traffic linearly
-> > beyond 4 CPUs and 4 NICs.
-> > 
-> > Incorporates changes and feedback from Neil Brown, Trond Myklebust,
-> > Christoph Hellwig and Andrew Morton.
-> > 
-> 
-> Something has gone rather wrong here.
-> 
-> > -	serv = __svc_create(prog, bufsize, shutdown, /*npools*/1);
-> > +	serv = __svc_create(prog, bufsize, shutdown, npools);
-> 
-> __svc_create() is:
-> 
-> __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> 	   void (*shutdown)(struct svc_serv *serv))
-> 
-> so heaven knows what tree you're patching.
+On Friday 28 July 2006 08:32, Lisa Week wrote:
+> >[...] We don't care about permissions that are not
+> >granted, so we *could* only look at ALLOW ACEs, but this distinction is
+> > not at all relevant.
+>
+> What?  I don't understand how you can say that "we don't care about
+> permissions that are not granted".  We definitely care about permissions
+> that are explicitly not granted.
 
-Hmm.  Neil introduced the `shutdown' argument a few days ago, and I
-thought I had his patches in my quilt tree, but apparently I screwed
-something up.  Sorry about that.
+What I mean is that when looking at which permissions go beyond additional 
+file access control mechanisms, we don't need to consider DENY ACEs: DENY 
+ACEs can only further restrict access, and so they are never alternate file 
+access control mechanisms.
 
-> Incremental patches really are preferred.  So we can see what people are
-> monkeying with ;)
-
-Righto.
-
-> After fixing the rejects and cleaning a few things up, your proposed change
-> amounts to:
-> 
-> --- a/net/sunrpc/svc.c~knfsd-make-rpc-threads-pools-numa-aware-fix
-> +++ a/net/sunrpc/svc.c
-> @@ -116,7 +116,7 @@ fail:
->  static int
->  svc_pool_map_init_percpu(struct svc_pool_map *m)
->  {
-> -	unsigned int maxpools = num_possible_cpus();
-> +	unsigned int maxpools = highest_possible_processor_id() + 1;
->  	unsigned int pidx = 0;
->  	unsigned int cpu;
->  	int err;
-> @@ -136,6 +136,18 @@ svc_pool_map_init_percpu(struct svc_pool
->  	return pidx;
->  };
->  
-> +static int
-> +highest_possible_node_id(void)
-> +{
-> +	unsigned int node;
-> +	unsigned int highest = 0;
-> +
-> +	for_each_node(node)
-> +		highest = node;
-> +
-> +	return highest;
-> +}
-> +
->  
->  /*
->   * Initialise the pool map for SVC_POOL_PERNODE mode.
-> @@ -144,7 +156,7 @@ svc_pool_map_init_percpu(struct svc_pool
->  static int
->  svc_pool_map_init_pernode(struct svc_pool_map *m)
->  {
-> -	unsigned int maxpools = num_possible_nodes();
-> +	unsigned int maxpools = highest_possible_node_id() + 1;
->  	unsigned int pidx = 0;
->  	unsigned int node;
->  	int err;
-> _
-> 
-> 
+> Also, I believe it is relevant to make a distinction between ALLOW and
+> DENY ACEs.  Here's why:
+>
+> The reasoning behind classifying those DENY ACEs as additional access
+> control mechanisms are 1.) because they further restrict the permissions
+> of users and groups (which is what additional does by definition) and
+> 2.) we don't want them to have to be disabled upon chmod.  Try to think
+> about it in a way that you have just set an explicit entry to deny
+> certain permissions to a supplemental user or group.  It is important
+> that those users or groups don't have their permissions elevated after
+> chmod.
 
 Yes.
 
-> Which shouldn't have compiled, due to the missing forward declaration.
+> For example, if you have an ACL such as this:
+>
+> fred:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::DENY
+> OWNER@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+> GROUP@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+> EVERYONE@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+>
+>
+> The mode would be 777.  User fred is denied the ability to read, write
+> and execute because of the explicit deny ACE.  After chmod, fred should
+> still not be able to read, write and execute.  That is the goal that we
+> were trying to meet.
 
-? It compiled, booted, and ran traffic.
+Yes.
 
-gnb@chook 1965> quilt push 2
-Applying patch knfsd-make-pools-numa-aware-5
-patching file net/sunrpc/svc.c
-patching file net/sunrpc/svcsock.c
-patching file include/linux/sunrpc/svc.h
- 
-Applying patch knfsd-allow-admin-to-set-nthreads-per-node-2
-patching file fs/nfsd/nfsctl.c
-patching file fs/nfsd/nfssvc.c
- 
-Now at patch knfsd-allow-admin-to-set-nthreads-per-node-2
+> I realize that the mapping that you describe in section 4.4 of
+> http://www.suse.de/~agruen/nfs4acl/mapping-nfsv4-acls-to-posix-00.html
+> would also give us the capabilities that  I have described above.
 
-gnb@chook 1966> make  compressed modules
-  CHK     include/linux/version.h
-  CHK     include/linux/utsrelease.h
-  CHK     include/linux/compile.h
-  CC      arch/ia64/ia32/sys_ia32.o
-  LD      arch/ia64/ia32/built-in.o
-  CC      fs/compat.o
-  CC      fs/nfsctl.o
-  CC [M]  fs/lockd/clntlock.o
-  CC [M]  fs/lockd/clntproc.o
-  CC [M]  fs/lockd/host.o
-  CC [M]  fs/lockd/svc.o
-  CC [M]  fs/lockd/svclock.o
-  CC [M]  fs/lockd/svcshare.o
-  CC [M]  fs/lockd/svcproc.o
-  CC [M]  fs/lockd/svcsubs.o
-  CC [M]  fs/lockd/mon.o
-  CC [M]  fs/lockd/xdr.o
-  CC [M]  fs/lockd/xdr4.o
-  CC [M]  fs/lockd/svc4proc.o
-  LD [M]  fs/lockd/lockd.o
-  CC [M]  fs/nfs/callback.o
-  CC [M]  fs/nfs/callback_xdr.o
-  LD [M]  fs/nfs/nfs.o
-  CC [M]  fs/nfsd/nfssvc.o
-  CC [M]  fs/nfsd/nfsctl.o
-  CC [M]  fs/nfsd/nfsproc.o
-  CC [M]  fs/nfsd/nfsfh.o
-  CC [M]  fs/nfsd/vfs.o
-  CC [M]  fs/nfsd/export.o
-  CC [M]  fs/nfsd/auth.o
-  CC [M]  fs/nfsd/lockd.o
-  CC [M]  fs/nfsd/nfscache.o
-  CC [M]  fs/nfsd/nfsxdr.o
-  CC [M]  fs/nfsd/stats.o
-  CC [M]  fs/nfsd/nfs2acl.o
-  CC [M]  fs/nfsd/nfs3proc.o
-  CC [M]  fs/nfsd/nfs3xdr.o
-  CC [M]  fs/nfsd/nfs3acl.o
-  CC [M]  fs/nfsd/nfs4proc.o
-  CC [M]  fs/nfsd/nfs4xdr.o
-  CC [M]  fs/nfsd/nfs4state.o
-  CC [M]  fs/nfsd/nfs4idmap.o
-  CC [M]  fs/nfsd/nfs4callback.o
-  CC [M]  fs/nfsd/nfs4recover.o
-  LD [M]  fs/nfsd/nfsd.o
-  LD      fs/built-in.o
-  CC [M]  net/sunrpc/svc.o
-  CC [M]  net/sunrpc/svcsock.o
-  CC [M]  net/sunrpc/svcauth.o
-  CC [M]  net/sunrpc/svcauth_unix.o
-  CC [M]  net/sunrpc/sunrpc_syms.o
-  CC [M]  net/sunrpc/stats.o
-  LD [M]  net/sunrpc/sunrpc.o
-  CC [M]  net/sunrpc/auth_gss/auth_gss.o
-  CC [M]  net/sunrpc/auth_gss/gss_mech_switch.o
-  CC [M]  net/sunrpc/auth_gss/svcauth_gss.o
-  CC [M]  net/sunrpc/auth_gss/gss_krb5_crypto.o
-  CC [M]  net/sunrpc/auth_gss/gss_krb5_mech.o
-  CC [M]  net/sunrpc/auth_gss/gss_krb5_seal.o
-  CC [M]  net/sunrpc/auth_gss/gss_krb5_unseal.o
-  CC [M]  net/sunrpc/auth_gss/gss_krb5_seqnum.o
-  CC [M]  net/sunrpc/auth_gss/gss_krb5_wrap.o
-  CC [M]  net/sunrpc/auth_gss/gss_spkm3_mech.o
-  CC [M]  net/sunrpc/auth_gss/gss_spkm3_seal.o
-  CC [M]  net/sunrpc/auth_gss/gss_spkm3_unseal.o
-  CC [M]  net/sunrpc/auth_gss/gss_spkm3_token.o
-  LD [M]  net/sunrpc/auth_gss/auth_rpcgss.o
-  LD [M]  net/sunrpc/auth_gss/rpcsec_gss_krb5.o
-  LD [M]  net/sunrpc/auth_gss/rpcsec_gss_spkm3.o
-  GEN     .version
-  CHK     include/linux/compile.h
-  UPD     include/linux/compile.h
-  CC      init/version.o
-  LD      init/built-in.o
-  LD      .tmp_vmlinux1
-  KSYM    .tmp_kallsyms1.S
-  AS      .tmp_kallsyms1.o
-  LD      .tmp_vmlinux2
-  KSYM    .tmp_kallsyms2.S
-  AS      .tmp_kallsyms2.o
-  LD      vmlinux
-  SYSMAP System.map
-  SYSMAP .tmp_System.map
-  OBJCOPY arch/ia64/hp/sim/boot/vmlinux.bin
-  GZIP    arch/ia64/hp/sim/boot/vmlinux.gz
-  LN      vmlinux.gz
-  Kernel: vmlinux.gz is ready
-  Building modules, stage 2.
-  MODPOST
-WARNING: drivers/atm/fore_200e.o - Section mismatch: reference to .init.data:_fore200e_pca_fw_data from .data.rel.ro between 'fore200e_bus' (at offset 0x20) and 'fore200e_ops'
-WARNING: drivers/atm/fore_200e.o - Section mismatch: reference to .init.data:_fore200e_pca_fw_size from .data.rel.ro between 'fore200e_bus' (at offset 0x28) and 'fore200e_ops'
-WARNING: drivers/atm/fore_200e.o - Section mismatch: reference to .init.text:fore200e_pca_prom_read from .data.rel.ro between 'fore200e_bus' (at offset 0x90) and 'fore200e_ops'
-WARNING: drivers/atm/he.o - Section mismatch: reference to .init.text:he_init_irq from .text between 'he_start' (at offset 0x2ca2) and 'he_irq_handler'
-WARNING: drivers/atm/he.o - Section mismatch: reference to .init.text:he_init_cs_block_rcm from .text between 'he_start' (at offset 0x81c2) and 'he_irq_handler'WARNING: drivers/atm/he.o - Section mismatch: reference to .init.text: from .text between 'he_start' (at offset 0x81e2) and 'he_irq_handler'
-WARNING: drivers/atm/he.o - Section mismatch: reference to .init.text:he_init_group from .text between 'he_start' (at offset 0x82a2) and 'he_irq_handler'
-WARNING: drivers/block/cpqarray.o - Section mismatch: reference to .init.text:cpqarray_init_one from .data.rel.local between 'cpqarray_pci_driver' (at offset 0x20) and 'smart1_access'
-WARNING: drivers/net/dgrs.o - Section mismatch: reference to .init.text:dgrs_pci_probe from .data.rel.local after 'dgrs_pci_driver' (at offset 0x20)
-WARNING: drivers/net/tulip/de2104x.o - Section mismatch: reference to .init.text:de_init_one from .data.rel.local after 'de_driver' (at offset 0x20)
-WARNING: drivers/net/tulip/de2104x.o - Section mismatch: reference to .exit.text:de_remove_one from .data.rel.local after 'de_driver' (at offset 0x28)
-WARNING: drivers/usb/host/isp116x-hcd.o - Section mismatch: reference to .init.text:isp116x_probe from .data.rel.local between 'isp116x_driver' (at offset 0x0) and 'isp116x_hc_driver'
-WARNING: drivers/video/aty/atyfb.o - Section mismatch: reference to .init.text:aty_get_pll_ct from .data.rel.ro after 'aty_pll_ct' (at offset 0x18)
-WARNING: drivers/video/aty/atyfb.o - Section mismatch: reference to .init.text:aty_init_pll_ct from .data.rel.ro after 'aty_pll_ct' (at offset 0x20)
-WARNING: drivers/video/nvidia/nvidiafb.o - Section mismatch: reference to .exit.text:nvidiafb_remove from .data.rel.local after 'nvidiafb_driver' (at offset 0x28)
-WARNING: drivers/video/riva/rivafb.o - Section mismatch: reference to .exit.text:rivafb_remove from .data.rel.local after 'rivafb_driver' (at offset 0x28)
-WARNING: sound/drivers/snd-dummy.o - Section mismatch: reference to .init.text:snd_dummy_probe from .data.rel.local between 'snd_dummy_driver' (at offset 0x0) and 'snd_dummy_controls'
-WARNING: sound/drivers/snd-mtpav.o - Section mismatch: reference to .init.text:snd_mtpav_probe from .data.rel.local between 'snd_mtpav_driver' (at offset 0x0) and 'snd_mtpav_input'
-WARNING: sound/drivers/snd-serial-u16550.o - Section mismatch: reference to .init.text:snd_serial_probe from .data.rel.local between 'snd_serial_driver' (at offset 0x0) and 'ops.15504'
-WARNING: sound/drivers/snd-virmidi.o - Section mismatch: reference to .init.text:snd_virmidi_probe from .data.rel.local after 'snd_virmidi_driver' (at offset 0x0)
-  LD [M]  fs/lockd/lockd.ko
-  LD [M]  fs/nfs/nfs.ko
-  LD [M]  fs/nfsd/nfsd.ko
-  LD [M]  net/sunrpc/auth_gss/auth_rpcgss.ko
-  LD [M]  net/sunrpc/auth_gss/rpcsec_gss_krb5.ko
-  LD [M]  net/sunrpc/auth_gss/rpcsec_gss_spkm3.ko
-  CC      net/sunrpc/sunrpc.mod.o
-  LD [M]  net/sunrpc/sunrpc.ko
+Yes.
 
+---
 
-gnb@chook 1967> gcc --version
-gcc (GCC) 4.1.0 (SUSE Linux)
-Copyright (C) 2006 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+> With that said, I will go on to describe the capabilities that I feel
+> the mapping in section 4.4 lacks.  The capabilities that it lacks is
+> where the relevance of having those ALLOW ACEs that I described before
+> be considered Alternate access control mechanisms comes in.
+>
+> The mapping in section 4.4 makes it impossible to do the following by
+> *only* modifying the ACL.
+>
+> The mode of the file is 644 and you want to give fred the ability to
+> read, write and execute.
+>
+> fred:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+> OWNER@:READ_DATA/WRITE_DATA/APPEND_DATA::ALLOW
+> OWNER@:EXECUTE::DENY
+> GROUP@:READ_DATA::ALLOW
+> GROUP@:WRITE_DATA/APPEND_DATA/EXECUTE::DENY
+> EVERYONE@:READ_DATA::ALLOW
+> EVERYONE@:WRITE_DATA/APPEND_DATA/EXECUTE::DENY
+>
+> With the classification in 4.4, you can set that ACL, but it won't take
+> effect until you also explicitly modify the file group class permissions
+> (via a mask or whatever).
 
->   And
-> I'd be surprised if it worked very well with CONFIG_NUMA=n.
+In Section 4.6. "Setting File Permissions, File Masks, and ACLs", 
+http://www.suse.de/~agruen/nfs4acl/mapping-nfsv4-acls-to-posix-00.html reads:
 
-Why?  The only new code which is sensitive to CONFIG_NUMA is
-for_each_node(node) and that has a definition for !NUMA that
-appears (by inspection) to do the right thing.
+[] When an ACL is set, the file masks may or may not be set in the same
+[] operation. If they are not set in the same operation, each file mask shall
+[] implicitly be set to the union of the mask bits of all ACEs that are in
+[] the corresponding file class according to Table 1.
+[]
+[] When a file mask is set, either explicitly or implicitly by setting an ACL,
+[] all permissions that active file mask bits correspond to in Table 2 shall
+[] be set, and all other permissions shall be cleared.
 
->   And it's
-> naughty to be sneaking general library functions into the sunrpc code
-> anyway.
+So setting only the ACL will implicitly modify the file mode permission bits 
+as needed. It is important to keep the masks in sync with the ACL, and to 
+keep the file permission bits in sync with the masks. Without this behavior, 
+setting permissions with ACLs would indeed be painful.
 
-Fair enough, my bad.
+> The capability to set the type of ACL that is above was the goal when
+> classifying ALLOW ACEs as Alternate security access control mechanisms.
+> We can do this because as Alternate is defined, it can extend the
+> permissions of a user.  Therefore, setting the ACL attribute is all that
+> is needed for this to take effect.
 
-> 
-> Please,
-> 
-> - Write a standalone patch which adds highest_possible_node_id() to
->   lib/cpumask.c(?)
-> 
->   Make sure it's inside #ifdef CONFIG_NUMA
-> 
->   Remember to export it to modules.
-> 
->   Provide a !CONFIG_NUMA version in include/linux/nodemask.h which just
->   returns constant zero.
+I agree with you that setting an ACL is an explicit user action, and that this 
+action may enable an alternate file access control mechanism. Whether the new 
+ACL actually is an alternate file access control mechanism depends on which 
+permissions the ACL allows: if it only allows permissions that map to Read, 
+Write, and Execute and the file classes include those permissions, then the 
+ACL does not actually go beyond additional file access control mechanisms. 
+Otherwise, the ACL is an alternate file access control mechanism, and the 
+alternate parts of it must be disabled upon chmod.
 
-Will do.
+> ---
+>
+> I am trying to figure out why there has been such a disagreement here
+> and perhaps this is another thing that needs to be cleared up.  What
+> does the disabling of an alternate access control mechanism mean?
+> Certainly it is not that we have to get rid of everything that is in an
+> ALLOW ACE every time a chmod is done.
 
->   Consider doing something more efficient than the for_each_node() loop. 
->   Although I'm not sure what that would be, given that we don't have
->   find_last_bit().
+Indeed, we only have to disable what goes beyond an additional file access 
+control mechanism.
 
-That code is a copy-n-paste of highest_possible_processor_id().
+> If you had the following ACL:
+>
+> fred:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+> OWNER@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+> GROUP@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+> EVERYONE@:READ_DATA/WRITE_DATA/APPEND_DATA/EXECUTE::ALLOW
+>
+> The mode would be 777.  Disabling can be meant that after the chmod, the
+> user "fred" should not have more permissions that his respective class.
+> So, after a chmod to 770, fred should still be allowed the ability to
+> read, write and execute.  This is in how the permissions for fred are
+> disabled.  They are being masked down to what the permissions of the
+> file group class are.
 
-> - Provide an incremental patch against
->   knfsd-make-rpc-threads-pools-numa-aware.patch which utilises
->   highest_possible_node_id().
-> 
->   A replacement patch will be grudgingly accepted, but I'll only go and
->   turn it into an incremental one, so you can't hide ;)
+Yes, exactly.
 
-Ok, an incremental patch it is then.  Let it not be said I
-don't take a hint the fourth time.
+> >What counts is which access mask flags are equivalent to the POSIX Read,
+> >Write, and Execute permissions, and which are not: those are the access
+> > mask flags which may (sometimes) be used as additional access control
+> > mechanisms.
+>
+> What do you mean by sometimes.
 
-> - Test it real good.  Modular, non-modular, NUMA, non-NUMA, !SMP.
-> 
+Consider your example ACL from above, and a chmod to 0750. In that case, we 
+need to disable WRITE_DATA and APPEND_DATA for Fred and GROUP@, and 
+READ_DATA, WRITE_DATA, APPEND_DATA, and EXECUTE for EVERYONE@. So when the 
+File Group Class contains the Write permission, WRITE_DATA and APPEND_DATA 
+are perfectly fine as an additional file access control mechanism. Removing 
+Write from the File Group Class causes WRITE_DATA and APPEND_DATA to become 
+Alternate, and we must make sure to disable them.
 
-Right.
+In mapping-nfsv4-acls-to-posix-00, I said the same thing like this:
 
-Greg.
+[] Flags classified as additional are equivalent to or a subset of the
+[] designated POSIX permission. If the file class of an ACE (see Section 4.1)
+[] includes this permission, the ACE may grant this permission as part of an
+[] additional file access control mechanism.
+
+> >The other issue is which POSIX file class each ACE maps to. Let's assume
+> > for now that we only know that OWNER@ maps to the File Owner Class to
+> > keep this example short.
+> >
+> >Together with these two classifications, we can determine whether an ACE
+> > is within the bounds of an additional file access control mechanism.
+> > Let's look at the following ACE, and a file which has a file mode of 0740
+> > (rwxr-----):
+> >
+> >  OWNER@:READ_DATA/APPEND_DATA/EXECUTE::ALLOW
+> >
+> >
+> >The OWNER@ ACE maps to the File Owner Class. This means that as an
+> > additional access control mechanism, the ACE may not grant more than
+> > Read, Write, and Execute. The READ_DATA access mask flag is equivalent to
+> > POSIX Read, the APPEND_DATA access mask flag is a subset of POSIX Write,
+> > and the EXECUTE access mask flag is equivalent to POSIX Execute, so we
+> > are fine.
+> >
+> >Now, let's assume that the user does a chmod to mode 0640 (rw-r-----). The
+> >permissions of the File Owner Class now no longer cover the EXECUTE
+> >permission. There are two options to fix this problem:
+> >
+> > 1. either accept that the ACE cannot be part of an additional file
+> >    access control mechanism, or
+> >
+> > 2. disable the EXECUTE access mask flag, either temporarily or
+> >    permanently, which gets us back into the bounds of additional file
+> >    access control mechanisms.
+> >
+> >In case 1, the only choice that remains is that the ACE must be part of an
+> >alternate file access control mechanism (see more on that below). POSIX
+> >states that we must disable alternate file access control mechanisms upon
+> >chmod and for new files, and they must only be re-enabled per explicit
+> > user action. So the EXECUTE permission would be just gone until the user
+> > explicitly re-enables it (with something other than a chmod). This would
+> > render ACLs practically useless under POSIX.
+>
+> Why wouldn't the EXECUTE permission be able to be re-enabled with
+> chmod?  Of course, it can.
+
+Chmod must disable alternate file access control mechanisms as per the POSIX 
+definitions, and so if we classified EXECUTE as alternate, a chmod could not 
+re-enable it.
+
+> If you are setting a mode of 740, that says that the owner can execute.
+
+Yes. More precisely, it says the owner may be allowed to execute; additional 
+file access control mechanisms may further restrict access, and deny the 
+owner that permission.
+
+> That is an explicit action and EXECUTE permission should be granted to the
+> owner.
+
+Ouch. Setting the mode to 740 is a chmod, right? Chmod is the one explicit 
+action for which POSIX defines that it must disable alternate file access 
+control mechanisms. The other explicit action that POSIX mentions is file 
+creation, for which alternate file access control mechanisms must also be 
+disabled. So please let's not mix things up here, and let's refrain from 
+calling chmod an explicit action in this context.
+
+> >In case 2, the ACE still remains within the bounds of additional file
+> > access control mechanisms. If we disable EXECUTE only temporarily, then a
+> > future chmod back to mode 0740 can simply re-enable EXECUTE, and we will
+> > not have lost anything. (Remember, chmod does not disable additional file
+> > access control mechanisms.)
+> >
+> >There are several possibilities how we can disable access mode flags
+> >temporarily:
+> >
+> > 1. we could add an explicit DENY ACE before the ALLOW ACE that has
+> >    the affected access mask flags disabled (this is the
+> >    draft-ietf-nfsv4-acls-00 approach),
+> >
+> > 2. we could declare that all access mask flags which go beyond
+> >    the corresponding File Class are automatically disabled, or
+> >
+> > 3. we could introduce file masks as I am proposing.
+> >
+> >The file masks have the advantage that the user can easily manually enable
+> >more access mask flags in them. This would construe an explicit user
+> > action as per POSIX. So depending on which flags the user enables, that
+> > may amount to an additional or alternate file access control mechanism.
+> > POSIX is perfectly fine with that, even for enabling flags such as
+> > WRITE_OWNER. The only thing we must ensure is that alternate flags are
+> > disabled upon chmod as well as for new files.
+> >
+> >>All other access mask bits listed below are outside of the access
+> >>control mechanisms specified by POSIX and are therefore unclassified
+> >>and unrestricted:
+> >>ACE4_READ_NAMED_ATTRS
+> >>ACE4_WRITE_NAMED_ATTRS
+> >>ACE4_DELETE_CHILD
+> >>ACE4_READ_ATTRIBUTES
+> >>ACE4_WRITE_ATTRIBUTES
+> >>ACE4_DELETE
+> >>ACE4_READ_ACL
+> >>ACE4_WRITE_ACL
+> >>ACE4_WRITE_OWNER
+> >>ACE4_SYNCHRONIZE
+> >>
+> >>This means that if an ACE defines one of those access mask bits, the
+> >>access granted or denied will remain unchanged after a chmod.
+> >
+> >I am afraid this is impossible: there is no such thing as being outside
+> > the file access control mechanisms defined by POSIX. The reason is
+> > simple: POSIX applications absolutely *must* be able to rely on POSIX
+> > semantics in order to be able to keep the system secure.
+> >
+> >Let's assume that ACE4_WRITE_OWNER was indeed outside of the access
+> > control mechanisms defined by POSIX as a counter example. A POSIX
+> > application does a chmod to mode 0600 (rw-------) in order to restrict
+> > access to the file owner. After that, the application can perfectly well
+> > write information that is confidential to the owner into the file --
+> > after all, only the owner will have access, right?
+> >
+> >
+> >Well, not quite, because an ACL might still grant ACE4_WRITE_OWNER to some
+> >other user on the system. That other user could simply take over ownership
+> > of the file, and do whatever he wants with it. Here we have it, a perfect
+> > security hole; all POSIX applications potentially broken!
+>
+> The owner of the file had taken *explicit* action to grant ACE4_WRITE_OWNER
+> to another user on the system. 
+
+The owner takes explicit action to grant ACE4_WRITE_OWNER to another user on 
+the system, which is beyond what POSIX defines. Then a POSIX process on 
+behalf of the owner (or an admin) does a chmod to 0600. From all the POSIX 
+process knows, the file can now only be accessed by the owner; there is 
+nothing that keeps POSIX processes from making this assumption. To the POSIX 
+process, chmod is a mechanism to enforce restricted access. Now if we let 
+ACE4_WRITE_OWNER survive the chmod, we break this basic assumption, and 
+nothing will guarantee that the intentions of the file owner combined with 
+the valid assumptions of POSIX processes will lead to a secure system.
+
+> You say that it is a security hole if the user that was explicitly granted
+> the ability to write owner is now able to do what they were told they could
+> do?
+
+If that permission was granted by explicit user action without intervening 
+chmod, no. After chmod, yes. It is not enough to look at the intentions of 
+the file owner alone. We must also look at interactions with other actors 
+that may have incomplete knowledge and different assumptions.
+
+Andreas
+
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
-
+Andreas Gruenbacher <agruen@suse.de>
+Novell / SUSE Labs
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
