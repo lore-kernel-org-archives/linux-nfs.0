@@ -1,24 +1,24 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: Processes hanging, directory hanging
-Date: Tue, 1 Aug 2006 10:30:59 -0300
-Message-ID: <20060801103059.129bc1ac@sup-ceu.wrk.terra.com.br>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: librpcsecgss conflicts with clnt libc symbols
+Date: Tue, 1 Aug 2006 09:31:39 -0400
+Message-ID: <4d569c330608010631m70adbb7ft6b60f5c19bde64a5@mail.gmail.com>
+References: <200607312329.33067.vapier@gentoo.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: f.soto@terra.com.br
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G7uKt-0008Ia-At
-	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 06:31:03 -0700
-Received: from burta.hst.terra.com.br ([200.176.10.199])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7uKt-00059V-A5
-	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 06:31:03 -0700
-Received: from cosmoledo.terra.com.br (cosmoledo.hst.terra.com.br
-	[200.176.10.14])
-	by burta.hst.terra.com.br (Postfix) with ESMTP id A0B3B4B7814E
-	for <nfs@lists.sourceforge.net>; Tue,  1 Aug 2006 10:30:59 -0300 (BRT)
-To: nfs@lists.sourceforge.net
+	id 1G7uLW-0008M2-DA
+	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 06:31:42 -0700
+Received: from wr-out-0506.google.com ([64.233.184.237])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G7uLV-0000KZ-Lb
+	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 06:31:42 -0700
+Received: by wr-out-0506.google.com with SMTP id 69so394052wri
+	for <nfs@lists.sourceforge.net>; Tue, 01 Aug 2006 06:31:40 -0700 (PDT)
+To: "Mike Frysinger" <vapier@gentoo.org>
+In-Reply-To: <200607312329.33067.vapier@gentoo.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,41 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello,
+They were added in 0.8:
 
-I'm facing a rather strange situation on a host of mine. I recently
-upgraded one server software, and after a week running, several
-processes hang, and including some directories hang.
+> Changes since librpcsecgss-0.7:
 
-The processes hang in "D" (disk wait) state. That way, I cannot strace
-or gdb them to know what they were doing or where they were.
+> -- From Olga Kornievskaia: add new prep_refresh function to clean up
+>    context information before trying to refresh a context
+> -- From Olga Kornievskaia: add new function to access retry count
+>    for a context.
+> -- Adds back clnt_ files which have the necessary calls needed for
+>    privacy.
 
-But the strangest thing are directories. Some directories in NFS start
-to hang, in some way that if I try to "cd" to them or "ls" them
-(sometimes even TAB complete hangs them) the process hangs, stays in
-"disk wait" state, and there's no way I can get it back. If I try to
-strace a process that changes directory to some of these hanged
-directories, it goes up to the "getent32" and hangs.
+The libc versions of the clnt*_call functions do not call the
+AUTH_WRAP and AUTH_UNWRAP functions needed for privacy.
 
-I'm using RHEL4, but I tried to upgrade the kernel to the latest
-release, and the problem happens as well on the latest kernel (which at
-the time I upgraded was 2.6.17.6).
 
-So I ask:
-
-1) Do you know of some bug currently unsolved that could cause this?
-
-2) It seems to me that the problem is in the kernel, but somehow it's
-being induced by the new version of the application... What could the
-application be doing wrong to cause such a problem?
-
-3) How could I try to see what's happening? Since strace and gdb
-(which are the tools I know) don't work anymore, I couldn't find
-anything to try to debug the problem... Should I try to dump something
-from the kernel? Where exactly should I look?
-
-Thanks in advance,
-Filipe Brandenburger
+On 7/31/06, Mike Frysinger <vapier@gentoo.org> wrote:
+> the librpcsecgss duplicates some functions that the system libc normally
+> provides ... in this case:
+> clnt_create
+> clnt_pcreateerror
+> clnt_perrno
+> clnt_perror
+> clntraw_create
+> clnt_spcreateerror
+> clnt_sperrno
+> clnt_sperror
+> clnttcp_create
+> clntudp_bufcreate
+> clntudp_create
+>
+> is there a reason for this ?  i went through the ChangeLog and couldnt find
+> anything ... this stuff was added like between 0.7 and 0.8 but there doesnt
+> appear to be any mention of why ...
+> -mike
+>
+>
+> -------------------------------------------------------------------------
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+> opinions on IT & business topics through brief surveys -- and earn cash
+> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+>
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
+>
+>
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
