@@ -1,30 +1,21 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: librpcsecgss conflicts with clnt libc symbols
-Date: Tue, 1 Aug 2006 19:02:36 -0400
-Message-ID: <200608011902.36612.vapier@gentoo.org>
-References: <200607312329.33067.vapier@gentoo.org>
-	<200608011032.33097.vapier@gentoo.org>
-	<4d569c330608010755s21d6bc6bv6a0ec3d8668aa3db@mail.gmail.com>
+From: Philipp Matthias Hahn <pmhahn@svs.Informatik.Uni-Oldenburg.de>
+Subject: [Fwd: moradin 2006-08-02 11:02 System Events]
+Date: Wed, 02 Aug 2006 12:50:25 +0200
+Message-ID: <44D08371.9070607@svs.Informatik.Uni-Oldenburg.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0593696943=="
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G83G3-0001ss-7N
-	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 16:02:39 -0700
-Received: from smtp.gentoo.org ([140.211.166.183])
+	id 1G8EJH-0000Fc-Nr
+	for nfs@lists.sourceforge.net; Wed, 02 Aug 2006 03:50:43 -0700
+Received: from ip-svs-1.informatik.uni-oldenburg.de ([134.106.12.126]
+	helo=schlidder.svs.informatik.uni-oldenburg.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G83G2-0006O8-F5
-	for nfs@lists.sourceforge.net; Tue, 01 Aug 2006 16:02:39 -0700
-Received: from home.wh0rd.org (localhost [127.0.0.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp.gentoo.org (Postfix) with ESMTP id 07C6A646E3
-	for <nfs@lists.sourceforge.net>; Tue,  1 Aug 2006 23:02:36 +0000 (UTC)
-To: "Kevin Coffman" <kwc@citi.umich.edu>
-In-Reply-To: <4d569c330608010755s21d6bc6bv6a0ec3d8668aa3db@mail.gmail.com>
+	(Exim 4.44) id 1G8EJF-0001MZ-Kb
+	for nfs@lists.sourceforge.net; Wed, 02 Aug 2006 03:50:44 -0700
+To: nfs@lists.sourceforge.net, Neil Brown <neilb@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,73 +28,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0593696943==
-Content-Type: multipart/signed; boundary="nextPart14441387.CM4ZKTGkqb";
-	protocol="application/pgp-signature"; micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
+Hello!
 
---nextPart14441387.CM4ZKTGkqb
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Rebooting one of our NFS file servers with 2.6.17.7, I just got the
+following OOPS:
 
-On Tuesday 01 August 2006 10:55, Kevin Coffman wrote:
-> I've seen this with authenticated NIS.  Can you point me at the bug report?
+BUG: unable to handle kernel NULL pointer dereference at virtual address
+00000041
+printing eip:
+c01fe571
+*pde = 00000000
+Oops: 0000 [#1]
+SMP
+Modules linked in: parport_pc lp parport nfsd exportfs binfmt_misc
+autofs4 thermal ipv6 8021q ide_cd 8250_pnp 8250 serial_core floppy
+ohci_hcd usbcore i2c_piix4 i2c_core ipmi_si ipmi_watchdog ipmi_devintf
+ipmi_msghandler
+CPU:    1
+EIP:    0060:[<c01fe571>]    Not tainted VLI
+EFLAGS: 00010246   (2.6.17.7-station #1)
+EIP is at _atomic_dec_and_lock+0x9/0x48
+eax: 00000041   ebx: 00000041   ecx: 00000001   edx: c041b280
+esi: c041b280   edi: f6f675c0   ebp: f7636dc0   esp: f7636db8
+ds: 007b   es: 007b   ss: 0068
+Process nfsd (pid: 1964, threadinfo=f7636000 task=f7e22a70)
+Stack: 00000041 f8b8d958 f7636dcc c0351d77 f6f675c0 f7636dd8 f8b8d992
+f6f675cc
+f7636de8 c01ff767 f8bb1500 f8baf260 f7636e08 c0353df6 f6c42340 f8bb1500
+f7636e2c 00000000 00000080 00000008 f7636e24 f8b8def2 00000008 f7636e2c
+Call Trace:
+<c01034a0> show_stack_log_lvl+0x88/0x90
+<c01035fc> show_registers+0x115/0x17d
+<c01037ed> die+0x115/0x1ee
+<c0112644> do_page_fault+0x466/0x555
+<c0103147> error_code+0x4f/0x54
+<c0351d77> auth_domain_put+0x10/0x3f
+<f8b8d992> expkey_put+0x3a/0x44 [nfsd]
+<c01ff767> kref_put+0x66/0x77
+<c0353df6> sunrpc_cache_lookup+0xbb/0xf5
+<f8b8def2> svc_expkey_lookup+0xa1/0xaf [nfsd]
+<f8b8e635> exp_find_key+0x5c/0x81 [nfsd
+<f8b8efd1> exp_find+0x11/0x75 [nfsd]
+<f8b89e6e> fh_verify+0x15d/0x470 [nfsd]
+<f8b8b57c> nfsd_open+0x21/0x14d [nfsd]
+<f8b8be1b> nfsd_read+0x6f/0xa9 [nfsd]
+<f8b91c58> nfsd3_proc_read+0xdb/0x137 [nfsd]
+<f8b8865a> nfsd_dispatch+0xca/0x190 [nfsd]
+<c034f93f> svc_process+0x393/0x5c4
+<f8b88437> nfsd+0x189/0x2e2 [nfsd]
+<c0100e31> kernel_thread_helper+0x5/0xb
+Code: 0f a3 0d 78 ae 48 c0 19 c0 85 c0 75 10 89 c8 89 da e8 8a ff ff ff
+83 f8 03 89 c1 7e e3 5b 89 c8 5d c3 55 89 e5 56 89 d6 53 89 c3 <8b> 10
+83 fa 01 74 11 8d 4a ff 89 d0 f0 0f b1 0b 39 d0 74 04 89
+EIP: [<c01fe571>] _atomic_dec_and_lock+0x9/0x48 SS:ESP 0068:f7636db8
 
-http://bugs.gentoo.org/141959
+Doing a quick search did't reveal any similar reported bug. I'm not
+subsribed to the nfs-ml, so please cc: me on replies.
 
-> I'm working on a patch right now for librpcsecgss that hides our
-> versions of these functions by renaming them to rpcsecgss_*.  It may
-> require some configure changes to the nfs-utils code to make it happy
-> with the new names...
-
-thanks !
--mike
-
---nextPart14441387.CM4ZKTGkqb
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.4 (GNU/Linux)
-
-iQIVAwUARM/djEFjO5/oN/WBAQJV/A//V6FbdHr5PrznAFggUJn1LpkINWglbrmb
-4ywje6GrK4OW+S3WKImrcZFTvxlrR3RaO+R901nTdwC59f4xMRKogv2ufy6eMAgv
-k98hxJjGqovcWz7Lq0t76vnBroeWUtI31I0mamMlhxzyQtj6Z+QT57/7ZSgUtOvT
-44QlhYN48OoEYAuagEEpx/6lOZLc+DHY1FWsJw3Zo5C2qhRF06pQYMLTTLK4+G0z
-Hyctycl6KHGo1P8FqiPlv2xsaEW1UjiZkyf35fwvOaac6p+vQ76/jT55XReLk9IK
-ZgVN/z6c+beK4ZweJ+oxAEaDBUtRIUYL04p4WojQqR+V6P+zcdh8UT1pLGtASRT2
-axxUgGSqx60sPt40o13y8UY1qfRCNFl97sRReOd6IXoNTGQRbmsFax5uNaAZv9RB
-u56p6w6mSk7ExXJTx0jIQKhiIKPRRrWgFEF29U30ADZIw8pg6VX9yfN/6xj2+RDF
-/VEbLja4MN3wRZcO7voJJdxkBxDZCjt4+xr/qYzxl0bEyFoiZY6pfSKQQbxzuHw5
-IR5R1sa0pqaPgON0PMGzoBNyPk6Hqe51Zzwpe5rUHqc56ai0UIh7LboigDdceka8
-q5Mfam+LyVNx8Sk0r5R99PKnyeEkE1edUWIdHZr07IJlSHycjvHO29gHxvRHBTNq
-6kdcf4xCxzw=
-=o+S1
------END PGP SIGNATURE-----
-
---nextPart14441387.CM4ZKTGkqb--
-
-
---===============0593696943==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+BYtE
+Philipp
+-- 
+      Dipl.-Inform. Philipp.Hahn@informatik.uni-oldenburg.de
+      Abteilung Systemsoftware und verteilte Systeme, Fk. II
+Carl von Ossietzky Universitaet Oldenburg, 26111 Oldenburg, Germany
+    http://www.svs.informatik.uni-oldenburg.de/contact/pmhahn/
+      Telefon: +49 441 798-2866    Telefax: +49 441 798-2756
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0593696943==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0593696943==--
