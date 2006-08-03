@@ -1,23 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 2/4] Add /proc/sys/fs/nfs sysctls to nfs module
+Subject: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
 Date: Thu, 3 Aug 2006 13:05:38 +0200
-Message-ID: <20060803110538.GA17168@suse.de>
+Message-ID: <20060803110538.GA17173@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8b1I-0007da-Tq
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 04:05:40 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G8b1I-0001dW-Qd
+	id 1G8b1J-0007dc-14
 	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 04:05:41 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G8b1J-0003Ca-1k
+	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 04:05:41 -0700
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 2FB9AFE7F
+	by mx1.suse.de (Postfix) with ESMTP id 4AFE8FE80
 	for <nfs@lists.sourceforge.net>; Thu,  3 Aug 2006 13:05:38 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -33,117 +33,129 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: okir@suse.de
-Subject: Add /proc/sys/fs/nfs sysctls to nfs module
+Subject: Add /proc/sys/fs/nfs sysctls to nfsd module
 
-This patch adds the plumbing for adding nfs-specific sysctls to
-fs/nfs, and makes nfs_max_readahead tunable as suggested.
+  This patch adds the plumbing for adding nfs-specific sysctls to fs/nfs,
+  and makes the max size of a readdirplus reply tunable.
 
-Signed-off-by: okir@suse.de
+  The reason for this is that we found that some clients do not seem
+  to grok readdirplus replies larger than 4K. Rather than reducing the
+  overall number this sysctl allows admins to work around these clients.
 
- fs/nfs/inode.c |   48 +++++++++++++++++++++++++++++++++++++++++-------
- 1 files changed, 41 insertions(+), 7 deletions(-)
+Signed-off-by: Olaf Kirch <okir@suse.de>
 
-Index: linux-2.6.18/fs/nfs/inode.c
+ fs/nfsd/nfs3xdr.c         |    5 ++++-
+ fs/nfsd/nfsctl.c          |   28 ++++++++++++++++++++++++++++
+ include/linux/nfsd/xdr3.h |    4 ++++
+ 3 files changed, 36 insertions(+), 1 deletion(-)
+
+Index: linux-2.6.18/fs/nfsd/nfsctl.c
 ===================================================================
---- linux-2.6.18.orig/fs/nfs/inode.c
-+++ linux-2.6.18/fs/nfs/inode.c
-@@ -33,6 +33,7 @@
- #include <linux/lockd/bind.h>
- #include <linux/smp_lock.h>
- #include <linux/seq_file.h>
-+#include <linux/sysctl.h>
- #include <linux/mount.h>
- #include <linux/nfs_idmap.h>
- #include <linux/vfs.h>
-@@ -48,13 +49,15 @@
- #define NFSDBG_FACILITY		NFSDBG_VFS
- #define NFS_PARANOIA 1
+--- linux-2.6.18.orig/fs/nfsd/nfsctl.c
++++ linux-2.6.18/fs/nfsd/nfsctl.c
+@@ -31,6 +31,7 @@
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ #include <linux/nfsd/xdr.h>
++#include <linux/nfsd/xdr3.h>
+ #include <linux/nfsd/syscall.h>
+ #include <linux/nfsd/interface.h>
  
--/* Maximum number of readahead requests
-- * FIXME: this should really be a sysctl so that users may tune it to suit
-- *        their needs. People that do NFS over a slow network, might for
-- *        instance want to reduce it to something closer to 1 for improved
-- *        interactive response.
-+/* Maximum number of readahead requests.
-+ *
-+ * People who do NFS over a slow network may want to reduce it to
-+ * something closer to 1 for improved interactive response.
-  */
--#define NFS_MAX_READAHEAD	(RPC_DEF_SLOT_TABLE - 1)
-+static unsigned int	nfs_max_readahead = RPC_DEF_SLOT_TABLE - 1;
-+static unsigned int	nfs_max_readahead_min = 0;
-+static unsigned int	nfs_max_readahead_max = RPC_MAX_SLOT_TABLE - 1;
-+
+@@ -507,8 +508,28 @@ static struct file_system_type nfsd_fs_t
+ 	.kill_sb	= kill_litter_super,
+ };
  
- static void nfs_invalidate_inode(struct inode *);
- static int nfs_update_inode(struct inode *, struct nfs_fattr *);
-@@ -341,7 +344,7 @@ nfs_sb_init(struct super_block *sb, rpc_
- 		server->acdirmin = server->acdirmax = 0;
- 		sb->s_flags |= MS_SYNCHRONOUS;
- 	}
--	server->backing_dev_info.ra_pages = server->rpages * NFS_MAX_READAHEAD;
-+	server->backing_dev_info.ra_pages = server->rpages * nfs_max_readahead;
- 
- 	sb->s_maxbytes = fsinfo.maxfilesize;
- 	if (sb->s_maxbytes > MAX_LFS_FILESIZE) 
-@@ -2289,12 +2292,35 @@ static void nfs_destroy_inodecache(void)
- }
- 
- /*
++ /*
 + * NFS sysctls
 + */
-+static struct ctl_table_header *nfs_sysctl_table;
++static struct ctl_table_header *nfsd_sysctl_table;
 +
-+static ctl_table nfs_sysctls[] = {
++static ctl_table nfsd_sysctls[] = {
 +	{
 +		.ctl_name	= -2,
-+		.procname	= "nfs_max_readahead",
-+		.data		= &nfs_max_readahead,
-+		.maxlen		= sizeof(unsigned int),
++		.procname	= "nfsd_readdirplus_max",
++		.data		= &nfsd_readdirplus_max,
++		.maxlen		= sizeof(nfsd_readdirplus_max),
 +		.mode		= 0644,
 +		.proc_handler	= &proc_dointvec_minmax,
-+		.strategy	= &sysctl_intvec,
-+		.extra1		= &nfs_max_readahead_min,
-+		.extra2		= &nfs_max_readahead_max
++		.extra1		= &nfsd_readdirplus_max_lb,
++		.extra2		= &nfsd_readdirplus_max_ub,
 +	},
 +	{ .ctl_name = 0 }
 +};
 +
-+/*
-  * Initialize NFS
-  */
- static int __init init_nfs_fs(void)
+ static int __init init_nfsd(void)
  {
 +	struct ctl_path ctl_path[] = { { CTL_FS, "fs", 0555 }, { -2, "nfs", 0555 }, { 0 } };
- 	int err;
+ 	int retval;
+ 	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
  
-+	nfs_sysctl_table = register_sysctl_table_path(nfs_sysctls, ctl_path);
-+
- 	err = nfs_init_nfspagecache();
- 	if (err)
- 		goto out4;
-@@ -2342,6 +2368,10 @@ out2:
- out3:
- 	nfs_destroy_nfspagecache();
- out4:
-+	if (nfs_sysctl_table)
-+		unregister_sysctl_table(nfs_sysctl_table);
-+	nfs_sysctl_table = NULL;
-+
- 	return err;
+@@ -518,6 +539,7 @@ static int __init init_nfsd(void)
+ 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+ 	nfs4_state_init();	/* NFSv4 locking state */
+ 	nfsd_idmap_init();      /* Name to ID mapping */
++	nfsd_sysctl_table = register_sysctl_table_path(nfsd_sysctls, ctl_path);
+ 	if (proc_mkdir("fs/nfs", NULL)) {
+ 		struct proc_dir_entry *entry;
+ 		entry = create_proc_entry("fs/nfs/exports", 0, NULL);
+@@ -532,6 +554,9 @@ static int __init init_nfsd(void)
+ 		remove_proc_entry("fs/nfs", NULL);
+ 		nfsd_stat_shutdown();
+ 		nfsd_lockd_shutdown();
++		if (nfsd_sysctl_table)
++			unregister_sysctl_table(nfsd_sysctl_table);
++		nfsd_sysctl_table = NULL;
+ 	}
+ 	return retval;
+ }
+@@ -546,6 +571,9 @@ static void __exit exit_nfsd(void)
+ 	nfsd_lockd_shutdown();
+ 	nfsd_idmap_shutdown();
+ 	unregister_filesystem(&nfsd_fs_type);
++	if (nfsd_sysctl_table)
++		unregister_sysctl_table(nfsd_sysctl_table);
++	nfsd_sysctl_table = NULL;
  }
  
-@@ -2359,6 +2389,10 @@ static void __exit exit_nfs_fs(void)
+ MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+Index: linux-2.6.18/fs/nfsd/nfs3xdr.c
+===================================================================
+--- linux-2.6.18.orig/fs/nfsd/nfs3xdr.c
++++ linux-2.6.18/fs/nfsd/nfs3xdr.c
+@@ -28,6 +28,9 @@
+ # define inline
  #endif
- 	unregister_filesystem(&nfs_fs_type);
- 	unregister_nfs4fs();
-+
-+	if (nfs_sysctl_table)
-+		unregister_sysctl_table(nfs_sysctl_table);
-+	nfs_sysctl_table = NULL;
- }
  
- /* Not quite true; I just maintain it */
++unsigned int	nfsd_readdirplus_max = NFSSVC_MAXBLKSIZE;
++unsigned int	nfsd_readdirplus_max_lb = 512;
++unsigned int	nfsd_readdirplus_max_ub = NFSSVC_MAXBLKSIZE;
+ 
+ /*
+  * Mapping of S_IF* types to NFS file types
+@@ -573,7 +576,7 @@ nfs3svc_decode_readdirplusargs(struct sv
+ 	args->dircount = ntohl(*p++);
+ 	args->count    = ntohl(*p++);
+ 
+-	len = (args->count > NFSSVC_MAXBLKSIZE) ? NFSSVC_MAXBLKSIZE :
++	len = (args->count > nfsd_readdirplus_max) ? nfsd_readdirplus_max :
+ 						  args->count;
+ 	args->count = len;
+ 
+Index: linux-2.6.18/include/linux/nfsd/xdr3.h
+===================================================================
+--- linux-2.6.18.orig/include/linux/nfsd/xdr3.h
++++ linux-2.6.18/include/linux/nfsd/xdr3.h
+@@ -268,6 +268,10 @@ union nfsd3_xdrstore {
+ 
+ #define NFS3_SVC_XDRSIZE		sizeof(union nfsd3_xdrstore)
+ 
++extern unsigned int			nfsd_readdirplus_max;
++extern unsigned int			nfsd_readdirplus_max_ub;
++extern unsigned int			nfsd_readdirplus_max_lb;
++
+ int nfs3svc_decode_fhandle(struct svc_rqst *, u32 *, struct nfsd_fhandle *);
+ int nfs3svc_decode_sattrargs(struct svc_rqst *, u32 *,
+ 				struct nfsd3_sattrargs *);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
