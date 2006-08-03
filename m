@@ -1,25 +1,25 @@
 From: Neil Brown <neilb@suse.de>
-Subject: [PATCH for stable] Re: [Fwd: moradin 2006-08-02 11:02 System
-	Events]
-Date: Thu, 3 Aug 2006 10:20:12 +1000
-Message-ID: <17617.16700.274788.869486@cse.unsw.edu.au>
-References: <44D08371.9070607@svs.Informatik.Uni-Oldenburg.de>
+Subject: Re: [PATCH 000 of 4] knfsd: Introduction
+Date: Thu, 3 Aug 2006 11:22:23 +1000
+Message-ID: <17617.20431.425742.221648@cse.unsw.edu.au>
+References: <20060728150606.29533.patches@notabene>
+	<20060728211000.GA19563@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: akpm@osdl.org, nfs@lists.sourceforge.net, stable@kernel.org,
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8Qwp-0005iM-TE
-	for nfs@lists.sourceforge.net; Wed, 02 Aug 2006 17:20:24 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1G8Rv3-00026a-OG
+	for nfs@lists.sourceforge.net; Wed, 02 Aug 2006 18:22:37 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G8Qwo-00048f-R1
-	for nfs@lists.sourceforge.net; Wed, 02 Aug 2006 17:20:24 -0700
-To: Philipp Matthias Hahn <pmhahn@svs.Informatik.Uni-Oldenburg.de>
-In-Reply-To: message from Philipp Matthias Hahn on Wednesday August 2
+	(Exim 4.44) id 1G8Rv3-0007jb-Nx
+	for nfs@lists.sourceforge.net; Wed, 02 Aug 2006 18:22:38 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: message from J. Bruce Fields on Friday July 28
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,72 +32,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday August 2, pmhahn@svs.Informatik.Uni-Oldenburg.de wrote:
-> Hello!
+On Friday July 28, bfields@fieldses.org wrote:
+> On Fri, Jul 28, 2006 at 03:09:40PM +1000, NeilBrown wrote:
+> > Following are 4 patches for knfsd in 2.6-mm-latest.  They address some
+> > issues found by Bruce Fields greatly appreciated patch review.  Thanks Bruce.
+> > They (like the patches they build on) are *not* 2.6.18 material.
 > 
-> Rebooting one of our NFS file servers with 2.6.17.7, I just got the
-> following OOPS:
+> By the way, the one thing that looked to me like a real bug was the
+> failure to do a lockd_down() when the user deletes a socket (comments
+> resent below), which these patches don't seem to deal with.  Of course,
+> it's entirely possible I just didn't understand something....
+> 
 
-Thanks for the report.
-The bug was fairly easy to find and fix.
-I think this would be appropriate for the next 2.6.17.x stable kernel,
-and definitely for 2.6.18. (hence 'akpm' and 'stable' cc:ed).
+Ofcourse, it is also entirely possible that you understand perfectly,
+and that seems to be the case here.  If the svc_sock_names call in
+write_ports returns success, we should do a 'lockd_down' - and make
+sure it does return success only if the close succeeded.
 
-It is not relevant for earlier kernels (e.g. 2.6.16).
 
-Patch was made against 2.6.18-rc2-mm1, but applies equally to
-2.6.17.7.
+> --b.
+> 
+> 
+> On Tue, Jul 25, 2006 at 11:55:08AM +1000, NeilBrown wrote:
+> > +		err = nfsd_create_serv();
+> > +		if (!err) {
+> > +			int proto = 0;
+> > +			err = svc_addsock(nfsd_serv, fd, buf, &proto);
+> > +			/* Decrease the count, but don't shutdown the
+> > +			 * the service
+> > +			 */
+> > +			if (err >= 0)
+> > +				lockd_up(proto);
+> > +			nfsd_serv->sv_nrthreads--;
+> ....
+> > @@ -211,8 +211,6 @@ static inline int nfsd_create_serv(void)
+> >  			       nfsd_last_thread);
+> >  	if (nfsd_serv == NULL)
+> >  		err = -ENOMEM;
+> > -	else
+> > -		nfsd_serv->sv_nrthreads++;
+> 
+> I don't understand these sv_nrthreads changes.
+> 
 
-Thanks again,
+The first is simply to counter the reference that was gained in
+nfsd_create_serv. 
+
+The second chunk (removing sv_nrthread++) is fixing a bug in an
+earlier patch.  We never should have had that ++ there, as
+'svc_create' created the object with a reference already.
+
+Thanks,
 NeilBrown
-
-
----------------------------------------------
-Fix race related problem when adding items to and svcrpc auth cache.
-
-If we don't find the item we are lookng for, we allocate a new one,
-and then grab the lock again and search to see if it has been added
-while we did the alloc.
-If it had been added we need to 'cache_put' the newly created item 
-that we are never going to use.  But as it hasn't been initialised
-properly, putting it can cause an oops.
-
-So move the ->init call earlier to that it will always be fully
-initilised if we have to put it.
-
-Thanks to Philipp Matthias Hahn <pmhahn@svs.Informatik.Uni-Oldenburg.de>
-for reporting the problem.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./net/sunrpc/cache.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff .prev/net/sunrpc/cache.c ./net/sunrpc/cache.c
---- .prev/net/sunrpc/cache.c	2006-08-03 10:07:33.000000000 +1000
-+++ ./net/sunrpc/cache.c	2006-08-03 10:08:36.000000000 +1000
-@@ -71,7 +71,12 @@ struct cache_head *sunrpc_cache_lookup(s
- 	new = detail->alloc();
- 	if (!new)
- 		return NULL;
-+	/* must fully initialise 'new', else
-+	 * we might get lose if we need to
-+	 * cache_put it soon.
-+	 */
- 	cache_init(new);
-+	detail->init(new, key);
- 
- 	write_lock(&detail->hash_lock);
- 
-@@ -85,7 +90,6 @@ struct cache_head *sunrpc_cache_lookup(s
- 			return tmp;
- 		}
- 	}
--	detail->init(new, key);
- 	new->next = *head;
- 	*head = new;
- 	detail->entries++;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
