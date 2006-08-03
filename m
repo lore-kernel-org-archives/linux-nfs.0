@@ -1,26 +1,30 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 4/4] Make sunrpc and lockd use
-	register_sysctl_table_path
-Date: Thu, 3 Aug 2006 13:05:38 +0200
-Message-ID: <20060803110538.GA17178@suse.de>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
+	draft-ietf-nfsv4-acls-00 not ready
+Date: Thu, 3 Aug 2006 15:46:12 +0200
+Message-ID: <200608031546.13269.agruen@suse.de>
+References: <C98692FD98048C41885E0B0FACD9DFB8023DF6B9@exnane01.hq.netapp.com>
+	<200607252215.16735.agruen@suse.de>
+	<4654D18B-57AD-4779-80A6-BFD2FCEC4A69@Sun.COM>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Lisa Week <Lisa.Week@sun.com>, nfsv4@ietf.org,
+	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
+	"Noveck, Dave" <Dave.Noveck@netapp.com>,
+	Spencer Shepler <spencer.shepler@sun.com>,
+	"Pawlowski,  Brian" <beepy@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8b1J-0007dp-Mq
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 04:05:41 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G8dTM-0004TE-5v
+	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 06:42:48 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G8b1J-0003Cf-Nv
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 04:05:42 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 56C5F1FD10
-	for <nfs@lists.sourceforge.net>; Thu,  3 Aug 2006 13:05:38 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1G8dTL-0000aK-2m
+	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 06:42:48 -0700
+To: Sam Falkner <Sam.Falkner@sun.com>
+In-Reply-To: <4654D18B-57AD-4779-80A6-BFD2FCEC4A69@Sun.COM>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,110 +37,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Olaf Kirch <okir@suse.de>
-Subject: Make sunrpc and lockd use register_sysctl_table_path
+On Wednesday, 26 July 2006 06:59, Sam Falkner wrote:
+> On Jul 25, 2006, at 2:15 PM, Andreas Gruenbacher wrote:
+> >> But let's pretend that all NFSv4 clients do support the ACL
+> >> attribute.  Having the chmod command unable to set the mode was a
+> >> source of many customer complaints when that was the behavior in
+> >> Solaris (http://xrl.us/pd7c and http://xrl.us/pd7b are just two
+> >> examples of bugs).  The Solaris chmod command was fixed to alter the
+> >> POSIX-draft ACL (in file systems that support POSIX-draft ACLs), so
+> >> that chmod was actually able to change the mode.  Since making this
+> >> change to chmod, complaints have stopped.
+> >
+> > Maybe nobody explained to users how to properly use ACLs to prevent
+> > this from happening? The behavior of Solaris chmod(1) is a potential
+> > security hole, although a small one only.
+>
+> I remind you that in NFSv4, ACL is not a required attribute.
 
-  This changes lockd and sunrpc to use the new register_sysctl_table_path
-  call.
+I think this point has already become clear, but just so that it doesn't 
+appear as if I'm selectively ignoring your arguments, let me reiterate:
 
-Signed-off-by: Olaf Kirch <okir@suse.de>
+I did not miss the fact that NFSv4 implementations may choose not to implement 
+the ACL attribute. In the mapping I am proposing, the mode attribute always 
+reflects the file mode permission bits. On a POSIX server that doesn't 
+support the ACL attribute, the mode attribute represents the file mode 
+permission bits which determine access.
 
- fs/lockd/svc.c      |   29 ++++++-----------------------
- net/sunrpc/sysctl.c |   16 ++++------------
- 2 files changed, 10 insertions(+), 35 deletions(-)
+On the other hand, a server which does support the ACL attribute, the ACL may 
+induce further restrictions on the permissions granted by the mode attribute. 
+In case any alternate ACE mode bits are set which are not disabled, the ACL 
+may also grant permissions that go beyond the file mode permission bits.
 
-Index: linux-2.6.18/net/sunrpc/sysctl.c
-===================================================================
---- linux-2.6.18.orig/net/sunrpc/sysctl.c
-+++ linux-2.6.18/net/sunrpc/sysctl.c
-@@ -38,7 +38,9 @@ void
- rpc_register_sysctl(void)
- {
- 	if (!sunrpc_table_header) {
--		sunrpc_table_header = register_sysctl_table(sunrpc_table, 1);
-+		struct ctl_path ctl_path[] = { { CTL_SUNRPC, "sunrpc", 0555 }, { 0 } };
-+
-+		sunrpc_table_header = register_sysctl_table_path(sunrpc_table, ctl_path);
- #ifdef CONFIG_PROC_FS
- 		if (sunrpc_table[0].de)
- 			sunrpc_table[0].de->owner = THIS_MODULE;
-@@ -125,7 +127,7 @@ static unsigned int max_slot_table_size 
- static unsigned int xprt_min_resvport_limit = RPC_MIN_RESVPORT;
- static unsigned int xprt_max_resvport_limit = RPC_MAX_RESVPORT;
- 
--static ctl_table debug_table[] = {
-+static ctl_table sunrpc_table[] = {
- 	{
- 		.ctl_name	= CTL_RPCDEBUG,
- 		.procname	= "rpc_debug",
-@@ -205,14 +207,4 @@ static ctl_table debug_table[] = {
- 	{ .ctl_name = 0 }
- };
- 
--static ctl_table sunrpc_table[] = {
--	{
--		.ctl_name	= CTL_SUNRPC,
--		.procname	= "sunrpc",
--		.mode		= 0555,
--		.child		= debug_table
--	},
--	{ .ctl_name = 0 }
--};
--
- #endif
-Index: linux-2.6.18/fs/lockd/svc.c
-===================================================================
---- linux-2.6.18.orig/fs/lockd/svc.c
-+++ linux-2.6.18/fs/lockd/svc.c
-@@ -371,26 +371,6 @@ static ctl_table nlm_sysctls[] = {
- 	{ .ctl_name = 0 }
- };
- 
--static ctl_table nlm_sysctl_dir[] = {
--	{
--		.ctl_name	= CTL_UNNUMBERED,
--		.procname	= "nfs",
--		.mode		= 0555,
--		.child		= nlm_sysctls,
--	},
--	{ .ctl_name = 0 }
--};
--
--static ctl_table nlm_sysctl_root[] = {
--	{
--		.ctl_name	= CTL_FS,
--		.procname	= "fs",
--		.mode		= 0555,
--		.child		= nlm_sysctl_dir,
--	},
--	{ .ctl_name = 0 }
--};
--
- /*
-  * Module (and driverfs) parameters.
-  */
-@@ -463,15 +443,18 @@ module_param_call(nlm_tcpport, param_set
- 
- static int __init init_nlm(void)
- {
--	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root, 0);
--	return nlm_sysctl_table ? 0 : -ENOMEM;
-+	struct ctl_path ctl_path[] = { { CTL_FS, "fs", 0555 }, { -2, "nfs", 0555 }, { 0 } };
-+
-+	nlm_sysctl_table = register_sysctl_table_path(nlm_sysctls, ctl_path);
-+	return 0;
- }
- 
- static void __exit exit_nlm(void)
- {
- 	/* FIXME: delete all NLM clients */
- 	nlm_shutdown_hosts();
--	unregister_sysctl_table(nlm_sysctl_table);
-+	if (nlm_sysctl_table)
-+		unregister_sysctl_table(nlm_sysctl_table);
- }
- 
- module_init(init_nlm);
+[For servers that don't support the ACL attribute, it obviously also makes no 
+sense to support file masks.]
+
+> >> So, if we were to do as your proposed design says, and have
+> >> MODE4_RGRP, etc., not reflect the mode, then once again, we would
+> >> have to modify the chmod command to do more than the chmod() system
+> >> call.  This is madness.
+> >
+> > This is not what I am proposing at all.
+> >
+> >> Or, we could simply have MODE4_RGRP, etc., reflect the mode of the
+> >> file.
+> >
+> > This *is* what I am proposing. A mode SETATTR also affects which
+> > permissions are effective in the ACL and which must be disabled, though.
+> > Both proposals disable permissions, but they do so using different
+> > mechanisms: your proposal introduces DENY ACEs spread throughout the
+> > ACL. My proposal sets masks, which are only applied in the access check
+> > algorithm. I argue that simply updating the masks is a much nicer way of
+> > achieving the same effect, and that it avoids the problems inherent to
+> > those DENY ACEs.
+> >
+> >>> Algorithm 5.6.3. is at least problematic because it enforces
+> >>> implementing masking of permissions using DENY ACEs, while an
+> >>> alternative design exists that achieves the same effects without the
+> >>> disadvantages of those DENY ACEs.
+> >>
+> >> That alternative introduces a new file attribute, which causes
+> >> problems for NFSv4.0, and for Windows servers.
+> >
+> > That's not true. There are several ways how we can deal with clients
+> > that do not understand masks:
+>
+> You just ignored my comment about Windows servers.
+
+Not on purpose. I'll assume that your comment is that Windows servers do not 
+(and probably will not) support the proposed file_masks attribute, which is 
+pretty much the same situation as with NFSv4 (RFC3530) servers that also 
+don't support this attribute.
+
+On such a server, nothing prevents users from setting arbitrary ACLs. POSIX 
+applications running on the client may chmod files, which maps to mode 
+SETATTR calls. Because RFC3530 does not define the interaction between a mode 
+SETATTR and the ACL attribute, those servers obviously are not guaranteed to 
+implement strict POSIX semantics.
+
+We could map a chmod to an ACL GETATTR, inject DENY ACEs on the client side as 
+required, and then set both the new mode and the modified ACL. This would 
+give us pretty good POSIX semantics, but implementing this hack on the client 
+side sounds pretty ugly to me.
+
+Is this what you were envisioning?
+
+I believe that a more sane approach would be to accept that non-POSIX NFSv4 
+servers will not have strict POSIX semantics, and live with the fact.
+
+Andreas
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
