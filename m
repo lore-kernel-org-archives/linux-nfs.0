@@ -1,31 +1,25 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
-	draft-ietf-nfsv4-acls-00 not ready
-Date: Fri, 4 Aug 2006 13:19:00 +0200
-Message-ID: <200608041319.01355.agruen@suse.de>
-References: <C98692FD98048C41885E0B0FACD9DFB8023DF6B9@exnane01.hq.netapp.com>
-	<200608040230.52043.a.gruenbacher@computer.org>
-	<D08368D7-3FC7-475F-9138-91A75F42B294@Sun.COM>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 0/3] NLM lock failover
+Date: Fri, 04 Aug 2006 09:27:59 -0400
+Message-ID: <1154698079.3378.2.camel@localhost.localdomain>
+References: <44A41246.2070106@redhat.com>
+	<1154397341.3378.10.camel@localhost.localdomain>
+	<1154683665.21040.2431.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Lisa Week <Lisa.Week@sun.com>, nfsv4@ietf.org,
-	Andreas Gruenbacher <a.gruenbacher@computer.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
-	"Noveck, Dave" <Dave.Noveck@netapp.com>,
-	Spencer Shepler <spencer.shepler@sun.com>,
-	"Pawlowski,  Brian" <beepy@netapp.com>
+Cc: cluster-devel@redhat.com, lhh@redhat.com,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8xeN-0004v0-Cr
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 04:15:31 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G8xeN-00036j-Cy
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 04:15:31 -0700
-To: Sam Falkner <Sam.Falkner@sun.com>
-In-Reply-To: <D08368D7-3FC7-475F-9138-91A75F42B294@Sun.COM>
+	id 1G8zXL-0006Uh-IN
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 06:16:23 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G8zXK-00007Q-PX
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 06:16:24 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1154683665.21040.2431.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,27 +32,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 04 August 2006 03:37, Sam Falkner wrote:
-> On Aug 3, 2006, at 6:30 PM, Andreas Gruenbacher wrote:
-> > Sorry this reply took a while; I was away for a couple of days.
->
-> I could write an extremely lengthy rebuttal to your extremely lengthy
-> reply :-), but please, let's wait until the meeting next week.
+On Fri, 2006-08-04 at 19:27 +1000, Greg Banks wrote:
+> On Tue, 2006-08-01 at 11:55, Wendy Cheng wrote:
+> > o The nfs-utils config flag RESTRICTED_STATD must be off for NLM
+> >   failover to be functional correctly.
+> 
+> That would reopen this ancient security hole:
+> 
+> http://www.cert.org/advisories/CA-99-05-statd-automountd.html
+> 
+> which might not be the best of ideas.
+> 
 
-Please do, so that I'll know what you disagree with, and why. The more issues 
-of dispute we can clearly identify before the meeting, the better.
+ok, thanks ! I'll look into this. But I believe nfs-utils-1.0.8-rc4 has
+this off by default ?
 
-> I will try to have a draft of the revised ACL chapter before then...
-> hopefully tomorrow.
+-- Wendy
 
-That would be really helpful.
-
-Thanks,
-Andreas
-
--- 
-Andreas Gruenbacher <agruen@suse.de>
-Novell / SUSE Labs
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
