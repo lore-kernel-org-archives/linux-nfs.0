@@ -1,24 +1,28 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: Re: Processes hanging, directory hanging
-Date: Fri, 4 Aug 2006 13:51:15 -0300
-Message-ID: <20060804135115.6fc33923@sup-ceu.wrk.terra.com.br>
-References: <20060801103059.129bc1ac@sup-ceu.wrk.terra.com.br>
-	<20060804113838.26ebeed2@sup-ceu.wrk.terra.com.br>
-	<1154704193.4727.11.camel@localhost>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
+Date: Fri, 4 Aug 2006 19:52:32 +0200
+Message-ID: <20060804175232.GA29852@suse.de>
+References: <20060803110538.GA17173@suse.de>
+	<76bd70e30608030952p15e1500cy191b5ef19241b58e@mail.gmail.com>
+	<1154680981.21040.2415.camel@hole.melbourne.sgi.com>
+	<1154705797.4727.18.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, f.soto@terra.com.br
+Cc: Chuck Lever <chucklever@gmail.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Greg Banks <gnb@melbourne.sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G92tN-00021K-C9
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 09:51:21 -0700
-Received: from burta.hst.terra.com.br ([200.176.10.199])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G92tN-0003Z0-5A
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 09:51:21 -0700
+	id 1G93qg-0007GR-To
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 10:52:39 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G93qg-000475-5t
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 10:52:39 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1154704193.4727.11.camel@localhost>
+In-Reply-To: <1154705797.4727.18.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,47 +35,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi.
+On Fri, Aug 04, 2006 at 11:36:37AM -0400, Trond Myklebust wrote:
+> Not really. It would be better to identify and fix the buggy clients
+> that aren't setting the READDIRPLUS maxcount parameter correctly.
 
-On Fri, 04 Aug 2006 11:09:52 -0400, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> So you upgraded the server, and the clients started to hang. What
-> makes you think this is a client problem?
+One of them was Solaris 9, IIRC. Don't recall what the other one was.
+I contacted at least Sun, but that didn't go anywhere.
 
-No, I didn't upgrade the NFS server... I just upgraded the LMTP server,
-which is the software that uses the NFS client on Linux... Sorry if I
-wrote this in a confusing way.
-
-I guess the problem is in NFS client because the directory just
-"disappears" or "hangs" when trying to cd/ls it on that client. The
-problem doesn't happen in any other client, and also, rebooting the
-client solves the problem.
-
-> Have you tried comparing 'nfsstat' output on the client and server to
-> see if the server is processing the client requests. A tcpdump to see
-> if the client is receiving server replies would be useful too.
-
-Ok, I'll try and provide a tcpdump. Comparing "nfsstat" I guess it's
-difficult, because on the server it still gets requests from the other
-clients, and it would be difficult to me to isolate only from that
-client... However, I'll try to get a tcpdump on the server too (the
-servers are EMC storage, not Linux, but I can get them to run tcpdump
-too).
-
-> Also, check what software you upgraded on the server. If it was samba,
-> and you have oplock support enabled, then the problem could be related
-> to leases (IIRC there were a few kernel bugs w.r.t. leases that had to
-> be fixed recently).
-
-The software on the client is an LMTP server, it's developped in-house,
-and it got a somewhat large upgrade for new features. I don't believe
-the problem is related to locks (as in "flock" or "fcntl") because the
-software uses Maildir which doesn't need locks. Anyway, I'll investigate
-this issue about oplocks and leases with the developpers, to see if the
-problem could be related to that.
-
-Thank you very much!
-Filipe Brandenburger
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
