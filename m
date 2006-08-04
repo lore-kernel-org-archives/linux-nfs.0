@@ -1,7 +1,8 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 3 of 4] cpumask: export node_to_cpu_mask consistently
-Date: Fri, 04 Aug 2006 15:37:00 +1000
-Message-ID: <1154669820.21040.2355.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 4 of 4] knfsd: handle non-contiguous cpu and node
+	numbers
+Date: Fri, 04 Aug 2006 15:37:46 +1000
+Message-ID: <1154669863.21040.2357.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -11,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8sMt-0002kY-It
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 22:37:07 -0700
+	id 1G8sNc-0002lR-4x
+	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 22:37:52 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G8sMt-0003pp-TH
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 22:37:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G8sNc-0003vi-FV
+	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 22:37:52 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,40 +30,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-cpumask: ensure that node_to_cpumask() is available to modules for
-all supported combinations of architecture and CONFIG_NUMA.
+knfsd: when allocating per-cpu or per-node rpc thread pools, handle
+the case of noncontiguous cpu or node numbers.
+
+Tested:
+
+Machine                         ARCH    SMP NUMA    SUNRPC  nodes   cpus    hpni    hppi    pools(mode)
+-------                         ----    --- ----    ------  -----   ----    ----    ----    ------------
+4 cpu Xeon SMP                  x86_64  y   y       y       1       4       31      7       4 (percpu)
+4 cpu Xeon SMP                  x86_64  y   y       m       1       4       31      7       4 (percpu)
+4 cpu Xeon SMP                  x86_64  y   n       y       0       4       0       7       4 (percpu)
+4 cpu Xeon SMP                  x86_64  y   n       m       0       4       0       7       4 (percpu)
+4 cpu Xeon SMP                  x86_64  n   n       y       0       1       0       0       1 (global)
+4 cpu Xeon SMP                  x86_64  n   n       m       0       1       0       0       1 (global)
+4 cpu (2 node) Itanium NUMA     ia64    y   y       m       2       4       1023    3       2 (pernode)
+2 cpu (1 node) Itanium NUMA     ia64    y   y       m       1       2       1023    1       1 (global)
+
+* number of nodes and cpus from /sys/devices/system/
+* hpni = value of highest_possible_node_id()
+* hppi = value of highest_possible_processor_id()
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- arch/i386/kernel/smpboot.c |    1 +
- arch/ia64/kernel/numa.c    |    1 +
- 2 files changed, 2 insertions(+)
+ net/sunrpc/svc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Index: linux-2.6.18-rc2/arch/i386/kernel/smpboot.c
+Index: linus-git/net/sunrpc/svc.c
 ===================================================================
---- linux-2.6.18-rc2.orig/arch/i386/kernel/smpboot.c	2006-08-03 13:29:58.956798616 +1000
-+++ linux-2.6.18-rc2/arch/i386/kernel/smpboot.c	2006-08-03 13:30:34.716149882 +1000
-@@ -609,6 +609,7 @@ extern struct {
- /* which logical CPUs are on which nodes */
- cpumask_t node_2_cpu_mask[MAX_NUMNODES] __read_mostly =
- 				{ [0 ... MAX_NUMNODES-1] = CPU_MASK_NONE };
-+EXPORT_SYMBOL(node_2_cpu_mask);
- /* which node each logical CPU is on */
- int cpu_2_node[NR_CPUS] __read_mostly = { [0 ... NR_CPUS-1] = 0 };
- EXPORT_SYMBOL(cpu_2_node);
-Index: linux-2.6.18-rc2/arch/ia64/kernel/numa.c
-===================================================================
---- linux-2.6.18-rc2.orig/arch/ia64/kernel/numa.c	2006-08-03 13:30:03.548201734 +1000
-+++ linux-2.6.18-rc2/arch/ia64/kernel/numa.c	2006-08-03 13:31:01.696642365 +1000
-@@ -28,6 +28,7 @@ u16 cpu_to_node_map[NR_CPUS] __cacheline
- EXPORT_SYMBOL(cpu_to_node_map);
- 
- cpumask_t node_to_cpu_mask[MAX_NUMNODES] __cacheline_aligned;
-+EXPORT_SYMBOL_GPL(node_to_cpu_mask);
- 
- /**
-  * build_cpu_to_node_map - setup cpu to node and node to cpumask arrays
+--- linus-git.orig/net/sunrpc/svc.c	2006-08-01 15:38:30.000000000 +1000
++++ linus-git/net/sunrpc/svc.c	2006-08-02 13:20:35.979647782 +1000
+@@ -116,7 +116,7 @@ fail:
+ static int
+ svc_pool_map_init_percpu(struct svc_pool_map *m)
+ {
+-	unsigned int maxpools = num_possible_cpus();
++	unsigned int maxpools = highest_possible_processor_id()+1;
+ 	unsigned int pidx = 0;
+ 	unsigned int cpu;
+ 	int err;
+@@ -144,7 +144,7 @@ svc_pool_map_init_percpu(struct svc_pool
+ static int
+ svc_pool_map_init_pernode(struct svc_pool_map *m)
+ {
+-	unsigned int maxpools = num_possible_nodes();
++	unsigned int maxpools = highest_possible_node_id()+1;
+ 	unsigned int pidx = 0;
+ 	unsigned int node;
+ 	int err;
 
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
