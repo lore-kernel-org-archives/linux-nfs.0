@@ -1,27 +1,29 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
-Date: Fri, 04 Aug 2006 11:36:37 -0400
-Message-ID: <1154705797.4727.18.camel@localhost>
-References: <20060803110538.GA17173@suse.de>
-	<76bd70e30608030952p15e1500cy191b5ef19241b58e@mail.gmail.com>
-	<1154680981.21040.2415.camel@hole.melbourne.sgi.com>
+Subject: Re: [PATCH 0/3] NLM lock failover
+Date: Fri, 04 Aug 2006 11:51:48 -0400
+Message-ID: <1154706709.4727.21.camel@localhost>
+References: <44A41246.2070106@redhat.com>
+	<1154397341.3378.10.camel@localhost.localdomain>
+	<1154683665.21040.2431.camel@hole.melbourne.sgi.com>
+	<1154698079.3378.2.camel@localhost.localdomain>
+	<1154703362.3378.45.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Olaf Kirch <okir@suse.de>,
+Cc: cluster-devel@redhat.com, lhh@redhat.com,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Chuck Lever <chucklever@gmail.com>
+	Greg Banks <gnb@melbourne.sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G91jM-0003oJ-6t
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 08:36:56 -0700
+	id 1G91y7-00058V-DE
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 08:52:11 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G91jM-00088F-6S
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 08:36:56 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <1154680981.21040.2415.camel@hole.melbourne.sgi.com>
+	(Exim 4.44) id 1G91y7-0006uL-LH
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 08:52:12 -0700
+To: Wendy Cheng <wcheng@redhat.com>
+In-Reply-To: <1154703362.3378.45.camel@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,23 +36,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-08-04 at 18:43 +1000, Greg Banks wrote:
-> On Fri, 2006-08-04 at 02:52, Chuck Lever wrote:
-> > On 8/3/06, Olaf Kirch <okir@suse.de> wrote:
-> > > From: okir@suse.de
-> > > Subject: Add /proc/sys/fs/nfs sysctls to nfsd module
-> > >
-> > >   This patch adds the plumbing for adding nfs-specific sysctls to fs/nfs,
-> > >   and makes the max size of a readdirplus reply tunable.
-> > >
-> > >   The reason for this is that we found that some clients do not seem
-> > >   to grok readdirplus replies larger than 4K. Rather than reducing the
-> > >   overall number this sysctl allows admins to work around these clients.
-> 
-> Neat.
+On Fri, 2006-08-04 at 10:56 -0400, Wendy Cheng wrote:
+> Anyway, better be conservative than sorry - I think we want to switch to
+> "fsid" approach to avoid messing with these networking issues, including
+> IPV6 modification. That is, we use fsid as the key to drop the lock and
+> set per-fsid NLM grace period. The ha-callout will have a 4th argument
+> (fsid) when invoked. 
 
-Not really. It would be better to identify and fix the buggy clients
-that aren't setting the READDIRPLUS maxcount parameter correctly.
+What is the point of doing that? As far as the client is concerned, a
+server has either rebooted or it hasn't. It doesn't know about single
+filesystems rebooting.
 
 Cheers,
   Trond
