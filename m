@@ -1,95 +1,76 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 4 of 4] knfsd: handle non-contiguous cpu and node
-	numbers
-Date: Fri, 04 Aug 2006 15:37:46 +1000
-Message-ID: <1154669863.21040.2357.camel@hole.melbourne.sgi.com>
+From: Greg KH <gregkh@suse.de>
+Subject: [patch 14/23] Fix race related problem when adding items to and svcrpc auth cache.
+Date: Thu, 3 Aug 2006 22:39:56 -0700
+Message-ID: <20060804053956.GO769@kroah.com>
+References: <20060804053258.391158155@quad.kroah.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8sNc-0002lR-4x
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 22:37:52 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G8sNc-0003vi-FV
-	for nfs@lists.sourceforge.net; Thu, 03 Aug 2006 22:37:52 -0700
-To: Andrew Morton <akpm@osdl.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>, torvalds@osdl.org,
+	akpm@osdl.org, alan@lxorguk.ukuu.org.uk, nfs@lists.sourceforge.net,
+	Neil Brown <neilb@suse.de>, Greg Kroah-Hartman <gregkh@suse.de>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1030343AbWHDFpO@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, stable@kernel.org,
+	Philipp Matthias Hahn <pmhahn@svs.Informatik.Uni-Oldenburg.de>
+In-Reply-To: <20060804053807.GA769@kroah.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-knfsd: when allocating per-cpu or per-node rpc thread pools, handle
-the case of noncontiguous cpu or node numbers.
+-stable review patch.  If anyone has any objections, please let us know.
 
-Tested:
+------------------
+From: Neil Brown <neilb@suse.de>
 
-Machine                         ARCH    SMP NUMA    SUNRPC  nodes   cpus    hpni    hppi    pools(mode)
--------                         ----    --- ----    ------  -----   ----    ----    ----    ------------
-4 cpu Xeon SMP                  x86_64  y   y       y       1       4       31      7       4 (percpu)
-4 cpu Xeon SMP                  x86_64  y   y       m       1       4       31      7       4 (percpu)
-4 cpu Xeon SMP                  x86_64  y   n       y       0       4       0       7       4 (percpu)
-4 cpu Xeon SMP                  x86_64  y   n       m       0       4       0       7       4 (percpu)
-4 cpu Xeon SMP                  x86_64  n   n       y       0       1       0       0       1 (global)
-4 cpu Xeon SMP                  x86_64  n   n       m       0       1       0       0       1 (global)
-4 cpu (2 node) Itanium NUMA     ia64    y   y       m       2       4       1023    3       2 (pernode)
-2 cpu (1 node) Itanium NUMA     ia64    y   y       m       1       2       1023    1       1 (global)
+Fix race related problem when adding items to and svcrpc auth cache.
 
-* number of nodes and cpus from /sys/devices/system/
-* hpni = value of highest_possible_node_id()
-* hppi = value of highest_possible_processor_id()
+If we don't find the item we are lookng for, we allocate a new one,
+and then grab the lock again and search to see if it has been added
+while we did the alloc.
+If it had been added we need to 'cache_put' the newly created item
+that we are never going to use.  But as it hasn't been initialised
+properly, putting it can cause an oops.
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+So move the ->init call earlier to that it will always be fully
+initilised if we have to put it.
+
+Thanks to Philipp Matthias Hahn <pmhahn@svs.Informatik.Uni-Oldenburg.de>
+for reporting the problem.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+
 ---
+ net/sunrpc/cache.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
- net/sunrpc/svc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+--- linux-2.6.17.7.orig/net/sunrpc/cache.c
++++ linux-2.6.17.7/net/sunrpc/cache.c
+@@ -71,7 +71,12 @@ struct cache_head *sunrpc_cache_lookup(s
+ 	new = detail->alloc();
+ 	if (!new)
+ 		return NULL;
++	/* must fully initialise 'new', else
++	 * we might get lose if we need to
++	 * cache_put it soon.
++	 */
+ 	cache_init(new);
++	detail->init(new, key);
+ 
+ 	write_lock(&detail->hash_lock);
+ 
+@@ -85,7 +90,6 @@ struct cache_head *sunrpc_cache_lookup(s
+ 			return tmp;
+ 		}
+ 	}
+-	detail->init(new, key);
+ 	new->next = *head;
+ 	*head = new;
+ 	detail->entries++;
 
-Index: linus-git/net/sunrpc/svc.c
-===================================================================
---- linus-git.orig/net/sunrpc/svc.c	2006-08-01 15:38:30.000000000 +1000
-+++ linus-git/net/sunrpc/svc.c	2006-08-02 13:20:35.979647782 +1000
-@@ -116,7 +116,7 @@ fail:
- static int
- svc_pool_map_init_percpu(struct svc_pool_map *m)
- {
--	unsigned int maxpools = num_possible_cpus();
-+	unsigned int maxpools = highest_possible_processor_id()+1;
- 	unsigned int pidx = 0;
- 	unsigned int cpu;
- 	int err;
-@@ -144,7 +144,7 @@ svc_pool_map_init_percpu(struct svc_pool
- static int
- svc_pool_map_init_pernode(struct svc_pool_map *m)
- {
--	unsigned int maxpools = num_possible_nodes();
-+	unsigned int maxpools = highest_possible_node_id()+1;
- 	unsigned int pidx = 0;
- 	unsigned int node;
- 	int err;
-
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--
