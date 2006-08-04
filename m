@@ -1,24 +1,31 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 0/3] NLM lock failover
-Date: Fri, 04 Aug 2006 19:27:46 +1000
-Message-ID: <1154683665.21040.2431.camel@hole.melbourne.sgi.com>
-References: <44A41246.2070106@redhat.com>
-	<1154397341.3378.10.camel@localhost.localdomain>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
+	draft-ietf-nfsv4-acls-00 not ready
+Date: Fri, 4 Aug 2006 12:35:04 +0200
+Message-ID: <200608041235.05290.agruen@suse.de>
+References: <C98692FD98048C41885E0B0FACD9DFB8023DF6B9@exnane01.hq.netapp.com>
+	<200608040230.52043.a.gruenbacher@computer.org>
+	<D08368D7-3FC7-475F-9138-91A75F42B294@Sun.COM>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, lhh@redhat.com,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: Lisa Week <Lisa.Week@sun.com>, nfsv4@ietf.org,
+	Andreas Gruenbacher <a.gruenbacher@computer.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
+	"Noveck, Dave" <Dave.Noveck@netapp.com>,
+	Spencer Shepler <spencer.shepler@sun.com>,
+	"Pawlowski,  Brian" <beepy@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8vyG-0004NO-Aq
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 02:27:56 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G8vyE-0007to-Lf
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 02:27:56 -0700
-To: Wendy Cheng <wcheng@redhat.com>
-In-Reply-To: <1154397341.3378.10.camel@localhost.localdomain>
+	id 1G8x52-0001p3-Sv
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 03:39:01 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G8x50-0003di-Ni
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 03:39:01 -0700
+To: Sam Falkner <Sam.Falkner@sun.com>
+In-Reply-To: <D08368D7-3FC7-475F-9138-91A75F42B294@Sun.COM>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +38,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-08-01 at 11:55, Wendy Cheng wrote:
-> o The nfs-utils config flag RESTRICTED_STATD must be off for NLM
->   failover to be functional correctly.
+On Friday 04 August 2006 03:37, Sam Falkner wrote:
+> On Aug 3, 2006, at 6:30 PM, Andreas Gruenbacher wrote:
+> > Sorry this reply took a while; I was away for a couple of days.
+>
+> I could write an extremely lengthy rebuttal to your extremely lengthy
+> reply :-), but please, let's wait until the meeting next week.
 
-That would reopen this ancient security hole:
+Please do, so that I'll know what you disagree with, and why. The more issues 
+of dispute we can clearly identify before the meeting, the better.
 
-http://www.cert.org/advisories/CA-99-05-statd-automountd.html
+> I will try to have a draft of the revised ACL chapter before then...
+> hopefully tomorrow.
 
-which might not be the best of ideas.
+That would be really helpful.
 
-Greg.
+Thanks,
+Andreas
+
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
-
+Andreas Gruenbacher <agruen@suse.de>
+Novell / SUSE Labs
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
