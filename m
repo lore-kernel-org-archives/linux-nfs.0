@@ -1,28 +1,27 @@
-From: Filipe Brandenburger <branden@terra.com.br>
-Subject: Re: Processes hanging, directory hanging
-Date: Fri, 4 Aug 2006 19:22:34 -0300
-Message-ID: <20060804192234.7f6a99bd@sup-ceu.wrk.terra.com.br>
-References: <20060801103059.129bc1ac@sup-ceu.wrk.terra.com.br>
-	<20060804113838.26ebeed2@sup-ceu.wrk.terra.com.br>
-	<1154704193.4727.11.camel@localhost>
-	<20060804135115.6fc33923@sup-ceu.wrk.terra.com.br>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
+Date: Sat, 5 Aug 2006 09:36:58 +1000
+Message-ID: <17619.55834.927259.225840@cse.unsw.edu.au>
+References: <20060803110538.GA17173@suse.de>
+	<76bd70e30608030952p15e1500cy191b5ef19241b58e@mail.gmail.com>
+	<1154680981.21040.2415.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: f.soto@terra.com.br
+Cc: Olaf Kirch <okir@suse.de>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Chuck Lever <chucklever@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G983y-0004aZ-F8
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 15:22:40 -0700
-Received: from bungunia.hst.terra.com.br ([200.176.10.196])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G983x-0004Xg-4S
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 15:22:39 -0700
-Received: from buruma.hst.terra.com.br (buruma.hst.terra.com.br [200.176.10.2])
-	by bungunia.hst.terra.com.br (Postfix) with ESMTP id D5CBC3C740B8
-	for <nfs@lists.sourceforge.net>; Fri,  4 Aug 2006 19:22:34 -0300 (BRT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20060804135115.6fc33923@sup-ceu.wrk.terra.com.br>
+	id 1G99E9-0002E2-OH
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 16:37:13 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G99E9-0002HV-Pl
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 16:37:14 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Friday August 4
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,81 +34,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
-
-I found this post which seems to be about the same problem:
-http://marc.theaimsgroup.com/?l=linux-kernel&m=105211049508464&w=2
-
-Although it's kernel 2.4, and he doesn't say anything about a directory
-"hanging", only the part of processes stuck in "D", it seems to be like
-my problem.
-
-He says something about using "intr", I'll try to turn it off to see if
-it helps.
-
-In other post in the same thread:
-http://marc.theaimsgroup.com/?l=linux-kernel&m=105214854307866&w=2
-
-He says:
-
-"This happens when you mount an NFS mount with the 'hard' option
-(default) and a mount's handle expires incorrectly (eg: server crash)."
-
-Could this be the cause of my problem? But then what could cause the
-mount's handle to expire incorrectly?
-
-If someone can give me some hints on how to debug this deeper (that is,
-how to know what's going on with these processes inside the kernel),
-please tell me how to do so.
-
-Thanks a lot,
-Filipe Brandenburger
-
-
-
-On Fri, 4 Aug 2006 13:51:15 -0300, Filipe Brandenburger
-<branden@terra.com.br> wrote:
-> On Fri, 04 Aug 2006 11:09:52 -0400, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
-> > So you upgraded the server, and the clients started to hang. What
-> > makes you think this is a client problem?
+On Friday August 4, gnb@melbourne.sgi.com wrote:
 > 
-> No, I didn't upgrade the NFS server... I just upgraded the LMTP
-> server, which is the software that uses the NFS client on Linux...
-> Sorry if I wrote this in a confusing way.
+> Neil, a headsup: this hunk clashes with one in the server large
+> wsize patch, and will require minor and obvious manual adjustment.
 > 
-> I guess the problem is in NFS client because the directory just
-> "disappears" or "hangs" when trying to cd/ls it on that client. The
-> problem doesn't happen in any other client, and also, rebooting the
-> client solves the problem.
-> 
-> > Have you tried comparing 'nfsstat' output on the client and server
-> > to see if the server is processing the client requests. A tcpdump
-> > to see if the client is receiving server replies would be useful
-> > too.
-> 
-> Ok, I'll try and provide a tcpdump. Comparing "nfsstat" I guess it's
-> difficult, because on the server it still gets requests from the other
-> clients, and it would be difficult to me to isolate only from that
-> client... However, I'll try to get a tcpdump on the server too (the
-> servers are EMC storage, not Linux, but I can get them to run tcpdump
-> too).
-> 
-> > Also, check what software you upgraded on the server. If it was
-> > samba, and you have oplock support enabled, then the problem could
-> > be related to leases (IIRC there were a few kernel bugs w.r.t.
-> > leases that had to be fixed recently).
-> 
-> The software on the client is an LMTP server, it's developped
-> in-house, and it got a somewhat large upgrade for new features. I
-> don't believe the problem is related to locks (as in "flock" or
-> "fcntl") because the software uses Maildir which doesn't need locks.
-> Anyway, I'll investigate this issue about oplocks and leases with the
-> developpers, to see if the problem could be related to that.
-> 
-> Thank you very much!
-> Filipe Brandenburger
+Ack.
 
+
+> > I don't recall the history of /proc/sys/fs -- is there also a
+> > /proc/sys/fs/nfsd directory, 
+> 
+> No.
+> 
+> > and wouldn't it be better to add this
+> > particular sysctl in there?
+> 
+> I'd be happy to see such a thing.  One of my pending patches adds
+> serverside sysctls; it feels wrong putting them in /proc/sys/fs/nfs/.
+> OTOH that directory already has four serverside NLM entries that
+> people do use.
+
+And all those nlm tunables are in
+   /sys/module/lockd/parameters/
+as well.
+
+So here is the question.  Should nfsd tunables go in
+ - /proc/sys/fs/something. ?
+   I agree that /proc/sys/fs/nfs isn't the best place.
+   An .../nfsd could be created ofcourse
+
+ - /sys/module/nfsd/parameters/ ?
+   I like this approach.  Believe it or not, 'nfsd' is not a
+   filesystem.  It is a .... service?  So putting it under
+   'fs' has always felt wrong.  And using the modules parameter
+   approach makes it look more like a parameter to a module rather
+   than a config for some filesystem...
+
+ - The 'nfsd' filesystem.
+   (which is mounted under /proc/fs ... I'm beginning to regret that
+    name choice just a little, but there wasn't anywhere else
+    obvious).
+   This is probably best from a usability perspective - all nfsd stuff
+   in the one place.
+
+So of the three options - the one that I find it hardest to justify
+if /proc/sys, which is what the original patch uses - sad.
+
+Other opinions on which is best?
+
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
