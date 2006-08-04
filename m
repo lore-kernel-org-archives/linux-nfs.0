@@ -1,25 +1,28 @@
-From: Olaf Kirch <okir@suse.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
-Date: Fri, 4 Aug 2006 19:55:47 +0200
-Message-ID: <20060804175547.GB29852@suse.de>
+Date: Fri, 04 Aug 2006 14:23:26 -0400
+Message-ID: <1154715807.4727.30.camel@localhost>
 References: <20060803110538.GA17173@suse.de>
 	<76bd70e30608030952p15e1500cy191b5ef19241b58e@mail.gmail.com>
-	<1154624881.5774.96.camel@localhost>
+	<1154680981.21040.2415.camel@hole.melbourne.sgi.com>
+	<1154705797.4727.18.camel@localhost> <20060804175232.GA29852@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Chuck Lever <chucklever@gmail.com>
+Cc: Chuck Lever <chucklever@gmail.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Greg Banks <gnb@melbourne.sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G93tn-0007XL-V1
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 10:55:52 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G94Kw-0001SE-JD
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 11:23:54 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G93tn-0008ML-6h
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 10:55:52 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1154624881.5774.96.camel@localhost>
+	(Exim 4.44) id 1G94Kv-00056N-P1
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 11:23:55 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20060804175232.GA29852@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,20 +35,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> Note, however, that the entire sysctl should be unnecessary. Clients are
-> supposed to tell the server how large a reply to return, by means of the
-> 'maxcount' argument (see RFC1813). If the clients aren't doing that,
-> then they really need to be fixed.
+On Fri, 2006-08-04 at 19:52 +0200, Olaf Kirch wrote:
+> On Fri, Aug 04, 2006 at 11:36:37AM -0400, Trond Myklebust wrote:
+> > Not really. It would be better to identify and fix the buggy clients
+> > that aren't setting the READDIRPLUS maxcount parameter correctly.
+> 
+> One of them was Solaris 9, IIRC. Don't recall what the other one was.
+> I contacted at least Sun, but that didn't go anywhere.
 
->From a distributor's point of view, waiting for the client vendor to
-fix their bugs is often not the best way to go. People buying support
-contracts expect a fix, no matter buy whom, they only want it NOW :-)
-But I understand if you reject this for upstream.
+Yeah.... Solaris appears to have a warped design in their READDIR code.
+They want to specify one size for the actual READDIR reply, and one size
+for all the extra READDIRPLUS gunk (see pages 209 and 210 in Brent's
+'NFS Illustrated').
+In their case, you want to look at the 'dircount' parameter, and
+truncate the readdirplus reply when you hit 'dircount' bytes of filename
++fileid information. After that, you have to look at the total XDR
+information, and truncate again when you hit 'maxcount' bytes.
 
-Olaf
--- 
-Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
-okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Sucks, sucks, sucks....
+
+Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
