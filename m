@@ -1,8 +1,8 @@
 From: Andreas Gruenbacher <agruen@suse.de>
 Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
 	draft-ietf-nfsv4-acls-00 not ready
-Date: Fri, 4 Aug 2006 12:35:04 +0200
-Message-ID: <200608041235.05290.agruen@suse.de>
+Date: Fri, 4 Aug 2006 13:19:00 +0200
+Message-ID: <200608041319.01355.agruen@suse.de>
 References: <C98692FD98048C41885E0B0FACD9DFB8023DF6B9@exnane01.hq.netapp.com>
 	<200608040230.52043.a.gruenbacher@computer.org>
 	<D08368D7-3FC7-475F-9138-91A75F42B294@Sun.COM>
@@ -18,12 +18,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G8x52-0001p3-Sv
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 03:39:01 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1G8xeN-0004v0-Cr
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 04:15:31 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G8x50-0003di-Ni
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 03:39:01 -0700
+	(Exim 4.44) id 1G8xeN-00036j-Cy
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 04:15:31 -0700
 To: Sam Falkner <Sam.Falkner@sun.com>
 In-Reply-To: <D08368D7-3FC7-475F-9138-91A75F42B294@Sun.COM>
 List-Id: "Discussion of NFS under Linux development, interoperability,
