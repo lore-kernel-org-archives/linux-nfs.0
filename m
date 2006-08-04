@@ -1,36 +1,28 @@
-From: Sam Falkner <Sam.Falkner@Sun.COM>
-Subject: Re: [nfsv4] Re: NFSv4 ACL and POSIX interaction / mask,
- draft-ietf-nfsv4-acls-00 not ready
-Date: Fri, 04 Aug 2006 14:20:43 -0600
-Message-ID: <2CC88068-A397-4DEB-8927-606C0A410D2C@Sun.COM>
-References: <C98692FD98048C41885E0B0FACD9DFB8023DF6B9@exnane01.hq.netapp.com>
+From: Filipe Brandenburger <branden@terra.com.br>
+Subject: Re: Processes hanging, directory hanging
+Date: Fri, 4 Aug 2006 19:22:34 -0300
+Message-ID: <20060804192234.7f6a99bd@sup-ceu.wrk.terra.com.br>
+References: <20060801103059.129bc1ac@sup-ceu.wrk.terra.com.br>
+	<20060804113838.26ebeed2@sup-ceu.wrk.terra.com.br>
+	<1154704193.4727.11.camel@localhost>
+	<20060804135115.6fc33923@sup-ceu.wrk.terra.com.br>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Lisa Week <Lisa.Week@Sun.COM>, nfsv4@ietf.org,
-	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
-	Spencer Shepler <spencer.shepler@Sun.COM>,
-	"Pawlowski,  Brian" <beepy@netapp.com>,
-	Andreas Gruenbacher <agruen@suse.de>
+Cc: f.soto@terra.com.br
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G969z-00030O-Hk
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 13:20:43 -0700
-Received: from brmea-mail-2.sun.com ([192.18.98.43])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G969w-00060b-GI
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 13:20:44 -0700
-Received: from fe-amer-03.sun.com ([192.18.108.177])
-	by brmea-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id
-	k74KKeOt013522
-	for <nfs@lists.sourceforge.net>; Fri, 4 Aug 2006 14:20:40 -0600 (MDT)
-Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
-	(Sun Java System Messaging Server 6.2-4.02 (built Sep  9 2005))
-	id <0J3H00A01PEU4X00@mail-amer.sun.com>
-	(original mail from Sam.Falkner@Sun.COM) for nfs@lists.sourceforge.net;
-	Fri, 04 Aug 2006 14:20:40 -0600 (MDT)
-In-reply-to: <C98692FD98048C41885E0B0FACD9DFB8023DF6B9@exnane01.hq.netapp.com>
-To: "Noveck, Dave" <Dave.Noveck@netapp.com>
+	id 1G983y-0004aZ-F8
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 15:22:40 -0700
+Received: from bungunia.hst.terra.com.br ([200.176.10.196])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G983x-0004Xg-4S
+	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 15:22:39 -0700
+Received: from buruma.hst.terra.com.br (buruma.hst.terra.com.br [200.176.10.2])
+	by bungunia.hst.terra.com.br (Postfix) with ESMTP id D5CBC3C740B8
+	for <nfs@lists.sourceforge.net>; Fri,  4 Aug 2006 19:22:34 -0300 (BRT)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20060804135115.6fc33923@sup-ceu.wrk.terra.com.br>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,99 +35,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Jul 21, 2006, at 9:10 AM, Noveck, Dave wrote:
+Hi,
 
->> The current ACL spec, in the minorversion1 draft and in the previous
->> ACL drafts, rigorously specifies mode/ACL interactions by specifying
->> algorithms.  Bruce had the comment that the spec read as though the
->> algorithm was mandatory.
->
-> That was my reading.  Was that the intention or not?
+I found this post which seems to be about the same problem:
+http://marc.theaimsgroup.com/?l=linux-kernel&m=105211049508464&w=2
 
-It was, but note that there were many optional steps.  The problem  
-we've since come to recognize is that there may be other algorithms  
-that do the job, and we don't want to disallow that.
+Although it's kernel 2.4, and he doesn't say anything about a directory
+"hanging", only the part of processes stuck in "D", it seems to be like
+my problem.
 
->> Rethinking, it would be preferable to have the ACL specification
->> specify requirements, and have the algorithms serve as examples.
->
-> I think the requirements that the algorithms are intended to address,
-> would be helpful in understanding, whether the algorithms are
-> examples or are mandatory.
+He says something about using "intr", I'll try to turn it off to see if
+it helps.
 
-Agreed.
+In other post in the same thread:
+http://marc.theaimsgroup.com/?l=linux-kernel&m=105214854307866&w=2
 
->> Or,
->> rewrite the sections as requirements, and release algorithms outside
->> the minorversion1 draft, possibly through one or more informational
->> RFCs.  This would shorten the minorversion1 draft, without
->> invalidating the existing semantics.
->
-> I think this would complicate understanding and review.  Even if
-> the algorithms are examples and not mandatory, I would imagine
-> they would be helpful in understanding the requirements and their
-> implications, and if they are helpful, they should be in the spec,
-> with an indication that they are illustrative and not mandatory.
+He says:
 
-I agree.  How about this: we move the algorithms into an appendix of  
-minorversion1.  The appendix will expressly state that the algorithms  
-are illustrative.  By having them in an appendix, they will be  
-available, as opposed to moving them toward a separate informational  
-RFC.
+"This happens when you mount an NFS mount with the 'hard' option
+(default) and a mount's handle expires incorrectly (eg: server crash)."
 
->> We'll try to have an initial draft of the ACL parts of the
->> minorversion1 document on August 7.  I'll also add an issue to nfs4-
->> editor.org.
->
-> Here's a couple of other things I've noted that you might consider
-> while working in this area:
->
->     There is statement about not using additional mode bits beyond
->     the ones defined but there is a "MUST NOT" addressed to the world
->     in general.  I think the mandate should be for the server.  It  
-> MUST
->     NOT return other bits on GETATTR and MUST return NFS4ERR_INVAL if
->     other bits are set on SETATTR or CREATE/OPEN-create.  The  
-> client is
->     free to use whatever bits he wants.  He is not disobeying the
-> protocol
->     but he will get NFS4ERR_INVAL.
+Could this be the cause of my problem? But then what could cause the
+mount's handle to expire incorrectly?
 
-Done.
+If someone can give me some hints on how to debug this deeper (that is,
+how to know what's going on with these processes inside the kernel),
+please tell me how to do so.
 
->     I don't see the point of allowing multiple behaviors in the  
-> case in
->     which both MODE and ACL are set.  Rather than rell the client  
-> how to
->
->     deal with all possible server behaviors, consider mandating the
-> order
->     in which a SETATTR/CREATE with both MODE and ACL will be processed
-> by
->     the server.  I think that would make life simpler for everybody.
-> The
->     server knows what order he should do these in and the client knows
->     which order the changes will be done in.
+Thanks a lot,
+Filipe Brandenburger
 
-Done.  Yes, this is much simpler.
 
-* * *
 
-Okay, here's the revised text.
+On Fri, 4 Aug 2006 13:51:15 -0300, Filipe Brandenburger
+<branden@terra.com.br> wrote:
+> On Fri, 04 Aug 2006 11:09:52 -0400, Trond Myklebust
+> <trond.myklebust@fys.uio.no> wrote:
+> > So you upgraded the server, and the clients started to hang. What
+> > makes you think this is a client problem?
+> 
+> No, I didn't upgrade the NFS server... I just upgraded the LMTP
+> server, which is the software that uses the NFS client on Linux...
+> Sorry if I wrote this in a confusing way.
+> 
+> I guess the problem is in NFS client because the directory just
+> "disappears" or "hangs" when trying to cd/ls it on that client. The
+> problem doesn't happen in any other client, and also, rebooting the
+> client solves the problem.
+> 
+> > Have you tried comparing 'nfsstat' output on the client and server
+> > to see if the server is processing the client requests. A tcpdump
+> > to see if the client is receiving server replies would be useful
+> > too.
+> 
+> Ok, I'll try and provide a tcpdump. Comparing "nfsstat" I guess it's
+> difficult, because on the server it still gets requests from the other
+> clients, and it would be difficult to me to isolate only from that
+> client... However, I'll try to get a tcpdump on the server too (the
+> servers are EMC storage, not Linux, but I can get them to run tcpdump
+> too).
+> 
+> > Also, check what software you upgraded on the server. If it was
+> > samba, and you have oplock support enabled, then the problem could
+> > be related to leases (IIRC there were a few kernel bugs w.r.t.
+> > leases that had to be fixed recently).
+> 
+> The software on the client is an LMTP server, it's developped
+> in-house, and it got a somewhat large upgrade for new features. I
+> don't believe the problem is related to locks (as in "flock" or
+> "fcntl") because the software uses Maildir which doesn't need locks.
+> Anyway, I'll investigate this issue about oplocks and leases with the
+> developpers, to see if the problem could be related to that.
+> 
+> Thank you very much!
+> Filipe Brandenburger
 
-http://www.nfsv4-editor.org/cgi-bin/roundup/nfsv4/file29/acls.txt
-
-Please forgive the fact that the appendix appears as "Section 3"; it  
-will eventually land in a proper appendix.
-
-Regarding Spencer's question from before, about "ACL compatibility  
-goals for NFSv4.1", this revised chapter qualifies as additional  
-explanatory text.  Nothing is broken from RFC 3530, only clarified.   
-Nothing new is proposed.  To my knowledge, the clients and servers  
-that have been tested at the various Connectathon and Bakeathon  
-events are fine with this spec.
-
-- Sam
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
