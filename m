@@ -1,25 +1,28 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 16/22] [lockd] make nlmclnt_next_cookie SMP safe
-Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8097@suse.de>
+Subject: Re: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
+Date: Sat, 5 Aug 2006 15:15:16 +0200
+Message-ID: <20060805131516.GA9703@suse.de>
+References: <20060803110538.GA17173@suse.de>
+	<76bd70e30608030952p15e1500cy191b5ef19241b58e@mail.gmail.com>
+	<1154680981.21040.2415.camel@hole.melbourne.sgi.com>
+	<17619.55834.927259.225840@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Chuck Lever <chucklever@gmail.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Greg Banks <gnb@melbourne.sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrm-00079s-Rd
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:58 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G9Lzw-00082R-8y
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:15:24 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lrm-0003MY-DG
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:59 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id E30D11FFDD
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1G9Lzw-0005eo-7G
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:15:24 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17619.55834.927259.225840@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,55 +35,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Olaf Kirch <okir@suse.de>
-Subject: [lockd] make nlmclnt_next_cookie SMP safe
+On Sat, Aug 05, 2006 at 09:36:58AM +1000, Neil Brown wrote:
+> So of the three options - the one that I find it hardest to justify
+> if /proc/sys, which is what the original patch uses - sad.
 
-  The way we incremented the NLM cookie in nlmclnt_next_cookie
-  was not thread safe. This patch changes the counter to an
-  atomic_t
+I have no problem with fixing up the patch to use any other mechanism.
+But if we do this, I think we should move all tunables. Having them
+in multiple places just sucks. This includes /proc/sys/sunrpc/*_debug
+(which ended up in /proc/sys/sunrpc because a the time I wrote this code,
+there was no way a module could create a sysctl directory).
 
-Signed-off-by: Olaf Kirch <okir@suse.de>
-
- fs/lockd/clntproc.c         |   10 +++++-----
- include/linux/lockd/lockd.h |    3 ++-
- 2 files changed, 7 insertions(+), 6 deletions(-)
-
-Index: build/fs/lockd/clntproc.c
-===================================================================
---- build.orig/fs/lockd/clntproc.c
-+++ build/fs/lockd/clntproc.c
-@@ -36,14 +36,14 @@ static const struct rpc_call_ops nlmclnt
- /*
-  * Cookie counter for NLM requests
-  */
--static u32	nlm_cookie = 0x1234;
-+static atomic_t	nlm_cookie = ATOMIC_INIT(0x1234);
- 
--static inline void nlmclnt_next_cookie(struct nlm_cookie *c)
-+void nlmclnt_next_cookie(struct nlm_cookie *c)
- {
--	memcpy(c->data, &nlm_cookie, 4);
--	memset(c->data+4, 0, 4);
-+	u32	cookie = atomic_inc_return(&nlm_cookie);
-+
-+	memcpy(c->data, &cookie, 4);
- 	c->len=4;
--	nlm_cookie++;
- }
- 
- static struct nlm_lockowner *nlm_get_lockowner(struct nlm_lockowner *lockowner)
-Index: build/include/linux/lockd/lockd.h
-===================================================================
---- build.orig/include/linux/lockd/lockd.h
-+++ build/include/linux/lockd/lockd.h
-@@ -159,6 +159,7 @@ int		  nlmclnt_block(struct nlm_wait *bl
- u32		  nlmclnt_grant(const struct sockaddr_in *addr, const struct nlm_lock *);
- void		  nlmclnt_recovery(struct nlm_host *);
- int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
-+void		  nlmclnt_next_cookie(struct nlm_cookie *);
- 
- /*
-  * Host cache
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
