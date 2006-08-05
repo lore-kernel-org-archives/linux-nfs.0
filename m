@@ -1,25 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 20/22] [sunrpc] Register all RPC programs with
-	portmapper by default
-Date: Sat, 5 Aug 2006 15:06:49 +0200
-Message-ID: <20060805130649.GA8118@suse.de>
+Subject: [PATCH 9/22] lockd: make the hash chains use a hlist_node
+Date: Sat, 5 Aug 2006 15:06:48 +0200
+Message-ID: <20060805130648.GA8059@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrh-000796-TG
+	id 1G9Lrh-000798-TO
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lrh-0003MN-Hx
+	(Exim 4.44) id 1G9Lrh-0000Tz-Aa
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 4109C101B4
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:49 +0200 (CEST)
+	by mx2.suse.de (Postfix) with ESMTP id 672B51FFCD
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,112 +33,215 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: [sunrpc] Register all RPC programs with portmapper by default
+Subject: lockd: make the hash chains use a hlist_node
 
-  The NFSACL patches introduced support for multiple RPC services
-  listening on the same transport. However, only the first of these
-  services was registered with portmapper. This was perfectly fine
-  for nfsacl, as you traditionally do not want these to show up in a
-  portmapper listing.
-
-  The patch below changes the default behavior to always register
-  all services listening on a given transport, but retains the
-  old behavior for nfsacl services.
+  Get rid of the home-grown singly linked lists for the
+  nlm_host hash table.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/nfsd/nfs2acl.c          |    1 +
- fs/nfsd/nfs3acl.c          |    1 +
- include/linux/sunrpc/svc.h |    3 +++
- net/sunrpc/svc.c           |   37 +++++++++++++++++++++++--------------
- 4 files changed, 28 insertions(+), 14 deletions(-)
+ fs/lockd/host.c             |   71 ++++++++++++++++++++++++--------------------
+ include/linux/lockd/lockd.h |    2 -
+ 2 files changed, 40 insertions(+), 33 deletions(-)
 
-Index: build/fs/nfsd/nfs2acl.c
+Index: build/fs/lockd/host.c
 ===================================================================
---- build.orig/fs/nfsd/nfs2acl.c
-+++ build/fs/nfsd/nfs2acl.c
-@@ -333,4 +333,5 @@ struct svc_version	nfsd_acl_version2 = {
- 		.vs_proc	= nfsd_acl_procedures2,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+		.vs_hidden	= 1,
- };
-Index: build/fs/nfsd/nfs3acl.c
-===================================================================
---- build.orig/fs/nfsd/nfs3acl.c
-+++ build/fs/nfsd/nfs3acl.c
-@@ -263,5 +263,6 @@ struct svc_version	nfsd_acl_version3 = {
- 		.vs_proc	= nfsd_acl_procedures3,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+		.vs_hidden	= 1,
- };
+--- build.orig/fs/lockd/host.c
++++ build/fs/lockd/host.c
+@@ -27,7 +27,7 @@
+ #define NLM_HOST_COLLECT	((nrhosts > nlm_max_hosts)? 120 * HZ :  60 * HZ)
+ #define NLM_HOST_ADDR(sv)	(&(sv)->s_nlmclnt->cl_xprt->addr)
  
-Index: build/include/linux/sunrpc/svc.h
-===================================================================
---- build.orig/include/linux/sunrpc/svc.h
-+++ build/include/linux/sunrpc/svc.h
-@@ -280,6 +280,9 @@ struct svc_version {
- 	struct svc_procedure *	vs_proc;	/* per-procedure info */
- 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+-static struct nlm_host *	nlm_hosts[NLM_HOST_NRHASH];
++static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
+ static unsigned long		next_gc;
+ static int			nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
+@@ -69,7 +69,9 @@ nlm_lookup_host(int server, const struct
+ 					const char *hostname,
+ 					int hostname_len)
+ {
+-	struct nlm_host	*host, **hp;
++	struct hlist_head *chain;
++	struct hlist_node *pos;
++	struct nlm_host	*host;
+ 	struct nsm_handle *nsm = NULL;
+ 	int		hash;
  
-+	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
-+						 * Only used for nfsacl so far. */
-+
- 	/* Override dispatch function (e.g. when caching replies).
- 	 * A return value of 0 means drop the request. 
- 	 * vs_dispatch == NULL means use default dispatcher.
-Index: build/net/sunrpc/svc.c
-===================================================================
---- build.orig/net/sunrpc/svc.c
-+++ build/net/sunrpc/svc.c
-@@ -215,23 +215,32 @@ svc_register(struct svc_serv *serv, int 
- 	unsigned long		flags;
- 	int			i, error = 0, dummy;
+@@ -95,7 +97,8 @@ nlm_lookup_host(int server, const struct
+ 	 * different NLM rpc_clients into one single nlm_host object.
+ 	 * This would allow us to have one nlm_host per address.
+ 	 */
+-	for (hp = &nlm_hosts[hash]; (host = *hp) != 0; hp = &host->h_next) {
++	chain = &nlm_hosts[hash];
++	hlist_for_each_entry(host, pos, chain, h_hash) {
+ 		if (!nlm_cmp_addr(&host->h_addr, sin))
+ 			continue;
  
--	progp = serv->sv_program;
--
--	dprintk("RPC: svc_register(%s, %s, %d)\n",
--		progp->pg_name, proto == IPPROTO_UDP? "udp" : "tcp", port);
--
- 	if (!port)
- 		clear_thread_flag(TIF_SIGPENDING);
+@@ -110,15 +113,16 @@ nlm_lookup_host(int server, const struct
+ 		if (host->h_server != server)
+ 			continue;
  
--	for (i = 0; i < progp->pg_nvers; i++) {
--		if (progp->pg_vers[i] == NULL)
--			continue;
--		error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
--		if (error < 0)
--			break;
--		if (port && !dummy) {
--			error = -EACCES;
--			break;
-+	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-+		for (i = 0; i < progp->pg_nvers; i++) {
-+			if (progp->pg_vers[i] == NULL)
-+				continue;
+-		if (hp != nlm_hosts + hash) {
+-			*hp = host->h_next;
+-			host->h_next = nlm_hosts[hash];
+-			nlm_hosts[hash] = host;
+-		}
++		/* Move to head of hash chain. */
++		hlist_del(&host->h_hash);
++		hlist_add_head(&host->h_hash, chain);
 +
-+			dprintk("RPC: svc_register(%s, %s, %d, %d)%s\n",
-+					progp->pg_name,
-+					proto == IPPROTO_UDP?  "udp" : "tcp",
-+					port,
-+					i,
-+					progp->pg_vers[i]->vs_hidden?
-+						" (but not telling portmap)" : "");
-+
-+			if (progp->pg_vers[i]->vs_hidden)
-+				continue;
-+
-+			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-+			if (error < 0)
-+				break;
-+			if (port && !dummy) {
-+				error = -EACCES;
-+				break;
-+			}
- 		}
+ 		nlm_get_host(host);
+ 		goto out;
  	}
  
++	host = NULL;
++
+ 	/* Sadly, the host isn't in our hash table yet. See if
+ 	 * we have an NSM handle for it. If not, create one.
+ 	 */
+@@ -146,8 +150,7 @@ nlm_lookup_host(int server, const struct
+ 	host->h_nsmstate   = 0;			/* real NSM state */
+ 	host->h_nsmhandle  = nsm;
+ 	host->h_server	   = server;
+-	host->h_next       = nlm_hosts[hash];
+-	nlm_hosts[hash]    = host;
++	hlist_add_head(&host->h_hash, chain);
+ 	INIT_LIST_HEAD(&host->h_lockowners);
+ 	spin_lock_init(&host->h_lock);
+ 	INIT_LIST_HEAD(&host->h_granted);
+@@ -164,14 +167,17 @@ out:
+ struct nlm_host *
+ nlm_find_client(void)
+ {
++	struct hlist_head *chain;
++	struct hlist_node *pos;
++
+ 	/* find a nlm_host for a client for which h_killed == 0.
+ 	 * and return it
+ 	 */
+-	int hash;
+ 	mutex_lock(&nlm_host_mutex);
+-	for (hash = 0 ; hash < NLM_HOST_NRHASH; hash++) {
+-		struct nlm_host *host, **hp;
+-		for (hp = &nlm_hosts[hash]; (host = *hp) != 0; hp = &host->h_next) {
++	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
++		struct nlm_host *host;
++
++		hlist_for_each_entry(host, pos, chain, h_hash) {
+ 			if (host->h_server &&
+ 			    host->h_killed == 0) {
+ 				nlm_get_host(host);
+@@ -290,9 +296,10 @@ void nlm_host_rebooted(const struct sock
+ 				const char *hostname, int hostname_len,
+ 				u32 new_state)
+ {
++	struct hlist_head *chain;
++	struct hlist_node *pos;
+ 	struct nsm_handle *nsm;
+-	struct nlm_host	*host, **hp;
+-	int		hash;
++	struct nlm_host	*host;
+ 
+ 	dprintk("lockd: nlm_host_rebooted(%s, %u.%u.%u.%u)\n",
+ 			hostname, NIPQUAD(sin->sin_addr));
+@@ -311,8 +318,8 @@ void nlm_host_rebooted(const struct sock
+ 	 * To avoid processing a host several times, we match the nsmstate.
+ 	 */
+ again:	mutex_lock(&nlm_host_mutex);
+-	for (hash = 0; hash < NLM_HOST_NRHASH; hash++) {
+-		for (hp = &nlm_hosts[hash]; (host = *hp); hp = &host->h_next) {
++	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
++		hlist_for_each_entry(host, pos, chain, h_hash) {
+ 			if (host->h_nsmhandle == nsm
+ 			 && host->h_nsmstate != new_state) {
+ 				host->h_nsmstate = new_state;
+@@ -346,16 +353,17 @@ again:	mutex_lock(&nlm_host_mutex);
+ void
+ nlm_shutdown_hosts(void)
+ {
++	struct hlist_head *chain;
++	struct hlist_node *pos;
+ 	struct nlm_host	*host;
+-	int		i;
+ 
+ 	dprintk("lockd: shutting down host module\n");
+ 	mutex_lock(&nlm_host_mutex);
+ 
+ 	/* First, make all hosts eligible for gc */
+ 	dprintk("lockd: nuking all hosts...\n");
+-	for (i = 0; i < NLM_HOST_NRHASH; i++) {
+-		for (host = nlm_hosts[i]; host; host = host->h_next)
++	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
++		hlist_for_each_entry(host, pos, chain, h_hash)
+ 			host->h_expires = jiffies - 1;
+ 	}
+ 
+@@ -367,8 +375,8 @@ nlm_shutdown_hosts(void)
+ 	if (nrhosts) {
+ 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
+ 		dprintk("lockd: %d hosts left:\n", nrhosts);
+-		for (i = 0; i < NLM_HOST_NRHASH; i++) {
+-			for (host = nlm_hosts[i]; host; host = host->h_next) {
++		for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
++			hlist_for_each_entry(host, pos, chain, h_hash) {
+ 				dprintk("       %s (cnt %d use %d exp %ld)\n",
+ 					host->h_name, atomic_read(&host->h_count),
+ 					host->h_inuse, host->h_expires);
+@@ -385,32 +393,31 @@ nlm_shutdown_hosts(void)
+ static void
+ nlm_gc_hosts(void)
+ {
+-	struct nlm_host	**q, *host;
++	struct hlist_head *chain;
++	struct hlist_node *pos, *next;
++	struct nlm_host	*host;
+ 	struct rpc_clnt	*clnt;
+-	int		i;
+ 
+ 	dprintk("lockd: host garbage collection\n");
+-	for (i = 0; i < NLM_HOST_NRHASH; i++) {
+-		for (host = nlm_hosts[i]; host; host = host->h_next)
++	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
++		hlist_for_each_entry(host, pos, chain, h_hash)
+ 			host->h_inuse = 0;
+ 	}
+ 
+ 	/* Mark all hosts that hold locks, blocks or shares */
+ 	nlmsvc_mark_resources();
+ 
+-	for (i = 0; i < NLM_HOST_NRHASH; i++) {
+-		q = &nlm_hosts[i];
+-		while ((host = *q) != NULL) {
++	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
++		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
+ 			if (atomic_read(&host->h_count) || host->h_inuse
+ 			 || time_before(jiffies, host->h_expires)) {
+ 				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
+ 					host->h_name, atomic_read(&host->h_count),
+ 					host->h_inuse, host->h_expires);
+-				q = &host->h_next;
+ 				continue;
+ 			}
+ 			dprintk("lockd: delete host %s\n", host->h_name);
+-			*q = host->h_next;
++			hlist_del_init(&host->h_hash);
+ 
+ 			/*
+ 			 * Unmonitor unless host was invalidated (i.e. lockd restarted)
+Index: build/include/linux/lockd/lockd.h
+===================================================================
+--- build.orig/include/linux/lockd/lockd.h
++++ build/include/linux/lockd/lockd.h
+@@ -37,7 +37,7 @@
+  * Lockd host handle (used both by the client and server personality).
+  */
+ struct nlm_host {
+-	struct nlm_host *	h_next;		/* linked list (hash table) */
++	struct hlist_node	h_hash;		/* doubly linked list */
+ 	struct sockaddr_in	h_addr;		/* peer address */
+ 	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
+ 	char *			h_name;		/* remote hostname */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
