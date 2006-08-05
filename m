@@ -1,24 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 4/22] When looking up a lockd host,
-	pass hostname & length
-Date: Sat, 5 Aug 2006 15:06:47 +0200
-Message-ID: <20060805130647.GA8034@suse.de>
+Subject: [PATCH 10/22] lockd: Change list of blocked list to list_node
+Date: Sat, 5 Aug 2006 15:06:48 +0200
+Message-ID: <20060805130648.GA8065@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrf-00078I-9H
+	id 1G9Lrf-00078f-Lh
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lre-0000Sw-PU
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
+	(Exim 4.44) id 1G9Lre-0003Ke-R7
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:52 -0700
 Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 0B1781FFC8
+	by mx1.suse.de (Postfix) with ESMTP id 81272101B0
 	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -34,210 +33,322 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: When looking up a lockd host, pass hostname & length
+Subject: lockd: Change list of blocked list to list_node
 
-  This patch adds the peer's hostname (and name length) to
-  all calls to nlm*_lookup_host functions. A subsequent patch
-  will make use of these.
+ This patch changes the nlm_blocked list to use a list_node
+ instead of homegrown linked list handling.
 
-Signed-off-by: okir@suse.de
+Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/clntproc.c         |    4 +++-
- fs/lockd/host.c             |   37 +++++++++++++++++++++++++------------
- fs/lockd/svc4proc.c         |    4 ++--
- fs/lockd/svclock.c          |    3 ++-
- fs/lockd/svcproc.c          |    4 ++--
- include/linux/lockd/lockd.h |    6 +++---
- 6 files changed, 37 insertions(+), 21 deletions(-)
+ fs/lockd/svclock.c          |  112 ++++++++++++++++++++------------------------
+ fs/lockd/svcsubs.c          |    8 +--
+ include/linux/lockd/lockd.h |    7 +-
+ 3 files changed, 58 insertions(+), 69 deletions(-)
 
-Index: build/fs/lockd/clntproc.c
-===================================================================
---- build.orig/fs/lockd/clntproc.c
-+++ build/fs/lockd/clntproc.c
-@@ -151,6 +151,7 @@ static void nlmclnt_release_lockargs(str
- int
- nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
- {
-+	struct nfs_server	*nfssrv = NFS_SERVER(inode);
- 	struct nlm_host		*host;
- 	struct nlm_rqst		*call;
- 	sigset_t		oldset;
-@@ -166,7 +167,8 @@ nlmclnt_proc(struct inode *inode, int cm
- 	/* Retrieve transport protocol from NFS client */
- 	proto = NFS_CLIENT(inode)->cl_xprt->prot;
- 
--	host = nlmclnt_lookup_host(NFS_ADDR(inode), proto, vers);
-+	host = nlmclnt_lookup_host(NFS_ADDR(inode), proto, vers,
-+				nfssrv->hostname, strlen(nfssrv->hostname));
- 	if (host == NULL)
- 		return -ENOLCK;
- 
-Index: build/fs/lockd/host.c
-===================================================================
---- build.orig/fs/lockd/host.c
-+++ build/fs/lockd/host.c
-@@ -39,19 +39,23 @@ static void			nlm_gc_hosts(void);
-  * Find an NLM server handle in the cache. If there is none, create it.
-  */
- struct nlm_host *
--nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version)
-+nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
-+			const char *hostname, int hostname_len)
- {
--	return nlm_lookup_host(0, sin, proto, version);
-+	return nlm_lookup_host(0, sin, proto, version,
-+			       hostname, hostname_len);
- }
- 
- /*
-  * Find an NLM client handle in the cache. If there is none, create it.
-  */
- struct nlm_host *
--nlmsvc_lookup_host(struct svc_rqst *rqstp)
-+nlmsvc_lookup_host(struct svc_rqst *rqstp,
-+			const char *hostname, int hostname_len)
- {
- 	return nlm_lookup_host(1, &rqstp->rq_addr,
--			       rqstp->rq_prot, rqstp->rq_vers);
-+			       rqstp->rq_prot, rqstp->rq_vers,
-+			       hostname, hostname_len);
- }
- 
- /*
-@@ -59,14 +63,20 @@ nlmsvc_lookup_host(struct svc_rqst *rqst
-  */
- struct nlm_host *
- nlm_lookup_host(int server, const struct sockaddr_in *sin,
--					int proto, int version)
-+					int proto, int version,
-+					const char *hostname,
-+					int hostname_len)
- {
- 	struct nlm_host	*host, **hp;
- 	u32		addr;
- 	int		hash;
- 
--	dprintk("lockd: nlm_lookup_host(%08x, p=%d, v=%d)\n",
--			(unsigned)(sin? ntohl(sin->sin_addr.s_addr) : 0), proto, version);
-+	dprintk("lockd: nlm_lookup_host(%u.%u.%u.%u, p=%d, v=%d, my role=%s, name=%.*s)\n",
-+			NIPQUAD(sin->sin_addr.s_addr), proto, version,
-+			server? "server" : "client",
-+			hostname_len,
-+			hostname? hostname : "<none>");
-+
- 
- 	hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
- 
-@@ -263,19 +273,22 @@ void nlm_release_host(struct nlm_host *h
- void nlm_host_rebooted(const struct sockaddr_in *sin, const struct nlm_reboot *argp)
- {
- 	struct nlm_host *host;
-+	int server;
- 
- 	/* Obtain the host pointer for this NFS server and try to
- 	 * reclaim all locks we hold on this server.
- 	 */
--	if ((argp->proto & 1)==0) {
-+	server = (argp->proto & 1)? 1 : 0;
-+	host = nlm_lookup_host(server, sin, argp->proto >> 1, argp->vers,
-+			argp->mon, argp->len);
-+	if (host == NULL)
-+		return;
-+
-+	if (server == 0) {
- 		/* We are client, he's the server: try to reclaim all locks. */
--		if ((host = nlmclnt_lookup_host(sin, argp->proto >> 1, argp->vers)) == NULL)
--			return;
- 		nlmclnt_recovery(host, argp->state);
- 	} else {
- 		/* He's the client, we're the server: delete all locks held by the client */
--		if ((host = nlm_lookup_host(1, sin, argp->proto >> 1, argp->vers)) == NULL)
--			return;
- 		nlmsvc_free_host_resources(host);
- 	}
- 	nlm_release_host(host);
-Index: build/fs/lockd/svc4proc.c
-===================================================================
---- build.orig/fs/lockd/svc4proc.c
-+++ build/fs/lockd/svc4proc.c
-@@ -38,7 +38,7 @@ nlm4svc_retrieve_args(struct svc_rqst *r
- 		return nlm_lck_denied_nolocks;
- 
- 	/* Obtain host handle */
--	if (!(host = nlmsvc_lookup_host(rqstp))
-+	if (!(host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len))
- 	 || (argp->monitor && nsm_monitor(host) < 0))
- 		goto no_locks;
- 	*hostp = host;
-@@ -260,7 +260,7 @@ static int nlm4svc_callback(struct svc_r
- 	struct nlm_rqst	*call;
- 	int stat;
- 
--	host = nlmsvc_lookup_host(rqstp);
-+	host = nlmsvc_lookup_host(rqstp, NULL, 0);
- 	if (host == NULL)
- 		return rpc_system_err;
- 
 Index: build/fs/lockd/svclock.c
 ===================================================================
 --- build.orig/fs/lockd/svclock.c
 +++ build/fs/lockd/svclock.c
-@@ -179,7 +179,7 @@ nlmsvc_create_block(struct svc_rqst *rqs
- 	struct nlm_rqst		*call = NULL;
+@@ -40,7 +40,7 @@
  
- 	/* Create host handle for callback */
--	host = nlmsvc_lookup_host(rqstp);
-+	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
- 	if (host == NULL)
- 		return NULL;
+ static void nlmsvc_release_block(struct nlm_block *block);
+ static void	nlmsvc_insert_block(struct nlm_block *block, unsigned long);
+-static int	nlmsvc_remove_block(struct nlm_block *block);
++static void	nlmsvc_remove_block(struct nlm_block *block);
  
-@@ -451,6 +451,7 @@ nlmsvc_testlock(struct nlm_file *file, s
- 				(long long)conflock->fl.fl_start,
- 				(long long)conflock->fl.fl_end);
- 		conflock->caller = "somehost";	/* FIXME */
-+		conflock->len = strlen(conflock->caller);
- 		conflock->oh.len = 0;		/* don't return OH info */
- 		conflock->svid = conflock->fl.fl_pid;
- 		return nlm_lck_denied;
-Index: build/fs/lockd/svcproc.c
+ static int nlmsvc_setgrantargs(struct nlm_rqst *call, struct nlm_lock *lock);
+ static void nlmsvc_freegrantargs(struct nlm_rqst *call);
+@@ -49,7 +49,7 @@ static const struct rpc_call_ops nlmsvc_
+ /*
+  * The list of blocked locks to retry
+  */
+-static struct nlm_block *	nlm_blocked;
++static LIST_HEAD(nlm_blocked);
+ 
+ /*
+  * Insert a blocked lock into the global list
+@@ -57,48 +57,41 @@ static struct nlm_block *	nlm_blocked;
+ static void
+ nlmsvc_insert_block(struct nlm_block *block, unsigned long when)
+ {
+-	struct nlm_block **bp, *b;
++	struct nlm_block *b;
++	struct list_head *pos;
+ 
+ 	dprintk("lockd: nlmsvc_insert_block(%p, %ld)\n", block, when);
+-	kref_get(&block->b_count);
+-	if (block->b_queued)
+-		nlmsvc_remove_block(block);
+-	bp = &nlm_blocked;
++	if (list_empty(&block->b_list)) {
++		kref_get(&block->b_count);
++	} else {
++		list_del_init(&block->b_list);
++	}
++
++	pos = &nlm_blocked;
+ 	if (when != NLM_NEVER) {
+ 		if ((when += jiffies) == NLM_NEVER)
+ 			when ++;
+-		while ((b = *bp) && time_before_eq(b->b_when,when) && b->b_when != NLM_NEVER)
+-			bp = &b->b_next;
+-	} else
+-		while ((b = *bp) != 0)
+-			bp = &b->b_next;
++		list_for_each(pos, &nlm_blocked) {
++			b = list_entry(pos, struct nlm_block, b_list);
++			if (time_after(b->b_when,when) || b->b_when == NLM_NEVER)
++				break;
++		}
++	}
+ 
+-	block->b_queued = 1;
++	list_add_tail(&block->b_list, pos);
+ 	block->b_when = when;
+-	block->b_next = b;
+-	*bp = block;
+ }
+ 
+ /*
+  * Remove a block from the global list
+  */
+-static int
++static inline void
+ nlmsvc_remove_block(struct nlm_block *block)
+ {
+-	struct nlm_block **bp, *b;
+-
+-	if (!block->b_queued)
+-		return 1;
+-	for (bp = &nlm_blocked; (b = *bp) != 0; bp = &b->b_next) {
+-		if (b == block) {
+-			*bp = block->b_next;
+-			block->b_queued = 0;
+-			nlmsvc_release_block(block);
+-			return 1;
+-		}
++	if (!list_empty(&block->b_list)) {
++		list_del_init(&block->b_list);
++		nlmsvc_release_block(block);
+ 	}
+-
+-	return 0;
+ }
+ 
+ /*
+@@ -107,14 +100,14 @@ nlmsvc_remove_block(struct nlm_block *bl
+ static struct nlm_block *
+ nlmsvc_lookup_block(struct nlm_file *file, struct nlm_lock *lock)
+ {
+-	struct nlm_block	**head, *block;
++	struct nlm_block	*block;
+ 	struct file_lock	*fl;
+ 
+ 	dprintk("lockd: nlmsvc_lookup_block f=%p pd=%d %Ld-%Ld ty=%d\n",
+ 				file, lock->fl.fl_pid,
+ 				(long long)lock->fl.fl_start,
+ 				(long long)lock->fl.fl_end, lock->fl.fl_type);
+-	for (head = &nlm_blocked; (block = *head) != 0; head = &block->b_next) {
++	list_for_each_entry(block, &nlm_blocked, b_list) {
+ 		fl = &block->b_call->a_args.lock.fl;
+ 		dprintk("lockd: check f=%p pd=%d %Ld-%Ld ty=%d cookie=%s\n",
+ 				block->b_file, fl->fl_pid,
+@@ -147,16 +140,16 @@ nlmsvc_find_block(struct nlm_cookie *coo
+ {
+ 	struct nlm_block *block;
+ 
+-	for (block = nlm_blocked; block; block = block->b_next) {
+-		dprintk("cookie: head of blocked queue %p, block %p\n", 
+-			nlm_blocked, block);
++	list_for_each_entry(block, &nlm_blocked, b_list) {
+ 		if (nlm_cookie_match(&block->b_call->a_args.cookie,cookie)
+ 				&& nlm_cmp_addr(sin, &block->b_host->h_addr))
+-			break;
++			goto found;
+ 	}
+ 
+-	if (block != NULL)
+-		kref_get(&block->b_count);
++	return NULL;
++
++found:
++	kref_get(&block->b_count);
+ 	return block;
+ }
+ 
+@@ -192,6 +185,8 @@ nlmsvc_create_block(struct svc_rqst *rqs
+ 	if (block == NULL)
+ 		goto failed;
+ 	kref_init(&block->b_count);
++	INIT_LIST_HEAD(&block->b_list);
++	INIT_LIST_HEAD(&block->b_flist);
+ 
+ 	if (!nlmsvc_setgrantargs(call, lock))
+ 		goto failed_free;
+@@ -210,8 +205,7 @@ nlmsvc_create_block(struct svc_rqst *rqs
+ 	file->f_count++;
+ 
+ 	/* Add to file's list of blocks */
+-	block->b_fnext  = file->f_blocks;
+-	file->f_blocks  = block;
++	list_add(&block->b_flist, &file->f_blocks);
+ 
+ 	/* Set up RPC arguments for callback */
+ 	block->b_call = call;
+@@ -248,18 +242,12 @@ static void nlmsvc_free_block(struct kre
+ {
+ 	struct nlm_block *block = container_of(kref, struct nlm_block, b_count);
+ 	struct nlm_file		*file = block->b_file;
+-	struct nlm_block	**bp;
+ 
+ 	dprintk("lockd: freeing block %p...\n", block);
+ 
+-	down(&file->f_sema);
+ 	/* Remove block from file's list of blocks */
+-	for (bp = &file->f_blocks; *bp; bp = &(*bp)->b_fnext) {
+-		if (*bp == block) {
+-			*bp = block->b_fnext;
+-			break;
+-		}
+-	}
++	down(&file->f_sema);
++	list_del_init(&block->b_flist);
+ 	up(&file->f_sema);
+ 
+ 	nlmsvc_freegrantargs(block->b_call);
+@@ -290,10 +278,12 @@ static void nlmsvc_act_unlock(struct nlm
+ 
+ restart:
+ 	down(&file->f_sema);
+-	for (block = file->f_blocks; block != NULL; block = block->b_fnext) {
++	list_for_each_entry_safe(block, next, &file->f_blocks, b_flist) {
+ 		if (host != NULL && host != block->b_host)
+ 			continue;
+-		if (!block->b_queued)
++		/* Do not destroy blocks that are not on
++		 * the global retry list - why? */
++		if (list_empty(&block->b_list))
+ 			continue;
+ 		kref_get(&block->b_count);
+ 		up(&file->f_sema);
+@@ -528,10 +518,10 @@ nlmsvc_cancel_blocked(struct nlm_file *f
+ static void
+ nlmsvc_notify_blocked(struct file_lock *fl)
+ {
+-	struct nlm_block	**bp, *block;
++	struct nlm_block	*block;
+ 
+ 	dprintk("lockd: VFS unblock notification for block %p\n", fl);
+-	for (bp = &nlm_blocked; (block = *bp) != 0; bp = &block->b_next) {
++	list_for_each_entry(block, &nlm_blocked, b_list) {
+ 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
+ 			nlmsvc_insert_block(block, 0);
+ 			svc_wake_up(block->b_daemon);
+@@ -700,16 +690,19 @@ nlmsvc_grant_reply(struct svc_rqst *rqst
+ unsigned long
+ nlmsvc_retry_blocked(void)
+ {
+-	struct nlm_block	*block;
++	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
++	struct nlm_block *block;
++
++	while (!list_empty(&nlm_blocked)) {
++		block = list_entry(nlm_blocked.next, struct nlm_block, b_list);
+ 
+-	dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
+-			nlm_blocked,
+-			nlm_blocked? nlm_blocked->b_when : 0);
+-	while ((block = nlm_blocked) != 0) {
+ 		if (block->b_when == NLM_NEVER)
+ 			break;
+-	        if (time_after(block->b_when,jiffies))
++	        if (time_after(block->b_when,jiffies)) {
++			timeout = block->b_when - jiffies;
+ 			break;
++		}
++
+ 		dprintk("nlmsvc_retry_blocked(%p, when=%ld, done=%d)\n",
+ 			block, block->b_when, block->b_done);
+ 		kref_get(&block->b_count);
+@@ -720,8 +713,5 @@ nlmsvc_retry_blocked(void)
+ 		nlmsvc_release_block(block);
+ 	}
+ 
+-	if ((block = nlm_blocked) && block->b_when != NLM_NEVER)
+-		return (block->b_when - jiffies);
+-
+-	return MAX_SCHEDULE_TIMEOUT;
++	return timeout;
+ }
+Index: build/fs/lockd/svcsubs.c
 ===================================================================
---- build.orig/fs/lockd/svcproc.c
-+++ build/fs/lockd/svcproc.c
-@@ -66,7 +66,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
- 		return nlm_lck_denied_nolocks;
+--- build.orig/fs/lockd/svcsubs.c
++++ build/fs/lockd/svcsubs.c
+@@ -100,14 +100,14 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
+ 	nlm_debug_print_fh("creating file for", f);
  
- 	/* Obtain host handle */
--	if (!(host = nlmsvc_lookup_host(rqstp))
-+	if (!(host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len))
- 	 || (argp->monitor && nsm_monitor(host) < 0))
- 		goto no_locks;
- 	*hostp = host;
-@@ -287,7 +287,7 @@ static int nlmsvc_callback(struct svc_rq
- 	struct nlm_rqst	*call;
- 	int stat;
+ 	nfserr = nlm_lck_denied_nolocks;
+-	file = (struct nlm_file *) kmalloc(sizeof(*file), GFP_KERNEL);
++	file = (struct nlm_file *) kzalloc(sizeof(*file), GFP_KERNEL);
+ 	if (!file)
+ 		goto out_unlock;
  
--	host = nlmsvc_lookup_host(rqstp);
-+	host = nlmsvc_lookup_host(rqstp, NULL, 0);
- 	if (host == NULL)
- 		return rpc_system_err;
+-	memset(file, 0, sizeof(*file));
+ 	memcpy(&file->f_handle, f, sizeof(struct nfs_fh));
+ 	file->f_hash = hash;
+ 	init_MUTEX(&file->f_sema);
++	INIT_LIST_HEAD(&file->f_blocks);
  
+ 	/* Open the file. Note that this must not sleep for too long, else
+ 	 * we would lock up lockd:-) So no NFS re-exports, folks.
+@@ -221,7 +221,7 @@ nlm_inspect_file(struct nlm_host *host, 
+ {
+ 	if (action == NLM_ACT_CHECK) {
+ 		/* Fast path for mark and sweep garbage collection */
+-		if (file->f_count || file->f_blocks || file->f_shares)
++		if (file->f_count || list_empty(&file->f_blocks) || file->f_shares)
+ 			return 1;
+ 	} else {
+ 		nlmsvc_traverse_blocks(host, file, action);
+@@ -251,7 +251,7 @@ nlm_traverse_files(struct nlm_host *host
+ 			}
+ 
+ 			/* No more references to this file. Let go of it. */
+-			if (!file->f_blocks && !file->f_locks
++			if (list_empty(&file->f_blocks) && !file->f_locks
+ 			 && !file->f_shares && !file->f_count) {
+ 				*fp = file->f_next;
+ 				nlmsvc_ops->fclose(file->f_file);
 Index: build/include/linux/lockd/lockd.h
 ===================================================================
 --- build.orig/include/linux/lockd/lockd.h
 +++ build/include/linux/lockd/lockd.h
-@@ -163,9 +163,9 @@ int		  nlmclnt_reclaim(struct nlm_host *
- /*
-  * Host cache
-  */
--struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int);
--struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *);
--struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int);
-+struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int, const char *, int);
-+struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *, const char *, int);
-+struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int, const char *, int);
- struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
+@@ -109,7 +109,7 @@ struct nlm_file {
+ 	struct nfs_fh		f_handle;	/* NFS file handle */
+ 	struct file *		f_file;		/* VFS file pointer */
+ 	struct nlm_share *	f_shares;	/* DOS shares */
+-	struct nlm_block *	f_blocks;	/* blocked locks */
++	struct list_head	f_blocks;	/* blocked locks */
+ 	unsigned int		f_locks;	/* guesstimate # of locks */
+ 	unsigned int		f_count;	/* reference count */
+ 	struct semaphore	f_sema;		/* avoid concurrent access */
+@@ -123,14 +123,13 @@ struct nlm_file {
+ #define NLM_NEVER		(~(unsigned long) 0)
+ struct nlm_block {
+ 	struct kref		b_count;	/* Reference count */
+-	struct nlm_block *	b_next;		/* linked list (all blocks) */
+-	struct nlm_block *	b_fnext;	/* linked list (per file) */
++	struct list_head	b_list;		/* linked list of all blocks */
++	struct list_head	b_flist;	/* linked list (per file) */
+ 	struct nlm_rqst	*	b_call;		/* RPC args & callback info */
+ 	struct svc_serv *	b_daemon;	/* NLM service */
+ 	struct nlm_host *	b_host;		/* host handle for RPC clnt */
+ 	unsigned long		b_when;		/* next re-xmit */
+ 	unsigned int		b_id;		/* block id */
+-	unsigned char		b_queued;	/* re-queued */
+ 	unsigned char		b_granted;	/* VFS granted lock */
+ 	unsigned char		b_done;		/* callback complete */
+ 	struct nlm_file *	b_file;		/* file in question */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
