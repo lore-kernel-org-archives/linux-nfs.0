@@ -1,23 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 6/22] Misc minor fixes, indentation changes
+Subject: [PATCH 7/22] lockd: Make nlm_host_rebooted use the nsm_handle
 Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8044@suse.de>
+Message-ID: <20060805130648.GA8049@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrh-00078y-CJ
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:53 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G9Lrf-00078e-H1
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lrh-0000U0-AO
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:53 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(Exim 4.44) id 1G9Lre-0003Kf-R3
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:52 -0700
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 31FA41FFCC
+	by mx1.suse.de (Postfix) with ESMTP id 574C6101AE
 	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -33,72 +33,244 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: Misc minor fixes, indentation changes
+Subject: lockd: Make nlm_host_rebooted use the nsm_handle
 
-This cleans up some code in lockd/host.c, fixes an error printk
-and makes it a fatal BUG if nlmsvc_free_host_resources fails.
+  This patch makes the SM_NOTIFY handling understand and use
+  the nsm_handle.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/host.c    |   15 ++++++---------
- fs/lockd/svcsubs.c |    8 +++++---
- 2 files changed, 11 insertions(+), 12 deletions(-)
+ fs/lockd/clntlock.c         |   53 ++++++++++++-----------------------
+ fs/lockd/host.c             |   65 +++++++++++++++++++++++++++++++-------------
+ fs/lockd/svc4proc.c         |    2 -
+ fs/lockd/svcproc.c          |    2 -
+ include/linux/lockd/lockd.h |    4 +-
+ 5 files changed, 70 insertions(+), 56 deletions(-)
 
+Index: build/fs/lockd/clntlock.c
+===================================================================
+--- build.orig/fs/lockd/clntlock.c
++++ build/fs/lockd/clntlock.c
+@@ -144,41 +144,12 @@ u32 nlmclnt_grant(const struct sockaddr_
+  */
+ 
+ /*
+- * Someone has sent us an SM_NOTIFY. Ensure we bind to the new port number,
+- * that we mark locks for reclaiming, and that we bump the pseudo NSM state.
+- */
+-static void nlmclnt_prepare_reclaim(struct nlm_host *host)
+-{
+-	down_write(&host->h_rwsem);
+-	host->h_state++;
+-	host->h_nextrebind = 0;
+-	nlm_rebind_host(host);
+-
+-	/*
+-	 * Mark the locks for reclaiming.
+-	 */
+-	list_splice_init(&host->h_granted, &host->h_reclaim);
+-
+-	dprintk("NLM: reclaiming locks for host %s", host->h_name);
+-}
+-
+-static void nlmclnt_finish_reclaim(struct nlm_host *host)
+-{
+-	host->h_reclaiming = 0;
+-	up_write(&host->h_rwsem);
+-	dprintk("NLM: done reclaiming locks for host %s", host->h_name);
+-}
+-
+-/*
+  * Reclaim all locks on server host. We do this by spawning a separate
+  * reclaimer thread.
+  */
+ void
+-nlmclnt_recovery(struct nlm_host *host, u32 newstate)
++nlmclnt_recovery(struct nlm_host *host)
+ {
+-	if (host->h_nsmstate == newstate)
+-		return;
+-	host->h_nsmstate = newstate;
+ 	if (!host->h_reclaiming++) {
+ 		nlm_get_host(host);
+ 		__module_get(THIS_MODULE);
+@@ -198,18 +169,30 @@ reclaimer(void *ptr)
+ 	daemonize("%s-reclaim", host->h_name);
+ 	allow_signal(SIGKILL);
+ 
++	down_write(&host->h_rwsem);
++
+ 	/* This one ensures that our parent doesn't terminate while the
+ 	 * reclaim is in progress */
+ 	lock_kernel();
+ 	lockd_up();
+ 
+-	nlmclnt_prepare_reclaim(host);
+-	/* First, reclaim all locks that have been marked. */
++	dprintk("lockd: reclaiming locks for host %s", host->h_name);
++
+ restart:
+ 	nsmstate = host->h_nsmstate;
++
++	/* Force a portmap getport - the peer's lockd will
++	 * most likely end up on a different port.
++	 */
++	host->h_nextrebind = 0;
++	nlm_rebind_host(host);
++
++	/* First, reclaim all locks that have been granted. */
++	list_splice_init(&host->h_granted, &host->h_reclaim);
+ 	list_for_each_entry_safe(fl, next, &host->h_reclaim, fl_u.nfs_fl.list) {
+ 		list_del_init(&fl->fl_u.nfs_fl.list);
+ 
++		/* Why are we leaking memory here? --okir */
+ 		if (signalled())
+ 			continue;
+ 		if (nlmclnt_reclaim(host, fl) != 0)
+@@ -217,11 +200,13 @@ restart:
+ 		list_add_tail(&fl->fl_u.nfs_fl.list, &host->h_granted);
+ 		if (host->h_nsmstate != nsmstate) {
+ 			/* Argh! The server rebooted again! */
+-			list_splice_init(&host->h_granted, &host->h_reclaim);
+ 			goto restart;
+ 		}
+ 	}
+-	nlmclnt_finish_reclaim(host);
++
++	host->h_reclaiming = 0;
++	up_write(&host->h_rwsem);
++	dprintk("NLM: done reclaiming locks for host %s", host->h_name);
+ 
+ 	/* Now, wake up all processes that sleep on a blocked lock */
+ 	list_for_each_entry(block, &nlm_blocked, b_list) {
 Index: build/fs/lockd/host.c
 ===================================================================
 --- build.orig/fs/lockd/host.c
 +++ build/fs/lockd/host.c
-@@ -110,16 +110,13 @@ nlm_lookup_host(int server, const struct
- 		if (host->h_server != server)
- 			continue;
+@@ -286,28 +286,57 @@ void nlm_release_host(struct nlm_host *h
+  * has rebooted.
+  * Release all resources held by that peer.
+  */
+-void nlm_host_rebooted(const struct sockaddr_in *sin, const struct nlm_reboot *argp)
+-{
+-	struct nlm_host *host;
+-	int server;
++void nlm_host_rebooted(const struct sockaddr_in *sin,
++				const char *hostname, int hostname_len,
++				u32 new_state)
++{
++	struct nsm_handle *nsm;
++	struct nlm_host	*host, **hp;
++	int		hash;
  
--		{
--			if (hp != nlm_hosts + hash) {
--				*hp = host->h_next;
--				host->h_next = nlm_hosts[hash];
--				nlm_hosts[hash] = host;
--			}
--			nlm_get_host(host);
--			mutex_unlock(&nlm_host_mutex);
--			return host;
-+		if (hp != nlm_hosts + hash) {
-+			*hp = host->h_next;
-+			host->h_next = nlm_hosts[hash];
-+			nlm_hosts[hash] = host;
- 		}
-+		nlm_get_host(host);
-+		goto out;
+-	/* Obtain the host pointer for this NFS server and try to
+-	 * reclaim all locks we hold on this server.
+-	 */
+-	server = (argp->proto & 1)? 1 : 0;
+-	host = nlm_lookup_host(server, sin, argp->proto >> 1, argp->vers,
+-			argp->mon, argp->len);
+-	if (host == NULL)
++	dprintk("lockd: nlm_host_rebooted(%s, %u.%u.%u.%u)\n",
++			hostname, NIPQUAD(sin->sin_addr));
++
++	/* Find the NSM handle for this peer */
++	if (!(nsm = __nsm_find(sin, hostname, hostname_len, 0)))
+ 		return;
+ 
+-	if (server == 0) {
+-		/* We are client, he's the server: try to reclaim all locks. */
+-		nlmclnt_recovery(host, argp->state);
+-	} else {
+-		/* He's the client, we're the server: delete all locks held by the client */
+-		nlmsvc_free_host_resources(host);
++	/* When reclaiming locks on this peer, make sure that
++	 * we set up a new notification */
++	nsm->sm_monitored = 0;
++
++	/* Mark all hosts tied to this NSM state as having rebooted.
++	 * We run the loop repeatedly, because we drop the host table
++	 * lock for this.
++	 * To avoid processing a host several times, we match the nsmstate.
++	 */
++again:	mutex_lock(&nlm_host_mutex);
++	for (hash = 0; hash < NLM_HOST_NRHASH; hash++) {
++		for (hp = &nlm_hosts[hash]; (host = *hp); hp = &host->h_next) {
++			if (host->h_nsmhandle == nsm
++			 && host->h_nsmstate != new_state) {
++				host->h_nsmstate = new_state;
++				host->h_state++;
++
++				nlm_get_host(host);
++				mutex_unlock(&nlm_host_mutex);
++
++				if (host->h_server) {
++					/* We're server for this guy, just ditch
++					 * all the locks he held. */
++					nlmsvc_free_host_resources(host);
++				} else {
++					/* He's the server, initiate lock recovery. */
++					nlmclnt_recovery(host);
++				}
++
++				nlm_release_host(host);
++				goto again;
++			}
++		}
  	}
- 
- 	/* Sadly, the host isn't in our hash table yet. See if
-Index: build/fs/lockd/svcsubs.c
-===================================================================
---- build.orig/fs/lockd/svcsubs.c
-+++ build/fs/lockd/svcsubs.c
-@@ -116,7 +116,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
- 	 * the file.
- 	 */
- 	if ((nfserr = nlmsvc_ops->fopen(rqstp, f, &file->f_file)) != 0) {
--		dprintk("lockd: open failed (nfserr %d)\n", ntohl(nfserr));
-+		dprintk("lockd: open failed (error %d)\n", nfserr);
- 		goto out_free;
- 	}
- 
-@@ -311,10 +311,12 @@ nlmsvc_free_host_resources(struct nlm_ho
- {
- 	dprintk("lockd: nlmsvc_free_host_resources\n");
- 
--	if (nlm_traverse_files(host, NLM_ACT_UNLOCK))
-+	if (nlm_traverse_files(host, NLM_ACT_UNLOCK)) {
- 		printk(KERN_WARNING
--			"lockd: couldn't remove all locks held by %s",
-+			"lockd: couldn't remove all locks held by %s\n",
- 			host->h_name);
-+		BUG();
-+	}
+-	nlm_release_host(host);
++
++	mutex_unlock(&nlm_host_mutex);
  }
  
  /*
+Index: build/fs/lockd/svc4proc.c
+===================================================================
+--- build.orig/fs/lockd/svc4proc.c
++++ build/fs/lockd/svc4proc.c
+@@ -436,7 +436,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
+ 	 */
+ 	memset(&saddr, 0, sizeof(saddr));
+ 	saddr.sin_addr.s_addr = argp->addr;
+-	nlm_host_rebooted(&saddr, argp);
++	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
+ 
+ 	return rpc_success;
+ }
+Index: build/fs/lockd/svcproc.c
+===================================================================
+--- build.orig/fs/lockd/svcproc.c
++++ build/fs/lockd/svcproc.c
+@@ -465,7 +465,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
+ 	 */
+ 	memset(&saddr, 0, sizeof(saddr));
+ 	saddr.sin_addr.s_addr = argp->addr;
+-	nlm_host_rebooted(&saddr, argp);
++	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
+ 
+ 	return rpc_success;
+ }
+Index: build/include/linux/lockd/lockd.h
+===================================================================
+--- build.orig/include/linux/lockd/lockd.h
++++ build/include/linux/lockd/lockd.h
+@@ -166,7 +166,7 @@ struct nlm_wait * nlmclnt_prepare_block(
+ void		  nlmclnt_finish_block(struct nlm_wait *block);
+ int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout);
+ u32		  nlmclnt_grant(const struct sockaddr_in *addr, const struct nlm_lock *);
+-void		  nlmclnt_recovery(struct nlm_host *, u32);
++void		  nlmclnt_recovery(struct nlm_host *);
+ int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
+ 
+ /*
+@@ -181,7 +181,7 @@ struct nlm_host * nlm_get_host(struct nl
+ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+ extern struct nlm_host *nlm_find_client(void);
+-extern void	  nlm_host_rebooted(const struct sockaddr_in *, const struct nlm_reboot *);
++extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
+ struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
+ void		  nsm_release(struct nsm_handle *);
+ 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
