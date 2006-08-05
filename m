@@ -1,24 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 2/22] Hide use of lockd's h_monitored flag
-Date: Sat, 5 Aug 2006 15:06:47 +0200
-Message-ID: <20060805130647.GA8024@suse.de>
+Subject: [PATCH 11/22] Change nlm_file to use a hlist
+Date: Sat, 5 Aug 2006 15:06:48 +0200
+Message-ID: <20060805130648.GA8070@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrf-00078A-1T
+	id 1G9Lrf-00078H-9A
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lre-0000Su-PN
+	(Exim 4.44) id 1G9Lre-0003Kk-Qz
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id DAD101FFB7
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:47 +0200 (CEST)
+	by mx1.suse.de (Postfix) with ESMTP id 951CD101B1
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,120 +33,153 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: Hide use of lockd's h_monitored flag
+Subject: Change nlm_file to use a hlist
 
-  This patch moves all checks of the h_monitored flag into
-  the nsm_monitor/unmonitor functions.
-  A subsequent patch will replace the mechanism by which we
-  mark a host as being monitored.
+  This changes struct nlm_file and the nlm_files hash table
+  to use a hlist instead of the home-grown lists.
+
+  It also increases the size of the nlm_files hash table from
+  64 to 128.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/clntproc.c |    2 +-
- fs/lockd/host.c     |    9 ++++++---
- fs/lockd/mon.c      |   19 ++++++++++++-------
- fs/lockd/svc4proc.c |    2 +-
- fs/lockd/svcproc.c  |    2 +-
- 5 files changed, 21 insertions(+), 13 deletions(-)
+ fs/lockd/svcsubs.c          |   42 ++++++++++++++++--------------------------
+ include/linux/lockd/lockd.h |    3 +--
+ 2 files changed, 17 insertions(+), 28 deletions(-)
 
-Index: build/fs/lockd/clntproc.c
+Index: build/fs/lockd/svcsubs.c
 ===================================================================
---- build.orig/fs/lockd/clntproc.c
-+++ build/fs/lockd/clntproc.c
-@@ -499,7 +499,7 @@ nlmclnt_lock(struct nlm_rqst *req, struc
- 	unsigned char fl_flags = fl->fl_flags;
- 	int status = -ENOLCK;
+--- build.orig/fs/lockd/svcsubs.c
++++ build/fs/lockd/svcsubs.c
+@@ -25,9 +25,9 @@
+ /*
+  * Global file hash table
+  */
+-#define FILE_HASH_BITS		5
++#define FILE_HASH_BITS		7
+ #define FILE_NRHASH		(1<<FILE_HASH_BITS)
+-static struct nlm_file *	nlm_files[FILE_NRHASH];
++static struct hlist_head	nlm_files[FILE_NRHASH];
+ static DEFINE_MUTEX(nlm_file_mutex);
  
--	if (!host->h_monitored && nsm_monitor(host) < 0) {
-+	if (nsm_monitor(host) < 0) {
- 		printk(KERN_NOTICE "lockd: failed to monitor %s\n",
- 					host->h_name);
- 		goto out;
-Index: build/fs/lockd/host.c
-===================================================================
---- build.orig/fs/lockd/host.c
-+++ build/fs/lockd/host.c
-@@ -327,9 +327,12 @@ nlm_gc_hosts(void)
- 			}
- 			dprintk("lockd: delete host %s\n", host->h_name);
- 			*q = host->h_next;
--			/* Don't unmonitor hosts that have been invalidated */
--			if (host->h_monitored && !host->h_killed)
--				nsm_unmonitor(host);
-+
-+			/*
-+			 * Unmonitor unless host was invalidated (i.e. lockd restarted)
-+			 */
-+			nsm_unmonitor(host);
-+
- 			if ((clnt = host->h_rpcclnt) != NULL) {
- 				if (atomic_read(&clnt->cl_users)) {
- 					printk(KERN_WARNING
-Index: build/fs/lockd/mon.c
-===================================================================
---- build.orig/fs/lockd/mon.c
-+++ build/fs/lockd/mon.c
-@@ -74,6 +74,8 @@ nsm_monitor(struct nlm_host *host)
- 	int		status;
- 
- 	dprintk("lockd: nsm_monitor(%s)\n", host->h_name);
-+	if (host->h_monitored)
-+		return 0;
- 
- 	status = nsm_mon_unmon(host, SM_MON, &res);
- 
-@@ -91,15 +93,18 @@ int
- nsm_unmonitor(struct nlm_host *host)
+ #ifdef NFSD_DEBUG
+@@ -82,6 +82,7 @@ u32
+ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
+ 					struct nfs_fh *f)
  {
- 	struct nsm_res	res;
--	int		status;
-+	int		status = 0;
++	struct hlist_node *pos;
+ 	struct nlm_file	*file;
+ 	unsigned int	hash;
+ 	u32		nfserr;
+@@ -93,7 +94,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
+ 	/* Lock file table */
+ 	mutex_lock(&nlm_file_mutex);
  
- 	dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
+-	for (file = nlm_files[hash]; file; file = file->f_next)
++	hlist_for_each_entry(file, pos, &nlm_files[hash], f_list)
+ 		if (!nfs_compare_fh(&file->f_handle, f))
+ 			goto found;
+ 
+@@ -105,8 +106,8 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
+ 		goto out_unlock;
+ 
+ 	memcpy(&file->f_handle, f, sizeof(struct nfs_fh));
+-	file->f_hash = hash;
+ 	init_MUTEX(&file->f_sema);
++	INIT_HLIST_NODE(&file->f_list);
+ 	INIT_LIST_HEAD(&file->f_blocks);
+ 
+ 	/* Open the file. Note that this must not sleep for too long, else
+@@ -120,8 +121,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
+ 		goto out_free;
+ 	}
+ 
+-	file->f_next = nlm_files[hash];
+-	nlm_files[hash] = file;
++	hlist_add_head(&file->f_list, &nlm_files[hash]);
+ 
+ found:
+ 	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
+@@ -150,22 +150,14 @@ out_free:
+ static inline void
+ nlm_delete_file(struct nlm_file *file)
+ {
+-	struct nlm_file	**fp, *f;
 -
--	status = nsm_mon_unmon(host, SM_UNMON, &res);
--	if (status < 0)
--		printk(KERN_NOTICE "lockd: cannot unmonitor %s\n", host->h_name);
--	else
--		host->h_monitored = 0;
-+	if (!host->h_monitored)
-+		return 0;
-+	host->h_monitored = 0;
-+
-+	if (!host->h_killed) {
-+		status = nsm_mon_unmon(host, SM_UNMON, &res);
-+		if (status < 0)
-+			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n", host->h_name);
-+	}
- 	return status;
+ 	nlm_debug_print_file("closing file", file);
+-
+-	fp = nlm_files + file->f_hash;
+-	while ((f = *fp) != NULL) {
+-		if (f == file) {
+-			*fp = file->f_next;
+-			nlmsvc_ops->fclose(file->f_file);
+-			kfree(file);
+-			return;
+-		}
+-		fp = &f->f_next;
++	if (!hlist_unhashed(&file->f_list)) {
++		hlist_del(&file->f_list);
++		nlmsvc_ops->fclose(file->f_file);
++		kfree(file);
++	} else {
++		printk(KERN_WARNING "lockd: attempt to release unknown file!\n");
+ 	}
+-
+-	printk(KERN_WARNING "lockd: attempt to release unknown file!\n");
  }
  
-Index: build/fs/lockd/svc4proc.c
+ /*
+@@ -236,13 +228,13 @@ nlm_inspect_file(struct nlm_host *host, 
+ static int
+ nlm_traverse_files(struct nlm_host *host, int action)
+ {
+-	struct nlm_file	*file, **fp;
++	struct hlist_node *pos, *next;
++	struct nlm_file	*file;
+ 	int		i;
+ 
+ 	mutex_lock(&nlm_file_mutex);
+ 	for (i = 0; i < FILE_NRHASH; i++) {
+-		fp = nlm_files + i;
+-		while ((file = *fp) != NULL) {
++		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
+ 			/* Traverse locks, blocks and shares of this file
+ 			 * and update file->f_locks count */
+ 			if (nlm_inspect_file(host, file, action)) {
+@@ -253,11 +245,9 @@ nlm_traverse_files(struct nlm_host *host
+ 			/* No more references to this file. Let go of it. */
+ 			if (list_empty(&file->f_blocks) && !file->f_locks
+ 			 && !file->f_shares && !file->f_count) {
+-				*fp = file->f_next;
++				hlist_del(&file->f_list);
+ 				nlmsvc_ops->fclose(file->f_file);
+ 				kfree(file);
+-			} else {
+-				fp = &file->f_next;
+ 			}
+ 		}
+ 	}
+Index: build/include/linux/lockd/lockd.h
 ===================================================================
---- build.orig/fs/lockd/svc4proc.c
-+++ build/fs/lockd/svc4proc.c
-@@ -39,7 +39,7 @@ nlm4svc_retrieve_args(struct svc_rqst *r
+--- build.orig/include/linux/lockd/lockd.h
++++ build/include/linux/lockd/lockd.h
+@@ -105,7 +105,7 @@ struct nlm_rqst {
+  * an NFS client.
+  */
+ struct nlm_file {
+-	struct nlm_file *	f_next;		/* linked list */
++	struct hlist_node	f_list;		/* linked list */
+ 	struct nfs_fh		f_handle;	/* NFS file handle */
+ 	struct file *		f_file;		/* VFS file pointer */
+ 	struct nlm_share *	f_shares;	/* DOS shares */
+@@ -113,7 +113,6 @@ struct nlm_file {
+ 	unsigned int		f_locks;	/* guesstimate # of locks */
+ 	unsigned int		f_count;	/* reference count */
+ 	struct semaphore	f_sema;		/* avoid concurrent access */
+-	int		       	f_hash;		/* hash of f_handle */
+ };
  
- 	/* Obtain host handle */
- 	if (!(host = nlmsvc_lookup_host(rqstp))
--	 || (argp->monitor && !host->h_monitored && nsm_monitor(host) < 0))
-+	 || (argp->monitor && nsm_monitor(host) < 0))
- 		goto no_locks;
- 	*hostp = host;
- 
-Index: build/fs/lockd/svcproc.c
-===================================================================
---- build.orig/fs/lockd/svcproc.c
-+++ build/fs/lockd/svcproc.c
-@@ -67,7 +67,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
- 
- 	/* Obtain host handle */
- 	if (!(host = nlmsvc_lookup_host(rqstp))
--	 || (argp->monitor && !host->h_monitored && nsm_monitor(host) < 0))
-+	 || (argp->monitor && nsm_monitor(host) < 0))
- 		goto no_locks;
- 	*hostp = host;
- 
+ /*
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
