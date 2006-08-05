@@ -1,20 +1,23 @@
-From: "GANESAN VIJAY SRINIVAS" <gvijaysrinivas@gmail.com>
-Subject: Lock file problem in HP-UX 11i
-Date: Sat, 5 Aug 2006 21:46:39 +0800
-Message-ID: <6a6f2e9c0608050646n8845a80v3dadbaef8d34032f@mail.gmail.com>
+From: "Otis Herring" <JSZSQT@dsdohmen.de>
+Subject: We are pleased to inform you that your
+Date: Sat, 05 Aug 2006 18:52:29 +0400
+Message-ID: <E8A4nm6-9507Yt-00@mail.nitros9.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1934178748=="
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9MUD-0002BI-HT
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:46:41 -0700
-Received: from wx-out-0506.google.com ([66.249.82.225])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9MUC-0004IH-Sp
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:46:42 -0700
-Received: by wx-out-0506.google.com with SMTP id r21so249245wxc
-	for <nfs@lists.sourceforge.net>; Sat, 05 Aug 2006 06:46:39 -0700 (PDT)
+	id 1G9Mb6-0002kZ-Ok
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:53:48 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G9Mb6-0001ny-2j
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:53:49 -0700
+Received: from [222.241.107.111] (helo=12.152.184.25)
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1G9Max-0007j7-FD
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:53:41 -0700
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,69 +31,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1934178748==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_59418_20282011.1154785599433"
-
-------=_Part_59418_20282011.1154785599433
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi all,
-           iam not able to lock file sin HP-UX11i machine mounted on NFS.
-i geta  could not create lock directory if i run my application serevr in
-that.
-
-Is there patch or work around available for this?
-
-The mail archives did not have any solution
-Please reply soon
+Icrease Your S''exual Desire and S''perm volume by 500%
+L'onger o''rgasms - The longest most intense o''rgasms of your life
+Multiple o''rgasms - Cum again and again
+S'PUR-M is The Newest and The Safest Way
+100% N''atural and No Side Effects - in contrast to well-known brands.
+Experience three times longer o''rgasms
+World Wide shipping within 24 hours
+ 
+ Clisk here http://www.snakecharmerband.info
 
 
-Cheers
-Vijay
 
-------=_Part_59418_20282011.1154785599433
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi all,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iam not able to lock file sin HP-UX11i machine mounted on NFS.<br>
-i geta&nbsp; could not create lock directory if i run my application serevr in that.<br>
-<br>
-Is there patch or work around available for this?<br>
-<br>
-The mail archives did not have any solution<br>
-Please reply soon<br>
-<br>
-<br>
-Cheers<br>
-Vijay<br>
-
-------=_Part_59418_20282011.1154785599433--
-
-
---===============1934178748==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+fearful esoteric capacitive chimney autocrat bloodstone crap void
+commute stokes valedictory investigate mangle privet priestley puppy
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1934178748==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1934178748==--
