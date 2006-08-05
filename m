@@ -1,29 +1,25 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 0/3] NLM lock failover
-Date: Sat, 05 Aug 2006 01:44:42 -0400
-Message-ID: <1154756682.3384.34.camel@localhost.localdomain>
-References: <44A41246.2070106@redhat.com>
-	<1154397341.3378.10.camel@localhost.localdomain>
-	<1154683665.21040.2431.camel@hole.melbourne.sgi.com>
-	<1154698079.3378.2.camel@localhost.localdomain>
-	<1154703362.3378.45.camel@localhost.localdomain>
-	<1154706709.4727.21.camel@localhost>
+From: Olaf Kirch <okir@suse.de>
+Subject: [PATCH 8/22] lockd: make the nsm upcalls use the nsm_handle
+Date: Sat, 5 Aug 2006 15:06:48 +0200
+Message-ID: <20060805130648.GA8054@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, lhh@redhat.com,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Greg Banks <gnb@melbourne.sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Eme-0004k0-JH
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 22:33:12 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9Eme-0005xN-Of
-	for nfs@lists.sourceforge.net; Fri, 04 Aug 2006 22:33:13 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1154706709.4727.21.camel@localhost>
+	id 1G9Lrf-00078F-66
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G9Lre-0003Kh-R8
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id 5DBCA101AF
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,118 +32,105 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-08-04 at 11:51 -0400, Trond Myklebust wrote:
-> On Fri, 2006-08-04 at 10:56 -0400, Wendy Cheng wrote:
-> > Anyway, better be conservative than sorry - I think we want to switch to
-> > "fsid" approach to avoid messing with these networking issues, including
-> > IPV6 modification. That is, we use fsid as the key to drop the lock and
-> > set per-fsid NLM grace period. The ha-callout will have a 4th argument
-> > (fsid) when invoked. 
-> 
-> What is the point of doing that? As far as the client is concerned, a
-> server has either rebooted or it hasn't. It doesn't know about single
-> filesystems rebooting.
-> 
+From: Olaf Kirch <okir@suse.de>
+Subject: lockd: make the nsm upcalls use the nsm_handle
 
-For active-active failover, the submitted patches allow:  
+  This converts the statd upcalls to use the nsm_handle
 
-1: Drop the locks tied with one particular floating ip (in old server).
-2: Notify relevant clients that the floating ip has been rebooted.
-3: Set per-ip nlm grace period.
-4: The (notified) nfs clients reclaim locks into the new server.
+Signed-off-by: Olaf Kirch <okir@suse.de>
 
-While the above 4 steps are being executed, both servers keep alive with
-other nfs services un-interrupted. (1) and (3) are accomplished by Patch
-3-1 and Patch 3-2. (4) is nfs client's task that follows its existing
-logic without changes. 
+ fs/lockd/mon.c                 |   30 ++++++++++++++++++------------
+ include/linux/lockd/sm_inter.h |    1 -
+ 2 files changed, 18 insertions(+), 13 deletions(-)
 
-For (2), the basics are built upon the existing rpc.statd's HA features,
-specifically the -H and -nNP option. It, however, needs Patch 3-3 to
-pass the correct floating ip address into rpc.statd user mode daemon as
-the following: 
-
-For system not involved in HA failover, nothing has change. All new
-functions are optional with added-on feature. For cluster failover,
-
-1. The rpc.statd is dispatched as "rpc.statd -H ha-callout"
-2. Upon each monitor RPC calls (SM_MON or SM_UNMON), rpc.statd
-   received the following from kernel:
-   2-a: event (mon or unmon)
-   2-b: server interface
-   2-c: client interface.
-3. The rpc.statd does its normal chores by writing or deleting 
-   the client interface to/from the default sm directory. Server
-   interface is not used here.  
-   (btw, this is the existing logic without changes).
-4. Then, the rpc.statd invokes ha-callout with the following three
-   arguments:
-   4-a: event (add-client or del-client)
-   4-b: server interface
-   4-c: client interface
-   The ha-callout (in our case, it will be part of RHCS cluster suite)
-   builds multiple sm directories based on 4-b, say 
-   /shared_storage/sm_x,  where x is server's ip interface.
-5. Upon failover, the cluster suite invokes 
-   "rpc.statd -n x -N -P /shared_storage/sm_x" to notify affected
-   clients. The new short-life rpc.statd will send the notification to
-   relevant (nlm) clients and subsequently exits. The old rpc.statd
-   (from step 1) is not aware of the failover event.
-
-Note that before patch 3-3, the kernel always sets 2-b to
-system_utsname.nodename. For rpc.statd, if RESTRICTED_STATD flag is on,
-the rpc.statd always set 4-b to 127.0.0.1. Without RESTRICTED_STATD on,
-it sets 4-b with whatever was passed by kernel (via 2-b). What (kernel)
-patch 3-3 does is setting 2-b to the floating ip so rpc.statd could get
-the correct ip and pass it into 4-b.
-
-Greg said (I havn't figured out how) without setting 4-b to 127.0.0.1,
-we "may" open a security hole. So the thinking here is, then, let's not
-change anything but add an fsid as 4th argument for ha-callout as:
-
-   4-d: fsid.
-
-where "fsid" can be viewed as an unique identifier for an NFS export
-specified in exports file (check "man exports"); e.g.
-
-        /failover_dir   *(rw, fsid=1234)
-
-With the added fsid info from ha-callout program, the cluster suite (or
-human administrator) should be able to associated which (nlm) client has
-been affected by one particular failover. 
-
->From implementation point of view, since fsid, if specified, has already
-been part of the filehandle that is part of the nlm_file structure, we
-should be able to replace the floating ip in the submitted patches with
-fsid and still accomplish the very same thing. In short, the failover
-sequence with the new interface would look like:
-
-taken-over server:
-A-1. tear down floating ip, say 10.10.1.1
-A-2. unexport subject filesystem
-A-3. "echo 1234 > /proc/fs/nfsd/nlm_unlock"  //fsid=1234
-A-4. umount filesystem.
-
-take-over server:
-B-1. mount the subject filesystem
-B-2. "echo 1234 > /proc/fs/nfsd/nlm_set_ip_grace"
-B-3. "rpc.statd -n 10.10.1.1 -N -P /shared_storage/sm_10.10.1.1"
-B-4. bring up 10.10.1.1
-B-5. re-export the filesystem
-
-A-3 and B-2 could be issued multiple times if the floating ip is
-associated with multiple fsid(s).
-
-Make sense ?
-
-This fsid can also resolve Neil's concern (about nlm client using wrong
-server interface to access filesystem) that I'll follow up sometime next
-week. 
-
--- Wendy
-
-
-
-
+Index: build/fs/lockd/mon.c
+===================================================================
+--- build.orig/fs/lockd/mon.c
++++ build/fs/lockd/mon.c
+@@ -30,7 +30,7 @@ u32				nsm_local_state;
+  * Common procedure for SM_MON/SM_UNMON calls
+  */
+ static int
+-nsm_mon_unmon(struct nlm_host *host, u32 proc, struct nsm_res *res)
++nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+ {
+ 	struct rpc_clnt	*clnt;
+ 	int		status;
+@@ -46,10 +46,10 @@ nsm_mon_unmon(struct nlm_host *host, u32
+ 		goto out;
+ 	}
+ 
+-	args.addr = host->h_addr.sin_addr.s_addr;
+-	args.proto= (host->h_proto<<1) | host->h_server;
++	memset(&args, 0, sizeof(args));
++	args.addr = nsm->sm_addr.sin_addr.s_addr;
+ 	args.prog = NLM_PROGRAM;
+-	args.vers = host->h_version;
++	args.vers = 3;
+ 	args.proc = NLMPROC_NSM_NOTIFY;
+ 	memset(res, 0, sizeof(*res));
+ 
+@@ -80,7 +80,7 @@ nsm_monitor(struct nlm_host *host)
+ 	if (nsm->sm_monitored)
+ 		return 0;
+ 
+-	status = nsm_mon_unmon(host, SM_MON, &res);
++	status = nsm_mon_unmon(nsm, SM_MON, &res);
+ 
+ 	if (status < 0 || res.status != 0)
+ 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", host->h_name);
+@@ -99,16 +99,20 @@ nsm_unmonitor(struct nlm_host *host)
+ 	struct nsm_res	res;
+ 	int		status = 0;
+ 
+-	dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
+ 	if (nsm == NULL)
+ 		return 0;
+ 	host->h_nsmhandle = NULL;
+ 
+-	if (!host->h_killed) {
+-		status = nsm_mon_unmon(host, SM_UNMON, &res);
++	if (atomic_read(&nsm->sm_count) == 1
++	 && nsm->sm_monitored && !nsm->sm_sticky) {
++		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
++
++		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
+ 		if (status < 0)
+-			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n", host->h_name);
+-		nsm->sm_monitored = 0;
++			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
++					host->h_name);
++		else
++			nsm->sm_monitored = 0;
+ 	}
+ 	nsm_release(nsm);
+ 	return status;
+@@ -178,9 +182,11 @@ xdr_encode_mon(struct rpc_rqst *rqstp, u
+ 	p = xdr_encode_common(rqstp, p, argp);
+ 	if (IS_ERR(p))
+ 		return PTR_ERR(p);
++
++	/* Surprise - there may even be room for an IPv6 address now */
+ 	*p++ = argp->addr;
+-	*p++ = argp->vers;
+-	*p++ = argp->proto;
++	*p++ = 0;
++	*p++ = 0;
+ 	*p++ = 0;
+ 	rqstp->rq_slen = xdr_adjust_iovec(rqstp->rq_svec, p);
+ 	return 0;
+Index: build/include/linux/lockd/sm_inter.h
+===================================================================
+--- build.orig/include/linux/lockd/sm_inter.h
++++ build/include/linux/lockd/sm_inter.h
+@@ -28,7 +28,6 @@ struct nsm_args {
+ 	u32		prog;		/* RPC callback info */
+ 	u32		vers;
+ 	u32		proc;
+-	u32		proto;		/* protocol (udp/tcp) plus server/client flag */
+ };
+ 
+ /*
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
