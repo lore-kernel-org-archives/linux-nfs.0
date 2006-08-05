@@ -1,23 +1,23 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 9/22] lockd: make the hash chains use a hlist_node
+Subject: [PATCH 14/22] Rewrite nlmsvc_invalidate_all
 Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8059@suse.de>
+Message-ID: <20060805130648.GA8087@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrh-000798-TO
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G9Lrk-00079i-W1
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:57 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lrh-0000Tz-Aa
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
-Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(Exim 4.44) id 1G9Lrk-0003MO-IM
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:57 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 672B51FFCD
+	by mx2.suse.de (Postfix) with ESMTP id CE7581FFD6
 	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -33,215 +33,147 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: lockd: make the hash chains use a hlist_node
+Subject: Rewrite nlmsvc_invalidate_all
 
-  Get rid of the home-grown singly linked lists for the
-  nlm_host hash table.
+  nlm_invalidate_all is a funny little function. It seems the purpose
+  is to simulate a server reboot, and make lockd forget all locks held
+  by NFS clients.
+
+  But this function does more; it also marks the host structs of all
+  clients for destruction (well, destroys them).
+
+  This patch moves the destruction of the client hosts from
+  nlmsvc_invalidate_all (in svcsubs.c) to its own function in host.c,
+  and gets rid of the kludgy nlm_find_host function.
+
+  We should consider dropping this step entirely, and just keep the hosts
+  around (when exiting the main loop, we will call nlm_shutdown_hosts
+  anyway).
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/host.c             |   71 ++++++++++++++++++++++++--------------------
- include/linux/lockd/lockd.h |    2 -
- 2 files changed, 40 insertions(+), 33 deletions(-)
+ fs/lockd/host.c             |   43 ++++++++++++++++++++++++++++---------------
+ fs/lockd/svcsubs.c          |   11 +++--------
+ include/linux/lockd/lockd.h |    5 ++---
+ 3 files changed, 33 insertions(+), 26 deletions(-)
 
 Index: build/fs/lockd/host.c
 ===================================================================
 --- build.orig/fs/lockd/host.c
 +++ build/fs/lockd/host.c
-@@ -27,7 +27,7 @@
- #define NLM_HOST_COLLECT	((nrhosts > nlm_max_hosts)? 120 * HZ :  60 * HZ)
- #define NLM_HOST_ADDR(sv)	(&(sv)->s_nlmclnt->cl_xprt->addr)
+@@ -192,30 +192,43 @@ nlm_destroy_host(struct nlm_host *host)
+ 	kfree(host);
+ }
  
--static struct nlm_host *	nlm_hosts[NLM_HOST_NRHASH];
-+static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
- static unsigned long		next_gc;
- static int			nrhosts;
- static DEFINE_MUTEX(nlm_host_mutex);
-@@ -69,7 +69,9 @@ nlm_lookup_host(int server, const struct
- 					const char *hostname,
- 					int hostname_len)
+-struct nlm_host *
+-nlm_find_client(void)
++/*
++ * Destroy all host structs for our clients.
++ */
++void
++nlm_destroy_clients(void)
  {
--	struct nlm_host	*host, **hp;
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host;
- 	struct nsm_handle *nsm = NULL;
- 	int		hash;
- 
-@@ -95,7 +97,8 @@ nlm_lookup_host(int server, const struct
- 	 * different NLM rpc_clients into one single nlm_host object.
- 	 * This would allow us to have one nlm_host per address.
- 	 */
--	for (hp = &nlm_hosts[hash]; (host = *hp) != 0; hp = &host->h_next) {
-+	chain = &nlm_hosts[hash];
-+	hlist_for_each_entry(host, pos, chain, h_hash) {
- 		if (!nlm_cmp_addr(&host->h_addr, sin))
- 			continue;
- 
-@@ -110,15 +113,16 @@ nlm_lookup_host(int server, const struct
- 		if (host->h_server != server)
- 			continue;
- 
--		if (hp != nlm_hosts + hash) {
--			*hp = host->h_next;
--			host->h_next = nlm_hosts[hash];
--			nlm_hosts[hash] = host;
--		}
-+		/* Move to head of hash chain. */
-+		hlist_del(&host->h_hash);
-+		hlist_add_head(&host->h_hash, chain);
-+
- 		nlm_get_host(host);
- 		goto out;
- 	}
- 
-+	host = NULL;
-+
- 	/* Sadly, the host isn't in our hash table yet. See if
- 	 * we have an NSM handle for it. If not, create one.
- 	 */
-@@ -146,8 +150,7 @@ nlm_lookup_host(int server, const struct
- 	host->h_nsmstate   = 0;			/* real NSM state */
- 	host->h_nsmhandle  = nsm;
- 	host->h_server	   = server;
--	host->h_next       = nlm_hosts[hash];
--	nlm_hosts[hash]    = host;
-+	hlist_add_head(&host->h_hash, chain);
- 	INIT_LIST_HEAD(&host->h_lockowners);
- 	spin_lock_init(&host->h_lock);
- 	INIT_LIST_HEAD(&host->h_granted);
-@@ -164,14 +167,17 @@ out:
- struct nlm_host *
- nlm_find_client(void)
- {
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+
- 	/* find a nlm_host for a client for which h_killed == 0.
- 	 * and return it
- 	 */
--	int hash;
- 	mutex_lock(&nlm_host_mutex);
--	for (hash = 0 ; hash < NLM_HOST_NRHASH; hash++) {
--		struct nlm_host *host, **hp;
--		for (hp = &nlm_hosts[hash]; (host = *hp) != 0; hp = &host->h_next) {
-+	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
-+		struct nlm_host *host;
-+
-+		hlist_for_each_entry(host, pos, chain, h_hash) {
- 			if (host->h_server &&
- 			    host->h_killed == 0) {
- 				nlm_get_host(host);
-@@ -290,9 +296,10 @@ void nlm_host_rebooted(const struct sock
- 				const char *hostname, int hostname_len,
- 				u32 new_state)
- {
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
- 	struct nsm_handle *nsm;
--	struct nlm_host	*host, **hp;
--	int		hash;
-+	struct nlm_host	*host;
- 
- 	dprintk("lockd: nlm_host_rebooted(%s, %u.%u.%u.%u)\n",
- 			hostname, NIPQUAD(sin->sin_addr));
-@@ -311,8 +318,8 @@ void nlm_host_rebooted(const struct sock
- 	 * To avoid processing a host several times, we match the nsmstate.
- 	 */
- again:	mutex_lock(&nlm_host_mutex);
--	for (hash = 0; hash < NLM_HOST_NRHASH; hash++) {
--		for (hp = &nlm_hosts[hash]; (host = *hp); hp = &host->h_next) {
-+	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
-+		hlist_for_each_entry(host, pos, chain, h_hash) {
- 			if (host->h_nsmhandle == nsm
- 			 && host->h_nsmstate != new_state) {
- 				host->h_nsmstate = new_state;
-@@ -346,16 +353,17 @@ again:	mutex_lock(&nlm_host_mutex);
- void
- nlm_shutdown_hosts(void)
- {
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
- 	struct nlm_host	*host;
--	int		i;
- 
- 	dprintk("lockd: shutting down host module\n");
- 	mutex_lock(&nlm_host_mutex);
- 
- 	/* First, make all hosts eligible for gc */
- 	dprintk("lockd: nuking all hosts...\n");
--	for (i = 0; i < NLM_HOST_NRHASH; i++) {
--		for (host = nlm_hosts[i]; host; host = host->h_next)
-+	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
-+		hlist_for_each_entry(host, pos, chain, h_hash)
- 			host->h_expires = jiffies - 1;
- 	}
- 
-@@ -367,8 +375,8 @@ nlm_shutdown_hosts(void)
- 	if (nrhosts) {
- 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
- 		dprintk("lockd: %d hosts left:\n", nrhosts);
--		for (i = 0; i < NLM_HOST_NRHASH; i++) {
--			for (host = nlm_hosts[i]; host; host = host->h_next) {
-+		for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
-+			hlist_for_each_entry(host, pos, chain, h_hash) {
- 				dprintk("       %s (cnt %d use %d exp %ld)\n",
- 					host->h_name, atomic_read(&host->h_count),
- 					host->h_inuse, host->h_expires);
-@@ -385,32 +393,31 @@ nlm_shutdown_hosts(void)
- static void
- nlm_gc_hosts(void)
- {
--	struct nlm_host	**q, *host;
-+	struct hlist_head *chain;
+ 	struct hlist_head *chain;
+-	struct hlist_node *pos;
 +	struct hlist_node *pos, *next;
-+	struct nlm_host	*host;
- 	struct rpc_clnt	*clnt;
--	int		i;
  
- 	dprintk("lockd: host garbage collection\n");
--	for (i = 0; i < NLM_HOST_NRHASH; i++) {
--		for (host = nlm_hosts[i]; host; host = host->h_next)
-+	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
-+		hlist_for_each_entry(host, pos, chain, h_hash)
- 			host->h_inuse = 0;
- 	}
+-	/* find a nlm_host for a client for which h_killed == 0.
+-	 * and return it
+-	 */
+ 	mutex_lock(&nlm_host_mutex);
+ 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+ 		struct nlm_host *host;
  
- 	/* Mark all hosts that hold locks, blocks or shares */
- 	nlmsvc_mark_resources();
- 
--	for (i = 0; i < NLM_HOST_NRHASH; i++) {
--		q = &nlm_hosts[i];
--		while ((host = *q) != NULL) {
-+	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry(host, pos, chain, h_hash) {
+-			if (host->h_server &&
+-			    host->h_killed == 0) {
+-				nlm_get_host(host);
+-				mutex_unlock(&nlm_host_mutex);
+-				return host;
+-			}
+-		}
 +		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
- 			if (atomic_read(&host->h_count) || host->h_inuse
- 			 || time_before(jiffies, host->h_expires)) {
- 				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
- 					host->h_name, atomic_read(&host->h_count),
- 					host->h_inuse, host->h_expires);
--				q = &host->h_next;
- 				continue;
- 			}
- 			dprintk("lockd: delete host %s\n", host->h_name);
--			*q = host->h_next;
++			if (!host->h_server)
++				continue;
++
++			/* Remove from hash list. This will also
++			 * tell nlm_release_host that it should
++			 * destroy this host when the refcount
++			 * reaches 0.
++			 */
 +			hlist_del_init(&host->h_hash);
++			if (atomic_read(&host->h_count) == 0) {
++				nlm_destroy_host(host);
++			} else {
++				/* This shouldn't happen, but it's not a desaster
++				 * either. nlm_release_host will just destroy it
++				 * later. */
++				printk(KERN_NOTICE "lockd: host %s has refcount %u "
++						"in nlm_destroy_clients\n",
++						host->h_name,
++						atomic_read(&host->h_count));
++  			}
++  		}
+ 	}
+ 	mutex_unlock(&nlm_host_mutex);
+-	return NULL;
+ }
  
- 			/*
- 			 * Unmonitor unless host was invalidated (i.e. lockd restarted)
+ 				
+Index: build/fs/lockd/svcsubs.c
+===================================================================
+--- build.orig/fs/lockd/svcsubs.c
++++ build/fs/lockd/svcsubs.c
+@@ -351,13 +351,11 @@ nlmsvc_free_host_resources(struct nlm_ho
+ }
+ 
+ /*
+- * delete all hosts structs for clients
++ * Delete all hosts structs for clients
+  */
+ void
+ nlmsvc_invalidate_all(void)
+ {
+-	struct nlm_host *host;
+-
+ 	/* Release all locks held by a NFS clients.
+ 	 * Previously, the code would call
+ 	 * nlmsvc_free_host_resources for each client in
+@@ -365,9 +363,6 @@ nlmsvc_invalidate_all(void)
+ 	 */
+ 	nlm_traverse_files(NULL, nlmsvc_is_client);
+ 
+-	while ((host = nlm_find_client()) != NULL) {
+-		host->h_expires = 0;
+-		host->h_killed = 1;
+-		nlm_release_host(host);
+-	}
++	/* Then destroy the host handles */
++	nlm_destroy_clients();
+ }
 Index: build/include/linux/lockd/lockd.h
 ===================================================================
 --- build.orig/include/linux/lockd/lockd.h
 +++ build/include/linux/lockd/lockd.h
-@@ -37,7 +37,7 @@
-  * Lockd host handle (used both by the client and server personality).
-  */
- struct nlm_host {
--	struct nlm_host *	h_next;		/* linked list (hash table) */
-+	struct hlist_node	h_hash;		/* doubly linked list */
- 	struct sockaddr_in	h_addr;		/* peer address */
- 	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
- 	char *			h_name;		/* remote hostname */
+@@ -45,8 +45,7 @@ struct nlm_host {
+ 	unsigned short		h_proto;	/* transport proto */
+ 	unsigned short		h_reclaiming : 1,
+ 				h_server     : 1, /* server side, not client side */
+-				h_inuse      : 1,
+-				h_killed     : 1;
++				h_inuse      : 1;
+ 	wait_queue_head_t	h_gracewait;	/* wait while reclaiming */
+ 	struct rw_semaphore	h_rwsem;	/* Reboot recovery lock */
+ 	u32			h_state;	/* pseudo-state counter */
+@@ -171,7 +170,7 @@ void		  nlm_rebind_host(struct nlm_host 
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+-extern struct nlm_host *nlm_find_client(void);
++void		  nlm_destroy_clients(void);
+ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
+ struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
+ void		  nsm_release(struct nsm_handle *);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
