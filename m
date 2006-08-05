@@ -1,24 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 14/22] Rewrite nlmsvc_invalidate_all
-Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8087@suse.de>
+Subject: [PATCH 22/22] [lockd] Add kernel statd
+Date: Sat, 5 Aug 2006 15:06:49 +0200
+Message-ID: <20060805130649.GA8128@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrk-00079i-W1
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:57 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1G9Lrk-00079c-35
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:56 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lrk-0003MO-IM
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:57 -0700
+	(Exim 4.44) id 1G9Lrh-0003ML-Gk
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:56 -0700
 Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id CE7581FFD6
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
+	by mx1.suse.de (Postfix) with ESMTP id 73916101B6
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:49 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,147 +33,614 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: Rewrite nlmsvc_invalidate_all
+Subject: [lockd] Add kernel statd
 
-  nlm_invalidate_all is a funny little function. It seems the purpose
-  is to simulate a server reboot, and make lockd forget all locks held
-  by NFS clients.
-
-  But this function does more; it also marks the host structs of all
-  clients for destruction (well, destroys them).
-
-  This patch moves the destruction of the client hosts from
-  nlmsvc_invalidate_all (in svcsubs.c) to its own function in host.c,
-  and gets rid of the kludgy nlm_find_host function.
-
-  We should consider dropping this step entirely, and just keep the hosts
-  around (when exiting the main loop, we will call nlm_shutdown_hosts
-  anyway).
+ This patch adds the kernel statd, and allows the switchable statd support
+ to use this instead of the upcalls to user land statd.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/host.c             |   43 ++++++++++++++++++++++++++++---------------
- fs/lockd/svcsubs.c          |   11 +++--------
- include/linux/lockd/lockd.h |    5 ++---
- 3 files changed, 33 insertions(+), 26 deletions(-)
+ fs/buffer.c                    |    1 
+ fs/lockd/Makefile              |    2 
+ fs/lockd/statd.c               |  405 +++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/svc.c                 |   59 +++++
+ include/linux/lockd/lockd.h    |    1 
+ include/linux/lockd/sm_inter.h |    5 
+ 6 files changed, 469 insertions(+), 4 deletions(-)
 
-Index: build/fs/lockd/host.c
+Index: build/fs/lockd/svc.c
 ===================================================================
---- build.orig/fs/lockd/host.c
-+++ build/fs/lockd/host.c
-@@ -192,30 +192,43 @@ nlm_destroy_host(struct nlm_host *host)
- 	kfree(host);
- }
+--- build.orig/fs/lockd/svc.c
++++ build/fs/lockd/svc.c
+@@ -40,6 +40,7 @@
+ #define ALLOWED_SIGS		(sigmask(SIGKILL))
  
--struct nlm_host *
--nlm_find_client(void)
-+/*
-+ * Destroy all host structs for our clients.
-+ */
-+void
-+nlm_destroy_clients(void)
- {
- 	struct hlist_head *chain;
--	struct hlist_node *pos;
-+	struct hlist_node *pos, *next;
+ static struct svc_program	nlmsvc_program;
++extern struct svc_program	nsmsvc_program;
  
--	/* find a nlm_host for a client for which h_killed == 0.
--	 * and return it
--	 */
- 	mutex_lock(&nlm_host_mutex);
- 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
- 		struct nlm_host *host;
- 
--		hlist_for_each_entry(host, pos, chain, h_hash) {
--			if (host->h_server &&
--			    host->h_killed == 0) {
--				nlm_get_host(host);
--				mutex_unlock(&nlm_host_mutex);
--				return host;
--			}
--		}
-+		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
-+			if (!host->h_server)
-+				continue;
-+
-+			/* Remove from hash list. This will also
-+			 * tell nlm_release_host that it should
-+			 * destroy this host when the refcount
-+			 * reaches 0.
-+			 */
-+			hlist_del_init(&host->h_hash);
-+			if (atomic_read(&host->h_count) == 0) {
-+				nlm_destroy_host(host);
-+			} else {
-+				/* This shouldn't happen, but it's not a desaster
-+				 * either. nlm_release_host will just destroy it
-+				 * later. */
-+				printk(KERN_NOTICE "lockd: host %s has refcount %u "
-+						"in nlm_destroy_clients\n",
-+						host->h_name,
-+						atomic_read(&host->h_count));
-+  			}
-+  		}
- 	}
- 	mutex_unlock(&nlm_host_mutex);
--	return NULL;
- }
- 
- 				
-Index: build/fs/lockd/svcsubs.c
-===================================================================
---- build.orig/fs/lockd/svcsubs.c
-+++ build/fs/lockd/svcsubs.c
-@@ -351,13 +351,11 @@ nlmsvc_free_host_resources(struct nlm_ho
- }
+ struct nlmsvc_binding *		nlmsvc_ops;
+ EXPORT_SYMBOL(nlmsvc_ops);
+@@ -62,6 +63,7 @@ static unsigned long		nlm_timeout = LOCK
+ static int			nlm_udpport, nlm_tcpport;
+ int				nlm_max_hosts = 256;
+ int				nsm_use_hostnames = 0;
++static int			nsm_use_kstatd = 0;
  
  /*
-- * delete all hosts structs for clients
-+ * Delete all hosts structs for clients
-  */
- void
- nlmsvc_invalidate_all(void)
- {
--	struct nlm_host *host;
--
- 	/* Release all locks held by a NFS clients.
- 	 * Previously, the code would call
- 	 * nlmsvc_free_host_resources for each client in
-@@ -365,9 +363,6 @@ nlmsvc_invalidate_all(void)
- 	 */
- 	nlm_traverse_files(NULL, nlmsvc_is_client);
+  * Constants needed for the sysctl interface.
+@@ -119,8 +121,17 @@ lockd(struct svc_rqst *rqstp)
  
--	while ((host = nlm_find_client()) != NULL) {
--		host->h_expires = 0;
--		host->h_killed = 1;
--		nlm_release_host(host);
--	}
-+	/* Then destroy the host handles */
-+	nlm_destroy_clients();
+ 	daemonize("lockd");
+ 
+-	/* Initialize the statd upcalls to rpc.statd */
+-	nsm_statd_upcalls_init();
++	/* See if we should use the kernel statd. If not,
++	 * or if setting up the kernel statd fails, try
++	 * falling back to user land upcalls.
++	 */
++	if (nsm_use_kstatd && nsm_kernel_statd_init() < 0)
++		nsm_use_kstatd = 0;
++
++	if (nsm_use_kstatd == 0) {
++		/* Initialize the statd upcalls to rpc.statd */
++		nsm_statd_upcalls_init();
++	}
+ 
+ 	/* Process request with signals blocked, but allow SIGKILL.  */
+ 	allow_signal(SIGKILL);
+@@ -218,6 +229,7 @@ int
+ lockd_up(void)
+ {
+ 	static int		warned;
++	struct svc_program *	prog;
+ 	struct svc_serv *	serv;
+ 	int			error = 0;
+ 
+@@ -241,8 +253,12 @@ lockd_up(void)
+ 		printk(KERN_WARNING
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 
++	/* Register NLM program and possibly NSM (if using kstatd) */
+ 	error = -ENOMEM;
+-	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE);
++	prog = &nlmsvc_program;
++	if (nsm_use_kstatd)
++		prog = &nsmsvc_program;
++	serv = svc_create(prog, LOCKD_BUFSIZE);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		goto out;
+@@ -397,6 +413,15 @@ static ctl_table nlm_sysctls[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= &proc_dointvec,
+ 	},
++	{
++		.ctl_name	= CTL_UNNUMBERED,
++		.procname	= "nsm_use_kstatd",
++		.data		= &nsm_use_kstatd,
++		.maxlen		= sizeof(int),
++		.mode		= 0444,
++		.proc_handler	= &proc_dointvec,
++	},
++
+ 
+ 	{ .ctl_name = 0 }
+ };
+@@ -466,6 +491,7 @@ module_param_call(nlm_udpport, param_set
+ 		  &nlm_udpport, 0644);
+ module_param_call(nlm_tcpport, param_set_port, param_get_int,
+ 		  &nlm_tcpport, 0644);
++module_param(nsm_use_kstatd, int, 0444);
+ 
+ /*
+  * Initialising and terminating the module.
+@@ -536,3 +562,30 @@ static struct svc_program	nlmsvc_program
+ 	.pg_stats		= &nlmsvc_stats,	/* stats table */
+ 	.pg_authenticate = &lockd_authenticate	/* export authentication */
+ };
++
++/*
++ * Define NSM program and procedures
++ */
++static struct svc_version	nsmsvc_version1 = {
++		.vs_vers	= 1,
++		.vs_nproc	= 7,
++		.vs_proc	= nsmsvc_procedures,
++		.vs_xdrsize	= SMSVC_XDRSIZE,
++};
++static struct svc_version *	nsmsvc_version[] = {
++	[1] = &nsmsvc_version1,
++};
++
++static struct svc_stat		nsmsvc_stats;
++
++#define SM_NRVERS	(sizeof(nsmsvc_version)/sizeof(nsmsvc_version[0]))
++struct svc_program	nsmsvc_program = {
++	.pg_next		= &nlmsvc_program,
++	.pg_prog		= SM_PROGRAM,		/* program number */
++	.pg_nvers		= SM_NRVERS,		/* number of entries in nlmsvc_version */
++	.pg_vers		= nsmsvc_version,	/* version table */
++	.pg_name		= "statd",		/* service name */
++	.pg_class		= "nfsd",		/* share authentication with nfsd */
++	.pg_stats		= &nsmsvc_stats,	/* stats table */
++	.pg_authenticate	= &nsmsvc_authenticate	/* no authentication :-( */
++};
+Index: build/include/linux/lockd/sm_inter.h
+===================================================================
+--- build.orig/include/linux/lockd/sm_inter.h
++++ build/include/linux/lockd/sm_inter.h
+@@ -19,6 +19,7 @@
+ #define SM_NOTIFY	6
+ 
+ #define SM_MAXSTRLEN	1024
++#define SMSVC_XDRSIZE	(sizeof(struct nsm_args) + SM_MAXSTRLEN)
+ 
+ /*
+  * Arguments for all calls to statd
+@@ -30,6 +31,8 @@ struct nsm_args {
+ 	u32		proc;
+ 
+ 	char *		mon_name;
++	int		mon_name_len;
++	u32		state;
+ };
+ 
+ /*
+@@ -41,6 +44,8 @@ struct nsm_res {
+ };
+ 
+ extern void	nsm_statd_upcalls_init(void);
++extern int	nsm_kernel_statd_init(void);
++extern int	nsmsvc_authenticate(struct svc_rqst *);
+ extern int	(*nsm_monitor)(struct nlm_host *);
+ extern int	(*nsm_unmonitor)(struct nlm_host *);
+ extern int	nsm_local_state;
+Index: build/fs/buffer.c
+===================================================================
+--- build.orig/fs/buffer.c
++++ build/fs/buffer.c
+@@ -183,6 +183,7 @@ int fsync_super(struct super_block *sb)
+ 	__fsync_super(sb);
+ 	return sync_blockdev(sb->s_bdev);
  }
++EXPORT_SYMBOL_GPL(fsync_super);
+ 
+ /*
+  * Write out and wait upon all dirty data associated with this
+Index: build/fs/lockd/Makefile
+===================================================================
+--- build.orig/fs/lockd/Makefile
++++ build/fs/lockd/Makefile
+@@ -5,6 +5,6 @@
+ obj-$(CONFIG_LOCKD) += lockd.o
+ 
+ lockd-objs-y := clntlock.o clntproc.o host.o svc.o svclock.o svcshare.o \
+-	        svcproc.o svcsubs.o mon.o xdr.o
++	        svcproc.o svcsubs.o mon.o xdr.o statd.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += xdr4.o svc4proc.o
+ lockd-objs		      := $(lockd-objs-y)
+Index: build/fs/lockd/statd.c
+===================================================================
+--- /dev/null
++++ build/fs/lockd/statd.c
+@@ -0,0 +1,405 @@
++/*
++ * linux/fs/lockd/nsmproc.c
++ *
++ * Kernel-based status monitor. This is an alternative to
++ * the code in mon.c.
++ *
++ * When asked to monitor a host, we add it to /var/lib/nsm/sm
++ * ourselves, and that's it. In order to catch SM_NOTIFY calls
++ * we implement a minimal statd.
++ *
++ * Minimal user space requirements for this implementation:
++ *  /var/lib/nfs/state
++ *	must exist, and must contain the NSM state as a 32bit
++ *	binary counter.
++ * /var/lib/nfs/sm
++ *	must exist
++ *
++ * Copyright (C) 2004, Olaf Kirch <okir@suse.de>
++ */
++
++
++#include <linux/config.h>
++#include <linux/types.h>
++#include <linux/time.h>
++#include <linux/slab.h>
++#include <linux/in.h>
++#include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/nfsd/nfsd.h>
++#include <linux/lockd/lockd.h>
++#include <linux/lockd/share.h>
++#include <linux/lockd/sm_inter.h>
++#include <linux/file.h>
++#include <linux/namei.h>
++#include <asm/uaccess.h>
++#include <linux/buffer_head.h>
++
++
++/* XXX make this a module parameter? */
++#define NSM_BASE_PATH		"/var/lib/nfs"
++#define NSM_SM_PATH		NSM_BASE_PATH "/sm"
++#define NSM_STATE_PATH		NSM_BASE_PATH "/state"
++
++#define NLMDBG_FACILITY		NLMDBG_CLIENT
++
++static int	__nsm_monitor(struct nlm_host *host);
++static int	__nsm_unmonitor(struct nlm_host *host);
++
++/*
++ * Initialize local NSM state variable
++ */
++int
++nsm_kernel_statd_init(void)
++{
++	struct file	*filp;
++	char		buffer[32];
++	mm_segment_t	fs;
++	int		res;
++
++	dprintk("lockd: nsm_init()\n");
++	filp = filp_open(NSM_STATE_PATH, O_RDONLY, 0444);
++	if (IS_ERR(filp)) {
++		res = PTR_ERR(filp);
++		printk(KERN_NOTICE "lockd: failed to open %s: err=%d\n",
++				NSM_STATE_PATH, res);
++		return res;
++	}
++
++	fs = get_fs();
++	set_fs(KERNEL_DS);
++	res = vfs_read(filp, buffer, sizeof(buffer), &filp->f_pos);
++	set_fs(fs);
++	filp_close(filp, NULL);
++
++	if (res < 0)
++		return res;
++	if (res == 4)
++		nsm_local_state = *(u32 *) buffer;
++	else
++		nsm_local_state = simple_strtol(buffer, NULL, 10);
++
++	nsm_monitor = __nsm_monitor;
++	nsm_unmonitor = __nsm_unmonitor;
++	return 0;
++}
++
++/*
++ * Build the NSM file name
++ */
++static char *
++nsm_filename(struct nsm_handle *nsm)
++{
++	char	*name;
++
++	name = (char *) __get_free_page(GFP_KERNEL);
++	if (name == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	if (nsm_use_hostnames) {
++		snprintf(name, PAGE_SIZE, "%s/%s",
++				NSM_SM_PATH, nsm->sm_name);
++	} else {
++		/* FIXME IPV6 */
++		snprintf(name, PAGE_SIZE, "%s/%u.%u.%u.%u",
++				NSM_SM_PATH,
++				NIPQUAD(nsm->sm_addr.sin_addr));
++	}
++	return name;
++}
++
++static void
++nsm_put_name(char *name)
++{
++	free_page((unsigned long) name);
++}
++
++/*
++ * Create the NSM monitor file
++ */
++static int
++nsm_create(struct nsm_handle *nsm)
++{
++	struct file	*filp;
++	char		*filename;
++	int		res = 0;
++
++	dprintk("lockd: creating statd monitor file for %s\n", nsm->sm_name);
++
++	if (!(filename = nsm_filename(nsm)))
++		return -ENOMEM;
++
++	filp = filp_open(filename, O_CREAT|O_SYNC|O_RDWR, 0644);
++	if (IS_ERR(filp)) {
++		res = PTR_ERR(filp);
++		printk(KERN_NOTICE
++			"lockd/statd: failed to create %s: err=%d\n",
++			filename, res);
++	} else {
++		fsync_super(filp->f_dentry->d_inode->i_sb);
++		filp_close(filp, NULL);
++	}
++
++	nsm_put_name(filename);
++	return res;
++}
++
++static int
++nsm_unlink(struct nsm_handle *nsm)
++{
++	struct nameidata nd;
++	struct inode	*inode = NULL;
++	struct dentry	*dentry;
++	char		*filename;
++	int		res = 0;
++
++	if (!(filename = nsm_filename(nsm)))
++		return -ENOMEM;
++
++	/* Doing unlink from kernel space is really icky. */
++	if ((res = path_lookup(filename, LOOKUP_PARENT, &nd)) != 0)
++		goto exit;
++
++	if (nd.last_type == LAST_NORM && !nd.last.name[nd.last.len]) {
++		mutex_lock(&nd.dentry->d_inode->i_mutex);
++
++		dentry = lookup_one_len(nd.last.name, nd.dentry, nd.last.len);
++		if (!IS_ERR(dentry)) {
++			if ((inode = dentry->d_inode) != NULL)
++				atomic_inc(&inode->i_count);
++			res = vfs_unlink(nd.dentry->d_inode, dentry);
++			dput(dentry);
++		} else {
++			res = PTR_ERR(dentry);
++		}
++		mutex_unlock(&nd.dentry->d_inode->i_mutex);
++	} else {
++		res = -EISDIR;
++	}
++	path_release(&nd);
++
++exit:
++	if (res < 0) {
++		printk(KERN_NOTICE
++			"lockd/statd: failed to unlink %s: err=%d\n",
++			filename, res);
++	}
++
++	if (inode)
++		iput(inode);
++	nsm_put_name(filename);
++	return res;
++}
++
++/*
++ * Call nsm_create/nsm_unlink with CAP_DAC_OVERRIDE
++ */
++#define swap_ugid(type, var) { \
++	type tmp = current->var; current->var = var; var = tmp; \
++}
++
++static int
++with_privilege(int (*func)(struct nsm_handle *), struct nsm_handle *nsm)
++{
++	kernel_cap_t	cap = current->cap_effective;
++	int		res = 0, mask;
++	uid_t		fsuid = 0;
++	gid_t		fsgid = 0;
++
++	/* If we're unprivileged, a call to capable() will set the
++	 * SUPERPRIV flag */
++	mask = current->flags | ~PF_SUPERPRIV;
++
++	/* Raise capability to that we're able to create/unlink the file.
++	 * Set fsuid/fsgid to 0 so the file will be owned by root. */
++	cap_raise(current->cap_effective, CAP_DAC_OVERRIDE);
++	swap_ugid(uid_t, fsuid);
++	swap_ugid(gid_t, fsgid);
++
++	res = func(nsm);
++
++	/* drop privileges */
++	current->cap_effective = cap;
++	swap_ugid(uid_t, fsuid);
++	swap_ugid(gid_t, fsgid);
++
++	/* Clear PF_SUPERPRIV unless it was set to begin with */
++	current->flags &= mask;
++
++	return res;
++}
++
++/*
++ * Set up monitoring of a remote host
++ * Note we hold the semaphore for the host table while
++ * we're here.
++ */
++static int
++__nsm_monitor(struct nlm_host *host)
++{
++	struct nsm_handle *nsm;
++	int		res = 0;
++
++	dprintk("lockd: nsm_monitor(%s)\n", host->h_name);
++	if ((nsm = host->h_nsmhandle) == NULL)
++		BUG();
++
++	if (!nsm->sm_monitored) {
++		res = with_privilege(nsm_create, nsm);
++		if (res >= 0) {
++			nsm->sm_monitored = 1;
++		} else {
++			dprintk(KERN_NOTICE "nsm_monitor(%s) failed: errno=%d\n",
++					nsm->sm_name, -res);
++		}
++	}
++
++	return res;
++}
++
++/*
++ * Cease to monitor remote host
++ * Code stolen from sys_unlink.
++ */
++static int
++__nsm_unmonitor(struct nlm_host *host)
++{
++	struct nsm_handle *nsm;
++	int res = 0;
++
++	nsm = host->h_nsmhandle;
++	host->h_nsmhandle = NULL;
++
++	/* If the host was invalidated due to lockd restart/shutdown,
++	 * don't unmonitor it.
++	 * (Strictly speaking, we would have to keep the SM file
++	 * until the next reboot. The only way to achieve that
++	 * would be to link the monitor file to sm.bak now.)
++	 */
++	if (nsm && atomic_read(&nsm->sm_count) == 1
++	 && nsm->sm_monitored && !nsm->sm_sticky) {
++		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
++
++		res = with_privilege(nsm_unlink, nsm);
++	}
++
++	nsm_release(nsm);
++	return res;
++}
++
++/*
++ * NSM server implementation starts here
++ */
++int
++nsmsvc_authenticate(struct svc_rqst *rqstp)
++{
++	/* No authentication for statd. Many statd implementations
++	 * even send their reboot notifications from an unprivileged
++	 * port.
++	 */
++	rqstp->rq_client = NULL;
++	return SVC_OK;
++}
++
++
++/*
++ * NULL: Test for presence of service
++ */
++static int
++nsmsvc_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
++{
++	dprintk("statd: NULL          called\n");
++	return rpc_success;
++}
++
++/*
++ * NOTIFY: receive notification that remote host rebooted
++ */
++static int
++nsmsvc_proc_notify(struct svc_rqst *rqstp, struct nsm_args *argp,
++				           struct nsm_res  *resp)
++{
++	struct sockaddr_in	saddr = rqstp->rq_addr;
++
++	dprintk("statd: NOTIFY        called\n");
++
++	nlm_host_rebooted(&saddr, argp->mon_name, argp->mon_name_len, argp->state);
++	return rpc_success;
++}
++
++/*
++ * All other operations: return failure
++ */
++static int
++nsmsvc_proc_fail(struct svc_rqst *rqstp, struct nsm_args *argp,
++				         struct nsm_res  *resp)
++{
++	dprintk("statd: proc %u        called\n", rqstp->rq_proc);
++	resp->status = 0;
++	resp->state = -1;
++	return rpc_success;
++}
++
++/*
++ * NSM XDR routines
++ */
++static int
++nsmsvc_decode_void(struct svc_rqst *rqstp, u32 *p, void *dummy)
++{
++	return xdr_argsize_check(rqstp, p);
++}
++
++static int
++nsmsvc_encode_void(struct svc_rqst *rqstp, u32 *p, void *dummy)
++{
++	return xdr_ressize_check(rqstp, p);
++}
++
++static int
++nsmsvc_decode_stat_chge(struct svc_rqst *rqstp, u32 *p, struct nsm_args *argp)
++{
++	/* Skip over the client's mon_name */
++	p = xdr_decode_string_inplace(p, &argp->mon_name, &argp->mon_name_len, SM_MAXSTRLEN);
++	if (p == NULL)
++		return 0;
++
++	argp->state = ntohl(*p++);
++	return xdr_argsize_check(rqstp, p);
++}
++
++static int
++nsmsvc_encode_res(struct svc_rqst *rqstp, u32 *p, struct nsm_res *resp)
++{
++	*p++ = resp->status;
++	return xdr_ressize_check(rqstp, p);
++}
++
++static int
++nsmsvc_encode_stat_res(struct svc_rqst *rqstp, u32 *p, struct nsm_res *resp)
++{
++	*p++ = resp->status;
++	*p++ = resp->state;
++	return xdr_ressize_check(rqstp, p);
++}
++
++struct nsm_void			{ int dummy; };
++
++#define PROC(name, xargt, xrest, argt, rest, respsize)	\
++ { .pc_func	= (svc_procfunc) nsmsvc_proc_##name,	\
++   .pc_decode	= (kxdrproc_t) nsmsvc_decode_##xargt,	\
++   .pc_encode	= (kxdrproc_t) nsmsvc_encode_##xrest,	\
++   .pc_release	= NULL,					\
++   .pc_argsize	= sizeof(struct nsm_##argt),		\
++   .pc_ressize	= sizeof(struct nsm_##rest),		\
++   .pc_xdrressize = respsize,				\
++ }
++
++struct svc_procedure		nsmsvc_procedures[] = {
++  PROC(null,		void,		void,		void,	void, 1),
++  PROC(fail,		void,		stat_res,	void,	res, 2),
++  PROC(fail,		void,		stat_res,	void,	res, 2),
++  PROC(fail,		void,		res,		void,	res, 1),
++  PROC(fail,		void,		res,		void,	res, 1),
++  PROC(fail,		void,		res,		void,	res, 1),
++  PROC(notify,		stat_chge,	void,		args,	void, 1)
++};
 Index: build/include/linux/lockd/lockd.h
 ===================================================================
 --- build.orig/include/linux/lockd/lockd.h
 +++ build/include/linux/lockd/lockd.h
-@@ -45,8 +45,7 @@ struct nlm_host {
- 	unsigned short		h_proto;	/* transport proto */
- 	unsigned short		h_reclaiming : 1,
- 				h_server     : 1, /* server side, not client side */
--				h_inuse      : 1,
--				h_killed     : 1;
-+				h_inuse      : 1;
- 	wait_queue_head_t	h_gracewait;	/* wait while reclaiming */
- 	struct rw_semaphore	h_rwsem;	/* Reboot recovery lock */
- 	u32			h_state;	/* pseudo-state counter */
-@@ -171,7 +170,7 @@ void		  nlm_rebind_host(struct nlm_host 
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
--extern struct nlm_host *nlm_find_client(void);
-+void		  nlm_destroy_clients(void);
- extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
- struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
- void		  nsm_release(struct nsm_handle *);
+@@ -141,6 +141,7 @@ extern struct svc_procedure	nlmsvc_proce
+ #ifdef CONFIG_LOCKD_V4
+ extern struct svc_procedure	nlmsvc_procedures4[];
+ #endif
++extern struct svc_procedure	nsmsvc_procedures[];
+ extern int			nlmsvc_grace_period;
+ extern unsigned long		nlmsvc_timeout;
+ extern int			nlm_max_hosts;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
