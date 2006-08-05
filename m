@@ -1,24 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 0/22] Introduction to lockd patches
-Date: Sat, 5 Aug 2006 15:06:47 +0200
-Message-ID: <20060805130647.GA8011@suse.de>
+Subject: [PATCH 19/22] lockd: fix use of h_nextrebind
+Date: Sat, 5 Aug 2006 15:06:49 +0200
+Message-ID: <20060805130649.GA8112@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrf-00078h-Qi
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:52 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1G9Lrh-000793-KH
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:53 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lre-0000Sx-PJ
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:52 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(Exim 4.44) id 1G9Lrh-0000U3-EY
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id C0AED1FF4C
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:47 +0200 (CEST)
+	by mx1.suse.de (Postfix) with ESMTP id 2E96B101B3
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:49 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,32 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Subject: Introduction to lockd patches
+From: Olaf Kirch <okir@suse.de>
+Subject: lockd: fix use of h_nextrebind
 
-This set of patches does various cleanups in the lockd code, adds the
-ability to use the client host name instead of the IP address (which
-is something the HA folks asked us for), and the ability to switch
-between the user space rpc.statd and a new kernel statd implementation.
+  nlmclnt_recovery would try to force a portmap rebind by setting
+  host->h_nextrebind to 0. The right thing to do here is to set it
+  to the current time.
 
-The latter needs a separate user space utility named sm-notify that
-sends out the NSM_NOTIFY calls at boot. The utility is available
-from ftp://ftp.lst.de/pub/people/okir/sm-notify.
+Signed-off-by: okir@suse.de
 
-This code has been in several Suse releases. I forward ported this to
-2.6.18-rc3 and made sure it compiles. I have *not* done any testing yet,
-as I ran out of time (I'm leaving for vacation tomorrow). I wanted to
-post this code for your review nevertheless, since I promised Steve
-Dickson I'd do that :)
+ fs/lockd/clntlock.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-If the kernel statd code is too controversial, I'm fine with keeping
-that in the suse tree a little longer. But I do believe it makes things
-a lot easier for users (one configuration mistake less); and it also
-makes the code simpler (no more funky upcalls to user land).
-
-Note that both the use of hostnames instead of addresses, and the use
-of kernel statd, are switchable, and default to off.
-
-Olaf
+Index: build/fs/lockd/clntlock.c
+===================================================================
+--- build.orig/fs/lockd/clntlock.c
++++ build/fs/lockd/clntlock.c
+@@ -187,7 +187,7 @@ restart:
+ 	/* Force a portmap getport - the peer's lockd will
+ 	 * most likely end up on a different port.
+ 	 */
+-	host->h_nextrebind = 0;
++	host->h_nextrebind = jiffies;
+ 	nlm_rebind_host(host);
+ 
+ 	/* First, reclaim all locks that have been granted. */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
