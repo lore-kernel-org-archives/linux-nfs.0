@@ -1,23 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 11/22] Change nlm_file to use a hlist
-Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8070@suse.de>
+Subject: [PATCH 3/22] Consolidate common code for statd->lockd
+	notification
+Date: Sat, 5 Aug 2006 15:06:47 +0200
+Message-ID: <20060805130647.GA8029@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrf-00078H-9A
+	id 1G9Lrf-00078J-BW
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lre-0003Kk-Qz
+	(Exim 4.44) id 1G9Lre-0000St-PK
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
 Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 951CD101B1
+	by mx2.suse.de (Postfix) with ESMTP id 1A01C1FFCA
 	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -33,151 +34,170 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: Change nlm_file to use a hlist
+Subject: Consolidate common code for statd->lockd notification
 
-  This changes struct nlm_file and the nlm_files hash table
-  to use a hlist instead of the home-grown lists.
+  This is in preparation of a patch that will change the
+  reboot notification handling entirely.
 
-  It also increases the size of the nlm_files hash table from
-  64 to 128.
+Signed-off-by: okir@suse.de
 
-Signed-off-by: Olaf Kirch <okir@suse.de>
+ fs/lockd/host.c             |   30 ++++++++++++++++++++++++++++--
+ fs/lockd/svc4proc.c         |   19 ++-----------------
+ fs/lockd/svcproc.c          |   17 ++---------------
+ include/linux/lockd/lockd.h |    5 +++--
+ 4 files changed, 35 insertions(+), 36 deletions(-)
 
- fs/lockd/svcsubs.c          |   42 ++++++++++++++++--------------------------
- include/linux/lockd/lockd.h |    3 +--
- 2 files changed, 17 insertions(+), 28 deletions(-)
-
-Index: build/fs/lockd/svcsubs.c
+Index: build/fs/lockd/host.c
 ===================================================================
---- build.orig/fs/lockd/svcsubs.c
-+++ build/fs/lockd/svcsubs.c
-@@ -25,9 +25,9 @@
- /*
-  * Global file hash table
+--- build.orig/fs/lockd/host.c
++++ build/fs/lockd/host.c
+@@ -39,7 +39,7 @@ static void			nlm_gc_hosts(void);
+  * Find an NLM server handle in the cache. If there is none, create it.
   */
--#define FILE_HASH_BITS		5
-+#define FILE_HASH_BITS		7
- #define FILE_NRHASH		(1<<FILE_HASH_BITS)
--static struct nlm_file *	nlm_files[FILE_NRHASH];
-+static struct hlist_head	nlm_files[FILE_NRHASH];
- static DEFINE_MUTEX(nlm_file_mutex);
- 
- #ifdef NFSD_DEBUG
-@@ -82,6 +82,7 @@ u32
- nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- 					struct nfs_fh *f)
+ struct nlm_host *
+-nlmclnt_lookup_host(struct sockaddr_in *sin, int proto, int version)
++nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version)
  {
-+	struct hlist_node *pos;
- 	struct nlm_file	*file;
- 	unsigned int	hash;
- 	u32		nfserr;
-@@ -93,7 +94,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
- 	/* Lock file table */
- 	mutex_lock(&nlm_file_mutex);
- 
--	for (file = nlm_files[hash]; file; file = file->f_next)
-+	hlist_for_each_entry(file, pos, &nlm_files[hash], f_list)
- 		if (!nfs_compare_fh(&file->f_handle, f))
- 			goto found;
- 
-@@ -105,8 +106,8 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
- 		goto out_unlock;
- 
- 	memcpy(&file->f_handle, f, sizeof(struct nfs_fh));
--	file->f_hash = hash;
- 	init_MUTEX(&file->f_sema);
-+	INIT_HLIST_NODE(&file->f_list);
- 	INIT_LIST_HEAD(&file->f_blocks);
- 
- 	/* Open the file. Note that this must not sleep for too long, else
-@@ -120,8 +121,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
- 		goto out_free;
- 	}
- 
--	file->f_next = nlm_files[hash];
--	nlm_files[hash] = file;
-+	hlist_add_head(&file->f_list, &nlm_files[hash]);
- 
- found:
- 	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
-@@ -150,22 +150,14 @@ out_free:
- static inline void
- nlm_delete_file(struct nlm_file *file)
+ 	return nlm_lookup_host(0, sin, proto, version);
+ }
+@@ -58,7 +58,7 @@ nlmsvc_lookup_host(struct svc_rqst *rqst
+  * Common host lookup routine for server & client
+  */
+ struct nlm_host *
+-nlm_lookup_host(int server, struct sockaddr_in *sin,
++nlm_lookup_host(int server, const struct sockaddr_in *sin,
+ 					int proto, int version)
  {
--	struct nlm_file	**fp, *f;
--
- 	nlm_debug_print_file("closing file", file);
--
--	fp = nlm_files + file->f_hash;
--	while ((f = *fp) != NULL) {
--		if (f == file) {
--			*fp = file->f_next;
--			nlmsvc_ops->fclose(file->f_file);
--			kfree(file);
--			return;
--		}
--		fp = &f->f_next;
-+	if (!hlist_unhashed(&file->f_list)) {
-+		hlist_del(&file->f_list);
-+		nlmsvc_ops->fclose(file->f_file);
-+		kfree(file);
-+	} else {
-+		printk(KERN_WARNING "lockd: attempt to release unknown file!\n");
- 	}
--
--	printk(KERN_WARNING "lockd: attempt to release unknown file!\n");
+ 	struct nlm_host	*host, **hp;
+@@ -256,6 +256,32 @@ void nlm_release_host(struct nlm_host *h
  }
  
  /*
-@@ -236,13 +228,13 @@ nlm_inspect_file(struct nlm_host *host, 
- static int
- nlm_traverse_files(struct nlm_host *host, int action)
++ * We were notified that the host indicated by address &sin
++ * has rebooted.
++ * Release all resources held by that peer.
++ */
++void nlm_host_rebooted(const struct sockaddr_in *sin, const struct nlm_reboot *argp)
++{
++	struct nlm_host *host;
++
++	/* Obtain the host pointer for this NFS server and try to
++	 * reclaim all locks we hold on this server.
++	 */
++	if ((argp->proto & 1)==0) {
++		/* We are client, he's the server: try to reclaim all locks. */
++		if ((host = nlmclnt_lookup_host(sin, argp->proto >> 1, argp->vers)) == NULL)
++			return;
++		nlmclnt_recovery(host, argp->state);
++	} else {
++		/* He's the client, we're the server: delete all locks held by the client */
++		if ((host = nlm_lookup_host(1, sin, argp->proto >> 1, argp->vers)) == NULL)
++			return;
++		nlmsvc_free_host_resources(host);
++	}
++	nlm_release_host(host);
++}
++
++/*
+  * Shut down the hosts module.
+  * Note that this routine is called only at server shutdown time.
+  */
+Index: build/fs/lockd/svc4proc.c
+===================================================================
+--- build.orig/fs/lockd/svc4proc.c
++++ build/fs/lockd/svc4proc.c
+@@ -420,10 +420,6 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
+ 					      void	        *resp)
  {
--	struct nlm_file	*file, **fp;
-+	struct hlist_node *pos, *next;
-+	struct nlm_file	*file;
- 	int		i;
+ 	struct sockaddr_in	saddr = rqstp->rq_addr;
+-	int			vers = argp->vers;
+-	int			prot = argp->proto >> 1;
+-
+-	struct nlm_host		*host;
  
- 	mutex_lock(&nlm_file_mutex);
- 	for (i = 0; i < FILE_NRHASH; i++) {
--		fp = nlm_files + i;
--		while ((file = *fp) != NULL) {
-+		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
- 			/* Traverse locks, blocks and shares of this file
- 			 * and update file->f_locks count */
- 			if (nlm_inspect_file(host, file, action)) {
-@@ -253,11 +245,9 @@ nlm_traverse_files(struct nlm_host *host
- 			/* No more references to this file. Let go of it. */
- 			if (list_empty(&file->f_blocks) && !file->f_locks
- 			 && !file->f_shares && !file->f_count) {
--				*fp = file->f_next;
-+				hlist_del(&file->f_list);
- 				nlmsvc_ops->fclose(file->f_file);
- 				kfree(file);
--			} else {
--				fp = &file->f_next;
- 			}
- 		}
- 	}
+ 	dprintk("lockd: SM_NOTIFY     called\n");
+ 	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
+@@ -438,21 +434,10 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
+ 	/* Obtain the host pointer for this NFS server and try to
+ 	 * reclaim all locks we hold on this server.
+ 	 */
++	memset(&saddr, 0, sizeof(saddr));
+ 	saddr.sin_addr.s_addr = argp->addr;
++	nlm_host_rebooted(&saddr, argp);
+ 
+-	if ((argp->proto & 1)==0) {
+-		if ((host = nlmclnt_lookup_host(&saddr, prot, vers)) != NULL) {
+-			nlmclnt_recovery(host, argp->state);
+-			nlm_release_host(host);
+-		}
+-	} else {
+-		/* If we run on an NFS server, delete all locks held by the client */
+-
+-		if ((host = nlm_lookup_host(1, &saddr, prot, vers)) != NULL) {
+-			nlmsvc_free_host_resources(host);
+-			nlm_release_host(host);
+-		}
+-	}
+ 	return rpc_success;
+ }
+ 
+Index: build/fs/lockd/svcproc.c
+===================================================================
+--- build.orig/fs/lockd/svcproc.c
++++ build/fs/lockd/svcproc.c
+@@ -449,9 +449,6 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
+ 					      void	        *resp)
+ {
+ 	struct sockaddr_in	saddr = rqstp->rq_addr;
+-	int			vers = argp->vers;
+-	int			prot = argp->proto >> 1;
+-	struct nlm_host		*host;
+ 
+ 	dprintk("lockd: SM_NOTIFY     called\n");
+ 	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
+@@ -466,19 +463,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
+ 	/* Obtain the host pointer for this NFS server and try to
+ 	 * reclaim all locks we hold on this server.
+ 	 */
++	memset(&saddr, 0, sizeof(saddr));
+ 	saddr.sin_addr.s_addr = argp->addr;
+-	if ((argp->proto & 1)==0) {
+-		if ((host = nlmclnt_lookup_host(&saddr, prot, vers)) != NULL) {
+-			nlmclnt_recovery(host, argp->state);
+-			nlm_release_host(host);
+-		}
+-	} else {
+-		/* If we run on an NFS server, delete all locks held by the client */
+-		if ((host = nlm_lookup_host(1, &saddr, prot, vers)) != NULL) {
+-			nlmsvc_free_host_resources(host);
+-			nlm_release_host(host);
+-		}
+-	}
++	nlm_host_rebooted(&saddr, argp);
+ 
+ 	return rpc_success;
+ }
 Index: build/include/linux/lockd/lockd.h
 ===================================================================
 --- build.orig/include/linux/lockd/lockd.h
 +++ build/include/linux/lockd/lockd.h
-@@ -105,7 +105,7 @@ struct nlm_rqst {
-  * an NFS client.
+@@ -163,15 +163,16 @@ int		  nlmclnt_reclaim(struct nlm_host *
+ /*
+  * Host cache
   */
- struct nlm_file {
--	struct nlm_file *	f_next;		/* linked list */
-+	struct hlist_node	f_list;		/* linked list */
- 	struct nfs_fh		f_handle;	/* NFS file handle */
- 	struct file *		f_file;		/* VFS file pointer */
- 	struct nlm_share *	f_shares;	/* DOS shares */
-@@ -113,7 +113,6 @@ struct nlm_file {
- 	unsigned int		f_locks;	/* guesstimate # of locks */
- 	unsigned int		f_count;	/* reference count */
- 	struct semaphore	f_sema;		/* avoid concurrent access */
--	int		       	f_hash;		/* hash of f_handle */
- };
+-struct nlm_host * nlmclnt_lookup_host(struct sockaddr_in *, int, int);
++struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int);
+ struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *);
+-struct nlm_host * nlm_lookup_host(int server, struct sockaddr_in *, int, int);
++struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int);
+ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
+ void		  nlm_rebind_host(struct nlm_host *);
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+ extern struct nlm_host *nlm_find_client(void);
++extern void	  nlm_host_rebooted(const struct sockaddr_in *, const struct nlm_reboot *);
+ 
  
  /*
 
