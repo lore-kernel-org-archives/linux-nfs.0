@@ -1,24 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 8/22] lockd: make the nsm upcalls use the nsm_handle
-Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8054@suse.de>
+Subject: [PATCH 1/22] lockd: make NLM_HOST_MAX tunable
+Date: Sat, 5 Aug 2006 15:06:47 +0200
+Message-ID: <20060805130647.GA8016@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrf-00078F-66
+	id 1G9Lrf-00078G-7g
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lre-0003Kh-R8
+	(Exim 4.44) id 1G9Lre-0000Sv-PG
 	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:51 -0700
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 5DBCA101AF
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
+	by mx2.suse.de (Postfix) with ESMTP id C1DE11FFB5
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:47 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,104 +33,88 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: lockd: make the nsm upcalls use the nsm_handle
+Subject: lockd: make NLM_HOST_MAX tunable
+Patch-mainline: not-yet
 
-  This converts the statd upcalls to use the nsm_handle
+  This patch makes NLM_HOST_MAX tunable, and exports the
+  new variable as a sysctl.
+  The old value (64 clients) just wasn't adequate anymore.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/mon.c                 |   30 ++++++++++++++++++------------
- include/linux/lockd/sm_inter.h |    1 -
- 2 files changed, 18 insertions(+), 13 deletions(-)
+ fs/lockd/host.c             |    7 +++----
+ fs/lockd/svc.c              |   10 ++++++++++
+ include/linux/lockd/lockd.h |    1 +
+ 3 files changed, 14 insertions(+), 4 deletions(-)
 
-Index: build/fs/lockd/mon.c
+Index: build/fs/lockd/svc.c
 ===================================================================
---- build.orig/fs/lockd/mon.c
-+++ build/fs/lockd/mon.c
-@@ -30,7 +30,7 @@ u32				nsm_local_state;
-  * Common procedure for SM_MON/SM_UNMON calls
-  */
- static int
--nsm_mon_unmon(struct nlm_host *host, u32 proc, struct nsm_res *res)
-+nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- {
- 	struct rpc_clnt	*clnt;
- 	int		status;
-@@ -46,10 +46,10 @@ nsm_mon_unmon(struct nlm_host *host, u32
- 		goto out;
- 	}
- 
--	args.addr = host->h_addr.sin_addr.s_addr;
--	args.proto= (host->h_proto<<1) | host->h_server;
-+	memset(&args, 0, sizeof(args));
-+	args.addr = nsm->sm_addr.sin_addr.s_addr;
- 	args.prog = NLM_PROGRAM;
--	args.vers = host->h_version;
-+	args.vers = 3;
- 	args.proc = NLMPROC_NSM_NOTIFY;
- 	memset(res, 0, sizeof(*res));
- 
-@@ -80,7 +80,7 @@ nsm_monitor(struct nlm_host *host)
- 	if (nsm->sm_monitored)
- 		return 0;
- 
--	status = nsm_mon_unmon(host, SM_MON, &res);
-+	status = nsm_mon_unmon(nsm, SM_MON, &res);
- 
- 	if (status < 0 || res.status != 0)
- 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", host->h_name);
-@@ -99,16 +99,20 @@ nsm_unmonitor(struct nlm_host *host)
- 	struct nsm_res	res;
- 	int		status = 0;
- 
--	dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
- 	if (nsm == NULL)
- 		return 0;
- 	host->h_nsmhandle = NULL;
- 
--	if (!host->h_killed) {
--		status = nsm_mon_unmon(host, SM_UNMON, &res);
-+	if (atomic_read(&nsm->sm_count) == 1
-+	 && nsm->sm_monitored && !nsm->sm_sticky) {
-+		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
-+
-+		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
- 		if (status < 0)
--			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n", host->h_name);
--		nsm->sm_monitored = 0;
-+			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
-+					host->h_name);
-+		else
-+			nsm->sm_monitored = 0;
- 	}
- 	nsm_release(nsm);
- 	return status;
-@@ -178,9 +182,11 @@ xdr_encode_mon(struct rpc_rqst *rqstp, u
- 	p = xdr_encode_common(rqstp, p, argp);
- 	if (IS_ERR(p))
- 		return PTR_ERR(p);
-+
-+	/* Surprise - there may even be room for an IPv6 address now */
- 	*p++ = argp->addr;
--	*p++ = argp->vers;
--	*p++ = argp->proto;
-+	*p++ = 0;
-+	*p++ = 0;
- 	*p++ = 0;
- 	rqstp->rq_slen = xdr_adjust_iovec(rqstp->rq_svec, p);
- 	return 0;
-Index: build/include/linux/lockd/sm_inter.h
-===================================================================
---- build.orig/include/linux/lockd/sm_inter.h
-+++ build/include/linux/lockd/sm_inter.h
-@@ -28,7 +28,6 @@ struct nsm_args {
- 	u32		prog;		/* RPC callback info */
- 	u32		vers;
- 	u32		proc;
--	u32		proto;		/* protocol (udp/tcp) plus server/client flag */
- };
+--- build.orig/fs/lockd/svc.c
++++ build/fs/lockd/svc.c
+@@ -59,6 +59,7 @@ static DECLARE_WAIT_QUEUE_HEAD(lockd_exi
+ static unsigned long		nlm_grace_period;
+ static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
+ static int			nlm_udpport, nlm_tcpport;
++int				nlm_max_hosts = 256;
  
  /*
+  * Constants needed for the sysctl interface.
+@@ -367,6 +368,15 @@ static ctl_table nlm_sysctls[] = {
+ 		.extra1		= (int *) &nlm_port_min,
+ 		.extra2		= (int *) &nlm_port_max,
+ 	},
++	{
++		.ctl_name	= CTL_UNNUMBERED,
++		.procname	= "nlm_max_hosts",
++		.data		= &nlm_max_hosts,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec,
++	},
++
+ 	{ .ctl_name = 0 }
+ };
+ 
+Index: build/include/linux/lockd/lockd.h
+===================================================================
+--- build.orig/include/linux/lockd/lockd.h
++++ build/include/linux/lockd/lockd.h
+@@ -144,6 +144,7 @@ extern struct svc_procedure	nlmsvc_proce
+ #endif
+ extern int			nlmsvc_grace_period;
+ extern unsigned long		nlmsvc_timeout;
++extern int			nlm_max_hosts;
+ 
+ /*
+  * Lockd client functions
+Index: build/fs/lockd/host.c
+===================================================================
+--- build.orig/fs/lockd/host.c
++++ build/fs/lockd/host.c
+@@ -20,12 +20,11 @@
+ 
+ 
+ #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
+-#define NLM_HOST_MAX		64
+ #define NLM_HOST_NRHASH		32
+ #define NLM_ADDRHASH(addr)	(ntohl(addr) & (NLM_HOST_NRHASH-1))
+ #define NLM_HOST_REBIND		(60 * HZ)
+-#define NLM_HOST_EXPIRE		((nrhosts > NLM_HOST_MAX)? 300 * HZ : 120 * HZ)
+-#define NLM_HOST_COLLECT	((nrhosts > NLM_HOST_MAX)? 120 * HZ :  60 * HZ)
++#define NLM_HOST_EXPIRE		((nrhosts > nlm_max_hosts)? 300 * HZ : 120 * HZ)
++#define NLM_HOST_COLLECT	((nrhosts > nlm_max_hosts)? 120 * HZ :  60 * HZ)
+ #define NLM_HOST_ADDR(sv)	(&(sv)->s_nlmclnt->cl_xprt->addr)
+ 
+ static struct nlm_host *	nlm_hosts[NLM_HOST_NRHASH];
+@@ -128,7 +127,7 @@ nlm_lookup_host(int server, struct socka
+ 	INIT_LIST_HEAD(&host->h_granted);
+ 	INIT_LIST_HEAD(&host->h_reclaim);
+ 
+-	if (++nrhosts > NLM_HOST_MAX)
++	if (++nrhosts > nlm_max_hosts)
+ 		next_gc = 0;
+ 
+ nohost:
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
