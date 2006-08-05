@@ -1,25 +1,24 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH 15/22] lockd: optionally use hostnames for identifying
-	peers
-Date: Sat, 5 Aug 2006 15:06:48 +0200
-Message-ID: <20060805130648.GA8092@suse.de>
+Subject: [PATCH 21/22] [lockd] Make statd support switchable
+Date: Sat, 5 Aug 2006 15:06:49 +0200
+Message-ID: <20060805130649.GA8123@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9Lrm-00079r-RN
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:58 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1G9Lri-00079N-CT
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9Lrm-0003MZ-EG
-	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:59 -0700
+	(Exim 4.44) id 1G9Lri-0000UQ-3z
+	for nfs@lists.sourceforge.net; Sat, 05 Aug 2006 06:06:54 -0700
 Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id E20AF1FFD7
-	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:48 +0200 (CEST)
+	by mx2.suse.de (Postfix) with ESMTP id 5716C1FFDF
+	for <nfs@lists.sourceforge.net>; Sat,  5 Aug 2006 15:06:49 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,128 +33,126 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
-Subject: lockd: optionally use hostnames for identifying peers
+Subject: [lockd] Make statd support switchable
 
-  This patch adds the nsm_use_hostnames sysctl. If set, lockd will use
-  the client's name (as given in the NLM arguments) to find the NSM
-  handle. This makes recovery work when the NFS peer is multi-homed, and
-  the reboot notification arrives from a different IP than the original
-  lock calls.
+ This patch adds some plumbing that allows to use different
+ methods for nsm_monitor and nsm_unmonitor.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 
- fs/lockd/host.c                |    5 +++++
- fs/lockd/mon.c                 |   12 +++++++++---
- fs/lockd/svc.c                 |    9 +++++++++
- include/linux/lockd/lockd.h    |    1 +
- include/linux/lockd/sm_inter.h |    2 ++
- 5 files changed, 26 insertions(+), 3 deletions(-)
+ fs/lockd/host.c                |    7 +++++++
+ fs/lockd/mon.c                 |   17 +++++++++++++++--
+ fs/lockd/svc.c                 |    6 ++++++
+ include/linux/lockd/sm_inter.h |    5 +++--
+ 4 files changed, 31 insertions(+), 4 deletions(-)
 
 Index: build/fs/lockd/host.c
 ===================================================================
 --- build.orig/fs/lockd/host.c
 +++ build/fs/lockd/host.c
-@@ -498,6 +498,11 @@ __nsm_find(const struct sockaddr_in *sin
- 	list_for_each(pos, &nsm_handles) {
- 		nsm = list_entry(pos, struct nsm_handle, sm_link);
+@@ -32,6 +32,13 @@ static unsigned long		next_gc;
+ static int			nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
  
-+		if (hostname && nsm_use_hostnames) {
-+			if (strlen(nsm->sm_name) != hostname_len
-+			 || memcmp(nsm->sm_name, hostname, hostname_len))
-+				continue;
-+		} else
- 		if (!nlm_cmp_addr(&nsm->sm_addr, sin))
- 			continue;
- 		atomic_inc(&nsm->sm_count);
++/*
++ * Function pointers - will reference either the
++ * "standard" statd functions that do upcalls to user land,
++ * or the kernel statd functions.
++ */
++int				(*nsm_monitor)(struct nlm_host *);
++int				(*nsm_unmonitor)(struct nlm_host *);
+ 
+ static void			nlm_gc_hosts(void);
+ static struct nsm_handle *	__nsm_find(const struct sockaddr_in *,
 Index: build/fs/lockd/mon.c
 ===================================================================
 --- build.orig/fs/lockd/mon.c
 +++ build/fs/lockd/mon.c
-@@ -47,6 +47,7 @@ nsm_mon_unmon(struct nsm_handle *nsm, u3
- 	}
+@@ -18,6 +18,8 @@
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
  
- 	memset(&args, 0, sizeof(args));
-+	args.mon_name = nsm->sm_name;
- 	args.addr = nsm->sm_addr.sin_addr.s_addr;
- 	args.prog = NLM_PROGRAM;
- 	args.vers = 3;
-@@ -157,7 +158,7 @@ out_err:
- static u32 *
- xdr_encode_common(struct rpc_rqst *rqstp, u32 *p, struct nsm_args *argp)
+ static struct rpc_clnt *	nsm_create(void);
++static int			__nsm_monitor(struct nlm_host *);
++static int			__nsm_unmonitor(struct nlm_host *);
+ 
+ static struct rpc_program	nsm_program;
+ 
+@@ -27,6 +29,17 @@ static struct rpc_program	nsm_program;
+ int				nsm_local_state;
+ 
+ /*
++ * Initialize lockd for RPC statd upcalls
++ */
++void
++nsm_statd_upcalls_init()
++{
++	nsm_monitor = __nsm_monitor;
++	nsm_unmonitor = __nsm_unmonitor;
++}
++
++
++/*
+  * Common procedure for SM_MON/SM_UNMON calls
+  */
+ static int
+@@ -69,7 +82,7 @@ nsm_mon_unmon(struct nsm_handle *nsm, u3
+  * Set up monitoring of a remote host
+  */
+ int
+-nsm_monitor(struct nlm_host *host)
++__nsm_monitor(struct nlm_host *host)
  {
--	char	buffer[20];
-+	char	buffer[20], *name;
- 
- 	/*
- 	 * Use the dotted-quad IP address of the remote host as
-@@ -165,8 +166,13 @@ xdr_encode_common(struct rpc_rqst *rqstp
- 	 * hostname first for whatever remote hostname it receives,
- 	 * so this works alright.
- 	 */
--	sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->addr));
--	if (!(p = xdr_encode_string(p, buffer))
-+	if (nsm_use_hostnames) {
-+		name = argp->mon_name;
-+	} else {
-+		sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->addr));
-+		name = buffer;
-+	}
-+	if (!(p = xdr_encode_string(p, name))
- 	 || !(p = xdr_encode_string(p, system_utsname.nodename)))
- 		return ERR_PTR(-EIO);
- 	*p++ = htonl(argp->prog);
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+ 	struct nsm_res	res;
+@@ -94,7 +107,7 @@ nsm_monitor(struct nlm_host *host)
+  * Cease to monitor remote host
+  */
+ int
+-nsm_unmonitor(struct nlm_host *host)
++__nsm_unmonitor(struct nlm_host *host)
+ {
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+ 	struct nsm_res	res;
 Index: build/fs/lockd/svc.c
 ===================================================================
 --- build.orig/fs/lockd/svc.c
 +++ build/fs/lockd/svc.c
-@@ -60,6 +60,7 @@ static unsigned long		nlm_grace_period;
- static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
- static int			nlm_udpport, nlm_tcpport;
- int				nlm_max_hosts = 256;
-+int				nsm_use_hostnames = 0;
+@@ -119,6 +119,9 @@ lockd(struct svc_rqst *rqstp)
  
- /*
-  * Constants needed for the sysctl interface.
-@@ -376,6 +377,14 @@ static ctl_table nlm_sysctls[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dointvec,
- 	},
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nsm_use_hostnames",
-+		.data		= &nsm_use_hostnames,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec,
-+	},
+ 	daemonize("lockd");
  
- 	{ .ctl_name = 0 }
- };
-Index: build/include/linux/lockd/lockd.h
-===================================================================
---- build.orig/include/linux/lockd/lockd.h
-+++ build/include/linux/lockd/lockd.h
-@@ -144,6 +144,7 @@ extern struct svc_procedure	nlmsvc_proce
- extern int			nlmsvc_grace_period;
- extern unsigned long		nlmsvc_timeout;
- extern int			nlm_max_hosts;
-+extern int			nsm_use_hostnames;
++	/* Initialize the statd upcalls to rpc.statd */
++	nsm_statd_upcalls_init();
++
+ 	/* Process request with signals blocked, but allow SIGKILL.  */
+ 	allow_signal(SIGKILL);
  
- /*
-  * Lockd client functions
+@@ -472,6 +475,9 @@ static int __init init_nlm(void)
+ {
+ 	struct ctl_path ctl_path[] = { { CTL_FS, "fs", 0555 }, { -2, "nfs", 0555 }, { 0 } };
+ 
++	/* Default NSM to making upcalls to statd. */
++	nsm_statd_upcalls_init();
++
+ 	nlm_sysctl_table = register_sysctl_table_path(nlm_sysctls, ctl_path);
+ 	return 0;
+ }
 Index: build/include/linux/lockd/sm_inter.h
 ===================================================================
 --- build.orig/include/linux/lockd/sm_inter.h
 +++ build/include/linux/lockd/sm_inter.h
-@@ -28,6 +28,8 @@ struct nsm_args {
- 	u32		prog;		/* RPC callback info */
- 	u32		vers;
- 	u32		proc;
-+
-+	char *		mon_name;
+@@ -40,8 +40,9 @@ struct nsm_res {
+ 	u32		state;
  };
  
- /*
+-int		nsm_monitor(struct nlm_host *);
+-int		nsm_unmonitor(struct nlm_host *);
++extern void	nsm_statd_upcalls_init(void);
++extern int	(*nsm_monitor)(struct nlm_host *);
++extern int	(*nsm_unmonitor)(struct nlm_host *);
+ extern int	nsm_local_state;
+ 
+ #endif /* LINUX_LOCKD_SM_INTER_H */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
