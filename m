@@ -1,26 +1,26 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: PATCH 2 of 4] cpumask: export cpu_online_map
 	and	cpu_possible_map consistently
-Date: Mon, 07 Aug 2006 12:57:11 +1000
-Message-ID: <1154919431.29877.69.camel@hole.melbourne.sgi.com>
+Date: Mon, 07 Aug 2006 13:05:40 +1000
+Message-ID: <1154919940.29877.73.camel@hole.melbourne.sgi.com>
 References: <1154669759.21040.2353.camel@hole.melbourne.sgi.com>
-	<44D35D99.601@linux.intel.com>
+	<Pine.LNX.4.64.0608040730430.16814@montezuma.fsmlabs.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Andrew Morton <akpm@osdl.org>, Neil Brown <neilb@suse.de>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9vJ8-0001gO-FA
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 19:57:34 -0700
+	id 1G9vRQ-0002NY-Lc
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:06:08 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9vJ7-0005pc-S2
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 19:57:35 -0700
-To: Arjan van de Ven <arjan@linux.intel.com>
-In-Reply-To: <44D35D99.601@linux.intel.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9vRQ-0004Lx-WB
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:06:09 -0700
+To: Zwane Mwaikambo <zwane@arm.linux.org.uk>
+In-Reply-To: <Pine.LNX.4.64.0608040730430.16814@montezuma.fsmlabs.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,18 +33,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, 2006-08-05 at 00:45, Arjan van de Ven wrote:
-> Greg Banks wrote:
+On Sat, 2006-08-05 at 00:32, Zwane Mwaikambo wrote:
+> On Fri, 4 Aug 2006, Greg Banks wrote:
+> 
 > > cpumask: ensure that the cpu_online_map and cpu_possible_map bitmasks,
 > > and hence all the macros in <linux/cpumask.h> that require them, are
 > > available to modules for all supported combinations of architecture
 > > and CONFIG_SMP.
+> > 
+> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+> > ---
+> > 
+> >  arch/arm/kernel/smp.c           |    2 ++
+> >  arch/cris/arch-v32/kernel/smp.c |    1 +
+> >  arch/sh/kernel/smp.c            |    1 +
+> >  kernel/sched.c                  |    3 +++
+> >  4 files changed, 7 insertions(+)
+> > 
+> > Index: linux-2.6.18-rc2/kernel/sched.c
+> > ===================================================================
+> > --- linux-2.6.18-rc2.orig/kernel/sched.c	2006-08-01 17:53:25.000000000 +1000
+> > +++ linux-2.6.18-rc2/kernel/sched.c	2006-08-02 23:01:20.535457863 +1000
+> > @@ -4348,7 +4348,10 @@ EXPORT_SYMBOL(cpu_present_map);
+> >  
+> >  #ifndef CONFIG_SMP
+> >  cpumask_t cpu_online_map __read_mostly = CPU_MASK_ALL;
+> > +EXPORT_SYMBOL_GPL(cpu_online_map);
 > 
-> Are there any actual users of this?
+> >  cpumask_t cpu_possible_map;
+> > +EXPORT_SYMBOL(cpu_possible_map);
+> >  cpumask_t cpu_online_map;
+> > +EXPORT_SYMBOL(cpu_online_map);
+> 
+> How come these are of different export types?
 
-knfsd-make-rpc-threads-pools-numa-aware.patch in -mm.
-
-http://marc.theaimsgroup.com/?l=linux-kernel&m=115430697330586&w=2
+Because I screwed up.  Fix coming later.  I presume _GPL
+is the favoured form?
 
 Greg.
 -- 
