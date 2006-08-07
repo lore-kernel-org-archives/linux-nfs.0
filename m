@@ -1,8 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 001 of 4] Replace two page lists in struct svc_rqst
-	with one.
-Date: Mon, 7 Aug 2006 10:35:02 +1000
-Message-ID: <1060807003502.12366@suse.de>
+Subject: [PATCH 003 of 4] Prepare knfsd for support of rsize/wsize of
+	up to 1MB, over TCP.
+Date: Mon, 7 Aug 2006 10:35:15 +1000
+Message-ID: <1060807003515.12391@suse.de>
 References: <20060807103020.12286.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9t5O-0007Td-HN
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 17:35:14 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1G9t5W-0007U8-E6
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 17:35:22 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1G9t5L-0004Z0-Lo
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 17:35:15 -0700
+	(Exim 4.44) id 1G9t5V-0004cL-FO
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 17:35:23 -0700
 To: Greg Banks <gnb@melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,652 +31,439 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-We are planning to increase RPCSVC_MAXPAGES from about
-8 to about 256.  This means we need to be a bit careful
-about arrays of size RPCSVC_MAXPAGES.
+The limit over UDP remains at 32K.  Also, make some of
+the apparently arbitrary sizing constants clearer.
 
-struct svc_rqst contains two such arrays.
-However the there are never more that RPCSVC_MAXPAGES
-pages in the two arrays together, so only one array is needed.
+The biggest change here involves replacing NFSSVC_MAXBLKSIZE
+by a function of the rqstp.  This allows it to be different
+for different protocols (udp/tcp) and also allows it
+to depend on the servers declared sv_bufsiz.
 
-The two arrays are for the pages holding the request,
-and the pages holding the reply.
-Instead of two arrays, we can simply keep an index into
-where the first reply page is.
+Note that we don't actually increase sv_bufsz for nfs yet.
+That comes next.
 
-This patch also removes a number of small inline functions that
-probably server to obscure what is going on rather than clarify it,
-and opencode the needed functionality.
-
-Also remove the 'rq_restailpage' variable as it is *always* 0.
-i.e. if the response 'xdr' structure has a non-empty tail it is
-always in the same pages as the head.
-
- check counters are initilised and incr properly
- check for consistant usage of ++ etc
- maybe extra some inlines for common approach
- general review
-
-
-Description...
-
+From: Greg Banks <gnb@melbourne.sgi.com>
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs2acl.c                 |    2 -
- ./fs/nfsd/nfs3acl.c                 |    2 -
- ./fs/nfsd/nfs3xdr.c                 |   23 ++++--------
- ./fs/nfsd/nfs4xdr.c                 |   27 ++++++--------
- ./fs/nfsd/nfsxdr.c                  |   13 ++----
- ./fs/nfsd/vfs.c                     |   16 +++++---
- ./include/linux/sunrpc/svc.h        |   69 +++++-------------------------------
- ./net/sunrpc/auth_gss/svcauth_gss.c |    4 --
- ./net/sunrpc/svc.c                  |   21 +++-------
- ./net/sunrpc/svcsock.c              |   40 ++++++++++----------
- 10 files changed, 76 insertions(+), 141 deletions(-)
+ ./fs/nfsd/nfs3proc.c              |   14 +++++++------
+ ./fs/nfsd/nfs3xdr.c               |   13 +++++++-----
+ ./fs/nfsd/nfs4xdr.c               |    6 ++---
+ ./fs/nfsd/nfsproc.c               |    6 ++---
+ ./fs/nfsd/nfsxdr.c                |   10 ++++-----
+ ./include/linux/nfsd/const.h      |   15 +++++++++++++-
+ ./include/linux/sunrpc/auth.h     |    3 --
+ ./include/linux/sunrpc/msg_prot.h |   40 ++++++++++++++++++++++++++++++++++++++
+ ./include/linux/sunrpc/svc.h      |   25 +++++++++++++++++++++--
+ ./include/linux/sunrpc/xprt.h     |    8 -------
+ ./net/sunrpc/svc.c                |   15 ++++++++++++++
+ 11 files changed, 120 insertions(+), 35 deletions(-)
 
-diff .prev/fs/nfsd/nfs2acl.c ./fs/nfsd/nfs2acl.c
---- .prev/fs/nfsd/nfs2acl.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./fs/nfsd/nfs2acl.c	2006-08-07 09:59:29.000000000 +1000
-@@ -241,7 +241,7 @@ static int nfsaclsvc_encode_getaclres(st
+diff .prev/fs/nfsd/nfs3proc.c ./fs/nfsd/nfs3proc.c
+--- .prev/fs/nfsd/nfs3proc.c	2006-08-07 10:11:24.000000000 +1000
++++ ./fs/nfsd/nfs3proc.c	2006-08-07 10:17:53.000000000 +1000
+@@ -160,6 +160,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, 
+ 				        struct nfsd3_readres  *resp)
+ {
+ 	int	nfserr;
++	u32	max_blocksize = svc_max_payload(rqstp);
  
- 	rqstp->rq_res.page_len = w;
- 	while (w > 0) {
--		if (!svc_take_res_page(rqstp))
-+		if (!rqstp->rq_respages[rqstp->rq_resused++])
- 			return 0;
- 		w -= PAGE_SIZE;
- 	}
-
-diff .prev/fs/nfsd/nfs3acl.c ./fs/nfsd/nfs3acl.c
---- .prev/fs/nfsd/nfs3acl.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./fs/nfsd/nfs3acl.c	2006-08-07 09:59:37.000000000 +1000
-@@ -185,7 +185,7 @@ static int nfs3svc_encode_getaclres(stru
+ 	dprintk("nfsd: READ(3) %s %lu bytes at %lu\n",
+ 				SVCFH_fmt(&argp->fh),
+@@ -172,8 +173,8 @@ nfsd3_proc_read(struct svc_rqst *rqstp, 
+ 	 */
  
- 		rqstp->rq_res.page_len = w;
- 		while (w > 0) {
--			if (!svc_take_res_page(rqstp))
-+			if (!rqstp->rq_respages[rqstp->rq_resused++])
- 				return 0;
- 			w -= PAGE_SIZE;
- 		}
+ 	resp->count = argp->count;
+-	if (NFSSVC_MAXBLKSIZE < resp->count)
+-		resp->count = NFSSVC_MAXBLKSIZE;
++	if (max_blocksize < resp->count)
++		resp->count = max_blocksize;
+ 
+ 	svc_reserve(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
+ 
+@@ -538,15 +539,16 @@ nfsd3_proc_fsinfo(struct svc_rqst * rqst
+ 					   struct nfsd3_fsinfores *resp)
+ {
+ 	int	nfserr;
++	u32	max_blocksize = svc_max_payload(rqstp);
+ 
+ 	dprintk("nfsd: FSINFO(3)   %s\n",
+ 				SVCFH_fmt(&argp->fh));
+ 
+-	resp->f_rtmax  = NFSSVC_MAXBLKSIZE;
+-	resp->f_rtpref = NFSSVC_MAXBLKSIZE;
++	resp->f_rtmax  = max_blocksize;
++	resp->f_rtpref = max_blocksize;
+ 	resp->f_rtmult = PAGE_SIZE;
+-	resp->f_wtmax  = NFSSVC_MAXBLKSIZE;
+-	resp->f_wtpref = NFSSVC_MAXBLKSIZE;
++	resp->f_wtmax  = max_blocksize;
++	resp->f_wtpref = max_blocksize;
+ 	resp->f_wtmult = PAGE_SIZE;
+ 	resp->f_dtpref = PAGE_SIZE;
+ 	resp->f_maxfilesize = ~(u32) 0;
 
 diff .prev/fs/nfsd/nfs3xdr.c ./fs/nfsd/nfs3xdr.c
---- .prev/fs/nfsd/nfs3xdr.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./fs/nfsd/nfs3xdr.c	2006-08-07 10:06:24.000000000 +1000
-@@ -343,8 +343,7 @@ nfs3svc_decode_readargs(struct svc_rqst 
+--- .prev/fs/nfsd/nfs3xdr.c	2006-08-07 10:11:24.000000000 +1000
++++ ./fs/nfsd/nfs3xdr.c	2006-08-07 10:17:53.000000000 +1000
+@@ -330,6 +330,7 @@ nfs3svc_decode_readargs(struct svc_rqst 
+ {
+ 	unsigned int len;
+ 	int v,pn;
++	u32 max_blocksize = svc_max_payload(rqstp);
+ 
+ 	if (!(p = decode_fh(p, &args->fh))
+ 	 || !(p = xdr_decode_hyper(p, &args->offset)))
+@@ -337,8 +338,8 @@ nfs3svc_decode_readargs(struct svc_rqst 
+ 
+ 	len = args->count = ntohl(*p++);
+ 
+-	if (len > NFSSVC_MAXBLKSIZE)
+-		len = NFSSVC_MAXBLKSIZE;
++	if (len > max_blocksize)
++		len = max_blocksize;
+ 
  	/* set up the kvec */
  	v=0;
- 	while (len > 0) {
--		pn = rqstp->rq_resused;
--		svc_take_page(rqstp);
-+		pn = rqstp->rq_resused++;
- 		args->vec[v].iov_base = page_address(rqstp->rq_respages[pn]);
- 		args->vec[v].iov_len = len < PAGE_SIZE? len : PAGE_SIZE;
- 		len -= args->vec[v].iov_len;
-@@ -382,7 +381,7 @@ nfs3svc_decode_writeargs(struct svc_rqst
- 	while (len > args->vec[v].iov_len) {
- 		len -= args->vec[v].iov_len;
- 		v++;
--		args->vec[v].iov_base = page_address(rqstp->rq_argpages[v]);
-+		args->vec[v].iov_base = page_address(rqstp->rq_pages[v]);
- 		args->vec[v].iov_len = PAGE_SIZE;
- 	}
- 	args->vec[v].iov_len = len;
-@@ -446,11 +445,11 @@ nfs3svc_decode_symlinkargs(struct svc_rq
- 	 * This page appears in the rq_res.pages list, but as pages_len is always
- 	 * 0, it won't get in the way
- 	 */
--	svc_take_page(rqstp);
- 	len = ntohl(*p++);
- 	if (len == 0 || len > NFS3_MAXPATHLEN || len >= PAGE_SIZE)
- 		return 0;
--	args->tname = new = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
-+	args->tname = new =
-+		page_address(rqstp->rq_respages[rqstp->rq_resused++]);
- 	args->tlen = len;
- 	/* first copy and check from the first page */
- 	old = (char*)p;
-@@ -522,8 +521,8 @@ nfs3svc_decode_readlinkargs(struct svc_r
+@@ -358,6 +359,7 @@ nfs3svc_decode_writeargs(struct svc_rqst
+ 					struct nfsd3_writeargs *args)
  {
+ 	unsigned int len, v, hdr;
++	u32 max_blocksize = svc_max_payload(rqstp);
+ 
+ 	if (!(p = decode_fh(p, &args->fh))
+ 	 || !(p = xdr_decode_hyper(p, &args->offset)))
+@@ -375,8 +377,8 @@ nfs3svc_decode_writeargs(struct svc_rqst
+ 	rqstp->rq_vec[0].iov_base = (void*)p;
+ 	rqstp->rq_vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
+ 
+-	if (len > NFSSVC_MAXBLKSIZE)
+-		len = NFSSVC_MAXBLKSIZE;
++	if (len > max_blocksize)
++		len = max_blocksize;
+ 	v=  0;
+ 	while (len > rqstp->rq_vec[v].iov_len) {
+ 		len -= rqstp->rq_vec[v].iov_len;
+@@ -564,6 +566,7 @@ nfs3svc_decode_readdirplusargs(struct sv
+ 					struct nfsd3_readdirargs *args)
+ {
+ 	int len, pn;
++	u32 max_blocksize = svc_max_payload(rqstp);
+ 
  	if (!(p = decode_fh(p, &args->fh)))
  		return 0;
--	svc_take_page(rqstp);
--	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
-+	args->buffer =
-+		page_address(rqstp->rq_respages[rqstp->rq_resused++]);
+@@ -572,7 +575,7 @@ nfs3svc_decode_readdirplusargs(struct sv
+ 	args->dircount = ntohl(*p++);
+ 	args->count    = ntohl(*p++);
  
- 	return xdr_argsize_check(rqstp, p);
- }
-@@ -554,8 +553,8 @@ nfs3svc_decode_readdirargs(struct svc_rq
- 	if (args->count > PAGE_SIZE)
- 		args->count = PAGE_SIZE;
- 
--	svc_take_page(rqstp);
--	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
-+	args->buffer =
-+		page_address(rqstp->rq_respages[rqstp->rq_resused++]);
- 
- 	return xdr_argsize_check(rqstp, p);
- }
-@@ -578,8 +577,7 @@ nfs3svc_decode_readdirplusargs(struct sv
+-	len = (args->count > NFSSVC_MAXBLKSIZE) ? NFSSVC_MAXBLKSIZE :
++	len = (args->count > max_blocksize) ? max_blocksize :
+ 						  args->count;
  	args->count = len;
  
- 	while (len > 0) {
--		pn = rqstp->rq_resused;
--		svc_take_page(rqstp);
-+		pn = rqstp->rq_resused++;
- 		if (!args->buffer)
- 			args->buffer = page_address(rqstp->rq_respages[pn]);
- 		len -= PAGE_SIZE;
-@@ -668,7 +666,6 @@ nfs3svc_encode_readlinkres(struct svc_rq
- 		rqstp->rq_res.page_len = resp->len;
- 		if (resp->len & 3) {
- 			/* need to pad the tail */
--			rqstp->rq_restailpage = 0;
- 			rqstp->rq_res.tail[0].iov_base = p;
- 			*p = 0;
- 			rqstp->rq_res.tail[0].iov_len = 4 - (resp->len&3);
-@@ -693,7 +690,6 @@ nfs3svc_encode_readres(struct svc_rqst *
- 		rqstp->rq_res.page_len = resp->count;
- 		if (resp->count & 3) {
- 			/* need to pad the tail */
--			rqstp->rq_restailpage = 0;
- 			rqstp->rq_res.tail[0].iov_base = p;
- 			*p = 0;
- 			rqstp->rq_res.tail[0].iov_len = 4 - (resp->count & 3);
-@@ -768,7 +764,6 @@ nfs3svc_encode_readdirres(struct svc_rqs
- 		rqstp->rq_res.page_len = (resp->count) << 2;
- 
- 		/* add the 'tail' to the end of the 'head' page - page 0. */
--		rqstp->rq_restailpage = 0;
- 		rqstp->rq_res.tail[0].iov_base = p;
- 		*p++ = 0;		/* no more entries */
- 		*p++ = htonl(resp->common.err == nfserr_eof);
 
 diff .prev/fs/nfsd/nfs4xdr.c ./fs/nfsd/nfs4xdr.c
---- .prev/fs/nfsd/nfs4xdr.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2006-08-07 10:02:33.000000000 +1000
-@@ -2040,7 +2040,8 @@ nfsd4_encode_open_downgrade(struct nfsd4
- }
- 
- static int
--nfsd4_encode_read(struct nfsd4_compoundres *resp, int nfserr, struct nfsd4_read *read)
-+nfsd4_encode_read(struct nfsd4_compoundres *resp, int nfserr,
-+		  struct nfsd4_read *read)
- {
- 	u32 eof;
- 	int v, pn;
-@@ -2062,10 +2063,11 @@ nfsd4_encode_read(struct nfsd4_compoundr
- 	len = maxcount;
- 	v = 0;
- 	while (len > 0) {
--		pn = resp->rqstp->rq_resused;
--		svc_take_page(resp->rqstp);
--		read->rd_iov[v].iov_base = page_address(resp->rqstp->rq_respages[pn]);
--		read->rd_iov[v].iov_len = len < PAGE_SIZE ? len : PAGE_SIZE;
-+		pn = resp->rqstp->rq_resused++;
-+		read->rd_iov[v].iov_base =
-+			page_address(resp->rqstp->rq_respages[pn]);
-+		read->rd_iov[v].iov_len =
-+			len < PAGE_SIZE ? len : PAGE_SIZE;
- 		v++;
- 		len -= PAGE_SIZE;
+--- .prev/fs/nfsd/nfs4xdr.c	2006-08-07 10:11:24.000000000 +1000
++++ ./fs/nfsd/nfs4xdr.c	2006-08-07 10:17:53.000000000 +1000
+@@ -1537,12 +1537,12 @@ out_acl:
+ 	if (bmval0 & FATTR4_WORD0_MAXREAD) {
+ 		if ((buflen -= 8) < 0)
+ 			goto out_resource;
+-		WRITE64((u64) NFSSVC_MAXBLKSIZE);
++		WRITE64((u64) svc_max_payload(rqstp));
  	}
-@@ -2079,7 +2081,8 @@ nfsd4_encode_read(struct nfsd4_compoundr
- 		nfserr = nfserr_inval;
- 	if (nfserr)
- 		return nfserr;
--	eof = (read->rd_offset + maxcount >= read->rd_fhp->fh_dentry->d_inode->i_size);
-+	eof = (read->rd_offset + maxcount >=
-+	       read->rd_fhp->fh_dentry->d_inode->i_size);
- 
- 	WRITE32(eof);
- 	WRITE32(maxcount);
-@@ -2089,7 +2092,6 @@ nfsd4_encode_read(struct nfsd4_compoundr
- 	resp->xbuf->page_len = maxcount;
- 
- 	/* Use rest of head for padding and remaining ops: */
--	resp->rqstp->rq_restailpage = 0;
- 	resp->xbuf->tail[0].iov_base = p;
- 	resp->xbuf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
-@@ -2114,8 +2116,7 @@ nfsd4_encode_readlink(struct nfsd4_compo
- 	if (resp->xbuf->page_len)
- 		return nfserr_resource;
- 
--	svc_take_page(resp->rqstp);
--	page = page_address(resp->rqstp->rq_respages[resp->rqstp->rq_resused-1]);
-+	page = page_address(resp->rqstp->rq_respages[resp->rqstp->rq_resused++]);
- 
- 	maxcount = PAGE_SIZE;
- 	RESERVE_SPACE(4);
-@@ -2139,7 +2140,6 @@ nfsd4_encode_readlink(struct nfsd4_compo
- 	resp->xbuf->page_len = maxcount;
- 
- 	/* Use rest of head for padding and remaining ops: */
--	resp->rqstp->rq_restailpage = 0;
- 	resp->xbuf->tail[0].iov_base = p;
- 	resp->xbuf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
-@@ -2190,8 +2190,7 @@ nfsd4_encode_readdir(struct nfsd4_compou
- 		goto err_no_verf;
+ 	if (bmval0 & FATTR4_WORD0_MAXWRITE) {
+ 		if ((buflen -= 8) < 0)
+ 			goto out_resource;
+-		WRITE64((u64) NFSSVC_MAXBLKSIZE);
++		WRITE64((u64) svc_max_payload(rqstp));
  	}
+ 	if (bmval1 & FATTR4_WORD1_MODE) {
+ 		if ((buflen -= 4) < 0)
+@@ -2056,7 +2056,7 @@ nfsd4_encode_read(struct nfsd4_compoundr
  
--	svc_take_page(resp->rqstp);
--	page = page_address(resp->rqstp->rq_respages[resp->rqstp->rq_resused-1]);
-+	page = page_address(resp->rqstp->rq_respages[resp->rqstp->rq_resused++]);
- 	readdir->common.err = 0;
- 	readdir->buflen = maxcount;
- 	readdir->buffer = page;
-@@ -2216,10 +2215,10 @@ nfsd4_encode_readdir(struct nfsd4_compou
- 	p = readdir->buffer;
- 	*p++ = 0;	/* no more entries */
- 	*p++ = htonl(readdir->common.err == nfserr_eof);
--	resp->xbuf->page_len = ((char*)p) - (char*)page_address(resp->rqstp->rq_respages[resp->rqstp->rq_resused-1]);
-+	resp->xbuf->page_len = ((char*)p) - (char*)page_address(
-+		resp->rqstp->rq_respages[resp->rqstp->rq_resused-1]);
+ 	RESERVE_SPACE(8); /* eof flag and byte count */
  
- 	/* Use rest of head for padding and remaining ops: */
--	resp->rqstp->rq_restailpage = 0;
- 	resp->xbuf->tail[0].iov_base = tailbase;
- 	resp->xbuf->tail[0].iov_len = 0;
- 	resp->p = resp->xbuf->tail[0].iov_base;
+-	maxcount = NFSSVC_MAXBLKSIZE;
++	maxcount = svc_max_payload(resp->rqstp);
+ 	if (maxcount > read->rd_length)
+ 		maxcount = read->rd_length;
+ 
+
+diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
+--- .prev/fs/nfsd/nfsproc.c	2006-08-07 10:11:24.000000000 +1000
++++ ./fs/nfsd/nfsproc.c	2006-08-07 10:17:53.000000000 +1000
+@@ -146,13 +146,13 @@ nfsd_proc_read(struct svc_rqst *rqstp, s
+ 	 * status, 17 words for fattr, and 1 word for the byte count.
+ 	 */
+ 
+-	if (NFSSVC_MAXBLKSIZE < argp->count) {
++	if (NFSSVC_MAXBLKSIZE_V2 < argp->count) {
+ 		printk(KERN_NOTICE
+ 			"oversized read request from %u.%u.%u.%u:%d (%d bytes)\n",
+ 				NIPQUAD(rqstp->rq_addr.sin_addr.s_addr),
+ 				ntohs(rqstp->rq_addr.sin_port),
+ 				argp->count);
+-		argp->count = NFSSVC_MAXBLKSIZE;
++		argp->count = NFSSVC_MAXBLKSIZE_V2;
+ 	}
+ 	svc_reserve(rqstp, (19<<2) + argp->count + 4);
+ 
+@@ -553,7 +553,7 @@ static struct svc_procedure		nfsd_proced
+   PROC(none,	 void,		void,		none,		RC_NOCACHE, ST),
+   PROC(lookup,	 diropargs,	diropres,	fhandle,	RC_NOCACHE, ST+FH+AT),
+   PROC(readlink, readlinkargs,	readlinkres,	none,		RC_NOCACHE, ST+1+NFS_MAXPATHLEN/4),
+-  PROC(read,	 readargs,	readres,	fhandle,	RC_NOCACHE, ST+AT+1+NFSSVC_MAXBLKSIZE/4),
++  PROC(read,	 readargs,	readres,	fhandle,	RC_NOCACHE, ST+AT+1+NFSSVC_MAXBLKSIZE_V2/4),
+   PROC(none,	 void,		void,		none,		RC_NOCACHE, ST),
+   PROC(write,	 writeargs,	attrstat,	fhandle,	RC_REPLBUFF, ST+AT),
+   PROC(create,	 createargs,	diropres,	fhandle,	RC_REPLBUFF, ST+FH+AT),
 
 diff .prev/fs/nfsd/nfsxdr.c ./fs/nfsd/nfsxdr.c
---- .prev/fs/nfsd/nfsxdr.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./fs/nfsd/nfsxdr.c	2006-08-07 10:01:19.000000000 +1000
-@@ -262,8 +262,7 @@ nfssvc_decode_readargs(struct svc_rqst *
- 	 */
- 	v=0;
- 	while (len > 0) {
--		pn=rqstp->rq_resused;
--		svc_take_page(rqstp);
-+		pn = rqstp->rq_resused++;
- 		args->vec[v].iov_base = page_address(rqstp->rq_respages[pn]);
- 		args->vec[v].iov_len = len < PAGE_SIZE?len:PAGE_SIZE;
- 		len -= args->vec[v].iov_len;
-@@ -295,7 +294,7 @@ nfssvc_decode_writeargs(struct svc_rqst 
- 	while (len > args->vec[v].iov_len) {
- 		len -= args->vec[v].iov_len;
- 		v++;
--		args->vec[v].iov_base = page_address(rqstp->rq_argpages[v]);
-+		args->vec[v].iov_base = page_address(rqstp->rq_pages[v]);
- 		args->vec[v].iov_len = PAGE_SIZE;
- 	}
- 	args->vec[v].iov_len = len;
-@@ -333,8 +332,7 @@ nfssvc_decode_readlinkargs(struct svc_rq
+--- .prev/fs/nfsd/nfsxdr.c	2006-08-07 10:11:24.000000000 +1000
++++ ./fs/nfsd/nfsxdr.c	2006-08-07 10:17:53.000000000 +1000
+@@ -254,8 +254,8 @@ nfssvc_decode_readargs(struct svc_rqst *
+ 	len = args->count     = ntohl(*p++);
+ 	p++; /* totalcount - unused */
+ 
+-	if (len > NFSSVC_MAXBLKSIZE)
+-		len = NFSSVC_MAXBLKSIZE;
++	if (len > NFSSVC_MAXBLKSIZE_V2)
++		len = NFSSVC_MAXBLKSIZE_V2;
+ 
+ 	/* set up somewhere to store response.
+ 	 * We take pages, put them on reslist and include in iovec
+@@ -288,8 +288,8 @@ nfssvc_decode_writeargs(struct svc_rqst 
+ 	rqstp->rq_vec[0].iov_base = (void*)p;
+ 	rqstp->rq_vec[0].iov_len = rqstp->rq_arg.head[0].iov_len -
+ 				(((void*)p) - rqstp->rq_arg.head[0].iov_base);
+-	if (len > NFSSVC_MAXBLKSIZE)
+-		len = NFSSVC_MAXBLKSIZE;
++	if (len > NFSSVC_MAXBLKSIZE_V2)
++		len = NFSSVC_MAXBLKSIZE_V2;
+ 	v = 0;
+ 	while (len > rqstp->rq_vec[v].iov_len) {
+ 		len -= rqstp->rq_vec[v].iov_len;
+@@ -458,7 +458,7 @@ nfssvc_encode_statfsres(struct svc_rqst 
  {
- 	if (!(p = decode_fh(p, &args->fh)))
- 		return 0;
--	svc_take_page(rqstp);
--	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
-+	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused++]);
+ 	struct kstatfs	*stat = &resp->stats;
  
- 	return xdr_argsize_check(rqstp, p);
- }
-@@ -375,8 +373,7 @@ nfssvc_decode_readdirargs(struct svc_rqs
- 	if (args->count > PAGE_SIZE)
- 		args->count = PAGE_SIZE;
- 
--	svc_take_page(rqstp);
--	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused-1]);
-+	args->buffer = page_address(rqstp->rq_respages[rqstp->rq_resused++]);
- 
- 	return xdr_argsize_check(rqstp, p);
- }
-@@ -416,7 +413,6 @@ nfssvc_encode_readlinkres(struct svc_rqs
- 	rqstp->rq_res.page_len = resp->len;
- 	if (resp->len & 3) {
- 		/* need to pad the tail */
--		rqstp->rq_restailpage = 0;
- 		rqstp->rq_res.tail[0].iov_base = p;
- 		*p = 0;
- 		rqstp->rq_res.tail[0].iov_len = 4 - (resp->len&3);
-@@ -436,7 +432,6 @@ nfssvc_encode_readres(struct svc_rqst *r
- 	rqstp->rq_res.page_len = resp->count;
- 	if (resp->count & 3) {
- 		/* need to pad the tail */
--		rqstp->rq_restailpage = 0;
- 		rqstp->rq_res.tail[0].iov_base = p;
- 		*p = 0;
- 		rqstp->rq_res.tail[0].iov_len = 4 - (resp->count&3);
+-	*p++ = htonl(NFSSVC_MAXBLKSIZE);	/* max transfer size */
++	*p++ = htonl(NFSSVC_MAXBLKSIZE_V2);	/* max transfer size */
+ 	*p++ = htonl(stat->f_bsize);
+ 	*p++ = htonl(stat->f_blocks);
+ 	*p++ = htonl(stat->f_bfree);
 
-diff .prev/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
---- .prev/fs/nfsd/vfs.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2006-08-07 10:01:36.000000000 +1000
-@@ -791,22 +791,26 @@ nfsd_read_actor(read_descriptor_t *desc,
- {
- 	unsigned long count = desc->count;
- 	struct svc_rqst *rqstp = desc->arg.data;
-+	struct page **pp = rqstp->rq_respages + rqstp->rq_resused;
+diff .prev/include/linux/nfsd/const.h ./include/linux/nfsd/const.h
+--- .prev/include/linux/nfsd/const.h	2006-08-07 09:32:13.000000000 +1000
++++ ./include/linux/nfsd/const.h	2006-08-07 10:17:53.000000000 +1000
+@@ -13,6 +13,7 @@
+ #include <linux/nfs2.h>
+ #include <linux/nfs3.h>
+ #include <linux/nfs4.h>
++#include <linux/sunrpc/msg_prot.h>
  
- 	if (size > count)
- 		size = count;
+ /*
+  * Maximum protocol version supported by knfsd
+@@ -23,6 +24,8 @@
+  * Maximum blocksize supported by daemon currently at 32K
+  */
+ #define NFSSVC_MAXBLKSIZE	(32*1024)
++/* NFSv2 is limited by the protocol specification, see RFC 1094 */
++#define NFSSVC_MAXBLKSIZE_V2	(8*1024)
  
- 	if (rqstp->rq_res.page_len == 0) {
- 		get_page(page);
--		rqstp->rq_respages[rqstp->rq_resused++] = page;
-+		put_page(*pp);
-+		*pp = page;
-+		rqstp->rq_resused++;
- 		rqstp->rq_res.page_base = offset;
- 		rqstp->rq_res.page_len = size;
--	} else if (page != rqstp->rq_respages[rqstp->rq_resused-1]) {
-+	} else if (page != pp[-1]) {
- 		get_page(page);
--		rqstp->rq_respages[rqstp->rq_resused++] = page;
-+		put_page(*pp);
-+		*pp = page;
-+		rqstp->rq_resused++;
- 		rqstp->rq_res.page_len += size;
--	} else {
-+	} else
- 		rqstp->rq_res.page_len += size;
--	}
+ #ifdef __KERNEL__
  
- 	desc->count = count - size;
- 	desc->written += size;
-@@ -840,7 +844,7 @@ nfsd_vfs_read(struct svc_rqst *rqstp, st
- 		file->f_ra = ra->p_ra;
+@@ -30,7 +33,17 @@
+ # define NFS_SUPER_MAGIC	0x6969
+ #endif
  
- 	if (file->f_op->sendfile && rqstp->rq_sendfile_ok) {
--		svc_pushback_unused_pages(rqstp);
-+		rqstp->rq_resused = 1;
- 		err = file->f_op->sendfile(file, &offset, *count,
- 						 nfsd_read_actor, rqstp);
- 	} else {
+-#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
++/*
++ * Largest number of bytes we need to allocate for an NFS
++ * call or reply.  Used to control buffer sizes.  We use
++ * the length of v3 WRITE, READDIR and READDIR replies
++ * which are an RPC header, up to 26 XDR units of reply
++ * data, and some page data.
++ *
++ * Note that accuracy here doesn't matter too much as the
++ * size is rounded up to a page size when allocating space.
++ */
++#define NFSD_BUFSIZE		((RPC_MAX_HEADER_WITH_AUTH+26)*XDR_UNIT + NFSSVC_MAXBLKSIZE)
+ 
+ #ifdef CONFIG_NFSD_V4
+ # define NFSSVC_XDRSIZE		NFS4_SVC_XDRSIZE
+
+diff .prev/include/linux/sunrpc/auth.h ./include/linux/sunrpc/auth.h
+--- .prev/include/linux/sunrpc/auth.h	2006-08-07 09:32:13.000000000 +1000
++++ ./include/linux/sunrpc/auth.h	2006-08-07 10:17:53.000000000 +1000
+@@ -20,9 +20,6 @@
+ /* size of the nodename buffer */
+ #define UNX_MAXNODENAME	32
+ 
+-/* Maximum size (in bytes) of an rpc credential or verifier */
+-#define RPC_MAX_AUTH_SIZE (400)
+-
+ /* Work around the lack of a VFS credential */
+ struct auth_cred {
+ 	uid_t	uid;
+
+diff .prev/include/linux/sunrpc/msg_prot.h ./include/linux/sunrpc/msg_prot.h
+--- .prev/include/linux/sunrpc/msg_prot.h	2006-08-07 09:32:13.000000000 +1000
++++ ./include/linux/sunrpc/msg_prot.h	2006-08-07 10:17:53.000000000 +1000
+@@ -11,6 +11,9 @@
+ 
+ #define RPC_VERSION 2
+ 
++/* size of an XDR encoding unit in bytes, i.e. 32bit */
++#define XDR_UNIT	(4)
++
+ /* spec defines authentication flavor as an unsigned 32 bit integer */
+ typedef u32	rpc_authflavor_t;
+ 
+@@ -34,6 +37,9 @@ enum rpc_auth_flavors {
+ 	RPC_AUTH_GSS_SPKMP = 390011,
+ };
+ 
++/* Maximum size (in bytes) of an rpc credential or verifier */
++#define RPC_MAX_AUTH_SIZE (400)
++
+ enum rpc_msg_type {
+ 	RPC_CALL = 0,
+ 	RPC_REPLY = 1
+@@ -101,5 +107,39 @@ typedef u32	rpc_fraghdr;
+ #define	RPC_FRAGMENT_SIZE_MASK		(~RPC_LAST_STREAM_FRAGMENT)
+ #define	RPC_MAX_FRAGMENT_SIZE		((1U << 31) - 1)
+ 
++/*
++ * RPC call and reply header size as number of 32bit words (verifier
++ * size computed separately, see below)
++ */
++#define RPC_CALLHDRSIZE		(6)
++#define RPC_REPHDRSIZE		(4)
++
++
++/*
++ * Maximum RPC header size, including authentication,
++ * as number of 32bit words (see RFCs 1831, 1832).
++ *
++ *	xid			    1 xdr unit = 4 bytes
++ *	mtype			    1
++ *	rpc_version		    1
++ *	program			    1
++ *	prog_version		    1
++ *	procedure		    1
++ *	cred {
++ *	    flavor		    1
++ *	    length		    1
++ *	    body<RPC_MAX_AUTH_SIZE> 100 xdr units = 400 bytes
++ *	}
++ *	verf {
++ *	    flavor		    1
++ *	    length		    1
++ *	    body<RPC_MAX_AUTH_SIZE> 100 xdr units = 400 bytes
++ *	}
++ *	TOTAL			    210 xdr units = 840 bytes
++ */
++#define RPC_MAX_HEADER_WITH_AUTH \
++	(RPC_CALLHDRSIZE + 2*(2+RPC_MAX_AUTH_SIZE/4))
++
++
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_MSGPROT_H_ */
 
 diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
---- .prev/include/linux/sunrpc/svc.h	2006-08-07 10:11:06.000000000 +1000
-+++ ./include/linux/sunrpc/svc.h	2006-08-07 10:01:54.000000000 +1000
-@@ -153,7 +153,6 @@ static inline void svc_putu32(struct kve
+--- .prev/include/linux/sunrpc/svc.h	2006-08-07 10:11:24.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2006-08-07 10:17:53.000000000 +1000
+@@ -13,6 +13,7 @@
+ #include <linux/in.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/svcauth.h>
+ #include <linux/wait.h>
+ #include <linux/mm.h>
+@@ -95,8 +96,28 @@ static inline void svc_get(struct svc_se
+  * Maximum payload size supported by a kernel RPC server.
+  * This is use to determine the max number of pages nfsd is
+  * willing to return in a single READ operation.
+- */
+-#define RPCSVC_MAXPAYLOAD	(64*1024u)
++ *
++ * These happen to all be powers of 2, which is not strictly
++ * necessary but helps enforce the real limitation, which is
++ * that they should be multiples of PAGE_CACHE_SIZE.
++ *
++ * For UDP transports, a block plus NFS,RPC, and UDP headers
++ * has to fit into the IP datagram limit of 64K.  The largest
++ * feasible number for all known page sizes is probably 48K,
++ * but we choose 32K here.  This is the same as the historical
++ * Linux limit; someone who cares more about NFS/UDP performance
++ * can test a larger number.
++ *
++ * For TCP transports we have more freedom.  A size of 1MB is
++ * chosen to match the client limit.  Other OSes are known to
++ * have larger limits, but those numbers are probably beyond
++ * the point of diminishing returns.
++ */
++#define RPCSVC_MAXPAYLOAD	(1*1024*1024u)
++#define RPCSVC_MAXPAYLOAD_TCP	RPCSVC_MAXPAYLOAD
++#define RPCSVC_MAXPAYLOAD_UDP	(32*1024u)
++
++extern u32 svc_max_payload(const struct svc_rqst *rqstp);
+ 
  /*
-  * The context of a single thread, including the request currently being
-  * processed.
-- * NOTE: First two items must be prev/next.
-  */
- struct svc_rqst {
- 	struct list_head	rq_list;	/* idle list */
-@@ -172,12 +171,9 @@ struct svc_rqst {
- 
- 	struct xdr_buf		rq_arg;
- 	struct xdr_buf		rq_res;
--	struct page *		rq_argpages[RPCSVC_MAXPAGES];
--	struct page *		rq_respages[RPCSVC_MAXPAGES];
--	int			rq_restailpage;
--	short			rq_argused;	/* pages used for argument */
--	short			rq_arghi;	/* pages available in argument page list */
--	short			rq_resused;	/* pages used for result */
-+	struct page *		rq_pages[RPCSVC_MAXPAGES];
-+	struct page *		*rq_respages;	/* points into rq_pages */
-+	int			rq_resused;	/* number of pages used for result */
- 
- 	u32			rq_xid;		/* transmission id */
- 	u32			rq_prog;	/* program number */
-@@ -238,63 +234,18 @@ xdr_ressize_check(struct svc_rqst *rqstp
- 	return vec->iov_len <= PAGE_SIZE;
- }
- 
--static inline struct page *
--svc_take_res_page(struct svc_rqst *rqstp)
-+static inline void svc_free_res_pages(struct svc_rqst *rqstp)
- {
--	if (rqstp->rq_arghi <= rqstp->rq_argused)
--		return NULL;
--	rqstp->rq_arghi--;
--	rqstp->rq_respages[rqstp->rq_resused] =
--		rqstp->rq_argpages[rqstp->rq_arghi];
--	return rqstp->rq_respages[rqstp->rq_resused++];
--}
--
--static inline void svc_take_page(struct svc_rqst *rqstp)
--{
--	if (rqstp->rq_arghi <= rqstp->rq_argused) {
--		WARN_ON(1);
--		return;
--	}
--	rqstp->rq_arghi--;
--	rqstp->rq_respages[rqstp->rq_resused] =
--		rqstp->rq_argpages[rqstp->rq_arghi];
--	rqstp->rq_resused++;
--}
--
--static inline void svc_pushback_allpages(struct svc_rqst *rqstp)
--{
--        while (rqstp->rq_resused) {
--		if (rqstp->rq_respages[--rqstp->rq_resused] == NULL)
--			continue;
--		rqstp->rq_argpages[rqstp->rq_arghi++] =
--			rqstp->rq_respages[rqstp->rq_resused];
--		rqstp->rq_respages[rqstp->rq_resused] = NULL;
--	}
--}
--
--static inline void svc_pushback_unused_pages(struct svc_rqst *rqstp)
--{
--	while (rqstp->rq_resused &&
--	       rqstp->rq_res.pages != &rqstp->rq_respages[rqstp->rq_resused]) {
--
--		if (rqstp->rq_respages[--rqstp->rq_resused] != NULL) {
--			rqstp->rq_argpages[rqstp->rq_arghi++] =
--				rqstp->rq_respages[rqstp->rq_resused];
--			rqstp->rq_respages[rqstp->rq_resused] = NULL;
-+	while (rqstp->rq_resused) {
-+		struct page **pp = (rqstp->rq_respages +
-+				    --rqstp->rq_resused);
-+		if (*pp) {
-+			put_page(*pp);
-+			*pp = NULL;
- 		}
- 	}
- }
- 
--static inline void svc_free_allpages(struct svc_rqst *rqstp)
--{
--        while (rqstp->rq_resused) {
--		if (rqstp->rq_respages[--rqstp->rq_resused] == NULL)
--			continue;
--		put_page(rqstp->rq_respages[rqstp->rq_resused]);
--		rqstp->rq_respages[rqstp->rq_resused] = NULL;
--	}
--}
--
- struct svc_deferred_req {
- 	u32			prot;	/* protocol (UDP or TCP) */
- 	struct sockaddr_in	addr;
+  * RPC Requsts and replies are stored in one or more pages.
 
-diff .prev/net/sunrpc/auth_gss/svcauth_gss.c ./net/sunrpc/auth_gss/svcauth_gss.c
---- .prev/net/sunrpc/auth_gss/svcauth_gss.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-08-07 09:32:26.000000000 +1000
-@@ -1191,7 +1191,6 @@ svcauth_gss_wrap_resp_integ(struct svc_r
- 		resbuf->tail[0].iov_base = resbuf->head[0].iov_base
- 						+ resbuf->head[0].iov_len;
- 		resbuf->tail[0].iov_len = 0;
--		rqstp->rq_restailpage = 0;
- 		resv = &resbuf->tail[0];
- 	} else {
- 		resv = &resbuf->tail[0];
-@@ -1240,7 +1239,7 @@ svcauth_gss_wrap_resp_priv(struct svc_rq
- 	inpages = resbuf->pages;
- 	/* XXX: Would be better to write some xdr helper functions for
- 	 * nfs{2,3,4}xdr.c that place the data right, instead of copying: */
--	if (resbuf->tail[0].iov_base && rqstp->rq_restailpage == 0) {
-+	if (resbuf->tail[0].iov_base) {
- 		BUG_ON(resbuf->tail[0].iov_base >= resbuf->head[0].iov_base
- 							+ PAGE_SIZE);
- 		BUG_ON(resbuf->tail[0].iov_base < resbuf->head[0].iov_base);
-@@ -1258,7 +1257,6 @@ svcauth_gss_wrap_resp_priv(struct svc_rq
- 		resbuf->tail[0].iov_base = resbuf->head[0].iov_base
- 			+ resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE;
- 		resbuf->tail[0].iov_len = 0;
--		rqstp->rq_restailpage = 0;
- 	}
- 	if (gss_wrap(gsd->rsci->mechctx, offset, resbuf, inpages))
- 		return -ENOMEM;
+diff .prev/include/linux/sunrpc/xprt.h ./include/linux/sunrpc/xprt.h
+--- .prev/include/linux/sunrpc/xprt.h	2006-08-07 09:32:13.000000000 +1000
++++ ./include/linux/sunrpc/xprt.h	2006-08-07 10:17:53.000000000 +1000
+@@ -14,6 +14,7 @@
+ #include <linux/in.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/msg_prot.h>
+ 
+ extern unsigned int xprt_udp_slot_table_entries;
+ extern unsigned int xprt_tcp_slot_table_entries;
+@@ -23,13 +24,6 @@ extern unsigned int xprt_tcp_slot_table_
+ #define RPC_MAX_SLOT_TABLE	(128U)
+ 
+ /*
+- * RPC call and reply header size as number of 32bit words (verifier
+- * size computed separately)
+- */
+-#define RPC_CALLHDRSIZE		6
+-#define RPC_REPHDRSIZE		4
+-
+-/*
+  * Parameters for choosing a free port
+  */
+ extern unsigned int xprt_min_resvport;
 
 diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./net/sunrpc/svc.c	2006-08-07 10:02:11.000000000 +1000
-@@ -408,18 +408,15 @@ svc_init_buffer(struct svc_rqst *rqstp, 
- 	if (size > RPCSVC_MAXPAYLOAD)
- 		size = RPCSVC_MAXPAYLOAD;
- 	pages = 2 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
--	rqstp->rq_argused = 0;
--	rqstp->rq_resused = 0;
- 	arghi = 0;
- 	BUG_ON(pages > RPCSVC_MAXPAGES);
- 	while (pages) {
- 		struct page *p = alloc_page(GFP_KERNEL);
- 		if (!p)
- 			break;
--		rqstp->rq_argpages[arghi++] = p;
-+		rqstp->rq_pages[arghi++] = p;
- 		pages--;
- 	}
--	rqstp->rq_arghi = arghi;
- 	return ! pages;
+--- .prev/net/sunrpc/svc.c	2006-08-07 10:02:11.000000000 +1000
++++ ./net/sunrpc/svc.c	2006-08-07 10:17:53.000000000 +1000
+@@ -910,3 +910,18 @@ err_bad:
+ 	svc_putu32(resv, rpc_stat);
+ 	goto sendit;
  }
- 
-@@ -429,14 +426,10 @@ svc_init_buffer(struct svc_rqst *rqstp, 
- static void
- svc_release_buffer(struct svc_rqst *rqstp)
- {
--	while (rqstp->rq_arghi)
--		put_page(rqstp->rq_argpages[--rqstp->rq_arghi]);
--	while (rqstp->rq_resused) {
--		if (rqstp->rq_respages[--rqstp->rq_resused] == NULL)
--			continue;
--		put_page(rqstp->rq_respages[rqstp->rq_resused]);
--	}
--	rqstp->rq_argused = 0;
-+	int i;
-+	for (i=0; i<ARRAY_SIZE(rqstp->rq_pages); i++)
-+		if (rqstp->rq_pages[i])
-+			put_page(rqstp->rq_pages[i]);
- }
- 
- /*
-@@ -698,10 +691,10 @@ svc_process(struct svc_rqst *rqstp)
- 	/* setup response xdr_buf.
- 	 * Initially it has just one page 
- 	 */
--	svc_take_page(rqstp); /* must succeed */
-+	rqstp->rq_resused = 1;
- 	resv->iov_base = page_address(rqstp->rq_respages[0]);
- 	resv->iov_len = 0;
--	rqstp->rq_res.pages = rqstp->rq_respages+1;
-+	rqstp->rq_res.pages = rqstp->rq_respages + 1;
- 	rqstp->rq_res.len = 0;
- 	rqstp->rq_res.page_base = 0;
- 	rqstp->rq_res.page_len = 0;
-
-diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2006-08-07 10:11:06.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2006-08-07 09:58:03.000000000 +1000
-@@ -313,7 +313,7 @@ svc_sock_release(struct svc_rqst *rqstp)
- 
- 	svc_release_skb(rqstp);
- 
--	svc_free_allpages(rqstp);
-+	svc_free_res_pages(rqstp);
- 	rqstp->rq_res.page_len = 0;
- 	rqstp->rq_res.page_base = 0;
- 
-@@ -412,7 +412,8 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 	/* send head */
- 	if (slen == xdr->head[0].iov_len)
- 		flags = 0;
--	len = sock->ops->sendpage(sock, rqstp->rq_respages[0], 0, xdr->head[0].iov_len, flags);
-+	len = sock->ops->sendpage(sock, rqstp->rq_respages[0], 0,
-+				  xdr->head[0].iov_len, flags);
- 	if (len != xdr->head[0].iov_len)
- 		goto out;
- 	slen -= xdr->head[0].iov_len;
-@@ -437,8 +438,9 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 	}
- 	/* send tail */
- 	if (xdr->tail[0].iov_len) {
--		result = sock->ops->sendpage(sock, rqstp->rq_respages[rqstp->rq_restailpage], 
--					     ((unsigned long)xdr->tail[0].iov_base)& (PAGE_SIZE-1),
-+		result = sock->ops->sendpage(sock, rqstp->rq_respages[0],
-+					     ((unsigned long)xdr->tail[0].iov_base)
-+					        & (PAGE_SIZE-1),
- 					     xdr->tail[0].iov_len, 0);
- 
- 		if (result > 0)
-@@ -708,9 +710,11 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	if (len <= rqstp->rq_arg.head[0].iov_len) {
- 		rqstp->rq_arg.head[0].iov_len = len;
- 		rqstp->rq_arg.page_len = 0;
-+		rqstp->rq_respages = rqstp->rq_pages+1;
- 	} else {
- 		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
--		rqstp->rq_argused += (rqstp->rq_arg.page_len + PAGE_SIZE - 1)/ PAGE_SIZE;
-+		rqstp->rq_respages = rqstp->rq_pages + 1 +
-+			(rqstp->rq_arg.page_len + PAGE_SIZE - 1)/ PAGE_SIZE;
- 	}
- 
- 	if (serv->sv_stats)
-@@ -1060,11 +1064,12 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	vlen = PAGE_SIZE;
- 	pnum = 1;
- 	while (vlen < len) {
--		vec[pnum].iov_base = page_address(rqstp->rq_argpages[rqstp->rq_argused++]);
-+		vec[pnum].iov_base = page_address(rqstp->rq_pages[pnum]);
- 		vec[pnum].iov_len = PAGE_SIZE;
- 		pnum++;
- 		vlen += PAGE_SIZE;
- 	}
-+	rqstp->rq_respages = &rqstp->rq_pages[pnum];
- 
- 	/* Now receive data */
- 	len = svc_recvfrom(rqstp, vec, pnum, len);
-@@ -1216,7 +1221,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	struct svc_sock		*svsk =NULL;
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	struct svc_pool		*pool = rqstp->rq_pool;
--	int			len;
-+	int			len, i;
- 	int 			pages;
- 	struct xdr_buf		*arg;
- 	DECLARE_WAITQUEUE(wait, current);
-@@ -1233,27 +1238,22 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 			"svc_recv: service %p, wait queue active!\n",
- 			 rqstp);
- 
--	/* Initialize the buffers */
--	/* first reclaim pages that were moved to response list */
--	svc_pushback_allpages(rqstp);
- 
- 	/* now allocate needed pages.  If we get a failure, sleep briefly */
- 	pages = 2 + (serv->sv_bufsz + PAGE_SIZE -1) / PAGE_SIZE;
--	while (rqstp->rq_arghi < pages) {
--		struct page *p = alloc_page(GFP_KERNEL);
--		if (!p) {
--			schedule_timeout_uninterruptible(msecs_to_jiffies(500));
--			continue;
-+	for (i=0; i < pages ; i++)
-+		while (rqstp->rq_pages[i] == NULL) {
-+			struct page *p = alloc_page(GFP_KERNEL);
-+			if (!p)
-+				schedule_timeout_uninterruptible(msecs_to_jiffies(500));
-+			rqstp->rq_pages[i] = p;
- 		}
--		rqstp->rq_argpages[rqstp->rq_arghi++] = p;
--	}
- 
- 	/* Make arg->head point to first page and arg->pages point to rest */
- 	arg = &rqstp->rq_arg;
--	arg->head[0].iov_base = page_address(rqstp->rq_argpages[0]);
-+	arg->head[0].iov_base = page_address(rqstp->rq_pages[0]);
- 	arg->head[0].iov_len = PAGE_SIZE;
--	rqstp->rq_argused = 1;
--	arg->pages = rqstp->rq_argpages + 1;
-+	arg->pages = rqstp->rq_pages + 1;
- 	arg->page_base = 0;
- 	/* save at least one page for response */
- 	arg->page_len = (pages-2)*PAGE_SIZE;
++
++/*
++ * Return (transport-specific) limit on the rpc payload.
++ */
++u32 svc_max_payload(const struct svc_rqst *rqstp)
++{
++	int max = RPCSVC_MAXPAYLOAD_TCP;
++
++	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
++		max = RPCSVC_MAXPAYLOAD_UDP;
++	if (rqstp->rq_server->sv_bufsz < max)
++		max = rqstp->rq_server->sv_bufsz;
++	return max;
++}
++EXPORT_SYMBOL_GPL(svc_max_payload);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
