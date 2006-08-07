@@ -1,26 +1,31 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: [PATCH 003 of 4] Prepare knfsd for support of rsize/wsize
-	of up to 1MB, over TCP.
-Date: Mon, 7 Aug 2006 09:04:00 -0400
-Message-ID: <76bd70e30608070604r5da3fefds4fea763336221403@mail.gmail.com>
-References: <20060807103020.12286.patches@notabene>
-	<1060807003515.12391@suse.de>
+From: James Yarbrough <jmy@sgi.com>
+Subject: Re: [PATCH 0/3] NLM lock failover
+Date: Mon, 07 Aug 2006 13:14:30 -0700
+Message-ID: <44D79F26.B93E5C00@sgi.com>
+References: <44A41246.2070106@redhat.com>
+	<1154397341.3378.10.camel@localhost.localdomain>
+	<1154683665.21040.2431.camel@hole.melbourne.sgi.com>
+	<1154698079.3378.2.camel@localhost.localdomain>
+	<1154703362.3378.45.camel@localhost.localdomain>
+	<1154706709.4727.21.camel@localhost>
+	<1154756682.3384.34.camel@localhost.localdomain>
+	<1154923557.29877.106.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Greg Banks <gnb@melbourne.sgi.com>
+Cc: cluster-devel@redhat.com, lhh@redhat.com,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Wendy Cheng <wcheng@redhat.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GA4m4-000075-26
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 06:04:04 -0700
-Received: from nf-out-0910.google.com ([64.233.182.186])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GA4m3-00062g-7t
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 06:04:04 -0700
-Received: by nf-out-0910.google.com with SMTP id a27so834494nfc
-	for <nfs@lists.sourceforge.net>; Mon, 07 Aug 2006 06:04:01 -0700 (PDT)
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1060807003515.12391@suse.de>
+	id 1GABUn-00067A-O7
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 13:14:41 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GABUl-0003mR-Qu
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 13:14:42 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,38 +38,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+> > take-over server:
+> > B-1. mount the subject filesystem
+> > B-2. "echo 1234 > /proc/fs/nfsd/nlm_set_ip_grace"
+> > B-3. "rpc.statd -n 10.10.1.1 -N -P /shared_storage/sm_10.10.1.1"
+> > B-4. bring up 10.10.1.1
+> > B-5. re-export the filesystem
+> 
+> Umm, don't you want to do B-3 after B-4 and B-5 ?  Otherwise
+> clients might racily fail on the first try.
 
-On 8/6/06, NeilBrown <neilb@suse.de> wrote:
->
-> The limit over UDP remains at 32K.  Also, make some of
-> the apparently arbitrary sizing constants clearer.
->
-> The biggest change here involves replacing NFSSVC_MAXBLKSIZE
-> by a function of the rqstp.  This allows it to be different
-> for different protocols (udp/tcp) and also allows it
-> to depend on the servers declared sv_bufsiz.
->
-> Note that we don't actually increase sv_bufsz for nfs yet.
-> That comes next.
->
-> From: Greg Banks <gnb@melbourne.sgi.com>
-> Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> Signed-off-by: Neil Brown <neilb@suse.de>
+I don't think they will necessrily fail.  It depends on whether the
+server sends ICMP unreachable messages and how the client responds to
+those.  In any case, I think the ordering should be B-5, B-4, and B-3
+last.  One can argue about the ordering of B-3 and B-4, but if exporting
+(B-5) does not happen before bringing up the IP address (B-4), clients
+can get ESTALE replies.  For better transparency, it's probably best
+to avoid ESTALE.
 
-I know the name NFSSVC_MAXBLKSIZE is historical, but to me it is
-confusing.  It isn't a block size at all, it's really a maximum
-tranfser size, in bytes, right?
+It's probably OK to do step B-3 after bringing up the IP address since
+that will mimic what happens during boot.
+
+> 
+> Also, just curious here, when do you purge the clients' ARP caches?
+
+I don't think you can actually do a purge from the server explicitly.
+You should get the desired result when the IP address (10.10.1.1 in
+the above example) is brought up.  There's a gratuitous ARP that goes
+with that step.
 
 -- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
+jmy@sgi.com
+650 933 3124
+
+Blow up the mailbox!
 
 -------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
