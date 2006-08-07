@@ -1,30 +1,23 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 0/3] NLM lock failover
-Date: Mon, 07 Aug 2006 14:05:57 +1000
-Message-ID: <1154923557.29877.106.camel@hole.melbourne.sgi.com>
-References: <44A41246.2070106@redhat.com>
-	<1154397341.3378.10.camel@localhost.localdomain>
-	<1154683665.21040.2431.camel@hole.melbourne.sgi.com>
-	<1154698079.3378.2.camel@localhost.localdomain>
-	<1154703362.3378.45.camel@localhost.localdomain>
-	<1154706709.4727.21.camel@localhost>
-	<1154756682.3384.34.camel@localhost.localdomain>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] fix NFS mount.nfs options v4
+Date: Mon, 7 Aug 2006 16:59:57 +1000
+Message-ID: <17622.58605.231398.7539@cse.unsw.edu.au>
+References: <44CA32CE.9030205@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, lhh@redhat.com,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9wNZ-00072r-GH
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 21:06:13 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9wNZ-0000WR-Pt
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 21:06:14 -0700
-To: Wendy Cheng <wcheng@redhat.com>
-In-Reply-To: <1154756682.3384.34.camel@localhost.localdomain>
+	id 1G9z5u-0003ju-FK
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 00:00:10 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G9z5t-0000MU-OD
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 00:00:11 -0700
+To: Amit Gud <agud@redhat.com>
+In-Reply-To: message from Amit Gud on Friday July 28
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,44 +30,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, 2006-08-05 at 15:44, Wendy Cheng wrote:
-> On Fri, 2006-08-04 at 11:51 -0400, Trond Myklebust wrote:
-> > On Fri, 2006-08-04 at 10:56 -0400, Wendy Cheng wrote:
+On Friday July 28, agud@redhat.com wrote:
 
-> Note that before patch 3-3, the kernel always sets 2-b to
-> system_utsname.nodename. For rpc.statd, if RESTRICTED_STATD flag is on,
-> the rpc.statd always set 4-b to 127.0.0.1. Without RESTRICTED_STATD on,
-> it sets 4-b with whatever was passed by kernel (via 2-b). What (kernel)
-> patch 3-3 does is setting 2-b to the floating ip so rpc.statd could get
-> the correct ip and pass it into 4-b.
+Sorry for the delay in reviewing this.
 > 
-> Greg said (I havn't figured out how) without setting 4-b to 127.0.0.1,
-> we "may" open a security hole.
+> If the 'user' or 'users' mount option is specified on commandline, verify with 
+> /etc/fstab if it is really specified. Setuid bit is still ON and should remain
+> ON since mount drops the root privileges.
+> 
+> I've given this patch a good hammering, but not exhaustive by any means.
 
-Aha, I see what you needed.  You could have changed the logic
-in the RESTRICTED_STATD case of sm_mon_1_svc() not to ignore the
-passed my_addr.s_addr if svc_getcaller(rqstp->rq_xprt) is a
-privileged port on localhost.  This would probably give you your
-logic without reopening the security hole.
+I still don't see this as being adequately secure.
+All you are checking is whether the user has permission to mount onto
+the given directory, or from the given server:/directory, but not if
+they are allow to mount that server on that directory, or what options
+are required.
 
-> take-over server:
-> B-1. mount the subject filesystem
-> B-2. "echo 1234 > /proc/fs/nfsd/nlm_set_ip_grace"
-> B-3. "rpc.statd -n 10.10.1.1 -N -P /shared_storage/sm_10.10.1.1"
-> B-4. bring up 10.10.1.1
-> B-5. re-export the filesystem
+e.g. /etc/fstab could say you are only allowed to mount with
+noexec,nosuid, but mount.nfs isn't enforcing that.
 
-Umm, don't you want to do B-3 after B-4 and B-5 ?  Otherwise
-clients might racily fail on the first try.
+It seems to me that if getuid() returns non-zero, then you have to 
+either ignore or check everything given on the command line.
 
-Also, just curious here, when do you purge the clients' ARP caches?
+i.e.
+  find the entry in /etc/fstab which has the same mointpoint and the
+  same 'special' (server:/path).
+  Make sure the options in /etc/fstab have an appropriate user or
+  users entry.
+  Use the options from /etc/fstab and ignore the options on the
+  command line.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+Does that sound fair?
 
-
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
