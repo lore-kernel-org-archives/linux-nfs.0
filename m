@@ -1,25 +1,29 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 010 of 11] knfsd: make rpc threads pools numa aware
-Date: Mon, 07 Aug 2006 13:16:53 +1000
-Message-ID: <1154920613.29877.85.camel@hole.melbourne.sgi.com>
-References: <20060731103458.29040.patches@notabene>
-	<1060731004234.29291@suse.de> <20060806024703.2fb9f307.akpm@osdl.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 3/4] Add /proc/sys/fs/nfs sysctls to nfsd module
+Date: Mon, 07 Aug 2006 00:02:17 -0400
+Message-ID: <1154923337.5677.42.camel@localhost>
+References: <20060803110538.GA17173@suse.de>
+	<76bd70e30608030952p15e1500cy191b5ef19241b58e@mail.gmail.com>
+	<1154680981.21040.2415.camel@hole.melbourne.sgi.com>
+	<1154705797.4727.18.camel@localhost> <20060804175232.GA29852@suse.de>
+	<1154715807.4727.30.camel@localhost>  <44D39D18.7080907@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
+Cc: Olaf Kirch <okir@suse.de>, Greg Banks <gnb@melbourne.sgi.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+	Chuck Lever <chucklever@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9vby-00039b-SD
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:17:02 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9vby-0000VZ-Vf
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:17:03 -0700
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20060806024703.2fb9f307.akpm@osdl.org>
+	id 1G9wK6-0006gq-Op
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 21:02:39 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1G9wK5-0008Eu-TH
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 21:02:39 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <44D39D18.7080907@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,48 +36,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sun, 2006-08-06 at 19:47, Andrew Morton wrote:
-> On Mon, 31 Jul 2006 10:42:34 +1000
-> NeilBrown <neilb@suse.de> wrote:
+On Fri, 2006-08-04 at 15:16 -0400, Peter Staubach wrote:
+> > Sucks, sucks, sucks....
 > 
-> > knfsd: Actually implement multiple pools.  On NUMA machines, allocate
-> > a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
-> > global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
-> > on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
-> > have their cpu mask set to limit them to the CPUs in the svc_pool that
-> > owns them.
-> > 
-> > This is the patch that allows an Altix to scale NFS traffic linearly
-> > beyond 4 CPUs and 4 NICs.
-> > 
-> > Incorporates changes and feedback from Neil Brown, Trond Myklebust,
-> > and Christoph Hellwig.
+> Actually, the Solaris implementation matches the intended semantics as
+> described in RFC1813.  The number of bytes of requested information
+> via readdir(3) is passed via dircount and then the maximum size of the
+> response is passed through maxcount.
 > 
-> This makes the NFS client go BUG.  Simple nfsv3 workload (ie: mount, read
-> stuff).  Uniproc, FC5.  
-> 
-> +	BUG_ON(m->mode == SVC_POOL_NONE);
+> The two fields were intended to be used to reduce the overhead on
+> the server by passing a hint for the amount of data that the client
+> was actually looking for and then a count for the maximum sized response
+> that it was prepared to handle.
 
-Aha, I see what I b0rked up.  On the client, lockd starts an RPC
-service via the old svc_create() interface, which avoids calling
-svc_pool_map_init().  When the first NLM callback arrives,
-svc_sock_enqueue() calls svc_pool_for_cpu() which BUGs out because
-the map is not initialised.  The BUG_ON() was introduced in one
-of the rewrites in response to review feedback in the last few
-days; previously the code was simpler and would trivially return
-pool 0, which is the right thing to do in this case.  The bug was
-hidden on my test machines because they have SLES userspaces,
-where lockd is broken because both the kernel and userspace think
-the other one is doing the rpc.statd functionality.
+Right. At first glance a good idea, but in practice it sucks because the
+client has no idea of how much data it was looking for. In order to
+know, it would need to know the length of the filenames in the
+directory. Unless it is already caching the directory, that will be 100%
+guesswork.
 
-A simple patch should fix this, coming up as soon as I can find
-a non-SLES machine and run some client tests.
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------------------------
