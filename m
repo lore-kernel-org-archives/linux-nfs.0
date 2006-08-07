@@ -1,26 +1,25 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: PATCH 2 of 4] cpumask: export cpu_online_map
-	and	cpu_possible_map consistently
-Date: Mon, 07 Aug 2006 13:05:40 +1000
-Message-ID: <1154919940.29877.73.camel@hole.melbourne.sgi.com>
-References: <1154669759.21040.2353.camel@hole.melbourne.sgi.com>
-	<Pine.LNX.4.64.0608040730430.16814@montezuma.fsmlabs.com>
+Subject: Re: [PATCH 010 of 11] knfsd: make rpc threads pools numa aware
+Date: Mon, 07 Aug 2006 13:16:53 +1000
+Message-ID: <1154920613.29877.85.camel@hole.melbourne.sgi.com>
+References: <20060731103458.29040.patches@notabene>
+	<1060731004234.29291@suse.de> <20060806024703.2fb9f307.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, Neil Brown <neilb@suse.de>,
+Cc: Neil Brown <neilb@suse.de>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1G9vRQ-0002NY-Lc
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:06:08 -0700
+	id 1G9vby-00039b-SD
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:17:02 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9vRQ-0004Lx-WB
-	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:06:09 -0700
-To: Zwane Mwaikambo <zwane@arm.linux.org.uk>
-In-Reply-To: <Pine.LNX.4.64.0608040730430.16814@montezuma.fsmlabs.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1G9vby-0000VZ-Vf
+	for nfs@lists.sourceforge.net; Sun, 06 Aug 2006 20:17:03 -0700
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20060806024703.2fb9f307.akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,42 +32,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, 2006-08-05 at 00:32, Zwane Mwaikambo wrote:
-> On Fri, 4 Aug 2006, Greg Banks wrote:
+On Sun, 2006-08-06 at 19:47, Andrew Morton wrote:
+> On Mon, 31 Jul 2006 10:42:34 +1000
+> NeilBrown <neilb@suse.de> wrote:
 > 
-> > cpumask: ensure that the cpu_online_map and cpu_possible_map bitmasks,
-> > and hence all the macros in <linux/cpumask.h> that require them, are
-> > available to modules for all supported combinations of architecture
-> > and CONFIG_SMP.
+> > knfsd: Actually implement multiple pools.  On NUMA machines, allocate
+> > a svc_pool per NUMA node; on SMP a svc_pool per CPU; otherwise a single
+> > global pool.  Enqueue sockets on the svc_pool corresponding to the CPU
+> > on which the socket bh is run (i.e. the NIC interrupt CPU).  Threads
+> > have their cpu mask set to limit them to the CPUs in the svc_pool that
+> > owns them.
 > > 
-> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> > ---
+> > This is the patch that allows an Altix to scale NFS traffic linearly
+> > beyond 4 CPUs and 4 NICs.
 > > 
-> >  arch/arm/kernel/smp.c           |    2 ++
-> >  arch/cris/arch-v32/kernel/smp.c |    1 +
-> >  arch/sh/kernel/smp.c            |    1 +
-> >  kernel/sched.c                  |    3 +++
-> >  4 files changed, 7 insertions(+)
-> > 
-> > Index: linux-2.6.18-rc2/kernel/sched.c
-> > ===================================================================
-> > --- linux-2.6.18-rc2.orig/kernel/sched.c	2006-08-01 17:53:25.000000000 +1000
-> > +++ linux-2.6.18-rc2/kernel/sched.c	2006-08-02 23:01:20.535457863 +1000
-> > @@ -4348,7 +4348,10 @@ EXPORT_SYMBOL(cpu_present_map);
-> >  
-> >  #ifndef CONFIG_SMP
-> >  cpumask_t cpu_online_map __read_mostly = CPU_MASK_ALL;
-> > +EXPORT_SYMBOL_GPL(cpu_online_map);
+> > Incorporates changes and feedback from Neil Brown, Trond Myklebust,
+> > and Christoph Hellwig.
 > 
-> >  cpumask_t cpu_possible_map;
-> > +EXPORT_SYMBOL(cpu_possible_map);
-> >  cpumask_t cpu_online_map;
-> > +EXPORT_SYMBOL(cpu_online_map);
+> This makes the NFS client go BUG.  Simple nfsv3 workload (ie: mount, read
+> stuff).  Uniproc, FC5.  
 > 
-> How come these are of different export types?
+> +	BUG_ON(m->mode == SVC_POOL_NONE);
 
-Because I screwed up.  Fix coming later.  I presume _GPL
-is the favoured form?
+Aha, I see what I b0rked up.  On the client, lockd starts an RPC
+service via the old svc_create() interface, which avoids calling
+svc_pool_map_init().  When the first NLM callback arrives,
+svc_sock_enqueue() calls svc_pool_for_cpu() which BUGs out because
+the map is not initialised.  The BUG_ON() was introduced in one
+of the rewrites in response to review feedback in the last few
+days; previously the code was simpler and would trivially return
+pool 0, which is the right thing to do in this case.  The bug was
+hidden on my test machines because they have SLES userspaces,
+where lockd is broken because both the kernel and userspace think
+the other one is doing the rpc.statd functionality.
+
+A simple patch should fix this, coming up as soon as I can find
+a non-SLES machine and run some client tests.
 
 Greg.
 -- 
