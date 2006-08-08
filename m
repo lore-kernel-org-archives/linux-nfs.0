@@ -1,24 +1,22 @@
-From: "Chuck Lever" <chucklever@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Can we flush directory data when the ctime changes?
-Date: Tue, 8 Aug 2006 09:28:50 -0400
-Message-ID: <76bd70e30608080628o616b6f42sc1d559ed2414cb46@mail.gmail.com>
+Date: Tue, 08 Aug 2006 10:05:17 -0400
+Message-ID: <1155045918.5673.26.camel@localhost>
 References: <17624.15554.514216.623190@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GARdc-00051K-8x
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 06:28:52 -0700
-Received: from wx-out-0506.google.com ([66.249.82.233])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GARdc-0007JJ-J3
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 06:28:52 -0700
-Received: by wx-out-0506.google.com with SMTP id r21so794869wxc
-	for <nfs@lists.sourceforge.net>; Tue, 08 Aug 2006 06:28:51 -0700 (PDT)
-To: "Neil Brown" <neilb@suse.de>
+	id 1GASDE-0008Fd-JU
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:05:41 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GASDC-0006N2-Lw
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:05:41 -0700
+To: Neil Brown <neilb@suse.de>
 In-Reply-To: <17624.15554.514216.623190@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,10 +30,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 8/8/06, Neil Brown <neilb@suse.de> wrote:
->  We have a scenario where readdir in the linux client gets confused by
+On Tue, 2006-08-08 at 17:26 +1000, Neil Brown wrote:
+> Hi,
+>  We have a scenario where readdir in the linux client gets confused by 
 > responses from a Netapp fileserver.
->
+> 
 > What happens is that a readdir collects and caches the directory.
 > Then a subsequent readdir finds the first page is still in the cache
 > but the second page is missing.
@@ -43,35 +42,52 @@ On 8/8/06, Neil Brown <neilb@suse.de> wrote:
 > entries and received a list of entries starting from the beginning of
 > the directory rather than from the point that it was up to.   It seems
 > that the cookies have changed.
->
+> 
 > The GETATTR call that the client makes to validate the cache reports
 > that the mtime hasn't change, *but the ctime has*.
->
+
+Growl! If the directory contents change, then the mtime should too. Page
+22 of RFC1813:
+
+        Mtime is the time when the file data was last modified.  Ctime
+        is the time when the attributes of the file were last changed.
+
+Directory cookies are not file or directory attributes!
+
+In addition, NFSv3 has the cookie verifier mechanism for the server to
+specifically inform the client that the cookies are invalid.
+
+IOW: this really needs to be fixed on the _server_. I'm not happy taking
+new patches that may cause the client GETATTR calls to skyrocket again.
+
+Cheers,
+  Trond
+
 > I patched the (SLES9) kernel to invalidate the cache for directories
 > when the ctime changes and this fixed the problem (which was quite
-> repeatable).
->
+> repeatable). 
+> 
 > While it seems that it should be necessary to flush the dir cache on a
 > ctime change, it doesn't seem harmful either.
->
+> 
 > So: would it be acceptable to do this.  The following patch should
 > achieve this in current -mm (which is quite different from the 2.6.5
 > kernel where I tested this).
->
+> 
 > In case it is interesting, I have this commentary from one of our
 > support personnel.  I'm not sure if the content comes from someone at
 > Netapp or elsewhere, but it sounds plausible.
->
+> 
 > Thanks,
 > NeilBrown
->
+> 
 >   ......
->
+> 
 >   For example, NetApp filer support NFS but their file system is not
 >   simply a true unix/linux style file system.  They emulate that for
 >   NFS purposes but they also handle the file system in special ways
 >   for account for CIFS and other access.
->
+> 
 >   Things go on like files name conversions to unicode, for other name
 >   spaces.  These events can take place at much later times than the
 >   original file name creation through NFS.  This results in changes in
@@ -80,17 +96,30 @@ On 8/8/06, Neil Brown <neilb@suse.de> wrote:
 >   NFS client does not invalidate it's cache upon such a condition, if
 >   can result in inconsistent cache information, as it has in the
 >   example for which this bug report was filed.
+> 
+> 
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./fs/nfs/inode.c |    5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff .prev/fs/nfs/inode.c ./fs/nfs/inode.c
+> --- .prev/fs/nfs/inode.c	2006-08-08 17:03:15.000000000 +1000
+> +++ ./fs/nfs/inode.c	2006-08-08 17:04:48.000000000 +1000
+> @@ -943,6 +943,11 @@ static int nfs_update_inode(struct inode
+>  	/* If ctime has changed we should definitely clear access+acl caches */
+>  	if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
+>  		invalid |= NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
+> +		if (S_ISDIR(inode->i_mode))
+> +			/* Some servers (netapp) can change cookies when the
+> +			 * ctime changes, without changing mtime...
+> +			 */
+> +			invalid |= NFS_INO_INVALID_DATA;
+>  		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
+>  		nfsi->cache_change_attribute = jiffies;
+>  	}
 
-This is reasonable.  Another scenario where ctime could change but
-mtime might not is during a restore -- either snaprestore, NDMP copy,
-or even an rsync.
-
-However, I thought the latest kernels actually did account for ctime
-changes like this....
-
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
