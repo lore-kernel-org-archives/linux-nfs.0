@@ -1,24 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Can we flush directory data when the ctime changes?
-Date: Tue, 08 Aug 2006 10:27:23 -0400
-Message-ID: <44D89F4B.8080702@redhat.com>
+Date: Tue, 08 Aug 2006 10:35:02 -0400
+Message-ID: <1155047702.5673.38.camel@localhost>
 References: <17624.15554.514216.623190@cse.unsw.edu.au>
-	<1155045918.5673.26.camel@localhost>
+	<1155045918.5673.26.camel@localhost>  <44D89F4B.8080702@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GASYU-0001mz-RI
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:27:39 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GASYR-0003Yy-1M
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:27:39 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1155045918.5673.26.camel@localhost>
+	id 1GASg8-0002SV-7h
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:35:32 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GASg7-0004u9-7D
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:35:32 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <44D89F4B.8080702@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond Myklebust wrote:
-> On Tue, 2006-08-08 at 17:26 +1000, Neil Brown wrote:
->   
->> Hi,
->>  We have a scenario where readdir in the linux client gets confused by 
->> responses from a Netapp fileserver.
->>
->> What happens is that a readdir collects and caches the directory.
->> Then a subsequent readdir finds the first page is still in the cache
->> but the second page is missing.
->> The nfs client uses a cookie from the first page to request subsequent
->> entries and received a list of entries starting from the beginning of
->> the directory rather than from the point that it was up to.   It seems
->> that the cookies have changed.
->>
->> The GETATTR call that the client makes to validate the cache reports
->> that the mtime hasn't change, *but the ctime has*.
->>     
->
-> Growl! If the directory contents change, then the mtime should too. Page
-> 22 of RFC1813:
->
->         Mtime is the time when the file data was last modified.  Ctime
->         is the time when the attributes of the file were last changed.
->
-> Directory cookies are not file or directory attributes!
->
-> In addition, NFSv3 has the cookie verifier mechanism for the server to
-> specifically inform the client that the cookies are invalid.
->
-> IOW: this really needs to be fixed on the _server_. I'm not happy taking
-> new patches that may cause the client GETATTR calls to skyrocket again.
+On Tue, 2006-08-08 at 10:27 -0400, Peter Staubach wrote:
+> This really does seem like a bug in the NetApp server.  With a change
+> like this, a simple chmod(2) could cause the client to invalidate its
+> caches...
 
-This really does seem like a bug in the NetApp server.  With a change
-like this, a simple chmod(2) could cause the client to invalidate its
-caches...
+Agreed.
 
-       ps
+Now what we could do to improve the client is to try to detect the loops
+this sort of bug causes. I'll try to think a bit about that...
+
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
