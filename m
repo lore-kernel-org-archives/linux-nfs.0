@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Can we flush directory data when the ctime changes?
-Date: Tue, 08 Aug 2006 10:35:02 -0400
-Message-ID: <1155047702.5673.38.camel@localhost>
-References: <17624.15554.514216.623190@cse.unsw.edu.au>
-	<1155045918.5673.26.camel@localhost>  <44D89F4B.8080702@redhat.com>
+From: "Jesper Juhl" <jesper.juhl@gmail.com>
+Subject: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock manager!
+Date: Tue, 8 Aug 2006 16:39:54 +0200
+Message-ID: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GASg8-0002SV-7h
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:35:32 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GASg7-0004u9-7D
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:35:32 -0700
-To: Peter Staubach <staubach@redhat.com>
-In-Reply-To: <44D89F4B.8080702@redhat.com>
+	id 1GASkR-0002nd-6v
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:39:59 -0700
+Received: from wr-out-0506.google.com ([64.233.184.237])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GASkO-0006aD-ED
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:39:59 -0700
+Received: by wr-out-0506.google.com with SMTP id 69so85899wri
+	for <nfs@lists.sourceforge.net>; Tue, 08 Aug 2006 07:39:55 -0700 (PDT)
+To: "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,19 +30,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-08-08 at 10:27 -0400, Peter Staubach wrote:
-> This really does seem like a bug in the NetApp server.  With a change
-> like this, a simple chmod(2) could cause the client to invalidate its
-> caches...
+I have some webservers that have recently started reporting the
+following message in their logs :
 
-Agreed.
+  do_vfs_lock: VFS is out of sync with lock manager!
 
-Now what we could do to improve the client is to try to detect the loops
-this sort of bug causes. I'll try to think a bit about that...
+The serveres kernels were upgraded to 2.6.17.8 and since the upgrade
+the message started appearing.
+The servers were previously running 2.6.13.4 without experiencing this problem.
+Nothing has changed except the kernel.
 
-Cheers,
-  Trond
+I've googled a bit and found this mail
+(http://lkml.org/lkml/2005/8/23/254) from Trond saying that
+"The above is a lockd error that states that the VFS is failing to track
+your NFS locks correctly".
+Ok, but that doesn't really help me resolve the issue. The servers are
+indeed running NFS and access their apache DocumentRoots from a NFS
+mount.
 
+Is there anything I can do to help track down this issue?
+
+-- 
+Jesper Juhl <jesper.juhl@gmail.com>
+Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please      http://www.expita.com/nomime.html
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
