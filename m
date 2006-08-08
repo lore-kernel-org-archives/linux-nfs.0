@@ -1,27 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0 of 5] knfsd: miscellaneous performance-related
-	fixes
-Date: Tue, 8 Aug 2006 11:49:23 -0400
-Message-ID: <20060808154923.GA28855@fieldses.org>
-References: <1155009879.29877.229.camel@hole.melbourne.sgi.com>
-	<17624.17621.428870.694339@cse.unsw.edu.au>
-	<1155032558.29877.324.camel@hole.melbourne.sgi.com>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: connectathon special test failure in recent kernels
+Date: Tue, 8 Aug 2006 15:20:19 -0400
+Message-ID: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GATpg-0002Pz-AP
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 08:49:28 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GATpf-0001iA-KD
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 08:49:28 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <1155032558.29877.324.camel@hole.melbourne.sgi.com>
+	id 1GAX7r-0004KT-3X
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 12:20:27 -0700
+Received: from ug-out-1314.google.com ([66.249.92.174])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAX7q-0004oy-9n
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 12:20:27 -0700
+Received: by ug-out-1314.google.com with SMTP id s2so586161uge
+	for <nfs@lists.sourceforge.net>; Tue, 08 Aug 2006 12:20:25 -0700 (PDT)
+To: "Linux NFS Mailing List" <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,21 +28,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Aug 08, 2006 at 08:22:44PM +1000, Greg Banks wrote:
-> I'm still working on another patch (it only recently became possible
-> with the ktime_t code) which replaces threadstats fully.  That patch
-> adds nanosecond resolution busy and idle counters to each thread,
-> then aggregates them per-pool when you read the pool_stats file.
-> After export to userspace and rate conversion, these numbers tell
-> us directly what percentage of the nfsds are currently being used.
+Is the connectathon holey test failure going to be fixed before 2.6.18
+is finalized?
 
-Would it be possible to use that to continue to support the existing
-interface (the "th" line)?
+This is from a 2.6.18-rc3 client:
 
-It'd be nice if we could avoid ripping out a working user interface that
-someone might be using....
+test exclusive create.
 
---b.
+test negative seek, you should get: read: Invalid argument
+or lseek: Invalid argument
+lseek: Invalid argument
+
+test rename
+
+test truncate
+truncate succeeded
+
+test holey file support
+read (hole) offset 8192, sz = 56667, bytes = 5141 (ret -1), holesz = 9012
+read: Input/output error
+special tests failed
+Tests failed, leaving /mnt/brahms mounted
+[cel@picasso cthon04]$
+
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
