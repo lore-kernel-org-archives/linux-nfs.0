@@ -1,23 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Can we flush directory data when the ctime changes?
-Date: Tue, 08 Aug 2006 10:05:17 -0400
-Message-ID: <1155045918.5673.26.camel@localhost>
-References: <17624.15554.514216.623190@cse.unsw.edu.au>
+From: Ryan Lolli <rjlolli@sbcglobal.net>
+Subject: NFS latency
+Date: Tue, 8 Aug 2006 07:09:47 -0700 (PDT)
+Message-ID: <20060808140947.23526.qmail@web82504.mail.mud.yahoo.com>
+Reply-To: Ryan Lolli <rjlolli@sbcglobal.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1587563228=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GASDE-0008Fd-JU
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:05:41 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GASDC-0006N2-Lw
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:05:41 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17624.15554.514216.623190@cse.unsw.edu.au>
+	id 1GASHL-0000Cn-S6
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:09:55 -0700
+Received: from web82504.mail.mud.yahoo.com ([209.191.86.191])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GASHK-0008FG-39
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 07:09:56 -0700
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,102 +27,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-08-08 at 17:26 +1000, Neil Brown wrote:
-> Hi,
->  We have a scenario where readdir in the linux client gets confused by 
-> responses from a Netapp fileserver.
-> 
-> What happens is that a readdir collects and caches the directory.
-> Then a subsequent readdir finds the first page is still in the cache
-> but the second page is missing.
-> The nfs client uses a cookie from the first page to request subsequent
-> entries and received a list of entries starting from the beginning of
-> the directory rather than from the point that it was up to.   It seems
-> that the cookies have changed.
-> 
-> The GETATTR call that the client makes to validate the cache reports
-> that the mtime hasn't change, *but the ctime has*.
+--===============1587563228==
+Content-Type: multipart/alternative; boundary="0-764521696-1155046187=:22701"
 
-Growl! If the directory contents change, then the mtime should too. Page
-22 of RFC1813:
+--0-764521696-1155046187=:22701
+Content-Type: text/plain; charset=us-ascii
 
-        Mtime is the time when the file data was last modified.  Ctime
-        is the time when the attributes of the file were last changed.
+            I'm currently running on the following version of linux.
+ 
+             
+Red Hat Enterprise Linux AS release 3 (Taroon Update 7)
+(Linux release 2.4.21-40.EL #1
+ 
+       I have a directory NFS mounted onto my linux box and I'm fighting latency issues.  My application needs to read from the directory as close to real-time as possible, but I've seen delays as much as 30 seconds.  Does anyone know of a work-around or setting to resolve this latency issue?  Thanks.
+--0-764521696-1155046187=:22701
+Content-Type: text/html; charset=us-ascii
 
-Directory cookies are not file or directory attributes!
+<html><head><style type="text/css"><!-- DIV {margin:0px} --></style></head><body><div style="font-family:times new roman, new york, times, serif;font-size:12pt"><DIV>&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; I'm currently running on the following version of linux.</DIV>
+<DIV>&nbsp;</DIV>
+<DIV>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT face=r_ansi size=2>
+<P>Red Hat Enterprise Linux AS release 3 (Taroon Update 7)</P><FONT face=r_ansi size=2>
+<P>(Linux release 2.4.21-40.EL #1</P>
+<P>&nbsp;</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;I have a directory NFS mounted onto my linux box and I'm fighting latency issues.&nbsp; My application needs to read from the directory as close to real-time as possible, but I've seen delays as much as 30 seconds.&nbsp; Does anyone know of a work-around or setting to resolve this latency issue?&nbsp; Thanks.</P></FONT></FONT></DIV></div></body></html>
+--0-764521696-1155046187=:22701--
 
-In addition, NFSv3 has the cookie verifier mechanism for the server to
-specifically inform the client that the cookies are invalid.
 
-IOW: this really needs to be fixed on the _server_. I'm not happy taking
-new patches that may cause the client GETATTR calls to skyrocket again.
-
-Cheers,
-  Trond
-
-> I patched the (SLES9) kernel to invalidate the cache for directories
-> when the ctime changes and this fixed the problem (which was quite
-> repeatable). 
-> 
-> While it seems that it should be necessary to flush the dir cache on a
-> ctime change, it doesn't seem harmful either.
-> 
-> So: would it be acceptable to do this.  The following patch should
-> achieve this in current -mm (which is quite different from the 2.6.5
-> kernel where I tested this).
-> 
-> In case it is interesting, I have this commentary from one of our
-> support personnel.  I'm not sure if the content comes from someone at
-> Netapp or elsewhere, but it sounds plausible.
-> 
-> Thanks,
-> NeilBrown
-> 
->   ......
-> 
->   For example, NetApp filer support NFS but their file system is not
->   simply a true unix/linux style file system.  They emulate that for
->   NFS purposes but they also handle the file system in special ways
->   for account for CIFS and other access.
-> 
->   Things go on like files name conversions to unicode, for other name
->   spaces.  These events can take place at much later times than the
->   original file name creation through NFS.  This results in changes in
->   the ctime stamp, without changes to mtime, and it also results in
->   new cookie indexes being generated for the NFS file system.  If an
->   NFS client does not invalidate it's cache upon such a condition, if
->   can result in inconsistent cache information, as it has in the
->   example for which this bug report was filed.
-> 
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
-> ### Diffstat output
->  ./fs/nfs/inode.c |    5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> diff .prev/fs/nfs/inode.c ./fs/nfs/inode.c
-> --- .prev/fs/nfs/inode.c	2006-08-08 17:03:15.000000000 +1000
-> +++ ./fs/nfs/inode.c	2006-08-08 17:04:48.000000000 +1000
-> @@ -943,6 +943,11 @@ static int nfs_update_inode(struct inode
->  	/* If ctime has changed we should definitely clear access+acl caches */
->  	if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
->  		invalid |= NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
-> +		if (S_ISDIR(inode->i_mode))
-> +			/* Some servers (netapp) can change cookies when the
-> +			 * ctime changes, without changing mtime...
-> +			 */
-> +			invalid |= NFS_INO_INVALID_DATA;
->  		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
->  		nfsi->cache_change_attribute = jiffies;
->  	}
-
+--===============1587563228==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============1587563228==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1587563228==--
