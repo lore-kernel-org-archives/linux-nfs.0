@@ -1,7 +1,9 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Can we flush directory data when the ctime changes?
-Date: Tue, 8 Aug 2006 17:26:58 +1000
-Message-ID: <17624.15554.514216.623190@cse.unsw.edu.au>
+Subject: Re: [PATCH 0 of 5] knfsd: miscellaneous performance-related
+	fixes
+Date: Tue, 8 Aug 2006 18:01:25 +1000
+Message-ID: <17624.17621.428870.694339@cse.unsw.edu.au>
+References: <1155009879.29877.229.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -9,13 +11,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GALzV-0000g9-DP
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 00:27:05 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GAMWq-0003OL-Ql
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 01:01:32 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GALzV-00026Y-CD
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 00:27:06 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	(Exim 4.44) id 1GAMWq-0000Z4-IU
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 01:01:33 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Tuesday August 8
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,78 +31,96 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Tuesday August 8, gnb@melbourne.sgi.com wrote:
+> G'day,
+> 
+> Five more patches which fix various issues found in knfsd,
+> mostly directly performance-related.
 
-Hi,
- We have a scenario where readdir in the linux client gets confused by 
-responses from a Netapp fileserver.
+Thanks.  I'll have a bit more of a look in a day or two, but just
+quickly:
 
-What happens is that a readdir collects and caches the directory.
-Then a subsequent readdir finds the first page is still in the cache
-but the second page is missing.
-The nfs client uses a cookie from the first page to request subsequent
-entries and received a list of entries starting from the beginning of
-the directory rather than from the point that it was up to.   It seems
-that the cookies have changed.
+> 
+> 1 of 5 knfsd: make readahead params cache SMP-friendly
+> 	the racache is a global contention point and performance
+>       bottleneck in some read-dominated workloads, alleviate that
+> 
 
-The GETATTR call that the client makes to validate the cache reports
-that the mtime hasn't change, *but the ctime has*.
+Looks good, though might become irrelevant if the 'new' readahead code
+goes ahead (the racache can just be discarded).
 
-I patched the (SLES9) kernel to invalidate the cache for directories
-when the ctime changes and this fixed the problem (which was quite
-repeatable). 
+> 2 of 5 knfsd: cache ipmap per TCP socket
+> 	for TCP we can avoid doing a hash lookup on the ip_map
+> 	cache for every RPC call
 
-While it seems that it should be necessary to flush the dir cache on a
-ctime change, it doesn't seem harmful either.
+Looks sane, but I'm wondering why:
+ 
++static inline int cache_valid(struct cache_head *h)
++{
++	return (h->expiry_time != 0 && test_bit(CACHE_VALID, &h->flags));
++}
++
 
-So: would it be acceptable to do this.  The following patch should
-achieve this in current -mm (which is quite different from the 2.6.5
-kernel where I tested this).
+we need to test expiry_time here. Is not the test on CACHE_VALID
+enough?
 
-In case it is interesting, I have this commentary from one of our
-support personnel.  I'm not sure if the content comes from someone at
-Netapp or elsewhere, but it sounds plausible.
 
-Thanks,
+> 
+> 3 of 5 knfsd: avoid nfsd CPU scheduler overload
+> 	avoid enormous load averages and CPU scheduler overload
+> 	with workloads which generate extremely high call rates
+
+Not sure I quite understand all the implications of this yet.
+There would have to be lots of active sockets because each socket can
+only be waking one thread.  But that is entirely possible with TCP.
+So a request comes in on a TCP socket and we decide not to queue it to
+a process just yet, so it stays on the pool queue.
+That means it doesn't get handled until some process in the queue
+finishes it's request.  
+These seems to suggest quite some room for unfairness on request
+handling.
+That may not be a problem, but I'm not sure...
+Maybe when one thread wakes up it should kick the next one to wake
+up???
+Or am I missing something.
+
+> 
+> 4 of 5 knfsd: add RPC pool thread stats
+> 	add some statistics to the svc_pool
+
+Could we get a paragraph or 3 explaining how to interpret these stats?
+And we have to do something about svc_put.  With this patch as it
+stands, if you:
+  write some sockets to 'portlist' (with no threads running)
+  look at the pool stats
+  try to start thread
+the ports will have been forgotten because looking at the pool
+stats destroyed the ports...
+
+> 
+> 5 of 5 knfsd: remove nfsd threadstats
+> 	remove the 'th' stats line from /proc/net/rc/nfsd, it's
+> 	a global contention point in high call rate workloads
+> 
+
+Yes..... I can appreciate all the problems that you identify.
+But before removing this I would like to have something to replace it.
+Some that gives some sort of vague idea about whether you have a
+suitable number of threads or not.
+Does your pool stats provide that at all?
+
+What I would really like it auto-scaling of the number of threads to
+match the load.  I wonder if that is a good idea?
+
 NeilBrown
 
-  ......
-
-  For example, NetApp filer support NFS but their file system is not
-  simply a true unix/linux style file system.  They emulate that for
-  NFS purposes but they also handle the file system in special ways
-  for account for CIFS and other access.
-
-  Things go on like files name conversions to unicode, for other name
-  spaces.  These events can take place at much later times than the
-  original file name creation through NFS.  This results in changes in
-  the ctime stamp, without changes to mtime, and it also results in
-  new cookie indexes being generated for the NFS file system.  If an
-  NFS client does not invalidate it's cache upon such a condition, if
-  can result in inconsistent cache information, as it has in the
-  example for which this bug report was filed.
 
 
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/nfs/inode.c |    5 +++++
- 1 file changed, 5 insertions(+)
-
-diff .prev/fs/nfs/inode.c ./fs/nfs/inode.c
---- .prev/fs/nfs/inode.c	2006-08-08 17:03:15.000000000 +1000
-+++ ./fs/nfs/inode.c	2006-08-08 17:04:48.000000000 +1000
-@@ -943,6 +943,11 @@ static int nfs_update_inode(struct inode
- 	/* If ctime has changed we should definitely clear access+acl caches */
- 	if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
- 		invalid |= NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
-+		if (S_ISDIR(inode->i_mode))
-+			/* Some servers (netapp) can change cookies when the
-+			 * ctime changes, without changing mtime...
-+			 */
-+			invalid |= NFS_INO_INVALID_DATA;
- 		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
- 		nfsi->cache_change_attribute = jiffies;
- 	}
+> Greg.
+> -- 
+> Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+> I don't speak for SGI.
+> 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
