@@ -1,26 +1,22 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 003 of 4] Prepare knfsd for support of	rsize/wsize
-	of up to 1MB, over TCP.
-Date: Tue, 08 Aug 2006 12:12:10 +1000
-Message-ID: <1155003129.29877.177.camel@hole.melbourne.sgi.com>
-References: <20060807103020.12286.patches@notabene>
-	<1060807003515.12391@suse.de>
-	<76bd70e30608070604r5da3fefds4fea763336221403@mail.gmail.com>
+Subject: [PATCH 1 of 2] cpumask: use EXPORT_SYMBOL_GPL for new exports
+Date: Tue, 08 Aug 2006 13:25:34 +1000
+Message-ID: <1155007534.29877.215.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAH4t-0001Yo-V7
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 19:12:20 -0700
+	id 1GAIEK-0007Kw-4y
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 20:26:08 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAH4t-00052p-9w
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 19:12:20 -0700
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30608070604r5da3fefds4fea763336221403@mail.gmail.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAIEJ-0001Hb-Ga
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 20:26:08 -0700
+To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,16 +29,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-08-07 at 23:04, Chuck Lever wrote:
-> I know the name NFSSVC_MAXBLKSIZE is historical, but to me it is
-> confusing.  It isn't a block size at all, it's really a maximum
-> tranfser size, in bytes, right?
+cpumask: use EXPORT_SYMBOL_GPL instead of EXPORT_SYMBOL to export
+node_2_cpu_mask.  Thanks to Zwane Mwaikambo for pointing this out.
 
-NFSSVC_MAXBLKSIZE is the maximum NFS payload size, i.e. the largest
-size of file data that can passed in WRITE and returned from READ.
-The transfer size (as I understand the term) would be that plus the
-NFS and RPC headers, i.e. 65536 bytes for UDP.  So I think the name
-is mostly OK.
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+---
+
+ arch/i386/kernel/smpboot.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
+
+Index: linux-2.6.18-rc2/arch/i386/kernel/smpboot.c
+===================================================================
+--- linux-2.6.18-rc2.orig/arch/i386/kernel/smpboot.c
++++ linux-2.6.18-rc2/arch/i386/kernel/smpboot.c
+@@ -609,7 +609,7 @@ extern struct {
+ /* which logical CPUs are on which nodes */
+ cpumask_t node_2_cpu_mask[MAX_NUMNODES] __read_mostly =
+ 				{ [0 ... MAX_NUMNODES-1] = CPU_MASK_NONE };
+-EXPORT_SYMBOL(node_2_cpu_mask);
++EXPORT_SYMBOL_GPL(node_2_cpu_mask);
+ /* which node each logical CPU is on */
+ int cpu_2_node[NR_CPUS] __read_mostly = { [0 ... NR_CPUS-1] = 0 };
+ EXPORT_SYMBOL(cpu_2_node);
+
 
 Greg.
 -- 
