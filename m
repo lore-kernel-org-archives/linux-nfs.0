@@ -1,26 +1,27 @@
-From: Andrew Morton <akpm@osdl.org>
+From: Greg Banks <gnb@melbourne.sgi.com>
 Subject: Re: [PATCH 1 of 2] cpumask: use EXPORT_SYMBOL_GPL for new
 	exports
-Date: Mon, 7 Aug 2006 20:39:14 -0700
-Message-ID: <20060807203914.6aec29df.akpm@osdl.org>
+Date: Tue, 08 Aug 2006 13:40:47 +1000
+Message-ID: <1155008446.29877.219.camel@hole.melbourne.sgi.com>
 References: <1155007534.29877.215.camel@hole.melbourne.sgi.com>
+	<20060807203914.6aec29df.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+Cc: Paul Jackson <pj@sgi.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAIRE-0008M4-CU
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 20:39:28 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1GAIRC-0003Yg-Jg
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 20:39:28 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>, Paul Jackson <pj@sgi.com>
-In-Reply-To: <1155007534.29877.215.camel@hole.melbourne.sgi.com>
+	id 1GAISl-0008SU-9e
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 20:41:03 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAISl-0004pP-Jl
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 20:41:03 -0700
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20060807203914.6aec29df.akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,38 +34,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 08 Aug 2006 13:25:34 +1000
-Greg Banks <gnb@melbourne.sgi.com> wrote:
-
-> cpumask: use EXPORT_SYMBOL_GPL instead of EXPORT_SYMBOL to export
-> node_2_cpu_mask.  Thanks to Zwane Mwaikambo for pointing this out.
+On Tue, 2006-08-08 at 13:39, Andrew Morton wrote:
+> All the existing exports in lib/cpumask.c are EXPORT_SYMBOL() so I'd be
+> inclined to make any new exports match that.
 > 
-> Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> ---
+> <edits the diffs>
 > 
->  arch/i386/kernel/smpboot.c |    2 +-
->  1 files changed, 1 insertion(+), 1 deletion(-)
-> 
-> Index: linux-2.6.18-rc2/arch/i386/kernel/smpboot.c
-> ===================================================================
-> --- linux-2.6.18-rc2.orig/arch/i386/kernel/smpboot.c
-> +++ linux-2.6.18-rc2/arch/i386/kernel/smpboot.c
-> @@ -609,7 +609,7 @@ extern struct {
->  /* which logical CPUs are on which nodes */
->  cpumask_t node_2_cpu_mask[MAX_NUMNODES] __read_mostly =
->  				{ [0 ... MAX_NUMNODES-1] = CPU_MASK_NONE };
-> -EXPORT_SYMBOL(node_2_cpu_mask);
-> +EXPORT_SYMBOL_GPL(node_2_cpu_mask);
->  /* which node each logical CPU is on */
->  int cpu_2_node[NR_CPUS] __read_mostly = { [0 ... NR_CPUS-1] = 0 };
->  EXPORT_SYMBOL(cpu_2_node);
+> OK?
 
-All the existing exports in lib/cpumask.c are EXPORT_SYMBOL() so I'd be
-inclined to make any new exports match that.
+Fine by me.
 
-<edits the diffs>
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
-OK?
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
