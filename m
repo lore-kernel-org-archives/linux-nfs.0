@@ -1,7 +1,7 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 1 of 5] knfsd: make readahead params cache SMP-friendly
-Date: Tue, 08 Aug 2006 14:05:51 +1000
-Message-ID: <1155009951.29877.231.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 3 of 5] knfsd: avoid nfsd CPU scheduler overload
+Date: Tue, 08 Aug 2006 14:07:13 +1000
+Message-ID: <1155010032.29877.235.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -9,11 +9,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAIqs-0001uV-Fz
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 21:05:58 -0700
+	id 1GAIsA-00023o-S4
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 21:07:18 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAIqs-0007J1-Mk
-	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 21:05:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAIsB-0007cR-2N
+	for nfs@lists.sourceforge.net; Mon, 07 Aug 2006 21:07:19 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,176 +27,147 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: make the nfsd read-ahead params cache more SMP-friendly by
-changing the single global list and lock into a fixed 16-bucket
-hashtable with per-bucket locks.  This reduces spinlock contention
-in nfsd_read() on read-heavy workloads on multiprocessor servers.
+knfsd: avoid overloading the CPU scheduler with enormous load averages
+when handling high call-rate NFS loads.  When the knfsd bottom half
+is made aware of an incoming call by the socket layer, it tries to
+choose an nfsd thread and wake it up.  As long as there are idle
+threads, one will be woken up.
 
-Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients each doing 1K
-streaming reads at full line rate.  The server had 128 nfsd threads,
-which sizes the RA cache at 256 entries, of which only a handful
-were used.  Flat profiling shows nfsd_read(), including the inlined
-nfsd_get_raparms(), taking 10.4% of each CPU.  This patch drops the
-contribution from nfsd() to 1.71% for each CPU.
+If there are lot of nfsd threads (a sensible configuration when
+the server is disk-bound or is running an HSM), there will be many
+more nfsd threads than CPUs to run them.  Under a high call-rate
+low service-time workload, the result is that almost every nfsd is
+runnable, but only a handful are actually able to run.  This situation
+causes two significant problems:
+
+1. The CPU scheduler takes over 10% of each CPU, which is robbing
+   the nfsd threads of valuable CPU time.
+
+2. At a high enough load, the nfsd threads starve userspace threads
+   of CPU time, to the point where daemons like portmap and rpc.mountd
+   do not schedule for tens of seconds at a time.  Clients attempting
+   to mount an NFS filesystem timeout at the very first step (opening
+   a TCP connection to portmap) because portmap cannot wake up from
+   select() and call accept() in time.
+
+Disclaimer: these effects were observed on a SLES9 kernel, modern
+kernels' schedulers may behave more gracefully.
+
+The solution is simple: keep in each svc_pool a counter of the number
+of threads which have been woken but have not yet run, and do not wake
+any more if that count reaches an arbitrary small threshold.
+
+Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients, each with 16
+synthetic client threads simulating an rsync (i.e. recursive directory
+listing) workload reading from an i386 RH9 install image (161480
+regular files in 10841 directories) on the server.  That tree is small
+enough to fill in the server's RAM so no disk traffic was involved.
+This setup gives a sustained call rate in excess of 60000 calls/sec
+before being CPU-bound on the server.  The server was running 128 nfsds.
+
+Profiling showed schedule() taking 6.7% of every CPU, and __wake_up()
+taking 5.2%.  This patch drops those contributions to 3.0% and 2.2%.
+Load average was over 120 before the patch, and 20.9 after.
 
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- fs/nfsd/vfs.c |   60 ++++++++++++++++++++++++++++++++++-------------
- 1 files changed, 44 insertions(+), 16 deletions(-)
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/svcsock.c       |   25 +++++++++++++++++++------
+ 2 files changed, 21 insertions(+), 6 deletions(-)
 
-Index: linux-2.6.18-rc2/fs/nfsd/vfs.c
+Index: linux-2.6.18-rc2/include/linux/sunrpc/svc.h
 ===================================================================
---- linux-2.6.18-rc2.orig/fs/nfsd/vfs.c	2006-08-01 17:53:32.936177414 +1000
-+++ linux-2.6.18-rc2/fs/nfsd/vfs.c	2006-08-04 16:04:59.453416628 +1000
-@@ -54,6 +54,7 @@
- #include <linux/nfsd_idmap.h>
- #include <linux/security.h>
- #endif /* CONFIG_NFSD_V4 */
-+#include <linux/jhash.h>
+--- linux-2.6.18-rc2.orig/include/linux/sunrpc/svc.h	2006-08-04 16:00:10.890410874 +1000
++++ linux-2.6.18-rc2/include/linux/sunrpc/svc.h	2006-08-04 16:08:35.253729312 +1000
+@@ -40,6 +40,7 @@ struct svc_pool {
+ 	struct list_head	sp_sockets;	/* pending sockets */
+ 	unsigned int		sp_nrthreads;	/* # of threads in pool */
+ 	struct list_head	sp_all_threads;	/* all server threads */
++	int			sp_nwaking;	/* number of threads woken but not yet active */
+ } ____cacheline_aligned_in_smp;
  
- #include <asm/uaccess.h>
- 
-@@ -81,10 +82,19 @@ struct raparms {
- 	dev_t			p_dev;
- 	int			p_set;
- 	struct file_ra_state	p_ra;
-+	unsigned int		p_hindex;
+ /*
+@@ -233,6 +234,7 @@ struct svc_rqst {
+ 						 * cache pages */
+ 	wait_queue_head_t	rq_wait;	/* synchronization */
+ 	struct task_struct	*rq_task;	/* service thread */
++	int			rq_waking;	/* 1 if thread is being woken */
  };
  
-+struct raparm_hbucket {
-+	struct raparms		*pb_head;
-+	spinlock_t		pb_lock;
-+} ____cacheline_aligned_in_smp;
-+
- static struct raparms *		raparml;
--static struct raparms *		raparm_cache;
-+#define RAPARM_HASH_BITS	4
-+#define RAPARM_HASH_SIZE	(1<<RAPARM_HASH_BITS)
-+#define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
-+static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
- 
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-@@ -743,16 +753,20 @@ nfsd_sync_dir(struct dentry *dp)
-  * Obtain the readahead parameters for the file
-  * specified by (dev, ino).
-  */
--static DEFINE_SPINLOCK(ra_lock);
- 
- static inline struct raparms *
- nfsd_get_raparms(dev_t dev, ino_t ino)
- {
- 	struct raparms	*ra, **rap, **frap = NULL;
- 	int depth = 0;
-+	unsigned int hash;
-+	struct raparm_hbucket *rab;
-+
-+	hash = jhash_2words(dev, ino, 0xfeedbeef) & RAPARM_HASH_MASK;
-+	rab = &raparm_hash[hash];
- 
--	spin_lock(&ra_lock);
--	for (rap = &raparm_cache; (ra = *rap); rap = &ra->p_next) {
-+	spin_lock(&rab->pb_lock);
-+	for (rap = &rab->pb_head; (ra = *rap); rap = &ra->p_next) {
- 		if (ra->p_ino == ino && ra->p_dev == dev)
- 			goto found;
- 		depth++;
-@@ -761,7 +775,7 @@ nfsd_get_raparms(dev_t dev, ino_t ino)
- 	}
- 	depth = nfsdstats.ra_size*11/10;
- 	if (!frap) {	
--		spin_unlock(&ra_lock);
-+		spin_unlock(&rab->pb_lock);
- 		return NULL;
- 	}
- 	rap = frap;
-@@ -769,15 +783,16 @@ nfsd_get_raparms(dev_t dev, ino_t ino)
- 	ra->p_dev = dev;
- 	ra->p_ino = ino;
- 	ra->p_set = 0;
-+	ra->p_hindex = hash;
- found:
--	if (rap != &raparm_cache) {
-+	if (rap != &rab->pb_head) {
- 		*rap = ra->p_next;
--		ra->p_next   = raparm_cache;
--		raparm_cache = ra;
-+		ra->p_next   = rab->pb_head;
-+		rab->pb_head = ra;
- 	}
- 	ra->p_count++;
- 	nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
--	spin_unlock(&ra_lock);
-+	spin_unlock(&rab->pb_lock);
- 	return ra;
- }
- 
-@@ -852,11 +867,12 @@ nfsd_vfs_read(struct svc_rqst *rqstp, st
- 
- 	/* Write back readahead params */
- 	if (ra) {
--		spin_lock(&ra_lock);
-+		struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
-+		spin_lock(&rab->pb_lock);
- 		ra->p_ra = file->f_ra;
- 		ra->p_set = 1;
- 		ra->p_count--;
--		spin_unlock(&ra_lock);
-+		spin_unlock(&rab->pb_lock);
- 	}
- 
- 	if (err >= 0) {
-@@ -1832,11 +1848,11 @@ nfsd_permission(struct svc_export *exp, 
- void
- nfsd_racache_shutdown(void)
- {
--	if (!raparm_cache)
-+	if (!raparml)
- 		return;
- 	dprintk("nfsd: freeing readahead buffers.\n");
- 	kfree(raparml);
--	raparm_cache = raparml = NULL;
-+	raparml = NULL;
- }
  /*
-  * Initialize readahead param cache
-@@ -1845,19 +1861,31 @@ int
- nfsd_racache_init(int cache_size)
- {
- 	int	i;
-+	int	j = 0;
-+	int	nperbucket;
+Index: linux-2.6.18-rc2/net/sunrpc/svcsock.c
+===================================================================
+--- linux-2.6.18-rc2.orig/net/sunrpc/svcsock.c	2006-08-04 16:06:24.266537165 +1000
++++ linux-2.6.18-rc2/net/sunrpc/svcsock.c	2006-08-04 16:08:35.297723665 +1000
+@@ -67,6 +67,8 @@
+ #define RPCDBG_FACILITY	RPCDBG_SVCSOCK
  
--	if (raparm_cache)
+ 
++#define SVC_MAX_WAKING 5
 +
-+	if (raparml)
- 		return 0;
-+	if (cache_size < 2*RAPARM_HASH_SIZE)
-+		cache_size = 2*RAPARM_HASH_SIZE;
- 	raparml = kmalloc(sizeof(struct raparms) * cache_size, GFP_KERNEL);
+ static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+ 					 int *errp, int pmap_reg);
+ static void		svc_udp_data_ready(struct sock *, int);
+@@ -154,6 +156,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+ 	int cpu;
++	int thread_avail;
  
- 	if (raparml != NULL) {
- 		dprintk("nfsd: allocating %d readahead buffers.\n",
- 			cache_size);
-+		for (i = 0 ; i < RAPARM_HASH_SIZE ; i++) {
-+			raparm_hash[i].pb_head = NULL;
-+			spin_lock_init(&raparm_hash[i].pb_lock);
-+		}
-+		nperbucket = cache_size >> RAPARM_HASH_BITS;
- 		memset(raparml, 0, sizeof(struct raparms) * cache_size);
- 		for (i = 0; i < cache_size - 1; i++) {
--			raparml[i].p_next = raparml + i + 1;
-+			if (i % nperbucket == 0)
-+				raparm_hash[j++].pb_head = raparml + i;
-+			if (i % nperbucket < nperbucket-1)
-+				raparml[i].p_next = raparml + i + 1;
- 		}
--		raparm_cache = raparml;
+ 	if (!(svsk->sk_flags &
+ 	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
+@@ -167,11 +170,6 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 
+ 	spin_lock_bh(&pool->sp_lock);
+ 
+-	if (!list_empty(&pool->sp_threads) &&
+-	    !list_empty(&pool->sp_sockets))
+-		printk(KERN_ERR
+-			"svc_sock_enqueue: threads and sockets both waiting??\n");
+-
+ 	if (test_bit(SK_DEAD, &svsk->sk_flags)) {
+ 		/* Don't enqueue dead sockets */
+ 		dprintk("svc: socket %p is dead, not enqueued\n", svsk->sk_sk);
+@@ -207,7 +205,14 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+ 
+ 
+-	if (!list_empty(&pool->sp_threads)) {
++	/* Work out whether threads are available */
++	thread_avail = !list_empty(&pool->sp_threads);	/* threads are asleep */
++	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
++		/* too many threads are runnable and trying to wake up */
++		thread_avail = 0;
++	}
++
++	if (thread_avail) {
+ 		rqstp = list_entry(pool->sp_threads.next,
+ 				   struct svc_rqst,
+ 				   rq_list);
+@@ -222,6 +227,8 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		atomic_inc(&svsk->sk_inuse);
+ 		rqstp->rq_reserved = serv->sv_bufsz;
+ 		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
++		rqstp->rq_waking = 1;
++		pool->sp_nwaking++;
+ 		BUG_ON(svsk->sk_pool != pool);
+ 		wake_up(&rqstp->rq_wait);
  	} else {
- 		printk(KERN_WARNING
- 		       "nfsd: Could not allocate memory read-ahead cache.\n");
+@@ -1307,6 +1314,12 @@ svc_recv(struct svc_serv *serv, struct s
+ 		spin_lock_bh(&pool->sp_lock);
+ 		remove_wait_queue(&rqstp->rq_wait, &wait);
+ 
++		if (rqstp->rq_waking) {
++			rqstp->rq_waking = 0;
++			pool->sp_nwaking--;
++			BUG_ON(pool->sp_nwaking < 0);
++		}
++
+ 		if (!(svsk = rqstp->rq_sock)) {
+ 			svc_thread_dequeue(pool, rqstp);
+ 			spin_unlock_bh(&pool->sp_lock);
 
 
 Greg.
