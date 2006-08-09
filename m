@@ -1,8 +1,8 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 04/25] SUNRPC: Clean-up after recent changes to
-	sunrpc/pmap_clnt.c
-Date: Wed, 09 Aug 2006 10:58:59 -0400
-Message-ID: <20060809145859.3914.29665.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 05/25] SUNRPC: Support for RPC child tasks no longer
+	needed
+Date: Wed, 09 Aug 2006 10:59:01 -0400
+Message-ID: <20060809145901.3914.74335.stgit@picasso.dsl.sfldmi.ameritech.net>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApWU-0008K1-7p
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:06 -0700
+	id 1GApWW-0008L8-64
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:08 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWU-0000vk-Ip
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:06 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWW-0000zo-Gt
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:08 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,178 +31,160 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add comments for external functions, use modern function definition style,
-and fix up dprintk formatting.
+The previous patches removed the last user of RPC child tasks, so we can
+remove support for child tasks from net/sunrpc/sched.c now.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/pmap_clnt.c |   70 +++++++++++++++++++++++++++++-------------------
- 1 files changed, 42 insertions(+), 28 deletions(-)
+ include/linux/sunrpc/sched.h |    5 ---
+ net/sunrpc/sched.c           |   82 ------------------------------------------
+ 2 files changed, 0 insertions(+), 87 deletions(-)
 
-diff --git a/net/sunrpc/pmap_clnt.c b/net/sunrpc/pmap_clnt.c
-index 1dad361..1f80ad1 100644
---- a/net/sunrpc/pmap_clnt.c
-+++ b/net/sunrpc/pmap_clnt.c
-@@ -1,7 +1,9 @@
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 82a91bb..f399c13 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -127,7 +127,6 @@ struct rpc_call_ops {
+  */
+ #define RPC_TASK_ASYNC		0x0001		/* is an async task */
+ #define RPC_TASK_SWAPPER	0x0002		/* is swapping in/out */
+-#define RPC_TASK_CHILD		0x0008		/* is child of other task */
+ #define RPC_CALL_MAJORSEEN	0x0020		/* major timeout seen */
+ #define RPC_TASK_ROOTCREDS	0x0040		/* force root creds */
+ #define RPC_TASK_DYNAMIC	0x0080		/* task was kmalloc'ed */
+@@ -136,7 +135,6 @@ #define RPC_TASK_SOFT		0x0200		/* Use so
+ #define RPC_TASK_NOINTR		0x0400		/* uninterruptible task */
+ 
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+-#define RPC_IS_CHILD(t)		((t)->tk_flags & RPC_TASK_CHILD)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+ #define RPC_DO_ROOTOVERRIDE(t)	((t)->tk_flags & RPC_TASK_ROOTCREDS)
+ #define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
+@@ -253,7 +251,6 @@ struct rpc_task *rpc_new_task(struct rpc
+ 				const struct rpc_call_ops *ops, void *data);
+ struct rpc_task *rpc_run_task(struct rpc_clnt *clnt, int flags,
+ 				const struct rpc_call_ops *ops, void *data);
+-struct rpc_task *rpc_new_child(struct rpc_clnt *, struct rpc_task *parent);
+ void		rpc_init_task(struct rpc_task *task, struct rpc_clnt *clnt,
+ 				int flags, const struct rpc_call_ops *ops,
+ 				void *data);
+@@ -261,8 +258,6 @@ void		rpc_release_task(struct rpc_task *
+ void		rpc_exit_task(struct rpc_task *);
+ void		rpc_killall_tasks(struct rpc_clnt *);
+ int		rpc_execute(struct rpc_task *);
+-void		rpc_run_child(struct rpc_task *parent, struct rpc_task *child,
+-					rpc_action action);
+ void		rpc_init_priority_wait_queue(struct rpc_wait_queue *, const char *);
+ void		rpc_init_wait_queue(struct rpc_wait_queue *, const char *);
+ void		rpc_sleep_on(struct rpc_wait_queue *, struct rpc_task *,
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 5c3eee7..015ffe4 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -45,12 +45,6 @@ static void			rpciod_killall(void);
+ static void			rpc_async_schedule(void *);
+ 
  /*
-- * linux/net/sunrpc/pmap.c
-+ * linux/net/sunrpc/pmap_clnt.c
-  *
-- * Portmapper client.
-+ * In-kernel RPC portmapper client.
-+ *
-+ * Portmapper supports version 2 of the rpcbind protocol (RFC 1833).
-  *
-  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
-  */
-@@ -76,12 +78,15 @@ static inline void pmap_wake_portmap_wai
- 	rpc_wake_up(&xprt->binding);
- }
- 
+- * RPC tasks that create another task (e.g. for contacting the portmapper)
+- * will wait on this queue for their child's completion
+- */
+-static RPC_WAITQ(childq, "childq");
+-
 -/*
-- * Obtain the port for a given RPC service on a given host. This one can
-- * be called for an ongoing RPC request.
-+/**
-+ * rpc_getport - obtain the port for a given RPC service on a given host
-+ * @task: task that is waiting for portmapper request
-+ * @clnt: controlling rpc_clnt
-+ *
-+ * This one can be called for an ongoing RPC request, and can be used in
-+ * an async (rpciod) context.
+  * RPC tasks sit here while waiting for conditions to improve.
   */
--void
--rpc_getport(struct rpc_task *task, struct rpc_clnt *clnt)
-+void rpc_getport(struct rpc_task *task, struct rpc_clnt *clnt)
- {
- 	struct rpc_xprt *xprt = task->tk_xprt;
- 	struct sockaddr_in *sap = &xprt->addr;
-@@ -144,8 +149,16 @@ bailout_nofree:
+ static RPC_WAITQ(delay_queue, "delayq");
+@@ -324,16 +318,6 @@ static void rpc_make_runnable(struct rpc
  }
  
- #ifdef CONFIG_ROOT_NFS
--int
--rpc_getport_external(struct sockaddr_in *sin, __u32 prog, __u32 vers, int prot)
-+/**
-+ * rpc_getport_external - obtain the port for a given RPC service on a given host
-+ * @sin: address of remote peer
-+ * @prog: RPC program number to bind
-+ * @vers: RPC version number to bind
-+ * @prot: transport protocol to use to make this request
-+ *
-+ * This one is called from outside the RPC client in a synchronous task context.
-+ */
-+int rpc_getport_external(struct sockaddr_in *sin, __u32 prog, __u32 vers, int prot)
- {
- 	struct portmap_args map = {
- 		.pm_prog	= prog,
-@@ -162,7 +175,7 @@ rpc_getport_external(struct sockaddr_in 
- 	char		hostname[32];
- 	int		status;
- 
--	dprintk("RPC:      rpc_getport_external(%u.%u.%u.%u, %d, %d, %d)\n",
-+	dprintk("RPC:      rpc_getport_external(%u.%u.%u.%u, %u, %u, %d)\n",
- 			NIPQUAD(sin->sin_addr.s_addr), prog, vers, prot);
- 
- 	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(sin->sin_addr.s_addr));
-@@ -182,8 +195,10 @@ rpc_getport_external(struct sockaddr_in 
- }
- #endif
- 
--static void
--pmap_getport_done(struct rpc_task *child, void *data)
-+/*
-+ * Portmapper child task invokes this callback via tk_exit.
-+ */
-+static void pmap_getport_done(struct rpc_task *child, void *data)
- {
- 	struct portmap_args *map = data;
- 	struct rpc_task *task = map->pm_task;
-@@ -209,12 +224,17 @@ pmap_getport_done(struct rpc_task *child
- 	pmap_wake_portmap_waiters(xprt);
- }
- 
--/*
-- * Set or unset a port registration with the local portmapper.
-+/**
-+ * rpc_register - set or unset a port registration with the local portmapper
-+ * @prog: RPC program number to bind
-+ * @vers: RPC version number to bind
-+ * @prot: transport protocol to use to make this request
-+ * @port: port value to register
-+ * @okay: result code
-+ *
-  * port == 0 means unregister, port != 0 means register.
-  */
--int
--rpc_register(u32 prog, u32 vers, int prot, unsigned short port, int *okay)
-+int rpc_register(u32 prog, u32 vers, int prot, unsigned short port, int *okay)
- {
- 	struct sockaddr_in	sin = {
- 		.sin_family	= AF_INET,
-@@ -234,7 +254,7 @@ rpc_register(u32 prog, u32 vers, int pro
- 	struct rpc_clnt		*pmap_clnt;
- 	int error = 0;
- 
--	dprintk("RPC: registering (%d, %d, %d, %d) with portmapper.\n",
-+	dprintk("RPC: registering (%u, %u, %d, %u) with portmapper.\n",
- 			prog, vers, prot, port);
- 
- 	pmap_clnt = pmap_create("localhost", &sin, IPPROTO_UDP, 1);
-@@ -257,13 +277,11 @@ rpc_register(u32 prog, u32 vers, int pro
- 	return error;
- }
- 
--static struct rpc_clnt *
--pmap_create(char *hostname, struct sockaddr_in *srvaddr, int proto, int privileged)
-+static struct rpc_clnt *pmap_create(char *hostname, struct sockaddr_in *srvaddr, int proto, int privileged)
- {
- 	struct rpc_xprt	*xprt;
- 	struct rpc_clnt	*clnt;
- 
--	/* printk("pmap: create xprt\n"); */
- 	xprt = xprt_create_proto(proto, srvaddr, NULL);
- 	if (IS_ERR(xprt))
- 		return (struct rpc_clnt *)xprt;
-@@ -271,7 +289,6 @@ pmap_create(char *hostname, struct socka
- 	if (!privileged)
- 		xprt->resvport = 0;
- 
--	/* printk("pmap: create clnt\n"); */
- 	clnt = rpc_new_client(xprt, hostname,
- 				&pmap_program, RPC_PMAP_VERSION,
- 				RPC_AUTH_UNIX);
-@@ -285,10 +302,9 @@ pmap_create(char *hostname, struct socka
  /*
-  * XDR encode/decode functions for PMAP
-  */
--static int
--xdr_encode_mapping(struct rpc_rqst *req, u32 *p, struct portmap_args *map)
-+static int xdr_encode_mapping(struct rpc_rqst *req, u32 *p, struct portmap_args *map)
- {
--	dprintk("RPC: xdr_encode_mapping(%d, %d, %d, %d)\n",
-+	dprintk("RPC: xdr_encode_mapping(%u, %u, %u, %u)\n",
- 		map->pm_prog, map->pm_vers, map->pm_prot, map->pm_port);
- 	*p++ = htonl(map->pm_prog);
- 	*p++ = htonl(map->pm_vers);
-@@ -299,15 +315,13 @@ xdr_encode_mapping(struct rpc_rqst *req,
- 	return 0;
+- * Place a newly initialized task on the workqueue.
+- */
+-static inline void
+-rpc_schedule_run(struct rpc_task *task)
+-{
+-	rpc_set_active(task);
+-	rpc_make_runnable(task);
+-}
+-
+-/*
+  * Prepare for sleeping on a wait queue.
+  * By always appending tasks to the list we ensure FIFO behavior.
+  * NB: An RPC task will only receive interrupt-driven events as long
+@@ -933,72 +917,6 @@ struct rpc_task *rpc_run_task(struct rpc
  }
+ EXPORT_SYMBOL(rpc_run_task);
  
--static int
--xdr_decode_port(struct rpc_rqst *req, u32 *p, unsigned short *portp)
-+static int xdr_decode_port(struct rpc_rqst *req, u32 *p, unsigned short *portp)
- {
- 	*portp = (unsigned short) ntohl(*p++);
- 	return 0;
- }
- 
--static int
--xdr_decode_bool(struct rpc_rqst *req, u32 *p, unsigned int *boolp)
-+static int xdr_decode_bool(struct rpc_rqst *req, u32 *p, unsigned int *boolp)
- {
- 	*boolp = (unsigned int) ntohl(*p++);
- 	return 0;
+-/**
+- * rpc_find_parent - find the parent of a child task.
+- * @child: child task
+- * @parent: parent task
+- *
+- * Checks that the parent task is still sleeping on the
+- * queue 'childq'. If so returns a pointer to the parent.
+- * Upon failure returns NULL.
+- *
+- * Caller must hold childq.lock
+- */
+-static inline struct rpc_task *rpc_find_parent(struct rpc_task *child, struct rpc_task *parent)
+-{
+-	struct rpc_task	*task;
+-	struct list_head *le;
+-
+-	task_for_each(task, le, &childq.tasks[0])
+-		if (task == parent)
+-			return parent;
+-
+-	return NULL;
+-}
+-
+-static void rpc_child_exit(struct rpc_task *child, void *calldata)
+-{
+-	struct rpc_task	*parent;
+-
+-	spin_lock_bh(&childq.lock);
+-	if ((parent = rpc_find_parent(child, calldata)) != NULL) {
+-		parent->tk_status = child->tk_status;
+-		__rpc_wake_up_task(parent);
+-	}
+-	spin_unlock_bh(&childq.lock);
+-}
+-
+-static const struct rpc_call_ops rpc_child_ops = {
+-	.rpc_call_done = rpc_child_exit,
+-};
+-
+-/*
+- * Note: rpc_new_task releases the client after a failure.
+- */
+-struct rpc_task *
+-rpc_new_child(struct rpc_clnt *clnt, struct rpc_task *parent)
+-{
+-	struct rpc_task	*task;
+-
+-	task = rpc_new_task(clnt, RPC_TASK_ASYNC | RPC_TASK_CHILD, &rpc_child_ops, parent);
+-	if (!task)
+-		goto fail;
+-	return task;
+-
+-fail:
+-	parent->tk_status = -ENOMEM;
+-	return NULL;
+-}
+-
+-void rpc_run_child(struct rpc_task *task, struct rpc_task *child, rpc_action func)
+-{
+-	spin_lock_bh(&childq.lock);
+-	/* N.B. Is it possible for the child to have already finished? */
+-	__rpc_sleep_on(&childq, task, func, NULL);
+-	rpc_schedule_run(child);
+-	spin_unlock_bh(&childq.lock);
+-}
+-
+ /*
+  * Kill all tasks for the given client.
+  * XXX: kill their descendants as well?
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
