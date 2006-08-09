@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 18/25] NFS: Convert NFS client to use new
-	rpc_create()	API
-Date: Wed, 09 Aug 2006 11:30:12 -0400
-Message-ID: <1155137413.5731.87.camel@localhost>
+Subject: Re: [PATCH 23/25] NFS: Fix double d_drop in
+	nfs_instantiate()	error path
+Date: Wed, 09 Aug 2006 11:34:27 -0400
+Message-ID: <1155137667.5731.90.camel@localhost>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
-	<20060809145933.3914.19856.stgit@picasso.dsl.sfldmi.ameritech.net>
+	<20060809145946.3914.34497.stgit@picasso.dsl.sfldmi.ameritech.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAq17-0003Mo-2j
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:30:45 -0700
+	id 1GAq5M-0003oL-0F
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:35:08 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GAq16-0007Ds-Qw
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:30:45 -0700
+	(Exim 4.44) id 1GAq5L-0005ms-Kp
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:35:08 -0700
 To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <20060809145933.3914.19856.stgit@picasso.dsl.sfldmi.ameritech.net>
+In-Reply-To: <20060809145946.3914.34497.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,184 +32,284 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Has no chance of applying 'cos it is based on the 2.6.18-rc tree. Please
-pull from the NFS git tree.
-
-Cheers,
-  Trond
-
 On Wed, 2006-08-09 at 10:59 -0400, Chuck Lever wrote:
-> Convert NFS client mount logic to use rpc_create() instead of the old
-> xprt_create_proto/rpc_create_client API.
+> If the LOOKUP or GETATTR in nfs_instantiate fail, nfs_instantiate will do a
+> d_drop before returning.  But some callers already do a d_drop in the case
+> of an error return.  Make certain we do only one d_drop in all error paths.
+
+Hmm... Calling d_drop() twice is at worst an inefficiency. It is not
+strictly speaking a bug.
+
+> This bug was introduced because over time, the symlink proc API diverged
+> slightly from the create/mkdir/mknod proc API.  To prevent other bugs of
+> this type, change the symlink proc API to be more like create/mkdir/mknod
+> and move the nfs_instantiate call into the symlink proc routines so it is
+> used in exactly the same way for create, mkdir, mknod, and symlink.
 > 
 > Test plan:
-> Mount stress tests.
+> Connectathon, all versions of NFS.
 > 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/nfs/mount_clnt.c |   29 +++++++++-----------
->  fs/nfs/super.c      |   74 +++++++++++++++++++++++----------------------------
->  2 files changed, 46 insertions(+), 57 deletions(-)
+>  fs/nfs/dir.c            |   16 ++++------------
+>  fs/nfs/nfs3proc.c       |   26 ++++++++++++++++----------
+>  fs/nfs/nfs4proc.c       |   31 ++++++++++++++++---------------
+>  fs/nfs/proc.c           |   29 +++++++++++++++++++++--------
+>  include/linux/nfs_xdr.h |    5 ++---
+>  5 files changed, 59 insertions(+), 48 deletions(-)
 > 
-> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-> index 4127487..ef8a3a0 100644
-> --- a/fs/nfs/mount_clnt.c
-> +++ b/fs/nfs/mount_clnt.c
-> @@ -76,22 +76,19 @@ static struct rpc_clnt *
->  mnt_create(char *hostname, struct sockaddr_in *srvaddr, int version,
->  		int protocol)
->  {
-> -	struct rpc_xprt	*xprt;
-> -	struct rpc_clnt	*clnt;
-> -
-> -	xprt = xprt_create_proto(protocol, srvaddr, NULL);
-> -	if (IS_ERR(xprt))
-> -		return (struct rpc_clnt *)xprt;
-> -
-> -	clnt = rpc_create_client(xprt, hostname,
-> -				&mnt_program, version,
-> -				RPC_AUTH_UNIX);
-> -	if (!IS_ERR(clnt)) {
-> -		clnt->cl_softrtry = 1;
-> -		clnt->cl_oneshot  = 1;
-> -		clnt->cl_intr = 1;
-> -	}
-> -	return clnt;
-> +	struct rpc_create_args args = {
-> +		.protocol	= protocol,
-> +		.address	= (struct sockaddr *)srvaddr,
-> +		.addrsize	= sizeof(*srvaddr),
-> +		.servername	= hostname,
-> +		.program	= &mnt_program,
-> +		.version	= version,
-> +		.authflavor	= RPC_AUTH_UNIX,
-> +		.flags		= (RPC_CLNT_CREATE_ONESHOT |
-> +				   RPC_CLNT_INTR),
-> +	};
-> +
-> +	return rpc_create(&args);
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 428d963..ff4e852 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1143,23 +1143,20 @@ int nfs_instantiate(struct dentry *dentr
+>  		struct inode *dir = dentry->d_parent->d_inode;
+>  		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+>  		if (error)
+> -			goto out_err;
+> +			return error;
+>  	}
+>  	if (!(fattr->valid & NFS_ATTR_FATTR)) {
+>  		struct nfs_server *server = NFS_SB(dentry->d_sb);
+>  		error = server->rpc_ops->getattr(server, fhandle, fattr);
+>  		if (error < 0)
+> -			goto out_err;
+> +			return error;
+>  	}
+>  	inode = nfs_fhget(dentry->d_sb, fhandle, fattr);
+>  	error = PTR_ERR(inode);
+>  	if (IS_ERR(inode))
+> -		goto out_err;
+> +		return error;
+>  	d_instantiate(dentry, inode);
+>  	return 0;
+> -out_err:
+> -	d_drop(dentry);
+> -	return error;
 >  }
 >  
 >  /*
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index e8a9bee..8daccf6 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -685,37 +685,29 @@ static void nfs_init_timeout_values(stru
->  static struct rpc_clnt *
->  nfs_create_client(struct nfs_server *server, const struct nfs_mount_data *data)
+> @@ -1444,8 +1441,6 @@ static int
+>  nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 >  {
-> +	struct rpc_clnt		*clnt;
->  	struct rpc_timeout	timeparms;
-> -	struct rpc_xprt		*xprt = NULL;
-> -	struct rpc_clnt		*clnt = NULL;
-> -	int			proto = (data->flags & NFS_MOUNT_TCP) ? IPPROTO_TCP : IPPROTO_UDP;
-> -
-> -	nfs_init_timeout_values(&timeparms, proto, data->timeo, data->retrans);
-> +	struct rpc_create_args args = {
-> +		.protocol	= ((data->flags & NFS_MOUNT_TCP) ?
-> +						IPPROTO_TCP : IPPROTO_UDP),
-> +		.address	= (struct sockaddr *)&server->addr,
-> +		.addrsize	= sizeof(server->addr),
-> +		.timeout	= &timeparms,
-> +		.servername	= server->hostname,
-> +		.program	= &nfs_program,
-> +		.version	= server->rpc_ops->version,
-> +		.authflavor	= data->pseudoflavor,
-> +	};
+>  	struct iattr attr;
+> -	struct nfs_fattr sym_attr;
+> -	struct nfs_fh sym_fh;
+>  	struct qstr qsymname;
+>  	int error;
 >  
-> +	nfs_init_timeout_values(&timeparms, args.protocol,
-> +					data->timeo, data->retrans);
->  	server->retrans_timeo = timeparms.to_initval;
->  	server->retrans_count = timeparms.to_retries;
+> @@ -1469,12 +1464,9 @@ #endif
 >  
-> -	/* create transport and client */
-> -	xprt = xprt_create_proto(proto, &server->addr, &timeparms);
-> -	if (IS_ERR(xprt)) {
-> -		dprintk("%s: cannot create RPC transport. Error = %ld\n",
-> -				__FUNCTION__, PTR_ERR(xprt));
-> -		return (struct rpc_clnt *)xprt;
-> -	}
-> -	clnt = rpc_create_client(xprt, server->hostname, &nfs_program,
-> -				 server->rpc_ops->version, data->pseudoflavor);
-> -	if (IS_ERR(clnt)) {
-> +	clnt = rpc_create(&args);
-> +	if (IS_ERR(clnt))
->  		dprintk("%s: cannot create RPC client. Error = %ld\n",
-> -				__FUNCTION__, PTR_ERR(xprt));
-> -		goto out_fail;
-> -	}
-> -
-> -	clnt->cl_intr     = 1;
-> -	clnt->cl_softrtry = 1;
-> -
-> -	return clnt;
-> -
-> -out_fail:
-> +				__FUNCTION__, PTR_ERR(clnt));
->  	return clnt;
+>  	lock_kernel();
+>  	nfs_begin_data_update(dir);
+> -	error = NFS_PROTO(dir)->symlink(dir, &dentry->d_name, &qsymname,
+> -					  &attr, &sym_fh, &sym_attr);
+> +	error = NFS_PROTO(dir)->symlink(dir, dentry, &qsymname, &attr);
+>  	nfs_end_data_update(dir);
+>  	if (!error)
+> -		error = nfs_instantiate(dentry, &sym_fh, &sym_attr);
+> -	else
+>  		d_drop(dentry);
+>  	unlock_kernel();
+>  	return error;
+> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+> index 7143b1f..15eac8d 100644
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -544,23 +544,23 @@ nfs3_proc_link(struct inode *inode, stru
 >  }
 >  
-> @@ -1122,11 +1114,14 @@ static int nfs_clone_nfs_sb(struct file_
->  }
->  
->  #ifdef CONFIG_NFS_V4
-> +/*
-> + * NB: nfs4_kill_super takes care of reaping the rpc_clnt if something
-> + *     here fails.
-> + */
->  static struct rpc_clnt *nfs4_create_client(struct nfs_server *server,
->  	struct rpc_timeout *timeparms, int proto, rpc_authflavor_t flavor)
+>  static int
+> -nfs3_proc_symlink(struct inode *dir, struct qstr *name, struct qstr *path,
+> -		  struct iattr *sattr, struct nfs_fh *fhandle,
+> -		  struct nfs_fattr *fattr)
+> +nfs3_proc_symlink(struct inode *dir, struct dentry *dentry, struct qstr *path,
+> +		  struct iattr *sattr)
 >  {
->  	struct nfs4_client *clp;
-> -	struct rpc_xprt *xprt = NULL;
->  	struct rpc_clnt *clnt = NULL;
->  	int err = -EIO;
+> -	struct nfs_fattr	dir_attr;
+> +	struct nfs_fh fhandle;
+> +	struct nfs_fattr fattr, dir_attr;
+>  	struct nfs3_symlinkargs	arg = {
+>  		.fromfh		= NFS_FH(dir),
+> -		.fromname	= name->name,
+> -		.fromlen	= name->len,
+> +		.fromname	= dentry->d_name.name,
+> +		.fromlen	= dentry->d_name.len,
+>  		.topath		= path->name,
+>  		.tolen		= path->len,
+>  		.sattr		= sattr
+>  	};
+>  	struct nfs3_diropres	res = {
+>  		.dir_attr	= &dir_attr,
+> -		.fh		= fhandle,
+> -		.fattr		= fattr
+> +		.fh		= &fhandle,
+> +		.fattr		= &fattr
+>  	};
+>  	struct rpc_message msg = {
+>  		.rpc_proc	= &nfs3_procedures[NFS3PROC_SYMLINK],
+> @@ -571,11 +571,17 @@ nfs3_proc_symlink(struct inode *dir, str
 >  
-> @@ -1136,21 +1131,20 @@ static struct rpc_clnt *nfs4_create_clie
->  		return ERR_PTR(err);
->  	}
->  
-> -	/* Now create transport and client */
->  	down_write(&clp->cl_sem);
->  	if (IS_ERR(clp->cl_rpcclient)) {
-> -		xprt = xprt_create_proto(proto, &server->addr, timeparms);
-> -		if (IS_ERR(xprt)) {
-> -			up_write(&clp->cl_sem);
-> -			err = PTR_ERR(xprt);
-> -			dprintk("%s: cannot create RPC transport. Error = %d\n",
-> -					__FUNCTION__, err);
-> -			goto out_fail;
-> -		}
-> -		/* Bind to a reserved port! */
-> -		xprt->resvport = 1;
-> -		clnt = rpc_create_client(xprt, server->hostname, &nfs_program,
-> -				server->rpc_ops->version, flavor);
-> +		struct rpc_create_args args = {
-> +			.protocol	= proto,
-> +			.address	= (struct sockaddr *)&server->addr,
-> +			.addrsize	= sizeof(server->addr),
-> +			.timeout	= timeparms,
-> +			.servername	= server->hostname,
-> +			.program	= &nfs_program,
-> +			.version	= server->rpc_ops->version,
-> +			.authflavor	= flavor,
-> +		};
+>  	if (path->len > NFS3_MAXPATHLEN)
+>  		return -ENAMETOOLONG;
+> -	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
 > +
-> +		clnt = rpc_create(&args);
->  		if (IS_ERR(clnt)) {
->  			up_write(&clp->cl_sem);
->  			err = PTR_ERR(clnt);
-> @@ -1158,8 +1152,6 @@ static struct rpc_clnt *nfs4_create_clie
->  					__FUNCTION__, err);
->  			goto out_fail;
->  		}
-> -		clnt->cl_intr     = 1;
-> -		clnt->cl_softrtry = 1;
->  		clp->cl_rpcclient = clnt;
->  		memcpy(clp->cl_ipaddr, server->ip_addr, sizeof(clp->cl_ipaddr));
->  		nfs_idmap_new(clp);
+> +	dprintk("NFS call  symlink %s -> %s\n", dentry->d_name.name,
+> +			path->name);
+>  	nfs_fattr_init(&dir_attr);
+> -	nfs_fattr_init(fattr);
+> +	nfs_fattr_init(&fattr);
+>  	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+>  	nfs_post_op_update_inode(dir, &dir_attr);
+> +	if (status != 0)
+> +		goto out;
+> +	status = nfs_instantiate(dentry, &fhandle, &fattr);
+> +out:
+>  	dprintk("NFS reply symlink: %d\n", status);
+>  	return status;
+>  }
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index e6ee97f..370b5ab 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2089,24 +2089,24 @@ static int nfs4_proc_link(struct inode *
+>  	return err;
+>  }
+>  
+> -static int _nfs4_proc_symlink(struct inode *dir, struct qstr *name,
+> -		struct qstr *path, struct iattr *sattr, struct nfs_fh *fhandle,
+> -		struct nfs_fattr *fattr)
+> +static int _nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+> +		struct qstr *path, struct iattr *sattr)
+>  {
+>  	struct nfs_server *server = NFS_SERVER(dir);
+> -	struct nfs_fattr dir_fattr;
+> +	struct nfs_fh fhandle;
+> +	struct nfs_fattr fattr, dir_fattr;
+>  	struct nfs4_create_arg arg = {
+>  		.dir_fh = NFS_FH(dir),
+>  		.server = server,
+> -		.name = name,
+> +		.name = &dentry->d_name,
+>  		.attrs = sattr,
+>  		.ftype = NF4LNK,
+>  		.bitmask = server->attr_bitmask,
+>  	};
+>  	struct nfs4_create_res res = {
+>  		.server = server,
+> -		.fh = fhandle,
+> -		.fattr = fattr,
+> +		.fh = &fhandle,
+> +		.fattr = &fattr,
+>  		.dir_fattr = &dir_fattr,
+>  	};
+>  	struct rpc_message msg = {
+> @@ -2118,27 +2118,28 @@ static int _nfs4_proc_symlink(struct ino
+>  
+>  	if (path->len > NFS4_MAXPATHLEN)
+>  		return -ENAMETOOLONG;
+> +
+>  	arg.u.symlink = path;
+> -	nfs_fattr_init(fattr);
+> +	nfs_fattr_init(&fattr);
+>  	nfs_fattr_init(&dir_fattr);
+>  	
+>  	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+> -	if (!status)
+> +	if (!status) {
+>  		update_changeattr(dir, &res.dir_cinfo);
+> -	nfs_post_op_update_inode(dir, res.dir_fattr);
+> +		nfs_post_op_update_inode(dir, res.dir_fattr);
+> +		status = nfs_instantiate(dentry, &fhandle, &fattr);
+> +	}
+>  	return status;
+>  }
+>  
+> -static int nfs4_proc_symlink(struct inode *dir, struct qstr *name,
+> -		struct qstr *path, struct iattr *sattr, struct nfs_fh *fhandle,
+> -		struct nfs_fattr *fattr)
+> +static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+> +		struct qstr *path, struct iattr *sattr)
+>  {
+>  	struct nfs4_exception exception = { };
+>  	int err;
+>  	do {
+>  		err = nfs4_handle_exception(NFS_SERVER(dir),
+> -				_nfs4_proc_symlink(dir, name, path, sattr,
+> -					fhandle, fattr),
+> +				_nfs4_proc_symlink(dir, dentry, path, sattr),
+>  				&exception);
+>  	} while (exception.retry);
+>  	return err;
+> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+> index b3899ea..7512f71 100644
+> --- a/fs/nfs/proc.c
+> +++ b/fs/nfs/proc.c
+> @@ -425,14 +425,15 @@ nfs_proc_link(struct inode *inode, struc
+>  }
+>  
+>  static int
+> -nfs_proc_symlink(struct inode *dir, struct qstr *name, struct qstr *path,
+> -		 struct iattr *sattr, struct nfs_fh *fhandle,
+> -		 struct nfs_fattr *fattr)
+> +nfs_proc_symlink(struct inode *dir, struct dentry *dentry, struct qstr *path,
+> +		 struct iattr *sattr)
+>  {
+> +	struct nfs_fh fhandle;
+> +	struct nfs_fattr fattr;
+>  	struct nfs_symlinkargs	arg = {
+>  		.fromfh		= NFS_FH(dir),
+> -		.fromname	= name->name,
+> -		.fromlen	= name->len,
+> +		.fromname	= dentry->d_name.name,
+> +		.fromlen	= dentry->d_name.len,
+>  		.topath		= path->name,
+>  		.tolen		= path->len,
+>  		.sattr		= sattr
+> @@ -445,11 +446,23 @@ nfs_proc_symlink(struct inode *dir, stru
+>  
+>  	if (path->len > NFS2_MAXPATHLEN)
+>  		return -ENAMETOOLONG;
+> -	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
+> -	nfs_fattr_init(fattr);
+> -	fhandle->size = 0;
+> +
+> +	dprintk("NFS call  symlink %s -> %s\n", dentry->d_name.name,
+> +			path->name);
+>  	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+>  	nfs_mark_for_revalidate(dir);
+> +
+> +	/*
+> +	 * V2 SYMLINK requests don't return any attributes.  Setting the
+> +	 * filehandle size to zero indicates to nfs_instantiate that it
+> +	 * should fill in the data with a LOOKUP call on the wire.
+> +	 */
+> +	if (status == 0) {
+> +		nfs_fattr_init(&fattr);
+> +		fhandle.size = 0;
+> +		status = nfs_instantiate(dentry, &fhandle, &fattr);
+> +	}
+> +
+>  	dprintk("NFS reply symlink: %d\n", status);
+>  	return status;
+>  }
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 0c1093c..cfabcd1 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -790,9 +790,8 @@ struct nfs_rpc_ops {
+>  	int	(*rename)  (struct inode *, struct qstr *,
+>  			    struct inode *, struct qstr *);
+>  	int	(*link)    (struct inode *, struct inode *, struct qstr *);
+> -	int	(*symlink) (struct inode *, struct qstr *, struct qstr *,
+> -			    struct iattr *, struct nfs_fh *,
+> -			    struct nfs_fattr *);
+> +	int	(*symlink) (struct inode *, struct dentry *, struct qstr *,
+> +			    struct iattr *);
+>  	int	(*mkdir)   (struct inode *, struct dentry *, struct iattr *);
+>  	int	(*rmdir)   (struct inode *, struct qstr *);
+>  	int	(*readdir) (struct dentry *, struct rpc_cred *,
 
 
 -------------------------------------------------------------------------
