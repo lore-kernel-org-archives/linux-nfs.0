@@ -1,7 +1,7 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 17/25] LOCKD: Convert to use new rpc_create() API
-Date: Wed, 09 Aug 2006 10:59:31 -0400
-Message-ID: <20060809145931.3914.70914.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 15/25] SUNRPC: Clean-up after previous patches.
+Date: Wed, 09 Aug 2006 10:59:26 -0400
+Message-ID: <20060809145926.3914.94390.stgit@picasso.dsl.sfldmi.ameritech.net>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApcT-0000or-JH
+	id 1GApcU-0000p1-RA
 	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:18 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApcS-0003Gg-Vz
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:18 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApcT-0003GL-Gv
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:19 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -30,154 +30,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Replace xprt_create_proto/rpc_create_client with new rpc_create()
-interface in the Network Lock Manager.
-
-Note that the semantics of NLM transports is now "hard" instead of "soft"
-to provide a better guarantee that lock requests will get to the server.
+Remove some unused macros related to accessing an RPC peer address
 
 Test plan:
-Repeated runs of Connectathon locking suite.  Check network trace to ensure
-NLM requests are working correctly.
+Compile kernel with CONFIG_NFS option enabled.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c |   50 +++++++++++++++++++++++++++-----------------------
- fs/lockd/mon.c  |   41 +++++++++++++++++------------------------
- 2 files changed, 44 insertions(+), 47 deletions(-)
+ fs/lockd/host.c             |    1 -
+ include/linux/nfs_fs.h      |    1 -
+ include/linux/sunrpc/clnt.h |    3 ---
+ 3 files changed, 0 insertions(+), 5 deletions(-)
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index a516a01..703fb03 100644
+index 38b0e8a..a516a01 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -166,7 +166,6 @@ struct rpc_clnt *
- nlm_bind_host(struct nlm_host *host)
- {
- 	struct rpc_clnt	*clnt;
--	struct rpc_xprt	*xprt;
+@@ -26,7 +26,6 @@ #define NLM_ADDRHASH(addr)	(ntohl(addr) 
+ #define NLM_HOST_REBIND		(60 * HZ)
+ #define NLM_HOST_EXPIRE		((nrhosts > NLM_HOST_MAX)? 300 * HZ : 120 * HZ)
+ #define NLM_HOST_COLLECT	((nrhosts > NLM_HOST_MAX)? 120 * HZ :  60 * HZ)
+-#define NLM_HOST_ADDR(sv)	(&(sv)->s_nlmclnt->cl_xprt->addr)
  
- 	dprintk("lockd: nlm_bind_host(%08x)\n",
- 			(unsigned)ntohl(host->h_addr.sin_addr.s_addr));
-@@ -178,7 +177,6 @@ nlm_bind_host(struct nlm_host *host)
- 	 * RPC rebind is required
- 	 */
- 	if ((clnt = host->h_rpcclnt) != NULL) {
--		xprt = clnt->cl_xprt;
- 		if (time_after_eq(jiffies, host->h_nextrebind)) {
- 			rpc_force_rebind(clnt);
- 			host->h_nextrebind = jiffies + NLM_HOST_REBIND;
-@@ -186,31 +184,37 @@ nlm_bind_host(struct nlm_host *host)
- 					host->h_nextrebind - jiffies);
- 		}
- 	} else {
--		xprt = xprt_create_proto(host->h_proto, &host->h_addr, NULL);
--		if (IS_ERR(xprt))
--			goto forgetit;
--
--		xprt_set_timeout(&xprt->timeout, 5, nlmsvc_timeout);
--		xprt->resvport = 1;	/* NLM requires a reserved port */
--
--		/* Existing NLM servers accept AUTH_UNIX only */
--		clnt = rpc_new_client(xprt, host->h_name, &nlm_program,
--					host->h_version, RPC_AUTH_UNIX);
--		if (IS_ERR(clnt))
--			goto forgetit;
--		clnt->cl_autobind = 1;	/* turn on pmap queries */
--		clnt->cl_softrtry = 1; /* All queries are soft */
--
--		host->h_rpcclnt = clnt;
-+		unsigned long increment = nlmsvc_timeout * HZ;
-+		struct rpc_timeout timeparms = {
-+			.to_initval	= increment,
-+			.to_increment	= increment,
-+			.to_maxval	= increment * 6UL,
-+			.to_retries	= 5U,
-+		};
-+		struct rpc_create_args args = {
-+			.protocol	= host->h_proto,
-+			.address	= (struct sockaddr *)&host->h_addr,
-+			.addrsize	= sizeof(host->h_addr),
-+			.timeout	= &timeparms,
-+			.servername	= host->h_name,
-+			.program	= &nlm_program,
-+			.version	= host->h_version,
-+			.authflavor	= RPC_AUTH_UNIX,
-+			.flags		= (RPC_CLNT_CREATE_HARDRTRY |
-+					   RPC_CLNT_CREATE_AUTOBIND),
-+		};
-+
-+		clnt = rpc_create(&args);
-+		if (!IS_ERR(clnt))
-+			host->h_rpcclnt = clnt;
-+		else {
-+			printk("lockd: couldn't create RPC handle for %s\n", host->h_name);
-+			clnt = NULL;
-+		}
- 	}
+ static struct nlm_host *	nlm_hosts[NLM_HOST_NRHASH];
+ static unsigned long		next_gc;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 2474345..dd61af2 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -210,7 +210,6 @@ #define NFS_FH(inode)			(&NFS_I(inode)->
+ #define NFS_SERVER(inode)		(NFS_SB(inode->i_sb))
+ #define NFS_CLIENT(inode)		(NFS_SERVER(inode)->client)
+ #define NFS_PROTO(inode)		(NFS_SERVER(inode)->rpc_ops)
+-#define NFS_ADDR(inode)			(RPC_PEERADDR(NFS_CLIENT(inode)))
+ #define NFS_COOKIEVERF(inode)		(NFS_I(inode)->cookieverf)
+ #define NFS_READTIME(inode)		(NFS_I(inode)->read_cache_jiffies)
+ #define NFS_CHANGE_ATTR(inode)		(NFS_I(inode)->change_attr)
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index b7d47f0..a26d695 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -89,9 +89,6 @@ struct rpc_procinfo {
+ 	char *			p_name;		/* name of procedure */
+ };
  
- 	mutex_unlock(&host->h_mutex);
- 	return clnt;
+-#define RPC_CONGESTED(clnt)	(RPCXPRT_CONGESTED((clnt)->cl_xprt))
+-#define RPC_PEERADDR(clnt)	(&(clnt)->cl_xprt->addr)
 -
--forgetit:
--	printk("lockd: couldn't create RPC handle for %s\n", host->h_name);
--	mutex_unlock(&host->h_mutex);
--	return NULL;
- }
+ #ifdef __KERNEL__
  
- /*
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 3fc683f..5954dcb 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -109,30 +109,23 @@ nsm_unmonitor(struct nlm_host *host)
- static struct rpc_clnt *
- nsm_create(void)
- {
--	struct rpc_xprt		*xprt;
--	struct rpc_clnt		*clnt;
--	struct sockaddr_in	sin;
--
--	sin.sin_family = AF_INET;
--	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
--	sin.sin_port = 0;
--
--	xprt = xprt_create_proto(IPPROTO_UDP, &sin, NULL);
--	if (IS_ERR(xprt))
--		return (struct rpc_clnt *)xprt;
--	xprt->resvport = 1;	/* NSM requires a reserved port */
--
--	clnt = rpc_create_client(xprt, "localhost",
--				&nsm_program, SM_VERSION,
--				RPC_AUTH_NULL);
--	if (IS_ERR(clnt))
--		goto out_err;
--	clnt->cl_softrtry = 1;
--	clnt->cl_oneshot  = 1;
--	return clnt;
--
--out_err:
--	return clnt;
-+	struct sockaddr_in	sin = {
-+		.sin_family	= AF_INET,
-+		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
-+		.sin_port	= 0,
-+	};
-+	struct rpc_create_args args = {
-+		.protocol	= IPPROTO_UDP,
-+		.address	= (struct sockaddr *)&sin,
-+		.addrsize	= sizeof(sin),
-+		.servername	= "localhost",
-+		.program	= &nsm_program,
-+		.version	= SM_VERSION,
-+		.authflavor	= RPC_AUTH_NULL,
-+		.flags		= (RPC_CLNT_CREATE_ONESHOT),
-+	};
-+
-+	return rpc_create(&args);
- }
- 
- /*
+ struct rpc_clnt *rpc_create_client(struct rpc_xprt *xprt, char *servname,
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
