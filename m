@@ -1,28 +1,24 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Wed, 9 Aug 2006 10:07:40 +0200
-Message-ID: <9a8748490608090107j6ce7bc2cr2b74cc13b9541f39@mail.gmail.com>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-	<ketid21n1s5bn108lo7ps9t8a85db5bgs9@4ax.com>
+From: Chuck Lever <chucklever@gmail.com>
+Subject: [PATCH 01/25] SUNRPC: avoid choosing an IPMI port for RPC
+	traffic
+Date: Wed, 09 Aug 2006 10:58:51 -0400
+Message-ID: <20060809145849.3914.57196.stgit@picasso.dsl.sfldmi.ameritech.net>
+References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
+Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAj6O-00072K-D8
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 01:07:44 -0700
-Received: from nf-out-0910.google.com ([64.233.182.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAj6M-0007F2-BS
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 01:07:44 -0700
-Received: by nf-out-0910.google.com with SMTP id a27so66153nfc
-	for <nfs@lists.sourceforge.net>; Wed, 09 Aug 2006 01:07:41 -0700 (PDT)
-To: "Grant Coady" <gcoady.lk@gmail.com>
-In-Reply-To: <ketid21n1s5bn108lo7ps9t8a85db5bgs9@4ax.com>
+	id 1GApWQ-0008Gk-D4
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:02 -0700
+Received: from flpvm23.prodigy.net ([207.115.20.53])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWP-0003Qc-Nw
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:03 -0700
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,49 +31,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 09/08/06, Grant Coady <gcoady.lk@gmail.com> wrote:
-> On Tue, 8 Aug 2006 16:39:54 +0200, "Jesper Juhl" <jesper.juhl@gmail.com> wrote:
->
-> >I have some webservers that have recently started reporting the
-> >following message in their logs :
-> >
-> >  do_vfs_lock: VFS is out of sync with lock manager!
-> >
-> >The serveres kernels were upgraded to 2.6.17.8 and since the upgrade
-> >the message started appearing.
-> >The servers were previously running 2.6.13.4 without experiencing this problem.
-> >Nothing has changed except the kernel.
-> >
-> >I've googled a bit and found this mail
-> >(http://lkml.org/lkml/2005/8/23/254) from Trond saying that
-> >"The above is a lockd error that states that the VFS is failing to track
-> >your NFS locks correctly".
-> >Ok, but that doesn't really help me resolve the issue. The servers are
-> >indeed running NFS and access their apache DocumentRoots from a NFS
-> >mount.
-> >
-> >Is there anything I can do to help track down this issue?
->
-> I don't have an answer, but offer this observation: five boxen running
-> 2.6.17.8 doing six simultaneous
->
->   bzcat /home/share/linux-2.6/patch-2.6.18-rc4.bz2|patch -p1
->
-> didn't burp.  The /home/share/ is an NFS export from another box running
-> 2.4.33-rc3a, me not sure if this was exercising any NFS locking as the
-> NFS source file was only opened for non-exclusive read-only.
->
-The NFS server here is running 2.6.11.11 and doesn't seem to be
-reporting any problems. But I now have two more of my webservers (both
-running 2.6.17.8) that have started to complain about "do_vfs_lock:
-VFS is out of sync with lock manager!"
+Some hardware uses port 664 for its hardware-based IPMI listener.  Teach
+the RPC client to avoid using that port by raising the default minimum port
+number to 665.
 
-I've not found a way to cause the message to be repported at will unfortunately.
+Test plan:
+Find a mainboard known to use port 664 for IPMI; enable IPMI; mount NFS
+servers in a tight loop.
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ include/linux/sunrpc/xprt.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 840e47a..3a0cca2 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -37,7 +37,7 @@ extern unsigned int xprt_max_resvport;
+ 
+ #define RPC_MIN_RESVPORT	(1U)
+ #define RPC_MAX_RESVPORT	(65535U)
+-#define RPC_DEF_MIN_RESVPORT	(650U)
++#define RPC_DEF_MIN_RESVPORT	(665U)
+ #define RPC_DEF_MAX_RESVPORT	(1023U)
+ 
+ /*
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
