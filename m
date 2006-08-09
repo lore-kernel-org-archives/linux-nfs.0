@@ -1,21 +1,28 @@
-From: "ravinder rao" <ravinder35@gmail.com>
-Subject: Documention of NFS for SUSE 10.1
-Date: Thu, 31 Aug 2006 17:15:51 +0530
-Message-ID: <32bab3580608310445i4c58867ckec78f3badec7d00c@mail.gmail.com>
+From: "Jesper Juhl" <jesper.juhl@gmail.com>
+Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
+	manager!
+Date: Wed, 9 Aug 2006 10:07:40 +0200
+Message-ID: <9a8748490608090107j6ce7bc2cr2b74cc13b9541f39@mail.gmail.com>
+References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
+	<ketid21n1s5bn108lo7ps9t8a85db5bgs9@4ax.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2035681801=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GIkza-0006gd-Pl
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 04:45:54 -0700
-Received: from nf-out-0910.google.com ([64.233.182.188])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GIkza-0005lx-62
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 04:45:55 -0700
-Received: by nf-out-0910.google.com with SMTP id l36so344264nfa
-	for <nfs@lists.sourceforge.net>; Thu, 31 Aug 2006 04:45:51 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1GAj6O-00072K-D8
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 01:07:44 -0700
+Received: from nf-out-0910.google.com ([64.233.182.190])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAj6M-0007F2-BS
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 01:07:44 -0700
+Received: by nf-out-0910.google.com with SMTP id a27so66153nfc
+	for <nfs@lists.sourceforge.net>; Wed, 09 Aug 2006 01:07:41 -0700 (PDT)
+To: "Grant Coady" <gcoady.lk@gmail.com>
+In-Reply-To: <ketid21n1s5bn108lo7ps9t8a85db5bgs9@4ax.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,61 +35,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2035681801==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_51634_7702829.1157024751321"
+On 09/08/06, Grant Coady <gcoady.lk@gmail.com> wrote:
+> On Tue, 8 Aug 2006 16:39:54 +0200, "Jesper Juhl" <jesper.juhl@gmail.com> wrote:
+>
+> >I have some webservers that have recently started reporting the
+> >following message in their logs :
+> >
+> >  do_vfs_lock: VFS is out of sync with lock manager!
+> >
+> >The serveres kernels were upgraded to 2.6.17.8 and since the upgrade
+> >the message started appearing.
+> >The servers were previously running 2.6.13.4 without experiencing this problem.
+> >Nothing has changed except the kernel.
+> >
+> >I've googled a bit and found this mail
+> >(http://lkml.org/lkml/2005/8/23/254) from Trond saying that
+> >"The above is a lockd error that states that the VFS is failing to track
+> >your NFS locks correctly".
+> >Ok, but that doesn't really help me resolve the issue. The servers are
+> >indeed running NFS and access their apache DocumentRoots from a NFS
+> >mount.
+> >
+> >Is there anything I can do to help track down this issue?
+>
+> I don't have an answer, but offer this observation: five boxen running
+> 2.6.17.8 doing six simultaneous
+>
+>   bzcat /home/share/linux-2.6/patch-2.6.18-rc4.bz2|patch -p1
+>
+> didn't burp.  The /home/share/ is an NFS export from another box running
+> 2.4.33-rc3a, me not sure if this was exercising any NFS locking as the
+> NFS source file was only opened for non-exclusive read-only.
+>
+The NFS server here is running 2.6.11.11 and doesn't seem to be
+reporting any problems. But I now have two more of my webservers (both
+running 2.6.17.8) that have started to complain about "do_vfs_lock:
+VFS is out of sync with lock manager!"
 
-------=_Part_51634_7702829.1157024751321
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+I've not found a way to cause the message to be repported at will unfortunately.
 
-Respeceted sir,
-        I am ravinder, i am implementing   Oracel 10g  RAC on SUSE Linux
-10.1(kernel version 2.6.16.13-4-smp),for this project i need NFS ,
-i am trying to configure NFS in suse, but i am getting some problems ,plese
-send me appropriate documentation.
-give me a package description.
-                       Thanking you,
-
-----------------------------------------------------------------------------------
-Ravinder rao.
-Intrenational institute of information technology
-P:14, Pune infotech park,
-Pune - INDIA.
-Ph:09860 424108
-
-------=_Part_51634_7702829.1157024751321
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Respeceted sir,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; I am ravinder, i am implementing&nbsp;&nbsp; Oracel 10g&nbsp; RAC on SUSE Linux 10.1(kernel version 2.6.16.13-4-smp),for this project i need NFS ,<br>i am trying to configure NFS in suse, but i am getting some problems ,plese send me appropriate documentation.
-<br>give me a package description.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Thanking you,<br><br>----------------------------------------------------------------------------------<br>Ravinder rao.<br>Intrenational institute of information technology
-<br>P:14, Pune infotech park,<br>Pune - INDIA.<br>Ph:09860 424108
-
-------=_Part_51634_7702829.1157024751321--
-
-
---===============2035681801==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- 
+Jesper Juhl <jesper.juhl@gmail.com>
+Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please      http://www.expita.com/nomime.html
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============2035681801==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2035681801==--
