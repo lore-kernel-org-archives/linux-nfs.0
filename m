@@ -1,8 +1,8 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 02/25] SUNRPC: Create a helper to tell whether a
-	transport is bound
-Date: Wed, 09 Aug 2006 10:58:54 -0400
-Message-ID: <20060809145853.3914.64708.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 03/25] SUNRPC: Make RPC portmapper use per-transport
+	storage
+Date: Wed, 09 Aug 2006 10:58:56 -0400
+Message-ID: <20060809145856.3914.37296.stgit@picasso.dsl.sfldmi.ameritech.net>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApWP-0008GZ-OY
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:01 -0700
+	id 1GApWR-0008IJ-Qt
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:03 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWP-0003R0-QP
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:02 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWR-0003Rl-Sq
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:04 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,179 +31,411 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hide the contents and format of xprt->addr by eliminating direct uses
-of the xprt->addr.sin_port field.  This change is required to support
-alternate RPC host address formats (eg IPv6).
+Move connection and bind state that was maintained in the rpc_clnt
+structure to the rpc_xprt structure.  This will allow the creation of
+a clean API for plugging in different types of bind mechanisms.
+
+This brings improvements such as the elimination of a single spin lock to
+control serialization for all in-kernel RPC binding.  A set of per-xprt
+bitops is used to serialize tasks during RPC binding, just like it now
+works for making RPC transport connections.
 
 Test-plan:
-Destructive testing (unplugging the network temporarily).  Repeated runs of
-Connectathon locking suite with UDP and TCP.
+Destructive testing (unplugging the network temporarily).  Connectathon
+with UDP and TCP.  NFSv2/3 and NFSv4 mounting should be carefully checked.
+Probably need to rig a server where certain services aren't running, or
+that returns an error for some typical operation.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |   16 ++++++++++++++++
- net/sunrpc/clnt.c           |   10 +++++-----
- net/sunrpc/xprt.c           |    6 +++++-
- net/sunrpc/xprtsock.c       |   16 ++++++++++++----
- 4 files changed, 38 insertions(+), 10 deletions(-)
+ include/linux/sunrpc/clnt.h |   23 +-----
+ include/linux/sunrpc/xprt.h |   14 ++++
+ net/sunrpc/clnt.c           |    8 --
+ net/sunrpc/pmap_clnt.c      |  158 ++++++++++++++++++++++++++++---------------
+ net/sunrpc/xprt.c           |    1 
+ 5 files changed, 123 insertions(+), 81 deletions(-)
 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 8fe9f35..00e9dba 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -18,18 +18,6 @@ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/timer.h>
+ #include <asm/signal.h>
+ 
+-/*
+- * This defines an RPC port mapping
+- */
+-struct rpc_portmap {
+-	__u32			pm_prog;
+-	__u32			pm_vers;
+-	__u32			pm_prot;
+-	__u16			pm_port;
+-	unsigned char		pm_binding : 1;	/* doing a getport() */
+-	struct rpc_wait_queue	pm_bindwait;	/* waiting on getport() */
+-};
+-
+ struct rpc_inode;
+ 
+ /*
+@@ -40,7 +28,9 @@ struct rpc_clnt {
+ 	atomic_t		cl_users;	/* number of references */
+ 	struct rpc_xprt *	cl_xprt;	/* transport */
+ 	struct rpc_procinfo *	cl_procinfo;	/* procedure info */
+-	u32			cl_maxproc;	/* max procedure number */
++	u32			cl_prog,	/* RPC program number */
++				cl_vers,	/* RPC version number */
++				cl_maxproc;	/* max procedure number */
+ 
+ 	char *			cl_server;	/* server machine name */
+ 	char *			cl_protname;	/* protocol name */
+@@ -55,7 +45,6 @@ struct rpc_clnt {
+ 				cl_dead     : 1;/* abandoned */
+ 
+ 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
+-	struct rpc_portmap *	cl_pmap;	/* port mapping */
+ 
+ 	int			cl_nodelen;	/* nodename length */
+ 	char 			cl_nodename[UNX_MAXNODENAME];
+@@ -64,14 +53,8 @@ struct rpc_clnt {
+ 	struct dentry *		cl_dentry;	/* inode */
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
+-	struct rpc_portmap	cl_pmap_default;
+ 	char			cl_inline_name[32];
+ };
+-#define cl_timeout		cl_xprt->timeout
+-#define cl_prog			cl_pmap->pm_prog
+-#define cl_vers			cl_pmap->pm_vers
+-#define cl_port			cl_pmap->pm_port
+-#define cl_prot			cl_pmap->pm_prot
+ 
+ /*
+  * General RPC program info
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 3a0cca2..e65474f 100644
+index e65474f..445e554 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -269,6 +269,7 @@ #define XPRT_LOCKED		(0)
- #define XPRT_CONNECTED		(1)
+@@ -138,6 +138,7 @@ struct rpc_xprt {
+ 	unsigned int		tsh_size;	/* size of transport specific
+ 						   header */
+ 
++	struct rpc_wait_queue	binding;	/* requests waiting on rpcbind */
+ 	struct rpc_wait_queue	sending;	/* requests waiting to send */
+ 	struct rpc_wait_queue	resend;		/* requests waiting to resend */
+ 	struct rpc_wait_queue	pending;	/* requests in flight */
+@@ -270,6 +271,7 @@ #define XPRT_CONNECTED		(1)
  #define XPRT_CONNECTING		(2)
  #define XPRT_CLOSE_WAIT		(3)
-+#define XPRT_BOUND		(4)
+ #define XPRT_BOUND		(4)
++#define XPRT_BINDING		(5)
  
  static inline void xprt_set_connected(struct rpc_xprt *xprt)
  {
-@@ -312,6 +313,21 @@ static inline int xprt_test_and_set_conn
- 	return test_and_set_bit(XPRT_CONNECTING, &xprt->state);
+@@ -328,6 +330,18 @@ static inline void xprt_clear_bound(stru
+ 	clear_bit(XPRT_BOUND, &xprt->state);
  }
  
-+static inline void xprt_set_bound(struct rpc_xprt *xprt)
++static inline void xprt_clear_binding(struct rpc_xprt *xprt)
 +{
-+	set_bit(XPRT_BOUND, &xprt->state);
++	smp_mb__before_clear_bit();
++	clear_bit(XPRT_BINDING, &xprt->state);
++	smp_mb__after_clear_bit();
 +}
 +
-+static inline int xprt_bound(struct rpc_xprt *xprt)
++static inline int xprt_test_and_set_binding(struct rpc_xprt *xprt)
 +{
-+	return test_bit(XPRT_BOUND, &xprt->state);
-+}
-+
-+static inline void xprt_clear_bound(struct rpc_xprt *xprt)
-+{
-+	clear_bit(XPRT_BOUND, &xprt->state);
++	return test_and_set_bit(XPRT_BINDING, &xprt->state);
 +}
 +
  #endif /* __KERNEL__*/
  
  #endif /* _LINUX_SUNRPC_XPRT_H */
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d6409e7..4f353dd 100644
+index 4f353dd..87008ff 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -148,7 +148,6 @@ rpc_new_client(struct rpc_xprt *xprt, ch
+@@ -147,13 +147,10 @@ rpc_new_client(struct rpc_xprt *xprt, ch
+ 	clnt->cl_procinfo = version->procs;
  	clnt->cl_maxproc  = version->nrprocs;
  	clnt->cl_protname = program->name;
- 	clnt->cl_pmap	  = &clnt->cl_pmap_default;
--	clnt->cl_port     = xprt->addr.sin_port;
+-	clnt->cl_pmap	  = &clnt->cl_pmap_default;
  	clnt->cl_prog     = program->number;
  	clnt->cl_vers     = version->number;
- 	clnt->cl_prot     = xprt->prot;
-@@ -156,7 +155,7 @@ rpc_new_client(struct rpc_xprt *xprt, ch
+-	clnt->cl_prot     = xprt->prot;
+ 	clnt->cl_stats    = program->stats;
  	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
- 	rpc_init_wait_queue(&clnt->cl_pmap_default.pm_bindwait, "bindwait");
+-	rpc_init_wait_queue(&clnt->cl_pmap_default.pm_bindwait, "bindwait");
  
--	if (!clnt->cl_port)
-+	if (!xprt_bound(clnt->cl_xprt))
+ 	if (!xprt_bound(clnt->cl_xprt))
  		clnt->cl_autobind = 1;
+@@ -244,8 +241,6 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	atomic_set(&new->cl_users, 0);
+ 	new->cl_parent = clnt;
+ 	atomic_inc(&clnt->cl_count);
+-	/* Duplicate portmapper */
+-	rpc_init_wait_queue(&new->cl_pmap_default.pm_bindwait, "bindwait");
+ 	/* Turn off autobind on clones */
+ 	new->cl_autobind = 0;
+ 	new->cl_oneshot = 0;
+@@ -257,8 +252,7 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	rpc_init_rtt(&new->cl_rtt_default, clnt->cl_xprt->timeout.to_initval);
+ 	if (new->cl_auth)
+ 		atomic_inc(&new->cl_auth->au_count);
+-	new->cl_pmap		= &new->cl_pmap_default;
+-	new->cl_metrics         = rpc_alloc_iostats(clnt);
++	new->cl_metrics = rpc_alloc_iostats(clnt);
+ 	return new;
+ out_no_clnt:
+ 	printk(KERN_INFO "RPC: out of memory in %s\n", __FUNCTION__);
+diff --git a/net/sunrpc/pmap_clnt.c b/net/sunrpc/pmap_clnt.c
+index 623180f..1dad361 100644
+--- a/net/sunrpc/pmap_clnt.c
++++ b/net/sunrpc/pmap_clnt.c
+@@ -24,11 +24,57 @@ #define PMAP_SET		1
+ #define PMAP_UNSET		2
+ #define PMAP_GETPORT		3
  
- 	clnt->cl_rtt = &clnt->cl_rtt_default;
-@@ -573,7 +572,7 @@ EXPORT_SYMBOL(rpc_max_payload);
- void rpc_force_rebind(struct rpc_clnt *clnt)
- {
- 	if (clnt->cl_autobind)
--		clnt->cl_port = 0;
-+		xprt_clear_bound(clnt->cl_xprt);
- }
- EXPORT_SYMBOL(rpc_force_rebind);
++struct portmap_args {
++	u32			pm_prog;
++	u32			pm_vers;
++	u32			pm_prot;
++	unsigned short		pm_port;
++	struct rpc_task *	pm_task;
++};
++
+ static struct rpc_procinfo	pmap_procedures[];
+ static struct rpc_clnt *	pmap_create(char *, struct sockaddr_in *, int, int);
+-static void			pmap_getport_done(struct rpc_task *);
++static void			pmap_getport_done(struct rpc_task *, void *);
+ static struct rpc_program	pmap_program;
+-static DEFINE_SPINLOCK(pmap_lock);
++
++static void pmap_getport_prepare(struct rpc_task *task, void *calldata)
++{
++	struct portmap_args *map = calldata;
++	struct rpc_message msg = {
++		.rpc_proc	= &pmap_procedures[PMAP_GETPORT],
++		.rpc_argp	= map,
++		.rpc_resp	= &map->pm_port,
++	};
++
++	rpc_call_setup(task, &msg, 0);
++}
++
++static inline struct portmap_args *pmap_map_alloc(void)
++{
++	return kmalloc(sizeof(struct portmap_args), GFP_NOFS);
++}
++
++static inline void pmap_map_free(struct portmap_args *map)
++{
++	kfree(map);
++}
++
++static void pmap_map_release(void *data)
++{
++	pmap_map_free(data);
++}
++
++static const struct rpc_call_ops pmap_getport_ops = {
++	.rpc_call_prepare	= pmap_getport_prepare,
++	.rpc_call_done		= pmap_getport_done,
++	.rpc_release		= pmap_map_release,
++};
++
++static inline void pmap_wake_portmap_waiters(struct rpc_xprt *xprt)
++{
++	xprt_clear_binding(xprt);
++	rpc_wake_up(&xprt->binding);
++}
  
-@@ -785,14 +784,15 @@ static void
- call_bind(struct rpc_task *task)
+ /*
+  * Obtain the port for a given RPC service on a given host. This one can
+@@ -37,67 +83,71 @@ static DEFINE_SPINLOCK(pmap_lock);
+ void
+ rpc_getport(struct rpc_task *task, struct rpc_clnt *clnt)
  {
- 	struct rpc_clnt	*clnt = task->tk_client;
+-	struct rpc_portmap *map = clnt->cl_pmap;
+-	struct sockaddr_in *sap = &clnt->cl_xprt->addr;
+-	struct rpc_message msg = {
+-		.rpc_proc	= &pmap_procedures[PMAP_GETPORT],
+-		.rpc_argp	= map,
+-		.rpc_resp	= &clnt->cl_port,
+-		.rpc_cred	= NULL
+-	};
 +	struct rpc_xprt *xprt = task->tk_xprt;
++	struct sockaddr_in *sap = &xprt->addr;
++	struct portmap_args *map;
+ 	struct rpc_clnt	*pmap_clnt;
+-	struct rpc_task	*child;
++	struct rpc_task *child;
  
- 	dprintk("RPC: %4d call_bind (status %d)\n",
- 				task->tk_pid, task->tk_status);
+-	dprintk("RPC: %4d rpc_getport(%s, %d, %d, %d)\n",
++	dprintk("RPC: %4d rpc_getport(%s, %u, %u, %d)\n",
+ 			task->tk_pid, clnt->cl_server,
+-			map->pm_prog, map->pm_vers, map->pm_prot);
++			clnt->cl_prog, clnt->cl_vers, xprt->prot);
  
- 	task->tk_action = call_connect;
--	if (!clnt->cl_port) {
-+	if (!xprt_bound(xprt)) {
- 		task->tk_action = call_bind_status;
--		task->tk_timeout = task->tk_xprt->bind_timeout;
-+		task->tk_timeout = xprt->bind_timeout;
- 		rpc_getport(task, clnt);
- 	}
- }
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index e8c2bc4..10ba1f6 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -534,7 +534,11 @@ void xprt_connect(struct rpc_task *task)
- 	dprintk("RPC: %4d xprt_connect xprt %p %s connected\n", task->tk_pid,
- 			xprt, (xprt_connected(xprt) ? "is" : "is not"));
+ 	/* Autobind on cloned rpc clients is discouraged */
+ 	BUG_ON(clnt->cl_parent != clnt);
  
--	if (!xprt->addr.sin_port) {
-+	if (xprt->shutdown) {
-+		task->tk_status = -EIO;
-+		return;
-+	}
-+	if (!xprt_bound(xprt)) {
- 		task->tk_status = -EIO;
+-	spin_lock(&pmap_lock);
+-	if (map->pm_binding) {
+-		rpc_sleep_on(&map->pm_bindwait, task, NULL, NULL);
+-		spin_unlock(&pmap_lock);
++	if (xprt_test_and_set_binding(xprt)) {
++		task->tk_status = -EACCES;	/* tell caller to check again */
++		rpc_sleep_on(&xprt->binding, task, NULL, NULL);
  		return;
  	}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 441bd53..43b59c2 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -974,6 +974,8 @@ static void xs_set_port(struct rpc_xprt 
- {
- 	dprintk("RPC:      setting port for xprt %p to %u\n", xprt, port);
- 	xprt->addr.sin_port = htons(port);
-+	if (port != 0)
-+		xprt_set_bound(xprt);
+-	map->pm_binding = 1;
+-	spin_unlock(&pmap_lock);
++
++	/* Someone else may have bound if we slept */
++	if (xprt_bound(xprt)) {
++		task->tk_status = 0;
++		goto bailout_nofree;
++	}
++
++	map = pmap_map_alloc();
++	if (!map) {
++		task->tk_status = -ENOMEM;
++		goto bailout_nofree;
++	}
++	map->pm_prog = clnt->cl_prog;
++	map->pm_vers = clnt->cl_vers;
++	map->pm_prot = xprt->prot;
++	map->pm_port = 0;
++	map->pm_task = task;
+ 
+ 	pmap_clnt = pmap_create(clnt->cl_server, sap, map->pm_prot, 0);
+ 	if (IS_ERR(pmap_clnt)) {
+ 		task->tk_status = PTR_ERR(pmap_clnt);
+ 		goto bailout;
+ 	}
+-	task->tk_status = 0;
+ 
+-	/*
+-	 * Note: rpc_new_child will release client after a failure.
+-	 */
+-	if (!(child = rpc_new_child(pmap_clnt, task)))
++	child = rpc_run_task(pmap_clnt, RPC_TASK_ASYNC, &pmap_getport_ops, map);
++	if (IS_ERR(child)) {
++		task->tk_status = -EIO;
+ 		goto bailout;
++	}
++	rpc_release_task(child);
+ 
+-	/* Setup the call info struct */
+-	rpc_call_setup(child, &msg, 0);
++	rpc_sleep_on(&xprt->binding, task, NULL, NULL);
+ 
+-	/* ... and run the child task */
+ 	task->tk_xprt->stat.bind_count++;
+-	rpc_run_child(task, child, pmap_getport_done);
+ 	return;
+ 
+ bailout:
+-	spin_lock(&pmap_lock);
+-	map->pm_binding = 0;
+-	rpc_wake_up(&map->pm_bindwait);
+-	spin_unlock(&pmap_lock);
+-	rpc_exit(task, -EIO);
++	pmap_map_free(map);
++bailout_nofree:
++	pmap_wake_portmap_waiters(xprt);
  }
  
- static int xs_bindresvport(struct rpc_xprt *xprt, struct socket *sock)
-@@ -1016,7 +1018,7 @@ static void xs_udp_connect_worker(void *
- 	struct socket *sock = xprt->sock;
- 	int err, status = -EIO;
+ #ifdef CONFIG_ROOT_NFS
+ int
+ rpc_getport_external(struct sockaddr_in *sin, __u32 prog, __u32 vers, int prot)
+ {
+-	struct rpc_portmap map = {
++	struct portmap_args map = {
+ 		.pm_prog	= prog,
+ 		.pm_vers	= vers,
+ 		.pm_prot	= prot,
+@@ -133,30 +183,30 @@ rpc_getport_external(struct sockaddr_in 
+ #endif
  
--	if (xprt->shutdown || xprt->addr.sin_port == 0)
-+	if (xprt->shutdown || !xprt_bound(xprt))
- 		goto out;
+ static void
+-pmap_getport_done(struct rpc_task *task)
++pmap_getport_done(struct rpc_task *child, void *data)
+ {
+-	struct rpc_clnt	*clnt = task->tk_client;
++	struct portmap_args *map = data;
++	struct rpc_task *task = map->pm_task;
+ 	struct rpc_xprt *xprt = task->tk_xprt;
+-	struct rpc_portmap *map = clnt->cl_pmap;
+-
+-	dprintk("RPC: %4d pmap_getport_done(status %d, port %d)\n",
+-			task->tk_pid, task->tk_status, clnt->cl_port);
++	int status = child->tk_status;
  
- 	dprintk("RPC:      xs_udp_connect_worker for xprt %p\n", xprt);
-@@ -1099,7 +1101,7 @@ static void xs_tcp_connect_worker(void *
- 	struct socket *sock = xprt->sock;
- 	int err, status = -EIO;
- 
--	if (xprt->shutdown || xprt->addr.sin_port == 0)
-+	if (xprt->shutdown || !xprt_bound(xprt))
- 		goto out;
- 
- 	dprintk("RPC:      xs_tcp_connect_worker for xprt %p\n", xprt);
-@@ -1307,8 +1309,11 @@ int xs_setup_udp(struct rpc_xprt *xprt, 
- 	if (xprt->slot == NULL)
- 		return -ENOMEM;
- 
--	xprt->prot = IPPROTO_UDP;
-+	if (ntohs(xprt->addr.sin_port) != 0)
-+		xprt_set_bound(xprt);
- 	xprt->port = xs_get_random_port();
+ 	xprt->ops->set_port(xprt, 0);
+-	if (task->tk_status < 0) {
+-		/* Make the calling task exit with an error */
+-		task->tk_action = rpc_exit_task;
+-	} else if (clnt->cl_port == 0) {
+-		/* Program not registered */
+-		rpc_exit(task, -EACCES);
++	if (status < 0) {
++		/* Portmapper not available */
++		task->tk_status = status;
++	} else if (map->pm_port == 0) {
++		/* Requested RPC service wasn't registered */
++		task->tk_status = -EACCES;
+ 	} else {
+-		xprt->ops->set_port(xprt, clnt->cl_port);
+-		clnt->cl_port = htons(clnt->cl_port);
++		/* Succeeded */
++		xprt->ops->set_port(xprt, map->pm_port);
++		task->tk_status = 0;
+ 	}
+-	spin_lock(&pmap_lock);
+-	map->pm_binding = 0;
+-	rpc_wake_up(&map->pm_bindwait);
+-	spin_unlock(&pmap_lock);
 +
-+	xprt->prot = IPPROTO_UDP;
- 	xprt->tsh_size = 0;
- 	xprt->resvport = capable(CAP_NET_BIND_SERVICE) ? 1 : 0;
- 	/* XXX: header size can vary due to auth type, IPv6, etc. */
-@@ -1348,8 +1353,11 @@ int xs_setup_tcp(struct rpc_xprt *xprt, 
- 	if (xprt->slot == NULL)
- 		return -ENOMEM;
- 
--	xprt->prot = IPPROTO_TCP;
-+	if (ntohs(xprt->addr.sin_port) != 0)
-+		xprt_set_bound(xprt);
- 	xprt->port = xs_get_random_port();
++	dprintk("RPC: %4d pmap_getport_done(status %d, port %u)\n",
++			child->tk_pid, child->tk_status, map->pm_port);
 +
-+	xprt->prot = IPPROTO_TCP;
- 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->resvport = capable(CAP_NET_BIND_SERVICE) ? 1 : 0;
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
++	pmap_wake_portmap_waiters(xprt);
+ }
+ 
+ /*
+@@ -170,7 +220,7 @@ rpc_register(u32 prog, u32 vers, int pro
+ 		.sin_family	= AF_INET,
+ 		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
+ 	};
+-	struct rpc_portmap	map = {
++	struct portmap_args	map = {
+ 		.pm_prog	= prog,
+ 		.pm_vers	= vers,
+ 		.pm_prot	= prot,
+@@ -236,7 +286,7 @@ pmap_create(char *hostname, struct socka
+  * XDR encode/decode functions for PMAP
+  */
+ static int
+-xdr_encode_mapping(struct rpc_rqst *req, u32 *p, struct rpc_portmap *map)
++xdr_encode_mapping(struct rpc_rqst *req, u32 *p, struct portmap_args *map)
+ {
+ 	dprintk("RPC: xdr_encode_mapping(%d, %d, %d, %d)\n",
+ 		map->pm_prog, map->pm_vers, map->pm_prot, map->pm_port);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 10ba1f6..e35444e 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -932,6 +932,7 @@ static struct rpc_xprt *xprt_setup(int p
+ 	xprt->last_used = jiffies;
+ 	xprt->cwnd = RPC_INITCWND;
+ 
++	rpc_init_wait_queue(&xprt->binding, "xprt_binding");
+ 	rpc_init_wait_queue(&xprt->pending, "xprt_pending");
+ 	rpc_init_wait_queue(&xprt->sending, "xprt_sending");
+ 	rpc_init_wait_queue(&xprt->resend, "xprt_resend");
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
