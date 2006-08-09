@@ -1,26 +1,24 @@
-From: Grant Coady <gcoady.lk@gmail.com>
-Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Wed, 09 Aug 2006 15:53:25 +1000
-Message-ID: <ketid21n1s5bn108lo7ps9t8a85db5bgs9@4ax.com>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-Reply-To: Grant Coady <gcoady.lk@gmail.com>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [PATCH 004 of 4] Allow max size of NFSd payload to
+	be	configured.
+Date: Wed, 09 Aug 2006 17:44:07 +1000
+Message-ID: <1155109446.16378.126.camel@hole.melbourne.sgi.com>
+References: <20060807103020.12286.patches@notabene>
+	<1060807003521.12403@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAh0q-0004pe-Ls
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 22:53:52 -0700
-Received: from relay01.mail-hub.dodo.com.au ([203.220.32.149])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAh0o-0005ad-Tt
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 22:53:53 -0700
-To: "Jesper Juhl" <jesper.juhl@gmail.com>
-In-Reply-To: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
+	id 1GAije-00056a-Jn
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 00:44:14 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAije-0008OP-Tu
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 00:44:15 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <1060807003521.12403@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,38 +31,83 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 8 Aug 2006 16:39:54 +0200, "Jesper Juhl" <jesper.juhl@gmail.com> wrote:
+On Mon, 2006-08-07 at 10:35, NeilBrown wrote:
+> The max possible is the maximum RPC payload.
+> The default depends on amount of total memory.
+>  This formula really needs to be justified.
+> The value can be set within reason as long as 
+>  no nfsd threads are currently running.
+> 
 
->I have some webservers that have recently started reporting the
->following message in their logs :
->
->  do_vfs_lock: VFS is out of sync with lock manager!
->
->The serveres kernels were upgraded to 2.6.17.8 and since the upgrade
->the message started appearing.
->The servers were previously running 2.6.13.4 without experiencing this problem.
->Nothing has changed except the kernel.
->
->I've googled a bit and found this mail
->(http://lkml.org/lkml/2005/8/23/254) from Trond saying that
->"The above is a lockd error that states that the VFS is failing to track
->your NFS locks correctly".
->Ok, but that doesn't really help me resolve the issue. The servers are
->indeed running NFS and access their apache DocumentRoots from a NFS
->mount.
->
->Is there anything I can do to help track down this issue?
+> @@ -553,6 +556,27 @@ static ssize_t write_ports(struct file *
+>  	return -EINVAL;
+>  }
+>  
+> +int nfsd_max_blksize;
+> +
+> +static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
+> +{
+> +	char *mesg = buf;
+> +	if (size > 0) {
+> +		int bsize;
+> +		int rv = get_int(&mesg, &bsize);
+> +		if (rv)
+> +			return rv;
+> +		if (bsize < 1024)
+> +			bsize = 1024;
+> +		if (bsize > NFSSVC_MAXBLKSIZE)
+> +			bsize = NFSSVC_MAXBLKSIZE;
 
-I don't have an answer, but offer this observation: five boxen running 
-2.6.17.8 doing six simultaneous
+This seems fairly unconstrained.  A sysadmin could set weird
+numbers, and those numbers would then propagate to the client
+via FSINFO, and possibly lead to weird bugs on a client.
+How about constraining to multiples of 1024, or using KiB
+as the unit?
 
-  bzcat /home/share/linux-2.6/patch-2.6.18-rc4.bz2|patch -p1
+> +		if (nfsd_serv && nfsd_serv->sv_nrthreads)
+> +			return -EBUSY;
+> +		nfsd_max_blksize = bsize;
+> +	}
 
-didn't burp.  The /home/share/ is an NFS export from another box running 
-2.4.33-rc3a, me not sure if this was exercising any NFS locking as the 
-NFS source file was only opened for non-exclusive read-only.
+This test seems wrong to me.  In the latest code I can see,
+there's only one window where nfsd_serv can be non-NULL but
+nfsd_serv->sv_nrthreads == 0, and that's when the last thread
+is exiting and svc_destroy() is destroying nfsd_serv.  During
+that time the memory pointed to by nfsd_serv is freed and
+nfsd_serv is NULLed out.  That code historically uses the BKL
+for synchronisation, but here you're not taking that lock.
+Also, you're not guarding against the a new nfsd_serv being
+created either.
 
-Grant.
+How about something like
+
+	int err;
+
+	lock_kernel();
+	err = -EBUSY;
+	if (!nfsd_serv) {
+		nfsd_max_blksize = bsize;
+		err = 0;
+	}
+	unlock_kernel();
+
+ 
+> @@ -618,6 +642,7 @@ static int nfsd_fill_super(struct super_
+>  		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
+>  		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
+>  		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+> +		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
+>  #ifdef CONFIG_NFSD_V4
+
+Hmm, maybe it would be a good idea to sort out the terminology
+problem Chuck pointed out before exposing it to userspace.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
+
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
