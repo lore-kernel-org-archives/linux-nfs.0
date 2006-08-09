@@ -1,21 +1,21 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 12/25] SUNRPC: Create API for displaying remote peer
-	address
-Date: Wed, 09 Aug 2006 10:59:19 -0400
-Message-ID: <20060809145919.3914.27869.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 09/25] SUNRPC: Teach the RPC portmapper to use the new
+	rpc_peeraddr() API.
+Date: Wed, 09 Aug 2006 10:59:11 -0400
+Message-ID: <20060809145911.3914.93589.stgit@picasso.dsl.sfldmi.ameritech.net>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApcS-0000oj-Hb
+	id 1GApcT-0000ol-5c
 	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:18 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApcS-0005kM-Di
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApcT-0003GK-7X
 	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:17 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
@@ -31,59 +31,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Provide an API for formatting the remote peer address for printing without
-exposing its internal structure.  The address could be dynamic, so we
-support a function call to get the address rather than reading it straight
-out of a structure.
+Hide the details of how the RPC client stores remote peer addresses from
+the RPC portmapper.
 
-Test-plan:
-Destructive testing (unplugging the network temporarily).  Probably need
-to rig a server where certain services aren't running, or that returns an
-error for some typical operation.
+Test plan:
+Destructive testing (unplugging the network temporarily).  Connectathon
+with UDP and TCP.  NFSv2/3 and NFSv4 mounting should be carefully checked.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/clnt.c           |   13 +++++++++++++
- 2 files changed, 14 insertions(+), 0 deletions(-)
+ net/sunrpc/pmap_clnt.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 65196b0..b7d47f0 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -124,6 +124,7 @@ size_t		rpc_max_payload(struct rpc_clnt 
- void		rpc_force_rebind(struct rpc_clnt *);
- int		rpc_ping(struct rpc_clnt *clnt, int flags);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
-+char *		rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
- 
- /*
-  * Helper function for NFSroot support
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index da377eb..8f21e47 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -557,6 +557,19 @@ size_t rpc_peeraddr(struct rpc_clnt *cln
- }
- EXPORT_SYMBOL(rpc_peeraddr);
- 
-+/**
-+ * rpc_peeraddr2str - return remote peer address in printable format
-+ * @clnt: RPC client structure
-+ * @format: address format
-+ *
-+ */
-+char *rpc_peeraddr2str(struct rpc_clnt *clnt, enum rpc_display_format_t format)
-+{
-+	struct rpc_xprt *xprt = clnt->cl_xprt;
-+	return xprt->ops->print_addr(xprt, format);
-+}
-+EXPORT_SYMBOL(rpc_peeraddr2str);
-+
- void
- rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+diff --git a/net/sunrpc/pmap_clnt.c b/net/sunrpc/pmap_clnt.c
+index 66f18d0..ff0b92c 100644
+--- a/net/sunrpc/pmap_clnt.c
++++ b/net/sunrpc/pmap_clnt.c
+@@ -89,7 +89,7 @@ void rpc_getport(struct rpc_task *task)
  {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_xprt *xprt = task->tk_xprt;
+-	struct sockaddr_in *sap = &xprt->addr;
++	struct sockaddr_in addr;
+ 	struct portmap_args *map;
+ 	struct rpc_clnt	*pmap_clnt;
+ 	struct rpc_task *child;
+@@ -124,7 +124,8 @@ void rpc_getport(struct rpc_task *task)
+ 	map->pm_port = 0;
+ 	map->pm_task = task;
+ 
+-	pmap_clnt = pmap_create(clnt->cl_server, sap, map->pm_prot, 0);
++	rpc_peeraddr(clnt, (struct sockaddr *) &addr, sizeof(addr));
++	pmap_clnt = pmap_create(clnt->cl_server, &addr, map->pm_prot, 0);
+ 	if (IS_ERR(pmap_clnt)) {
+ 		task->tk_status = PTR_ERR(pmap_clnt);
+ 		goto bailout;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
