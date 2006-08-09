@@ -1,23 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: connectathon special test failure in recent kernels
-Date: Tue, 08 Aug 2006 19:32:51 -0400
-Message-ID: <1155079971.5731.22.camel@localhost>
-References: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [PATCH 0 of 5] knfsd: miscellaneous
+	performance-related	fixes
+Date: Wed, 09 Aug 2006 12:37:36 +1000
+Message-ID: <1155091055.16378.14.camel@hole.melbourne.sgi.com>
+References: <1155009879.29877.229.camel@hole.melbourne.sgi.com>
+	<17624.17621.428870.694339@cse.unsw.edu.au>
+	<1155032558.29877.324.camel@hole.melbourne.sgi.com>
+	<20060808154923.GA28855@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GAb4k-0008UL-GY
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 16:33:30 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GAb4k-0007Qu-L5
-	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 16:33:31 -0700
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>
+	id 1GAdx4-0006AD-MQ
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 19:37:46 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GAdx4-0002pS-2R
+	for nfs@lists.sourceforge.net; Tue, 08 Aug 2006 19:37:47 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20060808154923.GA28855@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +34,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-08-08 at 15:20 -0400, Chuck Lever wrote:
-> Is the connectathon holey test failure going to be fixed before 2.6.18
-> is finalized?
+On Wed, 2006-08-09 at 01:49, J. Bruce Fields wrote:
+> On Tue, Aug 08, 2006 at 08:22:44PM +1000, Greg Banks wrote:
+> > I'm still working on another patch (it only recently became possible
+> > with the ktime_t code) which replaces threadstats fully.  That patch
+> > adds nanosecond resolution busy and idle counters to each thread,
+> > then aggregates them per-pool when you read the pool_stats file.
+> > After export to userspace and rate conversion, these numbers tell
+> > us directly what percentage of the nfsds are currently being used.
+> 
+> Would it be possible to use that to continue to support the existing
+> interface (the "th" line)?
 
-Depends. Have you traced it in order to figure out what is wrong?
+No, the formats are really quite different.
 
-Cheers,
-  Trond
+> It'd be nice if we could avoid ripping out a working user interface that
+> someone might be using....
 
-> This is from a 2.6.18-rc3 client:
-> 
-> test exclusive create.
-> 
-> test negative seek, you should get: read: Invalid argument
-> or lseek: Invalid argument
-> lseek: Invalid argument
-> 
-> test rename
-> 
-> test truncate
-> truncate succeeded
-> 
-> test holey file support
-> read (hole) offset 8192, sz = 56667, bytes = 5141 (ret -1), holesz = 9012
-> read: Input/output error
-> special tests failed
-> Tests failed, leaving /mnt/brahms mounted
-> [cel@picasso cthon04]$
-> 
+I agree, but I don't believe a) it's working or b) anyone could
+be getting any use out of it.
+
+An earlier version of the patch left the data structures in place
+and just reported them as zeros in the /proc file.  Would that
+be preferrable?
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
+
 
 
 -------------------------------------------------------------------------
