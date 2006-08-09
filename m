@@ -1,8 +1,8 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 23/25] NFS: Fix double d_drop in nfs_instantiate()
-	error path
-Date: Wed, 09 Aug 2006 10:59:46 -0400
-Message-ID: <20060809145946.3914.34497.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 16/25] SUNRPC: use sockaddr + size when creating
+	remote transport endpoints
+Date: Wed, 09 Aug 2006 10:59:29 -0400
+Message-ID: <20060809145928.3914.96792.stgit@picasso.dsl.sfldmi.ameritech.net>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,10 +12,10 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApcV-0000pq-Vl
+	id 1GApcW-0000pw-BQ
 	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:20 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApcW-0003J3-0i
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApcT-0003IO-If
 	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:05:20 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
@@ -31,280 +31,229 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-If the LOOKUP or GETATTR in nfs_instantiate fail, nfs_instantiate will do a
-d_drop before returning.  But some callers already do a d_drop in the case
-of an error return.  Make certain we do only one d_drop in all error paths.
+Prepare for more generic transport endpoint handling needed by transports
+that might use different forms of addressing, such as IPv6.
 
-This bug was introduced because over time, the symlink proc API diverged
-slightly from the create/mkdir/mknod proc API.  To prevent other bugs of
-this type, change the symlink proc API to be more like create/mkdir/mknod
-and move the nfs_instantiate call into the symlink proc routines so it is
-used in exactly the same way for create, mkdir, mknod, and symlink.
+Introduce a single function call to replace the two-call
+xprt_create_proto/rpc_create_client API.  Define a new rpc_create_args
+structure that allows callers to pass in remote endpoint addresses of
+varying length.
 
-Test plan:
-Connectathon, all versions of NFS.
+Test-plan:
+Compile kernel with CONFIG_NFS enabled.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/dir.c            |   16 ++++------------
- fs/nfs/nfs3proc.c       |   26 ++++++++++++++++----------
- fs/nfs/nfs4proc.c       |   31 ++++++++++++++++---------------
- fs/nfs/proc.c           |   29 +++++++++++++++++++++--------
- include/linux/nfs_xdr.h |    5 ++---
- 5 files changed, 59 insertions(+), 48 deletions(-)
+ include/linux/sunrpc/clnt.h |   22 +++++++++++++
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/clnt.c           |   61 +++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprt.c           |   75 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 159 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 428d963..ff4e852 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1143,23 +1143,20 @@ int nfs_instantiate(struct dentry *dentr
- 		struct inode *dir = dentry->d_parent->d_inode;
- 		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
- 		if (error)
--			goto out_err;
-+			return error;
- 	}
- 	if (!(fattr->valid & NFS_ATTR_FATTR)) {
- 		struct nfs_server *server = NFS_SB(dentry->d_sb);
- 		error = server->rpc_ops->getattr(server, fhandle, fattr);
- 		if (error < 0)
--			goto out_err;
-+			return error;
- 	}
- 	inode = nfs_fhget(dentry->d_sb, fhandle, fattr);
- 	error = PTR_ERR(inode);
- 	if (IS_ERR(inode))
--		goto out_err;
-+		return error;
- 	d_instantiate(dentry, inode);
- 	return 0;
--out_err:
--	d_drop(dentry);
--	return error;
- }
- 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index a26d695..7817ba8 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -97,6 +97,28 @@ struct rpc_clnt *rpc_create_client(struc
+ struct rpc_clnt *rpc_new_client(struct rpc_xprt *xprt, char *servname,
+ 				struct rpc_program *info,
+ 				u32 version, rpc_authflavor_t authflavor);
++
++struct rpc_create_args {
++	int			protocol;
++	struct sockaddr		*address;
++	size_t			addrsize;
++	struct rpc_timeout	*timeout;
++	char			*servername;
++	struct rpc_program	*program;
++	u32			version;
++	rpc_authflavor_t	authflavor;
++	unsigned long		flags;
++};
++
++/* Values for "flags" field */
++#define RPC_CLNT_CREATE_HARDRTRY	(1UL << 0)
++#define RPC_CLNT_CREATE_INTR		(1UL << 1)
++#define RPC_CLNT_CREATE_AUTOBIND	(1UL << 2)
++#define RPC_CLNT_CREATE_ONESHOT		(1UL << 3)
++#define RPC_CLNT_CREATE_NONPRIVPORT	(1UL << 4)
++#define RPC_CLNT_CREATE_NOPING		(1UL << 5)
++
++struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+ struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+ 				struct rpc_program *, int);
+ struct rpc_clnt *rpc_clone_client(struct rpc_clnt *);
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 2cbd689..ceaaaa0 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -237,6 +237,7 @@ void			xprt_set_timeout(struct rpc_timeo
  /*
-@@ -1444,8 +1441,6 @@ static int
- nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
- {
- 	struct iattr attr;
--	struct nfs_fattr sym_attr;
--	struct nfs_fh sym_fh;
- 	struct qstr qsymname;
- 	int error;
- 
-@@ -1469,12 +1464,9 @@ #endif
- 
- 	lock_kernel();
- 	nfs_begin_data_update(dir);
--	error = NFS_PROTO(dir)->symlink(dir, &dentry->d_name, &qsymname,
--					  &attr, &sym_fh, &sym_attr);
-+	error = NFS_PROTO(dir)->symlink(dir, dentry, &qsymname, &attr);
- 	nfs_end_data_update(dir);
- 	if (!error)
--		error = nfs_instantiate(dentry, &sym_fh, &sym_attr);
--	else
- 		d_drop(dentry);
- 	unlock_kernel();
- 	return error;
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 7143b1f..15eac8d 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -544,23 +544,23 @@ nfs3_proc_link(struct inode *inode, stru
+  * Generic internal transport functions
+  */
++struct rpc_xprt *	xprt_create_transport(int proto, struct sockaddr *addr, size_t size, struct rpc_timeout *toparms);
+ void			xprt_connect(struct rpc_task *task);
+ void			xprt_reserve(struct rpc_task *task);
+ int			xprt_reserve_xprt(struct rpc_task *task);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 742cb1e..9a1f63c 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -193,6 +193,67 @@ out_no_xprt:
+ 	return ERR_PTR(err);
  }
  
- static int
--nfs3_proc_symlink(struct inode *dir, struct qstr *name, struct qstr *path,
--		  struct iattr *sattr, struct nfs_fh *fhandle,
--		  struct nfs_fattr *fattr)
-+nfs3_proc_symlink(struct inode *dir, struct dentry *dentry, struct qstr *path,
-+		  struct iattr *sattr)
- {
--	struct nfs_fattr	dir_attr;
-+	struct nfs_fh fhandle;
-+	struct nfs_fattr fattr, dir_attr;
- 	struct nfs3_symlinkargs	arg = {
- 		.fromfh		= NFS_FH(dir),
--		.fromname	= name->name,
--		.fromlen	= name->len,
-+		.fromname	= dentry->d_name.name,
-+		.fromlen	= dentry->d_name.len,
- 		.topath		= path->name,
- 		.tolen		= path->len,
- 		.sattr		= sattr
- 	};
- 	struct nfs3_diropres	res = {
- 		.dir_attr	= &dir_attr,
--		.fh		= fhandle,
--		.fattr		= fattr
-+		.fh		= &fhandle,
-+		.fattr		= &fattr
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc	= &nfs3_procedures[NFS3PROC_SYMLINK],
-@@ -571,11 +571,17 @@ nfs3_proc_symlink(struct inode *dir, str
- 
- 	if (path->len > NFS3_MAXPATHLEN)
- 		return -ENAMETOOLONG;
--	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
++/*
++ * rpc_create - create an RPC client and transport with one call
++ * @args: rpc_clnt create argument structure
++ *
++ * Creates and initializes an RPC transport and an RPC client.
++ *
++ * It can ping the server in order to determine if it is up, and to see if
++ * it supports this program and version.  RPC_CLNT_CREATE_NOPING disables
++ * this behavior so asynchronous tasks can also use rpc_create.
++ */
++struct rpc_clnt *rpc_create(struct rpc_create_args *args)
++{
++	struct rpc_xprt *xprt;
++	struct rpc_clnt *clnt;
 +
-+	dprintk("NFS call  symlink %s -> %s\n", dentry->d_name.name,
-+			path->name);
- 	nfs_fattr_init(&dir_attr);
--	nfs_fattr_init(fattr);
-+	nfs_fattr_init(&fattr);
- 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
- 	nfs_post_op_update_inode(dir, &dir_attr);
-+	if (status != 0)
-+		goto out;
-+	status = nfs_instantiate(dentry, &fhandle, &fattr);
-+out:
- 	dprintk("NFS reply symlink: %d\n", status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e6ee97f..370b5ab 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2089,24 +2089,24 @@ static int nfs4_proc_link(struct inode *
- 	return err;
- }
- 
--static int _nfs4_proc_symlink(struct inode *dir, struct qstr *name,
--		struct qstr *path, struct iattr *sattr, struct nfs_fh *fhandle,
--		struct nfs_fattr *fattr)
-+static int _nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
-+		struct qstr *path, struct iattr *sattr)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
--	struct nfs_fattr dir_fattr;
-+	struct nfs_fh fhandle;
-+	struct nfs_fattr fattr, dir_fattr;
- 	struct nfs4_create_arg arg = {
- 		.dir_fh = NFS_FH(dir),
- 		.server = server,
--		.name = name,
-+		.name = &dentry->d_name,
- 		.attrs = sattr,
- 		.ftype = NF4LNK,
- 		.bitmask = server->attr_bitmask,
- 	};
- 	struct nfs4_create_res res = {
- 		.server = server,
--		.fh = fhandle,
--		.fattr = fattr,
-+		.fh = &fhandle,
-+		.fattr = &fattr,
- 		.dir_fattr = &dir_fattr,
- 	};
- 	struct rpc_message msg = {
-@@ -2118,27 +2118,28 @@ static int _nfs4_proc_symlink(struct ino
- 
- 	if (path->len > NFS4_MAXPATHLEN)
- 		return -ENAMETOOLONG;
-+
- 	arg.u.symlink = path;
--	nfs_fattr_init(fattr);
-+	nfs_fattr_init(&fattr);
- 	nfs_fattr_init(&dir_fattr);
- 	
- 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
--	if (!status)
-+	if (!status) {
- 		update_changeattr(dir, &res.dir_cinfo);
--	nfs_post_op_update_inode(dir, res.dir_fattr);
-+		nfs_post_op_update_inode(dir, res.dir_fattr);
-+		status = nfs_instantiate(dentry, &fhandle, &fattr);
-+	}
- 	return status;
- }
- 
--static int nfs4_proc_symlink(struct inode *dir, struct qstr *name,
--		struct qstr *path, struct iattr *sattr, struct nfs_fh *fhandle,
--		struct nfs_fattr *fattr)
-+static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
-+		struct qstr *path, struct iattr *sattr)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_symlink(dir, name, path, sattr,
--					fhandle, fattr),
-+				_nfs4_proc_symlink(dir, dentry, path, sattr),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index b3899ea..7512f71 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -425,14 +425,15 @@ nfs_proc_link(struct inode *inode, struc
- }
- 
- static int
--nfs_proc_symlink(struct inode *dir, struct qstr *name, struct qstr *path,
--		 struct iattr *sattr, struct nfs_fh *fhandle,
--		 struct nfs_fattr *fattr)
-+nfs_proc_symlink(struct inode *dir, struct dentry *dentry, struct qstr *path,
-+		 struct iattr *sattr)
- {
-+	struct nfs_fh fhandle;
-+	struct nfs_fattr fattr;
- 	struct nfs_symlinkargs	arg = {
- 		.fromfh		= NFS_FH(dir),
--		.fromname	= name->name,
--		.fromlen	= name->len,
-+		.fromname	= dentry->d_name.name,
-+		.fromlen	= dentry->d_name.len,
- 		.topath		= path->name,
- 		.tolen		= path->len,
- 		.sattr		= sattr
-@@ -445,11 +446,23 @@ nfs_proc_symlink(struct inode *dir, stru
- 
- 	if (path->len > NFS2_MAXPATHLEN)
- 		return -ENAMETOOLONG;
--	dprintk("NFS call  symlink %s -> %s\n", name->name, path->name);
--	nfs_fattr_init(fattr);
--	fhandle->size = 0;
-+
-+	dprintk("NFS call  symlink %s -> %s\n", dentry->d_name.name,
-+			path->name);
- 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
- 	nfs_mark_for_revalidate(dir);
++	xprt = xprt_create_transport(args->protocol, args->address,
++					args->addrsize, args->timeout);
++	if (IS_ERR(xprt))
++		return (struct rpc_clnt *)xprt;
 +
 +	/*
-+	 * V2 SYMLINK requests don't return any attributes.  Setting the
-+	 * filehandle size to zero indicates to nfs_instantiate that it
-+	 * should fill in the data with a LOOKUP call on the wire.
++	 * By default, kernel RPC client connects from a reserved port.
++	 * CAP_NET_BIND_SERVICE will not be set for unprivileged requesters,
++	 * but it is always enabled for rpciod, which handles the connect
++	 * operation.
 +	 */
-+	if (status == 0) {
-+		nfs_fattr_init(&fattr);
-+		fhandle.size = 0;
-+		status = nfs_instantiate(dentry, &fhandle, &fattr);
++	xprt->resvport = 1;
++	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
++		xprt->resvport = 0;
++
++	dprintk("RPC:       creating %s client for %s (xprt %p)\n",
++		args->program->name, args->servername, xprt);
++
++	clnt = rpc_new_client(xprt, args->servername, args->program,
++				args->version, args->authflavor);
++	if (IS_ERR(clnt))
++		return clnt;
++
++	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
++		int err = rpc_ping(clnt, RPC_TASK_SOFT|RPC_TASK_NOINTR);
++		if (err != 0) {
++			rpc_shutdown_client(clnt);
++			return ERR_PTR(err);
++		}
 +	}
 +
- 	dprintk("NFS reply symlink: %d\n", status);
- 	return status;
++	clnt->cl_softrtry = 1;
++	if (args->flags & RPC_CLNT_CREATE_HARDRTRY)
++		clnt->cl_softrtry = 0;
++
++	if (args->flags & RPC_CLNT_CREATE_INTR)
++		clnt->cl_intr = 1;
++	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
++		clnt->cl_autobind = 1;
++	if (args->flags & RPC_CLNT_CREATE_ONESHOT)
++		clnt->cl_oneshot = 1;
++
++	return clnt;
++}
++EXPORT_SYMBOL(rpc_create);
++
+ /**
+  * Create an RPC client
+  * @xprt - pointer to xprt struct
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index dcc0bd7..a8eb2fb 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -891,6 +891,81 @@ void xprt_set_timeout(struct rpc_timeout
+ 	to->to_exponential = 0;
  }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0c1093c..cfabcd1 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -790,9 +790,8 @@ struct nfs_rpc_ops {
- 	int	(*rename)  (struct inode *, struct qstr *,
- 			    struct inode *, struct qstr *);
- 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
--	int	(*symlink) (struct inode *, struct qstr *, struct qstr *,
--			    struct iattr *, struct nfs_fh *,
--			    struct nfs_fattr *);
-+	int	(*symlink) (struct inode *, struct dentry *, struct qstr *,
-+			    struct iattr *);
- 	int	(*mkdir)   (struct inode *, struct dentry *, struct iattr *);
- 	int	(*rmdir)   (struct inode *, struct qstr *);
- 	int	(*readdir) (struct dentry *, struct rpc_cred *,
+ 
++/**
++ * xprt_create_transport - create an RPC transport
++ * @proto: requested transport protocol
++ * @ap: remote peer address
++ * @size: length of address
++ * @to: timeout parameters
++ *
++ */
++struct rpc_xprt *xprt_create_transport(int proto, struct sockaddr *ap, size_t size, struct rpc_timeout *to)
++{
++	int result;
++	struct rpc_xprt	*xprt;
++	struct rpc_rqst	*req;
++
++	if ((xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL)) == NULL) {
++		dprintk("RPC:      xprt_create_transport: no memory\n");
++		return ERR_PTR(-ENOMEM);
++	}
++	if (size <= sizeof(xprt->addr)) {
++		memcpy(&xprt->addr, ap, size);
++		xprt->addrlen = size;
++	} else {
++		kfree(xprt);
++		dprintk("RPC:      xprt_create_transport: address too large\n");
++		return ERR_PTR(-EBADF);
++	}
++
++	switch (proto) {
++	case IPPROTO_UDP:
++		result = xs_setup_udp(xprt, to);
++		break;
++	case IPPROTO_TCP:
++		result = xs_setup_tcp(xprt, to);
++		break;
++	default:
++		printk(KERN_ERR "RPC: unrecognized transport protocol: %d\n",
++				proto);
++		return ERR_PTR(-EIO);
++	}
++	if (result) {
++		kfree(xprt);
++		dprintk("RPC:      xprt_create_transport: failed, %d\n", result);
++		return ERR_PTR(result);
++	}
++
++	spin_lock_init(&xprt->transport_lock);
++	spin_lock_init(&xprt->reserve_lock);
++
++	INIT_LIST_HEAD(&xprt->free);
++	INIT_LIST_HEAD(&xprt->recv);
++	INIT_WORK(&xprt->task_cleanup, xprt_autoclose, xprt);
++	init_timer(&xprt->timer);
++	xprt->timer.function = xprt_init_autodisconnect;
++	xprt->timer.data = (unsigned long) xprt;
++	xprt->last_used = jiffies;
++	xprt->cwnd = RPC_INITCWND;
++
++	rpc_init_wait_queue(&xprt->binding, "xprt_binding");
++	rpc_init_wait_queue(&xprt->pending, "xprt_pending");
++	rpc_init_wait_queue(&xprt->sending, "xprt_sending");
++	rpc_init_wait_queue(&xprt->resend, "xprt_resend");
++	rpc_init_priority_wait_queue(&xprt->backlog, "xprt_backlog");
++
++	/* initialize free list */
++	for (req = &xprt->slot[xprt->max_reqs-1]; req >= &xprt->slot[0]; req--)
++		list_add(&req->rq_list, &xprt->free);
++
++	xprt_init_xid(xprt);
++
++	dprintk("RPC:      created transport %p with %u slots\n", xprt,
++			xprt->max_reqs);
++
++	return xprt;
++}
++
+ static struct rpc_xprt *xprt_setup(int proto, struct sockaddr_in *ap, struct rpc_timeout *to)
+ {
+ 	int result;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
