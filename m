@@ -1,8 +1,8 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 01/25] SUNRPC: avoid choosing an IPMI port for RPC
-	traffic
-Date: Wed, 09 Aug 2006 10:58:51 -0400
-Message-ID: <20060809145849.3914.57196.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 02/25] SUNRPC: Create a helper to tell whether a
+	transport is bound
+Date: Wed, 09 Aug 2006 10:58:54 -0400
+Message-ID: <20060809145853.3914.64708.stgit@picasso.dsl.sfldmi.ameritech.net>
 References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApWQ-0008Gk-D4
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:02 -0700
+	id 1GApWP-0008GZ-OY
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:01 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWP-0003Qc-Nw
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:03 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWP-0003R0-QP
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:02 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,33 +31,179 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Some hardware uses port 664 for its hardware-based IPMI listener.  Teach
-the RPC client to avoid using that port by raising the default minimum port
-number to 665.
+Hide the contents and format of xprt->addr by eliminating direct uses
+of the xprt->addr.sin_port field.  This change is required to support
+alternate RPC host address formats (eg IPv6).
 
-Test plan:
-Find a mainboard known to use port 664 for IPMI; enable IPMI; mount NFS
-servers in a tight loop.
+Test-plan:
+Destructive testing (unplugging the network temporarily).  Repeated runs of
+Connectathon locking suite with UDP and TCP.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/xprt.h |   16 ++++++++++++++++
+ net/sunrpc/clnt.c           |   10 +++++-----
+ net/sunrpc/xprt.c           |    6 +++++-
+ net/sunrpc/xprtsock.c       |   16 ++++++++++++----
+ 4 files changed, 38 insertions(+), 10 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 840e47a..3a0cca2 100644
+index 3a0cca2..e65474f 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -37,7 +37,7 @@ extern unsigned int xprt_max_resvport;
+@@ -269,6 +269,7 @@ #define XPRT_LOCKED		(0)
+ #define XPRT_CONNECTED		(1)
+ #define XPRT_CONNECTING		(2)
+ #define XPRT_CLOSE_WAIT		(3)
++#define XPRT_BOUND		(4)
  
- #define RPC_MIN_RESVPORT	(1U)
- #define RPC_MAX_RESVPORT	(65535U)
--#define RPC_DEF_MIN_RESVPORT	(650U)
-+#define RPC_DEF_MIN_RESVPORT	(665U)
- #define RPC_DEF_MAX_RESVPORT	(1023U)
+ static inline void xprt_set_connected(struct rpc_xprt *xprt)
+ {
+@@ -312,6 +313,21 @@ static inline int xprt_test_and_set_conn
+ 	return test_and_set_bit(XPRT_CONNECTING, &xprt->state);
+ }
  
- /*
++static inline void xprt_set_bound(struct rpc_xprt *xprt)
++{
++	set_bit(XPRT_BOUND, &xprt->state);
++}
++
++static inline int xprt_bound(struct rpc_xprt *xprt)
++{
++	return test_bit(XPRT_BOUND, &xprt->state);
++}
++
++static inline void xprt_clear_bound(struct rpc_xprt *xprt)
++{
++	clear_bit(XPRT_BOUND, &xprt->state);
++}
++
+ #endif /* __KERNEL__*/
+ 
+ #endif /* _LINUX_SUNRPC_XPRT_H */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d6409e7..4f353dd 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -148,7 +148,6 @@ rpc_new_client(struct rpc_xprt *xprt, ch
+ 	clnt->cl_maxproc  = version->nrprocs;
+ 	clnt->cl_protname = program->name;
+ 	clnt->cl_pmap	  = &clnt->cl_pmap_default;
+-	clnt->cl_port     = xprt->addr.sin_port;
+ 	clnt->cl_prog     = program->number;
+ 	clnt->cl_vers     = version->number;
+ 	clnt->cl_prot     = xprt->prot;
+@@ -156,7 +155,7 @@ rpc_new_client(struct rpc_xprt *xprt, ch
+ 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
+ 	rpc_init_wait_queue(&clnt->cl_pmap_default.pm_bindwait, "bindwait");
+ 
+-	if (!clnt->cl_port)
++	if (!xprt_bound(clnt->cl_xprt))
+ 		clnt->cl_autobind = 1;
+ 
+ 	clnt->cl_rtt = &clnt->cl_rtt_default;
+@@ -573,7 +572,7 @@ EXPORT_SYMBOL(rpc_max_payload);
+ void rpc_force_rebind(struct rpc_clnt *clnt)
+ {
+ 	if (clnt->cl_autobind)
+-		clnt->cl_port = 0;
++		xprt_clear_bound(clnt->cl_xprt);
+ }
+ EXPORT_SYMBOL(rpc_force_rebind);
+ 
+@@ -785,14 +784,15 @@ static void
+ call_bind(struct rpc_task *task)
+ {
+ 	struct rpc_clnt	*clnt = task->tk_client;
++	struct rpc_xprt *xprt = task->tk_xprt;
+ 
+ 	dprintk("RPC: %4d call_bind (status %d)\n",
+ 				task->tk_pid, task->tk_status);
+ 
+ 	task->tk_action = call_connect;
+-	if (!clnt->cl_port) {
++	if (!xprt_bound(xprt)) {
+ 		task->tk_action = call_bind_status;
+-		task->tk_timeout = task->tk_xprt->bind_timeout;
++		task->tk_timeout = xprt->bind_timeout;
+ 		rpc_getport(task, clnt);
+ 	}
+ }
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index e8c2bc4..10ba1f6 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -534,7 +534,11 @@ void xprt_connect(struct rpc_task *task)
+ 	dprintk("RPC: %4d xprt_connect xprt %p %s connected\n", task->tk_pid,
+ 			xprt, (xprt_connected(xprt) ? "is" : "is not"));
+ 
+-	if (!xprt->addr.sin_port) {
++	if (xprt->shutdown) {
++		task->tk_status = -EIO;
++		return;
++	}
++	if (!xprt_bound(xprt)) {
+ 		task->tk_status = -EIO;
+ 		return;
+ 	}
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 441bd53..43b59c2 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -974,6 +974,8 @@ static void xs_set_port(struct rpc_xprt 
+ {
+ 	dprintk("RPC:      setting port for xprt %p to %u\n", xprt, port);
+ 	xprt->addr.sin_port = htons(port);
++	if (port != 0)
++		xprt_set_bound(xprt);
+ }
+ 
+ static int xs_bindresvport(struct rpc_xprt *xprt, struct socket *sock)
+@@ -1016,7 +1018,7 @@ static void xs_udp_connect_worker(void *
+ 	struct socket *sock = xprt->sock;
+ 	int err, status = -EIO;
+ 
+-	if (xprt->shutdown || xprt->addr.sin_port == 0)
++	if (xprt->shutdown || !xprt_bound(xprt))
+ 		goto out;
+ 
+ 	dprintk("RPC:      xs_udp_connect_worker for xprt %p\n", xprt);
+@@ -1099,7 +1101,7 @@ static void xs_tcp_connect_worker(void *
+ 	struct socket *sock = xprt->sock;
+ 	int err, status = -EIO;
+ 
+-	if (xprt->shutdown || xprt->addr.sin_port == 0)
++	if (xprt->shutdown || !xprt_bound(xprt))
+ 		goto out;
+ 
+ 	dprintk("RPC:      xs_tcp_connect_worker for xprt %p\n", xprt);
+@@ -1307,8 +1309,11 @@ int xs_setup_udp(struct rpc_xprt *xprt, 
+ 	if (xprt->slot == NULL)
+ 		return -ENOMEM;
+ 
+-	xprt->prot = IPPROTO_UDP;
++	if (ntohs(xprt->addr.sin_port) != 0)
++		xprt_set_bound(xprt);
+ 	xprt->port = xs_get_random_port();
++
++	xprt->prot = IPPROTO_UDP;
+ 	xprt->tsh_size = 0;
+ 	xprt->resvport = capable(CAP_NET_BIND_SERVICE) ? 1 : 0;
+ 	/* XXX: header size can vary due to auth type, IPv6, etc. */
+@@ -1348,8 +1353,11 @@ int xs_setup_tcp(struct rpc_xprt *xprt, 
+ 	if (xprt->slot == NULL)
+ 		return -ENOMEM;
+ 
+-	xprt->prot = IPPROTO_TCP;
++	if (ntohs(xprt->addr.sin_port) != 0)
++		xprt_set_bound(xprt);
+ 	xprt->port = xs_get_random_port();
++
++	xprt->prot = IPPROTO_TCP;
+ 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+ 	xprt->resvport = capable(CAP_NET_BIND_SERVICE) ? 1 : 0;
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
