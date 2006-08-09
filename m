@@ -1,24 +1,21 @@
 From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 07/25] SUNRPC: create API for getting remote peer
-	address
-Date: Wed, 09 Aug 2006 10:59:06 -0400
-Message-ID: <20060809145906.3914.27977.stgit@picasso.dsl.sfldmi.ameritech.net>
-References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 00/25] RPC client transport switch, continued...
+Date: Wed, 09 Aug 2006 10:47:16 -0400
+Message-ID: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GApWe-0008Lb-2Z
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:16 -0700
+	id 1GApXg-0008To-8F
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:00:20 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApWb-0003Xk-GS
-	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 07:59:13 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GApXg-0001GB-1E
+	for nfs@lists.sourceforge.net; Wed, 09 Aug 2006 08:00:20 -0700
 To: trond.myklebust@fys.uio.no
-In-Reply-To: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,63 +28,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Provide an API for retrieving the remote peer address without allowing
-direct access to the rpc_xprt struct.
+I'd like these 25 patches to be considered for inclusion in 2.6.19.
 
-Test-plan:
-Compile kernel with CONFIG_NFS enabled.
+1.  A patch that increases the minimum allowed port number to avoid a port
+    used by some IPMI implementations.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+2.  A set of patches that provides a clean API for supporting per-transport 
+    RPC bind implementations.  It also improves scalability by replacing the
+    single portmapper spinlock with a per-transport bit lock.
 
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/clnt.c           |   21 +++++++++++++++++++++
- 2 files changed, 22 insertions(+), 0 deletions(-)
+3.  A set of patches that replaces the two-call API for instantiating an RPC
+    transport with a single-call API that allows for remote addresses of
+    arbitrary size.
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 2e68ac0..65196b0 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -123,6 +123,7 @@ void		rpc_setbufsize(struct rpc_clnt *, 
- size_t		rpc_max_payload(struct rpc_clnt *);
- void		rpc_force_rebind(struct rpc_clnt *);
- int		rpc_ping(struct rpc_clnt *clnt, int flags);
-+size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- 
- /*
-  * Helper function for NFSroot support
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index bff350e..da377eb 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -536,6 +536,27 @@ rpc_call_setup(struct rpc_task *task, st
- 		task->tk_action = rpc_exit_task;
- }
- 
-+/**
-+ * rpc_peeraddr - extract remote peer address from clnt's xprt
-+ * @clnt: RPC client structure
-+ * @buf: target buffer
-+ * @size: length of target buffer
-+ *
-+ * Returns the number of bytes that are actually in the stored address.
-+ */
-+size_t rpc_peeraddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t bufsize)
-+{
-+	size_t bytes;
-+	struct rpc_xprt *xprt = clnt->cl_xprt;
-+
-+	bytes = sizeof(xprt->addr);
-+	if (bytes > bufsize)
-+		bytes = bufsize;
-+	memcpy(buf, &clnt->cl_xprt->addr, bytes);
-+	return sizeof(xprt->addr);
-+}
-+EXPORT_SYMBOL(rpc_peeraddr);
-+
- void
- rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
- {
+4.  A set of patches that modifies the NFS client's symlink creation logic
+    to use the page cache.  This is the only NFS operation that makes use of
+    large RPC buffers; using the page cache instead means it can use small
+    RPC buffers now.
+
+Trond, these are patches you reviewed two weeks ago, with some modifications
+we've discussed, and one or two minor additions.  Over the past months these
+have been tested, in various forms, in many different environments.
+
+Any other comments or review are welcome.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
