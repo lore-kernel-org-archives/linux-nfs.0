@@ -1,26 +1,26 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 22/25] NFS: remove a no-longer-needed error	check
- in nfs_symlink()
-Date: Thu, 10 Aug 2006 08:36:00 -0400
-Message-ID: <44DB2830.1020705@redhat.com>
-References: <20060809144716.3914.62804.stgit@picasso.dsl.sfldmi.ameritech.net>	<20060809145943.3914.99861.stgit@picasso.dsl.sfldmi.ameritech.net>
-	<1155175810.16378.1254.camel@hole.melbourne.sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] fix recursive nlm_file_mutex deadlock
+Date: Thu, 10 Aug 2006 11:40:06 -0400
+Message-ID: <1155224407.10547.45.camel@localhost>
+References: <44DA25D3.3010003@redhat.com>
+	<1155159937.15624.22.camel@localhost>  <44DA5CBF.3040309@redhat.com>
+	<1155167828.15624.70.camel@localhost>
+	<1155223450.3666.48.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Chuck Lever <chucklever@gmail.com>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GB9lq-0001xr-Kg
-	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 05:36:18 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GB9lo-0006a3-TV
-	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 05:36:19 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <1155175810.16378.1254.camel@hole.melbourne.sgi.com>
+	id 1GBCe4-0001M3-CG
+	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 08:40:28 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GBCe1-00055I-Ck
+	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 08:40:29 -0700
+To: Wendy Cheng <wcheng@redhat.com>
+In-Reply-To: <1155223450.3666.48.camel@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,39 +33,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Greg Banks wrote:
-> On Thu, 2006-08-10 at 00:59, Chuck Lever wrote:
->   
->> In the early days of NFS, there was no duplicate reply cache on the server.
->> Thus retransmitted non-idempotent requests often found that the request had
->> already completed on the server.  To avoid passing an unanticipated return
->> code to unsuspecting applications, NFS clients would often shunt error
->> codes that implied the request had been retried but already completed.
->>
->> On modern NFS clients, it is safe to remove such checks.
->>     
->
-> I'm not sure why you have such faith in servers' repcaches.  The Linux
-> knfsd repcache as currently coded is fundamentally useless at modern
-> call rates.  If this error case isn't needed anymore it's probably
-> because we have fewer lost calls thanks to using TCP instead of UDP.
->   
+On Thu, 2006-08-10 at 11:24 -0400, Wendy Cheng wrote:
 
-It is true that the duplicate request cache in Linux and probably most other
-systems, definitely including Solaris, is undersized.  However, most 
-clients,
-definitely including Solaris, do not contain special code.  They simply
-depend upon the server to work correctly.
+> We simply can't call nlm_release_file() as long as it requires
+> nlm_file_mutex (no matter where you move the locking line) within
+> nlm_traverse_files() code path. I'm ok with atomic variable though.
 
-I suspect that it is the use of TCP which has minimized the number of
-complaints about failing non-idempotent requests.  Given that TCP is 
-becoming
-more and more widespread, and that TCP is the only valid transport for 
-NFSv4,
-despite the Linux implementation, it seems to make sense to minimize the
-overhead on the client.
+As long as we can guarantee that file->f_count doesn't drop to zero (and
+we can make that guarantee in nlm_traverse_file()), then the code is
+correct.
 
-       ps
+  Trond
 
 
 -------------------------------------------------------------------------
