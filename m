@@ -1,22 +1,27 @@
-From: Neil Brown <neilb@suse.de>
-Subject: How best to handle races between mmap/flush and truncate in
-	NFS.
-Date: Fri, 11 Aug 2006 15:33:01 +1000
-Message-ID: <17628.5773.954140.608180@cse.unsw.edu.au>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: rpc.idmapd oops with latest NFS bits from your web site
+Date: Fri, 11 Aug 2006 10:34:56 -0400
+Message-ID: <76bd70e30608110734g619ad245u464a840c89e9dce9@mail.gmail.com>
+References: <76bd70e30608101221se9d6fb6l8bb50e93109c7a5b@mail.gmail.com>
+	<1155238502.5826.2.camel@localhost>
+	<76bd70e30608101245w45779d6u7ef99d790c726d31@mail.gmail.com>
+	<1155246274.5826.64.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GBPdw-0005NO-HD
-	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 22:33:12 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GBPdw-00051P-Hk
-	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 22:33:13 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1GBY6K-0007fR-63
+	for nfs@lists.sourceforge.net; Fri, 11 Aug 2006 07:35:04 -0700
+Received: from nf-out-0910.google.com ([64.233.182.186])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GBY6G-0004RJ-H1
+	for nfs@lists.sourceforge.net; Fri, 11 Aug 2006 07:35:04 -0700
+Received: by nf-out-0910.google.com with SMTP id a27so919026nfc
+	for <nfs@lists.sourceforge.net>; Fri, 11 Aug 2006 07:34:57 -0700 (PDT)
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1155246274.5826.64.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,85 +34,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On 8/10/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Thu, 2006-08-10 at 15:45 -0400, Chuck Lever wrote:
+> > Yeah.  I'd say something is overwriting i_cdev with garbarge.  Then
+> > __fput sees that i_cdev is not NULL and tries to call cdev_put with a
+> > bogus address.
+>
+> Looks like something is calling fput() on a file pointing to an inode
+> that has already been freed. 6b6b6b6b is the mark of the poisoned slab
+> entry.
+>
+> Hmm.... Does the attached patch fix it for you?
 
-Hi, 
- I've had a bug report for sles10 that relates to a race as mentioned
- in the subject.
- I think that the code currently in mainline would possibly handling
- it better than current sles10, but I would appreciate at least if
- someone could check my understanding, to make sure I know what is
- going on.
-
- The race goes like this.
-
-   One process mmaps a file and writes to it.  Maybe it calls msync
-   occasionally or maybe just general flushing causes pages to get
-   written out.
-
-   Another process calls 'truncate'.  This causes a SETATTR(size==0)
-   request to be sent out, but the local mappings are not truncated
-   until the reply returns (the mappings are flushed, but new dirty 
-   data has plenty of time to accumulate).
-
-   So when the vmtruncate is finally called, some page that is about
-   to be truncated has an outstanding write request on it.
-   nfs_invalidatepage cannot cope with that and bugs-out.
-   In later mainline kernels nfs_invalidatepage will clear out any
-   pending write requests to truncation can complete safely.  But
-   I'm not sure that this is a complete solution.
-
-With current mainline, the above situation will mean that the
-client sends a SETATTR to truncate and then a WRITE.  This will
-result, on the server, in the file being truncated and then
-extended.  I don't think this should happen.  Normally mmap
-based writes cannot write past EOF (I don't think).  But in
-this case it effectively does.
-
-What I would propose is that in nfs_setattr (fs/nfs/inode.c)
-we set i_size down early and call unmap_mapping_range.
-This will flush out any dirty mapping, and disable any mmapped access
-to pages past the new EOF:
-
-	/* Write all dirty data */
-+	if (attr->ia_valid & ATTR_SIZE &&
-+	    attr->ia_size < i_size_read(inode)) {
-+		/* We really need to set i_size early to ensure that
-+		 * no new pages get written while we are truncating.
-+		 */
-+		i_size_write(inode, attr->ia_size);
-+		unmap_mapping_range(mapping, attr->ia_size + PAGE_SIZE - 1, 0, 1);
-+		/* Now new mappings > size will fail */
-+	}
-	filemap_write_and_wait(inode->i_mapping);
-	nfs_wb_all(inode);
+Unfortunately, no.  Exact same symptoms.
 
 
-This runs a risk (small) that the SETATTR will fail and we will have 
-already reduced the size of the file (though not purged the
-address_space). 
-So after the ->setattr call we check for failure and set
-NFS_INO_INVALID_ATTR if the SETATTR failed.
+> ---------- Forwarded message ----------
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> To:
+> Date: Thu, 10 Aug 2006 17:44:24 -0400
+> Subject: No Subject
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>
+>  net/sunrpc/rpc_pipe.c |   17 ++++++++++-------
+>  1 files changed, 10 insertions(+), 7 deletions(-)
+>
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 9c355e1..0b1a1ac 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -539,6 +539,7 @@ repeat:
+>                                 rpc_close_pipes(dentry->d_inode);
+>                                 simple_unlink(dir, dentry);
+>                         }
+> +                       inode_dir_notify(dir, DN_DELETE);
+>                         dput(dentry);
+>                 } while (n);
+>                 goto repeat;
+> @@ -610,8 +611,8 @@ __rpc_rmdir(struct inode *dir, struct de
+>         int error;
+>
+>         shrink_dcache_parent(dentry);
+> -       if (dentry->d_inode)
+> -               rpc_close_pipes(dentry->d_inode);
+> +       if (d_unhashed(dentry))
+> +               return 0;
+>         if ((error = simple_rmdir(dir, dentry)) != 0)
+>                 return error;
+>         if (!error) {
+> @@ -747,13 +748,15 @@ rpc_unlink(struct dentry *dentry)
+>         parent = dget_parent(dentry);
+>         dir = parent->d_inode;
+>         mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
+> -       d_drop(dentry);
+> -       if (dentry->d_inode) {
+> -               rpc_close_pipes(dentry->d_inode);
+> -               error = simple_unlink(dir, dentry);
+> +       if (!d_unhashed(dentry)) {
+> +               d_drop(dentry);
+> +               if (dentry->d_inode) {
+> +                       rpc_close_pipes(dentry->d_inode);
+> +                       error = simple_unlink(dir, dentry);
+> +               }
+> +               inode_dir_notify(dir, DN_DELETE);
+>         }
+>         dput(dentry);
+> -       inode_dir_notify(dir, DN_DELETE);
+>         mutex_unlock(&dir->i_mutex);
+>         dput(parent);
+>         return error;
+>
+>
+>
 
-	error = NFS_PROTO(inode)->setattr(dentry, &fattr, attr);
-	if (error == 0)
-		nfs_refresh_inode(inode, &fattr);
-+	else if (attr->ia_valid & ATTR_SIZE) {
-+		/* Oops, we changed the i_size locally, but 
-+		 * failed to set it on the server.
-+		 * better revalidate the size
-+		 */
-+		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
-+	}
 
-This means that there cannot be any writes happening during the
-truncate call (normal write(2) is excluded by i_mutex, and this patch
-excluded mmap write by setting i_size).  So nfs_invalidatepage will
-never find a page with a pending write that needs to be dealt with.
-
-Does this make any sense?  It is hopelessly wrong?
-
-Thanks,
-NeilBrown
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
