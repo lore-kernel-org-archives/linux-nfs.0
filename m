@@ -1,103 +1,1268 @@
-From: Grant Coady <gcoady.lk@gmail.com>
-Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Fri, 11 Aug 2006 10:30:27 +1000
-Message-ID: <fejnd2dsr930cbp79rf21bjf4d7qqdqe4r@4ax.com>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-	<ketid21n1s5bn108lo7ps9t8a85db5bgs9@4ax.com>
-	<9a8748490608090107j6ce7bc2cr2b74cc13b9541f39@mail.gmail.com>
-	<9a8748490608101537y4c377fb3xcd8babbdbc29cee2@mail.gmail.com>
-Reply-To: Grant Coady <gcoady.lk@gmail.com>
+From: Xue Peng Li <xuepengl@cn.ibm.com>
+Subject: Re: [ltc-perf]  draft of nfs event hook
+Date: Fri, 11 Aug 2006 09:57:29 +0800
+Message-ID: <44DBE409.4080907@cn.ibm.com>
+References: <OF053E04B8.D96A9ADC-ON482571B7.0031B2AD-482571B7.00323E27@cn.ibm.com> <44C8C631.40003@cn.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GBKv3-0006gp-3W
-	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 17:30:33 -0700
-Received: from relay01.mail-hub.dodo.com.au ([203.220.32.149])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GBKv2-000183-3D
-	for nfs@lists.sourceforge.net; Thu, 10 Aug 2006 17:30:33 -0700
-To: "Jesper Juhl" <jesper.juhl@gmail.com>
-In-Reply-To: <9a8748490608101537y4c377fb3xcd8babbdbc29cee2@mail.gmail.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: multipart/mixed;  boundary="------------070107000703070705010501"
+Return-path: <systemtap-return-3957-gls-systemtap=m.gmane.org@sourceware.org>
+To: "systemtap@sourceware.org" <systemtap@sourceware.org>,         nfs@lists.sourceforge.net
+In-Reply-To: <44C8C631.40003@cn.ibm.com>
+List-Unsubscribe: <mailto:systemtap-unsubscribe-gls-systemtap=m.gmane.org@sourceware.org>
+List-Subscribe: <mailto:systemtap-subscribe@sourceware.org>
+List-Post: <mailto:systemtap@sourceware.org>
+List-Help: <mailto:systemtap-help@sourceware.org>, <http://sourceware.org/lists.html#faqs>
+Sender: systemtap-owner@sourceware.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, 11 Aug 2006 00:37:35 +0200, "Jesper Juhl" <jesper.juhl@gmail.com> wrote:
+This is a multi-part message in MIME format.
+--------------070107000703070705010501
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 
->On 09/08/06, Jesper Juhl <jesper.juhl@gmail.com> wrote:
->> On 09/08/06, Grant Coady <gcoady.lk@gmail.com> wrote:
->> > On Tue, 8 Aug 2006 16:39:54 +0200, "Jesper Juhl" <jesper.juhl@gmail.com> wrote:
->> >
->> > >I have some webservers that have recently started reporting the
->> > >following message in their logs :
->> > >
->> > >  do_vfs_lock: VFS is out of sync with lock manager!
->> > >
->> > >The serveres kernels were upgraded to 2.6.17.8 and since the upgrade
->> > >the message started appearing.
->> > >The servers were previously running 2.6.13.4 without experiencing this problem.
->> > >Nothing has changed except the kernel.
->> > >
->> > >I've googled a bit and found this mail
->> > >(http://lkml.org/lkml/2005/8/23/254) from Trond saying that
->> > >"The above is a lockd error that states that the VFS is failing to track
->> > >your NFS locks correctly".
->> > >Ok, but that doesn't really help me resolve the issue. The servers are
->> > >indeed running NFS and access their apache DocumentRoots from a NFS
->> > >mount.
->> > >
->> > >Is there anything I can do to help track down this issue?
->> >
->> > I don't have an answer, but offer this observation: five boxen running
->> > 2.6.17.8 doing six simultaneous
->> >
->> >   bzcat /home/share/linux-2.6/patch-2.6.18-rc4.bz2|patch -p1
->> >
->> > didn't burp.  The /home/share/ is an NFS export from another box running
->> > 2.4.33-rc3a, me not sure if this was exercising any NFS locking as the
->> > NFS source file was only opened for non-exclusive read-only.
->> >
->> The NFS server here is running 2.6.11.11 and doesn't seem to be
->> reporting any problems. But I now have two more of my webservers (both
->> running 2.6.17.8) that have started to complain about "do_vfs_lock:
->> VFS is out of sync with lock manager!"
+Hi folks,
+
+    I am working on NFS tapsets recently which could be able to probe 
+both NFS server side and client side operations. As the first step, I am 
+working on tapsets about NFS client side. This tapset includes three 
+levels, i.e. file operation, address space operation, client-side 
+procedures stubs(nfs_proc function). I have finished the tapset about 
+fop(file operation) and aop (address space operation). I resues the 
+Tom's vfs.stp to avoid duplicate work.
+
+    I will be very happy if you can take a look at it. Feel free to tell 
+me if you have any questions/suggestions/comments.
+
+    Thanks.
+
+Li Guanglei wrote:
+> Hi,
+> 
+>   The NFS trace hooks we are working on will be part of the trace hooks 
+> of LKET, which is a system trace tool and we mainly use it for 
+> performance analysis.
+> 
+>   LKET is a dynamic trace facility based on SystemTap. It is actually 
+> implemented as SystemTap's tapsets library and it has been integrated 
+> into SystemTap already. For more info of LKET, you can refer to:
+> 
+> http://sourceware.org/systemtap/man5/lket.5.html
+> 
+>   When we started working on NFS trace hooks, we realized it is not an 
+> easy task. Although we use NFS in daily work but we don't have much 
+> knowledge about the NFS protocol details and its implementation inside 
+> the Kernel. So I divided the work into two steps. At the first step I 
+> need get a list of trace points. And at the second step I need to make 
+> sure what trace data is available for each trace hook. In a short, the 
+> trace data available for each hook will be derived from the arguments of 
+> the kernel functions being probed.
+> 
+>   We read through the Kernel source code and chose some functions to be 
+> instrumented. We will trace the entry of these functions and if 
+> necessary, the return of them will also be traced. The following is the 
+> list of these functions, please take a review:
+> 
+> ==================== Client Side ==========================
+> 
+> <1> nfs directory operations
+> 
+>      All functions from nfs_dir_operations:
+> 
+>       const struct file_operations nfs_dir_operations = {
+>         .llseek         = nfs_llseek_dir,
+>         .read           = generic_read_dir,
+>         .readdir        = nfs_readdir,
+>         .open           = nfs_opendir,
+>         .release        = nfs_release,
+>         .fsync          = nfs_fsync_dir,
+> };
+> 
+> <2> nfs file operations
+> 
+>     All functions from nfs_file_operations:
+> 
+>     const struct file_operations nfs_file_operations = {
+>         .llseek         = nfs_file_llseek,
+>         .read           = do_sync_read,
+>         .write          = do_sync_write,
+>         .aio_read               = nfs_file_read,
+>         .aio_write              = nfs_file_write,
+>         .mmap           = nfs_file_mmap,
+>         .open           = nfs_file_open,
+>         .flush          = nfs_file_flush,
+>         .release        = nfs_file_release,
+>         .fsync          = nfs_fsync,
+>         .lock           = nfs_lock,
+>         .flock          = nfs_flock,
+>         .sendfile       = nfs_file_sendfile,
+>         .check_flags    = nfs_check_flags,
+> };
+> 
+> <3> nfs address space operations:
+>     All functions from nfs_file_aops:
+> 
+>       struct address_space_operations nfs_file_aops = {
+>         .readpage = nfs_readpage,
+>         .readpages = nfs_readpages,
+>         .set_page_dirty = __set_page_dirty_nobuffers,
+>         .writepage = nfs_writepage,
+>         .writepages = nfs_writepages,
+>         .prepare_write = nfs_prepare_write,
+>         .commit_write = nfs_commit_write,
+>         .invalidatepage = nfs_invalidate_page,
+>         .releasepage = nfs_release_page,
+> #ifdef CONFIG_NFS_DIRECTIO
+>         .direct_IO = nfs_direct_IO,
+> #endif
+>      };
+> 
+> <4> NFS RPC procedures:
+> 
+>    All functions from nfs_v[2,3,4]_clientops:
+>     I only list the nfs_v3 rpc procedures:
+>      struct nfs_rpc_ops      nfs_v3_clientops = {
+>         .version        = 3,                    /* protocol version */
+>         .dentry_ops     = &nfs_dentry_operations,
+>         .dir_inode_ops  = &nfs3_dir_inode_operations,
+>         .file_inode_ops = &nfs3_file_inode_operations,
+>         .getroot        = nfs3_proc_get_root,
+>         .getattr        = nfs3_proc_getattr,
+>         .setattr        = nfs3_proc_setattr,
+>         .lookup         = nfs3_proc_lookup,
+>         .access         = nfs3_proc_access,
+>         .readlink       = nfs3_proc_readlink,
+>         .read           = nfs3_proc_read,
+>         .write          = nfs3_proc_write,
+>         .commit         = nfs3_proc_commit,
+>         .create         = nfs3_proc_create,
+>         .remove         = nfs3_proc_remove,
+>         .unlink_setup   = nfs3_proc_unlink_setup,
+>         .unlink_done    = nfs3_proc_unlink_done,
+>         .rename         = nfs3_proc_rename,
+>         .link           = nfs3_proc_link,
+>         .symlink        = nfs3_proc_symlink,
+>         .mkdir          = nfs3_proc_mkdir,
+>         .rmdir          = nfs3_proc_rmdir,
+>         .readdir        = nfs3_proc_readdir,
+>         .mknod          = nfs3_proc_mknod,
+>         .statfs         = nfs3_proc_statfs,
+>         .fsinfo         = nfs3_proc_fsinfo,
+>         .pathconf       = nfs3_proc_pathconf,
+>         .decode_dirent  = nfs3_decode_dirent,
+>         .read_setup     = nfs3_proc_read_setup,
+>         .read_done      = nfs3_read_done,
+>         .write_setup    = nfs3_proc_write_setup,
+>         .write_done     = nfs3_write_done,
+>         .commit_setup   = nfs3_proc_commit_setup,
+>         .commit_done    = nfs3_commit_done,
+>         .file_open      = nfs_open,
+>         .file_release   = nfs_release,
+>         .lock           = nfs3_proc_lock,
+>         .clear_acl_cache = nfs3_forget_cached_acls,
+>     };
+> 
+>   The LKET already has syscall and iosyscall trace hooks. So with the 
+> above trace hooks, LKET could trace different layer of NFS operations:
+>    --> Syscall
+>       --> struct file_operations
+>           --> struct address_space_operations
+>                --> struct nfs_rpc_ops
+> 
+> ======================= Server Side =============================
+> 
+> <1> nfsd_dispatch
+>    This is the NFS dispatching function sit on top of RPC.
+> 
+> <2> NFS RPC procedures:
+> 
+>     For NFSv4, it will be nfsd4_proc_compound
+> 
+>     For NFSv2, NFSv3, it will be the functions from nfsd_procedures[2,3]
+> 
+>     Here is a list for NFSv3, NFSv2 are almost the same:
+>       nfsd3_proc_null,
+>       nfsd3_proc_getattr,
+>       nfsd3_proc_setattr,
+>       nfsd3_proc_lookup,
+>       nfsd3_proc_access,
+>       nfsd3_proc_readlink,
+>       nfsd3_proc_read,
+>       nfsd3_proc_write,
+>       nfsd3_proc_create,
+>       nfsd3_proc_mkdir,
+>       nfsd3_proc_symlink,
+>       nfsd3_proc_mknod,
+>       nfsd3_proc_remove,
+>       nfsd3_proc_rmdir,
+>       nfsd3_proc_rename,
+>       nfsd3_proc_link,
+>       nfsd3_proc_readdir,
+>       nfsd3_proc_readdirplus,readdirplus,
+>       nfsd3_proc_fsstat,
+>       nfsd3_proc_fsinfo,
+>       nfsd3_proc_pathconf,
+>       nfsd3_proc_commit,
+> 
+> <3> NFSD file VFS operations
+> 
+>      The functions nfsd_xxx from "fs/nfsd/vfs.c"
+> 
+> With the above server side trace hooks, LKET could trace NFS operations 
+> at different layer:
+> 
+>      nfsd_dispatch -->
+>         --> NFS RPC Procedures
+>            --> NFS VFS file operations
+> 
+> 
+>   What I didn't list about NFS operations includes authentication, NFSv4 
+> callback and RPC(I prefer to use a separate set of trace hooks for RPC). 
+> I am not sure if these operations are also required to be traced. If I 
+> missed some important functions or I listed some redundant functions, 
+> please feel free to let me know. Any comments will be highly appreciated.
+> 
+>   Thanks.
+> 
+> The following is from Li Xuepeng posted on nfs@lists.sourceforge.net 
+> which involved some implementations details and its trace point lists is 
+> a subset of the above.
+> 
+> - Guanglei
+> 
+> Xue Peng Li ??:
+>> Hi folks,
 >>
->> I've not found a way to cause the message to be repported at will unfortunately.
+>> I am working on NFS trace hooks for SystemTap/LKET. These trace
+>> hooks could be used for performance analyzing which will trace both
+>> NFS client and server side activities.
 >>
->Today 3 more of my webservers running 2.6.17.8 reported this message.
->The machines all seem to be running fine still, so it doesn't seem to
->be a serious problem, but it would still be nice to get it fixed ;)
+>> At the first step I need make sure that the trace hooks I defined
+>> are appropriate and every trace hook probes the right places inside
+>> the Kernel. So I will be appreciated if you could help me review the
+>> following trace hooks.
+>>
+>>
+>> Thanks
 
-Do you have some test case other than web server that triggers it?  
-I can try it here, recently did much NFS testing reported under 
-2.4.33-rc1 or -rc2 on lkml to try sort a vfs_unlink issue.
+--------------070107000703070705010501
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+ name="nfs.stp"
+Content-Disposition: inline;
+ filename="nfs.stp"
 
-My web server here is low volume, not a good test situation -- plus 
-it no longer runs under 2.6 and I don't want to take it down too often 
-to sort out why.  Once it could dual boot 2.4 or 2.6 without trouble, 
-but that option fell apart when 2.6.16 came out.
+%{
+#include <linux/kernel.h>
+#include <linux/nfs_fs.h>
+%}
+/*Get struct nfs_inode from struct inode*/
+%{ 
+  struct nfs_inode * __nfs_i (struct inode *inode)
+  {
+    struct nfs_inode * nfsi = NFS_I(inode);
 
-Grant.
+    return (nfsi);
+  }
+%}
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+/*Get cache_validity flag from struct inode*/
+function __nfsi_cache_valid:long(inode:long)
+%{
+    struct inode * inode = (struct inode *)(THIS->inode);
+    struct nfs_inode * nfsi;
+  
+    nfsi = __nfs_i(inode);
+    THIS->__retvalue = nfsi->cache_validity;
+%}
+
+/*Get read_cache_jiffies from struct inode*/
+function __nfsi_rcache_time :long (inode:long)
+%{
+    struct inode * inode = (struct inode *)(THIS->inode);
+    struct nfs_inode * nfsi = (struct nfs_inode *) __nfs_i(inode);
+
+    THIS->__retvalue = nfsi->read_cache_jiffies;
+%}
+
+/*Get attrtimeo from struct inode*/
+function __nfsi_attr_time :long (inode:long)
+%{
+    struct inode * inode = (struct inode *)(THIS->inode);
+    struct nfs_inode * nfsi = (struct nfs_inode *) __nfs_i(inode);
+
+    THIS->__retvalue = nfsi->attrtimeo;
+%}
+
+/*Get ndirty from struct inode*/
+function __nfsi_ndirty:long (inode:long)
+%{
+      struct inode *inode = (struct inode *)(THIS->inode);
+      struct nfs_inode *nfsi = NFS_I(inode);
+ 
+      THIS->__retvalue = nfsi->ndirty;
+%}
+
+/*Get rsize from struct inode*/
+function __nfs_server_rsize:long (inode:long)
+%{
+       struct inode * inode = (struct inode *)(THIS->inode);
+
+       THIS->__retvalue = NFS_SERVER(inode)->rsize;
+%}
+
+/*Get wsize from struct inode*/
+function __nfs_server_wsize:long (inode:long)
+%{
+       struct inode * inode = (struct inode *)(THIS->inode);
+
+       THIS->__retvalue = NFS_SERVER(inode)->wsize;
+%}
+
+/*Get rpages from struct inode*/
+function __nfs_rpages:long (inode:long)
+%{
+       struct inode * inode = (struct inode *)(THIS->inode);
+
+       THIS->__retvalue = NFS_SERVER(inode)->rpages;
+%}
+
+/*Get wpages from struct inode*/
+function __nfs_wpages:long(inode:long)
+%{
+      struct inode *inode = (struct inode*)(THIS->inode);
+      THIS->__retvalue = NFS_SERVER(inode)->wpages;
+%}
+
+/*Get struct inode from struct page*/
+function __p2i :long(page:long)
+%{
+      struct page *page = (struct page *)(THIS->page);
+      THIS->__retvalue = (long)page->mapping->host;
+%}
+
+/*Get i_flags from struct page*/
+function __p2i_flag : long (page:long)
+%{
+      struct page *page = (struct page *) (THIS->page);
+      THIS->__retvalue = page->mapping->host->i_flags;
+%}
+
+/*Get i_state from struct page*/
+function __p2i_state :long (page:long)
+%{
+      struct page *page = (struct page *) (THIS->page);
+      THIS->__retvalue = page->mapping->host->i_state;
+%}
+
+/*Get i_size from struct page*/
+function __p2i_size :long (page:long)
+%{
+      struct page *page = (struct page *) (THIS->page);
+      THIS->__retvalue = page->mapping->host->i_size;
+%}
+
+/*Get s_flags from struct page*/
+function __p2sb_flag:long (page:long)
+%{
+      struct page *page = (struct page *)(THIS->page);
+      THIS->__retvalue = page->mapping->host->i_sb->s_flags;
+%}
+
+function __d_loff_t :long (ppos :long)
+%{
+     loff_t * ppos = (loff_t *) (THIS->ppos);
+     
+     THIS->__retvalue =(long) *ppos;
+%}
+
+probe nfs.fop.entries = nfs.fop.llseek,
+                        nfs.fop.read,
+                        nfs.fop.write,
+                        nfs.fop.aio_read,
+                        nfs.fop.aio_write,
+                        nfs.fop.mmap,
+                        nfs.fop.open,
+                        nfs.fop.flush,
+                        nfs.fop.release,
+                        nfs.fop.fsync,
+                        nfs.fop.lock,
+                        nfs.fop.sendfile
+{
+}
+
+probe nfs.fop.entries.return = nfs.fop.llseek.return,
+                        nfs.fop.read.return,
+                        nfs.fop.write.return,
+                        nfs.fop.aio_read.return,
+                        nfs.fop.aio_write.return,
+                        nfs.fop.mmap.return,
+                        nfs.fop.open.return,
+                        nfs.fop.flush.return,
+                        nfs.fop.release.return,
+                        nfs.fop.fsync.return,
+                        nfs.fop.lock.return,
+                        nfs.fop.sendfile.return
+{
+}
+
+/*probe nfs.fop.llseek
+ *
+ *  Fires when do a llseek operation on nfs,it probes
+ *  llseek file operation of nfs
+ *
+ *  Arguments:
+ *     dev : device identifier
+ *     ino : inode number
+ *     offset : the offset of the file will be repositioned
+ *     origin : the original position. The possible value could be:
+ *         SEEK_SET
+ *               The offset is set to offset bytes.
+ *         SEEK_CUR
+ *               The offset is set to its current location plus offset bytes.
+ *         SEEK_END
+ *               The offset is set to the size of the file plus offset bytes.
+ *
+*/
+probe nfs.fop.llseek = kernel.function ("nfs_file_llseek") ?,
+                       module("nfs").function("nfs_file_llseek") ?
+{
+        dev = $filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $filp->f_dentry->d_inode->i_ino
+        maxbyte = $filp->f_dentry->d_inode->i_sb->s_maxbytes
+        offset = $offset
+        origin = $origin
+
+        name = "nfs.fop.llseek"
+        argstr = sprintf("%d, %d", offset, origin)
+}
+
+probe nfs.fop.llseek.return = kernel.function ("nfs_file_llseek").return ?,
+                              module("nfs").function("nfs_file_llseek").return ?
+{
+        name = "nfs.fop.llseek.return"
+        retstr = sprintf("%d", $return)
+}
+/*probe nfs.fop.read
+ *
+ * Fires when do a read operation on nfs,it probes
+ * read file operation of nfs
+ * 
+ * Arguments:
+ *        
+ *
+*/
+probe nfs.fop.read = vfs.do_sync_read
+{
+        name = "nfs.fop.read"
+}
+
+probe nfs.fop.read.return = vfs.do_sync_read.return
+{
+        name = "nfs.fop.read.return"
+}
+
+/*probe nfs.fop.write
+ *
+ * Fires when do a write operation on nfs,it probes
+ * write file operation of nfs
+ * 
+ * Arguments:
+ *        
+ *
+*/
+
+probe nfs.fop.write = vfs.do_sync_write
+{
+        name = "nfs.fop.write"
+}
+
+probe nfs.fop.write.return = vfs.do_sync_write.return
+{
+        name = "nfs.fop.write.return"
+}
+
+/*probe nfs.fop.aio_read
+ *
+ * It probes aio_read file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number        
+ *    count : read bytes
+ *    pos   : current position of file   
+ *    buf   : the address of buf in user space
+ *    parent_name : parent dir name
+ *    file_name : file name
+ *    cache_valid : cache related bit mask flag
+ *    cache_time : when we started read-caching this inode
+ *    attrtimeo :  how long the cached information is assumed
+ *                 to be valid.
+ *   We need to revalidate the cached attrs for this inode if
+ *
+ *      jiffies - read_cache_jiffies > attrtimeo
+*/
+probe nfs.fop.aio_read = kernel.function ("nfs_file_read") ?,
+                       module("nfs").function("nfs_file_read") ?
+{
+        dev = $iocb->ki_filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $iocb->ki_filp->f_dentry->d_inode->i_ino
+
+        count = $count
+        pos = $pos
+        buf = $buf
+
+        parent_name = kernel_string($iocb->ki_filp->f_dentry->d_parent->d_name->name)
+        file_name = kernel_string($iocb->ki_filp->f_dentry->d_name->name)
+
+
+        cache_valid = __nfsi_cache_valid($iocb->ki_filp->f_dentry->d_inode)
+        cache_time  = __nfsi_rcache_time($iocb->ki_filp->f_dentry->d_inode)
+        attr_time   = __nfsi_attr_time($iocb->ki_filp->f_dentry->d_inode)
+
+        flag =  $iocb->ki_filp->f_flags
+
+        name = "nfs.fop.aio_read"
+        argstr = sprintf("%p,%d, %d",buf,count, pos)
+
+        size = count
+        units = "bytes"
+}
+
+
+probe nfs.fop.aio_read.return = kernel.function ("nfs_file_read").return ?,
+                                module("nfs").function("nfs_file_read").return ?
+{
+        name = "nfs.fop.aio_read.return"
+        retstr = sprintf("%d", $return)
+
+        if ($return > 0) {
+                size = $return
+                units = "bytes"
+        }
+}
+
+/*probe nfs.fop.aio_write
+ *
+ * It probes aio_write file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number        
+ *    count : read bytes
+ *    pos   : offset of the file 
+ *    buf   : the address of buf in user space
+ *    parent_name : parent dir name
+ *    file_name : file name
+ *
+*/
+probe nfs.fop.aio_write = kernel.function("nfs_file_write") ?,
+                          module("nfs").function("nfs_file_write") ?
+{
+        dev = $iocb->ki_filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $iocb->ki_filp->f_dentry->d_inode->i_ino
+
+        count = $count
+        pos = $pos
+        buf = $buf
+               
+        parent_name = kernel_string($iocb->ki_filp->f_dentry->d_parent->d_name->name)
+        file_name = kernel_string($iocb->ki_filp->f_dentry->d_name->name)
+
+        name = "nfs.fop.aio.write"
+        argstr = sprintf("%p, %d, %d", buf, count, pos)
+
+        size = count
+        units = "bytes"
+}
+
+probe nfs.fop.aio_write.return =  kernel.function("nfs_file_write").return ?,
+                          module("nfs").function("nfs_file_write").return ?
+{
+        name = "nfs.fop.aio_write.return"
+        retstr = sprintf("%d", $return)
+
+        if ($return > 0) {
+                size = $return
+                units = "bytes"
+        }
+}
+
+/*probe nfs.fop.mmap
+ *
+ * Fires when do an mmap operation on nfs,
+ * it probes mmap operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number        
+ *    vm_start :  start address within vm_mm 
+ *    vm_end   :  the first byte after end address within vm_mm
+ *    vm_flag  :  vm flags
+ *    buf   : the address of buf in user space
+ *    parent_name : parent dir name
+ *    file_name : file name
+ *    cache_valid : cache related bit mask flag
+ *    cache_time : when we started read-caching this inode
+ *    attrtimeo :  how long the cached information is assumed
+ *                 to be valid.
+ *   We need to revalidate the cached attrs for this inode if
+ *
+ *      jiffies - read_cache_jiffies > attrtimeo
+*/
+probe nfs.fop.mmap = kernel.function("nfs_file_mmap") ?,
+                     module("nfs").function("nfs_file_mmap") ?
+{
+        dev = $file->f_dentry->d_inode->i_sb->s_dev
+        ino = $file->f_dentry->d_inode->i_ino
+
+        vm_start = $vma->vm_start
+        vm_end = $vma->vm_end
+        vm_flags = $vma->vm_flags
+
+        parent_name = kernel_string($file->f_dentry->d_parent->d_name->name)
+        file_name = kernel_string($file->f_dentry->d_name->name)
+
+        cache_valid = __nfsi_cache_valid($file->f_dentry->d_inode)
+        cache_time  = __nfsi_rcache_time($file->f_dentry->d_inode)
+        attr_time   = __nfsi_attr_time($file->f_dentry->d_inode)
+
+        name = "nfs.fop.mmap"
+        argstr = sprintf("0x%x, 0x%x, 0x%x", vm_start, vm_end, vm_flags)
+}
+
+probe nfs.fop.mmap.return = kernel.function("nfs_file_mmap").return ?,
+                     module("nfs").function("nfs_file_mmap").return ?
+{
+        name = "nfs.fop.mmap.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.fop.open
+ *
+ * Fires when do an open operation on nfs,
+ * it probes open file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number        
+ *    file_name : file name
+ *    flag : file flag
+ *    i_size : file length in bytes 
+*/
+probe nfs.fop.open = kernel.function("nfs_file_open") ?,
+                     module("nfs").function("nfs_file_open") ?
+{
+        dev = $filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $inode->i_ino
+
+        filename = kernel_string($filp->f_dentry->d_name->name)
+        flag = $filp->f_flags   
+
+        i_size = $inode->i_size
+   
+        name = "nfs.fop.open"
+        argstr = sprintf("%d,%d, %s", flag, ino, filename)
+}
+
+probe nfs.fop.open.return = kernel.function("nfs_file_open").return ?,
+                            module("nfs").function("nfs_file_open").return ?
+{
+        name = "nfs.fop.open.return"
+        retstr = sprintf("%d", $return)        
+}
+
+/*probe nfs.fop.flush
+ *
+ * Fires when do a flush file operation on nfs,
+ * it probes flush file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number        
+ *    mode : file mode
+ *    ndirty : number of dirty page
+*/
+probe nfs.fop.flush = kernel.function("nfs_file_flush") ?,
+                      module("nfs").function("nfs_file_flush") ?
+{
+        dev = $file->f_dentry->d_inode->i_sb->s_dev
+        ino = $file->f_dentry->d_inode->i_ino;
+
+        mode = $file->f_mode
+        ndirty = __nfsi_ndirty($file->f_dentry->d_inode)
+
+        name = "nfs.fop.flush"
+        argstr = sprintf("%d",ino)
+}
+
+probe nfs.fop.flush.return = kernel.function("nfs_file_flush").return ?,
+                      module("nfs").function("nfs_file_flush").return ?
+{
+        name = "nfs.fop.flush.return"
+        retstr = sprintf("%d",$return)
+}
+
+/*probe nfs.fop.release
+ *
+ * Fires when do a release page operation on nfs,
+ * it probes release file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number        
+ *    mode : file mode
+*/
+probe nfs.fop.release = kernel.function("nfs_file_release") ?,
+                      module("nfs").function("nfs_file_release") ?
+{
+        dev = $filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $inode->i_ino
+
+        mode = $filp->f_mode
+
+        name = "nfs.fop.release"
+        argstr = sprintf("%d" , ino)
+}
+
+probe nfs.fop.release.return = kernel.function("nfs_file_release").return ?,
+                               module("nfs").function("nfs_file_release").return ?
+{
+        name = "nfs.fop.release.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.fop.fsync
+ *
+ * Fires when do a fsync operation on nfs,
+ * it probes fsync file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number       
+ *    ndirty : number of dirty pages 
+*/
+probe nfs.fop.fsync = kernel.function("nfs_fsync") ?,
+                      module("nfs").function("nfs_fsync") ?
+{
+        dev = $file->f_dentry->d_inode->i_sb->s_dev
+        ino = $file->f_dentry->d_inode->i_ino
+
+        ndirty = __nfsi_ndirty($file->f_dentry->d_inode)
+
+        name = "nfs.fop.fsync"
+	argstr = sprintf("%d",ino)  
+}
+
+probe nfs.fop.fsync.return = kernel.function("nfs_fsync").return ?,
+                             module("nfs").function("nfs_fsync").return ?
+{
+        name = "nfs.fop.fsync.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.fop.lock
+ *
+ * Fires when do a file lock operation on nfs,
+ * it probes lock file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number      
+ *    i_mode : file type and access rights
+ *    cmd : cmd arguments
+ *    fl_type :lock type
+ *    fl_flag : lock flags
+ *    fl_start : starting offset of locked region 
+ *    fl_end   : ending offset of locked region  
+*/
+probe nfs.fop.lock = kernel.function("nfs_lock") ?,
+                     module("nfs").function("nfs_lock") ?
+{
+        dev = $filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $filp->f_dentry->d_inode->i_ino
+ 
+        i_mode = $filp->f_dentry->d_inode->i_mode
+        cmd = $cmd
+ 
+        fl_type = $fl->fl_type
+        fl_flag = $fl->fl_flags
+        fl_start = $fl->fl_start
+        fl_end  = $fl->fl_end
+
+        name = "nfs.fop.lock"
+        argstr = sprintf("%d,%d",cmd,i_mode)
+}
+
+probe nfs.fop.lock.return = kernel.function("nfs_lock").return ?,
+                             module("nfs").function("nfs_lock").return ?
+{
+         name = "nfs.fop.lock.return"
+         retstr = sprintf("%d",$return)
+}
+
+
+/*probe nfs.fop.sendfile
+ *
+ * Fires when do a send file  operation on nfs,
+ * it probes sendfile file operation of nfs
+ * 
+ * Arguments:
+ *    dev : device identifier
+ *    ino : inode number     
+ *    count : read bytes
+ *    ppos : current position of file
+ *    cache_valid : cache related bit mask flag
+ *    cache_time : when we started read-caching this inode
+ *    attrtimeo :  how long the cached information is assumed
+ *                 to be valid.
+ *   We need to revalidate the cached attrs for this inode if
+ *
+ *      jiffies - read_cache_jiffies > attrtimeo
+*/
+probe nfs.fop.sendfile = kernel.function("nfs_file_sendfile") ?,
+                              module("nfs").function("nfs_file_sendfile") ?
+{
+
+        dev = $filp->f_dentry->d_inode->i_sb->s_dev
+        ino = $filp->f_dentry->d_inode->i_ino
+
+        count = $count
+        ppos  = __d_loff_t($ppos)
+
+        cache_valid = __nfsi_cache_valid($filp->f_dentry->d_inode)
+        cache_time  = __nfsi_rcache_time($filp->f_dentry->d_inode)
+        attr_time   = __nfsi_attr_time($filp->f_dentry->d_inode)
+
+
+        name = "nfs.fop.sendfile"
+        argstr = sprintf("%d,%d", count,ppos)
+
+        size = count
+        units = "bytes"
+}
+
+probe nfs.fop.sendfile.return = kernel.function("nfs_file_sendfile").return ?,
+                              module("nfs").function("nfs_file_sendfile").return ?
+{
+        name = "nfs.fopsendfile.return"
+        retstr = sprintf("%d", $return)
+
+        if ($return > 0) {
+                size = $return
+                units = "bytes"
+        }
+}
+
+/*probe nfs.fop.check_flags
+ *
+ * Fires when do a checking flag  operation on nfs,
+ * it probes check_flag file operation of nfs
+ * 
+ * Arguments:
+ *    flag : file flag
+*/
+probe nfs.fop.check_flags =  kernel.function("nfs_check_flags") ?,
+                             module("nfs").function("nfs_check_flags") ?
+{
+        flag = $flags
+        
+        name = "nfs.fop.check_flags"
+        argstr = sprintf("%d",flag)
+}
+
+probe nfs.fop.check_flags.return =  kernel.function("nfs_check_flags").return ?,
+                             module("nfs").function("nfs_check_flags").return ?
+{
+        name = "nfs.fop.check_flags.return"
+        retstr = sprintf("%d",$return)
+}
+
+probe nfs.aop.entries = nfs.aop.readpage,
+                        nfs.aop.readpages,
+                        nfs.aop.writepage,
+                        nfs.aop.writepages,
+                        nfs.aop.prepare_write,
+                        nfs.aop.commit_write,
+                        nfs.aop.release_page
+{
+}
+ 
+probe nfs.aop.entries.return = nfs.aop.readpage.return,
+                        nfs.aop.readpages.return,
+                        nfs.aop.writepage.return,
+                        nfs.aop.writepages.return,
+                        nfs.aop.prepare_write.return,
+                        nfs.aop.commit_write.return,
+                        nfs.aop.release_page.return
+{
+}
+
+/* probe nfs.aop.readpage
+ *
+ *   Read the page ,only fies when a previous async
+ *   read operation failed
+ *
+ * Arguments:
+ *   __page : the address of page
+ *   dev : device identifier
+ *   ino : inode number    
+ *   i_flag : file flags
+ *   i_size : file length in bytes
+ *   sb_flag : super block flags
+ *   file  : file argument
+ *   page_index : offset within mapping, can used a 
+                  page identifier and position identifier
+                  in the page frame
+ *   rsize :  read size  (in bytes)
+ *   size :  number of pages to be read in this execution 
+ */
+probe nfs.aop.readpage = kernel.function ("nfs_readpage") ?,
+        module("nfs").function ("nfs_readpage") ?
+{
+        __page = $page
+        dev = __page_dev(__page)
+        ino = __page_ino(__page)
+
+        i_flag = __p2i_flag($page) 
+        i_size = __p2i_size($page)
+ 
+        sb_flag = __p2sb_flag($page) 
+
+        file = $file
+        page_index = $page->index
+        
+        __inode = __p2i($page) 
+        rsize = __nfs_server_rsize(__inode)
+
+        name = "nfs.aop.readpage"
+        argstr = sprintf("%d,%d" , page_index,r_size)
+
+        size = 1
+        units = "pages"
+}
+
+probe nfs.aop.readpage.return = kernel.function ("nfs_readpage").return ?,
+        module("nfs").function ("nfs_readpage").return ?
+{
+        name = "nfs.aop.readpage.return"
+        retstr = sprintf("%d", $return)
+
+        size = 1
+        units = "pages"
+}
+
+/* probe nfs.aop.readpages
+ *
+ * Fies when in readahead way,read several pages once
+ * Arguments:
+ *   dev : device identifier
+ *   ino : inode number   
+ *   nr_pages :  number of pages to be read in this execution 
+ *   file : filp argument
+ *   rpages : read size (in pages) 
+ *   rsize  : read size (in bytes)
+ *   size :  number of pages to be read in this execution 
+ */
+probe nfs.aop.readpages =  kernel.function ("nfs_readpages") ?,
+        module("nfs").function ("nfs_readpages") ?
+{
+        dev = $mapping->host->i_sb->s_dev
+        ino = $mapping->host->i_ino
+
+        nr_pages = $nr_pages
+        file = $filp
+
+        rpages = __nfs_rpages($mapping->host)
+        rsize  = __nfs_server_rsize($mapping->host)
+
+        name = "nfs.aop.readpages"
+        argstr = sprintf("%d" , nr_pages)
+
+        size = nr_pages
+        units = "pages"
+}
+
+probe nfs.aop.readpages.return = kernel.function ("nfs_readpages").return ?,
+        module("nfs").function ("nfs_readpages").return ?
+{
+        name = "nfs.aop.readpages.return"
+        retstr = sprintf("%d", $return)
+
+
+        if($return > 0 )
+        {
+            size = retstr
+        }
+        units = "pages"
+}
+/*probe nfs.aop.set_page_dirty
+ *
+ *   __set_page_dirty_nobuffers is used to set a page dirty,but
+ *   not all the buffers.
+ *
+ *  Arguments:
+ *     __page : the address of page
+ *      page_flag : page flags
+*/
+probe nfs.aop.set_page_dirty =
+            kernel.function ("__set_page_dirty_nobuffers") ?,
+             module("nfs").function ("__set_page_dirty_nobuffers") ?
+{
+ /*       dev = $mapping->host->i_sb->s_dev
+        devname = __find_bdevname(dev, $mapping->host->i_sb->s_bdev)
+        ino = $mapping->host->i_ino
+*/
+        __page = $page
+        page_flag = $page->flags
+
+        name = "nfs.aop.set_page_dirty"
+        argstr = sprintf("%d",flag)
+}
+
+probe nfs.aop.set_page_dirty.return =
+            kernel.function ("__set_page_dirty_nobuffers") .return?,
+            module("nfs").function ("__set_page_dirty_nobuffers").return ?
+{
+        name = "nfs.aop.set_page_dirty.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.aop.writepage
+ *
+ *   Write an mapped page to the server
+ *
+ *  Arguments:
+ *     __page : the address of page
+ *     dev : device identifier
+ *     ino : inode number  
+ *     for_reclaim : a flag of writeback_control, indicates if it's invoked from the page allocator 
+ *     for_kupdate : a flag of writeback_control, indicates if it's a kupdate writeback
+ *      The priority of wb is decided by above two flags
+ *     i_flag : file flags
+ *     i_size : file length in bytes
+ *     i_state : inode state flags
+ *     sb_flag : super block flags
+ *     page_index : offset within mapping, can used a 
+                    page identifier and position identifier
+                    in the page frame
+ *     wsize :  write size
+ *     size  :  number of pages to be written in this execution 
+*/
+probe nfs.aop.writepage =  kernel.function ("nfs_writepage") ?,
+             module("nfs").function ("nfs_writepage") ?
+{
+        __page = $page
+        dev = __page_dev(__page)
+        ino = __page_ino(__page)
+        
+
+        for_reclaim = $wbc->for_reclaim
+        for_kupdate = $wbc->for_kupdate
+
+        i_flag = __p2i_flag($page) 
+        i_state = __p2i_state($page)
+        i_size = __p2i_size($page)
+
+        sb_flag = __p2sb_flag($page) 
+
+
+        page_index = $page->index
+
+        __inode = __p2i($page)
+        wsize = __nfs_server_wsize(__inode)            
+ 
+        name = "nfs.aop.writepage"
+        argstr = sprintf("%d",page_index)
+
+        size = 1
+        units = "pages"
+}
+
+probe nfs.aop.writepage.return =  kernel.function ("nfs_writepage").return ?,
+             module("nfs").function ("nfs_writepage").return ?
+{
+        name = "nfs.aop.writepage.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.aop.writepages
+ *  Write several dirty pages to the serve
+ *Arguments:
+ *     dev : device identifier
+ *     ino : inode number  
+ *     for_reclaim : a flag of writeback_control, indicates if it's invoked from the page allocator 
+ *     for_kupdate : a flag of writeback_control, indicates if it's a kupdate writeback
+ *      The priority of wb is decided by above two flags
+ *      wsize :  write size
+ *      wpages : write size (in pages)
+ *      nr_to_write : number of pages to be written in this execution  
+ *      size : number of pages to be written in this execution  
+*/
+probe nfs.aop.writepages =  kernel.function ("nfs_writepages") ?,
+             module("nfs").function ("nfs_writepages") ?
+{
+        dev = $mapping->host->i_sb->s_dev
+        ino = $mapping->host->i_ino
+
+        for_reclaim = $wbc->for_reclaim
+        for_kupdate = $wbc->for_kupdate
+        nr_to_write = $wbc->nr_to_write
+
+        wsize = __nfs_server_wsize($mapping->host)
+        wpages = __nfs_wpages($mapping->host)
+
+        name = "nfs.aop.writepages"
+        argstr = sprintf("%d",nr_to_write)
+
+        size = nr_to_write
+        units = "pages"         
+}
+
+probe nfs.aop.writepages.return =  kernel.function ("nfs_writepages").return ?,
+             module("nfs").function ("nfs_writepages").return ?
+{
+        name = "nfs.aop.writepages.return"
+        retstr = sprintf("%d", $return)
+}
+/*probe nfs.aop.prepare_write
+ *  Fires when do write operation on nfs.
+ *     Prepare a page for writing
+ *     Look for a request corresponding to the page. If there
+ *     is one, and it belongs to another file, we flush it out
+ *     before we try to copy anything into the page. 
+ *     Also do the same if we find a request from an existing
+ *     dropped page
+ *
+ *  Arguments:
+ *     __page : the address of page
+ *     dev : device identifier
+ *     ino : inode number 
+ *     offset : start address of this write operation 
+ *     to     : end address of this write operation 
+ *     page_index : offset within mapping, can used a 
+                     page identifier and position identifier
+                     in the page frame
+ *     size   : read bytes
+*/
+probe nfs.aop.prepare_write=  kernel.function ("nfs_prepare_write") ?,
+             module("nfs").function ("nfs_prepare_write") ?
+{
+        dev = __page_dev(__page)
+        devname = __find_bdevname(dev, __page_bdev(__page))
+        ino = __page_ino(__page)      
+  
+        offset = $offset
+        to = $to
+       
+        page_index = $page->index
+        __page = $page
+
+        name = "nfs.aop.prepare_write"
+        argstr = sprintf("%d", page_index)
+
+        size = to - offset
+        units = "bytes"        
+}
+
+probe nfs.aop.prepare_write.return = 
+                 kernel.function ("nfs_prepare_write").return ?,
+                 module("nfs").function ("nfs_prepare_write").return ?
+{
+        name = "nfs.aop.nfs_prepare_write.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.aop.commit_write
+ *  Fires when do a write operation on nfs,
+ *  often after prepare_write
+ *
+ *  Update and possibly write a cached page of an NFS file
+ *
+ *  Arguments:
+ *     __page : the address of page
+ *     dev : device identifier
+ *     ino : inode number
+ *     offset : start address of this write operation 
+ *     to     : end address of this write operation
+ *     i_flag : file flags
+ *     i_size : file length in bytes
+ *     sb_flag : super block flags
+ *     page_index : offset within mapping, can used a 
+                    page identifier and position identifier
+                    in the page frame
+ *     size   : read bytes
+ */ 
+probe nfs.aop.commit_write=  kernel.function ("nfs_commit_write") ?,
+             module("nfs").function ("nfs_commit_write") ?
+{
+         __page = $page
+        dev = __page_dev(__page)
+        ino = __page_ino(__page)
+
+        offset = $offset
+        to = $to
+      
+
+        i_flag = __p2i_flag($page) 
+        i_size = __p2i_size($page)
+
+        sb_flag = __p2sb_flag($page) 
+
+        page_index = $page->index
+     
+        name = "nfs.aop.commit_write"
+        argstr = sprintf("%d, %d",offset , to)
+
+        size = to - offset
+        units = "bytes"
+}
+
+
+probe nfs.aop.commit_write.return=  
+             kernel.function ("nfs_commit_write").return ?,
+             module("nfs").function ("nfs_commit_write").return? 
+{
+        name = "nfs.aop.nfs_commit_write.return"
+        retstr = sprintf("%d", $return)
+}
+
+/*probe nfs.aop.release_page
+ *  Fires when do a release operation on nfs,
+ *  
+ *
+ *  Arguments:
+ *     __page : the address of page
+ *     dev : device identifier
+ *     ino : inode number
+ *     page_index : offset within mapping, can used a 
+                    page identifier and position identifier
+                    in the page frame
+ *     size : release pages
+*/
+probe nfs.aop.release_page =  kernel.function ("nfs_release_page") ?,
+             module("nfs").function ("nfs_release_page")?
+{
+        __page = $page
+        dev = __page_dev(__page)
+        ino = __page_ino(__page)
+
+//        gfp = $gfp
+        page_index = $page->index
+
+        name = "nfs.aop.releasepage"
+        argstr = sprintf("%d", page_index)
+
+        size = 1
+        units = "pages"
+
+}  
+
+probe nfs.aop.release_page.return =  kernel.function ("nfs_release_page").return ?,
+             module("nfs").function ("nfs_release_page").return?
+{
+        name = "nfs.aop.nfs_release_page.return"
+        retstr = sprintf("%d", $return)
+}
+
+
+--------------070107000703070705010501--
