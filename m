@@ -1,23 +1,23 @@
-From: Allard Hoeve <allard@byte.nl>
+From: Wendy Cheng <wcheng@redhat.com>
 Subject: Re: Kernel oops (NLM?)
-Date: Mon, 14 Aug 2006 16:09:27 +0200 (CEST)
-Message-ID: <Pine.LNX.4.62.0608141603520.32349@office2.c1.internal>
-References: <Pine.LNX.4.62.0608140949350.23888@office2.c1.internal>
-	<44E07FC4.9090707@redhat.com>
+Date: Mon, 14 Aug 2006 10:24:41 -0400
+Message-ID: <44E087A9.2000303@redhat.com>
+References: <Pine.LNX.4.62.0608140949350.23888@office2.c1.internal>	<44E07FC4.9090707@redhat.com>
+	<Pine.LNX.4.62.0608141603520.32349@office2.c1.internal>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GCd8K-0004dc-3X
-	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 07:09:36 -0700
-Received: from ip-82-94-214-63.ams.byte.nl ([82.94.214.63] helo=smtp.byte.nl)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GCd8J-0004MA-Bx
-	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 07:09:36 -0700
-To: Wendy Cheng <wcheng@redhat.com>
-In-Reply-To: <44E07FC4.9090707@redhat.com>
+	id 1GCdOA-0005x3-28
+	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 07:25:58 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GCdO9-0001XN-CB
+	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 07:25:58 -0700
+To: Allard Hoeve <allard@byte.nl>
+In-Reply-To: <Pine.LNX.4.62.0608141603520.32349@office2.c1.internal>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Allard Hoeve wrote:
 
-Hello Wendy,
+>I'm currently unaware of a way to reproduce the oops, sorry. It is a 
+>production server under heavy load, so I can't fiddle around much. 
+>
+Understood. We're going to do some stress tests on NLM too - so don't 
+worry about it.
 
->> Some time ago, I encountered a kernel oops that resulted in a crashed lock 
->> daemon. nfsd never stopped working, but all client lock requests stalled.
+>PS: All clients are configured to use nfsv3. nlm4svc_retrieve_args looks
+>     like an NFS4 codepath, doesn't it?
+>
+>  
+>
+No - that's an NLM version number, not NFS version number.
 
-> Are there certain steps we can follow to recreate this issue ?
+-- Wendy
 
-I'm currently unaware of a way to reproduce the oops, sorry. It is a 
-production server under heavy load, so I can't fiddle around much. I was 
-actually hoping there was something blindingly obvious you could deduct 
-from the voodoo in the oops...
-
-Is there anything I can do to generate more/better logs for you in case 
-this occurs again on this system?
-
-PS: All clients are configured to use nfsv3. nlm4svc_retrieve_args looks
-     like an NFS4 codepath, doesn't it?
-
-Regards,
-
-Allard Hoeve
 
 
 -------------------------------------------------------------------------
