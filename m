@@ -1,26 +1,29 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Kernel oops (NLM?)
-Date: Mon, 14 Aug 2006 13:29:25 -0400
-Message-ID: <20060814172925.GH17184@fieldses.org>
-References: <Pine.LNX.4.62.0608140949350.23888@office2.c1.internal>
-	<1155566027.5664.56.camel@localhost>
-	<Pine.LNX.4.62.0608141725080.13398@office2.c1.internal>
+Subject: Re: [PATCH 0 of 5] knfsd: miscellaneous performance-related
+	fixes
+Date: Mon, 14 Aug 2006 17:43:13 -0400
+Message-ID: <20060814214313.GE20034@fieldses.org>
+References: <1155009879.29877.229.camel@hole.melbourne.sgi.com>
+	<17624.17621.428870.694339@cse.unsw.edu.au>
+	<1155032558.29877.324.camel@hole.melbourne.sgi.com>
+	<20060808154923.GA28855@fieldses.org>
+	<1155091055.16378.14.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, tech@byte.nl,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GCgFl-0007iw-2I
-	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 10:29:29 -0700
+	id 1GCkDP-00042U-UW
+	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 14:43:20 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GCgFk-0002qd-Ds
-	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 10:29:29 -0700
-To: Allard Hoeve <allard@byte.nl>
-In-Reply-To: <Pine.LNX.4.62.0608141725080.13398@office2.c1.internal>
+	(Exim 4.44) id 1GCkDN-0006P4-7n
+	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 14:43:20 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1155091055.16378.14.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +36,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Aug 14, 2006 at 05:39:45PM +0200, Allard Hoeve wrote:
-> Ironically, we experienced an entirely different NFS crash on 2.6.17.8 
-> kernel as well :)
+On Wed, Aug 09, 2006 at 12:37:36PM +1000, Greg Banks wrote:
+> On Wed, 2006-08-09 at 01:49, J. Bruce Fields wrote:
+> > It'd be nice if we could avoid ripping out a working user interface that
+> > someone might be using....
 > 
-> Short description:
-> 
-> * All nfsd threads hanging (state D)
-> * All clients stalled
-> * Restarting the nfs-kernel-server didn't help
-> * No syslog entries
-> * No dmesg entries
-> 
-> Due to the lack of logs, I can't be more verbose...
+> I agree, but I don't believe a) it's working or b) anyone could
+> be getting any use out of it.
 
-You could try alt-syrq-T (or "echo t >/proc/sysrq-trigger").  That'll
-dump to the logs a stack for every process.  (It's the nfsd ones that
-are most likely to be interesting).  So we might be able to figure out
-where the nfsd threads are hanging.
+OK.  So the advice at
+
+http://nfs.sourceforge.net/nfs-howto/ar01s05.html#nfsd_daemon_instances
+
+is wrong?
+
+> An earlier version of the patch left the data structures in place
+> and just reported them as zeros in the /proc file.  Would that
+> be preferrable?
+
+I'm not sure that makes any difference.
 
 --b.
 
