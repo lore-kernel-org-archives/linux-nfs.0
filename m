@@ -1,26 +1,26 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/22] lockd: make NLM_HOST_MAX tunable
-Date: Tue, 15 Aug 2006 16:37:11 +1000
-Message-ID: <17633.27543.544197.995369@cse.unsw.edu.au>
-References: <20060805130647.GA8016@suse.de>
+Subject: Re: [PATCH 2/22] Hide use of lockd's h_monitored flag
+Date: Tue, 15 Aug 2006 16:53:25 +1000
+Message-ID: <17633.28517.783973.798394@cse.unsw.edu.au>
+References: <20060805130647.GA8024@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GCsYF-00049l-Cp
-	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 23:37:23 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GCsnw-0005TI-OX
+	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 23:53:36 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GCsYE-0002aa-Lo
-	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 23:37:24 -0700
+	(Exim 4.44) id 1GCsnw-0006hb-2E
+	for nfs@lists.sourceforge.net; Mon, 14 Aug 2006 23:53:37 -0700
 Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 8342D1FC7C
-	for <nfs@lists.sourceforge.net>; Tue, 15 Aug 2006 08:37:18 +0200 (CEST)
+	by mx1.suse.de (Postfix) with ESMTP id 624C110056
+	for <nfs@lists.sourceforge.net>; Tue, 15 Aug 2006 08:53:30 +0200 (CEST)
 To: Olaf Kirch <okir@suse.de>
 In-Reply-To: message from Olaf Kirch on Saturday August 5
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -37,33 +37,23 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Saturday August 5, okir@suse.de wrote:
 > From: Olaf Kirch <okir@suse.de>
-> Subject: lockd: make NLM_HOST_MAX tunable
-> Patch-mainline: not-yet
+> Subject: Hide use of lockd's h_monitored flag
 > 
->   This patch makes NLM_HOST_MAX tunable, and exports the
->   new variable as a sysctl.
->   The old value (64 clients) just wasn't adequate anymore.
+>   This patch moves all checks of the h_monitored flag into
+>   the nsm_monitor/unmonitor functions.
+>   A subsequent patch will replace the mechanism by which we
+>   mark a host as being monitored.
 
-Why do we need NLM_HOST_MAX at all?  And if we do, we need
-a better name, because it isn't really a maximum.
+Something confuses me about this patch too.
+You are 'hiding' h_monitored, so I looked and found there was still a
+reference to it in clntlock.c - in nlmclnt_prepare_reclaim.  So maybe
+it just isn't totally hidden, and this isn't a 'use' but an assignment.
 
-It is more of a threshold.
-While there are fewer than this mean, we garbage collect every 2
-minutes discarding hosts more than 5 minutes old.
-When we exceed this threshold, we garbage collect every minutes (or
-every time a new host is allocated). and discard hosts older than
-2 minutes.
-
-It seems like we are picking an arbitrary point at which to switch
-from one arbitrary algorithm to another.  Do we really want to do
-this?
-
-I cannot see any good reason not to just pick one arbitrary algorithm
-and stick with that the whole time.
-The only tunable might make sense is the max age before garbage
-collection removes hosts.
-
-Am I missing something important?
+However I looked forward to the patch were you get rid of h_monitored
+altogether, moving it into the new nsm_handle, and calling it
+sm_monitored, and this assignment then quietly goes away.
+I cannot help feeling that you are hiding something here, but I cannot
+tell what...
 
 NeilBrown
 
