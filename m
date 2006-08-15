@@ -1,24 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Can we flush directory data when the ctime changes?
-Date: Tue, 15 Aug 2006 11:26:21 -0400
-Message-ID: <44E1E79D.5080300@redhat.com>
-References: <17624.15554.514216.623190@cse.unsw.edu.au>	<1155045918.5673.26.camel@localhost>
-	<17633.17452.840813.593342@cse.unsw.edu.au>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 2/5] NLM failover - per fs grace period
+Date: Tue, 15 Aug 2006 14:32:45 -0400
+Message-ID: <44E2134D.7000809@redhat.com>
+References: <1155535221.3416.26.camel@localhost.localdomain>
+	<1155570281.5664.84.camel@localhost> <44E09DDA.9070302@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+Cc: cluster-devel@redhat.com, lhh@redhat.com,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GD0oM-0000Ip-5c
-	for nfs@lists.sourceforge.net; Tue, 15 Aug 2006 08:26:34 -0700
+	id 1GD3jw-0008DZ-QV
+	for nfs@lists.sourceforge.net; Tue, 15 Aug 2006 11:34:12 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GD0oI-0004v3-9g
-	for nfs@lists.sourceforge.net; Tue, 15 Aug 2006 08:26:31 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GD3jw-0003vo-1V
+	for nfs@lists.sourceforge.net; Tue, 15 Aug 2006 11:34:13 -0700
 To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17633.17452.840813.593342@cse.unsw.edu.au>
+In-Reply-To: <44E09DDA.9070302@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,65 +32,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil Brown wrote:
-> On Tuesday August 8, trond.myklebust@fys.uio.no wrote:
->   
->> On Tue, 2006-08-08 at 17:26 +1000, Neil Brown wrote:
->>     
->>> The GETATTR call that the client makes to validate the cache reports
->>> that the mtime hasn't change, *but the ctime has*.
->>>       
->> Growl! If the directory contents change, then the mtime should too. Page
->> 22 of RFC1813:
->>
->>         Mtime is the time when the file data was last modified.  Ctime
->>         is the time when the attributes of the file were last changed.
->>
->> Directory cookies are not file or directory attributes!
->>
->> In addition, NFSv3 has the cookie verifier mechanism for the server to
->> specifically inform the client that the cookies are invalid.
->>     
->
-> What would you expect the user experience to be if the server returned 
-> NFS3ERR_BAD_COOKIE ?
-> I cannot really tell from the nfs client code, but I would guess that
-> the only option would be to start again from the beginning of the
-> directory, and that would lead to duplicate entries being returned,
-> which is exactly the problem are seeing (though the server doesn't
-> return BAD_COOKIE, it just starts again from the beginning).
->
->   
+There were few replies emails that didn't arrive at nfs list last week 
+but got archived in:
 
-The only thing that the client can do is return an error, perhaps something
-like EIO.  The real recovery needs to happen in the application, but there
-isn't a way to convey the correct information to the application so that it
-could do the recovery.
+* why switching to fsid
+https://www.redhat.com/archives/cluster-devel/2006-August/msg00090.html
 
-As was noted, transparently starting again at the beginning of the 
-directory,
-whether in the kernel or not, can lead to bad things happening.
+* cluster script failover sequence)
+https://www.redhat.com/archives/cluster-devel/2006-August/msg00087.html
 
-In retrospect, NFS3ERR_BAD_COOKIE wasn't such a good idea.  There just
-isn't enough infrastructure in the rest of the system to correctly
-support the semantic that it represents.
+To help people understand the patch logic, the following is a sample 
+failover flow:
 
->> IOW: this really needs to be fixed on the _server_. I'm not happy taking
->> new patches that may cause the client GETATTR calls to skyrocket again.
->>
->>     
->
-> I certainly have a lot of sympathy for this position.
+Assume we have server_A and server_B. Server_A is a multi-home NFS 
+server with two ip address 10.10.10.1 and 10.10.1.1 where:
 
-I would agree as well.  I think that represents a constraint on the file
-systems which can be used on the server.  Although it is not a huge issue,
-it sure would be nice to have it fixed.  Perhaps we need to construct the
-infrastructure required in order to be able to detect and recover from
-directory cookies which change mid-stream.
+shell> cat /etc/exports
+/mnt/ext3/exports    *(fsid=1234,sync,rw)
+/mnt/gfs1/exports    *(fsid=1236,sync,rw)
 
-    Thanx...
+It is expected ext3 filesystem served by 10.10.1.1 and gfs served by 
+10.10.10.1. If we ever want to move ext3 over to server_B, the sequence 
+would be:
 
-       ps
+On server_A:
+1. Tear down 10.10.1.1
+2. Un-export ext3 exports
+3. echo 1234 > /proc/fs/nfsd/nlm_unlock
+4. Umount ext3
+
+On sever_B:
+1. Mount ext3 fs
+2. echo 1234 > /proc/fs/nfsd/nlm_set_igrace
+3. Export ext3 exports
+4. Bring up 10.10.1.1
+5. Sending restricted reclaim notifications via 10.10.1.1
+
+Step 5 is implemented based on the ha-callout program as described in 
+"man rpc.statd".  What our cluster suite (user mode script) will do (if 
+this patch set gets accepted) is to bring up rpc.statd on both servers 
+with ha-callout program.
+On server_A, the ha-callout program constructs two sm directories 
+(sm-10.10.10.1 and sm-10.10.1.1) that can be accessed by both servers. 
+This is normally done by placing the directories on the filesystem that 
+will get moved over. The original /var/lib/nfs/statd/sm stays in its 
+default place in case of server_A ends up with a real reboot (or crash). 
+When server_B takes over, it sends out an one-time notice to all the 
+clients that has entries in sm-10.10.1.1 directory.
+
+Note that the code of ha-callout program (will be done by our cluster 
+suite) actually can be integrated into statd within nfs-utils package. 
+However, I would like to keep the changes made into mainline nfs code as 
+miminum as possible at this moment.
+
+-- Wendy
+
+
+
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
