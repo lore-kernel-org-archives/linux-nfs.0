@@ -1,27 +1,23 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: [PATCH] NFS: possible NULL pointer deref in
-	nfs_sillyrename()
-Date: Thu, 17 Aug 2006 12:05:41 +0200
-Message-ID: <9a8748490608170305v53a2fd20q29d12e2a7b7229d4@mail.gmail.com>
-References: <200608170022.29168.jesper.juhl@gmail.com>
-	<1155773801.6739.5.camel@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: connectathon special test failure in recent kernels
+Date: Thu, 17 Aug 2006 11:10:43 -0400
+Message-ID: <44E486F3.2020600@RedHat.com>
+References: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>	<1155079971.5731.22.camel@localhost>
+	<76bd70e30608081959g6a76d7bcr1d78323630462f7c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Rick Sladkey <jrs@world.std.com>, Neil Brown <neilb@cse.unsw.edu.au>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GDeky-0002z6-TQ
-	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 03:05:44 -0700
-Received: from nf-out-0910.google.com ([64.233.182.189])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDekw-0003ul-Ip
-	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 03:05:45 -0700
-Received: by nf-out-0910.google.com with SMTP id m19so1025372nfc
-	for <nfs@lists.sourceforge.net>; Thu, 17 Aug 2006 03:05:42 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1155773801.6739.5.camel@localhost>
+	id 1GDjWJ-0007dW-7l
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 08:10:55 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDjWI-00053r-EC
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 08:10:55 -0700
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+In-Reply-To: <76bd70e30608081959g6a76d7bcr1d78323630462f7c@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,34 +30,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 17/08/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Thu, 2006-08-17 at 00:22 +0200, Jesper Juhl wrote:
-> > The coverity checker spotted this as bug #1013.
-> >
-> > If we get a NULL dentry->d_inode, then regardless of
-> > NFS_PARANOIA or no NFS_PARANOIA, then if
-> >    if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
-> > turns out to be false we'll end up dereferencing
-> > that NULL d_inode in two places below.
-> >
-> > And since the check for "(!dentry->d_inode)" even exists
-> > (although inside #ifdef NFS_PARANOIA) I take that to mean
-> > that this is a possibility.
->
-> Sorry, but it isn't possible. See the checks in may_delete() (which is
-> called before ->unlink()) and nfs_rename().
->
-Thanks, that was useful info.
 
-> IOW: Feel free to kill the NFS_PARANOIA crap. It looks like legacy code
-> from a debugging session about a decade or so ago.
->
-Sure thing, I'll cook up a patch to do that.
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+Chuck Lever wrote:
+> On 8/8/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+>>On Tue, 2006-08-08 at 15:20 -0400, Chuck Lever wrote:
+>>
+>>>Is the connectathon holey test failure going to be fixed before 2.6.18
+>>>is finalized?
+>>
+>>Depends. Have you traced it in order to figure out what is wrong?
+> 
+> 
+> Ah.  Bruce reported this problem a while back, and said that it goes
+> away if one of your recent patches to fs/nfs/read.c is reverted.
+> Bruce?
+Well the patch in question is:
+
+commit 1de3fc12ea085690547a54b6efa01c7348f1cebd
+tree ea865786120cfcefac563c54693fef8d3d718f10
+parent 128e6ced247cda88f96fa9f2e4ba8b2c4a681560
+author Trond Myklebust <Trond.Myklebust@netapp.com> Thu, 25 May 2006
+09:40:44 -0400
+committer Trond Myklebust <Trond.Myklebust@netapp.com> Fri, 09 Jun 2006
+17:34:03 -0400
+
+NFS: Clean up and fix page zeroing when we have short reads
+
+The code that is supposed to zero the uninitialised partial pages when
+the server returns a short read is currently broken: it looks at the
+nfs_page wb_pgbase and wb_bytes fields instead of the equivalent
+nfs_read_data values when deciding where to start truncating the page.
+
+Also ensure that we are more careful about setting PG_uptodate
+before retrying a short read: the retry will change the nfs_read_data
+args.pgbase and args.count.
+
+I'm looking into now... but this patch definitely breaks the holy
+test...
+
+steved.
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
