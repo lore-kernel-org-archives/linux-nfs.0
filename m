@@ -1,28 +1,29 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: connectathon special test failure in recent kernels
-Date: Thu, 17 Aug 2006 16:56:44 -0400
-Message-ID: <44E4D80C.7000101@RedHat.com>
-References: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>	
-	<1155079971.5731.22.camel@localhost>	
-	<76bd70e30608081959g6a76d7bcr1d78323630462f7c@mail.gmail.com>	
-	<44E486F3.2020600@RedHat.com>	
-	<76bd70e30608170938u4ddf999ah6d9fb718561e9982@mail.gmail.com>	
+Date: Thu, 17 Aug 2006 18:37:31 -0400
+Message-ID: <1155854251.5594.3.camel@localhost>
+References: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>
+	<1155079971.5731.22.camel@localhost>
+	<76bd70e30608081959g6a76d7bcr1d78323630462f7c@mail.gmail.com>
+	<44E486F3.2020600@RedHat.com>
+	<76bd70e30608170938u4ddf999ah6d9fb718561e9982@mail.gmail.com>
 	<44E4A24C.2080907@RedHat.com> <1155844468.5584.4.camel@localhost>
+	<44E4D80C.7000101@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Chuck Lever <chucklever@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GDosy-0002BL-RN
-	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 13:54:41 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDosx-0007Q7-W1
-	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 13:54:41 -0700
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-In-Reply-To: <1155844468.5584.4.camel@localhost>
+	id 1GDqUi-0003Ka-FI
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 15:37:44 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDqUh-00057O-RV
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 15:37:45 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <44E4D80C.7000101@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,15 +36,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond Myklebust wrote:
-> 
-> Could you send us an example of 'fsx' output that demonstrates the
-> problem?
-hmmm... fsx? What does the fsx have to do with the special tests of
-the connectathon failing... I guess I'm missing something...
-anyways... I'll try to run some fsx test runs asaic...
+On Thu, 2006-08-17 at 16:56 -0400, Steve Dickson wrote:
+> Trond Myklebust wrote:
+> > 
+> > Could you send us an example of 'fsx' output that demonstrates the
+> > problem?
+> hmmm... fsx? What does the fsx have to do with the special tests of
+> the connectathon failing... I guess I'm missing something...
+> anyways... I'll try to run some fsx test runs asaic...
 
-steved.
+fsx creates holes in files left, right and center, and then tests for
+correctness. If there is a problem with the read patch, and hole
+creation, then fsx should find it and provide you with a nice dump of
+what went wrong, where, and what sequence of events lead up to the
+problem.
+
+Cheers,
+  Trond
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
