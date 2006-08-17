@@ -1,25 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS: possible NULL pointer deref in
-	nfs_sillyrename()
-Date: Wed, 16 Aug 2006 20:16:41 -0400
-Message-ID: <1155773801.6739.5.camel@localhost>
-References: <200608170022.29168.jesper.juhl@gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
+	manager!
+Date: Thu, 17 Aug 2006 16:49:18 +1000
+Message-ID: <17636.4462.975774.528003@cse.unsw.edu.au>
+References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Rick Sladkey <jrs@world.std.com>, Neil Brown <neilb@cse.unsw.edu.au>
+Cc: nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GDVZH-0007Od-Pw
-	for nfs@lists.sourceforge.net; Wed, 16 Aug 2006 17:17:03 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	id 1GDbh5-0001JA-OB
+	for nfs@lists.sourceforge.net; Wed, 16 Aug 2006 23:49:33 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GDVZG-0000i8-Ua
-	for nfs@lists.sourceforge.net; Wed, 16 Aug 2006 17:17:04 -0700
-To: Jesper Juhl <jesper.juhl@gmail.com>
-In-Reply-To: <200608170022.29168.jesper.juhl@gmail.com>
+	(Exim 4.44) id 1GDbh4-0006t0-JH
+	for nfs@lists.sourceforge.net; Wed, 16 Aug 2006 23:49:31 -0700
+To: "Jesper Juhl" <jesper.juhl@gmail.com>
+In-Reply-To: message from Jesper Juhl on Tuesday August 8
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,28 +33,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2006-08-17 at 00:22 +0200, Jesper Juhl wrote:
-> The coverity checker spotted this as bug #1013.
+On Tuesday August 8, jesper.juhl@gmail.com wrote:
+> I have some webservers that have recently started reporting the
+> following message in their logs :
 > 
-> If we get a NULL dentry->d_inode, then regardless of 
-> NFS_PARANOIA or no NFS_PARANOIA, then if 
->    if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
-> turns out to be false we'll end up dereferencing 
-> that NULL d_inode in two places below.
-> 
-> And since the check for "(!dentry->d_inode)" even exists
-> (although inside #ifdef NFS_PARANOIA) I take that to mean
-> that this is a possibility. 
+>   do_vfs_lock: VFS is out of sync with lock manager!
 
-Sorry, but it isn't possible. See the checks in may_delete() (which is
-called before ->unlink()) and nfs_rename().
 
-IOW: Feel free to kill the NFS_PARANOIA crap. It looks like legacy code
-from a debugging session about a decade or so ago.
+I can imagine that happening if you mount with '-o nolocks'.
+Then a non-blocking lock could cause that message (I think).
+Can you conform that you aren't using 'nolocks'.
 
-Cheers,
-  Trond
-
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
