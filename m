@@ -1,27 +1,28 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: connectathon special test failure in recent kernels
-Date: Thu, 17 Aug 2006 13:07:24 -0400
-Message-ID: <44E4A24C.2080907@RedHat.com>
-References: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>	
-	<1155079971.5731.22.camel@localhost>	
-	<76bd70e30608081959g6a76d7bcr1d78323630462f7c@mail.gmail.com>	
+Date: Thu, 17 Aug 2006 15:54:27 -0400
+Message-ID: <1155844468.5584.4.camel@localhost>
+References: <76bd70e30608081220q75c6c0f2v18e5ebb309b1c201@mail.gmail.com>
+	<1155079971.5731.22.camel@localhost>
+	<76bd70e30608081959g6a76d7bcr1d78323630462f7c@mail.gmail.com>
 	<44E486F3.2020600@RedHat.com>
 	<76bd70e30608170938u4ddf999ah6d9fb718561e9982@mail.gmail.com>
+	<44E4A24C.2080907@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
+	Chuck Lever <chucklever@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GDlL8-0004ek-94
-	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 10:07:30 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDlL5-0003dc-Fh
-	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 10:07:30 -0700
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30608170938u4ddf999ah6d9fb718561e9982@mail.gmail.com>
+	id 1GDnx5-0004gV-O8
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 12:54:52 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDnx5-0006x7-5n
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 12:54:52 -0700
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <44E4A24C.2080907@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,16 +35,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-
-Chuck Lever wrote:
-> Steve-
+On Thu, 2006-08-17 at 13:07 -0400, Steve Dickson wrote:
 > 
-> For the record, you did mention to me at one point that you saw this
-> against Linux *and* Solaris NFS servers, right?
-This is true.... This failure happens against both flavors...
+> Chuck Lever wrote:
+> > Steve-
+> > 
+> > For the record, you did mention to me at one point that you saw this
+> > against Linux *and* Solaris NFS servers, right?
+> This is true.... This failure happens against both flavors...
 
-steved.
+Could you send us an example of 'fsx' output that demonstrates the
+problem?
+
+Cheers,
+  Trond
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
