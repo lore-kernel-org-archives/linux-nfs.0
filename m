@@ -1,25 +1,27 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: Re: [PATCH] Fix NFS mount options in mount.nfs
-Date: Fri, 7 Jul 2006 22:32:23 +0200
-Message-ID: <20060707203223.GA4193@uio.no>
-References: <44AE9DC7.4050606@redhat.com> <20060707184009.GA3338@uio.no>
-	<44AEBA34.9080804@redhat.com>
+From: "Jesper Juhl" <jesper.juhl@gmail.com>
+Subject: Re: [PATCH] NFS: possible NULL pointer deref in
+	nfs_sillyrename()
+Date: Thu, 17 Aug 2006 12:05:41 +0200
+Message-ID: <9a8748490608170305v53a2fd20q29d12e2a7b7229d4@mail.gmail.com>
+References: <200608170022.29168.jesper.juhl@gmail.com>
+	<1155773801.6739.5.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Steve Dickson <SteveD@redhat.com>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Rick Sladkey <jrs@world.std.com>, Neil Brown <neilb@cse.unsw.edu.au>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Fyx0x-0003oy-7H
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 13:33:27 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Fyx0w-0007HH-4m
-	for nfs@lists.sourceforge.net; Fri, 07 Jul 2006 13:33:27 -0700
-To: Amit Gud <agud@redhat.com>
-In-Reply-To: <44AEBA34.9080804@redhat.com>
+	id 1GDeky-0002z6-TQ
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 03:05:44 -0700
+Received: from nf-out-0910.google.com ([64.233.182.189])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GDekw-0003ul-Ip
+	for nfs@lists.sourceforge.net; Thu, 17 Aug 2006 03:05:45 -0700
+Received: by nf-out-0910.google.com with SMTP id m19so1025372nfc
+	for <nfs@lists.sourceforge.net>; Thu, 17 Aug 2006 03:05:42 -0700 (PDT)
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1155773801.6739.5.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,17 +34,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jul 07, 2006 at 03:47:00PM -0400, Amit Gud wrote:
-> Please use the attached patch for testing. It varies only in the above 
-> portion, but that should make a difference.
+On 17/08/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Thu, 2006-08-17 at 00:22 +0200, Jesper Juhl wrote:
+> > The coverity checker spotted this as bug #1013.
+> >
+> > If we get a NULL dentry->d_inode, then regardless of
+> > NFS_PARANOIA or no NFS_PARANOIA, then if
+> >    if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
+> > turns out to be false we'll end up dereferencing
+> > that NULL d_inode in two places below.
+> >
+> > And since the check for "(!dentry->d_inode)" even exists
+> > (although inside #ifdef NFS_PARANOIA) I take that to mean
+> > that this is a possibility.
+>
+> Sorry, but it isn't possible. See the checks in may_delete() (which is
+> called before ->unlink()) and nfs_rename().
+>
+Thanks, that was useful info.
 
-Say, why is mount.nfs suid root in the first place? I'd expect it only to be
-called by mount, which should be suid already...
+> IOW: Feel free to kill the NFS_PARANOIA crap. It looks like legacy code
+> from a debugging session about a decade or so ago.
+>
+Sure thing, I'll cook up a patch to do that.
 
-/* Steinar */
 -- 
-Homepage: http://www.sesse.net/
+Jesper Juhl <jesper.juhl@gmail.com>
+Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please      http://www.expita.com/nomime.html
 
+-------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
