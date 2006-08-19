@@ -1,24 +1,38 @@
-From: James Yarbrough <jmy@sgi.com>
-Subject: Re: [PATCH 2/5] NLM failover - per fs grace period
-Date: Fri, 18 Aug 2006 13:11:42 -0700
-Message-ID: <44E61EFE.F41140AD@sgi.com>
-References: <1155535221.3416.26.camel@localhost.localdomain>
-	<1155894561.17651.442.camel@hole.melbourne.sgi.com>
+From: Holger Smolinski <smolinski@de.ibm.com>
+Subject: Holger Smolinski/Germany/IBM is on vacation until 08/18
+Date: Sat, 19 Aug 2006 04:03:05 +0200
+Message-ID: <OF976C466B.DB151E10-ONC12571CF.000B44FB-C12571CF.000B44FB@de.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, lhh@redhat.com,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GEAh1-0003qN-FI
-	for nfs@lists.sourceforge.net; Fri, 18 Aug 2006 13:11:47 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GEAh0-0000Ex-Mj
-	for nfs@lists.sourceforge.net; Fri, 18 Aug 2006 13:11:48 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
+	id 1GEG89-0001Td-UI
+	for nfs@lists.sourceforge.net; Fri, 18 Aug 2006 19:00:09 -0700
+Received: from mtagate2.de.ibm.com ([195.212.29.151])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GEG88-0004hP-0g
+	for nfs@lists.sourceforge.net; Fri, 18 Aug 2006 19:00:10 -0700
+Received: from d12nrmr1607.megacenter.de.ibm.com
+	(d12nrmr1607.megacenter.de.ibm.com [9.149.167.49])
+	by mtagate2.de.ibm.com (8.13.7/8.13.7) with ESMTP id k7J1xxa9127024
+	for <nfs@lists.sourceforge.net>; Sat, 19 Aug 2006 01:59:59 GMT
+Received: from d12av02.megacenter.de.ibm.com (d12av02.megacenter.de.ibm.com
+	[9.149.165.228])
+	by d12nrmr1607.megacenter.de.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with
+	ESMTP id k7J23sPK142734
+	for <nfs@lists.sourceforge.net>; Sat, 19 Aug 2006 04:03:54 +0200
+Received: from d12av02.megacenter.de.ibm.com (loopback [127.0.0.1])
+	by d12av02.megacenter.de.ibm.com (8.12.11.20060308/8.13.3) with ESMTP
+	id k7J1xwuM017692
+	for <nfs@lists.sourceforge.net>; Sat, 19 Aug 2006 03:59:58 +0200
+Received: from d12ml064.megacenter.de.ibm.com (d12ml064.megacenter.de.ibm.com
+	[9.149.167.10])
+	by d12av02.megacenter.de.ibm.com (8.12.11.20060308/8.12.11) with ESMTP
+	id k7J1xwuf017689
+	for <nfs@lists.sourceforge.net>; Sat, 19 Aug 2006 03:59:58 +0200
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,41 +45,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Greg Banks wrote:
-> 
-> On Mon, 2006-08-14 at 16:00, Wendy Cheng wrote:
-> > This change enables per NFS-export entry lockd grace period.[...]
-> 
-> >
-> > +/* Server fsid linked list for NLM lock failover */
-> > +struct nlm_serv {
-> > +     struct nlm_serv*        s_next;         /* linked list */
-> > +     unsigned long           s_grace_period; /* per fsid grace period */
-> > +     int                     s_fsid;         /* export fsid */
-> > +};
-> > +
-> 
-> The name of this structure appears to be left over from your
-> previous approach; it doesn't really represent a server anymore.
-> Giving the structure, and list, and the lock that protects it
-> similar and appropriate names might be nice.
-> 
-> Also, the s_grace_period field isn't actually a period, it's
-> the future expiry time expressed in jiffies.  The field name
-> and comment are both confusing.
 
-It might be a good idea to change s_grace_period to something like
-s_grace_end since it actually marks the ending time of the grace period.
-If you do change the name, it would be a good idea to enhance the
-commentary to indicate the relationship of the field to the grace period.
-That should leave enough breadcrumbs for anyone familiar with the NLM
-terminology to follow.
+I will be out of the office starting  19.08.2006 and will not return until
+17.09.2006.
 
--- 
-jmy@sgi.com
-650 933 3124
+I will respond when I have returned.
+In regard of disk mirroring my backup is Stefan Weinhuber
+(wein@de.ibm.com).
+In any other matter pls contact Steffen Thoss (thoss@de.ibm.com)
 
-I need more snakes.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
