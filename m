@@ -1,32 +1,31 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: NFS and partitioned md
-Date: Mon, 21 Aug 2006 12:29:46 +1000
-Message-ID: <17641.6810.964679.839075@cse.unsw.edu.au>
-References: <1151355145.4460.16.camel@archon.smoula-in.net>
-	<17568.31894.207153.563590@cse.unsw.edu.au>
-	<1151432312.11996.32.camel@reaver.netbox-in.cz>
-	<17571.19699.980491.970386@cse.unsw.edu.au>
-	<44BD2A29.8060405@dgreaves.com>
-	<1153253099.26360.3.camel@archon.smoula-in.net>
-	<17598.52873.335796.13969@cse.unsw.edu.au>
-	<20060720090736.GB1408@janus>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: Re: [patch] see also exports(5) in nfsd(8)
+Date: Sun, 20 Aug 2006 22:46:48 -0400
+Message-ID: <200608202246.49410.vapier@gentoo.org>
+References: <200606101130.06312.vapier@gentoo.org>
+	<200608051441.48286.vapier@gentoo.org>
+	<17641.7237.545442.579048@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: David Greaves <david@dgreaves.com>,
-	Linux NFS mailing list <nfs@lists.sourceforge.net>,
-	linux-kernel@vger.kernel.org, Martin Filip <bugtraq@smoula.net>
+Content-Type: Multipart/Mixed;
+  boundary="Boundary-00=_Z6R6EFbEukfqSr4"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GEzYV-0000pn-Nn
-	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:30:23 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1GEznN-00025G-MG
+	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:45:45 -0700
+Received: from smtp.gentoo.org ([140.211.166.183])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GEzYU-0003Ki-JU
-	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:30:24 -0700
-To: Frank van Maarseveen <frankvm@frankvm.com>
-In-Reply-To: message from Frank van Maarseveen on Thursday July 20
+	(Exim 4.44) id 1GEznN-00061W-00
+	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:45:46 -0700
+Received: from home.wh0rd.org (localhost [127.0.0.1])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp.gentoo.org (Postfix) with ESMTP id 8D6A064606
+	for <nfs@lists.sourceforge.net>; Mon, 21 Aug 2006 02:45:42 +0000 (UTC)
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17641.7237.545442.579048@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,66 +38,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday July 20, frankvm@frankvm.com wrote:
-> On Thu, Jul 20, 2006 at 10:30:01AM +1000, Neil Brown wrote:
-> > On Tuesday July 18, bugtraq@smoula.net wrote:
-> > > Hi,
-> > > 
-> > > my solution was to use fsid parameter for exports... maybe some other
-> > > mechanism for selecting fsids could be created instead of fsid = device
-> > > minor
-> > 
-> > Yes.  Better management of fsid is on my wishlist for nfs-utils.
-> > Unfortunately I haven't had any really clever ideas yet.
-> 
-> I'd like to "virtualize" exports such that it is possible to transplant
-> disks/partitions from one machine into another without having to bother
-> with device numbering. One step in that direction is to derive the fsid
-> from an IP address. The server machine needs an additional IP address
-> for every export entry. This IP address is determined by deriving
-> a hostname from the last pathname component of the export entry and
-> resolving it. E.g. something like:
-> 
-> /etc/exports:
-> 	/exported/path/name	*(rw,sync,no_root_squash,no_subtree_check,fsid="nfs-%s")
-> 
-> This would set the fsid to the IP address of host "nfs-name".
+--Boundary-00=_Z6R6EFbEukfqSr4
+Content-Type: multipart/signed; boundary="nextPart1270945.BjHDbZhAuN";
+	protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
 
-(I'm catching up on only mail - seems I missed this...)
+--nextPart1270945.BjHDbZhAuN
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-I think that is very specific to your particular setup, but there
-certainly is bits of a possibly usable idea in there.
+On Sunday 20 August 2006 22:36, Neil Brown wrote:
+> On Saturday August 5, vapier@gentoo.org wrote:
+> > On Saturday 10 June 2006 11:30, Mike Frysinger wrote:
+> > > simple patch to add exports(5) to the SEE ALSO list in the nfsd(8) man
+> > > page
+> >
+> > ping ?
+>
+> Yes, email is a bit of a lossy transport...
+>
+> Send the patch again.  It might get through this  time:-)
 
-As the fsid is limited in size, we really need some sort of lookup
-table somewhere to make between fsid and some arbitrary name for the
-filesystem.
-You are suggesting using the DNS for this lookup.  
-Maybe that make sense..... maybe.
+attached, cheers
+-mike
 
-My leaning is to make it somebody-elses-problem by enabling a
-call-out.
+--nextPart1270945.BjHDbZhAuN
+Content-Type: application/pgp-signature
 
-i.e. we declare a program that will be used for mapping between fsid
-and mount point.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.5 (GNU/Linux)
 
-So: when parsing /etc/exports, if we find "fsid=??", we run the
-program passing the path get an fsid.
-When we get a filehandle with an unknown fsid, we pass it to the
-program which will return a pathname (possible auto-mounting something
-or whatever).
+iQIVAwUAROkemUFjO5/oN/WBAQJ5dBAAnbwcaMGn1LfnMGfKV+obEpYf6BZLbd5/
+4sQmwkrtFJF2Ua57uMGJ3Eh+MuNaS2Hz4YcwbRaZjiWgeqE6iptRzBFqn0FtUcy2
+abWsvi/XEyLilVfyARHVIlSjGTv83CJ+29w8fNZD9vG4hN35fMn3m7dmFj5/1JGO
+8Mgwz1JQjEQV5VMZ5OLxmJEPRjHfLKgCrOS9Mc4lMh7t/CieKTFCBF2SPF4ZN8p9
+laQLsYy3CbwMmGhWPHMEHG4EcM0ScLtCkkelgkCZfyPyLxMBKzxKeyNMnd7ZC+qF
+p5Ass1PfjtboXj1uzME6/pE91mha6NylRaVYdcdf+kUSkRjgWW3haaTuc9uMrwSV
+CqN4yfiE1gaFihAb8ztFnl2Sp7d1KnnYULLXMDJK9s04Y8JwdiAnYDLCFJ4hXprN
+fwLLAldlPFIa1R76IKSztyWoRJs6SH9RnIMA2zx8kYwllDomqjlWVCPW3ielaMhN
+tk/Tr8s18WQ+FJTFZ08VU8GniOms77Ce29uz/YcEKFx3xTC8bSULapp8fHr5YjBp
+ONI7bvtA3nSkZA/KrAqnzPN5Ae8KTHX+CeXleskDS6+dXhIrUXbokcEnHXEuHYYY
+VNdzJ6OjaQa5UCMWA8OwdVRmiJDdsFtwL7h3IYEsripqem0tgHB4h5/EW1Sug0lw
+Ahqs/SyUWr8=
+=7WAy
+-----END PGP SIGNATURE-----
 
-You could quite easily make a script that does the mapping you
-require.
+--nextPart1270945.BjHDbZhAuN--
 
-Maybe one day...
+--Boundary-00=_Z6R6EFbEukfqSr4
+Content-Type: text/x-diff; charset="iso-8859-1";
+	name="nfsd-man-see-also-exports.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+	filename="nfsd-man-see-also-exports.patch"
 
-NeilBrown
+--- utils/nfsd/nfsd.man
++++ utils/nfsd/nfsd.man
+@@ -38,6 +38,7 @@ the
+ program.
+ .SH SEE ALSO
+ .BR rpc.mountd (8),
++.BR exports (5),
+ .BR exportfs (8),
+ .BR rpc.rquotad (8),
+ .BR nfsstat (8).
+
+--Boundary-00=_Z6R6EFbEukfqSr4
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--Boundary-00=_Z6R6EFbEukfqSr4
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--Boundary-00=_Z6R6EFbEukfqSr4--
