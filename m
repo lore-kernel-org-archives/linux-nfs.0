@@ -1,23 +1,32 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: nfs-utils-1.0.9 released.
-Date: Mon, 21 Aug 2006 12:20:20 +1000
-Message-ID: <17641.6244.700464.550144@cse.unsw.edu.au>
-References: <7F0AA25C9B1706448E8B73DFDD109B31028E5B12@EXCHANGE.TIGR.ORG>
+Subject: Re: NFS and partitioned md
+Date: Mon, 21 Aug 2006 12:29:46 +1000
+Message-ID: <17641.6810.964679.839075@cse.unsw.edu.au>
+References: <1151355145.4460.16.camel@archon.smoula-in.net>
+	<17568.31894.207153.563590@cse.unsw.edu.au>
+	<1151432312.11996.32.camel@reaver.netbox-in.cz>
+	<17571.19699.980491.970386@cse.unsw.edu.au>
+	<44BD2A29.8060405@dgreaves.com>
+	<1153253099.26360.3.camel@archon.smoula-in.net>
+	<17598.52873.335796.13969@cse.unsw.edu.au>
+	<20060720090736.GB1408@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: David Greaves <david@dgreaves.com>,
+	Linux NFS mailing list <nfs@lists.sourceforge.net>,
+	linux-kernel@vger.kernel.org, Martin Filip <bugtraq@smoula.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GEzP4-0008UF-Bc
-	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:20:38 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GEzYV-0000pn-Nn
+	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:30:23 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GEzP2-0001l3-5M
-	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:20:38 -0700
-To: "Gomez, Daniel" <dgomez@tigr.ORG>
-In-Reply-To: message from Gomez, Daniel on Tuesday July 11
+	(Exim 4.44) id 1GEzYU-0003Ki-JU
+	for nfs@lists.sourceforge.net; Sun, 20 Aug 2006 19:30:24 -0700
+To: Frank van Maarseveen <frankvm@frankvm.com>
+In-Reply-To: message from Frank van Maarseveen on Thursday July 20
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,23 +39,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday July 11, dgomez@tigr.ORG wrote:
-> Thank you Neil.
+On Thursday July 20, frankvm@frankvm.com wrote:
+> On Thu, Jul 20, 2006 at 10:30:01AM +1000, Neil Brown wrote:
+> > On Tuesday July 18, bugtraq@smoula.net wrote:
+> > > Hi,
+> > > 
+> > > my solution was to use fsid parameter for exports... maybe some other
+> > > mechanism for selecting fsids could be created instead of fsid = device
+> > > minor
+> > 
+> > Yes.  Better management of fsid is on my wishlist for nfs-utils.
+> > Unfortunately I haven't had any really clever ideas yet.
 > 
-> I see on the manpages on both redhat and suse where you and what we
-> mostly run that "Olaf Kirch, <okir@monad.swb.de>" has a dead email
-> address. I noticed this outdated address, since I sent an email
-> wondering when the '-z' flag would be supported. Is there any chance you
-> implimented that in your most recent release?
-
-Yes, that's the trouble with email addresses....
-
-What '-z' flag are youj referring to?
-
-
+> I'd like to "virtualize" exports such that it is possible to transplant
+> disks/partitions from one machine into another without having to bother
+> with device numbering. One step in that direction is to derive the fsid
+> from an IP address. The server machine needs an additional IP address
+> for every export entry. This IP address is determined by deriving
+> a hostname from the last pathname component of the export entry and
+> resolving it. E.g. something like:
 > 
-> Thank you for contributions.
-:-)
+> /etc/exports:
+> 	/exported/path/name	*(rw,sync,no_root_squash,no_subtree_check,fsid="nfs-%s")
+> 
+> This would set the fsid to the IP address of host "nfs-name".
+
+(I'm catching up on only mail - seems I missed this...)
+
+I think that is very specific to your particular setup, but there
+certainly is bits of a possibly usable idea in there.
+
+As the fsid is limited in size, we really need some sort of lookup
+table somewhere to make between fsid and some arbitrary name for the
+filesystem.
+You are suggesting using the DNS for this lookup.  
+Maybe that make sense..... maybe.
+
+My leaning is to make it somebody-elses-problem by enabling a
+call-out.
+
+i.e. we declare a program that will be used for mapping between fsid
+and mount point.
+
+So: when parsing /etc/exports, if we find "fsid=??", we run the
+program passing the path get an fsid.
+When we get a filehandle with an unknown fsid, we pass it to the
+program which will return a pathname (possible auto-mounting something
+or whatever).
+
+You could quite easily make a script that does the mapping you
+require.
+
+Maybe one day...
 
 NeilBrown
 
