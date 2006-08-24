@@ -1,23 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Random ESTALE due to lookup "/" in mount point?
-Date: Wed, 23 Aug 2006 12:20:25 -0400
-Message-ID: <1156350025.5619.14.camel@localhost>
-References: <20060823150941.GA13000@janus>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 001 of 11] knfsd: nfsd: lockdep annotation fix
+Date: Thu, 24 Aug 2006 16:36:34 +1000
+Message-ID: <1060824063634.4913@suse.de>
+References: <20060824162917.3600.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GFvTA-0003WE-BU
-	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 09:20:44 -0700
-Received: from pat.uio.no ([129.240.10.4])
+	id 1GG8pP-0002yg-KB
+	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:35 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GFvT8-0007yu-Jo
-	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 09:20:45 -0700
-To: Frank van Maarseveen <frankvm@frankvm.com>
-In-Reply-To: <20060823150941.GA13000@janus>
+	(Exim 4.44) id 1GG8pO-0002h0-Uw
+	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:36 -0700
+To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,30 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-08-23 at 17:09 +0200, Frank van Maarseveen wrote:
-> NFSv3, udp, client=2.6.17.8, server=tru64
-> 
-> On the client I started to get some random ESTALE errors which disappeared
-> quickly afterwards without a remount. The errors only occurred when typing
-> 
-> 	stat ..
-> 
-> in a subdirectory of a mountpoint. Doing ls -al in that subdirectory
-> gave an ESTALE only on "..". I could even change directory to / and back
-> without an ESTALE but the "stat .." command still gave an ESTALE.
-> 
-> A "tcpdump -i eth0 udp port 2049 -n -s 1500" showed something which is
-> unusual to my knowledge. The kernel tried to lookup "/" in the mount
-> point as it seems:
 
-I've never seen that, and my own kernel certainly appears to do no such
-thing when I stat '..'.
+nfsv2 needs the I_MUTEX_PARENT on the directory when creating 
+a file too.
 
-Any chance of a 'strace' with that?
+Signed-off-by: Neil Brown <neilb@suse.de>
 
-Cheers,
-  Trond
+### Diffstat output
+ ./fs/nfsd/nfsproc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
+--- .prev/fs/nfsd/nfsproc.c	2006-08-24 16:21:23.000000000 +1000
++++ ./fs/nfsd/nfsproc.c	2006-08-24 16:21:35.000000000 +1000
+@@ -225,7 +225,7 @@ nfsd_proc_create(struct svc_rqst *rqstp,
+ 	nfserr = nfserr_exist;
+ 	if (isdotent(argp->name, argp->len))
+ 		goto done;
+-	fh_lock(dirfhp);
++	fh_lock_nested(dirfhp, I_MUTEX_PARENT);
+ 	dchild = lookup_one_len(argp->name, dirfhp->fh_dentry, argp->len);
+ 	if (IS_ERR(dchild)) {
+ 		nfserr = nfserrno(PTR_ERR(dchild));
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
