@@ -1,20 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 000 of 11] knfsd: Introduction
-Date: Thu, 24 Aug 2006 16:36:29 +1000
-Message-ID: <20060824162917.3600.patches@notabene>
+Subject: [PATCH 004 of 11] knfsd: Protect update to sn_nrthreads with
+	lock_kernel
+Date: Thu, 24 Aug 2006 16:36:50 +1000
+Message-ID: <1060824063650.4949@suse.de>
+References: <20060824162917.3600.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GG8pM-0002yV-CV
-	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:32 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1GG8pd-00030R-Um
+	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:49 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GG8pL-0007VW-Mb
-	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:33 -0700
+	(Exim 4.44) id 1GG8pd-0002kx-3i
+	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:50 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,35 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Following are 11 patch for knfsd against
- 2.6.18-rc4-mm2 plus  nfsd-lockdep-annotation.patch
- (the first patch being a fix for that patch).
-
-They are all appropriate for 2.6.19, not 2.6.18.
-
-The batch in the middle (6-9) allow nfsd to handle IO requests
-of up to 1Megabyte (rather than the current limit of 32K).
-This only applies on TCP connections.  This has not 
-been heavily tested...
-The max size to allow is configurable via the nfsd filesystem,
-and defaults to something that I hope is reasonable.
-
-This set also includes a few more scalability patches from Greg Banks.
-
-NeilBrown
 
 
- [PATCH 001 of 11] knfsd: nfsd: lockdep annotation fix
- [PATCH 002 of 11] knfsd: Fix a botched comment from the last patchset
- [PATCH 003 of 11] knfsd: call lockd_down when closing a socket via a write to nfsd/portlist
- [PATCH 004 of 11] knfsd: Protect update to sn_nrthreads with lock_kernel
- [PATCH 005 of 11] knfsd: Fixed handling of lockd fail when adding nfsd socket.
- [PATCH 006 of 11] knfsd: Replace two page lists in struct svc_rqst with one.
- [PATCH 007 of 11] knfsd: Avoid excess stack usage in svc_tcp_recvfrom
- [PATCH 008 of 11] knfsd: Prepare knfsd for support of rsize/wsize of up to 1MB, over TCP.
- [PATCH 009 of 11] knfsd: Allow max size of NFSd payload to be configured.
- [PATCH 010 of 11] knfsd: make nfsd readahead params cache SMP-friendly
- [PATCH 011 of 11] knfsd: knfsd: cache ipmap per TCP socket
+
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/nfsd/nfsctl.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff .prev/fs/nfsd/nfsctl.c ./fs/nfsd/nfsctl.c
+--- .prev/fs/nfsd/nfsctl.c	2006-08-24 16:24:21.000000000 +1000
++++ ./fs/nfsd/nfsctl.c	2006-08-24 16:24:47.000000000 +1000
+@@ -532,7 +532,9 @@ static ssize_t write_ports(struct file *
+ 			/* Decrease the count, but don't shutdown the
+ 			 * the service
+ 			 */
++			lock_kernel();
+ 			nfsd_serv->sv_nrthreads--;
++			unlock_kernel();
+ 		}
+ 		return err;
+ 	}
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
