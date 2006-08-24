@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 004 of 11] knfsd: Protect update to sn_nrthreads with
-	lock_kernel
-Date: Thu, 24 Aug 2006 16:36:50 +1000
-Message-ID: <1060824063650.4949@suse.de>
+Subject: [PATCH 002 of 11] knfsd: Fix a botched comment from the last
+	patchset
+Date: Thu, 24 Aug 2006 16:36:39 +1000
+Message-ID: <1060824063639.4925@suse.de>
 References: <20060824162917.3600.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GG8pd-00030R-Um
-	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:49 -0700
+	id 1GG8pV-0002z9-Ll
+	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:41 -0700
 Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GG8pd-0002kx-3i
-	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:50 -0700
+	(Exim 4.44) id 1GG8pU-0007YF-O8
+	for nfs@lists.sourceforge.net; Wed, 23 Aug 2006 23:36:42 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,27 +32,24 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 
-
-
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfsctl.c |    2 ++
- 1 file changed, 2 insertions(+)
+ ./net/sunrpc/svcsock.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff .prev/fs/nfsd/nfsctl.c ./fs/nfsd/nfsctl.c
---- .prev/fs/nfsd/nfsctl.c	2006-08-24 16:24:21.000000000 +1000
-+++ ./fs/nfsd/nfsctl.c	2006-08-24 16:24:47.000000000 +1000
-@@ -532,7 +532,9 @@ static ssize_t write_ports(struct file *
- 			/* Decrease the count, but don't shutdown the
- 			 * the service
- 			 */
-+			lock_kernel();
- 			nfsd_serv->sv_nrthreads--;
-+			unlock_kernel();
- 		}
- 		return err;
- 	}
+diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+--- .prev/net/sunrpc/svcsock.c	2006-08-24 16:23:37.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2006-08-24 16:23:37.000000000 +1000
+@@ -49,7 +49,7 @@
+  *	svc_pool->sp_lock protects most of the fields of that pool.
+  * 	svc_serv->sv_lock protects sv_tempsocks, sv_permsocks, sv_tmpcnt.
+  *	when both need to be taken (rare), svc_serv->sv_lock is first.
+- *	BKL protects svc_serv->sv_nrthread, svc_pool->sp_nrthread
++ *	BKL protects svc_serv->sv_nrthread.
+  *	svc_sock->sk_defer_lock protects the svc_sock->sk_deferred list
+  *	svc_sock->sk_flags.SK_BUSY prevents a svc_sock being enqueued multiply.
+  *
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
