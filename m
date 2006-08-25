@@ -1,22 +1,24 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: Random ESTALE due to lookup "/" in mount point?
-Date: Fri, 25 Aug 2006 01:19:54 +0200
-Message-ID: <20060824231954.GA27030@janus>
-References: <20060823150941.GA13000@janus> <1156350025.5619.14.camel@localhost>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [GIT] Fixes for the NFS client...
+Date: Thu, 24 Aug 2006 22:30:39 -0700
+Message-ID: <20060825053039.GB23444@kroah.com>
+References: <1156454232.5629.75.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Cc: Linus Torvalds <torvalds@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GGOUS-0002m1-2f
-	for nfs@lists.sourceforge.net; Thu, 24 Aug 2006 16:20:00 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GGOUQ-0004ll-91
-	for nfs@lists.sourceforge.net; Thu, 24 Aug 2006 16:20:00 -0700
+	id 1GGUHH-0008HH-U9
+	for nfs@lists.sourceforge.net; Thu, 24 Aug 2006 22:30:47 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GGUHH-0002q2-1Y
+	for nfs@lists.sourceforge.net; Thu, 24 Aug 2006 22:30:48 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1156350025.5619.14.camel@localhost>
+In-Reply-To: <1156454232.5629.75.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,39 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 23, 2006 at 12:20:25PM -0400, Trond Myklebust wrote:
-> On Wed, 2006-08-23 at 17:09 +0200, Frank van Maarseveen wrote:
-> > NFSv3, udp, client=2.6.17.8, server=tru64
-> > 
-> > On the client I started to get some random ESTALE errors which disappeared
-> > quickly afterwards without a remount. The errors only occurred when typing
-> > 
-> > 	stat ..
-> > 
-> > in a subdirectory of a mountpoint. Doing ls -al in that subdirectory
-> > gave an ESTALE only on "..". I could even change directory to / and back
-> > without an ESTALE but the "stat .." command still gave an ESTALE.
-> > 
-> > A "tcpdump -i eth0 udp port 2049 -n -s 1500" showed something which is
-> > unusual to my knowledge. The kernel tried to lookup "/" in the mount
-> > point as it seems:
+On Thu, Aug 24, 2006 at 05:17:11PM -0400, Trond Myklebust wrote:
+> Hi Linus,
 > 
-> I've never seen that, and my own kernel certainly appears to do no such
-> thing when I stat '..'.
+> Please pull from the repository at
 > 
-> Any chance of a 'strace' with that?
+>    git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git fixes
+> 
+> This will update the following files through the appended changesets.
 
-It's reproduceable now but it appears that there's a nonstandard kernel
-patch from me involved to do a selective "noac" (www.frankvm.com/nfs-noac,
-it's a bit hackish...).  I think this results in an incorrect revalidation
-of the mount point and I guess "/" is coming from the dcache: the fake
-name of any root inode IIRC.
+Thanks, I've pulled this into my staging tree for Linus to pull from
+when he gets back.
 
-In short, I have to sort it out but it's probably only my patch at
-fault. Sorry for the disturbance.
-
--- 
-Frank
+greg k-h
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
