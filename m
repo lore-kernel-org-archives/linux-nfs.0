@@ -1,38 +1,18 @@
-From: Cedric Le Goater <clg@fr.ibm.com>
-Subject: Re: kthread: update lockd to use kthread
-Date: Fri, 25 Aug 2006 19:07:59 +0200
-Message-ID: <44EF2E6F.1040905@fr.ibm.com>
-References: <44EEA5E5.6000509@fr.ibm.com>
-	<20060825135824.GA10659@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+From: "484>HR dept.Manager" <5fcb7f75@sina.com.cn>
+Subject: =?GB2312?B?vdyz9rDg1+mzpNG1wbejqDmhojItMyDJ7tvao6k1NDcxMjM=?=
+Date: Sun, 27 Aug 2006 22:17:48 +0800
+Message-ID: <E1GHLSS-0002v9-7K@mail.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1414966360=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GGfAF-0003bR-CA
-	for nfs@lists.sourceforge.net; Fri, 25 Aug 2006 10:08:15 -0700
-Received: from e33.co.us.ibm.com ([32.97.110.151])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GGfAE-0005jI-EY
-	for nfs@lists.sourceforge.net; Fri, 25 Aug 2006 10:08:16 -0700
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
-	[9.17.195.11])
-	by e33.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k7PH85wD029738
-	for <nfs@lists.sourceforge.net>; Fri, 25 Aug 2006 13:08:05 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
-	k7PH85Yu163982
-	for <nfs@lists.sourceforge.net>; Fri, 25 Aug 2006 11:08:05 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k7PH85r5030496
-	for <nfs@lists.sourceforge.net>; Fri, 25 Aug 2006 11:08:05 -0600
-To: Christoph Hellwig <hch@infradead.org>,
-	Cedric Le Goater <clg@fr.ibm.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-In-Reply-To: <20060825135824.GA10659@infradead.org>
+	id 1GHLSW-0000Ax-H6
+	for nfs@lists.sourceforge.net; Sun, 27 Aug 2006 07:17:56 -0700
+Received: from [59.42.73.137] (helo=sina.com.cn)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GHLSS-0002v9-7K
+	for nfs@lists.sourceforge.net; Sun, 27 Aug 2006 07:17:57 -0700
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -45,64 +25,316 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello !
+--===============1414966360==
+Content-Type: text/plain;charset="GB2312"
+Content-Transfer-Encoding: quoted-printable
 
-Christoph Hellwig wrote:
->>  	host->h_nsmstate = newstate;
->>  	if (!host->h_reclaiming++) {
->> +		struct task_struct* task;
->> +
->>  		nlm_get_host(host);
->>  		__module_get(THIS_MODULE);
->> -		if (kernel_thread(reclaimer, host, CLONE_KERNEL) < 0)
->> +		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
->> +		if (IS_ERR(task))
->>  			module_put(THIS_MODULE);
-> 
-> Folks, this kind of patches is really useless.  If I wanted to just replace
-> kernel_thread() with kthread_run() I could do it myself in a day or two.
+nfs
 
-ok ok. The real work that needs to be done is in sunrpc and I'm still
-*very* far from providing any patches.
+=BD=DC=B3=F6=B0=E0=D7=E9=B3=A4=D1=B5=C1=B7=A3=A89=A1=A22-3 =C9=EE=DB=DA=A3=
+=A9 =20
+------------------------------
 
-This kernel thread is a sub thread of the lockd thread. It's a bit more
-simple and does not require as much modification. It still depends on the
-way its parent is killed and it will require some more work when the sunrpc
-thread are fixed.
+=D6=F7 =B0=EC=A3=BA=B9=E3=D6=DD=E1=A1=EE=A3=C6=F3=D2=B5=B9=DC=C0=ED=D7=C9=
+=D1=AF=D3=D0=CF=DE=B9=AB=CB=BE
+=C8=D5 =C6=DA=A3=BA2006=C4=EA9=D4=C22-3=C8=D5
+=B5=D8 =B5=E3=A3=BA=B9=E3=B6=AB=C9=EE=DB=DA
+=B7=D1 =D3=C3=A3=BA1800=D4=AA/=C8=CB=A3=A8=BA=AC=D7=CA=C1=CF=B7=D1=A1=A2=D6=
+=A4=CA=E9=B7=D1=A1=A2=CC=FD=BF=CE=B7=D1=A1=A2=CB=B0=BD=F0=A1=A2=B2=E8=B5=E3=
+=A1=A2=CE=E7=B2=CD=B5=C8=A3=A9
+---------------------------------------------------------------------
+=A1=F1 =C9=EE=DB=DA=B1=A8=C3=FB=B5=E7=BB=B0=A3=BA0755-61 28 06 42 =C2=AC=CF=
+=C8=C9=FA  -=B1=A8=C3=FB=B4=AB=D5=E6=A3=BA0755-61 28 06 48=20
+---------------------------------------------------------------------
+=20
+=A1=B0=CE=D2=C3=C7=B5=C4=B0=E0=D7=E9=B3=A4=BB=F9=B1=BE=C9=CF=CA=C7=D7=F6=B3=
+=F6=C0=B4=B5=C4=A3=AC=BC=BC=C4=DC=E6=B5=CA=EC=A3=AC=B3=D4=BF=E0=C4=CD=C0=CD=
+=A3=AC=D2=BB=B8=F6=C8=CB=D7=F6=CA=C2=BE=F8=B6=D4=C3=BB=CE=CA=CC=E2=A3=AC=BF=
+=C9=CA=C7=D2=AA=CB=FB=B4=F8=C1=EC=D2=BB=C8=BA=C8=CB=D7=F6=CA=C2=BE=CD=D3=D0=
+=B5=E3=C1=A6=B2=BB=B4=D3=D0=C4=C1=CB=A1=AD=A1=AD=A1=B1
 
-> The whole point of the kthread API is that we now have a coherent set
-> of functions that deal with all aspects of kernel thread handling.  And
-> a conversion to that always involves rething the whole way a driver
-> uses kernel threads, and that's a good thing because most users were
-> buggy or at least rather odd.
->
-> sunrpc is not an exception to that, the thread handling is very interesting,
-> including things like using signals for various things possibly not waiting
-> for threads to exit.
+=BC=BC=CA=F5=D7=A8=B2=C5=D7=DF=C9=CF=B9=DC=C0=ED=B8=DA=CE=BB=B4=E6=D4=DA=D7=
+=AA=D0=CD=CE=CA=CC=E2=A3=AC=BC=BC=C4=DC=C4=DC=CA=D6=C9=CF=C8=CE=B0=E0=D7=E9=
+=B3=A4=D2=B2=CD=AC=D1=F9=D2=AA=BD=F8=D0=D0=BD=C7=C9=AB=D7=AA=BB=BB=A1=A3
 
-The SIGKILL used to terminate the threads is a challenge ... it propagates
-to sub threads. Some other stuff that bother me in using the kthread api in
-sunrpc : nfs_callback_down() uses a wait on a completion with a timeout.
-This is not possible with the kthread but might not be really useful. dunno.
+=B0=E0=D7=E9=CA=C7=C6=F3=D2=B5=B5=C4=CF=B8=B0=FB=A3=AC=CA=C7=C6=F3=D2=B5=D6=
+=B4=D0=D0=CF=B5=CD=B3=D6=D0=B5=C4=D7=EE=BB=F9=B2=E3=D7=E9=D6=AF=A1=A3=D3=CC=
+=C8=E7=B8=DF=C2=A5=B4=F3=CF=C3=B5=C4=B5=D8=BB=F9=D2=BB=D1=F9=A3=AC=B0=E0=D7=
+=E9=B3=A4=BE=CD=CA=C7=BB=EC=C4=FD=CD=C1=B5=B1=D6=D0=B5=C4=B8=D6=BD=EE=A3=AC=
+=B0=E0=D7=E9=B3=A4=C8=BA=CC=E5=C5=E0=D1=F8=B5=C4=D6=D8=D2=AA=D0=D4=B2=BB=D1=
+=D4=D7=D4=C3=F7=A1=A3
+=20
+547123
+=A1=BE=C5=E0=D1=B5=C4=BF=B5=C4=A1=BF
+=A1=EE =D5=FD=C8=B7=C8=CF=CA=B6=D7=D4=C9=ED=BD=C7=C9=AB=A3=AC=C8=AB=C3=E6=
+=C2=C4=D0=D0=B0=E0=D7=E9=B3=A4=B9=DC=C0=ED=D6=B0=D4=F0
+=A1=EE =C8=AB=C3=E6=D5=C6=CE=D5=B0=E0=D7=E9=C8=D5=B3=A3=B9=DC=C0=ED=B5=C4=
+=C4=DA=C8=DD=BA=CD=D2=AA=B5=E3
+=A1=EE =D1=A7=CF=B0=BB=F9=B4=A1=B9=A4=D7=F7=B7=BD=B7=A8=A3=AC=BC=D3=C7=BF=
+=D7=D4=CE=D2=C5=E0=D1=F8
+=A1=EE =D5=C6=CE=D5=D3=D0=D0=A7=B9=B5=CD=A8=B5=C4=D2=AA=B5=E3=A3=AC=B8=DF=
+=D0=A7=C2=CA=B5=D8=D5=D9=BF=AA=D4=E7=BB=E1
+=A1=EE =D1=A7=BB=E1=BB=BB=CE=BB=CB=BC=BF=BC=A1=A2=C9=C6=BD=E2=C8=CB=D2=E2=
+=A3=AC=CC=E1=B8=DF=B4=A6=C0=ED=B0=E0=D7=E9=C8=CB=BC=CA=B9=D8=CF=B5=B5=C4=C4=
+=DC=C1=A6
+=A1=EE =BC=D3=C7=BF=B2=BF=CF=C2=C5=E0=D1=F8=A3=AC=B9=AE=B9=CC=B0=E0=D7=E9=
+=BD=A8=C9=E8
+=A1=EE =BD=A8=C1=A2=C4=BF=B1=EA=B9=DC=C0=ED=D2=E2=CA=B6=A3=AC=D4=DA=C8=D5=
+=B3=A3=B8=C4=C9=C6=D6=D0=CC=E1=C9=FD=B0=E0=D7=E9=D2=B5=BC=A8
+=A1=EE =C7=BF=BB=AF=D7=D4=CE=D2=C5=E0=D1=F8=D2=E2=CA=B6=A3=AC=D6=F0=B2=BD=
+=CA=B5=CF=D6=D3=C9=BE=AD=D1=E9=BC=BC=C4=DC=D0=CD=CF=F2=B9=DC=C0=ED=D0=CD=D7=
+=AA=B1=E4=20
 
-We might need some enhancements to kthread to make everyone happy or some
-work around in the model.
+=A1=BE=C5=E0=D1=B5=B6=D4=CF=F3=A1=BF=B0=E0=D7=E9=B3=A4=A1=A2=D6=F7=B9=DC=A1=
+=A2=D6=F7=C8=CE=B5=C8=D6=D0=BB=F9=B2=E3=B8=C9=B2=BF
 
-> If you don't feel like poking into all these nasty internal leave the
-> conversation to someone else, preferably a nfs developer.
+=A1=BE=BB=A5=B6=AF=D0=CE=CA=BD=A1=BF=B0=B8=C0=FD=D1=D0=CC=D6=A1=A2=BD=C7=C9=
+=AB=B0=E7=D1=DD=A1=A2=D7=A8=CC=E2=CC=D6=C2=DB=A1=A2=D5=EB=B6=D4=D0=D4=BF=CE=
+=CC=C3=D7=C9=D1=AF
+547123
+=A1=BE=BF=CE=B3=CC=CC=E1=B8=D9=A1=BF
+=D2=BB=A1=A2=D5=D2=D7=BC=B0=E0=D7=E9=B3=A4=B5=C4=D6=B0=D4=F0=B6=A8=CE=BB=20
+1=A1=A2=CA=B2=C3=B4=CA=C7=B9=DC=C0=ED=BA=CD=B9=DC=C0=ED=D5=DF
+2=A1=A2=B0=E0=D7=E9=B9=DC=C0=ED=B5=C4=D6=B0=D4=F0
+3=A1=A2=B0=E0=D7=E9=B3=A4=B5=C4=B6=E0=BD=C7=C9=AB=D7=AA=BB=BB
+4=A1=A2=CB=C4=D6=D6=D0=C2=D0=CD=B5=C4=B9=A4=D7=F7=B9=D8=CF=B5
+5=A1=A2=C6=F3=D2=B5=B6=D4=B8=C9=B2=BF=B5=C4=C1=BD=B4=F3=C0=E0=BB=D8=B1=A8
+6=A1=A2=B7=C7=BE=AD=BC=C3=BB=D8=B1=A8=B6=D4=CE=B4=C0=B4=B5=C4=B0=EF=D6=FA
+7=A1=A2=B9=DC=C0=ED=D5=DF=B5=C4=B1=D8=B1=B8=C4=DC=C1=A6=C4=A3=D0=CD
+8=A1=A2=CF=D6=B3=A1=B9=DC=C0=ED=B5=C4=CC=D8=B5=E3
+9=A1=A2QCDSF=B9=CB=BF=CD=C2=FA=D2=E2=CE=E5=D2=AA=CB=D8
+10=A1=A24M1E=CF=D6=B3=A1=B9=DC=C0=ED=CE=E5=D2=AA=CB=D8
+11=A1=A2=B0=E0=D7=E9=B9=DC=C0=ED=D6=D0=B5=C4PDCA/DMAIC=D1=AD=BB=B7
+12=A1=A2=B0=E0=D7=E9=B3=A4=B1=D8=B1=B8=B5=C4=B9=DC=C0=ED=C4=DC=C1=A6
 
-They would certainly do a better job than me. I'm discovering the code.
+=B6=FE=A1=A2=B0=E0=D7=E9=B3=A4=D2=BB=C8=D5=B9=DC=C0=ED=20
+1=A1=A2=B0=E0=D7=E9=B3=A4=D2=BB=C8=D5=B9=A4=D7=F7=C8=AB=C3=B2
+2=A1=A2=B9=A4=D7=F7=BD=BB=BD=D3
+3=A1=A2=D4=E7=BB=E1=A3=BA=C9=FA=B2=FA=A1=A2=C8=CB=D4=B1=A1=A2=BB=EE=B6=AF=
+=B0=B2=C5=C5=BC=B0=C1=AA=C2=E7
+4=A1=A2=C9=FA=B2=FA=C8=B7=C8=CF=A3=A8=D0=CD=BA=C5=A1=A2=CA=FD=C1=BF=A1=A2=
+=B2=C4=C1=CF=A1=A2=CC=F5=BC=FE=A1=A2=C6=B7=D6=CA=CA=D7=BC=EC=B5=C8=A3=A9
+5=A1=A2=C6=B7=D6=CA=D1=B2=BC=EC=BC=B0=BC=C7=C2=BC=C8=B7=C8=CF
+6=A1=A24M1E=B1=E4=BB=AF=B5=E3=B0=D1=CE=D5=BC=B0=B6=D4=D3=A6
+7=A1=A2=D0=C5=CF=A2=BD=BB=C1=F7=A1=A2=B9=A4=D7=F7=C1=AA=C2=E7=D3=EB=B9=A4=
+=D7=F7=D0=AD=B5=F7
+8=A1=A2=B5=B1=C8=D5=B9=A4=D7=F7=D7=DC=BD=E1
+9=A1=A2=B1=A8=B1=ED=CC=EE=D0=B4=20
 
-Thanks,
+=C8=FD=A1=A2=B8=DF=D0=A7=C2=CA=D4=E7=BB=E1=20
+1=A1=A2=D4=E7=BB=E1=B5=C4=C4=BF=B5=C4=BA=CD=D2=E2=D2=E5
+2=A1=A2=D4=E7=BB=E1=B5=C4=C8=FD=D6=D6=B6=D3=C1=D0=D0=CE=CA=BD
+3=A1=A2=D4=E7=BB=E1=B5=C4=C4=DA=C8=DD
+4=A1=A2=D4=E7=BB=E1=B5=C4=CA=B1=BC=E4=D3=EB=B5=D8=B5=E3=D1=A1=D4=F1
+5=A1=A2=C2=D6=C1=F7=D6=F7=B3=D6=D3=EB=C8=D5=B3=A3=B9=A4=D7=F7=B0=B2=C5=C5
+6=A1=A2=B2=BF=C3=C5=D7=DB=BA=CF=D4=E7=BB=E1
+7=A1=A2=D4=E7=BB=E1=B5=C4=C0=F1=D2=C7=BD=CC=D3=FD
+8=A1=A2=D4=E7=BB=E1=B5=C4=B9=A4=D7=F7=C6=F8=B7=D5=D3=AA=D4=EC
+9=A1=A2=D4=E7=BB=E1=BD=CC=D3=FD=D3=EB=B0=E0=D7=E9=B7=E7=C6=F8=C5=E0=D1=F8
 
-C.
+=CB=C4=A1=A2=D3=D0=D0=A7=B5=C4=B0=E0=D7=E9=B9=B5=CD=A8
+1=A1=A2=B0=E0=D7=E9=D2=B5=BC=A8=C8=FD=BD=C7=D0=CD
+2=A1=A2=D3=D0=D0=A7=B9=B5=CD=A8=B6=D4=B0=E0=D7=E9=B9=DC=C0=ED=B5=C4=D6=D8=
+=D2=AA=D0=D4
+3=A1=A2=B9=B5=CD=A8=B5=C4=C4=BF=B5=C4=D3=EB=C7=C7=B9=FE=C0=EF=CA=D3=B4=B0
+4=A1=A2=B9=B5=CD=A8=B5=C4=C8=FD=B4=F3=BB=B7=BD=DA=BA=CD=C1=F9=B4=F3=D2=AA=
+=CB=D8
+5=A1=A2=B9=B5=CD=A8=B5=C4=BB=F9=B1=BE=CA=D6=B6=CE
+6=A1=A2=D3=D0=D0=A7=B9=B5=CD=A8=B5=C4=CB=C4=B4=F3=D2=AA=B5=E3
+7=A1=A2=B0=E0=D7=E9=B9=DC=C0=ED=D6=D0=B5=C4=C8=FD=D6=D6=BB=F9=B1=BE=B9=B5=
+=CD=A8=C4=A3=D0=CD
+8=A1=A2=BB=FD=BC=AB=B5=C4=B9=B5=CD=A8=D0=C4=CC=AC=BA=CD=D0=C5=C8=CE=B9=D8=
+=CF=B5=BD=A8=C1=A2
+9=A1=A2=BB=FD=BC=AB=F1=F6=CC=FD=BB=FD=BC=AB=B7=B4=C0=A1
+10=A1=A2=C9=C6=D3=C3=C9=ED=CC=E5=D3=EF=D1=D4
+11=A1=A2=C7=F3=CD=AC=B4=E6=D2=EC=A3=AC=C9=C6=D3=DA=C8=A1=C9=E1=A1=AA=A1=AA=
+=B9=B5=CD=A8=D2=EC=D2=E9=B4=A6=C0=ED
+12=A1=A2=B7=D6=BD=D7=B6=CE=B9=B5=CD=A8=D2=AA=B5=E3
+13=A1=A2=B9=B5=CD=A8=B5=C4=BB=C6=BD=F0=B6=A8=C2=C9=D3=EB=B0=D7=BD=F0=B6=A8=
+=C2=C9
+14=A1=A2=D3=D0=D0=A7=B9=B5=CD=A8=B5=C4=C1=F9=B4=F3=B2=DF=C2=D4
+=A1=EE =B0=E0=D7=E9=B9=DC=C0=ED=B5=C4=C8=FD=BC=B6=C1=AA=C2=E7=CC=E5=CF=B5=
+=BC=B0=BF=E7=BC=B6=C1=AA=C2=E7=BB=EE=D3=C3
+=20
+=CE=E5=A1=A2=BB=F9=B4=A1=B9=A4=D7=F7=B7=BD=B7=A8=20
+1=A1=A2=C1=E3=C5=C6=BD=D7=CC=DD=A1=AA=A1=AA=CA=D7=CF=C8=BD=E2=BE=F6=B9=DB=
+=C4=EE=CE=CA=CC=E2
+2=A1=A2=D1=CF=B8=F1=BA=CD=B9=D8=D7=A2=CF=B8=BD=DA
+3=A1=A25W3H=A1=AA=A1=AA=BE=DF=CC=E5=BB=AF
+4=A1=A2=CA=E9=C3=E6=BB=AF
+5=A1=A2=CA=FD=D7=D6=BB=AF
+6=A1=A2=CE=E5=CF=EE=D6=F7=D2=E5=A3=A8=CF=D6=B3=A1=CF=D6=CE=EF=CF=D6=CA=B5=
+=D4=AD=C0=ED=D4=AD=D4=F2=A3=A9
+7=A1=A2=B1=A8=B8=E6=A1=A4=C1=AA=C2=E7=A1=A4=C9=CC=C1=BF
+8=A1=A2=CB=D9=B6=C8=A1=A4=B8=FA=D7=D9=A1=A4=D7=D4=C1=A2
+9=A1=A2=B8=C4=C9=C6=CE=DE=D6=B9=BE=B3
+10=A1=A2=D0=D0=B6=AF=A1=A2=CB=D9=B6=C8=D3=EB=C4=CD=C1=A6
 
+=C1=F9=A1=A2=B2=BF=CF=C2=BD=CC=B5=BC=D3=EB=D3=D0=D0=A7=BC=A4=C0=F8
+1=A1=A2=B9=DC=C0=ED=D5=DF=B5=C4=B2=FA=C6=B7=CA=C7=D4=B1=B9=A4=B5=C4=D0=D0=
+=CE=AA
+2=A1=A2=CB=C4=D6=D6=D0=C2=D0=CD=B5=C4=C9=CF=CF=C2=BC=B6=B9=D8=CF=B5
+3=A1=A2=D3=FD=C8=CB=D6=AE=D0=C4
+4=A1=A2=B2=BF=CF=C2=C5=E0=D1=F8=B5=C44=D6=D6=CD=BE=BE=B6
+5=A1=A2=D2=B5=BC=A8=B8=A8=B5=BC=B5=C44=B8=F6=B2=BD=D6=E8
+6=A1=A2=BE=C0=D5=FD=B2=BB=C1=BC=D0=D0=CE=AA=B5=C44=B8=F6=B2=BD=D6=E8
+7=A1=A2=B9=AE=B9=CC=D2=B5=BC=A8=B5=C44=B8=F6=B2=BD=D6=E8
+8=A1=A2=D2=B5=BC=A8=C3=E6=CC=B8=B5=C4=BB=F9=B1=BE=D2=AA=B5=E3
+9=A1=A2=B9=DC=C0=ED=B5=C4=CD=AC=B2=BD=B9=A4=B3=CC
+10=A1=A2=C7=F3=B1=E4=C8=FD=B2=BD=C7=FA=D3=EB=BC=A4=C0=F8=B5=C4=D6=D8=D2=AA=
+=D0=D4
+11=A1=A2=BC=A4=C0=F8=B5=C4=CB=C4=B8=F6=BB=F9=B1=BE=D4=AD=D4=F2
+12=A1=A2=D5=FD=BC=A4=C0=F8=D3=EB=B8=BA=BC=A4=C0=F8
+13=A1=A2=D7=A5=D7=A1=BC=A4=C0=F8=B5=C4=C7=A1=B5=B1=CA=B1=BB=FA
+14=A1=A210=D6=D6=D3=D0=D0=A7=B5=C4=BC=A4=C0=F8=B7=BD=CA=BD=D3=EB=BC=A4=C0=
+=F8=C5=E4=B7=BD
+=20
+=C6=DF=A1=A2=B0=E0=D7=E9=C8=CB=BC=CA=B9=D8=CF=B5=B4=A6=C0=ED=20
+1=A1=A2=D5=FD=C8=B7=BF=B4=B4=FD=B0=E0=D7=E9=C8=CB=BC=CA=B9=D8=CF=B5
+2=A1=A2=D0=C2=CA=B1=C6=DA=C8=CB=BC=CA=BB=B7=BE=B3=B5=C4=CB=C4=B4=F3=CC=D8=
+=B5=E3
+3=A1=A2=B4=A6=C0=ED=B0=E0=D7=E9=C8=CB=BC=CA=B9=D8=CF=B5=B5=C4=CB=C4=B4=F3=
+=B7=A8=D4=F2
+4=A1=A2=B3=CF=D2=E2+=CA=CA=B5=B1=B5=C4=B6=B7=D5=F9
+5=A1=A2=B4=A6=C0=ED=C8=CB=BC=CA=B9=D8=CF=B5=B5=C4=CB=C4=B8=F6=BB=F9=B1=BE=
+=D7=BC=D4=F2
+6=A1=A2=A1=BE=C9=C6=BD=E2=A1=A2=C7=FA=BD=E2=A1=A2=B6=F1=BD=E2=A1=BF=B5=C4=
+=D3=C5=C1=D3=B9=DB
+7=A1=A2=D7=DF=B3=F6=B6=F1=D0=D4=BE=BA=D5=F9=B5=C4=CE=F3=C7=F8
+8=A1=A2=C1=BC=D0=D4=BE=BA=D5=F9=B5=C4=BB=FD=BC=AB=D2=E2=D2=E5
+9=A1=A2=C8=CB=BC=CA=B3=E5=CD=BB=D6=D0=B5=C4=C8=AB=BE=D6=B9=DB=BA=CD=C7=B0=
+=D5=B0=D0=D4=CB=BC=CE=AC
+10=A1=A2=CB=C4=D6=D6=D6=F7=B9=DC=B7=E7=B8=F1=BC=B0=C6=E4=D0=D4=B8=F1=BB=EE=
+=D3=C3
+11=A1=A2=C8=CB=BC=CA=B3=E5=CD=BB=B5=C4=CE=E5=D6=D6=B4=A6=C0=ED=B7=BD=B7=A8
+11=A1=A2=CA=A8=D7=D3=B2=BB=B1=D8=C5=D8=CF=F8=D3=EB=C6=C6=BC=EB=BB=AF=B5=FB
+12=A1=A2=D3=B5=B1=A7=B5=D0=C8=CB=B5=C4=B3=C9=B3=A4=B2=DF=C2=D4
+13=A1=A2=D3=EB=BE=DE=C8=CB=CE=D5=CA=D6=BC=B0=BB=D8=B9=E935=CB=EA=CB=BC=BF=
+=BC
+=A1=EE =B4=A6=C0=ED=B0=E0=D7=E9=C8=CB=BC=CA=C4=D1=CC=E2=B5=C4=C8=FD=D6=D6=
+=B2=DF=C2=D4
+
+=B0=CB=A1=A2=B0=E0=D7=E9=D2=B5=BC=A8=B9=DC=C0=ED
+1=A1=A2=B0=E0=D7=E9=C4=BF=B1=EA=B9=DC=C0=ED
+2=A1=A2=B0=E0=D7=E9=B9=A4=D7=F7=C8=D5=B1=A8
+3=A1=A2=B2=FA=C1=BF=D3=EB=C9=FA=B2=FA=D0=A7=C2=CA=B9=DC=C0=ED
+4=A1=A2=C6=B7=D6=CA=D2=B5=BC=A8=B9=DC=C0=ED
+5=A1=A2=B8=F6=C8=CB=D2=B5=BC=A8=B9=DC=C0=ED
+6=A1=A2=B0=E0=D7=E9=B9=A4=D7=F7=D6=DC=B1=A8
+7=A1=A2=B0=E0=D7=E9=BF=B4=B0=E5=B9=DC=C0=ED
+8=A1=A2=D2=B5=BC=A8=C6=C0=B1=C8=D3=EB=D7=D4=D6=F7=D1=D0=BE=BF=BB=EE=B6=AF
+547123=20
+=A1=BE=BD=B2=CA=A6=BC=F2=BD=E9=A1=BF=D7=E6  =C1=D6
+    =B9=FA=C4=DA=D6=C6=D4=EC=B9=DC=C0=ED=C8=A8=CD=FE=D7=A8=BC=D2=A3=AC=C8=
+=AB=B9=FA=D6=AA=C3=FB=C5=E0=D1=B5=CA=A6=A3=AC=BB=AA=C4=CF=C0=ED=B9=A4=B4=F3=
+=D1=A7=B9=A4=C9=CC=B9=DC=C0=ED=D1=A7=D4=BA=A1=B6=C9=FA=B2=FA=D4=CB=D7=F7=B9=
+=DC=C0=ED=A1=B7=CC=D8=C6=B8=BD=B2=CA=A6=A3=AC=D6=D0=BC=AF=BC=AF=CD=C5=A1=A2=
+=C7=E5=BB=AA=CC=A9=BA=C0=B5=C8=D6=AA=C3=FB=C6=F3=D2=B5=CC=D8=C6=B8=D6=C6=D4=
+=EC=B9=DC=C0=ED=B8=DF=BC=B6=B9=CB=CE=CA=A3=AC=C1=E3=C5=C6=D7=A8=BC=D2=D7=E9=
+=CA=D7=CF=AF=B9=CB=CE=CA=A3=AC=D6=D0=BC=AF=BC=AF=CD=C5=B0=E0=D7=E9=B3=A4=CF=
+=B5=C1=D0=C5=E0=D1=B5=BD=CC=B2=C4=A1=B6=BD=C5=CC=A4=CA=B5=B5=D8  =D6=BE=B4=
+=E6=B8=DF=D4=B6=A1=B7=D6=F7=B1=E0=A3=AC=D7=EE=D0=C2=D6=F8=D7=F7=D3=D0=A1=B6=
+=B0=E0=D7=E9=B9=DC=C0=ED=A3=BA=B4=D3=BB=F9=B4=A1=B5=BD=BC=BC=C7=C9=A1=B7=A1=
+=A2=A1=B6=B0=E0=D7=E9=B9=DC=C0=ED=A3=BA=C8=ED=D0=D4=BC=BC=C7=C980=C0=FD=A1=
+=B7=B5=C8=A1=A3
+
+=D7=E6=C1=D6=C0=CF=CA=A6=BD=FC=C4=EA=D7=A8=D7=A2=D3=DA=D6=C6=D4=EC=D0=CD=C6=
+=F3=D2=B5=B5=C4=BE=AB=CF=B8=BB=AF=B9=DC=C0=ED=D1=D0=BE=BF=A3=AC=D3=C8=C6=E4=
+=C9=C3=B3=A4=BD=AB=D3=B2=D0=D4=BC=BC=CA=F5=D3=EB=C8=ED=D0=D4=BC=BC=C7=C9=CF=
+=E0=BD=E1=BA=CF=A3=AC=CD=C6=B6=AF=D2=D4=CF=D6=B3=A1=CE=AA=D6=D0=D0=C4=B5=C4=
+=CF=B5=CD=B3=B8=C4=C9=C6=A3=AC=B0=EF=D6=FA=C6=F3=D2=B5=C5=E0=D1=F8=D6=B0=D2=
+=B5=BB=AF=D6=D0=B2=E3=B8=C9=B2=BF=BA=CD=BB=F9=B2=E3=B8=C9=B2=BF=A3=AC=C6=E4=
+=B7=FE=CE=F1=B9=FD=B5=C4=C7=E5=BB=AA=CC=A9=BA=C0=A1=A2=D6=D0=BC=AF=BC=AF=CD=
+=C5=A1=A2=B6=AB=DD=B8=C9=BD=D2=BB=A1=A2=BB=AA=B9=E2=B5=E7=C6=F7=A1=A2=BE=A9=
+=CA=AF=B9=A4=D2=B5=B5=C8=BE=F9=CA=C7=B6=E0=C4=EA=D0=F8=D4=BC=A1=A3
+
+=D7=E6=C1=D6=C0=CF=CA=A6=D6=F7=BD=B2=B5=C4=BF=CE=B3=CC=D2=D4=B9=DB=C4=EE=BA=
+=CD=CA=B5=CE=F1=CE=AA=CC=D8=C9=AB=A3=AC=B4=F3=C1=BF=C1=D0=BE=D9=B3=A3=BC=FB=
+=CA=C2=C0=FD=B7=E1=B8=BB=BF=CE=B3=CC=BD=B2=BD=E2=A3=AC=D6=F7=CC=E2=CF=CA=C3=
+=F7=A1=A2=CA=C2=C0=FD=C9=FA=B6=AF=A3=AC=C0=ED=C2=DB=B2=BF=B7=D6=B9=DB=B5=E3=
+=D0=C2=D3=B1=A3=AC=B3=A3=D3=D0=BE=AA=C8=CB=D6=AE=D3=EF=A3=AC=CA=B5=CE=F1=B2=
+=BF=B7=D6=D6=F7=D2=AA=D3=C9=CA=AE=D3=E0=C4=EA=B5=C4=C6=F3=D2=B5=B9=DC=C0=ED=
+=BA=CD=D6=B0=D2=B5=B9=CB=CE=CA=BE=AD=C0=FA=CB=F9=BB=FD=C0=DB=B5=C4=B7=E1=B8=
+=BB=B0=B8=C0=FD=CE=AA=D6=F7=A3=AC=C6=E4=D1=DD=D2=EF=B3=E4=C2=FA=BB=EE=C1=A6=
+=A1=A2=B8=BB=D3=D0=BC=A4=C7=E9=A1=A2=BC=AB=BE=DF=B8=D0=C8=BE=C1=A6=A3=AC=CC=
+=F9=BD=FC=C6=F3=D2=B5=B5=C4=CA=B5=BC=CA=D0=E8=D2=AA=A1=A3
+
+=D7=E6=C1=D6=C0=CF=CA=A6=B3=A4=C6=DA=D4=DA=C8=D5=B1=BE=CB=C9=CF=C2=B5=E7=C6=
+=F7=BC=B0=C6=E4=D4=DA=BB=AA=C6=F3=D2=B5=B9=A4=D7=F7=B2=A2=B5=A3=C8=CE=B6=E0=
+=C4=EA=D6=D0=B8=DF=B2=E3=B9=DC=C0=ED=D6=B0=CE=F1=A3=AC=D4=F8=CA=A6=B4=D3=C9=
+=AD=B4=A8=CA=A4=B9=A4=B5=C8=C8=D5=B1=BE=D6=F8=C3=FB=D0=A7=C2=CA=B9=DC=C0=ED=
+=D7=A8=BC=D2=D1=A7=CF=B0=C8=D5=B1=BE=CA=BD=B8=C4=C9=C6=BC=BC=CA=F5=A3=AC=D4=
+=F8=CA=A6=B4=D3=CB=C9=CF=C2=B5=E7=C6=F7=A3=A8=D6=D0=B9=FA=A3=A9=D7=DC=B2=C3=
+=C4=BE=D4=AA=D5=DC=D7=A8=D6=B0=D1=A7=CF=B0=C6=F3=D2=B5=BE=AD=D3=AA=B9=DC=C0=
+=ED=D2=BB=C4=EA=A3=AC=D4=DA=C6=F3=D2=B5=BE=AD=D3=AA=B9=DC=C0=ED=B7=BD=C3=E6=
+=D3=D0=D4=FA=CA=B5=B5=C4=C0=ED=C2=DB=BB=F9=B4=A1=BA=CD=B7=E1=B8=BB=B5=C4=CA=
+=B5=BC=F9=BE=AD=D1=E9=A1=A3
+
+=D7=E6=C1=D6=C0=CF=CA=A6=CE=AA=C8=AB=B9=FA=CA=FD=B0=D9=BC=D2=C6=F3=D2=B5=CC=
+=E1=B9=A9=B9=FD=CF=B5=C1=D0=B9=DC=C0=ED=C5=E0=D1=B5=A3=AC=CE=AA=CB=C4=CA=AE=
+=B6=E0=BC=D2=C6=F3=D2=B5=CC=E1=B9=A9=B9=FD=B9=DC=C0=ED=D7=C9=D1=AF=B7=FE=CE=
+=F1=A3=AC=C6=E4=BD=F0=C5=C6=BF=CE=B3=CC=D3=D0=A1=B6=D0=C2MTP=A3=A8=D6=D0=B2=
+=E3=B8=C9=B2=BF=B9=DC=C0=ED=BC=BC=C4=DC=D1=B5=C1=B7=A3=A9=A1=B7=A1=A2=A1=B6=
+=BE=AB=CF=B8=BB=AF=D6=C6=D4=EC=B9=DC=C0=ED=A1=B7=A1=A2=A1=B6=C9=FA=B2=FA=CE=
+=CA=CC=E2=B7=D6=CE=F6=D3=EB=BD=E2=BE=F6=A1=B7=A1=A2=A1=B6=BD=DC=B3=F6=B0=E0=
+=D7=E9=B3=A4=D1=B5=C1=B7=A1=B7=B5=C8=A1=A3
+
+547123
+-------------------------------------------------------------------------=
+-
+=A1=F1 =C9=EE=DB=DA=B1=A8=C3=FB=B5=E7=BB=B0=A3=BA0755-61 28 06 42 =C2=AC=CF=
+=C8=C9=FA  -=B1=A8=C3=FB=B4=AB=D5=E6=A3=BA0755-61 28 06 48=20
+-------------------------------------------------------------------------=
+-
+
+ =BD=DC =B3=F6 =B0=E0 =D7=E9 =B3=A4 =D1=B5 =C1=B7 =B8=DF =BC=B6 =D1=D0 =D0=
+=DE =B0=E0  =B1=A8/=C3=FB=BB=D8/=D6=B4=B4=AB=D5=E6=D6=C10755-6 1 2 8 0 6 =
+4 8
+-------------------------------------------------------------------------=
+---
+
+=A1=BE=B9=AB=CB=BE=C3=FB=B3=C6=A1=BF_____________________________________=
+___ =A1=BE=C1=AA=CF=B5=C8=CB=A1=BF_____________
+
+=A1=BE=B5=E7=D7=D3=D3=CA=CF=E4=A1=BF____________________________________ =
+=A1=BE=D2=C6=B6=AF=B5=E7=BB=B0=A1=BF ______________ =20
+
+=A1=BE=C1=AA=CF=B5=B5=E7=BB=B0=A1=BF___________________________ =A1=BE=C1=
+=AA=CF=B5=B4=AB=D5=E6=A1=BF________________________
+ =20
+=A1=BE=B2=CE=BB=E1=C8=CB=D2=BB =A1=BF=A3=BA_________  =A1=BE=B2=CE=BB=E1=C8=
+=CB=B6=FE =A1=BF=A3=BA_________  =A1=BE=B2=CE=BB=E1=C8=CB=C8=FD =A1=BF=A3=
+=BA_________
+
+=A1=BE=B2=CE=BB=E1=C8=CB=CB=C4 =A1=BF=A3=BA_________  =A1=BE=B2=CE=BB=E1=C8=
+=CB=CE=E5 =A1=BF=A3=BA_________  =A1=BE=B2=CE=BB=E1=C8=CB=C1=F9 =A1=BF=A3=
+=BA_________
+-------------------------------------------------------------------------=
+---
+=A1=F1 =B7=D1=D3=C3=D6=A7=B8=B6=A3=BA=A1=F5=CF=D6=BD=F0 =A1=F5=D7=AA=D5=CA
+-------------------------------------------------------------------------=
+---547123
+
+
+--===============1414966360==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============1414966360==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1414966360==--
