@@ -1,22 +1,23 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 013 of 19] knfsd: Simplify nlmsvc_invalidate_all
-Date: Fri, 1 Sep 2006 14:39:16 +1000
-Message-ID: <1060901043916.27594@suse.de>
+Subject: [PATCH 014 of 19] knfsd: lockd: optionally use hostnames for
+	identifying peers
+Date: Fri, 1 Sep 2006 14:39:22 +1000
+Message-ID: <1060901043922.27606@suse.de>
 References: <20060901141639.27206.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJ0oP-0005uD-Fa
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:25 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GJ0oU-0005uZ-LE
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:30 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJ0oP-0004UT-1N
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:26 -0700
+	(Exim 4.44) id 1GJ0oU-0001VI-JZ
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:31 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,115 +32,138 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-  As a result of previous patches, the loop in nlmsvc_invalidate_all
-  just sets h_expires for all client/hosts to 0 (though does it in a
-  very complicated way).
+From: Olaf Kirch <okir@suse.de>
 
-  This was possibly meant to trigger early garbage collection but
-  half the time '0' is in the future and so it infact delays garbage
-  collection.
+  This patch adds the nsm_use_hostnames sysctl and module param. If
+  set, lockd will use the client's name (as given in the NLM
+  arguments) to find the NSM handle. This makes recovery work when the
+  NFS peer is multi-homed, and the reboot notification arrives from a
+  different IP than the original lock calls.
 
-  Pre-aging the 'hosts' is not really needed at this point anyway
-  so we throw out the loop and nlm_find_client which is no longer
-  needed.
-
+Signed-off-by: Olaf Kirch <okir@suse.de>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/lockd/host.c             |   27 ---------------------------
- ./fs/lockd/svcsubs.c          |   10 +---------
- ./include/linux/lockd/lockd.h |    4 +---
- 3 files changed, 2 insertions(+), 39 deletions(-)
+ ./fs/lockd/host.c                |    6 +++++-
+ ./fs/lockd/mon.c                 |   12 +++++++++---
+ ./fs/lockd/svc.c                 |   10 ++++++++++
+ ./include/linux/lockd/lockd.h    |    1 +
+ ./include/linux/lockd/sm_inter.h |    2 ++
+ 5 files changed, 27 insertions(+), 4 deletions(-)
 
 diff .prev/fs/lockd/host.c ./fs/lockd/host.c
---- .prev/fs/lockd/host.c	2006-09-01 11:07:19.000000000 +1000
-+++ ./fs/lockd/host.c	2006-09-01 11:37:34.000000000 +1000
-@@ -192,33 +192,6 @@ nlm_destroy_host(struct nlm_host *host)
- 	kfree(host);
- }
+--- .prev/fs/lockd/host.c	2006-09-01 12:11:07.000000000 +1000
++++ ./fs/lockd/host.c	2006-09-01 12:11:16.000000000 +1000
+@@ -462,7 +462,11 @@ __nsm_find(const struct sockaddr_in *sin
+ 	list_for_each(pos, &nsm_handles) {
+ 		nsm = list_entry(pos, struct nsm_handle, sm_link);
  
--struct nlm_host *
--nlm_find_client(void)
--{
--	struct hlist_head *chain;
--	struct hlist_node *pos;
--
--	/* find a nlm_host for a client for which h_killed == 0.
--	 * and return it
--	 */
--	mutex_lock(&nlm_host_mutex);
--	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
--		struct nlm_host *host;
--
--		hlist_for_each_entry(host, pos, chain, h_hash) {
--			if (host->h_server &&
--			    host->h_killed == 0) {
--				nlm_get_host(host);
--				mutex_unlock(&nlm_host_mutex);
--				return host;
--			}
--		}
--	}
--	mutex_unlock(&nlm_host_mutex);
--	return NULL;
--}
--
--				
- /*
-  * Create the NLM RPC client for an NLM peer
-  */
+-		if (!nlm_cmp_addr(&nsm->sm_addr, sin))
++		if (hostname && nsm_use_hostnames) {
++			if (strlen(nsm->sm_name) != hostname_len
++			 || memcmp(nsm->sm_name, hostname, hostname_len))
++				continue;
++		} else if (!nlm_cmp_addr(&nsm->sm_addr, sin))
+ 			continue;
+ 		atomic_inc(&nsm->sm_count);
+ 		goto out;
 
-diff .prev/fs/lockd/svcsubs.c ./fs/lockd/svcsubs.c
---- .prev/fs/lockd/svcsubs.c	2006-09-01 11:06:21.000000000 +1000
-+++ ./fs/lockd/svcsubs.c	2006-09-01 11:38:14.000000000 +1000
-@@ -354,13 +354,11 @@ nlmsvc_free_host_resources(struct nlm_ho
- }
+diff .prev/fs/lockd/mon.c ./fs/lockd/mon.c
+--- .prev/fs/lockd/mon.c	2006-09-01 12:11:07.000000000 +1000
++++ ./fs/lockd/mon.c	2006-09-01 12:11:16.000000000 +1000
+@@ -47,6 +47,7 @@ nsm_mon_unmon(struct nsm_handle *nsm, u3
+ 	}
+ 
+ 	memset(&args, 0, sizeof(args));
++	args.mon_name = nsm->sm_name;
+ 	args.addr = nsm->sm_addr.sin_addr.s_addr;
+ 	args.prog = NLM_PROGRAM;
+ 	args.vers = 3;
+@@ -150,7 +151,7 @@ nsm_create(void)
+ static u32 *
+ xdr_encode_common(struct rpc_rqst *rqstp, u32 *p, struct nsm_args *argp)
+ {
+-	char	buffer[20];
++	char	buffer[20], *name;
+ 
+ 	/*
+ 	 * Use the dotted-quad IP address of the remote host as
+@@ -158,8 +159,13 @@ xdr_encode_common(struct rpc_rqst *rqstp
+ 	 * hostname first for whatever remote hostname it receives,
+ 	 * so this works alright.
+ 	 */
+-	sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->addr));
+-	if (!(p = xdr_encode_string(p, buffer))
++	if (nsm_use_hostnames) {
++		name = argp->mon_name;
++	} else {
++		sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->addr));
++		name = buffer;
++	}
++	if (!(p = xdr_encode_string(p, name))
+ 	 || !(p = xdr_encode_string(p, utsname()->nodename)))
+ 		return ERR_PTR(-EIO);
+ 	*p++ = htonl(argp->prog);
+
+diff .prev/fs/lockd/svc.c ./fs/lockd/svc.c
+--- .prev/fs/lockd/svc.c	2006-09-01 12:11:07.000000000 +1000
++++ ./fs/lockd/svc.c	2006-09-01 12:15:24.000000000 +1000
+@@ -61,6 +61,7 @@ static DECLARE_WAIT_QUEUE_HEAD(lockd_exi
+ static unsigned long		nlm_grace_period;
+ static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
+ static int			nlm_udpport, nlm_tcpport;
++int				nsm_use_hostnames = 0;
  
  /*
-- * delete all hosts structs for clients
-+ * Remove all locks held for clients
-  */
- void
- nlmsvc_invalidate_all(void)
- {
--	struct nlm_host *host;
--
- 	/* Release all locks held by NFS clients.
- 	 * Previously, the code would call
- 	 * nlmsvc_free_host_resources for each client in
-@@ -368,10 +366,4 @@ nlmsvc_invalidate_all(void)
- 	 * Now we just do it once in nlm_traverse_files.
- 	 */
- 	nlm_traverse_files(NULL, nlmsvc_is_client);
--
--	while ((host = nlm_find_client()) != NULL) {
--		host->h_expires = 0;
--		host->h_killed = 1;
--		nlm_release_host(host);
--	}
- }
+  * Constants needed for the sysctl interface.
+@@ -395,6 +396,14 @@ static ctl_table nlm_sysctls[] = {
+ 		.extra1		= (int *) &nlm_port_min,
+ 		.extra2		= (int *) &nlm_port_max,
+ 	},
++	{
++		.ctl_name	= CTL_UNNUMBERED,
++		.procname	= "nsm_use_hostnames",
++		.data		= &nsm_use_hostnames,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec,
++	},
+ 	{ .ctl_name = 0 }
+ };
+ 
+@@ -483,6 +492,7 @@ module_param_call(nlm_udpport, param_set
+ 		  &nlm_udpport, 0644);
+ module_param_call(nlm_tcpport, param_set_port, param_get_int,
+ 		  &nlm_tcpport, 0644);
++module_param(nsm_use_hostnames, bool, 0644);
+ 
+ /*
+  * Initialising and terminating the module.
 
 diff .prev/include/linux/lockd/lockd.h ./include/linux/lockd/lockd.h
---- .prev/include/linux/lockd/lockd.h	2006-09-01 10:58:38.000000000 +1000
-+++ ./include/linux/lockd/lockd.h	2006-09-01 11:38:57.000000000 +1000
-@@ -45,8 +45,7 @@ struct nlm_host {
- 	unsigned short		h_proto;	/* transport proto */
- 	unsigned short		h_reclaiming : 1,
- 				h_server     : 1, /* server side, not client side */
--				h_inuse      : 1,
--				h_killed     : 1;
-+				h_inuse      : 1;
- 	wait_queue_head_t	h_gracewait;	/* wait while reclaiming */
- 	struct rw_semaphore	h_rwsem;	/* Reboot recovery lock */
- 	u32			h_state;	/* pseudo-state counter */
-@@ -169,7 +168,6 @@ void		  nlm_rebind_host(struct nlm_host 
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
--extern struct nlm_host *nlm_find_client(void);
- extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
- struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
- void		  nsm_release(struct nsm_handle *);
+--- .prev/include/linux/lockd/lockd.h	2006-09-01 12:11:05.000000000 +1000
++++ ./include/linux/lockd/lockd.h	2006-09-01 12:16:06.000000000 +1000
+@@ -142,6 +142,7 @@ extern struct svc_procedure	nlmsvc_proce
+ #endif
+ extern int			nlmsvc_grace_period;
+ extern unsigned long		nlmsvc_timeout;
++extern int			nsm_use_hostnames;
+ 
+ /*
+  * Lockd client functions
+
+diff .prev/include/linux/lockd/sm_inter.h ./include/linux/lockd/sm_inter.h
+--- .prev/include/linux/lockd/sm_inter.h	2006-09-01 12:11:07.000000000 +1000
++++ ./include/linux/lockd/sm_inter.h	2006-09-01 12:11:16.000000000 +1000
+@@ -28,6 +28,8 @@ struct nsm_args {
+ 	u32		prog;		/* RPC callback info */
+ 	u32		vers;
+ 	u32		proc;
++
++	char *		mon_name;
+ };
+ 
+ /*
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
