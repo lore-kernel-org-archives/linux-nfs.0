@@ -1,25 +1,27 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Olaf Kirch <okir@suse.de>
 Subject: Re: [PATCH 019 of 19] knfsd: Register all RPC programs with
- portmapper by default
-Date: Fri, 01 Sep 2006 09:29:01 -0400
-Message-ID: <44F8359D.40303@redhat.com>
+	portmapper by default
+Date: Fri, 1 Sep 2006 15:47:10 +0200
+Message-ID: <20060901134710.GB29574@suse.de>
 References: <20060901141639.27206.patches@notabene>
-	<1060901043948.27677@suse.de>
+	<1060901043948.27677@suse.de> <44F8359D.40303@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, Olaf Kirch <okir@suse.de>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Andreas Gruenbacher <agruen@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJ95C-0001Ff-3N
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:29:18 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GJ95C-0000ww-FC
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:29:18 -0700
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1060901043948.27677@suse.de>
+	id 1GJ9Ma-0002nX-6T
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:47:16 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GJ9MZ-0005OT-Jo
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:47:16 -0700
+To: Peter Staubach <staubach@redhat.com>
+In-Reply-To: <44F8359D.40303@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,120 +34,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-NeilBrown wrote:
-> From: Olaf Kirch <okir@suse.de>
->
->   The NFSACL patches introduced support for multiple RPC services
->   listening on the same transport. However, only the first of these
->   services was registered with portmapper. This was perfectly fine
->   for nfsacl, as you traditionally do not want these to show up in a
->   portmapper listing.
->
->   The patch below changes the default behavior to always register
->   all services listening on a given transport, but retains the
->   old behavior for nfsacl services.
->
-> Signed-off-by: Olaf Kirch <okir@suse.de>
-> Signed-off-by: Neil Brown <neilb@suse.de>
->
-> ### Diffstat output
->  ./fs/nfsd/nfs2acl.c          |    1 +
->  ./fs/nfsd/nfs3acl.c          |    1 +
->  ./include/linux/sunrpc/svc.h |    3 +++
->  ./net/sunrpc/svc.c           |   37 +++++++++++++++++++++++--------------
->  4 files changed, 28 insertions(+), 14 deletions(-)
->
-> diff .prev/fs/nfsd/nfs2acl.c ./fs/nfsd/nfs2acl.c
-> --- .prev/fs/nfsd/nfs2acl.c	2006-09-01 12:22:10.000000000 +1000
-> +++ ./fs/nfsd/nfs2acl.c	2006-09-01 12:22:11.000000000 +1000
-> @@ -333,4 +333,5 @@ struct svc_version	nfsd_acl_version2 = {
->  		.vs_proc	= nfsd_acl_procedures2,
->  		.vs_dispatch	= nfsd_dispatch,
->  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-> +		.vs_hidden	= 1,
->  };
->
-> diff .prev/fs/nfsd/nfs3acl.c ./fs/nfsd/nfs3acl.c
-> --- .prev/fs/nfsd/nfs3acl.c	2006-09-01 12:22:10.000000000 +1000
-> +++ ./fs/nfsd/nfs3acl.c	2006-09-01 12:22:11.000000000 +1000
-> @@ -263,5 +263,6 @@ struct svc_version	nfsd_acl_version3 = {
->  		.vs_proc	= nfsd_acl_procedures3,
->  		.vs_dispatch	= nfsd_dispatch,
->  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-> +		.vs_hidden	= 1,
->  };
->  
->
-> diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
-> --- .prev/include/linux/sunrpc/svc.h	2006-09-01 12:22:10.000000000 +1000
-> +++ ./include/linux/sunrpc/svc.h	2006-09-01 12:22:11.000000000 +1000
-> @@ -304,6 +304,9 @@ struct svc_version {
->  	struct svc_procedure *	vs_proc;	/* per-procedure info */
->  	u32			vs_xdrsize;	/* xdrsize needed for this version */
->  
-> +	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
-> +						 * Only used for nfsacl so far. */
-> +
->  	/* Override dispatch function (e.g. when caching replies).
->  	 * A return value of 0 means drop the request. 
->  	 * vs_dispatch == NULL means use default dispatcher.
->
-> diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
-> --- .prev/net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
-> +++ ./net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
-> @@ -644,23 +644,32 @@ svc_register(struct svc_serv *serv, int 
->  	unsigned long		flags;
->  	int			i, error = 0, dummy;
->  
-> -	progp = serv->sv_program;
-> -
-> -	dprintk("RPC: svc_register(%s, %s, %d)\n",
-> -		progp->pg_name, proto == IPPROTO_UDP? "udp" : "tcp", port);
-> -
->  	if (!port)
->  		clear_thread_flag(TIF_SIGPENDING);
->  
-> -	for (i = 0; i < progp->pg_nvers; i++) {
-> -		if (progp->pg_vers[i] == NULL)
-> -			continue;
-> -		error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-> -		if (error < 0)
-> -			break;
-> -		if (port && !dummy) {
-> -			error = -EACCES;
-> -			break;
-> +	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-> +		for (i = 0; i < progp->pg_nvers; i++) {
-> +			if (progp->pg_vers[i] == NULL)
-> +				continue;
-> +
-> +			dprintk("RPC: svc_register(%s, %s, %d, %d)%s\n",
-> +					progp->pg_name,
-> +					proto == IPPROTO_UDP?  "udp" : "tcp",
-> +					port,
-> +					i,
-> +					progp->pg_vers[i]->vs_hidden?
-> +						" (but not telling portmap)" : "");
-> +
-> +			if (progp->pg_vers[i]->vs_hidden)
-> +				continue;
-> +
-> +			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-> +			if (error < 0)
-> +				break;
-> +			if (port && !dummy) {
-> +				error = -EACCES;
-> +				break;
-> +			}
->  		}
->  	}
+On Fri, Sep 01, 2006 at 09:29:01AM -0400, Peter Staubach wrote:
+> While I'm thinking about it a little more, why not register NFS_ACL with
+> portmap/rpcbind?  That would make it pingable via rpcinfo.
 
-While I'm thinking about it a little more, why not register NFS_ACL with
-portmap/rpcbind?  That would make it pingable via rpcinfo.
+I can't say, but I dimly recall that this was intentional, and I
+did not want to change this behavior. Andreas Gruenbacher should
+know.
 
-    Thanx...
-
-       ps
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
