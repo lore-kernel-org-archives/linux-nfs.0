@@ -1,26 +1,28 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: lockd: rejected NSM callback from 7f000001:30001
-Date: Fri, 01 Sep 2006 12:11:11 -0400
-Message-ID: <1157127071.5632.59.camel@localhost>
-References: <20060901132854.GA25597@bigboss.venod.com>
+Subject: Re: [PATCH 019 of 19] knfsd: Register all RPC programs
+	with	portmapper by default
+Date: Fri, 01 Sep 2006 12:13:34 -0400
+Message-ID: <1157127214.5632.62.camel@localhost>
+References: <20060901141639.27206.patches@notabene>
+	<1060901043948.27677@suse.de>
+	<76bd70e30609010831m9e80cfav514d60718d35e7d5@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
+	nfs@lists.sourceforge.net, Olaf Kirch <okir@suse.de>,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJBcB-0000HG-7N
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:11:31 -0700
+	id 1GJBeS-0000Uq-JO
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:13:52 -0700
 Received: from pat.uio.no ([129.240.10.4])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJBcB-0000AO-CR
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:11:31 -0700
-Received: from mail-mx4.uio.no ([129.240.10.45])
-	by pat.uio.no with esmtp (Exim 4.43) id 1GJBc5-0002Mr-6V
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 18:11:25 +0200
-To: Haakon Riiser <haakon.riiser@fys.uio.no>
-In-Reply-To: <20060901132854.GA25597@bigboss.venod.com>
+	(Exim 4.44) id 1GJBeR-0000l7-Oo
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:13:53 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <76bd70e30609010831m9e80cfav514d60718d35e7d5@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +35,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-09-01 at 15:28 +0200, Haakon Riiser wrote:
-> A few months ago, I upgraded my file server from FC3 to FC5,
-> and at the same time, upgraded all of the file server's hardware
-> except the disks (a single SATA drive that holds the OS plus four
-> SATA drives in a software RAID5 array).
-> 
-> After this upgrade (at least that's when I think it first started to
-> happen), I started seeing
-> 
->   lockd: rejected NSM callback from 7f000001:30001
+On Fri, 2006-09-01 at 11:31 -0400, Chuck Lever wrote:
 
-This is very intentional. The kernel won't accept notifications from
-unprivileged ports. If it did, then any local user would be able to
-trick the kernel into thinking that some server had rebooted, by sending
-the appropriate RPC message.
+> I don't like this.  The idea that multiple RPC services are listening
+> on the same port is a total hack.  What other service might use this
+> besides NFSACL?
 
-Change your /etc/sysconfig/nfs so that it sets a value < 1024 for
-STATD_OUTGOING_PORT.
+Ermm... Any RPC server process that doesn't want to register with the
+portmapper. The NFSv4 callback channel is one obvious candidate.
 
 Cheers,
   Trond
