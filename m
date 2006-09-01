@@ -1,8 +1,7 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 019 of 19] knfsd: Register all RPC programs with
-	portmapper by default
-Date: Fri, 1 Sep 2006 14:39:48 +1000
-Message-ID: <1060901043948.27677@suse.de>
+Subject: [PATCH 018 of 19] knfsd: lockd: fix use of h_nextrebind
+Date: Fri, 1 Sep 2006 14:39:43 +1000
+Message-ID: <1060901043943.27665@suse.de>
 References: <20060901141639.27206.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJ0ov-0005wr-39
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:57 -0700
+	id 1GJ0oq-0005wX-BI
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:52 -0700
 Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJ0ov-0001ZB-1w
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:57 -0700
+	(Exim 4.44) id 1GJ0op-0001YU-ID
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:53 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,111 +33,29 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
 
-  The NFSACL patches introduced support for multiple RPC services
-  listening on the same transport. However, only the first of these
-  services was registered with portmapper. This was perfectly fine
-  for nfsacl, as you traditionally do not want these to show up in a
-  portmapper listing.
+  nlmclnt_recovery would try to force a portmap rebind by setting
+  host->h_nextrebind to 0. The right thing to do here is to set it
+  to the current time.
 
-  The patch below changes the default behavior to always register
-  all services listening on a given transport, but retains the
-  old behavior for nfsacl services.
-
-Signed-off-by: Olaf Kirch <okir@suse.de>
+Signed-off-by: okir@suse.de
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs2acl.c          |    1 +
- ./fs/nfsd/nfs3acl.c          |    1 +
- ./include/linux/sunrpc/svc.h |    3 +++
- ./net/sunrpc/svc.c           |   37 +++++++++++++++++++++++--------------
- 4 files changed, 28 insertions(+), 14 deletions(-)
+ ./fs/lockd/clntlock.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff .prev/fs/nfsd/nfs2acl.c ./fs/nfsd/nfs2acl.c
---- .prev/fs/nfsd/nfs2acl.c	2006-09-01 12:22:10.000000000 +1000
-+++ ./fs/nfsd/nfs2acl.c	2006-09-01 12:22:11.000000000 +1000
-@@ -333,4 +333,5 @@ struct svc_version	nfsd_acl_version2 = {
- 		.vs_proc	= nfsd_acl_procedures2,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+		.vs_hidden	= 1,
- };
-
-diff .prev/fs/nfsd/nfs3acl.c ./fs/nfsd/nfs3acl.c
---- .prev/fs/nfsd/nfs3acl.c	2006-09-01 12:22:10.000000000 +1000
-+++ ./fs/nfsd/nfs3acl.c	2006-09-01 12:22:11.000000000 +1000
-@@ -263,5 +263,6 @@ struct svc_version	nfsd_acl_version3 = {
- 		.vs_proc	= nfsd_acl_procedures3,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+		.vs_hidden	= 1,
- };
+diff .prev/fs/lockd/clntlock.c ./fs/lockd/clntlock.c
+--- .prev/fs/lockd/clntlock.c	2006-08-31 17:02:23.000000000 +1000
++++ ./fs/lockd/clntlock.c	2006-09-01 12:19:55.000000000 +1000
+@@ -184,7 +184,7 @@ restart:
+ 	/* Force a portmap getport - the peer's lockd will
+ 	 * most likely end up on a different port.
+ 	 */
+-	host->h_nextrebind = 0;
++	host->h_nextrebind = jiffies;
+ 	nlm_rebind_host(host);
  
-
-diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
---- .prev/include/linux/sunrpc/svc.h	2006-09-01 12:22:10.000000000 +1000
-+++ ./include/linux/sunrpc/svc.h	2006-09-01 12:22:11.000000000 +1000
-@@ -304,6 +304,9 @@ struct svc_version {
- 	struct svc_procedure *	vs_proc;	/* per-procedure info */
- 	u32			vs_xdrsize;	/* xdrsize needed for this version */
- 
-+	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
-+						 * Only used for nfsacl so far. */
-+
- 	/* Override dispatch function (e.g. when caching replies).
- 	 * A return value of 0 means drop the request. 
- 	 * vs_dispatch == NULL means use default dispatcher.
-
-diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
-+++ ./net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
-@@ -644,23 +644,32 @@ svc_register(struct svc_serv *serv, int 
- 	unsigned long		flags;
- 	int			i, error = 0, dummy;
- 
--	progp = serv->sv_program;
--
--	dprintk("RPC: svc_register(%s, %s, %d)\n",
--		progp->pg_name, proto == IPPROTO_UDP? "udp" : "tcp", port);
--
- 	if (!port)
- 		clear_thread_flag(TIF_SIGPENDING);
- 
--	for (i = 0; i < progp->pg_nvers; i++) {
--		if (progp->pg_vers[i] == NULL)
--			continue;
--		error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
--		if (error < 0)
--			break;
--		if (port && !dummy) {
--			error = -EACCES;
--			break;
-+	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-+		for (i = 0; i < progp->pg_nvers; i++) {
-+			if (progp->pg_vers[i] == NULL)
-+				continue;
-+
-+			dprintk("RPC: svc_register(%s, %s, %d, %d)%s\n",
-+					progp->pg_name,
-+					proto == IPPROTO_UDP?  "udp" : "tcp",
-+					port,
-+					i,
-+					progp->pg_vers[i]->vs_hidden?
-+						" (but not telling portmap)" : "");
-+
-+			if (progp->pg_vers[i]->vs_hidden)
-+				continue;
-+
-+			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-+			if (error < 0)
-+				break;
-+			if (port && !dummy) {
-+				error = -EACCES;
-+				break;
-+			}
- 		}
- 	}
- 
+ 	/* First, reclaim all locks that have been granted. */
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
