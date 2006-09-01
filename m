@@ -1,25 +1,22 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: linking librpcsecgss against libgssapi
-Date: Thu, 31 Aug 2006 19:56:16 -0400
-Message-ID: <200608311956.17014.vapier@gentoo.org>
+From: "max williams" <max.williams@alliedtelesyn.co.nz>
+Subject: Re: Documention of NFS for SUSE 10.1
+Date: Fri, 01 Sep 2006 12:20:19 +1200
+Message-ID: <44F82585.4A67.0005.0@alliedtelesyn.co.nz>
+References: <32bab3580608310445i4c58867ckec78f3badec7d00c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1919444606=="
+Content-Type: multipart/mixed; boundary="===============1731741900=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GIwO7-0007ft-Rn
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 16:55:59 -0700
-Received: from smtp.gentoo.org ([140.211.166.183])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GIwO7-0006zO-Ft
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 16:56:00 -0700
-Received: from home.wh0rd.org (localhost [127.0.0.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp.gentoo.org (Postfix) with ESMTP id 4A8AC64345
-	for <nfs@lists.sourceforge.net>; Thu, 31 Aug 2006 23:55:58 +0000 (UTC)
-To: nfs@lists.sourceforge.net
+	id 1GIwm4-0001Jb-2f
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 17:20:44 -0700
+Received: from gate.alliedtelesyn.co.nz ([202.49.72.33] ident=proxyuser)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GIwm3-0008Fd-7Y
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 17:20:44 -0700
+To: "ravinder rao" <ravinder35@gmail.com>,
+	<nfs@lists.sourceforge.net>
+In-Reply-To: <32bab3580608310445i4c58867ckec78f3badec7d00c@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,56 +29,98 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1919444606==
-Content-Type: multipart/signed; boundary="nextPart14837343.bRZMJvvpMa";
-	protocol="application/pgp-signature"; micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
+--===============1731741900==
+Content-Type: multipart/alternative; boundary="=__Part7451CAD3.1__="
 
---nextPart14837343.bRZMJvvpMa
-Content-Type: text/plain;
-  charset="us-ascii"
+--=__Part7451CAD3.1__=
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
 
-is there a reason librpcsecgss is not linked against libgssapi ?  the simpl=
-e=20
-fix here would be to add a line like:
-LDADD =3D $(GSSAPI_LIBS)
-to the librcpsecgss/src/Makefile.am file
+Sounds like you need really simple instructions. Look through some of the=
+se pages:
+http://www.google.com/search?hl=3Den&lr=3D&q=3Dlinux+NFS+%22how+to=20
+Cheers
+Max
 
-problem being that librpcsecgss uses symbols from libgssapi but never actua=
-lly=20
-links against it so doing something simple like:
-echo 'int main(){}' > test.c
-gcc -lrpcsecgss test.c
-fails miserably unless you add -lgssapi
-=2Dmike
+>>> "ravinder rao" <ravinder35@gmail.com> 31/08/2006 11:45 p.m. >>>
+Respeceted sir,
+=20       I am ravinder, i am implementing   Oracel 10g  RAC on SUSE Linu=
+x 10.1(kernel version 2.6.16.13-4-smp),for this project i need NFS ,
+i am trying to configure NFS in suse, but i am getting some problems ,ple=
+se send me appropriate documentation.=20
+give me a package description.
+=20                      Thanking you,
 
---nextPart14837343.bRZMJvvpMa
-Content-Type: application/pgp-signature
+-------------------------------------------------------------------------=
+---------
+Ravinder rao.
+Intrenational institute of information technology=20
+P:14, Pune infotech park,
+Pune - INDIA.
+Ph:09860 424108=20
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.5 (GNU/Linux)
+NOTICE: This message contains privileged and confidential
+information intended only for the use of the addressee
+named above. If you are not the intended recipient of
+this message you are hereby notified that you must not
+disseminate, copy or take any action in reliance on it.
+If you have received this message in error please
+notify Allied Telesis Labs Ltd immediately.
+Any views expressed in this message are those of the
+individual sender, except where the sender has the
+authority to issue and specifically states them to
+be the views of Allied Telesis Labs.
 
-iQIVAwUARPd3IEFjO5/oN/WBAQLKvhAA3IMFH0u7j4A27hw98RPG0+3HXp/15L0T
-DMlCwbUIb+E+E0WZgqKpoHrNzSFIw+Mc9pllqZo3/8Cl43zKYgx5+QvOYp0hF5K2
-1Mfpf16RUzgS/lyNBcv0SAI9FvbB+VqcyTcPrF1iisDfYXHA2Jr99+XHZoCV6u6Q
-YRKVS5CP3L4hXPfxyDlLQ8HK1SglsRC2Rq/OSWTAUwe0zbrIIXueL/Tf5+ck70e2
-eYRiJ2dyaBwk3nxDFCT1gxpccuBTExF98h/sjt0GU6HCWGyKAnz5oNAR9PrHEt+t
-Kw0Uq9pStHTCe89tkqhtnM8HGL8sdUdh8YePN5hTKn2xXtIS+KkJVsMez32ljzQv
-w9Z8nTPKc97PS1HT6zVD6D2iTCkoPKnRB+QIbNGHjMAqeMmZDrb2mc85Cw2pkVmu
-xda1jT/UKKSy9YZAo1iXK9lmHWt4D0+0TVoJb10c9P7Q/GkcHT3YSh+PFIH00sTQ
-DQxEah+HjmqLuSOXpUsomcKXM6/LinfUCAfNLZ3dSAXrpjScPb72Y2b+XdxPj2y+
-BoYv3yT4Hn0DfQ3WxXSzNjl0l8eI3QCXY04GLzwBOWiHXdau4GRsqDqhd5M3BI9r
-I7eIS6c+DWAv0EbUZCl3O+xPW+B9ajJ6LmPemZuXmL8vA/ZIgX8n/3aNCoR2qCR1
-5FZugXBwfDI=
-=+w8o
------END PGP SIGNATURE-----
+--=__Part7451CAD3.1__=
+Content-Type: text/html; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+Content-Description: HTML
 
---nextPart14837343.bRZMJvvpMa--
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-=
+15">
+<META content=3D"MSHTML 6.00.2900.2963" name=3DGENERATOR></HEAD>
+<BODY style=3D"MARGIN: 4px 4px 1px; FONT: 10pt Tahoma">
+<DIV>Sounds like you need really simple instructions. Look through some o=
+f these pages:</DIV>
+<DIV><A href=3D"http://www.google.com/search?hl=3Den&amp;lr=3D&amp;q=3Dli=
+nux+NFS+"how+to">http://www.google.com/search?hl=3Den&amp;lr=3D&amp;q=3Dl=
+inux+NFS+"how+to</A></DIV>
+<DIV>Cheers</DIV>
+<DIV>Max<BR><BR>&gt;&gt;&gt; "ravinder rao" &lt;ravinder35@gmail.com&gt; =
+31/08/2006 11:45 p.m. &gt;&gt;&gt;<BR>Respeceted sir,<BR>&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp; I am ravinder, i am implementing&nbsp;&nbsp; O=
+racel 10g&nbsp; RAC on SUSE Linux 10.1(kernel version 2.6.16.13-4-smp),fo=
+r this project i need NFS ,<BR>i am trying to configure NFS in suse, but =
+i am getting some problems ,plese send me appropriate documentation. <BR>=
+give me a package description.<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp; Thanking you,<BR><BR>-------------------------------=
+---------------------------------------------------<BR>Ravinder rao.<BR>I=
+ntrenational institute of information technology <BR>P:14, Pune infotech =
+park,<BR>Pune - INDIA.<BR>Ph:09860 424108 </DIV>
+<BR>NOTICE: This message contains privileged and=20
+confidential<BR>information intended only for the use of the addressee<BR=
+>named=20
+above. If you are not the intended recipient of<BR>this message you are h=
+ereby=20
+notified that you must not<BR>disseminate, copy or take any action in rel=
+iance=20
+on it.<BR>If you have received this message in error please<BR>notify All=
+ied=20
+Telesis&nbsp;Labs Ltd immediately.<BR>Any views expressed in this message=
+=20are=20
+those of the<BR>individual sender, except where the sender has the<BR>aut=
+hority=20
+to issue and specifically states them to<BR>be the views of Allied Telesi=
+s=20
+Labs.
+</BODY></HTML>
+
+--=__Part7451CAD3.1__=--
 
 
---===============1919444606==
+--===============1731741900==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -92,7 +131,7 @@ Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============1919444606==
+--===============1731741900==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -102,4 +141,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1919444606==--
+--===============1731741900==--
