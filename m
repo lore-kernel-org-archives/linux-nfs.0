@@ -1,31 +1,25 @@
-From: Haakon Riiser <haakon.riiser@fys.uio.no>
-Subject: lockd: rejected NSM callback from 7f000001:30001
-Date: Fri, 1 Sep 2006 15:28:54 +0200
-Message-ID: <20060901132854.GA25597@bigboss.venod.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 019 of 19] knfsd: Register all RPC programs with
+ portmapper by default
+Date: Fri, 01 Sep 2006 09:29:01 -0400
+Message-ID: <44F8359D.40303@redhat.com>
+References: <20060901141639.27206.patches@notabene>
+	<1060901043948.27677@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@osdl.org>, Olaf Kirch <okir@suse.de>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJ951-0001Ex-RZ
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:29:08 -0700
-Received: from pat.uio.no ([129.240.10.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJ951-0005TI-6b
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:29:08 -0700
-Received: from mail-mx3.uio.no ([129.240.10.44])
-	by pat.uio.no with esmtp (Exim 4.43) id 1GJ94s-0000W4-KP
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 15:28:58 +0200
-Received: from c85-196-100-202.static.sdsl.no ([85.196.100.202]
-	helo=bigboss.venod.com)
-	by mail-mx3.uio.no with esmtpsa (TLSv1:AES256-SHA:256) (Exim 4.43)
-	id 1GJ94p-0006if-42
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 15:28:55 +0200
-Received: from hakonrk by bigboss.venod.com with local (Exim 4.62)
-	(envelope-from <haakon.riiser@fys.uio.no>) id 1GJ94o-0006iW-Ro
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 15:28:54 +0200
-To: nfs@lists.sourceforge.net
+	id 1GJ95C-0001Ff-3N
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:29:18 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GJ95C-0000ww-FC
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 06:29:18 -0700
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1060901043948.27677@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,40 +32,120 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-A few months ago, I upgraded my file server from FC3 to FC5,
-and at the same time, upgraded all of the file server's hardware
-except the disks (a single SATA drive that holds the OS plus four
-SATA drives in a software RAID5 array).
+NeilBrown wrote:
+> From: Olaf Kirch <okir@suse.de>
+>
+>   The NFSACL patches introduced support for multiple RPC services
+>   listening on the same transport. However, only the first of these
+>   services was registered with portmapper. This was perfectly fine
+>   for nfsacl, as you traditionally do not want these to show up in a
+>   portmapper listing.
+>
+>   The patch below changes the default behavior to always register
+>   all services listening on a given transport, but retains the
+>   old behavior for nfsacl services.
+>
+> Signed-off-by: Olaf Kirch <okir@suse.de>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+>
+> ### Diffstat output
+>  ./fs/nfsd/nfs2acl.c          |    1 +
+>  ./fs/nfsd/nfs3acl.c          |    1 +
+>  ./include/linux/sunrpc/svc.h |    3 +++
+>  ./net/sunrpc/svc.c           |   37 +++++++++++++++++++++++--------------
+>  4 files changed, 28 insertions(+), 14 deletions(-)
+>
+> diff .prev/fs/nfsd/nfs2acl.c ./fs/nfsd/nfs2acl.c
+> --- .prev/fs/nfsd/nfs2acl.c	2006-09-01 12:22:10.000000000 +1000
+> +++ ./fs/nfsd/nfs2acl.c	2006-09-01 12:22:11.000000000 +1000
+> @@ -333,4 +333,5 @@ struct svc_version	nfsd_acl_version2 = {
+>  		.vs_proc	= nfsd_acl_procedures2,
+>  		.vs_dispatch	= nfsd_dispatch,
+>  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+> +		.vs_hidden	= 1,
+>  };
+>
+> diff .prev/fs/nfsd/nfs3acl.c ./fs/nfsd/nfs3acl.c
+> --- .prev/fs/nfsd/nfs3acl.c	2006-09-01 12:22:10.000000000 +1000
+> +++ ./fs/nfsd/nfs3acl.c	2006-09-01 12:22:11.000000000 +1000
+> @@ -263,5 +263,6 @@ struct svc_version	nfsd_acl_version3 = {
+>  		.vs_proc	= nfsd_acl_procedures3,
+>  		.vs_dispatch	= nfsd_dispatch,
+>  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+> +		.vs_hidden	= 1,
+>  };
+>  
+>
+> diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
+> --- .prev/include/linux/sunrpc/svc.h	2006-09-01 12:22:10.000000000 +1000
+> +++ ./include/linux/sunrpc/svc.h	2006-09-01 12:22:11.000000000 +1000
+> @@ -304,6 +304,9 @@ struct svc_version {
+>  	struct svc_procedure *	vs_proc;	/* per-procedure info */
+>  	u32			vs_xdrsize;	/* xdrsize needed for this version */
+>  
+> +	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
+> +						 * Only used for nfsacl so far. */
+> +
+>  	/* Override dispatch function (e.g. when caching replies).
+>  	 * A return value of 0 means drop the request. 
+>  	 * vs_dispatch == NULL means use default dispatcher.
+>
+> diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
+> --- .prev/net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
+> +++ ./net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
+> @@ -644,23 +644,32 @@ svc_register(struct svc_serv *serv, int 
+>  	unsigned long		flags;
+>  	int			i, error = 0, dummy;
+>  
+> -	progp = serv->sv_program;
+> -
+> -	dprintk("RPC: svc_register(%s, %s, %d)\n",
+> -		progp->pg_name, proto == IPPROTO_UDP? "udp" : "tcp", port);
+> -
+>  	if (!port)
+>  		clear_thread_flag(TIF_SIGPENDING);
+>  
+> -	for (i = 0; i < progp->pg_nvers; i++) {
+> -		if (progp->pg_vers[i] == NULL)
+> -			continue;
+> -		error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
+> -		if (error < 0)
+> -			break;
+> -		if (port && !dummy) {
+> -			error = -EACCES;
+> -			break;
+> +	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
+> +		for (i = 0; i < progp->pg_nvers; i++) {
+> +			if (progp->pg_vers[i] == NULL)
+> +				continue;
+> +
+> +			dprintk("RPC: svc_register(%s, %s, %d, %d)%s\n",
+> +					progp->pg_name,
+> +					proto == IPPROTO_UDP?  "udp" : "tcp",
+> +					port,
+> +					i,
+> +					progp->pg_vers[i]->vs_hidden?
+> +						" (but not telling portmap)" : "");
+> +
+> +			if (progp->pg_vers[i]->vs_hidden)
+> +				continue;
+> +
+> +			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
+> +			if (error < 0)
+> +				break;
+> +			if (port && !dummy) {
+> +				error = -EACCES;
+> +				break;
+> +			}
+>  		}
+>  	}
 
-After this upgrade (at least that's when I think it first started to
-happen), I started seeing
+While I'm thinking about it a little more, why not register NFS_ACL with
+portmap/rpcbind?  That would make it pingable via rpcinfo.
 
-  lockd: rejected NSM callback from 7f000001:30001
+    Thanx...
 
-in dmesg.  It causes no apparent errors, but I'm still wondering
-if there's something I should (or can) do about it.  The error
-messages seem to pop up at random times -- often at times when the
-system is completely idle, but it can be days between each time
-they occur.
-
-When the error message is printed, it's always more than one line,
-but there's a few seconds (typically 4 or 6) between each message.
-
-Current system info:
-
-kernel-2.6.17-1.2174_FC5
-glibc-2.4-8
-nfs-utils-1.0.8-3
-
-Regarding the port number above, 30001, I have fixed it to that
-value by setting STATD_OUTGOING_PORT=30001 in /etc/sysconfig/nfs.
-Could this be causing my problem?  Of course, I shouldn't be asking
-this as I could try it out for myself, but it can take days before I
-know if it changes anything, so I'll just get some feedback here
-before I start experiementing. :)
-
--- 
- Haakon
+       ps
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
