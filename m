@@ -1,28 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 019 of 19] knfsd: Register all RPC programs
-	with	portmapper by default
-Date: Fri, 01 Sep 2006 12:13:34 -0400
-Message-ID: <1157127214.5632.62.camel@localhost>
-References: <20060901141639.27206.patches@notabene>
-	<1060901043948.27677@suse.de>
-	<76bd70e30609010831m9e80cfav514d60718d35e7d5@mail.gmail.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 019 of 19] knfsd: Register all RPC programs with
+ portmapper by default
+Date: Fri, 01 Sep 2006 12:34:52 -0400
+Message-ID: <44F8612C.10101@redhat.com>
+References: <20060901141639.27206.patches@notabene>	<1060901043948.27677@suse.de>	<76bd70e30609010831m9e80cfav514d60718d35e7d5@mail.gmail.com>	<20060901155407.GC29574@suse.de>
+	<76bd70e30609010908n47eb356ob121109961f8221c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
-	nfs@lists.sourceforge.net, Olaf Kirch <okir@suse.de>,
-	linux-kernel@vger.kernel.org
+Cc: Olaf Kirch <okir@suse.de>, NeilBrown <neilb@suse.de>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@osdl.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJBeS-0000Uq-JO
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:13:52 -0700
-Received: from pat.uio.no ([129.240.10.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJBeR-0000l7-Oo
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:13:53 -0700
+	id 1GJByp-0002Pu-Ne
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:34:56 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GJByp-0000ea-45
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:34:56 -0700
 To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30609010831m9e80cfav514d60718d35e7d5@mail.gmail.com>
+In-Reply-To: <76bd70e30609010908n47eb356ob121109961f8221c@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,18 +33,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-09-01 at 11:31 -0400, Chuck Lever wrote:
+Chuck Lever wrote:
+> On 9/1/06, Olaf Kirch <okir@suse.de> wrote:
+>   
+>> On Fri, Sep 01, 2006 at 11:31:25AM -0400, Chuck Lever wrote:
+>>     
+>>> I don't like this.  The idea that multiple RPC services are listening
+>>> on the same port is a total hack.  What other service might use this
+>>> besides NFSACL?
+>>>       
+>> Why do you consider this a hack? I have always felt that librpc requiring
+>> you to open separate ports for every program you register was a poor
+>> design. The RPC header contains the program number, and the RPC code
+>> is fully capable of demuxing incoming requests. So I do not think it is
+>> a hack at all.
+>>
+>> And yes, Solaris NFSACL resides on 2049 too.
+>>     
+>
+> I meant "Does Solaris advertise NFSACL on 2049 via the portmapper?"
 
-> I don't like this.  The idea that multiple RPC services are listening
-> on the same port is a total hack.  What other service might use this
-> besides NFSACL?
+Yes, the Solaris server registers the NFS_ACL service with the rpcbind
+daemon.  And, the NFS_ACL protocol is defined to use port 2049.  Please
+see nfs_acl.x (/usr/include/rpcsvc/nfs_acl.x) for details.
 
-Ermm... Any RPC server process that doesn't want to register with the
-portmapper. The NFSv4 callback channel is one obvious candidate.
-
-Cheers,
-  Trond
-
+       ps
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
