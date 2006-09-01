@@ -1,23 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 011 of 19] knfsd: lockd: make nlm_traverse_* more
-	flexible
-Date: Fri, 1 Sep 2006 14:39:05 +1000
-Message-ID: <1060901043905.27570@suse.de>
+Subject: [PATCH 013 of 19] knfsd: Simplify nlmsvc_invalidate_all
+Date: Fri, 1 Sep 2006 14:39:16 +1000
+Message-ID: <1060901043916.27594@suse.de>
 References: <20060901141639.27206.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJ0oF-0005sv-05
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:15 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1GJ0oP-0005uD-Fa
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:25 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJ0oE-0001SO-ID
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:15 -0700
+	(Exim 4.44) id 1GJ0oP-0004UT-1N
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:26 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,357 +31,115 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-From: Olaf Kirch <okir@suse.de>
+  As a result of previous patches, the loop in nlmsvc_invalidate_all
+  just sets h_expires for all client/hosts to 0 (though does it in a
+  very complicated way).
 
-  This patch makes nlm_traverse{locks,blocks,shares} and friends
-  use a function pointer rather than a "action" enum.
+  This was possibly meant to trigger early garbage collection but
+  half the time '0' is in the future and so it infact delays garbage
+  collection.
 
-  This function pointer is given two nlm_hosts (one given by the
-  caller, the other taken from the lock/block/share currently
-  visited), and is free to do with them as it wants. If it returns a
-  non-zero value, the lockd/block/share is released.
+  Pre-aging the 'hosts' is not really needed at this point anyway
+  so we throw out the loop and nlm_find_client which is no longer
+  needed.
 
-Signed-off-by: Olaf Kirch <okir@suse.de>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/lockd/svclock.c          |   33 +++----------
- ./fs/lockd/svcshare.c         |   20 +++-----
- ./fs/lockd/svcsubs.c          |  105 ++++++++++++++++++++++++++++++------------
- ./include/linux/lockd/lockd.h |   15 ++----
- ./include/linux/lockd/share.h |    3 -
- 5 files changed, 102 insertions(+), 74 deletions(-)
+ ./fs/lockd/host.c             |   27 ---------------------------
+ ./fs/lockd/svcsubs.c          |   10 +---------
+ ./include/linux/lockd/lockd.h |    4 +---
+ 3 files changed, 2 insertions(+), 39 deletions(-)
 
-diff .prev/fs/lockd/svclock.c ./fs/lockd/svclock.c
---- .prev/fs/lockd/svclock.c	2006-09-01 10:44:39.000000000 +1000
-+++ ./fs/lockd/svclock.c	2006-09-01 10:59:37.000000000 +1000
-@@ -265,24 +265,20 @@ static void nlmsvc_release_block(struct 
- 		kref_put(&block->b_count, nlmsvc_free_block);
+diff .prev/fs/lockd/host.c ./fs/lockd/host.c
+--- .prev/fs/lockd/host.c	2006-09-01 11:07:19.000000000 +1000
++++ ./fs/lockd/host.c	2006-09-01 11:37:34.000000000 +1000
+@@ -192,33 +192,6 @@ nlm_destroy_host(struct nlm_host *host)
+ 	kfree(host);
  }
  
--static void nlmsvc_act_mark(struct nlm_host *host, struct nlm_file *file)
+-struct nlm_host *
+-nlm_find_client(void)
 -{
--	struct nlm_block *block;
+-	struct hlist_head *chain;
+-	struct hlist_node *pos;
 -
--	down(&file->f_sema);
--	list_for_each_entry(block, &file->f_blocks, b_flist)
--		block->b_host->h_inuse = 1;
--	up(&file->f_sema);
--}
+-	/* find a nlm_host for a client for which h_killed == 0.
+-	 * and return it
+-	 */
+-	mutex_lock(&nlm_host_mutex);
+-	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		struct nlm_host *host;
 -
--static void nlmsvc_act_unlock(struct nlm_host *host, struct nlm_file *file)
-+/*
-+ * Loop over all blocks and delete blocks held by
-+ * a matching host.
-+ */
-+void nlmsvc_traverse_blocks(struct nlm_host *host,
-+			struct nlm_file *file,
-+			nlm_host_match_fn_t match)
- {
- 	struct nlm_block *block, *next;
- 
- restart:
- 	down(&file->f_sema);
- 	list_for_each_entry_safe(block, next, &file->f_blocks, b_flist) {
--		if (host != NULL && host != block->b_host)
-+		if (!match(block->b_host, host))
- 			continue;
- 		/* Do not destroy blocks that are not on
- 		 * the global retry list - why? */
-@@ -298,19 +294,6 @@ restart:
- }
- 
- /*
-- * Loop over all blocks and perform the action specified.
-- * (NLM_ACT_CHECK handled by nlmsvc_inspect_file).
-- */
--void
--nlmsvc_traverse_blocks(struct nlm_host *host, struct nlm_file *file, int action)
--{
--	if (action == NLM_ACT_MARK)
--		nlmsvc_act_mark(host, file);
--	else
--		nlmsvc_act_unlock(host, file);
--}
--
--/*
-  * Initialize arguments for GRANTED call. The nlm_rqst structure
-  * has been cleared already.
-  */
-
-diff .prev/fs/lockd/svcshare.c ./fs/lockd/svcshare.c
---- .prev/fs/lockd/svcshare.c	2006-09-01 10:39:06.000000000 +1000
-+++ ./fs/lockd/svcshare.c	2006-09-01 10:58:38.000000000 +1000
-@@ -85,24 +85,20 @@ nlmsvc_unshare_file(struct nlm_host *hos
- }
- 
- /*
-- * Traverse all shares for a given file (and host).
-- * NLM_ACT_CHECK is handled by nlmsvc_inspect_file.
-+ * Traverse all shares for a given file, and delete
-+ * those owned by the given (type of) host
-  */
--void
--nlmsvc_traverse_shares(struct nlm_host *host, struct nlm_file *file, int action)
-+void nlmsvc_traverse_shares(struct nlm_host *host, struct nlm_file *file,
-+		nlm_host_match_fn_t match)
- {
- 	struct nlm_share	*share, **shpp;
- 
- 	shpp = &file->f_shares;
- 	while ((share = *shpp) !=  NULL) {
--		if (action == NLM_ACT_MARK)
--			share->s_host->h_inuse = 1;
--		else if (action == NLM_ACT_UNLOCK) {
--			if (host == NULL || host == share->s_host) {
--				*shpp = share->s_next;
--				kfree(share);
--				continue;
+-		hlist_for_each_entry(host, pos, chain, h_hash) {
+-			if (host->h_server &&
+-			    host->h_killed == 0) {
+-				nlm_get_host(host);
+-				mutex_unlock(&nlm_host_mutex);
+-				return host;
 -			}
-+		if (match(share->s_host, host)) {
-+			*shpp = share->s_next;
-+			kfree(share);
-+			continue;
- 		}
- 		shpp = &share->s_next;
- 	}
+-		}
+-	}
+-	mutex_unlock(&nlm_host_mutex);
+-	return NULL;
+-}
+-
+-				
+ /*
+  * Create the NLM RPC client for an NLM peer
+  */
 
 diff .prev/fs/lockd/svcsubs.c ./fs/lockd/svcsubs.c
---- .prev/fs/lockd/svcsubs.c	2006-09-01 10:45:16.000000000 +1000
-+++ ./fs/lockd/svcsubs.c	2006-09-01 11:06:21.000000000 +1000
-@@ -165,7 +165,8 @@ nlm_delete_file(struct nlm_file *file)
-  * action.
-  */
- static int
--nlm_traverse_locks(struct nlm_host *host, struct nlm_file *file, int action)
-+nlm_traverse_locks(struct nlm_host *host, struct nlm_file *file,
-+			nlm_host_match_fn_t match)
- {
- 	struct inode	 *inode = nlmsvc_file_inode(file);
- 	struct file_lock *fl;
-@@ -179,17 +180,11 @@ again:
- 
- 		/* update current lock count */
- 		file->f_locks++;
-+
- 		lockhost = (struct nlm_host *) fl->fl_owner;
--		if (action == NLM_ACT_MARK)
--			lockhost->h_inuse = 1;
--		else if (action == NLM_ACT_CHECK)
--			return 1;
--		else if (action == NLM_ACT_UNLOCK) {
-+		if (match(lockhost, host)) {
- 			struct file_lock lock = *fl;
- 
--			if (host && lockhost != host)
--				continue;
--
- 			lock.fl_type  = F_UNLCK;
- 			lock.fl_start = 0;
- 			lock.fl_end   = OFFSET_MAX;
-@@ -206,27 +201,42 @@ again:
+--- .prev/fs/lockd/svcsubs.c	2006-09-01 11:06:21.000000000 +1000
++++ ./fs/lockd/svcsubs.c	2006-09-01 11:38:14.000000000 +1000
+@@ -354,13 +354,11 @@ nlmsvc_free_host_resources(struct nlm_ho
  }
  
  /*
-- * Operate on a single file
-+ * Inspect a single file
-+ */
-+static inline int
-+nlm_inspect_file(struct nlm_host *host, struct nlm_file *file, nlm_host_match_fn_t match)
-+{
-+	nlmsvc_traverse_blocks(host, file, match);
-+	nlmsvc_traverse_shares(host, file, match);
-+	return nlm_traverse_locks(host, file, match);
-+}
-+
-+/*
-+ * Quick check whether there are still any locks, blocks or
-+ * shares on a given file.
-  */
- static inline int
--nlm_inspect_file(struct nlm_host *host, struct nlm_file *file, int action)
-+nlm_file_inuse(struct nlm_file *file)
- {
--	if (action == NLM_ACT_CHECK) {
--		/* Fast path for mark and sweep garbage collection */
--		if (file->f_count || list_empty(&file->f_blocks) || file->f_shares)
-+	struct inode	 *inode = nlmsvc_file_inode(file);
-+	struct file_lock *fl;
-+
-+	if (file->f_count || !list_empty(&file->f_blocks) || file->f_shares)
-+		return 1;
-+
-+	for (fl = inode->i_flock; fl; fl = fl->fl_next) {
-+		if (fl->fl_lmops == &nlmsvc_lock_operations)
- 			return 1;
--	} else {
--		nlmsvc_traverse_blocks(host, file, action);
--		nlmsvc_traverse_shares(host, file, action);
- 	}
--	return nlm_traverse_locks(host, file, action);
-+	file->f_locks = 0;
-+	return 0;
- }
- 
- /*
-  * Loop over all files in the file table.
-  */
- static int
--nlm_traverse_files(struct nlm_host *host, int action)
-+nlm_traverse_files(struct nlm_host *host, nlm_host_match_fn_t match)
- {
- 	struct hlist_node *pos, *next;
- 	struct nlm_file	*file;
-@@ -240,7 +250,7 @@ nlm_traverse_files(struct nlm_host *host
- 
- 			/* Traverse locks, blocks and shares of this file
- 			 * and update file->f_locks count */
--			if (nlm_inspect_file(host, file, action))
-+			if (nlm_inspect_file(host, file, match))
- 				ret = 1;
- 
- 			mutex_lock(&nlm_file_mutex);
-@@ -277,23 +287,54 @@ nlm_release_file(struct nlm_file *file)
- 	mutex_lock(&nlm_file_mutex);
- 
- 	/* If there are no more locks etc, delete the file */
--	if(--file->f_count == 0) {
--		if(!nlm_inspect_file(NULL, file, NLM_ACT_CHECK))
--			nlm_delete_file(file);
--	}
-+	if (--file->f_count == 0 && !nlm_file_inuse(file))
-+		nlm_delete_file(file);
- 
- 	mutex_unlock(&nlm_file_mutex);
- }
- 
- /*
-+ * Helpers function for resource traversal
-+ *
-+ * nlmsvc_mark_host:
-+ *	used by the garbage collector; simply sets h_inuse.
-+ *	Always returns 0.
-+ *
-+ * nlmsvc_same_host:
-+ *	returns 1 iff the two hosts match. Used to release
-+ *	all resources bound to a specific host.
-+ *
-+ * nlmsvc_is_client:
-+ *	returns 1 iff the host is a client.
-+ *	Used by nlmsvc_invalidate_all
-+ */
-+static int
-+nlmsvc_mark_host(struct nlm_host *host, struct nlm_host *dummy)
-+{
-+	host->h_inuse = 1;
-+	return 0;
-+}
-+
-+static int
-+nlmsvc_same_host(struct nlm_host *host, struct nlm_host *other)
-+{
-+	return host == other;
-+}
-+
-+static int
-+nlmsvc_is_client(struct nlm_host *host, struct nlm_host *dummy)
-+{
-+	return host->h_server;
-+}
-+
-+/*
-  * Mark all hosts that still hold resources
+- * delete all hosts structs for clients
++ * Remove all locks held for clients
   */
  void
- nlmsvc_mark_resources(void)
- {
- 	dprintk("lockd: nlmsvc_mark_resources\n");
--
--	nlm_traverse_files(NULL, NLM_ACT_MARK);
-+	nlm_traverse_files(NULL, nlmsvc_mark_host);
- }
- 
- /*
-@@ -304,7 +345,7 @@ nlmsvc_free_host_resources(struct nlm_ho
- {
- 	dprintk("lockd: nlmsvc_free_host_resources\n");
- 
--	if (nlm_traverse_files(host, NLM_ACT_UNLOCK)) {
-+	if (nlm_traverse_files(host, nlmsvc_same_host)) {
- 		printk(KERN_WARNING
- 			"lockd: couldn't remove all locks held by %s\n",
- 			host->h_name);
-@@ -319,8 +360,16 @@ void
  nlmsvc_invalidate_all(void)
  {
- 	struct nlm_host *host;
-+
-+	/* Release all locks held by NFS clients.
-+	 * Previously, the code would call
-+	 * nlmsvc_free_host_resources for each client in
-+	 * turn, which is about as inefficient as it gets.
-+	 * Now we just do it once in nlm_traverse_files.
-+	 */
-+	nlm_traverse_files(NULL, nlmsvc_is_client);
-+
- 	while ((host = nlm_find_client()) != NULL) {
--		nlmsvc_free_host_resources(host);
- 		host->h_expires = 0;
- 		host->h_killed = 1;
- 		nlm_release_host(host);
+-	struct nlm_host *host;
+-
+ 	/* Release all locks held by NFS clients.
+ 	 * Previously, the code would call
+ 	 * nlmsvc_free_host_resources for each client in
+@@ -368,10 +366,4 @@ nlmsvc_invalidate_all(void)
+ 	 * Now we just do it once in nlm_traverse_files.
+ 	 */
+ 	nlm_traverse_files(NULL, nlmsvc_is_client);
+-
+-	while ((host = nlm_find_client()) != NULL) {
+-		host->h_expires = 0;
+-		host->h_killed = 1;
+-		nlm_release_host(host);
+-	}
+ }
 
 diff .prev/include/linux/lockd/lockd.h ./include/linux/lockd/lockd.h
---- .prev/include/linux/lockd/lockd.h	2006-09-01 10:45:16.000000000 +1000
-+++ ./include/linux/lockd/lockd.h	2006-09-01 10:58:38.000000000 +1000
-@@ -134,13 +134,6 @@ struct nlm_block {
- };
- 
- /*
-- * Valid actions for nlmsvc_traverse_files
-- */
--#define NLM_ACT_CHECK		0		/* check for locks */
--#define NLM_ACT_MARK		1		/* mark & sweep */
--#define NLM_ACT_UNLOCK		2		/* release all locks */
--
--/*
-  * Global variables
-  */
- extern struct rpc_program	nlm_program;
-@@ -183,6 +176,12 @@ void		  nsm_release(struct nsm_handle *)
- 
- 
- /*
-+ * This is used in garbage collection and resource reclaim
-+ * A return value != 0 means destroy the lock/block/share
-+ */
-+typedef int	  (*nlm_host_match_fn_t)(struct nlm_host *cur, struct nlm_host *ref);
-+
-+/*
-  * Server-side lock handling
-  */
- u32		  nlmsvc_lock(struct svc_rqst *, struct nlm_file *,
-@@ -193,7 +192,7 @@ u32		  nlmsvc_testlock(struct nlm_file *
- u32		  nlmsvc_cancel_blocked(struct nlm_file *, struct nlm_lock *);
- unsigned long	  nlmsvc_retry_blocked(void);
- void		  nlmsvc_traverse_blocks(struct nlm_host *, struct nlm_file *,
--					int action);
-+					nlm_host_match_fn_t match);
- void	  nlmsvc_grant_reply(struct svc_rqst *, struct nlm_cookie *, u32);
- 
- /*
-
-diff .prev/include/linux/lockd/share.h ./include/linux/lockd/share.h
---- .prev/include/linux/lockd/share.h	2006-09-01 10:39:06.000000000 +1000
-+++ ./include/linux/lockd/share.h	2006-09-01 10:58:38.000000000 +1000
-@@ -25,6 +25,7 @@ u32	nlmsvc_share_file(struct nlm_host *,
- 					       struct nlm_args *);
- u32	nlmsvc_unshare_file(struct nlm_host *, struct nlm_file *,
- 					       struct nlm_args *);
--void	nlmsvc_traverse_shares(struct nlm_host *, struct nlm_file *, int);
-+void	nlmsvc_traverse_shares(struct nlm_host *, struct nlm_file *,
-+					       nlm_host_match_fn_t);
- 
- #endif /* LINUX_LOCKD_SHARE_H */
+--- .prev/include/linux/lockd/lockd.h	2006-09-01 10:58:38.000000000 +1000
++++ ./include/linux/lockd/lockd.h	2006-09-01 11:38:57.000000000 +1000
+@@ -45,8 +45,7 @@ struct nlm_host {
+ 	unsigned short		h_proto;	/* transport proto */
+ 	unsigned short		h_reclaiming : 1,
+ 				h_server     : 1, /* server side, not client side */
+-				h_inuse      : 1,
+-				h_killed     : 1;
++				h_inuse      : 1;
+ 	wait_queue_head_t	h_gracewait;	/* wait while reclaiming */
+ 	struct rw_semaphore	h_rwsem;	/* Reboot recovery lock */
+ 	u32			h_state;	/* pseudo-state counter */
+@@ -169,7 +168,6 @@ void		  nlm_rebind_host(struct nlm_host 
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+-extern struct nlm_host *nlm_find_client(void);
+ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
+ struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
+ void		  nsm_release(struct nsm_handle *);
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
