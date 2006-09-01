@@ -1,8 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 017 of 19] knfsd: Export nsm_local_state to user space
-	via sysctl
-Date: Fri, 1 Sep 2006 14:39:38 +1000
-Message-ID: <1060901043938.27653@suse.de>
+Subject: [PATCH 019 of 19] knfsd: Register all RPC programs with
+	portmapper by default
+Date: Fri, 1 Sep 2006 14:39:48 +1000
+Message-ID: <1060901043948.27677@suse.de>
 References: <20060901141639.27206.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJ0ol-0005w2-EN
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:47 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GJ0ov-0005wr-39
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:57 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJ0ok-0001XS-BD
-	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:48 -0700
+	(Exim 4.44) id 1GJ0ov-0001ZB-1w
+	for nfs@lists.sourceforge.net; Thu, 31 Aug 2006 21:39:57 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,74 +34,111 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Olaf Kirch <okir@suse.de>
 
-  Every NLM call includes the client's NSM state. Currently,
-  the Linux client always reports 0 - which seems not to cause
-  any problems, but is not what the protocol says.
+  The NFSACL patches introduced support for multiple RPC services
+  listening on the same transport. However, only the first of these
+  services was registered with portmapper. This was perfectly fine
+  for nfsacl, as you traditionally do not want these to show up in a
+  portmapper listing.
 
-  This patch exposes the kernel's internal variable to user
-  space via a sysctl, which can be set at system boot time
-  by statd.
+  The patch below changes the default behavior to always register
+  all services listening on a given transport, but retains the
+  old behavior for nfsacl services.
 
 Signed-off-by: Olaf Kirch <okir@suse.de>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/lockd/mon.c                 |    2 +-
- ./fs/lockd/svc.c                 |    9 +++++++++
- ./include/linux/lockd/sm_inter.h |    2 +-
- 3 files changed, 11 insertions(+), 2 deletions(-)
+ ./fs/nfsd/nfs2acl.c          |    1 +
+ ./fs/nfsd/nfs3acl.c          |    1 +
+ ./include/linux/sunrpc/svc.h |    3 +++
+ ./net/sunrpc/svc.c           |   37 +++++++++++++++++++++++--------------
+ 4 files changed, 28 insertions(+), 14 deletions(-)
 
-diff .prev/fs/lockd/mon.c ./fs/lockd/mon.c
---- .prev/fs/lockd/mon.c	2006-09-01 12:11:16.000000000 +1000
-+++ ./fs/lockd/mon.c	2006-09-01 12:17:47.000000000 +1000
-@@ -24,7 +24,7 @@ static struct rpc_program	nsm_program;
- /*
-  * Local NSM state
-  */
--u32				nsm_local_state;
-+int				nsm_local_state;
- 
- /*
-  * Common procedure for SM_MON/SM_UNMON calls
+diff .prev/fs/nfsd/nfs2acl.c ./fs/nfsd/nfs2acl.c
+--- .prev/fs/nfsd/nfs2acl.c	2006-09-01 12:22:10.000000000 +1000
++++ ./fs/nfsd/nfs2acl.c	2006-09-01 12:22:11.000000000 +1000
+@@ -333,4 +333,5 @@ struct svc_version	nfsd_acl_version2 = {
+ 		.vs_proc	= nfsd_acl_procedures2,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
++		.vs_hidden	= 1,
+ };
 
-diff .prev/fs/lockd/svc.c ./fs/lockd/svc.c
---- .prev/fs/lockd/svc.c	2006-09-01 12:15:24.000000000 +1000
-+++ ./fs/lockd/svc.c	2006-09-01 12:19:26.000000000 +1000
-@@ -33,6 +33,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <net/ip.h>
- #include <linux/lockd/lockd.h>
-+#include <linux/lockd/sm_inter.h>
- #include <linux/nfs.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVC
-@@ -404,6 +405,14 @@ static ctl_table nlm_sysctls[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dointvec,
- 	},
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "nsm_local_state",
-+		.data		= &nsm_local_state,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec,
-+	},
- 	{ .ctl_name = 0 }
+diff .prev/fs/nfsd/nfs3acl.c ./fs/nfsd/nfs3acl.c
+--- .prev/fs/nfsd/nfs3acl.c	2006-09-01 12:22:10.000000000 +1000
++++ ./fs/nfsd/nfs3acl.c	2006-09-01 12:22:11.000000000 +1000
+@@ -263,5 +263,6 @@ struct svc_version	nfsd_acl_version3 = {
+ 		.vs_proc	= nfsd_acl_procedures3,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
++		.vs_hidden	= 1,
  };
  
 
-diff .prev/include/linux/lockd/sm_inter.h ./include/linux/lockd/sm_inter.h
---- .prev/include/linux/lockd/sm_inter.h	2006-09-01 12:11:16.000000000 +1000
-+++ ./include/linux/lockd/sm_inter.h	2006-09-01 12:17:47.000000000 +1000
-@@ -42,6 +42,6 @@ struct nsm_res {
+diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
+--- .prev/include/linux/sunrpc/svc.h	2006-09-01 12:22:10.000000000 +1000
++++ ./include/linux/sunrpc/svc.h	2006-09-01 12:22:11.000000000 +1000
+@@ -304,6 +304,9 @@ struct svc_version {
+ 	struct svc_procedure *	vs_proc;	/* per-procedure info */
+ 	u32			vs_xdrsize;	/* xdrsize needed for this version */
  
- int		nsm_monitor(struct nlm_host *);
- int		nsm_unmonitor(struct nlm_host *);
--extern u32	nsm_local_state;
-+extern int	nsm_local_state;
++	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
++						 * Only used for nfsacl so far. */
++
+ 	/* Override dispatch function (e.g. when caching replies).
+ 	 * A return value of 0 means drop the request. 
+ 	 * vs_dispatch == NULL means use default dispatcher.
+
+diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
+--- .prev/net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
++++ ./net/sunrpc/svc.c	2006-09-01 12:22:11.000000000 +1000
+@@ -644,23 +644,32 @@ svc_register(struct svc_serv *serv, int 
+ 	unsigned long		flags;
+ 	int			i, error = 0, dummy;
  
- #endif /* LINUX_LOCKD_SM_INTER_H */
+-	progp = serv->sv_program;
+-
+-	dprintk("RPC: svc_register(%s, %s, %d)\n",
+-		progp->pg_name, proto == IPPROTO_UDP? "udp" : "tcp", port);
+-
+ 	if (!port)
+ 		clear_thread_flag(TIF_SIGPENDING);
+ 
+-	for (i = 0; i < progp->pg_nvers; i++) {
+-		if (progp->pg_vers[i] == NULL)
+-			continue;
+-		error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
+-		if (error < 0)
+-			break;
+-		if (port && !dummy) {
+-			error = -EACCES;
+-			break;
++	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
++		for (i = 0; i < progp->pg_nvers; i++) {
++			if (progp->pg_vers[i] == NULL)
++				continue;
++
++			dprintk("RPC: svc_register(%s, %s, %d, %d)%s\n",
++					progp->pg_name,
++					proto == IPPROTO_UDP?  "udp" : "tcp",
++					port,
++					i,
++					progp->pg_vers[i]->vs_hidden?
++						" (but not telling portmap)" : "");
++
++			if (progp->pg_vers[i]->vs_hidden)
++				continue;
++
++			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
++			if (error < 0)
++				break;
++			if (port && !dummy) {
++				error = -EACCES;
++				break;
++			}
+ 		}
+ 	}
+ 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
