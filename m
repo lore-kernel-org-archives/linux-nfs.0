@@ -1,26 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 004 of 19] knfsd: lockd: introduce nsm_handle
-Date: Fri, 01 Sep 2006 12:41:33 -0400
-Message-ID: <1157128893.5632.74.camel@localhost>
-References: <20060901141639.27206.patches@notabene>
-	<1060901043825.27464@suse.de> <1157125820.5632.44.camel@localhost>
-	<20060901161110.GD29574@suse.de>
+From: Haakon Riiser <haakon.riiser@fys.uio.no>
+Subject: Re: lockd: rejected NSM callback from 7f000001:30001
+Date: Fri, 1 Sep 2006 18:54:13 +0200
+Message-ID: <20060901165413.GA27120@bigboss.venod.com>
+References: <20060901132854.GA25597@bigboss.venod.com>
+	<1157127071.5632.59.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJC5T-00030w-KU
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:41:47 -0700
+	id 1GJCHj-0004A6-Pj
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:54:27 -0700
 Received: from pat.uio.no ([129.240.10.4])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJC5T-0002Iy-QZ
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:41:48 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20060901161110.GD29574@suse.de>
+	(Exim 4.44) id 1GJCHi-0004ju-5E
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 09:54:28 -0700
+Received: from mail-mx1.uio.no ([129.240.10.29])
+	by pat.uio.no with esmtp (Exim 4.43) id 1GJCHb-0007CK-Pb
+	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 18:54:19 +0200
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1157127071.5632.59.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,51 +34,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-09-01 at 18:11 +0200, Olaf Kirch wrote:
-> This is all related to the reasons for introducing NSM notification
-> by name in the first place.
-> 
-> On the client side, we may have mounted several volumes from a multi-homed
-> server, using different addresses, and you have several NLM client
-> handles, each with one of these addresses - and each in a different
-> nlm_host object.
-> 
-> Or you have an NFS server in a HA configuration, listening on a virtual
-> address. As the server fails over, the alias moves to the backup
-> machine.
-> 
-> Or (once we have IPv6) you may have a mix of v4 and v6 mounts.
-> 
-> Now when the server reboots, it will send you one or more SM_NOTIFY
-> messages. You do not know which addresses it will use. In the multihomed
-> case, you will get one SM_NOTIFY for each server address if the server
-> is a Linux box. Other server OSs will send you just one SM_NOTIFY,
-> and the sender address will be more or less random. In the HA case
-> described above, the sender address will not match the address
-> you used at all (since the UDP packet will have the interface's
-> primary IP address, not the alias).
-> 
-> This is the main motivation for introducing the nsm_handle, and this is
-> also the reason why there is potentially a 1-to-many relationship between
-> nsm_handles (representing a "host") and nlm_host, representing a tuple of
-> (NLM version, transport protocol, address).
-> 
-> Maybe we should rename nlm_host to something less confusing.
+[Trond Myklebust]
 
-The local statd process is supposed to decode the notification from the
-remote client/server, and then notify the kernel. It already sends that
-notification on a per-nlm_host basis (i.e. it the call down to the
-kernel contains the <address,version,transport protocol>.
+> On Fri, 2006-09-01 at 15:28 +0200, Haakon Riiser wrote:
 
-If we need to mark more than one <address,version,transport protocol>
-tuple as rebooting when we get a notification from the remote
-client/server, then why not fix statd so that it does so. Why perform
-these extra mappings in the kernel, which doesn't have the benefit of
-reverse DNS lookups etc to help it out?
+>>   lockd: rejected NSM callback from 7f000001:30001
 
-Cheers,
-  Trond
+> This is very intentional. The kernel won't accept notifications
+> from unprivileged ports. If it did, then any local user would
+> be able to trick the kernel into thinking that some server had
+> rebooted, by sending the appropriate RPC message.
+> Change your /etc/sysconfig/nfs so that it sets a value < 1024
+> for STATD_OUTGOING_PORT.
 
+Strange that I didn't see this error before, and that I picked
+a port number this high if the random port assignments were
+below 1024.  Back when I decided to use fixed port assignments
+(in a possibly misguided attempt at improving security), I tried
+to pick numbers that stayed close to the random assignments.
+
+Anyway, thanks for the quick response.  Either I'll assign a
+privileged port, or I'll do away with fixed port assignments and
+the associated firewall rules entirely.
+
+-- 
+ Haakon
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
