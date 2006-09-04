@@ -1,21 +1,22 @@
-From: Andre van Hoorn <andre.van.hoorn@informatik.uni-oldenburg.de>
-Subject: SUNRPC: Lack of RPC record fragments
-Date: Mon, 04 Sep 2006 19:16:39 +0200
-Message-ID: <44FC5F77.9010708@informatik.uni-oldenburg.de>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 9] knfsd: minor gss/v4 cleanups and major ACL
+	surgery.
+Date: Tue, 5 Sep 2006 09:15:21 +1000
+Message-ID: <20060905090617.21303.patches@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKI4Z-0001UW-US
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 10:17:24 -0700
-Received: from smtpsrv03.uni-oldenburg.de ([134.106.87.11]
-	ident=[U2FsdGVkX1/+Kn7wsqLWucdG6rFNPA57BZ294U7BCb8=])
+	id 1GKNf9-0000K5-EA
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:31 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKI4Z-0002Jb-Ky
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 10:17:27 -0700
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1GKNfB-0005Mu-P7
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:35 -0700
+To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,56 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Following are 9 patches for nfsd from Bruce Fields.  First 5 are minor
+cleanups around gss code and elsewhere.  Last 4 make substantial
+changes to ACL handling, particularly for mapping between Posix draft
+ACLs and NFSv4 ACLs.
 
-Hi,
-
-
-I'm communicating with the linux NFS kernel server via RPC using the
-sunrpc implementation in glibc. On certain RPC record sizes, glibc
-starts to use record fragmentation (whereas the sunrpc kernel client
-doesn't) and the sunrpc linux kernel server implementation lacks the RPC
-record "defragmentation" functionality as can be seen in
-net/sunrpc/svcsock.c:
-
-svsk->sk_reclen =3D ntohl(svsk->sk_reclen);
-if (!(svsk->sk_reclen & 0x80000000)) {
-  /* FIXME: technically, a record can be fragmented,
-   *  and non-terminal fragments will not have the top
-   *  bit set in the fragment length header.
-   *  But apparently no known nfs clients send fragmented
-   *  records. */
-   printk(KERN_NOTICE "RPC: bad TCP reclen 0x%08lx (non-terminal)\n",
-         (unsigned long) svsk->sk_reclen);
-   goto err_delete;
-}
-
-Unfortunately, I didn't find a way to disable the use of fragmentation
-in glibc. Is there an existing patch for the kernel to support
-fragmented records?
+Thanks,
+NeilBrown
 
 
-
-Best regards,
-
-Andr=E9
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iD8DBQFE/F92LKwmE5jzZmkRAtfUAJwPyFRgfav/y9RhW4/6Z8jzSbyz8QCfX7t4
-UNcN9tSfjWlJPjiVVFEelHM=3D
-=3DqnID
------END PGP SIGNATURE-----
+ [PATCH 001 of 9] knfsd: svcrpc: gss: factor out some common wrapping code
+ [PATCH 002 of 9] knfsd: svcrpc: gss: fix failure on SVC_DENIED in integrity case
+ [PATCH 003 of 9] knfsd: svcrpc: use consistent variable name for the reply state
+ [PATCH 004 of 9] knfsd: nfsd4: refactor exp_pseudoroot
+ [PATCH 005 of 9] knfsd: nfsd4: clean up exp_pseudoroot
+ [PATCH 006 of 9] knfsd: nfsd4: acls: relax the nfsv4->posix mapping
+ [PATCH 007 of 9] knfsd: nfsd4: acls: fix inheritance
+ [PATCH 008 of 9] knfsd: nfsd4: acls: simplify nfs4_acl_nfsv4_to_posix interface
+ [PATCH 009 of 9] knfsd: nfsd4: acls: fix handling of zero-length acls
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easi=
-er
+Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
-21642
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
