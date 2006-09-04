@@ -1,22 +1,27 @@
-From: "didier ." <did447@gmail.com>
-Subject: [patch] configure.in, wrong test for gethostbyname and libnsl
-Date: Mon, 4 Sep 2006 02:46:43 +0200
-Message-ID: <eba800c90609031746n3beeb198hac560de8753b2db@mail.gmail.com>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH 004 of 19] knfsd: lockd: introduce nsm_handle
+Date: Mon, 4 Sep 2006 10:48:46 +0200
+Message-ID: <20060904084846.GB28400@suse.de>
+References: <20060901141639.27206.patches@notabene>
+	<1060901043825.27464@suse.de> <1157125820.5632.44.camel@localhost>
+	<20060901161110.GD29574@suse.de>
+	<1157128893.5632.74.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_Part_86890_2688805.1157330803075"
+Content-Type: text/plain; charset="us-ascii"
+Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GK2bt-0007aZ-57
-	for nfs@lists.sourceforge.net; Sun, 03 Sep 2006 17:46:45 -0700
-Received: from wx-out-0506.google.com ([66.249.82.226])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GK2bt-0002ls-IR
-	for nfs@lists.sourceforge.net; Sun, 03 Sep 2006 17:46:46 -0700
-Received: by wx-out-0506.google.com with SMTP id r21so1885652wxc
-	for <nfs@lists.sourceforge.net>; Sun, 03 Sep 2006 17:46:43 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1GKA8S-0004t9-Ni
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 01:48:52 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GKA8T-0000yn-Go
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 01:48:55 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1157128893.5632.74.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,62 +34,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-------=_Part_86890_2688805.1157330803075
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Fri, Sep 01, 2006 at 12:41:33PM -0400, Trond Myklebust wrote:
+> The local statd process is supposed to decode the notification from the
+> remote client/server, and then notify the kernel. It already sends that
+> notification on a per-nlm_host basis (i.e. it the call down to the
+> kernel contains the <address,version,transport protocol>.
 
-Hi,
+Why does statd need to send the full <address,version,transport protocol>
+to the kernel in the first place?
 
-On a glibc system gethostbyname is in libc not libnsl
+All that's really needed is a unique identification of the host having
+rebooted, nevermind how we have been talking to it, and in what role.
 
-In the great autoconf tradition the patch is a copy and past from ethereal
+I consider the current practice a side effect of a bad implementation
+which duplicates a lot of state by dumping everything into the nlm_host.
 
-Didier
+With the current code, we cannot even monitor IPv6 addresses, because
+there's not enough room in the NSM_MON packet. With my proposed change,
+we can ditch version and transport protocol, and all of a sudden we
+have 16 bytes for the address - ie enough to make IPv6 happy.
 
-------=_Part_86890_2688805.1157330803075
-Content-Type: text/x-patch; name=configure.in.diff; charset=ANSI_X3.4-1968
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_ero3to7d
-Content-Disposition: attachment; filename="configure.in.diff"
+In the long run, we could clean out nlm_host even more - there's
+a lot of cruft in there.
 
-LS0tIGNvbmZpZ3VyZS5pbi5vcmlnCTIwMDYtMDktMDQgMDE6MzY6MDguMDAwMDAwMDAwICswMjAw
-CisrKyBjb25maWd1cmUuaW4JMjAwNi0wOS0wNCAwMTo1NzozNi4wMDAwMDAwMDAgKzAyMDAKQEAg
-LTE0Nyw4ICsxNDcsMTMgQEAKIGRubCAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKioqKioqKioqKioqCiBkbmwgKiBDaGVjayBmb3IgcmVxdWlyZWQgbGli
-cmFyaWVzCiBkbmwgKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKgotQUNfQ0hFQ0tfTElCKHNvY2tldCwgbWFpbiwgW0xJQlNPQ0tFVD0i
-LWxuc2wiXSkKLUFDX0NIRUNLX0xJQihuc2wsIG1haW4sCVtMSUJOU0w9Ii1sbnNsIl0pCitBQ19D
-SEVDS19GVU5DKGdldGhvc3RieW5hbWUsICwgW0FDX0NIRUNLX0xJQihuc2wsIGdldGhvc3RieW5h
-bWUsIFtMSUJOU0w9Ii1sbnNsIl0pXSkKK0FDX1NVQlNUKExJQk5TTCkKKworQUNfQ0hFQ0tfRlVO
-Qyhjb25uZWN0LCAsIAorICAgICAgQUNfQ0hFQ0tfTElCKHNvY2tldCwgY29ubmVjdCwgW0xJQlNP
-Q0tFVD0iLWxzb2NrZXQiXSwKKyAgICAgICAgICAgICAgICBBQ19NU0dfRVJST1IoRnVuY3Rpb24g
-J3NvY2tldCcgbm90IGZvdW5kLiksICRMSUJOU0wpKQorCiBBQ19DSEVDS19MSUIoY3J5cHQsIGNy
-eXB0LCBbTElCQ1JZUFQ9Ii1sY3J5cHQiXSkKIGlmIHRlc3QgIiRlbmFibGVfbmZzdjQiID0geWVz
-OyB0aGVuCiAgICAgQUNfQ0hFQ0tfTElCKGV2ZW50LCBldmVudF9kaXNwYXRjaCwgW2xpYmV2ZW50
-PTFdLCBBQ19NU0dfRVJST1IoW2xpYmV2ZW50IG5lZWRlZCBmb3IgbmZzdjQgc3VwcG9ydF0pKQpA
-QCAtMTcyLDcgKzE3Nyw2IEBACiAgICAgQUNfQ0hFQ0tfTElCKGJzZCwgZGFlbW9uLCBbTElCQlNE
-PSItbGJzZCJdKQogZmkKIEFDX1NVQlNUKExJQlNPQ0tFVCkKLUFDX1NVQlNUKExJQk5TTCkKIEFD
-X1NVQlNUKExJQkNSWVBUKQogQUNfU1VCU1QoTElCQlNEKQogCg==
-------=_Part_86890_2688805.1157330803075
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+	h_name		just h_nsmhandle->sm_name
+	h_gracewait	could be shared as well
+	h_state		should move to nsmhandle as well
+	h_nsmstate	currently not used, could move to nsmhandle as well
+	h_pidcount	currently allocated per nlm_host, which leads
+			to aliasing if we mix NFSv2 and v3 mounts
+
+On a side note, we may want to always allocate an RPC client for each
+nlm_host.  Then we can ditch the following variables as well, which are
+in the rpc_client's portmap info anyway:
+
+	h_proto		pm_prot
+	h_version	pm_vers
+	h_sema		useless
+	h_nextrebind	we can stop rebinding every 60s, the sunrpc
+			doesn't need that anymore. During recovery,
+			we can just call rpc_force_rebind
+			directly.
+
+Or going even further, one could make the nlm_host agnostic of transports
+and protocol versions. Just stick a (short) array of RPC clients in the
+nlm_host - any code that places NLM calls will need some extra logic
+to select the right client, but it would save on memory and reduce
+complexity.
+
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-------=_Part_86890_2688805.1157330803075
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-------=_Part_86890_2688805.1157330803075--
