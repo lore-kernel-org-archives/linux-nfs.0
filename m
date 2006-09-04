@@ -1,66 +1,128 @@
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: Re: 2.6.17.6 New(?) NFS Kernel Bug (OOPS) When vi
-	/over/nfs/file.txt
-Date: Mon, 4 Sep 2006 10:48:35 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0609041048210.1572@p34.internal.lan>
-References: <Pine.LNX.4.64.0608310708050.2348@p34.internal.lan>
-	<17660.5710.887383.554921@cse.unsw.edu.au>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [-mm patch] make fs/lockd/host.c:nlm_lookup_host() static
+Date: Mon, 4 Sep 2006 19:03:59 +0200
+Message-ID: <20060904170359.GS4416@stusta.de>
+References: <20060901015818.42767813.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	apiszcz@lucidpixels.com
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKFke-0003xk-EF
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 07:48:40 -0700
-Received: from lucidpixels.com ([66.45.37.187] ident=postfix)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GKFkg-0007Gn-0s
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 07:48:43 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17660.5710.887383.554921@cse.unsw.edu.au>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964901AbWIDREG@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>, Olaf Kirch <okir@suse.de>,
+	Neil Brown <neilb@suse.de>
+In-Reply-To: <20060901015818.42767813.akpm@osdl.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Ahh, whoa, thanks for this and identifying the patch fix!
+On Fri, Sep 01, 2006 at 01:58:18AM -0700, Andrew Morton wrote:
+>...
+> Changes since 2.6.18-rc4-mm3:
+>...
+> +knfsd-hide-use-of-lockds-h_monitored-flag.patch
+> +knfsd-consolidate-common-code-for-statd-lockd-notification.patch
+> +knfsd-when-looking-up-a-lockd-host-pass-hostname-length.patch
+> +knfsd-lockd-introduce-nsm_handle.patch
+> +knfsd-misc-minor-fixes-indentation-changes.patch
+> +knfsd-lockd-make-nlm_host_rebooted-use-the-nsm_handle.patch
+> +knfsd-lockd-make-the-nsm-upcalls-use-the-nsm_handle.patch
+> +knfsd-lockd-make-the-hash-chains-use-a-hlist_node.patch
+> +knfsd-lockd-change-list-of-blocked-list-to-list_node.patch
+> +knfsd-change-nlm_file-to-use-a-hlist.patch
+> +knfsd-lockd-make-nlm_traverse_-more-flexible.patch
+> +knfsd-lockd-add-nlm_destroy_host.patch
+> +knfsd-simplify-nlmsvc_invalidate_all.patch
+> +knfsd-lockd-optionally-use-hostnames-for-identifying-peers.patch
+> +knfsd-make-nlmclnt_next_cookie-smp-safe.patch
+> +knfsd-match-granted_res-replies-using-cookies.patch
+> +knfsd-export-nsm_local_state-to-user-space-via-sysctl.patch
+> +knfsd-lockd-fix-use-of-h_nextrebind.patch
+> +knfsd-register-all-rpc-programs-with-portmapper-by-default.patch
+> 
+>  nfsd updates.
+>...
 
-Justin.
+nlm_lookup_host() can now become static.
 
-On Mon, 4 Sep 2006, Neil Brown wrote:
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-> On Thursday August 31, jpiszcz@lucidpixels.com wrote:
->> Short description: I have a text file I was editing over NFS, around 4 to
->> 5 kilobytes.  It was during this time this occured:
->>
->> Note, this is the first time I have ever seen this bug.
->> My .config is attached.  After a reboot, I ran the same vi command, no
->> issues, so I could easily reproduce the problem.
->>
->> Could anyone offer any insight to exactly what it was that caused this
->> bug?
->
-> http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=2f34931fdc78b4895553aaa33748939cc7697c99
->
-> This is fixed in a 2.6.17.11 and possibly earlier stable releases.
->
-> NeilBrown
->
+---
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ fs/lockd/host.c             |   48 ++++++++++++++++++------------------
+ include/linux/lockd/lockd.h |    1 
+ 2 files changed, 24 insertions(+), 25 deletions(-)
+
+--- linux-2.6.18-rc5-mm1/include/linux/lockd/lockd.h.old	2006-09-01 20:57:28.000000000 +0200
++++ linux-2.6.18-rc5-mm1/include/linux/lockd/lockd.h	2006-09-01 20:57:34.000000000 +0200
+@@ -164,7 +164,6 @@
+  */
+ struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int, const char *, int);
+ struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *, const char *, int);
+-struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int, const char *, int);
+ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
+ void		  nlm_rebind_host(struct nlm_host *);
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+--- linux-2.6.18-rc5-mm1/fs/lockd/host.c.old	2006-09-01 20:57:42.000000000 +0200
++++ linux-2.6.18-rc5-mm1/fs/lockd/host.c	2006-09-01 20:58:25.000000000 +0200
+@@ -38,32 +38,9 @@
+ 					const char *, int, int);
+ 
+ /*
+- * Find an NLM server handle in the cache. If there is none, create it.
+- */
+-struct nlm_host *
+-nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
+-			const char *hostname, int hostname_len)
+-{
+-	return nlm_lookup_host(0, sin, proto, version,
+-			       hostname, hostname_len);
+-}
+-
+-/*
+- * Find an NLM client handle in the cache. If there is none, create it.
+- */
+-struct nlm_host *
+-nlmsvc_lookup_host(struct svc_rqst *rqstp,
+-			const char *hostname, int hostname_len)
+-{
+-	return nlm_lookup_host(1, &rqstp->rq_addr,
+-			       rqstp->rq_prot, rqstp->rq_vers,
+-			       hostname, hostname_len);
+-}
+-
+-/*
+  * Common host lookup routine for server & client
+  */
+-struct nlm_host *
++static struct nlm_host *
+ nlm_lookup_host(int server, const struct sockaddr_in *sin,
+ 					int proto, int version,
+ 					const char *hostname,
+@@ -165,6 +142,29 @@
+ }
+ 
+ /*
++ * Find an NLM server handle in the cache. If there is none, create it.
++ */
++struct nlm_host *
++nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
++			const char *hostname, int hostname_len)
++{
++	return nlm_lookup_host(0, sin, proto, version,
++			       hostname, hostname_len);
++}
++
++/*
++ * Find an NLM client handle in the cache. If there is none, create it.
++ */
++struct nlm_host *
++nlmsvc_lookup_host(struct svc_rqst *rqstp,
++			const char *hostname, int hostname_len)
++{
++	return nlm_lookup_host(1, &rqstp->rq_addr,
++			       rqstp->rq_prot, rqstp->rq_vers,
++			       hostname, hostname_len);
++}
++
++/*
+  * Destroy a host
+  */
+ static void
