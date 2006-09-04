@@ -1,23 +1,23 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 009 of 9] knfsd: nfsd4: acls: fix handling of
-	zero-length acls
-Date: Tue, 5 Sep 2006 09:16:08 +1000
-Message-ID: <1060904231608.23162@suse.de>
-References: <20060905090617.21303.patches@notabene>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: SUNRPC: Lack of RPC record fragments
+Date: Tue, 5 Sep 2006 09:31:33 +1000
+Message-ID: <17660.46933.187475.92083@cse.unsw.edu.au>
+References: <44FC5F77.9010708@informatik.uni-oldenburg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKNfu-0000T0-22
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:16:18 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GKNuo-0001iR-WF
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:31:43 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKNfw-0004Jw-K1
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:16:22 -0700
-To: Andrew Morton <akpm@osdl.org>
+	(Exim 4.44) id 1GKNus-0000EG-CC
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:31:46 -0700
+To: Andre van Hoorn <andre.van.hoorn@informatik.uni-oldenburg.de>
+In-Reply-To: message from Andre van Hoorn on Monday September 4
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,82 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Monday September 4, andre.van.hoorn@informatik.uni-oldenburg.de wrote:
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA1
+> 
+> Hi,
+> 
+> 
+> I'm communicating with the linux NFS kernel server via RPC using the
+> sunrpc implementation in glibc. On certain RPC record sizes, glibc
+> starts to use record fragmentation (whereas the sunrpc kernel client
+> doesn't) and the sunrpc linux kernel server implementation lacks the RPC
+> record "defragmentation" functionality as can be seen in
+> net/sunrpc/svcsock.c:
+> 
+> svsk->sk_reclen = ntohl(svsk->sk_reclen);
+> if (!(svsk->sk_reclen & 0x80000000)) {
+>   /* FIXME: technically, a record can be fragmented,
+>    *  and non-terminal fragments will not have the top
+>    *  bit set in the fragment length header.
+>    *  But apparently no known nfs clients send fragmented
+>    *  records. */
+>    printk(KERN_NOTICE "RPC: bad TCP reclen 0x%08lx (non-terminal)\n",
+>          (unsigned long) svsk->sk_reclen);
+>    goto err_delete;
+> }
+> 
+> Unfortunately, I didn't find a way to disable the use of fragmentation
+> in glibc. Is there an existing patch for the kernel to support
+> fragmented records?
 
-From: J.Bruce Fields <bfields@fieldses.org>
+Not that I am aware of, and it would be fairly non-trivial to
+implement, for relatively little gain.
 
-It is legal to have zero-length NFSv4 acls; they just deny everything.
+You should be able to avoid fragmentation with glibc by setting
+'sendsz' large enough.
+When you call clnttcp_create, pass a big number for the 5th arg.
 
-Also, nfs4_acl_nfsv4_to_posix will always return with pacl and dpacl set on
-success, so the caller doesn't need to check this.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/nfsd/nfs4acl.c |   15 +--------------
- ./fs/nfsd/vfs.c     |   10 ++++------
- 2 files changed, 5 insertions(+), 20 deletions(-)
-
-diff .prev/fs/nfsd/nfs4acl.c ./fs/nfsd/nfs4acl.c
---- .prev/fs/nfsd/nfs4acl.c	2006-09-04 17:27:48.000000000 +1000
-+++ ./fs/nfsd/nfs4acl.c	2006-09-04 17:28:10.000000000 +1000
-@@ -357,33 +357,20 @@ nfs4_acl_nfsv4_to_posix(struct nfs4_acl 
- 		goto out;
- 
- 	error = nfs4_acl_split(acl, dacl);
--	if (error < 0)
-+	if (error)
- 		goto out_acl;
- 
--	if (acl->naces == 0) {
--		error = -ENODATA;
--		goto try_dpacl;
--	}
--
- 	*pacl = _nfsv4_to_posix_one(acl, flags);
- 	if (IS_ERR(*pacl)) {
- 		error = PTR_ERR(*pacl);
- 		*pacl = NULL;
- 		goto out_acl;
- 	}
--try_dpacl:
--	if (dacl->naces == 0) {
--		if (pacl == NULL || *pacl == NULL)
--			error = -ENODATA;
--		goto out_acl;
--	}
- 
--	error = 0;
- 	*dpacl = _nfsv4_to_posix_one(dacl, flags);
- 	if (IS_ERR(*dpacl)) {
- 		error = PTR_ERR(*dpacl);
- 		*dpacl = NULL;
--		goto out_acl;
- 	}
- out_acl:
- 	if (error) {
-
-diff .prev/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
---- .prev/fs/nfsd/vfs.c	2006-09-04 17:09:47.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2006-09-04 17:28:10.000000000 +1000
-@@ -447,13 +447,11 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqst
- 	} else if (error < 0)
- 		goto out_nfserr;
- 
--	if (pacl) {
--		error = set_nfsv4_acl_one(dentry, pacl, POSIX_ACL_XATTR_ACCESS);
--		if (error < 0)
--			goto out_nfserr;
--	}
-+	error = set_nfsv4_acl_one(dentry, pacl, POSIX_ACL_XATTR_ACCESS);
-+	if (error < 0)
-+		goto out_nfserr;
- 
--	if (dpacl) {
-+	if (S_ISDIR(inode->i_mode)) {
- 		error = set_nfsv4_acl_one(dentry, dpacl, POSIX_ACL_XATTR_DEFAULT);
- 		if (error < 0)
- 			goto out_nfserr;
+NeilBrown
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
