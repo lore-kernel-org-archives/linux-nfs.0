@@ -1,21 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 005 of 9] knfsd: nfsd4: clean up exp_pseudoroot
-Date: Tue, 5 Sep 2006 09:15:48 +1000
-Message-ID: <1060904231548.23112@suse.de>
+Subject: [PATCH 008 of 9] knfsd: nfsd4: acls: simplify
+	nfs4_acl_nfsv4_to_posix interface
+Date: Tue, 5 Sep 2006 09:16:03 +1000
+Message-ID: <1060904231603.23150@suse.de>
 References: <20060905090617.21303.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKNfW-0000Lp-80
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:54 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GKNfn-0000SO-3e
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:16:11 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKNfZ-0005T9-KG
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:58 -0700
+	(Exim 4.44) id 1GKNfp-0004I8-O9
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:16:15 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,37 +33,80 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J.Bruce Fields <bfields@fieldses.org>
 
-The previous patch enables some minor simplification here.
+There's no need to handle the case where the caller passes in null for pacl
+or dpacl; no caller does that, because it would be a dumb thing to do.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/export.c |   11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ ./fs/nfsd/nfs4acl.c |   48 +++++++++++++++++++++---------------------------
+ 1 file changed, 21 insertions(+), 27 deletions(-)
 
-diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
---- .prev/fs/nfsd/export.c	2006-09-04 17:18:25.000000000 +1000
-+++ ./fs/nfsd/export.c	2006-09-04 17:20:22.000000000 +1000
-@@ -1058,14 +1058,11 @@ exp_pseudoroot(struct auth_domain *clp, 
- 	if (IS_ERR(exp) && PTR_ERR(exp) == -EAGAIN)
- 		return nfserr_dropit;
- 	if (exp == NULL)
--		rv = nfserr_perm;
-+		return nfserr_perm;
- 	else if (IS_ERR(exp))
--		rv = nfserrno(PTR_ERR(exp));
--	else {
--		rv = fh_compose(fhp, exp,
--				exp->ex_dentry, NULL);
--		exp_put(exp);
--	}
-+		return nfserrno(PTR_ERR(exp));
-+	rv = fh_compose(fhp, exp, exp->ex_dentry, NULL);
-+	exp_put(exp);
- 	return rv;
- }
+diff .prev/fs/nfsd/nfs4acl.c ./fs/nfsd/nfs4acl.c
+--- .prev/fs/nfsd/nfs4acl.c	2006-09-04 17:26:00.000000000 +1000
++++ ./fs/nfsd/nfs4acl.c	2006-09-04 17:27:48.000000000 +1000
+@@ -360,39 +360,33 @@ nfs4_acl_nfsv4_to_posix(struct nfs4_acl 
+ 	if (error < 0)
+ 		goto out_acl;
  
+-	if (pacl != NULL) {
+-		if (acl->naces == 0) {
+-			error = -ENODATA;
+-			goto try_dpacl;
+-		}
+-
+-		*pacl = _nfsv4_to_posix_one(acl, flags);
+-		if (IS_ERR(*pacl)) {
+-			error = PTR_ERR(*pacl);
+-			*pacl = NULL;
+-			goto out_acl;
+-		}
++	if (acl->naces == 0) {
++		error = -ENODATA;
++		goto try_dpacl;
+ 	}
+ 
++	*pacl = _nfsv4_to_posix_one(acl, flags);
++	if (IS_ERR(*pacl)) {
++		error = PTR_ERR(*pacl);
++		*pacl = NULL;
++		goto out_acl;
++	}
+ try_dpacl:
+-	if (dpacl != NULL) {
+-		if (dacl->naces == 0) {
+-			if (pacl == NULL || *pacl == NULL)
+-				error = -ENODATA;
+-			goto out_acl;
+-		}
+-
+-		error = 0;
+-		*dpacl = _nfsv4_to_posix_one(dacl, flags);
+-		if (IS_ERR(*dpacl)) {
+-			error = PTR_ERR(*dpacl);
+-			*dpacl = NULL;
+-			goto out_acl;
+-		}
++	if (dacl->naces == 0) {
++		if (pacl == NULL || *pacl == NULL)
++			error = -ENODATA;
++		goto out_acl;
+ 	}
+ 
++	error = 0;
++	*dpacl = _nfsv4_to_posix_one(dacl, flags);
++	if (IS_ERR(*dpacl)) {
++		error = PTR_ERR(*dpacl);
++		*dpacl = NULL;
++		goto out_acl;
++	}
+ out_acl:
+-	if (error && pacl) {
++	if (error) {
+ 		posix_acl_release(*pacl);
+ 		*pacl = NULL;
+ 	}
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
