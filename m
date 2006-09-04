@@ -1,7 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 004 of 9] knfsd: nfsd4: refactor exp_pseudoroot
-Date: Tue, 5 Sep 2006 09:15:43 +1000
-Message-ID: <1060904231543.23100@suse.de>
+Subject: [PATCH 003 of 9] knfsd: svcrpc: use consistent variable name
+	for the reply state
+Date: Tue, 5 Sep 2006 09:15:38 +1000
+Message-ID: <1060904231538.23086@suse.de>
 References: <20060905090617.21303.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKNfR-0000Kn-G9
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:49 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GKNfM-0000KX-My
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:44 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKNfV-00046u-6q
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:53 -0700
+	(Exim 4.44) id 1GKNfQ-00043F-CD
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:49 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,53 +33,49 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J.Bruce Fields <bfields@fieldses.org>
 
-We could be using more common code in exp_pseudoroot().  This will also
-simplify some changes we need to make later.
+The rpc reply has multiple levels of error returns.  The code here
+contributes to the confusion by using "accept_statp" for a pointer to what
+the rfc (and wireshark, etc.) refer to as the "reply_stat".  (The confusion
+is compounded by the fact that the rfc also has an "accept_stat" which
+follows the reply_stat in the succesful case.)
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/export.c |   12 +++---------
- 1 file changed, 3 insertions(+), 9 deletions(-)
+ ./net/sunrpc/svc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
---- .prev/fs/nfsd/export.c	2006-09-04 17:09:49.000000000 +1000
-+++ ./fs/nfsd/export.c	2006-09-04 17:18:25.000000000 +1000
-@@ -1048,30 +1048,24 @@ int
- exp_pseudoroot(struct auth_domain *clp, struct svc_fh *fhp,
- 	       struct cache_req *creq)
- {
--	struct svc_expkey *fsid_key;
- 	struct svc_export *exp;
- 	int rv;
- 	u32 fsidv[2];
+diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
+--- .prev/net/sunrpc/svc.c	2006-09-04 17:09:50.000000000 +1000
++++ ./net/sunrpc/svc.c	2006-09-04 17:15:35.000000000 +1000
+@@ -699,7 +699,7 @@ svc_process(struct svc_rqst *rqstp)
+ 	u32			dir, prog, vers, proc,
+ 				auth_stat, rpc_stat;
+ 	int			auth_res;
+-	u32			*accept_statp;
++	u32			*reply_statp;
  
- 	mk_fsid_v1(fsidv, 0);
+ 	rpc_stat = rpc_success;
  
--	fsid_key = exp_find_key(clp, 1, fsidv, creq);
--	if (IS_ERR(fsid_key) && PTR_ERR(fsid_key) == -EAGAIN)
-+	exp = exp_find(clp, 1, fsidv, creq);
-+	if (IS_ERR(exp) && PTR_ERR(exp) == -EAGAIN)
- 		return nfserr_dropit;
--	if (!fsid_key || IS_ERR(fsid_key))
--		return nfserr_perm;
--
--	exp = exp_get_by_name(clp, fsid_key->ek_mnt, fsid_key->ek_dentry, creq);
- 	if (exp == NULL)
- 		rv = nfserr_perm;
- 	else if (IS_ERR(exp))
- 		rv = nfserrno(PTR_ERR(exp));
- 	else {
- 		rv = fh_compose(fhp, exp,
--				fsid_key->ek_dentry, NULL);
-+				exp->ex_dentry, NULL);
- 		exp_put(exp);
- 	}
--	cache_put(&fsid_key->h, &svc_expkey_cache);
- 	return rv;
- }
+@@ -740,7 +740,7 @@ svc_process(struct svc_rqst *rqstp)
+ 		goto err_bad_rpc;
  
+ 	/* Save position in case we later decide to reject: */
+-	accept_statp = resv->iov_base + resv->iov_len;
++	reply_statp = resv->iov_base + resv->iov_len;
+ 
+ 	svc_putu32(resv, xdr_zero);		/* ACCEPT */
+ 
+@@ -888,7 +888,7 @@ err_bad_auth:
+ 	dprintk("svc: authentication failed (%d)\n", ntohl(auth_stat));
+ 	serv->sv_stats->rpcbadauth++;
+ 	/* Restore write pointer to location of accept status: */
+-	xdr_ressize_check(rqstp, accept_statp);
++	xdr_ressize_check(rqstp, reply_statp);
+ 	svc_putu32(resv, xdr_one);	/* REJECT */
+ 	svc_putu32(resv, xdr_one);	/* AUTH_ERROR */
+ 	svc_putu32(resv, auth_stat);	/* status */
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
