@@ -1,128 +1,83 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: [-mm patch] make fs/lockd/host.c:nlm_lookup_host() static
-Date: Mon, 4 Sep 2006 19:03:59 +0200
-Message-ID: <20060904170359.GS4416@stusta.de>
-References: <20060901015818.42767813.akpm@osdl.org>
+From: Andre van Hoorn <andre.van.hoorn@informatik.uni-oldenburg.de>
+Subject: SUNRPC: Lack of RPC record fragments
+Date: Mon, 04 Sep 2006 19:16:39 +0200
+Message-ID: <44FC5F77.9010708@informatik.uni-oldenburg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964901AbWIDREG@vger.kernel.org>
-To: Andrew Morton <akpm@osdl.org>, Olaf Kirch <okir@suse.de>,
-	Neil Brown <neilb@suse.de>
-In-Reply-To: <20060901015818.42767813.akpm@osdl.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="iso-8859-15"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GKI4Z-0001UW-US
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 10:17:24 -0700
+Received: from smtpsrv03.uni-oldenburg.de ([134.106.87.11]
+	ident=[U2FsdGVkX1/+Kn7wsqLWucdG6rFNPA57BZ294U7BCb8=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GKI4Z-0002Jb-Ky
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 10:17:27 -0700
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Sep 01, 2006 at 01:58:18AM -0700, Andrew Morton wrote:
->...
-> Changes since 2.6.18-rc4-mm3:
->...
-> +knfsd-hide-use-of-lockds-h_monitored-flag.patch
-> +knfsd-consolidate-common-code-for-statd-lockd-notification.patch
-> +knfsd-when-looking-up-a-lockd-host-pass-hostname-length.patch
-> +knfsd-lockd-introduce-nsm_handle.patch
-> +knfsd-misc-minor-fixes-indentation-changes.patch
-> +knfsd-lockd-make-nlm_host_rebooted-use-the-nsm_handle.patch
-> +knfsd-lockd-make-the-nsm-upcalls-use-the-nsm_handle.patch
-> +knfsd-lockd-make-the-hash-chains-use-a-hlist_node.patch
-> +knfsd-lockd-change-list-of-blocked-list-to-list_node.patch
-> +knfsd-change-nlm_file-to-use-a-hlist.patch
-> +knfsd-lockd-make-nlm_traverse_-more-flexible.patch
-> +knfsd-lockd-add-nlm_destroy_host.patch
-> +knfsd-simplify-nlmsvc_invalidate_all.patch
-> +knfsd-lockd-optionally-use-hostnames-for-identifying-peers.patch
-> +knfsd-make-nlmclnt_next_cookie-smp-safe.patch
-> +knfsd-match-granted_res-replies-using-cookies.patch
-> +knfsd-export-nsm_local_state-to-user-space-via-sysctl.patch
-> +knfsd-lockd-fix-use-of-h_nextrebind.patch
-> +knfsd-register-all-rpc-programs-with-portmapper-by-default.patch
-> 
->  nfsd updates.
->...
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-nlm_lookup_host() can now become static.
+Hi,
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
----
+I'm communicating with the linux NFS kernel server via RPC using the
+sunrpc implementation in glibc. On certain RPC record sizes, glibc
+starts to use record fragmentation (whereas the sunrpc kernel client
+doesn't) and the sunrpc linux kernel server implementation lacks the RPC
+record "defragmentation" functionality as can be seen in
+net/sunrpc/svcsock.c:
 
- fs/lockd/host.c             |   48 ++++++++++++++++++------------------
- include/linux/lockd/lockd.h |    1 
- 2 files changed, 24 insertions(+), 25 deletions(-)
+svsk->sk_reclen =3D ntohl(svsk->sk_reclen);
+if (!(svsk->sk_reclen & 0x80000000)) {
+  /* FIXME: technically, a record can be fragmented,
+   *  and non-terminal fragments will not have the top
+   *  bit set in the fragment length header.
+   *  But apparently no known nfs clients send fragmented
+   *  records. */
+   printk(KERN_NOTICE "RPC: bad TCP reclen 0x%08lx (non-terminal)\n",
+         (unsigned long) svsk->sk_reclen);
+   goto err_delete;
+}
 
---- linux-2.6.18-rc5-mm1/include/linux/lockd/lockd.h.old	2006-09-01 20:57:28.000000000 +0200
-+++ linux-2.6.18-rc5-mm1/include/linux/lockd/lockd.h	2006-09-01 20:57:34.000000000 +0200
-@@ -164,7 +164,6 @@
-  */
- struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int, const char *, int);
- struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *, const char *, int);
--struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int, const char *, int);
- struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
---- linux-2.6.18-rc5-mm1/fs/lockd/host.c.old	2006-09-01 20:57:42.000000000 +0200
-+++ linux-2.6.18-rc5-mm1/fs/lockd/host.c	2006-09-01 20:58:25.000000000 +0200
-@@ -38,32 +38,9 @@
- 					const char *, int, int);
- 
- /*
-- * Find an NLM server handle in the cache. If there is none, create it.
-- */
--struct nlm_host *
--nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
--			const char *hostname, int hostname_len)
--{
--	return nlm_lookup_host(0, sin, proto, version,
--			       hostname, hostname_len);
--}
--
--/*
-- * Find an NLM client handle in the cache. If there is none, create it.
-- */
--struct nlm_host *
--nlmsvc_lookup_host(struct svc_rqst *rqstp,
--			const char *hostname, int hostname_len)
--{
--	return nlm_lookup_host(1, &rqstp->rq_addr,
--			       rqstp->rq_prot, rqstp->rq_vers,
--			       hostname, hostname_len);
--}
--
--/*
-  * Common host lookup routine for server & client
-  */
--struct nlm_host *
-+static struct nlm_host *
- nlm_lookup_host(int server, const struct sockaddr_in *sin,
- 					int proto, int version,
- 					const char *hostname,
-@@ -165,6 +142,29 @@
- }
- 
- /*
-+ * Find an NLM server handle in the cache. If there is none, create it.
-+ */
-+struct nlm_host *
-+nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
-+			const char *hostname, int hostname_len)
-+{
-+	return nlm_lookup_host(0, sin, proto, version,
-+			       hostname, hostname_len);
-+}
-+
-+/*
-+ * Find an NLM client handle in the cache. If there is none, create it.
-+ */
-+struct nlm_host *
-+nlmsvc_lookup_host(struct svc_rqst *rqstp,
-+			const char *hostname, int hostname_len)
-+{
-+	return nlm_lookup_host(1, &rqstp->rq_addr,
-+			       rqstp->rq_prot, rqstp->rq_vers,
-+			       hostname, hostname_len);
-+}
-+
-+/*
-  * Destroy a host
-  */
- static void
+Unfortunately, I didn't find a way to disable the use of fragmentation
+in glibc. Is there an existing patch for the kernel to support
+fragmented records?
+
+
+
+Best regards,
+
+Andr=E9
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
+
+iD8DBQFE/F92LKwmE5jzZmkRAtfUAJwPyFRgfav/y9RhW4/6Z8jzSbyz8QCfX7t4
+UNcN9tSfjWlJPjiVVFEelHM=3D
+=3DqnID
+-----END PGP SIGNATURE-----
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easi=
+er
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
+21642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
