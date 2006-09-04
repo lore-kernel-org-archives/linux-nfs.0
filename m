@@ -1,21 +1,21 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 000 of 9] knfsd: minor gss/v4 cleanups and major ACL
-	surgery.
-Date: Tue, 5 Sep 2006 09:15:21 +1000
-Message-ID: <20060905090617.21303.patches@notabene>
+Subject: [PATCH 004 of 9] knfsd: nfsd4: refactor exp_pseudoroot
+Date: Tue, 5 Sep 2006 09:15:43 +1000
+Message-ID: <1060904231543.23100@suse.de>
+References: <20060905090617.21303.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKNf9-0000K5-EA
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:31 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1GKNfR-0000Kn-G9
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:49 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKNfB-0005Mu-P7
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:35 -0700
+	(Exim 4.44) id 1GKNfV-00046u-6q
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:53 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,24 +29,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Following are 9 patches for nfsd from Bruce Fields.  First 5 are minor
-cleanups around gss code and elsewhere.  Last 4 make substantial
-changes to ACL handling, particularly for mapping between Posix draft
-ACLs and NFSv4 ACLs.
 
-Thanks,
-NeilBrown
+From: J.Bruce Fields <bfields@fieldses.org>
 
+We could be using more common code in exp_pseudoroot().  This will also
+simplify some changes we need to make later.
 
- [PATCH 001 of 9] knfsd: svcrpc: gss: factor out some common wrapping code
- [PATCH 002 of 9] knfsd: svcrpc: gss: fix failure on SVC_DENIED in integrity case
- [PATCH 003 of 9] knfsd: svcrpc: use consistent variable name for the reply state
- [PATCH 004 of 9] knfsd: nfsd4: refactor exp_pseudoroot
- [PATCH 005 of 9] knfsd: nfsd4: clean up exp_pseudoroot
- [PATCH 006 of 9] knfsd: nfsd4: acls: relax the nfsv4->posix mapping
- [PATCH 007 of 9] knfsd: nfsd4: acls: fix inheritance
- [PATCH 008 of 9] knfsd: nfsd4: acls: simplify nfs4_acl_nfsv4_to_posix interface
- [PATCH 009 of 9] knfsd: nfsd4: acls: fix handling of zero-length acls
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/nfsd/export.c |   12 +++---------
+ 1 file changed, 3 insertions(+), 9 deletions(-)
+
+diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
+--- .prev/fs/nfsd/export.c	2006-09-04 17:09:49.000000000 +1000
++++ ./fs/nfsd/export.c	2006-09-04 17:18:25.000000000 +1000
+@@ -1048,30 +1048,24 @@ int
+ exp_pseudoroot(struct auth_domain *clp, struct svc_fh *fhp,
+ 	       struct cache_req *creq)
+ {
+-	struct svc_expkey *fsid_key;
+ 	struct svc_export *exp;
+ 	int rv;
+ 	u32 fsidv[2];
+ 
+ 	mk_fsid_v1(fsidv, 0);
+ 
+-	fsid_key = exp_find_key(clp, 1, fsidv, creq);
+-	if (IS_ERR(fsid_key) && PTR_ERR(fsid_key) == -EAGAIN)
++	exp = exp_find(clp, 1, fsidv, creq);
++	if (IS_ERR(exp) && PTR_ERR(exp) == -EAGAIN)
+ 		return nfserr_dropit;
+-	if (!fsid_key || IS_ERR(fsid_key))
+-		return nfserr_perm;
+-
+-	exp = exp_get_by_name(clp, fsid_key->ek_mnt, fsid_key->ek_dentry, creq);
+ 	if (exp == NULL)
+ 		rv = nfserr_perm;
+ 	else if (IS_ERR(exp))
+ 		rv = nfserrno(PTR_ERR(exp));
+ 	else {
+ 		rv = fh_compose(fhp, exp,
+-				fsid_key->ek_dentry, NULL);
++				exp->ex_dentry, NULL);
+ 		exp_put(exp);
+ 	}
+-	cache_put(&fsid_key->h, &svc_expkey_cache);
+ 	return rv;
+ }
+ 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
