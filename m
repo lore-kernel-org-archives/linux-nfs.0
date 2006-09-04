@@ -1,22 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 003 of 9] knfsd: svcrpc: use consistent variable name
-	for the reply state
-Date: Tue, 5 Sep 2006 09:15:38 +1000
-Message-ID: <1060904231538.23086@suse.de>
+Subject: [PATCH 002 of 9] knfsd: svcrpc: gss: fix failure on
+	SVC_DENIED in integrity case
+Date: Tue, 5 Sep 2006 09:15:32 +1000
+Message-ID: <1060904231532.23071@suse.de>
 References: <20060905090617.21303.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKNfM-0000KX-My
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:44 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GKNfJ-0000KS-Ch
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:41 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKNfQ-00043F-CD
-	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:49 -0700
+	(Exim 4.44) id 1GKNfL-0005P4-Dn
+	for nfs@lists.sourceforge.net; Mon, 04 Sep 2006 16:15:45 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,49 +33,104 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J.Bruce Fields <bfields@fieldses.org>
 
-The rpc reply has multiple levels of error returns.  The code here
-contributes to the confusion by using "accept_statp" for a pointer to what
-the rfc (and wireshark, etc.) refer to as the "reply_stat".  (The confusion
-is compounded by the fact that the rfc also has an "accept_stat" which
-follows the reply_stat in the succesful case.)
+If the request is denied after gss_accept was called, we shouldn't try to
+wrap the reply.  We were checking the accept_stat but not the reply_stat.
+
+To check the reply_stat in _release, we need a pointer to before (rather
+than after) the verifier, so modify body_start appropriately.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/svc.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ ./net/sunrpc/auth_gss/svcauth_gss.c |   30 ++++++++++++++++++------------
+ 1 file changed, 18 insertions(+), 12 deletions(-)
 
-diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2006-09-04 17:09:50.000000000 +1000
-+++ ./net/sunrpc/svc.c	2006-09-04 17:15:35.000000000 +1000
-@@ -699,7 +699,7 @@ svc_process(struct svc_rqst *rqstp)
- 	u32			dir, prog, vers, proc,
- 				auth_stat, rpc_stat;
- 	int			auth_res;
--	u32			*accept_statp;
-+	u32			*reply_statp;
+diff .prev/net/sunrpc/auth_gss/svcauth_gss.c ./net/sunrpc/auth_gss/svcauth_gss.c
+--- .prev/net/sunrpc/auth_gss/svcauth_gss.c	2006-09-04 17:12:31.000000000 +1000
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2006-09-04 17:13:17.000000000 +1000
+@@ -903,9 +903,9 @@ out_seq:
+ struct gss_svc_data {
+ 	/* decoded gss client cred: */
+ 	struct rpc_gss_wire_cred	clcred;
+-	/* pointer to the beginning of the procedure-specific results,
+-	 * which may be encrypted/checksummed in svcauth_gss_release: */
+-	u32				*body_start;
++	/* save a pointer to the beginning of the encoded verifier,
++	 * for use in encryption/checksumming in svcauth_gss_release: */
++	u32				*verf_start;
+ 	struct rsc			*rsci;
+ };
  
- 	rpc_stat = rpc_success;
+@@ -968,7 +968,7 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 	if (!svcdata)
+ 		goto auth_err;
+ 	rqstp->rq_auth_data = svcdata;
+-	svcdata->body_start = NULL;
++	svcdata->verf_start = NULL;
+ 	svcdata->rsci = NULL;
+ 	gc = &svcdata->clcred;
  
-@@ -740,7 +740,7 @@ svc_process(struct svc_rqst *rqstp)
- 		goto err_bad_rpc;
+@@ -1097,6 +1097,7 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 		goto complete;
+ 	case RPC_GSS_PROC_DATA:
+ 		*authp = rpcsec_gsserr_ctxproblem;
++		svcdata->verf_start = resv->iov_base + resv->iov_len;
+ 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+ 			goto auth_err;
+ 		rqstp->rq_cred = rsci->cred;
+@@ -1110,7 +1111,6 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 					gc->gc_seq, rsci->mechctx))
+ 				goto auth_err;
+ 			/* placeholders for length and seq. number: */
+-			svcdata->body_start = resv->iov_base + resv->iov_len;
+ 			svc_putu32(resv, 0);
+ 			svc_putu32(resv, 0);
+ 			break;
+@@ -1119,7 +1119,6 @@ svcauth_gss_accept(struct svc_rqst *rqst
+ 					gc->gc_seq, rsci->mechctx))
+ 				goto auth_err;
+ 			/* placeholders for length and seq. number: */
+-			svcdata->body_start = resv->iov_base + resv->iov_len;
+ 			svc_putu32(resv, 0);
+ 			svc_putu32(resv, 0);
+ 			break;
+@@ -1150,14 +1149,21 @@ out:
+ u32 *
+ svcauth_gss_prepare_to_wrap(struct xdr_buf *resbuf, struct gss_svc_data *gsd)
+ {
+-	u32 *p;
++	u32 *p, verf_len;
++
++	p = gsd->verf_start;
++	gsd->verf_start = NULL;
  
- 	/* Save position in case we later decide to reject: */
--	accept_statp = resv->iov_base + resv->iov_len;
-+	reply_statp = resv->iov_base + resv->iov_len;
- 
- 	svc_putu32(resv, xdr_zero);		/* ACCEPT */
- 
-@@ -888,7 +888,7 @@ err_bad_auth:
- 	dprintk("svc: authentication failed (%d)\n", ntohl(auth_stat));
- 	serv->sv_stats->rpcbadauth++;
- 	/* Restore write pointer to location of accept status: */
--	xdr_ressize_check(rqstp, accept_statp);
-+	xdr_ressize_check(rqstp, reply_statp);
- 	svc_putu32(resv, xdr_one);	/* REJECT */
- 	svc_putu32(resv, xdr_one);	/* AUTH_ERROR */
- 	svc_putu32(resv, auth_stat);	/* status */
+-	p = gsd->body_start;
+-	gsd->body_start = NULL;
++	/* If the reply stat is nonzero, don't wrap: */
++	if (*(p-1) != rpc_success)
++		return NULL;
++	/* Skip the verifier: */
++	p += 1;
++	verf_len = ntohl(*p++);
++	p += XDR_QUADLEN(verf_len);
+ 	/* move accept_stat to right place: */
+ 	memcpy(p, p + 2, 4);
+-	/* Don't wrap in failure case: */
+-	/* Counting on not getting here if call was not even accepted! */
++	/* Also don't wrap if the accept stat is nonzero: */
+ 	if (*p != rpc_success) {
+ 		resbuf->head[0].iov_len -= 2 * 4;
+ 		return NULL;
+@@ -1283,7 +1289,7 @@ svcauth_gss_release(struct svc_rqst *rqs
+ 	if (gc->gc_proc != RPC_GSS_PROC_DATA)
+ 		goto out;
+ 	/* Release can be called twice, but we only wrap once. */
+-	if (gsd->body_start == NULL)
++	if (gsd->verf_start == NULL)
+ 		goto out;
+ 	/* normally not set till svc_send, but we need it here: */
+ 	/* XXX: what for?  Do we mess it up the moment we call svc_putu32
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
