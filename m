@@ -1,26 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 004 of 19] knfsd: lockd: introduce nsm_handle
-Date: Sat, 2 Sep 2006 09:50:00 +1000
-Message-ID: <17656.50984.845357.143322@cse.unsw.edu.au>
-References: <20060901141639.27206.patches@notabene>
-	<1060901043825.27464@suse.de>
-	<20060831232029.b003e8a7.akpm@osdl.org>
+From: "didier ." <did447@gmail.com>
+Subject: [patch] configure.in, wrong test for gethostbyname and libnsl
+Date: Mon, 4 Sep 2006 02:46:43 +0200
+Message-ID: <eba800c90609031746n3beeb198hac560de8753b2db@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Olaf Kirch <okir@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed;
+	boundary="----=_Part_86890_2688805.1157330803075"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GJIm4-0006wC-8p
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 16:50:13 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GJIm3-0003v5-GU
-	for nfs@lists.sourceforge.net; Fri, 01 Sep 2006 16:50:13 -0700
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: message from Andrew Morton on Thursday August 31
+	id 1GK2bt-0007aZ-57
+	for nfs@lists.sourceforge.net; Sun, 03 Sep 2006 17:46:45 -0700
+Received: from wx-out-0506.google.com ([66.249.82.226])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GK2bt-0002ls-IR
+	for nfs@lists.sourceforge.net; Sun, 03 Sep 2006 17:46:46 -0700
+Received: by wx-out-0506.google.com with SMTP id r21so1885652wxc
+	for <nfs@lists.sourceforge.net>; Sun, 03 Sep 2006 17:46:43 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,73 +29,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday August 31, akpm@osdl.org wrote:
-> On Fri, 1 Sep 2006 14:38:25 +1000
-> NeilBrown <neilb@suse.de> wrote:
-> 
-> > +nsm_release(struct nsm_handle *nsm)
-> > +{
-> > +	if (!nsm)
-> > +		return;
-> > +	if (atomic_read(&nsm->sm_count) == 1) {
-> > +		down(&nsm_sema);
-> > +		if (atomic_dec_and_test(&nsm->sm_count)) {
-> > +			list_del(&nsm->sm_link);
-> > +			kfree(nsm);
-> > +		}
-> > +		up(&nsm_sema);
-> > +	}
-> > +}
-> 
-> That's weird-looking.  Are you sure?  afaict, if ->sm_count ever gets a
-> value of 2 or more, it's unfreeable.  
+------=_Part_86890_2688805.1157330803075
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-How do you *do* that?  I thought I had already found the bugs...
+Hi,
 
-Thanks :-)
-NeilBrown
+On a glibc system gethostbyname is in libc not libnsl
 
+In the great autoconf tradition the patch is a copy and past from ethereal
 
----
-Subject: Fix locking in nsm_release
+Didier
 
-The locking is all backwards and broken.
+------=_Part_86890_2688805.1157330803075
+Content-Type: text/x-patch; name=configure.in.diff; charset=ANSI_X3.4-1968
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ero3to7d
+Content-Disposition: attachment; filename="configure.in.diff"
 
-We first atomic_dec_and_test.
-If this fails, someone else has an active reference and we need do
-no more.
-If it succeeds, then the only ref is in the hash table, but someone
-might be about to find and use that reference.  nsm_mutex provides
-exclusion against this.  If sm_count is still 0 once the
-mutex has been gained, then it is safe to discard the nsm.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/lockd/host.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff .prev/fs/lockd/host.c ./fs/lockd/host.c
---- .prev/fs/lockd/host.c	2006-09-01 18:56:39.000000000 +1000
-+++ ./fs/lockd/host.c	2006-09-02 09:44:04.000000000 +1000
-@@ -507,9 +507,9 @@ nsm_release(struct nsm_handle *nsm)
- {
- 	if (!nsm)
- 		return;
--	if (atomic_read(&nsm->sm_count) == 1) {
-+	if (atomic_dec_and_test(&nsm->sm_count)) {
- 		mutex_lock(&nsm_mutex);
--		if (atomic_dec_and_test(&nsm->sm_count)) {
-+		if (atomic_read(&nsm->sm_count) == 0) {
- 			list_del(&nsm->sm_link);
- 			kfree(nsm);
- 		}
+LS0tIGNvbmZpZ3VyZS5pbi5vcmlnCTIwMDYtMDktMDQgMDE6MzY6MDguMDAwMDAwMDAwICswMjAw
+CisrKyBjb25maWd1cmUuaW4JMjAwNi0wOS0wNCAwMTo1NzozNi4wMDAwMDAwMDAgKzAyMDAKQEAg
+LTE0Nyw4ICsxNDcsMTMgQEAKIGRubCAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
+KioqKioqKioqKioqKioqKioqKioqKioqKioqCiBkbmwgKiBDaGVjayBmb3IgcmVxdWlyZWQgbGli
+cmFyaWVzCiBkbmwgKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
+KioqKioqKioqKioqKioqKgotQUNfQ0hFQ0tfTElCKHNvY2tldCwgbWFpbiwgW0xJQlNPQ0tFVD0i
+LWxuc2wiXSkKLUFDX0NIRUNLX0xJQihuc2wsIG1haW4sCVtMSUJOU0w9Ii1sbnNsIl0pCitBQ19D
+SEVDS19GVU5DKGdldGhvc3RieW5hbWUsICwgW0FDX0NIRUNLX0xJQihuc2wsIGdldGhvc3RieW5h
+bWUsIFtMSUJOU0w9Ii1sbnNsIl0pXSkKK0FDX1NVQlNUKExJQk5TTCkKKworQUNfQ0hFQ0tfRlVO
+Qyhjb25uZWN0LCAsIAorICAgICAgQUNfQ0hFQ0tfTElCKHNvY2tldCwgY29ubmVjdCwgW0xJQlNP
+Q0tFVD0iLWxzb2NrZXQiXSwKKyAgICAgICAgICAgICAgICBBQ19NU0dfRVJST1IoRnVuY3Rpb24g
+J3NvY2tldCcgbm90IGZvdW5kLiksICRMSUJOU0wpKQorCiBBQ19DSEVDS19MSUIoY3J5cHQsIGNy
+eXB0LCBbTElCQ1JZUFQ9Ii1sY3J5cHQiXSkKIGlmIHRlc3QgIiRlbmFibGVfbmZzdjQiID0geWVz
+OyB0aGVuCiAgICAgQUNfQ0hFQ0tfTElCKGV2ZW50LCBldmVudF9kaXNwYXRjaCwgW2xpYmV2ZW50
+PTFdLCBBQ19NU0dfRVJST1IoW2xpYmV2ZW50IG5lZWRlZCBmb3IgbmZzdjQgc3VwcG9ydF0pKQpA
+QCAtMTcyLDcgKzE3Nyw2IEBACiAgICAgQUNfQ0hFQ0tfTElCKGJzZCwgZGFlbW9uLCBbTElCQlNE
+PSItbGJzZCJdKQogZmkKIEFDX1NVQlNUKExJQlNPQ0tFVCkKLUFDX1NVQlNUKExJQk5TTCkKIEFD
+X1NVQlNUKExJQkNSWVBUKQogQUNfU1VCU1QoTElCQlNEKQogCg==
+------=_Part_86890_2688805.1157330803075
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+------=_Part_86890_2688805.1157330803075
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+------=_Part_86890_2688805.1157330803075--
