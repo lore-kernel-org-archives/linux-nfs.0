@@ -1,22 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: draft RPC tapset
-Date: Tue, 05 Sep 2006 07:51:42 -0400
-Message-ID: <44FD64CE.8080606@RedHat.com>
-References: <44FD393F.8080202@cn.ltcfwd.linux.ibm.com>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: linking librpcsecgss against libgssapi
+Date: Tue, 5 Sep 2006 09:44:26 -0400
+Message-ID: <4d569c330609050644w5f08c6a7mbde028c3dbc7765e@mail.gmail.com>
+References: <200608311956.17014.vapier@gentoo.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, systemtap@sources.redhat.com
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKZTL-00056r-VH
-	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 04:52:08 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GKZTQ-0006JM-Sj
-	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 04:52:13 -0700
-To: "Gui,Jian" <guij@cn.ibm.com>
-In-Reply-To: <44FD393F.8080202@cn.ltcfwd.linux.ibm.com>
+	id 1GKbE4-0006ZR-A7
+	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 06:44:28 -0700
+Received: from wr-out-0506.google.com ([64.233.184.231])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GKbE9-00007z-62
+	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 06:44:34 -0700
+Received: by wr-out-0506.google.com with SMTP id i22so629503wra
+	for <nfs@lists.sourceforge.net>; Tue, 05 Sep 2006 06:44:26 -0700 (PDT)
+To: "Mike Frysinger" <vapier@gentoo.org>
+In-Reply-To: <200608311956.17014.vapier@gentoo.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,41 +31,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Gui,Jian wrote:
-> Hi folks,
-> 
-> I am working on RPC trace hooks for Systemtap/LKET. These trace
-> hooks can help dynamically trace the activities on both RPC
-> clients and servers.
-> 
-> The functions in the sunrpc module (see net/sunrpc/sunrpc_syms.c
-> and others) are roughly categorized into several groups:
-> * for RPC scheduler
-> * for RPC client
-> * for RPC client transport
-> * for RPC client credential cache
-> * for RPC server
-> * for RPC statistics
-> * for RPC caching
-> * for generic XDR
-> 
-> As a start point, I picked the trace hooks mainly from RPC client,
-> scheduler and server side. I am sure it is not always enough, so
-> anyone can extend this tapset whenever necessary.
-> 
-> And I want to make sure the trace hooks I chose are in right places
-> and the parameters are correctly handled. It will be very appreciated
-> if you can take a look at it. Please fell free to let me know if
-> you have any questions/suggestions/comments.
-This looks very good... although until we start using the probs
-we will not see how useful they are... but is a very good
-start.. imho...
+On 8/31/06, Mike Frysinger <vapier@gentoo.org> wrote:
+> is there a reason librpcsecgss is not linked against libgssapi ?  the simple
+> fix here would be to add a line like:
+> LDADD = $(GSSAPI_LIBS)
+> to the librcpsecgss/src/Makefile.am file
+>
+> problem being that librpcsecgss uses symbols from libgssapi but never actually
+> links against it so doing something simple like:
+> echo 'int main(){}' > test.c
+> gcc -lrpcsecgss test.c
+> fails miserably unless you add -lgssapi
+> -mike
 
-Question, should these probs be broken up into separate files?
-and if so, where do they need to live so they will be defined
-by the stap command?
+The patch below will be included in the next release...
 
-steved.
+Thanks,
+K.C.
+
+--- src/Makefile.am     1 Aug 2006 17:06:37 -0000       1.8
++++ src/Makefile.am     5 Sep 2006 13:26:40 -0000
+@@ -1,5 +1,6 @@
+ lib_LTLIBRARIES = librpcsecgss.la
+ librpcsecgss_la_LDFLAGS = -version-info 3:0:0
++librpcsecgss_la_LIBADD = $(GSSAPI_LIBS)
+ librpcsecgss_la_SOURCES = \
+        auth_gss.c authgss_prot.c svc.c svc_run.c svc_auth.c \
+        svc_auth_none.c svc_auth_unix.c svc_auth_gss.c \
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
