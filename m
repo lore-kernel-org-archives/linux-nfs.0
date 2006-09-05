@@ -1,27 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 016 of 19] knfsd: match GRANTED_RES
-	replies	using	cookies
-Date: Tue, 05 Sep 2006 12:12:30 -0400
-Message-ID: <1157472751.8238.4.camel@localhost>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH 016 of 19] knfsd: match GRANTED_RES replies
+	using	cookies
+Date: Tue, 5 Sep 2006 19:39:40 +0200
+Message-ID: <20060905173940.GA12578@suse.de>
 References: <20060901141639.27206.patches@notabene>
 	<1060901043932.27641@suse.de> <1157126618.5632.52.camel@localhost>
 	<20060904090939.GC28400@suse.de>
+	<1157472751.8238.4.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
 	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKdXk-0005PP-6H
-	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 09:12:57 -0700
-Received: from pat.uio.no ([129.240.10.4])
+	id 1GKetk-0004mU-5D
+	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 10:39:44 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GKdXf-0007oj-H1
-	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 09:12:53 -0700
-To: Olaf Kirch <okir@suse.de>
-In-Reply-To: <20060904090939.GC28400@suse.de>
+	(Exim 4.44) id 1GKetk-0003pc-Nj
+	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 10:39:45 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1157472751.8238.4.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,62 +35,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2006-09-04 at 11:09 +0200, Olaf Kirch wrote:
-> On Fri, Sep 01, 2006 at 12:03:38PM -0400, Trond Myklebust wrote:
-> > Vetoed. The reason why we need the client's IP address as an argument
-> > for nlmsvc_find_block() is 'cos the cookie value is unique to the
-> > _client_ only.
-> 
-> In NLM, a cookie can be used to identify the asynchronous reply to the
-> original request. Previously, there was a hack in the code that
-> sends GRANT replies to reuse the original cookie from the client's
-> LOCK request. The protocol spec explicitly says you must not rely
-> on this behavior; the only reason I added this kludge was that some
-> HPUX and SunOS versions did just that.
-> 
-> The down side of that kludge is that we are using a client-provided cookie
-> in one of our calls - which means we keep our fingers crossed it doesn't
-> collide with the cookie we generate ourselves. And to reduce the risk,
-> we also check the client IP when searching the nlm_blocked list. But it
-> is incorrect, and a kludge, and the longer I look at this code the
-> more I'm amazed it hasn't blown up.
-> 
-> This patch changes the code so that the only cookies we ever use
-> to look up something are those we generate ourselves, so they
-> are globally unique. As a consequence, we can stop using the client's
-> IP when searching the list.
-> 
-> > IOW: when we go searching a global list of blocks for a given cookie
-> > value that was sent to us by a given client, then we want to know that
-> > we're only searching through that particular client's blocks.
-> 
-> This is no longer true after applying this change.
+On Tue, Sep 05, 2006 at 12:12:30PM -0400, Trond Myklebust wrote:
+> Right. The question is how many clients out there do still rely on the
+> current behaviour?
 
-Sorry, I missed that change. I see your point now.
+Right. I know that old SunOS releases did, as did HPUX-6.5 or whatever
+it was. But that was ages ago.
 
-> > A better way, BTW, would be to get rid of the global list nlm_blocked,
-> > and just move the list of blocks into a field in the nlm_host for each
-> > client.
-> 
-> Given an incoming NLM_GRANTED_RES, how can you look up the nlm_host
-> and the pending NLM_GRANTED_MSG?
-> The reply may not come from any IP address you know of. The whole
-> reason for introducing this cookie nonsense in the NLM specification
-> was that the RPC layer doesn't always give you enough clues to
-> match a callback to the original message.
+Suse has had this code change for a while now in SL10.1 (6 months) as
+well as SLES10, and I haven't heard of any interoperability problems,
+neither from partners or users, nor from our own QA.
 
-Right. The question is how many clients out there do still rely on the
-current behaviour?
+> Looking at Brent's 'NFS Illustrated', I see that he notes that for
+> NLM_GRANTED, the cookie is "An opaque value that is normally the same as
+> the client sent in the LOCK request, though the client cannot depend on
+> it". Which sounds like weasel words for "some clients still do depend on
+> it".
 
-Looking at Brent's 'NFS Illustrated', I see that he notes that for
-NLM_GRANTED, the cookie is "An opaque value that is normally the same as
-the client sent in the LOCK request, though the client cannot depend on
-it". Which sounds like weasel words for "some clients still do depend on
-it".
+The spec says the same (except it doesn't mention that the cookie is
+"normally the same", it just explicitly states that the client must not
+rely on the cookie in the GRANT call being the same as the one in the
+LOCK call).
 
-Cheers
-  Trond
+My guess is that this was an implementation "shortcut" in the original
+Sun code that metastased into all the derived implementations, and when
+they discovered it was a bad bug that could lead to lock mix-up, this
+sloppiness had spread all over the Unix landscape and they needed to
+put stern words into the standard...
 
+In summary, I think more than 10 years after the publication of the
+X/Open NLM spec it is acceptable to remove that kludge.
+
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
