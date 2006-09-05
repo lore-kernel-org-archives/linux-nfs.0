@@ -1,24 +1,27 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: linking librpcsecgss against libgssapi
-Date: Tue, 5 Sep 2006 09:44:26 -0400
-Message-ID: <4d569c330609050644w5f08c6a7mbde028c3dbc7765e@mail.gmail.com>
-References: <200608311956.17014.vapier@gentoo.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 016 of 19] knfsd: match GRANTED_RES
+	replies	using	cookies
+Date: Tue, 05 Sep 2006 12:12:30 -0400
+Message-ID: <1157472751.8238.4.camel@localhost>
+References: <20060901141639.27206.patches@notabene>
+	<1060901043932.27641@suse.de> <1157126618.5632.52.camel@localhost>
+	<20060904090939.GC28400@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GKbE4-0006ZR-A7
-	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 06:44:28 -0700
-Received: from wr-out-0506.google.com ([64.233.184.231])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GKbE9-00007z-62
-	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 06:44:34 -0700
-Received: by wr-out-0506.google.com with SMTP id i22so629503wra
-	for <nfs@lists.sourceforge.net>; Tue, 05 Sep 2006 06:44:26 -0700 (PDT)
-To: "Mike Frysinger" <vapier@gentoo.org>
-In-Reply-To: <200608311956.17014.vapier@gentoo.org>
+	id 1GKdXk-0005PP-6H
+	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 09:12:57 -0700
+Received: from pat.uio.no ([129.240.10.4])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GKdXf-0007oj-H1
+	for nfs@lists.sourceforge.net; Tue, 05 Sep 2006 09:12:53 -0700
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20060904090939.GC28400@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,33 +34,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 8/31/06, Mike Frysinger <vapier@gentoo.org> wrote:
-> is there a reason librpcsecgss is not linked against libgssapi ?  the simple
-> fix here would be to add a line like:
-> LDADD = $(GSSAPI_LIBS)
-> to the librcpsecgss/src/Makefile.am file
->
-> problem being that librpcsecgss uses symbols from libgssapi but never actually
-> links against it so doing something simple like:
-> echo 'int main(){}' > test.c
-> gcc -lrpcsecgss test.c
-> fails miserably unless you add -lgssapi
-> -mike
+On Mon, 2006-09-04 at 11:09 +0200, Olaf Kirch wrote:
+> On Fri, Sep 01, 2006 at 12:03:38PM -0400, Trond Myklebust wrote:
+> > Vetoed. The reason why we need the client's IP address as an argument
+> > for nlmsvc_find_block() is 'cos the cookie value is unique to the
+> > _client_ only.
+> 
+> In NLM, a cookie can be used to identify the asynchronous reply to the
+> original request. Previously, there was a hack in the code that
+> sends GRANT replies to reuse the original cookie from the client's
+> LOCK request. The protocol spec explicitly says you must not rely
+> on this behavior; the only reason I added this kludge was that some
+> HPUX and SunOS versions did just that.
+> 
+> The down side of that kludge is that we are using a client-provided cookie
+> in one of our calls - which means we keep our fingers crossed it doesn't
+> collide with the cookie we generate ourselves. And to reduce the risk,
+> we also check the client IP when searching the nlm_blocked list. But it
+> is incorrect, and a kludge, and the longer I look at this code the
+> more I'm amazed it hasn't blown up.
+> 
+> This patch changes the code so that the only cookies we ever use
+> to look up something are those we generate ourselves, so they
+> are globally unique. As a consequence, we can stop using the client's
+> IP when searching the list.
+> 
+> > IOW: when we go searching a global list of blocks for a given cookie
+> > value that was sent to us by a given client, then we want to know that
+> > we're only searching through that particular client's blocks.
+> 
+> This is no longer true after applying this change.
 
-The patch below will be included in the next release...
+Sorry, I missed that change. I see your point now.
 
-Thanks,
-K.C.
+> > A better way, BTW, would be to get rid of the global list nlm_blocked,
+> > and just move the list of blocks into a field in the nlm_host for each
+> > client.
+> 
+> Given an incoming NLM_GRANTED_RES, how can you look up the nlm_host
+> and the pending NLM_GRANTED_MSG?
+> The reply may not come from any IP address you know of. The whole
+> reason for introducing this cookie nonsense in the NLM specification
+> was that the RPC layer doesn't always give you enough clues to
+> match a callback to the original message.
 
---- src/Makefile.am     1 Aug 2006 17:06:37 -0000       1.8
-+++ src/Makefile.am     5 Sep 2006 13:26:40 -0000
-@@ -1,5 +1,6 @@
- lib_LTLIBRARIES = librpcsecgss.la
- librpcsecgss_la_LDFLAGS = -version-info 3:0:0
-+librpcsecgss_la_LIBADD = $(GSSAPI_LIBS)
- librpcsecgss_la_SOURCES = \
-        auth_gss.c authgss_prot.c svc.c svc_run.c svc_auth.c \
-        svc_auth_none.c svc_auth_unix.c svc_auth_gss.c \
+Right. The question is how many clients out there do still rely on the
+current behaviour?
+
+Looking at Brent's 'NFS Illustrated', I see that he notes that for
+NLM_GRANTED, the cookie is "An opaque value that is normally the same as
+the client sent in the LOCK request, though the client cannot depend on
+it". Which sounds like weasel words for "some clients still do depend on
+it".
+
+Cheers
+  Trond
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
