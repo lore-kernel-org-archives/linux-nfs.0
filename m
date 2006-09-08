@@ -1,21 +1,23 @@
-From: "Chris Fanning" <christopher.fanning@gmail.com>
-Subject: md/raid project support?
-Date: Fri, 8 Sep 2006 10:12:43 +0200
-Message-ID: <215ff4410609080112x5bdaad34w6c0223cd54fdab80@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: md/raid project support?
+Date: Fri, 08 Sep 2006 09:22:59 -0400
+Message-ID: <1157721779.5690.5.camel@lade.trondhjem.org>
+References: <215ff4410609080112x5bdaad34w6c0223cd54fdab80@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GLbTh-0003xf-AU
-	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 01:12:45 -0700
-Received: from py-out-1112.google.com ([64.233.166.176])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GLbTg-0007cW-RP
-	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 01:12:46 -0700
-Received: by py-out-1112.google.com with SMTP id x31so651320pye
-	for <nfs@lists.sourceforge.net>; Fri, 08 Sep 2006 01:12:43 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1GLgKG-0005Ys-SX
+	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 06:23:21 -0700
+Received: from pat.uio.no ([129.240.10.4])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GLgKF-0008Gs-9K
+	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 06:23:21 -0700
+To: Chris Fanning <christopher.fanning@gmail.com>
+In-Reply-To: <215ff4410609080112x5bdaad34w6c0223cd54fdab80@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,16 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello all,
+On Fri, 2006-09-08 at 10:12 +0200, Chris Fanning wrote:
+> Hello all,
+> 
+> Sorry for the off-topic, but where can is the mail list for md/raid project?
+> 
+> I've looked about on the web but haven't found anything although I
+> have learn't that Mr Neil Brown works on both md and nfs. Thankyou
+> Neil.
 
-Sorry for the off-topic, but where can is the mail list for md/raid project?
+The place to look for that sort of information is the MAINTAINERS file
+at the very top of the kernel source tree.
 
-I've looked about on the web but haven't found anything although I
-have learn't that Mr Neil Brown works on both md and nfs. Thankyou
-Neil.
+        SOFTWARE RAID (Multiple Disks) SUPPORT
+        P:      Ingo Molnar
+        M:      mingo@redhat.com
+        P:      Neil Brown
+        M:      neilb@cse.unsw.edu.au
+        L:      linux-raid@vger.kernel.org
+        S:      Maintained
 
-Cheers.
-Chris.
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
