@@ -1,23 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: md/raid project support?
-Date: Fri, 08 Sep 2006 09:22:59 -0400
-Message-ID: <1157721779.5690.5.camel@lade.trondhjem.org>
-References: <215ff4410609080112x5bdaad34w6c0223cd54fdab80@mail.gmail.com>
+From: "Noah Ho" <125vassili@freeproblem.com>
+Subject: !  Pot 35992USD
+Date: Fri, 8 Sep 2006 20:36:25 -0500
+Message-ID: <E1GLrnX-000881-DW@mail.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GLgKG-0005Ys-SX
-	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 06:23:21 -0700
-Received: from pat.uio.no ([129.240.10.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GLgKF-0008Gs-9K
-	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 06:23:21 -0700
-To: Chris Fanning <christopher.fanning@gmail.com>
-In-Reply-To: <215ff4410609080112x5bdaad34w6c0223cd54fdab80@mail.gmail.com>
+	id 1GLrnX-0003sb-Rx
+	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 18:38:19 -0700
+Received: from pool-71-244-163-108.chi01.dsl-w.verizon.net ([71.244.163.108]
+	helo=qlo4iir.9ueembx.comcast.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GLrnX-000881-DW
+	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 18:38:20 -0700
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +27,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-09-08 at 10:12 +0200, Chris Fanning wrote:
-> Hello all,
-> 
-> Sorry for the off-topic, but where can is the mail list for md/raid project?
-> 
-> I've looked about on the web but haven't found anything although I
-> have learn't that Mr Neil Brown works on both md and nfs. Thankyou
-> Neil.
+Hi Nfs!!!
 
-The place to look for that sort of information is the MAINTAINERS file
-at the very top of the kernel source tree.
+Roller Casino, we are so sure you are going to love our games 
+that we are giving you  up to $888.00 FREE  
+just for trying our Casino.  
 
-        SOFTWARE RAID (Multiple Disks) SUPPORT
-        P:      Ingo Molnar
-        M:      mingo@redhat.com
-        P:      Neil Brown
-        M:      neilb@cse.unsw.edu.au
-        L:      linux-raid@vger.kernel.org
-        S:      Maintained
+$ 888.00 FREE! 
+Click Here Now! 
 
-Cheers,
-  Trond
+http://pardaswi.com/e/38/
+
+========================
+
+of that 'whereby' a thing grows. Clearly it must be potentially thatsingle exception of Democritus. Not one of them penetrated below thenot, i.e. whether each of them is eternal or whether there is a sensepotentially flesh and converts it into actual flesh. The accedingit is 'alteration': or else we must endeavour to unravel this dilemma
 
 
 -------------------------------------------------------------------------
