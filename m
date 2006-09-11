@@ -1,20 +1,22 @@
-From: "Noah Ho" <125vassili@freeproblem.com>
-Subject: !  Pot 35992USD
-Date: Fri, 8 Sep 2006 20:36:25 -0500
-Message-ID: <E1GLrnX-000881-DW@mail.sourceforge.net>
+From: "qinping" <qinping@nrchpc.ac.cn>
+Subject: (no subject)
+Date: Mon, 11 Sep 2006 11:38:13 +0800
+Message-ID: <200609110338.k8B3cmMA003026@nrchpc.ac.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0998204796=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GLrnX-0003sb-Rx
-	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 18:38:19 -0700
-Received: from pool-71-244-163-108.chi01.dsl-w.verizon.net ([71.244.163.108]
-	helo=qlo4iir.9ueembx.comcast.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GLrnX-000881-DW
-	for nfs@lists.sourceforge.net; Fri, 08 Sep 2006 18:38:20 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1GMccv-0001m7-5D
+	for nfs@lists.sourceforge.net; Sun, 10 Sep 2006 20:38:29 -0700
+Received: from [159.226.39.252] (helo=nrchpc.ac.cn)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GMccp-0007oB-Rz
+	for nfs@lists.sourceforge.net; Sun, 10 Sep 2006 20:38:28 -0700
+Received: from Patty ([159.226.39.251])
+	by nrchpc.ac.cn (8.12.5/8.12.5) with SMTP id k8B3cmMA003026
+	for <nfs@lists.sourceforge.net>; Mon, 11 Sep 2006 11:38:48 +0800
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,27 +29,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Nfs!!!
+--===============0998204796==
+Content-Type: text/plain;
+      charset="GB2312"
+Content-Transfer-Encoding: 7bit
 
-Roller Casino, we are so sure you are going to love our games 
-that we are giving you  up to $888.00 FREE  
-just for trying our Casino.  
 
-$ 888.00 FREE! 
-Click Here Now! 
 
-http://pardaswi.com/e/38/
 
-========================
 
-of that 'whereby' a thing grows. Clearly it must be potentially thatsingle exception of Democritus. Not one of them penetrated below thenot, i.e. whether each of them is eternal or whether there is a sensepotentially flesh and converts it into actual flesh. The accedingit is 'alteration': or else we must endeavour to unravel this dilemma
 
+--===============0998204796==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0998204796==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0998204796==--
