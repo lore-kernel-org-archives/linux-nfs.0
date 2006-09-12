@@ -1,25 +1,22 @@
-From: dewey@rambler.ru
-Subject: =?windows-1251?q?Lilo_And_Stitch?=
-Date: Mon, 11 Sep 2006 12:57:09 +0400
-Message-ID: <000501c6d580$43da3b80$26f48dca@localhost>
-Reply-To: messina@ranmamail.com
+From: Martin Wegner <mailing-lists@mroot.net>
+Subject: nfssvc: Address already in use
+Date: Tue, 12 Sep 2006 02:57:24 +0200
+Message-ID: <450605F4.1060806@mroot.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1399784407=="
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GMiXJ-0000M8-Kv
-	for nfs@lists.sourceforge.net; Mon, 11 Sep 2006 02:57:05 -0700
-Received: from smtp.multi.net.pk ([202.141.224.62])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GMiXG-0003xZ-HG
-	for nfs@lists.sourceforge.net; Mon, 11 Sep 2006 02:57:06 -0700
-Received: from localhost ([202.141.244.38])
-	by smtp.multi.net.pk (8.12.10/8.12.10) with SMTP id k8B9nEF0016568
-	for <nfs@lists.sourceforge.net>; Mon, 11 Sep 2006 14:50:26 +0500 (PKT)
-	(envelope-from dewey@rambler.ru)
-To: nfs@lists.sourceforge.net
+	id 1GMxYA-0002QI-CV
+	for nfs@lists.sourceforge.net; Mon, 11 Sep 2006 18:58:58 -0700
+Received: from daemo09.udag.de ([62.146.33.133] helo=mail.udag.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GMxY4-0005sO-3r
+	for nfs@lists.sourceforge.net; Mon, 11 Sep 2006 18:58:57 -0700
+Received: from [192.168.1.23] (p5485A93E.dip0.t-ipconnect.de [84.133.169.62])
+	by mail.udag.de (Postfix) with ESMTP id 2F02E7F73
+	for <nfs@lists.sourceforge.net>; Tue, 12 Sep 2006 02:57:25 +0200 (CEST)
+To: nfs <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +29,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1399784407==
-Content-Type: text/html;
-	charset="windows-1251"
-Content-Transfer-Encoding: quoted-printable
+Hello.
 
-<HTML><HEAD>
-</HEAD><body>
-<table width=3D450 style=3D"border: 5px; border-style: solid; border-colo=
-r:#FFFF00" bgcolor=3D"#CCCCCC" cellpadding=3D"5" cellspacing=3D"5">
-<tr><td>
+Whenever I try to start a NFS daemon on my Gentoo box here, I get the
+following error in the logfile:
 
-<DIV align=3Dcenter><b><font color=3D"#008000">Sometimes even the profess=
-ional jewelers
-are unable to tell<BR> the difference from the real R.o.l.e.x</font></b><=
-BR><BR>
-<a href=3D"http://ZmFkOTNjMWQ2NGVkZDZmMzJhOWNlODlk.elliokthasanewproblemm=
-.com"><b>We have all this! Just come and buy your \/\/atches!<BR>We have =
-some other fine goods!</b></a><BR><BR><BR>
-<a href=3D"http://ZmFkOTNjMWQ2NGVkZDZmMzJhOWNlODlk.elliokthasanewproblemm=
-.com/rm/">Remuve your mail</a>
-</DIV></td></tr></TABLE>
-</body></html>
+Sep 12 02:45:01 ares nfsd[17564]: nfssvc: Address already in use
 
+Nothing more.
 
---===============1399784407==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+This error occured due to the switch of the kernel version from 2.6.15
+to latest 2.6.17.* . During this change nothing of the programs, ... has
+changed.
+
+If I boot the old kernel 2.6.15 everything works fine again with the
+same config, programs, ...
+
+I made an manual call to rpc.nfsd:
+
+/usr/sbin/rpc.nfsd 8
+
+and ran it with strace, the result was this strace log:
+http://files.mgeek.de/nfsd.strace
+
+Some info:
+
+NFS Server version 3
+
+Kernel options:
+<*> NFS file system support
+[*]   Provide NFSv3 client support
+<*> NFS server support
+[*]   Provide NFSv3 server support
+[*]   Provide NFS server over TCP support
+
+nfs-utils-1.0.10
+
+I really can't see where the problem is located so I'm appreciating any
+help ...
+If you need any more information, please let me know, I'll provide it as
+soon as possible.
+
+TIA, martin
+
+-- 
+Get my public GPG key from pgp.mit.edu or wwwkeys.pgp.net
+Key ID: 0x44085D12
+--
+Homepage: http://mroot.net/
+Powered by Gentoo Linux (http://gentoo.org/)
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============1399784407==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1399784407==--
