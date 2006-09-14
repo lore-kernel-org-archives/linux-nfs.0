@@ -1,21 +1,26 @@
-From: "Warren Beldad" <advisory22@gmail.com>
-Subject: NFS connection limitation
-Date: Thu, 14 Sep 2006 12:24:56 +0800
-Message-ID: <b5ba2f6a0609132124m2812b317iea858173bd5b7161@mail.gmail.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: [PATCH 0/4 Revised] NLM lock failover
+Date: Thu, 14 Sep 2006 00:40:18 -0400
+Message-ID: <4508DD32.401@redhat.com>
+Reply-To: wcheng@redhat.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0320822582=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: lhh@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GNimX-0005N2-W2
-	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 21:24:58 -0700
-Received: from nf-out-0910.google.com ([64.233.182.186])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GNimY-00075k-AU
-	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 21:24:58 -0700
-Received: by nf-out-0910.google.com with SMTP id p46so2392542nfa
-	for <nfs@lists.sourceforge.net>; Wed, 13 Sep 2006 21:24:56 -0700 (PDT)
-To: nfs@lists.sourceforge.net
+	id 1GNipL-0005cl-Ka
+	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 21:27:51 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GNipL-0007c2-4o
+	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 21:27:52 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k8E4Ri2n018469
+	for <nfs@lists.sourceforge.net>; Thu, 14 Sep 2006 00:27:44 -0400
+To: nfs@lists.sourceforge.net, cluster-devel@redhat.com
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,65 +33,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0320822582==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_66270_24347588.1158207896123"
+The revised patches address the issues discussed in previous review:
 
-------=_Part_66270_24347588.1158207896123
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+https://www.redhat.com/archives/cluster-devel/2006-August/msg00194.html.
 
-Hi,
+The changes made are mostly for grace period fsid list that was 
+previously implemented as a single linked list. It is now a double 
+linked list with max entries count set to 128.
 
-I have here some questions....i am not able to find answers after so much
-time google'ing.
+Quick How-to:
+1) Failover server exports filesystem with "fsid" option as:
+    /etc/exports entry> /mnt/ext3/exports *(fsid=1234,sync,rw)
+2) Failover server dispatch rpc.statd with "-H" option.
+3) Failover server drops locks based on fsid by:
+    shell> echo 1234 > /proc/fs/nfsd/nlm_unlock
+4) Takeover server enters per fsid grace period by:
+    shell> echo 1234 > /proc/fs/nfsd/nlm_set_igrace
+5) Takeover server notifies clients for lock reclaim by:
+    shell> rpc.statd -n floating_ip_address -N -P recovery_sm_directory
 
-1. Is there a limitation on the number of nfs clients? if yes, what is the
-maximum number of nfs clients?
-2. how can i limit the number of nfs client connections, like "max
-connections" option in samba.
-3. thanks....
+Patch Summary:
+4-1: implement /proc/fs/nfsd/nlm_unlock
+4-2: implement /proc/fs/nfsd/nlm_set_igrace
+4-3: correctly record and pass incoming server ip interface into rpc.statd.
+4-4: (for reference purpose) user mode rpc.statd patch
 
-warren
-
-------=_Part_66270_24347588.1158207896123
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-<div>Hi,</div>
-<div>&nbsp;</div>
-<div>I have here some&nbsp;questions....i am not able to find answers after so much time google'ing.</div>
-<div>&nbsp;</div>
-<div>1. Is there a limitation on the number of nfs clients? if yes, what is the maximum number of nfs clients?</div>
-<div>2. how can i limit the number of nfs client connections, like &quot;max connections&quot; option in samba.</div>
-<div>3. thanks....</div>
-<div>&nbsp;</div>
-<div>warren</div>
-
-------=_Part_66270_24347588.1158207896123--
-
-
---===============0320822582==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- Wendy
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0320822582==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0320822582==--
