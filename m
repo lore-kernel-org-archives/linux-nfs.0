@@ -1,36 +1,20 @@
-From: Maurice Volaski <mvolaski@aecom.yu.edu>
-Subject: [Q] Why is my NFSv4 client trying to contact the portmapper?
-Date: Wed, 13 Sep 2006 13:44:58 -0400
-Message-ID: <a06240411c12deeab9cb6@[129.98.90.227]>
-References: <mailman.63002.1155542509.19399.nfs@lists.sourceforge.net>
+From: "Warren Beldad" <advisory22@gmail.com>
+Subject: NFS connection limitation
+Date: Thu, 14 Sep 2006 12:24:56 +0800
+Message-ID: <b5ba2f6a0609132124m2812b317iea858173bd5b7161@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0320822582=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GNYoz-000171-EG
-	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 10:46:49 -0700
-Received: from mailgw.aecom.yu.edu ([129.98.1.16])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GNYow-00053K-M0
-	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 10:46:50 -0700
-Received: from draco.aecom.yu.edu (draco.aecom.yu.edu [129.98.1.160])
-	by mailgw.aecom.yu.edu (8.12.11.20060308/8.12.11) with ESMTP id
-	k8DHkgIu028563
-	for <nfs@lists.sourceforge.net>; Wed, 13 Sep 2006 13:46:42 -0400
-Received: from draco.aecom.yu.edu (unknown [127.0.0.1])
-	by draco.aecom.yu.edu (Symantec Mail Security) with ESMTP id
-	A10793299C4
-	for <nfs@lists.sourceforge.net>; Wed, 13 Sep 2006 13:44:47 -0400 (EDT)
-Received: from post.aecom.yu.edu (post.aecom.yu.edu [129.98.1.100])
-	by draco.aecom.yu.edu (Symantec Mail Security) with ESMTP id
-	696A12E5724
-	for <nfs@lists.sourceforge.net>; Wed, 13 Sep 2006 13:44:47 -0400 (EDT)
-Received: from [129.98.90.227] (usseinstein.aecom.yu.edu [129.98.90.227])
-	by post.aecom.yu.edu (Postfix) with ESMTP id B242F26
-	for <nfs@lists.sourceforge.net>; Wed, 13 Sep 2006 13:46:41 -0400 (EDT)
-In-Reply-To: <mailman.63002.1155542509.19399.nfs@lists.sourceforge.net>
+	id 1GNimX-0005N2-W2
+	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 21:24:58 -0700
+Received: from nf-out-0910.google.com ([64.233.182.186])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GNimY-00075k-AU
+	for nfs@lists.sourceforge.net; Wed, 13 Sep 2006 21:24:58 -0700
+Received: by nf-out-0910.google.com with SMTP id p46so2392542nfa
+	for <nfs@lists.sourceforge.net>; Wed, 13 Sep 2006 21:24:56 -0700 (PDT)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -44,39 +28,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
- From where I can find documentation on NFSv4, it seems that only one 
-TCP port 2049 should be being used and the portmapper is no longer 
-used. Examples include
+--===============0320822582==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_66270_24347588.1158207896123"
 
-http://www.vanemery.com/Linux/NFSv4/NFSv4-no-rpcsec.html
-and
-http://nfsv4.bullopensource.org/doc/NFS3_NFS4_migration.pdf
+------=_Part_66270_24347588.1158207896123
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-But that doesn't seem to be the reality. I'm trying to mount a Gentoo 
-Linux server from a Gentoo Linux client (sudo mount -t nfs4 
-thewarehouse:/ /mnt/thewarehouse) and I even recompiled the client's 
-kernel to support only NFSv4 and I'm seeing this message on the 
-server end:
+Hi,
 
-[portmap] connect from 129.98.90.163 to getport(nfs): request from 
-unauthorized host
+I have here some questions....i am not able to find answers after so much
+time google'ing.
 
-So it appears the portmapper and TCP 111 is required after all. 
-What's going on?
+1. Is there a limitation on the number of nfs clients? if yes, what is the
+maximum number of nfs clients?
+2. how can i limit the number of nfs client connections, like "max
+connections" option in samba.
+3. thanks....
+
+warren
+
+------=_Part_66270_24347588.1158207896123
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+<div>Hi,</div>
+<div>&nbsp;</div>
+<div>I have here some&nbsp;questions....i am not able to find answers after so much time google'ing.</div>
+<div>&nbsp;</div>
+<div>1. Is there a limitation on the number of nfs clients? if yes, what is the maximum number of nfs clients?</div>
+<div>2. how can i limit the number of nfs client connections, like &quot;max connections&quot; option in samba.</div>
+<div>3. thanks....</div>
+<div>&nbsp;</div>
+<div>warren</div>
+
+------=_Part_66270_24347588.1158207896123--
 
 
-(other keywords: firewall, iptables, tcpwrappers, hosts.allow)
--- 
-
-Maurice Volaski, mvolaski@aecom.yu.edu
-Computing Support, Rose F. Kennedy Center
-Albert Einstein College of Medicine of Yeshiva University
+--===============0320822582==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0320822582==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0320822582==--
