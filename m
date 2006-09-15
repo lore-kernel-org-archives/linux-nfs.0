@@ -1,25 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Strange NFS behaviour, working directory disappears
-Date: Fri, 15 Sep 2006 07:54:26 -0400
-Message-ID: <1158321266.5533.22.camel@lade.trondhjem.org>
-References: <450AB68E.4A67.0005.0@alliedtelesis.co.nz>
-	<1158298749.5533.3.camel@lade.trondhjem.org>
-	<450AE960.4A67.0005.0@alliedtelesis.co.nz>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: 2.6.18-rc5 page_to_pfn: Unable to handle kernel NULL
+	pointer dereference
+Date: Fri, 15 Sep 2006 14:40:43 +0200
+Message-ID: <20060915124043.GA20462@skl-net.de>
+References: <20060908073125.GA23642@skl-net.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0040625821=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GOCHL-0000Q5-Tq
-	for nfs@lists.sourceforge.net; Fri, 15 Sep 2006 04:54:46 -0700
-Received: from pat.uio.no ([129.240.10.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GOCHM-0007pv-4m
-	for nfs@lists.sourceforge.net; Fri, 15 Sep 2006 04:54:44 -0700
-To: max williams <max.williams@alliedtelesis.co.nz>
-In-Reply-To: <450AE960.4A67.0005.0@alliedtelesis.co.nz>
+	id 1GOD0K-0004O6-Pj
+	for nfs@lists.sourceforge.net; Fri, 15 Sep 2006 05:41:12 -0700
+Received: from systemlinux.org ([83.151.29.59] helo=m18s25.vlinux.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GOD0L-0007lh-4T
+	for nfs@lists.sourceforge.net; Fri, 15 Sep 2006 05:41:13 -0700
+To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+In-Reply-To: <20060908073125.GA23642@skl-net.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,80 +29,101 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-09-15 at 17:56 +1200, max williams wrote:
-> How can I forget that!?
-> Server (FC4) is running 2.6.11-1.1369.
-> Clients are running 2.6.12.
-> Do you think I should upgrade the server kernel version?
-> Cheers
-> Max
 
-Probably both if you can, but at least the clients.
+--===============0040625821==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="Nq2Wo0NMKNjxTN9z"
+Content-Disposition: inline
 
-Cheers,
- Trond
 
-> >>> Trond Myklebust <trond.myklebust@fys.uio.no> 15/09/2006 5:39 p.m.
-> >>>
-> On Fri, 2006-09-15 at 14:19 +1200, max williams wrote:
-> > Hi,
-> > I have a strange issue on a number of PCs that mount /home via NFS.
-> > This started after upgrading the NFS server from Redhat 9 to Fedora
-> > Core 4. Very occasionally the current working directory or a
-> > particular file "disappears". When I say disappears I mean the
-> client
-> > returns an odd error when running "ls -l" but on the NFS server the
-> > file/directory is fine.
-> > Example:
-> >  
-> > [root@tb39 maxw]# ls -l
-> > ls: log.txt: No such file or directory
-> > total 346704
-> 
-> You don't mention which kernel you are using. The latest FC4 kernel is
-> 2.6.17 based: is that still giving you trouble?
-> 
-> Cheers,
->   Trond
-> 
-> 
-> -------------------------------------------------------------------------
-> Using Tomcat but need to do more? Need to support web services,
-> security?
-> Get stuff done quickly with pre-integrated technology to make your job
-> easier
-> Download IBM WebSphere Application Server v.1.0.1 based on Apache
-> Geronimo
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
-> 
-> NOTICE: This message contains privileged and confidential
-> information intended only for the use of the addressee
-> named above. If you are not the intended recipient of
-> this message you are hereby notified that you must not
-> disseminate, copy or take any action in reliance on it.
-> If you have received this message in error please
-> notify Allied Telesis Labs Ltd immediately.
-> Any views expressed in this message are those of the
-> individual sender, except where the sender has the
-> authority to issue and specifically states them to
-> be the views of Allied Telesis Labs. 
-> -------------------------------------------------------------------------
-> Using Tomcat but need to do more? Need to support web services, security?
-> Get stuff done quickly with pre-integrated technology to make your job easier
-> Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-> _______________________________________________ NFS maillist - NFS@lists.sourceforge.net https://lists.sourceforge.net/lists/listinfo/nfs
+--Nq2Wo0NMKNjxTN9z
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
+On 09:31, Andre Noll wrote:
+> The following just happend to one of our 8-way Opteron cluster nodes
+> (nfs client version 3, solaris nfs server).
+
+The problem is still present in 2.6.18-rc7. This time it happend on a
+2-processor Opteron machine:
+
+Pid: 945, comm: sge_execd Not tainted 2.6.18-rc7-tt64-6-g1883c5ab #4
+RIP: 0010:[<ffffffff80150cad>]  [<ffffffff80150cad>] page_to_pfn+0x0/0x33
+RSP: 0018:ffff8100fac73bb0  EFLAGS: 00010283
+RAX: 0000000000000a57 RBX: 00000000000004ae RCX: 0000000000000a57
+RDX: ffff8100fac73bf0 RSI: ffff8101b9b1c540 RDI: 0000000000000000
+RBP: 00000000000005a9 R08: ffff8101f7aa31d0 R09: ffff8101f7aa3040
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000b52
+R13: ffff8100fac73bf8 R14: 0000000000002000 R15: ffff8101f7aa32e8
+FS:  00002b83ded037a0(0000) GS:ffff8101000dc540(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000000000000 CR3: 00000000fad78000 CR4: 00000000000006a0
+Process sge_execd (pid: 945, threadinfo ffff8100fac72000, task ffff810004be=
+5180)
+Stack:  ffffffff801d6276 ffff8101fc4f0440 ffff8101b9b1c3c0 0000000000000a57
+ ffff8101f7aa31d0 00000000000005a9 ffffffff801d64fc 0000000000000001
+ ffff8101ffec2e18 0000000000000000 ffff8101f7aa31d0 ffff8101ffec2e18
+Call Trace:
+ [<ffffffff801d6276>] nfs_readpage_truncate_uninitialised_page+0x76/0xeb
+ [<ffffffff801d64fc>] nfs_readpage_sync+0x211/0x253
+ [<ffffffff801d6f89>] nfs_readpage+0x118/0x151
+ [<ffffffff8014c6fe>] do_generic_mapping_read+0x1ec/0x398
+ [<ffffffff8014c8aa>] file_read_actor+0x0/0xd1
+ [<ffffffff8014caf2>] __generic_file_aio_read+0x177/0x1b0
+ [<ffffffff8014cb5f>] generic_file_aio_read+0x34/0x39
+ [<ffffffff801cf3eb>] nfs_file_read+0x84/0x93
+ [<ffffffff8016e0fc>] do_sync_read+0xc9/0x106
+ [<ffffffff8013e5fd>] autoremove_wake_function+0x0/0x2e
+ [<ffffffff8015bf32>] do_mmap_pgoff+0x5fd/0x6de
+ [<ffffffff8016e1e6>] vfs_read+0xad/0x14c
+ [<ffffffff8016e520>] sys_read+0x45/0x6e
+ [<ffffffff80109726>] system_call+0x7e/0x83
+
+
+Code: 48 8b 07 48 c1 e8 3a 48 8b 14 c5 c0 79 5f 80 48 b8 b7 6d db=20
+RIP  [<ffffffff80150cad>] page_to_pfn+0x0/0x33
+ RSP <ffff8100fac73bb0>
+CR2: 0000000000000000
+
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--Nq2Wo0NMKNjxTN9z
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFFCp9LWto1QDEAkw8RAthNAJ4uFGdDXnRPD8hMlJ0cL3R/4Nk38QCeJ7Qf
+62TPfDu9ghc5swNp909BIsE=
+=3lab
+-----END PGP SIGNATURE-----
+
+--Nq2Wo0NMKNjxTN9z--
+
+
+--===============0040625821==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0040625821==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0040625821==--
