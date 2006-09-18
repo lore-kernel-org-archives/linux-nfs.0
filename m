@@ -1,25 +1,36 @@
-From: Andre Noll <maan@systemlinux.org>
-Subject: Re: 2.6.18-rc5 page_to_pfn: Unable to handle kernel
-	NULL	pointer dereference
-Date: Mon, 18 Sep 2006 10:07:44 +0200
-Message-ID: <20060918080744.GC20462@skl-net.de>
-References: <20060908073125.GA23642@skl-net.de>
-	<20060915124043.GA20462@skl-net.de>
-	<1158350827.5501.4.camel@lade.trondhjem.org>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Crash in dec_zone_page_state when nfs_page req is freed
+Date: Mon, 18 Sep 2006 16:55:36 -0700
+Message-ID: <1158623736.3376.8.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0573132102=="
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GPEAp-00038y-8f
-	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 01:08:15 -0700
-Received: from systemlinux.org ([83.151.29.59] helo=m18s25.vlinux.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GPEAo-0004cT-O0
-	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 01:08:16 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1158350827.5501.4.camel@lade.trondhjem.org>
+	id 1GPSx6-0005Jf-AA
+	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 16:55:04 -0700
+Received: from e35.co.us.ibm.com ([32.97.110.153])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GPSx5-0001Ua-Rx
+	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 16:55:05 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
+	[9.17.195.11])
+	by e35.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k8INsvHo021612
+	for <nfs@lists.sourceforge.net>; Mon, 18 Sep 2006 19:54:57 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
+	k8INsvnd328584
+	for <nfs@lists.sourceforge.net>; Mon, 18 Sep 2006 17:54:57 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k8INsvql012535
+	for <nfs@lists.sourceforge.net>; Mon, 18 Sep 2006 17:54:57 -0600
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k8INsuuB012516
+	for <nfs@lists.sourceforge.net>; Mon, 18 Sep 2006 17:54:56 -0600
+To: NFS List <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,65 +43,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+I am seeing a crash in dec_zone_page_state when called from 
 
---===============0573132102==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="bKyqfOwhbdpXa4YI"
-Content-Disposition: inline
+static void nfs_cancel_commit_list(struct list_head *head)
+{
+	struct nfs_page *req;
 
+	while(!list_empty(head)) {
+		req = nfs_list_entry(head->next);
+		nfs_list_remove_request(req);
+		nfs_inode_remove_request(req);
+		nfs_clear_page_writeback(req);
+		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+	}
+}
 
---bKyqfOwhbdpXa4YI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I see this was somewhat recently added. It appears that
+nfs_clear_page_writeback has resulted in the req being freed. We are
+running with CONFIG_SLAB_DEBUG on which poisons memory with repeated
+0x6b bytes when freed so the subsequent reference to req results in a
+bad wb_page pointer.
 
-On 16:07, Trond Myklebust wrote:
+Is it the expectation that the request will be freed here? If so, should
+the dec_zone_page_state call be re-ordered, the wb_page pointer saved
+before calling nfs_clear_page_writeback, or wb_count being incremented
+and then adding a call to nfs_release_request?
 
-> Does the attached patch fix it?
-
-Patch applied and rebooted with no problems so far. I'll let you know
-if it oopses again.
-
-Thanks
-Andre
---=20
-The only person who always got his work done by Friday was Robinson Crusoe
-
---bKyqfOwhbdpXa4YI
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
-
-iD8DBQFFDlPQWto1QDEAkw8RApm6AKCajoLl/wtardDt4E9cBqT9ePKchQCeKvW/
-yaLltvS/JL7LBLcud7MQRjg=
-=erNu
------END PGP SIGNATURE-----
-
---bKyqfOwhbdpXa4YI--
+Frank Filz
 
 
---===============0573132102==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0573132102==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0573132102==--
