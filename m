@@ -1,23 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Crash in dec_zone_page_state when nfs_page req is freed
-Date: Mon, 18 Sep 2006 23:24:34 -0400
-Message-ID: <1158636275.5896.14.camel@lade.trondhjem.org>
-References: <1158623736.3376.8.camel@dyn9047022153>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-4xh4i9HM0NhFPMY3ORRK"
-Cc: NFS List <nfs@lists.sourceforge.net>
+From: Chris Richardson <Chris.Richardson@icr.ac.uk>
+Subject: Mount request ... gave 42
+Date: Tue, 19 Sep 2006 14:26:36 +0100
+Message-ID: <F57567C2-67B1-444A-A85D-6B28CAF4023F@icr.ac.uk>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GPWEC-0007bV-MB
-	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 20:24:56 -0700
-Received: from pat.uio.no ([129.240.10.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GPWEC-0005l8-2n
-	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 20:24:57 -0700
-To: Frank Filz <ffilzlnx@us.ibm.com>
-In-Reply-To: <1158623736.3376.8.camel@dyn9047022153>
+	id 1GPfg1-0003Gj-9y
+	for nfs@lists.sourceforge.net; Tue, 19 Sep 2006 06:30:18 -0700
+Received: from mail56.messagelabs.com ([193.109.254.67])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GPffy-0005RO-Ji
+	for nfs@lists.sourceforge.net; Tue, 19 Sep 2006 06:30:18 -0700
+Received: from groupwise.icr.ac.uk (gw2.icr.ac.uk [193.63.217.83])
+	by thames.icr.ac.uk (Postfix) with ESMTP id 427DEEB964
+	for <nfs@lists.sourceforge.net>; Tue, 19 Sep 2006 14:26:54 +0100 (BST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,102 +29,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hello all,
 
---=-4xh4i9HM0NhFPMY3ORRK
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+I've been battling a mysterious intermittent NFS problem all day.   
+Some clients can't mount exported directories, and what I get in /var/ 
+log/messages is the following (I'm using -d all when I run rpc.mountd).
 
-On Mon, 2006-09-18 at 16:55 -0700, Frank Filz wrote:
-> I am seeing a crash in dec_zone_page_state when called from 
-> 
-> static void nfs_cancel_commit_list(struct list_head *head)
-> {
-> 	struct nfs_page *req;
-> 
-> 	while(!list_empty(head)) {
-> 		req = nfs_list_entry(head->next);
-> 		nfs_list_remove_request(req);
-> 		nfs_inode_remove_request(req);
-> 		nfs_clear_page_writeback(req);
-> 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-> 	}
-> }
-> 
-> I see this was somewhat recently added. It appears that
-> nfs_clear_page_writeback has resulted in the req being freed. We are
-> running with CONFIG_SLAB_DEBUG on which poisons memory with repeated
-> 0x6b bytes when freed so the subsequent reference to req results in a
-> bad wb_page pointer.
+Sep 19 13:45:28 anu rpc.mountd: MNT3(/export/home/csbguest) called
+Sep 19 13:45:28 anu rpc.mountd: mount request from 172.17.12.1:943  
+for /export/home/csbguest (/export/home/csbguest) gave 42
 
-Does the attached patch fix it for you?
+The error is usually repeated 3 further times.
 
-Cheers,
-  Trond
+System details:
 
+   SuSE Linux Enterprise Server 9 (dual opteron)
+   Linux 2.6.8-24.14-smp
+   nfs-utils-1.0.6-113 (yes, I know, I'm three years out of date)
 
---=-4xh4i9HM0NhFPMY3ORRK
-Content-Disposition: inline;
-	filename=linux-2.6.18-075-nfs_page_use_after_free.dif
-Content-Type: message/rfc822; name=linux-2.6.18-075-nfs_page_use_after_free.dif
+We're a mixed client environment (IRIX 6.5, SLES, Mac OS X 10.4.7),  
+but so far only the OS X clients have been giving problems.
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: 
-NFS: Fix nfs_page use after free issues in fs/nfs/write.c
-Subject: No Subject
-Message-Id: <1158636275.5896.15.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+I had a quick look at the code for nfs-utils, and from my probably  
+incomplete understanding of it the error is being spat out of  
+auth.c.  There's a switch that considers all the possible values of  
+an enum auth_error, and the 42 is dropping out of the default case in  
+that switch.  How 42 gets there, I don't know.  When I first saw 42 I  
+suspected that someone had been reading too much Douglas Adams.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+I can't think of any recent changes that could have precipitated this  
+sudden problem.  Any advice (including the obvious advice to update  
+to 1.0.10) will be gratefully received.
 
- fs/nfs/write.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Regards,
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index cf76f9c..38ba5c0 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -591,8 +591,8 @@ static void nfs_cancel_commit_list(struc
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
- 		nfs_inode_remove_request(req);
--		nfs_clear_page_writeback(req);
- 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-+		nfs_clear_page_writeback(req);
- 	}
- }
- 
-@@ -1387,8 +1387,8 @@ nfs_commit_list(struct inode *inode, str
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
- 		nfs_mark_request_commit(req);
--		nfs_clear_page_writeback(req);
- 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-+		nfs_clear_page_writeback(req);
- 	}
- 	return -ENOMEM;
- }
+Chris
+--
+Dr Chris Richardson - sysadmin, Structural Biology Section, icr.ac.uk
 
---=-4xh4i9HM0NhFPMY3ORRK
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---=-4xh4i9HM0NhFPMY3ORRK
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---=-4xh4i9HM0NhFPMY3ORRK--
