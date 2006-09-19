@@ -1,29 +1,23 @@
-From: Jesper Juhl <jesper.juhl@gmail.com>
-Subject: Kill NFS_PARANOIA (was: Re: [PATCH] NFS: possible NULL
-	pointer deref in nfs_sillyrename() )
-Date: Tue, 19 Sep 2006 02:25:59 +0200
-Message-ID: <200609190225.59501.jesper.juhl@gmail.com>
-References: <200608170022.29168.jesper.juhl@gmail.com>
-	<1155773801.6739.5.camel@localhost>
-	<9a8748490608170305v53a2fd20q29d12e2a7b7229d4@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Crash in dec_zone_page_state when nfs_page req is freed
+Date: Mon, 18 Sep 2006 23:24:34 -0400
+Message-ID: <1158636275.5896.14.camel@lade.trondhjem.org>
+References: <1158623736.3376.8.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Jesper Juhl <jesper.juhl@gmail.com>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, Rick Sladkey <jrs@world.std.com>,
-	Neil Brown <neilb@cse.unsw.edu.au>
+Content-Type: multipart/mixed; boundary="=-4xh4i9HM0NhFPMY3ORRK"
+Cc: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GPTQc-0000Hi-Td
-	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 17:25:34 -0700
-Received: from nf-out-0910.google.com ([64.233.182.191])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GPTQc-0004Uu-FX
-	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 17:25:35 -0700
-Received: by nf-out-0910.google.com with SMTP id p46so25047nfa
-	for <nfs@lists.sourceforge.net>; Mon, 18 Sep 2006 17:25:30 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <9a8748490608170305v53a2fd20q29d12e2a7b7229d4@mail.gmail.com>
+	id 1GPWEC-0007bV-MB
+	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 20:24:56 -0700
+Received: from pat.uio.no ([129.240.10.4])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GPWEC-0005l8-2n
+	for nfs@lists.sourceforge.net; Mon, 18 Sep 2006 20:24:57 -0700
+To: Frank Filz <ffilzlnx@us.ibm.com>
+In-Reply-To: <1158623736.3376.8.camel@dyn9047022153>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,161 +30,102 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday 17 August 2006 12:05, Jesper Juhl wrote:
-> On 17/08/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-[...]
+
+--=-4xh4i9HM0NhFPMY3ORRK
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+
+On Mon, 2006-09-18 at 16:55 -0700, Frank Filz wrote:
+> I am seeing a crash in dec_zone_page_state when called from 
 > 
-> > IOW: Feel free to kill the NFS_PARANOIA crap. It looks like legacy code
-> > from a debugging session about a decade or so ago.
-> >
-> Sure thing, I'll cook up a patch to do that.
+> static void nfs_cancel_commit_list(struct list_head *head)
+> {
+> 	struct nfs_page *req;
 > 
-How about something like this: 
+> 	while(!list_empty(head)) {
+> 		req = nfs_list_entry(head->next);
+> 		nfs_list_remove_request(req);
+> 		nfs_inode_remove_request(req);
+> 		nfs_clear_page_writeback(req);
+> 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+> 	}
+> }
+> 
+> I see this was somewhat recently added. It appears that
+> nfs_clear_page_writeback has resulted in the req being freed. We are
+> running with CONFIG_SLAB_DEBUG on which poisons memory with repeated
+> 0x6b bytes when freed so the subsequent reference to req results in a
+> bad wb_page pointer.
+
+Does the attached patch fix it for you?
+
+Cheers,
+  Trond
 
 
-Remove obsolete NFS_PARANOIA
+--=-4xh4i9HM0NhFPMY3ORRK
+Content-Disposition: inline;
+	filename=linux-2.6.18-075-nfs_page_use_after_free.dif
+Content-Type: message/rfc822; name=linux-2.6.18-075-nfs_page_use_after_free.dif
 
-Signed-off-by: Jesper Juhl <jesper.juhl@gmail.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: 
+NFS: Fix nfs_page use after free issues in fs/nfs/write.c
+Subject: No Subject
+Message-Id: <1158636275.5896.15.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/dir.c      |   22 ++--------------------
- fs/nfs/inode.c    |   11 +----------
- fs/nfs/nfs2xdr.c  |    1 -
- fs/nfs/pagelist.c |    7 ++-----
- 4 files changed, 5 insertions(+), 36 deletions(-)
+ fs/nfs/write.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff -upr linux-2.6.18-rc7-git2-orig/fs/nfs/dir.c linux-2.6.18-rc7-git2/fs/nfs/dir.c
---- linux-2.6.18-rc7-git2-orig/fs/nfs/dir.c	2006-09-14 13:08:55.000000000 +0200
-+++ linux-2.6.18-rc7-git2/fs/nfs/dir.c	2006-09-19 01:35:02.000000000 +0200
-@@ -36,7 +36,6 @@
- #include "delegation.h"
- #include "iostat.h"
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index cf76f9c..38ba5c0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -591,8 +591,8 @@ static void nfs_cancel_commit_list(struc
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+ 		nfs_inode_remove_request(req);
+-		nfs_clear_page_writeback(req);
+ 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++		nfs_clear_page_writeback(req);
+ 	}
+ }
  
--#define NFS_PARANOIA 1
- /* #define NFS_DEBUG_VERBOSE 1 */
- 
- static int nfs_opendir(struct inode *, struct file *);
-@@ -1299,11 +1298,7 @@ static int nfs_sillyrename(struct inode 
- 		atomic_read(&dentry->d_count));
- 	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
- 
--#ifdef NFS_PARANOIA
--if (!dentry->d_inode)
--printk("NFS: silly-renaming %s/%s, negative dentry??\n",
--dentry->d_parent->d_name.name, dentry->d_name.name);
--#endif
-+	BUG_ON(!dentry->d_inode);
- 	/*
- 	 * We don't allow a dentry to be silly-renamed twice.
- 	 */
-@@ -1452,11 +1447,6 @@ nfs_symlink(struct inode *dir, struct de
- 	dfprintk(VFS, "NFS: symlink(%s/%ld, %s, %s)\n", dir->i_sb->s_id,
- 		dir->i_ino, dentry->d_name.name, symname);
- 
--#ifdef NFS_PARANOIA
--if (dentry->d_inode)
--printk("nfs_proc_symlink: %s/%s not negative!\n",
--dentry->d_parent->d_name.name, dentry->d_name.name);
--#endif
- 	/*
- 	 * Fill in the sattr for the call.
-  	 * Note: SunOS 4.1.2 crashes if the mode isn't initialized!
-@@ -1584,16 +1574,8 @@ static int nfs_rename(struct inode *old_
- 			new_inode = NULL;
- 			/* instantiate the replacement target */
- 			d_instantiate(new_dentry, NULL);
--		} else if (atomic_read(&new_dentry->d_count) > 1) {
--		/* dentry still busy? */
--#ifdef NFS_PARANOIA
--			printk("nfs_rename: target %s/%s busy, d_count=%d\n",
--			       new_dentry->d_parent->d_name.name,
--			       new_dentry->d_name.name,
--			       atomic_read(&new_dentry->d_count));
--#endif
-+		} else if (atomic_read(&new_dentry->d_count) > 1)
- 			goto out;
--		}
- 	} else
- 		new_inode->i_nlink--;
- 
-diff -upr linux-2.6.18-rc7-git2-orig/fs/nfs/inode.c linux-2.6.18-rc7-git2/fs/nfs/inode.c
---- linux-2.6.18-rc7-git2-orig/fs/nfs/inode.c	2006-09-14 13:08:55.000000000 +0200
-+++ linux-2.6.18-rc7-git2/fs/nfs/inode.c	2006-09-19 01:37:10.000000000 +0200
-@@ -48,7 +48,6 @@
- #include "internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
--#define NFS_PARANOIA 1
- 
- static void nfs_invalidate_inode(struct inode *);
- static int nfs_update_inode(struct inode *, struct nfs_fattr *);
-@@ -895,7 +894,7 @@ static int nfs_update_inode(struct inode
- 	 * Make sure the inode's type hasn't changed.
- 	 */
- 	if ((inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT))
--		goto out_changed;
-+		goto out_err;
- 
- 	server = NFS_SERVER(inode);
- 	/* Update the fsid if and only if this is the root directory */
-@@ -1005,14 +1004,6 @@ static int nfs_update_inode(struct inode
- 		nfsi->cache_validity |= invalid;
- 
- 	return 0;
-- out_changed:
--	/*
--	 * Big trouble! The inode has become a different object.
--	 */
--#ifdef NFS_PARANOIA
--	printk(KERN_DEBUG "%s: inode %ld mode changed, %07o to %07o\n",
--			__FUNCTION__, inode->i_ino, inode->i_mode, fattr->mode);
--#endif
-  out_err:
- 	/*
- 	 * No need to worry about unhashing the dentry, as the
-diff -upr linux-2.6.18-rc7-git2-orig/fs/nfs/nfs2xdr.c linux-2.6.18-rc7-git2/fs/nfs/nfs2xdr.c
---- linux-2.6.18-rc7-git2-orig/fs/nfs/nfs2xdr.c	2006-09-14 13:08:55.000000000 +0200
-+++ linux-2.6.18-rc7-git2/fs/nfs/nfs2xdr.c	2006-09-19 01:37:31.000000000 +0200
-@@ -26,7 +26,6 @@
- #include "internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_XDR
--/* #define NFS_PARANOIA 1 */
- 
- /* Mapping from NFS error code to "errno" error code. */
- #define errno_NFSERR_IO		EIO
-diff -upr linux-2.6.18-rc7-git2-orig/fs/nfs/pagelist.c linux-2.6.18-rc7-git2/fs/nfs/pagelist.c
---- linux-2.6.18-rc7-git2-orig/fs/nfs/pagelist.c	2006-09-14 13:08:55.000000000 +0200
-+++ linux-2.6.18-rc7-git2/fs/nfs/pagelist.c	2006-09-19 01:38:28.000000000 +0200
-@@ -18,7 +18,6 @@
- #include <linux/nfs_fs.h>
- #include <linux/nfs_mount.h>
- 
--#define NFS_PARANOIA 1
- 
- static kmem_cache_t *nfs_page_cachep;
- 
-@@ -171,10 +170,8 @@ nfs_release_request(struct nfs_page *req
- 	if (!atomic_dec_and_test(&req->wb_count))
- 		return;
- 
--#ifdef NFS_PARANOIA
--	BUG_ON (!list_empty(&req->wb_list));
--	BUG_ON (NFS_WBACK_BUSY(req));
--#endif
-+	BUG_ON(!list_empty(&req->wb_list));
-+	BUG_ON(NFS_WBACK_BUSY(req));
- 
- 	/* Release struct file or cached credential */
- 	nfs_clear_request(req);
+@@ -1387,8 +1387,8 @@ nfs_commit_list(struct inode *inode, str
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+ 		nfs_mark_request_commit(req);
+-		nfs_clear_page_writeback(req);
+ 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++		nfs_clear_page_writeback(req);
+ 	}
+ 	return -ENOMEM;
+ }
 
-
+--=-4xh4i9HM0NhFPMY3ORRK
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--=-4xh4i9HM0NhFPMY3ORRK
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--=-4xh4i9HM0NhFPMY3ORRK--
