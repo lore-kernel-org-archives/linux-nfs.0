@@ -1,22 +1,24 @@
-From: Chris Richardson <Chris.Richardson@icr.ac.uk>
-Subject: Mount request ... gave 42
-Date: Tue, 19 Sep 2006 14:26:36 +0100
-Message-ID: <F57567C2-67B1-444A-A85D-6B28CAF4023F@icr.ac.uk>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset="us-ascii"
+From: "Topp, Kenneth" <Kenneth.Topp@gs.com>
+Subject: cannot remove silly renamed files
+Date: Tue, 19 Sep 2006 13:40:38 -0400
+Message-ID: <5FD3925640200143AA51A2F603FEB86A02258293@gsmbnmp19es.firmwide.corp.gs.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============0249005589=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GPfg1-0003Gj-9y
-	for nfs@lists.sourceforge.net; Tue, 19 Sep 2006 06:30:18 -0700
-Received: from mail56.messagelabs.com ([193.109.254.67])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GPffy-0005RO-Ji
-	for nfs@lists.sourceforge.net; Tue, 19 Sep 2006 06:30:18 -0700
-Received: from groupwise.icr.ac.uk (gw2.icr.ac.uk [193.63.217.83])
-	by thames.icr.ac.uk (Postfix) with ESMTP id 427DEEB964
-	for <nfs@lists.sourceforge.net>; Tue, 19 Sep 2006 14:26:54 +0100 (BST)
-To: nfs@lists.sourceforge.net
+	id 1GPjaS-0004wL-3I
+	for nfs@lists.sourceforge.net; Tue, 19 Sep 2006 10:40:48 -0700
+Received: from mxcd01.gs.com ([12.47.209.190])
+	by mail.sourceforge.net with esmtps (TLSv1:RC4-SHA:128) (Exim 4.44)
+	id 1GPjaQ-0008Ht-Jn
+	for nfs@lists.sourceforge.net; Tue, 19 Sep 2006 10:40:49 -0700
+Received: from gsmbnmp19es.firmwide.corp.gs.com
+	(gsmbnmp19es.firmwide.corp.gs.com [148.86.24.118]) by
+	insvsod01.inz.gs.com with ESMTP for nfs@lists.sourceforge.net;
+	Tue, 19 Sep 2006 13:40:40 -0400
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,50 +31,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello all,
+This is a multi-part message in MIME format.
 
-I've been battling a mysterious intermittent NFS problem all day.   
-Some clients can't mount exported directories, and what I get in /var/ 
-log/messages is the following (I'm using -d all when I run rpc.mountd).
+--===============0249005589==
+Content-class: urn:content-classes:message
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C6DC12.B806E979"
 
-Sep 19 13:45:28 anu rpc.mountd: MNT3(/export/home/csbguest) called
-Sep 19 13:45:28 anu rpc.mountd: mount request from 172.17.12.1:943  
-for /export/home/csbguest (/export/home/csbguest) gave 42
+This is a multi-part message in MIME format.
 
-The error is usually repeated 3 further times.
+------_=_NextPart_001_01C6DC12.B806E979
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-System details:
+Hi,
 
-   SuSE Linux Enterprise Server 9 (dual opteron)
-   Linux 2.6.8-24.14-smp
-   nfs-utils-1.0.6-113 (yes, I know, I'm three years out of date)
+I've searched the archive but didn't find anything related.  2.6 doesn't
+allow you to delete .nfsXXX (silly renamed) files from the host that has
+it open.  2.4 and solaris 2.X has allowed one to shoot oneself in the
+foot.
 
-We're a mixed client environment (IRIX 6.5, SLES, Mac OS X 10.4.7),  
-but so far only the OS X clients have been giving problems.
+Can we update the code to do a rename twice then allow removal rather
+then blocking it indefinitely?  The current code changes breaks expect
+commands like "/bin/rm -rf dir/", which I'm sure is defined somewhere in
+POSIX.
 
-I had a quick look at the code for nfs-utils, and from my probably  
-incomplete understanding of it the error is being spat out of  
-auth.c.  There's a switch that considers all the possible values of  
-an enum auth_error, and the 42 is dropping out of the default case in  
-that switch.  How 42 gets there, I don't know.  When I first saw 42 I  
-suspected that someone had been reading too much Douglas Adams.
+Ken
 
-I can't think of any recent changes that could have precipitated this  
-sudden problem.  Any advice (including the obvious advice to update  
-to 1.0.10) will be gratefully received.
+------_=_NextPart_001_01C6DC12.B806E979
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-Regards,
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.5.7233.69">
+<TITLE>cannot remove silly renamed files</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
 
-Chris
---
-Dr Chris Richardson - sysadmin, Structural Biology Section, icr.ac.uk
+<P><FONT SIZE=3D2 FACE=3D"Courier New">Hi,</FONT>
+</P>
 
+<P><FONT SIZE=3D2 FACE=3D"Courier New">I've searched the archive but =
+didn't find anything related.&nbsp; 2.6 doesn't allow you to delete =
+.nfsXXX (silly renamed) files from the host that has it open.&nbsp; 2.4 =
+and solaris 2.X has allowed one to shoot oneself in the foot.</FONT></P>
+
+<P><FONT SIZE=3D2 FACE=3D"Courier New">Can we update the code to do a =
+rename twice then allow removal rather then blocking it =
+indefinitely?&nbsp; The current code changes breaks expect commands like =
+&quot;/bin/rm -rf dir/&quot;, which I'm sure is defined somewhere in =
+POSIX.</FONT></P>
+
+<P><FONT SIZE=3D2 FACE=3D"Courier New">Ken</FONT>
+</P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C6DC12.B806E979--
+
+
+--===============0249005589==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0249005589==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0249005589==--
