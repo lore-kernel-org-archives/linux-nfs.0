@@ -1,7 +1,7 @@
-From: "Chuck Lever" <chucklever@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: cel's patches for 2.6.18 kernels
-Date: Thu, 21 Sep 2006 10:50:51 -0400
-Message-ID: <76bd70e30609210750s5c8b943cg267513c64dc0433f@mail.gmail.com>
+Date: Thu, 21 Sep 2006 11:06:16 -0400
+Message-ID: <1158851176.5441.17.camel@lade.trondhjem.org>
 References: <76bd70e30609201128r9188a17i51b779c6e1b569fc@mail.gmail.com>
 	<20060920202010.GA22954@infradead.org>
 	<76bd70e30609201353l7d8c063fp94916c509b08b24e@mail.gmail.com>
@@ -9,6 +9,7 @@ References: <76bd70e30609201128r9188a17i51b779c6e1b569fc@mail.gmail.com>
 	<76bd70e30609201929s1e01b453ia694774d77f9474c@mail.gmail.com>
 	<451284E4.4050806@RedHat.com>
 	<1158846435.7626.7.camel@lade.trondhjem.org>
+	<76bd70e30609210750s5c8b943cg267513c64dc0433f@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -16,15 +17,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GQPtD-0004xi-1Q
-	for nfs@lists.sourceforge.net; Thu, 21 Sep 2006 07:50:59 -0700
-Received: from wx-out-0506.google.com ([66.249.82.228])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GQPtB-00083N-Fd
-	for nfs@lists.sourceforge.net; Thu, 21 Sep 2006 07:50:59 -0700
-Received: by wx-out-0506.google.com with SMTP id r21so804955wxc
-	for <nfs@lists.sourceforge.net>; Thu, 21 Sep 2006 07:50:52 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1158846435.7626.7.camel@lade.trondhjem.org>
+	id 1GQQ8N-0007FE-NN
+	for nfs@lists.sourceforge.net; Thu, 21 Sep 2006 08:06:40 -0700
+Received: from pat.uio.no ([129.240.10.4])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GQQ8N-0005HR-1k
+	for nfs@lists.sourceforge.net; Thu, 21 Sep 2006 08:06:40 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <76bd70e30609210750s5c8b943cg267513c64dc0433f@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,41 +37,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 9/21/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Thu, 2006-09-21 at 08:26 -0400, Steve Dickson wrote:
-> >
-> > Chuck Lever wrote:
-> > > No slot table means we can dynamically increase and decrease the
-> > > number of concurrent RPC requests per transport -- which is a
-> > > pre-requisite for scalability when all mounts to the same server use
-> > > the same transport.  I don't relish the idea of a hundred mount points
-> > > on a client that are only allowed to start 16 total requests at a
-> > > time.
-> > >
-> > I think this is a very good thing... not having a hard code slot table
-> > make things much more scalable... imho...
->
-> I'd like to see _lots_ of testing in a low-memory environment before I'm
-> ready to fully subscribe to that opinion.
+On Thu, 2006-09-21 at 10:50 -0400, Chuck Lever wrote:
+> On 9/21/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-The current behavior is that the VM dumps a boat load of writes on the
-NFS client, and they all queue up on the RPC client's backlog queue.
-In the new code, each request is allowed to proceed further to the
-allocation of an RPC buffer before it is stopped.  The buffers come
-out of a slab cache, so low-memory behavior should be fairly
-reasonable.
+> The current behavior is that the VM dumps a boat load of writes on the
+> NFS client, and they all queue up on the RPC client's backlog queue.
+> In the new code, each request is allowed to proceed further to the
+> allocation of an RPC buffer before it is stopped.  The buffers come
+> out of a slab cache, so low-memory behavior should be fairly
+> reasonable.
 
-The small slot table size already throttles write-intensive workloads
-and anything that tries to drive concurrent I/O.  To add an additional
-constraint that multiple mount point go through a small fixed size
-slot table seems like poor design.
+What properties of slabs make them immune to low-memory issues?
 
-Perhaps we can add a per-mount point concurrency limit instead of a
-per-transport limit?
+> The small slot table size already throttles write-intensive workloads
+> and anything that tries to drive concurrent I/O.  To add an additional
+> constraint that multiple mount point go through a small fixed size
+> slot table seems like poor design.
 
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
+Its main purpose is precisely that of _limiting_ the amount of RPC
+buffer usage, and hence avoiding yet another potential source of memory
+deadlocks.
+There is already a mechanism in place for allowing the user to fiddle
+with the limits, 
+
+> Perhaps we can add a per-mount point concurrency limit instead of a
+> per-transport limit?
+
+Why? What workloads are currently showing performance problems related
+to this issue?
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
