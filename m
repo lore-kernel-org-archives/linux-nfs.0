@@ -1,21 +1,25 @@
-From: "Lance Kahle" <busseyi@fanniemaefoundation.org>
-Subject: PHAcucRMACY
-Date: Mon, 25 Sep 2006 15:50:35 +0200
-Message-ID: <01c6e0a9$93791a40$eddc0059@unknowlxuaqd0u>
-Reply-To: Lance Kahle <busseyi@fanniemaefoundation.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 008 of 11] knfsd: Prepare knfsd for support of
+	rsize/wsize of up to 1MB, over TCP.
+Date: Mon, 25 Sep 2006 11:43:16 -0400
+Message-ID: <20060925154316.GA17465@fieldses.org>
+References: <20060824162917.3600.patches@notabene> <1060824063711.5008@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0034296517=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, Greg Banks <gnb@melbourne.sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GRqqx-0006WF-VK
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 06:50:35 -0700
-Received: from 89.0.220.237.dynamic.barak-online.net ([89.0.220.237]
-	helo=fanniemaefoundation.org)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GRqqy-0000ko-76
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 06:50:36 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1GRsch-0002BJ-H0
+	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 08:43:59 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GRsch-0005ZI-6F
+	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 08:44:00 -0700
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1060824063711.5008@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,91 +32,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Thu, Aug 24, 2006 at 04:37:11PM +1000, NeilBrown wrote:
+> The limit over UDP remains at 32K.  Also, make some of
+> the apparently arbitrary sizing constants clearer.
+> 
+> The biggest change here involves replacing NFSSVC_MAXBLKSIZE
+> by a function of the rqstp.  This allows it to be different
+> for different protocols (udp/tcp) and also allows it
+> to depend on the servers declared sv_bufsiz.
+> 
+> Note that we don't actually increase sv_bufsz for nfs yet.
+> That comes next.
 
---===============0034296517==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_14C7_01C6E0BA.5701EA40"
+This patch has some problems.  (Apologies for being so slow to look at
+them!)
 
-This is a multi-part message in MIME format.
+We're reporting svc_max_payload(rqstp) as the server's maximum
+read/write block size:
 
-------=_NextPart_000_14C7_01C6E0BA.5701EA40
-Content-Type: text/plain;
-	charset="windows-1255"
-Content-Transfer-Encoding: quoted-printable
+> @@ -538,15 +539,16 @@ nfsd3_proc_fsinfo(struct svc_rqst * rqst
+>  					   struct nfsd3_fsinfores *resp)
+>  {
+>  	int	nfserr;
+> +	u32	max_blocksize = svc_max_payload(rqstp);
+>  
+>  	dprintk("nfsd: FSINFO(3)   %s\n",
+>  				SVCFH_fmt(&argp->fh));
+>  
+> -	resp->f_rtmax  = NFSSVC_MAXBLKSIZE;
+> -	resp->f_rtpref = NFSSVC_MAXBLKSIZE;
+> +	resp->f_rtmax  = max_blocksize;
+> +	resp->f_rtpref = max_blocksize;
+>  	resp->f_rtmult = PAGE_SIZE;
+> -	resp->f_wtmax  = NFSSVC_MAXBLKSIZE;
+> -	resp->f_wtpref = NFSSVC_MAXBLKSIZE;
+> +	resp->f_wtmax  = max_blocksize;
+> +	resp->f_wtpref = max_blocksize;
+>  	resp->f_wtmult = PAGE_SIZE;
+>  	resp->f_dtpref = PAGE_SIZE;
+>  	resp->f_maxfilesize = ~(u32) 0;
 
-Hi
+But svc_max_payload() usually returns sv_bufsz in the TCP case:
 
-VAxLIUM
-
-AMxBIEN
-
-VIxAGRA
-
-CIxALIS
-
-Economize 50 % with http://www.fedunkinmdaswinkde.com
-=20
-  _____ =20
-
-
-ready to grab and crush.
-I realized now that my carefully planned crime had apparently been a
-the growl of straining motors as it started to open.
-
-
-
-------=_NextPart_000_14C7_01C6E0BA.5701EA40
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dus-ascii">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>Hi</DIV>
-<P><FONT face=3DArial>VAxLIUM</FONT></P>
-<P><FONT face=3DArial>AMxBIEN</FONT></P>
-<P><FONT face=3DArial>VIxAGRA</FONT></P>
-<P><FONT face=3DArial>CIxALIS</FONT></P>
-<DIV>Economize 50 % with <A =
-href=3D"http://www.fedunkinmdaswinkde.com">http://www.fedunkinmdaswinkde.=
-com</A></DIV>
-<DIV>&nbsp;</DIV>
-<DIV><HR></DIV>
-<P>ready to grab and crush.<BR>
-I  realized now that my carefully planned crime had apparently been  =
-a<BR>
-the growl of straining motors as it started to =
-open.<BR></P></BODY></HTML>
-------=_NextPart_000_14C7_01C6E0BA.5701EA40--
+> +u32 svc_max_payload(const struct svc_rqst *rqstp)
+> +{
+> +	int max = RPCSVC_MAXPAYLOAD_TCP;
+> +
+> +	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+> +		max = RPCSVC_MAXPAYLOAD_UDP;
+> +	if (rqstp->rq_server->sv_bufsz < max)
+> +		max = rqstp->rq_server->sv_bufsz;
+> +	return max;
+> +}
 
 
+That's the *total* size of the buffer for holding requests and replies.
 
---===============0034296517==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+If a client actually tries to send a write of that size, the entire
+request will of course exceed sv_bufsz, so we'll drop it.  (We've seen
+this happen with the Solaris v4 client.)
+
+> -#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
+> +/*
+> + * Largest number of bytes we need to allocate for an NFS
+> + * call or reply.  Used to control buffer sizes.  We use
+> + * the length of v3 WRITE, READDIR and READDIR replies
+> + * which are an RPC header, up to 26 XDR units of reply
+> + * data, and some page data.
+> + *
+> + * Note that accuracy here doesn't matter too much as the
+> + * size is rounded up to a page size when allocating space.
+> + */
+
+Is the rounding up *always* going to increase the size?  And if not,
+then why doesn't accuracy matter?
+
+> +#define NFSD_BUFSIZE		((RPC_MAX_HEADER_WITH_AUTH+26)*XDR_UNIT + NFSSVC_MAXBLKSIZE)
+
+I think this results in 80 less bytes less than before, I think.
+
+No doubt we have lots of wiggle room here, but I'd rather we didn't
+decrease that size without seeing a careful analysis.
+
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0034296517==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0034296517==--
