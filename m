@@ -1,18 +1,25 @@
-From: Pipit Sandy <pietsa03@yahoo.com>
-Subject: how to build LBFS ....??
-Date: Mon, 25 Sep 2006 17:55:51 -0700 (PDT)
-Message-ID: <20060926005551.34824.qmail@web54104.mail.yahoo.com>
+From: Tiziana Manfroni <manfroni@mat.uniroma3.it>
+Subject: lockd problem
+Date: Tue, 26 Sep 2006 12:33:33 +0200 (CEST)
+Message-ID: <Pine.OSF.4.58.0609261226340.71860@matrm3.mat.uniroma3.it>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1157372785=="
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GS1Eu-0001pL-9j
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:56:00 -0700
-Received: from web54104.mail.yahoo.com ([206.190.37.239])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GS1Et-0008OA-FB
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:56:01 -0700
+	id 1GSAIA-0007zK-Qc
+	for nfs@lists.sourceforge.net; Tue, 26 Sep 2006 03:35:58 -0700
+Received: from mail.mat.uniroma3.it ([193.204.165.208])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GSAIA-0002kK-6e
+	for nfs@lists.sourceforge.net; Tue, 26 Sep 2006 03:35:59 -0700
+Received: from matrm3.mat.uniroma3.it (matrm3.mat.uniroma3.it
+	[193.204.165.131])
+	by mail.mat.uniroma3.it (8.13.8/8.13.8) with ESMTP id k8QAcbZJ017433
+	for <nfs@lists.sourceforge.net>; Tue, 26 Sep 2006 12:38:37 +0200
+Received: from matrm3.mat.uniroma3.it (localhost [127.0.0.1])
+	by matrm3.mat.uniroma3.it (8.13.8/8.13.8) with ESMTP id k8QAXX8D083014
+	for <nfs@lists.sourceforge.net>; Tue, 26 Sep 2006 12:33:33 +0200 (CEST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -26,60 +33,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1157372785==
-Content-Type: multipart/alternative; boundary="0-1294107620-1159232151=:34362"
-Content-Transfer-Encoding: 7bit
+I have a NFSv4 server with kernel-2.6.13-1.1526_FC4smp on fedora4
+Sometime I have an error on NFS server such as:
+Sep 25 12:32:39 x.x.x.x kernel: RPC: error 5 connecting to server x.x.x.x
+Sep 25 12:32:39 x.x.x.x kernel: lockd: couldn't create RPC handle for x.x.x.x
+every one minutes. What is the problem?
+When I restart nfs I have the same message so I can't kill it.
+Do you have any idea to resolve these problems?
 
---0-1294107620-1159232151=:34362
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
+Thanks in advance
 
-i try to build LBFS network in my computer lab..
-somebody can you tell me how to configure the server and the client..
-=20
-regards
-pipit
-
- 		=09
----------------------------------
-Get your own web address for just $1.99/1st yr. We'll help. Yahoo! Small =
-Business.
---0-1294107620-1159232151=:34362
-Content-Type: text/html; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-i try to build LBFS network in my computer lab..<br>somebody can you tell=
- me how to configure the server and the client..<br>&nbsp;<br>regards<br>=
-pipit<br><p>&#32;
-=09
-		<hr size=3D1>Get your own <a href=3D" http://us.rd.yahoo.com/evt=3D4329=
-0/*http://smallbusiness.yahoo.com/domains"
->web address for just $1.99/1st yr</a>. We'll help. <a href=3D"http://us.=
-rd.yahoo.com/evt=3D41244/*http://smallbusiness.yahoo.com/"
->Yahoo! Small Business</a>.
-
---0-1294107620-1159232151=:34362--
-
-
---===============1157372785==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+	Tiziana
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1157372785==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1157372785==--
