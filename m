@@ -1,25 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 009 of 11] knfsd: Allow max size of NFSd payload
-	to be configured.
-Date: Mon, 25 Sep 2006 17:24:57 -0400
-Message-ID: <20060925212457.GK32762@fieldses.org>
-References: <20060824162917.3600.patches@notabene> <1060824063716.5020@suse.de>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/4 Revised] NLM failover - nlm_unlock
+Date: Tue, 26 Sep 2006 10:39:39 +1000
+Message-ID: <17688.30411.484871.224188@cse.unsw.edu.au>
+References: <4508DE13.6030705@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Cc: cluster-devel@redhat.com, lhh@redhat.com,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GRxwp-0000gA-TQ
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 14:25:08 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1GS0zN-0000V2-Pu
+	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:39:57 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GRxwp-0002XW-H2
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 14:25:08 -0700
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1060824063716.5020@suse.de>
+	(Exim 4.44) id 1GS0zN-0001Eu-4H
+	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:39:58 -0700
+To: wcheng@redhat.com
+In-Reply-To: message from Wendy Cheng on Thursday September 14
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +31,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Aug 24, 2006 at 04:37:16PM +1000, NeilBrown wrote:
-> diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
-> --- .prev/fs/nfsd/nfssvc.c	2006-08-24 16:26:10.000000000 +1000
-> +++ ./fs/nfsd/nfssvc.c	2006-08-24 16:26:10.000000000 +1000
-> @@ -198,9 +198,26 @@ int nfsd_create_serv(void)
->  		unlock_kernel();
->  		return 0;
->  	}
-> +	if (nfsd_max_blksize == 0) {
-> +		/* choose a suitable default */
-> +		struct sysinfo i;
-> +		si_meminfo(&i);
-> +		/* Aim for 1/4096 of memory per thread
-> +		 * This gives 1MB on 4Gig machines
-> +		 * But only uses 32K on 128M machines.
-> +		 * Bottom out at 8K on 32M and smaller.
-> +		 * Of course, this is only a default.
-> +		 */
-> +		nfsd_max_blksize = NFSSVC_MAXBLKSIZE;
-> +		i.totalram >>= 12;
-> +		while (nfsd_max_blksize > i.totalram &&
-> +		       nfsd_max_blksize >= 8*1024*2)
-> +			nfsd_max_blksize /= 2;
-> +	}
 
-It looks to me like totalram is actually measured in pages.  So in
-practice this gives almost everyone 8k here.  So that 12 should be
-something like 12 - PAGE_CACHE_SHIFT?
+Firstly, sorry for the delay in responding to these.
 
---b.
+
+On Thursday September 14, wcheng@redhat.com wrote:
+> By writing exported filesytem id into /proc/fs/nfsd/nlm_unlock, this 
+> patch walks thru lockd's global nlm_files list to release all the locks 
+> associated with the particular id. It is used to enable NFS lock 
+> failover with active-active clustered servers.
+> 
+> Relevant steps:
+> 1) Exports filesystem with "fsid" option as:
+>    /etc/exports entry> /mnt/ext3/exports *(fsid=1234,sync,rw)
+> 2) Drops locks based on fsid by:
+>    shell> echo 1234 > /proc/fs/nfsd/nlm_unlock
+
+I actually felt a bit more comfortable with the server-ip based
+approach, how I cannot really fault the fsid based approach, and it
+does seem to have some advantages, so I guess we go with it.
+
+>  /*
+> + * Get fsid from nfs_fh:
+> + * return 1 if *fsid contains a valid value.
+> + */
+> +static inline int
+> +nlm_fo_get_fsid(struct nfs_fh *fh, int *fsid)
+> +{
+> +	struct nfs_fhbase_new *fh_base = (struct nfs_fhbase_new *) fh->data;
+> + 	int data_left = fh->size/4;
+> + 
+> + 	nlm_debug_print_fh("nlm_fo_find_fsid", fh);
+> + 
+> + 	/* From fb_version to fb_auth - at least two u32 */
+> + 	if (data_left < 2)		
+> + 		return 0;
+> +  
+> + 	/* For various types, check out 
+> + 	 * inlcude/linux/nfsd/nfsfsh.h
+> + 	 */
+> + 	if ((fh_base->fb_version != 1) ||  
+> + 		(fh_base->fb_auth_type != 0) ||
+> + 		(fh_base->fb_fsid_type != 1))
+> + 		return 0;
+> + 
+> + 	/* The fb_auth is 0 bytes long - imply fb_auth[0] has
+> + 	 * fsid value.
+> + 	 */
+> + 	*fsid = (int) fh_base->fb_auth[0];
+> + 	return 1;
+> +}
+
+It would be really nice if this could be in the nfsd code rather than
+in the lockd code.  Maybe if the nlm_fopen call passed back the fsid?
+
+> +
+> +/*
+>   * Operate on a single file
+>   */
+>  static inline int
+> @@ -234,21 +267,42 @@ nlm_inspect_file(struct nlm_host *host, 
+>   * Loop over all files in the file table.
+>   */
+>  static int
+> -nlm_traverse_files(struct nlm_host *host, int action)
+> +nlm_traverse_files(struct nlm_host *host, int *fsidp, int action)
+>  {
+>  	struct nlm_file	*file, **fp;
+> -	int i, ret = 0;
+> +	int i, ret = 0, found, fsid_in=0, fsid, act=action;
+
+Unfortunately all of this will have to change due to Olaf's recent
+changes in lockd.  Should be quite do-able, just needs to be
+different.
+
+> +/*
+> + * release locks associated with an export fsid upon failover
+> + */
+> +int
+> +nlmsvc_fo_unlock(int *fsid)
+> +{
+> +	/* drop the locks */
+> +	return (nlm_traverse_files(NULL, fsid, NLM_ACT_FO_UNLOCK)); 
+> +}
+> +
+
+I really don't think fsid should be an 'int *', just an int.
+Other callers of nlm_traverse_files can just pass an fsid of 0 - they
+don't need to be able to pass NULL.
+
+
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
