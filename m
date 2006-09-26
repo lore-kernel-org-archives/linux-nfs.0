@@ -1,8 +1,8 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 2/4 Revised] NLM failover - nlm_set_igrace
-Date: Tue, 26 Sep 2006 10:46:14 +1000
-Message-ID: <17688.30806.252332.646157@cse.unsw.edu.au>
-References: <4508DF1A.4090907@redhat.com>
+Subject: Re: [PATCH 3/4 Revised] NLM failover - statd changes
+Date: Tue, 26 Sep 2006 10:54:29 +1000
+Message-ID: <17688.31301.427937.926300@cse.unsw.edu.au>
+References: <4508DFA0.2060806@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: cluster-devel@redhat.com, lhh@redhat.com,
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GS15h-00013n-HN
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:46:29 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1GS1Db-0001iw-2F
+	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:54:39 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GS15h-0002Wp-Ld
-	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:46:30 -0700
+	(Exim 4.44) id 1GS1Db-00044z-5r
+	for nfs@lists.sourceforge.net; Mon, 25 Sep 2006 17:54:40 -0700
 To: wcheng@redhat.com
 In-Reply-To: message from Wendy Cheng on Thursday September 14
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -32,75 +32,89 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Thursday September 14, wcheng@redhat.com wrote:
-> This change enables per NFS-export entry lockd grace period. The 
-> implementation is based on a double linked list fo_fsid_list that 
-> contains entries of fsid info. It is expected this would not be a 
-> frequent event. The fo_fsid_list is short and the entries expire within 
-> a maximum of 50 seconds.  The grace period setting follows the existing 
-> NLM grace period handling logic and is triggered via echoing the NFS 
-> export filesystem id into nfsd procfs entry as:
+> This kernel patch should be paired with nfs-utils user mode changes (in 
+> patch 4-4 based on nfs-utils-1.0.8-rc4) that is optional. If changes 
+> made in patch 4-4 is not presented in nfs-utils, the rpc.statd will 
+> ignore whatever this kernel patch does.
 > 
-> shell> echo 1234 > /proc/fs/nfsd/nlm_set_igrace
-
-What is the 'i' for?
-How about  /proc/fs/nfsd/nlm_set_grace_for_fsid ??
-
-> --- linux-1/include/linux/lockd/lockd.h	2006-09-03 21:51:41.000000000 -0400
-> +++ linux-2/include/linux/lockd/lockd.h	2006-09-13 22:48:00.000000000 -0400
-> @@ -107,6 +107,17 @@ struct nlm_file {
->  	int		       	f_hash;		/* hash of f_handle */
->  };
+> The changes record the ip interface that accepts the lock requests and 
+> passes the correct "my_name" (in standard IPV4 dot notation) to user 
+> mode statd (instead of system_utsname.nodename). This enables rpc.statd 
+> to add the correct taken-over IPv4 address into the 3rd parameter of 
+> ha_callout program. Current nfs-utils always resets "my_name" into 
+> loopback address (127.0.0.1), regardless the statement made in rpc.statd 
+> man page. Check out "man rpc.statd" for details.
+> 
+> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+> Signed-off-by: Lon Hohberger  <lhh@redhat.com>
+> 
+>  fs/lockd/host.c                |    4 ++--
+>  fs/lockd/mon.c                 |   21 +++++++++++++++++----
+>  fs/lockd/svc4proc.c            |    8 +++++++-
+>  fs/lockd/svcproc.c             |    2 +-
+>  include/linux/lockd/lockd.h    |    5 +++--
+>  include/linux/lockd/sm_inter.h |    1 +
+>  include/linux/sunrpc/svc.h     |    5 +++--
+>  net/sunrpc/svcsock.c           |    5 +++++
+>  8 files changed, 39 insertions(+), 12 deletions(-)
+> 
+> 
+> --- linux-2/include/linux/sunrpc/svc.h	2006-09-11 16:52:34.000000000 -0400
+> +++ linux-3/include/linux/sunrpc/svc.h	2006-09-13 14:07:32.000000000 -0400
+> @@ -102,6 +102,7 @@ static inline void svc_putu32(struct kve
+>  	iov->iov_len += sizeof(u32);
+>  }
 >  
-> +#define NLM_FO_MAX_FSID_GP	127
-
-Why do you need this limit?
-
-> + *
-> + * Also, please don't ask why using opencoded list manipulation, 
-> + * instead of <linux/list.h>, unless you can point to me where
-> + * in that file have existing macro and/or functions that can do
-> + * single linked list. 
-
-I don't think this comment is appropriate any more.  You are using
-list.h lists, not open coding them.
-
-
-> +	/* check to see whether this_fsid is in fo_fsid_list list */
-> +	list_for_each_safe(p, tlist, &fo_fsid_list) {
-> +		e_this = list_entry(p, struct fo_fsid, g_list);
-> +		if (time_before(e_this->g_expire, jiffies)) {
-> +			printk("lockd: fsid=%d grace period expires\n",
-> +				e_this->g_fsid);
-> +			list_del(p);
-> +			fo_fsid_cnt--;
-> +			kfree(e_this);
-> +		} else if (e_this->g_fsid == this_fsid) {
-> +			if (!e_this->g_flag) {
-> +				e_this->g_flag = 1;
-> +				printk("lockd: fsid=%d in grace period\n",
-> +					e_this->g_fsid);
-> +			}
-> +			rc = 1;
-
-I assume this 'g_flag' was just for debugging.  Can it be take out
-now?
-Also, I though you should break out of the loop once you set rc = 1.
-
->   * Obtain client and file from arguments
->   */
-> @@ -89,7 +102,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp
->  	resp->cookie = argp->cookie;
+> +typedef __u32  svc_addr_t;
+>  	
+>  /*
+>   * The context of a single thread, including the request currently being
+> @@ -138,8 +139,8 @@ struct svc_rqst {
+>  	unsigned short
+>  				rq_secure  : 1;	/* secure port */
 >  
->  	/* Don't accept test requests during grace period */
-> -	if (nlmsvc_grace_period) {
-> +	if ((nlmsvc_grace_period) || (nlm4svc_fo_grace_period(argp))) {
->  		resp->status = nlm_lck_denied_grace_period;
->  		return rpc_success;
->  	}
+> -
+> -	__u32			rq_daddr;	/* dest addr of request - reply from here */
+> +	svc_addr_t		rq_daddr;	/* dest addr of request 
+> +						   - reply from here */
+>  
+>  	void *			rq_argp;	/* decoded arguments */
+>  	void *			rq_resp;	/* xdr'd results */
+> --- linux-2/include/linux/lockd/lockd.h	2006-09-13 22:48:00.000000000 -0400
+> +++ linux-3/include/linux/lockd/lockd.h	2006-09-13 22:51:41.000000000 -0400
+> @@ -39,12 +39,13 @@
+>  struct nlm_host {
+>  	struct nlm_host *	h_next;		/* linked list (hash table) */
+>  	struct sockaddr_in	h_addr;		/* peer address */
+> +	svc_addr_t		h_server;	/* server ip for NLM failover */
 
-I think this (and the rest) would look cleaner if you put the
-'nlmsvc_grace_period' test into the nlm4svc_fo_grace_period function.
+Comment should say 'or 0 for client'.
 
+>  	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
+>  	char			h_name[20];	/* remote hostname */
+>  	u32			h_version;	/* interface version */
+>  	unsigned short		h_proto;	/* transport proto */
+>  	unsigned short		h_reclaiming : 1,
+> -				h_server     : 1, /* server side, not client side */
+> +				h_notused    : 1, 
+
+Just discard this, no need to rename it to 'h_notused'.
+
+>  
+> +#if 0
+> +	if (argp->reclaim) {
+> +		printk("nlm4svc_proc_lock lock reclaim received\n");
+> +	}
+> +#endif
+
+Can this be removed?
+
+
+So: mostly looks OK, but will need quite a bit of reworking do to
+recent changes in lockd code.  So if you can get me a version that
+applies to latest -mm, I'll take it from there.
+
+Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
