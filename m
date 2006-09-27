@@ -1,25 +1,32 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: [PATCH][resend] NFS: Kill obsolete NFS_PARANOIA (try 2)
-Date: Wed, 27 Sep 2006 01:39:45 +0200
-Message-ID: <9a8748490609261639o12585969tdb0db3bad921f19e@mail.gmail.com>
+From: Shailendra Tripathi <stripathi@agami.com>
+Subject: Re: Long sleep with i_mutex in xfs_flush_device(),
+	affects NFS service
+Date: Wed, 27 Sep 2006 17:03:31 +0530
+Message-ID: <451A618B.5080901@agami.com>
+References: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_Part_18998_2379296.1159313985136"
-Cc: Jesper Juhl <jesper.juhl@gmail.com>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, Rick Sladkey <jrs@world.std.com>,
-	Neil Brown <neilb@cse.unsw.edu.au>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, xfs@oss.sgi.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GSMWi-0006Ck-EY
-	for nfs@lists.sourceforge.net; Tue, 26 Sep 2006 16:39:48 -0700
-Received: from wx-out-0506.google.com ([66.249.82.237])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GSMWg-0001ia-1g
-	for nfs@lists.sourceforge.net; Tue, 26 Sep 2006 16:39:49 -0700
-Received: by wx-out-0506.google.com with SMTP id r21so1916wxc
-	for <nfs@lists.sourceforge.net>; Tue, 26 Sep 2006 16:39:45 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+	id 1GSXiV-0008Vx-AC
+	for nfs@lists.sourceforge.net; Wed, 27 Sep 2006 04:36:43 -0700
+Received: from 64.221.212.177.ptr.us.xo.net ([64.221.212.177]
+	helo=ext.agami.com)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1GSXiU-0004gi-LZ
+	for nfs@lists.sourceforge.net; Wed, 27 Sep 2006 04:36:44 -0700
+Received: from agami.com ([192.168.168.146])
+	by ext.agami.com (8.12.5/8.12.5) with ESMTP id k8RBaaRC004313
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Wed, 27 Sep 2006 04:36:36 -0700
+Received: from mx1.agami.com (mx1.agami.com [10.123.10.30])
+	by agami.com (8.12.11/8.12.11) with ESMTP id k8RBaVev015840
+	for <nfs@lists.sourceforge.net>; Wed, 27 Sep 2006 04:36:31 -0700
+To: Stephane Doyon <sdoyon@max-t.com>
+In-Reply-To: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,124 +39,122 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-------=_Part_18998_2379296.1159313985136
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Hi Stephane,
+> When the file system becomes nearly full, we eventually call down to 
+> xfs_flush_device(), which sleeps for 0.5seconds, waiting for xfssyncd to 
+> do some work. 
+> xfs_flush_space()does
+>         xfs_iunlock(ip, XFS_ILOCK_EXCL);
+> before calling xfs_flush_device(), but i_mutex is still held, at least 
+> when we're being called from under xfs_write(). 
 
-On 27/09/06, Jesper Juhl <jesper.juhl@gmail.com> wrote:
->   [ please keep me on Cc: ]
->
->
-> Remove obsolete NFS_PARANOIA .
->
-> Signed-off-by: Jesper Juhl <jesper.juhl@gmail.com>
-> ---
+1. I agree that the delay of 500 ms is not a deterministic wait.
 
-Whoops, I accidentally included an old version of the patch. The one I
-intended to send is attached - sorry.
+2. xfs_flush_device is a big operation. It has to flush all the dirty 
+pages possibly in the cache on the device. Depending upon the device, it 
+might take significant amount of time. Keeping view of it, 500 ms in 
+that unreasonable. Also, perhaps you would never want more than one 
+request to be queued for device flush.
+3. The hope is that after one big flush operation, it would be able to 
+free up resources which are in transient state (over-reservation of 
+blocks, delalloc, pending removes, ...). The whole operation is intended 
+to make sure that ENOSPC is not returned unless really required.
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+4. This wait could be made deterministic by waiting for the syncer 
+thread to complete when device flush is triggered.
 
-------=_Part_18998_2379296.1159313985136
-Content-Type: application/octet-stream; name=NFS_PARANOIA.patch
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_eskxmupj
-Content-Disposition: attachment; filename="NFS_PARANOIA.patch"
+> It seems like a fairly long time to hold a mutex. And I wonder whether it's really 
 
-UmVtb3ZlIG9ic29sZXRlIE5GU19QQVJBTk9JQSAuCgpTaWduZWQtb2ZmLWJ5OiBKZXNwZXIgSnVo
-bCA8amVzcGVyLmp1aGxAZ21haWwuY29tPgotLS0KCiBmcy9uZnMvZGlyLmMgICAgICB8ICAgMTcg
-KystLS0tLS0tLS0tLS0tLS0KIGZzL25mcy9pbm9kZS5jICAgIHwgICAxMSArLS0tLS0tLS0tLQog
-ZnMvbmZzL25mczJ4ZHIuYyAgfCAgICAxIC0KIGZzL25mcy9wYWdlbGlzdC5jIHwgICAgNiAtLS0t
-LS0KIDQgZmlsZXMgY2hhbmdlZCwgMyBpbnNlcnRpb25zKCspLCAzMiBkZWxldGlvbnMoLSkKCmRp
-ZmYgLXVwciBsaW51eC0yLjYuMTgtZ2l0Ni1vcmlnL2ZzL25mcy9kaXIuYyBsaW51eC0yLjYuMTgt
-Z2l0Ni9mcy9uZnMvZGlyLmMKLS0tIGxpbnV4LTIuNi4xOC1naXQ2LW9yaWcvZnMvbmZzL2Rpci5j
-CTIwMDYtMDktMjcgMDE6MTY6NTIuMDAwMDAwMDAwICswMjAwCisrKyBsaW51eC0yLjYuMTgtZ2l0
-Ni9mcy9uZnMvZGlyLmMJMjAwNi0wOS0yNyAwMToyNToyMS4wMDAwMDAwMDAgKzAyMDAKQEAgLTM4
-LDcgKzM4LDYgQEAKICNpbmNsdWRlICJkZWxlZ2F0aW9uLmgiCiAjaW5jbHVkZSAiaW9zdGF0Lmgi
-CiAKLSNkZWZpbmUgTkZTX1BBUkFOT0lBIDEKIC8qICNkZWZpbmUgTkZTX0RFQlVHX1ZFUkJPU0Ug
-MSAqLwogCiBzdGF0aWMgaW50IG5mc19vcGVuZGlyKHN0cnVjdCBpbm9kZSAqLCBzdHJ1Y3QgZmls
-ZSAqKTsKQEAgLTEzMDksMTEgKzEzMDgsNiBAQCBzdGF0aWMgaW50IG5mc19zaWxseXJlbmFtZShz
-dHJ1Y3QgaW5vZGUgCiAJCWF0b21pY19yZWFkKCZkZW50cnktPmRfY291bnQpKTsKIAluZnNfaW5j
-X3N0YXRzKGRpciwgTkZTSU9TX1NJTExZUkVOQU1FKTsKIAotI2lmZGVmIE5GU19QQVJBTk9JQQot
-aWYgKCFkZW50cnktPmRfaW5vZGUpCi1wcmludGsoIk5GUzogc2lsbHktcmVuYW1pbmcgJXMvJXMs
-IG5lZ2F0aXZlIGRlbnRyeT8/XG4iLAotZGVudHJ5LT5kX3BhcmVudC0+ZF9uYW1lLm5hbWUsIGRl
-bnRyeS0+ZF9uYW1lLm5hbWUpOwotI2VuZGlmCiAJLyoKIAkgKiBXZSBkb24ndCBhbGxvdyBhIGRl
-bnRyeSB0byBiZSBzaWxseS1yZW5hbWVkIHR3aWNlLgogCSAqLwpAQCAtMTYyOCwxNiArMTYyMiw5
-IEBAIHN0YXRpYyBpbnQgbmZzX3JlbmFtZShzdHJ1Y3QgaW5vZGUgKm9sZF8KIAkJCW5ld19pbm9k
-ZSA9IE5VTEw7CiAJCQkvKiBpbnN0YW50aWF0ZSB0aGUgcmVwbGFjZW1lbnQgdGFyZ2V0ICovCiAJ
-CQlkX2luc3RhbnRpYXRlKG5ld19kZW50cnksIE5VTEwpOwotCQl9IGVsc2UgaWYgKGF0b21pY19y
-ZWFkKCZuZXdfZGVudHJ5LT5kX2NvdW50KSA+IDEpIHsKLQkJLyogZGVudHJ5IHN0aWxsIGJ1c3k/
-ICovCi0jaWZkZWYgTkZTX1BBUkFOT0lBCi0JCQlwcmludGsoIm5mc19yZW5hbWU6IHRhcmdldCAl
-cy8lcyBidXN5LCBkX2NvdW50PSVkXG4iLAotCQkJICAgICAgIG5ld19kZW50cnktPmRfcGFyZW50
-LT5kX25hbWUubmFtZSwKLQkJCSAgICAgICBuZXdfZGVudHJ5LT5kX25hbWUubmFtZSwKLQkJCSAg
-ICAgICBhdG9taWNfcmVhZCgmbmV3X2RlbnRyeS0+ZF9jb3VudCkpOwotI2VuZGlmCisJCX0gZWxz
-ZSBpZiAoYXRvbWljX3JlYWQoJm5ld19kZW50cnktPmRfY291bnQpID4gMSkKKwkJCS8qIGRlbnRy
-eSBzdGlsbCBidXN5PyAqLwogCQkJZ290byBvdXQ7Ci0JCX0KIAl9IGVsc2UKIAkJbmV3X2lub2Rl
-LT5pX25saW5rLS07CiAKZGlmZiAtdXByIGxpbnV4LTIuNi4xOC1naXQ2LW9yaWcvZnMvbmZzL2lu
-b2RlLmMgbGludXgtMi42LjE4LWdpdDYvZnMvbmZzL2lub2RlLmMKLS0tIGxpbnV4LTIuNi4xOC1n
-aXQ2LW9yaWcvZnMvbmZzL2lub2RlLmMJMjAwNi0wOS0yNyAwMToxNjo1Mi4wMDAwMDAwMDAgKzAy
-MDAKKysrIGxpbnV4LTIuNi4xOC1naXQ2L2ZzL25mcy9pbm9kZS5jCTIwMDYtMDktMjcgMDE6MjU6
-NTcuMDAwMDAwMDAwICswMjAwCkBAIC00OCw3ICs0OCw2IEBACiAjaW5jbHVkZSAiaW50ZXJuYWwu
-aCIKIAogI2RlZmluZSBORlNEQkdfRkFDSUxJVFkJCU5GU0RCR19WRlMKLSNkZWZpbmUgTkZTX1BB
-UkFOT0lBIDEKIAogc3RhdGljIHZvaWQgbmZzX2ludmFsaWRhdGVfaW5vZGUoc3RydWN0IGlub2Rl
-ICopOwogc3RhdGljIGludCBuZnNfdXBkYXRlX2lub2RlKHN0cnVjdCBpbm9kZSAqLCBzdHJ1Y3Qg
-bmZzX2ZhdHRyICopOwpAQCAtODk0LDcgKzg5Myw3IEBAIHN0YXRpYyBpbnQgbmZzX3VwZGF0ZV9p
-bm9kZShzdHJ1Y3QgaW5vZGUKIAkgKiBNYWtlIHN1cmUgdGhlIGlub2RlJ3MgdHlwZSBoYXNuJ3Qg
-Y2hhbmdlZC4KIAkgKi8KIAlpZiAoKGlub2RlLT5pX21vZGUgJiBTX0lGTVQpICE9IChmYXR0ci0+
-bW9kZSAmIFNfSUZNVCkpCi0JCWdvdG8gb3V0X2NoYW5nZWQ7CisJCWdvdG8gb3V0X2VycjsKIAog
-CXNlcnZlciA9IE5GU19TRVJWRVIoaW5vZGUpOwogCS8qIFVwZGF0ZSB0aGUgZnNpZCBpZiBhbmQg
-b25seSBpZiB0aGlzIGlzIHRoZSByb290IGRpcmVjdG9yeSAqLwpAQCAtMTAwNCwxNCArMTAwMyw2
-IEBAIHN0YXRpYyBpbnQgbmZzX3VwZGF0ZV9pbm9kZShzdHJ1Y3QgaW5vZGUKIAkJbmZzaS0+Y2Fj
-aGVfdmFsaWRpdHkgfD0gaW52YWxpZDsKIAogCXJldHVybiAwOwotIG91dF9jaGFuZ2VkOgotCS8q
-Ci0JICogQmlnIHRyb3VibGUhIFRoZSBpbm9kZSBoYXMgYmVjb21lIGEgZGlmZmVyZW50IG9iamVj
-dC4KLQkgKi8KLSNpZmRlZiBORlNfUEFSQU5PSUEKLQlwcmludGsoS0VSTl9ERUJVRyAiJXM6IGlu
-b2RlICVsZCBtb2RlIGNoYW5nZWQsICUwN28gdG8gJTA3b1xuIiwKLQkJCV9fRlVOQ1RJT05fXywg
-aW5vZGUtPmlfaW5vLCBpbm9kZS0+aV9tb2RlLCBmYXR0ci0+bW9kZSk7Ci0jZW5kaWYKICBvdXRf
-ZXJyOgogCS8qCiAJICogTm8gbmVlZCB0byB3b3JyeSBhYm91dCB1bmhhc2hpbmcgdGhlIGRlbnRy
-eSwgYXMgdGhlCmRpZmYgLXVwciBsaW51eC0yLjYuMTgtZ2l0Ni1vcmlnL2ZzL25mcy9uZnMyeGRy
-LmMgbGludXgtMi42LjE4LWdpdDYvZnMvbmZzL25mczJ4ZHIuYwotLS0gbGludXgtMi42LjE4LWdp
-dDYtb3JpZy9mcy9uZnMvbmZzMnhkci5jCTIwMDYtMDktMjcgMDE6MTY6NTIuMDAwMDAwMDAwICsw
-MjAwCisrKyBsaW51eC0yLjYuMTgtZ2l0Ni9mcy9uZnMvbmZzMnhkci5jCTIwMDYtMDktMjcgMDE6
-MjU6NTcuMDAwMDAwMDAwICswMjAwCkBAIC0yNiw3ICsyNiw2IEBACiAjaW5jbHVkZSAiaW50ZXJu
-YWwuaCIKIAogI2RlZmluZSBORlNEQkdfRkFDSUxJVFkJCU5GU0RCR19YRFIKLS8qICNkZWZpbmUg
-TkZTX1BBUkFOT0lBIDEgKi8KIAogLyogTWFwcGluZyBmcm9tIE5GUyBlcnJvciBjb2RlIHRvICJl
-cnJubyIgZXJyb3IgY29kZS4gKi8KICNkZWZpbmUgZXJybm9fTkZTRVJSX0lPCQlFSU8KZGlmZiAt
-dXByIGxpbnV4LTIuNi4xOC1naXQ2LW9yaWcvZnMvbmZzL3BhZ2VsaXN0LmMgbGludXgtMi42LjE4
-LWdpdDYvZnMvbmZzL3BhZ2VsaXN0LmMKLS0tIGxpbnV4LTIuNi4xOC1naXQ2LW9yaWcvZnMvbmZz
-L3BhZ2VsaXN0LmMJMjAwNi0wOS0yMCAwNTo0MjowNi4wMDAwMDAwMDAgKzAyMDAKKysrIGxpbnV4
-LTIuNi4xOC1naXQ2L2ZzL25mcy9wYWdlbGlzdC5jCTIwMDYtMDktMjcgMDE6MzI6NTguMDAwMDAw
-MDAwICswMjAwCkBAIC0xOCw3ICsxOCw2IEBACiAjaW5jbHVkZSA8bGludXgvbmZzX2ZzLmg+CiAj
-aW5jbHVkZSA8bGludXgvbmZzX21vdW50Lmg+CiAKLSNkZWZpbmUgTkZTX1BBUkFOT0lBIDEKIAog
-c3RhdGljIGttZW1fY2FjaGVfdCAqbmZzX3BhZ2VfY2FjaGVwOwogCkBAIC0xNzEsMTEgKzE3MCw2
-IEBAIG5mc19yZWxlYXNlX3JlcXVlc3Qoc3RydWN0IG5mc19wYWdlICpyZXEKIAlpZiAoIWF0b21p
-Y19kZWNfYW5kX3Rlc3QoJnJlcS0+d2JfY291bnQpKQogCQlyZXR1cm47CiAKLSNpZmRlZiBORlNf
-UEFSQU5PSUEKLQlCVUdfT04gKCFsaXN0X2VtcHR5KCZyZXEtPndiX2xpc3QpKTsKLQlCVUdfT04g
-KE5GU19XQkFDS19CVVNZKHJlcSkpOwotI2VuZGlmCi0KIAkvKiBSZWxlYXNlIHN0cnVjdCBmaWxl
-IG9yIGNhY2hlZCBjcmVkZW50aWFsICovCiAJbmZzX2NsZWFyX3JlcXVlc3QocmVxKTsKIAlwdXRf
-bmZzX29wZW5fY29udGV4dChyZXEtPndiX2NvbnRleHQpOwo=
-------=_Part_18998_2379296.1159313985136
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+It might not be that good even if it doesn't. This can return pre-mature 
+ENOSPC or it can queue many xfs_flush_device requests (which can make 
+your system dead(-slow) anyway)
+
+> necessary to keep going through that again and again for every new request after 
+> we've hit NOSPC.
+> 
+> In particular this can cause a pileup when several threads are writing 
+> concurrently to the same file. Some specialized apps might do that, and 
+> nfsd threads do it all the time.
+> 
+> To reproduce locally, on a full file system:
+> #!/bin/sh
+> for i in `seq 30`; do
+>   dd if=/dev/zero of=f bs=1 count=1 &
+> done
+> wait
+> time that, it takes nearly exactly 15s.
+> 
+> The linux NFS client typically sends bunches of 16 requests, and so if 
+> the client is writing a single file, some NFS requests are therefore 
+> delayed by up to 8seconds, which is kind of long for NFS.
+> 
+> What's worse, when my linux NFS client writes out a file's pages, it 
+> does not react immediately on receiving a NOSPC error. It will remember 
+> and report the error later on close(), but it still tries and issues 
+> write requests for each page of the file. So even if there isn't a 
+> pileup on the i_mutex on the server, the NFS client still waits 0.5s for 
+> each 32K (typically) request. So on an NFS client on a gigabit network, 
+> on an already full filesystem, if I open and write a 10M file and 
+> close() it, it takes 2m40.083s for it to issue all the requests, get an 
+> NOSPC for each, and finally have my close() call return ENOSPC. That can 
+> stretch to several hours for gigabyte-sized files, which is how I 
+> noticed the problem.
+> 
+> I'm not too familiar with the NFS client code, but would it not be 
+> possible for it to give up when it encounters NOSPC? Or is there some 
+> reason why this wouldn't be desirable?
+> 
+> The rough workaround I have come up with for the problem is to have 
+> xfs_flush_space() skip calling xfs_flush_device() if we are within 2secs 
+> of having returned ENOSPC. I have verified that this workaround is 
+> effective, but I imagine there might be a cleaner solution.
+
+The fix would not be a good idea for standalone use of XFS.
+
+         if (nimaps == 0) {
+                 if (xfs_flush_space(ip, &fsynced, &ioflag))
+                         return XFS_ERROR(ENOSPC);
+
+                 error = 0;
+                 goto retry;
+         }
+
+xfs_flush_space:
+         case 2:
+                 xfs_iunlock(ip, XFS_ILOCK_EXCL);
+                 xfs_flush_device(ip);
+                 xfs_ilock(ip, XFS_ILOCK_EXCL);
+                 *fsynced = 3;
+                 return 0;
+         }
+         return 1;
+
+lets say that you don't enqueue it for another 2 secs. Then, in next 
+retry it would return 1 and, hence, outer if condition would return 
+ENOSPC. Please note that for standalone XFS, the application or client 
+mostly don't retry and, hence, it might return premature ENOSPC.
+You didn't notice this because, as you said, nfs client will retry in 
+case of ENOSPC.
+
+Assuming that you don't return *fsynced = 3 (instead *fsynced = 2), the 
+code path will loop (because of retry) and CPU itself would become busy 
+for no good job.
+
+You might experiment by adding deterministic wait. When you enqueue, set 
+  some flag. All others who come in between just get enqueued. Once, 
+device flush is over wake up all. If flush could free enough resources, 
+threads will proceed ahead and return. Otherwise, another flush would be 
+enqueued to flush what might have come since last flush.
+
+> Thanks
+> 
+> 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-------=_Part_18998_2379296.1159313985136
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-------=_Part_18998_2379296.1159313985136--
