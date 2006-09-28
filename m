@@ -1,23 +1,14 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: client write ordering
-Date: Wed, 27 Sep 2006 15:25:20 -0400
-Message-ID: <1159385120.5883.40.camel@lade.trondhjem.org>
-References: <3A8D2969972400448F9C908CFE890D9503A34786@exchange1.DataDomain.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfds oops in 2.6.17.6
+Date: Thu, 28 Sep 2006 12:16:34 +1000
+Message-ID: <17691.12418.683406.362383@cse.unsw.edu.au>
+References: <20060926161137.GA27401@tau.solarneutrino.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: NFS@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GSf2J-0002Oe-ET
-	for nfs@lists.sourceforge.net; Wed, 27 Sep 2006 12:25:39 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GSf2J-00012r-05
-	for nfs@lists.sourceforge.net; Wed, 27 Sep 2006 12:25:40 -0700
-To: Bob Fozard <Bob.Fozard@datadomain.com>
-In-Reply-To: <3A8D2969972400448F9C908CFE890D9503A34786@exchange1.DataDomain.com>
+To: Ryan Richter <ryan@tau.solarneutrino.net>
+In-Reply-To: message from Ryan Richter on Tuesday September 26
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,25 +21,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-09-27 at 12:18 -0700, Bob Fozard wrote:
-> Trond,
-> 
-> I very much appreciate your responses.  While I will experiment with
-> /proc/sys/vm/dirty_ratio to understand its effects, what I see as the
-> issue here is not so much _when_ the client decides to start flushing,
-> but _how_ it goes about flushing.  Do you have some idea as to how the
-> vm sorts pages for flushing?  Is it intended to mimic the order in which
-> the application wrote them to any extent?  Surely its not random, but
-> clearly it can take large jumps from time to time.  Even a simple LRU
-> algorithm would give desirable behavior.
+On Tuesday September 26, ryan@tau.solarneutrino.net wrote:
+> I got the following oops on an NFS server running vanilla 2.6.17.6 (old,
+> I know):
 
-The NFS client will scan through the dirty pages linearly by page
-offset, but will skip pages that are busy (i.e. that are being flushed
-through some other mechanism, or that are in the process of being
-updated).
+Yes. Old. :-)
+This is fixed in more recent kernels.  Definitely in 2.6.17.11.
 
-Cheers,
-  Trond
+Thanks anyway.
+
+NeilBrown
 
 
 -------------------------------------------------------------------------
