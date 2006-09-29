@@ -1,22 +1,25 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 007 of 8] knfsd: nfsd4: xdr encoding for fs_locations
-Date: Fri, 29 Sep 2006 13:09:18 +1000
-Message-ID: <1060929030918.24120@suse.de>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH 002 of 8] knfsd: lockd: fix refount on nsm.
+Date: Fri, 29 Sep 2006 08:01:55 +0200
+Message-ID: <20060929060155.GB2852@suse.de>
 References: <20060929130518.23919.patches@notabene>
+	<1060929030845.24038@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GT8kf-0007uA-0k
-	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 20:09:26 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GTBRl-00056N-8t
+	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 23:02:05 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GT8kf-0001f5-2A
-	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 20:09:25 -0700
-To: Andrew Morton <akpm@osdl.org>
+	(Exim 4.44) id 1GTBRj-0004GW-On
+	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 23:02:06 -0700
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1060929030845.24038@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,191 +32,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Fri, Sep 29, 2006 at 01:08:45PM +1000, NeilBrown wrote:
+> If nlm_lookup_host finds what it is looking for
+> it exits with an extra reference on the matching
+> 'nsm' structure.
+> So don't actually count the reference until we are
+> (fairly) sure it is going to be used.
+> 
+> Signed-off-by: Neil Brown <neilb@suse.de>
 
-From: J.Bruce Fields <bfields@fieldses.org>
+Correct, even though I would have done it slightly differently. The if()
+is not needed anymore, and there's another if (nsm) two lines down.
 
-Encode fs_locations attribute.
+Olaf
 
-Signed-off-by: Manoj Naik <manoj@almaden.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@suse.de>
+ fs/lockd/host.c |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
 
-### Diffstat output
- ./fs/nfsd/nfs4xdr.c         |  125 ++++++++++++++++++++++++++++++++++++++++++++
- ./include/linux/nfsd/nfsd.h |    3 -
- 2 files changed, 126 insertions(+), 2 deletions(-)
-
-diff .prev/fs/nfsd/nfs4xdr.c ./fs/nfsd/nfs4xdr.c
---- .prev/fs/nfsd/nfs4xdr.c	2006-09-29 12:57:28.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2006-09-29 13:04:07.000000000 +1000
-@@ -1224,6 +1224,119 @@ nfsd4_decode_compound(struct nfsd4_compo
-  			stateowner->so_replay.rp_buflen); 	\
- 	} } while (0);
+Index: build/fs/lockd/host.c
+===================================================================
+--- build.orig/fs/lockd/host.c
++++ build/fs/lockd/host.c
+@@ -109,9 +109,9 @@ nlm_lookup_host(int server, const struct
+ 		if (!nlm_cmp_addr(&host->h_addr, sin))
+ 			continue;
  
-+/* Encode as an array of strings the string given with components
-+ * seperated @sep.
-+ */
-+static int nfsd4_encode_components(char sep, char *components,
-+				   u32 **pp, int *buflen)
-+{
-+	u32 *p = *pp;
-+	u32 *countp = p;
-+	int strlen, count=0;
-+	char *str, *end;
-+
-+	dprintk("nfsd4_encode_components(%s)\n", components);
-+	if ((*buflen -= 4) < 0)
-+		return nfserr_resource;
-+	WRITE32(0); /* We will fill this in with @count later */
-+	end = str = components;
-+	while (*end) {
-+		for (; *end && (*end != sep); end++)
-+			; /* Point to end of component */
-+		strlen = end - str;
-+		if (strlen) {
-+			if ((*buflen -= ((XDR_QUADLEN(strlen) << 2) + 4)) < 0)
-+				return nfserr_resource;
-+			WRITE32(strlen);
-+			WRITEMEM(str, strlen);
-+			count++;
-+		}
-+		else
-+			end++;
-+		str = end;
-+	}
-+	*pp = p;
-+	p = countp;
-+	WRITE32(count);
-+	return 0;
-+}
-+
-+/*
-+ * encode a location element of a fs_locations structure
-+ */
-+static int nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
-+				    u32 **pp, int *buflen)
-+{
-+	int status;
-+	u32 *p = *pp;
-+
-+	status = nfsd4_encode_components(':', location->hosts, &p, buflen);
-+	if (status)
-+		return status;
-+	status = nfsd4_encode_components('/', location->path, &p, buflen);
-+	if (status)
-+		return status;
-+	*pp = p;
-+	return 0;
-+}
-+
-+/*
-+ * Return the path to an export point in the pseudo filesystem namespace
-+ * Returned string is safe to use as long as the caller holds a reference
-+ * to @exp.
-+ */
-+static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp)
-+{
-+	struct svc_fh tmp_fh;
-+	char *path, *rootpath;
-+	int stat;
-+
-+	fh_init(&tmp_fh, NFS4_FHSIZE);
-+	stat = exp_pseudoroot(rqstp->rq_client, &tmp_fh, &rqstp->rq_chandle);
-+	if (stat)
-+		return ERR_PTR(stat);
-+	rootpath = tmp_fh.fh_export->ex_path;
-+
-+	path = exp->ex_path;
-+
-+	if (strncmp(path, rootpath, strlen(rootpath))) {
-+		printk("nfsd: fs_locations failed;"
-+			"%s is not contained in %s\n", path, rootpath);
-+		return ERR_PTR(-EOPNOTSUPP);
-+	}
-+
-+	return path + strlen(rootpath);
-+}
-+
-+/*
-+ *  encode a fs_locations structure
-+ */
-+static int nfsd4_encode_fs_locations(struct svc_rqst *rqstp,
-+				     struct svc_export *exp,
-+				     u32 **pp, int *buflen)
-+{
-+	int status, i;
-+	u32 *p = *pp;
-+	struct nfsd4_fs_locations *fslocs = &exp->ex_fslocs;
-+	char *root = nfsd4_path(rqstp, exp);
-+
-+	if (IS_ERR(root))
-+		return PTR_ERR(root);
-+	status = nfsd4_encode_components('/', root, &p, buflen);
-+	if (status)
-+		return status;
-+	if ((*buflen -= 4) < 0)
-+		return nfserr_resource;
-+	WRITE32(fslocs->locations_count);
-+	for (i=0; i<fslocs->locations_count; i++) {
-+		status = nfsd4_encode_fs_location4(&fslocs->locations[i],
-+						   &p, buflen);
-+		if (status)
-+			return status;
-+	}
-+	*pp = p;
-+	return 0;
-+}
+-		/* See if we have an NSM handle for this client */
+-		if (!nsm && (nsm = host->h_nsmhandle) != 0)
+-			atomic_inc(&nsm->sm_count);
++		/* Stash away the NSM handle in case we need
++		 * to create a new host entry. */
++		nsm = host->h_nsmhandle;
  
- static u32 nfs4_ftypes[16] = {
-         NF4BAD,  NF4FIFO, NF4CHR, NF4BAD,
-@@ -1335,6 +1448,11 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 				goto out_nfserr;
- 		}
- 	}
-+	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
-+		if (exp->ex_fslocs.locations == NULL) {
-+			bmval0 &= ~FATTR4_WORD0_FS_LOCATIONS;
-+		}
-+	}
- 	if ((buflen -= 16) < 0)
- 		goto out_resource;
+ 		if (host->h_proto != proto)
+ 			continue;
+@@ -133,7 +133,9 @@ nlm_lookup_host(int server, const struct
+ 	/* Sadly, the host isn't in our hash table yet. See if
+ 	 * we have an NSM handle for it. If not, create one.
+ 	 */
+-	if (!nsm && !(nsm = nsm_find(sin, hostname, hostname_len)))
++	if (nsm != NULL)
++		atomic_inc(&nsm->sm_count);
++	else if (!(nsm = nsm_find(sin, hostname, hostname_len)))
+ 		goto out;
  
-@@ -1514,6 +1632,13 @@ out_acl:
- 			goto out_resource;
- 		WRITE64((u64) statfs.f_files);
- 	}
-+	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
-+		status = nfsd4_encode_fs_locations(rqstp, exp, &p, &buflen);
-+		if (status == nfserr_resource)
-+			goto out_resource;
-+		if (status)
-+			goto out;
-+	}
- 	if (bmval0 & FATTR4_WORD0_HOMOGENEOUS) {
- 		if ((buflen -= 4) < 0)
- 			goto out_resource;
+ 	if (!(host = (struct nlm_host *) kmalloc(sizeof(*host), GFP_KERNEL))) {
 
-diff .prev/include/linux/nfsd/nfsd.h ./include/linux/nfsd/nfsd.h
---- .prev/include/linux/nfsd/nfsd.h	2006-09-29 12:57:28.000000000 +1000
-+++ ./include/linux/nfsd/nfsd.h	2006-09-29 13:04:07.000000000 +1000
-@@ -292,7 +292,6 @@ static inline int is_fsid(struct svc_fh 
- /*
-  * The following attributes are currently not supported by the NFSv4 server:
-  *    ARCHIVE       (deprecated anyway)
-- *    FS_LOCATIONS  (will be supported eventually)
-  *    HIDDEN        (unlikely to be supported any time soon)
-  *    MIMETYPE      (unlikely to be supported any time soon)
-  *    QUOTA_*       (will be supported in a forthcoming patch)
-@@ -308,7 +307,7 @@ static inline int is_fsid(struct svc_fh 
-  | FATTR4_WORD0_ACLSUPPORT      | FATTR4_WORD0_CANSETTIME   | FATTR4_WORD0_CASE_INSENSITIVE \
-  | FATTR4_WORD0_CASE_PRESERVING | FATTR4_WORD0_CHOWN_RESTRICTED                             \
-  | FATTR4_WORD0_FILEHANDLE      | FATTR4_WORD0_FILEID       | FATTR4_WORD0_FILES_AVAIL      \
-- | FATTR4_WORD0_FILES_FREE      | FATTR4_WORD0_FILES_TOTAL  | FATTR4_WORD0_HOMOGENEOUS      \
-+ | FATTR4_WORD0_FILES_FREE      | FATTR4_WORD0_FILES_TOTAL  | FATTR4_WORD0_FS_LOCATIONS | FATTR4_WORD0_HOMOGENEOUS      \
-  | FATTR4_WORD0_MAXFILESIZE     | FATTR4_WORD0_MAXLINK      | FATTR4_WORD0_MAXNAME          \
-  | FATTR4_WORD0_MAXREAD         | FATTR4_WORD0_MAXWRITE     | FATTR4_WORD0_ACL)
- 
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
