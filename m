@@ -1,24 +1,29 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH 006 of 8] knfsd: nfsd4: fslocations data structures
-Date: Thu, 28 Sep 2006 23:45:40 -0700
-Message-ID: <20060928234540.fd74f1e1.akpm@osdl.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 001 of 8] knfsd: Add nfs-export support to tmpfs
+Date: Fri, 29 Sep 2006 16:48:37 +1000
+Message-ID: <17692.49605.248998.607609@cse.unsw.edu.au>
 References: <20060929130518.23919.patches@notabene>
-	<1060929030913.24108@suse.de>
+	<1060929030839.24024@suse.de>
+	<20060928232953.6da08f19.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: Gilad Ben-Yossef <gilad@codefidence.com>,
+	"David M. Grimes" <dgrimes@navisite.com>,
+	linux-kernel@vger.kernel.org,
+	Atal Shargorodsky <atal@codefidence.com>, nfs@lists.sourceforge.net,
+	Hugh Dickins <hugh@veritas.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GTC7y-0000CT-7e
-	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 23:45:42 -0700
-Received: from smtp.osdl.org ([65.172.181.4])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1GTC7y-0004zf-U0
-	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 23:45:43 -0700
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1060929030913.24108@suse.de>
+	id 1GTCBG-0000Xb-NP
+	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 23:49:06 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GTCBF-00029L-T0
+	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 23:49:07 -0700
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: message from Andrew Morton on Thursday September 28
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,101 +36,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 29 Sep 2006 13:09:13 +1000
-NeilBrown <neilb@suse.de> wrote:
+On Thursday September 28, akpm@osdl.org wrote:
+> On Fri, 29 Sep 2006 13:08:39 +1000
+> NeilBrown <neilb@suse.de> wrote:
+> 
+> > +static int shmem_encode_fh(struct dentry *dentry, __u32 *fh, int *len, int connectable)
+> > +{
+> > +	struct inode *inode = dentry->d_inode;
+> > +
+> > +	if (*len < 2)
+> > +		return 255;
+> > +
+> > +	if (hlist_unhashed(&inode->i_hash)) {
+> > +		/* Unfortunately insert_inode_hash is not idempotent,
+> > +		 * so as we hash inodes here rather than at creation
+> > +		 * time, we need a lock to ensure we only try
+> > +		 * to do it once
+> > +		 */
+> > +		static DEFINE_SPINLOCK(lock);
+> > +		spin_lock(&lock);
+> > +		if (hlist_unhashed(&inode->i_hash))
+> > +			insert_inode_hash(inode);
+> > +		spin_unlock(&lock);
+> > +	}
+> 
+> This looks fishy.
+> 
+> How do we get two callers in here at the same time for the same inode?
+
+Probably not very easily.
+But imagine a file has two hard links in different directories.
+And two clients issue LOOKUP requests, one for each link.
+They could conceivably be processed at exactly the same time and so
+shmem_encode_fh could be running on two different CPU's at the same
+time for the same inode.
 
 > 
-> From: Manoj Naik <manoj@almaden.ibm.com>
+> Why don't other filesystems have the same problem?
 > 
-> Define FS locations structures, some functions to manipulate them, and add
-> code to parse FS locations in downcall and add to the exports structure.
-> 
-> ...
->  
-> +#ifdef CONFIG_NFSD_V4
-> +
-> +static int
-> +fsloc_parse(char **mesg, char *buf, struct nfsd4_fs_locations *fsloc)
-> +{
-> +	int len;
-> +	int migrated, i, err;
-> +
-> +	len = qword_get(mesg, buf, PAGE_SIZE);
-> +	if (len != 5 || memcmp(buf, "fsloc", 5))
-> +		return 0;
-> +
-> +	/* listsize */
-> +	err = get_int(mesg, &fsloc->locations_count);
-> +	if (err)
-> +		return err;
-> +	if (fsloc->locations_count < 0)
 
-this is unsigned.
+Because most filesystems that hash their inodes do so at the point
+where the 'struct inode' is initialised, and that has suitable locking
+(I_NEW).  Here in shmem, we are hashing the inode later, the first
+time we need an NFS file handle for it.  We no longer have I_NEW to
+ensure only one thread tries to add it to the hash table.
 
-> +		return -EINVAL;
-> +	if (fsloc->locations_count == 0)
-> +		return 0;
-> +
-> +	fsloc->locations = kzalloc(fsloc->locations_count
-> +			* sizeof(struct nfsd4_fs_location), GFP_KERNEL);
+The comment tries to explain this, but obviously isn't completely
+successful.
 
-This is subject to multiplication overflow.  If it's a privileged operation
-and isn't dependent on stuff coming in over the wire then ok..
-
-
-> +	if (!fsloc->locations)
-> +		return -ENOMEM;
-> +	for (i=0; i < fsloc->locations_count; i++) {
-> +		/* colon separated host list */
-> +		err = -EINVAL;
-> +		len = qword_get(mesg, buf, PAGE_SIZE);
-> +		if (len <= 0)
-> +			goto out_free_all;
-> +		err = -ENOMEM;
-> +		fsloc->locations[i].hosts = kstrdup(buf, GFP_KERNEL);
-> +		if (!fsloc->locations[i].hosts)
-> +			goto out_free_all;
-> +		err = -EINVAL;
-> +		/* slash separated path component list */
-> +		len = qword_get(mesg, buf, PAGE_SIZE);
-> +		if (len <= 0)
-> +			goto out_free_all;
-> +		err = -ENOMEM;
-> +		fsloc->locations[i].path = kstrdup(buf, GFP_KERNEL);
-> +		if (!fsloc->locations[i].path)
-> +			goto out_free_all;
-> +	}
-> +	/* migrated */
-> +	err = get_int(mesg, &migrated);
-> +	if (err)
-> +		goto out_free_all;
-> +	err = -EINVAL;
-> +	if (migrated < 0 || migrated > 1)
-> +		goto out_free_all;
-> +	fsloc->migrated = migrated;
-> +	return 0;
-> +out_free_all:
-> +	nfsd4_fslocs_free(fsloc);
-
-This call to nfsd4_fslocs_free() can end up kfreeing members of
-fsloc->locations[] which haven't been initialised here.  Are we sure the
-caller set them all to zero?
-
-> +	return err;
-> +}
-> +
-> +#else /* CONFIG_NFSD_V4 */
-> +static int fsloc_parse(char **, char *, struct svc_export *) { return 0; }
-
-static inline
-
-This has a different prototype from the other version of fsloc_parse()
-
-This ain't C++ - function arguments need identifiers as well as types.
-
-Someone needs to read Documentation/SubmitChecklist..
-
-
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
