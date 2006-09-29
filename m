@@ -1,22 +1,21 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 008 of 8] knfsd: nfsd4: actually use all the pieces to
-	implement referrals
-Date: Fri, 29 Sep 2006 13:09:23 +1000
-Message-ID: <1060929030923.24132@suse.de>
+Subject: [PATCH 007 of 8] knfsd: nfsd4: xdr encoding for fs_locations
+Date: Fri, 29 Sep 2006 13:09:18 +1000
+Message-ID: <1060929030918.24120@suse.de>
 References: <20060929130518.23919.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GT8kk-0007uP-PT
-	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 20:09:31 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GT8kf-0007uA-0k
+	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 20:09:26 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GT8kk-0005Gh-E0
-	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 20:09:31 -0700
+	(Exim 4.44) id 1GT8kf-0001f5-2A
+	for nfs@lists.sourceforge.net; Thu, 28 Sep 2006 20:09:25 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,8 +32,7 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J.Bruce Fields <bfields@fieldses.org>
 
-Use all the pieces set up so far to implement referral support, allowing
-return of NFS4ERR_MOVED and fs_locations attribute.
+Encode fs_locations attribute.
 
 Signed-off-by: Manoj Naik <manoj@almaden.ibm.com>
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
@@ -42,177 +40,180 @@ Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4proc.c        |   30 +++++++++++++++++++------
- ./fs/nfsd/nfs4xdr.c         |   51 ++++++++++++++++++++++++++++++++++++++------
- ./include/linux/nfsd/nfsd.h |    1 
- 3 files changed, 69 insertions(+), 13 deletions(-)
-
-diff .prev/fs/nfsd/nfs4proc.c ./fs/nfsd/nfs4proc.c
---- .prev/fs/nfsd/nfs4proc.c	2006-09-29 12:57:26.000000000 +1000
-+++ ./fs/nfsd/nfs4proc.c	2006-09-29 13:05:03.000000000 +1000
-@@ -802,13 +802,29 @@ nfsd4_proc_compound(struct svc_rqst *rqs
- 		* SETCLIENTID_CONFIRM, PUTFH and PUTROOTFH
- 		* require a valid current filehandle
- 		*/
--		if ((!current_fh->fh_dentry) &&
--		   !((op->opnum == OP_PUTFH) || (op->opnum == OP_PUTROOTFH) ||
--		   (op->opnum == OP_SETCLIENTID) ||
--		   (op->opnum == OP_SETCLIENTID_CONFIRM) ||
--		   (op->opnum == OP_RENEW) || (op->opnum == OP_RESTOREFH) ||
--		   (op->opnum == OP_RELEASE_LOCKOWNER))) {
--			op->status = nfserr_nofilehandle;
-+		if (!current_fh->fh_dentry) {
-+			if (!((op->opnum == OP_PUTFH) ||
-+			      (op->opnum == OP_PUTROOTFH) ||
-+			      (op->opnum == OP_SETCLIENTID) ||
-+			      (op->opnum == OP_SETCLIENTID_CONFIRM) ||
-+			      (op->opnum == OP_RENEW) ||
-+			      (op->opnum == OP_RESTOREFH) ||
-+			      (op->opnum == OP_RELEASE_LOCKOWNER))) {
-+				op->status = nfserr_nofilehandle;
-+				goto encode_op;
-+			}
-+		}
-+		/* Check must be done at start of each operation, except
-+		 * for GETATTR and ops not listed as returning NFS4ERR_MOVED
-+		 */
-+		else if (current_fh->fh_export->ex_fslocs.migrated &&
-+			 !((op->opnum == OP_GETATTR) ||
-+			   (op->opnum == OP_PUTROOTFH) ||
-+			   (op->opnum == OP_PUTPUBFH) ||
-+			   (op->opnum == OP_RENEW) ||
-+			   (op->opnum == OP_SETCLIENTID) ||
-+			   (op->opnum == OP_RELEASE_LOCKOWNER))) {
-+			op->status = nfserr_moved;
- 			goto encode_op;
- 		}
- 		switch (op->opnum) {
+ ./fs/nfsd/nfs4xdr.c         |  125 ++++++++++++++++++++++++++++++++++++++++++++
+ ./include/linux/nfsd/nfsd.h |    3 -
+ 2 files changed, 126 insertions(+), 2 deletions(-)
 
 diff .prev/fs/nfsd/nfs4xdr.c ./fs/nfsd/nfs4xdr.c
---- .prev/fs/nfsd/nfs4xdr.c	2006-09-29 13:04:07.000000000 +1000
-+++ ./fs/nfsd/nfs4xdr.c	2006-09-29 13:05:03.000000000 +1000
-@@ -60,6 +60,14 @@
+--- .prev/fs/nfsd/nfs4xdr.c	2006-09-29 12:57:28.000000000 +1000
++++ ./fs/nfsd/nfs4xdr.c	2006-09-29 13:04:07.000000000 +1000
+@@ -1224,6 +1224,119 @@ nfsd4_decode_compound(struct nfsd4_compo
+  			stateowner->so_replay.rp_buflen); 	\
+ 	} } while (0);
  
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
- 
-+/*
-+ * As per referral draft, the fsid for a referral MUST be different from the fsid of the containing
-+ * directory in order to indicate to the client that a filesystem boundary is present
-+ * We use a fixed fsid for a referral
++/* Encode as an array of strings the string given with components
++ * seperated @sep.
 + */
-+#define NFS4_REFERRAL_FSID_MAJOR	0x8000000ULL
-+#define NFS4_REFERRAL_FSID_MINOR	0x8000000ULL
-+
- static int
- check_filename(char *str, int len, int err)
- {
-@@ -1386,6 +1394,25 @@ nfsd4_encode_aclname(struct svc_rqst *rq
- 	return nfsd4_encode_name(rqstp, whotype, id, group, p, buflen);
- }
- 
-+#define WORD0_ABSENT_FS_ATTRS (FATTR4_WORD0_FS_LOCATIONS | FATTR4_WORD0_FSID | \
-+			      FATTR4_WORD0_RDATTR_ERROR)
-+#define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
-+
-+static int fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
++static int nfsd4_encode_components(char sep, char *components,
++				   u32 **pp, int *buflen)
 +{
-+	/* As per referral draft:  */
-+	if (*bmval0 & ~WORD0_ABSENT_FS_ATTRS ||
-+	    *bmval1 & ~WORD1_ABSENT_FS_ATTRS) {
-+		if (*bmval0 & FATTR4_WORD0_RDATTR_ERROR ||
-+	            *bmval0 & FATTR4_WORD0_FS_LOCATIONS)
-+			*rdattr_err = NFSERR_MOVED;
++	u32 *p = *pp;
++	u32 *countp = p;
++	int strlen, count=0;
++	char *str, *end;
++
++	dprintk("nfsd4_encode_components(%s)\n", components);
++	if ((*buflen -= 4) < 0)
++		return nfserr_resource;
++	WRITE32(0); /* We will fill this in with @count later */
++	end = str = components;
++	while (*end) {
++		for (; *end && (*end != sep); end++)
++			; /* Point to end of component */
++		strlen = end - str;
++		if (strlen) {
++			if ((*buflen -= ((XDR_QUADLEN(strlen) << 2) + 4)) < 0)
++				return nfserr_resource;
++			WRITE32(strlen);
++			WRITEMEM(str, strlen);
++			count++;
++		}
 +		else
-+			return nfserr_moved;
++			end++;
++		str = end;
 +	}
-+	*bmval0 &= WORD0_ABSENT_FS_ATTRS;
-+	*bmval1 &= WORD1_ABSENT_FS_ATTRS;
++	*pp = p;
++	p = countp;
++	WRITE32(count);
++	return 0;
++}
++
++/*
++ * encode a location element of a fs_locations structure
++ */
++static int nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
++				    u32 **pp, int *buflen)
++{
++	int status;
++	u32 *p = *pp;
++
++	status = nfsd4_encode_components(':', location->hosts, &p, buflen);
++	if (status)
++		return status;
++	status = nfsd4_encode_components('/', location->path, &p, buflen);
++	if (status)
++		return status;
++	*pp = p;
++	return 0;
++}
++
++/*
++ * Return the path to an export point in the pseudo filesystem namespace
++ * Returned string is safe to use as long as the caller holds a reference
++ * to @exp.
++ */
++static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp)
++{
++	struct svc_fh tmp_fh;
++	char *path, *rootpath;
++	int stat;
++
++	fh_init(&tmp_fh, NFS4_FHSIZE);
++	stat = exp_pseudoroot(rqstp->rq_client, &tmp_fh, &rqstp->rq_chandle);
++	if (stat)
++		return ERR_PTR(stat);
++	rootpath = tmp_fh.fh_export->ex_path;
++
++	path = exp->ex_path;
++
++	if (strncmp(path, rootpath, strlen(rootpath))) {
++		printk("nfsd: fs_locations failed;"
++			"%s is not contained in %s\n", path, rootpath);
++		return ERR_PTR(-EOPNOTSUPP);
++	}
++
++	return path + strlen(rootpath);
++}
++
++/*
++ *  encode a fs_locations structure
++ */
++static int nfsd4_encode_fs_locations(struct svc_rqst *rqstp,
++				     struct svc_export *exp,
++				     u32 **pp, int *buflen)
++{
++	int status, i;
++	u32 *p = *pp;
++	struct nfsd4_fs_locations *fslocs = &exp->ex_fslocs;
++	char *root = nfsd4_path(rqstp, exp);
++
++	if (IS_ERR(root))
++		return PTR_ERR(root);
++	status = nfsd4_encode_components('/', root, &p, buflen);
++	if (status)
++		return status;
++	if ((*buflen -= 4) < 0)
++		return nfserr_resource;
++	WRITE32(fslocs->locations_count);
++	for (i=0; i<fslocs->locations_count; i++) {
++		status = nfsd4_encode_fs_location4(&fslocs->locations[i],
++						   &p, buflen);
++		if (status)
++			return status;
++	}
++	*pp = p;
 +	return 0;
 +}
  
- /*
-  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
-@@ -1408,6 +1435,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 	u32 *attrlenp;
- 	u32 dummy;
- 	u64 dummy64;
-+	u32 rdattr_err = 0;
- 	u32 *p = buffer;
- 	int status;
- 	int aclsupport = 0;
-@@ -1417,6 +1445,12 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 	BUG_ON(bmval0 & ~NFSD_SUPPORTED_ATTRS_WORD0);
- 	BUG_ON(bmval1 & ~NFSD_SUPPORTED_ATTRS_WORD1);
+ static u32 nfs4_ftypes[16] = {
+         NF4BAD,  NF4FIFO, NF4CHR, NF4BAD,
+@@ -1335,6 +1448,11 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
+ 				goto out_nfserr;
+ 		}
+ 	}
++	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
++		if (exp->ex_fslocs.locations == NULL) {
++			bmval0 &= ~FATTR4_WORD0_FS_LOCATIONS;
++		}
++	}
+ 	if ((buflen -= 16) < 0)
+ 		goto out_resource;
  
-+	if (exp->ex_fslocs.migrated) {
-+		status = fattr_handle_absent_fs(&bmval0, &bmval1, &rdattr_err);
+@@ -1514,6 +1632,13 @@ out_acl:
+ 			goto out_resource;
+ 		WRITE64((u64) statfs.f_files);
+ 	}
++	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
++		status = nfsd4_encode_fs_locations(rqstp, exp, &p, &buflen);
++		if (status == nfserr_resource)
++			goto out_resource;
 +		if (status)
 +			goto out;
 +	}
-+
- 	status = vfs_getattr(exp->ex_mnt, dentry, &stat);
- 	if (status)
- 		goto out_nfserr;
-@@ -1462,12 +1496,15 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 	attrlenp = p++;                /* to be backfilled later */
- 
- 	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
-+		u32 word0 = NFSD_SUPPORTED_ATTRS_WORD0;
- 		if ((buflen -= 12) < 0)
- 			goto out_resource;
-+		if (!aclsupport)
-+			word0 &= ~FATTR4_WORD0_ACL;
-+		if (!exp->ex_fslocs.locations)
-+			word0 &= ~FATTR4_WORD0_FS_LOCATIONS;
- 		WRITE32(2);
--		WRITE32(aclsupport ?
--			NFSD_SUPPORTED_ATTRS_WORD0 :
--			NFSD_SUPPORTED_ATTRS_WORD0 & ~FATTR4_WORD0_ACL);
-+		WRITE32(word0);
- 		WRITE32(NFSD_SUPPORTED_ATTRS_WORD1);
- 	}
- 	if (bmval0 & FATTR4_WORD0_TYPE) {
-@@ -1521,7 +1558,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 	if (bmval0 & FATTR4_WORD0_FSID) {
- 		if ((buflen -= 16) < 0)
- 			goto out_resource;
--		if (is_fsid(fhp, rqstp->rq_reffh)) {
-+		if (exp->ex_fslocs.migrated) {
-+			WRITE64(NFS4_REFERRAL_FSID_MAJOR);
-+			WRITE64(NFS4_REFERRAL_FSID_MINOR);
-+		} else if (is_fsid(fhp, rqstp->rq_reffh)) {
- 			WRITE64((u64)exp->ex_fsid);
- 			WRITE64((u64)0);
- 		} else {
-@@ -1544,7 +1584,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, s
- 	if (bmval0 & FATTR4_WORD0_RDATTR_ERROR) {
+ 	if (bmval0 & FATTR4_WORD0_HOMOGENEOUS) {
  		if ((buflen -= 4) < 0)
  			goto out_resource;
--		WRITE32(0);
-+		WRITE32(rdattr_err);
- 	}
- 	if (bmval0 & FATTR4_WORD0_ACL) {
- 		struct nfs4_ace *ace;
-@@ -1971,7 +2011,6 @@ nfsd4_encode_getattr(struct nfsd4_compou
- 	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
- 				    resp->p, &buflen, getattr->ga_bmval,
- 				    resp->rqstp);
--
- 	if (!nfserr)
- 		resp->p += buflen;
- 	return nfserr;
 
 diff .prev/include/linux/nfsd/nfsd.h ./include/linux/nfsd/nfsd.h
---- .prev/include/linux/nfsd/nfsd.h	2006-09-29 13:04:07.000000000 +1000
-+++ ./include/linux/nfsd/nfsd.h	2006-09-29 13:05:03.000000000 +1000
-@@ -216,6 +216,7 @@ void		nfsd_lockd_shutdown(void);
- #define	nfserr_clid_inuse	__constant_htonl(NFSERR_CLID_INUSE)
- #define	nfserr_stale_clientid	__constant_htonl(NFSERR_STALE_CLIENTID)
- #define	nfserr_resource		__constant_htonl(NFSERR_RESOURCE)
-+#define	nfserr_moved		__constant_htonl(NFSERR_MOVED)
- #define	nfserr_nofilehandle	__constant_htonl(NFSERR_NOFILEHANDLE)
- #define	nfserr_minor_vers_mismatch	__constant_htonl(NFSERR_MINOR_VERS_MISMATCH)
- #define nfserr_share_denied	__constant_htonl(NFSERR_SHARE_DENIED)
+--- .prev/include/linux/nfsd/nfsd.h	2006-09-29 12:57:28.000000000 +1000
++++ ./include/linux/nfsd/nfsd.h	2006-09-29 13:04:07.000000000 +1000
+@@ -292,7 +292,6 @@ static inline int is_fsid(struct svc_fh 
+ /*
+  * The following attributes are currently not supported by the NFSv4 server:
+  *    ARCHIVE       (deprecated anyway)
+- *    FS_LOCATIONS  (will be supported eventually)
+  *    HIDDEN        (unlikely to be supported any time soon)
+  *    MIMETYPE      (unlikely to be supported any time soon)
+  *    QUOTA_*       (will be supported in a forthcoming patch)
+@@ -308,7 +307,7 @@ static inline int is_fsid(struct svc_fh 
+  | FATTR4_WORD0_ACLSUPPORT      | FATTR4_WORD0_CANSETTIME   | FATTR4_WORD0_CASE_INSENSITIVE \
+  | FATTR4_WORD0_CASE_PRESERVING | FATTR4_WORD0_CHOWN_RESTRICTED                             \
+  | FATTR4_WORD0_FILEHANDLE      | FATTR4_WORD0_FILEID       | FATTR4_WORD0_FILES_AVAIL      \
+- | FATTR4_WORD0_FILES_FREE      | FATTR4_WORD0_FILES_TOTAL  | FATTR4_WORD0_HOMOGENEOUS      \
++ | FATTR4_WORD0_FILES_FREE      | FATTR4_WORD0_FILES_TOTAL  | FATTR4_WORD0_FS_LOCATIONS | FATTR4_WORD0_HOMOGENEOUS      \
+  | FATTR4_WORD0_MAXFILESIZE     | FATTR4_WORD0_MAXLINK      | FATTR4_WORD0_MAXNAME          \
+  | FATTR4_WORD0_MAXREAD         | FATTR4_WORD0_MAXWRITE     | FATTR4_WORD0_ACL)
+ 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
