@@ -1,23 +1,26 @@
-From: Paul Jackson <pj@sgi.com>
-Subject: Re: [PATCH 1 of 4] cpumask: add highest_possible_node_id
-Date: Mon, 16 Oct 2006 03:56:44 -0700
-Message-ID: <20061016035644.1c99ad9b.pj@sgi.com>
-References: <1154669719.21040.2351.camel@hole.melbourne.sgi.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 006 of 8] knfsd: nfsd4: fslocations data structures
+Date: Mon, 2 Oct 2006 14:23:27 -0400
+Message-ID: <20061002182327.GB8084@fieldses.org>
+References: <20060929130518.23919.patches@notabene>
+	<1060929030913.24108@suse.de>
+	<20060928234540.fd74f1e1.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: akpm@osdl.org, neilb@suse.de, nfs@lists.sourceforge.net,
+Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZQ9N-0001SD-42
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 03:56:53 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZQ9J-0005o1-WC
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 03:56:54 -0700
-To: Greg Banks <gnb@melbourne.sgi.com>
-In-Reply-To: <1154669719.21040.2351.camel@hole.melbourne.sgi.com>
+	id 1GUSS1-0006BV-87
+	for nfs@lists.sourceforge.net; Mon, 02 Oct 2006 11:23:37 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GUSS1-0007nm-RF
+	for nfs@lists.sourceforge.net; Mon, 02 Oct 2006 11:23:38 -0700
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20060928234540.fd74f1e1.akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,26 +33,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patch (of August 3, 2006) added (after a bit of fixing) a nodemask
-related routine to lib/cpumask.c.  Granted, there is no lib/nodemask.c,
-and Andrew suggested lib/cpumask.c.
+On Thu, Sep 28, 2006 at 11:45:40PM -0700, Andrew Morton wrote:
+> On Fri, 29 Sep 2006 13:09:13 +1000
+> NeilBrown <neilb@suse.de> wrote:
+> 
+> > 
+> > From: Manoj Naik <manoj@almaden.ibm.com>
+> > 
+> > Define FS locations structures, some functions to manipulate them, and add
+> > code to parse FS locations in downcall and add to the exports structure.
+...
+> > +	if (fsloc->locations_count < 0)
+> 
+> this is unsigned.
 
-But at least it should have added
+Yes, thanks.
 
-	#include <linux/nodemask.h>
+> > +	fsloc->locations = kzalloc(fsloc->locations_count
+> > +			* sizeof(struct nfsd4_fs_location), GFP_KERNEL);
+> 
+> This is subject to multiplication overflow.  If it's a privileged operation
+> and isn't dependent on stuff coming in over the wire then ok..
 
-to lib/cpumask.c, no?
+This is data provided locally by root.  But there's no reason to allow
+this to be arbitrarily large, and I'd still prefer to have some
+sanity-checking, so I'll replace the bogus "<0" check above by a
+check for something "too large".
 
--- 
-                  I won't rest till it's the best ...
-                  Programmer, Linux Scalability
-                  Paul Jackson <pj@sgi.com> 1.925.600.0401
+> > +out_free_all:
+> > +	nfsd4_fslocs_free(fsloc);
+> 
+> This call to nfsd4_fslocs_free() can end up kfreeing members of
+> fsloc->locations[] which haven't been initialised here.  Are we sure the
+> caller set them all to zero?
+
+Yes.  There will only ever be one caller, and it has to initialize
+these to zero.  I agree that this could be more obvious....
+
+> > +	return err;
+> > +}
+> > +
+> > +#else /* CONFIG_NFSD_V4 */
+> > +static int fsloc_parse(char **, char *, struct svc_export *) { return 0; }
+> 
+> static inline
+> 
+> This has a different prototype from the other version of fsloc_parse()
+> 
+> This ain't C++ - function arguments need identifiers as well as types.
+> 
+> Someone needs to read Documentation/SubmitChecklist..
+
+That would be me, sorry, yes.
+
+Bryce Harrington is also setting up automatic compile-testing for us
+with the obvious config options turned on and off, so hopefully that
+will help save me from myself....
+
+Patches addressing the above follow.
+
+--b.
 
 -------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys -- and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
