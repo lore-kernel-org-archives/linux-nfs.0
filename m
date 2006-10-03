@@ -1,28 +1,29 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH 008 of 11] knfsd: Prepare knfsd for support
-	of	rsize/wsize of up to 1MB, over TCP.
-Date: Tue, 3 Oct 2006 18:02:02 +1000
-Message-ID: <20061003080202.GM28796@sgi.com>
-References: <20060824162917.3600.patches@notabene> <1060824063711.5008@suse.de>
-	<20060925154316.GA17465@fieldses.org>
-	<17697.48800.933642.581926@cse.unsw.edu.au>
-	<20061003021304.GB12867@fieldses.org>
-	<17697.63511.32591.797058@cse.unsw.edu.au>
+From: Stephane Doyon <sdoyon@max-t.com>
+Subject: Re: several messages
+Date: Tue, 3 Oct 2006 09:39:55 -0400 (EDT)
+Message-ID: <Pine.LNX.4.64.0610030917060.31738@madrid.max-t.internal>
+References: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
+	<451A618B.5080901@agami.com>
+	<Pine.LNX.4.64.0610020939450.5072@madrid.max-t.internal>
+	<20061002223056.GN4695059@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net,
+	Shailendra Tripathi <stripathi@agami.com>, xfs@oss.sgi.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GUfEy-0007Lx-7t
-	for nfs@lists.sourceforge.net; Tue, 03 Oct 2006 01:03:00 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GUfEy-0007Z2-LA
-	for nfs@lists.sourceforge.net; Tue, 03 Oct 2006 01:03:01 -0700
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17697.63511.32591.797058@cse.unsw.edu.au>
+	id 1GUkWB-0002Rh-JV
+	for nfs@lists.sourceforge.net; Tue, 03 Oct 2006 06:41:07 -0700
+Received: from h216-18-124-229.gtcust.grouptelecom.net ([216.18.124.229]
+	helo=mail.max-t.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GUkWA-0001PB-6D
+	for nfs@lists.sourceforge.net; Tue, 03 Oct 2006 06:41:08 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	David Chinner <dgc@sgi.com>
+In-Reply-To: <20061002223056.GN4695059@melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,41 +36,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 03, 2006 at 03:41:43PM +1000, Neil Brown wrote:
-> Comments on the below?
+Sorry for insisting, but it seems to me there's still a problem in need of 
+fixing: when writing a 5GB file over NFS to an XFS file system and hitting 
+ENOSPC, it takes on the order of 22hours before my application gets an 
+error, whereas it would normally take about 2minutes if the file system 
+did not become full.
 
-Looks ok, except...
+Perhaps I was being a bit too "constructive" and drowned my point in 
+explanations and proposed workarounds... You are telling me that neither 
+NFS nor XFS is doing anything wrong, and I can understand your points of 
+view, but surely that behavior isn't considered acceptable?
 
-> @@ -57,7 +57,8 @@ struct svc_serv {
->  	struct svc_stat *	sv_stats;	/* RPC statistics */
->  	spinlock_t		sv_lock;
->  	unsigned int		sv_nrthreads;	/* # of server threads */
-> -	unsigned int		sv_bufsz;	/* datagram buffer size */
-> +	unsigned int		sv_max_payload;	/* datagram payload size */
-> +	unsigned int		sv_max_mesg;	/* bufsz + 1 page for overheads */
+On Tue, 26 Sep 2006, Trond Myklebust wrote:
 
-Presumably the comment should read "max_payload + 1 page..." ?
+> On Tue, 2006-09-26 at 16:05 -0400, Stephane Doyon wrote:
+>> I suppose it's not technically wrong to try to flush all the pages of the
+>> file, but if the server file system is full then it will be at its worse.
+>> Also if you happened to be on a slower link and have a big cache to flush,
+>> you're waiting around for very little gain.
+>
+> That all assumes that nobody fixes the problem on the server. If
+> somebody notices, and actually removes an unused file, then you may be
+> happy that the kernel preserved the last 80% of the apache log file that
+> was being written out.
+>
+> ENOSPC is a transient error: that is why the current behaviour exists.
 
-> @@ -414,9 +415,11 @@ svc_init_buffer(struct svc_rqst *rqstp, 
->  	int pages;
->  	int arghi;
->  	
-> -	if (size > RPCSVC_MAXPAYLOAD)
-> -		size = RPCSVC_MAXPAYLOAD;
-> -	pages = 2 + (size+ PAGE_SIZE -1) / PAGE_SIZE;
-> +	if (size > RPCSVC_MAXPAYLOAD + PAGE_SIZE)
-> +		size = RPCSVC_MAXPAYLOAD + PAGE_SIZE;
-> +	pages = size + PAGE_SIZE; /* extra page as we hold both request and reply.
-> +				   * We assume one is at most one page
-> +				   */
+On Tue, 3 Oct 2006, David Chinner wrote:
 
-Isn't there a divide by PAGE_SIZE missing here?  Looks
-like we'll be allocating a *lot* of pages ;-)
+> This deep in the XFS allocation functions, we cannot tell if we hold
+> the i_mutex or not, and it plays no part in determining if we have
+> space or not. Hence we don't touch it here.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+
+> I doubt it's a good idea for an NFS server, either.
+[...]
+> Remember that XFS, like most filesystems, trades off speed for
+> correctness as we approach ENOSPC. Many parts of XFS slow down as we
+> approach ENOSPC, and this is just one example of where we need to be
+> correct, not fast.
+[...]
+> IMO, this is a non-problem.  You're talking about optimising a
+> relatively rare corner case where correctness is more important than
+> speed and your test case is highly artificial. AFAIC, if you are
+> running at ENOSPC then you get what performance is appropriate for
+> correctness and if you are continually runing at ENOSPC, then buy
+> some more disks.....
+
+My recipe to reproduce the problem locally is admittedly somewhat 
+artificial, but the problematic usage definitely isn't: simply an app on 
+an NFS client that happens to fill up a file system. There must be some 
+way to handle this better.
+
+Thanks
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
