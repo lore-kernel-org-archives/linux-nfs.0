@@ -1,26 +1,26 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 008 of 11] knfsd: Prepare knfsd for support
-	of	rsize/wsize of up to 1MB, over TCP.
-Date: Tue, 3 Oct 2006 11:36:32 +1000
-Message-ID: <17697.48800.933642.581926@cse.unsw.edu.au>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [PATCH 008 of 11] knfsd: Prepare knfsd for support of
+	rsize/wsize of up to 1MB, over TCP.
+Date: Tue, 3 Oct 2006 11:59:20 +1000
+Message-ID: <20061003015920.GJ28796@sgi.com>
 References: <20060824162917.3600.patches@notabene> <1060824063711.5008@suse.de>
 	<20060925154316.GA17465@fieldses.org>
+	<17697.48800.933642.581926@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, Greg Banks <gnb@melbourne.sgi.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GUZDI-0001Vr-Dv
-	for nfs@lists.sourceforge.net; Mon, 02 Oct 2006 18:36:52 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GUZDH-00037s-Il
-	for nfs@lists.sourceforge.net; Mon, 02 Oct 2006 18:36:53 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Monday September 25
+	id 1GUZZG-0003K0-QZ
+	for nfs@lists.sourceforge.net; Mon, 02 Oct 2006 18:59:35 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GUZZG-0002SA-HW
+	for nfs@lists.sourceforge.net; Mon, 02 Oct 2006 18:59:35 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17697.48800.933642.581926@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,92 +33,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday September 25, bfields@fieldses.org wrote:
+On Tue, Oct 03, 2006 at 11:36:32AM +1000, Neil Brown wrote:
+> On Monday September 25, bfields@fieldses.org wrote:
+> > 
+> > We're reporting svc_max_payload(rqstp) as the server's maximum
+> > read/write block size:
 > 
-> We're reporting svc_max_payload(rqstp) as the server's maximum
-> read/write block size:
+> Yes.  So I'm going to change the number returned by
+> svc_max_payload(rqstp) to mean the maximum read/write block size.
+> i.e. when a service is created, the number passed isn't the maximum
+> packet size, but is the maximum payload size.
 
-Yes.  So I'm going to change the number returned by
-svc_max_payload(rqstp) to mean the maximum read/write block size.
-i.e. when a service is created, the number passed isn't the maximum
-packet size, but is the maximum payload size.
-The assumption is that all of the request that is not payload will fit
-into one page, and all of the reply that is not payload will also fit
-into one page (though a different page).
+I'm confused.  Last time I looked at the code that was
+exactly what the semantics were?
 
-It means that RPC services that have lots of non-payload data combined
-with payload data won't work, but making sunrpc code completely
-general when there are only two users is just too painful.
+> The assumption is that all of the request that is not payload will fit
+> into one page, and all of the reply that is not payload will also fit
+> into one page (though a different page).
 
-The only real problem is that NFSv4 can have arbitrarily large
-non-payload data, and arbitrarily many payloads.  But I guess any
-client that trying to send two full-sized payloads in the one request
-is asking for trouble (I don't suppose the RPC spells this out at
-all?).
+This is a pretty good assumption for v3.
 
+> It means that RPC services that have lots of non-payload data combined
+> with payload data won't work, but making sunrpc code completely
+> general when there are only two users is just too painful.
 > 
-> > -#define NFSD_BUFSIZE		(1024 + NFSSVC_MAXBLKSIZE)
-> > +/*
-> > + * Largest number of bytes we need to allocate for an NFS
-> > + * call or reply.  Used to control buffer sizes.  We use
-> > + * the length of v3 WRITE, READDIR and READDIR replies
-> > + * which are an RPC header, up to 26 XDR units of reply
-> > + * data, and some page data.
-> > + *
-> > + * Note that accuracy here doesn't matter too much as the
-> > + * size is rounded up to a page size when allocating space.
-> > + */
-> 
-> Is the rounding up *always* going to increase the size?  And if not,
-> then why doesn't accuracy matter?
-> 
-> > +#define NFSD_BUFSIZE		((RPC_MAX_HEADER_WITH_AUTH+26)*XDR_UNIT + NFSSVC_MAXBLKSIZE)
-> 
-> I think this results in 80 less bytes less than before, I think.
-> 
-> No doubt we have lots of wiggle room here, but I'd rather we didn't
-> decrease that size without seeing a careful analysis.
+> The only real problem is that NFSv4 can have arbitrarily large
+> non-payload data, and arbitrarily many payloads.  But I guess any
+> client that trying to send two full-sized payloads in the one request
+> is asking for trouble (I don't suppose the RPC spells this out at
+> all?).
 
-The above change makes this loss in bytes irrelevant. NFSD_BUFSIZE
-will now only be used once - near the end of nfs4proc.c and there if
-it is wrong you just get a warning.
+Bruce and I briefly discussed this when I dropped into CITI the other
+week.  The conclusion was that this is a non-issue in the short term
+because all the clients do a single READ or WRITE per call.  In the
+long term I hope to rewrite some parts of that code to do away with
+one of the memcpy()s in the WRITE path, and handling multiple WRITEs
+for v4 would be a natural extension of that.
 
-And the fact that the code change to effect this is so tiny seems to
-imply that most of the code was already assuming that sv_bufsz was
-really the payload size rather than the packet size.
-
-So this is my proposed 'fix' for
-	knfsd-prepare-knfsd-for-support-of-rsize-wsize-of-up-to-1mb-over-tcp.patch.
-
-NeilBrown
-
-------------
-Make sv_bufsiz really be the payload size for rpc requests.
-
-svc.c already allocated 2 extra pages for the request and the reply,
-so it is perfectly consistent to assume that the size passed to
-svc_create_pooled is the size of the payload.  This means that
-the number returned by svc_max_payload - and thus returned to the client
-as the maxiumu IO size - is exactly the chosen max block size.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/nfsd/nfssvc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
---- .prev/fs/nfsd/nfssvc.c	2006-09-29 11:57:27.000000000 +1000
-+++ ./fs/nfsd/nfssvc.c	2006-10-03 11:23:11.000000000 +1000
-@@ -217,7 +217,7 @@ int nfsd_create_serv(void)
- 
- 	atomic_set(&nfsd_busy, 0);
- 	nfsd_serv = svc_create_pooled(&nfsd_program,
--				      NFSD_BUFSIZE - NFSSVC_MAXBLKSIZE + nfsd_max_blksize,
-+				      nfsd_max_blksize,
- 				      nfsd_last_thread,
- 				      nfsd, SIG_NOCLEAN, THIS_MODULE);
- 	if (nfsd_serv == NULL)
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
