@@ -1,28 +1,30 @@
-From: David Chinner <dgc@sgi.com>
+From: Stephane Doyon <sdoyon@max-t.com>
 Subject: Re: several messages
-Date: Thu, 5 Oct 2006 18:30:15 +1000
-Message-ID: <20061005083015.GC19345@melbourne.sgi.com>
+Date: Thu, 5 Oct 2006 11:39:45 -0400 (EDT)
+Message-ID: <Pine.LNX.4.64.0610051108140.9190@madrid.max-t.internal>
 References: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
 	<451A618B.5080901@agami.com>
 	<Pine.LNX.4.64.0610020939450.5072@madrid.max-t.internal>
 	<20061002223056.GN4695059@melbourne.sgi.com>
 	<Pine.LNX.4.64.0610030917060.31738@madrid.max-t.internal>
+	<1159893642.5592.12.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: xfs@oss.sgi.com, David Chinner <dgc@sgi.com>,
-	nfs@lists.sourceforge.net, Shailendra Tripathi <stripathi@agami.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: David Chinner <dgc@sgi.com>, nfs@lists.sourceforge.net,
+	Shailendra Tripathi <stripathi@agami.com>, xfs@oss.sgi.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GVOd3-0007Xl-Fo
-	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 01:30:53 -0700
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GVOd2-0006eM-5a
-	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 01:30:54 -0700
-To: Stephane Doyon <sdoyon@max-t.com>
-In-Reply-To: <Pine.LNX.4.64.0610030917060.31738@madrid.max-t.internal>
+	id 1GVVLX-0005zb-EP
+	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 08:41:18 -0700
+Received: from h216-18-124-229.gtcust.grouptelecom.net ([216.18.124.229]
+	helo=mail.max-t.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GVVLW-00057o-0Z
+	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 08:41:16 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1159893642.5592.12.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,45 +37,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 03, 2006 at 09:39:55AM -0400, Stephane Doyon wrote:
-> Sorry for insisting, but it seems to me there's still a problem in need of 
-> fixing: when writing a 5GB file over NFS to an XFS file system and hitting 
-> ENOSPC, it takes on the order of 22hours before my application gets an 
-> error, whereas it would normally take about 2minutes if the file system 
-> did not become full.
+On Tue, 3 Oct 2006, Trond Myklebust wrote:
+
+> On Tue, 2006-10-03 at 09:39 -0400, Stephane Doyon wrote:
+>> Sorry for insisting, but it seems to me there's still a problem in need of
+>> fixing: when writing a 5GB file over NFS to an XFS file system and hitting
+>> ENOSPC, it takes on the order of 22hours before my application gets an
+>> error, whereas it would normally take about 2minutes if the file system
+>> did not become full.
+>>
+>> Perhaps I was being a bit too "constructive" and drowned my point in
+>> explanations and proposed workarounds... You are telling me that neither
+>> NFS nor XFS is doing anything wrong, and I can understand your points of
+>> view, but surely that behavior isn't considered acceptable?
 >
-> Perhaps I was being a bit too "constructive" and drowned my point in 
-> explanations and proposed workarounds... You are telling me that neither 
-> NFS nor XFS is doing anything wrong, and I can understand your points of 
-> view, but surely that behavior isn't considered acceptable?
+> Sure it is.
 
-I agree that this a little extreme and I can't recall of seeing
-anything like this before, but I can see how that may happen if the
-NFS client continues to try to write every dirty page after getting
-an ENOSPC and each one of those writes has to wait for 500ms.
+If you say so :-).
 
-However, you did not mention what kernel version you are running.
-One recent bug (introduced by a fix for deadlocks at ENOSPC) could
-allow oversubscription of free space to occur in XFS, resulting in
-the write being allowed to proceed (i.e. sufficient space for the
-data blocks) but then failing the allocation because there weren't
-enough blocks put aside for potential btree splits that occur during
-allocation. If the linux client is using sync writes on retry, then
-this would trigger a 500ms sleep on every write.  That's the right
-sort of ballpark for the slowness you were seeing - 5GB / 32k * 0.5s
-= ~22 hours....
+> You are allowing the kernel to cache 5GB, and that means you
+> only get the error message when close() completes.
 
-This got fixed in 2.6.18-rc6 - can you retry with a 2.6.18 server
-and see if your problem goes away?
+But it's not actually caching the entire 5GB at once... I guess you're 
+saying that doesn't matter...?
 
-Cheers,
+> If you want faster error reporting, there are modes like O_SYNC,
+> O_DIRECT, that will attempt to flush the data more quickly. In addition,
+> you can force flushing using fsync().
 
-Dave.
+What if the program is a standard utility like cp?
 
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+> Finally, you can tweak the VM into
+> flushing more often using /proc/sys/vm.
+
+It doesn't look to me like a question of degrees about how early to flush. 
+Actually my client can't possibly be caching all of 5GB, it doesn't have 
+the RAM or swap for that. Tracing it more carefully, it appears dirty data 
+starts being flushed after a few hundred MBs. No error is returned on the 
+subsequent writes, only on the final close(). I see some of the write() 
+calls are delayed, presumably when the machine reaches the dirty 
+threshold. So I don't see how the vm settings can help in this case.
+
+I hadn't realized that the issue isn't just with the final flush on 
+close(). It's actually been flushing all along, delaying some of the 
+subsequent write()s, getting NOSPC errors but not reporting them until the 
+end.
+
+I understand that since my application did not request any syncing, the 
+system cannot guarantee to report errors until cached data has been 
+flushed. But some data has indeed been flushed with an error; can't this 
+be reported earlier than on close?
+
+Would it be incorrect for a subsequent write to return the error that 
+occurred while flushing data from previous writes? Then the app could 
+decide whether to continue and retry or not. But I guess I can see how 
+that might get convoluted.
+
+Thanks for your patience,
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
