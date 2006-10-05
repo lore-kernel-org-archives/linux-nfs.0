@@ -1,31 +1,37 @@
-From: Stephane Doyon <sdoyon@max-t.com>
-Subject: Re: several messages
-Date: Thu, 5 Oct 2006 12:33:05 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0610051139540.31641@madrid.max-t.internal>
-References: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
-	<451A618B.5080901@agami.com>
-	<Pine.LNX.4.64.0610020939450.5072@madrid.max-t.internal>
-	<20061002223056.GN4695059@melbourne.sgi.com>
-	<Pine.LNX.4.64.0610030917060.31738@madrid.max-t.internal>
-	<20061005083015.GC19345@melbourne.sgi.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Found issue with BKL not held during call
+	to	nfs_asynch_unlink_release()
+Date: Thu, 05 Oct 2006 10:46:04 -0700
+Message-ID: <1160070364.3376.71.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: xfs@oss.sgi.com, nfs@lists.sourceforge.net,
-	Shailendra Tripathi <stripathi@agami.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GVWAl-0002nU-Ir
-	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 09:34:17 -0700
-Received: from h216-18-124-229.gtcust.grouptelecom.net ([216.18.124.229]
-	helo=mail.max-t.com)
+	id 1GVXGM-0000n9-CU
+	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 10:44:02 -0700
+Received: from e33.co.us.ibm.com ([32.97.110.151])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GVWAk-0006t8-Jl
-	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 09:34:12 -0700
-To: David Chinner <dgc@sgi.com>
-In-Reply-To: <20061005083015.GC19345@melbourne.sgi.com>
+	(Exim 4.44) id 1GVXGM-0003Ds-Ly
+	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 10:44:03 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
+	[9.17.195.11])
+	by e33.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k95HhrY3006600
+	for <nfs@lists.sourceforge.net>; Thu, 5 Oct 2006 13:43:53 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
+	k95HhriZ485678
+	for <nfs@lists.sourceforge.net>; Thu, 5 Oct 2006 11:43:53 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k95HhqrK032140
+	for <nfs@lists.sourceforge.net>; Thu, 5 Oct 2006 11:43:52 -0600
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k95HhqRm032117
+	for <nfs@lists.sourceforge.net>; Thu, 5 Oct 2006 11:43:52 -0600
+To: NFS List <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,64 +44,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 5 Oct 2006, David Chinner wrote:
+We have found a problem with the BKL not being held during a call to
+nfs_asynch_unlink_release(), the call stack (this is an rpciod process)
+is:
 
-> On Tue, Oct 03, 2006 at 09:39:55AM -0400, Stephane Doyon wrote:
->> Sorry for insisting, but it seems to me there's still a problem in need of
->> fixing: when writing a 5GB file over NFS to an XFS file system and hitting
->> ENOSPC, it takes on the order of 22hours before my application gets an
->> error, whereas it would normally take about 2minutes if the file system
->> did not become full.
->>
->> Perhaps I was being a bit too "constructive" and drowned my point in
->> explanations and proposed workarounds... You are telling me that neither
->> NFS nor XFS is doing anything wrong, and I can understand your points of
->> view, but surely that behavior isn't considered acceptable?
->
-> I agree that this a little extreme and I can't recall of seeing
-> anything like this before, but I can see how that may happen if the
-> NFS client continues to try to write every dirty page after getting
-> an ENOSPC and each one of those writes has to wait for 500ms.
->
-> However, you did not mention what kernel version you are running.
-> One recent bug (introduced by a fix for deadlocks at ENOSPC) could
-> allow oversubscription of free space to occur in XFS, resulting in
+nfs_async_unlink_release (called via tk_ops->rpc_release())
+rpc_release_task
+__rpc_execute
+run_workqueue
+worker_thread
+kthread
+kernel_thread
 
-I do have that fix in my kernel. (I'm the one who pointed you to the patch 
-that introduced that particular problem.)
+I have been talking to Chuck Lever about this because I had noted one of
+his patches for removing the BKL added a spin lock to protect the
+nfs_deletes list used in fs/nfs/unlink.c. This patch happens to fix the
+specific problem we are seeing, but discussion with Chuck suggests there
+may be a larger problem.
 
-> the write being allowed to proceed (i.e. sufficient space for the
-> data blocks) but then failing the allocation because there weren't
-> enough blocks put aside for potential btree splits that occur during
-> allocation. If the linux client is using sync writes on retry, then
+Chuck pointed out that tk_ops is a recent addition, and that perhaps the
+think to do would be to add a lock_kernel() around the call to 
+tk_ops->rpc_release().
 
-The writes from nfsd shouldn't be sync. Technically it's not even 
-retrying, just plowing on...
+When I had been investigating removing the BKL, I had noted that it
+seemed inconsistent whether the BKL was held for calls to rpc_execute(),
+and in some cases, the BKL was held ONLY for the call to rpc_execute().
+My investigations found that rpciod does not hold the BKL when calling
+__rpc_execute(), and I also think some of the direct I/O code in
+fs/nfs/direct.c does not hold the BKL, or possible the asynch code (I
+didn't keep good notes - I had made a cursory examination, then noted
+for sure there were code paths where rpc_execute was called without the
+BKL, and naively assumed it was not needed, and didn't pursue exactly
+which calls did and did not hold the BKL - it seems that assumption may
+be wrong).
 
-> this would trigger a 500ms sleep on every write.  That's the right
-> sort of ballpark for the slowness you were seeing - 5GB / 32k * 0.5s
-> = ~22 hours....
->
-> This got fixed in 2.6.18-rc6 -
+At first, I thought that using Chuck's patch to unlink.c would be a good
+fix since it would not introduce new lock_kernel() calls, however, if
+there may be other holes, it might be simpler to put the proper
+lock_kernel() calls in, and then cleanly remove all uses of the BKL when
+Chuck's patch set is adopted.
 
-You mean commit 4be536debe3f7b0c right? (Actually -rc7 I believe...) I do 
-have that one in my kernel. My kernel is 2.6.17 plus assorted XFS fixes.
+Frank Filz
 
-> can you retry with a 2.6.18 server
-> and see if your problem goes away?
 
-Unfortunately it will be several days before I have a chance to do that.
-
-The backtrace looked like this:
-
-... nfsd_write nfsd_vfs_write vfs_writev do_readv_writev xfs_file_writev 
-xfs_write generic_file_buffered_write xfs_get_blocks __xfs_get_blocks 
-xfs_bmap xfs_iomap xfs_iomap_write_delay xfs_flush_space xfs_flush_device 
-schedule_timeout_uninterruptible.
-
-with a 500ms sleep in xfs_flush_device().
-
-Thanks
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
