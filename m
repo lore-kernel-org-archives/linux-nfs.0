@@ -1,30 +1,31 @@
 From: Stephane Doyon <sdoyon@max-t.com>
 Subject: Re: several messages
-Date: Thu, 5 Oct 2006 11:39:45 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0610051108140.9190@madrid.max-t.internal>
+Date: Thu, 5 Oct 2006 12:33:05 -0400 (EDT)
+Message-ID: <Pine.LNX.4.64.0610051139540.31641@madrid.max-t.internal>
 References: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
 	<451A618B.5080901@agami.com>
 	<Pine.LNX.4.64.0610020939450.5072@madrid.max-t.internal>
 	<20061002223056.GN4695059@melbourne.sgi.com>
 	<Pine.LNX.4.64.0610030917060.31738@madrid.max-t.internal>
-	<1159893642.5592.12.camel@lade.trondhjem.org>
+	<20061005083015.GC19345@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: David Chinner <dgc@sgi.com>, nfs@lists.sourceforge.net,
-	Shailendra Tripathi <stripathi@agami.com>, xfs@oss.sgi.com
+Cc: xfs@oss.sgi.com, nfs@lists.sourceforge.net,
+	Shailendra Tripathi <stripathi@agami.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GVVLX-0005zb-EP
-	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 08:41:18 -0700
+	id 1GVWAl-0002nU-Ir
+	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 09:34:17 -0700
 Received: from h216-18-124-229.gtcust.grouptelecom.net ([216.18.124.229]
 	helo=mail.max-t.com)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GVVLW-00057o-0Z
-	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 08:41:16 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1159893642.5592.12.camel@lade.trondhjem.org>
+	(Exim 4.44) id 1GVWAk-0006t8-Jl
+	for nfs@lists.sourceforge.net; Thu, 05 Oct 2006 09:34:12 -0700
+To: David Chinner <dgc@sgi.com>
+In-Reply-To: <20061005083015.GC19345@melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,9 +38,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 3 Oct 2006, Trond Myklebust wrote:
+On Thu, 5 Oct 2006, David Chinner wrote:
 
-> On Tue, 2006-10-03 at 09:39 -0400, Stephane Doyon wrote:
+> On Tue, Oct 03, 2006 at 09:39:55AM -0400, Stephane Doyon wrote:
 >> Sorry for insisting, but it seems to me there's still a problem in need of
 >> fixing: when writing a 5GB file over NFS to an XFS file system and hitting
 >> ENOSPC, it takes on the order of 22hours before my application gets an
@@ -51,49 +52,50 @@ On Tue, 3 Oct 2006, Trond Myklebust wrote:
 >> NFS nor XFS is doing anything wrong, and I can understand your points of
 >> view, but surely that behavior isn't considered acceptable?
 >
-> Sure it is.
+> I agree that this a little extreme and I can't recall of seeing
+> anything like this before, but I can see how that may happen if the
+> NFS client continues to try to write every dirty page after getting
+> an ENOSPC and each one of those writes has to wait for 500ms.
+>
+> However, you did not mention what kernel version you are running.
+> One recent bug (introduced by a fix for deadlocks at ENOSPC) could
+> allow oversubscription of free space to occur in XFS, resulting in
 
-If you say so :-).
+I do have that fix in my kernel. (I'm the one who pointed you to the patch 
+that introduced that particular problem.)
 
-> You are allowing the kernel to cache 5GB, and that means you
-> only get the error message when close() completes.
+> the write being allowed to proceed (i.e. sufficient space for the
+> data blocks) but then failing the allocation because there weren't
+> enough blocks put aside for potential btree splits that occur during
+> allocation. If the linux client is using sync writes on retry, then
 
-But it's not actually caching the entire 5GB at once... I guess you're 
-saying that doesn't matter...?
+The writes from nfsd shouldn't be sync. Technically it's not even 
+retrying, just plowing on...
 
-> If you want faster error reporting, there are modes like O_SYNC,
-> O_DIRECT, that will attempt to flush the data more quickly. In addition,
-> you can force flushing using fsync().
+> this would trigger a 500ms sleep on every write.  That's the right
+> sort of ballpark for the slowness you were seeing - 5GB / 32k * 0.5s
+> = ~22 hours....
+>
+> This got fixed in 2.6.18-rc6 -
 
-What if the program is a standard utility like cp?
+You mean commit 4be536debe3f7b0c right? (Actually -rc7 I believe...) I do 
+have that one in my kernel. My kernel is 2.6.17 plus assorted XFS fixes.
 
-> Finally, you can tweak the VM into
-> flushing more often using /proc/sys/vm.
+> can you retry with a 2.6.18 server
+> and see if your problem goes away?
 
-It doesn't look to me like a question of degrees about how early to flush. 
-Actually my client can't possibly be caching all of 5GB, it doesn't have 
-the RAM or swap for that. Tracing it more carefully, it appears dirty data 
-starts being flushed after a few hundred MBs. No error is returned on the 
-subsequent writes, only on the final close(). I see some of the write() 
-calls are delayed, presumably when the machine reaches the dirty 
-threshold. So I don't see how the vm settings can help in this case.
+Unfortunately it will be several days before I have a chance to do that.
 
-I hadn't realized that the issue isn't just with the final flush on 
-close(). It's actually been flushing all along, delaying some of the 
-subsequent write()s, getting NOSPC errors but not reporting them until the 
-end.
+The backtrace looked like this:
 
-I understand that since my application did not request any syncing, the 
-system cannot guarantee to report errors until cached data has been 
-flushed. But some data has indeed been flushed with an error; can't this 
-be reported earlier than on close?
+... nfsd_write nfsd_vfs_write vfs_writev do_readv_writev xfs_file_writev 
+xfs_write generic_file_buffered_write xfs_get_blocks __xfs_get_blocks 
+xfs_bmap xfs_iomap xfs_iomap_write_delay xfs_flush_space xfs_flush_device 
+schedule_timeout_uninterruptible.
 
-Would it be incorrect for a subsequent write to return the error that 
-occurred while flushing data from previous writes? Then the app could 
-decide whether to continue and retry or not. But I guess I can see how 
-that might get convoluted.
+with a 500ms sleep in xfs_flush_device().
 
-Thanks for your patience,
+Thanks
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
