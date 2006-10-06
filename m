@@ -1,15 +1,15 @@
 From: Stephane Doyon <sdoyon@max-t.com>
 Subject: Re: several messages
-Date: Fri, 6 Oct 2006 09:03:03 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0610060859270.31641@madrid.max-t.internal>
+Date: Fri, 6 Oct 2006 09:25:28 -0400 (EDT)
+Message-ID: <Pine.LNX.4.64.0610060903280.31641@madrid.max-t.internal>
 References: <Pine.LNX.4.64.0609191533240.25914@madrid.max-t.internal>
 	<451A618B.5080901@agami.com>
 	<Pine.LNX.4.64.0610020939450.5072@madrid.max-t.internal>
 	<20061002223056.GN4695059@melbourne.sgi.com>
 	<Pine.LNX.4.64.0610030917060.31738@madrid.max-t.internal>
-	<20061005083015.GC19345@melbourne.sgi.com>
-	<Pine.LNX.4.64.0610051139540.31641@madrid.max-t.internal>
-	<20061005232935.GE19345@melbourne.sgi.com>
+	<1159893642.5592.12.camel@lade.trondhjem.org>
+	<Pine.LNX.4.64.0610051108140.9190@madrid.max-t.internal>
+	<20061006003339.GF19345@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: xfs@oss.sgi.com, nfs@lists.sourceforge.net,
@@ -19,15 +19,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GVpNG-0000Ff-Ba
-	for nfs@lists.sourceforge.net; Fri, 06 Oct 2006 06:04:22 -0700
+	id 1GVpii-0002FE-6T
+	for nfs@lists.sourceforge.net; Fri, 06 Oct 2006 06:26:32 -0700
 Received: from h216-18-124-229.gtcust.grouptelecom.net ([216.18.124.229]
 	helo=mail.max-t.com)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GVpNF-0005DY-0a
-	for nfs@lists.sourceforge.net; Fri, 06 Oct 2006 06:04:23 -0700
+	(Exim 4.44) id 1GVpii-0004tm-Mm
+	for nfs@lists.sourceforge.net; Fri, 06 Oct 2006 06:26:33 -0700
 To: David Chinner <dgc@sgi.com>
-In-Reply-To: <20061005232935.GE19345@melbourne.sgi.com>
+In-Reply-To: <20061006003339.GF19345@melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,32 +42,58 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Fri, 6 Oct 2006, David Chinner wrote:
 
->> The backtrace looked like this:
+> On Thu, Oct 05, 2006 at 11:39:45AM -0400, Stephane Doyon wrote:
 >>
->> ... nfsd_write nfsd_vfs_write vfs_writev do_readv_writev xfs_file_writev
->> xfs_write generic_file_buffered_write xfs_get_blocks __xfs_get_blocks
->> xfs_bmap xfs_iomap xfs_iomap_write_delay xfs_flush_space xfs_flush_device
->> schedule_timeout_uninterruptible.
+>> I hadn't realized that the issue isn't just with the final flush on
+>> close(). It's actually been flushing all along, delaying some of the
+>> subsequent write()s, getting NOSPC errors but not reporting them until the
+>> end.
 >
-> Ahhh, this gets hit on the ->prepare_write path (xfs_iomap_write_delay()),
+> Other NFS clients will report an ENOSPC on the next write() or close()
+> if the error is reported during async writeback. The clients that typically
+> do this throw away any unwritten data as well on the basis that the
+> application was returned an error ASAP and it is now Somebody Else's
+> Problem (i.e. the application needs to handle it from there).
 
-Yes.
+Well the client wouldn't necessarily have to throw away cached data. It 
+could conceivably be made to return ENOSPC on some subsequent write. It 
+would need to throw away the data for that write, but not necessarily 
+destroy its cache. It could then clear the error condition and allow the 
+application to keep trying if it wants to...
 
-> not the allocate path (xfs_iomap_write_allocate()). Sorry - I got myself
-> (and probably everyone else) confused there which why I suspected sync
-> writes - they trigger the allocate path in the write call. I don't think
-> 2.6.18 will change anything.
+>> Would it be incorrect for a subsequent write to return the error that
+>> occurred while flushing data from previous writes? Then the app could
+>> decide whether to continue and retry or not. But I guess I can see how
+>> that might get convoluted.
 >
-> FWIW, I don't think we can avoid this sleep when we first hit ENOSPC
-> conditions, but perhaps once we are certain of the ENOSPC status
-> we can tag the filesystem with this state (say an xfs_mount flag)
-> and only clear that tag when something is freed. We could then
-> use the tag to avoid continually trying extremely hard to allocate
-> space when we know there is none available....
+> .... there's many entertaining hoops to jump through to do this
+> reliably.
 
-Yes! That's what I was trying to suggest :-). Thank you.
+I imagine there would be...
 
-Is that hard to do?
+> For example: when you have large amounts of cached data, expedient
+> error reporting and tossing unwritten data leads to much faster
+> error recovery than trying to write every piece of data (hence the
+> Irix use of this method).
+
+In my case, I didn't think I was caching that much data though, only a few 
+hundred MBs, and I wouldn't have minded so much if an error had been 
+returned after that much. The way it's implemented though, I can write an 
+unbounded amount of data through that cache and not be told of the problem 
+until I close or fsync. It may not be technically wrong, but given the 
+outrageous delay I saw in my particular situation, it felt pretty 
+suboptimal.
+
+> There's no clear right or wrong approach here - both have their
+> advantages and disadvantages for different workloads. If it
+> weren't for the sub-optimal behaviour of XFS in this case, you
+> probably wouldn't have even cared about this....
+
+Indeed not! In fact, changing the client is not practical for me, what I 
+need is a fix for the XFS behavior. I just thought it was also worth 
+reporting what I perceived to be an issue with the NFS client.
+
+Thanks
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
