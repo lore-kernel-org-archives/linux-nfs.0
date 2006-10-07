@@ -1,22 +1,19 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: mail server crashing with RPC error 12 ENOMEM
-Date: Fri, 06 Oct 2006 19:47:15 -0400
-Message-ID: <4526EB03.5070201@RedHat.com>
-References: <4526E1F1.502@nmt.edu>
+From: "Bernadine Sweet" <tustingbecky@break-charity.org>
+Subject: Please Use Our Help Desk
+Date: Sat, 07 Oct 2006 13:32:52 -0500
+Message-ID: <1172231613.5@brooklawn.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GVzPY-0001ac-Cw
-	for nfs@lists.sourceforge.net; Fri, 06 Oct 2006 16:47:26 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GVzPX-0007GA-3U
-	for nfs@lists.sourceforge.net; Fri, 06 Oct 2006 16:47:25 -0700
-To: mikem@nmt.edu
-In-Reply-To: <4526E1F1.502@nmt.edu>
+	id 1GWG2b-0008VB-49
+	for nfs@lists.sourceforge.net; Sat, 07 Oct 2006 10:32:49 -0700
+Received: from ppp-124.121.91.66.revip2.asianet.co.th ([124.121.91.66])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GWG2a-0003Kg-Qi
+	for nfs@lists.sourceforge.net; Sat, 07 Oct 2006 10:32:50 -0700
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,26 +26,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Michael Martinez wrote:
-> Hey all -
-> 
-> We've got a mail server running RHEL AS 3 update 2, postfix, amavisd, 
-> imap, spamassassin, squirrelmail.
-> 
-> Mail is delivered to local spool. Users home directories are 
-> auto-mounted from nfs and each user has got their .procmailrc. The local 
-> copy of procmail on the mail server processes these rcs. We've got a 
-> couple thousand users.
-> 
-> This was working great for two months until a week and a half ago. Since 
-> then, every day the server freezes up. We go the console and see 'RPC: 
-> sendmsg returned error 12' messages scrolling by. The computer is 
-> unresponsive and the only thing we can do is a hard reboot.
-I seem to remember this as being an issue with the VM...
-Make sure your are running RHEL3 U8 since I believe the
-fixed is in there...
 
-steved.
+I`crease Your S''exual Desire and S''perm volume by 500%
+L'onger o''`rgasms - The longest most intense o''rgasms of your life
+Multiple o''`rgasms - Cum again and again
+S'`PUR-M is The Newest and The Safest Way
+100% N''atural and No Side Effects - in contrast to well-known brands.
+Experience three times longer o''rgasms
+World Wide shipping within 24 hours
+ 
+ Cli here http://snakecharmerband.info
+
+
+
+
+
+
+
+
+
+
+
+
+
+"Her hands snapped shut into fists again and she drove them down like pistons, one on either side of his head.
+no pain, please.
+"Your car was wrecked in almost exactly the same spot where I got rid of that Pomeroy creep.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
