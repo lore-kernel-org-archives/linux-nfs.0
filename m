@@ -1,19 +1,23 @@
-From: "hvezeup1rp" <w5wat@jpg.com>
-Subject: =?GB2312?B?uN/Qp8XFsvrT687vwc+/2NbGvLzHyWh2ZXpldXAxcnA=?=
-Date: Mon, 9 Oct 2006 11:27:12 +0800
-Message-ID: <20061009112712272813@jpg.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: intermittent EPERM
+Date: Mon, 9 Oct 2006 15:17:07 +1000
+Message-ID: <17705.56147.148462.705488@cse.unsw.edu.au>
+References: <1159961801.9991.11.camel@pc.ilinx>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0214826335=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GWlnO-0004jN-HF
-	for nfs@lists.sourceforge.net; Sun, 08 Oct 2006 20:27:14 -0700
-Received: from [58.63.170.198] (helo=jpg.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GWlnN-0000UX-BU
-	for nfs@lists.sourceforge.net; Sun, 08 Oct 2006 20:27:15 -0700
-To: "nfs" <nfs@lists.sourceforge.net>
+	id 1GWq77-0002qH-Kc
+	for nfs@lists.sourceforge.net; Mon, 09 Oct 2006 01:03:53 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GWq78-0000Zg-7y
+	for nfs@lists.sourceforge.net; Mon, 09 Oct 2006 01:03:54 -0700
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
+In-Reply-To: message from Brian J. Murrell on Wednesday October 4
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,163 +30,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0214826335==
-Content-Type: text/plain;
-	charset="GB2312"
-Content-Transfer-Encoding: base64
+On Wednesday October 4, brian@interlinx.bc.ca wrote:
+> Since having upgraded my Ubuntu (edgy) kernel I have noticed the last
+> few revs of it cause intermittent EPERM errors on NFS clients.  For
+> example:
+> 
+> brian@pc:~$ sudo mount pc:/home/brian /mnt/test
+> brian@pc:~$ cd /mnt/test
+> brian@pc:/mnt/test$ cat .bash_profile
+> cat: .bash_profile: Permission denied
+> brian@pc:/mnt/test$ cat .bash_profile
+> cat: .bash_profile: Permission denied
+> brian@pc:/mnt/test$ cat .bash_profile
+> # .bash_profile
+> 
+> # Get the aliases and functions
+> if [ -f ~/.bashrc ]; then
+>         . ~/.bashrc
+> fi
+> 
+> It took three attempts at reading that file to not get an EPERM.
+> 
+> Is this a known issue of any sort?
 
-DQqppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppQ0KoaGhoaGhoaGhoaGhoaGh7qHuoe6439CnxcWy+tPr
-zu/Bz7/Y1sa8vMfJLVBNQ7jfvLbR0NDesOCh7qHuoe4NCg0KICAgICAgICAgoaGhoaGhoaGhoaGh
-oaHJ7tvaoaLJz7qjtv612L7Z0NANCqmlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlDQqhoaGhoaGhoaGh
-oaGhoaGhyrEgvOSjujJPTzbE6jEy1MIyLTPI1SAgye4g29q98MjaxeDRtdbQ0MQNCqGhoaGhoaGh
-oaGhoaGhoaHKsSC85KO6Mk9PNsTqMTLUwjktMTDI1SAgyc8guqPV17Cyvsa16g0KqaWppamlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppaml
-qaWppamlqaWppamlqaUNCqG+1vcgICAgsOyhv9K8wr2wxsXg0bXN+CAgICB3d3cucGVpeHVuMTY4
-LmNvbQ0Kob630SAgICDTw6G/Mk9PT9SqL8jLKLD8uqzVbrPM18rBz6GizueyzaGiyc/Pws7nsui1
-47XIKQ0Kob6yzrzTttTP86G/yfqy+tfcvq3A7aGiyfqy+rK/w8W+rcDt1ve53KGisODX6bOkoaK8
-vMr11LG1yA0Kob7K2tVut73KvaG/t9bX6dHQzNahotHdwbe8sMzWwtuhorC4wP231s72y7XD96Gi
-0uK8+727wfehoteozOLPsNf3DQqhvrLOu+HXydGvob8NClRlbDooTzc1NSk4IDYgMSA1IDQgMSA5
-IDMgICAgIDggNiAxIDUgNCAxIDkgNCAgICDA7iDQoSC94yAgICAg0e4gz8ggyfoNCkZheDooTzc1
-NSk4IDYgMSA1IDQgMSA5IDUNCqmlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppaml
-qaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlDQqh79VuqaWppbPMqaWp
-pbGzqaWppb6wDQqhoaGhw+bB2bbgseS1xMirx/K7r9aqyra+rbzDu7e+s6OsxvPStczl1sq1xMe/
-u6+8sNK1vKjP8snPs8nOqsbz0rXTqtTLtcS1sc7x1q68saGjDQrU2rbMvbvG2qGiuN/Gt9bKoaK1
-zbPJsb61xL661fnRucGmz8KjrMjnus7T0NCn1MvTw8jLwaahos7vwaa8sLLGwaa1yNfK1LTS1Mfz
-0rW8qA0KtcTNu8bGysfG89K1tbHHsNfuudi8/LXE1W7M4qOstvjG89K1yfqy+rncwO3T67/Y1sa3
-vcq9ysfWsb3T07DP7NbG1OzStbL6z/q3otW5tcQNCtbY0qq77ravoaPTyMbkyseyydPDtuDW1snZ
-wb+1xMn6svq3vcq9o6zJ+rL6vMa7rrXEudzA7dPrv9jWxr7NuPy809bBudjW2NKqoaMNCqmlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppaml
-qaWppamlqaWppamlqaWppamlDQqh79VuqaWppbPMqaWppcrVqaWppdLmDQqxvtVus8y74bDv1vrE
-+qO6DQoxoaK9qMGi1sa2qM3qyca1xMn6svrT67/Y1sbUy9f3zOXPtaOhDQoyoaLUpLLivLDWxrao
-us/A7bXEyfqy+rzGu66jrM6qtO+zybmry77J+rL6xL+x6rTyz8K7+bSho6ENCjOhoszhyf3XvMqx
-vbu79cTcwaahotPQ0Ke9tbXNv+K05rPJsb6joQ0KNKGiy/W2zMn6svrW3MbaLMzhuN/G89K1vrrV
-+cGmo6ENCjWhosXkus/J+rL6vMa7rtf2tb3BvLrDzu/Bz8vwusS/2NbGus2xuMHPo6ENCjahor6h
-1+6087/JxNy89cnZxvPStb/itOYNCqmlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlDQqh79VuqaWppbPM
-qaWppbTzqaWppbjZDQq12tK7sr+33aO6yOe6zreiu9PJ+rL6vMa7rtPrzu/Bz7/Y1sbU2rmp06ah
-osn6svqhos/6ytvSu8zlu6/W0LXEusvQxNf308MoTy41aCkNCjGhotbG1OzStb6t06q24LHktcTK
-0LOh0OjH87bUyfqy+tPrzu/B97/Y1sajqFBNQ6OptcTQwtKqx/MNCjKhosixt6bQrbX30NS6zc+1
-zbPTxbuvtcRQTUPX6davvNy5udPr1MvX97j4xvPStbmp06Yvyfqy+i+05rv1us3P+srbtPjAtNbW
-1tbOysziDQozoaLI57rOvajBosrK06bK0LOh0OjH87Hku6+1xKGi0K2199DUx7+1xFBNQ9fp1q/T
-69TL1/e7+tbGoaMNCjSholBNQ9Prz/rK26Giyfqy+qGissm5uqGixrfWyqGiuaSzzLXIz+C52LK/
-w8W1xMXkus/Qrdf3DQq12rb+sr+33aO6yOe6ztPQ0Ke9+NDQyfqy+rzGu67T67/Y1sYoNi41aCkN
-CtK7oaLI57rO1/a6w9b3xcWzzMn6svq8xruuDQoxoaKyu82ssvrP+tDNzKzPwrXEyfqy+rzGu663
-vcq9udi8/A0KMqGitOa79cq9vMa7rsn6svq1xKG41vfFxbPMobnEo8q90+vWtNDQvLzHyQ0KM6Gi
-tqm1pcq9yfqy+rXEobjW98XFs8yhucSjyr3T69a00NC8vMfJDQq2/qGiyOe6ztf2usPPuMXFs8zJ
-+rL6vMa7rg0KMaGiz7jFxbPMtcS5psTc0OjH87fWzvYNCjKhosjnus6x3MPixcWzzNf30rW1xM/d
-2uUNCjOhosjnus7X9rrDsvrE3Li6usm31s72tcS53MDtwfezzNPrvNy5uQ0KNKGisvrE3Li6usm3
-1s72tcTUy9PDyrG7+tPryfqy+rzGu67WxraovLzHyQ0KyP2hosjnus7X9rrDyfqy+tf30rXXvLG4
-DQoxoaLJ+rL61/fStde8sbi1xNa00NDSqsHsDQoyoaLI57rO1MvTw8ixwc+31s72yrm8xruuzbay
-+rj8vt+/ydDQ0NQNCjOhosXJuaTX99K1tcSzzNDy0+vSqsHsDQrLxKGiyOe6ztf2usPJ+rL6vfi2
-yL/Y1sYNCjGhosjnus7X9rrDv+eyv8PFyfqy+r34tsi/2NbGwfezzNPrsr3W6A0KMqGiyOe6ztf2
-usPKwsewvMa7rtPrvvay3y/KwtbQuPrX2dPrv9jWxg0KM6GiyOe6zrvxyKHV/ci3vLDKsbXE1saz
-zNDFz6INCjShosbz0rWzo7z7tcTJ+rL60uyzo7XE1K3S8rfWzvbT673ivvbSqsHsDQo1oaLJ+rL6
-vfi2yMLkuvOwy7TzuMTJxrTryqkNCs7loaLJ+rL6vMa7rr/Y1sa1xMzYyuLOyszi0+u94r72t72w
-uA0KMaGisuW1paGivNO1pbL6wb+55ruu0+vTprHkt723qA0KMqGivfS8sbaptaW3wLe2tKbA7dPr
-06a21Ly8x8kNCsH5oaLJ+rL6vMa7rtPryfqy+r/Y1sa8qNCnudzA7Q0KMaGiyOe6ztbGtqjJ+rL6
-v9jWxryo0Ke/vLrLz+7Ev9PrserXvA0KMqGiyOe6zte8yLfK1byv0+vT0NCnwPvTw7+8usvK/b7d
-DQozoaK8qNCnsrvA7c/rtcTUrdLy0+u21LLft9bO9g0Kxt+hosurz/K9u8H3O7Li0em8sML60uK2
-yM7Kvu2197LpyrG85A0KtdrI/bK/t92jute8yrG7r8n6svqjqEpJVKOpLcn6svq8xruu0+vU2tbG
-xre6zc7vwc+1xNPQ0Ke/2NbGKDEuNWgpDQrSu6GiSklUyfqy+re9yr3PwrXEyfqy+rzGu67T687v
-wc+/2NbGDQoxoaLNxr34yr2/2NbGz7XNs9PrwK22r8q9v9jWxs+1zbPH+LHw0+vTptPDDQoyoaLX
-vMqxu6/J+rL6t73KvShKSVQp1MvTw7XEtsDM2NautKYNCjOhosjnus7NuLn917zKsbuvyfqy+rv6
-1sa94r72tqm1pca1t7Gx5Lj8DQo0oaLI57rOzbi5/bmks8y8vMr1o6hQRS9JRaOpyta3qLTv1sLJ
-+rL6yOHQ1LuvDQq2/qGiv7Sw5bncwO3U2kpJVMn6svrT68Cttq+5qbv11tC1xNOm08MNCjGhosjn
-us7Uy9PDv7Sw5bncwO3ArbavuanTpsnMSklUuam79Q0KMqGiyOe6ztTL08O/tLDludzA7cCttq/O
-78HPsta/4sXky80NCjOhosjnus69+NDQuPe5pNDyvOS1xNTa1sbGt8Cttq8NCrXay8Syv7fWyOe6
-ztPQ0KfWtNDQzu/Bz7zGu66horj6vfihorncwO3T67/itObBv7/Y1sYoNS41aCkNCtK7oaKy+s/6
-vq3Tqru3vdrW0LXEzu/Bz7ncwO3Oyszi0+vTptPQu/rE3A0KMaGi1sbU7Lmks6ezo7z7tcTO78HP
-udzA7cCnyMXOyszioaLTsM/s0+u94r72t723qA0KMqGiyrmy+s/6y7OzqbXEzu/Bz7ncwO21xNKq
-vvehqjVSt6jU8i8zsru3qNTyLzO2qLeo1PINCjOhosjnus7Kub34wc/T0NCnxeS6z8n6svq8xruu
-DQo0oaLI57rOzOG437LWtKLBz9XKudzA7bXE1f3It9PQ0KfCyg0KNaGisbjBz7ncwO3T68Hst6LB
-z7PM0PK1xNKqwezT67y8x8kNCrb+oaLI57rO1/a6w8Xkus+y+s/6tcTO78HP0OjH87zGu66jqE1S
-UKOpDQoxoaJNUlDTw8HP0OjH87nmu661xNa00NCzzNDyoaLB97PM0+u52Lz80qrB7LfWzvYNCjKh
-osjnus7T0NCnvMa7rrOjsbjQ1M7vwc/T69eo08PQ1M7vwc8NCjOhosjnus6zybmmyrXKqU1SUM+1
-zbM/DQo0oaLP1rT6xvPStU1SUKGiTVJQSUmhokVSUMq1yqm1xLe9yr2hotXPsK28sL3ivva3vbC4
-DQrI/aGiyOe6ztPQ0KfWtNDQv+K05r/Y1sYNCjGhor/itOa53MDttcS7+bG+xKPKvbywxuTTxcix
-teO31s72DQoyoaK05sG/v9jWxrXE1ti147fWzvajurCyyKu05sG/VlPX7rjftObBv1ZT1+61zbTm
-wb8NCjOhokUuTy5RKL6tvMO2qbm6wb8ptcTMvb6/t9bO9g0KNKGivNO/7LTmu/XW3NeqwsqhorTm
-u/W13bz1wsq6zczhuN+/4rTmwPvTw8LKtcTT0NCnt723qA0KNaGisrvNrNDox/PM2NX3tcTO78HP
-vfi79cX6wb+1xL/Y1sa3vbeoLUpUVL/Y1sa3vbeoL0VPUb/Y1sa3vbeoL0xPVL/Y1sa3vbeoDQo2
-oaK/4rTmv9jWxre9t6ijqEFCQ7/Y1sahoraowb+/2NbGoaK2qMbav9jWxqGisLLIq7/itOa/2NbG
-oaK9+L/azu/Bz7/itOa/2NbGo6kNCjehor21tc2/4rTmtcTT0NCnzb6+trfWzvYNCjwxPsjnus7T
-0NCnvajBormp06bJzL/itOa8xMrb1sY/DQo8Mj7I57rO09DQp8q1yqm/4rTmobDM5c3i0a27t6Gx
-DQo8Mz7I57rO09DQp7nmu665qdOmyczPtc2zuam79Q0KPDQ+yOe6ztPQ0KfKtcqpyKvH8rLJubrT
-67mp06bJzLyvs8kNCjw1Psjnus7T0NCn1rTQ0LLJubrT687vwffN4rD8DQo4oaK/4rTmxcy149Pr
-06+/96Giy/C6xLXEtKbA7by8x8kNCsvEoaK09MHPtcTQzrPJ0+u3wLe2vLzHyQ0KMaGitPTBz9DO
-s8m1xNSt0vK31s72DQoyoaLI57rOzai5/b/nsr/DxbXEss7T66Ost8DWubrN09DQp7SmwO209MHP
-DQrO5aGiyOe6zra9tNnO78HPtb3Ouy2y1rSiudzA7dPFu6/T68Xky8253MDtDQoxoaLS1M7vwffU
-y9f3zqq6y9DEtcSy1rSi0rXO8cH3s8y8sMbk08W7rw0KM6Gista0otPrUE1D0rXO8dCttfe8sMbk
-0MXPosH308W7rw0KNKGiyOe6zr2owaLT61BNQ8/g0K2197XExeTLzczlz7UNCjWhok1SUNPrSklU
-v7Sw5bncwO3P4L3hus+1xM7vwc/F5MvN1MvX97y8x8kNCjwxPqGi07DP7M7vwc+5qdOmsru8zLXE
-t9bO9g0KPDI+oaLO78HPtszIsbXE1K3S8ryw1KS3wLbUst8NCjwzPqGizu/Bz734tsi2vbTZtcS8
-vMfJDQrB+aGiuanTpsnMzu/Bz727xtrT69bKwb+53MDtKFZRTSkNCjGhormpu/XJzL27xtq53NbG
-1q61wA0KMqGiuMTJxrmpu/XJzM7vwc/Gt9bKtcS53MDtvLzHyQ0KM6Giuam79cnMzu/Bz8a31sq5
-3NbGyrXKqcrWt6gNCjShormp06bJzL/Y1sa1xLnYvPzSqsvY0+u8vMfJDQo1oaLI57rOvajBotPr
-09DQp8q1yqm5qdOmyczGwLz4zOXPtQ0Kxt+hos7vwc+53MDtvKjQp8bAucC3vbeo0+u8vMfJDQox
-oaK/4rTm1tzXqsLKtcS31s720+vGwLnADQoyoaK/4rTm1tzXqsbavOS1xLfWzvbT68bAucANCjOh
-os7vwc/P97z1wsq1xLfWzvbT68bAucANCjShos7vwc+/4rTmvfC27rXEscjCyrfWzvbT68bAucAN
-CjWhorT0t8/Bz73wtu61xLHIwsq31s720+vGwLnADQo2oaK09LfPwc+0psDtvKjQp7XEt9bO9tPr
-xsC5wA0KN6Gizu/Bz7v1weS31rK8tcS31s720+vGwLnADQqwy6Giy6vP8r27wfcssuLR6SzC+tLi
-tsjOyr7ttfey6cqxvOQNCqmlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlDQqh772yqaWppcqmqaWppbzy
-qaWppb3pDQogICAgzNXPyMn6KMyozeW8rikszKjN5be2sb6hosyozeXGt9bK0ae74cDtysIv18rJ
-7r2yyqahorfhzO/KvbncwO3R0L6/0KHX6ShUUFMp0dC+v9SxLA0KVFFN0KHX6dHQvr/UsaOsRy9Q
-0KHX6dHQvr/UsaGizKjN5bmk0rXX3LvhvbLKpqGiQVQmVMyozeXH+NCtwaazp8nMT1RE0dDPsLvh
-yKuzzL2yyqahotbQDQrUrbTz0ae5pNK1uaSzzNHQvr/L+bywuui6o6OouLvKv7+1o6k2U2lnbWG5
-3MDtsbiwuNfKye65y87KyqahosyozeW5q7myuaSzzM6v1LG74ca31srRpw0Ku+GxuLC4us+48b2y
-yqahosyozeXGt9bK0ae74ca3udy5pLPMyqYoQ1FFKSy/yb+/tsi5pLPMyqYoQ1JFKdeo0rXRtcG3
-vLC8+Laous+48aGj1vez1g0KobC4o8zYoaK/y8Czy7nA1aGizajTw7XIyP2088b7s7W5q8u+vLC7
-9bO11sbU7NK1tcRRUzlPT0+8sFFTQcyozeXK17DmvcyyxLHg0uuhsaGixre53MimDQooUUNDKbW8
-yOu8sMjVsb7XodPRvK/NxVFDU3Rvcnm3orHtu+Gx4NLroaLRx9beyfqy+sGm1tDQxCzP47jbyKvD
-5sa31sq53MDtKFRRTSnR0MzWu+HMqA0KzeW12Mf4tPqx7aGioaMNCiAgICDA+sjOo7rGt9bK0ae7
-4UlTTzlPT08sSVNPL1RTMTY5NDmholRQU7ywVFFNuKi1vNfKye65y87Kyqa8sNb3s9bIy6Osw8DJ
-zFJDQaOuR0Wjrg0KSEFSUklT1sbU7KGizqy7pKGixre53KGixrexo6GisuLK1KGiyrXR6crS1vfI
-zqGivq3A7bmyyq6wy8TqLLD8wKhGRU1Bz+7Ev8rsz6RNSUwtU1RELTk4NThBDQq8sEFUJlS5qbv1
-ycy53MDto6y+39PQt+G4u7XEyrXO8b6t0emho7T6se3Gt9bK0ae74biotbyzpMjZur2/1SjMqM3l
-1+6087q9v9W5q8u+KUlTTzlPTzS3/g0KzvHStSzI2bvxQlZRScHjyLG147PJvKjR6daktcfCvKGj
-DQogICAg16izpKO6NlNpbWdhudzA7c+1zbOju0dCJkJCxeDRtbywuKi1vKO7yKvD5sa31sq+rdOq
-udzA7aOoVFFNo6nPtc2zxeDRtbywuKi1vKO7VFdJvLBNVFANCrXIuaSzp8a31sq53MDtus/A7buv
-vLCz1tD4uMTJxsXg0bW8sLiotbyju1NQQ6O7RE9Fo7tGTUVBvLBNU0HF4NG1vLC4qLW8OzVTvLBR
-Q0O77ravtcjGt9bKudwNCsDtwezT8tauxeDRtbywuKi1vKO7xrfWyrPJsb653MDtoaLJ+rL6udzA
-7bywudzWxqOovqvS5sn6svqjqaGista0orywzu/Bz7ncwO2hoklFxt+088rWt6i8sL21DQq1zbPJ
-sb6hoszhuN/Qp8LK1q7G89K1vrrV+cGmyf28tsXg0bXT67iotbyhow0K18nRr7iotbzW99KqtPqx
-7dDUs6fJzDrMqM3l1srBv9Gnu+GhosyozeXMx9K1uavLvqGizKjN5b7Gs6ehorOkyNm6vb/VoaLW
-0NSttPPRp6Gitqu+2yjMqM3l1sINCsnsKaGiw8DJzLCuw8C076Gi06LWvqGiuLvP4ChMQ0QpoaK/
-xrXDoaK6o9LmoaK/pbTvo6i426OpoaK7qsTP06HLoqGi0tW7qtOhy6Khorrju9TTocuioaLQx8ba
-DQrB+dCs0rWhosvV1t3C3sDxoaLO3s79x7/Dr6GizKm1wrXGys6hotPAvKq+q8Pcwt3Lv6GiueKx
-pryvzcWju7vdx8fL3MHPzuW98KGitqu6o8uu1+Whos6w0te076GiDQrRxffroaLB1reioaLMqcLr
-oaLLs9DLoaKz59LmoaK2q9LmoaLW2dX9oaKx2MOzoaK089bavMbL47v6vLC548nPoaK547SooaLJ
-+bGmoaLWx7GmoaLQwrGmoaLQwA0Kv60oQVQmVLmpu/XJzCmhor3wsaahorvdxtWhoruqwqHOorXn
-19OhosD7xuahosyotO+horrouqO8sLi7yr+/taGi1f3Qy7vuyPuhotSyweq8sMT+sqixo8uwx/ij
-uw0Kyc+6o8rQs6TE/sf41srBv7y8yvW84La9vtahos73wu3AtM730ce+3rfhxvPStaGix+zW3rXn
-19OhosHsz8i158DCtcjK/bDZvNKhow0KqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWp
-pamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaWppamlqaUNCg==
+Yep.  It should be fixed in 2.6.18 and recent 2.6.17.x releases.
+You can work-around by exporting with no_subtree_check (which is a
+good idea anyway and will be the default one day soon).
 
-
-
-
---===============0214826335==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys -- and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0214826335==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0214826335==--
