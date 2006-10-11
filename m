@@ -1,7 +1,7 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 0/8] knfsd: repcache renovation
-Date: Wed, 11 Oct 2006 21:24:22 +1000
-Message-ID: <1160565862.8530.5.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 1/8] knfsd: repcache: minor cleanups
+Date: Wed, 11 Oct 2006 21:25:18 +1000
+Message-ID: <1160565918.8530.7.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -9,11 +9,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GXcCM-000185-3E
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:24:30 -0700
+	id 1GXcDG-0001Dd-3e
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:25:26 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcCL-0006T0-Rz
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:24:31 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcDF-0006hc-Rg
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:25:27 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,41 +27,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-G'day,
+knfsd: Minor whitespace, formatting and comment changes to
+the duplicate request cache.
 
-This patch set renovates the knfsd duplicate request reply
-cache aka the repcache, primarily aimed at scalability to
-large workloads.  Substantially identical patches to these
-have been shipping for some months as part of SGI's NAS
-Server Bundle.
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+---
 
-1 minor cleanups
-    Minor whitespace, formatting and comment changes.
-2 make REQHASH a function
-    Make the REQHASH() macro an inline function and tweak
-    it to handle observed client xid behaviour.
-3 inline hash_refile
-    Explicitly inline hash_refile(), it's only used in one place.
-4 split hash index
-    Split the repcache hash into multiple buckets on SMP platforms,
-    to avoid lock contention and bouncing cachelines.
-5 dynamically expand under load
-    Allow the repcache to expand on demand, when too young an
-    entry falls off the end of an LRU chain.
-6 use client IP address in hash
-    Use the client's IP address in the repcache hash function, to
-    avoid contention on computer cluster workloads.
-7 faster hash chain probe
-    Squeeze some small performance improvements out of the repcache's
-    lookup function by speeding comparisons during hash chain probing.
-8 add statistics
-    Add more statistics to the repcache, and reduce contention
-    by keeping stats per-bucket and aggregating them on demand.
+ fs/nfsd/nfscache.c         |   15 +++++++--------
+ include/linux/nfsd/cache.h |    3 +--
+ 2 files changed, 8 insertions(+), 10 deletions(-)
 
-P.S. AFAIK this is the repcache work referred to in Olaf Kirch's
-talk at OLS this year.
+Index: linux-git-20061009/fs/nfsd/nfscache.c
+===================================================================
+--- linux-git-20061009.orig/fs/nfsd/nfscache.c	2006-10-10 15:50:40.446797369 +1000
++++ linux-git-20061009/fs/nfsd/nfscache.c	2006-10-10 16:36:15.534951195 +1000
+@@ -37,7 +37,7 @@ static int			cache_disabled = 1;
+ 
+ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+ 
+-/* 
++/*
+  * locking for the reply cache:
+  * A cache entry is "single use" if c_state == RC_INPROG
+  * Otherwise, it when accessing _prev or _next, the lock must be held.
+@@ -52,9 +52,10 @@ nfsd_cache_init(void)
+ 
+ 	INIT_LIST_HEAD(&lru_head);
+ 	i = CACHESIZE;
+-	while(i) {
++	while (i) {
+ 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
+-		if (!rp) break;
++		if (!rp)
++			break;
+ 		list_add(&rp->c_lru, &lru_head);
+ 		rp->c_state = RC_UNUSED;
+ 		rp->c_type = RC_NOCACHE;
+@@ -132,7 +133,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 				vers = rqstp->rq_vers,
+ 				proc = rqstp->rq_proc;
+ 	unsigned long		age;
+-	int rtn;
++	int			rtn;
++	int			safe = 0;
+ 
+ 	rqstp->rq_cacherep = NULL;
+ 	if (cache_disabled || type == RC_NOCACHE) {
+@@ -157,8 +159,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 	nfsdstats.rcmisses++;
+ 
+ 	/* This loop shouldn't take more than a few iterations normally */
+-	{
+-	int	safe = 0;
+ 	list_for_each_entry(rp, &lru_head, c_lru) {
+ 		if (rp->c_state != RC_INPROG)
+ 			break;
+@@ -168,7 +168,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 			goto out;
+ 		}
+ 	}
+-	}
+ 
+ 	/* This should not happen */
+ 	if (rp == NULL) {
+@@ -269,7 +268,7 @@ nfsd_cache_update(struct svc_rqst *rqstp
+ 
+ 	len = resv->iov_len - ((char*)statp - (char*)resv->iov_base);
+ 	len >>= 2;
+-	
++
+ 	/* Don't cache excessive amounts of data and XDR failures */
+ 	if (!statp || len > (256 >> 2)) {
+ 		rp->c_state = RC_UNUSED;
+Index: linux-git-20061009/include/linux/nfsd/cache.h
+===================================================================
+--- linux-git-20061009.orig/include/linux/nfsd/cache.h	2006-10-10 15:50:40.470794276 +1000
++++ linux-git-20061009/include/linux/nfsd/cache.h	2006-10-10 16:35:26.737238900 +1000
+@@ -15,8 +15,7 @@
+ #include <linux/uio.h>
+ 
+ /*
+- * Representation of a reply cache entry. The first two members *must*
+- * be hash_next and hash_prev.
++ * Representation of a reply cache entry.
+  */
+ struct svc_cacherep {
+ 	struct hlist_node	c_hash;
 
-Greg.
+
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 I don't speak for SGI.
