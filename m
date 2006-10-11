@@ -1,25 +1,20 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Crash in dec_zone_page_state when nfs_page req is freed
-Date: Mon, 09 Oct 2006 16:25:10 -0400
-Message-ID: <1160425510.5466.44.camel@lade.trondhjem.org>
-References: <1158623736.3376.8.camel@dyn9047022153>
-	<1158636275.5896.14.camel@lade.trondhjem.org>
-	<1160418641.3376.103.camel@dyn9047022153>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: [PATCH 0/8] knfsd: repcache renovation
+Date: Wed, 11 Oct 2006 21:24:22 +1000
+Message-ID: <1160565862.8530.5.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-pSLXWL/IGEhd5+1YSlak"
-Cc: NFS List <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GX1gp-0005Ku-Re
-	for nfs@lists.sourceforge.net; Mon, 09 Oct 2006 13:25:31 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GX1gq-0006tn-Et
-	for nfs@lists.sourceforge.net; Mon, 09 Oct 2006 13:25:32 -0700
-To: Frank Filz <ffilzlnx@us.ibm.com>
-In-Reply-To: <1160418641.3376.103.camel@dyn9047022153>
+	id 1GXcCM-000185-3E
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:24:30 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcCL-0006T0-Rz
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:24:31 -0700
+To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,92 +27,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+G'day,
 
---=-pSLXWL/IGEhd5+1YSlak
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+This patch set renovates the knfsd duplicate request reply
+cache aka the repcache, primarily aimed at scalability to
+large workloads.  Substantially identical patches to these
+have been shipping for some months as part of SGI's NAS
+Server Bundle.
 
-On Mon, 2006-10-09 at 11:30 -0700, Frank Filz wrote:
-> I've had a chance to do some testing of this. It turns out that
-> nfs_inode_remove_request() will set wb_page to NULL, so it looks like
-> the call to dec_zone_page_state needs to be moved up before
-> nfs_inode_remove_request(). I'm testing that right now, but I start to
-> wonder exactly what the dec_zone_page_state is doing in this case, I
-> know that was a recent addition.
+1 minor cleanups
+    Minor whitespace, formatting and comment changes.
+2 make REQHASH a function
+    Make the REQHASH() macro an inline function and tweak
+    it to handle observed client xid behaviour.
+3 inline hash_refile
+    Explicitly inline hash_refile(), it's only used in one place.
+4 split hash index
+    Split the repcache hash into multiple buckets on SMP platforms,
+    to avoid lock contention and bouncing cachelines.
+5 dynamically expand under load
+    Allow the repcache to expand on demand, when too young an
+    entry falls off the end of an LRU chain.
+6 use client IP address in hash
+    Use the client's IP address in the repcache hash function, to
+    avoid contention on computer cluster workloads.
+7 faster hash chain probe
+    Squeeze some small performance improvements out of the repcache's
+    lookup function by speeding comparisons during hash chain probing.
+8 add statistics
+    Add more statistics to the repcache, and reduce contention
+    by keeping stats per-bucket and aggregating them on demand.
 
-Yup, that makes sense. Furthermore, it looks like the call to
-nfs_clear_page_writeback is redundant, since nfs_inode_remove_request
-will cause the tags to be implicitly cleared.
+P.S. AFAIK this is the repcache work referred to in Olaf Kirch's
+talk at OLS this year.
 
-How does the attached patch work for you?
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
-Cheers,
-  Trond
 
---=-pSLXWL/IGEhd5+1YSlak
-Content-Disposition: inline;
-	filename=linux-2.6.19-002-fix_nfs_cancel_commit_list.dif
-Content-Type: message/rfc822;
-	name=linux-2.6.19-002-fix_nfs_cancel_commit_list.dif
-
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Mon, 9 Oct 2006 16:18:19 -0400
-Subject: NFS: Fix oops in nfs_cancel_commit_list
-Message-Id: <1160425510.5466.45.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-
-Fix two bugs:
- - nfs_inode_remove_request will call nfs_clear_request, so we cannot
-   reference req->wb_page after it. Move the call to dec_zone_page_state so
-   that it occurs while req->wb_page is still valid.
- - Calling nfs_clear_page_writeback is unnecessary since the radix tree
-   tags will have been cleared by the call to nfs_inode_remove_request.
-   Replace with a simple call to nfs_unlock_request.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/write.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f6675d2..d80fa8c 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -588,10 +588,10 @@ static void nfs_cancel_commit_list(struc
- 
- 	while(!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
-+		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 		nfs_list_remove_request(req);
- 		nfs_inode_remove_request(req);
--		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--		nfs_clear_page_writeback(req);
-+		nfs_unlock_request(req);
- 	}
- }
- 
-
---=-pSLXWL/IGEhd5+1YSlak
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys -- and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---=-pSLXWL/IGEhd5+1YSlak
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---=-pSLXWL/IGEhd5+1YSlak--
