@@ -1,7 +1,7 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 6/8] knfsd: repcache: use client IP address in hash
-Date: Wed, 11 Oct 2006 21:28:50 +1000
-Message-ID: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 7/8] knfsd: repcache: faster hash chain probe
+Date: Wed, 11 Oct 2006 21:29:38 +1000
+Message-ID: <1160566178.8530.19.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -9,11 +9,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GXcGd-0001Wa-6J
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:28:55 -0700
+	id 1GXcHP-0001cN-Eu
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:29:43 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcGd-0007TA-V5
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:28:56 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcHQ-0007eP-76
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:29:44 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,60 +27,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Use the client's IP address in the duplicate request cache
-hash function, instead of just the XID.  This avoids contention
-on hash buckets when the workload has many clients whose XIDs are
-nearly in lockstep, a property seen on compute clusters using NFS
-for shared storage.
+knfsd: Squeeze some small performance improvements out of the duplicate
+request cache's lookup function by reducing the number of instructions
+to compare each entry during hash chain probing.
+
+Comparisons such as the RPC protocol number and version which are going
+to be the same for almost all entries are now done last.  Comparisons
+such as xid and client IP address which are more likely to differ
+between entries are done first.  The client IP address comparison
+is fixed not to compare 8 bytes of zeroes and to do comparisons as
+32b quantities.  Finally, a 32b addition for the timestamp is removed
+from the loop by taking advantage of a loop invariant.
+
+On a 4 cpu Altix A350, running at circa 80,000 nonidempotent calls
+per second, this change reduced CPU usage in nfsd_cache_lookup()
+from 28.1% to 27.1% (out of 400%).
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- fs/nfsd/nfscache.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ fs/nfsd/nfscache.c |   25 ++++++++++++++++++++++---
+ 1 files changed, 22 insertions(+), 3 deletions(-)
 
 Index: linux-git-20061009/fs/nfsd/nfscache.c
 ===================================================================
---- linux-git-20061009.orig/fs/nfsd/nfscache.c	2006-10-10 16:41:07.121363949 +1000
-+++ linux-git-20061009/fs/nfsd/nfscache.c	2006-10-10 16:41:49.107949488 +1000
-@@ -93,13 +93,18 @@ static int			cache_disabled = 1;
-  * Calculate the hash index from an XID.  Note, some clients increment
-  * their XIDs in host order, which can result in all the variation being
-  * in the top bits we see here.  So we fold those bits down.
-+ *
-+ * Experiment shows that using the Jenkins hash improves the spectral
-+ * properties of this hash, but the CPU cost of calculating it outweighs
-+ * the advantages.
-  */
- static inline u32
--request_hash(u32 xid)
-+request_hash(u32 xid, const struct sockaddr_in *sin)
- {
- 	u32 h = xid;
- 	h ^= (xid >> 24);
- 	h ^= ((xid & 0xff0000) >> 8);
-+	h ^= sin->sin_addr.s_addr;
+--- linux-git-20061009.orig/fs/nfsd/nfscache.c	2006-10-10 16:41:49.107949488 +1000
++++ linux-git-20061009/fs/nfsd/nfscache.c	2006-10-10 16:42:21.727742579 +1000
+@@ -108,6 +108,23 @@ request_hash(u32 xid, const struct socka
  	return h;
  }
  
-@@ -248,7 +253,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	int			safe = 0;
- 	int			expand = 0;
++
++/*
++ * Fast compare of two sockaddr_in's.  Ignore the zero padding at
++ * the end of a sockaddr_in; compares sin_family and sin_port in
++ * one comparison.  Returns 1 if identical, 0 otherwise.
++ *
++ * Alignment issues prevent us from comparing all the relevant
++ * fields in a single 64b comparison on 64b platforms: the most
++ * we can assume is that sin_addr is 32b-aligned.
++ */
++static inline int
++compare_sockaddr_in(const struct sockaddr_in *sina, const struct sockaddr_in *sinb)
++{
++	return ((*(u32 *)&sina->sin_family == *(u32 *)&sinb->sin_family) &&
++		(sina->sin_addr.s_addr == sinb->sin_addr.s_addr));
++}
++
+ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
  
--	h = request_hash(xid);
-+	h = request_hash(xid, &rqstp->rq_addr);
- 	b = bucket_for_hash(h);
- 	h = (h / CACHE_NUM_BUCKETS) & (HASHSIZE-1);
+ /*
+@@ -267,12 +284,14 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 	rtn = RC_DOIT;
  
-@@ -399,7 +404,7 @@ nfsd_cache_update(struct svc_rqst *rqstp
- 	if (!(rp = rqstp->rq_cacherep) || cache_disabled)
- 		return;
- 
--	b = bucket_for_hash(request_hash(rp->c_xid));
-+	b = bucket_for_hash(request_hash(rp->c_xid, &rp->c_addr));
- 
- 	len = resv->iov_len - ((char*)statp - (char*)resv->iov_base);
- 	len >>= 2;
+ 	rh = &b->hash[h];
++	age = jiffies - 120*HZ;
+ 	hlist_for_each_entry(rp, hn, rh, c_hash) {
+ 		if (rp->c_state != RC_UNUSED &&
+-		    xid == rp->c_xid && proc == rp->c_proc &&
++		    xid == rp->c_xid &&
++		    compare_sockaddr_in(&rqstp->rq_addr, &rp->c_addr) &&
++		    proc == rp->c_proc &&
+ 		    proto == rp->c_prot && vers == rp->c_vers &&
+-		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
+-		    memcmp((char*)&rqstp->rq_addr, (char*)&rp->c_addr, sizeof(rp->c_addr))==0) {
++		    time_after(rp->c_timestamp, age)) {
+ 			nfsdstats.rchits++;
+ 			goto found_entry;
+ 		}
 
 Greg.
 -- 
