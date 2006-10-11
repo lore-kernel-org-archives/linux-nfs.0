@@ -1,19 +1,19 @@
 From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: [PATCH 4/8] knfsd: repcache: split hash index
-Date: Wed, 11 Oct 2006 21:27:24 +1000
-Message-ID: <1160566044.8530.13.camel@hole.melbourne.sgi.com>
+Subject: [PATCH 5/8] knfsd: repcache: dynamically expand under load
+Date: Wed, 11 Oct 2006 21:28:08 +1000
+Message-ID: <1160566088.8530.15.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GXcFH-0001QG-37
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:27:31 -0700
+	id 1GXcFx-0001Vy-Pj
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:28:13 -0700
 Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcFH-0005TB-L3
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:27:32 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GXcFy-0007Mn-Df
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 04:28:14 -0700
 To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,340 +27,180 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-knfsd: Split the duplicate request cache hash into multiple buckets
-on SMP platforms, to avoid lock contention and bouncing cachelines.
+knfsd: The duplicate request cache has a static size whose value
+was chosen in the dim mists of history and is now far too small for
+the data structure to be useful.  So, allow it to expand on demand,
+when too young an entry falls off the end of an LRU chain.
 
-Each non-idempotent NFS call (such as WRITE calls) exercises the
-repcache twice: a lookup before the call is dispatched and an insert
-afterward.  On write-heavy workloads, the single repcache spinlock
-is a contention point.
+There is no way to tune the maximum size or minimum age parameters at
+runtime, nor has any provision been made for shrinking the repcache
+under memory pressure.  The maximum size observed, on a multi-CPU
+multi-NIC machine handling an extreme workload of about 80,000
+non-idempotent calls per second, has been only about 16MiB.
 
-On a 4 cpu Altix A350, running at circa 80,000 nonidempotent
-calls per second, this change reduced CPU usage in nfsd_cache_lookup()
-from 27.1% to 12.8% (out of 400%).
-
-The hash index itself is also split into multiple smaller allocations,
-one per bucket.  This allows the total effective size of the index to
-be larger than without running the risk of running into the kmalloc()
-size limit (an earlier version of this patch set resized the hash
-index and would run into that limit).
+An earlier version of this patch set contained code that also expanded
+the hash index under load, but testing shows that merely overallocating
+the initial hash index provides a good enough index for observed
+loads so the extra complexity was not considered worthwhile.
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 ---
 
- fs/nfsd/nfscache.c |  166 ++++++++++++++++++++++++++++++------------
- 1 files changed, 120 insertions(+), 46 deletions(-)
+ fs/nfsd/nfscache.c |   66 ++++++++++++++++++++++++++++++++++++++----
+ 1 files changed, 61 insertions(+), 5 deletions(-)
 
 Index: linux-git-20061009/fs/nfsd/nfscache.c
 ===================================================================
---- linux-git-20061009.orig/fs/nfsd/nfscache.c	2006-10-10 16:37:52.170497220 +1000
-+++ linux-git-20061009/fs/nfsd/nfscache.c	2006-10-10 16:39:12.624126466 +1000
-@@ -8,6 +8,9 @@
-  * it does things a bit differently.
+--- linux-git-20061009.orig/fs/nfsd/nfscache.c	2006-10-10 16:39:12.624126466 +1000
++++ linux-git-20061009/fs/nfsd/nfscache.c	2006-10-10 16:41:07.121363949 +1000
+@@ -9,7 +9,7 @@
   *
   * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
-+ *
-+ * SMP lock splitting by Greg Banks <gnb@melbourne.sgi.com>
-+ *     Copyright (c) 2005-2006 Silicon Graphics, Inc.
+  *
+- * SMP lock splitting by Greg Banks <gnb@melbourne.sgi.com>
++ * Dynamic expansion and SMP lock splitting by Greg Banks <gnb@melbourne.sgi.com>
+  *     Copyright (c) 2005-2006 Silicon Graphics, Inc.
   */
  
- #include <linux/kernel.h>
-@@ -28,10 +31,43 @@
+@@ -24,11 +24,21 @@
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ 
+-/* Size of reply cache. Common values are:
++/* Initial size of reply cache. Common values are:
+  * 4.3BSD:	128
+  * 4.4BSD:	256
+  * Solaris2:	1024
   * DEC Unix:	512-4096
++ *
++ * All these values reflect network packet rates and NFS loads common
++ * somewhen around 1990, and are utterly inadequate for modern NFS
++ * servers.  To be at all effective the reply cache needs to hold all
++ * NFS calls seen by the server for at least a client RPC timeout period
++ * (typically 1.1 seconds), and to handle weird IP routing issues should
++ * really hold 120 seconds of traffic.  A modern NFS server can be
++ * fielding upwards of 10,000 calls per second, which means the default
++ * cache size of 1024 holds about 102 milliseconds'  traffic, i.e. the
++ * default size is three orders of magnitude too small.
   */
  #define CACHESIZE		1024
--#define HASHSIZE		64
-+/* number of buckets used to manage LRU lists and cache locks (power of 2) */
-+#ifdef CONFIG_SMP
-+#define CACHE_NUM_BUCKETS	64
-+#else
-+#define CACHE_NUM_BUCKETS	1
-+#endif
-+/* largest possible number of entries in all LRU lists (power of 2) */
-+#define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
-+/* largest possible number of entries in LRU per bucket */
-+#define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
-+/* log2 of largest desired hash chain length */
-+#define MAX_CHAIN_ORDER		2
-+/* size of the per-bucket hash table */
-+#define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
-+
-+/*
-+ * locking for the reply cache:
-+ * A cache entry is "single use" if c_state == RC_INPROG
-+ * Otherwise, it when accessing _prev or _next, the lock for the
-+ * appropriate bucket must be held.
-+ *
-+ * On uniprocessor systems, we have a single global lock and LRU
-+ * list.  However on multiprocessor systems, to reduce contention
-+ * on that spinlock under heavy nonidempotent load (think chmod -R)
-+ * we use multiple buckets.  The lower few bits of the hash index
-+ * are used to index the buckets.
-+ */
-+struct svc_cache_bucket
-+{
-+	spinlock_t lock;
-+	struct list_head lru;
-+	unsigned int size;
-+	struct hlist_head *hash;
-+} ____cacheline_aligned_in_smp;
- 
--static struct hlist_head *	hash_list;
--static struct list_head 	lru_head;
-+static struct svc_cache_bucket	cache_buckets[CACHE_NUM_BUCKETS];
-+#define bucket_for_hash(hash)	(&cache_buckets[(hash) & (CACHE_NUM_BUCKETS-1)])
- static int			cache_disabled = 1;
+ /* number of buckets used to manage LRU lists and cache locks (power of 2) */
+@@ -41,10 +51,16 @@
+ #define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
+ /* largest possible number of entries in LRU per bucket */
+ #define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
++/* number of entries each bucket will expand by */
++#define CACHE_BUCKET_INCREMENT	(1024/CACHE_NUM_BUCKETS)
+ /* log2 of largest desired hash chain length */
+ #define MAX_CHAIN_ORDER		2
+ /* size of the per-bucket hash table */
+ #define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
++/* the cache attempts to expand if an entry younger than this is evicted */
++#define CACHE_THRESH_AGE	(11 * HZ / 10)  /* in jiffies */
++/* parameters for rate limiting cache expansion */
++#define CACHE_RATE_JIFFIES	(HZ/2)
  
  /*
-@@ -45,31 +81,30 @@ request_hash(u32 xid)
- 	u32 h = xid;
- 	h ^= (xid >> 24);
- 	h ^= ((xid & 0xff0000) >> 8);
--	return h & (HASHSIZE-1);
-+	return h;
- }
+  * locking for the reply cache:
+@@ -64,6 +80,9 @@ struct svc_cache_bucket
+ 	struct list_head lru;
+ 	unsigned int size;
+ 	struct hlist_head *hash;
++	/* parameters for expand rate limiting */
++	unsigned long last;
++	unsigned long nhits;
+ } ____cacheline_aligned_in_smp;
  
+ static struct svc_cache_bucket	cache_buckets[CACHE_NUM_BUCKETS];
+@@ -87,12 +106,12 @@ request_hash(u32 xid)
  static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
  
  /*
-- * locking for the reply cache:
-- * A cache entry is "single use" if c_state == RC_INPROG
-- * Otherwise, it when accessing _prev or _next, the lock must be held.
-+ * Initialise the reply cache data structures.
-+ * Called without cache_lock, uses it internally.  Returns
-+ * 0 on success, an error otherwise.
-  */
--static DEFINE_SPINLOCK(cache_lock);
--
--void
--nfsd_cache_init(void)
-+static void
-+nfsd_cache_bucket_init(struct svc_cache_bucket *b, unsigned int nrecs)
- {
- 	struct svc_cacherep	*rp;
--	int			i;
-+	unsigned int		i;
-+	LIST_HEAD(lru);
- 
--	INIT_LIST_HEAD(&lru_head);
--	i = CACHESIZE;
-+	/* allocate new entries without the lock, keep them on their own list */
-+	i = nrecs;
- 	while (i) {
- 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
- 		if (!rp)
- 			break;
--		list_add(&rp->c_lru, &lru_head);
-+		list_add(&rp->c_lru, &lru);
- 		rp->c_state = RC_UNUSED;
- 		rp->c_type = RC_NOCACHE;
- 		INIT_HLIST_NODE(&rp->c_hash);
-@@ -77,17 +112,41 @@ nfsd_cache_init(void)
- 	}
- 
- 	if (i)
--		printk (KERN_ERR "nfsd: cannot allocate all %d cache entries, only got %d\n",
--			CACHESIZE, CACHESIZE-i);
-+		printk (KERN_ERR "nfsd: cannot allocate all %u cache entries, only got %u\n",
-+			nrecs, nrecs-i);
- 
--	hash_list = kmalloc (HASHSIZE * sizeof(struct hlist_head), GFP_KERNEL);
--	if (!hash_list) {
--		nfsd_cache_shutdown();
--		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n",
--			HASHSIZE * sizeof(struct hlist_head));
--		return;
-+
-+	/* add the new entries */
-+	spin_lock(&b->lock);
-+
-+	b->size += (nrecs-i);
-+	list_splice(&lru, &b->lru);
-+
-+	spin_unlock(&b->lock);
-+}
-+
-+void
-+nfsd_cache_init(void)
-+{
-+	unsigned int bucket;
-+
-+	for (bucket = 0 ; bucket < CACHE_NUM_BUCKETS ; bucket++)
-+	{
-+		struct svc_cache_bucket *b = &cache_buckets[bucket];
-+
-+		INIT_LIST_HEAD(&b->lru);
-+		spin_lock_init(&b->lock);
-+		nfsd_cache_bucket_init(b, CACHESIZE/CACHE_NUM_BUCKETS);
-+
-+		b->hash = kmalloc (HASHSIZE * sizeof(struct hlist_head), GFP_KERNEL);
-+		if (!b->hash) {
-+			nfsd_cache_shutdown();
-+			printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash index\n",
-+				HASHSIZE * sizeof(struct hlist_head));
-+			return;
-+		}
-+		memset(b->hash, 0, HASHSIZE * sizeof(struct hlist_head));
- 	}
--	memset(hash_list, 0, HASHSIZE * sizeof(struct hlist_head));
- 
- 	cache_disabled = 0;
- }
-@@ -96,28 +155,34 @@ void
- nfsd_cache_shutdown(void)
- {
- 	struct svc_cacherep	*rp;
-+	unsigned int bucket;
- 
--	while (!list_empty(&lru_head)) {
--		rp = list_entry(lru_head.next, struct svc_cacherep, c_lru);
--		if (rp->c_state == RC_DONE && rp->c_type == RC_REPLBUFF)
--			kfree(rp->c_replvec.iov_base);
--		list_del(&rp->c_lru);
--		kfree(rp);
-+	for (bucket = 0 ; bucket < CACHE_NUM_BUCKETS ; bucket++)
-+	{
-+		struct svc_cache_bucket *b = &cache_buckets[bucket];
-+
-+		while (!list_empty(&b->lru)) {
-+			rp = list_entry(b->lru.next, struct svc_cacherep, c_lru);
-+			if (rp->c_state == RC_DONE && rp->c_type == RC_REPLBUFF)
-+				kfree(rp->c_replvec.iov_base);
-+			list_del(&rp->c_lru);
-+			kfree(rp);
-+		}
-+		kfree (b->hash);
-+		b->hash = NULL;
- 	}
- 
- 	cache_disabled = 1;
- 
--	kfree (hash_list);
--	hash_list = NULL;
- }
- 
- /*
-  * Move cache entry to end of LRU list
+- * Initialise the reply cache data structures.
++ * Expand (or initialise) the reply cache data structures.
+  * Called without cache_lock, uses it internally.  Returns
+  * 0 on success, an error otherwise.
   */
  static void
--lru_put_end(struct svc_cacherep *rp)
-+lru_put_end(struct svc_cache_bucket *b, struct svc_cacherep *rp)
+-nfsd_cache_bucket_init(struct svc_cache_bucket *b, unsigned int nrecs)
++nfsd_cache_bucket_expand(struct svc_cache_bucket *b, unsigned int nrecs)
  {
--	list_move_tail(&rp->c_lru, &lru_head);
-+	list_move_tail(&rp->c_lru, &b->lru);
+ 	struct svc_cacherep	*rp;
+ 	unsigned int		i;
+@@ -136,7 +155,7 @@ nfsd_cache_init(void)
+ 
+ 		INIT_LIST_HEAD(&b->lru);
+ 		spin_lock_init(&b->lock);
+-		nfsd_cache_bucket_init(b, CACHESIZE/CACHE_NUM_BUCKETS);
++		nfsd_cache_bucket_expand(b, CACHESIZE/CACHE_NUM_BUCKETS);
+ 
+ 		b->hash = kmalloc (HASHSIZE * sizeof(struct hlist_head), GFP_KERNEL);
+ 		if (!b->hash) {
+@@ -186,6 +205,28 @@ lru_put_end(struct svc_cache_bucket *b, 
  }
  
  /*
-@@ -135,20 +200,26 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 				proto =  rqstp->rq_prot,
- 				vers = rqstp->rq_vers,
- 				proc = rqstp->rq_proc;
-+	u32			h;
-+	struct svc_cache_bucket *b;
++ * Decide whether it is time to expand the cache.  Returns 1 iff
++ * the cache is to be expanded.  Called with bucket lock held.
++ */
++static int
++nfsd_cache_expand_ratelimit(struct svc_cache_bucket *b)
++{
++	unsigned long now = jiffies;
++
++	b->nhits++;
++	if (b->last == 0) {
++		b->last = now;
++	} else if ((now - b->last) > CACHE_RATE_JIFFIES &&
++		   b->nhits > (b->size >> 4)) {
++		b->nhits = 0;
++		b->last = now;
++		return 1;
++	}
++	return 0;
++}
++
++
++/*
+  * Try to find an entry matching the current call in the cache. When none
+  * is found, we grab the oldest unlocked entry off the LRU list.
+  * Note that no operation within the loop may sleep.
+@@ -205,6 +246,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
  	unsigned long		age;
  	int			rtn;
  	int			safe = 0;
++	int			expand = 0;
  
-+	h = request_hash(xid);
-+	b = bucket_for_hash(h);
-+	h = (h / CACHE_NUM_BUCKETS) & (HASHSIZE-1);
+ 	h = request_hash(xid);
+ 	b = bucket_for_hash(h);
+@@ -255,6 +297,18 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 		goto out;
+ 	}
+ 
++	if (rp->c_state != RC_UNUSED) {
++		/* reusing an existing cache entry */
++		age = jiffies - rp->c_timestamp;
++		if (age < CACHE_THRESH_AGE &&
++		    b->size < CACHE_BUCKET_MAX_SIZE &&
++		    nfsd_cache_expand_ratelimit(b)) {
++			expand = CACHE_BUCKET_INCREMENT;
++			if (b->size + expand > CACHE_BUCKET_MAX_SIZE)
++				expand = CACHE_BUCKET_MAX_SIZE - b->size;
++		}
++	}
 +
- 	rqstp->rq_cacherep = NULL;
- 	if (cache_disabled || type == RC_NOCACHE) {
- 		nfsdstats.rcnocache++;
- 		return RC_DOIT;
- 	}
- 
--	spin_lock(&cache_lock);
-+	spin_lock(&b->lock);
- 	rtn = RC_DOIT;
- 
--	rh = &hash_list[request_hash(xid)];
-+	rh = &b->hash[h];
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
- 		if (rp->c_state != RC_UNUSED &&
- 		    xid == rp->c_xid && proc == rp->c_proc &&
-@@ -162,10 +233,10 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	nfsdstats.rcmisses++;
- 
- 	/* This loop shouldn't take more than a few iterations normally */
--	list_for_each_entry(rp, &lru_head, c_lru) {
-+	list_for_each_entry(rp, &b->lru, c_lru) {
- 		if (rp->c_state != RC_INPROG)
- 			break;
--		if (safe++ > CACHESIZE) {
-+		if (safe++ > b->size) {
- 			printk("nfsd: loop in repcache LRU list\n");
- 			cache_disabled = 1;
- 			goto out;
-@@ -195,7 +266,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 
-  	/* Move the cache entry from one hash list to another */
- 	hlist_del_init(&rp->c_hash);
--	hlist_add_head(&rp->c_hash, hash_list + request_hash(rp->c_xid));
-+	hlist_add_head(&rp->c_hash, b->hash + h);
- 
- 	/* release any buffer */
- 	if (rp->c_type == RC_REPLBUFF) {
-@@ -204,14 +275,14 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	}
+ 	rqstp->rq_cacherep = rp;
+ 	rp->c_state = RC_INPROG;
+ 	rp->c_xid = xid;
+@@ -276,6 +330,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
  	rp->c_type = RC_NOCACHE;
   out:
--	spin_unlock(&cache_lock);
-+	spin_unlock(&b->lock);
+ 	spin_unlock(&b->lock);
++	if (expand)
++		nfsd_cache_bucket_expand(b, expand);
  	return rtn;
  
  found_entry:
- 	/* We found a matching entry which is either in progress or done. */
- 	age = jiffies - rp->c_timestamp;
- 	rp->c_timestamp = jiffies;
--	lru_put_end(rp);
-+	lru_put_end(b, rp);
- 
- 	rtn = RC_DROPIT;
- 	/* Request being processed or excessive rexmits */
-@@ -267,10 +338,13 @@ nfsd_cache_update(struct svc_rqst *rqstp
- 	struct svc_cacherep *rp;
- 	struct kvec	*resv = &rqstp->rq_res.head[0], *cachv;
- 	int		len;
-+	struct svc_cache_bucket *b;
- 
- 	if (!(rp = rqstp->rq_cacherep) || cache_disabled)
- 		return;
- 
-+	b = bucket_for_hash(request_hash(rp->c_xid));
-+
- 	len = resv->iov_len - ((char*)statp - (char*)resv->iov_base);
- 	len >>= 2;
- 
-@@ -290,22 +364,22 @@ nfsd_cache_update(struct svc_rqst *rqstp
- 		cachv = &rp->c_replvec;
- 		cachv->iov_base = kmalloc(len << 2, GFP_KERNEL);
- 		if (!cachv->iov_base) {
--			spin_lock(&cache_lock);
-+			spin_lock(&b->lock);
- 			rp->c_state = RC_UNUSED;
--			spin_unlock(&cache_lock);
-+			spin_unlock(&b->lock);
- 			return;
- 		}
- 		cachv->iov_len = len << 2;
- 		memcpy(cachv->iov_base, statp, len << 2);
- 		break;
- 	}
--	spin_lock(&cache_lock);
--	lru_put_end(rp);
-+	spin_lock(&b->lock);
-+	lru_put_end(b, rp);
- 	rp->c_secure = rqstp->rq_secure;
- 	rp->c_type = cachetype;
- 	rp->c_state = RC_DONE;
- 	rp->c_timestamp = jiffies;
--	spin_unlock(&cache_lock);
-+	spin_unlock(&b->lock);
- 	return;
- }
- 
 
 Greg.
 -- 
