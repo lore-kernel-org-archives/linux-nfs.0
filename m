@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 9/9] SUNRPC: skb_read_bits is the same as
-	xs_tcp_copy_data
-Date: Thu, 12 Oct 2006 17:15:23 -0400
-Message-ID: <20061012211523.8734.63869.stgit@ingres.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 1/9] SUNRPC: Make the transport-specific setup routine
+	allocate rpc_xprt
+Date: Thu, 12 Oct 2006 17:15:05 -0400
+Message-ID: <20061012211505.8734.7353.stgit@ingres.dsl.sfldmi.ameritech.net>
 References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GY7tx-00086V-Nw
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:37 -0700
+	id 1GY7tg-00084K-MW
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:20 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY7ty-0002mg-1j
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:38 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY7th-0002Yz-BQ
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:21 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,117 +31,225 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean-up: eliminate xs_tcp_copy_data -- it's exactly the same logic as the
-common routine skb_read_bits.  The UDP and TCP socket read code now share
-the same routine for copying data into an xdr_buf.
+Change the location where the rpc_xprt structure is allocated so each
+transport implementation can allocate a private area from the same
+chunk of memory.
+
+Note also that xprt->ops->destroy, rather than xprt_destroy, is now
+responsible for freeing rpc_xprt when the transport is destroyed.
 
 Test plan:
-None.
+Connectathon.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xdr.h |    1 +
- net/sunrpc/socklib.c       |    5 +++--
- net/sunrpc/xprtsock.c      |   24 ++++--------------------
- 3 files changed, 8 insertions(+), 22 deletions(-)
+ include/linux/sunrpc/xprt.h |    4 +-
+ net/sunrpc/xprt.c           |   31 ++++++------------
+ net/sunrpc/xprtsock.c       |   73 +++++++++++++++++++++++++++++--------------
+ 3 files changed, 61 insertions(+), 47 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 953723b..73b700e 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -155,6 +155,7 @@ typedef struct {
- 
- typedef size_t (*skb_read_actor_t)(skb_reader_t *desc, void *to, size_t len);
- 
-+size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len);
- extern int csum_partial_copy_to_xdr(struct xdr_buf *, struct sk_buff *);
- extern ssize_t xdr_partial_copy_from_skb(struct xdr_buf *, unsigned int,
- 		skb_reader_t *, skb_read_actor_t);
-diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
-index 6f17527..9d20136 100644
---- a/net/sunrpc/socklib.c
-+++ b/net/sunrpc/socklib.c
-@@ -24,16 +24,17 @@ #include <linux/sunrpc/xdr.h>
-  * Possibly called several times to iterate over an sk_buff and copy
-  * data out of it.
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 0321fb5..d791901 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -265,8 +265,8 @@ void			xprt_disconnect(struct rpc_xprt *
+ /*
+  * Socket transport setup operations
   */
--static size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len)
-+size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len)
+-int			xs_setup_udp(struct rpc_xprt *xprt, struct rpc_timeout *to);
+-int			xs_setup_tcp(struct rpc_xprt *xprt, struct rpc_timeout *to);
++struct rpc_xprt *	xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
++struct rpc_xprt *	xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
+ 
+ /*
+  * Reserved bit positions in xprt->state
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 8085747..8cc2afa 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -891,39 +891,25 @@ void xprt_set_timeout(struct rpc_timeout
+  */
+ struct rpc_xprt *xprt_create_transport(int proto, struct sockaddr *ap, size_t size, struct rpc_timeout *to)
  {
- 	if (len > desc->count)
- 		len = desc->count;
--	if (skb_copy_bits(desc->skb, desc->offset, to, len))
-+	if (unlikely(skb_copy_bits(desc->skb, desc->offset, to, len)))
- 		return 0;
- 	desc->count -= len;
- 	desc->offset += len;
- 	return len;
+-	int result;
+ 	struct rpc_xprt	*xprt;
+ 	struct rpc_rqst	*req;
+ 
+-	if ((xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL)) == NULL) {
+-		dprintk("RPC:      xprt_create_transport: no memory\n");
+-		return ERR_PTR(-ENOMEM);
+-	}
+-	if (size <= sizeof(xprt->addr)) {
+-		memcpy(&xprt->addr, ap, size);
+-		xprt->addrlen = size;
+-	} else {
+-		kfree(xprt);
+-		dprintk("RPC:      xprt_create_transport: address too large\n");
+-		return ERR_PTR(-EBADF);
+-	}
+-
+ 	switch (proto) {
+ 	case IPPROTO_UDP:
+-		result = xs_setup_udp(xprt, to);
++		xprt = xs_setup_udp(ap, size, to);
+ 		break;
+ 	case IPPROTO_TCP:
+-		result = xs_setup_tcp(xprt, to);
++		xprt = xs_setup_tcp(ap, size, to);
+ 		break;
+ 	default:
+ 		printk(KERN_ERR "RPC: unrecognized transport protocol: %d\n",
+ 				proto);
+ 		return ERR_PTR(-EIO);
+ 	}
+-	if (result) {
+-		kfree(xprt);
+-		dprintk("RPC:      xprt_create_transport: failed, %d\n", result);
+-		return ERR_PTR(result);
++	if (IS_ERR(xprt)) {
++		dprintk("RPC:      xprt_create_transport: failed, %ld\n",
++				-PTR_ERR(xprt));
++		return xprt;
+ 	}
+ 
+ 	kref_init(&xprt->kref);
+@@ -969,8 +955,11 @@ static void xprt_destroy(struct kref *kr
+ 	dprintk("RPC:      destroying transport %p\n", xprt);
+ 	xprt->shutdown = 1;
+ 	del_timer_sync(&xprt->timer);
++
++	/*
++	 * Tear down transport state and free the rpc_xprt
++	 */
+ 	xprt->ops->destroy(xprt);
+-	kfree(xprt);
  }
-+EXPORT_SYMBOL_GPL(skb_read_bits);
  
  /**
-  * skb_read_and_csum_bits - copy and checksum from skb to buffer
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index de15e42..0eb958f 100644
+index 757fc91..a6f778f 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -667,22 +667,6 @@ static void xs_udp_data_ready(struct soc
- 	read_unlock(&sk->sk_callback_lock);
+@@ -528,6 +528,7 @@ static void xs_destroy(struct rpc_xprt *
+ 	xs_close(xprt);
+ 	xs_free_peer_addresses(xprt);
+ 	kfree(xprt->slot);
++	kfree(xprt);
  }
  
--static inline size_t xs_tcp_copy_data(skb_reader_t *desc, void *p, size_t len)
--{
--	if (len > desc->count)
--		len = desc->count;
--	if (skb_copy_bits(desc->skb, desc->offset, p, len)) {
--		dprintk("RPC:      failed to copy %zu bytes from skb. %zu bytes remain\n",
--				len, desc->count);
--		return 0;
--	}
--	desc->offset += len;
--	desc->count -= len;
--	dprintk("RPC:      copied %zu bytes from skb. %zu bytes remain\n",
--			len, desc->count);
--	return len;
--}
--
- static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, skb_reader_t *desc)
+ static inline struct rpc_xprt *xprt_from_sock(struct sock *sk)
+@@ -1349,26 +1350,53 @@ static struct rpc_xprt_ops xs_tcp_ops = 
+ 	.print_stats		= xs_tcp_print_stats,
+ };
+ 
++static struct rpc_xprt *xs_setup_xprt(struct sockaddr *addr, size_t addrlen, unsigned int slot_table_size)
++{
++	struct rpc_xprt *xprt;
++
++	if (addrlen > sizeof(xprt->addr)) {
++		dprintk("RPC:      xs_setup_xprt: address too large\n");
++		return ERR_PTR(-EBADF);
++	}
++
++	xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL);
++	if (xprt == NULL) {
++		dprintk("RPC:      xs_setup_xprt: couldn't allocate rpc_xprt\n");
++		return ERR_PTR(-ENOMEM);
++	}
++
++	xprt->max_reqs = slot_table_size;
++	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
++	if (xprt->slot == NULL) {
++		kfree(xprt);
++		dprintk("RPC:      xs_setup_xprt: couldn't allocate slot table\n");
++		return ERR_PTR(-ENOMEM);
++	}
++
++	memcpy(&xprt->addr, addr, addrlen);
++	xprt->addrlen = addrlen;
++	xprt->port = xs_get_random_port();
++
++	return xprt;
++}
++
+ /**
+  * xs_setup_udp - Set up transport to use a UDP socket
+- * @xprt: transport to set up
++ * @addr: address of remote server
++ * @addrlen: length of address in bytes
+  * @to:   timeout parameters
+  *
+  */
+-int xs_setup_udp(struct rpc_xprt *xprt, struct rpc_timeout *to)
++struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
  {
- 	struct xs_xprt *private = xs_private_data(xprt);
-@@ -691,7 +675,7 @@ static inline void xs_tcp_read_fraghdr(s
+-	size_t slot_table_size;
+-	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
++	struct rpc_xprt *xprt;
  
- 	p = ((char *) &private->tcp_fraghdr) + private->tcp_offset;
- 	len = sizeof(private->tcp_fraghdr) - private->tcp_offset;
--	used = xs_tcp_copy_data(desc, p, len);
-+	used = skb_read_bits(desc, p, len);
- 	private->tcp_offset += used;
- 	if (used != len)
- 		return;
-@@ -737,7 +721,7 @@ static inline void xs_tcp_read_xid(struc
- 	len = sizeof(private->tcp_xid) - private->tcp_offset;
- 	dprintk("RPC:      reading XID (%Zu bytes)\n", len);
- 	p = ((char *) &private->tcp_xid) + private->tcp_offset;
--	used = xs_tcp_copy_data(desc, p, len);
-+	used = skb_read_bits(desc, p, len);
- 	private->tcp_offset += used;
- 	if (used != len)
- 		return;
-@@ -777,12 +761,12 @@ static inline void xs_tcp_read_request(s
- 		memcpy(&my_desc, desc, sizeof(my_desc));
- 		my_desc.count = len;
- 		r = xdr_partial_copy_from_skb(rcvbuf, private->tcp_copied,
--					  &my_desc, xs_tcp_copy_data);
-+					  &my_desc, skb_read_bits);
- 		desc->count -= r;
- 		desc->offset += r;
- 	} else
- 		r = xdr_partial_copy_from_skb(rcvbuf, private->tcp_copied,
--					  desc, xs_tcp_copy_data);
-+					  desc, skb_read_bits);
+-	xprt->max_reqs = xprt_udp_slot_table_entries;
+-	slot_table_size = xprt->max_reqs * sizeof(xprt->slot[0]);
+-	xprt->slot = kzalloc(slot_table_size, GFP_KERNEL);
+-	if (xprt->slot == NULL)
+-		return -ENOMEM;
++	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
++	if (IS_ERR(xprt))
++		return xprt;
  
- 	if (r > 0) {
- 		private->tcp_copied += r;
+-	if (ntohs(addr->sin_port) != 0)
++	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+ 		xprt_set_bound(xprt);
+-	xprt->port = xs_get_random_port();
+ 
+ 	xprt->prot = IPPROTO_UDP;
+ 	xprt->tsh_size = 0;
+@@ -1392,29 +1420,26 @@ int xs_setup_udp(struct rpc_xprt *xprt, 
+ 	dprintk("RPC:      set up transport to address %s\n",
+ 			xs_print_peer_address(xprt, RPC_DISPLAY_ALL));
+ 
+-	return 0;
++	return xprt;
+ }
+ 
+ /**
+  * xs_setup_tcp - Set up transport to use a TCP socket
+- * @xprt: transport to set up
++ * @addr: address of remote server
++ * @addrlen: length of address in bytes
+  * @to: timeout parameters
+  *
+  */
+-int xs_setup_tcp(struct rpc_xprt *xprt, struct rpc_timeout *to)
++struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ {
+-	size_t slot_table_size;
+-	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
++	struct rpc_xprt *xprt;
+ 
+-	xprt->max_reqs = xprt_tcp_slot_table_entries;
+-	slot_table_size = xprt->max_reqs * sizeof(xprt->slot[0]);
+-	xprt->slot = kzalloc(slot_table_size, GFP_KERNEL);
+-	if (xprt->slot == NULL)
+-		return -ENOMEM;
++	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
++	if (IS_ERR(xprt))
++		return xprt;
+ 
+-	if (ntohs(addr->sin_port) != 0)
++	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+ 		xprt_set_bound(xprt);
+-	xprt->port = xs_get_random_port();
+ 
+ 	xprt->prot = IPPROTO_TCP;
+ 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+@@ -1437,5 +1462,5 @@ int xs_setup_tcp(struct rpc_xprt *xprt, 
+ 	dprintk("RPC:      set up transport to address %s\n",
+ 			xs_print_peer_address(xprt, RPC_DISPLAY_ALL));
+ 
+-	return 0;
++	return xprt;
+ }
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
