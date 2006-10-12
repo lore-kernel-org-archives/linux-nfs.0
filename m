@@ -1,20 +1,24 @@
-From: "EMILINA DE SOUZA ANTUNES VIEIRA RAMOS" <cgposne@yahoo.com>
-Subject: =?iso-8859-1?q?UTILIDADE_P=DABLICA_-_CAMAS_HOSPITALARES_E_C?=
- =?iso-8859-1?q?ADEIRA_DE_RODAS_GRATUITASahwyevol?=
-Date: Thu, 12 Oct 2006 21:58:27 +0100
-Message-ID: <40767.7672374577$1160688671@news.gmane.org>
-Reply-To: emszantunes@yahoo.com
-Content-Type: multipart/mixed; boundary="===============0984946897=="
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 7/9] SUNRPC: move saved socket callback functions to a
+	private data structure
+Date: Thu, 12 Oct 2006 17:15:19 -0400
+Message-ID: <20061012211519.8734.66481.stgit@ingres.dsl.sfldmi.ameritech.net>
+References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
+Reply-To: Chuck Lever <chucklever@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GY7dv-0006dC-10
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 13:59:03 -0700
-Received: from [201.19.9.184] by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1GY7du-0001nC-T0
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 13:59:03 -0700
-To: nfs@lists.sourceforge.net
+	id 1GY7tp-00085E-Om
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:29 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY7tq-00066W-II
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:30 -0700
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,55 +31,107 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0984946897==
-Content-Type: text/plain;
+Move the three fields for saving socket callback functions out of the
+rpc_xprt structure and into a private data structure maintained in
+net/sunrpc/xprtsock.c.
 
-Se alguém tiver um conhecido ou parente necessitando temporariamente de
-um leito hospitalar para ficar em casa, leia com atenção: Tomamos 
-conhecimento via e-mail, do serviço prestado por um homem de um enorme coração que não se
-pode deixar de propagar. Costumo checar informações deste tipo, liguei para o
-telefone informado e tive o prazer de conversar longamente com uma pessoa 
-maravilhosa - o Sr. Aroldo. Este senhor formou um "banco" de leitos
-hospitalares e cadeiras de roda e os empresta, sem cobrar nada, só pedindo
-em troca a devolução da cama.
-O frete fica por conta da pessoa interessada. Faz-se uma espécie de 
-"contrato" por seis meses, renovável por mais tempo, caso ainda haja
-necessidade do equipamento. O Sr. Aroldo faz parte do Rotary Clube e está
-aceitando doações de camas hospitalares e cadeiras de roda quebradas etc, 
-que conserta em sua oficina e assim, aumenta a capacidade de auxíliar mais
-pessoas.
-Se alguém conhecer pessoas ligadas a hospitais, divulgue que ele recolhe as
-camas e cadeiras de roda quebradas, buscando os equipamentos no local. Em algumas 
-negociações com hospitais, ele conserta as camas gratuitamente, ficando, em
-troca, com uma parte delas para emprestá-las a quem precisa. É só ligar para o
-número abaixo.
-Sr. Aroldo Mendonça
-(21) 2266-2501 ou 9636-8000 (RJ) 
-Como se vê, Seu Aroldo é um anjo da guarda para muita gente e este projeto
-já conta com mais de 600 leitos espalhados pelo Brasil. Enquanto uns tiram,
-outros dão sem pedir nada em troca.
-REPASSEM !!!! 
+Test plan:
+Compile kernel with CONFIG_NFS enabled.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
---===============0984946897==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+ include/linux/sunrpc/xprt.h |    6 ------
+ net/sunrpc/xprtsock.c       |   25 ++++++++++++++++---------
+ 2 files changed, 16 insertions(+), 15 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 21beb56..17f3227 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -17,8 +17,6 @@ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/msg_prot.h>
+ 
+-#include <net/sock.h>
+-
+ extern unsigned int xprt_udp_slot_table_entries;
+ extern unsigned int xprt_tcp_slot_table_entries;
+ 
+@@ -191,10 +189,6 @@ struct rpc_xprt {
+ 					bklog_u;	/* backlog queue utilization */
+ 	} stat;
+ 
+-	void			(*old_data_ready)(struct sock *, int);
+-	void			(*old_state_change)(struct sock *);
+-	void			(*old_write_space)(struct sock *);
+-
+ 	char *			address_strings[RPC_DISPLAY_MAX];
+ };
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index c0e23e3..5eeccc4 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -157,6 +157,13 @@ struct xs_xprt {
+ 	 */
+ 	size_t			rcvsize,
+ 				sndsize;
++
++	/*
++	 * Saved socket callback addresses
++	 */
++	void			(*old_data_ready)(struct sock *, int);
++	void			(*old_state_change)(struct sock *);
++	void			(*old_write_space)(struct sock *);
+ };
+ 
+ /*
+@@ -554,9 +561,9 @@ static void xs_close(struct rpc_xprt *xp
+ 	private->sock = NULL;
+ 
+ 	sk->sk_user_data = NULL;
+-	sk->sk_data_ready = xprt->old_data_ready;
+-	sk->sk_state_change = xprt->old_state_change;
+-	sk->sk_write_space = xprt->old_write_space;
++	sk->sk_data_ready = private->old_data_ready;
++	sk->sk_state_change = private->old_state_change;
++	sk->sk_write_space = private->old_write_space;
+ 	write_unlock_bh(&sk->sk_callback_lock);
+ 
+ 	sk->sk_no_check = 0;
+@@ -1155,9 +1162,9 @@ static void xs_udp_connect_worker(void *
+ 		write_lock_bh(&sk->sk_callback_lock);
+ 
+ 		sk->sk_user_data = xprt;
+-		xprt->old_data_ready = sk->sk_data_ready;
+-		xprt->old_state_change = sk->sk_state_change;
+-		xprt->old_write_space = sk->sk_write_space;
++		private->old_data_ready = sk->sk_data_ready;
++		private->old_state_change = sk->sk_state_change;
++		private->old_write_space = sk->sk_write_space;
+ 		sk->sk_data_ready = xs_udp_data_ready;
+ 		sk->sk_write_space = xs_udp_write_space;
+ 		sk->sk_no_check = UDP_CSUM_NORCV;
+@@ -1242,9 +1249,9 @@ static void xs_tcp_connect_worker(void *
+ 		write_lock_bh(&sk->sk_callback_lock);
+ 
+ 		sk->sk_user_data = xprt;
+-		xprt->old_data_ready = sk->sk_data_ready;
+-		xprt->old_state_change = sk->sk_state_change;
+-		xprt->old_write_space = sk->sk_write_space;
++		private->old_data_ready = sk->sk_data_ready;
++		private->old_state_change = sk->sk_state_change;
++		private->old_write_space = sk->sk_write_space;
+ 		sk->sk_data_ready = xs_tcp_data_ready;
+ 		sk->sk_state_change = xs_tcp_state_change;
+ 		sk->sk_write_space = xs_tcp_write_space;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0984946897==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0984946897==--
