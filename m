@@ -1,7 +1,7 @@
-From: "Chuck Lever" <chucklever@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 6/8] knfsd: repcache: use client IP address in hash
-Date: Thu, 12 Oct 2006 10:19:31 -0400
-Message-ID: <76bd70e30610120719u3b5e48fch8a0da89ed8ed6a6c@mail.gmail.com>
+Date: Thu, 12 Oct 2006 11:31:47 -0400
+Message-ID: <20061012153147.GB19198@fieldses.org>
 References: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
 	<1160620200.6596.36.camel@lade.trondhjem.org>
 	<20061012082126.GM8568@sgi.com>
@@ -14,14 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GY1PK-0000OI-9Y
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 07:19:34 -0700
-Received: from wr-out-0506.google.com ([64.233.184.224])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY1PJ-00055U-RT
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 07:19:35 -0700
-Received: by wr-out-0506.google.com with SMTP id 67so127400wri
-	for <nfs@lists.sourceforge.net>; Thu, 12 Oct 2006 07:19:31 -0700 (PDT)
-To: "Greg Banks" <gnb@sgi.com>
+	id 1GY2XS-0001b5-Se
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 08:32:02 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GY2XS-0005Si-Hj
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 08:32:03 -0700
+To: Greg Banks <gnb@sgi.com>
 In-Reply-To: <20061012082126.GM8568@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -35,7 +34,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/12/06, Greg Banks <gnb@sgi.com> wrote:
+On Thu, Oct 12, 2006 at 06:21:26PM +1000, Greg Banks wrote:
 > On Wed, Oct 11, 2006 at 07:30:00PM -0700, Trond Myklebust wrote:
 > > On Wed, 2006-10-11 at 21:28 +1000, Greg Banks wrote:
 > > > knfsd: Use the client's IP address in the duplicate request cache
@@ -43,26 +42,39 @@ On 10/12/06, Greg Banks <gnb@sgi.com> wrote:
 > > > on hash buckets when the workload has many clients whose XIDs are
 > > > nearly in lockstep, a property seen on compute clusters using NFS
 > > > for shared storage.
-> >
+> > 
 > > Note that some platforms (in particular the *BSDs) use an MD5 checksum
 > > of the first couple of 100 bytes of the RPC header+message instead of
 > > relying on the XID. That is a good deal safer w.r.t. port reuse by other
 > > clients etc.
-> >
->
+> > 
+> 
 > I hear that there was a Cthon presentation on this subject.  It sounds
 > very interesting, does anyone have a URL?
->
-> I presume the approach involves masking out the IPID and TCP sequence
-> number?  Otherwise retries would never hash to the same value as the
-> original requests, thus defeating the repcache entirely.
 
-The hash starts at the beginning of the RPC header, so the IP and
-TCP/UDP headers are skipped.
+My possibly muddled notes from Rick's presentation:
 
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
+Rick suggests:
+        LRU cache per TCP connection:
+                evicts from each cache on TCP ack from reply
+        keep individual caches around forever, even after disconnect--
+                since longterm network partition e.g. may be typical case.
+                (OK, maybe not forever).
+        (Note lookups are *global*--he doesn't look up on TCP connection (or
+                even IP address)--he wants reconnects to get hits.)
+        He uses XID and checksum on first 100 bytes of decrypted RPC body
+                as key into cache.
+                He assumes any hit on an in-progress rpc is a false positive.
+                He also will *never* drop based on a hit on anything with
+                a sequenceid-mutating op in it.
+
+
+He also has more detailed notes at
+ftp://ftp.cis.uoguelph.ca:/pub/nfsv4/server-cache.algorithm
+and code in newnfs/nfsd/nfsd_srvcache.c in any of the nfsv4-fullkern* tarballs
+on the same site.
+
+--b.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
