@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/9] SUNRPC: Make the transport-specific setup routine
-	allocate rpc_xprt
-Date: Thu, 12 Oct 2006 17:15:05 -0400
-Message-ID: <20061012211505.8734.7353.stgit@ingres.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 2/9] SUNRPC: Allocate a private data area for
+	socket-specific rpc_xprt fields
+Date: Thu, 12 Oct 2006 17:15:08 -0400
+Message-ID: <20061012211508.8734.89856.stgit@ingres.dsl.sfldmi.ameritech.net>
 References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GY7tg-00084K-MW
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:20 -0700
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY7th-0002Yz-BQ
+	id 1GY7th-00084P-GF
 	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:21 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY7ti-0002c4-82
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 14:15:22 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,225 +31,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Change the location where the rpc_xprt structure is allocated so each
-transport implementation can allocate a private area from the same
-chunk of memory.
-
-Note also that xprt->ops->destroy, rather than xprt_destroy, is now
-responsible for freeing rpc_xprt when the transport is destroyed.
+When setting up a new transport instance, allocate enough memory for an
+rpc_xprt and a private area.  As part of the same memory allocation, it
+will be easy to find one, given a pointer to the other.
 
 Test plan:
-Connectathon.
+Compile kernel with CONFIG_NFS enabled.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    4 +-
- net/sunrpc/xprt.c           |   31 ++++++------------
- net/sunrpc/xprtsock.c       |   73 +++++++++++++++++++++++++++++--------------
- 3 files changed, 61 insertions(+), 47 deletions(-)
+ net/sunrpc/xprtsock.c |   15 +++++++++++++--
+ 1 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 0321fb5..d791901 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -265,8 +265,8 @@ void			xprt_disconnect(struct rpc_xprt *
- /*
-  * Socket transport setup operations
-  */
--int			xs_setup_udp(struct rpc_xprt *xprt, struct rpc_timeout *to);
--int			xs_setup_tcp(struct rpc_xprt *xprt, struct rpc_timeout *to);
-+struct rpc_xprt *	xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
-+struct rpc_xprt *	xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
- 
- /*
-  * Reserved bit positions in xprt->state
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 8085747..8cc2afa 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -891,39 +891,25 @@ void xprt_set_timeout(struct rpc_timeout
-  */
- struct rpc_xprt *xprt_create_transport(int proto, struct sockaddr *ap, size_t size, struct rpc_timeout *to)
- {
--	int result;
- 	struct rpc_xprt	*xprt;
- 	struct rpc_rqst	*req;
- 
--	if ((xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL)) == NULL) {
--		dprintk("RPC:      xprt_create_transport: no memory\n");
--		return ERR_PTR(-ENOMEM);
--	}
--	if (size <= sizeof(xprt->addr)) {
--		memcpy(&xprt->addr, ap, size);
--		xprt->addrlen = size;
--	} else {
--		kfree(xprt);
--		dprintk("RPC:      xprt_create_transport: address too large\n");
--		return ERR_PTR(-EBADF);
--	}
--
- 	switch (proto) {
- 	case IPPROTO_UDP:
--		result = xs_setup_udp(xprt, to);
-+		xprt = xs_setup_udp(ap, size, to);
- 		break;
- 	case IPPROTO_TCP:
--		result = xs_setup_tcp(xprt, to);
-+		xprt = xs_setup_tcp(ap, size, to);
- 		break;
- 	default:
- 		printk(KERN_ERR "RPC: unrecognized transport protocol: %d\n",
- 				proto);
- 		return ERR_PTR(-EIO);
- 	}
--	if (result) {
--		kfree(xprt);
--		dprintk("RPC:      xprt_create_transport: failed, %d\n", result);
--		return ERR_PTR(result);
-+	if (IS_ERR(xprt)) {
-+		dprintk("RPC:      xprt_create_transport: failed, %ld\n",
-+				-PTR_ERR(xprt));
-+		return xprt;
- 	}
- 
- 	kref_init(&xprt->kref);
-@@ -969,8 +955,11 @@ static void xprt_destroy(struct kref *kr
- 	dprintk("RPC:      destroying transport %p\n", xprt);
- 	xprt->shutdown = 1;
- 	del_timer_sync(&xprt->timer);
-+
-+	/*
-+	 * Tear down transport state and free the rpc_xprt
-+	 */
- 	xprt->ops->destroy(xprt);
--	kfree(xprt);
- }
- 
- /**
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 757fc91..a6f778f 100644
+index a6f778f..5ddb20d 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -528,6 +528,7 @@ static void xs_destroy(struct rpc_xprt *
- 	xs_close(xprt);
- 	xs_free_peer_addresses(xprt);
- 	kfree(xprt->slot);
-+	kfree(xprt);
+@@ -125,6 +125,15 @@ static inline void xs_pktdump(char *msg,
  }
+ #endif
  
- static inline struct rpc_xprt *xprt_from_sock(struct sock *sk)
-@@ -1349,26 +1350,53 @@ static struct rpc_xprt_ops xs_tcp_ops = 
- 	.print_stats		= xs_tcp_print_stats,
- };
- 
-+static struct rpc_xprt *xs_setup_xprt(struct sockaddr *addr, size_t addrlen, unsigned int slot_table_size)
++struct xs_xprt {
++	struct rpc_xprt		xprt;
++};
++
++static inline struct xs_xprt *xs_private_data(struct rpc_xprt *xprt)
 +{
-+	struct rpc_xprt *xprt;
-+
-+	if (addrlen > sizeof(xprt->addr)) {
-+		dprintk("RPC:      xs_setup_xprt: address too large\n");
-+		return ERR_PTR(-EBADF);
-+	}
-+
-+	xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL);
-+	if (xprt == NULL) {
-+		dprintk("RPC:      xs_setup_xprt: couldn't allocate rpc_xprt\n");
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
-+	xprt->max_reqs = slot_table_size;
-+	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
-+	if (xprt->slot == NULL) {
-+		kfree(xprt);
-+		dprintk("RPC:      xs_setup_xprt: couldn't allocate slot table\n");
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
-+	memcpy(&xprt->addr, addr, addrlen);
-+	xprt->addrlen = addrlen;
-+	xprt->port = xs_get_random_port();
-+
-+	return xprt;
++	return (struct xs_xprt *) xprt;
 +}
 +
- /**
-  * xs_setup_udp - Set up transport to use a UDP socket
-- * @xprt: transport to set up
-+ * @addr: address of remote server
-+ * @addrlen: length of address in bytes
-  * @to:   timeout parameters
-  *
-  */
--int xs_setup_udp(struct rpc_xprt *xprt, struct rpc_timeout *to)
-+struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
  {
--	size_t slot_table_size;
--	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-+	struct rpc_xprt *xprt;
+ 	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
+@@ -1352,6 +1361,7 @@ static struct rpc_xprt_ops xs_tcp_ops = 
  
--	xprt->max_reqs = xprt_udp_slot_table_entries;
--	slot_table_size = xprt->max_reqs * sizeof(xprt->slot[0]);
--	xprt->slot = kzalloc(slot_table_size, GFP_KERNEL);
--	if (xprt->slot == NULL)
--		return -ENOMEM;
-+	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
-+	if (IS_ERR(xprt))
-+		return xprt;
- 
--	if (ntohs(addr->sin_port) != 0)
-+	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
- 		xprt_set_bound(xprt);
--	xprt->port = xs_get_random_port();
- 
- 	xprt->prot = IPPROTO_UDP;
- 	xprt->tsh_size = 0;
-@@ -1392,29 +1420,26 @@ int xs_setup_udp(struct rpc_xprt *xprt, 
- 	dprintk("RPC:      set up transport to address %s\n",
- 			xs_print_peer_address(xprt, RPC_DISPLAY_ALL));
- 
--	return 0;
-+	return xprt;
- }
- 
- /**
-  * xs_setup_tcp - Set up transport to use a TCP socket
-- * @xprt: transport to set up
-+ * @addr: address of remote server
-+ * @addrlen: length of address in bytes
-  * @to: timeout parameters
-  *
-  */
--int xs_setup_tcp(struct rpc_xprt *xprt, struct rpc_timeout *to)
-+struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ static struct rpc_xprt *xs_setup_xprt(struct sockaddr *addr, size_t addrlen, unsigned int slot_table_size)
  {
--	size_t slot_table_size;
--	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-+	struct rpc_xprt *xprt;
++	struct xs_xprt *private;
+ 	struct rpc_xprt *xprt;
  
--	xprt->max_reqs = xprt_tcp_slot_table_entries;
--	slot_table_size = xprt->max_reqs * sizeof(xprt->slot[0]);
--	xprt->slot = kzalloc(slot_table_size, GFP_KERNEL);
--	if (xprt->slot == NULL)
--		return -ENOMEM;
-+	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
-+	if (IS_ERR(xprt))
-+		return xprt;
+ 	if (addrlen > sizeof(xprt->addr)) {
+@@ -1359,11 +1369,12 @@ static struct rpc_xprt *xs_setup_xprt(st
+ 		return ERR_PTR(-EBADF);
+ 	}
  
--	if (ntohs(addr->sin_port) != 0)
-+	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
- 		xprt_set_bound(xprt);
--	xprt->port = xs_get_random_port();
+-	xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL);
+-	if (xprt == NULL) {
++	private = kzalloc(sizeof(struct xs_xprt), GFP_KERNEL);
++	if (private == NULL) {
+ 		dprintk("RPC:      xs_setup_xprt: couldn't allocate rpc_xprt\n");
+ 		return ERR_PTR(-ENOMEM);
+ 	}
++	xprt = &private->xprt;
  
- 	xprt->prot = IPPROTO_TCP;
- 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
-@@ -1437,5 +1462,5 @@ int xs_setup_tcp(struct rpc_xprt *xprt, 
- 	dprintk("RPC:      set up transport to address %s\n",
- 			xs_print_peer_address(xprt, RPC_DISPLAY_ALL));
- 
--	return 0;
-+	return xprt;
- }
+ 	xprt->max_reqs = slot_table_size;
+ 	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
