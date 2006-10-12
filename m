@@ -1,24 +1,25 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 8/9] SUNRPC: Store formatted addresses in private data
-	structure
-Date: Thu, 12 Oct 2006 17:15:21 -0400
-Message-ID: <20061012211521.8734.29674.stgit@ingres.dsl.sfldmi.ameritech.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 9/9] SUNRPC: skb_read_bits is the same
+	as	xs_tcp_copy_data
+Date: Thu, 12 Oct 2006 16:08:57 -0700
+Message-ID: <1160694537.12029.7.camel@lade.trondhjem.org>
 References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
-Reply-To: Chuck Lever <chucklever@gmail.com>
+	<20061012211523.8734.63869.stgit@ingres.dsl.sfldmi.ameritech.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GY8fk-0003sf-Mt
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 15:05:00 -0700
-Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GY8fk-00064y-Ai
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 15:05:01 -0700
-To: trond.myklebust@fys.uio.no
-In-Reply-To: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
+	id 1GY9fu-0000yw-TQ
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 16:09:14 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GY9fu-0006FD-Gy
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 16:09:15 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <20061012211523.8734.63869.stgit@ingres.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,111 +32,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hide buffers that store formatted IP addresses in a private data structure
-maintained in net/sunrpc/xprtsock.c.
+On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
+> Clean-up: eliminate xs_tcp_copy_data -- it's exactly the same logic as the
+> common routine skb_read_bits.  The UDP and TCP socket read code now share
+> the same routine for copying data into an xdr_buf.
+> 
+> Test plan:
+> None.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  include/linux/sunrpc/xdr.h |    1 +
+>  net/sunrpc/socklib.c       |    5 +++--
+>  net/sunrpc/xprtsock.c      |   24 ++++--------------------
+>  3 files changed, 8 insertions(+), 22 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> index 953723b..73b700e 100644
+> --- a/include/linux/sunrpc/xdr.h
+> +++ b/include/linux/sunrpc/xdr.h
+> @@ -155,6 +155,7 @@ typedef struct {
+>  
+>  typedef size_t (*skb_read_actor_t)(skb_reader_t *desc, void *to, size_t len);
+>  
+> +size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len);
+>  extern int csum_partial_copy_to_xdr(struct xdr_buf *, struct sk_buff *);
+>  extern ssize_t xdr_partial_copy_from_skb(struct xdr_buf *, unsigned int,
+>  		skb_reader_t *, skb_read_actor_t);
+> diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
+> index 6f17527..9d20136 100644
+> --- a/net/sunrpc/socklib.c
+> +++ b/net/sunrpc/socklib.c
+> @@ -24,16 +24,17 @@ #include <linux/sunrpc/xdr.h>
+>   * Possibly called several times to iterate over an sk_buff and copy
+>   * data out of it.
+>   */
+> -static size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len)
+> +size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len)
+>  {
+>  	if (len > desc->count)
+>  		len = desc->count;
+> -	if (skb_copy_bits(desc->skb, desc->offset, to, len))
+> +	if (unlikely(skb_copy_bits(desc->skb, desc->offset, to, len)))
+>  		return 0;
+>  	desc->count -= len;
+>  	desc->offset += len;
+>  	return len;
+>  }
+> +EXPORT_SYMBOL_GPL(skb_read_bits);
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    Why do you need this?
 
-Test plan:
-Enable RPCDBG_TRANS and run some typical workloads.
+Cheers,
+  Trond
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- include/linux/sunrpc/xprt.h |    2 --
- net/sunrpc/xprtsock.c       |   27 +++++++++++++++++----------
- 2 files changed, 17 insertions(+), 12 deletions(-)
-
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 17f3227..37a42c8 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -188,8 +188,6 @@ struct rpc_xprt {
- 		unsigned long long	req_u,		/* average requests on the wire */
- 					bklog_u;	/* backlog queue utilization */
- 	} stat;
--
--	char *			address_strings[RPC_DISPLAY_MAX];
- };
- 
- #ifdef __KERNEL__
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 5eeccc4..de15e42 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -164,6 +164,8 @@ struct xs_xprt {
- 	void			(*old_data_ready)(struct sock *, int);
- 	void			(*old_state_change)(struct sock *);
- 	void			(*old_write_space)(struct sock *);
-+
-+	char *			address_strings[RPC_DISPLAY_MAX];
- };
- 
- /*
-@@ -187,6 +189,7 @@ static inline struct rpc_xprt *xprt_from
- static void xs_format_peer_addresses(struct rpc_xprt *xprt)
- {
- 	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-+	struct xs_xprt *private = xs_private_data(xprt);
- 	char *buf;
- 
- 	buf = kzalloc(20, GFP_KERNEL);
-@@ -194,19 +197,19 @@ static void xs_format_peer_addresses(str
- 		snprintf(buf, 20, "%u.%u.%u.%u",
- 				NIPQUAD(addr->sin_addr.s_addr));
- 	}
--	xprt->address_strings[RPC_DISPLAY_ADDR] = buf;
-+	private->address_strings[RPC_DISPLAY_ADDR] = buf;
- 
- 	buf = kzalloc(8, GFP_KERNEL);
- 	if (buf) {
- 		snprintf(buf, 8, "%u",
- 				ntohs(addr->sin_port));
- 	}
--	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
-+	private->address_strings[RPC_DISPLAY_PORT] = buf;
- 
- 	if (xprt->prot == IPPROTO_UDP)
--		xprt->address_strings[RPC_DISPLAY_PROTO] = "udp";
-+		private->address_strings[RPC_DISPLAY_PROTO] = "udp";
- 	else
--		xprt->address_strings[RPC_DISPLAY_PROTO] = "tcp";
-+		private->address_strings[RPC_DISPLAY_PROTO] = "tcp";
- 
- 	buf = kzalloc(48, GFP_KERNEL);
- 	if (buf) {
-@@ -215,14 +218,16 @@ static void xs_format_peer_addresses(str
- 			ntohs(addr->sin_port),
- 			xprt->prot == IPPROTO_UDP ? "udp" : "tcp");
- 	}
--	xprt->address_strings[RPC_DISPLAY_ALL] = buf;
-+	private->address_strings[RPC_DISPLAY_ALL] = buf;
- }
- 
- static void xs_free_peer_addresses(struct rpc_xprt *xprt)
- {
--	kfree(xprt->address_strings[RPC_DISPLAY_ADDR]);
--	kfree(xprt->address_strings[RPC_DISPLAY_PORT]);
--	kfree(xprt->address_strings[RPC_DISPLAY_ALL]);
-+	struct xs_xprt *private = xs_private_data(xprt);
-+
-+	kfree(private->address_strings[RPC_DISPLAY_ADDR]);
-+	kfree(private->address_strings[RPC_DISPLAY_PORT]);
-+	kfree(private->address_strings[RPC_DISPLAY_ALL]);
- }
- 
- #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
-@@ -1074,8 +1079,10 @@ static unsigned short xs_get_random_port
-  */
- static char *xs_print_peer_address(struct rpc_xprt *xprt, enum rpc_display_format_t format)
- {
--	if (xprt->address_strings[format] != NULL)
--		return xprt->address_strings[format];
-+	struct xs_xprt *private = xs_private_data(xprt);
-+
-+	if (private->address_strings[format] != NULL)
-+		return private->address_strings[format];
- 	else
- 		return "unprintable";
- }
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
