@@ -1,27 +1,20 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 6/8] knfsd: repcache: use client IP address in hash
-Date: Thu, 12 Oct 2006 11:31:47 -0400
-Message-ID: <20061012153147.GB19198@fieldses.org>
-References: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
-	<1160620200.6596.36.camel@lade.trondhjem.org>
-	<20061012082126.GM8568@sgi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "EMILINA DE SOUZA ANTUNES VIEIRA RAMOS" <cgposne@yahoo.com>
+Subject: =?iso-8859-1?q?UTILIDADE_P=DABLICA_-_CAMAS_HOSPITALARES_E_C?=
+ =?iso-8859-1?q?ADEIRA_DE_RODAS_GRATUITASahwyevol?=
+Date: Thu, 12 Oct 2006 21:58:27 +0100
+Message-ID: <40767.7672374577$1160688671@news.gmane.org>
+Reply-To: emszantunes@yahoo.com
+Content-Type: multipart/mixed; boundary="===============0984946897=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GY2XS-0001b5-Se
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 08:32:02 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GY2XS-0005Si-Hj
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 08:32:03 -0700
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: <20061012082126.GM8568@sgi.com>
+	id 1GY7dv-0006dC-10
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 13:59:03 -0700
+Received: from [201.19.9.184] by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1GY7du-0001nC-T0
+	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 13:59:03 -0700
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,53 +27,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Oct 12, 2006 at 06:21:26PM +1000, Greg Banks wrote:
-> On Wed, Oct 11, 2006 at 07:30:00PM -0700, Trond Myklebust wrote:
-> > On Wed, 2006-10-11 at 21:28 +1000, Greg Banks wrote:
-> > > knfsd: Use the client's IP address in the duplicate request cache
-> > > hash function, instead of just the XID.  This avoids contention
-> > > on hash buckets when the workload has many clients whose XIDs are
-> > > nearly in lockstep, a property seen on compute clusters using NFS
-> > > for shared storage.
-> > 
-> > Note that some platforms (in particular the *BSDs) use an MD5 checksum
-> > of the first couple of 100 bytes of the RPC header+message instead of
-> > relying on the XID. That is a good deal safer w.r.t. port reuse by other
-> > clients etc.
-> > 
-> 
-> I hear that there was a Cthon presentation on this subject.  It sounds
-> very interesting, does anyone have a URL?
+--===============0984946897==
+Content-Type: text/plain;
 
-My possibly muddled notes from Rick's presentation:
-
-Rick suggests:
-        LRU cache per TCP connection:
-                evicts from each cache on TCP ack from reply
-        keep individual caches around forever, even after disconnect--
-                since longterm network partition e.g. may be typical case.
-                (OK, maybe not forever).
-        (Note lookups are *global*--he doesn't look up on TCP connection (or
-                even IP address)--he wants reconnects to get hits.)
-        He uses XID and checksum on first 100 bytes of decrypted RPC body
-                as key into cache.
-                He assumes any hit on an in-progress rpc is a false positive.
-                He also will *never* drop based on a hit on anything with
-                a sequenceid-mutating op in it.
+Se alguém tiver um conhecido ou parente necessitando temporariamente de
+um leito hospitalar para ficar em casa, leia com atenção: Tomamos 
+conhecimento via e-mail, do serviço prestado por um homem de um enorme coração que não se
+pode deixar de propagar. Costumo checar informações deste tipo, liguei para o
+telefone informado e tive o prazer de conversar longamente com uma pessoa 
+maravilhosa - o Sr. Aroldo. Este senhor formou um "banco" de leitos
+hospitalares e cadeiras de roda e os empresta, sem cobrar nada, só pedindo
+em troca a devolução da cama.
+O frete fica por conta da pessoa interessada. Faz-se uma espécie de 
+"contrato" por seis meses, renovável por mais tempo, caso ainda haja
+necessidade do equipamento. O Sr. Aroldo faz parte do Rotary Clube e está
+aceitando doações de camas hospitalares e cadeiras de roda quebradas etc, 
+que conserta em sua oficina e assim, aumenta a capacidade de auxíliar mais
+pessoas.
+Se alguém conhecer pessoas ligadas a hospitais, divulgue que ele recolhe as
+camas e cadeiras de roda quebradas, buscando os equipamentos no local. Em algumas 
+negociações com hospitais, ele conserta as camas gratuitamente, ficando, em
+troca, com uma parte delas para emprestá-las a quem precisa. É só ligar para o
+número abaixo.
+Sr. Aroldo Mendonça
+(21) 2266-2501 ou 9636-8000 (RJ) 
+Como se vê, Seu Aroldo é um anjo da guarda para muita gente e este projeto
+já conta com mais de 600 leitos espalhados pelo Brasil. Enquanto uns tiram,
+outros dão sem pedir nada em troca.
+REPASSEM !!!! 
 
 
-He also has more detailed notes at
-ftp://ftp.cis.uoguelph.ca:/pub/nfsv4/server-cache.algorithm
-and code in newnfs/nfsd/nfsd_srvcache.c in any of the nfsv4-fullkern* tarballs
-on the same site.
-
---b.
+--===============0984946897==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0984946897==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0984946897==--
