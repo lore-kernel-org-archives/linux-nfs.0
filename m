@@ -1,35 +1,24 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: NLM lock reclaim failure
-Date: Wed, 11 Oct 2006 16:28:16 -0700
-Message-ID: <OFE4C9C5BD.9867BFBB-ON88257204.007E2AA2-88257204.0080CB17@us.ibm.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 6/8] knfsd: repcache: use client IP address in	hash
+Date: Wed, 11 Oct 2006 19:30:00 -0700
+Message-ID: <1160620200.6596.36.camel@lade.trondhjem.org>
+References: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GXnUy-0004n6-S3
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 16:28:28 -0700
-Received: from e1.ny.us.ibm.com ([32.97.182.141])
+	id 1GXqKw-0004Pk-UO
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 19:30:19 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GXnUz-0004eP-GT
-	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 16:28:29 -0700
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9BNSMdD023838
-	for <nfs@lists.sourceforge.net>; Wed, 11 Oct 2006 19:28:22 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
-	k9BNSLKG140304
-	for <nfs@lists.sourceforge.net>; Wed, 11 Oct 2006 19:28:21 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k9BNSLw3028424
-	for <nfs@lists.sourceforge.net>; Wed, 11 Oct 2006 19:28:21 -0400
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k9BNSL7C028420
-	for <nfs@lists.sourceforge.net>; Wed, 11 Oct 2006 19:28:21 -0400
-To: "Linux NFS Mailing List" <nfs@lists.sourceforge.net>
+	(Exim 4.44) id 1GXqKw-0000om-II
+	for nfs@lists.sourceforge.net; Wed, 11 Oct 2006 19:30:19 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,46 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I see an NLM lock reclaim failure (using 2.6.17). Let me describe 
-the simple case first.
+On Wed, 2006-10-11 at 21:28 +1000, Greg Banks wrote:
+> knfsd: Use the client's IP address in the duplicate request cache
+> hash function, instead of just the XID.  This avoids contention
+> on hash buckets when the workload has many clients whose XIDs are
+> nearly in lockstep, a property seen on compute clusters using NFS
+> for shared storage.
 
-1. Client gets an NLM lock
-2. Server reboots
-3. Client sends lock reclaim request
-4. On server, nlm_open() gets return code nfserr_dropit; error gets 
-   converted to nlm_lck_denied by nlm_lookup_file().
-5. Client gets status=1, the lock reclaim failed
+Note that some platforms (in particular the *BSDs) use an MD5 checksum
+of the first couple of 100 bytes of the RPC header+message instead of
+relying on the XID. That is a good deal safer w.r.t. port reuse by other
+clients etc.
 
-This happens _only_ when the first call to nfsd (fh_verify -> exp_find) 
-comes from lockd trying to find the file. Subsequent calls seem to work.
-
-nlm_lookup_file() -> nlm_fopen() -> nfsd_open() -> fh_verify() -> 
-exp_find() returns nfserr_dropit
-
-This problem may be related to the following commit to lockd (Trond's 
-tree):
-commit: 26bcbf965f857c710adafd16cf424f043006b5dd
-lockd: stop abusing file_lock_list
-
-The client earlier retained the list of outstanding locks regardless of 
-reclaim return code. The change above removes all locks from the list 
-and only adds them back after a successful reclaim. Since the reclaim 
-fails, it is removed from the list; so the client will not try to 
-reclaim the lock on a second failure.
-
-Note that the problem is not on the client side - it seems the server 
-that should drop the rpc when it gets nfserr_dropit error and not 
-convert it to an nlm_lck_denied.
-
-It get even more complicated - when the server doesn't respond 
-immediately to the reclaim, client will retry the rpc, on the second 
-reclaim call, the server will grant the lock to the client but since the 
-client already got the nlm_lck_denied from the first call, it has 
-dropped it from it list. So now we have a lock on the server for a 
-client that doesn't know that it holds the lock.
-
-Marc.
-
+Cheers,
+  Trond
 
 
 -------------------------------------------------------------------------
