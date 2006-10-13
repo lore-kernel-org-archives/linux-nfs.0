@@ -1,35 +1,23 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: NLM lock reclaim failure
-Date: Thu, 12 Oct 2006 22:43:22 -0700
-Message-ID: <452F277A.3060607@almaden.ibm.com>
+Date: Fri, 13 Oct 2006 17:08:39 +1000
+Message-ID: <17711.15223.857652.522180@cse.unsw.edu.au>
+References: <452F277A.3060607@almaden.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GYFr1-0000Nk-AL
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 22:45:07 -0700
-Received: from e2.ny.us.ibm.com ([32.97.182.142])
+	id 1GYHA6-0007Pt-KC
+	for nfs@lists.sourceforge.net; Fri, 13 Oct 2006 00:08:54 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GYFr1-000178-QK
-	for nfs@lists.sourceforge.net; Thu, 12 Oct 2006 22:45:08 -0700
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9D5ivjg004003
-	for <nfs@lists.sourceforge.net>; Fri, 13 Oct 2006 01:44:57 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
-	k9D5iweF145056
-	for <nfs@lists.sourceforge.net>; Fri, 13 Oct 2006 01:44:58 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k9D5ivv8030744
-	for <nfs@lists.sourceforge.net>; Fri, 13 Oct 2006 01:44:57 -0400
-Received: from [9.67.60.82] (wecm-9-67-60-82.wecm.ibm.com [9.67.60.82])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k9D5iuRc030724
-	for <nfs@lists.sourceforge.net>; Fri, 13 Oct 2006 01:44:57 -0400
-To: "Linux NFS Mailing List" <nfs@lists.sourceforge.net>
+	(Exim 4.44) id 1GYHA5-0004jh-Ks
+	for nfs@lists.sourceforge.net; Fri, 13 Oct 2006 00:08:55 -0700
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: message from Marc Eshel on Thursday October 12
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,187 +30,272 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Trond,
-Attached is a tested patch for the bug I posted in the following mail
-Marc.
+On Thursday October 12, eshel@almaden.ibm.com wrote:
+> Hi Trond,
+> Attached is a tested patch for the bug I posted in the following mail
+> Marc.
 
-nfs-bounces@lists.sourceforge.net wrote on 10/11/2006 04:28:16 PM:
+Thanks for this patch, for the discovering/understanding the bug.
 
- > I see an NLM lock reclaim failure (using 2.6.17). Let me describe
- > the simple case first.
- >
- > 1. Client gets an NLM lock
- > 2. Server reboots
- > 3. Client sends lock reclaim request
- > 4. On server, nlm_open() gets return code nfserr_dropit; error gets
- >    converted to nlm_lck_denied by nlm_lookup_file().
- > 5. Client gets status=1, the lock reclaim failed
- >
- > This happens _only_ when the first call to nfsd (fh_verify -> exp_find)
- > comes from lockd trying to find the file. Subsequent calls seem to work.
- >
- > nlm_lookup_file() -> nlm_fopen() -> nfsd_open() -> fh_verify() ->
- > exp_find() returns nfserr_dropit
- >
- > This problem may be related to the following commit to lockd (Trond's
- > tree):
- > commit: 26bcbf965f857c710adafd16cf424f043006b5dd
- > lockd: stop abusing file_lock_list
- >
- > The client earlier retained the list of outstanding locks regardless of
- > reclaim return code. The change above removes all locks from the list
- > and only adds them back after a successful reclaim. Since the reclaim
- > fails, it is removed from the list; so the client will not try to
- > reclaim the lock on a second failure.
- >
- > Note that the problem is not on the client side - it seems the server
- > that should drop the rpc when it gets nfserr_dropit error and not
- > convert it to an nlm_lck_denied.
- >
- > It get even more complicated - when the server doesn't respond
- > immediately to the reclaim, client will retry the rpc, on the second
- > reclaim call, the server will grant the lock to the client but since the
- > client already got the nlm_lck_denied from the first call, it has
- > dropped it from it list. So now we have a lock on the server for a
- > client that doesn't know that it holds the lock.
- >
- > Marc.
- >
+There are a couple of aspects of that patch that I don't really like.
 
-Index: lockd/svc.c
-===================================================================
-RCS file: /cvs/nfsv4/cvs/pnfs/fs/lockd/svc.c,v
-retrieving revision 1.1.1.4
-diff -u -r1.1.1.4 svc.c
---- lockd/svc.c	12 Jul 2006 19:53:39 -0000	1.1.1.4
-+++ lockd/svc.c	13 Oct 2006 04:03:13 -0000
-@@ -34,6 +34,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
-+#include <linux/nfsd/nfsd.h>
+One is adding the nlmsvc_dispatch function just to gain a little bit
+of functionality that the sunrpc layer should probably provide
+directly.
+
+The other is that blurring of nfsd and nlm error codes.
+
+The following patch addresses these issues and is essentially a
+rewrite of you patch.
+
+Would you be able to review/test it?
+
+It fixed nfsv2 as well which needed and extra little fix.
+
+Thanks a lot,
+NeilBrown
+
+------------------
+Allow lockd to drop replys as appropriate.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/lockd/svc4proc.c             |   12 ++++++------
+ ./fs/lockd/svcproc.c              |   16 +++++++++-------
+ ./fs/lockd/svcsubs.c              |    5 ++++-
+ ./fs/nfsd/lockd.c                 |    3 +++
+ ./include/linux/lockd/xdr.h       |    2 ++
+ ./include/linux/sunrpc/msg_prot.h |    4 +++-
+ ./include/linux/sunrpc/xdr.h      |    1 +
+ ./net/sunrpc/svc.c                |    5 +++++
+ 8 files changed, 33 insertions(+), 15 deletions(-)
+
+diff .prev/fs/lockd/svc4proc.c ./fs/lockd/svc4proc.c
+--- .prev/fs/lockd/svc4proc.c	2006-10-13 17:01:33.000000000 +1000
++++ ./fs/lockd/svc4proc.c	2006-10-13 17:02:43.000000000 +1000
+@@ -96,7 +96,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp
  
- #define NLMDBG_FACILITY		NLMDBG_SVC
- #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
-@@ -320,6 +321,43 @@
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now check for conflicting locks */
+ 	resp->status = nlmsvc_testlock(file, &argp->lock, &resp->lock);
+@@ -126,7 +126,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ #if 0
+ 	/* If supplied state doesn't match current state, we assume it's
+@@ -169,7 +169,7 @@ nlm4svc_proc_cancel(struct svc_rqst *rqs
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Try to cancel request. */
+ 	resp->status = nlmsvc_cancel_blocked(file, &argp->lock);
+@@ -202,7 +202,7 @@ nlm4svc_proc_unlock(struct svc_rqst *rqs
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now try to remove the lock */
+ 	resp->status = nlmsvc_unlock(file, &argp->lock);
+@@ -339,7 +339,7 @@ nlm4svc_proc_share(struct svc_rqst *rqst
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now try to create the share */
+ 	resp->status = nlmsvc_share_file(host, file, argp);
+@@ -372,7 +372,7 @@ nlm4svc_proc_unshare(struct svc_rqst *rq
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now try to lock the file */
+ 	resp->status = nlmsvc_unshare_file(host, file, argp);
+
+diff .prev/fs/lockd/svcproc.c ./fs/lockd/svcproc.c
+--- .prev/fs/lockd/svcproc.c	2006-10-13 17:01:33.000000000 +1000
++++ ./fs/lockd/svcproc.c	2006-10-13 17:02:43.000000000 +1000
+@@ -59,7 +59,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
+ 	struct nlm_host		*host = NULL;
+ 	struct nlm_file		*file = NULL;
+ 	struct nlm_lock		*lock = &argp->lock;
+-	u32			error;
++	u32			error = 0;
+ 
+ 	/* nfsd callbacks must have been installed for this procedure */
+ 	if (!nlmsvc_ops)
+@@ -88,6 +88,8 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
+ no_locks:
+ 	if (host)
+ 		nlm_release_host(host);
++	if (error)
++		return error;
+ 	return nlm_lck_denied_nolocks;
  }
- EXPORT_SYMBOL(lockd_down);
  
-+int
-+nlmsvc_dispatch(struct svc_rqst *rqstp, u32 *statp)
-+{
-+	struct svc_procedure	*procp;
-+	kxdrproc_t		xdr;
-+	struct kvec *		argv = &rqstp->rq_arg.head[0];
-+	struct kvec *		resv = &rqstp->rq_res.head[0];
-+
-+	dprintk("lockd: nlmsvc_dispatch vers %d proc %d\n",
-+				rqstp->rq_vers, rqstp->rq_proc);
-+
-+	procp = rqstp->rq_procinfo;
-+
-+	/* Decode arguments */
-+	xdr = procp->pc_decode;
-+
-+	if (xdr && !xdr(rqstp, argv->iov_base, rqstp->rq_argp)) {
-+		dprintk("lockd: failed to decode arguments!\n");
-+		*statp = rpc_garbage_args;
-+		return 1;
-+	}
-+	/* Now call the procedure handler, and encode status. */
-+	*statp = procp->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
-+	if (((struct nlm_res  *)(rqstp->rq_resp))->status == nfserr_dropit) {
-+		dprintk("lockd: dropping request!\n");
-+		return 0;
-+	}
-+	/* Encode reply */
-+	if (*statp == rpc_success && (xdr = procp->pc_encode)
-+	    && !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
-+			dprintk("lockd: failed to encode reply\n");
-+			/* serv->sv_stats->rpcsystemerr++; */
-+			*statp = rpc_system_err;
-+	}
-+	return 1;
-+}
-+
- /*
-  * Sysctl parameters (same as module parameters, different interface).
-  */
-@@ -484,12 +522,14 @@
- 		.vs_vers	= 1,
- 		.vs_nproc	= 17,
- 		.vs_proc	= nlmsvc_procedures,
-+		.vs_dispatch	= nlmsvc_dispatch,
- 		.vs_xdrsize	= NLMSVC_XDRSIZE,
- };
- static struct svc_version	nlmsvc_version3 = {
- 		.vs_vers	= 3,
- 		.vs_nproc	= 24,
- 		.vs_proc	= nlmsvc_procedures,
-+		.vs_dispatch	= nlmsvc_dispatch,
- 		.vs_xdrsize	= NLMSVC_XDRSIZE,
- };
- #ifdef CONFIG_LOCKD_V4
-@@ -497,6 +537,7 @@
- 		.vs_vers	= 4,
- 		.vs_nproc	= 24,
- 		.vs_proc	= nlmsvc_procedures4,
-+		.vs_dispatch	= nlmsvc_dispatch,
- 		.vs_xdrsize	= NLMSVC_XDRSIZE,
- };
- #endif
-Index: lockd/svcsubs.c
-===================================================================
-RCS file: /cvs/nfsv4/cvs/pnfs/fs/lockd/svcsubs.c,v
-retrieving revision 1.1.1.4
-diff -u -r1.1.1.4 svcsubs.c
---- lockd/svcsubs.c	12 Jul 2006 19:53:39 -0000	1.1.1.4
-+++ lockd/svcsubs.c	13 Oct 2006 04:03:13 -0000
-@@ -16,6 +16,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/nfsd/nfsfh.h>
- #include <linux/nfsd/export.h>
-+#include <linux/nfsd/nfsd.h>
- #include <linux/lockd/lockd.h>
- #include <linux/lockd/share.h>
- #include <linux/lockd/sm_inter.h>
-@@ -136,12 +137,14 @@
+@@ -122,7 +124,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp,
  
- out_free:
- 	kfree(file);
-+	if (nfserr != nfserr_dropit) {
- #ifdef CONFIG_LOCKD_V4
--	if (nfserr == 1)
--		nfserr = nlm4_stale_fh;
--	else
-+		if (nfserr == 1)
-+			nfserr = nlm4_stale_fh;
-+		else
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now check for conflicting locks */
+ 	resp->status = cast_status(nlmsvc_testlock(file, &argp->lock, &resp->lock));
+@@ -153,7 +155,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp,
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ #if 0
+ 	/* If supplied state doesn't match current state, we assume it's
+@@ -196,7 +198,7 @@ nlmsvc_proc_cancel(struct svc_rqst *rqst
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Try to cancel request. */
+ 	resp->status = cast_status(nlmsvc_cancel_blocked(file, &argp->lock));
+@@ -229,7 +231,7 @@ nlmsvc_proc_unlock(struct svc_rqst *rqst
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now try to remove the lock */
+ 	resp->status = cast_status(nlmsvc_unlock(file, &argp->lock));
+@@ -368,7 +370,7 @@ nlmsvc_proc_share(struct svc_rqst *rqstp
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now try to create the share */
+ 	resp->status = cast_status(nlmsvc_share_file(host, file, argp));
+@@ -401,7 +403,7 @@ nlmsvc_proc_unshare(struct svc_rqst *rqs
+ 
+ 	/* Obtain client and file */
+ 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
+-		return rpc_success;
++		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now try to unshare the file */
+ 	resp->status = cast_status(nlmsvc_unshare_file(host, file, argp));
+
+diff .prev/fs/lockd/svcsubs.c ./fs/lockd/svcsubs.c
+--- .prev/fs/lockd/svcsubs.c	2006-10-13 17:02:07.000000000 +1000
++++ ./fs/lockd/svcsubs.c	2006-10-13 17:02:43.000000000 +1000
+@@ -140,7 +140,10 @@ out_free:
+ 		nfserr = nlm4_stale_fh;
+ 	else
  #endif
 -	nfserr = nlm_lck_denied;
++	if (nfserr == 3)
++		nfserr = nlm_drop_reply;
++	else
 +		nfserr = nlm_lck_denied;
-+	}
  	goto out_unlock;
  }
  
-Index: nfsd/lockd.c
-===================================================================
-RCS file: /cvs/nfsv4/cvs/pnfs/fs/nfsd/lockd.c,v
-retrieving revision 1.1.1.3
-diff -u -r1.1.1.3 lockd.c
---- nfsd/lockd.c	4 Apr 2006 17:55:25 -0000	1.1.1.3
-+++ nfsd/lockd.c	13 Oct 2006 04:03:14 -0000
-@@ -49,6 +49,8 @@
+
+diff .prev/fs/nfsd/lockd.c ./fs/nfsd/lockd.c
+--- .prev/fs/nfsd/lockd.c	2006-10-13 17:01:33.000000000 +1000
++++ ./fs/nfsd/lockd.c	2006-10-13 17:02:43.000000000 +1000
+@@ -43,12 +43,15 @@ nlm_fopen(struct svc_rqst *rqstp, struct
+ 	 * we invent: 0 = no error
+ 	 *            1 = stale file handle
+ 	 *	      2 = other error
++	 *	      3 = try again later
+ 	 */
+ 	switch (nfserr) {
+ 	case nfs_ok:
  		return 0;
  	case nfserr_stale:
  		return 1;
 +	case nfserr_dropit:
-+		return nfserr;
++		return 3;
  	default:
  		return 2;
  	}
 
+diff .prev/include/linux/lockd/xdr.h ./include/linux/lockd/xdr.h
+--- .prev/include/linux/lockd/xdr.h	2006-10-13 17:01:33.000000000 +1000
++++ ./include/linux/lockd/xdr.h	2006-10-13 17:02:43.000000000 +1000
+@@ -22,6 +22,8 @@
+ #define	nlm_lck_blocked		__constant_htonl(NLM_LCK_BLOCKED)
+ #define	nlm_lck_denied_grace_period	__constant_htonl(NLM_LCK_DENIED_GRACE_PERIOD)
+ 
++#define nlm_drop_reply		__constant_htonl(30000)
++
+ /* Lock info passed via NLM */
+ struct nlm_lock {
+ 	char *			caller;
 
+diff .prev/include/linux/sunrpc/msg_prot.h ./include/linux/sunrpc/msg_prot.h
+--- .prev/include/linux/sunrpc/msg_prot.h	2006-10-13 17:01:33.000000000 +1000
++++ ./include/linux/sunrpc/msg_prot.h	2006-10-13 17:02:43.000000000 +1000
+@@ -56,7 +56,9 @@ enum rpc_accept_stat {
+ 	RPC_PROG_MISMATCH = 2,
+ 	RPC_PROC_UNAVAIL = 3,
+ 	RPC_GARBAGE_ARGS = 4,
+-	RPC_SYSTEM_ERR = 5
++	RPC_SYSTEM_ERR = 5,
++	/* internal use only */
++	RPC_DROP_REPLY = 60000,
+ };
+ 
+ enum rpc_reject_stat {
+
+diff .prev/include/linux/sunrpc/xdr.h ./include/linux/sunrpc/xdr.h
+--- .prev/include/linux/sunrpc/xdr.h	2006-10-13 17:01:33.000000000 +1000
++++ ./include/linux/sunrpc/xdr.h	2006-10-13 17:02:43.000000000 +1000
+@@ -74,6 +74,7 @@ struct xdr_buf {
+ #define	rpc_proc_unavail	__constant_htonl(RPC_PROC_UNAVAIL)
+ #define	rpc_garbage_args	__constant_htonl(RPC_GARBAGE_ARGS)
+ #define	rpc_system_err		__constant_htonl(RPC_SYSTEM_ERR)
++#define	rpc_drop_reply		__constant_htonl(RPC_DROP_REPLY)
+ 
+ #define	rpc_auth_ok		__constant_htonl(RPC_AUTH_OK)
+ #define	rpc_autherr_badcred	__constant_htonl(RPC_AUTH_BADCRED)
+
+diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
+--- .prev/net/sunrpc/svc.c	2006-10-13 17:01:33.000000000 +1000
++++ ./net/sunrpc/svc.c	2006-10-13 17:02:43.000000000 +1000
+@@ -825,6 +825,11 @@ svc_process(struct svc_rqst *rqstp)
+ 		*statp = procp->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
+ 
+ 		/* Encode reply */
++		if (*statp == rpc_drop_reply) {
++			if (procp->pc_release)
++				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
++			goto dropit;
++		}
+ 		if (*statp == rpc_success && (xdr = procp->pc_encode)
+ 		 && !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
+ 			dprintk("svc: failed to encode reply\n");
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
