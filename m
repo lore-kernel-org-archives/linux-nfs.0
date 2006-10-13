@@ -1,27 +1,27 @@
 From: "Chuck Lever" <chucklever@gmail.com>
 Subject: Re: [PATCH 9/9] SUNRPC: skb_read_bits is the same as
 	xs_tcp_copy_data
-Date: Fri, 13 Oct 2006 15:13:33 -0400
-Message-ID: <76bd70e30610131213n7f034666x2dde84287a5aa9eb@mail.gmail.com>
+Date: Fri, 13 Oct 2006 15:34:08 -0400
+Message-ID: <76bd70e30610131234t248edd29jd04cee811accbc2c@mail.gmail.com>
 References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
 	<20061012211523.8734.63869.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<20061013072516.GA13531@infradead.org>
+	<1160694537.12029.7.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GYSTP-0003rR-3Q
-	for nfs@lists.sourceforge.net; Fri, 13 Oct 2006 12:13:35 -0700
-Received: from ug-out-1314.google.com ([66.249.92.171])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GYSTP-0001vv-Bi
-	for nfs@lists.sourceforge.net; Fri, 13 Oct 2006 12:13:35 -0700
-Received: by ug-out-1314.google.com with SMTP id p27so484569ugc
-	for <nfs@lists.sourceforge.net>; Fri, 13 Oct 2006 12:13:34 -0700 (PDT)
-To: "Christoph Hellwig" <hch@infradead.org>
-In-Reply-To: <20061013072516.GA13531@infradead.org>
+	id 1GYSnJ-0005xL-7y
+	for nfs@lists.sourceforge.net; Fri, 13 Oct 2006 12:34:09 -0700
+Received: from ug-out-1314.google.com ([66.249.92.173])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GYSnJ-0002p7-UG
+	for nfs@lists.sourceforge.net; Fri, 13 Oct 2006 12:34:10 -0700
+Received: by ug-out-1314.google.com with SMTP id p27so487272ugc
+	for <nfs@lists.sourceforge.net>; Fri, 13 Oct 2006 12:34:08 -0700 (PDT)
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1160694537.12029.7.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,17 +34,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/13/06, Christoph Hellwig <hch@infradead.org> wrote:
-> On Thu, Oct 12, 2006 at 05:15:23PM -0400, Chuck Lever wrote:
+On 10/12/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
 > > Clean-up: eliminate xs_tcp_copy_data -- it's exactly the same logic as the
 > > common routine skb_read_bits.  The UDP and TCP socket read code now share
 > > the same routine for copying data into an xdr_buf.
->
-> Looks good, but skb_read_bits is a pretty bad name for a public function
-> in sunrpc code.
-
-OK... the name is historical, but can easily be changed.  But see below.
-
+> >
+> > Test plan:
+> > None.
+> >
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> >
+> >  include/linux/sunrpc/xdr.h |    1 +
+> >  net/sunrpc/socklib.c       |    5 +++--
+> >  net/sunrpc/xprtsock.c      |   24 ++++--------------------
+> >  3 files changed, 8 insertions(+), 22 deletions(-)
+> >
+> > diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> > index 953723b..73b700e 100644
+> > --- a/include/linux/sunrpc/xdr.h
+> > +++ b/include/linux/sunrpc/xdr.h
+> > @@ -155,6 +155,7 @@ typedef struct {
+> >
+> >  typedef size_t (*skb_read_actor_t)(skb_reader_t *desc, void *to, size_t len);
+> >
+> > +size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len);
+> >  extern int csum_partial_copy_to_xdr(struct xdr_buf *, struct sk_buff *);
+> >  extern ssize_t xdr_partial_copy_from_skb(struct xdr_buf *, unsigned int,
+> >               skb_reader_t *, skb_read_actor_t);
 > > diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
 > > index 6f17527..9d20136 100644
 > > --- a/net/sunrpc/socklib.c
@@ -65,12 +83,12 @@ OK... the name is historical, but can easily be changed.  But see below.
 > >       desc->offset += len;
 > >       return len;
 > >  }
->
-> But given that this code doesn't contain any sunrpc specifics it could
-> as well move to net/core/skbuff.c
+> > +EXPORT_SYMBOL_GPL(skb_read_bits);
+>    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>     Why do you need this?
 
-That sounds OK.  I can also adopt whatever EXPORT_SYMBOL convention is
-used there (to address Trond's question about EXPORT_SYMBOL_GPL).
+Ah.  At the moment, we don't.  I will add this to a later patch where
+it will be clear why this is here.
 
 -- 
 "We who cut mere stones must always be envisioning cathedrals"
