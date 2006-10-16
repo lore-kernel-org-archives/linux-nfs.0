@@ -1,22 +1,21 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 003 of 5] knfsd: nfsd4: Fix error handling in nfsd's
-	callback client
-Date: Tue, 17 Oct 2006 09:30:19 +1000
-Message-ID: <1061016233019.11342@suse.de>
+Subject: [PATCH 002 of 5] knfsd: nfsd4: fix open permission checking
+Date: Tue, 17 Oct 2006 09:30:15 +1000
+Message-ID: <1061016233015.11330@suse.de>
 References: <20061017092702.11224.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZbud-00016k-RF
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 16:30:27 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GZbuY-00016Y-1B
+	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 16:30:22 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZbue-00016e-BD
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 16:30:28 -0700
+	(Exim 4.44) id 1GZbuX-00072g-9t
+	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 16:30:23 -0700
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,44 +31,35 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Coverity noticed that the error handling code in the NFSv4 callback client
-sets cb->cb_client to NULL, then calls rpc_shutdown_client with the NULL
-pointer.
+We weren't actually checking for SHARE_ACCESS_WRITE, with the result that
+the owner could open a non-writeable file for write!
 
-Coverity: #cid 1397
+Continue to allow DENY_WRITE only with write access.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Thanks to Jim Rees for reporting the bug.
+
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4callback.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ ./fs/nfsd/nfs4proc.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff .prev/fs/nfsd/nfs4callback.c ./fs/nfsd/nfs4callback.c
---- .prev/fs/nfsd/nfs4callback.c	2006-10-17 09:05:30.000000000 +1000
-+++ ./fs/nfsd/nfs4callback.c	2006-10-17 09:05:30.000000000 +1000
-@@ -421,7 +421,7 @@ nfsd4_probe_callback(struct nfs4_client 
+diff .prev/fs/nfsd/nfs4proc.c ./fs/nfsd/nfs4proc.c
+--- .prev/fs/nfsd/nfs4proc.c	2006-10-17 09:02:26.000000000 +1000
++++ ./fs/nfsd/nfs4proc.c	2006-10-17 09:04:13.000000000 +1000
+@@ -78,8 +78,10 @@ do_open_permission(struct svc_rqst *rqst
  
- 	/* Create RPC client */
- 	cb->cb_client = rpc_create(&args);
--	if (!cb->cb_client) {
-+	if (IS_ERR(cb->cb_client)) {
- 		dprintk("NFSD: couldn't create callback client\n");
- 		goto out_err;
- 	}
-@@ -448,10 +448,10 @@ nfsd4_probe_callback(struct nfs4_client 
- out_rpciod:
- 	atomic_dec(&clp->cl_count);
- 	rpciod_down();
--	cb->cb_client = NULL;
- out_clnt:
- 	rpc_shutdown_client(cb->cb_client);
- out_err:
-+	cb->cb_client = NULL;
- 	dprintk("NFSD: warning: no callback path to client %.*s\n",
- 		(int)clp->cl_name.len, clp->cl_name.data);
- }
+ 	if (open->op_share_access & NFS4_SHARE_ACCESS_READ)
+ 		accmode |= MAY_READ;
+-	if (open->op_share_deny & NFS4_SHARE_ACCESS_WRITE)
++	if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
+ 		accmode |= (MAY_WRITE | MAY_TRUNC);
++	if (open->op_share_deny & NFS4_SHARE_DENY_WRITE)
++		accmode |= MAY_WRITE;
+ 
+ 	status = fh_verify(rqstp, current_fh, S_IFREG, accmode);
+ 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
