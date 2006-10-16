@@ -1,25 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 4/8] knfsd: repcache: split hash index
-Date: Mon, 16 Oct 2006 20:23:30 +1000
-Message-ID: <17715.23970.155314.297331@cse.unsw.edu.au>
-References: <1160566044.8530.13.camel@hole.melbourne.sgi.com>
-	<17714.59304.768727.298610@cse.unsw.edu.au>
-	<20061016095121.GB8568@sgi.com>
+From: Paul Jackson <pj@sgi.com>
+Subject: Re: [PATCH 1 of 4] cpumask: add highest_possible_node_id
+Date: Mon, 16 Oct 2006 03:56:44 -0700
+Message-ID: <20061016035644.1c99ad9b.pj@sgi.com>
+References: <1154669719.21040.2351.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Cc: akpm@osdl.org, neilb@suse.de, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZPdJ-0006p7-3h
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 03:23:45 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZPdJ-0007Sf-GY
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 03:23:46 -0700
-To: Greg Banks <gnb@sgi.com>
-In-Reply-To: message from Greg Banks on Monday October 16
+	id 1GZQ9N-0001SD-42
+	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 03:56:53 -0700
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZQ9J-0005o1-WC
+	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 03:56:54 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1154669719.21040.2351.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +30,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday October 16, gnb@sgi.com wrote:
-> 
-> Let's look at the maths.  If we were to limit cache_buckets[] to a
-> single page, I calculate that would give us 186 entries on ia64, 46
-> on x86_64, and 68 on i386 (fewer if various spinlock-related config
-> options are enabled).  That's too low on x86_64 but fine on the other
-> platforms.  With a single order-1 allocation we could cover most
-> bases.
+This patch (of August 3, 2006) added (after a bit of fixing) a nodemask
+related routine to lib/cpumask.c.  Granted, there is no lib/nodemask.c,
+and Andrew suggested lib/cpumask.c.
 
-I had thought that ____cacheline_aligned_in_smp would have padded it
-more making few entries per page, but that probably isn't important.
+But at least it should have added
 
-> 
-> Alternatively, we could allocate the buckets separately and make
-> cache_buckets[] an array of pointers to buckets.  Then we could do a
-> single (say) 128*sizeof(svc_cache_bucket*) allocation plus (say) 128 *
-> sizeof(svc_cache_bucket) allocations, all of which would be order 0.
-> Now we've effectively got a 3-level fat tree keyed on hash value.
-> 
-> The more I think about it, the more I like this idea.
-> 
+	#include <linux/nodemask.h>
 
-Me too.
+to lib/cpumask.c, no?
 
-NeilBrown
+-- 
+                  I won't rest till it's the best ...
+                  Programmer, Linux Scalability
+                  Paul Jackson <pj@sgi.com> 1.925.600.0401
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
