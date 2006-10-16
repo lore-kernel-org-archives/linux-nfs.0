@@ -1,19 +1,23 @@
-From: <bt.email.antivirus@bt.com>
-Subject: BT Messaging Anti-Virus Alert
-Date: Sun, 15 Oct 2006 23:39:57 +0100
-Message-ID: <000001c6f0aa$d79af0c0$aaa420d9@domain1.systemhost.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 4/8] knfsd: repcache: split hash index
+Date: Mon, 16 Oct 2006 12:00:08 +1000
+Message-ID: <17714.59304.768727.298610@cse.unsw.edu.au>
+References: <1160566044.8530.13.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0073723580=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZEeN-0005Pz-G5
-	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 15:40:07 -0700
-Received: from smtp3.smtp.bt.com ([217.32.164.138])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZEeM-0003K7-42
-	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 15:40:08 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1GZHmD-0005OK-3W
+	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:00:25 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GZHmC-00075r-D1
+	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:00:26 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Wednesday October 11
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,155 +30,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Wednesday October 11, gnb@melbourne.sgi.com wrote:
+>   */
+>  #define CACHESIZE		1024
+> -#define HASHSIZE		64
+> +/* number of buckets used to manage LRU lists and cache locks (power of 2) */
+> +#ifdef CONFIG_SMP
+> +#define CACHE_NUM_BUCKETS	64
+> +#else
+> +#define CACHE_NUM_BUCKETS	1
+> +#endif
+> +/* largest possible number of entries in all LRU lists (power of 2) */
+> +#define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
+> +/* largest possible number of entries in LRU per bucket */
+> +#define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
+> +/* log2 of largest desired hash chain length */
+> +#define MAX_CHAIN_ORDER		2
+> +/* size of the per-bucket hash table */
+> +#define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
 
---===============0073723580==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0001_01C6F0B3.395F58C0"
-Content-Class: urn:content-classes:message
+If I've done my sums right (there is always room for doubt), then HASHSIZE == 4096.
 
-This is a multi-part message in MIME format.
+> +
+> +		b->hash = kmalloc (HASHSIZE * sizeof(struct hlist_head), GFP_KERNEL);
 
-------=_NextPart_000_0001_01C6F0B3.395F58C0
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: 7bit
+So this kmalloc asks for 16K or 32K depending on pointer size.  On
+most machines that would be an order 2 or 3 allocation which is more
+likely to fail that order 0.
+I would really like to see HASHSIZE limited to PAGE_SIZE, and if
+needed, push CACHE_NUM_BUCKETS up ... that might make the
+'cache_buckets' array bigger than a page, but we don't kmalloc that so
+it shouldn't be a problem.
 
-Notification Of Blocked e-mail - This message is intended for BT
-employees only. 
-All other recipients: Please ignore this message and accept our apology
-for any inconvenience (N.B. the links below are private).
+Hmmm.. but if we wanted to scale the hash table size based on memory,
+we would want to kmalloc cache_buckets which might limit it's size...
+Maybe we could try allocating it big - which might work on big
+machines, and scale back the size on kmalloc failure??  That would
+probably work.
 
-An e-mail (summarised below) has been blocked at the BT e-mail gateway
-because it contained an attachment of a potentially dangerous type
-<http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm>  or
-a computer virus. 
+So for now I would like to see this limit HASHSIZE to
+PAGE_SIZE/sizeof(void*), and possibly make CACHE_NUM_BUCKETS bigger in
+some circumstances.  Allocating cache_buckets based on memory size can
+come later if it is needed.
 
-Date/Time:       "15 Oct 2006 23:39:57" 
-From:              "nfs-bounces@lists.sourceforge.net" 
-Subject:           "[NFS] Returned mail: see transcript for details" 
-Blocked file:     "DOCUMENT.EXE" 
-Virus Name:     "" 
+Sound fair?
 
-
-
-BT Employees: If there is a legitimate business requirement for this
-e-mail, please ask the originator to re-send it. You must advise them to
-follow the special instructions, which you will find at this location
-<http://antivirus.intra.bt.com/zippass.htm>  for re-sending e-mail of
-this type. They should also ensure that the e-mail is virus-free.
-
-More information on blocked attachments can be found at
-http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm
-<http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm> 
-
-Please do not reply to this email. Thank you.
-
-
-BT Teamconnect Enterprise Solutions 
-
-British Telecommunications plc
-Registered office: 81 Newgate Street London EC1A 7AJ
-Registered in England no. 1800000 
-This electronic message contains information from British
-Telecommunications plc which may be privileged or confidential. 
-If you are not the intended recipient be aware that any disclosure,
-copying, distribution or use of the contents of this information is
-prohibited. 
-
-Generated by: C03
- 
-
-
-------=_NextPart_000_0001_01C6F0B3.395F58C0
-Content-Type: text/html;
-	charset="utf-8"
-Content-Transfer-Encoding: 7bit
-
-
-<html>
-
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-<title>Notification Of Blocked e-mail</title>
-</head>
-
-<body>
-
-<b><font color="#ff0000" size="2" face="Arial"><u>
-<p>Notification Of Blocked e-mail - This message is intended for BT employees 
-only. <br>
-All other recipients: Please ignore this message and accept our apology for any 
-inconvenience (N.B. the links below are private).</p>
-</u></font><font face="Arial" size="2">
-<p>An e-mail (summarised below) has been blocked at the BT e-mail gateway 
-because it contained an attachment of a </font></b><font face="Arial" size="2">
-<a href="http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm">
-<font color="#0000ff"><u>potentially dangerous type</u></font></a> <b>or a 
-computer virus. <font face="Arial"><br>
-</font></b><font color="#000080" size="2"><br>
-
-Date/Time: &nbsp; &nbsp; &nbsp; "15 Oct 2006 23:39:57" <BR>
-From: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;"nfs-bounces@lists.sourceforge.net" <BR>
-Subject: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "[NFS] Returned mail: see transcript for details" <BR>
-Blocked file: &nbsp; &nbsp; "DOCUMENT.EXE" <BR>
-Virus Name: &nbsp; &nbsp; "" <BR><BR>
-
-<b><font color="#ff0000">
-<p>BT Employees:</font> </b>If there is a legitimate business requirement for 
-this e-mail, please ask the originator to re-send it. You must advise them to 
-follow the special instructions, which you will find at
-<a href="http://antivirus.intra.bt.com/zippass.htm"><font color="#0000ff"><u>
-this location</u></font></a> for re-sending e-mail of this type. They should also 
-ensure that the e-mail is virus-free.</p>
-<p>More information on blocked attachments can be found at
-<a href="http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm">
-<font color="#0000ff"><u>
-http://teamconnect.intra.bt.com/pas/m/email/antivirus/blocked.htm</u></font></a></p>
-<b>
-<p>Please do not reply to this email. Thank you.<br>
-<br>
-<br>
-<i>BT Teamconnect Enterprise Solutions</i> <br>
-<br>
-</b><font size="1">British Telecommunications plc<br>
-Registered office: 81 Newgate Street London EC1A 7AJ<br>
-Registered in England no. 1800000 <br>
-This electronic message contains information from British Telecommunications plc 
-which may be privileged or confidential. <br>
-If you are not the intended recipient be aware that any disclosure, copying, 
-distribution or use of the contents of this information is prohibited. </p>
-</font></font><b><font face="Arial" size="1" color="#808080">
-<p>Generated by: C03</font><font face="Arial" size="2" color="#808080"><br>
-&nbsp;</p>
-</font></b>
-
-</body>
-
-</html>
-
-------=_NextPart_000_0001_01C6F0B3.395F58C0--
-
-
---===============0073723580==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+NeilBrown
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0073723580==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0073723580==--
