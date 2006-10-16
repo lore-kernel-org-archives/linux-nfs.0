@@ -1,25 +1,23 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 6/8] knfsd: repcache: use client IP address in	hash
-Date: Mon, 16 Oct 2006 12:27:32 +1000
-Message-ID: <17714.60948.856931.650829@cse.unsw.edu.au>
-References: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
-	<1160620200.6596.36.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 7/8] knfsd: repcache: faster hash chain probe
+Date: Mon, 16 Oct 2006 12:34:54 +1000
+Message-ID: <17714.61390.225292.840864@cse.unsw.edu.au>
+References: <1160566178.8530.19.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Greg Banks <gnb@melbourne.sgi.com>
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZICa-0007gU-M4
-	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:27:40 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GZIJh-0008GQ-Gw
+	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:35:01 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZICa-00047T-56
-	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:27:41 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: message from Trond Myklebust on Wednesday October 11
+	(Exim 4.44) id 1GZIJh-0005Zm-R3
+	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:35:02 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: message from Greg Banks on Wednesday October 11
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,38 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday October 11, trond.myklebust@fys.uio.no wrote:
-> On Wed, 2006-10-11 at 21:28 +1000, Greg Banks wrote:
-> > knfsd: Use the client's IP address in the duplicate request cache
-> > hash function, instead of just the XID.  This avoids contention
-> > on hash buckets when the workload has many clients whose XIDs are
-> > nearly in lockstep, a property seen on compute clusters using NFS
-> > for shared storage.
+On Wednesday October 11, gnb@melbourne.sgi.com wrote:
+> knfsd: Squeeze some small performance improvements out of the duplicate
+> request cache's lookup function by reducing the number of instructions
+> to compare each entry during hash chain probing.
 > 
-> Note that some platforms (in particular the *BSDs) use an MD5 checksum
-> of the first couple of 100 bytes of the RPC header+message instead of
-> relying on the XID. That is a good deal safer w.r.t. port reuse by other
-> clients etc.
+> Comparisons such as the RPC protocol number and version which are going
+> to be the same for almost all entries are now done last.  Comparisons
+> such as xid and client IP address which are more likely to differ
+> between entries are done first.  The client IP address comparison
+> is fixed not to compare 8 bytes of zeroes and to do comparisons as
+> 32b quantities.  Finally, a 32b addition for the timestamp is removed
+> from the loop by taking advantage of a loop invariant.
 
-I'm amused at the juxtaposition here.
-We have the possibility of using an MD5 hash over 100 bytes in a
-comment on patch containing the comment
+And yet:
 
-+ * Experiment shows that using the Jenkins hash improves the spectral
-+ * properties of this hash, but the CPU cost of calculating it outweighs
-+ * the advantages.
+> +static inline int
+> +compare_sockaddr_in(const struct sockaddr_in *sina, const struct sockaddr_in *sinb)
+> +{
+> +	return ((*(u32 *)&sina->sin_family == *(u32 *)&sinb->sin_family) &&
+> +		(sina->sin_addr.s_addr == sinb->sin_addr.s_addr));
+> +}
+> +
 
-If a Jenkins hash is too expensive, I suspect MD5 would be even more
-so...
+You compare family and port before address.... I suspect you would
+find the port is the same between clients more often than the address.
 
-I'm not suggesting either approach is right or wrong - just that it is
-thought provoking.
+Is there a reason?
 
-Greg: did you have measurements to suggest that a Jenkins hash was too
-expensive?   Did it just increase CPU load a bit, or did it affect
-throughput?
-
-Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
