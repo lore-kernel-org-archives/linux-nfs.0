@@ -1,8 +1,8 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 4/8] knfsd: repcache: split hash index
-Date: Mon, 16 Oct 2006 12:00:08 +1000
-Message-ID: <17714.59304.768727.298610@cse.unsw.edu.au>
-References: <1160566044.8530.13.camel@hole.melbourne.sgi.com>
+Subject: Re: [PATCH 5/8] knfsd: repcache: dynamically expand under load
+Date: Mon, 16 Oct 2006 12:14:01 +1000
+Message-ID: <17714.60137.447459.323573@cse.unsw.edu.au>
+References: <1160566088.8530.15.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
@@ -10,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZHmD-0005OK-3W
-	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:00:25 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GZHzU-0006YA-6s
+	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:14:08 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZHmC-00075r-D1
-	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:00:26 -0700
+	(Exim 4.44) id 1GZHzU-0001Bu-Kg
+	for nfs@lists.sourceforge.net; Sun, 15 Oct 2006 19:14:09 -0700
 To: Greg Banks <gnb@melbourne.sgi.com>
 In-Reply-To: message from Greg Banks on Wednesday October 11
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,49 +31,59 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Wednesday October 11, gnb@melbourne.sgi.com wrote:
->   */
->  #define CACHESIZE		1024
-> -#define HASHSIZE		64
-> +/* number of buckets used to manage LRU lists and cache locks (power of 2) */
-> +#ifdef CONFIG_SMP
-> +#define CACHE_NUM_BUCKETS	64
-> +#else
-> +#define CACHE_NUM_BUCKETS	1
-> +#endif
-> +/* largest possible number of entries in all LRU lists (power of 2) */
-> +#define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
-> +/* largest possible number of entries in LRU per bucket */
-> +#define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
-> +/* log2 of largest desired hash chain length */
-> +#define MAX_CHAIN_ORDER		2
-> +/* size of the per-bucket hash table */
-> +#define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
-
-If I've done my sums right (there is always room for doubt), then HASHSIZE == 4096.
-
+>  /*
+> + * Decide whether it is time to expand the cache.  Returns 1 iff
+> + * the cache is to be expanded.  Called with bucket lock held.
+> + */
+> +static int
+> +nfsd_cache_expand_ratelimit(struct svc_cache_bucket *b)
+> +{
+> +	unsigned long now = jiffies;
 > +
-> +		b->hash = kmalloc (HASHSIZE * sizeof(struct hlist_head), GFP_KERNEL);
+> +	b->nhits++;
+> +	if (b->last == 0) {
+> +		b->last = now;
+> +	} else if ((now - b->last) > CACHE_RATE_JIFFIES &&
+> +		   b->nhits > (b->size >> 4)) {
+> +		b->nhits = 0;
+> +		b->last = now;
+> +		return 1;
+> +	}
+> +	return 0;
+> +}
 
-So this kmalloc asks for 16K or 32K depending on pointer size.  On
-most machines that would be an order 2 or 3 allocation which is more
-likely to fail that order 0.
-I would really like to see HASHSIZE limited to PAGE_SIZE, and if
-needed, push CACHE_NUM_BUCKETS up ... that might make the
-'cache_buckets' array bigger than a page, but we don't kmalloc that so
-it shouldn't be a problem.
+I'm wondering a bit about this function.
+Firstly (and this is very minor) I expected to see "time_before" or
+similar when comparing times.  The code you have is correct, but maybe
+it will also be obvious if it read
+           if (time_after(now, b->last + CACHE_RATE_JIFFIES))
+??
 
-Hmmm.. but if we wanted to scale the hash table size based on memory,
-we would want to kmalloc cache_buckets which might limit it's size...
-Maybe we could try allocating it big - which might work on big
-machines, and scale back the size on kmalloc failure??  That would
-probably work.
+Also, nhits is only reset when we return 1, and hence grow the bucket.
+So if we only occasionally had large bursts which included
+CACHE_BUCKET_MAX_SIZE requests in CACHE_THRESH_AGE jiffies, we would
+still eventually grow the bucket to it's max size.
+I think I would like to have something like
 
-So for now I would like to see this limit HASHSIZE to
-PAGE_SIZE/sizeof(void*), and possibly make CACHE_NUM_BUCKETS bigger in
-some circumstances.  Allocating cache_buckets based on memory size can
-come later if it is needed.
 
-Sound fair?
+	b->nhits++;
+	if (b->last == 0) {
+		b->last = now;
+	} else if (time_after(now, b->last + CACHE_MAX_WAIT)) {
+		b->last = now; /* too slow, forget it */
+		b->nhits = 0;
+		return 0;
+	} else if (time_after(now, b->last + CACHE_RATE_JIFFIES) &&
+		   b->nhits > (b->size >> 4)) {
+		b->nhits = 0;
+		b->last = now;
+		return 1;
+	}
+	return 0;
+
+with CACHE_MAX_WAIT maybe 60*HZ.
+
+Make sense?
 
 NeilBrown
 
