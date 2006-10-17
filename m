@@ -1,21 +1,24 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/10]
-Date: Tue, 17 Oct 2006 14:38:50 -0400
-Message-ID: <20061017183850.25694.10057.stgit@schiele.dsl.sfldmi.ameritech.net>
-Reply-To: Chuck Lever <chucklever@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: fcntl(3, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=0,
+	len=0}) unreasonably slow SEC: UNCLASSIFIED
+Date: Tue, 17 Oct 2006 17:49:36 -0400
+Message-ID: <1161121776.5559.50.camel@lade.trondhjem.org>
+References: <C172191424DC784385F213C8CBB4CDE015E1A4@rusrxm02.drn.mil.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZwAH-0005Fe-Po
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 14:07:58 -0700
-Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZwAH-0005hM-Kr
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 14:07:58 -0700
-To: trond.myklebust@fys.uio.no
+	id 1GZwop-0000sA-Gt
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 14:49:51 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GZwoo-0008TM-84
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 14:49:52 -0700
+To: "Benham, Timothy MR" <Timothy.Benham@defence.gov.au>
+In-Reply-To: <C172191424DC784385F213C8CBB4CDE015E1A4@rusrxm02.drn.mil.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,15 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
--- 
-corporate:    <chuck dot lever at oracle dot com>
-
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+T24gVHVlLCAyMDA2LTEwLTE3IGF0IDEwOjU5ICsxMDAwLCBCZW5oYW0sIFRpbW90aHkgTVIgd3Jv
+dGU6Cj4gSSd2ZSBub3RpY2VkIGEgcHJvYmxlbSB3aXRoIE5GUyBmaWxlIGxvY2tpbmcgdW5kZXIg
+TGludXgga2VybmVsCj4gMi42LjktMzQuRUxzbXAuIFRoZSBzZXJ2ZXIgaXMgYSBOZXRBcHAgYXBw
+bGlhbmNlLiBUaGUgcHJvYmxlbSB3YXMKPiBpbml0aWFsbHkgZGlzY292ZXJlZCBpbiBhIHByb2dy
+YW1zIHdoaWNoIGFjY2VzcyBhIGZpbGUgdGhhdCBob2xkcwo+IHN0YXRlIGZvciBhIGRpc3RyaWJ1
+dGVkIHN5c3RlbS4gMzAgc2Vjb25kIGRlbGF5cyBhcmUgdW5hY2NlcHRhYmxlIGluCj4gdGhpcyBh
+cHBsaWNhdGlvbi4KPiAKPiBUaGUgcHJvYmxlbSBpcyBleGhpYml0ZWQgYnkgYSBzaW1wbGUgQyBw
+cm9ncmFtIChsZXQncyBjYWxsIGl0IHRlc3MpCj4gbGlrZQo+IAo+IOKApiAKPiB3aGlsZSgxKSB7
+IAo+ICAgICAgICAgZmQ9b3BlbihteU5GU2ZpbGUsT19SRFdSKTsgCj4gICAgICAgICBmY250bChm
+ZCwgRl9TRVRMS1csICZteUxvY2spOyAKPiAgICAgICAgIGNsb3NlKGZkKTsgCj4gICAgICAgICBm
+cHJpbnRmKHN0ZGVyciwiLiIpOyAKPiB9IAo+IC4uLgo+IAo+IEl0IHByaW50cyBwZXJpb2QgdG8g
+dGhlIHNjcmVlbiBxdWlja2x5LiBIb3dldmVyIHJ1bm5pbmcgdHdvIGluc3RhbmNlcwo+IGF0IG9u
+Y2UgKGVnICJ0ZXNzICYgdGVzcyIpIHByaW50cyBwZXJpb2RzIHJlYWxseSBzbG93bHkuIEV2ZXJ5
+IGNhbGwgdG8KPiBmY250bCBzZWVtcyB0byB0YWtlIDMwIHNlY29uZHMuIElmIEkgY29tcGlsZSBh
+bmQgcnVuIHRlc3MgdW5kZXIKPiBTb2xhcmlzIDkgdGhlIHByb2JsZW0gaXMgbm90IG1hbmlmZXN0
+ZWQuCj4gCj4gU29ycnkgYWJvdXQgYSBsYWNrIG9mIGNvZGUgZXRjIGJ1dCB0aGUgc3lzdGVtcyBp
+biBxdWVzdGlvbiBhcmUgYWxsCj4gYWlyLWdhcHBlZC4gSSdtIG9ubHkgYW4gYXBwbGljYXRpb25z
+IHByb2dyYW1tZXIgc28gSSBkb24ndCBoYXZlIGFjY2Vzcwo+IHRvIHN5c3RlbSBsb2dzLCBjYW4n
+dCB1c2UgdGV0aGVyZWFsLCBldGMuIExvY2FsIHN5c3RlbXMgc3VwcG9ydCdzCj4gYW5zd2VyIGlz
+IHRvIHJlZmVyIHRoZSBxdWVzdGlvbiB0byBSZWQgSGF0LiBBbnkgY2x1ZXMgb24gaG93IEkgY291
+bGQKPiBnZXQgbXkgYXBwbGljYXRpb24gd29ya2luZyBzb29uZXIgdGhhbiB0aGF0IHdvdWxkIGJl
+IGFwcHJlY2lhdGVkLgoKSSB1bmRlcnN0YW5kIGZyb20gb3RoZXIgc291cmNlcyB0aGF0IGEgbnVt
+YmVyIG9mIE5MTSBmaXhlcyB0aGF0IGFyZSBub3QKcHJlc2VudCBpbiAyLjYuOS0zNC5FTCBoYXZl
+IGJlZW4gYmFja3BvcnRlZCBieSBSZWRIYXQgaW50byAyLjYuOS00Mi5FTC4KSGF2ZSB5b3UgdHJp
+ZWQgdGhhdCByZWxlYXNlPwoKQ2hlZXJzLAogIFRyb25kCgoKLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpVc2lu
+ZyBUb21jYXQgYnV0IG5lZWQgdG8gZG8gbW9yZT8gTmVlZCB0byBzdXBwb3J0IHdlYiBzZXJ2aWNl
+cywgc2VjdXJpdHk/CkdldCBzdHVmZiBkb25lIHF1aWNrbHkgd2l0aCBwcmUtaW50ZWdyYXRlZCB0
+ZWNobm9sb2d5IHRvIG1ha2UgeW91ciBqb2IgZWFzaWVyCkRvd25sb2FkIElCTSBXZWJTcGhlcmUg
+QXBwbGljYXRpb24gU2VydmVyIHYuMS4wLjEgYmFzZWQgb24gQXBhY2hlIEdlcm9uaW1vCmh0dHA6
+Ly9zZWwuYXMtdXMuZmFsa2FnLm5ldC9zZWw/Y21kPWxuayZraWQ9MTIwNzA5JmJpZD0yNjMwNTcm
+ZGF0PTEyMTY0MgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+XwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0
+cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
