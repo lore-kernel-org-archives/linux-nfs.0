@@ -1,20 +1,37 @@
-From: "Benham, Timothy MR" <Timothy.Benham@defence.gov.au>
-Subject: fcntl(3, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=0,
-	len=0}) unreasonably slow SEC: UNCLASSIFIED
-Date: Tue, 17 Oct 2006 10:59:31 +1000
-Message-ID: <C172191424DC784385F213C8CBB4CDE015E1A4@rusrxm02.drn.mil.au>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [patch 1/4] RPC: acquire BKL while calling rpc_release()
+	callback
+Date: Tue, 17 Oct 2006 10:24:33 -0700
+Message-ID: <1161105873.3315.21.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0396738124=="
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZdPK-0000oa-8u
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 18:06:14 -0700
-Received: from defuim01a.defence.gov.au ([203.10.224.150])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZdPI-0001oY-Mw
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 18:06:15 -0700
-To: <nfs@lists.sourceforge.net>
+	id 1GZsgI-00019t-Ct
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 10:24:46 -0700
+Received: from e34.co.us.ibm.com ([32.97.110.152])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GZsgH-0000Iw-5E
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 10:24:47 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com
+	[9.17.195.106])
+	by e34.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9HHOTDK031004
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 13:24:29 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
+	k9HHOSHw210954
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:28 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	k9HHOSoW020845
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:28 -0600
+Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k9HHOSTM020798
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:28 -0600
+To: NFS List <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,146 +44,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+The Big Kernel Lock must be held while calling rpc_release().
 
---===============0396738124==
-Content-class: urn:content-classes:message
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C6F187.81087A01"
+Signed-off-by: Frank Filz <ffilz@us.ibm.com>
+---
 
-This is a multi-part message in MIME format.
-
-------_=_NextPart_001_01C6F187.81087A01
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-I've noticed a problem with NFS file locking under Linux kernel
-2.6.9-34.ELsmp. The server is a NetApp appliance. The problem was
-initially discovered in a programs which access a file that holds state
-for a distributed system. 30 second delays are unacceptable in this
-application.
-
-The problem is exhibited by a simple C program (let's call it tess) like
-
-...
-while(1) {
-	fd=3Dopen(myNFSfile,O_RDWR);
-	fcntl(fd, F_SETLKW, &myLock);
-	close(fd);
-	fprintf(stderr,".");
-}
-...
-
-It prints period to the screen quickly. However running two instances at
-once (eg "tess & tess") prints periods really slowly. Every call to
-fcntl seems to take 30 seconds. If I compile and run tess under Solaris
-9 the problem is not manifested.
-
-Sorry about a lack of code etc but the systems in question are all
-air-gapped. I'm only an applications programmer so I don't have access
-to system logs, can't use tethereal, etc. Local systems support's answer
-is to refer the question to Red Hat. Any clues on how I could get my
-application working sooner than that would be appreciated.
-
-cheers,
-Tim Benham
-Dept. of Defence
-
-
-------_=_NextPart_001_01C6F187.81087A01
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.5.7650.23">
-<TITLE>fcntl(3, F_SETLKW, {type=3DF_WRLCK, whence=3DSEEK_SET, start=3D0, =
-len=3D0}) unreasonably slow SEC: UNCLASSIFIED</TITLE>
-</HEAD>
-<BODY>
-<!-- Converted from text/rtf format -->
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">I've noticed a problem with NFS file =
-locking under Linux kernel 2.6.9-34.ELsmp. The server is a NetApp =
-appliance. The problem was initially discovered in a programs which =
-access a file that holds state for a distributed system. 30 second =
-delays are unacceptable in this application.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">The problem is exhibited by a simple C =
-program (let's call it tess) like</FONT>
-</P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">&#8230;</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">while(1) {</FONT>
-
-<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
-FACE=3D"Arial">fd=3Dopen(myNFSfile,O_RDWR);</FONT>
-
-<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
-FACE=3D"Arial">fcntl(fd, F_SETLKW, &amp;myLock);</FONT>
-
-<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
-FACE=3D"Arial">close(fd);</FONT>
-
-<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
-FACE=3D"Arial">fprintf(stderr,&quot;.&quot;);</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">}</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">...</FONT>
-</P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">It prints period to the screen quickly. =
-However running two instances at once (eg &quot;tess &amp; tess&quot;) =
-prints periods really slowly. Every call to fcntl seems to take 30 =
-seconds. If I compile and run tess under Solaris 9 the problem is not =
-manifested.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">Sorry about a lack of code etc but the =
-systems in question are all air-gapped. I'm only an applications =
-programmer so I don't have access to system logs, can't use tethereal, =
-etc. Local systems support's answer is to refer the question to Red Hat. =
-Any clues on how I could get my application working sooner than that =
-would be appreciated.</FONT></P>
-
-<P><FONT SIZE=3D2 FACE=3D"Arial">cheers,</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">Tim Benham</FONT>
-
-<BR><FONT SIZE=3D2 FACE=3D"Arial">Dept. of Defence</FONT>
-</P>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C6F187.81087A01--
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 78696f2..185e093 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -29,6 +29,7 @@ #include <linux/mm.h>
+ #include <linux/slab.h>
+ #include <linux/utsname.h>
+ #include <linux/workqueue.h>
++#include <linux/smp_lock.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+@@ -529,8 +530,11 @@ rpc_call_async(struct rpc_clnt *clnt, st
+ 	rpc_restore_sigmask(&oldset);		
+ 	return status;
+ out_release:
+-	if (tk_ops->rpc_release != NULL)
++	if (tk_ops->rpc_release != NULL) {
++		lock_kernel();
+ 		tk_ops->rpc_release(data);
++		unlock_kernel();
++	}
+ 	return status;
+ }
+ 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index a1ab4ee..406aae5 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -884,8 +884,11 @@ #ifdef RPC_DEBUG
+ #endif
+ 	if (task->tk_flags & RPC_TASK_DYNAMIC)
+ 		rpc_free_task(task);
+-	if (tk_ops->rpc_release)
++	if (tk_ops->rpc_release) {
++		lock_kernel();
+ 		tk_ops->rpc_release(calldata);
++		unlock_kernel();
++	}
+ }
+ 
+ /**
+@@ -902,8 +905,11 @@ struct rpc_task *rpc_run_task(struct rpc
+ 	struct rpc_task *task;
+ 	task = rpc_new_task(clnt, flags, ops, data);
+ 	if (task == NULL) {
+-		if (ops->rpc_release != NULL)
++		if (ops->rpc_release != NULL) {
++			lock_kernel();
+ 			ops->rpc_release(data);
++			unlock_kernel();
++		}
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 	atomic_inc(&task->tk_count);
 
 
---===============0396738124==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0396738124==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0396738124==--
