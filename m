@@ -1,24 +1,20 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 005 of 5] knfsd: Allow lockd to drop replys as
-	appropriate.
-Date: Tue, 17 Oct 2006 09:30:30 +1000
-Message-ID: <1061016233030.11366@suse.de>
-References: <20061017092702.11224.patches@notabene>
+From: "Benham, Timothy MR" <Timothy.Benham@defence.gov.au>
+Subject: fcntl(3, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=0,
+	len=0}) unreasonably slow SEC: UNCLASSIFIED
+Date: Tue, 17 Oct 2006 10:59:31 +1000
+Message-ID: <C172191424DC784385F213C8CBB4CDE015E1A4@rusrxm02.drn.mil.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>,
-	linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="===============0396738124=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZbuo-00017g-AF
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 16:30:38 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZbun-00018p-GP
-	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 16:30:39 -0700
-To: Andrew Morton <akpm@osdl.org>
+	id 1GZdPK-0000oa-8u
+	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 18:06:14 -0700
+Received: from defuim01a.defence.gov.au ([203.10.224.150])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZdPI-0001oY-Mw
+	for nfs@lists.sourceforge.net; Mon, 16 Oct 2006 18:06:15 -0700
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,295 +27,146 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
 
-It is possible for the ->fopen callback from lockd into nfsd to find
-that an answer cannot be given straight away (an upcall is needed) and
-so the request has to be 'dropped', to be retried later.
-That error status is not currently propagated back.
+--===============0396738124==
+Content-class: urn:content-classes:message
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C6F187.81087A01"
 
-So:
-  Change nlm_fopen to return nlm error codes (rather than a private
-  protocol) and define a new nlm_drop_reply code.
-  Cause nlm_drop_reply to cause the rpc request to get rpc_drop_reply
-  when this error comes back.
-  Cause svc_process to drop a request which returns a status of
-  rpc_drop_reply.
+This is a multi-part message in MIME format.
 
-Cc: Marc Eshel <eshel@almaden.ibm.com>
+------_=_NextPart_001_01C6F187.81087A01
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+I've noticed a problem with NFS file locking under Linux kernel
+2.6.9-34.ELsmp. The server is a NetApp appliance. The problem was
+initially discovered in a programs which access a file that holds state
+for a distributed system. 30 second delays are unacceptable in this
+application.
 
-### Diffstat output
- ./fs/lockd/svc4proc.c             |   12 ++++++------
- ./fs/lockd/svcproc.c              |   16 +++++++++-------
- ./fs/lockd/svcsubs.c              |    6 ------
- ./fs/nfsd/lockd.c                 |   14 ++++++++------
- ./include/linux/lockd/bind.h      |    5 +++++
- ./include/linux/lockd/xdr.h       |    2 ++
- ./include/linux/sunrpc/msg_prot.h |    4 +++-
- ./include/linux/sunrpc/xdr.h      |    1 +
- ./net/sunrpc/svc.c                |    5 +++++
- 9 files changed, 39 insertions(+), 26 deletions(-)
+The problem is exhibited by a simple C program (let's call it tess) like
 
-diff .prev/fs/lockd/svc4proc.c ./fs/lockd/svc4proc.c
---- .prev/fs/lockd/svc4proc.c	2006-10-17 09:10:54.000000000 +1000
-+++ ./fs/lockd/svc4proc.c	2006-10-17 09:10:55.000000000 +1000
-@@ -96,7 +96,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now check for conflicting locks */
- 	resp->status = nlmsvc_testlock(file, &argp->lock, &resp->lock);
-@@ -126,7 +126,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- #if 0
- 	/* If supplied state doesn't match current state, we assume it's
-@@ -169,7 +169,7 @@ nlm4svc_proc_cancel(struct svc_rqst *rqs
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Try to cancel request. */
- 	resp->status = nlmsvc_cancel_blocked(file, &argp->lock);
-@@ -202,7 +202,7 @@ nlm4svc_proc_unlock(struct svc_rqst *rqs
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now try to remove the lock */
- 	resp->status = nlmsvc_unlock(file, &argp->lock);
-@@ -339,7 +339,7 @@ nlm4svc_proc_share(struct svc_rqst *rqst
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now try to create the share */
- 	resp->status = nlmsvc_share_file(host, file, argp);
-@@ -372,7 +372,7 @@ nlm4svc_proc_unshare(struct svc_rqst *rq
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlm4svc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now try to lock the file */
- 	resp->status = nlmsvc_unshare_file(host, file, argp);
+...
+while(1) {
+	fd=3Dopen(myNFSfile,O_RDWR);
+	fcntl(fd, F_SETLKW, &myLock);
+	close(fd);
+	fprintf(stderr,".");
+}
+...
 
-diff .prev/fs/lockd/svcproc.c ./fs/lockd/svcproc.c
---- .prev/fs/lockd/svcproc.c	2006-10-17 09:10:54.000000000 +1000
-+++ ./fs/lockd/svcproc.c	2006-10-17 09:10:55.000000000 +1000
-@@ -59,7 +59,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
- 	struct nlm_host		*host = NULL;
- 	struct nlm_file		*file = NULL;
- 	struct nlm_lock		*lock = &argp->lock;
--	u32			error;
-+	u32			error = 0;
- 
- 	/* nfsd callbacks must have been installed for this procedure */
- 	if (!nlmsvc_ops)
-@@ -88,6 +88,8 @@ nlmsvc_retrieve_args(struct svc_rqst *rq
- no_locks:
- 	if (host)
- 		nlm_release_host(host);
-+	if (error)
-+		return error;
- 	return nlm_lck_denied_nolocks;
- }
- 
-@@ -122,7 +124,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp,
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now check for conflicting locks */
- 	resp->status = cast_status(nlmsvc_testlock(file, &argp->lock, &resp->lock));
-@@ -153,7 +155,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp,
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- #if 0
- 	/* If supplied state doesn't match current state, we assume it's
-@@ -196,7 +198,7 @@ nlmsvc_proc_cancel(struct svc_rqst *rqst
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Try to cancel request. */
- 	resp->status = cast_status(nlmsvc_cancel_blocked(file, &argp->lock));
-@@ -229,7 +231,7 @@ nlmsvc_proc_unlock(struct svc_rqst *rqst
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now try to remove the lock */
- 	resp->status = cast_status(nlmsvc_unlock(file, &argp->lock));
-@@ -368,7 +370,7 @@ nlmsvc_proc_share(struct svc_rqst *rqstp
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now try to create the share */
- 	resp->status = cast_status(nlmsvc_share_file(host, file, argp));
-@@ -401,7 +403,7 @@ nlmsvc_proc_unshare(struct svc_rqst *rqs
- 
- 	/* Obtain client and file */
- 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
--		return rpc_success;
-+		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now try to unshare the file */
- 	resp->status = cast_status(nlmsvc_unshare_file(host, file, argp));
+It prints period to the screen quickly. However running two instances at
+once (eg "tess & tess") prints periods really slowly. Every call to
+fcntl seems to take 30 seconds. If I compile and run tess under Solaris
+9 the problem is not manifested.
 
-diff .prev/fs/lockd/svcsubs.c ./fs/lockd/svcsubs.c
---- .prev/fs/lockd/svcsubs.c	2006-10-17 09:10:40.000000000 +1000
-+++ ./fs/lockd/svcsubs.c	2006-10-17 09:13:54.000000000 +1000
-@@ -135,12 +135,6 @@ out_unlock:
- 
- out_free:
- 	kfree(file);
--#ifdef CONFIG_LOCKD_V4
--	if (nfserr == 1)
--		nfserr = nlm4_stale_fh;
--	else
--#endif
--	nfserr = nlm_lck_denied;
- 	goto out_unlock;
- }
- 
+Sorry about a lack of code etc but the systems in question are all
+air-gapped. I'm only an applications programmer so I don't have access
+to system logs, can't use tethereal, etc. Local systems support's answer
+is to refer the question to Red Hat. Any clues on how I could get my
+application working sooner than that would be appreciated.
 
-diff .prev/fs/nfsd/lockd.c ./fs/nfsd/lockd.c
---- .prev/fs/nfsd/lockd.c	2006-10-17 09:10:54.000000000 +1000
-+++ ./fs/nfsd/lockd.c	2006-10-17 09:19:18.000000000 +1000
-@@ -39,18 +39,20 @@ nlm_fopen(struct svc_rqst *rqstp, struct
- 	fh_put(&fh);
- 	rqstp->rq_client = NULL;
- 	exp_readunlock();
-- 	/* nlm and nfsd don't share error codes.
--	 * we invent: 0 = no error
--	 *            1 = stale file handle
--	 *	      2 = other error
-+ 	/* We return nlm error codes as nlm doesn't know
-+	 * about nfsd, but nfsd does know about nlm..
- 	 */
- 	switch (nfserr) {
- 	case nfs_ok:
- 		return 0;
-+	case nfserr_dropit:
-+		return nlm_drop_reply;
-+#ifdef CONFIG_LOCKD_V4
- 	case nfserr_stale:
--		return 1;
-+		return nlm4_stale_fh;
-+#endif
- 	default:
--		return 2;
-+		return nlm_lck_denied;
- 	}
- }
- 
+cheers,
+Tim Benham
+Dept. of Defence
 
-diff .prev/include/linux/lockd/bind.h ./include/linux/lockd/bind.h
---- .prev/include/linux/lockd/bind.h	2006-10-17 09:20:09.000000000 +1000
-+++ ./include/linux/lockd/bind.h	2006-10-17 09:22:26.000000000 +1000
-@@ -10,6 +10,11 @@
- #define LINUX_LOCKD_BIND_H
- 
- #include <linux/lockd/nlm.h>
-+/* need xdr-encoded error codes too, so... */
-+#include <linux/lockd/xdr.h>
-+#ifdef CONFIG_LOCKD_V4
-+#include <linux/lockd/xdr4.h>
-+#endif
- 
- /* Dummy declarations */
- struct svc_rqst;
 
-diff .prev/include/linux/lockd/xdr.h ./include/linux/lockd/xdr.h
---- .prev/include/linux/lockd/xdr.h	2006-10-17 09:10:54.000000000 +1000
-+++ ./include/linux/lockd/xdr.h	2006-10-17 09:10:55.000000000 +1000
-@@ -22,6 +22,8 @@
- #define	nlm_lck_blocked		__constant_htonl(NLM_LCK_BLOCKED)
- #define	nlm_lck_denied_grace_period	__constant_htonl(NLM_LCK_DENIED_GRACE_PERIOD)
- 
-+#define nlm_drop_reply		__constant_htonl(30000)
-+
- /* Lock info passed via NLM */
- struct nlm_lock {
- 	char *			caller;
+------_=_NextPart_001_01C6F187.81087A01
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-diff .prev/include/linux/sunrpc/msg_prot.h ./include/linux/sunrpc/msg_prot.h
---- .prev/include/linux/sunrpc/msg_prot.h	2006-10-17 09:10:55.000000000 +1000
-+++ ./include/linux/sunrpc/msg_prot.h	2006-10-17 09:10:55.000000000 +1000
-@@ -56,7 +56,9 @@ enum rpc_accept_stat {
- 	RPC_PROG_MISMATCH = 2,
- 	RPC_PROC_UNAVAIL = 3,
- 	RPC_GARBAGE_ARGS = 4,
--	RPC_SYSTEM_ERR = 5
-+	RPC_SYSTEM_ERR = 5,
-+	/* internal use only */
-+	RPC_DROP_REPLY = 60000,
- };
- 
- enum rpc_reject_stat {
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
+6.5.7650.23">
+<TITLE>fcntl(3, F_SETLKW, {type=3DF_WRLCK, whence=3DSEEK_SET, start=3D0, =
+len=3D0}) unreasonably slow SEC: UNCLASSIFIED</TITLE>
+</HEAD>
+<BODY>
+<!-- Converted from text/rtf format -->
 
-diff .prev/include/linux/sunrpc/xdr.h ./include/linux/sunrpc/xdr.h
---- .prev/include/linux/sunrpc/xdr.h	2006-10-17 09:10:55.000000000 +1000
-+++ ./include/linux/sunrpc/xdr.h	2006-10-17 09:10:55.000000000 +1000
-@@ -74,6 +74,7 @@ struct xdr_buf {
- #define	rpc_proc_unavail	__constant_htonl(RPC_PROC_UNAVAIL)
- #define	rpc_garbage_args	__constant_htonl(RPC_GARBAGE_ARGS)
- #define	rpc_system_err		__constant_htonl(RPC_SYSTEM_ERR)
-+#define	rpc_drop_reply		__constant_htonl(RPC_DROP_REPLY)
- 
- #define	rpc_auth_ok		__constant_htonl(RPC_AUTH_OK)
- #define	rpc_autherr_badcred	__constant_htonl(RPC_AUTH_BADCRED)
+<P><FONT SIZE=3D2 FACE=3D"Arial">I've noticed a problem with NFS file =
+locking under Linux kernel 2.6.9-34.ELsmp. The server is a NetApp =
+appliance. The problem was initially discovered in a programs which =
+access a file that holds state for a distributed system. 30 second =
+delays are unacceptable in this application.</FONT></P>
 
-diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2006-10-17 09:10:55.000000000 +1000
-+++ ./net/sunrpc/svc.c	2006-10-17 09:10:55.000000000 +1000
-@@ -828,6 +828,11 @@ svc_process(struct svc_rqst *rqstp)
- 		*statp = procp->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
- 
- 		/* Encode reply */
-+		if (*statp == rpc_drop_reply) {
-+			if (procp->pc_release)
-+				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
-+			goto dropit;
-+		}
- 		if (*statp == rpc_success && (xdr = procp->pc_encode)
- 		 && !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
- 			dprintk("svc: failed to encode reply\n");
+<P><FONT SIZE=3D2 FACE=3D"Arial">The problem is exhibited by a simple C =
+program (let's call it tess) like</FONT>
+</P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">&#8230;</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">while(1) {</FONT>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
+FACE=3D"Arial">fd=3Dopen(myNFSfile,O_RDWR);</FONT>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
+FACE=3D"Arial">fcntl(fd, F_SETLKW, &amp;myLock);</FONT>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
+FACE=3D"Arial">close(fd);</FONT>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT SIZE=3D2 =
+FACE=3D"Arial">fprintf(stderr,&quot;.&quot;);</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">}</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">...</FONT>
+</P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">It prints period to the screen quickly. =
+However running two instances at once (eg &quot;tess &amp; tess&quot;) =
+prints periods really slowly. Every call to fcntl seems to take 30 =
+seconds. If I compile and run tess under Solaris 9 the problem is not =
+manifested.</FONT></P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">Sorry about a lack of code etc but the =
+systems in question are all air-gapped. I'm only an applications =
+programmer so I don't have access to system logs, can't use tethereal, =
+etc. Local systems support's answer is to refer the question to Red Hat. =
+Any clues on how I could get my application working sooner than that =
+would be appreciated.</FONT></P>
+
+<P><FONT SIZE=3D2 FACE=3D"Arial">cheers,</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">Tim Benham</FONT>
+
+<BR><FONT SIZE=3D2 FACE=3D"Arial">Dept. of Defence</FONT>
+</P>
+
+</BODY>
+</HTML>
+------_=_NextPart_001_01C6F187.81087A01--
+
+
+--===============0396738124==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0396738124==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0396738124==--
