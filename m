@@ -1,67 +1,132 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: fcntl(3, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=0,
-	len=0}) unreasonably slow SEC: UNCLASSIFIED
-Date: Tue, 17 Oct 2006 17:49:36 -0400
-Message-ID: <1161121776.5559.50.camel@lade.trondhjem.org>
-References: <C172191424DC784385F213C8CBB4CDE015E1A4@rusrxm02.drn.mil.au>
+Subject: [Fwd: CFP: Linux 2007 File System & IO Workshop]
+Date: Tue, 17 Oct 2006 18:15:13 -0400
+Message-ID: <1161123313.5559.73.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZwop-0000sA-Gt
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 14:49:51 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZwoo-0008TM-84
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 14:49:52 -0700
-To: "Benham, Timothy MR" <Timothy.Benham@defence.gov.au>
-In-Reply-To: <C172191424DC784385F213C8CBB4CDE015E1A4@rusrxm02.drn.mil.au>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="=-W0ZXxwsn/X+PQ+GbYKkN"
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-T24gVHVlLCAyMDA2LTEwLTE3IGF0IDEwOjU5ICsxMDAwLCBCZW5oYW0sIFRpbW90aHkgTVIgd3Jv
-dGU6Cj4gSSd2ZSBub3RpY2VkIGEgcHJvYmxlbSB3aXRoIE5GUyBmaWxlIGxvY2tpbmcgdW5kZXIg
-TGludXgga2VybmVsCj4gMi42LjktMzQuRUxzbXAuIFRoZSBzZXJ2ZXIgaXMgYSBOZXRBcHAgYXBw
-bGlhbmNlLiBUaGUgcHJvYmxlbSB3YXMKPiBpbml0aWFsbHkgZGlzY292ZXJlZCBpbiBhIHByb2dy
-YW1zIHdoaWNoIGFjY2VzcyBhIGZpbGUgdGhhdCBob2xkcwo+IHN0YXRlIGZvciBhIGRpc3RyaWJ1
-dGVkIHN5c3RlbS4gMzAgc2Vjb25kIGRlbGF5cyBhcmUgdW5hY2NlcHRhYmxlIGluCj4gdGhpcyBh
-cHBsaWNhdGlvbi4KPiAKPiBUaGUgcHJvYmxlbSBpcyBleGhpYml0ZWQgYnkgYSBzaW1wbGUgQyBw
-cm9ncmFtIChsZXQncyBjYWxsIGl0IHRlc3MpCj4gbGlrZQo+IAo+IOKApiAKPiB3aGlsZSgxKSB7
-IAo+ICAgICAgICAgZmQ9b3BlbihteU5GU2ZpbGUsT19SRFdSKTsgCj4gICAgICAgICBmY250bChm
-ZCwgRl9TRVRMS1csICZteUxvY2spOyAKPiAgICAgICAgIGNsb3NlKGZkKTsgCj4gICAgICAgICBm
-cHJpbnRmKHN0ZGVyciwiLiIpOyAKPiB9IAo+IC4uLgo+IAo+IEl0IHByaW50cyBwZXJpb2QgdG8g
-dGhlIHNjcmVlbiBxdWlja2x5LiBIb3dldmVyIHJ1bm5pbmcgdHdvIGluc3RhbmNlcwo+IGF0IG9u
-Y2UgKGVnICJ0ZXNzICYgdGVzcyIpIHByaW50cyBwZXJpb2RzIHJlYWxseSBzbG93bHkuIEV2ZXJ5
-IGNhbGwgdG8KPiBmY250bCBzZWVtcyB0byB0YWtlIDMwIHNlY29uZHMuIElmIEkgY29tcGlsZSBh
-bmQgcnVuIHRlc3MgdW5kZXIKPiBTb2xhcmlzIDkgdGhlIHByb2JsZW0gaXMgbm90IG1hbmlmZXN0
-ZWQuCj4gCj4gU29ycnkgYWJvdXQgYSBsYWNrIG9mIGNvZGUgZXRjIGJ1dCB0aGUgc3lzdGVtcyBp
-biBxdWVzdGlvbiBhcmUgYWxsCj4gYWlyLWdhcHBlZC4gSSdtIG9ubHkgYW4gYXBwbGljYXRpb25z
-IHByb2dyYW1tZXIgc28gSSBkb24ndCBoYXZlIGFjY2Vzcwo+IHRvIHN5c3RlbSBsb2dzLCBjYW4n
-dCB1c2UgdGV0aGVyZWFsLCBldGMuIExvY2FsIHN5c3RlbXMgc3VwcG9ydCdzCj4gYW5zd2VyIGlz
-IHRvIHJlZmVyIHRoZSBxdWVzdGlvbiB0byBSZWQgSGF0LiBBbnkgY2x1ZXMgb24gaG93IEkgY291
-bGQKPiBnZXQgbXkgYXBwbGljYXRpb24gd29ya2luZyBzb29uZXIgdGhhbiB0aGF0IHdvdWxkIGJl
-IGFwcHJlY2lhdGVkLgoKSSB1bmRlcnN0YW5kIGZyb20gb3RoZXIgc291cmNlcyB0aGF0IGEgbnVt
-YmVyIG9mIE5MTSBmaXhlcyB0aGF0IGFyZSBub3QKcHJlc2VudCBpbiAyLjYuOS0zNC5FTCBoYXZl
-IGJlZW4gYmFja3BvcnRlZCBieSBSZWRIYXQgaW50byAyLjYuOS00Mi5FTC4KSGF2ZSB5b3UgdHJp
-ZWQgdGhhdCByZWxlYXNlPwoKQ2hlZXJzLAogIFRyb25kCgoKLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpVc2lu
-ZyBUb21jYXQgYnV0IG5lZWQgdG8gZG8gbW9yZT8gTmVlZCB0byBzdXBwb3J0IHdlYiBzZXJ2aWNl
-cywgc2VjdXJpdHk/CkdldCBzdHVmZiBkb25lIHF1aWNrbHkgd2l0aCBwcmUtaW50ZWdyYXRlZCB0
-ZWNobm9sb2d5IHRvIG1ha2UgeW91ciBqb2IgZWFzaWVyCkRvd25sb2FkIElCTSBXZWJTcGhlcmUg
-QXBwbGljYXRpb24gU2VydmVyIHYuMS4wLjEgYmFzZWQgb24gQXBhY2hlIEdlcm9uaW1vCmh0dHA6
-Ly9zZWwuYXMtdXMuZmFsa2FnLm5ldC9zZWw/Y21kPWxuayZraWQ9MTIwNzA5JmJpZD0yNjMwNTcm
-ZGF0PTEyMTY0MgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-XwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0
-cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
+
+--=-W0ZXxwsn/X+PQ+GbYKkN
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+
+
+Although the NFS filesystem itself is probably off topic for this
+workshop, it is worth noting that there is plenty of work needed in
+order to make the various Linux filesystems NFS-friendly. Perhaps
+someone might want to give a shot at writing a paper?
+
+Cheers,
+  Trond
+
+--=-W0ZXxwsn/X+PQ+GbYKkN
+Content-Disposition: inline
+Content-Description: Forwarded message - CFP: Linux 2007 File System & IO
+	Workshop
+Content-Type: message/rfc822
+
+Return-Path: <linux-fsdevel-owner@vger.kernel.org>
+Received: from mail-imap3.uio.no ([unix socket]) by mail-imap3.uio.no
+	(Cyrus v2.2.12) with LMTPA; Tue, 17 Oct 2006 02:43:00 +0200
+X-Sieve: CMU Sieve 2.2
+Delivery-date: Tue, 17 Oct 2006 02:43:00 +0200
+Received: from mail-mx5.uio.no ([129.240.10.46]) by mail-imap3.uio.no with
+	esmtp (Exim 4.43) id 1GZd2q-00023d-R8 for trond.myklebust@fys.uio.no;
+	Tue, 17 Oct 2006 02:43:00 +0200
+Received: from vger.kernel.org ([209.132.176.167]) by mail-mx5.uio.no with
+	esmtp (Exim 4.43) id 1GZd2m-0001o7-PN for trond.myklebust@fys.uio.no;
+	Tue, 17 Oct 2006 02:42:57 +0200
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand id
+	S1422990AbWJQAmy (ORCPT <rfc822; trond.myklebust@fys.uio.no>);
+	Mon, 16 Oct 2006 20:42:54 -0400
+Received: (majordomo@vger.kernel.org) by vger.kernel.org id
+	S1422991AbWJQAmy (ORCPT <rfc822; linux-fsdevel-outgoing>);
+	Mon, 16 Oct 2006 20:42:54 -0400
+Received: from mexforward.lss.emc.com ([128.222.32.20]:58333 "EHLO
+	mexforward.lss.emc.com") by vger.kernel.org with ESMTP id
+	S1422990AbWJQAmw (ORCPT <rfc822; linux-fsdevel@vger.kernel.org>);
+	Mon, 16 Oct 2006 20:42:52 -0400
+Received: from mailhub.lss.emc.com (nirah.lss.emc.com [10.254.144.13]) by
+	mexforward.lss.emc.com (Switch-3.1.7/Switch-3.1.7) with ESMTP id
+	k9H0etbP003472; Mon, 16 Oct 2006 20:40:55 -0400 (EDT)
+Received: from [10.4.20.247] ([10.4.20.247]) by mailhub.lss.emc.com
+	(Switch-3.1.8/Switch-3.1.7) with ESMTP id k9H0el81004544;
+	Mon, 16 Oct 2006 20:40:47 -0400 (EDT)
+Message-ID: <4534268E.9030201@emc.com>
+Date: Mon, 16 Oct 2006 20:40:46 -0400
+From: Ric Wheeler <ric@emc.com>
+User-Agent: Mozilla Thunderbird 1.0.7 (X11/20050923)
+X-Accept-Language: en-us, en
+MIME-Version: 1.0
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	reiserfs-list@namesys.com, ext2-devel@lists.sourceforge.net,
+	linux-ide@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+	linux-scsi@vger.kernel.org
+CC: lsf07pc@usenix.org
+Subject: CFP: Linux 2007 File System & IO Workshop
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+X-PMX-Version: 4.7.1.128075, Antispam-Engine: 2.4.0.264935, Antispam-Data:
+	2006.10.16.170942
+X-PerlMx-Spam: Gauge=, SPAM=2%, Reasons='EMC_FROM_0+ -2, __CP_URI_IN_BODY
+	0, __CT 0, __CTE 0, __CT_TEXT_PLAIN 0, __HAS_MSGID 0, __MIME_TEXT_ONLY 0,
+	__MIME_VERSION 0, __SANE_MSGID 0, __USER_AGENT 0'
+Sender: linux-fsdevel-owner@vger.kernel.org
+Precedence: bulk
+X-Mailing-List: linux-fsdevel@vger.kernel.org
+X-MailScanner-Information: This message has been scanned for viruses/spam.
+	Contact postmaster@uio.no if you have questions about this scanning
+X-UiO-MailScanner: No virus found
+X-UiO-Spam-info: not spam, SpamAssassin (score=0.012, required 12,
+	autolearn=disabled, AWL 0.01)
+Content-Transfer-Encoding: 7bit
+
+On  February 12-13, we have put together a combined Linux file system & 
+IO 2-day workshop in San Jose, CA. Note that the USENIX File System and 
+Storage Technologies conference follows us in the same venue, so we hope 
+to get some interaction between the two groups as well as leverage the 
+USENIX people to help us get this done.
+
+For more information, please see:
+
+http://www.usenix.org/events/lsf07/
+
+Please direct question to the program committee members. If you want to 
+hit all of us in one go, you can use:
+
+lsf07pc@usenix.org
+
+Regards,
+
+ric
+
+
+*
+*
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-W0ZXxwsn/X+PQ+GbYKkN
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--=-W0ZXxwsn/X+PQ+GbYKkN--
