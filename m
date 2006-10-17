@@ -1,36 +1,36 @@
 From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: [patch 1/4] RPC: acquire BKL while calling rpc_release()
-	callback
-Date: Tue, 17 Oct 2006 10:24:33 -0700
-Message-ID: <1161105873.3315.21.camel@dyn9047022153>
+Subject: [patch 3/4] NFS: Remove use of the Big Kernel Lock around
+	calls to	rpc_call_sync
+Date: Tue, 17 Oct 2006 10:24:38 -0700
+Message-ID: <1161105878.3315.23.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZsgI-00019t-Ct
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 10:24:46 -0700
-Received: from e34.co.us.ibm.com ([32.97.110.152])
+	id 1GZsgH-00019o-7p
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 10:24:45 -0700
+Received: from e35.co.us.ibm.com ([32.97.110.153])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GZsgH-0000Iw-5E
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 10:24:47 -0700
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com
-	[9.17.195.106])
-	by e34.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9HHOTDK031004
-	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 13:24:29 -0400
+	(Exim 4.44) id 1GZsgE-0007Fh-VE
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 10:24:46 -0700
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
+	[9.17.195.11])
+	by e35.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9HHOXFb003047
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 13:24:33 -0400
 Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
-	k9HHOSHw210954
-	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:28 -0600
+	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
+	k9HHOXZr465442
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:33 -0600
 Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
 	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k9HHOSoW020845
-	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:28 -0600
+	k9HHOX3H021116
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:33 -0600
 Received: from dyn9047022153 (dyn9047022153.beaverton.ibm.com [9.47.22.153])
 	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k9HHOSTM020798
-	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:28 -0600
+	k9HHOW2C021070
+	for <nfs@lists.sourceforge.net>; Tue, 17 Oct 2006 11:24:32 -0600
 To: NFS List <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -44,66 +44,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The Big Kernel Lock must be held while calling rpc_release().
+Remove use of the Big Kernel Lock around calls to rpc_call_sync.
 
 Signed-off-by: Frank Filz <ffilz@us.ibm.com>
----
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 78696f2..185e093 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -29,6 +29,7 @@ #include <linux/mm.h>
- #include <linux/slab.h>
- #include <linux/utsname.h>
- #include <linux/workqueue.h>
-+#include <linux/smp_lock.h>
+### Diffstat output
+ nfs3proc.c |    3 ---
+ nfs4proc.c |    2 --
+ proc.c     |    3 ---
+ 3 files changed, 8 deletions(-)
+
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 3b234d4..452dd1e 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -690,8 +690,6 @@ nfs3_proc_readdir(struct dentry *dentry,
+ 	};
+ 	int			status;
  
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
-@@ -529,8 +530,11 @@ rpc_call_async(struct rpc_clnt *clnt, st
- 	rpc_restore_sigmask(&oldset);		
- 	return status;
- out_release:
--	if (tk_ops->rpc_release != NULL)
-+	if (tk_ops->rpc_release != NULL) {
-+		lock_kernel();
- 		tk_ops->rpc_release(data);
-+		unlock_kernel();
-+	}
+-	lock_kernel();
+-
+ 	if (plus)
+ 		msg.rpc_proc = &nfs3_procedures[NFS3PROC_READDIRPLUS];
+ 
+@@ -702,7 +700,6 @@ nfs3_proc_readdir(struct dentry *dentry,
+ 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+ 	nfs_refresh_inode(dir, &dir_attr);
+ 	dprintk("NFS reply readdir: %d\n", status);
+-	unlock_kernel();
  	return status;
  }
  
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index a1ab4ee..406aae5 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -884,8 +884,11 @@ #ifdef RPC_DEBUG
- #endif
- 	if (task->tk_flags & RPC_TASK_DYNAMIC)
- 		rpc_free_task(task);
--	if (tk_ops->rpc_release)
-+	if (tk_ops->rpc_release) {
-+		lock_kernel();
- 		tk_ops->rpc_release(calldata);
-+		unlock_kernel();
-+	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 47c7e6e..bac30b3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2225,13 +2225,11 @@ static int _nfs4_proc_readdir(struct den
+ 			dentry->d_parent->d_name.name,
+ 			dentry->d_name.name,
+ 			(unsigned long long)cookie);
+-	lock_kernel();
+ 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
+ 	res.pgbase = args.pgbase;
+ 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+ 	if (status == 0)
+ 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
+-	unlock_kernel();
+ 	dprintk("%s: returns %d\n", __FUNCTION__, status);
+ 	return status;
+ }
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 4529cc4..7a9013d 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -545,13 +545,10 @@ nfs_proc_readdir(struct dentry *dentry, 
+ 	};
+ 	int			status;
+ 
+-	lock_kernel();
+-
+ 	dprintk("NFS call  readdir %d\n", (unsigned int)cookie);
+ 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+ 
+ 	dprintk("NFS reply readdir: %d\n", status);
+-	unlock_kernel();
+ 	return status;
  }
  
- /**
-@@ -902,8 +905,11 @@ struct rpc_task *rpc_run_task(struct rpc
- 	struct rpc_task *task;
- 	task = rpc_new_task(clnt, flags, ops, data);
- 	if (task == NULL) {
--		if (ops->rpc_release != NULL)
-+		if (ops->rpc_release != NULL) {
-+			lock_kernel();
- 			ops->rpc_release(data);
-+			unlock_kernel();
-+		}
- 		return ERR_PTR(-ENOMEM);
- 	}
- 	atomic_inc(&task->tk_count);
 
 
 
