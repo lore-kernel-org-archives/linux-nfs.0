@@ -1,132 +1,247 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [Fwd: CFP: Linux 2007 File System & IO Workshop]
-Date: Tue, 17 Oct 2006 18:15:13 -0400
-Message-ID: <1161123313.5559.73.camel@lade.trondhjem.org>
+From: "Earl Vela" <7191stocknews@united-data.com>
+Subject: The cheapest and the best OEM software here!
+Date: Tue, 17 Oct 2006 23:42:57 +0000
+Message-ID: <01c6f245$f92a1df0$6c822ecf@7191stocknews>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-W0ZXxwsn/X+PQ+GbYKkN"
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============0888622208=="
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GZyaM-0002z0-2B
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 16:43:02 -0700
+Received: from adsl196-4-124-217-196.adsl196-12.iam.net.ma ([196.217.124.4])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZyaH-0003We-7n
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 16:43:02 -0700
+Received: from 192.67.198.32 (HELO mailin.webmailer.de)
+	by lists.sourceforge.net with esmtp (7DTP5J6QY4 CSANWT)
+	id 7X1G74-F90IM6-3K
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 23:42:57 +0000
+To: <nfs@lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
 
---=-W0ZXxwsn/X+PQ+GbYKkN
-Content-Type: text/plain
+--===============0888622208==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0006_01C6F245.F92A1DF0"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0006_01C6F245.F92A1DF0
+Content-Type: text/plain;
+	charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 
+http://k1798cqv7yqtbk2e55kf7kkk.cartoonkf.ph
 
-Although the NFS filesystem itself is probably off topic for this
-workshop, it is worth noting that there is plenty of work needed in
-order to make the various Linux filesystems NFS-friendly. Perhaps
-someone might want to give a shot at writing a paper?
+Want to work stable? You need to buy licensed WINDOWS.
+Examine our reduced price.Special Offers:Special Offer:Microsoft Win XP Professional + Microsoft Office XP Professional$89.95Bundle Special:Photoshop  + Premiere  + Illustrator $129.95Bundle Special:Win XP Professional With SP2 Full Version + Office 2003 Professional (1 CD)$99.95Bundle Special:Dreamwaver MX 2004 + Flash MX 2004$109.95 Microsoft (R) Windows Win 98 SE $49.95Win 98$49.95Win 2000 Pro$59.95Win XP Pro With SP2 Full Version$79.95Win 2000 Adv. Server $69.95Win XP Pro$69.95Win Millenium $59.95Win NT 4.0 Server $49.95 Microsoft (R) Office:Office 97 SR2$49.95FileMaker 7.0 Pro$69.95MS Visio 2003 Pro$69.95Office 2003 Pro (1 CD Edition)$89.95Office 2000 Premium Edition (2 CD)$59.95Office XP Pro$79.95 Other Microsoft  Software:MS Project 2003 Pro$69.95MS Streets and Trips 2004 North America (2 CD Edition)$69.95MS Picture It Premium 9$59.95MS Visual Studio .NET Architect Edition (8CD)$1
+ 39.95MS SQL Server 2k Enterprise Edition$69.95MS Plus! XP$59.95MS Works 7$69.95MS Encarta 
+ Encyclopedia Delux 2004 (3 CD Edition)$89.95MS Exchange 2003 Enterprise Server$69.95MS Money 2004$69.95 Adobe Software for PC:  Photoshop 7 $69.95 Photoshop CS with ImageReady CS $99.95 PageMaker 7 (2 CD) $69.95 Acrobat 6 Pro $79.95 InDesign CS PageMaker Edition (2 CD) $69.95 Premiere 7 $69.95 Creative Suite Premium (5 CD) $149.95 Creative Suite Standard (3 CD) $129.95Adobe Software for Mac: Premiere 6.5 (Mac)$89.95 LiveMotion 2.0 (Mac)$69.95 InDesign CS (Mac)$69.95 Actobat 6.0 Professional (Mac)$79.95 After Effects 6.0 (Mac)$69.95 Photoshop CS (Mac)$99.95 Illustrator CS CE (Mac)$69.95 Macromedia Software for PC: Freehand MX 11$69.95 Fireworks MX 2004$69.95 Dreamwaver MX 2004$69.95 Flash MX 2004$69.95 Macromedia Software for Mac:Macromedia FreeHand MX (Mac)$69.95Macromedia Flash MX 2004 (Mac)$69.95Macromedia Studio MX 2004 with Director MX 2004 (Mac)$139.95Macromedia Fireworks MX 2004 (
+ Mac)$69.95Macromedia Dreamweaver MX 2004 (Mac)$69.95Macromedia Director MX 2004 (Mac)$69.9
+ 5 Corel Software:Corel Draw Graphics Suite 11 (Mac)$59.95Corel Photo Painter 8.0 (Mac)$59.95Corel Draw Graphics Suite 11$59.95Corel WordPerfect Office $69.95Corel Photo Painter 8.0$59.95 Check it
 
-Cheers,
-  Trond
 
---=-W0ZXxwsn/X+PQ+GbYKkN
-Content-Disposition: inline
-Content-Description: Forwarded message - CFP: Linux 2007 File System & IO
-	Workshop
-Content-Type: message/rfc822
 
-Return-Path: <linux-fsdevel-owner@vger.kernel.org>
-Received: from mail-imap3.uio.no ([unix socket]) by mail-imap3.uio.no
-	(Cyrus v2.2.12) with LMTPA; Tue, 17 Oct 2006 02:43:00 +0200
-X-Sieve: CMU Sieve 2.2
-Delivery-date: Tue, 17 Oct 2006 02:43:00 +0200
-Received: from mail-mx5.uio.no ([129.240.10.46]) by mail-imap3.uio.no with
-	esmtp (Exim 4.43) id 1GZd2q-00023d-R8 for trond.myklebust@fys.uio.no;
-	Tue, 17 Oct 2006 02:43:00 +0200
-Received: from vger.kernel.org ([209.132.176.167]) by mail-mx5.uio.no with
-	esmtp (Exim 4.43) id 1GZd2m-0001o7-PN for trond.myklebust@fys.uio.no;
-	Tue, 17 Oct 2006 02:42:57 +0200
-Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand id
-	S1422990AbWJQAmy (ORCPT <rfc822; trond.myklebust@fys.uio.no>);
-	Mon, 16 Oct 2006 20:42:54 -0400
-Received: (majordomo@vger.kernel.org) by vger.kernel.org id
-	S1422991AbWJQAmy (ORCPT <rfc822; linux-fsdevel-outgoing>);
-	Mon, 16 Oct 2006 20:42:54 -0400
-Received: from mexforward.lss.emc.com ([128.222.32.20]:58333 "EHLO
-	mexforward.lss.emc.com") by vger.kernel.org with ESMTP id
-	S1422990AbWJQAmw (ORCPT <rfc822; linux-fsdevel@vger.kernel.org>);
-	Mon, 16 Oct 2006 20:42:52 -0400
-Received: from mailhub.lss.emc.com (nirah.lss.emc.com [10.254.144.13]) by
-	mexforward.lss.emc.com (Switch-3.1.7/Switch-3.1.7) with ESMTP id
-	k9H0etbP003472; Mon, 16 Oct 2006 20:40:55 -0400 (EDT)
-Received: from [10.4.20.247] ([10.4.20.247]) by mailhub.lss.emc.com
-	(Switch-3.1.8/Switch-3.1.7) with ESMTP id k9H0el81004544;
-	Mon, 16 Oct 2006 20:40:47 -0400 (EDT)
-Message-ID: <4534268E.9030201@emc.com>
-Date: Mon, 16 Oct 2006 20:40:46 -0400
-From: Ric Wheeler <ric@emc.com>
-User-Agent: Mozilla Thunderbird 1.0.7 (X11/20050923)
-X-Accept-Language: en-us, en
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+http://k1798cqv7yqtbk2e55kf7kkk.cartoonkf.ph
+
+
+------=_NextPart_000_0006_01C6F245.F92A1DF0
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+<html xmlns:o=3D"urn:schemas-microsoft-com:office:office"=20=
+xmlns:w=3D"urn:schemas-microsoft-com:office:word"=20=
+xmlns=3D"http://www.w3.org/TR/REC-html40">
+
+<head>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; charset=3Dus-ascii">
+<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
+</head>
+<body>
+<table align=3Dcenter>
+<tr><td align=3Dcenter>
+<strong align=3Dcenter><a=20=
+href=3D"http://k1798cqv7yqtbk2e55kf7kkk.cartoonkf.ph">
+<font size=3D4 color=3D#1213a7>
+Want to work stable? You need to buy licensed WINDOWS.
+</a></strong>
+</td></tr>
+<tr><td align=3Dcenter><font size=3D3>Examine our reduced=20=
+price.</font></td></tr>
+</table>
+<table align=3Dcenter border=3D0>
+<tr><td align=3Dcenter colspan=3D2>Special Offers:</td></tr>
+<tr><td>Special Offer:Microsoft Win XP Professional + Microsoft Office=20=
+XP Professional</td><td>$89.95</td></tr><tr><td>Bundle Special:Photoshop=20=
+ + Premiere  + Illustrator </td><td>$129.95</td></tr><tr><td>Bundle=20=
+Special:Win XP Professional With SP2 Full Version + Office 2003=20=
+Professional (1 CD)</td><td>$99.95</td></tr><tr><td>Bundle=20=
+Special:Dreamwaver MX 2004 + Flash MX 2004</td><td>$109.95</td></tr>
+<tr><td>&nbsp;</td></tr>
+<tr><td align=3Dcenter colspan=3D2>Microsoft (R) Windows </td></tr>
+<tr><td>Win 98 SE </td><td>$49.95</td></tr><tr><td>Win=20=
+98</td><td>$49.95</td></tr><tr><td>Win 2000=20=
+Pro</td><td>$59.95</td></tr><tr><td>Win XP Pro With SP2 Full=20=
+Version</td><td>$79.95</td></tr><tr><td>Win 2000 Adv. Server=20=
+</td><td>$69.95</td></tr><tr><td>Win XP=20=
+Pro</td><td>$69.95</td></tr><tr><td>Win Millenium=20=
+</td><td>$59.95</td></tr><tr><td>Win NT 4.0 Server=20=
+</td><td>$49.95</td></tr>
+<tr><td> </td></tr>
+<tr><td align=3Dcenter colspan=3D2>Microsoft (R) Office:</td></tr>
+<tr><td>Office 97 SR2</td><td>$49.95</td></tr><tr><td>FileMaker 7.0=20=
+Pro</td><td>$69.95</td></tr><tr><td>MS Visio 2003=20=
+Pro</td><td>$69.95</td></tr><tr><td>Office 2003 Pro (1 CD=20=
+Edition)</td><td>$89.95</td></tr><tr><td>Office 2000 Premium Edition (2=20=
+CD)</td><td>$59.95</td></tr><tr><td>Office XP=20=
+Pro</td><td>$79.95</td></tr>
+<tr><td> </td></tr>
+<tr><td align=3Dcenter colspan=3D2>Other Microsoft  Software:</td></tr>
+<tr><td>MS Project 2003 Pro</td><td>$69.95</tr></td><tr><td>MS Streets=20=
+and Trips 2004 North America (2 CD=20=
+Edition)</td><td>$69.95</tr></td><tr><td>MS Picture It Premium=20=
+9</td><td>$59.95</tr></td><tr><td>MS Visual Studio .NET Architect=20=
+Edition (8CD)</td><td>$139.95</tr></td><tr><td>MS SQL Server 2k=20=
+Enterprise Edition</td><td>$69.95</tr></td><tr><td>MS Plus!=20=
+XP</td><td>$59.95</tr></td><tr><td>MS Works=20=
+7</td><td>$69.95</tr></td><tr><td>MS Encarta Encyclopedia Delux 2004 (3=20=
+CD Edition)</td><td>$89.95</tr></td><tr><td>MS Exchange 2003 Enterprise=20=
+Server</td><td>$69.95</tr></td><tr><td>MS Money=20=
+2004</td><td>$69.95</tr></td>
+<tr><td> </td></tr>
+<tr><td align=3Dcenter colspan=3D2>Adobe Software for PC:</td></tr>
+<tr><td> </td></tr>
+<tr><td> Photoshop 7 </td><td>$69.95</td></tr><tr><td> Photoshop CS with=20=
+ImageReady CS </td><td>$99.95</td></tr><tr><td> PageMaker 7 (2 CD)=20=
+</td><td>$69.95</td></tr><tr><td> Acrobat 6 Pro=20=
+</td><td>$79.95</td></tr><tr><td> InDesign CS PageMaker Edition (2 CD)=20=
+</td><td>$69.95</td></tr><tr><td> Premiere 7=20=
+</td><td>$69.95</td></tr><tr><td> Creative Suite Premium (5 CD)=20=
+</td><td>$149.95</td></tr><tr><td> Creative Suite Standard (3 CD)=20=
+</td><td>$129.95</td></tr>
+<tr><td align=3Dcenter colspan=3D2>Adobe Software for Mac:</td></tr>
+<tr><td> Premiere 6.5 (Mac)</td><td>$89.95</td></tr><tr><td> LiveMotion=20=
+2.0 (Mac)</td><td>$69.95</td></tr><tr><td> InDesign CS=20=
+(Mac)</td><td>$69.95</td></tr><tr><td> Actobat 6.0 Professional=20=
+(Mac)</td><td>$79.95</td></tr><tr><td> After Effects 6.0=20=
+(Mac)</td><td>$69.95</td></tr><tr><td> Photoshop CS=20=
+(Mac)</td><td>$99.95</td></tr><tr><td> Illustrator CS CE=20=
+(Mac)</td><td>$69.95</td></tr>
+<tr><td> </td></tr>
+<tr><td align=3Dcenter colspan=3D2>Macromedia Software for=20=
+PC:</td></tr>
+<tr><td> Freehand MX 11</td><td>$69.95</tr></td><tr><td> Fireworks MX=20=
+2004</td><td>$69.95</tr></td><tr><td> Dreamwaver MX=20=
+2004</td><td>$69.95</tr></td><tr><td> Flash MX=20=
+2004</td><td>$69.95</tr></td>
+<tr><td> </td></tr>
+<tr><td align=3Dcenter colspan=3D2>Macromedia Software for=20=
+Mac:</td></tr>
+<tr><td>Macromedia FreeHand MX=20=
+(Mac)</td><td>$69.95</td></tr><tr><td>Macromedia Flash MX 2004=20=
+(Mac)</td><td>$69.95</td></tr><tr><td>Macromedia Studio MX 2004 with=20=
+Director MX 2004 (Mac)</td><td>$139.95</td></tr><tr><td>Macromedia=20=
+Fireworks MX 2004 (Mac)</td><td>$69.95</td></tr><tr><td>Macromedia=20=
+Dreamweaver MX 2004 (Mac)</td><td>$69.95</td></tr><tr><td>Macromedia=20=
+Director MX 2004 (Mac)</td><td>$69.95</td></tr>
+<tr><td> </td></tr>
+<tr><td align=3Dcenter colspan=3D2>Corel Software:</td></tr>
+<tr><td>Corel Draw Graphics Suite 11=20=
+(Mac)</td><td>$59.95</td></tr><tr><td>Corel Photo Painter 8.0=20=
+(Mac)</td><td>$59.95</td></tr><tr><td>Corel Draw Graphics Suite=20=
+11</td><td>$59.95</td></tr><tr><td>Corel WordPerfect Office=20=
+</td><td>$69.95</td></tr><tr><td>Corel Photo Painter=20=
+8.0</td><td>$59.95</td></tr>
+<tr><td> </td></tr>
+</table>
+<table align=3Dcenter>
+<tr><td align=3Dcenter>
+<a href=3D"http://k1798cqv7yqtbk2e55kf7kkk.cartoonkf.ph"><h3><font=20=
+size=3D3 color=3D#212346>Check it
+</font></h3></a>
+
+</td></tr>
+</table>
+
+</body>
+</html>
+
+------=_NextPart_000_0006_01C6F245.F92A1DF0--
+
+
+
+--===============0888622208==
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	reiserfs-list@namesys.com, ext2-devel@lists.sourceforge.net,
-	linux-ide@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-	linux-scsi@vger.kernel.org
-CC: lsf07pc@usenix.org
-Subject: CFP: Linux 2007 File System & IO Workshop
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-X-PMX-Version: 4.7.1.128075, Antispam-Engine: 2.4.0.264935, Antispam-Data:
-	2006.10.16.170942
-X-PerlMx-Spam: Gauge=, SPAM=2%, Reasons='EMC_FROM_0+ -2, __CP_URI_IN_BODY
-	0, __CT 0, __CTE 0, __CT_TEXT_PLAIN 0, __HAS_MSGID 0, __MIME_TEXT_ONLY 0,
-	__MIME_VERSION 0, __SANE_MSGID 0, __USER_AGENT 0'
-Sender: linux-fsdevel-owner@vger.kernel.org
-Precedence: bulk
-X-Mailing-List: linux-fsdevel@vger.kernel.org
-X-MailScanner-Information: This message has been scanned for viruses/spam.
-	Contact postmaster@uio.no if you have questions about this scanning
-X-UiO-MailScanner: No virus found
-X-UiO-Spam-info: not spam, SpamAssassin (score=0.012, required 12,
-	autolearn=disabled, AWL 0.01)
 Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-On  February 12-13, we have put together a combined Linux file system & 
-IO 2-day workshop in San Jose, CA. Note that the USENIX File System and 
-Storage Technologies conference follows us in the same venue, so we hope 
-to get some interaction between the two groups as well as leverage the 
-USENIX people to help us get this done.
-
-For more information, please see:
-
-http://www.usenix.org/events/lsf07/
-
-Please direct question to the program committee members. If you want to 
-hit all of us in one go, you can use:
-
-lsf07pc@usenix.org
-
-Regards,
-
-ric
-
-
-*
-*
--
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-W0ZXxwsn/X+PQ+GbYKkN
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0888622208==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---=-W0ZXxwsn/X+PQ+GbYKkN--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0888622208==--
