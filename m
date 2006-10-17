@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/10] SUNRPC: Allocate a private data area for
-	socket-specific rpc_xprt fields
-Date: Tue, 17 Oct 2006 14:44:29 -0400
-Message-ID: <20061017184429.25704.23056.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 01/10] SUNRPC: minor optimization of "xid" field in
+	rpc_xprt
+Date: Tue, 17 Oct 2006 14:44:24 -0400
+Message-ID: <20061017184424.25704.28776.stgit@schiele.dsl.sfldmi.ameritech.net>
 References: <20061017184142.25704.44260.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZtvu-0000KL-1O
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:44:59 -0700
+	id 1GZtvp-0000K1-Gk
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:44:53 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZtvq-0006E8-FF
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:44:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZtvm-00078W-DE
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:44:54 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061017184142.25704.44260.stgit@schiele.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,62 +31,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-When setting up a new transport instance, allocate enough memory for an
-rpc_xprt and a private area.  As part of the same memory allocation, it
-will be easy to find one, given a pointer to the other.
+Move the xid field in the rpc_xprt structure to be in the same cache line
+as the reserve_lock, since these are used at the same time.
 
 Test plan:
-Compile kernel with CONFIG_NFS enabled.
+None.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |   15 +++++++++++++--
- 1 files changed, 13 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/xprt.h |    7 +------
+ 1 files changed, 1 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index a6f778f..5ddb20d 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -125,6 +125,15 @@ static inline void xs_pktdump(char *msg,
- }
- #endif
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 60394fb..0321fb5 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -158,11 +158,6 @@ struct rpc_xprt {
+ 				resvport   : 1; /* use a reserved port */
  
-+struct xs_xprt {
-+	struct rpc_xprt		xprt;
-+};
-+
-+static inline struct xs_xprt *xs_private_data(struct rpc_xprt *xprt)
-+{
-+	return (struct xs_xprt *) xprt;
-+}
-+
- static void xs_format_peer_addresses(struct rpc_xprt *xprt)
- {
- 	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-@@ -1352,6 +1361,7 @@ static struct rpc_xprt_ops xs_tcp_ops = 
+ 	/*
+-	 * XID
+-	 */
+-	__u32			xid;		/* Next XID value to use */
+-
+-	/*
+ 	 * State of TCP reply receive stuff
+ 	 */
+ 	__be32			tcp_recm,	/* Fragment header */
+@@ -193,8 +188,8 @@ struct rpc_xprt {
+ 	 */
+ 	spinlock_t		transport_lock;	/* lock transport info */
+ 	spinlock_t		reserve_lock;	/* lock slot table */
++	u32			xid;		/* Next XID value to use */
+ 	struct rpc_task *	snd_task;	/* Task blocked in send */
+-
+ 	struct list_head	recv;
  
- static struct rpc_xprt *xs_setup_xprt(struct sockaddr *addr, size_t addrlen, unsigned int slot_table_size)
- {
-+	struct xs_xprt *private;
- 	struct rpc_xprt *xprt;
- 
- 	if (addrlen > sizeof(xprt->addr)) {
-@@ -1359,11 +1369,12 @@ static struct rpc_xprt *xs_setup_xprt(st
- 		return ERR_PTR(-EBADF);
- 	}
- 
--	xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL);
--	if (xprt == NULL) {
-+	private = kzalloc(sizeof(struct xs_xprt), GFP_KERNEL);
-+	if (private == NULL) {
- 		dprintk("RPC:      xs_setup_xprt: couldn't allocate rpc_xprt\n");
- 		return ERR_PTR(-ENOMEM);
- 	}
-+	xprt = &private->xprt;
- 
- 	xprt->max_reqs = slot_table_size;
- 	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
+ 	struct {
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
