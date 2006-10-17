@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/10] SUNRPC: Move rpc_xprt socket connect fields
-	into private data structure
-Date: Tue, 17 Oct 2006 14:44:36 -0400
-Message-ID: <20061017184436.25704.28679.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 07/10] SUNRPC: Move the UDP socket bufsize parameters
+	to a private data structure
+Date: Tue, 17 Oct 2006 14:44:39 -0400
+Message-ID: <20061017184439.25704.99975.stgit@schiele.dsl.sfldmi.ameritech.net>
 References: <20061017184142.25704.44260.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GZtvy-0000Lg-AE
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:45:02 -0700
-Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZtvv-0007B1-P5
+	id 1GZtvy-0000ME-Vp
 	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:45:03 -0700
+Received: from flpvm23.prodigy.net ([207.115.20.53])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GZtvv-0006Gr-O6
+	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 11:45:04 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061017184142.25704.44260.stgit@schiele.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,188 +31,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Move the socket-specific connection management fields out of the generic
-rpc_xprt structure into a private data structure maintained in
-net/sunrpc/xprtsock.c.
+Move the socket-specific buffer size parameters for UDP sockets to a
+private data structure maintained in net/sunrpc/xprtsock.c.
 
 Test plan:
-Connectathon.
+Connectathon with NFS over UDP.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    2 --
- net/sunrpc/xprtsock.c       |   36 +++++++++++++++++++++++++-----------
- 2 files changed, 25 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/xprt.h |    3 ---
+ net/sunrpc/xprtsock.c       |   24 ++++++++++++++++--------
+ 2 files changed, 16 insertions(+), 11 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 3ff8230..18bf72c 100644
+index 18bf72c..21beb56 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -163,8 +163,6 @@ struct rpc_xprt {
- 	unsigned long		connect_timeout,
- 				bind_timeout,
- 				reestablish_timeout;
--	struct work_struct	connect_worker;
--	unsigned short		port;
+@@ -137,9 +137,6 @@ struct rpc_xprt {
+ 	unsigned long		cong;		/* current congestion */
+ 	unsigned long		cwnd;		/* congestion window */
  
- 	/*
- 	 * Disconnection of idle transports
+-	size_t			rcvsize,	/* transport rcv buffer size */
+-				sndsize;	/* transport send buffer size */
+-
+ 	size_t			max_payload;	/* largest RPC payload size,
+ 						   in bytes */
+ 	unsigned int		tsh_size;	/* size of transport specific
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 363b2fc..b0bead5 100644
+index b0bead5..c0e23e3 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -145,6 +145,12 @@ struct xs_xprt {
- 
- 	unsigned long		tcp_copied,
- 				tcp_flags;
+@@ -151,6 +151,12 @@ struct xs_xprt {
+ 	 */
+ 	struct work_struct	connect_worker;
+ 	unsigned short		port;
 +
 +	/*
-+	 * Connection of transports
++	 * UDP socket buffer size parameters
 +	 */
-+	struct work_struct	connect_worker;
-+	unsigned short		port;
++	size_t			rcvsize,
++				sndsize;
  };
  
  /*
-@@ -565,7 +571,7 @@ static void xs_destroy(struct rpc_xprt *
- {
- 	dprintk("RPC:      xs_destroy xprt %p\n", xprt);
+@@ -1003,13 +1009,13 @@ static void xs_udp_do_set_buffer_size(st
+ 	struct xs_xprt *private = xs_private_data(xprt);
+ 	struct sock *sk = private->inet;
  
--	cancel_delayed_work(&xprt->connect_worker);
-+	cancel_delayed_work(&xs_private_data(xprt)->connect_worker);
- 	flush_scheduled_work();
- 
- 	xprt_disconnect(xprt);
-@@ -1076,18 +1082,19 @@ static void xs_set_port(struct rpc_xprt 
- 
- static int xs_bindresvport(struct rpc_xprt *xprt, struct socket *sock)
- {
-+	struct xs_xprt *private = xs_private_data(xprt);
- 	struct sockaddr_in myaddr = {
- 		.sin_family = AF_INET,
- 	};
- 	int err;
--	unsigned short port = xprt->port;
-+	unsigned short port = private->port;
- 
- 	do {
- 		myaddr.sin_port = htons(port);
- 		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
- 						sizeof(myaddr));
- 		if (err == 0) {
--			xprt->port = port;
-+			private->port = port;
- 			dprintk("RPC:      xs_bindresvport bound to port %u\n",
- 					port);
- 			return 0;
-@@ -1096,7 +1103,7 @@ static int xs_bindresvport(struct rpc_xp
- 			port = xprt_max_resvport;
- 		else
- 			port--;
--	} while (err == -EADDRINUSE && port != xprt->port);
-+	} while (err == -EADDRINUSE && port != private->port);
- 
- 	dprintk("RPC:      can't bind to reserved port (%d).\n", -err);
- 	return err;
-@@ -1302,14 +1309,14 @@ static void xs_connect(struct rpc_task *
- 	if (private->sock != NULL) {
- 		dprintk("RPC:      xs_connect delayed xprt %p for %lu seconds\n",
- 				xprt, xprt->reestablish_timeout / HZ);
--		schedule_delayed_work(&xprt->connect_worker,
-+		schedule_delayed_work(&private->connect_worker,
- 					xprt->reestablish_timeout);
- 		xprt->reestablish_timeout <<= 1;
- 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
- 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
- 	} else {
- 		dprintk("RPC:      xs_connect scheduled xprt %p\n", xprt);
--		schedule_work(&xprt->connect_worker);
-+		schedule_work(&private->connect_worker);
- 
- 		/* flush_scheduled_work can sleep... */
- 		if (!RPC_IS_ASYNC(task))
-@@ -1325,8 +1332,10 @@ static void xs_connect(struct rpc_task *
+-	if (xprt->rcvsize) {
++	if (private->rcvsize) {
+ 		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
+-		sk->sk_rcvbuf = xprt->rcvsize * xprt->max_reqs *  2;
++		sk->sk_rcvbuf = private->rcvsize * xprt->max_reqs *  2;
+ 	}
+-	if (xprt->sndsize) {
++	if (private->sndsize) {
+ 		sk->sk_userlocks |= SOCK_SNDBUF_LOCK;
+-		sk->sk_sndbuf = xprt->sndsize * xprt->max_reqs * 2;
++		sk->sk_sndbuf = private->sndsize * xprt->max_reqs * 2;
+ 		sk->sk_write_space(sk);
+ 	}
+ }
+@@ -1024,12 +1030,14 @@ static void xs_udp_do_set_buffer_size(st
   */
- static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ static void xs_udp_set_buffer_size(struct rpc_xprt *xprt, size_t sndsize, size_t rcvsize)
  {
+-	xprt->sndsize = 0;
 +	struct xs_xprt *private = xs_private_data(xprt);
 +
- 	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
--			xprt->port,
-+			private->port,
- 			xprt->stat.bind_count,
- 			xprt->stat.sends,
- 			xprt->stat.recvs,
-@@ -1343,13 +1352,14 @@ static void xs_udp_print_stats(struct rp
-  */
- static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- {
-+	struct xs_xprt *private = xs_private_data(xprt);
- 	long idle_time = 0;
++	private->sndsize = 0;
+ 	if (sndsize)
+-		xprt->sndsize = sndsize + 1024;
+-	xprt->rcvsize = 0;
++		private->sndsize = sndsize + 1024;
++	private->rcvsize = 0;
+ 	if (rcvsize)
+-		xprt->rcvsize = rcvsize + 1024;
++		private->rcvsize = rcvsize + 1024;
  
- 	if (xprt_connected(xprt))
- 		idle_time = (long)(jiffies - xprt->last_used) / HZ;
- 
- 	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
--			xprt->port,
-+			private->port,
- 			xprt->stat.bind_count,
- 			xprt->stat.connect_count,
- 			xprt->stat.connect_time,
-@@ -1423,7 +1433,7 @@ static struct rpc_xprt *xs_setup_xprt(st
- 
- 	memcpy(&xprt->addr, addr, addrlen);
- 	xprt->addrlen = addrlen;
--	xprt->port = xs_get_random_port();
-+	private->port = xs_get_random_port();
- 
- 	return xprt;
+ 	xs_udp_do_set_buffer_size(xprt);
  }
-@@ -1438,10 +1448,12 @@ static struct rpc_xprt *xs_setup_xprt(st
- struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
- {
- 	struct rpc_xprt *xprt;
-+	struct xs_xprt *private;
- 
- 	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
- 	if (IS_ERR(xprt))
- 		return xprt;
-+	private = xs_private_data(xprt);
- 
- 	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
- 		xprt_set_bound(xprt);
-@@ -1451,7 +1463,7 @@ struct rpc_xprt *xs_setup_udp(struct soc
- 	/* XXX: header size can vary due to auth type, IPv6, etc. */
- 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
- 
--	INIT_WORK(&xprt->connect_worker, xs_udp_connect_worker, xprt);
-+	INIT_WORK(&private->connect_worker, xs_udp_connect_worker, xprt);
- 	xprt->bind_timeout = XS_BIND_TO;
- 	xprt->connect_timeout = XS_UDP_CONN_TO;
- 	xprt->reestablish_timeout = XS_UDP_REEST_TO;
-@@ -1481,10 +1493,12 @@ struct rpc_xprt *xs_setup_udp(struct soc
- struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
- {
- 	struct rpc_xprt *xprt;
-+	struct xs_xprt *private;
- 
- 	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
- 	if (IS_ERR(xprt))
- 		return xprt;
-+	private = xs_private_data(xprt);
- 
- 	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
- 		xprt_set_bound(xprt);
-@@ -1493,7 +1507,7 @@ struct rpc_xprt *xs_setup_tcp(struct soc
- 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
--	INIT_WORK(&xprt->connect_worker, xs_tcp_connect_worker, xprt);
-+	INIT_WORK(&private->connect_worker, xs_tcp_connect_worker, xprt);
- 	xprt->bind_timeout = XS_BIND_TO;
- 	xprt->connect_timeout = XS_TCP_CONN_TO;
- 	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
