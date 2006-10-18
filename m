@@ -1,66 +1,39 @@
-From: "=?gb2312?B?16O0q8DX?=" <zhuchuanlei@eyou.net>
-Subject: question
-Date: Wed, 18 Oct 2006 10:43:24 +0800
-Message-ID: <200610181043237030973@eyou.net>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: NFS inconsistent behaviour
+Date: Wed, 18 Oct 2006 08:39:45 +0200
+Message-ID: <20061018063945.GA5917@janus>
+References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com> <46465bb30610160013v47524589g39c61465b5955f65@mail.gmail.com> <20061016084656.GA13292@janus> <46465bb30610160235m211910b6g2eb074aa23060aa9@mail.gmail.com> <20061016093904.GA13866@janus> <46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0011222960=="
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ga1QJ-0002j0-KQ
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 19:44:51 -0700
-Received: from eyou.net ([59.151.4.2])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Ga1QI-0000sX-Ts
-	for nfs@lists.sourceforge.net; Tue, 17 Oct 2006 19:44:52 -0700
-To: "nfs" <nfs@lists.sourceforge.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org,
+	Linux NFS mailing list <nfs@lists.sourceforge.net>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751448AbWJRGjs@vger.kernel.org>
+To: Mohit Katiyar <katiyar.mohit@gmail.com>
+In-Reply-To: <46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
---===============0011222960==
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: base64
+On Wed, Oct 18, 2006 at 10:22:44AM +0900, Mohit Katiyar wrote:
+> I checked it today and when i issued the netstat -t ,I could see a lot
+> of tcp connections in TIME_WAIT state.
+> Is this a normal behaviour?
 
-bmZzo6zE+rrDo6ENCg0KCWkgZG8gYSBuZnMgc2VydmVyICByZWNlbnRseSBvbiBzdXNlIGxpbnV4
-IDEwIC4NCiAgICAvZXRjL2V4cG9ydCBjb250ZXh0Og0KCS92YXIxL2RhdGEgICAgICAxOTIuNzcu
-MTcuMTAyKHJ3LG5vX3Jvb3Rfc3F1YXNoKSAxOTIuNzcuMTcuMTAxKHJ3LG5vX3Jvb3Rfc3F1YXNo
-KQ0KDQogICAgaSBjYW4gbW91bnQgZGlyZWN0b3J5IGluIGNsaWVudCAsYnV0IGkgd3JpdGUgZGF0
-YSBmcm9tIGNsaWVudCB0byBuZnMgc2VydmVyICxzeXN0ZW0gcmVwb3J0ICJSZXNvdXJjZSB0ZW1w
-b3JhcmlseSB1bmF2YWlsYWJsZSIuDQogICAgaSBkb24ndCBrbm93IHdoYXQgaGFwcGVuZWQgLiBp
-IGhvcGUgeW91IGNhbiBoZWxwIG1lIA0KICAgIHRoYW5rcw0KICAgIA0KDQoNCg0KDQqhoaGhoaGh
-oaGhoaGhoaGhIA0K
+yes... but see below
 
+> So we cannot mount and umount infinitely
+> with tcp option? Why there are so many connections in waiting state?
 
+I think it's called the 2MSL wait: there may be TCP segments on the
+wire which (in theory) could disrupt new connections which reuse local
+and remote port so the ports stay in use for a few minutes. This is
+standard TCP behavior but only occurs when connections are improperly
+shutdown. Apparently this happens when umounting a tcp NFS mount but
+also for a lot of other tcp based RPC (showmount, rpcinfo).  I'm not
+sure who's to blame but it might be the rpc functions inside glibc.
 
---===============0011222960==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+I'd switch to NFS over udp if this is problem.
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0011222960==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+(cc'ed to nfs mailing list)
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0011222960==--
+-- 
+Frank
