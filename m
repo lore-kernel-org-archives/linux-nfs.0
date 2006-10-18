@@ -1,58 +1,70 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS inconsistent behaviour
-Date: Wed, 18 Oct 2006 13:57:09 -0400
-Message-ID: <1161194229.6095.81.camel@lade.trondhjem.org>
-References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
-	 <46465bb30610160013v47524589g39c61465b5955f65@mail.gmail.com>
-	 <20061016084656.GA13292@janus>
-	 <46465bb30610160235m211910b6g2eb074aa23060aa9@mail.gmail.com>
-	 <20061016093904.GA13866@janus>
-	 <46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
-	 <20061018063945.GA5917@janus>
+Subject: Re: NFSv3 server: lockd hangs
+Date: Wed, 18 Oct 2006 14:20:57 -0400
+Message-ID: <1161195658.6095.88.camel@lade.trondhjem.org>
+References: <Pine.LNX.4.44.0610181118190.8690-100000@lothlorien.local>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Mohit Katiyar <katiyar.mohit@gmail.com>,
-	linux-kernel@vger.kernel.org,
-	Linux NFS mailing list <nfs@lists.sourceforge.net>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1422716AbWJRR52@vger.kernel.org>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-In-Reply-To: <20061018063945.GA5917@janus>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GaG2Y-00084k-1e
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 11:21:18 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GaG2W-0002UG-Tt
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 11:21:19 -0700
+To: Helge Bahmann <hcb@chaoticmind.net>
+In-Reply-To: <Pine.LNX.4.44.0610181118190.8690-100000@lothlorien.local>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-18 at 08:39 +0200, Frank van Maarseveen wrote:
-> On Wed, Oct 18, 2006 at 10:22:44AM +0900, Mohit Katiyar wrote:
-> > I checked it today and when i issued the netstat -t ,I could see a lot
-> > of tcp connections in TIME_WAIT state.
-> > Is this a normal behaviour?
+On Wed, 2006-10-18 at 11:30 +0200, Helge Bahmann wrote:
+> Hello,
 > 
-> yes... but see below
+> I have problems with lockd on an NFS server (stock 2.6.17 kernel); I have
+> no easy test case to reproduce the problem, but after one to two weeks of
+> uptime the lockd process is simply stuck. It fails to shutdown
+> ("lockd_down: lockd failed to exit"; afterwards the "[lockd]" thread is
+> still around and stuck in D state) and is otherwise unresponsive. No other
+> kernel messages are logged.
 > 
-> > So we cannot mount and umount infinitely
-> > with tcp option? Why there are so many connections in waiting state?
+> Only full reboot solves the problem.
 > 
-> I think it's called the 2MSL wait: there may be TCP segments on the
-> wire which (in theory) could disrupt new connections which reuse local
-> and remote port so the ports stay in use for a few minutes. This is
-> standard TCP behavior but only occurs when connections are improperly
-> shutdown. Apparently this happens when umounting a tcp NFS mount but
-> also for a lot of other tcp based RPC (showmount, rpcinfo).  I'm not
-> sure who's to blame but it might be the rpc functions inside glibc.
-> 
-> I'd switch to NFS over udp if this is problem.
+> Can you tell me
+> - if there is a known lockd problem? I could not find anything in the
+> archives, but maybe I have missed something
+> - if it may be a file-system-specific problem (reiserfs in the present
+> case)?
+> - what else can I do to provide more useful diagnostics?
 
-Just out of interest. Why does anyone actually _want_ to keep
-mount/umounting to the point where they run out of ports? That is going
-to kill performance in all sorts of unhealthy ways, not least by
-completely screwing over any caching.
+There is a known deadlock in lockd for stock 2.6.17. See the fix at
 
-Note also that you _can_ change the range of ports used by the NFS
-client itself at least. Just edit /proc/sys/sunrpc/{min,max}_resvport.
-On the server side, you can use the 'insecure' option in order to allow
-mounts that originate from non-privileged ports (i.e. port > 1024).
-If you are using strong authentication (for instance RPCSEC_GSS/krb5)
-then that actually makes a lot of sense, since the only reason for the
-privileged port requirement was to disallow unprivileged NFS clients.
+  http://client.linux-nfs.org/Linux-2.6.x/2.6.18-rc4/linux-2.6.18-011-fix_nlm_traverse_files_deadlock.dif
+
+
+This patch will be included in the next stable release for 2.6.17.
 
 Cheers,
   Trond
+
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
