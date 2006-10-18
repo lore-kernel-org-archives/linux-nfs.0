@@ -1,29 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 8/9] SUNRPC: Store formatted addresses in private
-	data	structure
-Date: Wed, 18 Oct 2006 17:45:13 -0400
-Message-ID: <1161207913.6095.185.camel@lade.trondhjem.org>
-References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<20061012211521.8734.29674.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<1161203761.6095.137.camel@lade.trondhjem.org>
-	<76bd70e30610181341i1da2eeadw70e5098f9f421973@mail.gmail.com>
-	<1161205181.6095.153.camel@lade.trondhjem.org>
-	<76bd70e30610181435l2770a474u3f9501d0937ce5e5@mail.gmail.com>
+Subject: Re: [patch 1/4] RPC: acquire BKL while calling
+	rpc_release()	callback
+Date: Wed, 18 Oct 2006 18:20:13 -0400
+Message-ID: <1161210013.6095.194.camel@lade.trondhjem.org>
+References: <1161105873.3315.21.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaJEL-0002Pr-WE
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:45:42 -0700
+	id 1GaJm7-0005UJ-Ho
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 15:20:35 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaJEM-00016w-EI
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:45:43 -0700
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30610181435l2770a474u3f9501d0937ce5e5@mail.gmail.com>
+	(Exim 4.44) id 1GaJm7-0000q8-6r
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 15:20:36 -0700
+To: Frank Filz <ffilzlnx@us.ibm.com>
+In-Reply-To: <1161105873.3315.21.camel@dyn9047022153>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,28 +31,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-18 at 17:35 -0400, Chuck Lever wrote:
-> On 10/18/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > On Wed, 2006-10-18 at 16:41 -0400, Chuck Lever wrote:
-> > > On 10/18/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > > > On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
-> > > > > Hide buffers that store formatted IP addresses in a private data structure
-> > > > > maintained in net/sunrpc/xprtsock.c.
-> > > >
-> > > > Why? Aren't those generic?
-> > >
-> > > Not necessarily.  A transport may choose to use a dynamic algorithm to
-> > > generate the addresses, for example; in which case, it would have no
-> > > need for such buffers.
-> >
-> > Do we have such a user today, or do we expect to have one in the near
-> > future? AFAIK the infiniband folks will be using standard IP addresses
-> > too.
-> 
-> We can drop this patch if you prefer.
+On Tue, 2006-10-17 at 10:24 -0700, Frank Filz wrote:
+> The Big Kernel Lock must be held while calling rpc_release().
 
-Yup. In fact, we might want to revert the rpc_xprt_ops->print_addr()
-indirection too.
+Could we perhaps use something like the following helper instead? That
+ensures that we will not miss it again.
+
+Cheers,
+  Trond
+
+---------------------------------------------
+
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Wed, 18 Oct 2006 16:01:05 -0400
+Subject: SUNRPC: Fix up missing BKL in asynchronous RPC callback functions
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ include/linux/sunrpc/sched.h |    1 +
+ net/sunrpc/clnt.c            |    3 +--
+ net/sunrpc/sched.c           |   15 +++++++++++----
+ 3 files changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index f399c13..d8e18ee 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -256,6 +256,7 @@ void		rpc_init_task(struct rpc_task *tas
+ 				void *data);
+ void		rpc_release_task(struct rpc_task *);
+ void		rpc_exit_task(struct rpc_task *);
++void		rpc_release_calldata(const struct rpc_call_ops *, void *);
+ void		rpc_killall_tasks(struct rpc_clnt *);
+ int		rpc_execute(struct rpc_task *);
+ void		rpc_init_priority_wait_queue(struct rpc_wait_queue *, const char *);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 78696f2..a17cf0e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -529,8 +529,7 @@ rpc_call_async(struct rpc_clnt *clnt, st
+ 	rpc_restore_sigmask(&oldset);		
+ 	return status;
+ out_release:
+-	if (tk_ops->rpc_release != NULL)
+-		tk_ops->rpc_release(data);
++	rpc_release_calldata(tk_ops, data);
+ 	return status;
+ }
+ 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index a1ab4ee..287fe9a 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -581,6 +581,15 @@ void rpc_exit_task(struct rpc_task *task
+ }
+ EXPORT_SYMBOL(rpc_exit_task);
+ 
++void rpc_release_calldata(const struct rpc_call_ops *ops, void *calldata)
++{
++	if (ops->rpc_release != NULL) {
++		lock_kernel();
++		ops->rpc_release(calldata);
++		unlock_kernel();
++	}
++}
++
+ /*
+  * This is the RPC `scheduler' (or rather, the finite state machine).
+  */
+@@ -884,8 +893,7 @@ #ifdef RPC_DEBUG
+ #endif
+ 	if (task->tk_flags & RPC_TASK_DYNAMIC)
+ 		rpc_free_task(task);
+-	if (tk_ops->rpc_release)
+-		tk_ops->rpc_release(calldata);
++	rpc_release_calldata(tk_ops, calldata);
+ }
+ 
+ /**
+@@ -902,8 +910,7 @@ struct rpc_task *rpc_run_task(struct rpc
+ 	struct rpc_task *task;
+ 	task = rpc_new_task(clnt, flags, ops, data);
+ 	if (task == NULL) {
+-		if (ops->rpc_release != NULL)
+-			ops->rpc_release(data);
++		rpc_release_calldata(ops, data);
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 	atomic_inc(&task->tk_count);
 
 
 
