@@ -1,27 +1,36 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: [PATCH 8/9] SUNRPC: Store formatted addresses in private
-	data structure
-Date: Wed, 18 Oct 2006 16:41:10 -0400
-Message-ID: <76bd70e30610181341i1da2eeadw70e5098f9f421973@mail.gmail.com>
-References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<20061012211521.8734.29674.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<1161203761.6095.137.camel@lade.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS inconsistent behaviour
+Date: Wed, 18 Oct 2006 16:44:35 -0400
+Message-ID: <1161204275.6095.143.camel@lade.trondhjem.org>
+References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
+	<20061016084656.GA13292@janus>
+	<46465bb30610160235m211910b6g2eb074aa23060aa9@mail.gmail.com>
+	<20061016093904.GA13866@janus>
+	<46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
+	<20061018063945.GA5917@janus>
+	<1161194229.6095.81.camel@lade.trondhjem.org>
+	<20061018183807.GA12018@janus>
+	<1161199580.6095.112.camel@lade.trondhjem.org>
+	<20061018200936.GA14733@janus>
+	<76bd70e30610181317w3e8315e5m75056305904a1bce@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Mohit Katiyar <katiyar.mohit@gmail.com>,
+	Linux NFS mailing list <nfs@lists.sourceforge.net>,
+	linux-kernel@vger.kernel.org,
+	Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaIDz-0004yY-Me
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:41:15 -0700
-Received: from ug-out-1314.google.com ([66.249.92.173])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GaIDz-0001Pt-EK
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:41:16 -0700
-Received: by ug-out-1314.google.com with SMTP id p27so263884ugc
-	for <nfs@lists.sourceforge.net>; Wed, 18 Oct 2006 13:41:11 -0700 (PDT)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1161203761.6095.137.camel@lade.trondhjem.org>
+	id 1GaIHS-0005Jf-5e
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:44:52 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GaIHS-0002Gx-Lm
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:44:51 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <76bd70e30610181317w3e8315e5m75056305904a1bce@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,20 +43,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/18/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
-> > Hide buffers that store formatted IP addresses in a private data structure
-> > maintained in net/sunrpc/xprtsock.c.
->
-> Why? Aren't those generic?
+On Wed, 2006-10-18 at 16:17 -0400, Chuck Lever wrote:
+> Both client implementations (kernel and glibc) should re-use port
+> numbers or connections aggressively.  To that end, the kernel RPC
+> client is already doing this.  I know Red Hat has suggested using a
+> connection manager for user-level RPC applications to share.  In
+> addition the kernel NFS client is sharing connections to a server
+> between all mount points going to that server.
 
-Not necessarily.  A transport may choose to use a dynamic algorithm to
-generate the addresses, for example; in which case, it would have no
-need for such buffers.
+IIRC, Mike Waychison did some work a couple of years ago on a userspace
+daemon that managed RPC connections.
 
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
