@@ -1,10 +1,10 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 01/10] SUNRPC: minor optimization of "xid" field
-	in	rpc_xprt
-Date: Wed, 18 Oct 2006 17:22:15 -0400
-Message-ID: <1161206535.6095.167.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 02/10] SUNRPC: Make the transport-specific
+	setup	routine allocate rpc_xprt
+Date: Wed, 18 Oct 2006 17:29:18 -0400
+Message-ID: <1161206958.6095.176.camel@lade.trondhjem.org>
 References: <20061017184142.25704.44260.stgit@schiele.dsl.sfldmi.ameritech.net>
-	<20061017184424.25704.28776.stgit@schiele.dsl.sfldmi.ameritech.net>
+	<20061017184427.25704.38797.stgit@schiele.dsl.sfldmi.ameritech.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -12,14 +12,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaIrx-0000Bi-Ie
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:22:33 -0700
+	id 1GaIyo-0000sn-Nq
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:29:38 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaIrw-0003NM-Ic
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:22:34 -0700
+	(Exim 4.44) id 1GaIyo-0005Ti-7P
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:29:39 -0700
 To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <20061017184424.25704.28776.stgit@schiele.dsl.sfldmi.ameritech.net>
+In-Reply-To: <20061017184427.25704.38797.stgit@schiele.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,10 +33,14 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Tue, 2006-10-17 at 14:44 -0400, Chuck Lever wrote:
-> Move the xid field in the rpc_xprt structure to be in the same cache line
-> as the reserve_lock, since these are used at the same time.
+> Change the location where the rpc_xprt structure is allocated so each
+> transport implementation can allocate a private area from the same
+> chunk of memory.
+> 
+> Note also that xprt->ops->destroy, rather than xprt_destroy, is now
+> responsible for freeing rpc_xprt when the transport is destroyed.
 
-Applied.
+Applied
 
 Thanks
   Trond
