@@ -1,27 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 8/9] SUNRPC: Store formatted addresses in private
-	data	structure
-Date: Wed, 18 Oct 2006 16:59:41 -0400
-Message-ID: <1161205181.6095.153.camel@lade.trondhjem.org>
-References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<20061012211521.8734.29674.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<1161203761.6095.137.camel@lade.trondhjem.org>
-	<76bd70e30610181341i1da2eeadw70e5098f9f421973@mail.gmail.com>
+Subject: Re: [PATCH 01/10] SUNRPC: minor optimization of "xid" field
+	in	rpc_xprt
+Date: Wed, 18 Oct 2006 17:22:15 -0400
+Message-ID: <1161206535.6095.167.camel@lade.trondhjem.org>
+References: <20061017184142.25704.44260.stgit@schiele.dsl.sfldmi.ameritech.net>
+	<20061017184424.25704.28776.stgit@schiele.dsl.sfldmi.ameritech.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaIW9-0006cx-0u
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:00:01 -0700
+	id 1GaIrx-0000Bi-Ie
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:22:33 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaIW4-0005bQ-0q
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:00:02 -0700
+	(Exim 4.44) id 1GaIrw-0003NM-Ic
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 14:22:34 -0700
 To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30610181341i1da2eeadw70e5098f9f421973@mail.gmail.com>
+In-Reply-To: <20061017184424.25704.28776.stgit@schiele.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,23 +32,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-18 at 16:41 -0400, Chuck Lever wrote:
-> On 10/18/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
-> > > Hide buffers that store formatted IP addresses in a private data structure
-> > > maintained in net/sunrpc/xprtsock.c.
-> >
-> > Why? Aren't those generic?
-> 
-> Not necessarily.  A transport may choose to use a dynamic algorithm to
-> generate the addresses, for example; in which case, it would have no
-> need for such buffers.
+On Tue, 2006-10-17 at 14:44 -0400, Chuck Lever wrote:
+> Move the xid field in the rpc_xprt structure to be in the same cache line
+> as the reserve_lock, since these are used at the same time.
 
-Do we have such a user today, or do we expect to have one in the near
-future? AFAIK the infiniband folks will be using standard IP addresses
-too.
+Applied.
 
-Trond
+Thanks
+  Trond
 
 
 -------------------------------------------------------------------------
