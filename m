@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 5/9] SUNRPC: Move rpc_xprt socket connect fields
-	into	private data structure
-Date: Wed, 18 Oct 2006 16:34:08 -0400
-Message-ID: <1161203648.6095.135.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 8/9] SUNRPC: Store formatted addresses in private
+	data	structure
+Date: Wed, 18 Oct 2006 16:36:01 -0400
+Message-ID: <1161203761.6095.137.camel@lade.trondhjem.org>
 References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
-	<20061012211515.8734.44424.stgit@ingres.dsl.sfldmi.ameritech.net>
+	<20061012211521.8734.29674.stgit@ingres.dsl.sfldmi.ameritech.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaI7M-0004L8-Ql
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:34:25 -0700
+	id 1GaI9G-0004Wd-FO
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:36:22 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaI7M-0007Dh-Sn
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:34:25 -0700
+	(Exim 4.44) id 1GaI9D-0000Bx-Vp
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:36:23 -0700
 To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <20061012211515.8734.44424.stgit@ingres.dsl.sfldmi.ameritech.net>
+In-Reply-To: <20061012211521.8734.29674.stgit@ingres.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,192 +33,13 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
-> Move the socket-specific connection management fields out of the generic
-> rpc_xprt structure into a private data structure maintained in
-> net/sunrpc/xprtsock.c.
-> 
-> Test plan:
-> Connectathon.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  include/linux/sunrpc/xprt.h |    2 --
->  net/sunrpc/xprtsock.c       |   36 +++++++++++++++++++++++++-----------
->  2 files changed, 25 insertions(+), 13 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 3ff8230..18bf72c 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -163,8 +163,6 @@ struct rpc_xprt {
->  	unsigned long		connect_timeout,
->  				bind_timeout,
->  				reestablish_timeout;
-> -	struct work_struct	connect_worker;
-> -	unsigned short		port;
->  
->  	/*
->  	 * Disconnection of idle transports
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 363b2fc..b0bead5 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -145,6 +145,12 @@ struct xs_xprt {
->  
->  	unsigned long		tcp_copied,
->  				tcp_flags;
-> +
-> +	/*
-> +	 * Connection of transports
-> +	 */
-> +	struct work_struct	connect_worker;
-> +	unsigned short		port;
->  };
->  
->  /*
-> @@ -565,7 +571,7 @@ static void xs_destroy(struct rpc_xprt *
->  {
->  	dprintk("RPC:      xs_destroy xprt %p\n", xprt);
->  
-> -	cancel_delayed_work(&xprt->connect_worker);
-> +	cancel_delayed_work(&xs_private_data(xprt)->connect_worker);
->  	flush_scheduled_work();
->  
->  	xprt_disconnect(xprt);
-> @@ -1076,18 +1082,19 @@ static void xs_set_port(struct rpc_xprt 
->  
->  static int xs_bindresvport(struct rpc_xprt *xprt, struct socket *sock)
->  {
-> +	struct xs_xprt *private = xs_private_data(xprt);
->  	struct sockaddr_in myaddr = {
->  		.sin_family = AF_INET,
->  	};
->  	int err;
-> -	unsigned short port = xprt->port;
-> +	unsigned short port = private->port;
->  
->  	do {
->  		myaddr.sin_port = htons(port);
->  		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
->  						sizeof(myaddr));
->  		if (err == 0) {
-> -			xprt->port = port;
-> +			private->port = port;
->  			dprintk("RPC:      xs_bindresvport bound to port %u\n",
->  					port);
->  			return 0;
-> @@ -1096,7 +1103,7 @@ static int xs_bindresvport(struct rpc_xp
->  			port = xprt_max_resvport;
->  		else
->  			port--;
-> -	} while (err == -EADDRINUSE && port != xprt->port);
-> +	} while (err == -EADDRINUSE && port != private->port);
->  
->  	dprintk("RPC:      can't bind to reserved port (%d).\n", -err);
->  	return err;
-> @@ -1302,14 +1309,14 @@ static void xs_connect(struct rpc_task *
->  	if (private->sock != NULL) {
->  		dprintk("RPC:      xs_connect delayed xprt %p for %lu seconds\n",
->  				xprt, xprt->reestablish_timeout / HZ);
-> -		schedule_delayed_work(&xprt->connect_worker,
-> +		schedule_delayed_work(&private->connect_worker,
->  					xprt->reestablish_timeout);
->  		xprt->reestablish_timeout <<= 1;
->  		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
->  			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
->  	} else {
->  		dprintk("RPC:      xs_connect scheduled xprt %p\n", xprt);
-> -		schedule_work(&xprt->connect_worker);
-> +		schedule_work(&private->connect_worker);
->  
->  		/* flush_scheduled_work can sleep... */
->  		if (!RPC_IS_ASYNC(task))
-> @@ -1325,8 +1332,10 @@ static void xs_connect(struct rpc_task *
->   */
->  static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
->  {
-> +	struct xs_xprt *private = xs_private_data(xprt);
-> +
->  	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
-> -			xprt->port,
-> +			private->port,
->  			xprt->stat.bind_count,
->  			xprt->stat.sends,
->  			xprt->stat.recvs,
-> @@ -1343,13 +1352,14 @@ static void xs_udp_print_stats(struct rp
->   */
->  static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
->  {
-> +	struct xs_xprt *private = xs_private_data(xprt);
->  	long idle_time = 0;
->  
->  	if (xprt_connected(xprt))
->  		idle_time = (long)(jiffies - xprt->last_used) / HZ;
->  
->  	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
-> -			xprt->port,
-> +			private->port,
->  			xprt->stat.bind_count,
->  			xprt->stat.connect_count,
->  			xprt->stat.connect_time,
-> @@ -1423,7 +1433,7 @@ static struct rpc_xprt *xs_setup_xprt(st
->  
->  	memcpy(&xprt->addr, addr, addrlen);
->  	xprt->addrlen = addrlen;
-> -	xprt->port = xs_get_random_port();
-> +	private->port = xs_get_random_port();
->  
->  	return xprt;
->  }
-> @@ -1438,10 +1448,12 @@ static struct rpc_xprt *xs_setup_xprt(st
->  struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
->  {
->  	struct rpc_xprt *xprt;
-> +	struct xs_xprt *private;
->  
->  	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
->  	if (IS_ERR(xprt))
->  		return xprt;
-> +	private = xs_private_data(xprt);
->  
->  	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
->  		xprt_set_bound(xprt);
-> @@ -1451,7 +1463,7 @@ struct rpc_xprt *xs_setup_udp(struct soc
->  	/* XXX: header size can vary due to auth type, IPv6, etc. */
->  	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
->  
-> -	INIT_WORK(&xprt->connect_worker, xs_udp_connect_worker, xprt);
-> +	INIT_WORK(&private->connect_worker, xs_udp_connect_worker, xprt);
+> Hide buffers that store formatted IP addresses in a private data structure
+> maintained in net/sunrpc/xprtsock.c.
 
-Why keep 'xprt' as the data parameter for the connect_worker instead of
-just passing the struct rpc_xprt_sock?
+Why? Aren't those generic?
 
->  	xprt->bind_timeout = XS_BIND_TO;
->  	xprt->connect_timeout = XS_UDP_CONN_TO;
->  	xprt->reestablish_timeout = XS_UDP_REEST_TO;
-> @@ -1481,10 +1493,12 @@ struct rpc_xprt *xs_setup_udp(struct soc
->  struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
->  {
->  	struct rpc_xprt *xprt;
-> +	struct xs_xprt *private;
->  
->  	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
->  	if (IS_ERR(xprt))
->  		return xprt;
-> +	private = xs_private_data(xprt);
->  
->  	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
->  		xprt_set_bound(xprt);
-> @@ -1493,7 +1507,7 @@ struct rpc_xprt *xs_setup_tcp(struct soc
->  	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
->  	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
->  
-> -	INIT_WORK(&xprt->connect_worker, xs_tcp_connect_worker, xprt);
-> +	INIT_WORK(&private->connect_worker, xs_tcp_connect_worker, xprt);
->  	xprt->bind_timeout = XS_BIND_TO;
->  	xprt->connect_timeout = XS_TCP_CONN_TO;
->  	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+Cheers,
+  Trond
 
 
 -------------------------------------------------------------------------
