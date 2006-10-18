@@ -1,7 +1,7 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Frank van Maarseveen <frankvm@frankvm.com>
 Subject: Re: NFS inconsistent behaviour
-Date: Wed, 18 Oct 2006 15:26:20 -0400
-Message-ID: <1161199580.6095.112.camel@lade.trondhjem.org>
+Date: Wed, 18 Oct 2006 22:09:36 +0200
+Message-ID: <20061018200936.GA14733@janus>
 References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
 	<46465bb30610160013v47524589g39c61465b5955f65@mail.gmail.com>
 	<20061016084656.GA13292@janus>
@@ -11,6 +11,7 @@ References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
 	<20061018063945.GA5917@janus>
 	<1161194229.6095.81.camel@lade.trondhjem.org>
 	<20061018183807.GA12018@janus>
+	<1161199580.6095.112.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Mohit Katiyar <katiyar.mohit@gmail.com>,
@@ -20,14 +21,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaH3o-00064v-75
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 12:26:43 -0700
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaH3o-0005sm-MN
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 12:26:41 -0700
-To: Frank van Maarseveen <frankvm@frankvm.com>
-In-Reply-To: <20061018183807.GA12018@janus>
+	id 1GaHjS-0001yz-72
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:09:42 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GaHjQ-0000hL-TN
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:09:43 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1161199580.6095.112.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,30 +40,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-18 at 20:38 +0200, Frank van Maarseveen wrote:
-> I ran out of privileged ports due to treemounting on /net from about 50
-> servers. The autofs program map for this uses the "showmount" command and
-> that one apparently uses privileged ports too (buried inside RPC client
-> libs part of glibc IIRC). The combination broke autofs and a number of
-> other services because there were no privileged ports left anymore.
+On Wed, Oct 18, 2006 at 03:26:20PM -0400, Trond Myklebust wrote:
+> On Wed, 2006-10-18 at 20:38 +0200, Frank van Maarseveen wrote:
+> > I ran out of privileged ports due to treemounting on /net from about 50
+> > servers. The autofs program map for this uses the "showmount" command and
+> > that one apparently uses privileged ports too (buried inside RPC client
+> > libs part of glibc IIRC). The combination broke autofs and a number of
+> > other services because there were no privileged ports left anymore.
+> 
+> Yeah. The RPC library appears to always try to grab a privileged port if
+> it can. One solution would be to have the autofs scripts drop all
+> privileges before calling showmount.
+> 
+> I suppose we could also change the showmount program to create a socket
+> that is bound to an unprivileged port, then use
+> clnttcp_create()/clntudp_create().
+> 
+> We could probably do the same in the "mount" program when doing things
+> like interrogating the portmapper, probing for rpc ports etc. The only
+> case where mount might actually need to use a privileged port is when
+> talking to mountd. Even then, it could be trained to first try using an
+> unprivileged port.
 
-Yeah. The RPC library appears to always try to grab a privileged port if
-it can. One solution would be to have the autofs scripts drop all
-privileges before calling showmount.
+If we could fix why there are that many connections in state TIME_WAIT
+then using privileged ports would not be a problem either.
 
-I suppose we could also change the showmount program to create a socket
-that is bound to an unprivileged port, then use
-clnttcp_create()/clntudp_create().
-
-We could probably do the same in the "mount" program when doing things
-like interrogating the portmapper, probing for rpc ports etc. The only
-case where mount might actually need to use a privileged port is when
-talking to mountd. Even then, it could be trained to first try using an
-unprivileged port.
-
-Cheers,
-  Trond
-
+-- 
+Frank
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
