@@ -1,36 +1,25 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: NFS inconsistent behaviour
-Date: Wed, 18 Oct 2006 16:17:37 -0400
-Message-ID: <76bd70e30610181317w3e8315e5m75056305904a1bce@mail.gmail.com>
-References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
-	<20061016084656.GA13292@janus>
-	<46465bb30610160235m211910b6g2eb074aa23060aa9@mail.gmail.com>
-	<20061016093904.GA13866@janus>
-	<46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
-	<20061018063945.GA5917@janus>
-	<1161194229.6095.81.camel@lade.trondhjem.org>
-	<20061018183807.GA12018@janus>
-	<1161199580.6095.112.camel@lade.trondhjem.org>
-	<20061018200936.GA14733@janus>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 2/9] SUNRPC: Allocate a private data area
+	for	socket-specific rpc_xprt fields
+Date: Wed, 18 Oct 2006 16:18:45 -0400
+Message-ID: <1161202725.6095.123.camel@lade.trondhjem.org>
+References: <20061012211247.8734.23147.stgit@ingres.dsl.sfldmi.ameritech.net>
+	<20061012211508.8734.89856.stgit@ingres.dsl.sfldmi.ameritech.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Mohit Katiyar <katiyar.mohit@gmail.com>,
-	Linux NFS mailing list <nfs@lists.sourceforge.net>,
-	linux-kernel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaHrG-0002lf-H3
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:17:47 -0700
-Received: from ug-out-1314.google.com ([66.249.92.175])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GaHrE-0002uU-VE
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:17:47 -0700
-Received: by ug-out-1314.google.com with SMTP id p27so258114ugc
-	for <nfs@lists.sourceforge.net>; Wed, 18 Oct 2006 13:17:38 -0700 (PDT)
-To: "Frank van Maarseveen" <frankvm@frankvm.com>
-In-Reply-To: <20061018200936.GA14733@janus>
+	id 1GaHsV-0002te-Cy
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:19:10 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GaHsR-0004HH-Oj
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 13:19:04 -0700
+To: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <20061012211508.8734.89856.stgit@ingres.dsl.sfldmi.ameritech.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,48 +32,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/18/06, Frank van Maarseveen <frankvm@frankvm.com> wrote:
-> On Wed, Oct 18, 2006 at 03:26:20PM -0400, Trond Myklebust wrote:
-> > On Wed, 2006-10-18 at 20:38 +0200, Frank van Maarseveen wrote:
-> > > I ran out of privileged ports due to treemounting on /net from about 50
-> > > servers. The autofs program map for this uses the "showmount" command and
-> > > that one apparently uses privileged ports too (buried inside RPC client
-> > > libs part of glibc IIRC). The combination broke autofs and a number of
-> > > other services because there were no privileged ports left anymore.
-> >
-> > Yeah. The RPC library appears to always try to grab a privileged port if
-> > it can. One solution would be to have the autofs scripts drop all
-> > privileges before calling showmount.
-> >
-> > I suppose we could also change the showmount program to create a socket
-> > that is bound to an unprivileged port, then use
-> > clnttcp_create()/clntudp_create().
-> >
-> > We could probably do the same in the "mount" program when doing things
-> > like interrogating the portmapper, probing for rpc ports etc. The only
-> > case where mount might actually need to use a privileged port is when
-> > talking to mountd. Even then, it could be trained to first try using an
-> > unprivileged port.
->
-> If we could fix why there are that many connections in state TIME_WAIT
-> then using privileged ports would not be a problem either.
+On Thu, 2006-10-12 at 17:15 -0400, Chuck Lever wrote:
+> When setting up a new transport instance, allocate enough memory for an
+> rpc_xprt and a private area.  As part of the same memory allocation, it
+> will be easy to find one, given a pointer to the other.
+> 
+> Test plan:
+> Compile kernel with CONFIG_NFS enabled.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/xprtsock.c |   15 +++++++++++++--
+>  1 files changed, 13 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index a6f778f..5ddb20d 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -125,6 +125,15 @@ static inline void xs_pktdump(char *msg,
+>  }
+>  #endif
+>  
+> +struct xs_xprt {
+> +	struct rpc_xprt		xprt;
+> +};
 
-Some discussion on both FreeBSD and Linux mailing lists suggests that
-ignoring TIME_WAIT has some risk to it, so that may not be an
-advisable path to take.  However, there are probably some cases where
-it is safe, such as idle timeouts, where the client is certain there
-is no traffic in flight.
+That name tells you nothing about what it contains. How about something
+like 'struct rpc_xprt_sock' instead?
 
-Both client implementations (kernel and glibc) should re-use port
-numbers or connections aggressively.  To that end, the kernel RPC
-client is already doing this.  I know Red Hat has suggested using a
-connection manager for user-level RPC applications to share.  In
-addition the kernel NFS client is sharing connections to a server
-between all mount points going to that server.
+> +static inline struct xs_xprt *xs_private_data(struct rpc_xprt *xprt)
+> +{
+> +	return (struct xs_xprt *) xprt;
 
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
+Should use container_of() instead of a cast.
+
+Why do we want this extra wrapper anyway? It gives you no extra type
+security compared to container_of().
+
+> +}
+> +
+>  static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+>  {
+>  	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
+> @@ -1352,6 +1361,7 @@ static struct rpc_xprt_ops xs_tcp_ops = 
+>  
+>  static struct rpc_xprt *xs_setup_xprt(struct sockaddr *addr, size_t addrlen, unsigned int slot_table_size)
+>  {
+> +	struct xs_xprt *private;
+>  	struct rpc_xprt *xprt;
+>  
+>  	if (addrlen > sizeof(xprt->addr)) {
+> @@ -1359,11 +1369,12 @@ static struct rpc_xprt *xs_setup_xprt(st
+>  		return ERR_PTR(-EBADF);
+>  	}
+>  
+> -	xprt = kzalloc(sizeof(struct rpc_xprt), GFP_KERNEL);
+> -	if (xprt == NULL) {
+> +	private = kzalloc(sizeof(struct xs_xprt), GFP_KERNEL);
+> +	if (private == NULL) {
+>  		dprintk("RPC:      xs_setup_xprt: couldn't allocate rpc_xprt\n");
+>  		return ERR_PTR(-ENOMEM);
+>  	}
+> +	xprt = &private->xprt;
+>  
+>  	xprt->max_reqs = slot_table_size;
+>  	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
