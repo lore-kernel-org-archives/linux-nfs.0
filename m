@@ -1,23 +1,32 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSv3 server: lockd hangs
-Date: Wed, 18 Oct 2006 14:20:57 -0400
-Message-ID: <1161195658.6095.88.camel@lade.trondhjem.org>
-References: <Pine.LNX.4.44.0610181118190.8690-100000@lothlorien.local>
+Subject: Re: NFS inconsistent behaviour
+Date: Wed, 18 Oct 2006 14:37:12 -0400
+Message-ID: <1161196632.6095.94.camel@lade.trondhjem.org>
+References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
+	<46465bb30610160013v47524589g39c61465b5955f65@mail.gmail.com>
+	<20061016084656.GA13292@janus>
+	<46465bb30610160235m211910b6g2eb074aa23060aa9@mail.gmail.com>
+	<20061016093904.GA13866@janus>
+	<46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
+	<20061018063945.GA5917@janus>
+	<1161194229.6095.81.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Mohit Katiyar <katiyar.mohit@gmail.com>,
+	Linux NFS mailing list <nfs@lists.sourceforge.net>,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaG2Y-00084k-1e
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 11:21:18 -0700
+	id 1GaGII-000148-Cr
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 11:37:34 -0700
 Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaG2W-0002UG-Tt
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 11:21:19 -0700
-To: Helge Bahmann <hcb@chaoticmind.net>
-In-Reply-To: <Pine.LNX.4.44.0610181118190.8690-100000@lothlorien.local>
+	(Exim 4.44) id 1GaGIG-0001ki-Cp
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 11:37:35 -0700
+To: Frank van Maarseveen <frankvm@frankvm.com>
+In-Reply-To: <1161194229.6095.81.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,31 +39,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-18 at 11:30 +0200, Helge Bahmann wrote:
-> Hello,
-> 
-> I have problems with lockd on an NFS server (stock 2.6.17 kernel); I have
-> no easy test case to reproduce the problem, but after one to two weeks of
-> uptime the lockd process is simply stuck. It fails to shutdown
-> ("lockd_down: lockd failed to exit"; afterwards the "[lockd]" thread is
-> still around and stuck in D state) and is otherwise unresponsive. No other
-> kernel messages are logged.
-> 
-> Only full reboot solves the problem.
-> 
-> Can you tell me
-> - if there is a known lockd problem? I could not find anything in the
-> archives, but maybe I have missed something
-> - if it may be a file-system-specific problem (reiserfs in the present
-> case)?
-> - what else can I do to provide more useful diagnostics?
+On Wed, 2006-10-18 at 13:57 -0400, Trond Myklebust wrote:
+> Note also that you _can_ change the range of ports used by the NFS
+> client itself at least. Just edit /proc/sys/sunrpc/{min,max}_resvport.
+> On the server side, you can use the 'insecure' option in order to allow
+> mounts that originate from non-privileged ports (i.e. port > 1024).
+> If you are using strong authentication (for instance RPCSEC_GSS/krb5)
+> then that actually makes a lot of sense, since the only reason for the
+> privileged port requirement was to disallow unprivileged NFS clients.
 
-There is a known deadlock in lockd for stock 2.6.17. See the fix at
+Oops... Something got lost there. That last sentence should read
 
-  http://client.linux-nfs.org/Linux-2.6.x/2.6.18-rc4/linux-2.6.18-011-fix_nlm_traverse_files_deadlock.dif
-
-
-This patch will be included in the next stable release for 2.6.17.
+        ...since the only reason for the privileged port requirement was
+        to disallow unprivileged NFS clients that could be used to spoof
+        other user identities via the weak AUTH_SYS authentication.
 
 Cheers,
   Trond
