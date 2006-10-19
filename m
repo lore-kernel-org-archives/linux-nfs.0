@@ -1,36 +1,90 @@
-From: David Rientjes <rientjes@cs.washington.edu>
-Subject: Re: [PATCH] NFS: nfsaclsvc_encode_getaclres() - Fix potential NULL
- deref and tiny optimization.
-Date: Tue, 31 Oct 2006 12:39:22 -0800 (PST)
-Message-ID: <Pine.LNX.4.64N.0610311232190.30578@attu4.cs.washington.edu>
-References: <200610272316.47089.jesper.juhl@gmail.com>
- <Pine.LNX.4.64N.0610271443500.31179@attu2.cs.washington.edu>
- <200610280001.49272.jesper.juhl@gmail.com> <200610311726.00411.agruen@suse.de>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 10/11] SUNRPC: fix race in in-kernel RPC portmapper
+	client
+Date: Thu, 19 Oct 2006 13:04:32 -0400
+Message-ID: <20061019170432.8171.96764.stgit@lade.trondhjem.org>
+References: <20061019170432.8171.75076.stgit@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jesper Juhl <jesper.juhl@gmail.com>, linux-kernel@vger.kernel.org,
-	Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
-	Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1945908AbWJaUjo@vger.kernel.org>
-To: Andreas Gruenbacher <agruen@suse.de>
-In-Reply-To: <200610311726.00411.agruen@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GabLa-0001Rl-A5
+	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 10:06:22 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GabLa-0003uw-53
+	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 10:06:23 -0700
+To: Linus Torvalds <torvalds@osdl.org>
+In-Reply-To: <20061019170432.8171.75076.stgit@lade.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 31 Oct 2006, Andreas Gruenbacher wrote:
+From: Chuck Lever <chuck.lever@oracle.com>
 
-> > > w should be an unsigned int.
-> >
-> > Makes sense.
-> 
-> No, this breaks the while loop further below: with an unsigned int, the loop 
-> counter underflows and wraps.
-> 
+When submitting a request to a fast portmapper (such as the local rpcbind
+daemon), the request can complete before the parent task is even queued up
+on xprt->binding.  Fix this by queuing before submitting the rpcbind
+request.
 
-This is not a problem with w being an unsigned int, it's a problem with 
-the while loop.  nfsacl_size() returns unsigned int as it should and the 
-while loop can be written to respect that since integer division in C 
-truncates:
+Test plan:
+Connectathon locking test with UDP.
 
-	for (n = w / PAGE_SIZE; n > 0; n--)
-		if (!rqstp->rq_respages[rqstp->rq_resused++];
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ net/sunrpc/pmap_clnt.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/pmap_clnt.c b/net/sunrpc/pmap_clnt.c
+index 919d5ba..e52afab 100644
+--- a/net/sunrpc/pmap_clnt.c
++++ b/net/sunrpc/pmap_clnt.c
+@@ -101,11 +101,13 @@ void rpc_getport(struct rpc_task *task)
+ 	/* Autobind on cloned rpc clients is discouraged */
+ 	BUG_ON(clnt->cl_parent != clnt);
+ 
+-	if (xprt_test_and_set_binding(xprt)) {
+-		task->tk_status = -EACCES;	/* tell caller to check again */
+-		rpc_sleep_on(&xprt->binding, task, NULL, NULL);
+-		return;
+-	}
++	/* Put self on queue before sending rpcbind request, in case
++	 * pmap_getport_done completes before we return from rpc_run_task */
++	rpc_sleep_on(&xprt->binding, task, NULL, NULL);
++
++	status = -EACCES;		/* tell caller to check again */
++	if (xprt_test_and_set_binding(xprt))
++		goto bailout_nofree;
+ 
+ 	/* Someone else may have bound if we slept */
+ 	status = 0;
+@@ -134,8 +136,6 @@ void rpc_getport(struct rpc_task *task)
+ 		goto bailout;
+ 	rpc_release_task(child);
+ 
+-	rpc_sleep_on(&xprt->binding, task, NULL, NULL);
+-
+ 	task->tk_xprt->stat.bind_count++;
+ 	return;
+ 
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
