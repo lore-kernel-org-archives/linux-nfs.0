@@ -1,80 +1,112 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 04/11] nfs4: initialize cl_ipaddr
+Subject: [PATCH 05/11] NFS: Fix NFSv4 callback regression
 Date: Thu, 19 Oct 2006 13:04:32 -0400
-Message-ID: <20061019170432.8171.30968.stgit@lade.trondhjem.org>
+Message-ID: <20061019170432.8171.65993.stgit@lade.trondhjem.org>
 References: <20061019170432.8171.75076.stgit@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=fixed
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1946242AbWJSRGh@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GabLZ-0001Re-1Z
+	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 10:06:21 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GabLZ-0003uw-Sv
+	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 10:06:22 -0700
 To: Linus Torvalds <torvalds@osdl.org>
 In-Reply-To: <20061019170432.8171.75076.stgit@lade.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: J. Bruce Fields <bfields@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-David forgot to do this.  I'm not sure if this is the right place to put
-it....
+The change in semantics for nfs_find_client() introduced by David breaks
+the NFSv4 callback channel.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Also, replace another completely broken BUG_ON() in nfs_find_client().
+In initialised clients, clp->cl_cons_state == 0, and callers of that
+function should in any case never want to see clients that are
+uninitialised.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/client.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+ fs/nfs/client.c |   19 ++++++++++++-------
+ 1 files changed, 12 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 34c3996..8b123f6 100644
+index 8b123f6..5fea638 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -849,6 +849,7 @@ #ifdef CONFIG_NFS_V4
+@@ -232,11 +232,15 @@ void nfs_put_client(struct nfs_client *c
+  * Find a client by address
+  * - caller must hold nfs_client_lock
   */
- static int nfs4_init_client(struct nfs_client *clp,
- 		int proto, int timeo, int retrans,
-+		const char *ip_addr,
- 		rpc_authflavor_t authflavour)
+-static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr, int nfsversion)
++static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr, int nfsversion, int match_port)
  {
- 	int error;
-@@ -865,6 +866,7 @@ static int nfs4_init_client(struct nfs_c
- 	error = nfs_create_rpc_client(clp, proto, timeo, retrans, authflavour);
- 	if (error < 0)
- 		goto error;
-+	memcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
+ 	struct nfs_client *clp;
  
- 	error = nfs_idmap_new(clp);
- 	if (error < 0) {
-@@ -888,6 +890,7 @@ error:
-  */
- static int nfs4_set_client(struct nfs_server *server,
- 		const char *hostname, const struct sockaddr_in *addr,
-+		const char *ip_addr,
- 		rpc_authflavor_t authflavour,
- 		int proto, int timeo, int retrans)
- {
-@@ -902,7 +905,7 @@ static int nfs4_set_client(struct nfs_se
- 		error = PTR_ERR(clp);
- 		goto error;
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
++		/* Don't match clients that failed to initialise properly */
++		if (clp->cl_cons_state < 0)
++			continue;
++
+ 		/* Different NFS versions cannot share the same nfs_client */
+ 		if (clp->cl_nfsversion != nfsversion)
+ 			continue;
+@@ -245,7 +249,7 @@ static struct nfs_client *__nfs_find_cli
+ 			   sizeof(clp->cl_addr.sin_addr)) != 0)
+ 			continue;
+ 
+-		if (clp->cl_addr.sin_port == addr->sin_port)
++		if (!match_port || clp->cl_addr.sin_port == addr->sin_port)
+ 			goto found;
  	}
--	error = nfs4_init_client(clp, proto, timeo, retrans, authflavour);
-+	error = nfs4_init_client(clp, proto, timeo, retrans, ip_addr, authflavour);
- 	if (error < 0)
- 		goto error_put;
  
-@@ -971,7 +974,7 @@ struct nfs_server *nfs4_create_server(co
- 		return ERR_PTR(-ENOMEM);
+@@ -265,11 +269,12 @@ struct nfs_client *nfs_find_client(const
+ 	struct nfs_client *clp;
  
- 	/* Get a client record */
--	error = nfs4_set_client(server, hostname, addr, authflavour,
-+	error = nfs4_set_client(server, hostname, addr, ip_addr, authflavour,
- 			data->proto, data->timeo, data->retrans);
- 	if (error < 0)
- 		goto error;
-@@ -1041,6 +1044,7 @@ struct nfs_server *nfs4_create_referral_
- 	/* Get a client representation.
- 	 * Note: NFSv4 always uses TCP, */
- 	error = nfs4_set_client(server, data->hostname, data->addr,
-+			parent_client->cl_ipaddr,
- 			data->authflavor,
- 			parent_server->client->cl_xprt->prot,
- 			parent_client->retrans_timeo,
+ 	spin_lock(&nfs_client_lock);
+-	clp = __nfs_find_client(addr, nfsversion);
++	clp = __nfs_find_client(addr, nfsversion, 0);
+ 	spin_unlock(&nfs_client_lock);
+-
+-	BUG_ON(clp && clp->cl_cons_state == 0);
+-
++	if (clp != NULL && clp->cl_cons_state != NFS_CS_READY) {
++		nfs_put_client(clp);
++		clp = NULL;
++	}
+ 	return clp;
+ }
+ 
+@@ -292,7 +297,7 @@ static struct nfs_client *nfs_get_client
+ 	do {
+ 		spin_lock(&nfs_client_lock);
+ 
+-		clp = __nfs_find_client(addr, nfsversion);
++		clp = __nfs_find_client(addr, nfsversion, 1);
+ 		if (clp)
+ 			goto found_client;
+ 		if (new)
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
