@@ -1,37 +1,33 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: Re: [patch 1/4] RPC: acquire BKL while calling
-	rpc_release()	callback
-Date: Wed, 18 Oct 2006 16:14:58 -0700
-Message-ID: <1161213298.3315.26.camel@dyn9047022153>
-References: <1161105873.3315.21.camel@dyn9047022153>
-	<1161210013.6095.194.camel@lade.trondhjem.org>
+From: "Mohit Katiyar" <katiyar.mohit@gmail.com>
+Subject: Re: NFS inconsistent behaviour
+Date: Thu, 19 Oct 2006 10:53:42 +0900
+Message-ID: <46465bb30610181853t38428501ha363e6d04b76f993@mail.gmail.com>
+References: <A93BD15112CD05479B1CD204F7F1D4730513DB@exch-04.noida.hcltech.com>
+	<46465bb30610160013v47524589g39c61465b5955f65@mail.gmail.com>
+	<20061016084656.GA13292@janus>
+	<46465bb30610160235m211910b6g2eb074aa23060aa9@mail.gmail.com>
+	<20061016093904.GA13866@janus>
+	<46465bb30610171822h3f747069ge9a170f1759af645@mail.gmail.com>
+	<20061018063945.GA5917@janus>
+	<1161194229.6095.81.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NFS List <nfs@lists.sourceforge.net>
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>,
+	linux-kernel@vger.kernel.org,
+	Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GaKcf-0001os-8h
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 16:14:53 -0700
-Received: from e34.co.us.ibm.com ([32.97.110.152])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GaKcf-00064i-Rg
-	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 16:14:54 -0700
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com
-	[9.17.195.11])
-	by e34.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9INElH9008636
-	for <nfs@lists.sourceforge.net>; Wed, 18 Oct 2006 19:14:47 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
-	k9INElCM507918
-	for <nfs@lists.sourceforge.net>; Wed, 18 Oct 2006 17:14:47 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	k9INEknq013780
-	for <nfs@lists.sourceforge.net>; Wed, 18 Oct 2006 17:14:47 -0600
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1161210013.6095.194.camel@lade.trondhjem.org>
+	id 1GaN6N-0007Ei-Ni
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 18:53:44 -0700
+Received: from nf-out-0910.google.com ([64.233.182.187])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GaN6N-00083n-GR
+	for nfs@lists.sourceforge.net; Wed, 18 Oct 2006 18:53:44 -0700
+Received: by nf-out-0910.google.com with SMTP id p46so1253302nfa
+	for <nfs@lists.sourceforge.net>; Wed, 18 Oct 2006 18:53:43 -0700 (PDT)
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1161194229.6095.81.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,101 +40,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-18 at 18:20 -0400, Trond Myklebust wrote:
-> On Tue, 2006-10-17 at 10:24 -0700, Frank Filz wrote:
-> > The Big Kernel Lock must be held while calling rpc_release().
-> 
-> Could we perhaps use something like the following helper instead? That
-> ensures that we will not miss it again.
+Yes, I do not want to mount unmount infinitely but was just checking
+out of curiosity but mounting/unmounting infinitely works comepletely
+fine on SLES 9 which uses 2.6.5 kernel. I was just wondering what has
+been changed that it does not work now?
 
-Yea, that looks good. Also less scary, only one lock_kernel() call
-added. And definitely easier to later remove.
-
-Frank
-
-> ---------------------------------------------
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Wed, 18 Oct 2006 16:01:05 -0400
-> Subject: SUNRPC: Fix up missing BKL in asynchronous RPC callback functions
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  include/linux/sunrpc/sched.h |    1 +
->  net/sunrpc/clnt.c            |    3 +--
->  net/sunrpc/sched.c           |   15 +++++++++++----
->  3 files changed, 13 insertions(+), 6 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> index f399c13..d8e18ee 100644
-> --- a/include/linux/sunrpc/sched.h
-> +++ b/include/linux/sunrpc/sched.h
-> @@ -256,6 +256,7 @@ void		rpc_init_task(struct rpc_task *tas
->  				void *data);
->  void		rpc_release_task(struct rpc_task *);
->  void		rpc_exit_task(struct rpc_task *);
-> +void		rpc_release_calldata(const struct rpc_call_ops *, void *);
->  void		rpc_killall_tasks(struct rpc_clnt *);
->  int		rpc_execute(struct rpc_task *);
->  void		rpc_init_priority_wait_queue(struct rpc_wait_queue *, const char *);
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 78696f2..a17cf0e 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -529,8 +529,7 @@ rpc_call_async(struct rpc_clnt *clnt, st
->  	rpc_restore_sigmask(&oldset);		
->  	return status;
->  out_release:
-> -	if (tk_ops->rpc_release != NULL)
-> -		tk_ops->rpc_release(data);
-> +	rpc_release_calldata(tk_ops, data);
->  	return status;
->  }
->  
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index a1ab4ee..287fe9a 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -581,6 +581,15 @@ void rpc_exit_task(struct rpc_task *task
->  }
->  EXPORT_SYMBOL(rpc_exit_task);
->  
-> +void rpc_release_calldata(const struct rpc_call_ops *ops, void *calldata)
-> +{
-> +	if (ops->rpc_release != NULL) {
-> +		lock_kernel();
-> +		ops->rpc_release(calldata);
-> +		unlock_kernel();
-> +	}
-> +}
-> +
->  /*
->   * This is the RPC `scheduler' (or rather, the finite state machine).
->   */
-> @@ -884,8 +893,7 @@ #ifdef RPC_DEBUG
->  #endif
->  	if (task->tk_flags & RPC_TASK_DYNAMIC)
->  		rpc_free_task(task);
-> -	if (tk_ops->rpc_release)
-> -		tk_ops->rpc_release(calldata);
-> +	rpc_release_calldata(tk_ops, calldata);
->  }
->  
->  /**
-> @@ -902,8 +910,7 @@ struct rpc_task *rpc_run_task(struct rpc
->  	struct rpc_task *task;
->  	task = rpc_new_task(clnt, flags, ops, data);
->  	if (task == NULL) {
-> -		if (ops->rpc_release != NULL)
-> -			ops->rpc_release(data);
-> +		rpc_release_calldata(ops, data);
->  		return ERR_PTR(-ENOMEM);
->  	}
->  	atomic_inc(&task->tk_count);
-> 
-> 
-
+On 10/19/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Wed, 2006-10-18 at 08:39 +0200, Frank van Maarseveen wrote:
+> > On Wed, Oct 18, 2006 at 10:22:44AM +0900, Mohit Katiyar wrote:
+> > > I checked it today and when i issued the netstat -t ,I could see a lot
+> > > of tcp connections in TIME_WAIT state.
+> > > Is this a normal behaviour?
+> >
+> > yes... but see below
+> >
+> > > So we cannot mount and umount infinitely
+> > > with tcp option? Why there are so many connections in waiting state?
+> >
+> > I think it's called the 2MSL wait: there may be TCP segments on the
+> > wire which (in theory) could disrupt new connections which reuse local
+> > and remote port so the ports stay in use for a few minutes. This is
+> > standard TCP behavior but only occurs when connections are improperly
+> > shutdown. Apparently this happens when umounting a tcp NFS mount but
+> > also for a lot of other tcp based RPC (showmount, rpcinfo).  I'm not
+> > sure who's to blame but it might be the rpc functions inside glibc.
+> >
+> > I'd switch to NFS over udp if this is problem.
+>
+> Just out of interest. Why does anyone actually _want_ to keep
+> mount/umounting to the point where they run out of ports? That is going
+> to kill performance in all sorts of unhealthy ways, not least by
+> completely screwing over any caching.
+>
+> Note also that you _can_ change the range of ports used by the NFS
+> client itself at least. Just edit /proc/sys/sunrpc/{min,max}_resvport.
+> On the server side, you can use the 'insecure' option in order to allow
+> mounts that originate from non-privileged ports (i.e. port > 1024).
+> If you are using strong authentication (for instance RPCSEC_GSS/krb5)
+> then that actually makes a lot of sense, since the only reason for the
+> privileged port requirement was to disallow unprivileged NFS clients.
+>
+> Cheers,
+>  Trond
+>
+>
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
