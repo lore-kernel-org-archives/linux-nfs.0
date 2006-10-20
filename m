@@ -1,58 +1,63 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH] knfsd: Fix race that can disable NFS server.
-Date: Fri, 20 Oct 2006 11:52:44 +1000
-Message-ID: <1061020015244.26756@suse.de>
-References: <20061020114959.26698.patches@notabene>
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1946782AbWJTBw6@vger.kernel.org>
-To: Andrew Morton <akpm@osdl.org>
-Cc: stable@kernel.org, Adrian Bunk <bunk@stusta.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH 07/11] NFS: fix minor bug in new NFS symlink code
+Date: Thu, 19 Oct 2006 21:25:41 -0700
+Message-ID: <20061019212541.b2adc4b2.akpm@osdl.org>
+References: <20061019170432.8171.75076.stgit@lade.trondhjem.org>
+	<20061019170432.8171.49033.stgit@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linus Torvalds <torvalds@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Galx3-0005kR-IV
+	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 21:25:45 -0700
+Received: from smtp.osdl.org ([65.172.181.4])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1Galx3-0007JQ-A8
+	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 21:25:46 -0700
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+In-Reply-To: <20061019170432.8171.49033.stgit@lade.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patch is suitable for just about any 2.6 kernel.
-It should go in 2.6.19 and 2.6.18.2 and possible even the .17 and .16
-stable series.
+On Thu, 19 Oct 2006 13:04:32 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-### Comments for Changeset
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 58d4405..c86a1ea 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1519,8 +1519,8 @@ static int nfs_symlink(struct inode *dir
+>  	pagevec_init(&lru_pvec, 0);
+>  	if (!add_to_page_cache(page, dentry->d_inode->i_mapping, 0,
+>  							GFP_KERNEL)) {
+> -		if (!pagevec_add(&lru_pvec, page))
+> -			__pagevec_lru_add(&lru_pvec);
+> +		pagevec_add(&lru_pvec, page);
+> +		pagevec_lru_add(&lru_pvec);
+>  		SetPageUptodate(page);
+>  		unlock_page(page);
+>  	} else
 
-This is a long standing bug that seems to have only recently become
-apparent, presumably due to increasing use of NFS over TCP - many
-distros seem to be making it the default.
+One could export add_to_page_cache_lru() to modules..
 
-The SK_CONN bit gets set when a listening socket may be ready
-for an accept, just as SK_DATA is set when data may be available.
-
-It is entirely possible for svc_tcp_accept to be called with neither
-of these set.  It doesn't happen often but there is a small race in
-svc_sock_enqueue as SK_CONN and SK_DATA are tested outside the
-spin_lock.  They could be cleared immediately after the test and
-before the lock is gained.
-
-This normally shouldn't be a problem.  The sockets are non-blocking so
-trying to read() or accept() when ther is nothing to do is not a problem.
-
-However: svc_tcp_recvfrom makes the decision "Should I accept() or
-should I read()" based on whether SK_CONN is set or not.  This usually
-works but is not safe.  The decision should be based on whether it is
-a TCP_LISTEN socket or a TCP_CONNECTED socket.
-
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./net/sunrpc/svcsock.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2006-10-20 11:49:18.000000000 +1000
-+++ ./net/sunrpc/svcsock.c	2006-10-20 11:49:47.000000000 +1000
-@@ -1002,7 +1002,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return 0;
- 	}
- 
--	if (test_bit(SK_CONN, &svsk->sk_flags)) {
-+	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
- 		svc_tcp_accept(svsk);
- 		svc_sock_received(svsk);
- 		return 0;
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
