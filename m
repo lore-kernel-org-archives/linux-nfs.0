@@ -1,72 +1,58 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/2] NFS: Cache invalidation fixup
-Date: Thu, 19 Oct 2006 17:03:58 -0400
-Message-ID: <20061019210358.6797.62728.stgit@lade.trondhjem.org>
-References: <1161291638.5506.9.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Miklos Szeredi <miklos@szeredi.hu>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, Al Viro <viro@ftp.linux.org.uk>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gaf5b-0000oI-M4
-	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 14:06:07 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gaf5c-0004VL-Ey
-	for nfs@lists.sourceforge.net; Thu, 19 Oct 2006 14:06:08 -0700
-To: Linus Torvalds <torvalds@osdl.org>
-In-Reply-To: <1161291638.5506.9.camel@lade.trondhjem.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH] knfsd: Fix race that can disable NFS server.
+Date: Fri, 20 Oct 2006 11:52:44 +1000
+Message-ID: <1061020015244.26756@suse.de>
+References: <20061020114959.26698.patches@notabene>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1946782AbWJTBw6@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>
+Cc: stable@kernel.org, Adrian Bunk <bunk@stusta.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+This patch is suitable for just about any 2.6 kernel.
+It should go in 2.6.19 and 2.6.18.2 and possible even the .17 and .16
+stable series.
 
-If someone has renamed a directory on the server, triggering the d_move
-code in d_materialise_unique(), then we need to invalidate the
-cached directory information in the source parent directory.
+### Comments for Changeset
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+This is a long standing bug that seems to have only recently become
+apparent, presumably due to increasing use of NFS over TCP - many
+distros seem to be making it the default.
 
- fs/nfs/dir.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+The SK_CONN bit gets set when a listening socket may be ready
+for an accept, just as SK_DATA is set when data may be available.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 2cfa414..fa71936 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -936,8 +936,14 @@ static struct dentry *nfs_lookup(struct 
- no_entry:
- 	res = d_materialise_unique(dentry, inode);
- 	if (res != NULL) {
-+		struct dentry *parent;
- 		if (IS_ERR(res))
- 			goto out_unlock;
-+		/* Was a directory renamed! */
-+		parent = dget_parent(res);
-+		if (!IS_ROOT(parent))
-+			nfs_mark_for_revalidate(parent->d_inode);
-+		dput(parent);
- 		dentry = res;
+It is entirely possible for svc_tcp_accept to be called with neither
+of these set.  It doesn't happen often but there is a small race in
+svc_sock_enqueue as SK_CONN and SK_DATA are tested outside the
+spin_lock.  They could be cleared immediately after the test and
+before the lock is gained.
+
+This normally shouldn't be a problem.  The sockets are non-blocking so
+trying to read() or accept() when ther is nothing to do is not a problem.
+
+However: svc_tcp_recvfrom makes the decision "Should I accept() or
+should I read()" based on whether SK_CONN is set or not.  This usually
+works but is not safe.  The decision should be based on whether it is
+a TCP_LISTEN socket or a TCP_CONNECTED socket.
+
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./net/sunrpc/svcsock.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+--- .prev/net/sunrpc/svcsock.c	2006-10-20 11:49:18.000000000 +1000
++++ ./net/sunrpc/svcsock.c	2006-10-20 11:49:47.000000000 +1000
+@@ -1002,7 +1002,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		return 0;
  	}
- 	nfs_renew_times(dentry);
-
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ 
+-	if (test_bit(SK_CONN, &svsk->sk_flags)) {
++	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
+ 		svc_tcp_accept(svsk);
+ 		svc_sock_received(svsk);
+ 		return 0;
