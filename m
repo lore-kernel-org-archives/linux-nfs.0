@@ -1,25 +1,38 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: Regression: NFS locking hangs when statd not running.
-Date: Fri, 20 Oct 2006 09:00:11 -0400
-Message-ID: <76bd70e30610200600o2269db3ex2448982fb3e25d46@mail.gmail.com>
-References: <17720.41873.549441.330938@cse.unsw.edu.au>
-	<20061020124119.GE27351@suse.de>
+From: Holger Smolinski <smolinski@de.ibm.com>
+Subject: Holger Smolinski/Germany/IBM is on a cource until 10/23
+Date: Sat, 21 Oct 2006 04:01:46 +0200
+Message-ID: <OFA36ED3AC.5E7DC6A2-ONC125720E.000B25EF-C125720E.000B25EF@de.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Takashi Iwai <tiwai@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gatz7-0001T5-TC
-	for nfs@lists.sourceforge.net; Fri, 20 Oct 2006 06:00:28 -0700
-Received: from nf-out-0910.google.com ([64.233.182.189])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gatz7-0008MJ-K2
-	for nfs@lists.sourceforge.net; Fri, 20 Oct 2006 06:00:27 -0700
-Received: by nf-out-0910.google.com with SMTP id p46so1990462nfa
-	for <nfs@lists.sourceforge.net>; Fri, 20 Oct 2006 06:00:13 -0700 (PDT)
-To: "Neil Brown" <neilb@suse.de>, "Olaf Kirch" <okir@suse.de>
-In-Reply-To: <20061020124119.GE27351@suse.de>
+	id 1Gb68y-0000po-HB
+	for nfs@lists.sourceforge.net; Fri, 20 Oct 2006 18:59:24 -0700
+Received: from mtagate5.de.ibm.com ([195.212.29.154])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gb68y-0005Qm-41
+	for nfs@lists.sourceforge.net; Fri, 20 Oct 2006 18:59:25 -0700
+Received: from d12nrmr1607.megacenter.de.ibm.com
+	(d12nrmr1607.megacenter.de.ibm.com [9.149.167.49])
+	by mtagate5.de.ibm.com (8.13.8/8.13.8) with ESMTP id k9L1xDEc054518
+	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 01:59:13 GMT
+Received: from d12av04.megacenter.de.ibm.com (d12av04.megacenter.de.ibm.com
+	[9.149.165.229])
+	by d12nrmr1607.megacenter.de.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with
+	ESMTP id k9L21nc43072016
+	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 04:01:49 +0200
+Received: from d12av04.megacenter.de.ibm.com (loopback [127.0.0.1])
+	by d12av04.megacenter.de.ibm.com (8.12.11.20060308/8.13.3) with ESMTP
+	id k9L1xCma013426
+	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 03:59:12 +0200
+Received: from d12ml064.megacenter.de.ibm.com (d12ml064.megacenter.de.ibm.com
+	[9.149.167.10])
+	by d12av04.megacenter.de.ibm.com (8.12.11.20060308/8.12.11) with ESMTP
+	id k9L1xCgO013389
+	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 03:59:12 +0200
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,48 +45,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/20/06, Olaf Kirch <okir@suse.de> wrote:
-> On Fri, Oct 20, 2006 at 08:23:13PM +1000, Neil Brown wrote:
-> >  The problem is that there is a case where we don't want the retry.
-> >
-> >  In 2.6.18, if statd isn't running, then a lock attempt returns ENOLCK
-> >  immediately, which I think is good.
-> >  In 2.6.19-rc, in the same situation, a lock attempt waits for a major
-> >  timeout (30 seconds for TCP mounts) and is not interruptible for this
-> >  whole time (even with '-o intr' mounts).
-> >
-> >  So: what to do?  Should we retry requests when portmap says "no such
-> >  service".
->
-> When lockd tries to do an upcall to statd? Definitely no, I'd say.
-> Essentially, statd upcalls should be a one-shot affair with minimal
-> timeout.
 
-I don't have a strong opinion here, but what you and Olaf say sounds reasonable.
+I will be out of the office starting  20.10.2006 and will not return until
+23.10.2006.
 
-> >  I think that for requests to a remote service - lockd or nfsd - we do
-> >  want to retry.  The server might be rebooting and so "no such
-> >  service" should be treated much like "no reply".
->
-> I believe this should depend on the semantics of the parent mount.
-> Basically, we should copy intr,hard from the NFS mount to the lockd
-> client we use, and from there to the portmap client. Otherwise
-> in a HA setup where you have hard mounts, you will suddenly start
-> seeing IO errors during failover.
+I will  respond when I have returned.
+In any urgent matter pls contact Steffen Thoss (thoss@de.ibm.com) or my
+Manager Bernd Blaes (blaess@de.ibm.com)
 
-Copying the intr flag makes sense.  Neil, I'd like to see your patch
-address this too.
-
-The hard v. soft issue is more difficult.  The semantic you are
-requesting for the local statd is clearly "soft" and that's what you
-say you always want.  Otherwise copying the soft flag makes sense.
-
-Maybe you can re-use the soft flag and expose a way to set the soft
-timeout for the mon client to get the exact behavior you want?
-
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
