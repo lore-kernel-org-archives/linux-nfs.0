@@ -1,37 +1,22 @@
-From: Holger Smolinski <smolinski@de.ibm.com>
-Subject: Holger Smolinski/Germany/IBM is on a cource until 10/23
-Date: Sat, 21 Oct 2006 04:01:46 +0200
-Message-ID: <OFA36ED3AC.5E7DC6A2-ONC125720E.000B25EF-C125720E.000B25EF@de.ibm.com>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1Gb2kR-0005vn-5B delayed 10 hours
+Date: Sat, 21 Oct 2006 03:51:57 -0700
+Message-ID: <E1GbESL-000289-IZ@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gb68y-0000po-HB
-	for nfs@lists.sourceforge.net; Fri, 20 Oct 2006 18:59:24 -0700
-Received: from mtagate5.de.ibm.com ([195.212.29.154])
+	id 1GbESO-0004Mx-8G
+	for nfs@lists.sourceforge.net; Sat, 21 Oct 2006 03:52:00 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gb68y-0005Qm-41
-	for nfs@lists.sourceforge.net; Fri, 20 Oct 2006 18:59:25 -0700
-Received: from d12nrmr1607.megacenter.de.ibm.com
-	(d12nrmr1607.megacenter.de.ibm.com [9.149.167.49])
-	by mtagate5.de.ibm.com (8.13.8/8.13.8) with ESMTP id k9L1xDEc054518
-	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 01:59:13 GMT
-Received: from d12av04.megacenter.de.ibm.com (d12av04.megacenter.de.ibm.com
-	[9.149.165.229])
-	by d12nrmr1607.megacenter.de.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with
-	ESMTP id k9L21nc43072016
-	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 04:01:49 +0200
-Received: from d12av04.megacenter.de.ibm.com (loopback [127.0.0.1])
-	by d12av04.megacenter.de.ibm.com (8.12.11.20060308/8.13.3) with ESMTP
-	id k9L1xCma013426
-	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 03:59:12 +0200
-Received: from d12ml064.megacenter.de.ibm.com (d12ml064.megacenter.de.ibm.com
-	[9.149.167.10])
-	by d12av04.megacenter.de.ibm.com (8.12.11.20060308/8.12.11) with ESMTP
-	id k9L1xCgO013389
-	for <nfs@lists.sourceforge.net>; Sat, 21 Oct 2006 03:59:12 +0200
+	(Exim 4.44) id 1GbESL-0007SX-SJ
+	for nfs@lists.sourceforge.net; Sat, 21 Oct 2006 03:52:01 -0700
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1GbESL-000289-IZ
+	for nfs@lists.sourceforge.net; Sat, 21 Oct 2006 03:51:57 -0700
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -45,14 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 10 hours on the queue on externalmx-1.sourceforge.net.
 
-I will be out of the office starting  20.10.2006 and will not return until
-23.10.2006.
+The message identifier is:     1Gb2kR-0005vn-5B
+The subject of the message is: violence that familiar: dream the world about: the lamps!
+The date of the message is:    Sat, 21 Oct 2006 00:22:08 +0100
 
-I will  respond when I have returned.
-In any urgent matter pls contact Steffen Thoss (thoss@de.ibm.com) or my
-Manager Bernd Blaes (blaess@de.ibm.com)
+The address to which the message has not yet been delivered is:
 
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
+
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
