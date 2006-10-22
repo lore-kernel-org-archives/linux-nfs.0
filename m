@@ -1,22 +1,22 @@
 From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1Gb2kR-0005vn-5B delayed 24 hours
-Date: Sat, 21 Oct 2006 15:42:54 -0700
-Message-ID: <E1GbPYM-0005QI-Da@externalmx-1.sourceforge.net>
+Subject: Warning: message 1Gb2kR-0005vn-5B delayed 48 hours
+Date: Sun, 22 Oct 2006 16:20:43 -0700
+Message-ID: <E1GbmcV-0008QG-JV@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GbPYL-0002kf-QP
-	for nfs@lists.sourceforge.net; Sat, 21 Oct 2006 15:42:54 -0700
+	id 1GbmcW-0004vt-UE
+	for nfs@lists.sourceforge.net; Sun, 22 Oct 2006 16:20:45 -0700
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GbPYM-0000kE-Nm
-	for nfs@lists.sourceforge.net; Sat, 21 Oct 2006 15:42:54 -0700
+	(Exim 4.44) id 1GbmcV-0003P9-RT
+	for nfs@lists.sourceforge.net; Sun, 22 Oct 2006 16:20:46 -0700
 Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1GbPYM-0005QI-Da
-	for nfs@lists.sourceforge.net; Sat, 21 Oct 2006 15:42:54 -0700
+	id 1GbmcV-0008QG-JV
+	for nfs@lists.sourceforge.net; Sun, 22 Oct 2006 16:20:43 -0700
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,7 +32,7 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This message was created automatically by mail delivery software.
 A message that you sent has not yet been delivered to one or more of its
-recipients after more than 24 hours on the queue on externalmx-1.sourceforge.net.
+recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
 The message identifier is:     1Gb2kR-0005vn-5B
 The subject of the message is: violence that familiar: dream the world about: the lamps!
