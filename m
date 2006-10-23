@@ -1,23 +1,23 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1Gb2kR-0005vn-5B delayed 72 hours
-Date: Mon, 23 Oct 2006 15:37:58 -0700
-Message-ID: <E1Gc8Qg-0006Sb-5A@externalmx-1.sourceforge.net>
+From: "Benham, Timothy MR" <Timothy.Benham@defence.gov.au>
+Subject: Re: fcntl(3, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=0,
+	len=0}) unreasonably slow SEC: UNCLASSIFIED
+Date: Tue, 24 Oct 2006 09:21:09 +1000
+Message-ID: <C172191424DC784385F213C8CBB4CDE015E1A5@rusrxm02.drn.mil.au>
+References: <1161121776.5559.50.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gc8Qf-0003yU-LX
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 15:37:57 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gc8Qg-0003co-J4
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 15:37:58 -0700
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1Gc8Qg-0006Sb-5A
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 15:37:58 -0700
-To: nfs@lists.sourceforge.net
+	id 1Gc97M-00083B-DP
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 16:22:04 -0700
+Received: from defuim02a.defence.gov.au ([203.10.224.149])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gc97M-0007eX-5a
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 16:22:05 -0700
+In-Reply-To: <1161121776.5559.50.camel@lade.trondhjem.org>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +30,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 72 hours on the queue on externalmx-1.sourceforge.net.
+Thanks! we put up 2.6.9-42 and the program now runs without the 30s
+delays.
 
-The message identifier is:     1Gb2kR-0005vn-5B
-The subject of the message is: violence that familiar: dream the world about: the lamps!
-The date of the message is:    Sat, 21 Oct 2006 00:22:08 +0100
+It is still quite slow though when two instances are contending for the
+lock. As an example, tess does 1000 open-lock-close cycles in about 1
+second. If two instances are running, a 1000 cycles takes 40 seconds!
 
-The address to which the message has not yet been delivered is:
+cheers,
+Tim
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+-----Original Message-----
+From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no] 
+Sent: Wednesday, 18 October 2006 07:50
+To: Benham, Timothy MR
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] fcntl(3, F_SETLKW, {type=F_WRLCK,
+whence=SEEK_SET,start=0, len=0}) unreasonably slow SEC: UNCLASSIFIED
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+
+On Tue, 2006-10-17 at 10:59 +1000, Benham, Timothy MR wrote:
+> I've noticed a problem with NFS file locking under Linux kernel 
+> 2.6.9-34.ELsmp. The server is a NetApp appliance. The problem was 
+> initially discovered in a programs which access a file that holds 
+> state for a distributed system. 30 second delays are unacceptable in 
+> this application.
+> 
+> The problem is exhibited by a simple C program (let's call it tess) 
+> like
+> 
+> ...
+> while(1) { 
+>         fd=open(myNFSfile,O_RDWR); 
+>         fcntl(fd, F_SETLKW, &myLock); 
+>         close(fd); 
+>         fprintf(stderr,"."); 
+> } 
+> ...
+> 
+> It prints period to the screen quickly. However running two instances 
+> at once (eg "tess & tess") prints periods really slowly. Every call to
+
+> fcntl seems to take 30 seconds. If I compile and run tess under 
+> Solaris 9 the problem is not manifested.
+> 
+> Sorry about a lack of code etc but the systems in question are all 
+> air-gapped. I'm only an applications programmer so I don't have access
+
+> to system logs, can't use tethereal, etc. Local systems support's 
+> answer is to refer the question to Red Hat. Any clues on how I could 
+> get my application working sooner than that would be appreciated.
+
+I understand from other sources that a number of NLM fixes that are not
+present in 2.6.9-34.EL have been backported by RedHat into 2.6.9-42.EL.
+Have you tried that release?
+
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
