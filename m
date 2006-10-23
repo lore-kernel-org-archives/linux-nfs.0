@@ -1,23 +1,24 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1Gb2kR-0005vn-5B delayed 48 hours
-Date: Sun, 22 Oct 2006 16:20:43 -0700
-Message-ID: <E1GbmcV-0008QG-JV@externalmx-1.sourceforge.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 6/8] knfsd: repcache: use client IP address in hash
+Date: Mon, 23 Oct 2006 15:51:53 -0400
+Message-ID: <20061023195153.GA8983@fieldses.org>
+References: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GbmcW-0004vt-UE
-	for nfs@lists.sourceforge.net; Sun, 22 Oct 2006 16:20:45 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1Gc5qH-0005E1-HR
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 12:52:13 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GbmcV-0003P9-RT
-	for nfs@lists.sourceforge.net; Sun, 22 Oct 2006 16:20:46 -0700
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1GbmcV-0008QG-JV
-	for nfs@lists.sourceforge.net; Sun, 22 Oct 2006 16:20:43 -0700
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1Gc5qA-0000uo-Mi
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 12:52:14 -0700
+To: Greg Banks <gnb@melbourne.sgi.com>
+In-Reply-To: <1160566130.8530.17.camel@hole.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +31,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
+On Wed, Oct 11, 2006 at 09:28:50PM +1000, Greg Banks wrote:
+> knfsd: Use the client's IP address in the duplicate request cache
+> hash function, instead of just the XID.
 
-The message identifier is:     1Gb2kR-0005vn-5B
-The subject of the message is: violence that familiar: dream the world about: the lamps!
-The date of the message is:    Sat, 21 Oct 2006 00:22:08 +0100
+By the way, do we ever match the credential used on the replayed request
+with the credential used on the original request?  From a quick check of
+the code, I can't see any place where we do.
 
-The address to which the message has not yet been delivered is:
+It strikes me as something as an attacker might be able to have some fun
+with.  (Poison the cache with requests matching xid's you expect to be
+used in the future?  "Replay" somebody else's request just to see a
+response that you wouldn't otherwise have been able to?)
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
-
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+--b.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
