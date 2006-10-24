@@ -1,20 +1,22 @@
-From: David Dougall <davidd@et.byu.edu>
-Subject: kernel panic after upgrading to 2.6
-Date: Tue, 24 Oct 2006 09:48:07 -0600 (MDT)
-Message-ID: <Pine.LNX.4.58.0610240938400.8370@lewis.et.byu.edu>
+From: bob@proulx.com (Bob Proulx)
+Subject: Re: Annoying rename() problem
+Date: Tue, 24 Oct 2006 10:09:32 -0600
+Message-ID: <20061024160932.GB17308@dementia.proulx.com>
+References: <003f01c6f54a$90506250$020010ac@athlon64>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcOVn-0007Oe-MQ
-	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 08:48:19 -0700
-Received: from postal1.et.byu.edu ([128.187.48.11])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GcOVk-0007rE-H1
-	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 08:48:20 -0700
-To: nfs@lists.sourceforge.net, xfs@oss.sgi.com
+	id 1GcPEX-0003Ur-IK
+	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 09:34:33 -0700
+Received: from joseki.proulx.com ([216.17.153.58])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GcPER-0007dn-1W
+	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 09:34:34 -0700
+To: Antoniu-George SAVU <antoniu-george.savu@linux-expert.eu>
+In-Reply-To: <003f01c6f54a$90506250$020010ac@athlon64>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,68 +29,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I am running kernel 2.6.18 after trying 2.6.17.6 and 2.6.17.13 with
-similar results.  I continue to have nfs servers kernel panic on a very
-regular basis, every few days.  Sometimes I need to do an xfs_repair to
-get the filesystem to remount.  I got the following kernel panic message
-from the syslog this time:
-Message from syslogd@nfs09 at Tue Oct 24 09:35:14 2006 ...
-nfs09 kernel: Oops: 0000 [#1]
+Antoniu-George SAVU wrote:
+> Now, when a user has more than 50 files inside the new/ directory and 
+> Courier IMAP rename those files to cur/ directory, I get strange errors 
+> inside the Courier log complaining that the rename() has failed with the 
+> errno=ENOENT (no such file or directory). The most amazing part is that the 
+> files are moved just fine from new/ to cur/ and I just can not understand 
+> why I keep getting those rename() errors and most important, how can I fix 
+> this.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:14 2006 ...
-nfs09 kernel: CPU:    0
++1
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:14 2006 ...
-nfs09 kernel: EIP is at xfs_alloc_fix_freelist+0x20/0x486
+I ran across this message while trying to understand other rename over
+NFS failures.  On a company software project a test framework would
+sporadically show test failures where the application would fail
+reporting rename failures of NFS.  But debugging would always show
+that the rename had actually happened.  This seems to need fairly
+heavy activity load in order to trigger this problem.  I cannot
+reproduce it on demand.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:14 2006 ...
-nfs09 kernel: eax: f7dbb000   ebx: 0009a000   ecx: 00000016   edx:
-f8cc8c20
+The application replaces an existing file on disk by writing a new
+file off to the side in a temporary file and then after successfully
+close() operation rename()s the file to the final name, replacing the
+file that is already on disk.  The rename() returns a failure.
+Subsequent inspection showed that the new file was renamed okay.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:14 2006 ...
-nfs09 kernel: esi: 00000016   edi: edab7c90   ebp: d8fd8b64   esp:
-edab7bd0
+> My setup follows:
+> 
+> The NFS server runs under Debian Sarge with custom 2.6.18 kernel, NFSv4 
+> support with NFSv3 support. The psyhical machine is an AMD Opteron 64 and 
+> the NFS exports are stored on a RAID-5 array.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:15 2006 ...
-nfs09 kernel: ds: 007b   es: 007b   ss: 0068
+My NFS client is a Debian Sarge system with custom 2.6.12 kernel and
+the server is an HP-UX 11.23 host.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:15 2006 ...
-nfs09 kernel: Process nfsd (pid: 4837, ti=edab6000 task=eda8f030
-task.ti=edab6000)
+> My problem perfectly fits this description: 
+> http://lists.freebsd.org/pipermail/freebsd-bugs/2003-October/003461.html but 
+> the bug reports dates from 2003.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:15 2006 ...
-nfs09 kernel: Stack: 00000000 00001a9a 00000009 00000200 00000002 c026fffe
-f0995b80 f7dbb000
+In my case the new temporary file and the previously existing file are
+both in the same directory.  Here would be the pseudo-code for my
+case.  The application is a compiled C program.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:15 2006 ...
-nfs09 kernel:        d8fd8b64 f8cc8c20 c0225507 fffffffe 00000000 0000000b
-00000000 00000000
+  touch foo.d~
+  mv foo.d~ foo.db
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:15 2006 ...
-nfs09 kernel:        d8fd8b64 f7dbb000 c0226fef 00000001 00000001 00000000
-00000000 0000000b
+> Anyone has a suggestion of what I could try or do ? I've searched the NFS 
+> mailinglist, nothing, nada. Any suggestion is more than welcome.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:15 2006 ...
-nfs09 kernel: Call Trace:
+To work around this problem we have stopped checking the return code
+of rename()!  Instead we now stat() the file before and after the
+rename to verify the operation.  This is less efficient but avoided
+the spurious error message.
 
-Message from syslogd@nfs09 at Tue Oct 24 09:35:16 2006 ...
-nfs09 kernel: Code: 24 04 46 06 00 00 e9 9f fe ff ff 55 57 56 53 81 ec 8c
-00 00 00 89 c7 89 54 24 10 8b 40 04 89 44 24 1c 8b 57 0c 89 54 24 24 8b 2f
-<80> 3a 00 0f 84 e7 02 00 00 c7 84 24 88 00 00 00 00 00 00 00 8b
-
-Message from syslogd@nfs09 at Tue Oct 24 09:35:16 2006 ...
-nfs09 kernel: EIP: [<c022742e>] xfs_alloc_fix_freelist+0x20/0x486 SS:ESP
-0068:edab7bd0
-
-
-
-I am guessing this is an xfs bug, but I am not sure.  Would anybody please
-confirm this form me.
-I am running nfs-utils-1.0.9 and xfsprogs 2.8.10.
-If there is any more information you need, please let me know.
-Please advise.
---David Dougall
-
+Bob
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
