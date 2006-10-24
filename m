@@ -1,26 +1,26 @@
-From: Neil Brown <neilb@suse.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Regression: NFS locking hangs when statd not running.
-Date: Tue, 24 Oct 2006 11:26:43 +1000
-Message-ID: <17725.27603.724326.910277@cse.unsw.edu.au>
+Date: Mon, 23 Oct 2006 18:53:59 -0700
+Message-ID: <1161654839.6487.20.camel@lade.trondhjem.org>
 References: <17720.41873.549441.330938@cse.unsw.edu.au>
 	<20061020124119.GE27351@suse.de>
-	<76bd70e30610200600o2269db3ex2448982fb3e25d46@mail.gmail.com>
+	<17725.26376.280902.571606@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Olaf Kirch <okir@suse.de>, Takashi Iwai <tiwai@suse.de>,
-	nfs@lists.sourceforge.net
+	Chuck Lever <chuck.lever@oracle.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcB4A-0002Ya-Rt
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 18:26:54 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GcBUj-0005Ig-9f
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 18:54:21 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GcB4A-0001yJ-DS
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 18:26:56 -0700
-To: "Chuck Lever" <chucklever@gmail.com>
-In-Reply-To: message from Chuck Lever on Friday October 20
+	(Exim 4.44) id 1GcBUh-0003KW-Tr
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 18:54:22 -0700
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17725.26376.280902.571606@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,46 +33,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday October 20, chucklever@gmail.com wrote:
-> 
-> Copying the intr flag makes sense.  Neil, I'd like to see your patch
-> address this too.
+On Tue, 2006-10-24 at 11:06 +1000, Neil Brown wrote:
+> Due to the state-management nature of lockd requests, I think they
+> need to be hard,nointr always (as they currently are) otherwise the
+> client and server can get out-of-sync causing serious confusion.
 
-I'll see what I can do... but not for lockd requests.  See previous mail
+Not really. As long as the interrupted lock request is followed by an
+UNLOCK request, you should be safe.
 
-> 
-> The hard v. soft issue is more difficult.  The semantic you are
-> requesting for the local statd is clearly "soft" and that's what you
-> say you always want.  Otherwise copying the soft flag makes sense.
-> 
-> Maybe you can re-use the soft flag and expose a way to set the soft
-> timeout for the mon client to get the exact behavior you want?
 
-It's not really about timeouts - or about 'soft'.  It is about getting
-a definite 'no' answer (either from portmap or the network stack) and
-believing it, which is only safe when talking to a local service
-.... hmmm.  Maybe that is also safe when doing the initial 'ping'.
-That is currently always 'soft' and presumably 'expects' the server to
-be there and functional so a 'no' reply could reasonably be believed
-there.
+> When talking to statd or local portmap we really want to abort if
+> statd says 'no', or if we get ECONREFUSED from portmap, and probably
+> even if we get ECONREFUSED from statd.... though I'm not 100% certain
+> about the last.
+> But if statd is slow, we still want to retry.
 
-Looking more at where and initial ping is used, I notice that the
-lockd client does a (soft) ping first.  So if you have a hard mount,
-the first lock request can still fail due to an unresponsive server
-because the ping will fail... Shouldn't lockd clients be created with
-NO_PING ??
+No. We should back off and retry. If the user wants to be able to lock,
+then the kernel shouldn't be overriding that choice. Only if the user
+specifies "nolock" should we fall back to local locking.
 
-NeilBrown
+Cheers,
+  Trond
 
-> 
-> -- 
-> "We who cut mere stones must always be envisioning cathedrals"
->    -- Quarry worker's creed
-A colleague as a message on his wall something like:
-  If you want to build great boats, teach your workers to yearn for
-  the wide open oceans.
-
-or something like that. :-)
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
