@@ -1,22 +1,21 @@
-From: bob@proulx.com (Bob Proulx)
-Subject: Re: Annoying rename() problem
-Date: Tue, 24 Oct 2006 10:09:32 -0600
-Message-ID: <20061024160932.GB17308@dementia.proulx.com>
-References: <003f01c6f54a$90506250$020010ac@athlon64>
+From: "Shane Presley" <shane.presley@gmail.com>
+Subject: Problem with NFS from RedHat4 to Solaris
+Date: Tue, 24 Oct 2006 13:05:23 -0400
+Message-ID: <27ae92160610241005x7c7bca01v4986fc40d77fba19@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcPEX-0003Ur-IK
-	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 09:34:33 -0700
-Received: from joseki.proulx.com ([216.17.153.58])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GcPER-0007dn-1W
-	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 09:34:34 -0700
-To: Antoniu-George SAVU <antoniu-george.savu@linux-expert.eu>
-In-Reply-To: <003f01c6f54a$90506250$020010ac@athlon64>
+	id 1GcPid-0008UV-Ul
+	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 10:05:40 -0700
+Received: from nf-out-0910.google.com ([64.233.182.188])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GcPiX-0002Yd-4c
+	for nfs@lists.sourceforge.net; Tue, 24 Oct 2006 10:05:36 -0700
+Received: by nf-out-0910.google.com with SMTP id p46so378475nfa
+	for <nfs@lists.sourceforge.net>; Tue, 24 Oct 2006 10:05:25 -0700 (PDT)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,60 +28,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Antoniu-George SAVU wrote:
-> Now, when a user has more than 50 files inside the new/ directory and 
-> Courier IMAP rename those files to cur/ directory, I get strange errors 
-> inside the Courier log complaining that the rename() has failed with the 
-> errno=ENOENT (no such file or directory). The most amazing part is that the 
-> files are moved just fine from new/ to cur/ and I just can not understand 
-> why I keep getting those rename() errors and most important, how can I fix 
-> this.
+Hello,
 
-+1
+We have a RedHat3 server, with some NFS mounts to Solaris9 servers.
+That works nicely.  We also run samba on top of that, for Windows
+access to the NFS shares.  Works fine.
 
-I ran across this message while trying to understand other rename over
-NFS failures.  On a company software project a test framework would
-sporadically show test failures where the application would fail
-reporting rename failures of NFS.  But debugging would always show
-that the rename had actually happened.  This seems to need fairly
-heavy activity load in order to trigger this problem.  I cannot
-reproduce it on demand.
+However, on a RedHat4 system, using the exact same mount, we
+experience odd behavior.  Through the command line, CAT'ing a file
+will show the file, but fail to return you back to the command line
+immediately.  It's as if it's waiting for the EOF characters?
+Eventually (2-5 minutes) it returns you to the command prompt.
 
-The application replaces an existing file on disk by writing a new
-file off to the side in a temporary file and then after successfully
-close() operation rename()s the file to the final name, replacing the
-file that is already on disk.  The rename() returns a failure.
-Subsequent inspection showed that the new file was renamed okay.
+My mount looks like
 
-> My setup follows:
-> 
-> The NFS server runs under Debian Sarge with custom 2.6.18 kernel, NFSv4 
-> support with NFSv3 support. The psyhical machine is an AMD Opteron 64 and 
-> the NFS exports are stored on a RAID-5 array.
+mount -t nfs  -o soft,intr,rsize=1024,wsize=1024,nosuid,udp
+mysolariserver:/opt/path /misc/path
 
-My NFS client is a Debian Sarge system with custom 2.6.12 kernel and
-the server is an HP-UX 11.23 host.
+Same results autofs vs command line mount.  I have tried playing with
+the rsize/wsize, seems to have no effect.  Also, I have tried removing
+the udp option, same result.
 
-> My problem perfectly fits this description: 
-> http://lists.freebsd.org/pipermail/freebsd-bugs/2003-October/003461.html but 
-> the bug reports dates from 2003.
+RedHat3 system that works...
+autofs-4.1.3-186
+nfs-utils-1.0.6-44EL
 
-In my case the new temporary file and the previously existing file are
-both in the same directory.  Here would be the pseudo-code for my
-case.  The application is a compiled C program.
+RedHat4 system that hangs...
+autofs-4.1.3-187
+nfs-utils-lib-1.0.6-3
+nfs-utils-1.0.6-70.EL4
 
-  touch foo.d~
-  mv foo.d~ foo.db
 
-> Anyone has a suggestion of what I could try or do ? I've searched the NFS 
-> mailinglist, nothing, nada. Any suggestion is more than welcome.
+Looking at a snoop of the traffic between the servers shows that the
+RedHat4 system seems to get hung up in a loop with about two minutes
+of this:
 
-To work around this problem we have stopped checking the return code
-of rename()!  Instead we now stat() the file before and after the
-rename to verify the operation.  This is less efficient but avoided
-the spurious error message.
+myredhat4server -> mysolaris9server          PORTMAP C GETPORT
+prog=100021 (NLM) vers=4 proto=UDP
+         mysolaris9server -> myredhat4server PORTMAP R GETPORT port=0
+myredhat4server -> cs8          PORTMAP C GETPORT prog=100021 (NLM)
+vers=4 proto=UDP
+         mysolaris9server -> myredhat4server PORTMAP R GETPORT port=0
 
-Bob
+Where as on the RedHat3 snoop, I never see any of that PORTMAP traffic?
+
+Any idea where I should look?
+
+Thanks
+Shane
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
