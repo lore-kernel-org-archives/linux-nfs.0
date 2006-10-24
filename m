@@ -1,8 +1,7 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 001 of 4] Copy intr and soft flags to portmap-bind
-	client
-Date: Tue, 24 Oct 2006 12:48:51 +1000
-Message-ID: <1061024024851.4734@suse.de>
+Subject: [PATCH 003 of 4] Make RPC 'ping' requests fail more quickly.
+Date: Tue, 24 Oct 2006 12:49:03 +1000
+Message-ID: <1061024024903.4760@suse.de>
 References: <20061024122646.4426.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcCLg-0001nn-6j
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 19:49:04 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GcCLm-0001pf-Ml
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 19:49:11 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GcCLe-0001H3-8u
-	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 19:49:05 -0700
+	(Exim 4.44) id 1GcCLn-0001Nl-1L
+	for nfs@lists.sourceforge.net; Mon, 23 Oct 2006 19:49:11 -0700
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,99 +31,117 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-When an RPC request needs to make a subordinate RPC request to portmap
-to find the port number to communicate with, the 'soft' and 'intr'
-flags should be copied from the original request to the subordinate request
-to ensure consistent handling.
+Sometimes when an RPC client is created, an initial 'PING' is sent to
+the RPC/NULL procedure to make sure the server is running.
+This is always done as a 'soft' call so a major timeout will be fatal.
 
-Currently the pmap client defaults to soft,nointr, so while it is
-certain to timeout, it could still be 30 seconds without being
-interruptible.
+We change semantics so that if portmap reports that the service does
+not exist, or if a ECONNREFUSED error is returned we abort early
+rather than persist for the full timeout.
 
-Note that copying the 'hard' flag down is not essential as if the pmap
-request aborts, the parent request - being hard - will retry it
-indefinitely.  However copying it is more obviously right.
+The core mechanism is a new flag RPC_TASK_ACCEPT_NO which tell the rpc
+client to accept a 'no' answer rather than retrying.
+
+This patch also causes lockd clients to *not* do the initial 'ping'
+otherwise a lock request could fail due to a missing server, even on a
+hard mount.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/pmap_clnt.c |   22 +++++++++++++++-------
- 1 file changed, 15 insertions(+), 7 deletions(-)
+ ./fs/lockd/host.c              |    1 +
+ ./include/linux/sunrpc/sched.h |    4 ++++
+ ./net/sunrpc/clnt.c            |   14 +++++++++++---
+ ./net/sunrpc/pmap_clnt.c       |    4 +++-
+ 4 files changed, 19 insertions(+), 4 deletions(-)
+
+diff .prev/fs/lockd/host.c ./fs/lockd/host.c
+--- .prev/fs/lockd/host.c	2006-10-24 10:09:41.000000000 +1000
++++ ./fs/lockd/host.c	2006-10-24 11:48:05.000000000 +1000
+@@ -236,6 +236,7 @@ nlm_bind_host(struct nlm_host *host)
+ 			.version	= host->h_version,
+ 			.authflavor	= RPC_AUTH_UNIX,
+ 			.flags		= (RPC_CLNT_CREATE_HARDRTRY |
++					   RPC_CLNT_CREATE_NOPING |
+ 					   RPC_CLNT_CREATE_AUTOBIND),
+ 		};
+ 
+
+diff .prev/include/linux/sunrpc/sched.h ./include/linux/sunrpc/sched.h
+--- .prev/include/linux/sunrpc/sched.h	2006-10-24 11:35:21.000000000 +1000
++++ ./include/linux/sunrpc/sched.h	2006-10-24 11:46:25.000000000 +1000
+@@ -133,6 +133,10 @@ struct rpc_call_ops {
+ #define RPC_TASK_KILLED		0x0100		/* task was killed */
+ #define RPC_TASK_SOFT		0x0200		/* Use soft timeouts */
+ #define RPC_TASK_NOINTR		0x0400		/* uninterruptible task */
++#define RPC_TASK_ACCEPT_NO	0x0800		/* Accept a 'no' such as
++						 * -ECONNREFUSED or '0' from
++						 * portmap, to be reliable.
++						 */
+ 
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+
+diff .prev/net/sunrpc/clnt.c ./net/sunrpc/clnt.c
+--- .prev/net/sunrpc/clnt.c	2006-10-24 09:43:48.000000000 +1000
++++ ./net/sunrpc/clnt.c	2006-10-24 11:45:54.000000000 +1000
+@@ -221,7 +221,7 @@ struct rpc_clnt *rpc_create(struct rpc_c
+ 		return clnt;
+ 
+ 	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
+-		int tskflags = RPC_TASK_SOFT;
++		int tskflags = RPC_TASK_SOFT | RPC_TASK_ACCEPT_NO;
+ 		int err;
+ 		if ( ! (args->flags & RPC_CLNT_CREATE_INTR))
+ 			tskflags |= RPC_TASK_NOINTR;
+@@ -868,6 +868,8 @@ call_bind_status(struct rpc_task *task)
+ 	case -EACCES:
+ 		dprintk("RPC: %4d remote rpcbind: RPC program/version unavailable\n",
+ 				task->tk_pid);
++		if (task->tk_flags & RPC_TASK_ACCEPT_NO)
++			break;
+ 		rpc_delay(task, 3*HZ);
+ 		goto retry_timeout;
+ 	case -ETIMEDOUT:
+@@ -941,6 +943,8 @@ call_connect_status(struct rpc_task *tas
+ 	switch (status) {
+ 	case -ENOTCONN:
+ 	case -EAGAIN:
++		if (task->tk_flags & RPC_TASK_ACCEPT_NO)
++			break;
+ 		task->tk_action = call_bind;
+ 		if (!RPC_IS_SOFT(task))
+ 			return;
+@@ -1044,8 +1048,12 @@ call_status(struct rpc_task *task)
+ 		break;
+ 	case -ECONNREFUSED:
+ 	case -ENOTCONN:
+-		rpc_force_rebind(clnt);
+-		task->tk_action = call_bind;
++		if (task->tk_flags & RPC_TASK_ACCEPT_NO)
++			rpc_exit(task, status);
++		else {
++			rpc_force_rebind(clnt);
++			task->tk_action = call_bind;
++		}
+ 		break;
+ 	case -EAGAIN:
+ 		task->tk_action = call_transmit;
 
 diff .prev/net/sunrpc/pmap_clnt.c ./net/sunrpc/pmap_clnt.c
---- .prev/net/sunrpc/pmap_clnt.c	2006-10-24 09:23:13.000000000 +1000
-+++ ./net/sunrpc/pmap_clnt.c	2006-10-24 09:33:08.000000000 +1000
-@@ -34,7 +34,8 @@ struct portmap_args {
- };
- 
- static struct rpc_procinfo	pmap_procedures[];
--static struct rpc_clnt *	pmap_create(char *, struct sockaddr_in *, int, int);
-+static struct rpc_clnt *	pmap_create(char *, struct sockaddr_in *,
-+					    int, unsigned long);
- static void			pmap_getport_done(struct rpc_task *, void *);
- static struct rpc_program	pmap_program;
- 
-@@ -93,6 +94,7 @@ void rpc_getport(struct rpc_task *task)
- 	struct rpc_clnt	*pmap_clnt;
- 	struct rpc_task *child;
- 	int status;
-+	unsigned long create_flags;
- 
- 	dprintk("RPC: %4d rpc_getport(%s, %u, %u, %d)\n",
- 			task->tk_pid, clnt->cl_server,
-@@ -125,7 +127,13 @@ void rpc_getport(struct rpc_task *task)
- 	map->pm_xprt = xprt_get(xprt);
- 
- 	rpc_peeraddr(clnt, (struct sockaddr *) &addr, sizeof(addr));
--	pmap_clnt = pmap_create(clnt->cl_server, &addr, map->pm_prot, 0);
-+	create_flags = RPC_CLNT_CREATE_NONPRIVPORT;
-+	if ( ! RPC_IS_SOFT(task))
-+		create_flags |= RPC_CLNT_CREATE_HARDRTRY;
-+	if ( ! RPC_TASK_UNINTERRUPTIBLE(task))
-+		create_flags |= RPC_CLNT_CREATE_INTR;
-+	pmap_clnt = pmap_create(clnt->cl_server, &addr, map->pm_prot,
-+				create_flags);
- 	status = PTR_ERR(pmap_clnt);
- 	if (IS_ERR(pmap_clnt))
+--- .prev/net/sunrpc/pmap_clnt.c	2006-10-24 09:33:08.000000000 +1000
++++ ./net/sunrpc/pmap_clnt.c	2006-10-24 11:51:32.000000000 +1000
+@@ -139,7 +139,9 @@ void rpc_getport(struct rpc_task *task)
  		goto bailout;
-@@ -178,7 +186,7 @@ int rpc_getport_external(struct sockaddr
- 			NIPQUAD(sin->sin_addr.s_addr), prog, vers, prot);
  
- 	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(sin->sin_addr.s_addr));
--	pmap_clnt = pmap_create(hostname, sin, prot, 0);
-+	pmap_clnt = pmap_create(hostname, sin, prot, RPC_CLNT_CREATE_NONPRIVPORT);
- 	if (IS_ERR(pmap_clnt))
- 		return PTR_ERR(pmap_clnt);
- 
-@@ -257,7 +265,7 @@ int rpc_register(u32 prog, u32 vers, int
- 	dprintk("RPC: registering (%u, %u, %d, %u) with portmapper.\n",
- 			prog, vers, prot, port);
- 
--	pmap_clnt = pmap_create("localhost", &sin, IPPROTO_UDP, 1);
-+	pmap_clnt = pmap_create("localhost", &sin, IPPROTO_UDP, 0);
- 	if (IS_ERR(pmap_clnt)) {
- 		error = PTR_ERR(pmap_clnt);
- 		dprintk("RPC: couldn't create pmap client. Error = %d\n", error);
-@@ -277,7 +285,8 @@ int rpc_register(u32 prog, u32 vers, int
- 	return error;
- }
- 
--static struct rpc_clnt *pmap_create(char *hostname, struct sockaddr_in *srvaddr, int proto, int privileged)
-+static struct rpc_clnt *pmap_create(char *hostname, struct sockaddr_in *srvaddr,
-+				    int proto, unsigned long create_flags)
- {
- 	struct rpc_create_args args = {
- 		.protocol	= proto,
-@@ -292,8 +301,7 @@ static struct rpc_clnt *pmap_create(char
- 	};
- 
- 	srvaddr->sin_port = htons(RPC_PMAP_PORT);
--	if (!privileged)
--		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
-+	args.flags |= create_flags;
- 	return rpc_create(&args);
- }
- 
+ 	status = -EIO;
+-	child = rpc_run_task(pmap_clnt, RPC_TASK_ASYNC, &pmap_getport_ops, map);
++	child = rpc_run_task(pmap_clnt,
++			     RPC_TASK_ASYNC | (task->tk_flags & RPC_TASK_ACCEPT_NO),
++			     &pmap_getport_ops, map);
+ 	if (IS_ERR(child))
+ 		goto bailout;
+ 	rpc_release_task(child);
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
