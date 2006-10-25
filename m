@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/10] SUNRPC: Move TCP state flags into xprtsock.c
-Date: Wed, 25 Oct 2006 12:47:06 -0400
-Message-ID: <20061025164706.6410.88080.stgit@localhost.localdomain>
+Subject: [PATCH 05/10] SUNRPC: Move rpc_xprt socket connect fields
+	into private data structure
+Date: Wed, 25 Oct 2006 12:47:09 -0400
+Message-ID: <20061025164708.6410.45824.stgit@localhost.localdomain>
 References: <20061025164602.6410.27449.stgit@localhost.localdomain>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -11,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcrQc-0006Qp-PN
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:40:54 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1GcrQh-0006R1-61
+	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:40:59 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GcrQd-0003g0-Hq
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:40:55 -0700
+	(Exim 4.44) id 1GcrQh-0003hA-On
+	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:41:00 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061025164602.6410.27449.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,168 +32,231 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Move "XPRT_LAST_FRAG" and friends from xprt.h into xprtsock.c, and rename
-them to use the naming scheme in use in xprtsock.c.
+Move the socket-specific connection management fields out of the generic
+rpc_xprt structure into a private data structure maintained in
+net/sunrpc/xprtsock.c.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    5 ----
- net/sunrpc/xprtsock.c       |   48 +++++++++++++++++++++++++------------------
- 2 files changed, 28 insertions(+), 25 deletions(-)
+ include/linux/sunrpc/xprt.h |    2 --
+ net/sunrpc/xprtsock.c       |   51 ++++++++++++++++++++++++++++---------------
+ 2 files changed, 33 insertions(+), 20 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 0a0ad1c..3ff8230 100644
+index 3ff8230..18bf72c 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -203,11 +203,6 @@ struct rpc_xprt {
- 	char *			address_strings[RPC_DISPLAY_MAX];
- };
+@@ -163,8 +163,6 @@ struct rpc_xprt {
+ 	unsigned long		connect_timeout,
+ 				bind_timeout,
+ 				reestablish_timeout;
+-	struct work_struct	connect_worker;
+-	unsigned short		port;
  
--#define XPRT_LAST_FRAG		(1 << 0)
--#define XPRT_COPY_RECM		(1 << 1)
--#define XPRT_COPY_XID		(1 << 2)
--#define XPRT_COPY_DATA		(1 << 3)
--
- #ifdef __KERNEL__
- 
- /*
+ 	/*
+ 	 * Disconnection of idle transports
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index e7ecf99..0e01296 100644
+index 0e01296..091b39a 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -147,6 +147,14 @@ struct sock_xprt {
+@@ -145,6 +145,12 @@ struct sock_xprt {
+ 
+ 	unsigned long		tcp_copied,
  				tcp_flags;
++
++	/*
++	 * Connection of transports
++	 */
++	struct work_struct	connect_worker;
++	unsigned short		port;
  };
  
-+/*
-+ * TCP receive state flags
-+ */
-+#define XS_LAST_FRAG		(1UL << 0)
-+#define XS_COPY_FRGH		(1UL << 1)
-+#define XS_COPY_XID		(1UL << 2)
-+#define XS_COPY_DATA		(1UL << 3)
+ /*
+@@ -555,9 +561,11 @@ clear_close_wait:
+  */
+ static void xs_destroy(struct rpc_xprt *xprt)
+ {
++	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
 +
- static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+ 	dprintk("RPC:      xs_destroy xprt %p\n", xprt);
+ 
+-	cancel_delayed_work(&xprt->connect_worker);
++	cancel_delayed_work(&sx->connect_worker);
+ 	flush_scheduled_work();
+ 
+ 	xprt_disconnect(xprt);
+@@ -1072,20 +1080,20 @@ static void xs_set_port(struct rpc_xprt 
+ 	sap->sin_port = htons(port);
+ }
+ 
+-static int xs_bindresvport(struct rpc_xprt *xprt, struct socket *sock)
++static int xs_bindresvport(struct sock_xprt *sx, struct socket *sock)
  {
- 	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-@@ -663,12 +671,12 @@ static inline void xs_tcp_read_fraghdr(s
+ 	struct sockaddr_in myaddr = {
+ 		.sin_family = AF_INET,
+ 	};
+ 	int err;
+-	unsigned short port = xprt->port;
++	unsigned short port = sx->port;
  
- 	sx->tcp_reclen = ntohl(sx->tcp_fraghdr);
- 	if (sx->tcp_reclen & RPC_LAST_STREAM_FRAGMENT)
--		sx->tcp_flags |= XPRT_LAST_FRAG;
-+		sx->tcp_flags |= XS_LAST_FRAG;
- 	else
--		sx->tcp_flags &= ~XPRT_LAST_FRAG;
-+		sx->tcp_flags &= ~XS_LAST_FRAG;
- 	sx->tcp_reclen &= RPC_FRAGMENT_SIZE_MASK;
- 
--	sx->tcp_flags &= ~XPRT_COPY_RECM;
-+	sx->tcp_flags &= ~XS_COPY_FRGH;
- 	sx->tcp_offset = 0;
- 
- 	/* Sanity check of the record length */
-@@ -684,11 +692,11 @@ static inline void xs_tcp_read_fraghdr(s
- static void xs_tcp_check_fraghdr(struct sock_xprt *sx)
- {
- 	if (sx->tcp_offset == sx->tcp_reclen) {
--		sx->tcp_flags |= XPRT_COPY_RECM;
-+		sx->tcp_flags |= XS_COPY_FRGH;
- 		sx->tcp_offset = 0;
--		if (sx->tcp_flags & XPRT_LAST_FRAG) {
--			sx->tcp_flags &= ~XPRT_COPY_DATA;
--			sx->tcp_flags |= XPRT_COPY_XID;
-+		if (sx->tcp_flags & XS_LAST_FRAG) {
-+			sx->tcp_flags &= ~XS_COPY_DATA;
-+			sx->tcp_flags |= XS_COPY_XID;
- 			sx->tcp_copied = 0;
- 		}
- 	}
-@@ -706,8 +714,8 @@ static inline void xs_tcp_read_xid(struc
- 	sx->tcp_offset += used;
- 	if (used != len)
- 		return;
--	sx->tcp_flags &= ~XPRT_COPY_XID;
--	sx->tcp_flags |= XPRT_COPY_DATA;
-+	sx->tcp_flags &= ~XS_COPY_XID;
-+	sx->tcp_flags |= XS_COPY_DATA;
- 	sx->tcp_copied = 4;
- 	dprintk("RPC:      reading reply for XID %08x\n",
- 			ntohl(sx->tcp_xid));
-@@ -726,7 +734,7 @@ static inline void xs_tcp_read_request(s
- 	spin_lock(&xprt->transport_lock);
- 	req = xprt_lookup_rqst(xprt, sx->tcp_xid);
- 	if (!req) {
--		sx->tcp_flags &= ~XPRT_COPY_DATA;
-+		sx->tcp_flags &= ~XS_COPY_DATA;
- 		dprintk("RPC:      XID %08x request not found!\n",
- 				ntohl(sx->tcp_xid));
- 		spin_unlock(&xprt->transport_lock);
-@@ -757,13 +765,13 @@ static inline void xs_tcp_read_request(s
- 		/* Error when copying to the receive buffer,
- 		 * usually because we weren't able to allocate
- 		 * additional buffer pages. All we can do now
--		 * is turn off XPRT_COPY_DATA, so the request
-+		 * is turn off XS_COPY_DATA, so the request
- 		 * will not receive any additional updates,
- 		 * and time out.
- 		 * Any remaining data from this record will
- 		 * be discarded.
- 		 */
--		sx->tcp_flags &= ~XPRT_COPY_DATA;
-+		sx->tcp_flags &= ~XS_COPY_DATA;
- 		dprintk("RPC:      XID %08x truncated request\n",
- 				ntohl(sx->tcp_xid));
- 		dprintk("RPC:      xprt = %p, tcp_copied = %lu, tcp_offset = %u, tcp_reclen = %u\n",
-@@ -777,14 +785,14 @@ static inline void xs_tcp_read_request(s
- 			xprt, sx->tcp_copied, sx->tcp_offset, sx->tcp_reclen);
- 
- 	if (sx->tcp_copied == req->rq_private_buf.buflen)
--		sx->tcp_flags &= ~XPRT_COPY_DATA;
-+		sx->tcp_flags &= ~XS_COPY_DATA;
- 	else if (sx->tcp_offset == sx->tcp_reclen) {
--		if (sx->tcp_flags & XPRT_LAST_FRAG)
--			sx->tcp_flags &= ~XPRT_COPY_DATA;
-+		if (sx->tcp_flags & XS_LAST_FRAG)
-+			sx->tcp_flags &= ~XS_COPY_DATA;
- 	}
- 
- out:
--	if (!(sx->tcp_flags & XPRT_COPY_DATA))
-+	if (!(sx->tcp_flags & XS_COPY_DATA))
- 		xprt_complete_rqst(req->rq_task, sx->tcp_copied);
- 	spin_unlock(&xprt->transport_lock);
- 	xs_tcp_check_fraghdr(sx);
-@@ -818,17 +826,17 @@ static int xs_tcp_data_recv(read_descrip
  	do {
- 		/* Read in a new fragment marker if necessary */
- 		/* Can we ever really expect to get completely empty fragments? */
--		if (sx->tcp_flags & XPRT_COPY_RECM) {
-+		if (sx->tcp_flags & XS_COPY_FRGH) {
- 			xs_tcp_read_fraghdr(xprt, &desc);
- 			continue;
- 		}
- 		/* Read in the xid if necessary */
--		if (sx->tcp_flags & XPRT_COPY_XID) {
-+		if (sx->tcp_flags & XS_COPY_XID) {
- 			xs_tcp_read_xid(sx, &desc);
- 			continue;
- 		}
- 		/* Read in the request data */
--		if (sx->tcp_flags & XPRT_COPY_DATA) {
-+		if (sx->tcp_flags & XS_COPY_DATA) {
- 			xs_tcp_read_request(xprt, &desc);
- 			continue;
- 		}
-@@ -894,7 +902,7 @@ static void xs_tcp_state_change(struct s
- 			sx->tcp_offset = 0;
- 			sx->tcp_reclen = 0;
- 			sx->tcp_copied = 0;
--			sx->tcp_flags = XPRT_COPY_RECM | XPRT_COPY_XID;
-+			sx->tcp_flags = XS_COPY_FRGH | XS_COPY_XID;
+ 		myaddr.sin_port = htons(port);
+ 		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
+ 						sizeof(myaddr));
+ 		if (err == 0) {
+-			xprt->port = port;
++			sx->port = port;
+ 			dprintk("RPC:      xs_bindresvport bound to port %u\n",
+ 					port);
+ 			return 0;
+@@ -1094,7 +1102,7 @@ static int xs_bindresvport(struct rpc_xp
+ 			port = xprt_max_resvport;
+ 		else
+ 			port--;
+-	} while (err == -EADDRINUSE && port != xprt->port);
++	} while (err == -EADDRINUSE && port != sx->port);
  
- 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
- 			xprt_wake_pending_tasks(xprt, 0);
+ 	dprintk("RPC:      can't bind to reserved port (%d).\n", -err);
+ 	return err;
+@@ -1108,8 +1116,8 @@ static int xs_bindresvport(struct rpc_xp
+  */
+ static void xs_udp_connect_worker(void *args)
+ {
+-	struct rpc_xprt *xprt = (struct rpc_xprt *) args;
+-	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
++	struct sock_xprt *sx = (struct sock_xprt *)args;
++	struct rpc_xprt *xprt = &sx->xprt;
+ 	struct socket *sock = sx->sock;
+ 	int err, status = -EIO;
+ 
+@@ -1124,7 +1132,7 @@ static void xs_udp_connect_worker(void *
+ 		goto out;
+ 	}
+ 
+-	if (xprt->resvport && xs_bindresvport(xprt, sock) < 0) {
++	if (xprt->resvport && xs_bindresvport(sx, sock) < 0) {
+ 		sock_release(sock);
+ 		goto out;
+ 	}
+@@ -1193,8 +1201,8 @@ static void xs_tcp_reuse_connection(stru
+  */
+ static void xs_tcp_connect_worker(void *args)
+ {
+-	struct rpc_xprt *xprt = (struct rpc_xprt *)args;
+-	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
++	struct sock_xprt *sx = (struct sock_xprt *)args;
++	struct rpc_xprt *xprt = &sx->xprt;
+ 	struct socket *sock = sx->sock;
+ 	int err, status = -EIO;
+ 
+@@ -1208,7 +1216,7 @@ static void xs_tcp_connect_worker(void *
+ 			goto out;
+ 		}
+ 
+-		if (xprt->resvport && xs_bindresvport(xprt, sock) < 0) {
++		if (xprt->resvport && xs_bindresvport(sx, sock) < 0) {
+ 			sock_release(sock);
+ 			goto out;
+ 		}
+@@ -1300,14 +1308,14 @@ static void xs_connect(struct rpc_task *
+ 	if (sx->sock != NULL) {
+ 		dprintk("RPC:      xs_connect delayed xprt %p for %lu seconds\n",
+ 				xprt, xprt->reestablish_timeout / HZ);
+-		schedule_delayed_work(&xprt->connect_worker,
++		schedule_delayed_work(&sx->connect_worker,
+ 					xprt->reestablish_timeout);
+ 		xprt->reestablish_timeout <<= 1;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+ 	} else {
+ 		dprintk("RPC:      xs_connect scheduled xprt %p\n", xprt);
+-		schedule_work(&xprt->connect_worker);
++		schedule_work(&sx->connect_worker);
+ 
+ 		/* flush_scheduled_work can sleep... */
+ 		if (!RPC_IS_ASYNC(task))
+@@ -1323,8 +1331,10 @@ static void xs_connect(struct rpc_task *
+  */
+ static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ {
++	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
++
+ 	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
+-			xprt->port,
++			sx->port,
+ 			xprt->stat.bind_count,
+ 			xprt->stat.sends,
+ 			xprt->stat.recvs,
+@@ -1341,13 +1351,14 @@ static void xs_udp_print_stats(struct rp
+  */
+ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ {
++	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
+ 	long idle_time = 0;
+ 
+ 	if (xprt_connected(xprt))
+ 		idle_time = (long)(jiffies - xprt->last_used) / HZ;
+ 
+ 	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
+-			xprt->port,
++			sx->port,
+ 			xprt->stat.bind_count,
+ 			xprt->stat.connect_count,
+ 			xprt->stat.connect_time,
+@@ -1421,7 +1432,7 @@ static struct rpc_xprt *xs_setup_xprt(st
+ 
+ 	memcpy(&xprt->addr, addr, addrlen);
+ 	xprt->addrlen = addrlen;
+-	xprt->port = xs_get_random_port();
++	sx->port = xs_get_random_port();
+ 
+ 	return xprt;
+ }
+@@ -1436,10 +1447,12 @@ static struct rpc_xprt *xs_setup_xprt(st
+ struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ {
+ 	struct rpc_xprt *xprt;
++	struct sock_xprt *sx;
+ 
+ 	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
++	sx = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+ 		xprt_set_bound(xprt);
+@@ -1449,7 +1462,7 @@ struct rpc_xprt *xs_setup_udp(struct soc
+ 	/* XXX: header size can vary due to auth type, IPv6, etc. */
+ 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
+ 
+-	INIT_WORK(&xprt->connect_worker, xs_udp_connect_worker, xprt);
++	INIT_WORK(&sx->connect_worker, xs_udp_connect_worker, sx);
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->connect_timeout = XS_UDP_CONN_TO;
+ 	xprt->reestablish_timeout = XS_UDP_REEST_TO;
+@@ -1479,10 +1492,12 @@ struct rpc_xprt *xs_setup_udp(struct soc
+ struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ {
+ 	struct rpc_xprt *xprt;
++	struct sock_xprt *sx;
+ 
+ 	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
++	sx = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+ 		xprt_set_bound(xprt);
+@@ -1491,7 +1506,7 @@ struct rpc_xprt *xs_setup_tcp(struct soc
+ 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+ 
+-	INIT_WORK(&xprt->connect_worker, xs_tcp_connect_worker, xprt);
++	INIT_WORK(&sx->connect_worker, xs_tcp_connect_worker, sx);
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->connect_timeout = XS_TCP_CONN_TO;
+ 	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
