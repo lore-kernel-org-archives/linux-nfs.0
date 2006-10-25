@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/10] SUNRPC: Move the UDP socket bufsize parameters
-	to a private data structure
-Date: Wed, 25 Oct 2006 12:47:11 -0400
-Message-ID: <20061025164711.6410.10291.stgit@localhost.localdomain>
+Subject: [PATCH 07/10] SUNRPC: move saved socket callback functions to
+	a private data structure
+Date: Wed, 25 Oct 2006 12:47:14 -0400
+Message-ID: <20061025164714.6410.66328.stgit@localhost.localdomain>
 References: <20061025164602.6410.27449.stgit@localhost.localdomain>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcrQl-0006UP-BZ
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:41:03 -0700
+	id 1GcrQp-0006Ve-No
+	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:41:07 -0700
 Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GcrQm-0003iY-6I
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:41:04 -0700
+	(Exim 4.44) id 1GcrQp-0003lo-Qe
+	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 15:41:08 -0700
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061025164602.6410.27449.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -32,84 +32,98 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Move the socket-specific buffer size parameters for UDP sockets to a
-private data structure maintained in net/sunrpc/xprtsock.c.
+Move the three fields for saving socket callback functions out of the
+rpc_xprt structure and into a private data structure maintained in
+net/sunrpc/xprtsock.c.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    3 ---
- net/sunrpc/xprtsock.c       |   24 ++++++++++++++++--------
- 2 files changed, 16 insertions(+), 11 deletions(-)
+ include/linux/sunrpc/xprt.h |    6 ------
+ net/sunrpc/xprtsock.c       |   25 ++++++++++++++++---------
+ 2 files changed, 16 insertions(+), 15 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 18bf72c..21beb56 100644
+index 21beb56..17f3227 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -137,9 +137,6 @@ struct rpc_xprt {
- 	unsigned long		cong;		/* current congestion */
- 	unsigned long		cwnd;		/* congestion window */
+@@ -17,8 +17,6 @@ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/msg_prot.h>
  
--	size_t			rcvsize,	/* transport rcv buffer size */
--				sndsize;	/* transport send buffer size */
+-#include <net/sock.h>
 -
- 	size_t			max_payload;	/* largest RPC payload size,
- 						   in bytes */
- 	unsigned int		tsh_size;	/* size of transport specific
+ extern unsigned int xprt_udp_slot_table_entries;
+ extern unsigned int xprt_tcp_slot_table_entries;
+ 
+@@ -191,10 +189,6 @@ struct rpc_xprt {
+ 					bklog_u;	/* backlog queue utilization */
+ 	} stat;
+ 
+-	void			(*old_data_ready)(struct sock *, int);
+-	void			(*old_state_change)(struct sock *);
+-	void			(*old_write_space)(struct sock *);
+-
+ 	char *			address_strings[RPC_DISPLAY_MAX];
+ };
+ 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 091b39a..b9b51b5 100644
+index b9b51b5..05e051a 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -151,6 +151,12 @@ struct sock_xprt {
+@@ -157,6 +157,13 @@ struct sock_xprt {
  	 */
- 	struct work_struct	connect_worker;
- 	unsigned short		port;
+ 	size_t			rcvsize,
+ 				sndsize;
 +
 +	/*
-+	 * UDP socket buffer size parameters
++	 * Saved socket callback addresses
 +	 */
-+	size_t			rcvsize,
-+				sndsize;
++	void			(*old_data_ready)(struct sock *, int);
++	void			(*old_state_change)(struct sock *);
++	void			(*old_write_space)(struct sock *);
  };
  
  /*
-@@ -1003,13 +1009,13 @@ static void xs_udp_do_set_buffer_size(st
- 	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
- 	struct sock *sk = sx->inet;
+@@ -546,9 +553,9 @@ static void xs_close(struct rpc_xprt *xp
+ 	sx->sock = NULL;
  
--	if (xprt->rcvsize) {
-+	if (sx->rcvsize) {
- 		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
--		sk->sk_rcvbuf = xprt->rcvsize * xprt->max_reqs *  2;
-+		sk->sk_rcvbuf = sx->rcvsize * xprt->max_reqs * 2;
- 	}
--	if (xprt->sndsize) {
-+	if (sx->sndsize) {
- 		sk->sk_userlocks |= SOCK_SNDBUF_LOCK;
--		sk->sk_sndbuf = xprt->sndsize * xprt->max_reqs * 2;
-+		sk->sk_sndbuf = sx->sndsize * xprt->max_reqs * 2;
- 		sk->sk_write_space(sk);
- 	}
- }
-@@ -1024,12 +1030,14 @@ static void xs_udp_do_set_buffer_size(st
-  */
- static void xs_udp_set_buffer_size(struct rpc_xprt *xprt, size_t sndsize, size_t rcvsize)
- {
--	xprt->sndsize = 0;
-+	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
-+
-+	sx->sndsize = 0;
- 	if (sndsize)
--		xprt->sndsize = sndsize + 1024;
--	xprt->rcvsize = 0;
-+		sx->sndsize = sndsize + 1024;
-+	sx->rcvsize = 0;
- 	if (rcvsize)
--		xprt->rcvsize = rcvsize + 1024;
-+		sx->rcvsize = rcvsize + 1024;
+ 	sk->sk_user_data = NULL;
+-	sk->sk_data_ready = xprt->old_data_ready;
+-	sk->sk_state_change = xprt->old_state_change;
+-	sk->sk_write_space = xprt->old_write_space;
++	sk->sk_data_ready = sx->old_data_ready;
++	sk->sk_state_change = sx->old_state_change;
++	sk->sk_write_space = sx->old_write_space;
+ 	write_unlock_bh(&sk->sk_callback_lock);
  
- 	xs_udp_do_set_buffer_size(xprt);
- }
+ 	sk->sk_no_check = 0;
+@@ -1154,9 +1161,9 @@ static void xs_udp_connect_worker(void *
+ 		write_lock_bh(&sk->sk_callback_lock);
+ 
+ 		sk->sk_user_data = xprt;
+-		xprt->old_data_ready = sk->sk_data_ready;
+-		xprt->old_state_change = sk->sk_state_change;
+-		xprt->old_write_space = sk->sk_write_space;
++		sx->old_data_ready = sk->sk_data_ready;
++		sx->old_state_change = sk->sk_state_change;
++		sx->old_write_space = sk->sk_write_space;
+ 		sk->sk_data_ready = xs_udp_data_ready;
+ 		sk->sk_write_space = xs_udp_write_space;
+ 		sk->sk_no_check = UDP_CSUM_NORCV;
+@@ -1241,9 +1248,9 @@ static void xs_tcp_connect_worker(void *
+ 		write_lock_bh(&sk->sk_callback_lock);
+ 
+ 		sk->sk_user_data = xprt;
+-		xprt->old_data_ready = sk->sk_data_ready;
+-		xprt->old_state_change = sk->sk_state_change;
+-		xprt->old_write_space = sk->sk_write_space;
++		sx->old_data_ready = sk->sk_data_ready;
++		sx->old_state_change = sk->sk_state_change;
++		sx->old_write_space = sk->sk_write_space;
+ 		sk->sk_data_ready = xs_tcp_data_ready;
+ 		sk->sk_state_change = xs_tcp_state_change;
+ 		sk->sk_write_space = xs_tcp_write_space;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
