@@ -1,25 +1,24 @@
-From: "Shane Presley" <shane.presley@gmail.com>
-Subject: Re: Problem with NFS from RedHat4 to Solaris
-Date: Wed, 25 Oct 2006 11:10:31 -0400
-Message-ID: <27ae92160610250810i2b8803f5xbb959f7fd093f47b@mail.gmail.com>
-References: <27ae92160610241005x7c7bca01v4986fc40d77fba19@mail.gmail.com>
-	<453F7084.7070601@RedHat.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] mountd: remove bogus	mountlist_add/del	calls,
+	track	only v2/3 mounts
+Date: Wed, 25 Oct 2006 11:56:38 -0400
+Message-ID: <1161791798.7078.74.camel@dantu.rdu.redhat.com>
+References: <1161781622.7078.51.camel@dantu.rdu.redhat.com>
+	<1161788942.20313.2.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GckOx-0002EN-E0
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 08:10:43 -0700
-Received: from nf-out-0910.google.com ([64.233.182.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GckOu-0007cm-0o
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 08:10:41 -0700
-Received: by nf-out-0910.google.com with SMTP id p46so895073nfa
-	for <nfs@lists.sourceforge.net>; Wed, 25 Oct 2006 08:10:32 -0700 (PDT)
-To: "Steve Dickson" <SteveD@redhat.com>
-In-Reply-To: <453F7084.7070601@RedHat.com>
+	id 1Gcl7f-0006vk-3K
+	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 08:56:55 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gcl7Y-0004D6-UB
+	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 08:56:53 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1161788942.20313.2.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,45 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/25/06, Steve Dickson <SteveD@redhat.com> wrote:
-> ah... port=0 means it can't get server's port number for lockd...
-> make sure the lockd on the server is running...
->
+On Wed, 2006-10-25 at 08:09 -0700, Trond Myklebust wrote:
+> An NFSv4 client will never talk to the mountd daemon at all. Not for
+> mounting or for unmounting. It only talks to the NFS daemon, which will
+> do an upcall to mountd in order to figure out what the export options
+> are. That shouldn't result in an rmtab entry being created, though.
+> 
+> Cheers,
+>   Trond
+
+Right, sorry if I wasn't clear...
+
+The problem there is in the upcall. It can result in cache_export_ent()
+getting called which will call mountlist_add() unconditionally. The
+patch corrects this by moving the mountlist_add() out of
+cache_export_ent() and into get_rootfh().
+
+-- Jeff
 
 
-Very interesting...and you're correct....this mount is on my Solaris servers
-rpcinfo -p solarisserver
-   program vers proto   port
-    100000    4   tcp    111  portmapper
-    100000    3   tcp    111  portmapper
-    100000    2   tcp    111  portmapper
-    100000    4   udp    111  portmapper
-    100000    3   udp    111  portmapper
-    100000    2   udp    111  portmapper
-    100005    1   udp  35185  mountd
-    100005    2   udp  35185  mountd
-    100005    3   udp  35185  mountd
-    100005    1   tcp  54469  mountd
-    100005    2   tcp  54469  mountd
-    100005    3   tcp  54469  mountd
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100227    2   udp   2049  nfs_acl
-    100227    3   udp   2049  nfs_acl
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100227    2   tcp   2049  nfs_acl
-    100227    3   tcp   2049  nfs_acl
-
-
-No nlockmgr.  But for some reason when my RHEL3 system mounts this
-server, it still works.  Anyway, now I have to dig into my Solaris box
-to see why nlockmgr isn't working.
-
-But any idea why RHEL3 would still work fine?
-
-Thanks
-Shane
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
