@@ -1,20 +1,32 @@
-From: =?GB2312?B?IjEx1MI0LTXI1S/Jz7qjIg==?= <wes25@tom.com>
-Subject: =?GB2312?B?uanTpsnMudzA7dPrssm5urPJsb69tbXN0dDQ3rDgLmh0bQ==?=
-Date: Thu, 26 Oct 2006 03:33:34 +0000 (UTC)
-Message-ID: <E1GcvzB-0007fv-NQ@mail.sourceforge.net>
-Reply-To: trey21@163.com
-Content-Type: multipart/mixed; boundary="===============0791245748=="
+From: Evert <evert@poboxes.info>
+Subject: Re: bad connection?
+Date: Thu, 26 Oct 2006 11:36:11 +0200
+Message-ID: <b5c614-okl.ln1@poboxes.info>
+References: <0bg114-bqv.ln1@poboxes.info> <453E2A80.1040101@t-online.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GcvzB-00082Z-QB
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 20:32:53 -0700
-Received: from [121.55.40.226] (helo=tom.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GcvzB-0007fv-NQ
-	for nfs@lists.sourceforge.net; Wed, 25 Oct 2006 20:32:54 -0700
-To: "nfs" <nfs@lists.sourceforge.net>
-Date: Mon, 30 Oct 2006 11:45:38 +0800
+	id 1Gd1iz-00018E-3s
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 02:40:35 -0700
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gd1iy-0005o4-Bl
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 02:40:34 -0700
+Received: from list by ciao.gmane.org with local (Exim 4.43)
+	id 1Gd1ib-0003h9-Bm
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:40:09 +0200
+Received: from i165182.directconnect.no ([82.148.165.182])
+	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 11:40:09 +0200
+Received: from evert by i165182.directconnect.no with local (Gmexim 0.1
+	(Debian)) id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 11:40:09 +0200
+To: nfs@lists.sourceforge.net
+In-Reply-To: <453E2A80.1040101@t-online.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,243 +39,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0791245748==
-Content-Type: text/html;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+Egon Lehmann wrote:
+> Evert wrote:
+> 
+>> I see a LOT of messages like the following in dmesg:
+>>
+>> ********************************************************
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> nfs: server 192.168.240.140 not responding, still trying
+>> nfs: server 192.168.240.140 OK
+>> ********************************************************
+>>
+>> What could the problem be? This NFS-link is very slow some times, even
+>> though there's enough (640k/640k) bandwidth...
+>>
+>>  Evert
+>>
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE>=D0=C2=BD=A8=CD=F8=D2=B3 1</TITLE>
-<META http-equiv=3DContent-Language content=3Dzh-cn>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dgb2312">
-<META content=3D"MSHTML 6.00.2900.2523" name=3DGENERATOR></HEAD>
-<BODY>
-<TABLE id=3Dtable1 width=3D"100%" border=3D1>
-  <TBODY>
-  <TR>
-    <TD>
-      <P style=3D"LINE-HEIGHT: 200%" align=3Dcenter><FONT color=3D#0000ff=
-><FONT=20
-      size=3D2>=D6=F7=B0=EC=B5=A5=CE=BB=A3=BA =D2=D7=CC=DA=C6=F3=D2=B5=B9=
-=DC=C0=ED=D7=C9=D1=AF=D3=D0=CF=DE=B9=AB=CB=BE</FONT><SPAN lang=3Dzh-cn><F=
-ONT=20
-      size=3D6><B><BR>=B9=A9=D3=A6=C9=CC=B9=DC=C0=ED=D3=EB=B2=C9=B9=BA=B3=
-=C9=B1=BE=BD=B5=B5=CD=BC=BC=C7=C9=D1=D0=D0=DE=B0=E0</B></FONT></SPAN></FO=
-NT></P>
-      <P style=3D"LINE-HEIGHT: 150%"><B><SPAN class=3Dnoo><FONT color=3D#=
-0000ff=20
-      size=3D3>=BF=CE=B3=CC=B1=B3=BE=B0</FONT></SPAN></B><BR><FONT lang=3D=
-ZH-CN size=3D2>&nbsp;&nbsp; =B2=C9=B9=BA=C8=CB=D4=B1=C3=BF=C4=EA=D4=DA=D7=
-=F6=BD=B5=BC=DB=B9=A4=D7=F7=A3=AC=B5=AB=C6=F3=D2=B5=CE=AA=C1=CB=BF=D8=D6=C6=
-=BF=E2=B4=E6=A3=AC=B2=C9=B9=BA=D6=DC=C6=DA=D4=BD=C0=B4=D4=BD=B6=CC=A1=A2=B2=
-=C9=B9=BA=C5=FA=C1=BF=D4=BD=C0=B4=D4=BD=D0=A1=A3=AC=B9=A9=D3=A6=C9=CC=D4=B9=
-=C9=F9=D4=D8=B5=C0=A3=AC=BC=D3=C9=CF=D4=AD=B2=C4=C1=CF=B5=C4=BC=DB=B8=F1=B2=
-=BB=B6=CF=C9=CF=D5=C7=A3=AC=BD=B5=BC=DB=B5=C4=B9=A4=D7=F7=D4=BD=C0=B4=D4=BD=
-=B8=BB=D3=D0=CC=F4=D5=BD=A1=A3=CD=A8=B9=FD=B6=D4=B1=BE=BF=CE=B3=CC=B5=C4=D1=
-=A7=CF=B0=D1=A7=D4=B1=BF=C9=D2=D4=C1=CB=BD=E2:<br>
-&nbsp;&nbsp; =CF=D6=B4=FA=B2=C9=B9=BA=B9=DC=C0=ED=B5=C4=B7=A2=D5=B9=C7=F7=
-=CA=C6,=B8=C4=C9=C6=C6=F3=D2=B5=B5=C4=B2=C9=B9=BA=D7=E9=D6=AF=D2=D4=BC=B0=
-=B2=C9=B9=BA=C1=F7=B3=CC=B5=C4=C9=E8=B6=A8=A3=AC=CD=EA=C9=C6=B9=A9=D3=A6=C9=
-=CC=B9=DC=C0=ED=CC=E5=CF=B5=A3=AC=CC=E1=C9=FD=B2=C9=B9=BA=CC=B8=C5=D0=C4=DC=
-=C1=A6=A1=A3=B4=D3=B6=F8=B0=EF=D6=FA=B2=C9=B9=BA=C8=CB=D4=B1=D1=A1=D4=F1=D7=
-=EE=BC=D1=B9=A9=D3=A6=C9=CC=BA=CD=B2=C9=B9=BA=B2=DF=C2=D4=A3=AC=C8=B7=B1=A3=
-=B2=C9=B9=BA=B9=A4=D7=F7=B8=DF=D6=CA=C1=BF=A1=A2=B8=DF=D0=A7=C2=CA=BC=B0=B5=
-=CD=B3=C9=B1=BE=D6=B4=D0=D0=A3=AC=CA=B9=C6=F3=D2=B5=BE=DF=D3=D0=D7=EE=BC=D1=
-=B5=C4=B9=A9=BB=F5=D7=B4=CC=AC=A3=AC=CD=AC=CA=B1=D3=EB=B9=A9=D3=A6=C9=CC=B1=
-=A3=B3=D6=C1=BC=BA=C3=B5=C4=D5=BD=C2=D4=BB=EF=B0=E9=B9=D8=CF=B5=A1=A3</FO=
-NT><BR><SPAN=20
-      class=3Dr3><B><FONT color=3D#0000ff size=3D3>=BF=CE=B3=CC=B4=F3=B8=D9=
-</FONT></B></SPAN><BR>
-		<FONT=20
-      face=3D=CB=CE=CC=E5 size=3D2><font color=3D"#0000FF">=D2=BB=A1=A2=B2=
-=C9=B9=BA=B9=DC=C0=ED=B5=C4=D0=C2=D0=CD=C0=ED=C4=EE</font><br>
-		=B4=D3=D6=B0=C4=DC=B9=DC=C0=ED=D7=AA=CF=F2=B9=FD=B3=CC=B9=DC=C0=ED<br>
-		=B4=D3=B2=C9=B9=BA=B9=DC=C0=ED=D7=AA=CF=F2=B9=A9=D3=A6=B9=DC=C0=ED<br>
-		=B4=D3=C6=F3=D2=B5=BC=E4=BD=BB=D2=D7=D0=D4=B9=DC=C0=ED=D7=AA=CF=F2=B9=D8=
-=CF=B5=D0=D4=B9=DC=C0=ED<br>
-		=B4=D3=C1=E3=BA=CD=BE=BA=D5=F9=D7=AA=CF=F2=B6=E0=D3=AE=BE=BA=D5=F9<br>
-		=B4=D3=BC=F2=B5=A5=B5=C4=B6=E0=D4=AA=BB=AF=BE=AD=D3=AA=D7=AA=CF=F2=BA=CB=
-=D0=C4=BE=BA=D5=F9=C1=A6=B9=DC=C0=ED<br>
-		<font color=3D"#0000FF">=B6=FE=A1=A2=B2=C9=B9=BA=D7=E9=D6=AF=C9=E8=BC=C6=
-=D3=EB=C1=F7=B3=CC=D3=C5=BB=AF</font><br>
-		=B9=A9=D3=A6=C1=B4=B9=DC=C0=ED=B9=DC=C0=ED=C4=A3=CA=BD=CF=C2=B2=C9=B9=BA=
-=D6=B0=C4=DC=B5=C4=D0=C2=B6=A8=CE=BB<br>
-		=B4=D3=B2=C9=B9=BA=D4=B1=B5=BD=B2=C9=B9=BA=B9=A4=B3=CC=CA=A6=B5=C4=BD=C7=
-=C9=AB=D7=AA=BB=BB<br>
-		=B2=C9=B9=BA=B2=BF=C3=C5=D3=EBPMC=B2=BF=C3=C5=B5=C4=B8=DF=D0=A7=C2=CA=D4=
-=CB=D7=F7=B9=D8=CF=B5<br>
-		=B2=C9=B9=BA=C1=F7=B3=CC=C9=E8=BC=C6=B5=C4=D4=AD=D4=F2<br>
-		=C8=E7=BA=CE=D3=C5=BB=AF=B2=C9=B9=BA=C1=F7=B3=CC=CB=F5=B6=CC=CA=C2=CE=F1=
-=D0=CD=B9=A4=D7=F7=B5=C4=B4=A6=C0=ED=D6=DC=C6=DA<br>
-		<font color=3D"#0000FF">=C8=FD=A1=A2=B9=A9=D3=A6=C9=CC=D1=A1=D4=F1=D3=EB=
-=B9=DC=C0=ED</font><br>
-		=C8=E7=BA=CE=D2=C0=BE=DD=B9=AB=CB=BE=B7=A2=D5=B9=C4=BF=B1=EA=D6=C6=B6=A8=
-=B9=A9=D3=A6=C9=CC=D0=E8=C7=F3=CC=E5=CF=B5<br>
-		=B9=A9=D3=A6=C9=CC=BF=AA=B7=A2=D3=EB=C8=CF=BF=C9=B3=CC=D0=F2<br>
-		=B2=C9=B9=BA=C9=CC=D2=B5=CC=E5=CF=B5=A1=A2=D6=CA=C1=BF=CC=E5=CF=B5=B5=C4=
-=B9=B9=BD=A8<br>
-		=B9=A9=D3=A6=C9=CC=D1=A1=D4=F1=D3=EB=C6=C0=BC=DB=B5=C4=BF=BC=C6=C0=D2=F2=
-=CB=D8<br>
-		=B9=A9=D3=A6=C9=CC=C9=CC=D2=B5=A1=A2=B7=FE=CE=F1=A1=A2=D6=CA=C1=BF=C9=F3=
-=BA=CB=D2=AA=CB=D8<br>
-		=C5=FA=C1=BF=C9=FA=B2=FA=D6=D0=B9=A9=D3=A6=C9=CC=B5=C4=C8=D5=B3=A3=B9=DC=
-=C0=ED<br>
-		=B9=A9=D3=A6=C9=CC=B6=A8=C6=DA=C6=C0=B9=C0=A1=A2=B5=C8=BC=B6=BB=AE=B7=D6=
-=D3=EB=CB=AB=D3=AE=C4=A3=CA=BD=BD=A8=C1=A2<br>
-		=A1=F4=B0=B8=C0=FD=B7=D6=CE=F6<BR><font color=3D"#0000FF">=CB=C4=A1=A2=C8=
-=E7=BA=CE=B9=DC=C0=ED=B9=A9=D3=A6=C9=CC</font><br>
-		=B9=A9=D3=A6=C9=CC=D6=AE=BD=BB=C6=DA=B9=DC=C0=ED=A3=A8Delivery=A3=A9<br=
->
-		=B9=A9=D3=A6=C9=CC=C6=B7=D6=CA=B9=DC=C0=ED=A3=A8Quality =A3=A9<br>
-		=B9=A9=D3=A6=C9=CC=B3=C9=B1=BE=B9=DC=C0=ED=A3=A8Cost=A3=A9<br>
-		=B9=A9=D3=A6=C9=CC=B7=FE=CE=F1=B9=DC=C0=ED=A3=A8Service=A3=A9<br>
-		=C8=E7=BA=CE=B9=DC=C0=ED=D6=F7=D2=AA=B9=A9=D3=A6=C9=CC=B9=DC=C0=ED<br>
-		=BD=A8=C1=A2=D3=EB=B2=DF=C2=D4=D0=D4=B9=A9=D3=A6=C9=CC=B5=C4=BB=EF=B0=E9=
-=B9=D8=CF=B5<br>
-		=C8=E7=BA=CE=B9=DC=C0=ED=B5=A5=D2=BB=B9=A9=D3=A6=C9=CC<br>
-		=C8=E7=BA=CE=CA=B5=CA=A9=B9=A9=D3=A6=C9=CC=B5=C4=D4=E7=C6=DA=B2=CE=D3=EB=
-<br>
-		=A1=F4=B0=B8=C0=FD=D1=D0=CC=D6<br>
-		<font color=3D"#0000FF">=CE=E5=A1=A2=C8=E7=BA=CE=BD=F8=D0=D0=B9=A9=D3=A6=
-=C9=CC=BC=A8=D0=A7=C6=C0=B9=C0</font><br>
-		=BD=A8=C1=A2=B9=A9=D3=A6=C9=CC=BC=A8=D0=A7=BF=BC=BA=CB=B1=EA=D7=BC<br>
-		=B9=A9=D3=A6=C9=CC=BC=A8=D0=A7=B7=D6=CE=F6<br>
-		=B9=A9=D3=A6=C9=CC=BC=A8=D0=A7=BF=BC=C6=C0=B5=C4=B9=D8=BC=FC=D6=B8=B1=EA=
-<br>
-		=C8=E7=BA=CE=BD=B1=C0=F8=D3=C5=D0=E3=B9=A9=D3=A6=C9=CC=A3=AC=B4=D9=BD=F8=
-=C6=E4=BC=CC=D0=F8=BD=F8=B2=BD<br>
-		=C8=E7=BA=CE=D0=AD=D6=FA=B9=A9=D3=A6=C9=CC=B8=C4=C9=C6=BC=A8=D0=A7<br>
-		=C8=E7=BA=CE=BD=F8=D0=D0=B9=A9=D3=A6=C9=CC=B7=A2=D5=B9<br>
-		=A1=F4=B0=B8=C0=FD=D1=D0=CC=D6</FONT><FONT=20
-      size=3D2><BR><font color=3D"#0000FF">=C1=F9=A1=A2=B2=C9=B9=BA=BA=CB=
-=D0=C4=BC=DB=D6=B5=D3=EB=B2=C9=B9=BA=B3=C9=B1=BE=BF=D8=D6=C6</font><br>
-		=B3=C9=B1=BE=B5=BC=CF=F2=B2=C9=B9=BA=B9=DC=C0=ED=B5=C4=C4=BF=B1=EA<br>
-		=B3=C9=B1=BE=B5=BC=CF=F2=B2=C9=B9=BA=B9=DC=C0=ED=B5=C4=B3=C9=B9=A6=D2=AA=
-=CB=D8<br>
-		=D6=F7=B6=AF=B2=C9=B9=BA=C8=A1=B4=FA=B1=BB=B6=AF=B2=C9=B9=BA<br>
-		=C8=E7=BA=CE=BA=CB=CB=E3=B2=C9=B9=BA=D7=DC=B3=C9=B1=BE,=D5=FD=C8=B7=BE=F6=
-=B2=DF<br>
-		=B2=C9=B9=BA=D6=D0=B5=C4=B3=C9=B1=BE=D3=B0=CF=EC=D2=F2=CB=D8=B7=D6=CE=F6=
-<br>
-		=B9=A9=D3=A6=C9=CC=CD=A8=B3=A3=D2=C0=BE=DD=C4=C4=D0=A9=D2=AA=CB=D8=BD=F8=
-=D0=D0=B1=A8=BC=DB<br>
-		=C8=E7=BA=CE=B7=D6=CE=F6=B9=A9=D3=A6=C9=CC=B5=C4=BC=DB=B8=F1=CA=D0=B3=A1=
-=B6=A8=CE=BB=D3=EB=D7=DF=CF=F2<br>
-		=C8=E7=BA=CE=D4=CB=D3=C3=BC=DB=B8=F1=B7=D6=CE=F6=B9=A4=BE=DF=C0=B4=B7=D6=
-=CE=F6=B1=A8=BC=DB<br>
-		=BC=DB=D6=B5=B7=D6=CE=F6/=BC=DB=D6=B5=C6=C0=BC=DB=A3=A8VA/VE =A3=A9<br>
-		=C8=E7=BA=CE=CA=B5=CA=A9=D3=D0=D0=A7=B5=C4=D5=D0=B1=EA<br>
-		=D0=A1=C5=FA=C1=BF=A1=A2=B6=E0=C5=FA=B4=CE=BA=CD=B4=F3=C5=FA=C1=BF=A1=A2=
-=C9=D9=C5=FA=B4=CE=B5=C4=B9=A9=BB=F5=B3=C9=B1=BE=C8=A8=BA=E2<br>
-		=C8=E7=BA=CE=B8=F9=BE=DD=CE=EF=D7=CA=C0=E0=B1=F0=BD=A8=C1=A2=B5=CD=B3=C9=
-=B1=BE=B5=C4=B9=A9=D3=A6=BA=CF=D7=F7=B9=D8=CF=B5<br>
-		=A1=F4 =B0=B8=C0=FD=D1=D0=CC=D6<br>
-		<font color=3D"#0000FF">=C6=DF=A1=A2=B2=C9=B9=BA=CC=B8=C5=D0=B5=C4=B2=BD=
-=D6=E8=D3=EB=BD=E1=B9=B9</font><br>
-		=BC=C6=BB=AE=D7=BC=B1=B8=BD=D7=B6=CE=A3=BA=C8=E7=BA=CE=BD=F8=D0=D0=CC=B8=
-=C5=D0=B7=BD=B0=B8=C9=E8=BC=C6<br>
-		=CC=B8=C5=D0=BF=AA=CA=BC=BD=D7=B6=CE=A3=BA=B8=C3=BD=D7=B6=CE=CC=D8=B5=E3=
-=B7=D6=CE=F6=BC=B0=B6=D4=B2=DF<br>
-		=CC=B8=C5=D0=B9=FD=B6=C9=BD=D7=B6=CE=A3=BA=B8=C3=BD=D7=B6=CE=CC=D8=B5=E3=
-=B7=D6=CE=F6=BC=B0=B6=D4=B2=DF<br>
-		=CA=B5=D6=CA=D0=D4=CC=B8=C5=D0=BD=D7=B6=CE=A3=BA=B8=C3=BD=D7=B6=CE=CC=D8=
-=B5=E3=B7=D6=CE=F6=BC=B0=B6=D4=B2=DF<br>
-		=BD=BB=D2=D7=C3=F7=C8=B7=BD=D7=B6=CE=A3=BA=B8=C3=BD=D7=B6=CE=CC=D8=B5=E3=
-=B7=D6=CE=F6=BC=B0=B6=D4=B2=DF<br>
-		=CC=B8=C5=D0=BD=E1=CA=F8=BD=D7=B6=CE=A3=BA=CC=B8=C5=D0=D7=DC=B9=FD=B3=CC=
-=BB=D8=B9=CB=A3=BB=CA=D5=B9=D8=A3=BB=C4=E2=B6=A8=D0=AD=D2=E9<br>
-		=C4=A3=C4=E2=CC=B8=C5=D0=A3=A8=C8=B7=C1=A2=BD=C7=C9=AB=A3=AC=C9=E8=C1=A2=
-=C4=BF=B1=EA=A1=A2=B2=DF=C2=D4=CA=B5=CA=A9=A3=A9<br>
-		<font color=3D"#0000FF">=B0=CB=A1=A2=B2=C9=B9=BA=CC=B8=C5=D0=BC=BC=C7=C9=
-</font><br>
-		=C8=E7=BA=CE=D5=C6=CE=D5=C2=F4=B7=BD=D5=E6=CA=B5=B5=C4=CF=FA=CA=DB=D0=C4=
-=C0=ED<br>
-		=C8=E7=BA=CE=B7=D6=CE=F6=CF=FA=CA=DB=B7=BD=B5=C4=D0=E8=C7=F3<br>
-		=C8=E7=BA=CE=D4=CB=D3=C3=BC=BC=CA=F5=B7=D6=CE=F6=CA=D6=B6=CE=CA=B5=CF=D6=
-=A1=B0=B2=BB=CC=B8=A1=B1=B5=C4=CC=B8=C5=D0<br>
-		=C8=E7=BA=CE=C0=FB=D3=C3=C2=F2=C2=F4=CB=AB=B7=BD=B5=C4=D3=C5=C1=D3=BD=F8=
-=D0=D0=CC=B8=C5=D0<br>
-		=C8=E7=BA=CE=C0=FB=D3=C3=B8=F7=BC=B6=B1=F0=B5=C4=C8=A8=CF=DE=BD=F8=D0=D0=
-=D2=E9=BC=DB<br>
-		=C2=F2=B7=BD=D5=BC=D3=C5=CA=C6=CA=B1=D3=A6=B2=C9=D3=C3=BA=CE=D6=D6=B2=C9=
-=B9=BA=B2=DF=C2=D4<br>
-		=C2=F4=B7=BD=D5=BC=D3=C5=CA=C6=CA=B1=D3=A6=B2=C9=D3=C3=BA=CE=D6=D6=B2=C9=
-=B9=BA=B2=DF=C2=D4<br>
-		=CF=D6=BB=F5=B2=C9=B9=BA=CA=B1=B5=C4=CC=B8=C5=D0=B2=DF=C2=D4<br>
-		=B6=A9=B5=A5=CA=BD=B9=A9=D3=A6=CA=B1=B5=C4=CC=B8=C5=D0=B2=DF=C2=D4<br>
-		=A1=F4 =B0=B8=C0=FD=D1=DD=CA=BE<br>
-		<font color=3D"#0000FF">=BE=C5=A1=A2=B2=C9=B9=BA=BC=A8=D0=A7=B9=DC=C0=ED=
-=B5=C4=CA=B5=CA=A9=D3=EB=C6=C0=B9=C0</font><br>
-		=CD=A8=B9=FD=B8=C4=C9=C6=B9=A9=D3=A6=C9=CC=BC=A8=D0=A7=C0=B4=CC=E1=C9=FD=
-=B2=C9=B9=BA=BC=A8=D0=A7=B1=ED=CF=D6<br>
-		=CD=A8=B9=FD=B2=C9=B9=BA=D6=B0=C4=DC=B5=C4=D5=FB=BA=CF=CC=E1=C9=FD=B2=C9=
-=B9=BA=BC=A8=D0=A7=B1=ED=CF=D6<br>
-		=CD=A8=B9=FD=D3=D0=D0=A7=B5=C4=B3=C9=B1=BE=B9=DC=C0=ED=B7=BD=B7=A8=CC=E1=
-=C9=FD=B2=C9=B9=BA=B3=C9=B1=BE=BE=BA=D5=F9=C1=A6<br>
-		=CD=A8=B9=FD=B9=A9=D3=A6=C1=B4=B9=DC=C0=ED=BC=BC=CA=F5=CA=B5=CF=D6=B2=C4=
-=C1=CF=BF=E2=B4=E6=BA=CF=C0=ED=BB=AF<br>
-		=B2=C9=B9=BA=BC=A8=D0=A7=C4=EA=B6=C8=D7=DC=BD=E1<br>
-		=CA=AE=A1=A2=D7=DB=BA=CF=B0=B8=C0=FD=B7=D6=CE=F6=D3=EB=CA=B5=BC=CA=CE=CA=
-=CC=E2=BD=E2=B4=F0<br>
-		</FONT><B><FONT color=3D#0000ff=20
-      size=3D3>=B5=BC=CA=A6=BC=F2=BD=E9</FONT></B><BR>&nbsp;&nbsp;<FONT c=
-olor=3D#000000 size=3D"2">jack.wu=A3=AC=D2=D7=CC=DA=B9=DC=C0=ED=B9=CB=CE=CA=
-=B8=DF=BC=B6=B9=CB=CE=CA=CA=A6=A1=A2=CE=EF=C1=F7=D3=EB=B9=A9=D3=A6</FONT>=
-<FONT color=3D#000000 size=3D"2">=D7=A8=D2=B5=BF=CE=B3=CC=BD=B2=CA=DA=D7=A8=
-=BC=D2=A1=A3=CE=E2=C0=CF=CA=A6=D4=DA=CD=E2=D7=CA=C6=F3=D2=B5=B5=C4=B9=A9=D3=
-=A6=C1=B4=B9=DC=C0=ED=C1=EC=D3=F2=BE=DF=D3=D0=CA=AE=B6=E0=C4=EA=B5=C4=B9=A4=
-=D7=F7=BE=AD=D1=E9,=D4=F8=B5=A3=C8=CEIBM=D6=D0=B9=FA=C7=F8=B2=C9=B9=BA=D7=
-=DC=BC=E0,=BD=E1=BA=CF=B6=E0=C4=EA=B5=C4=CA=B5=BC=CA=B2=D9=D7=F7=BE=AD=D1=
-=E9=BA=CD=B7=E1=B8=BB=B5=C4=B9=DC=C0=ED=D7=C9=D1=AF=BE=AD=D1=E9=A3=AC=BD=B2=
-=CA=DA=BB=F2=B8=A8=B5=BC=B9=FD=B5=C4=C6=F3=D2=B5
-		=B0=FC=C0=A8TDK=A1=A2=CB=C9=CF=C2=A1=A2=C1=AA=CF=EB=A1=A2=BB=AA=CE=AA=A1=
-=A2=D6=D0=D0=CB=A1=A2=BB=E3=D4=B4=B9=FB=D6=AD=A1=A2=BF=C9=BF=DA=BF=C9=C0=D6=
-=A1=A2=B0=D9=CA=C2=BF=C9=C0=D6=A1=A2Cadbury=A3=A8=BC=AA=B0=D9=C0=FB=A3=A9=
-=A1=A2=BB=AA=CB=B6=B5=E7=C4=D4=A1=A2=C3=C0=B5=C4=BF=D5=B5=F7=A1=A2=CF=C3=BB=
-=AA=BC=AF=CD=C5=A1=A2=D6=D0=B9=FA=B9=FA=BC=CA=BA=BD=BF=D5=A1=A2ABB=A1=A2=CD=
-=F2=B4=EF=BC=AF=CD=C5=A1=A2=C9=EE=DB=DA=CD=FE=C4=E1=CB=B9=BE=C6=B5=EA=A1=A2=
-=C9=CF=BA=A3=D4=C1=BA=A3=BE=C6=B5=EA=A1=A2NEC=B6=AB=BD=F0=B5=E7=D7=D3=A1=A2=
-=B2=BD=B2=BD=B8=DF=B5=E7=D7=D3=A1=A2=CC=AB=D4=AD=B8=D6=CC=FA=BC=AF=CD=C5=A1=
-=A2PHILIPS=A1=A2=B4=F3=C0=E4=CD=F5=D4=CB=CA=E4=D6=C6=C0=E4=A1=A2=C8=FD=D1=
-=F3=BB=AA=C7=BF=A1=A2TCL=A1=A2=C8=D9=CA=CB=B4=EF=A1=A2=BA=C3=BA=A2=D7=D3=A1=
-=A2=C7=E5=BB=AA=CD=AC=B7=BD=A1=A2=D5=FD=B4=F3=BC=AF=CD=C5=A1=A2=D2=C1=C0=B3=
-=BF=CB=CB=B9=B5=C8=C1=BD=B0=D9=B6=E0=BC=D2,=CA=DC=B5=BD=B9=E3=B7=BA=BA=C3=
-=C6=C0.</FONT><FONT=20
-      color=3D#ff0000 size=3D2><BR></FONT><B><FONT=20
-      size=3D2 color=3D"#0000ff">=CA=B1=BC=E4=B5=D8=B5=E3:</FONT> </B><FO=
-NT face=3D=CB=CE=CC=E5 size=3D2>11=D4=C24-5=C8=D5</FONT><FONT=20
-      size=3D2> (=D6=DC=C1=F9=C8=D5)&nbsp;&nbsp;&nbsp;=C9=CF=BA=A3&nbsp;&=
-nbsp; <BR></FONT><B><FONT=20
-      color=3D#0000ff size=3D2>=B7=D1=D3=C3:</FONT></B><FONT size=3D2> 18=
-00/=C8=CB<FONT=20
-      face=3D=CB=CE=CC=E5>(=BA=AC=BF=CE=B3=CC=B7=D1=A1=A2=BD=CC=B2=C4=A1=A2=
-=CE=E7=B2=CD=B5=C8)</FONT>&nbsp; &nbsp;&nbsp;=CB=C4=C8=CB=D2=D4=C9=CF=B2=CE=
-=BC=D3,=D4=F9=D3=E8=D2=BB=C3=FB=C3=FB=B6=EE<BR>=B1=A8=C3=FB/=D7=C9=D1=AF:=
-=20
-		021-51187131 =D5=C5=D0=A1=BD=E3 <br>
-		=D7=A2:=C8=E7=C4=FA=B2=BB=D0=E8=D2=AA=B4=CB=D3=CA=BC=FE,=C7=EB=C0=B4=B5=
-=E7=CB=B5=C3=F7=A1=A3 </FONT></P></TD></TR></TBODY></TABLE></BODY></HTML>
+> OK, yes I know this phenomenon, in most times is this a problem of your
+> network card configuration.
+> Look and your network card will have more then one IP - adresses, if
+> your dhcp server your router.
+> A simple action to stop this phenomenon.
+> Set your ip address room on your router even the number of clients or
+> define one of your computer systems as the dhcp server with out
+> automaticaly assignment of ip adresses.
+> regards
+>    Egon Lehmann
 
+I am not sure whether I understand you correctly...
+How does a  DHCP-server influence NFS?
 
---===============0791245748==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+In my case both the server (192.168.240.140) & the client
+(192.168.10.25) have static IP addresses...
+
+Regards,
+  Evert
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0791245748==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0791245748==--
