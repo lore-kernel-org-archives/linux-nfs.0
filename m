@@ -1,24 +1,30 @@
-From: Andrew Ryan <andrewr@nam-shub.com>
-Subject: stale file handles with linux NFS server, not with NetApp
-Date: Thu, 26 Oct 2006 07:56:33 -0700 (PDT)
-Message-ID: <Pine.LNX.4.58.0610260756050.5475@bolt.sonic.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/2] idmapd: plug memory leak in dirscancb
+Date: Thu, 26 Oct 2006 14:43:41 -0400
+Message-ID: <1161888221.2667.40.camel@tleilax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gd6ep-0006DK-VI
-	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 07:56:36 -0700
-Received: from a.mail.sonic.net ([64.142.16.245])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gd6en-0000JK-Pw
-	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 07:56:37 -0700
-Received: from bolt.sonic.net (bolt.sonic.net [208.201.242.19])
-	by a.mail.sonic.net (8.13.8.Beta0-Sonic/8.13.7) with ESMTP id
-	k9QEuXQ3001292
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 07:56:33 -0700
+	id 1GdACq-0003by-8p
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:43:56 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GdACp-00034N-V7
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:43:57 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	k9QIhlaI011230
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:43:47 -0400
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id k9QIhlrj030978
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:43:47 -0400
+Received: from tleilax.poochiereds.net (vpn-14-145.rdu.redhat.com
+	[10.11.14.145])
+	by pobox.corp.redhat.com (8.13.1/8.12.8) with ESMTP id k9QIhgvi005100
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:43:43 -0400
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,53 +38,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I've recently tried using a RHEL3 machine as an NFS server. The server is
-2 CPU Xeon, running 2.4.21-37.ELsmp kernel. The client is also RHEL3,
-running 2.4.21-40.ELsmp. The clients are automounting homedirs from the
-server. For years we've been using a Netapp server (currently running
-ONTAP 7.0.1) and it's worked just fine. Trying the RHEL3 server though,
-I'm experiencing a weird issue that I can't explain or fix.
+There is a pretty nasty memory leak in idmapd in dirscancb(). Some of
+our customers have reported that idmapd can eat gigabytes of memory on
+machines with a large number of mounts and unmounts and a long uptime.
 
-1. Log in as user with an automounted homedir
-2. cd in to some subdirectory (Foo/Bar/bax in example below) of homedir
-   (can't duplicate the problem in the homedir itself)
-3. Wait a few minutes (automount timeout is 60 seconds)
-4. Try to access cwd:
-[grue@cu015 bax]$ ls -l /proc/$$/cwd
-lrwxrwxrwx    1 grue     __cubitu        0 Oct 26 06:48 /proc/16280/cwd ->
-/home/grue/Foo/Bar/bax
-5. So far so good, now *really* try to access this:
-[grue@cu015 bax]$ sudo mkdir -p /tmp/gasd/dfsdf/sdf/
-Password:
-mkdir: cannot open current directory: Stale NFS file handle
-[grue@cu015 bax]$ ls -l /proc/$$/cwd
-lrwxrwxrwx    1 grue     __cubitu        0 Oct 26 06:48 /proc/16280/cwd ->
-/home/grue/Foo/Bar/bax (deleted)
+That function uses scandir(), which malloc's an array of strings, but
+dirscancb() never frees the strings or the array. The following patch
+should correct this, but I've not yet tested it on 1.0.10 (only on the
+RHEL4 1.0.6 version). Still, the code is very similar and I'm fairly
+certain the problem exists in both versions.
 
-At this point I need to cd out of this directory and then back into the
-directory in order to get the Stale NFS file handle message to go away.
-According to /proc/mounts the filesystem is still mounted.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-My first inclination would be to blame autofs here, except that the exact
-same automount config works fine against our NetApp filer: no "Stale file
-handle" message is ever received no matter how long we wait.
+--- nfs-utils-1.0.10/utils/idmapd/idmapd.c.leak
++++ nfs-utils-1.0.10/utils/idmapd/idmapd.c
+@@ -464,7 +464,7 @@ dirscancb(int fd, short which, void *dat
+ 				goto next;
+ 
+ 			if ((ic = calloc(1, sizeof(*ic))) == NULL)
+-				return;
++				goto out;
+ 			strlcpy(ic->ic_clid, ents[i]->d_name + 4,
+ 			    sizeof(ic->ic_clid));
+ 			path[0] = '\0';
+@@ -474,7 +474,7 @@ dirscancb(int fd, short which, void *dat
+ 			if ((ic->ic_dirfd = open(path, O_RDONLY, 0)) == -1) {
+ 				idmapd_warn("dirscancb: open(%s)", path);
+ 				free(ic);
+-				return;
++				goto out;
+ 			}
+ 
+ 			strlcat(path, "/idmap", sizeof(path));
+@@ -486,7 +486,7 @@ dirscancb(int fd, short which, void *dat
+ 			if (nfsopen(ic) == -1) {
+ 				close(ic->ic_dirfd);
+ 				free(ic);
+-				return;
++				goto out;
+ 			}
+ 
+ 			ic->ic_id = "Client";
+@@ -512,6 +512,11 @@ dirscancb(int fd, short which, void *dat
+ 		} else
+ 			ic->ic_scanned = 0;
+ 	}
++
++out:
++	for (i = 0;  i < nent; i++)
++		free(ents[i]);
++	free(ents);
+ 	return;
+ }
+ 
 
-The export on the server is done "rw,sync".
-On the client, auto.master is one line:
-/home       /etc/auto.sharedhome --debug
-and /etc/auto.sharedhome is also one line:
-grue   -fstype=nfs,rw,tcp,nfsvers=3,rsize=32768,wsize=32768,intr,hard,fg
-mgr:/u1/chroot/home/&
 
-This seems like such an obvious problem that I'm wondering what I'm doing
-wrong, but can't figure out anything. I can provide any
-additional debugging detail needed. Switching to 2.6/RHEL4 is not really
-an option for us at this point, so we haven't tried it to see if that
-fixes it.
-
-
-Thanks
---andrew
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
