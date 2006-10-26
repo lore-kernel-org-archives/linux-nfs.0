@@ -1,30 +1,31 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/2] idmapd: plug memory leak in dirscancb
-Date: Thu, 26 Oct 2006 14:43:41 -0400
-Message-ID: <1161888221.2667.40.camel@tleilax.poochiereds.net>
+Subject: [PATCH 2/2] idmapd: fix use after free in dirscancb cleanup
+	loop
+Date: Thu, 26 Oct 2006 14:45:39 -0400
+Message-ID: <1161888339.2667.44.camel@tleilax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GdACq-0003by-8p
-	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:43:56 -0700
+	id 1GdAEk-0003oH-Gg
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:45:54 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GdACp-00034N-V7
-	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:43:57 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GdAEi-0006sJ-Ar
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 11:45:55 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
 	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
-	k9QIhlaI011230
-	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:43:47 -0400
+	k9QIjkrN012533
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:45:46 -0400
 Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id k9QIhlrj030978
-	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:43:47 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id k9QIjjPL031902
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:45:45 -0400
 Received: from tleilax.poochiereds.net (vpn-14-145.rdu.redhat.com
 	[10.11.14.145])
-	by pobox.corp.redhat.com (8.13.1/8.12.8) with ESMTP id k9QIhgvi005100
-	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:43:43 -0400
+	by pobox.corp.redhat.com (8.13.1/8.12.8) with ESMTP id k9QIjdEC005682
+	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 14:45:40 -0400
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -38,59 +39,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-There is a pretty nasty memory leak in idmapd in dirscancb(). Some of
-our customers have reported that idmapd can eat gigabytes of memory on
-machines with a large number of mounts and unmounts and a long uptime.
+The previous patch seems to expose a use after free bug in dirscancb. At
+least, I could reliably reproduce a segfault by doing a bunch of mounts
+and then unmounting them all. The code uses the following list macro:
 
-That function uses scandir(), which malloc's an array of strings, but
-dirscancb() never frees the strings or the array. The following patch
-should correct this, but I've not yet tested it on 1.0.10 (only on the
-RHEL4 1.0.6 version). Still, the code is very similar and I'm fairly
-certain the problem exists in both versions.
+      TAILQ_FOREACH(ic, icq, ic_next) {
+
+...to iterate over all of the ic entries and clean up any that no longer
+have a corresponding directory in rpc_pipefs. This macro unrolls into:
+
+      for(ic=icq->tqh_first; ic != NULL; ic=ic->ic_next.tqe_next) {
+
+...but within this loop, we can free ic, and then the for loop can trip
+over that when it tries to do the iteration. The attached patch works
+around this by not using the TAILQ_FOREACH macro and saving off the
+tqe_next pointer prior to the free.
+
+Again, this was tested on a patched 1.0.6, but the 1.0.10 code is very
+similar, and I think the problem exists there as well.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
---- nfs-utils-1.0.10/utils/idmapd/idmapd.c.leak
+--- nfs-utils-1.0.10/utils/idmapd/idmapd.c.segv
 +++ nfs-utils-1.0.10/utils/idmapd/idmapd.c
-@@ -464,7 +464,7 @@ dirscancb(int fd, short which, void *dat
- 				goto next;
+@@ -444,7 +444,7 @@ dirscancb(int fd, short which, void *dat
+ {
+ 	int nent, i;
+ 	struct dirent **ents;
+-	struct idmap_client *ic;
++	struct idmap_client *ic, *nextic;
+ 	char path[PATH_MAX];
+ 	struct idmap_clientq *icq = data;
  
- 			if ((ic = calloc(1, sizeof(*ic))) == NULL)
--				return;
-+				goto out;
- 			strlcpy(ic->ic_clid, ents[i]->d_name + 4,
- 			    sizeof(ic->ic_clid));
- 			path[0] = '\0';
-@@ -474,7 +474,7 @@ dirscancb(int fd, short which, void *dat
- 			if ((ic->ic_dirfd = open(path, O_RDONLY, 0)) == -1) {
- 				idmapd_warn("dirscancb: open(%s)", path);
- 				free(ic);
--				return;
-+				goto out;
- 			}
+@@ -498,7 +498,9 @@ dirscancb(int fd, short which, void *dat
+ 		}
+ 	}
  
- 			strlcat(path, "/idmap", sizeof(path));
-@@ -486,7 +486,7 @@ dirscancb(int fd, short which, void *dat
- 			if (nfsopen(ic) == -1) {
- 				close(ic->ic_dirfd);
- 				free(ic);
--				return;
-+				goto out;
- 			}
- 
- 			ic->ic_id = "Client";
-@@ -512,6 +512,11 @@ dirscancb(int fd, short which, void *dat
+-	TAILQ_FOREACH(ic, icq, ic_next) {
++	ic = TAILQ_FIRST(icq);
++	while(ic != NULL) {
++		nextic=TAILQ_NEXT(ic, ic_next);
+ 		if (!ic->ic_scanned) {
+ 			event_del(&ic->ic_event);
+ 			close(ic->ic_fd);
+@@ -511,6 +513,7 @@ dirscancb(int fd, short which, void *dat
+ 			free(ic);
  		} else
  			ic->ic_scanned = 0;
++		ic = nextic;
  	}
-+
-+out:
-+	for (i = 0;  i < nent; i++)
-+		free(ents[i]);
-+	free(ents);
- 	return;
- }
  
+ out:
 
 
 
