@@ -1,9 +1,8 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: [PATCH 2/2] idmapd: fix use after free in dirscancb
-	cleanup loop
-Date: Thu, 26 Oct 2006 15:51:18 -0400
-Message-ID: <4d569c330610261251x62c615d2j9a5d8a76553df222@mail.gmail.com>
-References: <1161888339.2667.44.camel@tleilax.poochiereds.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFSroot using NFSv4?
+Date: Thu, 26 Oct 2006 22:48:47 -0700
+Message-ID: <1161928127.6166.39.camel@lade.trondhjem.org>
+References: <1161861313.454098c141626@stud.fbi.h-da.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,15 +10,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GdBG6-0004AL-Mb
-	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 12:51:22 -0700
-Received: from wx-out-0506.google.com ([66.249.82.231])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GdBG6-000528-LY
-	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 12:51:23 -0700
-Received: by wx-out-0506.google.com with SMTP id r21so737637wxc
-	for <nfs@lists.sourceforge.net>; Thu, 26 Oct 2006 12:51:19 -0700 (PDT)
-To: "Jeff Layton" <jlayton@redhat.com>
-In-Reply-To: <1161888339.2667.44.camel@tleilax.poochiereds.net>
+	id 1GdKaV-0000ZW-Tc
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 22:49:03 -0700
+Received: from pat.uio.no ([129.240.10.4] ident=7411)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GdKaU-00066W-KO
+	for nfs@lists.sourceforge.net; Thu, 26 Oct 2006 22:49:05 -0700
+To: glogow@fbihome.de
+In-Reply-To: <1161861313.454098c141626@stud.fbi.h-da.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,13 +30,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Thanks for these.  I will work on getting them into our patch and on
-to Neil ASAP.
+On Thu, 2006-10-26 at 13:15 +0200, glogow@fbihome.de wrote:
+> Hi
+> 
+> I'm looking for some information on using Linux kernel NFSroot with NFSv4.
+> 
+> >From reading some documentation it seems that there are some additional daemons
+> involved to mount NFSv4 exports on a client (idmapd, gssd (just for krb5?)).
+> 
+> Is it possible to run NFSv4 as a read-only NFSroot, without an initrd /
+> initramfs, which would otherwise start these deamons and use a NFSv4 enabled
+> mount and a pivot_root?
 
-On 10/26/06, Jeff Layton <jlayton@redhat.com> wrote:
-> The previous patch seems to expose a use after free bug in dirscancb. At
-> least, I could reliably reproduce a segfault by doing a bunch of mounts
-> and then unmounting them all. The code uses the following list macro:
+Not at this point. We may look into providing NFSroot support for NFSv4
+if there is enough interest, but at the moment you will at least need an
+idmapd in userland running before you attempt to mount the volume.
+
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
