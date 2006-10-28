@@ -1,26 +1,22 @@
-From: bob@proulx.com (Bob Proulx)
-Subject: Re: Annoying rename() problem
-Date: Fri, 27 Oct 2006 23:09:07 -0600
-Message-ID: <20061028050907.GB22175@dementia.proulx.com>
-References: <003f01c6f54a$90506250$020010ac@athlon64>
-	<20061024160932.GB17308@dementia.proulx.com>
-	<20061026025120.GA12505@fieldses.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: NFSroot using NFSv4?
+Date: Sat, 28 Oct 2006 11:31:42 +0200
+Message-ID: <20061028093142.GA16741@janus>
+References: <1161861313.454098c141626@stud.fbi.h-da.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GdgwU-0000Lh-E2
-	for nfs@lists.sourceforge.net; Fri, 27 Oct 2006 22:41:14 -0700
-Received: from joseki.proulx.com ([216.17.153.58])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GdgwT-0000Hn-NS
-	for nfs@lists.sourceforge.net; Fri, 27 Oct 2006 22:41:15 -0700
-Received: from dementia.proulx.com (dementia.proulx.com [192.168.1.115])
-	by joseki.proulx.com (Postfix) with ESMTP id B8C2D4B2E8
-	for <nfs@lists.sourceforge.net>; Fri, 27 Oct 2006 23:09:05 -0600 (MDT)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20061026025120.GA12505@fieldses.org>
+	id 1GdkXa-0002oY-VR
+	for nfs@lists.sourceforge.net; Sat, 28 Oct 2006 02:31:47 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GdkXZ-0007sa-OX
+	for nfs@lists.sourceforge.net; Sat, 28 Oct 2006 02:31:48 -0700
+To: glogow@fbihome.de
+In-Reply-To: <1161861313.454098c141626@stud.fbi.h-da.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,44 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> I'd have guessed the client is replaying the rename request and only
-> seeing the reply to the second attempt (even though the first also
-> succeeded).
+On Thu, Oct 26, 2006 at 01:15:13PM +0200, glogow@fbihome.de wrote:
+> Hi
+> 
+> I'm looking for some information on using Linux kernel NFSroot with NFSv4.
+> 
+> >From reading some documentation it seems that there are some additional daemons
+> involved to mount NFSv4 exports on a client (idmapd, gssd (just for krb5?)).
+> 
+> Is it possible to run NFSv4 as a read-only NFSroot, without an initrd /
+> initramfs, which would otherwise start these deamons and use a NFSv4 enabled
+> mount and a pivot_root?
 
-That is possible.  In a busy network environment it would be possible
-for the udp packets to be duplicated.  If the nfs system did not
-handle this duplication then it could be fooled into thinking it had
-failed when it had not.  But I thought that nfs handled udp with
-checksumming and retries, no?
+The proper way to do that is actually to put an "/init"  script in
+initrd. The kernel won't mount a root filesystem (i.e. no root= parameter)
+and leaves it up to the early userspace /init script to setup the root
+mount, e.g. /newroot. The last step for /init (being pid 1) is a
 
-> Are you using tcp?
+	exec chroot /newroot /sbin/init <args>
 
-I am using udp.  I don't know about the OP.
+This can handle much more types of root mounts and avoids the need for
+an in-kernel nfsroot.
 
-> (And if not, does switching help?)
-
-I don't know if switching to tcp would help.  For various reasons I
-can't really make that change at this time.
-
-> Does adjusting the timeout times (see timeo, retrans in "man nfs")
-> help?
-
-Various people in my lab have tried an assortment of nfs timeout and
-retransmit options, with regards to nfs performance, not to this
-particular problem.
-
-I don't know if the original poster Antoniu-George SAVU will be able
-to benefit from the suggestions here.  In my case the problem is
-already worked around with code changes in the application.  Therefore
-my test case has dissappeared.  
-
-I was just adding a sighting confirmation to the original poster
-Antoniu-George SAVU's report of this problem that I have also seen a
-problem that looks identical.  So I don't think this is an isolated
-problem.  Unfortunately the test case has gone away for me.
-
-Bob
+-- 
+Frank
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
