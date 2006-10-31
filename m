@@ -1,28 +1,25 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: [BUG] All Kerberos mounts stop working,
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [BUG] All Kerberos mounts stop working,
 	restarting rpc.svcgssd helps
-Date: Tue, 31 Oct 2006 01:12:48 +0100
-Message-ID: <20061031001248.GA19915@uio.no>
+Date: Mon, 30 Oct 2006 23:53:02 -0500
+Message-ID: <4d569c330610302053k2c9644b7ge2dfb862ce274af3@mail.gmail.com>
+References: <20061031001248.GA19915@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GehGQ-0008MR-Dy
-	for nfs@lists.sourceforge.net; Mon, 30 Oct 2006 16:13:58 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GehGP-0005va-6Y
-	for nfs@lists.sourceforge.net; Mon, 30 Oct 2006 16:13:59 -0800
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1GehGC-0002Uo-Bv
-	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 01:13:44 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1GehFI-0005DH-00
-	for <nfs@lists.sourceforge.net>; Tue, 31 Oct 2006 01:12:48 +0100
-To: nfs@lists.sourceforge.net
+	id 1Gelca-0008HR-9l
+	for nfs@lists.sourceforge.net; Mon, 30 Oct 2006 20:53:08 -0800
+Received: from ug-out-1314.google.com ([66.249.92.168])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GelcX-00015d-4v
+	for nfs@lists.sourceforge.net; Mon, 30 Oct 2006 20:53:09 -0800
+Received: by ug-out-1314.google.com with SMTP id p27so1367295ugc
+	for <nfs@lists.sourceforge.net>; Mon, 30 Oct 2006 20:53:03 -0800 (PST)
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+In-Reply-To: <20061031001248.GA19915@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,24 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-[Please Cc me on any replies, I'm not subscribed to the list]
+On 10/30/06, Steinar H. Gunderson <sgunderson@bigfoot.com> wrote:
+> [Please Cc me on any replies, I'm not subscribed to the list]
+>
+> Hi,
+>
+> We have a machine here running nfs-utils 1.0.10 serving Kerberos over NFSv4,
+> and every now and then (typically about once a day, but that varies) mounts
+> just stop working. rpc.svcgssd still runs, packets fly back and forth, but
+> mount simply refuses. Restarting rpc.svcgssd fixes the problems
+> immediately -- hosts mounting NFSv4 non-kerberized work just fine.
+>
+> I've put up a transcript at
+> http://home.samfundet.no/~sesse/svcgssd-dying.log.bz2 -- hope you get
+> something useful out of it. (I guess we'll have to change the keytab now, but
+> hey :-) ) Only the last few calls in there are buggy; the rest are all good.
+>
+> /* Steinar */
 
-Hi,
+Hello Steinar,
+I don't see anything in the svcgssd output indicating there was any
+kind of error.
 
-We have a machine here running nfs-utils 1.0.10 serving Kerberos over NFSv4,
-and every now and then (typically about once a day, but that varies) mounts
-just stop working. rpc.svcgssd still runs, packets fly back and forth, but
-mount simply refuses. Restarting rpc.svcgssd fixes the problems
-immediately -- hosts mounting NFSv4 non-kerberized work just fine.
+When you say "packets fly back and forth, but mount simply refuses",
+is there any kind of delay (i.e. 30 second timeout) or does the mount
+fail pretty quickly?  Do you see the "typical" error message(s) from
+mount?
 
-I've put up a transcript at
-http://home.samfundet.no/~sesse/svcgssd-dying.log.bz2 -- hope you get
-something useful out of it. (I guess we'll have to change the keytab now, but
-hey :-) ) Only the last few calls in there are buggy; the rest are all good.
+What kernel is this with?
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+K.C.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
