@@ -1,9 +1,10 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Subject: Re: [BUG] All Kerberos mounts stop working,
 	restarting rpc.svcgssd helps
-Date: Mon, 30 Oct 2006 23:53:02 -0500
-Message-ID: <4d569c330610302053k2c9644b7ge2dfb862ce274af3@mail.gmail.com>
+Date: Tue, 31 Oct 2006 11:03:46 +0100
+Message-ID: <20061031100346.GA2906@uio.no>
 References: <20061031001248.GA19915@uio.no>
+	<4d569c330610302053k2c9644b7ge2dfb862ce274af3@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,15 +12,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gelca-0008HR-9l
-	for nfs@lists.sourceforge.net; Mon, 30 Oct 2006 20:53:08 -0800
-Received: from ug-out-1314.google.com ([66.249.92.168])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GelcX-00015d-4v
-	for nfs@lists.sourceforge.net; Mon, 30 Oct 2006 20:53:09 -0800
-Received: by ug-out-1314.google.com with SMTP id p27so1367295ugc
-	for <nfs@lists.sourceforge.net>; Mon, 30 Oct 2006 20:53:03 -0800 (PST)
-To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-In-Reply-To: <20061031001248.GA19915@uio.no>
+	id 1GeqUH-0000VB-5L
+	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 02:04:54 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GeqUG-0001Gy-Tt
+	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 02:04:54 -0800
+To: Kevin Coffman <kwc@citi.umich.edu>
+In-Reply-To: <4d569c330610302053k2c9644b7ge2dfb862ce274af3@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/30/06, Steinar H. Gunderson <sgunderson@bigfoot.com> wrote:
-> [Please Cc me on any replies, I'm not subscribed to the list]
->
-> Hi,
->
-> We have a machine here running nfs-utils 1.0.10 serving Kerberos over NFSv4,
-> and every now and then (typically about once a day, but that varies) mounts
-> just stop working. rpc.svcgssd still runs, packets fly back and forth, but
-> mount simply refuses. Restarting rpc.svcgssd fixes the problems
-> immediately -- hosts mounting NFSv4 non-kerberized work just fine.
->
-> I've put up a transcript at
-> http://home.samfundet.no/~sesse/svcgssd-dying.log.bz2 -- hope you get
-> something useful out of it. (I guess we'll have to change the keytab now, but
-> hey :-) ) Only the last few calls in there are buggy; the rest are all good.
->
-> /* Steinar */
+On Mon, Oct 30, 2006 at 11:53:02PM -0500, Kevin Coffman wrote:
+> Hello Steinar,
+> I don't see anything in the svcgssd output indicating there was any
+> kind of error.
 
-Hello Steinar,
-I don't see anything in the svcgssd output indicating there was any
-kind of error.
+Me neither, that's why it's so odd. :-)
 
-When you say "packets fly back and forth, but mount simply refuses",
-is there any kind of delay (i.e. 30 second timeout) or does the mount
-fail pretty quickly?  Do you see the "typical" error message(s) from
-mount?
+> When you say "packets fly back and forth, but mount simply refuses",
+> is there any kind of delay (i.e. 30 second timeout) or does the mount
+> fail pretty quickly?  Do you see the "typical" error message(s) from
+> mount?
 
-What kernel is this with?
+The mount fails immediately, IIRC with simply "Permission denied". Also,
+existing mounts stop working (usually, they hang).
 
-K.C.
+> What kernel is this with?
+
+Mostly 2.6.17 and 2.6.18 on the clients; 2.6.17.11 on the server.
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
