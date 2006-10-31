@@ -1,68 +1,36 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [BUG] All Kerberos mounts stop working,
-	restarting rpc.svcgssd helps
-Date: Tue, 31 Oct 2006 15:32:48 +0100
-Message-ID: <20061031143248.GA8444@uio.no>
-References: <20061031001248.GA19915@uio.no>
-	<4d569c330610302053k2c9644b7ge2dfb862ce274af3@mail.gmail.com>
-	<20061031100346.GA2906@uio.no>
-	<4d569c330610310543r429f0b4fk1dcdfa44836026c2@mail.gmail.com>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [PATCH] NFS: nfsaclsvc_encode_getaclres() - Fix potential NULL deref and tiny optimization.
+Date: Tue, 31 Oct 2006 17:26:00 +0100
+Message-ID: <200610311726.00411.agruen@suse.de>
+References: <200610272316.47089.jesper.juhl@gmail.com> <Pine.LNX.4.64N.0610271443500.31179@attu2.cs.washington.edu> <200610280001.49272.jesper.juhl@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Geugj-0008S9-BF
-	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 06:34:01 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Geugf-0003iw-Uc
-	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 06:34:02 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <4d569c330610310543r429f0b4fk1dcdfa44836026c2@mail.gmail.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: David Rientjes <rientjes@cs.washington.edu>,
+	linux-kernel@vger.kernel.org, Neil Brown <neilb@cse.unsw.edu.au>,
+	nfs@lists.sourceforge.net, Andrew Morton <akpm@osdl.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1423441AbWJaQZT@vger.kernel.org>
+To: Jesper Juhl <jesper.juhl@gmail.com>
+In-Reply-To: <200610280001.49272.jesper.juhl@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, Oct 31, 2006 at 08:43:47AM -0500, Kevin Coffman wrote:
-> When you say existing mounts stop working, do you mean that data is no
-> longer available on those existing mounts, or that new connections
-> requiring new contexts via svcgssd stop working?
+On Saturday 28 October 2006 00:01, Jesper Juhl wrote:
+> > > 3) There are two locations in the function where we may return before
+> > > we use the value of the variable 'w', but we compute it at the very top
+> > > of the function. So in the case where we return early we have wasted a
+> > > few cycles computing a value that was never used.
 
-Data is no longer available on those existing mounts. In fact, if I run ls
--ld on the mount point, it is suddenly owned by the user and group "?".
+Computing w later in the function is fine.
 
-> Could you send a packet trace from the server after mounts stop
-> working?  (tcpdump -s 0 -w /tmp/x)  Also, if it is enabled, could you
-> get the output from sysRq-T?
+> > w should be an unsigned int.
+>
+> Makes sense.
 
-I'll be sure to grab the data next time the problems occur.
+No, this breaks the while loop further below: with an unsigned int, the loop 
+counter underflows and wraps.
 
-By the way, I also have an strace log available; but it's rather large-ish:
+Please fix this identically in fs/nfsd/nfs2acl.c and fs/nfsd/nfs3acl.c.
 
-  http://home.samfundet.no/~sesse/svcgssd-strace.log.bz2
-
-Note that it's not the same invocation as the previous log I sent you.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
-
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Thanks,
+Andreas
