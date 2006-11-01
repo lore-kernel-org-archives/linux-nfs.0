@@ -1,25 +1,33 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Some uncomformity between the realization of the kernel
- and the RFC1813
-Date: Wed, 01 Nov 2006 09:21:35 -0500
-Message-ID: <4548AD6F.7020109@redhat.com>
-References: <008001c6fd5f$2c350330$8904a8c0@xurui>	<20061101025052.GA32052@fieldses.org>
-	<009301c6fd67$77a68b60$8904a8c0@xurui>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] mountd: clean up hostname handling
+	when	authenticating clients
+Date: Wed, 01 Nov 2006 09:32:15 -0500
+Message-ID: <1162391535.3717.10.camel@dantu.rdu.redhat.com>
+References: <1161781626.7078.53.camel@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfGyQ-0006Tk-OK
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 06:21:46 -0800
+	id 1GfH8z-0007XO-LU
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 06:32:41 -0800
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfGyN-0000ez-KJ
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 06:21:48 -0800
-To: xurui <xur@nanjing-fnst.com>
-In-Reply-To: <009301c6fd67$77a68b60$8904a8c0@xurui>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfH8z-0003Fq-VT
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 06:32:42 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	kA1EWZ8a012620
+	for <nfs@lists.sourceforge.net>; Wed, 1 Nov 2006 09:32:35 -0500
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kA1EWZLt011619
+	for <nfs@lists.sourceforge.net>; Wed, 1 Nov 2006 09:32:35 -0500
+Received: from [172.16.57.196] (dantu.rdu.redhat.com [172.16.57.196])
+	by pobox.corp.redhat.com (8.13.1/8.12.8) with ESMTP id kA1EWGfF021169
+	for <nfs@lists.sourceforge.net>; Wed, 1 Nov 2006 09:32:18 -0500
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1161781626.7078.53.camel@dantu.rdu.redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,52 +40,277 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-xurui wrote:
->> Why do you assume that?
->>     
-> Our assumption is according to the RFC1813(Page 34) described as follows:
-> "If the server receives a full file COMMIT request, that is starting at 
-> offset 0 and count 0, it should do the equivalent of fsync()'ing the file. 
-> Otherwise, it should arrange to have the cached data in the range specified 
-> by offset and count to be flushed to stable storage."
->
-> It shows that when we set the offset and count, the server should cached the 
-> data among this arrange, not the full data in the cache. We don't know why 
-> kernel design it like this .
->
->   
->> That doesn't sound like the right behavior to me.  What if the file has
->> been truncated on the server without the client's knowledge?  Isn't it
->> better in that case to flush out whatever range remains instead of
->> failing the commit?
->>     
->
->
-> We assume that when server receives these packages, it may return fail 
-> message. or others, My question is that if we set the legal offset and count 
-> and their sum is smaller than the file size , the server still flush all 
-> data to the stable storage, not the data specified by the count and offset. 
-> So we believe that some unconformity between the realization of the kernel 
-> and the RFC1813.
+On Wed, 2006-10-25 at 09:07 -0400, Jeff Layton wrote:
+> The current scheme for authenticating clients is what causes us to end
+> up with rmtab entries that look like this:
+> 
+> *:/foo 
+> *:/scratch
+> *,foo.bar.baz:/scratch
+> 
+> When a host is authenticated, we build a comma-separated list of
+> hostnames (via client_compose) and stuff that into the m_hostname field
+> of a static nfs_client struct. We then see if any of those hostnames
+> match any of the existing m_hostnames in the nfs_clients (via repeated
+> calls to client_member). Unfortunately, this means that when we later go
+> to do things like add the host to the kernel caches or the rmtab, it's
+> using a hostname like "*,foo.bar.baz".
+> 
+> This patch simplifies this scheme by getting rid of client_compose,
+> client_member, and a couple of helper functions only used by them. It
+> then adds a new client_resolve function that just turns an address into
+> a hostent. Instead of using client_member, we just make repeated calls
+> to client_check. This means we can now use the m_hostname field for this
+> struct as originally intended, to hold the hostname of the client.
 
-Please be aware that in this respect, RFC1813 describes the minimal that
-a server must do.  If the server implementation decides to write more cached
-data to stable storage than it was requested to do, then it is free to 
-do so.
-All of the cached data at the server must be written to stable storage at
-some time or another and writing it sooner as opposed to later is better
-for stability purposes.
+Below is a respun version of the above patch. Since this patch
+eliminates client_compose, populating the my_client struct in
+auth_authenticate_internal is essentially zero cost. We might as well
+make sure that it always has up to date info. This also simplifies that
+code a bit too.
 
-The intent is that the server do at least what was requested, not less.  
-More
-can be good if it does not significantly impact performance and can 
-potentially
-lead to better performance and/or a simpler implementation.  A simpler
-implementation can often lead to a more stable implementation.
+Any more thoughts on whether this is an acceptable approach, or whether
+there are problems with it that I haven't considered?
 
-    Thanx...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-       ps
+--- nfs-utils-1.0.10/support/export/client.c.mhost
++++ nfs-utils-1.0.10/support/export/client.c
+@@ -234,102 +234,16 @@ client_find(struct hostent *hp)
+ 	return NULL;
+ }
+ 
+-/*
+- * Find client name given an IP address
+- * This is found by gathering all known names that match that IP address,
+- * sorting them and joining them with '+'
+- *
+- */
+-static char *add_name(char *old, char *add);
+-
+-char *
+-client_compose(struct in_addr addr)
++struct hostent *
++client_resolve(struct in_addr addr)
+ {
+ 	struct hostent *he = NULL;
+-	char *name = NULL;
+-	int i;
+ 
+-	if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
+-		he = get_reliable_hostbyaddr((const char*)&addr, sizeof(addr), AF_INET);
++	he = get_reliable_hostbyaddr((const char*)&addr, sizeof(addr), AF_INET);
+ 	if (he == NULL)
+ 		he = get_hostent((const char*)&addr, sizeof(addr), AF_INET);
+ 
+-	for (i = 0 ; i < MCL_MAXTYPES; i++) {
+-		nfs_client	*clp;
+-		for (clp = clientlist[i]; clp ; clp = clp->m_next) {
+-			if (!client_check(clp, he))
+-				continue;
+-			name = add_name(name, clp->m_hostname);
+-		}
+-	}
+-	return name;
+-}
+-
+-int
+-client_member(char *client, char *name)
+-{
+-	/* check if "client" (a ',' separated list of names)
+-	 * contains 'name' as a member
+-	 */
+-	int l = strlen(name);
+-	while (*client) {
+-		if (strncmp(client, name, l) == 0 &&
+-		    (client[l] == ',' || client[l] == '\0'))
+-			return 1;
+-		client = strchr(client, ',');
+-		if (client == NULL)
+-			return 0;
+-		client++;
+-	}
+-	return 0;
+-}
+-
+-
+-int
+-name_cmp(char *a, char *b)
+-{
+-	/* compare strings a and b, but only upto ',' in a */
+-	while (*a && *b && *a != ',' && *a == *b)
+-		a++, b++;
+-	if (!*b && (!*a || !a == ',') )
+-		return 0;
+-	if (!*b) return 1;
+-	if (!*a || *a == ',') return -1;
+-	return *a - *b;
+-}
+-
+-static char *
+-add_name(char *old, char *add)
+-{
+-	int len = strlen(add)+2;
+-	char *new;
+-	char *cp;
+-	if (old) len += strlen(old);
+-	
+-	new = malloc(len);
+-	if (!new) {
+-		free(old);
+-		return NULL;
+-	}
+-	cp = old;
+-	while (cp && *cp && name_cmp(cp, add) < 0) {
+-		/* step cp forward over a name */
+-		char *e = strchr(cp, ',');
+-		if (e)
+-			cp = e+1;
+-		else
+-			cp = cp + strlen(cp);
+-	}
+-	strncpy(new, old, cp-old);
+-	new[cp-old] = 0;
+-	if (cp != old && !*cp)
+-		strcat(new, ",");
+-	strcat(new, add);
+-	if (cp && *cp) {
+-		strcat(new, ",");
+-		strcat(new, cp);
+-	}
+-	return new;
++	return he;
+ }
+ 
+ /*
+--- nfs-utils-1.0.10/support/include/exportfs.h.mhost
++++ nfs-utils-1.0.10/support/include/exportfs.h
+@@ -55,8 +55,7 @@ int				client_check(nfs_client *, struct
+ int				client_match(nfs_client *, char *hname);
+ void				client_release(nfs_client *);
+ void				client_freeall(void);
+-char *				client_compose(struct in_addr addr);
+-int 				client_member(char *client, char *name);
++struct hostent *		client_resolve(struct in_addr addr);
+ 
+ int				export_read(char *fname);
+ void				export_add(nfs_export *);
+--- nfs-utils-1.0.10/utils/mountd/cache.c.mhost
++++ nfs-utils-1.0.10/utils/mountd/cache.c
+@@ -53,8 +53,8 @@ void auth_unix_ip(FILE *f)
+ 	char *cp;
+ 	char class[20];
+ 	char ipaddr[20];
+-	char *client;
+ 	struct in_addr addr;
++	struct hostent *he;
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+ 		return;
+ 
+@@ -73,18 +73,16 @@ void auth_unix_ip(FILE *f)
+ 	auth_reload();
+ 
+ 	/* addr is a valid, interesting address, find the domain name... */
+-	client = client_compose(addr);
+-
++	he = client_resolve(addr);
+ 	
+ 	qword_print(f, "nfsd");
+ 	qword_print(f, ipaddr);
+ 	qword_printint(f, time(0)+30*60);
+-	if (client)
+-		qword_print(f, *client?client:"DEFAULT");
+ 	qword_eol(f);
++	if (he)
++		qword_print(f, *he->h_name?he->h_name:"DEFAULT");
+ 
+-	if (client) free(client);
+-	
++	if (he) free(he);
+ }
+ 
+ void nfsd_fh(FILE *f)
+@@ -106,6 +104,7 @@ void nfsd_fh(FILE *f)
+ 	nfs_export *exp;
+ 	int i;
+ 	int dev_missing = 0;
++	struct hostent *hp = NULL;
+ 
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+ 		return;
+@@ -167,11 +166,12 @@ void nfsd_fh(FILE *f)
+ 	auth_reload();
+ 
+ 	/* Now determine export point for this fsid/domain */
++	hp = gethostbyname(dom);
+ 	for (i=0 ; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
+ 			struct stat stb;
+ 
+-			if (!client_member(dom, exp->m_client->m_hostname))
++			if (!client_check(exp->m_client, hp))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -248,6 +248,7 @@ void nfsd_export(FILE *f)
+ 	int i;
+ 	char *dom, *path;
+ 	nfs_export *exp, *found = NULL;
++	struct hostent *hp;
+ 
+ 
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+@@ -268,9 +269,10 @@ void nfsd_export(FILE *f)
+ 	auth_reload();
+ 
+ 	/* now find flags for this export point in this domain */
++	hp = gethostbyname(dom);
+ 	for (i=0 ; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
+-			if (!client_member(dom, exp->m_client->m_hostname))
++			if (!client_check(exp->m_client, hp))
+ 				continue;
+ 			if (strcmp(path, exp->m_export.e_path))
+ 				continue;
+--- nfs-utils-1.0.10/utils/mountd/auth.c.mhost
++++ nfs-utils-1.0.10/utils/mountd/auth.c
+@@ -75,28 +75,18 @@ auth_authenticate_internal(char *what, s
+ 
+ 	if (new_cache) {
+ 		int i;
+-		/* return static nfs_export with details filled in */
+-		if (my_client.m_naddr != 1 ||
+-		    my_client.m_addrlist[0].s_addr != caller->sin_addr.s_addr) {
+-			/* different client to last time, so do a lookup */
+-			char *n;
+-			my_client.m_naddr = 0;
+-			my_client.m_addrlist[0] = caller->sin_addr;
+-			n = client_compose(caller->sin_addr);
+-			*error = unknown_host;
+-			if (!n)
+-				return NULL;
+-			strcpy(my_client.m_hostname, *n?n:"DEFAULT");
+-			free(n);
+-			my_client.m_naddr = 1;
+-		}
+ 
++		/* return static nfs_export with details filled in */
++		my_client.m_addrlist[0] = caller->sin_addr;
++		my_client.m_naddr = 1;
++		strncpy(my_client.m_hostname, hp->h_name,
++			sizeof(my_client.m_hostname));
+ 		my_exp.m_client = &my_client;
+ 
+ 		exp = NULL;
+ 		for (i = 0; !exp && i < MCL_MAXTYPES; i++) 
+ 			for (exp = exportlist[i]; exp; exp = exp->m_next) {
+-				if (!client_member(my_client.m_hostname, exp->m_client->m_hostname))
++				if (!client_check(exp->m_client, hp))
+ 					continue;
+ 				if (strcmp(path, exp->m_export.e_path))
+ 					continue;
+
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
