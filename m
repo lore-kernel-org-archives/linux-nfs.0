@@ -1,70 +1,89 @@
-From: Chris Wright <chrisw@sous-sol.org>
-Subject: [PATCH 30/61] knfsd: Fix race that can disable NFS server.
-Date: Tue, 31 Oct 2006 21:34:10 -0800
-Message-ID: <20061101054028.568862000@sous-sol.org>
-References: <20061101053340.305569000@sous-sol.org>
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>, torvalds@osdl.org,
-	alan@lxorguk.ukuu.org.uk, NeilBrown <neilb@suse.de>,
-	Adrian Bunk <bunk@stusta.de>, nfs@lists.sourceforge.net,
-	Greg Kroah-Hartman <gregkh@suse.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1946539AbWKAFo1@vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Andrew Morton <akpm@osdl.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Some uncomformity between the realization of the kernel
+ and the RFC1813
+Date: Wed, 01 Nov 2006 09:21:35 -0500
+Message-ID: <4548AD6F.7020109@redhat.com>
+References: <008001c6fd5f$2c350330$8904a8c0@xurui>	<20061101025052.GA32052@fieldses.org>
+	<009301c6fd67$77a68b60$8904a8c0@xurui>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GfGyQ-0006Tk-OK
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 06:21:46 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfGyN-0000ez-KJ
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 06:21:48 -0800
+To: xurui <xur@nanjing-fnst.com>
+In-Reply-To: <009301c6fd67$77a68b60$8904a8c0@xurui>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
--stable review patch.  If anyone has any objections, please let us know.
-------------------
+xurui wrote:
+>> Why do you assume that?
+>>     
+> Our assumption is according to the RFC1813(Page 34) described as follows:
+> "If the server receives a full file COMMIT request, that is starting at 
+> offset 0 and count 0, it should do the equivalent of fsync()'ing the file. 
+> Otherwise, it should arrange to have the cached data in the range specified 
+> by offset and count to be flushed to stable storage."
+>
+> It shows that when we set the offset and count, the server should cached the 
+> data among this arrange, not the full data in the cache. We don't know why 
+> kernel design it like this .
+>
+>   
+>> That doesn't sound like the right behavior to me.  What if the file has
+>> been truncated on the server without the client's knowledge?  Isn't it
+>> better in that case to flush out whatever range remains instead of
+>> failing the commit?
+>>     
+>
+>
+> We assume that when server receives these packages, it may return fail 
+> message. or others, My question is that if we set the legal offset and count 
+> and their sum is smaller than the file size , the server still flush all 
+> data to the stable storage, not the data specified by the count and offset. 
+> So we believe that some unconformity between the realization of the kernel 
+> and the RFC1813.
 
-From: NeilBrown <neilb@suse.de>
+Please be aware that in this respect, RFC1813 describes the minimal that
+a server must do.  If the server implementation decides to write more cached
+data to stable storage than it was requested to do, then it is free to 
+do so.
+All of the cached data at the server must be written to stable storage at
+some time or another and writing it sooner as opposed to later is better
+for stability purposes.
 
-This is a long standing bug that seems to have only recently become
-apparent, presumably due to increasing use of NFS over TCP - many
-distros seem to be making it the default.
+The intent is that the server do at least what was requested, not less.  
+More
+can be good if it does not significantly impact performance and can 
+potentially
+lead to better performance and/or a simpler implementation.  A simpler
+implementation can often lead to a more stable implementation.
 
-The SK_CONN bit gets set when a listening socket may be ready
-for an accept, just as SK_DATA is set when data may be available.
+    Thanx...
 
-It is entirely possible for svc_tcp_accept to be called with neither
-of these set.  It doesn't happen often but there is a small race in
-svc_sock_enqueue as SK_CONN and SK_DATA are tested outside the
-spin_lock.  They could be cleared immediately after the test and
-before the lock is gained.
+       ps
 
-This normally shouldn't be a problem.  The sockets are non-blocking so
-trying to read() or accept() when ther is nothing to do is not a problem.
-
-However: svc_tcp_recvfrom makes the decision "Should I accept() or
-should I read()" based on whether SK_CONN is set or not.  This usually
-works but is not safe.  The decision should be based on whether it is
-a TCP_LISTEN socket or a TCP_CONNECTED socket.
-
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-Signed-off-by: Chris Wright <chrisw@sous-sol.org>
-
----
- net/sunrpc/svcsock.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
---- linux-2.6.18.1.orig/net/sunrpc/svcsock.c
-+++ linux-2.6.18.1/net/sunrpc/svcsock.c
-@@ -902,7 +902,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return 0;
- 	}
- 
--	if (test_bit(SK_CONN, &svsk->sk_flags)) {
-+	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
- 		svc_tcp_accept(svsk);
- 		svc_sock_received(svsk);
- 		return 0;
-
---
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
