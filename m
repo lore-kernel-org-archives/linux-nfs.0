@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/12] SUNRPC: Make rq_daddr field address-version
-	independent
-Date: Wed, 01 Nov 2006 13:08:41 -0500
-Message-ID: <20061101180841.14581.35194.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 09/12] SUNRPC: add a "generic" function to see if the
+	peer uses a secure port
+Date: Wed, 01 Nov 2006 13:08:51 -0500
+Message-ID: <20061101180851.14581.93970.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfKWD-0006Ge-KA
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:53 -0800
+	id 1GfKWM-0006I6-OO
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:09:02 -0800
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKWC-0002md-Sw
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:54 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKWN-0002oT-Kn
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:09:03 -0800
 To: neilb@suse.de
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,84 +29,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The rq_daddr field must support larger addresses.
+The only reason svcsock.c looks at a sockaddr's port is to check whether
+the remote peer is connecting from a privileged port.  Refactor this check
+to hide processing that is specific to address format.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- include/linux/sunrpc/svc.h |   14 ++++++++++----
- net/sunrpc/svcsock.c       |    4 ++--
- 2 files changed, 12 insertions(+), 6 deletions(-)
+ net/sunrpc/svcsock.c |   19 ++++++++++++++++---
+ 1 files changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index fb9768a..ae51e53 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -11,6 +11,7 @@ #ifndef SUNRPC_SVC_H
- #define SUNRPC_SVC_H
- 
- #include <linux/in.h>
-+#include <linux/in6.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/auth.h>
-@@ -188,7 +189,13 @@ static inline void svc_putu32(struct kve
- 	iov->iov_len += sizeof(__be32);
- }
- 
--	
-+union svc_addr_u {
-+    struct in_addr	addr;
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+    struct in6_addr	addr6;
-+#endif
-+};
-+
- /*
-  * The context of a single thread, including the request currently being
-  * processed.
-@@ -224,8 +231,7 @@ struct svc_rqst {
- 	unsigned short
- 				rq_secure  : 1;	/* secure port */
- 
--
--	__be32			rq_daddr;	/* dest addr of request - reply from here */
-+	union svc_addr_u	rq_daddr;	/* dest addr of request - reply from here */
- 
- 	void *			rq_argp;	/* decoded arguments */
- 	void *			rq_resp;	/* xdr'd results */
-@@ -292,7 +298,7 @@ struct svc_deferred_req {
- 	struct sockaddr_storage	addr;
- 	int			addrlen;
- 	struct svc_sock		*svsk;	/* where reply must go */
--	__be32			daddr;	/* where reply must come from */
-+	union svc_addr_u	daddr;	/* where reply must come from */
- 	struct cache_deferred_req handle;
- 	int			argslen;
- 	__be32			args[0];
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index f506780..b0fb46f 100644
+index ccb5ff3..a83d97f 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -446,7 +446,7 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 		cmh->cmsg_level = SOL_IP;
- 		cmh->cmsg_type = IP_PKTINFO;
- 		pki->ipi_ifindex = 0;
--		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr;
-+		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
+@@ -894,6 +894,20 @@ svc_tcp_data_ready(struct sock *sk, int 
+ 		wake_up_interruptible(sk->sk_sleep);
+ }
  
- 		if (sock_sendmsg(sock, &msg, 0) < 0)
- 			goto out;
-@@ -718,7 +718,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	sin->sin_family = AF_INET;
- 	sin->sin_port = skb->h.uh->source;
- 	sin->sin_addr.s_addr = skb->nh.iph->saddr;
--	rqstp->rq_daddr = skb->nh.iph->daddr;
-+	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
++static inline int svc_port_is_privileged(struct sockaddr *sin)
++{
++	switch (sin->sa_family) {
++	case AF_INET:
++		return ntohs(((struct sockaddr_in *)sin)->sin_port) < 1024;
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++	case AF_INET6:
++		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port) < 1024;
++#endif
++	default:
++		return 0;
++	}
++}
++
+ /*
+  * Accept a TCP connection
+  */
+@@ -941,7 +955,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 	 * tell us anything.  For now just warn about unpriv connections.
+ 	 */
+ 	__svc_print_addr((struct sockaddr *) &sin, buf, sizeof(buf));
+-	if (ntohs(sin.sin_port) >= 1024) {
++	if (!svc_port_is_privileged((struct sockaddr *) &sin)) {
+ 		dprintk(KERN_WARNING
+ 			"%s: connect from unprivileged port: %s\n",
+ 			serv->sv_name, buf);
+@@ -1278,7 +1292,6 @@ int
+ svc_recv(struct svc_rqst *rqstp, long timeout)
+ {
+ 	struct svc_sock		*svsk = NULL;
+-	struct sockaddr_in	*sin = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	struct svc_pool		*pool = rqstp->rq_pool;
+ 	int			len, i;
+@@ -1373,7 +1386,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	svsk->sk_lastrecv = get_seconds();
+ 	clear_bit(SK_OLD, &svsk->sk_flags);
  
- 	if (skb_is_nonlinear(skb)) {
- 		/* we have to copy */
+-	rqstp->rq_secure = ntohs(sin->sin_port) < 1024;
++	rqstp->rq_secure = svc_port_is_privileged((struct sockaddr *) &rqstp->rq_addr);
+ 	rqstp->rq_chandle.defer = svc_defer;
+ 
+ 	if (serv->sv_stats)
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
