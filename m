@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/12] SUNRPC: Add a function to format the address in
-	an svc_rqst for printing
-Date: Wed, 01 Nov 2006 13:08:30 -0500
-Message-ID: <20061101180830.14581.18323.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 06/12] SUNRPC: Provide room in svc_rqst for larger
+	addresses
+Date: Wed, 01 Nov 2006 13:08:35 -0500
+Message-ID: <20061101180835.14581.17850.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfKW1-0006FE-7E
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:41 -0800
+	id 1GfKW4-0006Fa-3M
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:44 -0800
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKVy-0002iC-TU
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:42 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKW4-0003Fe-RD
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:45 -0800
 To: neilb@suse.de
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,338 +29,302 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-There are loads of places where the RPC server assumes that the rq_addr
-fields contains an IPv4 address.  Top among these are error and debugging
-messages that display the server's IP address.
-
-Let's refactor the address printing into a separate function that's smart
-enough to figure out the difference between IPv4 and IPv6 addresses.
+Expand the rq_addr field to allow it to contain larger addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/lockd/svc.c             |    6 ++--
- fs/lockd/svc4proc.c        |    7 ++--
- fs/lockd/svcproc.c         |    7 ++--
- fs/nfs/callback.c          |   12 +++++--
- fs/nfsd/nfsfh.c            |    8 ++---
- fs/nfsd/nfsproc.c          |    9 +++--
- include/linux/sunrpc/svc.h |    3 ++
- net/sunrpc/svcsock.c       |   74 ++++++++++++++++++++++++++++++++------------
- 8 files changed, 84 insertions(+), 42 deletions(-)
+ fs/lockd/host.c            |    4 ++--
+ fs/lockd/svc4proc.c        |    6 ++++--
+ fs/lockd/svcproc.c         |    6 ++++--
+ fs/nfs/callback.c          |    2 +-
+ fs/nfs/callback_xdr.c      |    4 ++--
+ fs/nfsd/nfs4state.c        |   18 +++++++++---------
+ fs/nfsd/nfscache.c         |    2 +-
+ include/linux/sunrpc/svc.h |    2 +-
+ net/sunrpc/svcauth_unix.c  |    3 ++-
+ net/sunrpc/svcsock.c       |   14 ++++++++------
+ 10 files changed, 34 insertions(+), 27 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 6341392..de5d221 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -141,6 +141,7 @@ lockd(struct svc_rqst *rqstp)
- 	 */
- 	while ((nlmsvc_users || !signalled()) && nlmsvc_pid == current->pid) {
- 		long timeout = MAX_SCHEDULE_TIMEOUT;
-+		char buf[RPC_MAX_ADDRBUFLEN];
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index fb24a97..ca625dd 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -55,9 +55,9 @@ struct nlm_host *
+ nlmsvc_lookup_host(struct svc_rqst *rqstp,
+ 			const char *hostname, int hostname_len)
+ {
+-	return nlm_lookup_host(1, &rqstp->rq_addr,
++	return nlm_lookup_host(1, (struct sockaddr_in *) &rqstp->rq_addr,
+ 			       rqstp->rq_prot, rqstp->rq_vers,
+-			       hostname, hostname_len);
++				hostname, hostname_len);
+ }
  
- 		if (signalled()) {
- 			flush_signals(current);
-@@ -175,11 +176,10 @@ lockd(struct svc_rqst *rqstp)
- 			break;
- 		}
- 
--		dprintk("lockd: request from %08x\n",
--			(unsigned)ntohl(rqstp->rq_addr.sin_addr.s_addr));
-+		svc_print_addr(rqstp, buf, sizeof(buf));
-+		dprintk("lockd: request from %s\n", buf);
- 
- 		svc_process(rqstp);
--
- 	}
- 
- 	flush_signals(current);
+ /*
 diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index f67146a..a66f9d5 100644
+index a66f9d5..d2ae0ab 100644
 --- a/fs/lockd/svc4proc.c
 +++ b/fs/lockd/svc4proc.c
-@@ -426,10 +426,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
+@@ -224,7 +224,7 @@ nlm4svc_proc_granted(struct svc_rqst *rq
+ 	resp->cookie = argp->cookie;
+ 
+ 	dprintk("lockd: GRANTED       called\n");
+-	resp->status = nlmclnt_grant(&rqstp->rq_addr, &argp->lock);
++	resp->status = nlmclnt_grant((struct sockaddr_in *) &rqstp->rq_addr, &argp->lock);
+ 	dprintk("lockd: GRANTED       status %d\n", ntohl(resp->status));
+ 	return rpc_success;
+ }
+@@ -421,7 +421,9 @@ static __be32
+ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+ 					      void	        *resp)
+ {
+-	struct sockaddr_in	saddr = rqstp->rq_addr;
++	struct sockaddr_in	saddr;
++
++	memcpy(&saddr, &rqstp->rq_addr, sizeof(saddr));
+ 
  	dprintk("lockd: SM_NOTIFY     called\n");
  	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
- 	 || ntohs(saddr.sin_port) >= 1024) {
--		printk(KERN_WARNING
--			"lockd: rejected NSM callback from %08x:%d\n",
--			ntohl(rqstp->rq_addr.sin_addr.s_addr),
--			ntohs(rqstp->rq_addr.sin_port));
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		svc_print_addr(rqstp, buf, sizeof(buf));
-+		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n", buf);
- 		return rpc_system_err;
- 	}
- 
 diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 3707c3a..19e1ac1 100644
+index 19e1ac1..71462fe 100644
 --- a/fs/lockd/svcproc.c
 +++ b/fs/lockd/svcproc.c
-@@ -457,10 +457,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
+@@ -253,7 +253,7 @@ nlmsvc_proc_granted(struct svc_rqst *rqs
+ 	resp->cookie = argp->cookie;
+ 
+ 	dprintk("lockd: GRANTED       called\n");
+-	resp->status = nlmclnt_grant(&rqstp->rq_addr, &argp->lock);
++	resp->status = nlmclnt_grant((struct sockaddr_in *) &rqstp->rq_addr, &argp->lock);
+ 	dprintk("lockd: GRANTED       status %d\n", ntohl(resp->status));
+ 	return rpc_success;
+ }
+@@ -452,7 +452,9 @@ static __be32
+ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+ 					      void	        *resp)
+ {
+-	struct sockaddr_in	saddr = rqstp->rq_addr;
++	struct sockaddr_in	saddr;
++
++	memcpy(&saddr, &rqstp->rq_addr, sizeof(saddr));
+ 
  	dprintk("lockd: SM_NOTIFY     called\n");
  	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
- 	 || ntohs(saddr.sin_port) >= 1024) {
--		printk(KERN_WARNING
--			"lockd: rejected NSM callback from %08x:%d\n",
--			ntohl(rqstp->rq_addr.sin_addr.s_addr),
--			ntohs(rqstp->rq_addr.sin_port));
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		svc_print_addr(rqstp, buf, sizeof(buf));
-+		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n", buf);
- 		return rpc_system_err;
- 	}
- 
 diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 9bdf766..f29ce6a 100644
+index f29ce6a..40489b0 100644
 --- a/fs/nfs/callback.c
 +++ b/fs/nfs/callback.c
-@@ -71,6 +71,8 @@ static void nfs_callback_svc(struct svc_
- 	complete(&nfs_callback_info.started);
+@@ -170,7 +170,7 @@ void nfs_callback_down(void)
  
- 	for(;;) {
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+
- 		if (signalled()) {
- 			if (nfs_callback_info.users == 0)
- 				break;
-@@ -88,8 +90,8 @@ static void nfs_callback_svc(struct svc_
- 					__FUNCTION__, -err);
- 			break;
- 		}
--		dprintk("%s: request from %u.%u.%u.%u\n", __FUNCTION__,
--				NIPQUAD(rqstp->rq_addr.sin_addr.s_addr));
-+		svc_print_addr(rqstp, buf, sizeof(buf));
-+		dprintk("%s: request from %s\n", __FUNCTION__, buf);
- 		svc_process(rqstp);
- 	}
- 
-@@ -170,13 +172,17 @@ static int nfs_callback_authenticate(str
+ static int nfs_callback_authenticate(struct svc_rqst *rqstp)
  {
- 	struct sockaddr_in *addr = &rqstp->rq_addr;
+-	struct sockaddr_in *addr = &rqstp->rq_addr;
++	struct sockaddr_in *addr = (struct sockaddr_in *) &rqstp->rq_addr;
  	struct nfs_client *clp;
-+	char buf[RPC_MAX_ADDRBUFLEN];
+ 	char buf[RPC_MAX_ADDRBUFLEN];
  
- 	/* Don't talk to strangers */
- 	clp = nfs_find_client(addr, 4);
- 	if (clp == NULL)
- 		return SVC_DROP;
--	dprintk("%s: %u.%u.%u.%u NFSv4 callback!\n", __FUNCTION__, NIPQUAD(addr->sin_addr));
-+
-+	svc_print_addr(rqstp, buf, sizeof(buf));
-+	dprintk("%s: %s NFSv4 callback!\n", __FUNCTION__, buf);
- 	nfs_put_client(clp);
-+
- 	switch (rqstp->rq_authop->flavour) {
- 		case RPC_AUTH_NULL:
- 			if (rqstp->rq_proc != CB_NULL)
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 727ab3b..19e7bc3 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -20,6 +20,7 @@ #include <linux/dcache.h>
- #include <linux/mount.h>
- #include <asm/pgtable.h>
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index f8ea1f5..70ae2ef 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -176,7 +176,7 @@ static __be32 decode_getattr_args(struct
+ 	status = decode_fh(xdr, &args->fh);
+ 	if (unlikely(status != 0))
+ 		goto out;
+-	args->addr = &rqstp->rq_addr;
++	args->addr = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	status = decode_bitmap(xdr, args->bitmap);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __FUNCTION__, status);
+@@ -188,7 +188,7 @@ static __be32 decode_recall_args(struct 
+ 	__be32 *p;
+ 	__be32 status;
  
-+#include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/nfsd/nfsd.h>
- 
-@@ -180,10 +181,9 @@ fh_verify(struct svc_rqst *rqstp, struct
- 		/* Check if the request originated from a secure port. */
- 		error = nfserr_perm;
- 		if (!rqstp->rq_secure && EX_SECURE(exp)) {
--			printk(KERN_WARNING
--			       "nfsd: request from insecure port (%u.%u.%u.%u:%d)!\n",
--			       NIPQUAD(rqstp->rq_addr.sin_addr.s_addr),
--			       ntohs(rqstp->rq_addr.sin_port));
-+			char buf[RPC_MAX_ADDRBUFLEN];
-+			svc_print_addr(rqstp, buf, sizeof(buf));
-+			printk(KERN_WARNING "nfsd: request from insecure port %s!\n", buf);
+-	args->addr = &rqstp->rq_addr;
++	args->addr = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	status = decode_stateid(xdr, &args->stateid);
+ 	if (unlikely(status != 0))
+ 		goto out;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 293b649..f6af541 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -713,7 +713,7 @@ out_err:
+ __be32
+ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_setclientid *setclid)
+ {
+-	__be32 			ip_addr = rqstp->rq_addr.sin_addr.s_addr;
++	struct sockaddr_in	*sin = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	struct xdr_netobj 	clname = { 
+ 		.len = setclid->se_namelen,
+ 		.data = setclid->se_name,
+@@ -748,7 +748,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+ 		 */
+ 		status = nfserr_clid_inuse;
+ 		if (!cmp_creds(&conf->cl_cred, &rqstp->rq_cred)
+-				|| conf->cl_addr != ip_addr) {
++				|| conf->cl_addr != sin->sin_addr.s_addr) {
+ 			printk("NFSD: setclientid: string in use by client"
+ 			"(clientid %08x/%08x)\n",
+ 			conf->cl_clientid.cl_boot, conf->cl_clientid.cl_id);
+@@ -768,7 +768,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+ 		if (new == NULL)
  			goto out;
- 		}
+ 		copy_verf(new, &clverifier);
+-		new->cl_addr = ip_addr;
++		new->cl_addr = sin->sin_addr.s_addr;
+ 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		gen_clid(new);
+ 		gen_confirm(new);
+@@ -800,7 +800,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+ 		if (new == NULL)
+ 			goto out;
+ 		copy_verf(new,&conf->cl_verifier);
+-		new->cl_addr = ip_addr;
++		new->cl_addr = sin->sin_addr.s_addr;
+ 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		copy_clid(new, conf);
+ 		gen_confirm(new);
+@@ -819,7 +819,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+ 		if (new == NULL)
+ 			goto out;
+ 		copy_verf(new,&clverifier);
+-		new->cl_addr = ip_addr;
++		new->cl_addr = sin->sin_addr.s_addr;
+ 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		gen_clid(new);
+ 		gen_confirm(new);
+@@ -846,7 +846,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+ 		if (new == NULL)
+ 			goto out;
+ 		copy_verf(new,&clverifier);
+-		new->cl_addr = ip_addr;
++		new->cl_addr = sin->sin_addr.s_addr;
+ 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		gen_clid(new);
+ 		gen_confirm(new);
+@@ -878,7 +878,7 @@ out:
+ __be32
+ nfsd4_setclientid_confirm(struct svc_rqst *rqstp, struct nfsd4_setclientid_confirm *setclientid_confirm)
+ {
+-	__be32 ip_addr = rqstp->rq_addr.sin_addr.s_addr;
++	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	struct nfs4_client *conf, *unconf;
+ 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
+ 	clientid_t * clid = &setclientid_confirm->sc_clientid;
+@@ -897,9 +897,9 @@ nfsd4_setclientid_confirm(struct svc_rqs
+ 	unconf = find_unconfirmed_client(clid);
  
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index ec983b7..5612e00 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -19,6 +19,7 @@ #include <linux/namei.h>
- #include <linux/unistd.h>
- #include <linux/slab.h>
+ 	status = nfserr_clid_inuse;
+-	if (conf && conf->cl_addr != ip_addr)
++	if (conf && conf->cl_addr != sin->sin_addr.s_addr)
+ 		goto out;
+-	if (unconf && unconf->cl_addr != ip_addr)
++	if (unconf && unconf->cl_addr != sin->sin_addr.s_addr)
+ 		goto out;
  
-+#include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/nfsd/nfsd.h>
- #include <linux/nfsd/cache.h>
-@@ -147,11 +148,11 @@ nfsd_proc_read(struct svc_rqst *rqstp, s
- 	 */
- 
- 	if (NFSSVC_MAXBLKSIZE_V2 < argp->count) {
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		svc_print_addr(rqstp, buf, sizeof(buf));
- 		printk(KERN_NOTICE
--			"oversized read request from %u.%u.%u.%u:%d (%d bytes)\n",
--				NIPQUAD(rqstp->rq_addr.sin_addr.s_addr),
--				ntohs(rqstp->rq_addr.sin_port),
--				argp->count);
-+			"oversized read request from %s (%d bytes)\n",
-+				buf, argp->count);
- 		argp->count = NFSSVC_MAXBLKSIZE_V2;
- 	}
- 	svc_reserve(rqstp, (19<<2) + argp->count + 4);
+ 	if ((conf && unconf) && 
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 6100bbe..b2da4f9 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -186,7 +186,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 	rp->c_state = RC_INPROG;
+ 	rp->c_xid = xid;
+ 	rp->c_proc = proc;
+-	rp->c_addr = rqstp->rq_addr;
++	memcpy(&rp->c_addr, &rqstp->rq_addr, sizeof(rp->c_addr));
+ 	rp->c_prot = proto;
+ 	rp->c_vers = vers;
+ 	rp->c_timestamp = jiffies;
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 6fc2684..44e15ca 100644
+index 44e15ca..fb9768a 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -366,5 +366,8 @@ int		   svc_register(struct svc_serv *, 
- void		   svc_wake_up(struct svc_serv *);
- void		   svc_reserve(struct svc_rqst *rqstp, int space);
- struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
-+void		   svc_print_addr(struct svc_rqst *, char *, size_t);
-+
-+#define	RPC_MAX_ADDRBUFLEN	(63U)
+@@ -197,7 +197,7 @@ struct svc_rqst {
+ 	struct list_head	rq_list;	/* idle list */
+ 	struct list_head	rq_all;		/* all threads list */
+ 	struct svc_sock *	rq_sock;	/* socket */
+-	struct sockaddr_in	rq_addr;	/* peer address */
++	struct sockaddr_storage	rq_addr;	/* peer address */
+ 	int			rq_addrlen;
  
- #endif /* SUNRPC_SVC_H */
+ 	struct svc_serv *	rq_server;	/* RPC service definition */
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index e1bd933..21d392a 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -417,6 +417,7 @@ svcauth_unix_info_release(void *info)
+ static int
+ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ {
++	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	struct ip_map *ipm;
+ 
+ 	rqstp->rq_client = NULL;
+@@ -426,7 +427,7 @@ svcauth_unix_set_client(struct svc_rqst 
+ 	ipm = ip_map_cached_get(rqstp);
+ 	if (ipm == NULL)
+ 		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
+-				    rqstp->rq_addr.sin_addr);
++				    sin->sin_addr);
+ 
+ 	if (ipm == NULL)
+ 		return SVC_DENIED;
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c6cff15..4d8a422 100644
+index 4d8a422..f506780 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -40,6 +40,7 @@ #include <asm/uaccess.h>
- #include <asm/ioctls.h>
+@@ -435,7 +435,7 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 		/* set the source and destination */
+ 		struct msghdr	msg;
+ 		msg.msg_name    = &rqstp->rq_addr;
+-		msg.msg_namelen = sizeof(rqstp->rq_addr);
++		msg.msg_namelen = rqstp->rq_addrlen;
+ 		msg.msg_iov     = NULL;
+ 		msg.msg_iovlen  = 0;
+ 		msg.msg_flags	= MSG_MORE;
+@@ -659,6 +659,7 @@ svc_write_space(struct sock *sk)
+ static int
+ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ {
++	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+ 	struct svc_serv	*serv = svsk->sk_server;
+ 	struct sk_buff	*skb;
+@@ -714,9 +715,9 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	rqstp->rq_prot        = IPPROTO_UDP;
  
- #include <linux/sunrpc/types.h>
-+#include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/stats.h>
-@@ -84,6 +85,41 @@ static struct cache_deferred_req *svc_de
-  */
- static int svc_conn_age_period = 6*60;
+ 	/* Get sender address */
+-	rqstp->rq_addr.sin_family = AF_INET;
+-	rqstp->rq_addr.sin_port = skb->h.uh->source;
+-	rqstp->rq_addr.sin_addr.s_addr = skb->nh.iph->saddr;
++	sin->sin_family = AF_INET;
++	sin->sin_port = skb->h.uh->source;
++	sin->sin_addr.s_addr = skb->nh.iph->saddr;
+ 	rqstp->rq_daddr = skb->nh.iph->daddr;
  
-+static void __svc_print_addr(struct sockaddr *addr, char *buf, size_t len)
-+{
-+	switch (addr->sa_family) {
-+	case AF_INET:
-+		snprintf(buf, len, "%u.%u.%u.%u, port=%u",
-+			NIPQUAD(((struct sockaddr_in *) addr)->sin_addr),
-+			htons(((struct sockaddr_in *) addr)->sin_port));
-+		break;
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	case AF_INET6:
-+		snprintf(buf, len, "%x:%x:%x:%x:%x:%x:%x:%x, port=%u",
-+			NIP6(((struct sockaddr_in6 *) addr)->sin6_addr),
-+			htons(((struct sockaddr_in6 *) addr)->sin6_port));
-+		break;
-+#endif
-+	default:
-+		snprintf(buf, len, "unknown address type");
-+		break;
-+	}
-+}
-+
-+/**
-+ * svc_print_addr - Format rq_addr field for printing
-+ * @rqstp: svc_rqst struct containing address to print
-+ * @buf: target buffer for formatted address
-+ * @len: length of target buffer
-+ *
-+ */
-+void svc_print_addr(struct svc_rqst *rqstp, char *buf, size_t len)
-+{
-+	__svc_print_addr((struct sockaddr *) &rqstp->rq_addr, buf, len);
-+
-+}
-+EXPORT_SYMBOL_GPL(svc_print_addr);
-+
- /*
-  * Queue up an idle server thread.  Must have pool->sp_lock held.
-  * Note: this is really a stack rather than a queue, so that we only
-@@ -391,6 +427,7 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 	size_t		base = xdr->page_base;
- 	unsigned int	pglen = xdr->page_len;
- 	unsigned int	flags = MSG_MORE;
-+	char		buf[RPC_MAX_ADDRBUFLEN];
+ 	if (skb_is_nonlinear(skb)) {
+@@ -1244,7 +1245,8 @@ svc_sock_update_bufs(struct svc_serv *se
+ int
+ svc_recv(struct svc_rqst *rqstp, long timeout)
+ {
+-	struct svc_sock		*svsk =NULL;
++	struct svc_sock		*svsk = NULL;
++	struct sockaddr_in	*sin = (struct sockaddr_in *) &rqstp->rq_addr;
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	struct svc_pool		*pool = rqstp->rq_pool;
+ 	int			len, i;
+@@ -1339,7 +1341,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	svsk->sk_lastrecv = get_seconds();
+ 	clear_bit(SK_OLD, &svsk->sk_flags);
  
- 	slen = xdr->len;
+-	rqstp->rq_secure  = ntohs(rqstp->rq_addr.sin_port) < 1024;
++	rqstp->rq_secure = ntohs(sin->sin_port) < 1024;
+ 	rqstp->rq_chandle.defer = svc_defer;
  
-@@ -453,9 +490,10 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 			len += result;
- 	}
- out:
--	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %x)\n",
--			rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len, xdr->len, len,
--		rqstp->rq_addr.sin_addr.s_addr);
-+	svc_print_addr(rqstp, buf, sizeof(buf));
-+	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
-+			rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len,
-+			xdr->len, len, buf);
- 
- 	return len;
- }
-@@ -835,6 +873,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	struct socket	*newsock;
- 	struct svc_sock	*newsvsk;
- 	int		err, slen = 0;
-+	char		buf[RPC_MAX_ADDRBUFLEN];
- 
- 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
- 	if (!sock)
-@@ -865,18 +904,16 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	}
- 
- 	/* Ideally, we would want to reject connections from unauthorized
--	 * hosts here, but when we get encription, the IP of the host won't
--	 * tell us anything. For now just warn about unpriv connections.
-+	 * hosts here, but when we get encryption, the IP of the host won't
-+	 * tell us anything.  For now just warn about unpriv connections.
- 	 */
-+	__svc_print_addr((struct sockaddr *) &sin, buf, sizeof(buf));
- 	if (ntohs(sin.sin_port) >= 1024) {
- 		dprintk(KERN_WARNING
--			"%s: connect from unprivileged port: %u.%u.%u.%u:%d\n",
--			serv->sv_name, 
--			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
-+			"%s: connect from unprivileged port: %s\n",
-+			serv->sv_name, buf);
- 	}
--
--	dprintk("%s: connect from %u.%u.%u.%u:%04x\n", serv->sv_name,
--			NIPQUAD(sin.sin_addr.s_addr), ntohs(sin.sin_port));
-+	dprintk("%s: connect from %s\n", serv->sv_name, buf);
- 
- 	/* make sure that a write doesn't block forever when
- 	 * low on memory
-@@ -909,11 +946,8 @@ svc_tcp_accept(struct svc_sock *svsk)
- 					"sockets, consider increasing the "
- 					"number of nfsd threads\n",
- 						   serv->sv_name);
--				printk(KERN_NOTICE "%s: last TCP connect from "
--					"%u.%u.%u.%u:%d\n",
--					serv->sv_name,
--					NIPQUAD(sin.sin_addr.s_addr),
--					ntohs(sin.sin_port));
-+				printk(KERN_NOTICE "%s: last TCP connect from %s\n",
-+					serv->sv_name, buf);
- 			}
- 			/*
- 			 * Always select the oldest socket. It's not fair,
-@@ -1532,11 +1566,11 @@ svc_create_socket(struct svc_serv *serv,
- 	struct socket	*sock;
- 	int		error;
- 	int		type;
-+	char		buf[RPC_MAX_ADDRBUFLEN];
- 
--	dprintk("svc: svc_create_socket(%s, %d, %u.%u.%u.%u:%d)\n",
--				serv->sv_program->pg_name, protocol,
--				NIPQUAD(sin->sin_addr.s_addr),
--				ntohs(sin->sin_port));
-+	__svc_print_addr((struct sockaddr *) sin, buf, sizeof(buf));
-+	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
-+				serv->sv_program->pg_name, protocol, buf);
- 
- 	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
- 		printk(KERN_WARNING "svc: only UDP and TCP "
+ 	if (serv->sv_stats)
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
