@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/12] RFC: internal RPC server clean-up to support
-	IPv6
-Date: Wed, 01 Nov 2006 13:05:53 -0500
-Message-ID: <20061101180553.14581.77880.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 03/12] SUNRPC: Don't set msg_name and msg_namelen when
+	calling sock_recvmsg
+Date: Wed, 01 Nov 2006 13:08:20 -0500
+Message-ID: <20061101180820.14581.32808.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfKVk-0006E4-NA
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:25 -0800
+	id 1GfKVu-0006El-P9
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:34 -0800
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKVh-0002YU-JG
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:25 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKVt-0003Bc-4B
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:35 -0800
 To: neilb@suse.de
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,15 +29,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+Clean-up: msg_name and msg_namelen are not used by sock_recvmsg, so
+don't bother to set them in svc_recvfrom.
 
-I'm interested in your thoughts on the following clean-up patches to allow the
-Linux RPC server to support IPv6.  This doesn't constitute complete IPv6
-support, but these are necessary API changes that will allow passing and
-manipulating larger addresses.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
+ net/sunrpc/svcsock.c |   23 ++++++++---------------
+ 1 files changed, 8 insertions(+), 15 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 13b37a8..91b040a 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -530,21 +530,14 @@ svc_recv_available(struct svc_sock *svsk
+ static int
+ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ {
+-	struct msghdr	msg;
+-	struct socket	*sock;
+-	int		len, alen;
+-
+-	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+-	sock = rqstp->rq_sock->sk_sock;
+-
+-	msg.msg_name    = &rqstp->rq_addr;
+-	msg.msg_namelen = sizeof(rqstp->rq_addr);
+-	msg.msg_control = NULL;
+-	msg.msg_controllen = 0;
+-
+-	msg.msg_flags	= MSG_DONTWAIT;
++	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct msghdr msg = {
++		.msg_flags	= MSG_DONTWAIT,
++	};
++	int len;
+ 
+-	len = kernel_recvmsg(sock, &msg, iov, nr, buflen, MSG_DONTWAIT);
++	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
++				msg.msg_flags);
+ 
+ 	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
+ 	 */
+@@ -552,7 +545,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	rqstp->rq_addrlen = svsk->sk_remotelen;
+ 
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+-		rqstp->rq_sock, iov[0].iov_base, iov[0].iov_len, len);
++		svsk, iov[0].iov_base, iov[0].iov_len, len);
+ 
+ 	return len;
+ }
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
