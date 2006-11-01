@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/12] SUNRPC: Provide room in svc_rqst for larger
-	addresses
-Date: Wed, 01 Nov 2006 13:08:35 -0500
-Message-ID: <20061101180835.14581.17850.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 07/12] SUNRPC: Make rq_daddr field address-version
+	independent
+Date: Wed, 01 Nov 2006 13:08:41 -0500
+Message-ID: <20061101180841.14581.35194.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfKW4-0006Fa-3M
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:44 -0800
+	id 1GfKWD-0006Ge-KA
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:53 -0800
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKW4-0003Fe-RD
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:45 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKWC-0002md-Sw
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:54 -0800
 To: neilb@suse.de
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,302 +29,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Expand the rq_addr field to allow it to contain larger addresses.
+The rq_daddr field must support larger addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/lockd/host.c            |    4 ++--
- fs/lockd/svc4proc.c        |    6 ++++--
- fs/lockd/svcproc.c         |    6 ++++--
- fs/nfs/callback.c          |    2 +-
- fs/nfs/callback_xdr.c      |    4 ++--
- fs/nfsd/nfs4state.c        |   18 +++++++++---------
- fs/nfsd/nfscache.c         |    2 +-
- include/linux/sunrpc/svc.h |    2 +-
- net/sunrpc/svcauth_unix.c  |    3 ++-
- net/sunrpc/svcsock.c       |   14 ++++++++------
- 10 files changed, 34 insertions(+), 27 deletions(-)
+ include/linux/sunrpc/svc.h |   14 ++++++++++----
+ net/sunrpc/svcsock.c       |    4 ++--
+ 2 files changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index fb24a97..ca625dd 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -55,9 +55,9 @@ struct nlm_host *
- nlmsvc_lookup_host(struct svc_rqst *rqstp,
- 			const char *hostname, int hostname_len)
- {
--	return nlm_lookup_host(1, &rqstp->rq_addr,
-+	return nlm_lookup_host(1, (struct sockaddr_in *) &rqstp->rq_addr,
- 			       rqstp->rq_prot, rqstp->rq_vers,
--			       hostname, hostname_len);
-+				hostname, hostname_len);
- }
- 
- /*
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index a66f9d5..d2ae0ab 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -224,7 +224,7 @@ nlm4svc_proc_granted(struct svc_rqst *rq
- 	resp->cookie = argp->cookie;
- 
- 	dprintk("lockd: GRANTED       called\n");
--	resp->status = nlmclnt_grant(&rqstp->rq_addr, &argp->lock);
-+	resp->status = nlmclnt_grant((struct sockaddr_in *) &rqstp->rq_addr, &argp->lock);
- 	dprintk("lockd: GRANTED       status %d\n", ntohl(resp->status));
- 	return rpc_success;
- }
-@@ -421,7 +421,9 @@ static __be32
- nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 					      void	        *resp)
- {
--	struct sockaddr_in	saddr = rqstp->rq_addr;
-+	struct sockaddr_in	saddr;
-+
-+	memcpy(&saddr, &rqstp->rq_addr, sizeof(saddr));
- 
- 	dprintk("lockd: SM_NOTIFY     called\n");
- 	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 19e1ac1..71462fe 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -253,7 +253,7 @@ nlmsvc_proc_granted(struct svc_rqst *rqs
- 	resp->cookie = argp->cookie;
- 
- 	dprintk("lockd: GRANTED       called\n");
--	resp->status = nlmclnt_grant(&rqstp->rq_addr, &argp->lock);
-+	resp->status = nlmclnt_grant((struct sockaddr_in *) &rqstp->rq_addr, &argp->lock);
- 	dprintk("lockd: GRANTED       status %d\n", ntohl(resp->status));
- 	return rpc_success;
- }
-@@ -452,7 +452,9 @@ static __be32
- nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 					      void	        *resp)
- {
--	struct sockaddr_in	saddr = rqstp->rq_addr;
-+	struct sockaddr_in	saddr;
-+
-+	memcpy(&saddr, &rqstp->rq_addr, sizeof(saddr));
- 
- 	dprintk("lockd: SM_NOTIFY     called\n");
- 	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index f29ce6a..40489b0 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -170,7 +170,7 @@ void nfs_callback_down(void)
- 
- static int nfs_callback_authenticate(struct svc_rqst *rqstp)
- {
--	struct sockaddr_in *addr = &rqstp->rq_addr;
-+	struct sockaddr_in *addr = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct nfs_client *clp;
- 	char buf[RPC_MAX_ADDRBUFLEN];
- 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index f8ea1f5..70ae2ef 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -176,7 +176,7 @@ static __be32 decode_getattr_args(struct
- 	status = decode_fh(xdr, &args->fh);
- 	if (unlikely(status != 0))
- 		goto out;
--	args->addr = &rqstp->rq_addr;
-+	args->addr = (struct sockaddr_in *) &rqstp->rq_addr;
- 	status = decode_bitmap(xdr, args->bitmap);
- out:
- 	dprintk("%s: exit with status = %d\n", __FUNCTION__, status);
-@@ -188,7 +188,7 @@ static __be32 decode_recall_args(struct 
- 	__be32 *p;
- 	__be32 status;
- 
--	args->addr = &rqstp->rq_addr;
-+	args->addr = (struct sockaddr_in *) &rqstp->rq_addr;
- 	status = decode_stateid(xdr, &args->stateid);
- 	if (unlikely(status != 0))
- 		goto out;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 293b649..f6af541 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -713,7 +713,7 @@ out_err:
- __be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_setclientid *setclid)
- {
--	__be32 			ip_addr = rqstp->rq_addr.sin_addr.s_addr;
-+	struct sockaddr_in	*sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct xdr_netobj 	clname = { 
- 		.len = setclid->se_namelen,
- 		.data = setclid->se_name,
-@@ -748,7 +748,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 		 */
- 		status = nfserr_clid_inuse;
- 		if (!cmp_creds(&conf->cl_cred, &rqstp->rq_cred)
--				|| conf->cl_addr != ip_addr) {
-+				|| conf->cl_addr != sin->sin_addr.s_addr) {
- 			printk("NFSD: setclientid: string in use by client"
- 			"(clientid %08x/%08x)\n",
- 			conf->cl_clientid.cl_boot, conf->cl_clientid.cl_id);
-@@ -768,7 +768,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 		if (new == NULL)
- 			goto out;
- 		copy_verf(new, &clverifier);
--		new->cl_addr = ip_addr;
-+		new->cl_addr = sin->sin_addr.s_addr;
- 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
- 		gen_clid(new);
- 		gen_confirm(new);
-@@ -800,7 +800,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 		if (new == NULL)
- 			goto out;
- 		copy_verf(new,&conf->cl_verifier);
--		new->cl_addr = ip_addr;
-+		new->cl_addr = sin->sin_addr.s_addr;
- 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
- 		copy_clid(new, conf);
- 		gen_confirm(new);
-@@ -819,7 +819,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 		if (new == NULL)
- 			goto out;
- 		copy_verf(new,&clverifier);
--		new->cl_addr = ip_addr;
-+		new->cl_addr = sin->sin_addr.s_addr;
- 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
- 		gen_clid(new);
- 		gen_confirm(new);
-@@ -846,7 +846,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 		if (new == NULL)
- 			goto out;
- 		copy_verf(new,&clverifier);
--		new->cl_addr = ip_addr;
-+		new->cl_addr = sin->sin_addr.s_addr;
- 		copy_cred(&new->cl_cred,&rqstp->rq_cred);
- 		gen_clid(new);
- 		gen_confirm(new);
-@@ -878,7 +878,7 @@ out:
- __be32
- nfsd4_setclientid_confirm(struct svc_rqst *rqstp, struct nfsd4_setclientid_confirm *setclientid_confirm)
- {
--	__be32 ip_addr = rqstp->rq_addr.sin_addr.s_addr;
-+	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct nfs4_client *conf, *unconf;
- 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
- 	clientid_t * clid = &setclientid_confirm->sc_clientid;
-@@ -897,9 +897,9 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 	unconf = find_unconfirmed_client(clid);
- 
- 	status = nfserr_clid_inuse;
--	if (conf && conf->cl_addr != ip_addr)
-+	if (conf && conf->cl_addr != sin->sin_addr.s_addr)
- 		goto out;
--	if (unconf && unconf->cl_addr != ip_addr)
-+	if (unconf && unconf->cl_addr != sin->sin_addr.s_addr)
- 		goto out;
- 
- 	if ((conf && unconf) && 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 6100bbe..b2da4f9 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -186,7 +186,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	rp->c_state = RC_INPROG;
- 	rp->c_xid = xid;
- 	rp->c_proc = proc;
--	rp->c_addr = rqstp->rq_addr;
-+	memcpy(&rp->c_addr, &rqstp->rq_addr, sizeof(rp->c_addr));
- 	rp->c_prot = proto;
- 	rp->c_vers = vers;
- 	rp->c_timestamp = jiffies;
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 44e15ca..fb9768a 100644
+index fb9768a..ae51e53 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -197,7 +197,7 @@ struct svc_rqst {
- 	struct list_head	rq_list;	/* idle list */
- 	struct list_head	rq_all;		/* all threads list */
- 	struct svc_sock *	rq_sock;	/* socket */
--	struct sockaddr_in	rq_addr;	/* peer address */
-+	struct sockaddr_storage	rq_addr;	/* peer address */
- 	int			rq_addrlen;
+@@ -11,6 +11,7 @@ #ifndef SUNRPC_SVC_H
+ #define SUNRPC_SVC_H
  
- 	struct svc_serv *	rq_server;	/* RPC service definition */
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index e1bd933..21d392a 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -417,6 +417,7 @@ svcauth_unix_info_release(void *info)
- static int
- svcauth_unix_set_client(struct svc_rqst *rqstp)
- {
-+	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct ip_map *ipm;
+ #include <linux/in.h>
++#include <linux/in6.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/auth.h>
+@@ -188,7 +189,13 @@ static inline void svc_putu32(struct kve
+ 	iov->iov_len += sizeof(__be32);
+ }
  
- 	rqstp->rq_client = NULL;
-@@ -426,7 +427,7 @@ svcauth_unix_set_client(struct svc_rqst 
- 	ipm = ip_map_cached_get(rqstp);
- 	if (ipm == NULL)
- 		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
--				    rqstp->rq_addr.sin_addr);
-+				    sin->sin_addr);
+-	
++union svc_addr_u {
++    struct in_addr	addr;
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++    struct in6_addr	addr6;
++#endif
++};
++
+ /*
+  * The context of a single thread, including the request currently being
+  * processed.
+@@ -224,8 +231,7 @@ struct svc_rqst {
+ 	unsigned short
+ 				rq_secure  : 1;	/* secure port */
  
- 	if (ipm == NULL)
- 		return SVC_DENIED;
+-
+-	__be32			rq_daddr;	/* dest addr of request - reply from here */
++	union svc_addr_u	rq_daddr;	/* dest addr of request - reply from here */
+ 
+ 	void *			rq_argp;	/* decoded arguments */
+ 	void *			rq_resp;	/* xdr'd results */
+@@ -292,7 +298,7 @@ struct svc_deferred_req {
+ 	struct sockaddr_storage	addr;
+ 	int			addrlen;
+ 	struct svc_sock		*svsk;	/* where reply must go */
+-	__be32			daddr;	/* where reply must come from */
++	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
+ 	int			argslen;
+ 	__be32			args[0];
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 4d8a422..f506780 100644
+index f506780..b0fb46f 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -435,7 +435,7 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 		/* set the source and destination */
- 		struct msghdr	msg;
- 		msg.msg_name    = &rqstp->rq_addr;
--		msg.msg_namelen = sizeof(rqstp->rq_addr);
-+		msg.msg_namelen = rqstp->rq_addrlen;
- 		msg.msg_iov     = NULL;
- 		msg.msg_iovlen  = 0;
- 		msg.msg_flags	= MSG_MORE;
-@@ -659,6 +659,7 @@ svc_write_space(struct sock *sk)
- static int
- svc_udp_recvfrom(struct svc_rqst *rqstp)
- {
-+	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct svc_sock	*svsk = rqstp->rq_sock;
- 	struct svc_serv	*serv = svsk->sk_server;
- 	struct sk_buff	*skb;
-@@ -714,9 +715,9 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	rqstp->rq_prot        = IPPROTO_UDP;
+@@ -446,7 +446,7 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 		cmh->cmsg_level = SOL_IP;
+ 		cmh->cmsg_type = IP_PKTINFO;
+ 		pki->ipi_ifindex = 0;
+-		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr;
++		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
  
- 	/* Get sender address */
--	rqstp->rq_addr.sin_family = AF_INET;
--	rqstp->rq_addr.sin_port = skb->h.uh->source;
--	rqstp->rq_addr.sin_addr.s_addr = skb->nh.iph->saddr;
-+	sin->sin_family = AF_INET;
-+	sin->sin_port = skb->h.uh->source;
-+	sin->sin_addr.s_addr = skb->nh.iph->saddr;
- 	rqstp->rq_daddr = skb->nh.iph->daddr;
+ 		if (sock_sendmsg(sock, &msg, 0) < 0)
+ 			goto out;
+@@ -718,7 +718,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	sin->sin_family = AF_INET;
+ 	sin->sin_port = skb->h.uh->source;
+ 	sin->sin_addr.s_addr = skb->nh.iph->saddr;
+-	rqstp->rq_daddr = skb->nh.iph->daddr;
++	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
  
  	if (skb_is_nonlinear(skb)) {
-@@ -1244,7 +1245,8 @@ svc_sock_update_bufs(struct svc_serv *se
- int
- svc_recv(struct svc_rqst *rqstp, long timeout)
- {
--	struct svc_sock		*svsk =NULL;
-+	struct svc_sock		*svsk = NULL;
-+	struct sockaddr_in	*sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	struct svc_pool		*pool = rqstp->rq_pool;
- 	int			len, i;
-@@ -1339,7 +1341,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	svsk->sk_lastrecv = get_seconds();
- 	clear_bit(SK_OLD, &svsk->sk_flags);
- 
--	rqstp->rq_secure  = ntohs(rqstp->rq_addr.sin_port) < 1024;
-+	rqstp->rq_secure = ntohs(sin->sin_port) < 1024;
- 	rqstp->rq_chandle.defer = svc_defer;
- 
- 	if (serv->sv_stats)
+ 		/* we have to copy */
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
