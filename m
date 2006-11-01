@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/12] SUNRPC: Don't set msg_name and msg_namelen when
-	calling sock_recvmsg
-Date: Wed, 01 Nov 2006 13:08:20 -0500
-Message-ID: <20061101180820.14581.32808.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 02/12] SUNRPC: Cache remote peer's address in svc_sock.
+Date: Wed, 01 Nov 2006 13:08:14 -0500
+Message-ID: <20061101180813.14581.55456.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfKVu-0006El-P9
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:34 -0800
+	id 1GfKVm-0006EJ-HJ
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:27 -0800
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKVt-0003Bc-4B
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:35 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKVl-0002br-Ua
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:27 -0800
 To: neilb@suse.de
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,57 +28,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean-up: msg_name and msg_namelen are not used by sock_recvmsg, so
-don't bother to set them in svc_recvfrom.
+The remote peer's address won't change after the socket has been
+accepted.  We don't need to call ->getname on every incoming request.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- net/sunrpc/svcsock.c |   23 ++++++++---------------
- 1 files changed, 8 insertions(+), 15 deletions(-)
+ include/linux/sunrpc/svcsock.h |    3 +++
+ net/sunrpc/svcsock.c           |   11 +++++------
+ 2 files changed, 8 insertions(+), 6 deletions(-)
 
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index dbcbfff..e260ba7 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -57,6 +57,9 @@ #define	SK_DETACHED	10			/* detached fro
+ 
+ 	/* cache of various info for TCP sockets */
+ 	void			*sk_info_authunix;
++
++	struct sockaddr_storage	sk_remote;	/* remote peer's address */
++	int			sk_remotelen;	/* length of address */
+ };
+ 
+ /*
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 13b37a8..91b040a 100644
+index 0868b26..13b37a8 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -530,21 +530,14 @@ svc_recv_available(struct svc_sock *svsk
- static int
- svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
- {
--	struct msghdr	msg;
--	struct socket	*sock;
--	int		len, alen;
--
--	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
--	sock = rqstp->rq_sock->sk_sock;
--
--	msg.msg_name    = &rqstp->rq_addr;
--	msg.msg_namelen = sizeof(rqstp->rq_addr);
--	msg.msg_control = NULL;
--	msg.msg_controllen = 0;
--
--	msg.msg_flags	= MSG_DONTWAIT;
-+	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct msghdr msg = {
-+		.msg_flags	= MSG_DONTWAIT,
-+	};
-+	int len;
- 
--	len = kernel_recvmsg(sock, &msg, iov, nr, buflen, MSG_DONTWAIT);
-+	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
-+				msg.msg_flags);
+@@ -547,11 +547,9 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	len = kernel_recvmsg(sock, &msg, iov, nr, buflen, MSG_DONTWAIT);
  
  	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
+-	 * possibly we should cache this in the svc_sock structure
+-	 * at accept time. FIXME
  	 */
-@@ -552,7 +545,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
- 	rqstp->rq_addrlen = svsk->sk_remotelen;
+-	alen = sizeof(rqstp->rq_addr);
+-	kernel_getpeername(sock, (struct sockaddr *)&rqstp->rq_addr, &alen);
++	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
++	rqstp->rq_addrlen = svsk->sk_remotelen;
  
  	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
--		rqstp->rq_sock, iov[0].iov_base, iov[0].iov_len, len);
-+		svsk, iov[0].iov_base, iov[0].iov_len, len);
+ 		rqstp->rq_sock, iov[0].iov_base, iov[0].iov_len, len);
+@@ -843,7 +841,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 	struct socket	*sock = svsk->sk_sock;
+ 	struct socket	*newsock;
+ 	struct svc_sock	*newsvsk;
+-	int		err, slen;
++	int		err, slen = 0;
  
- 	return len;
- }
+ 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
+ 	if (!sock)
+@@ -894,7 +892,8 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 
+ 	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
+ 		goto failed;
+-
++	memcpy(&newsvsk->sk_remote, &sin, slen);
++	newsvsk->sk_remotelen = slen;
+ 
+ 	/* make sure that we don't have too many active connections.
+ 	 * If we have, something must be dropped.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
