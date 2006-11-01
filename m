@@ -1,25 +1,24 @@
-From: Ingo Saitz <Ingo.Saitz@stud.uni-hannover.de>
-Subject: PROBLEM: can't mkdir() in 2.6.19-rc3
-Date: Wed, 1 Nov 2006 03:16:47 +0100
-Message-ID: <20061101021647.GA4203@schwan.zoo>
+From: "xurui" <xur@nanjing-fnst.com>
+Subject: Some uncomformity between the realization of the RHEL5Beta1
+	and the RFC1813
+Date: Wed, 1 Nov 2006 10:41:03 +0800
+Message-ID: <008001c6fd5f$2c350330$8904a8c0@xurui>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1494387322=="
+Content-Type: multipart/mixed; boundary="===============1137931885=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gf5f6-00016x-Co
-	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 18:17:04 -0800
-Received: from mx.stud.uni-hannover.de
-	([130.75.176.3] helo=studserv.stud.uni-hannover.de ident=root)
+	id 1Gf63I-0003AJ-4W
+	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 18:42:04 -0800
+Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gf5f4-0007nZ-T1
-	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 18:17:05 -0800
-Received: from schwan (ingo@localhost [127.0.0.1])
-	by studserv.stud.uni-hannover.de (8.13.8/8.13.8) with ESMTP id
-	kA12GnHZ013968
-	for <nfs@lists.sourceforge.net>; Wed, 1 Nov 2006 03:16:50 +0100 (MET)
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1Gf63H-0006p5-EO
+	for nfs@lists.sourceforge.net; Tue, 31 Oct 2006 18:42:05 -0800
+Received: from xurui ([192.168.4.137])
+	by proxy.fnst.com.cn (8.12.11/8.12.11) with SMTP id kA12gBYU025705
+	for <nfs@lists.sourceforge.net>; Wed, 1 Nov 2006 10:42:11 +0800
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,213 +31,253 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
 
---===============1494387322==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="Kj7319i9nmIyA2yE"
-Content-Disposition: inline
+--===============1137931885==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_007D_01C6FDA2.3A3E0470"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_007D_01C6FDA2.3A3E0470
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: base64
+
+SGk6DQoNCiAgICAgIEkgaG9wZSB0aGlzIGlzIHRoZSByaWdodCBsaXN0IGZvciB0aGlzLg0KDQog
+ICAgICBNeSBncm91cCBpcyBlbmdhZ2VkIGluIHRoZSBORlNWMyBwcm90b2NvbCBjb21mb3JtYW5j
+ZSB0ZXN0Lml0IG1lYW5zICx3ZSB3YW50IHRvIHByb3ZlIHdoZXRoZXIgdGhlIHJlYWxpemF0aW9u
+IG9mIHRoZSBORlNWMyBwcm90b2NvbCBpbiBhbGwgdmVyc2lvbnMgb2YgdGhlIFJFREhBVCBpcyBh
+Y2NvcmRpbmcgdG8gdGhlIFJGQyhoZXJlICx3ZSB1c2UgUkZDIDE4MTMpLg0KDQogICAgICBXaGVu
+IHdlIHRlc3QgdGhlIENPTU1JVCBwcm9jZWR1cmUgaW4gdGhlIHJlYWxpemF0aW9uIG9mIHRoZSBS
+RURIQVQgd2l0aCB0aGUga2VybmVsIFJIRUw1QmV0YTEgLHdoaWNoIGlzIHVzZWQgdG8gY29tbWl0
+IGNhY2hlZCBkYXRhIG9uIGEgc2VydmVyIHRvIHN0YWJsZSBzdG9yYWdlLHdlIGZpbmQgc29tZSBp
+bmNvbnNpc3RlbnQgZGVmaW5pdGlvbnMgYmV0d2VlbiB0aGUga2VybmVsIFJIRUw1QmV0YTEgYW5k
+IFJGQzE4MTMuSW4gdGhlIFJGQzE4MTMsIGl0IGRlZmluZXMgdGhlIENPTU1JVCBwYWNrYWdlIGFz
+IGZvbGxvd3M6DQoNCiBzdHJ1Y3QgQ09NTUlUM2FyZ3Mgew0KICAgICAgICAgICBuZnNfZmgzICAg
+IGZpbGU7DQogICAgICAgICAgIG9mZnNldDMgICAgb2Zmc2V0Ow0KICAgICAgICAgICBjb3VudDMg
+ICAgIGNvdW50Ow0KICAgICAgfTsNCg0KICAgICAgc3RydWN0IENPTU1JVDNyZXNvayB7DQogICAg
+ICAgICAgIHdjY19kYXRhICAgZmlsZV93Y2M7DQogICAgICAgICAgIHdyaXRldmVyZjMgdmVyZjsN
+CiAgICAgIH07DQoNCiAgICAgIHN0cnVjdCBDT01NSVQzcmVzZmFpbCB7DQogICAgICAgICAgIHdj
+Y19kYXRhICAgZmlsZV93Y2M7DQogICAgICB9Ow0KDQogREVTQ1JJUFRJT046DQoNCiAgICBvZmZz
+ZXQNCiAgICAgICAgIFRoZSBwb3NpdGlvbiB3aXRoaW4gdGhlIGZpbGUgYXQgd2hpY2ggdGhlIGZs
+dXNoIGlzIHRvDQogICAgICAgICBiZWdpbi4gIEFuIG9mZnNldCBvZiAwIG1lYW5zIHRvIGZsdXNo
+IGRhdGEgc3RhcnRpbmcgYXQNCiAgICAgICAgIHRoZSBiZWdpbm5pbmcgb2YgdGhlIGZpbGUuDQoN
+CiAgICAgIGNvdW50DQogICAgICAgICBUaGUgbnVtYmVyIG9mIGJ5dGVzIG9mIGRhdGEgdG8gZmx1
+c2guIElmIGNvdW50IGlzIDAsIGENCiAgICAgICAgIGZsdXNoIGZyb20gb2Zmc2V0IHRvIHRoZSBl
+bmQgb2YgZmlsZSBpcyBkb25lLg0KDQogICAgDQoNCiANCg0KV2hlbiB3ZSBzZW5kIHRoZSBwYWNr
+YWdlIHdpdGggdGhlIHN1bSBvZiB0aGUgYXVnbWVudCBjb3VudCBhbmQgb2Zmc2V0IGxhcmdlciB0
+aGFuIHRoZSBmaWxlIHNpemUgLHdoaWNoIHdpbGwgbGVhZCB0byB0aGUgb3ZlcmZsb3cgLHdlIGFz
+c3VtZWQgdGhhdCBuZnMgc2VydmVyIHdpbGwgcmV0dXJuIGZhaWwgbWVzc2FnZSxidXQgaXQgcmV0
+dXJlbiBvayBhbmQgZmx1c2hlZCBhbGwgZGF0YSB0byB0aGUgc3RhYmxlIHN0b3JhZ2UuIHRoZSBz
+b3VyY2UgY29kZSBvZiB0aGUga2VybmVsIFJIRUw1QmV0YWwgYXJlIHJlc2VhcmNoZWQgLkluIHRo
+ZSBmaWxlIGxpbnV4L21tL2ZpbGVtYXAuYyBfZmlsZW1hcF9mZGF0YXdyaXRlX3JhbmdlIGZ1bnRp
+b24gZGVmaW5lcyB0aGUgcmFuZ2Ugb2YgdGhlIGRhdGEgdG8gYmUgZmx1c2hlZCAsdGhlIHN0YXJ0
+IHBvc2l0aW9uIGlzIHNldCB0byB6ZXJvLGFuZCB0aGUgZW5kIHBvc2l0aW9uIGlzIGNvbnN0YW50
+IExMT05HX01BWCg5MjIzMzcyMDM2MDU0Nzc1MDA3KS50aGUgZnVuY3Rpb24gY2FsbGluZyBwcm9j
+ZWR1cmUgYXMgZm9sbG93czoNCg0KbmZzZDNfcHJvY19jb21taXQoKQ0KDQogICAgICAgICAgfC0t
+bmZzZF9jb21taXQoKQ0KDQp8LS1uZnNkX3N5bmMoKQ0KDQogIHwtLW5mc2RfZG9zeW5jKCkNCg0K
+ICAgIHwtLWZpbGVtYXBfZmRhdGF3cml0ZSgpDQoNCiAgICAgIHwtLV9maWxlbWFwX2ZkYXRhd3Jp
+dGUoKQ0KDQogICAgICAgfC0tX2ZpbGVtYXBfZmRhdGF3cml0ZV9yYW5nZSAoLi5zdGFydCxlbmQu
+LikNCg0KICAgIA0KDQogICAgICBXZSBjYW4ndCB1bmRlcnN0YW5kIHdoeSBrZXJuZWwgZGVzaWdu
+IHRoZW0gbGlrZSB0aGlzLHdoeSB0aGV5IHNldCB0aGUgcmFuZ2Ugb2YgdGhlIGRhdGEgdG8gYmUg
+Zmx1c2hlZCBhcyB6ZXJvIHRvIExMT05HX01BWCAsd2hpY2ggaXMgY29uc3RhbnQuDQoNCg0KDQp0
+aGFua3MgDQoNCiB4dXJ1aQ0KDQoyMDA2MTEwMQ0KDQogDQoNCiANCg0KIA0KDQogICAgDQoNCiAN
+Cg0KIA0K
+
+------=_NextPart_000_007D_01C6FDA2.3A3E0470
+Content-Type: text/html;
+	charset="gb2312"
+Content-Transfer-Encoding: base64
+
+PCFET0NUWVBFIEhUTUwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMCBUcmFuc2l0aW9uYWwv
+L0VOIj4NCjxIVE1MPjxIRUFEPg0KPE1FVEEgaHR0cC1lcXVpdj1Db250ZW50LVR5cGUgY29udGVu
+dD0idGV4dC9odG1sOyBjaGFyc2V0PWdiMjMxMiI+DQo8TUVUQSBjb250ZW50PSJNU0hUTUwgNi4w
+MC4yOTAwLjIxODAiIG5hbWU9R0VORVJBVE9SPg0KPFNUWUxFPjwvU1RZTEU+DQo8L0hFQUQ+DQo8
+Qk9EWSBiZ0NvbG9yPSNmZmZmZmY+DQo8UCBjbGFzcz1Nc29QbGFpblRleHQgc3R5bGU9Ik1BUkdJ
+TjogMGNtIDBjbSAwcHQiPjxTUEFOIGxhbmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1GQU1JTFk6ICdU
+aW1lcyBOZXcgUm9tYW4nOyBtc28tZmFyZWFzdC1mb250LWZhbWlseTogy87M5TsgbXNvLWZvbnQt
+a2VybmluZzogMS4wcHQiPkhpOjw/eG1sOm5hbWVzcGFjZSANCnByZWZpeCA9IG8gbnMgPSAidXJu
+OnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpvZmZpY2U6b2ZmaWNlIiANCi8+PG86cD48L286cD48L1NQ
+QU4+PC9QPg0KPFAgY2xhc3M9TXNvTm9ybWFsIHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0Ij48
+U1BBTiBsYW5nPUVOLVVTIA0Kc3R5bGU9IkZPTlQtU0laRTogMTJwdCI+PEZPTlQgDQpmYWNlPSJU
+aW1lcyBOZXcgUm9tYW4iPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBJIGhvcGUgdGhp
+cyBpcyB0aGUgcmlnaHQgDQpsaXN0IGZvciB0aGlzLjxvOnA+PC9vOnA+PC9GT05UPjwvU1BBTj48
+L1A+DQo8UCBjbGFzcz1Nc29Ob3JtYWwgc3R5bGU9Ik1BUkdJTjogMGNtIDBjbSAwcHQiPjxTUEFO
+IGxhbmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1TSVpFOiAxMnB0Ij48Rk9OVCANCmZhY2U9IlRpbWVz
+IE5ldyBSb21hbiI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IE15IGdyb3VwJm5ic3A7
+aXMgZW5nYWdlZCANCmluIHRoZSZuYnNwO05GU1YzIHByb3RvY29sIGNvbWZvcm1hbmNlIHRlc3Qu
+aXQgbWVhbnMgLHdlIHdhbnQgdG8gcHJvdmUgd2hldGhlciANCnRoZSByZWFsaXphdGlvbiBvZiB0
+aGUmbmJzcDtORlNWMyBwcm90b2NvbCBpbiBhbGwgdmVyc2lvbnMgb2YgdGhlIFJFREhBVCBpcyAN
+CmFjY29yZGluZyB0byB0aGUgUkZDKGhlcmUgLHdlIHVzZSBSRkMgMTgxMykuPG86cD48L286cD48
+L0ZPTlQ+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1hbCBzdHlsZT0iTUFSR0lOOiAwY20g
+MGNtIDBwdCI+PEZPTlQgDQpmYWNlPSJUaW1lcyBOZXcgUm9tYW4iPjxTUEFOIGxhbmc9RU4tVVMg
+DQpzdHlsZT0iRk9OVC1TSVpFOiAxMnB0OyBtc28tYmlkaS1mb250LXNpemU6IDEwLjBwdCI+Jm5i
+c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7PC9TUEFOPjxTUEFOIA0KbGFuZz1FTi1VUyBzdHlsZT0iRk9O
+VC1TSVpFOiAxMnB0Ij4mbmJzcDsmbmJzcDtXaGVuIHdlIHRlc3QgdGhlIENPTU1JVCANCnByb2Nl
+ZHVyZSZuYnNwO2luIHRoZSByZWFsaXphdGlvbiBvZiB0aGUgUkVESEFUIHdpdGggdGhlIGtlcm5l
+bCANClJIRUw1QmV0YTEmbmJzcDssd2hpY2ggaXMgdXNlZCB0byBjb21taXQgY2FjaGVkIGRhdGEg
+b24gYSBzZXJ2ZXIgdG8gc3RhYmxlIA0Kc3RvcmFnZSx3ZSBmaW5kIHNvbWUgaW5jb25zaXN0ZW50
+IGRlZmluaXRpb25zJm5ic3A7YmV0d2VlbiZuYnNwO3RoZSZuYnNwO2tlcm5lbCANClJIRUw1QmV0
+YTEgYW5kIFJGQzE4MTMuSW4gdGhlIFJGQzE4MTMsIGl0IGRlZmluZXMgdGhlIENPTU1JVCBwYWNr
+YWdlIGFzIA0KZm9sbG93czo8bzpwPjwvbzpwPjwvU1BBTj48L0ZPTlQ+PC9QPg0KPFAgY2xhc3M9
+TXNvUGxhaW5UZXh0IHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0Ij48U1BBTiBsYW5nPUVOLVVT
+IA0Kc3R5bGU9IkZPTlQtRkFNSUxZOiAnVGltZXMgTmV3IFJvbWFuJyI+PFNQQU4gDQpzdHlsZT0i
+bXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOzwvU1BBTj5zdHJ1Y3QgQ09NTUlUM2FyZ3MgezxCUj48
+U1BBTiANCnN0eWxlPSJtc28tc3BhY2VydW46IHllcyI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IA0KPC9TUEFOPm5mc19maDM8U1BB
+TiBzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyANCjwvU1BBTj5m
+aWxlOzxCUj48U1BBTiANCnN0eWxlPSJtc28tc3BhY2VydW46IHllcyI+Jm5ic3A7Jm5ic3A7Jm5i
+c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IA0KPC9TUEFOPm9m
+ZnNldDMgPFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNw
+OzwvU1BBTj5vZmZzZXQ7PEJSPjxTUEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJz
+cDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsg
+DQo8L1NQQU4+Y291bnQzPFNQQU4gc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJzcDsmbmJz
+cDsmbmJzcDsmbmJzcDsgDQo8L1NQQU4+Y291bnQ7PEJSPjxTUEFOIHN0eWxlPSJtc28tc3BhY2Vy
+dW46IHllcyI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IA0KPC9TUEFOPn07PEJSPjxC
+Uj48U1BBTiBzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyANCjwvU1BBTj5zdHJ1Y3QgQ09NTUlUM3Jlc29rIHs8QlI+PFNQQU4gDQpzdHlsZT0i
+bXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZu
+YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyANCjwvU1BBTj53Y2NfZGF0YTxTUEFOIHN0eWxlPSJtc28t
+c3BhY2VydW46IHllcyI+Jm5ic3A7Jm5ic3A7IA0KPC9TUEFOPmZpbGVfd2NjOzxCUj48U1BBTiAN
+CnN0eWxlPSJtc28tc3BhY2VydW46IHllcyI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IA0KPC9TUEFOPndyaXRldmVyZjMgdmVyZjs8
+QlI+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZu
+YnNwOyZuYnNwOyA8L1NQQU4+fTs8QlI+PEJSPjxTUEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjog
+eWVzIj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgPC9TUEFOPnN0cnVjdCANCkNPTU1J
+VDNyZXNmYWlsIHs8QlI+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZu
+YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyANCjwv
+U1BBTj53Y2NfZGF0YTxTUEFOIHN0eWxlPSJtc28tc3BhY2VydW46IHllcyI+Jm5ic3A7Jm5ic3A7
+IA0KPC9TUEFOPmZpbGVfd2NjOzxCUj48U1BBTiANCnN0eWxlPSJtc28tc3BhY2VydW46IHllcyI+
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IA0KPC9TUEFOPn07PG86cD48L286cD48L1NQ
+QU4+PC9QPg0KPFAgY2xhc3M9TXNvUGxhaW5UZXh0IHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0
+Ij48U1BBTiBsYW5nPUVOLVVTIA0Kc3R5bGU9IkZPTlQtRkFNSUxZOiAnVGltZXMgTmV3IFJvbWFu
+JyI+Jm5ic3A7PC9TUEFOPjxTUEFOIGxhbmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1GQU1JTFk6ICdU
+aW1lcyBOZXcgUm9tYW4nOyBtc28tYmlkaS1mb250LXNpemU6IDEwLjBwdCI+REVTQ1JJUFRJT046
+PC9TUEFOPjxTUEFOIA0KbGFuZz1FTi1VUyBzdHlsZT0iRk9OVC1GQU1JTFk6ICdUaW1lcyBOZXcg
+Um9tYW4nIj48bzpwPjwvbzpwPjwvU1BBTj48L1A+DQo8UCBjbGFzcz1Nc29QbGFpblRleHQgc3R5
+bGU9Ik1BUkdJTjogMGNtIDBjbSAwcHQiPjxTUEFOIGxhbmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1G
+QU1JTFk6ICdUaW1lcyBOZXcgUm9tYW4nIj4mbmJzcDsmbmJzcDsmbmJzcDsgb2Zmc2V0PEJSPjxT
+UEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsm
+bmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgDQo8L1NQQU4+VGhlIHBvc2l0aW9uIHdpdGhpbiB0aGUg
+ZmlsZSBhdCB3aGljaCB0aGUgZmx1c2ggaXMgdG88QlI+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNl
+cnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyANCjwvU1BBTj5iZWdpbi48U1BBTiBzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyA8
+L1NQQU4+QW4gb2Zmc2V0IG9mIDAgbWVhbnMgDQp0byBmbHVzaCBkYXRhIHN0YXJ0aW5nIGF0PEJS
+PjxTUEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJz
+cDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgDQo8L1NQQU4+dGhlIGJlZ2lubmluZyBvZiB0aGUg
+ZmlsZS48QlI+PEJSPjxTUEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJzcDsmbmJz
+cDsmbmJzcDsmbmJzcDsmbmJzcDsgPC9TUEFOPmNvdW50PEJSPjxTUEFOIA0Kc3R5bGU9Im1zby1z
+cGFjZXJ1bjogeWVzIj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsm
+bmJzcDsgDQo8L1NQQU4+VGhlIG51bWJlciBvZiBieXRlcyBvZiBkYXRhIHRvIGZsdXNoLiBJZiBj
+b3VudCBpcyAwLCBhPEJSPjxTUEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJzcDsm
+bmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgDQo8L1NQQU4+Zmx1c2gg
+ZnJvbSBvZmZzZXQgdG8gdGhlIGVuZCBvZiBmaWxlIGlzIGRvbmUuPG86cD48L286cD48L1NQQU4+
+PC9QPg0KPFAgY2xhc3M9TXNvUGxhaW5UZXh0IHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0Ij48
+U1BBTiBsYW5nPUVOLVVTIA0Kc3R5bGU9IkZPTlQtRkFNSUxZOiAnVGltZXMgTmV3IFJvbWFuJyI+
+Jm5ic3A7Jm5ic3A7Jm5ic3A7IDxvOnA+PC9vOnA+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb1Bs
+YWluVGV4dCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0
+eWxlPSJGT05ULUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbiciPiZuYnNwOzxvOnA+PC9vOnA+PC9T
+UEFOPjwvUD4NCjxQIGNsYXNzPU1zb1BsYWluVGV4dCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBw
+dDsgVEVYVC1JTkRFTlQ6IDE4cHQiPjxTUEFOIA0KbGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULUZB
+TUlMWTogJ1RpbWVzIE5ldyBSb21hbic7IG1zby1mYXJlYXN0LWZvbnQtZmFtaWx5OiDLzszlIj5X
+aGVuIA0Kd2UmbmJzcDtzZW5kIHRoZSBwYWNrYWdlJm5ic3A7d2l0aCZuYnNwO3RoZSZuYnNwO3N1
+bSBvZiB0aGUgYXVnbWVudCBjb3VudCBhbmQgDQpvZmZzZXQmbmJzcDtsYXJnZXIgdGhhbiB0aGUg
+ZmlsZSBzaXplICx3aGljaCB3aWxsIGxlYWQgdG8gdGhlIG92ZXJmbG93ICx3ZSANCmFzc3VtZWQg
+dGhhdCBuZnMgc2VydmVyIHdpbGwgcmV0dXJuIGZhaWwgbWVzc2FnZSxidXQgaXQgcmV0dXJlbiBv
+ayBhbmQgZmx1c2hlZCANCmFsbCBkYXRhIHRvIHRoZSBzdGFibGUgc3RvcmFnZS4gdGhlIHNvdXJj
+ZSBjb2RlIG9mIHRoZSBrZXJuZWwgUkhFTDVCZXRhbCBhcmUgDQpyZXNlYXJjaGVkIC5JbiB0aGUg
+ZmlsZSBsaW51eC9tbS9maWxlbWFwLmMgX2ZpbGVtYXBfZmRhdGF3cml0ZV9yYW5nZSBmdW50aW9u
+IA0KZGVmaW5lcyB0aGUgcmFuZ2Ugb2YgdGhlIGRhdGEgdG8gYmUgZmx1c2hlZCAsdGhlIHN0YXJ0
+IHBvc2l0aW9uIGlzIHNldCB0byANCnplcm8sYW5kIHRoZSBlbmQgcG9zaXRpb24gaXMgY29uc3Rh
+bnQgTExPTkdfTUFYPFNQQU4gDQpzdHlsZT0ibXNvLWZvbnQta2VybmluZzogMS4wcHQiPig5MjIz
+MzcyMDM2MDU0Nzc1MDA3KS50aGUgZnVuY3Rpb24mbmJzcDtjYWxsaW5nIA0KcHJvY2VkdXJlIGFz
+IGZvbGxvd3M6PG86cD48L286cD48L1NQQU4+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1h
+bCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJG
+T05ULVNJWkU6IDEycHQiPjxGT05UIA0KZmFjZT0iVGltZXMgTmV3IFJvbWFuIj5uZnNkM19wcm9j
+X2NvbW1pdCgpPG86cD48L286cD48L0ZPTlQ+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1h
+bCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJG
+T05ULVNJWkU6IDEycHQiPjxGT05UIGZhY2U9IlRpbWVzIE5ldyBSb21hbiI+PFNQQU4gDQpzdHls
+ZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyANCjwvU1BBTj58LS1uZnNkX2NvbW1pdCgpPG86cD48L286cD48
+L0ZPTlQ+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1hbCBzdHlsZT0iTUFSR0lOOiAwY20g
+MGNtIDBwdDsgVEVYVC1JTkRFTlQ6IDU0cHQiPjxTUEFOIA0KbGFuZz1FTi1VUyBzdHlsZT0iRk9O
+VC1TSVpFOiAxMnB0Ij48Rk9OVCANCmZhY2U9IlRpbWVzIE5ldyBSb21hbiI+fC0tbmZzZF9zeW5j
+KCk8bzpwPjwvbzpwPjwvRk9OVD48L1NQQU4+PC9QPg0KPFAgY2xhc3M9TXNvTm9ybWFsIHN0eWxl
+PSJNQVJHSU46IDBjbSAwY20gMHB0OyBURVhULUlOREVOVDogNTRwdCI+PFNQQU4gDQpsYW5nPUVO
+LVVTIHN0eWxlPSJGT05ULVNJWkU6IDEycHQiPjxGT05UIGZhY2U9IlRpbWVzIE5ldyBSb21hbiI+
+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyANCjwvU1BBTj58LS1uZnNk
+X2Rvc3luYygpPG86cD48L286cD48L0ZPTlQ+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1h
+bCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdDsgVEVYVC1JTkRFTlQ6IDU0cHQiPjxTUEFOIA0K
+bGFuZz1FTi1VUyBzdHlsZT0iRk9OVC1TSVpFOiAxMnB0Ij48Rk9OVCBmYWNlPSJUaW1lcyBOZXcg
+Um9tYW4iPjxTUEFOIA0Kc3R5bGU9Im1zby1zcGFjZXJ1bjogeWVzIj4mbmJzcDsmbmJzcDsmbmJz
+cDsgDQo8L1NQQU4+fC0tZmlsZW1hcF9mZGF0YXdyaXRlKCk8bzpwPjwvbzpwPjwvRk9OVD48L1NQ
+QU4+PC9QPg0KPFAgY2xhc3M9TXNvTm9ybWFsIHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0OyBU
+RVhULUlOREVOVDogNTRwdCI+PFNQQU4gDQpsYW5nPUVOLVVTIHN0eWxlPSJGT05ULVNJWkU6IDEy
+cHQiPjxGT05UIGZhY2U9IlRpbWVzIE5ldyBSb21hbiI+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNl
+cnVuOiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyANCjwvU1BBTj58LS1fZmls
+ZW1hcF9mZGF0YXdyaXRlKCk8bzpwPjwvbzpwPjwvRk9OVD48L1NQQU4+PC9QPg0KPFAgY2xhc3M9
+TXNvTm9ybWFsIHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0OyBURVhULUlOREVOVDogNTRwdCI+
+PFNQQU4gDQpsYW5nPUVOLVVTIHN0eWxlPSJGT05ULVNJWkU6IDEycHQiPjxGT05UIGZhY2U9IlRp
+bWVzIE5ldyBSb21hbiI+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNlcnVuOiB5ZXMiPiZuYnNwOyZu
+YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyANCjwvU1BBTj58LS1fZmlsZW1hcF9mZGF0YXdy
+aXRlX3JhbmdlICguLnN0YXJ0LGVuZC4uKTxvOnA+PC9vOnA+PC9GT05UPjwvU1BBTj48L1A+DQo8
+UCBjbGFzcz1Nc29QbGFpblRleHQgc3R5bGU9Ik1BUkdJTjogMGNtIDBjbSAwcHQiPjxTUEFOIGxh
+bmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1GQU1JTFk6ICdUaW1lcyBOZXcgUm9tYW4nOyBtc28tZmFy
+ZWFzdC1mb250LWZhbWlseTogy87M5TsgbXNvLWZvbnQta2VybmluZzogMS4wcHQiPiZuYnNwOyZu
+YnNwOyZuYnNwOyANCjxvOnA+PC9vOnA+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb1BsYWluVGV4
+dCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJG
+T05ULUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbic7IG1zby1mYXJlYXN0LWZvbnQtZmFtaWx5OiDL
+zszlOyBtc28tZm9udC1rZXJuaW5nOiAxLjBwdCI+PFNQQU4gDQpzdHlsZT0ibXNvLXNwYWNlcnVu
+OiB5ZXMiPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyA8L1NQQU4+V2UgY2FuJ3QgDQp1
+bmRlcnN0YW5kIHdoeSZuYnNwO2tlcm5lbCBkZXNpZ24gdGhlbSBsaWtlIHRoaXMsd2h5IHRoZXkg
+c2V0IHRoZSZuYnNwO3JhbmdlIG9mIA0KdGhlIGRhdGEgdG8gYmUmbmJzcDtmbHVzaGVkIGFzIHpl
+cm8gdG8gTExPTkdfTUFYJm5ic3A7LHdoaWNoIA0KaXMmbmJzcDtjb25zdGFudC48L1NQQU4+PFNQ
+QU4gbGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbiciPjxv
+OnA+PC9vOnA+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb1BsYWluVGV4dCBzdHlsZT0iTUFSR0lO
+OiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULUZBTUlMWTogJ1Rp
+bWVzIE5ldyBSb21hbic7IG1zby1mYXJlYXN0LWZvbnQtZmFtaWx5OiDLzszlOyBtc28tZm9udC1r
+ZXJuaW5nOiAxLjBwdCI+PC9TUEFOPiZuYnNwOzwvUD4NCjxQIGNsYXNzPU1zb1BsYWluVGV4dCBz
+dHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJGT05U
+LUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbic7IG1zby1mYXJlYXN0LWZvbnQtZmFtaWx5OiDLzszl
+OyBtc28tZm9udC1rZXJuaW5nOiAxLjBwdCI+dGhhbmtzIA0KPC9TUEFOPjxTUEFOIGxhbmc9RU4t
+VVMgDQpzdHlsZT0iRk9OVC1GQU1JTFk6ICdUaW1lcyBOZXcgUm9tYW4nIj48bzpwPjwvbzpwPjwv
+U1BBTj48L1A+DQo8UCBjbGFzcz1Nc29QbGFpblRleHQgc3R5bGU9Ik1BUkdJTjogMGNtIDBjbSAw
+cHQiPjxTUEFOIGxhbmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1GQU1JTFk6ICdUaW1lcyBOZXcgUm9t
+YW4nIj4mbmJzcDs8L1NQQU4+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULUZBTUlMWTog
+J1RpbWVzIE5ldyBSb21hbic7IG1zby1mYXJlYXN0LWZvbnQtZmFtaWx5OiDLzszlOyBtc28tZm9u
+dC1rZXJuaW5nOiAxLjBwdCI+eHVydWk8L1NQQU4+PFNQQU4gDQpsYW5nPUVOLVVTIHN0eWxlPSJG
+T05ULUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbiciPjxvOnA+PC9vOnA+PC9TUEFOPjwvUD4NCjxQ
+IGNsYXNzPU1zb1BsYWluVGV4dCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4gbGFu
+Zz1FTi1VUyANCnN0eWxlPSJGT05ULUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbic7IG1zby1mYXJl
+YXN0LWZvbnQtZmFtaWx5OiDLzszlOyBtc28tZm9udC1rZXJuaW5nOiAxLjBwdCI+MjAwNjExMDE8
+bzpwPjwvbzpwPjwvU1BBTj48L1A+DQo8UCBjbGFzcz1Nc29Ob3JtYWwgc3R5bGU9Ik1BUkdJTjog
+MGNtIDBjbSAwcHQ7IFRFWFQtSU5ERU5UOiA1NHB0Ij48Rk9OVCANCmZhY2U9IlRpbWVzIE5ldyBS
+b21hbiI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULVNJWkU6IDEycHQiPiZuYnNwOzwv
+U1BBTj48U1BBTiBsYW5nPUVOLVVTIA0Kc3R5bGU9IkZPTlQtU0laRTogMTJwdDsgbXNvLWZhcmVh
+c3QtZm9udC1mYW1pbHk6ICdBcmlhbCBVbmljb2RlIE1TJyI+PG86cD48L286cD48L1NQQU4+PC9G
+T05UPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1hbCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdDsg
+VEVYVC1JTkRFTlQ6IDU0cHQiPjxGT05UIA0KZmFjZT0iVGltZXMgTmV3IFJvbWFuIj48U1BBTiBs
+YW5nPUVOLVVTIA0Kc3R5bGU9IkZPTlQtU0laRTogMTJwdCI+Jm5ic3A7PC9TUEFOPjxTUEFOIGxh
+bmc9RU4tVVMgDQpzdHlsZT0iRk9OVC1TSVpFOiAxMnB0OyBtc28tZmFyZWFzdC1mb250LWZhbWls
+eTogJ0FyaWFsIFVuaWNvZGUgTVMnIj48bzpwPjwvbzpwPjwvU1BBTj48L0ZPTlQ+PC9QPg0KPFAg
+Y2xhc3M9TXNvUGxhaW5UZXh0IHN0eWxlPSJNQVJHSU46IDBjbSAwY20gMHB0Ij48U1BBTiBsYW5n
+PUVOLVVTIA0Kc3R5bGU9IkZPTlQtRkFNSUxZOiAnVGltZXMgTmV3IFJvbWFuJyI+Jm5ic3A7PG86
+cD48L286cD48L1NQQU4+PC9QPg0KPFAgY2xhc3M9TXNvUGxhaW5UZXh0IHN0eWxlPSJNQVJHSU46
+IDBjbSAwY20gMHB0Ij48U1BBTiBsYW5nPUVOLVVTIA0Kc3R5bGU9IkZPTlQtRkFNSUxZOiAnVGlt
+ZXMgTmV3IFJvbWFuJyI+Jm5ic3A7Jm5ic3A7Jm5ic3A7IDxvOnA+PC9vOnA+PC9TUEFOPjwvUD4N
+CjxQIGNsYXNzPU1zb1BsYWluVGV4dCBzdHlsZT0iTUFSR0lOOiAwY20gMGNtIDBwdCI+PFNQQU4g
+bGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULUZBTUlMWTogJ1RpbWVzIE5ldyBSb21hbiciPiZuYnNw
+OzxvOnA+PC9vOnA+PC9TUEFOPjwvUD4NCjxQIGNsYXNzPU1zb05vcm1hbCBzdHlsZT0iTUFSR0lO
+OiAwY20gMGNtIDBwdCI+PFNQQU4gbGFuZz1FTi1VUyANCnN0eWxlPSJGT05ULVNJWkU6IDEycHQi
+PjxGT05UIA0KZmFjZT0iVGltZXMgTmV3IFJvbWFuIj4mbmJzcDs8bzpwPjwvbzpwPjwvRk9OVD48
+L1NQQU4+PC9QPjwvQk9EWT48L0hUTUw+DQo=
+
+------=_NextPart_000_007D_01C6FDA2.3A3E0470--
 
 
---Kj7319i9nmIyA2yE
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
 
-[1.] One line summary of the problem:   =20
-
-Can't call mkdir() on 2.6.19-r3 nfsd
-
-
-[2.] Full description of the problem/report:
-
-When I call "mkdir foo" on an nfs mounted volume, the strace of mkdir shows
-
-    mkdir("foo", 0777)                      =3D -1 EPERM (Operation not per=
-mitted)
-
-and the command fails. But if I do a "ls -ld foo" afterwards, the directory=
- got
-created:
-
-    drwxr-xr-x 2 ingo ingo 4096 2006-11-01 02:54 foo
-
-The server is running 2.6.19-rc3, the client 2.6.18. The version of the
-nfs-kernel-server ist 1.0.10. This did work with 2.6.18 as nfs server.
-
-
-[3.] Keywords (i.e., modules, networking, kernel):
-
-nfsd, mkdir, EPERM, 2.6.19-rc3
-
-
-[4.] Kernel version (from /proc/version):
-
-Linux version 2.6.19-rc3-pinguin20061024.1 (ingo@pinguin) (gcc version 4.1.=
-2 20060901 (prerelease) (Debian 4.1.1-13)) #1 SMP Tue Oct 24 16:47:01 CEST =
-2006
-
-
-[5.] Output of Oops.. message (if applicable) with symbolic information=20
-     resolved (see Documentation/oops-tracing.txt)
-
-n/a, strace see above.
-
-
-[6.] A small shell script or example program which triggers the
-     problem (if possible)
-
-mkdir foo
-
-
-[7.] Environment
-
-[7.1.] Software (add the output of the ver_linux script here)
-
-The nfs server is Debian testing, nfs-kernel-server version 1.0.10-2.
-
-$ scripts/ver_linux
-If some fields are empty or look unusual you may have an old version.
-Compare to the current minimal requirements in Documentation/Changes.
-
-Linux pinguin 2.6.19-rc3-pinguin20061024.1 #1 SMP Tue Oct 24 16:47:01 CEST =
-2006 x86_64 GNU/Linux
-
-Gnu C                  4.1.2
-Gnu make               3.81
-binutils               2.17
-util-linux             2.12r
-mount                  2.12r
-module-init-tools      3.2.2
-e2fsprogs              1.39
-Linux C Library        2.3.6
-Dynamic linker (ldd)   2.3.6
-Procps                 3.2.7
-Net-tools              1.60
-Console-tools          0.2.3
-Sh-utils               5.97
-udev                   100
-Modules Loaded         nfs tun crc32 nfsd exportfs lockd sunrpc lp thermal =
-fan button processor ac battery dm_snapshot dm_mirror dm_mod 8250_pnp snd_h=
-da_intel snd_hda_codec snd_pcm_oss snd_mixer_oss sg snd_pcm i2c_i801 snd_ti=
-mer iTCO_wdt 8250 serial_core i2c_core sr_mod intel_agp parport_pc parport =
-e1000 cdrom floppy evdev snd soundcore snd_page_alloc psmouse rtc pcspkr un=
-ix
-
-
-[7.2.] Processor information (from /proc/cpuinfo):
-
-processor       : 0
-vendor_id       : GenuineIntel
-cpu family      : 6
-model           : 15
-model name      : Intel(R) Core(TM)2 CPU          6300  @ 1.86GHz
-stepping        : 6
-cpu MHz         : 1862.002
-cache size      : 2048 KB
-physical id     : 0
-siblings        : 2
-core id         : 0
-cpu cores       : 2
-fpu             : yes
-fpu_exception   : yes
-cpuid level     : 10
-wp              : yes
-flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca =
-cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm syscall nx lm co=
-nstant_tsc pni monitor ds_cpl vmx est tm2 ssse3 cx16 xtpr lahf_lm
-bogomips        : 3726.93
-clflush size    : 64
-cache_alignment : 64
-address sizes   : 36 bits physical, 48 bits virtual
-power management:
-
-processor       : 1
-vendor_id       : GenuineIntel
-cpu family      : 6
-model           : 15
-model name      : Intel(R) Core(TM)2 CPU          6300  @ 1.86GHz
-stepping        : 6
-cpu MHz         : 1862.002
-cache size      : 2048 KB
-physical id     : 0
-siblings        : 2
-core id         : 1
-cpu cores       : 2
-fpu             : yes
-fpu_exception   : yes
-cpuid level     : 10
-wp              : yes
-flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca =
-cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm syscall nx lm co=
-nstant_tsc pni monitor ds_cpl vmx est tm2 ssse3 cx16 xtpr lahf_lm
-bogomips        : 3724.18
-clflush size    : 64
-cache_alignment : 64
-address sizes   : 36 bits physical, 48 bits virtual
-power management:
-
-
-[7.3.] Module information (from /proc/modules):
-[7.4.] Loaded driver and hardware information (/proc/ioports, /proc/iomem)
-[7.5.] PCI information ('lspci -vvv' as root)
-[7.6.] SCSI information (from /proc/scsi/scsi)
-
-Please tell me if you think any of these are relevant.
-
-
-[7.7.] Other information that might be relevant to the problem
-       (please look in /proc and include all information that you
-       think to be relevant):
-
-The kernel is compiled for the x86_64 arch, the userspace and the nfs
-kernel server code is still compiled for i386. The exported filesystems
-are all ext3.
-
-$ grep 'NFS\|RPC\|LOCKD' /boot/config-`uname -r`
-CONFIG_LOCKDEP_SUPPORT=3Dy
-CONFIG_NFS_FS=3Dm
-CONFIG_NFS_V3=3Dy
-# CONFIG_NFS_V3_ACL is not set
-CONFIG_NFS_V4=3Dy
-# CONFIG_NFS_DIRECTIO is not set
-CONFIG_NFSD=3Dm
-CONFIG_NFSD_V3=3Dy
-# CONFIG_NFSD_V3_ACL is not set
-CONFIG_NFSD_V4=3Dy
-CONFIG_NFSD_TCP=3Dy
-CONFIG_LOCKD=3Dm
-CONFIG_LOCKD_V4=3Dy
-CONFIG_NFS_COMMON=3Dy
-CONFIG_SUNRPC=3Dm
-CONFIG_SUNRPC_GSS=3Dm
-CONFIG_RPCSEC_GSS_KRB5=3Dm
-CONFIG_RPCSEC_GSS_SPKM3=3Dm
-CONFIG_RXRPC=3Dm
-
-
-[X.] Other notes, patches, fixes, workarounds:
-
---=20
-Man hat schon Igel nach Westen kotzen sehen!
-(alte indianische Weisheit)
-
---Kj7319i9nmIyA2yE
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.5 (GNU/Linux)
-
-iD8DBQFFSAOP4XrXtQkN2NURAmWiAJ4gukJ5GfS1R+Ns4W291DMkeSG65QCgo3xH
-QMS0sIWEK29aZS+98aI7K8M=
-=BAEw
------END PGP SIGNATURE-----
-
---Kj7319i9nmIyA2yE--
-
-
---===============1494387322==
+--===============1137931885==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -249,7 +288,7 @@ Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============1494387322==
+--===============1137931885==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -259,4 +298,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1494387322==--
+--===============1137931885==--
