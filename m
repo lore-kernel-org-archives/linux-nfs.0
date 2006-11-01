@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/12] SUNRPC: add a "generic" function to see if the
-	peer uses a secure port
-Date: Wed, 01 Nov 2006 13:08:51 -0500
-Message-ID: <20061101180851.14581.93970.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 08/12] SUNRPC: teach svc_sendto() to deal with IPv6
+	addresses
+Date: Wed, 01 Nov 2006 13:08:46 -0500
+Message-ID: <20061101180846.14581.28891.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GfKWM-0006I6-OO
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:09:02 -0800
+	id 1GfKWF-0006Gt-VE
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:56 -0800
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKWN-0002oT-Kn
-	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:09:03 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GfKWG-0003IM-Rw
+	for nfs@lists.sourceforge.net; Wed, 01 Nov 2006 10:08:57 -0800
 To: neilb@suse.de
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,68 +29,114 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The only reason svcsock.c looks at a sockaddr's port is to check whether
-the remote peer is connecting from a privileged port.  Refactor this check
-to hide processing that is specific to address format.
+CMSG_DATA comes in different sizes, depending on address family.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- net/sunrpc/svcsock.c |   19 ++++++++++++++++---
- 1 files changed, 16 insertions(+), 3 deletions(-)
+ net/sunrpc/svcsock.c |   66 +++++++++++++++++++++++++++++++++++++-------------
+ 1 files changed, 49 insertions(+), 17 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index ccb5ff3..a83d97f 100644
+index b0fb46f..ccb5ff3 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -894,6 +894,20 @@ svc_tcp_data_ready(struct sock *sk, int 
- 		wake_up_interruptible(sk->sk_sleep);
+@@ -35,6 +35,7 @@ #include <linux/file.h>
+ #include <net/sock.h>
+ #include <net/checksum.h>
+ #include <net/ip.h>
++#include <net/ipv6.h>
+ #include <net/tcp_states.h>
+ #include <asm/uaccess.h>
+ #include <asm/ioctls.h>
+@@ -408,6 +409,44 @@ svc_wake_up(struct svc_serv *serv)
+ 	}
  }
  
-+static inline int svc_port_is_privileged(struct sockaddr *sin)
++union svc_pktinfo_u {
++	struct in_pktinfo pkti;
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++	struct in6_pktinfo pkti6;
++#endif
++};
++
++static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
 +{
-+	switch (sin->sa_family) {
++	switch (rqstp->rq_sock->sk_sk->sk_family) {
 +	case AF_INET:
-+		return ntohs(((struct sockaddr_in *)sin)->sin_port) < 1024;
++		do {
++			struct in_pktinfo *pki = (struct in_pktinfo *) CMSG_DATA(cmh);
++
++			cmh->cmsg_level = SOL_IP;
++			cmh->cmsg_type = IP_PKTINFO;
++			pki->ipi_ifindex = 0;
++			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
++			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
++		} while (0);
++		break;
 +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 +	case AF_INET6:
-+		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port) < 1024;
++		do {
++			struct in6_pktinfo *pki = (struct in6_pktinfo *) CMSG_DATA(cmh);
++
++			cmh->cmsg_level = SOL_IPV6;
++			cmh->cmsg_type = IPV6_PKTINFO;
++			pki->ipi6_ifindex = 0;
++			ipv6_addr_copy(&pki->ipi6_addr, &rqstp->rq_daddr.addr6);
++			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
++		} while (0);
++		break;
 +#endif
-+	default:
-+		return 0;
 +	}
++	return;
 +}
 +
  /*
-  * Accept a TCP connection
+  * Generic sendto routine
   */
-@@ -941,7 +955,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	 * tell us anything.  For now just warn about unpriv connections.
- 	 */
- 	__svc_print_addr((struct sockaddr *) &sin, buf, sizeof(buf));
--	if (ntohs(sin.sin_port) >= 1024) {
-+	if (!svc_port_is_privileged((struct sockaddr *) &sin)) {
- 		dprintk(KERN_WARNING
- 			"%s: connect from unprivileged port: %s\n",
- 			serv->sv_name, buf);
-@@ -1278,7 +1292,6 @@ int
- svc_recv(struct svc_rqst *rqstp, long timeout)
- {
- 	struct svc_sock		*svsk = NULL;
--	struct sockaddr_in	*sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	struct svc_pool		*pool = rqstp->rq_pool;
- 	int			len, i;
-@@ -1373,7 +1386,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	svsk->sk_lastrecv = get_seconds();
- 	clear_bit(SK_OLD, &svsk->sk_flags);
+@@ -417,9 +456,8 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+ 	struct socket	*sock = svsk->sk_sock;
+ 	int		slen;
+-	char 		buffer[CMSG_SPACE(sizeof(struct in_pktinfo))];
++	char 		buffer[CMSG_SPACE(sizeof(union svc_pktinfo_u))];
+ 	struct cmsghdr *cmh = (struct cmsghdr *)buffer;
+-	struct in_pktinfo *pki = (struct in_pktinfo *)CMSG_DATA(cmh);
+ 	int		len = 0;
+ 	int		result;
+ 	int		size;
+@@ -432,21 +470,15 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ 	slen = xdr->len;
  
--	rqstp->rq_secure = ntohs(sin->sin_port) < 1024;
-+	rqstp->rq_secure = svc_port_is_privileged((struct sockaddr *) &rqstp->rq_addr);
- 	rqstp->rq_chandle.defer = svc_defer;
+ 	if (rqstp->rq_prot == IPPROTO_UDP) {
+-		/* set the source and destination */
+-		struct msghdr	msg;
+-		msg.msg_name    = &rqstp->rq_addr;
+-		msg.msg_namelen = rqstp->rq_addrlen;
+-		msg.msg_iov     = NULL;
+-		msg.msg_iovlen  = 0;
+-		msg.msg_flags	= MSG_MORE;
+-
+-		msg.msg_control = cmh;
+-		msg.msg_controllen = sizeof(buffer);
+-		cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+-		cmh->cmsg_level = SOL_IP;
+-		cmh->cmsg_type = IP_PKTINFO;
+-		pki->ipi_ifindex = 0;
+-		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
++		struct msghdr msg = {
++			.msg_name	= &rqstp->rq_addr,
++			.msg_namelen	= rqstp->rq_addrlen,
++			.msg_control	= cmh,
++			.msg_controllen	= sizeof(buffer),
++			.msg_flags	= MSG_MORE,
++		};
++
++		svc_set_cmsg_data(rqstp, cmh);
  
- 	if (serv->sv_stats)
+ 		if (sock_sendmsg(sock, &msg, 0) < 0)
+ 			goto out;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
