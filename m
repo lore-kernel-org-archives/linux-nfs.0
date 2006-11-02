@@ -1,28 +1,30 @@
-From: Chris Osicki <osk@admin.swisscom-mobile.ch>
-Subject: RPC: error 5 connecting to server
-Date: Thu, 2 Nov 2006 11:48:00 +0100
-Message-ID: <20061102114800.3f1cf8fc@mwdsp001>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: Small optimization for nfs3acl. (was: Re: [PATCH] NFS:
+	nfsaclsvc_encode_getaclres() - Fix potential NULL deref and
+	tiny optimization.)
+Date: Thu, 2 Nov 2006 16:06:36 +0100
+Message-ID: <200611021606.36447.agruen@suse.de>
+References: <200610272316.47089.jesper.juhl@gmail.com>
+	<200610311726.00411.agruen@suse.de>
+	<200610312139.23836.jesper.juhl@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org,
+	David Rientjes <rientjes@cs.washington.edu>,
+	Neil Brown <neilb@cse.unsw.edu.au>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gfa7i-0005TD-Uy
-	for nfs@lists.sourceforge.net; Thu, 02 Nov 2006 02:48:38 -0800
-Received: from outmail20.swisscom.com ([138.190.3.140] helo=mrp.swissptt.ch)
+	id 1Gfe8m-00047k-HJ
+	for nfs@lists.sourceforge.net; Thu, 02 Nov 2006 07:06:00 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gfa7c-0001YU-CE
-	for nfs@lists.sourceforge.net; Thu, 02 Nov 2006 02:48:40 -0800
-Received: from mwdsp001.swissptt.ch (mwdsp001.swissptt.ch [10.221.40.203])
-	by mrp.swissptt.ch with ESMTP id kA2Am0EP029038
-	(using TLSv1/SSLv3 with cipher DHE-RSA-AES256-SHA (256 bits) verified
-	NO)
-	for <nfs@lists.sourceforge.net>; Thu, 2 Nov 2006 11:48:01 +0100 (MET)
-Received: from mwdsp001 (localhost [127.0.0.1])
-	by mwdsp001.swissptt.ch (8.13.6/8.13.4) with ESMTP id kA2Am06P017354
-	for <nfs@lists.sourceforge.net>; Thu, 2 Nov 2006 11:48:00 +0100
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1Gfe8j-0002qk-8n
+	for nfs@lists.sourceforge.net; Thu, 02 Nov 2006 07:06:01 -0800
+To: Jesper Juhl <jesper.juhl@gmail.com>
+In-Reply-To: <200610312139.23836.jesper.juhl@gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,21 +37,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Tuesday 31 October 2006 21:39, Jesper Juhl wrote:
+> Here's a patch for nfs3. Hope it's OK.
 
-Hi
+It's obviously correct.
 
-During some NFS testing I see on my NFS server the following messages:
-
-kernel: RPC: error 5 connecting to server 10.238.50.153
-
-where 10.238.50.153 is IP address of the client.
-
-Does anybody know what do they mean those messages?
-
-Thanks for your time.
-
-Regards,
-Chris
+Thanks,
+Andreas
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
