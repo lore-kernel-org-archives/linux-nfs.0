@@ -1,55 +1,39 @@
 From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: Small optimization for nfs3acl. (was: Re: [PATCH] NFS:
-	nfsaclsvc_encode_getaclres() - Fix potential NULL deref and
-	tiny optimization.)
-Date: Thu, 2 Nov 2006 16:06:36 +0100
-Message-ID: <200611021606.36447.agruen@suse.de>
-References: <200610272316.47089.jesper.juhl@gmail.com>
-	<200610311726.00411.agruen@suse.de>
-	<200610312139.23836.jesper.juhl@gmail.com>
+Subject: Re: [PATCH] NFS: nfsaclsvc_encode_getaclres() - Fix potential NULL deref and tiny optimization.
+Date: Thu, 2 Nov 2006 16:07:46 +0100
+Message-ID: <200611021607.46373.agruen@suse.de>
+References: <200610272316.47089.jesper.juhl@gmail.com> <200610311726.00411.agruen@suse.de> <Pine.LNX.4.64N.0610311232190.30578@attu4.cs.washington.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org,
-	David Rientjes <rientjes@cs.washington.edu>,
-	Neil Brown <neilb@cse.unsw.edu.au>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gfe8m-00047k-HJ
-	for nfs@lists.sourceforge.net; Thu, 02 Nov 2006 07:06:00 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gfe8j-0002qk-8n
-	for nfs@lists.sourceforge.net; Thu, 02 Nov 2006 07:06:01 -0800
-To: Jesper Juhl <jesper.juhl@gmail.com>
-In-Reply-To: <200610312139.23836.jesper.juhl@gmail.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Jesper Juhl <jesper.juhl@gmail.com>, linux-kernel@vger.kernel.org,
+	Neil Brown <neilb@cse.unsw.edu.au>, nfs@lists.sourceforge.net,
+	Andrew Morton <akpm@osdl.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751302AbWKBPHF@vger.kernel.org>
+To: David Rientjes <rientjes@cs.washington.edu>
+In-Reply-To: <Pine.LNX.4.64N.0610311232190.30578@attu4.cs.washington.edu>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tuesday 31 October 2006 21:39, Jesper Juhl wrote:
-> Here's a patch for nfs3. Hope it's OK.
+On Tuesday 31 October 2006 21:39, David Rientjes wrote:
+> On Tue, 31 Oct 2006, Andreas Gruenbacher wrote:
+> > > > w should be an unsigned int.
+> > >
+> > > Makes sense.
+> >
+> > No, this breaks the while loop further below: with an unsigned int, the
+> > loop counter underflows and wraps.
+>
+> This is not a problem with w being an unsigned int, it's a problem with
+> the while loop.  nfsacl_size() returns unsigned int as it should and the
+> while loop can be written to respect that since integer division in C
+> truncates:
+>
+> 	for (n = w / PAGE_SIZE; n > 0; n--)
+> 		if (!rqstp->rq_respages[rqstp->rq_resused++];
 
-It's obviously correct.
+Assuming that PAGE_SIZE = 4096 and w = 100, the original loop iterates once, 
+while your proposed version iterates zero times -- the current code does the 
+right thing. So the proposed change is still bad, sorry.
 
-Thanks,
 Andreas
-
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
