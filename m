@@ -1,173 +1,132 @@
-From: =?ISO-8859-15?Q?Llu=EDs_Batlle_i_Rossell?= <viriketo@gmail.com>
-Subject: Exporting fs from a looped squashfs in linux
-Date: Sat, 04 Nov 2006 23:14:56 +0100
-Message-ID: <454D10E0.5020301@gmail.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: 2.6.19-rc4: known unfixed regressions (v3)
+Date: Sun, 5 Nov 2006 07:48:01 +0100
+Message-ID: <20061105064801.GV13381@stusta.de>
+References: <Pine.LNX.4.64.0610302019560.25218@g5.osdl.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0426122216=="
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GgTn0-0003it-PQ
-	for nfs@lists.sourceforge.net; Sat, 04 Nov 2006 14:14:58 -0800
-Received: from py-out-1112.google.com ([64.233.166.176])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GgTn1-0003LP-LP
-	for nfs@lists.sourceforge.net; Sat, 04 Nov 2006 14:15:00 -0800
-Received: by py-out-1112.google.com with SMTP id j37so606172pyc
-	for <nfs@lists.sourceforge.net>; Sat, 04 Nov 2006 14:14:59 -0800 (PST)
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: len.brown@intel.com, Komuro <komurojun-mbn@nifty.com>, linux-pm@osdl.org,
+   Ernst Herzberg <earny@net4u.de>, Christian <christiand59@web.de>,
+   Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
+   ak@suse.de, linux-ide@vger.kernel.org, oprofile-list@lists.sourceforge.net,
+   Jens Axboe <jens.axboe@oracle.com>, linux-pci@atrey.karlin.mff.cuni.cz,
+   Elimar Riesebieter <riesebie@lxtec.de>, discuss@x86-64.org,
+   Thierry Vignaud <tvignaud@mandriva.com>,
+   Jeff Chua <jeff.chua.linux@gmail.com>,
+   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
+   neilb@cse.unsw.edu.au,
+   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
+   "Eric W. Biederman" <ebiederm@xmission.com>, cpufreq@lists.linux.org.uk,
+   "Michael S. Tsirkin" <mst@mellanox.co.il>,
+   "Bryan O'Sulli
+Return-path: <linux-pm-bounces@lists.osdl.org>
+To: Linus Torvalds <torvalds@osdl.org>, Andrew Morton <akpm@osdl.org>
+In-Reply-To: <Pine.LNX.4.64.0610302019560.25218@g5.osdl.org>
+List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
+List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
+List-Post: <mailto:linux-pm@lists.osdl.org>
+List-Help: <mailto:linux-pm-request@lists.osdl.org?subject=help>
+List-Subscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.osdl.org?subject=subscribe>
+Sender: linux-pm-bounces@lists.osdl.org
+Errors-To: linux-pm-bounces@lists.osdl.org
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a cryptographically signed message in MIME format.
+This email lists some known regressions in 2.6.19-rc4 compared to 2.6.18
+that are not yet fixed in Linus' tree.
 
---===============0426122216==
-Content-Type: multipart/signed; protocol="application/x-pkcs7-signature";
-	micalg=sha1; boundary="------------ms010909070708080607020807"
+If you find your name in the Cc header, you are either submitter of one
+of the bugs, maintainer of an affectected subsystem or driver, a patch
+of you caused a breakage or I'm considering you in any other way possibly
+involved with one or more of these issues.
 
-This is a cryptographically signed message in MIME format.
-
---------------ms010909070708080607020807
-Content-Type: text/plain; charset=ISO-8859-15
-Content-Transfer-Encoding: quoted-printable
-
-Hi,
-
-I'm trying to serve a mounted loop-filesystem (squashfs) from a linux
-box to other unixes. And it doesn't work due to (I think) something
-related to /proc/fs/nfs/filehandle.
-
-The server, on mount, says only (mountd with -d all)
-Nov  4 23:05:11 llimona rpc.mountd: MNT3(/nfs/sparc/netbsd/usr/) called
-Nov  4 23:05:11 llimona rpc.mountd: authenticated mount request from
-mandarina:872 for /nfs/sparc/netbsd/usr (/nfs/sparc/netbsd/usr)
-
-The client, on mount says only:
-mount: llimona:/nfs/sparc/netbsd/usr/ failed, reason given by server:
-S'ha denegat el perm=EDs
-(That is, Permission Denied)
-
-I've straced a foreground rpc.mountd, and I've seen the next:
-open("/proc/fs/nfs/filehandle", O_RDWR) =3D 9
-fstat64(9, {st_mode=3DS_IFREG|0600, st_size=3D0, ...}) =3D 0
-mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1,
-0) =3D 0xb7efd000
-write(9, "* /nfs/sparc/netbsd/usr 64 \n", 28) =3D -1 EPERM (Operation not
-permitted)
-read(9, "", 4096)                       =3D 0
-close(9)                                =3D 0
-munmap(0xb7efd000, 4096)                =3D 0
-sendmsg(6, {msg_name(16)=3D{sa_family=3DAF_INET, sin_port=3Dhtons(872),
-sin_addr=3Dinet_addr("192.168.1.33")},
-msg_iov(1)=3D[{"\36\201\"\21\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..=
-.,
-28}], msg_controllen=3D24, msg_control=3D0x805ce38, , msg_flags=3D0}, 0) =
-=3D 28
-
-So you can see the "EPERM" related to the 'filehandle' proc file. What's
-happening here? Am I unable to export a loop squashfs?
-
-Thanks in advance!
-
---------------ms010909070708080607020807
-Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIJTTCC
-AwEwggJqoAMCAQICEC7GHhAgrXIK4gbYgnLRBvIwDQYJKoZIhvcNAQEEBQAwYjELMAkGA1UE
-BhMCWkExJTAjBgNVBAoTHFRoYXd0ZSBDb25zdWx0aW5nIChQdHkpIEx0ZC4xLDAqBgNVBAMT
-I1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFpbCBJc3N1aW5nIENBMB4XDTA2MDMxMzIyNTMwMVoX
-DTA3MDMxMzIyNTMwMVowRDEfMB0GA1UEAxMWVGhhd3RlIEZyZWVtYWlsIE1lbWJlcjEhMB8G
-CSqGSIb3DQEJARYSdmlyaWtldG9AZ21haWwuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
-MIIBCgKCAQEAvULiATyjPs5ZNXAo1qG4p3B136VTuzi82L14U0YTuyUO1lrJNJypHfM1+5d5
-0vYJKzzSt/sCLD76X3vO3DxC5cqC2nrchEN+GCKndpE2PM7Sp9eWrHs9IVWCfYxP5M3kLoeb
-5XXeRCciHCeYJ7+6SLrftWxU2qKVtAAQMGnLghUuwMck0sWXiywDhQ3MVIPbdOEu+VGKRMRM
-Ncq4bFRvqNRpNfG5A+WOtsuqxTpJtdLcP0fKTIKK3N7r7k4IMYEHLTPl9iH5Ve0OPgeTekyH
-ADZnIjE7zweBDBH0Qh8DDTaMx5XszHAMwsChHxBmCcAjncdPnqxdShbOPshtBiPxHwIDAQAB
-o1IwUDAOBgNVHQ8BAf8EBAMCA/gwEQYJYIZIAYb4QgEBBAQDAgUgMB0GA1UdEQQWMBSBEnZp
-cmlrZXRvQGdtYWlsLmNvbTAMBgNVHRMBAf8EAjAAMA0GCSqGSIb3DQEBBAUAA4GBAFRbmD1g
-BXH11x+sumaBS5h4A4ejYdmB1b5u2jBhkZnfvO92RD23dnS8PKk4MdGxGQUzawyGK8JSAUJg
-eERQ1Xoxa/xRgTGDphoZLLBdFkkvqjrqz2h2hiXkZHGyE3yFst9UVrXDHZKOyCR9c3LaXPQp
-Iz2lJiADJ2BtByn43FtHMIIDATCCAmqgAwIBAgIQLsYeECCtcgriBtiCctEG8jANBgkqhkiG
-9w0BAQQFADBiMQswCQYDVQQGEwJaQTElMCMGA1UEChMcVGhhd3RlIENvbnN1bHRpbmcgKFB0
-eSkgTHRkLjEsMCoGA1UEAxMjVGhhd3RlIFBlcnNvbmFsIEZyZWVtYWlsIElzc3VpbmcgQ0Ew
-HhcNMDYwMzEzMjI1MzAxWhcNMDcwMzEzMjI1MzAxWjBEMR8wHQYDVQQDExZUaGF3dGUgRnJl
-ZW1haWwgTWVtYmVyMSEwHwYJKoZIhvcNAQkBFhJ2aXJpa2V0b0BnbWFpbC5jb20wggEiMA0G
-CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC9QuIBPKM+zlk1cCjWobincHXfpVO7OLzYvXhT
-RhO7JQ7WWsk0nKkd8zX7l3nS9gkrPNK3+wIsPvpfe87cPELlyoLaetyEQ34YIqd2kTY8ztKn
-15asez0hVYJ9jE/kzeQuh5vldd5EJyIcJ5gnv7pIut+1bFTaopW0ABAwacuCFS7AxyTSxZeL
-LAOFDcxUg9t04S75UYpExEw1yrhsVG+o1Gk18bkD5Y62y6rFOkm10tw/R8pMgorc3uvuTggx
-gQctM+X2IflV7Q4+B5N6TIcANmciMTvPB4EMEfRCHwMNNozHlezMcAzCwKEfEGYJwCOdx0+e
-rF1KFs4+yG0GI/EfAgMBAAGjUjBQMA4GA1UdDwEB/wQEAwID+DARBglghkgBhvhCAQEEBAMC
-BSAwHQYDVR0RBBYwFIESdmlyaWtldG9AZ21haWwuY29tMAwGA1UdEwEB/wQCMAAwDQYJKoZI
-hvcNAQEEBQADgYEAVFuYPWAFcfXXH6y6ZoFLmHgDh6Nh2YHVvm7aMGGRmd+873ZEPbd2dLw8
-qTgx0bEZBTNrDIYrwlIBQmB4RFDVejFr/FGBMYOmGhkssF0WSS+qOurPaHaGJeRkcbITfIWy
-31RWtcMdko7IJH1zctpc9CkjPaUmIAMnYG0HKfjcW0cwggM/MIICqKADAgECAgENMA0GCSqG
-SIb3DQEBBQUAMIHRMQswCQYDVQQGEwJaQTEVMBMGA1UECBMMV2VzdGVybiBDYXBlMRIwEAYD
-VQQHEwlDYXBlIFRvd24xGjAYBgNVBAoTEVRoYXd0ZSBDb25zdWx0aW5nMSgwJgYDVQQLEx9D
-ZXJ0aWZpY2F0aW9uIFNlcnZpY2VzIERpdmlzaW9uMSQwIgYDVQQDExtUaGF3dGUgUGVyc29u
-YWwgRnJlZW1haWwgQ0ExKzApBgkqhkiG9w0BCQEWHHBlcnNvbmFsLWZyZWVtYWlsQHRoYXd0
-ZS5jb20wHhcNMDMwNzE3MDAwMDAwWhcNMTMwNzE2MjM1OTU5WjBiMQswCQYDVQQGEwJaQTEl
-MCMGA1UEChMcVGhhd3RlIENvbnN1bHRpbmcgKFB0eSkgTHRkLjEsMCoGA1UEAxMjVGhhd3Rl
-IFBlcnNvbmFsIEZyZWVtYWlsIElzc3VpbmcgQ0EwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJ
-AoGBAMSmPFVzVftOucqZWh5owHUEcJ3f6f+jHuy9zfVb8hp2vX8MOmHyv1HOAdTlUAow1wJj
-WiyJFXCO3cnwK4Vaqj9xVsuvPAsH5/EfkTYkKhPPK9Xzgnc9A74r/rsYPge/QIACZNenpruf
-ZdHFKlSFD0gEf6e20TxhBEAeZBlyYLf7AgMBAAGjgZQwgZEwEgYDVR0TAQH/BAgwBgEB/wIB
-ADBDBgNVHR8EPDA6MDigNqA0hjJodHRwOi8vY3JsLnRoYXd0ZS5jb20vVGhhd3RlUGVyc29u
-YWxGcmVlbWFpbENBLmNybDALBgNVHQ8EBAMCAQYwKQYDVR0RBCIwIKQeMBwxGjAYBgNVBAMT
-EVByaXZhdGVMYWJlbDItMTM4MA0GCSqGSIb3DQEBBQUAA4GBAEiM0VCD6gsuzA2jZqxnD3+v
-rL7CF6FDlpSdf0whuPg2H6otnzYvwPQcUCCTcDz9reFhYsPZOhl+hLGZGwDFGguCdJ4lUJRi
-x9sncVcljd2pnDmOjCBPZV+V2vf3h9bGCE6u9uo05RAaWzVNd+NWIXiC3CEZNd4ksdMdRv9d
-X2VPMYIDZDCCA2ACAQEwdjBiMQswCQYDVQQGEwJaQTElMCMGA1UEChMcVGhhd3RlIENvbnN1
-bHRpbmcgKFB0eSkgTHRkLjEsMCoGA1UEAxMjVGhhd3RlIFBlcnNvbmFsIEZyZWVtYWlsIElz
-c3VpbmcgQ0ECEC7GHhAgrXIK4gbYgnLRBvIwCQYFKw4DAhoFAKCCAcMwGAYJKoZIhvcNAQkD
-MQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMDYxMTA0MjIxNDU2WjAjBgkqhkiG9w0B
-CQQxFgQUjV6uxUW+FEPQESrpExAMZLB3UQQwUgYJKoZIhvcNAQkPMUUwQzAKBggqhkiG9w0D
-BzAOBggqhkiG9w0DAgICAIAwDQYIKoZIhvcNAwICAUAwBwYFKw4DAgcwDQYIKoZIhvcNAwIC
-ASgwgYUGCSsGAQQBgjcQBDF4MHYwYjELMAkGA1UEBhMCWkExJTAjBgNVBAoTHFRoYXd0ZSBD
-b25zdWx0aW5nIChQdHkpIEx0ZC4xLDAqBgNVBAMTI1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFp
-bCBJc3N1aW5nIENBAhAuxh4QIK1yCuIG2IJy0QbyMIGHBgsqhkiG9w0BCRACCzF4oHYwYjEL
-MAkGA1UEBhMCWkExJTAjBgNVBAoTHFRoYXd0ZSBDb25zdWx0aW5nIChQdHkpIEx0ZC4xLDAq
-BgNVBAMTI1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFpbCBJc3N1aW5nIENBAhAuxh4QIK1yCuIG
-2IJy0QbyMA0GCSqGSIb3DQEBAQUABIIBAKGA8wfwM3JVR+2y7Od/D8MUxKEM8fxJFgg/8QT1
-z6TiIrl9GDj5XSiZ59z4P01WaPPX2qxAQt7eqlblavGF35Iu7If8ZamX/sCo1HTReLQx/lhN
-pZ7gnGwPuVo9TFy6n/xmwdFHzKzUACpavYrXkxmbFPo3CL4BO95JqpfTJ0QJbZif7y13AOTK
-oVXS2j6jEbL2cT6YfZMjqNjM2a/tFlxn4mjCnNbNYFJ04uKkVdE5wqHzHwmfrdhj2xBnPcx1
-suwYxp8N0vpQ4TBUSgSMLLTYeU6dDEZ66Ja8u0q6ANah6rz87p0e7wftOXZ6DfsPCqQjJuqA
-1bo97PAItayNgBUAAAAAAAA=
---------------ms010909070708080607020807--
+Due to the huge amount of recipients, please trim the Cc when answering.
 
 
---===============0426122216==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Subject    : ipath driver MCEs system on load when HT chip present
+References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7455
+Submitter  : Bryan O'Sullivan <bos@serpentine.com>
+Caused-By  : Eric W. Biederman <ebiederm@xmission.com>
+Status     : unknown
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---===============0426122216==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Subject    : i386: more DWARFs and strange messages
+References : http://lkml.org/lkml/2006/10/29/127
+Submitter  : Martin Lorenz <martin@lorenz.eu.org>
+Status     : unknown
 
---===============0426122216==--
+
+Subject    : x86_64: oprofile doesn't work
+References : http://lkml.org/lkml/2006/10/27/3
+Submitter  : Prakash Punnoor <prakash@punnoor.de>
+Status     : unknown
+
+
+Subject    : sata-via doesn't detect anymore disks attached to VIA vt6421
+References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7255
+Submitter  : Thierry Vignaud <tvignaud@mandriva.com>
+Status     : unknown
+
+
+Subject    : unable to rip cd
+References : http://lkml.org/lkml/2006/10/13/100
+Submitter  : Alex Romosan <romosan@sycorax.lbl.gov>
+Status     : unknown
+
+
+Subject    : SMP kernel can not generate ISA irq properly
+References : http://lkml.org/lkml/2006/10/22/15
+Submitter  : Komuro <komurojun-mbn@nifty.com>
+Status     : unknown
+
+
+Subject    : nfs-kernel-server does not start
+References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7457
+Submitter  : Elimar Riesebieter <riesebie@lxtec.de>
+Status     : problem is being debugged
+
+
+Subject    : ThinkPad T60/X60: lose ACPI events after suspend/resume
+References : http://lkml.org/lkml/2006/10/10/39
+             http://lkml.org/lkml/2006/10/4/425
+             http://lkml.org/lkml/2006/10/16/262
+             http://bugzilla.kernel.org/show_bug.cgi?id=3D7408
+             http://lkml.org/lkml/2006/10/30/251
+             http://lkml.org/lkml/2006/11/3/244
+Submitter  : Martin Lorenz <martin@lorenz.eu.org>
+             "Michael S. Tsirkin" <mst@mellanox.co.il>
+Status     : problem is being debugged
+
+
+Subject    : ThinkPad R50p: boot fail with (lapic && on_battery)
+References : http://lkml.org/lkml/2006/10/31/333
+Submitter  : Ernst Herzberg <earny@net4u.de>
+Status     : problem is being debugged
+
+
+Subject    : x86_64: NR_IRQ increase causes 11.5% slowdown
+                     in lmbench's fork benchmark
+References : http://lkml.org/lkml/2006/11/2/192
+Submitter  : Tim Chen <tim.c.chen@linux.intel.com>
+Caused-By  : Eric W. Biederman <ebiederm@xmission.com>
+             commit 550f2299ac8ffaba943cf211380d3a8d3fa75301
+Handled-By : Eric W. Biederman <ebiederm@xmission.com>
+             Andi Kleen <ak@suse.de>
+Status     : problem is being debugged
+
+
+Subject    : cpufreq not working on AMD K8
+References : http://lkml.org/lkml/2006/10/10/114
+             http://lkml.org/lkml/2006/11/3/26
+Submitter  : Christian <christiand59@web.de>
+Handled-By : Dave Jones <davej@redhat.com>
+Status     : Dave is investigating
+
+
+Subject    : PCI: MMCONFIG breakage
+References : http://lkml.org/lkml/2006/10/27/251
+Submitter  : Jeff Chua <jeff.chua.linux@gmail.com>
+Status     : unknown, both BIOS and Direct work
+             Greg said it should already be fixed
