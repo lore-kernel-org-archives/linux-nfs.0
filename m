@@ -1,8 +1,8 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Subject: Re: [BUG] All Kerberos mounts stop working,
 	restarting rpc.svcgssd helps
-Date: Mon, 6 Nov 2006 18:18:21 -0500
-Message-ID: <20061106231821.GK12372@fieldses.org>
+Date: Tue, 7 Nov 2006 00:16:15 +0100
+Message-ID: <20061106231615.GA17582@uio.no>
 References: <20061031001248.GA19915@uio.no>
 	<4d569c330610302053k2c9644b7ge2dfb862ce274af3@mail.gmail.com>
 	<20061031100346.GA2906@uio.no>
@@ -10,7 +10,6 @@ References: <20061031001248.GA19915@uio.no>
 	<20061031143248.GA8444@uio.no> <20061103123737.GA5199@uio.no>
 	<4d569c330611061508g5e9044cdy36d87ae2ac03952d@mail.gmail.com>
 	<20061106231539.GI12372@fieldses.org>
-	<20061106231615.GA17582@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
@@ -18,14 +17,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GhDjU-0000ap-1P
-	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 15:18:24 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1GhDjJ-0000aZ-JW
+	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 15:18:14 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GhDjU-0006OD-0M
-	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 15:18:25 -0800
-To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-In-Reply-To: <20061106231615.GA17582@uio.no>
+	(Exim 4.44) id 1GhDjI-0006Cx-I0
+	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 15:18:14 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20061106231539.GI12372@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,18 +37,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Nov 07, 2006 at 12:16:15AM +0100, Steinar H. Gunderson wrote:
-> On Mon, Nov 06, 2006 at 06:15:39PM -0500, J. Bruce Fields wrote:
-> > I wonder if it'd also be interesting to see the kernel/svcgssd
-> > interactions when it's failing.  If there's strace options that'll give
-> > you all the I/O data.....
-> 
-> The strace dump I sent should be comprehensive; I don't see what data you
-> would be missing.
+On Mon, Nov 06, 2006 at 06:15:39PM -0500, J. Bruce Fields wrote:
+> I wonder if it'd also be interesting to see the kernel/svcgssd
+> interactions when it's failing.  If there's strace options that'll give
+> you all the I/O data.....
 
-Whoops, I wasn't paying attention.  OK, thanks, I'll take a look.
+The strace dump I sent should be comprehensive; I don't see what data you
+would be missing.
 
---b.
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
