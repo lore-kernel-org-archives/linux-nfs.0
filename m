@@ -1,662 +1,112 @@
-From: Ernst Herzberg <earny@net4u.de>
-Subject: Re: 2.6.19-rc4: known unfixed regressions (v3)
-Date: Tue, 7 Nov 2006 21:05:36 +0100
-Message-ID: <200611072105.50178.earny@net4u.de>
-References: <Pine.LNX.4.64.0610302019560.25218@g5.osdl.org>
-	<200611070317.42230.earny@net4u.de>
-	<200611070041.28008.len.brown@intel.com>
-Reply-To: earny@net4u.de
+From: "Murali Bashyam" <mbcoder@gmail.com>
+Subject: Re: intercepting NFS RPC requests
+Date: Tue, 7 Nov 2006 12:36:35 -0800
+Message-ID: <9c8209a10611071236v6f4bc895h7fe5fe257c1b5629@mail.gmail.com>
+References: <9c8209a10611071050p475a2cf1y6656153a4b6a24e7@mail.gmail.com>
+	<20061107193638.GD11346@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: Andrew Morton <akpm@osdl.org>, Thierry Vignaud <tvignaud@mandriva.com>,
-   discuss@x86-64.org,
-   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
-   ak@suse.de, linux-ide@vger.kernel.org, Linus Torvalds <torvalds@osdl.org>,
-   oprofile-list@lists.sourceforge.net, Jens Axboe <jens.axboe@oracle.com>,
-   Martin Lorenz <martin@lorenz.eu.org>,
-   "Bryan O'Sullivan" <bos@serpentine.com>,
-   Elimar Riesebieter <riesebie@lxtec.de>, linux-pm@osdl.org,
-   "Michael S. Tsirkin" <mst@mellanox.co.il>, Komuro <komurojun-mbn@nifty.com>,
-   Jeff Chua <jeff.chua.linux@gmail.com>, phil.el@wanadoo.fr, gregkh@suse.de,
-   linux-pm@lists.osdl.org, neilb@cse.unsw.edu.au,
-   Adrian Bunk <bunk@stusta.de>, linux-acpi@vger.kernel.org, mingo@redhat.com,
-   nfs@lists.sourceforge.net, "Eric W. Biederman" <ebiederm@xmission.com>,
-   cpu
-Return-path: <linux-pm-bounces@lists.osdl.org>
-To: Len Brown <lenb@kernel.org>
-In-Reply-To: <200611070041.28008.len.brown@intel.com>
-List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
-List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
-List-Post: <mailto:linux-pm@lists.osdl.org>
-List-Help: <mailto:linux-pm-request@lists.osdl.org?subject=help>
-List-Subscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.osdl.org?subject=subscribe>
-Sender: linux-pm-bounces@lists.osdl.org
-Errors-To: linux-pm-bounces@lists.osdl.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============0305357452=="
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GhXgT-0003V6-I8
+	for nfs@lists.sourceforge.net; Tue, 07 Nov 2006 12:36:38 -0800
+Received: from nf-out-0910.google.com ([64.233.182.190])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GhXgT-0005l2-Ec
+	for nfs@lists.sourceforge.net; Tue, 07 Nov 2006 12:36:38 -0800
+Received: by nf-out-0910.google.com with SMTP id c31so360506nfb
+	for <nfs@lists.sourceforge.net>; Tue, 07 Nov 2006 12:36:36 -0800 (PST)
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20061107193638.GD11346@fieldses.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday 07 November 2006 06:41, Len Brown wrote:
-> On Monday 06 November 2006 21:17, Ernst Herzberg wrote:
-> > On Sunday 05 November 2006 07:48, Adrian Bunk wrote:
-> > > ...
-> > > Subject    : ThinkPad R50p: boot fail with (lapic && on_battery)
-> > > References : http://lkml.org/lkml/2006/10/31/333
-> > > Submitter  : Ernst Herzberg <earny@net4u.de>
-> > > Status     : problem is being debugged
+--===============0305357452==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_15704_24682583.1162931795734"
 
-First i made shure again that 2.6.18.2 works..... damn shure.
+------=_Part_15704_24682583.1162931795734
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
+On 11/7/06, J. Bruce Fields <bfields@fieldses.org> wrote:
 >
-> Please test if booting with "processor.max_cstate=3D1" makes any
-> difference
-
---> NO.
-
-> Please test if building with CONFIG_CPU_FREQ=3Dn makes any difference.
-
---> NO.
-
-> Also, please make sure that booting with "apm=3Doff" makes no difference
-> -- there is a bug where the APM code is not currently disabled in ACPI
-> mode, and who knows what effect that may have...
-
-Ahem. All previous tests was done with CONFIG_APM=3Dn. So i tested with =
-
-CONFIG_APM=3Dy. Does not help. It makes no difference booting with "apm=3Do=
-ff" =
-
-or not.
-
-Another check:
-
-The laptop muste be powered on on_battery to trigger the problem. If i =
-
-disconnect AC at the grub-prompt the problem does _not_ occur.
-
-The laptop has two batteries. The utraybay battery is nearly dead now, but =
-
-it makes no difference if removed.
-
-This problem is not very important for me, i just wondering why is only =
-
-occurs if running on battery. I would be happy, if someone can explain =
-
-this;-) =
-
-
-The laptop itself is rock stable (if he boots), never seen any glitch or =
-
-instability (with lapic). I don't know exactly when i started using lapic. =
-
-Its a long time ago (last year?), i have read the message that i can =
-
-enable this so i did. No problems until 2.6.19-rc1....
-
-If nobody can reproduce this, i don't care about the problem. There is also =
-
-a life without lapic:) But maybe it shows a problem anywhere else, timing =
-
-or whatever, so i'm willing to test everything against.
-
-So if someone is interesting to reproduce the problem, i repeat the =
-
-conditions that must be met:
-
-1.: Laptop must be powered on with AC removed (on battery)
-
-2.: BIOS-Setting must be
-  power --> Intel Speedstep --> Mode on Battery --> "Max Battery"
-
-3.: Kernel command line must have "lapci"
-
-4.: Kernel must be >=3D 2.6.19-rc1
-
-dmidecode: (maybe that helps?)
-
-# dmidecode 2.8
-SMBIOS 2.33 present.
-61 structures occupying 2127 bytes.
-Table at 0x000E0010.
-
-Handle 0x0000, DMI type 0, 20 bytes
-BIOS Information
-	Vendor: IBM
-	Version: 1RETDPWW (3.21 )
-	Release Date: 06/02/2006
-	Address: 0xDC000
-	Runtime Size: 144 kB
-	ROM Size: 1024 kB
-	Characteristics:
-		PCI is supported
-		PC Card (PCMCIA) is supported
-		PNP is supported
-		APM is supported
-		BIOS is upgradeable
-		BIOS shadowing is allowed
-		ESCD support is available
-		Boot from CD is supported
-		Selectable boot is supported
-		EDD is supported
-		3.5"/720 KB floppy services are supported (int 13h)
-		Print screen service is supported (int 5h)
-		8042 keyboard services are supported (int 9h)
-		Serial services are supported (int 14h)
-		Printer services are supported (int 17h)
-		CGA/mono video services are supported (int 10h)
-		ACPI is supported
-		USB legacy is supported
-		AGP is supported
-		BIOS boot specification is supported
-
-Handle 0x0001, DMI type 1, 25 bytes
-System Information
-	Manufacturer: IBM
-	Product Name: 183222G
-	Version: ThinkPad R50p
-	Serial Number: 99DR993
-	UUID: 5532DC80-466C-11CB-B373-95CD80E5548B
-	Wake-up Type: Power Switch
-
-Handle 0x0002, DMI type 2, 8 bytes
-Base Board Information
-	Manufacturer: IBM
-	Product Name: 183222G
-	Version: Not Available
-	Serial Number: J1V9545B13X
-
-Handle 0x0003, DMI type 3, 17 bytes
-Chassis Information
-	Manufacturer: IBM
-	Type: Notebook
-	Lock: Not Present
-	Version: Not Available
-	Serial Number: Not Available
-	Asset Tag: No Asset Information
-	Boot-up State: Unknown
-	Power Supply State: Unknown
-	Thermal State: Unknown
-	Security Status: Unknown
-	OEM Information: 0x00000000
-
-Handle 0x0004, DMI type 126, 17 bytes
-Inactive
-
-Handle 0x0005, DMI type 126, 17 bytes
-Inactive
-
-Handle 0x0006, DMI type 4, 35 bytes
-Processor Information
-	Socket Designation: None
-	Type: Central Processor
-	Family: Pentium M
-	Manufacturer: GenuineIntel
-	ID: 95 06 00 00 BF F9 E9 A7
-	Signature: Type 0, Family 6, Model 9, Stepping 5
-	Flags:
-		FPU (Floating-point unit on-chip)
-		VME (Virtual mode extension)
-		DE (Debugging extension)
-		PSE (Page size extension)
-		TSC (Time stamp counter)
-		MSR (Model specific registers)
-		MCE (Machine check exception)
-		CX8 (CMPXCHG8 instruction supported)
-		SEP (Fast system call)
-		MTRR (Memory type range registers)
-		PGE (Page global enable)
-		MCA (Machine check architecture)
-		CMOV (Conditional move instruction supported)
-		PAT (Page attribute table)
-		CLFSH (CLFLUSH instruction supported)
-		DS (Debug store)
-		ACPI (ACPI supported)
-		MMX (MMX technology supported)
-		FXSR (Fast floating-point save and restore)
-		SSE (Streaming SIMD extensions)
-		SSE2 (Streaming SIMD extensions 2)
-		TM (Thermal monitor supported)
-		PBE (Pending break enabled)
-	Version: Intel(R) Pentium(R) M processor
-	Voltage: 1.5 V
-	External Clock: 400 MHz
-	Max Speed: 1700 MHz
-	Current Speed: 1700 MHz
-	Status: Populated, Enabled
-	Upgrade: None
-	L1 Cache Handle: 0x000A
-	L2 Cache Handle: 0x000B
-	L3 Cache Handle: Not Provided
-	Serial Number: Not Specified
-	Asset Tag: Not Specified
-	Part Number: Not Specified
-
-Handle 0x0007, DMI type 5, 20 bytes
-Memory Controller Information
-	Error Detecting Method: None
-	Error Correcting Capabilities:
-		None
-	Supported Interleave: One-way Interleave
-	Current Interleave: One-way Interleave
-	Maximum Memory Module Size: 1024 MB
-	Maximum Total Memory Size: 2048 MB
-	Supported Speeds:
-		Other
-	Supported Memory Types:
-		DIMM
-		SDRAM
-	Memory Module Voltage: 2.9 V
-	Associated Memory Slots: 2
-		0x0008
-		0x0009
-	Enabled Error Correcting Capabilities:
-		None
-
-Handle 0x0008, DMI type 6, 12 bytes
-Memory Module Information
-	Socket Designation: DIMM Slot 1
-	Bank Connections: 0 1
-	Current Speed: Unknown
-	Type: DIMM SDRAM
-	Installed Size: 512 MB (Double-bank Connection)
-	Enabled Size: 512 MB (Double-bank Connection)
-	Error Status: OK
-
-Handle 0x0009, DMI type 6, 12 bytes
-Memory Module Information
-	Socket Designation: DIMM Slot 2
-	Bank Connections: 2 3
-	Current Speed: Unknown
-	Type: DIMM SDRAM
-	Installed Size: 512 MB (Double-bank Connection)
-	Enabled Size: 512 MB (Double-bank Connection)
-	Error Status: OK
-
-Handle 0x000A, DMI type 7, 19 bytes
-Cache Information
-	Socket Designation: Internal L1 Cache
-	Configuration: Enabled, Socketed, Level 1
-	Operational Mode: Write Back
-	Location: Internal
-	Installed Size: 32 KB
-	Maximum Size: 32 KB
-	Supported SRAM Types:
-		Synchronous
-	Installed SRAM Type: Synchronous
-	Speed: Unknown
-	Error Correction Type: Unknown
-	System Type: Other
-	Associativity: 8-way Set-associative
-
-Handle 0x000B, DMI type 7, 19 bytes
-Cache Information
-	Socket Designation: Internal L2 Cache
-	Configuration: Enabled, Socketed, Level 2
-	Operational Mode: Write Back
-	Location: Internal
-	Installed Size: 1024 KB
-	Maximum Size: 1024 KB
-	Supported SRAM Types:
-		Burst
-	Installed SRAM Type: Burst
-	Speed: Unknown
-	Error Correction Type: Multi-bit ECC
-	System Type: Unified
-	Associativity: 8-way Set-associative
-
-Handle 0x000C, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x000D, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: Infrared
-	External Connector Type: Infrared
-	Port Type: Other
-
-Handle 0x000E, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: Parallel
-	External Connector Type: DB-25 female
-	Port Type: Parallel Port ECP/EPP
-
-Handle 0x000F, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: External Monitor
-	External Connector Type: DB-15 female
-	Port Type: Video Port
-
-Handle 0x0010, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0011, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0012, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0013, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0014, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0015, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: Microphone Jack
-	External Connector Type: Mini Jack (headphones)
-	Port Type: Audio Port
-
-Handle 0x0016, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: Headphone Jack
-	External Connector Type: Mini Jack (headphones)
-	Port Type: Audio Port
-
-Handle 0x0017, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: S-Video-Out
-	External Connector Type: Other
-	Port Type: Video Port
-
-Handle 0x0018, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0019, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: Modem
-	External Connector Type: RJ-11
-	Port Type: Modem Port
-
-Handle 0x001A, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: Ethernet
-	External Connector Type: RJ-45
-	Port Type: Network Port
-
-Handle 0x001B, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: USB 1
-	External Connector Type: Access Bus (USB)
-	Port Type: USB
-
-Handle 0x001C, DMI type 8, 9 bytes
-Port Connector Information
-	Internal Reference Designator: Not Available
-	Internal Connector Type: None
-	External Reference Designator: USB 2
-	External Connector Type: Access Bus (USB)
-	Port Type: USB
-
-Handle 0x001D, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x001E, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x001F, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0020, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0021, DMI type 126, 9 bytes
-Inactive
-
-Handle 0x0022, DMI type 9, 13 bytes
-System Slot Information
-	Designation: CardBus Slot 1
-	Type: 32-bit PC Card (PCMCIA)
-	Current Usage: Available
-	Length: Other
-	ID: Adapter 0, Socket 0
-	Characteristics:
-		5.0 V is provided
-		3.3 V is provided
-		PC Card-16 is supported
-		Cardbus is supported
-		Zoom Video is supported
-		Modem ring resume is supported
-		PME signal is supported
-		Hot-plug devices are supported
-
-Handle 0x0023, DMI type 9, 13 bytes
-System Slot Information
-	Designation: CardBus Slot 2
-	Type: 32-bit PC Card (PCMCIA)
-	Current Usage: Available
-	Length: Other
-	ID: Adapter 1, Socket 0
-	Characteristics:
-		5.0 V is provided
-		3.3 V is provided
-		PC Card-16 is supported
-		Cardbus is supported
-		Zoom Video is supported
-		Modem ring resume is supported
-		PME signal is supported
-		Hot-plug devices are supported
-
-Handle 0x0024, DMI type 126, 13 bytes
-Inactive
-
-Handle 0x0025, DMI type 126, 13 bytes
-Inactive
-
-Handle 0x0026, DMI type 9, 13 bytes
-System Slot Information
-	Designation: Mini-PCI Slot 1
-	Type: 32-bit PCI
-	Current Usage: Available
-	Length: Other
-	ID: 1
-	Characteristics:
-		5.0 V is provided
-		3.3 V is provided
-		PME signal is supported
-		SMBus signal is supported
-
-Handle 0x0027, DMI type 126, 13 bytes
-Inactive
-
-Handle 0x0028, DMI type 10, 6 bytes
-On Board Device Information
-	Type: Other
-	Status: Enabled
-	Description: IBM Embedded Security hardware
-
-Handle 0x0029, DMI type 11, 5 bytes
-OEM Strings
-	String 1: IBM ThinkPad Embedded Controller -[1RHT71WW-3.04    ]-
-
-Handle 0x002A, DMI type 13, 22 bytes
-BIOS Language Information
-	Installable Languages: 1
-		enUS
-	Currently Installed Language: enUS
-
-Handle 0x002B, DMI type 15, 25 bytes
-System Event Log
-	Area Length: 0 bytes
-	Header Start Offset: 0x0000
-	Header Length: 16 bytes
-	Data Start Offset: 0x0010
-	Access Method: General-purpose non-volatile data functions
-	Access Address: 0x0000
-	Status: Invalid, Not Full
-	Change Token: 0x00000004
-	Header Format: Type 1
-	Supported Log Type Descriptors: 1
-	Descriptor 1: POST error
-	Data Format 1: POST results bitmap
-
-Handle 0x002C, DMI type 16, 15 bytes
-Physical Memory Array
-	Location: System Board Or Motherboard
-	Use: System Memory
-	Error Correction Type: None
-	Maximum Capacity: 1 GB
-	Error Information Handle: Not Provided
-	Number Of Devices: 2
-
-Handle 0x002D, DMI type 17, 27 bytes
-Memory Device
-	Array Handle: 0x002C
-	Error Information Handle: No Error
-	Total Width: 64 bits
-	Data Width: 64 bits
-	Size: 512 MB
-	Form Factor: SODIMM
-	Set: None
-	Locator: DIMM 1
-	Bank Locator: Bank 0/1
-	Type: DDR
-	Type Detail: Synchronous
-	Speed: Unknown
-	Manufacturer: Not Specified
-	Serial Number: Not Specified
-	Asset Tag: Not Specified
-	Part Number: Not Specified
-
-Handle 0x002E, DMI type 17, 27 bytes
-Memory Device
-	Array Handle: 0x002C
-	Error Information Handle: No Error
-	Total Width: 64 bits
-	Data Width: 64 bits
-	Size: 512 MB
-	Form Factor: SODIMM
-	Set: None
-	Locator: DIMM 2
-	Bank Locator: Bank 2/3
-	Type: DDR
-	Type Detail: Synchronous
-	Speed: Unknown
-	Manufacturer: Not Specified
-	Serial Number: Not Specified
-	Asset Tag: Not Specified
-	Part Number: Not Specified
-
-Handle 0x002F, DMI type 18, 23 bytes
-32-bit Memory Error Information
-	Type: OK
-	Granularity: Unknown
-	Operation: Unknown
-	Vendor Syndrome: Unknown
-	Memory Array Address: Unknown
-	Device Address: Unknown
-	Resolution: Unknown
-
-Handle 0x0030, DMI type 19, 15 bytes
-Memory Array Mapped Address
-	Starting Address: 0x00000000000
-	Ending Address: 0x0003FFFFFFF
-	Range Size: 1 GB
-	Physical Array Handle: 0x002C
-	Partition Width: 0
-
-Handle 0x0031, DMI type 20, 19 bytes
-Memory Device Mapped Address
-	Starting Address: 0x00000000000
-	Ending Address: 0x0001FFFFFFF
-	Range Size: 512 MB
-	Physical Device Handle: 0x002D
-	Memory Array Mapped Address Handle: 0x0030
-	Partition Row Position: 1
-
-Handle 0x0032, DMI type 20, 19 bytes
-Memory Device Mapped Address
-	Starting Address: 0x00020000000
-	Ending Address: 0x0003FFFFFFF
-	Range Size: 512 MB
-	Physical Device Handle: 0x002E
-	Memory Array Mapped Address Handle: 0x0030
-	Partition Row Position: 1
-
-Handle 0x0033, DMI type 21, 7 bytes
-Built-in Pointing Device
-	Type: Track Point
-	Interface: PS/2
-	Buttons: 3
-
-Handle 0x0034, DMI type 21, 7 bytes
-Built-in Pointing Device
-	Type: Touch Pad
-	Interface: PS/2
-	Buttons: 0
-
-Handle 0x0035, DMI type 24, 5 bytes
-Hardware Security
-	Power-On Password Status: Disabled
-	Keyboard Password Status: Disabled
-	Administrator Password Status: Disabled
-	Front Panel Reset Status: Unknown
-
-Handle 0x0036, DMI type 32, 11 bytes
-System Boot Information
-	Status: No errors detected
-
-Handle 0x0037, DMI type 131, 102 bytes
-OEM-specific Type
-	Header and Data:
-		83 66 37 00 01 00 00 00 00 01 72 03 40 00 AE 80
-		00 02 00 00 00 00 00 2A 00 40 2A 00 00 00 00 00
-		00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-		00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-		00 00 00 00 00 00 00 00 00 00 16 00 80 16 00 00
-		00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-		00 00 00 00 00 00
-	Strings:
-		IBMCFGDATA
-
-Handle 0x0038, DMI type 131, 17 bytes
-OEM-specific Type
-	Header and Data:
-		83 11 38 00 01 02 03 FF FF 1F 00 00 00 00 00 02
-		00
-	Strings:
-		BOOTINF 20h
-		BOOTDEV 21h
-		KEYPTRS 23h
-
-Handle 0x0039, DMI type 132, 7 bytes
-OEM-specific Type
-	Header and Data:
-		84 07 39 00 01 D8 36
-
-Handle 0x003A, DMI type 133, 5 bytes
-OEM-specific Type
-	Header and Data:
-		85 05 3A 00 01
-	Strings:
-		KHOIHGIUCCHHII
-
-Handle 0x003B, DMI type 126, 13 bytes
-Inactive
-
-Handle 0x003C, DMI type 127, 4 bytes
-End Of Table
-
-------
-
-Thx,
-
-<earny>
+> On Tue, Nov 07, 2006 at 10:50:54AM -0800, Murali Bashyam wrote:
+> > Is there a feature on the linux v3 or v4 NFS server to allow a process
+> to
+> > intercept the NFS RPC requests for file operations (open, close, read,
+> write
+> > etc) and handle them in user space?
+>
+> No.
+>
+> > If so, can these be handled asynchronously?
+> >
+> > Alternatively, if this is not possible, is this achievable through VFS
+> > i.ehave a process create and register a file system through VFS and
+> > export it
+> > through NFS? Now when the server handles a client's file operation, it
+> goes
+> > through VFS and ends up with that vector registered by that process?
+>
+> No. You could modify fuse to support nfsd, or you could write a
+> userspace NFS server (or modify an existing server).
+
+
+Isn't it simpler (and potentially inefficient)  to export the NFS mount
+point as a FUSE filesystem?
+
+Murali
+
+--b.
+>
+
+------=_Part_15704_24682583.1162931795734
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+<br><br><div><span class="gmail_quote">On 11/7/06, <b class="gmail_sendername">J. Bruce Fields</b> &lt;<a href="mailto:bfields@fieldses.org">bfields@fieldses.org</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
+On Tue, Nov 07, 2006 at 10:50:54AM -0800, Murali Bashyam wrote:<br>&gt; Is there a feature on the linux v3 or v4 NFS server to allow a process to<br>&gt; intercept the NFS RPC requests for file operations (open, close, read, write
+<br>&gt; etc) and handle them in user space?<br><br>No.<br><br>&gt; If so, can these be handled asynchronously?<br>&gt;<br>&gt; Alternatively, if this is not possible, is this achievable through VFS<br>&gt; i.ehave a process create and register a file system through VFS and
+<br>&gt; export it<br>&gt; through NFS? Now when the server handles a client's file operation, it goes<br>&gt; through VFS and ends up with that vector registered by that process?<br><br>No. You could modify fuse to support nfsd, or you could write a
+<br>userspace NFS server (or modify an existing server).</blockquote><div><br>Isn't it simpler (and potentially inefficient)&nbsp; to export the NFS mount point as a FUSE filesystem?<br><br>Murali<br></div><br><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
+--b.<br></blockquote></div><br>
+
+------=_Part_15704_24682583.1162931795734--
+
+
+--===============0305357452==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============0305357452==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0305357452==--
