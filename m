@@ -1,32 +1,24 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [BUG] All Kerberos mounts stop working,
-	restarting rpc.svcgssd helps
-Date: Mon, 6 Nov 2006 18:49:22 -0500
-Message-ID: <20061106234922.GM12372@fieldses.org>
-References: <20061031100346.GA2906@uio.no>
-	<4d569c330610310543r429f0b4fk1dcdfa44836026c2@mail.gmail.com>
-	<20061031143248.GA8444@uio.no> <20061103123737.GA5199@uio.no>
-	<4d569c330611061508g5e9044cdy36d87ae2ac03952d@mail.gmail.com>
-	<20061106231539.GI12372@fieldses.org>
-	<20061106231615.GA17582@uio.no>
-	<20061106231821.GK12372@fieldses.org>
-	<20061106232224.GL12372@fieldses.org>
-	<20061106234607.GA18236@uio.no>
+Subject: Re: [PATCH] NFS4  fix for recursive locking problem.
+Date: Mon, 6 Nov 2006 19:26:57 -0500
+Message-ID: <20061107002657.GN12372@fieldses.org>
+References: <454755B0.5020103@in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
+Cc: akpm@osdl.org, neilb@suse.de, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, andros@citi.umich.edu
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GhEDU-0003Kq-3r
-	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 15:49:24 -0800
+	id 1GhEnz-0006kv-3e
+	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 16:27:07 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GhEDV-0004pW-13
-	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 15:49:25 -0800
-To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-In-Reply-To: <20061106234607.GA18236@uio.no>
+	(Exim 4.44) id 1GhEny-0003Ci-VR
+	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 16:27:08 -0800
+To: Srinivasa Ds <srinivasa@in.ibm.com>
+In-Reply-To: <454755B0.5020103@in.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,22 +31,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Nov 07, 2006 at 12:46:07AM +0100, Steinar H. Gunderson wrote:
-> On Mon, Nov 06, 2006 at 06:22:24PM -0500, J. Bruce Fields wrote:
-> > I just looked back through my mail and can find sysrq-t and tcpdump
-> > output, but no strace output.  Did you send it and I lost it?
+On Tue, Oct 31, 2006 at 07:24:56PM +0530, Srinivasa Ds wrote:
+> When I was performing some operations on NFS, I got below error on server 
+> side.
 > 
-> http://home.samfundet.no/~sesse/svcgssd-strace.log.bz2
+> ===========================================================
+> 
+> =============================================
+> [ INFO: possible recursive locking detected ]
+> 2.6.19-prep #1
+...
+> So I have developed the patch to overcome this problem. Please let me know 
+> your comments on this.
 
-bfields@puzzle:~$ wget http://home.samfundet.no/~sesse/svcgssd-strace.log.bz2
---18:48:38--  http://home.samfundet.no/~sesse/svcgssd-strace.log.bz2
-           => `svcgssd-strace.log.bz2'
-Resolving home.samfundet.no... 129.241.93.17, 2001:700:300:1800::1917
-Connecting to home.samfundet.no|129.241.93.17|:80... connected.
-HTTP request sent, awaiting response... 404 Not Found
-18:48:39 ERROR 404: Not Found.
+Looks right, thanks!
 
 --b.
+
+> Signed-off-by: Srinivasa DS <srinivasa@in.ibm.com>
+> 
+> 
+> 
+
+>  nfs4recover.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> Index: linux-2.6.19-rc3/fs/nfsd/nfs4recover.c
+> ===================================================================
+> --- linux-2.6.19-rc3.orig/fs/nfsd/nfs4recover.c	2006-10-24 04:32:02.000000000 +0530
+> +++ linux-2.6.19-rc3/fs/nfsd/nfs4recover.c	2006-10-31 18:27:30.000000000 +0530
+> @@ -274,7 +274,7 @@
+>  	 * any regular files anyway, just in case the directory was created by
+>  	 * a kernel from the future.... */
+>  	nfsd4_list_rec_dir(dentry, nfsd4_remove_clid_file);
+> -	mutex_lock(&dir->d_inode->i_mutex);
+> +	mutex_lock_nested(&dir->d_inode->i_mutex, I_MUTEX_PARENT);
+>  	status = vfs_rmdir(dir->d_inode, dentry);
+>  	mutex_unlock(&dir->d_inode->i_mutex);
+>  	return status;
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
