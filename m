@@ -1,24 +1,32 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS4  fix for recursive locking problem.
-Date: Mon, 6 Nov 2006 19:26:57 -0500
-Message-ID: <20061107002657.GN12372@fieldses.org>
-References: <454755B0.5020103@in.ibm.com>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: [BUG] All Kerberos mounts stop working,
+	restarting rpc.svcgssd helps
+Date: Tue, 7 Nov 2006 01:47:20 +0100
+Message-ID: <20061107004720.GA16731@uio.no>
+References: <4d569c330610310543r429f0b4fk1dcdfa44836026c2@mail.gmail.com>
+	<20061031143248.GA8444@uio.no> <20061103123737.GA5199@uio.no>
+	<4d569c330611061508g5e9044cdy36d87ae2ac03952d@mail.gmail.com>
+	<20061106231539.GI12372@fieldses.org>
+	<20061106231615.GA17582@uio.no>
+	<20061106231821.GK12372@fieldses.org>
+	<20061106232224.GL12372@fieldses.org>
+	<20061106234607.GA18236@uio.no>
+	<20061106234922.GM12372@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: akpm@osdl.org, neilb@suse.de, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, andros@citi.umich.edu
+Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GhEnz-0006kv-3e
-	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 16:27:07 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1GhF8g-00006v-IY
+	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 16:48:30 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GhEny-0003Ci-VR
-	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 16:27:08 -0800
-To: Srinivasa Ds <srinivasa@in.ibm.com>
-In-Reply-To: <454755B0.5020103@in.ibm.com>
+	(Exim 4.44) id 1GhF8f-00024h-4b
+	for nfs@lists.sourceforge.net; Mon, 06 Nov 2006 16:48:31 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20061106234922.GM12372@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,45 +39,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 31, 2006 at 07:24:56PM +0530, Srinivasa Ds wrote:
-> When I was performing some operations on NFS, I got below error on server 
-> side.
-> 
-> ===========================================================
-> 
-> =============================================
-> [ INFO: possible recursive locking detected ]
-> 2.6.19-prep #1
-...
-> So I have developed the patch to overcome this problem. Please let me know 
-> your comments on this.
+On Mon, Nov 06, 2006 at 06:49:22PM -0500, J. Bruce Fields wrote:
+>> http://home.samfundet.no/~sesse/svcgssd-strace.log.bz2
+> 18:48:39 ERROR 404: Not Found.
 
-Looks right, thanks!
+Hm, that's odd. Oh well, I found a log here now, at least -- try it now.
 
---b.
-
-> Signed-off-by: Srinivasa DS <srinivasa@in.ibm.com>
-> 
-> 
-> 
-
->  nfs4recover.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> Index: linux-2.6.19-rc3/fs/nfsd/nfs4recover.c
-> ===================================================================
-> --- linux-2.6.19-rc3.orig/fs/nfsd/nfs4recover.c	2006-10-24 04:32:02.000000000 +0530
-> +++ linux-2.6.19-rc3/fs/nfsd/nfs4recover.c	2006-10-31 18:27:30.000000000 +0530
-> @@ -274,7 +274,7 @@
->  	 * any regular files anyway, just in case the directory was created by
->  	 * a kernel from the future.... */
->  	nfsd4_list_rec_dir(dentry, nfsd4_remove_clid_file);
-> -	mutex_lock(&dir->d_inode->i_mutex);
-> +	mutex_lock_nested(&dir->d_inode->i_mutex, I_MUTEX_PARENT);
->  	status = vfs_rmdir(dir->d_inode, dentry);
->  	mutex_unlock(&dir->d_inode->i_mutex);
->  	return status;
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
