@@ -1,8 +1,8 @@
 From: Jeff Chua <jeff.chua.linux@gmail.com>
 Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
 	(v3)
-Date: Wed, 8 Nov 2006 00:57:03 +0800 (SGT)
-Message-ID: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
+Date: Wed, 8 Nov 2006 00:56:30 +0800 (SGT)
+Message-ID: <Pine.LNX.4.64.0611080051030.12828@silvia.corp.fedex.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
@@ -48,8 +48,8 @@ On 11/7/06, Aaron Durbin <adurbin@google.com> wrote:
 000cc800-000cffff : Adapter ROM
 000f0000-000fffff : System ROM
 00100000-df686bff : System RAM
-    00100000-00357d27 : Kernel code
-    00357d28-0042bab3 : Kernel data
+   00100000-00357d27 : Kernel code
+   00357d28-0042bab3 : Kernel data
 df686c00-df688bff : ACPI Non-volatile Storage
 df688c00-df68abff : ACPI Tables
 df68ac00-dfffffff : reserved
@@ -57,8 +57,8 @@ e0000000-efffffff : 0000:00:02.0
 f0000000-f3ffffff : reserved
 fe700000-fe7fffff : PCI Bus #03
 fe800000-fe8fffff : PCI Bus #02
-    fe8f0000-fe8fffff : 0000:02:00.0
-      fe8f0000-fe8fffff : tg3
+   fe8f0000-fe8fffff : 0000:02:00.0
+     fe8f0000-fe8fffff : tg3
 fe900000-fe9fffff : PCI Bus #01
 feabf900-feabf9ff : 0000:00:1e.2
 feabfa00-feabfbff : 0000:00:1e.2
@@ -69,7 +69,7 @@ fed00000-fed003ff : HPET 0
 fed20000-fed9ffff : reserved
 fee00000-feefffff : reserved
 ffa80800-ffa80bff : 0000:00:1d.7
-    ffa80800-ffa80bff : ehci_hcd
+   ffa80800-ffa80bff : ehci_hcd
 ffb00000-ffffffff : reserved
 
 
@@ -82,14 +82,14 @@ ffb00000-ffffffff : reserved
 000cc800-000cffff : Adapter ROM
 000f0000-000fffff : System ROM
 00100000-df686bff : System RAM
-    00100000-00358927 : Kernel code
-    00358928-0042cab3 : Kernel data
+   00100000-00358927 : Kernel code
+   00358928-0042cab3 : Kernel data
 df686c00-df688bff : ACPI Non-volatile Storage
 df688c00-df68abff : ACPI Tables
 df68ac00-dfffffff : reserved
 e0000000-efffffff : 0000:00:02.0
 f0000000-ffffffff : PCI MMCONFIG 0
-    fed00000-fed003ff : HPET 0
+   fed00000-fed003ff : HPET 0
 
 
 
