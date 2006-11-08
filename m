@@ -1,8 +1,8 @@
-From: Linus Torvalds <torvalds@osdl.org>
+From: ebiederm@xmission.com (Eric W. Biederman)
 Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
 	(v3)
-Date: Wed, 8 Nov 2006 11:25:40 -0800 (PST)
-Message-ID: <Pine.LNX.4.64.0611081119160.22714@g5.osdl.org>
+Date: Wed, 08 Nov 2006 12:24:54 -0700
+Message-ID: <m1r6wd3fnd.fsf@ebiederm.dsl.xmission.com>
 References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
 	<20061107171143.GU27140@parisc-linux.org>
 	<200611080839.46670.ak@suse.de>
@@ -10,26 +10,27 @@ References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
 	<Pine.LNX.4.64.0611080803280.3667@g5.osdl.org>
 	<m1d57x4z58.fsf@ebiederm.dsl.xmission.com>
 	<Pine.LNX.4.64.0611081048330.3667@g5.osdl.org>
-	<8f95bb250611081110x4260f95di6620e9ba7a00e58f@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
    Thierry Vignaud <tvignaud@mandriva.com>, Matthew Wilcox <matthew@wil.cx>,
-   Ernst Herzberg <earny@net4u.de>, Christian <christiand59@web.de>,
+   Ernst Herzberg <earny@net4u.de>, Aaron Durbin <adurbin@google.com>,
    Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
-   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   linux-ide@vger.kernel.org, oprofile-list@lists.sourceforge.net,
-   Jens Axboe <jens.axboe@oracle.com>, linux-pci@atrey.karlin.mff.cuni.cz,
+   Andi Kleen <ak@suse.de>, linux-ide@vger.kernel.org,
+   oprofile-list@lists.sourceforge.net, Jens Axboe <jens.axboe@oracle.com>,
+   Adrian Bunk <bunk@stusta.de>, linux-pci@atrey.karlin.mff.cuni.cz,
    Elimar Riesebieter <riesebie@lxtec.de>, discuss@x86-64.org,
    linux-pm@osdl.org, Komuro <komurojun-mbn@nifty.com>,
    Jeff Chua <jeff.chua.linux@gmail.com>,
    Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
-   neilb@cse.unsw.edu.au, Adrian Bunk <bunk@stusta.de>,
+   neilb@cse.unsw.edu.au,
+   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
    linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
-   "Eric W. Biederman" <ebiederm@xmission.com>, cpufre
+   cpufreq@lists.linux.o
 Return-path: <linux-pm-bounces@lists.osdl.org>
-To: Aaron Durbin <adurbin@google.com>
-In-Reply-To: <8f95bb250611081110x4260f95di6620e9ba7a00e58f@mail.gmail.com>
+To: Linus Torvalds <torvalds@osdl.org>
+In-Reply-To: <Pine.LNX.4.64.0611081048330.3667@g5.osdl.org> (Linus Torvalds's
+	message of "Wed, 8 Nov 2006 10:52:05 -0800 (PST)")
 List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
 	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
 List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
@@ -41,81 +42,54 @@ Sender: linux-pm-bounces@lists.osdl.org
 Errors-To: linux-pm-bounces@lists.osdl.org
 List-ID: <nfs.lists.sourceforge.net>
 
+Linus Torvalds <torvalds@osdl.org> writes:
 
+> On Wed, 8 Nov 2006, Eric W. Biederman wrote:
+>> =
 
-On Wed, 8 Nov 2006, Aaron Durbin wrote:
+>> The implementations I have seen, I believe have all been on bridges and
+>> the maximum size is actually generated from the bus number below the bri=
+dge.
 >
-> For instance, if the MCFG region is being reported in ACPI land as 256 =
+> Hmm. It might be possible to first set up the MMCONFIG thing for the =
 
-> buses and the e820 has a reservation at the MCFG base address of 18MB =
+> minimum range, then read the bus numbers from the host bridge on that bus=
+, =
 
-> that does not necessarily mean the MCFG region allows for PCI config =
+> and then expand the mmconfig range if necessary.
+>
+> Because pretty much ANYTHING is better than trusting the BIOS tables.
+>
+> That said, I'd really be a _lot_ more confident about it if we were to be =
 
-> access on 18 buses. It could be that it only allows 16 buses w/ another =
+> able to read the values from the hardware itself some way. There's =
 
-> piece of hardware on that last 2MB.
+> obviously a chicken-and-egg issue on mmcfg configuration, but it's one =
 
-Oh, I agree. You'd _hope_ that the BIOS reports that as a separate region, =
+> that the BIOS startup code also has, so I assume that there is a solution =
 
-and we could use that as a hint, but it's never going to be fool-proof. =
+> to that somewhere.
 
+cfc and cf8 still work on x86.  So you can start with the old path
+and then when you know mmconfig works you can upgrade.
 
-It's just much much better to try to figure out what the hardware itself =
+In fact mmconfig doesn't necessary allow access to the entire pci domain.
+On AMD systems currently you will get all of the subordinate busses but
+the cpus themselves will not show up in the mmconfig space.
 
-thinks it is doing, rather than relying on a firmware engineer filling out =
+So we should have the infrastructure to only use mmconfig for some set
+of busses.  If that interface is well described we can probably
+bootstrap sanely, only enabling what we know exists and like wise
+only reserving what we know is used.
 
-the table to match what he _thinks_ the hardware is doing (or, more =
+For chipsets I know that there is quite a bit of information publicly
+available.  For intel chipsets I believe those are registers they
+make available in their public docs.  For things like the Nvidia
+chipset the knowledge should be in the publicly available linuxbios
+code base.
 
-accurately, randomly scribbling values until Windows boots, at which point =
+Hopefully that is enough of a pointer to get people going.  I might
+have enough time to write the patch but I don't have enough time to
+maintain it until mmconfig becomes boring.
 
-it's not his problem any more, and people ship the crap).
-
-Some misguided people used to think that we shouldn't do our own PCI =
-
-probing, but use ACPI instead. This is the same thing, except on a smaller =
-
-scale. MAYBE the scale ends up being so small that we can figure out some =
-
-reliable way without actually asking the hardware itself, but I kind of =
-
-doubt it. Especially judging by the current situation.
-
-> So what is the proper scenario? One needs to know the actual upper limit =
-of
-> MCFG region. Otherwise when detecting unreachable devices one could be po=
-king
-> something else in the process of trying to discover these unreachable dev=
-ices.
-> I am open to ideas and am willing to rework some of the code, but I do li=
-ke
-> the idea of having the region being reported in the resource table.
-
-Absolutely. I'd _love_ to have the region reported in the resource table. =
-
-It's just that right now it doesn't seem practical, since the downsides =
-
-are bigger than the upsides (and the upsides aren't _that_ big, since we =
-
-require the thing to be marked reserved in the e820 tables anyway, so the =
-
-resource tables do know about it, about as well as they currently can).
-
-In the absense of a way to actually ask the hardware, we could perhaps =
-
-modify the thing so that it does request the regions in the resource =
-
-table, but _only_ if the e820 entries aren't there (ie the "config type 1 =
-
-didn't even work" case).
-
-Alternatively, we might choose to request just the known smallest region, =
-
-because that should be relatively "safer". It's better than not reporting =
-
-the regions at all, and while it's not perfect, it at least shouldn't have =
-
-huge potential downsides from getting the size totally wrong...
-
-Hmm?
-
-		Linus
+Eric
