@@ -1,55 +1,50 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
-	(v3)
-Date: Wed, 8 Nov 2006 05:22:37 -0700
-Message-ID: <20061108122237.GF27140@parisc-linux.org>
-References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
-	<20061107171143.GU27140@parisc-linux.org>
-	<200611080839.46670.ak@suse.de>
+From: "Marco Schwarz" <marco.schwarz@gmx.net>
+Subject: do_vfs_lock Messages
+Date: Wed, 08 Nov 2006 15:49:00 +0100
+Message-ID: <20061108144900.241780@gmx.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
-   Thierry Vignaud <tvignaud@mandriva.com>, linux-pm@osdl.org,
-   Ernst Herzberg <earny@net4u.de>, Aaron Durbin <adurbin@google.com>,
-   Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
-   neilb@cse.unsw.edu.au, linux-ide@vger.kernel.org,
-   Linus Torvalds <torvalds@osdl.org>, oprofile-list@lists.sourceforge.net,
-   Jens Axboe <jens.axboe@oracle.com>, linux-pci@atrey.karlin.mff.cuni.cz,
-   Elimar Riesebieter <riesebie@lxtec.de>, discuss@x86-64.org,
-   Komuro <komurojun-mbn@nifty.com>, Jeff Chua <jeff.chua.linux@gmail.com>,
-   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
-   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   Christian <christiand59@web.de>, Adrian Bunk <bunk@stusta.de>,
-   linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
-   "Eric W. Bied
-Return-path: <linux-pm-bounces@lists.osdl.org>
-To: Andi Kleen <ak@suse.de>
-In-Reply-To: <200611080839.46670.ak@suse.de>
-List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
-List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
-List-Post: <mailto:linux-pm@lists.osdl.org>
-List-Help: <mailto:linux-pm-request@lists.osdl.org?subject=help>
-List-Subscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.osdl.org?subject=subscribe>
-Sender: linux-pm-bounces@lists.osdl.org
-Errors-To: linux-pm-bounces@lists.osdl.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Ghojk-0006qg-Hq
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 06:49:08 -0800
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Ghojk-0002A3-1I
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 06:49:09 -0800
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Nov 08, 2006 at 08:39:44AM +0100, Andi Kleen wrote:
-> ACPI knows the number of busses.
+Hi,
 
-But what if the number of busses increases later, eg by hotplugging
-a card with a PCI-PCI bridge on it?  Or does it know the number of
-busses which can be supported by this machine's MMCONFIG region?
-If so, why isn't this information reported in the MCFG table properly
-instead of claiming to support 0-255?
+I am getting A LOT of messages like
 
-> Just need to get the information there, which is a ordering issue
-> (normally MCFG initialization is before this is known I think)
-> =
+Nov  8 15:34:56 linux kernel: do_vfs_lock: VFS is out of sync with lock manager!
+Nov  8 15:35:06 linux last message repeated 156 times
 
-> Len, ACPI folks, any ideas how to fix this cleanly?
-> =
+on a discless client system (root on NFS) with Kernel 2.6.18
 
-> -Andi
+Is this critical ? If not, can I supress it somehow ? It doesnt happen with the same server and my older clients (running 2.4.something).
+
+Best regards,
+Marco Schwarz
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
