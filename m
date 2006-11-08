@@ -1,63 +1,71 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [BUG] All Kerberos mounts stop working,
-	restarting rpc.svcgssd helps
-Date: Wed, 8 Nov 2006 01:50:45 +0100
-Message-ID: <20061108005045.GA4524@uio.no>
-References: <20061103123737.GA5199@uio.no>
-	<4d569c330611061508g5e9044cdy36d87ae2ac03952d@mail.gmail.com>
-	<20061106231539.GI12372@fieldses.org>
-	<20061106231615.GA17582@uio.no>
-	<20061106231821.GK12372@fieldses.org>
-	<20061106232224.GL12372@fieldses.org>
-	<20061106234607.GA18236@uio.no>
-	<20061106234922.GM12372@fieldses.org>
-	<20061107004720.GA16731@uio.no>
-	<20061108004440.GL11346@fieldses.org>
+From: Andi Kleen <ak@suse.de>
+Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
+	(v3)
+Date: Wed, 8 Nov 2006 08:39:44 +0100
+Message-ID: <200611080839.46670.ak@suse.de>
+References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
+	<20061107171143.GU27140@parisc-linux.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ghbfd-00084S-Ne
-	for nfs@lists.sourceforge.net; Tue, 07 Nov 2006 16:52:02 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ghbfd-0001PZ-Bo
-	for nfs@lists.sourceforge.net; Tue, 07 Nov 2006 16:52:02 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20061108004440.GL11346@fieldses.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
+   Thierry Vignaud <tvignaud@mandriva.com>, linux-pm@osdl.org,
+   Ernst Herzberg <earny@net4u.de>, Aaron Durbin <adurbin@google.com>,
+   Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
+   neilb@cse.unsw.edu.au, linux-ide@vger.kernel.org,
+   Linus Torvalds <torvalds@osdl.org>, oprofile-list@lists.sourceforge.net,
+   Jens Axboe <jens.axboe@oracle.com>, linux-pci@atrey.karlin.mff.cuni.cz,
+   Elimar Riesebieter <riesebie@lxtec.de>, discuss@x86-64.org,
+   Komuro <komurojun-mbn@nifty.com>, Jeff Chua <jeff.chua.linux@gmail.com>,
+   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
+   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   Christian <christiand59@web.de>, Adrian Bunk <bunk@stusta.de>,
+   linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
+   "Eric W. Bied
+Return-path: <linux-pm-bounces@lists.osdl.org>
+To: Matthew Wilcox <matthew@wil.cx>
+In-Reply-To: <20061107171143.GU27140@parisc-linux.org>
+List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
+List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
+List-Post: <mailto:linux-pm@lists.osdl.org>
+List-Help: <mailto:linux-pm-request@lists.osdl.org?subject=help>
+List-Subscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.osdl.org?subject=subscribe>
+Sender: linux-pm-bounces@lists.osdl.org
+Errors-To: linux-pm-bounces@lists.osdl.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, Nov 07, 2006 at 07:44:40PM -0500, J. Bruce Fields wrote:
->>>> http://home.samfundet.no/~sesse/svcgssd-strace.log.bz2
->>> 18:48:39 ERROR 404: Not Found.
->> Hm, that's odd. Oh well, I found a log here now, at least -- try it now.
-> Nope.  Are you sure there isn't a typo in the URL?  I'm just
-> cut-n-pasting it.
+On Tuesday 07 November 2006 18:11, Matthew Wilcox wrote:
+> On Wed, Nov 08, 2006 at 12:57:03AM +0800, Jeff Chua wrote:
+> > 2) this fails ...
+> >
+> > e0000000-efffffff : 0000:00:02.0
+> > f0000000-ffffffff : PCI MMCONFIG 0
+> >    fed00000-fed003ff : HPET 0
+>
+> Heh, no kidding ...
+>
+>                 num_buses =3D pci_mmcfg_config[i].end_bus_number -
+>                     pci_mmcfg_config[i].start_bus_number + 1;
+>                 res->start =3D pci_mmcfg_config[i].base_address;
+>                 res->end =3D res->start + (num_buses << 20) - 1;
+>                 res->flags =3D IORESOURCE_MEM | IORESOURCE_BUSY;
+>                 insert_resource(&iomem_resource, res);
+>
+> So if we have 256 busses assigned, then we request 256MB and, well,
+> there's no room for anyone else.  This code was added by Andi in commit
+> de09bddb9d6f96785be470c832b881e6d72d589f
+>
+> Hopefully he'll have a good idea how to restrict it.  Given your "working"
+> resource map, it seems like it should be limited to 16MB (and thus 16
+> busses). But how to figure that out?
 
-Gah! It's not my day today. Try once more, please.
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+ACPI knows the number of busses.
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Just need to get the information there, which is a ordering issue
+(normally MCFG initialization is before this is known I think)
+
+Len, ACPI folks, any ideas how to fix this cleanly?
+
+-Andi
