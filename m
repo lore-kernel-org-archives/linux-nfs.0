@@ -1,10 +1,11 @@
-From: Andi Kleen <ak@suse.de>
+From: Matthew Wilcox <matthew@wil.cx>
 Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
 	(v3)
-Date: Wed, 8 Nov 2006 08:39:44 +0100
-Message-ID: <200611080839.46670.ak@suse.de>
+Date: Wed, 8 Nov 2006 05:22:37 -0700
+Message-ID: <20061108122237.GF27140@parisc-linux.org>
 References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
 	<20061107171143.GU27140@parisc-linux.org>
+	<200611080839.46670.ak@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
@@ -22,8 +23,8 @@ Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
    linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
    "Eric W. Bied
 Return-path: <linux-pm-bounces@lists.osdl.org>
-To: Matthew Wilcox <matthew@wil.cx>
-In-Reply-To: <20061107171143.GU27140@parisc-linux.org>
+To: Andi Kleen <ak@suse.de>
+In-Reply-To: <200611080839.46670.ak@suse.de>
 List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
 	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
 List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
@@ -35,37 +36,20 @@ Sender: linux-pm-bounces@lists.osdl.org
 Errors-To: linux-pm-bounces@lists.osdl.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Tuesday 07 November 2006 18:11, Matthew Wilcox wrote:
-> On Wed, Nov 08, 2006 at 12:57:03AM +0800, Jeff Chua wrote:
-> > 2) this fails ...
-> >
-> > e0000000-efffffff : 0000:00:02.0
-> > f0000000-ffffffff : PCI MMCONFIG 0
-> >    fed00000-fed003ff : HPET 0
->
-> Heh, no kidding ...
->
->                 num_buses =3D pci_mmcfg_config[i].end_bus_number -
->                     pci_mmcfg_config[i].start_bus_number + 1;
->                 res->start =3D pci_mmcfg_config[i].base_address;
->                 res->end =3D res->start + (num_buses << 20) - 1;
->                 res->flags =3D IORESOURCE_MEM | IORESOURCE_BUSY;
->                 insert_resource(&iomem_resource, res);
->
-> So if we have 256 busses assigned, then we request 256MB and, well,
-> there's no room for anyone else.  This code was added by Andi in commit
-> de09bddb9d6f96785be470c832b881e6d72d589f
->
-> Hopefully he'll have a good idea how to restrict it.  Given your "working"
-> resource map, it seems like it should be limited to 16MB (and thus 16
-> busses). But how to figure that out?
+On Wed, Nov 08, 2006 at 08:39:44AM +0100, Andi Kleen wrote:
+> ACPI knows the number of busses.
 
+But what if the number of busses increases later, eg by hotplugging
+a card with a PCI-PCI bridge on it?  Or does it know the number of
+busses which can be supported by this machine's MMCONFIG region?
+If so, why isn't this information reported in the MCFG table properly
+instead of claiming to support 0-255?
 
-ACPI knows the number of busses.
+> Just need to get the information there, which is a ordering issue
+> (normally MCFG initialization is before this is known I think)
+> =
 
-Just need to get the information there, which is a ordering issue
-(normally MCFG initialization is before this is known I think)
+> Len, ACPI folks, any ideas how to fix this cleanly?
+> =
 
-Len, ACPI folks, any ideas how to fix this cleanly?
-
--Andi
+> -Andi
