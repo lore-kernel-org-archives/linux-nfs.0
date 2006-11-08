@@ -1,29 +1,31 @@
-From: Andi Kleen <ak@suse.de>
+From: Linus Torvalds <torvalds@osdl.org>
 Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
 	(v3)
-Date: Wed, 8 Nov 2006 16:14:01 +0100
-Message-ID: <200611081614.03735.ak@suse.de>
+Date: Wed, 8 Nov 2006 08:05:18 -0800 (PST)
+Message-ID: <Pine.LNX.4.64.0611080803280.3667@g5.osdl.org>
 References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
 	<20061107171143.GU27140@parisc-linux.org>
-	<8f95bb250611070950m3dc45674gbd370e3173b6168d@mail.gmail.com>
+	<200611080839.46670.ak@suse.de>
+	<20061108122237.GF27140@parisc-linux.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
-   Thierry Vignaud <tvignaud@mandriva.com>, Matthew Wilcox <matthew@wil.cx>,
+   Thierry Vignaud <tvignaud@mandriva.com>, linux-pm@osdl.org,
    Ernst Herzberg <earny@net4u.de>, Aaron Durbin <adurbin@google.com>,
    Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
-   neilb@cse.unsw.edu.au, linux-ide@vger.kernel.org,
-   Linus Torvalds <torvalds@osdl.org>, oprofile-list@lists.sourceforge.net,
-   Jens Axboe <jens.axboe@oracle.com>, linux-pci@atrey.karlin.mff.cuni.cz,
-   Elimar Riesebieter <riesebie@lxtec.de>, linux-pm@osdl.org,
-   Komuro <komurojun-mbn@nifty.com>, Jeff Chua <jeff.chua.linux@gmail.com>,
-   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
    Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   Christian <christiand59@web.de>, Adrian Bunk <bunk@stusta.de>,
+   linux-ide@vger.kernel.org, oprofile-list@lists.sourceforge.net,
+   Jens Axboe <jens.axboe@oracle.com>, Martin Lorenz <martin@lorenz.eu.org>,
+   linux-pci@atrey.karlin.mff.cuni.cz, Elimar Riesebieter <riesebie@lxtec.de>,
+   discuss@x86-64.org, Komuro <komurojun-mbn@nifty.com>,
+   Jeff Chua <jeff.chua.linux@gmail.com>,
+   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
+   Andi Kleen <ak@suse.de>, Adrian Bunk <bunk@stusta.de>,
    linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
+   "Eric W. Biederman" <ebiederm@xmission.com
 Return-path: <linux-pm-bounces@lists.osdl.org>
-To: discuss@x86-64.org
-In-Reply-To: <8f95bb250611070950m3dc45674gbd370e3173b6168d@mail.gmail.com>
+To: Matthew Wilcox <matthew@wil.cx>
+In-Reply-To: <20061108122237.GF27140@parisc-linux.org>
 List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
 	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
 List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
@@ -37,15 +39,28 @@ List-ID: <nfs.lists.sourceforge.net>
 
 
 
-> I can patch up the pci_mmcfg_insert_resource to verify if =
+On Wed, 8 Nov 2006, Matthew Wilcox wrote:
+>
+> On Wed, Nov 08, 2006 at 08:39:44AM +0100, Andi Kleen wrote:
+> > ACPI knows the number of busses.
+> =
 
-> the region that is exported by ACPI is reserved in e820 and printk an
-> error message if it is not and skip the resource insertion.
+> But what if the number of busses increases later, eg by hotplugging
+> a card with a PCI-PCI bridge on it?  Or does it know the number of
+> busses which can be supported by this machine's MMCONFIG region?
 
-It probably should get its information from pci_mcfg_init()
-and only reserve what is used there instead of adding duplicate
-e820 checking code somewhere else.
+ACPI will give the maximum number.
 
-Or perhaps only reserve when the bus is discovered?
+However, in this case, the correct thing to do (always _has_ been) is to =
 
--Andi
+not use ACPI for _anything_, but just read the base and the size of the =
+
+MMCONFIG region from the hardware itself.
+
+Anyway, I do not consider this a regression. MMCONFIG has _never_ worked =
+
+reliably. It has always been a case of "we can make it work on some =
+
+machines by making it break on others".
+
+			Linus
