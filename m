@@ -1,62 +1,72 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: do_vfs_lock Messages
-Date: Wed, 08 Nov 2006 09:33:51 -0800
-Message-ID: <1163007231.5712.42.camel@lade.trondhjem.org>
-References: <20061108144900.241780@gmx.net>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
+	(v3)
+Date: Wed, 08 Nov 2006 10:38:27 -0700
+Message-ID: <m1d57x4z58.fsf@ebiederm.dsl.xmission.com>
+References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
+	<20061107171143.GU27140@parisc-linux.org>
+	<200611080839.46670.ak@suse.de>
+	<20061108122237.GF27140@parisc-linux.org>
+	<Pine.LNX.4.64.0611080803280.3667@g5.osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GhrK1-0008Gd-JL
-	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 09:34:45 -0800
-Received: from pat.uio.no ([129.240.10.4] ident=7411)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GhrJv-0002HH-K9
-	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 09:34:43 -0800
-To: Marco Schwarz <marco.schwarz@gmx.net>
-In-Reply-To: <20061108144900.241780@gmx.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
+   Thierry Vignaud <tvignaud@mandriva.com>, Matthew Wilcox <matthew@wil.cx>,
+   Ernst Herzberg <earny@net4u.de>, Aaron Durbin <adurbin@google.com>,
+   Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
+   Andi Kleen <ak@suse.de>, linux-ide@vger.kernel.org,
+   oprofile-list@lists.sourceforge.net, Jens Axboe <jens.axboe@oracle.com>,
+   Adrian Bunk <bunk@stusta.de>, linux-pci@atrey.karlin.mff.cuni.cz,
+   Elimar Riesebieter <riesebie@lxtec.de>, discuss@x86-64.org,
+   linux-pm@osdl.org, Komuro <komurojun-mbn@nifty.com>,
+   Jeff Chua <jeff.chua.linux@gmail.com>,
+   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
+   neilb@cse.unsw.edu.au,
+   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+   linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
+   cpufreq@lists.linux.o
+Return-path: <linux-pm-bounces@lists.osdl.org>
+To: Linus Torvalds <torvalds@osdl.org>
+In-Reply-To: <Pine.LNX.4.64.0611080803280.3667@g5.osdl.org> (Linus Torvalds's
+	message of "Wed, 8 Nov 2006 08:05:18 -0800 (PST)")
+List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
+List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
+List-Post: <mailto:linux-pm@lists.osdl.org>
+List-Help: <mailto:linux-pm-request@lists.osdl.org?subject=help>
+List-Subscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.osdl.org?subject=subscribe>
+Sender: linux-pm-bounces@lists.osdl.org
+Errors-To: linux-pm-bounces@lists.osdl.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, 2006-11-08 at 15:49 +0100, Marco Schwarz wrote:
-> Hi,
-> 
-> I am getting A LOT of messages like
-> 
-> Nov  8 15:34:56 linux kernel: do_vfs_lock: VFS is out of sync with lock manager!
-> Nov  8 15:35:06 linux last message repeated 156 times
-> 
-> on a discless client system (root on NFS) with Kernel 2.6.18
-> 
-> Is this critical ? If not, can I supress it somehow ? It doesnt happen with the same server and my older clients (running 2.4.something).
+Linus Torvalds <torvalds@osdl.org> writes:
 
-It isn't critical. Usually it just means that someone is interrupting
-NFS lock calls. You can suppress it by changing the 'console_loglevel'
-field in /proc/sys/kernel/printk. Use something like
+> On Wed, 8 Nov 2006, Matthew Wilcox wrote:
+>>
+>> On Wed, Nov 08, 2006 at 08:39:44AM +0100, Andi Kleen wrote:
+>> > ACPI knows the number of busses.
+>> =
 
-echo "3       3       1       7" > /proc/sys/kernel/printk
+>> But what if the number of busses increases later, eg by hotplugging
+>> a card with a PCI-PCI bridge on it?  Or does it know the number of
+>> busses which can be supported by this machine's MMCONFIG region?
+>
+> ACPI will give the maximum number.
+>
+> However, in this case, the correct thing to do (always _has_ been) is to =
 
-Cheers,
-  Trond
+> not use ACPI for _anything_, but just read the base and the size of the =
 
+> MMCONFIG region from the hardware itself.
+>
+> Anyway, I do not consider this a regression. MMCONFIG has _never_ worked =
 
--------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+> reliably. It has always been a case of "we can make it work on some =
+
+> machines by making it break on others".
+
+The implementations I have seen, I believe have all been on bridges and
+the maximum size is actually generated from the bus number below the bridge.
+
+Eric
