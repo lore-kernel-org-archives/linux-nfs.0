@@ -1,13 +1,14 @@
-From: ebiederm@xmission.com (Eric W. Biederman)
+From: Linus Torvalds <torvalds@osdl.org>
 Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
 	(v3)
-Date: Wed, 08 Nov 2006 10:38:27 -0700
-Message-ID: <m1d57x4z58.fsf@ebiederm.dsl.xmission.com>
+Date: Wed, 8 Nov 2006 10:52:05 -0800 (PST)
+Message-ID: <Pine.LNX.4.64.0611081048330.3667@g5.osdl.org>
 References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
 	<20061107171143.GU27140@parisc-linux.org>
 	<200611080839.46670.ak@suse.de>
 	<20061108122237.GF27140@parisc-linux.org>
 	<Pine.LNX.4.64.0611080803280.3667@g5.osdl.org>
+	<m1d57x4z58.fsf@ebiederm.dsl.xmission.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
@@ -26,9 +27,8 @@ Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
    linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
    cpufreq@lists.linux.o
 Return-path: <linux-pm-bounces@lists.osdl.org>
-To: Linus Torvalds <torvalds@osdl.org>
-In-Reply-To: <Pine.LNX.4.64.0611080803280.3667@g5.osdl.org> (Linus Torvalds's
-	message of "Wed, 8 Nov 2006 08:05:18 -0800 (PST)")
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+In-Reply-To: <m1d57x4z58.fsf@ebiederm.dsl.xmission.com>
 List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
 	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
 List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
@@ -40,33 +40,31 @@ Sender: linux-pm-bounces@lists.osdl.org
 Errors-To: linux-pm-bounces@lists.osdl.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Linus Torvalds <torvalds@osdl.org> writes:
 
-> On Wed, 8 Nov 2006, Matthew Wilcox wrote:
->>
->> On Wed, Nov 08, 2006 at 08:39:44AM +0100, Andi Kleen wrote:
->> > ACPI knows the number of busses.
->> =
 
->> But what if the number of busses increases later, eg by hotplugging
->> a card with a PCI-PCI bridge on it?  Or does it know the number of
->> busses which can be supported by this machine's MMCONFIG region?
->
-> ACPI will give the maximum number.
->
-> However, in this case, the correct thing to do (always _has_ been) is to =
+On Wed, 8 Nov 2006, Eric W. Biederman wrote:
+> =
 
-> not use ACPI for _anything_, but just read the base and the size of the =
+> The implementations I have seen, I believe have all been on bridges and
+> the maximum size is actually generated from the bus number below the brid=
+ge.
 
-> MMCONFIG region from the hardware itself.
->
-> Anyway, I do not consider this a regression. MMCONFIG has _never_ worked =
+Hmm. It might be possible to first set up the MMCONFIG thing for the =
 
-> reliably. It has always been a case of "we can make it work on some =
+minimum range, then read the bus numbers from the host bridge on that bus, =
 
-> machines by making it break on others".
+and then expand the mmconfig range if necessary.
 
-The implementations I have seen, I believe have all been on bridges and
-the maximum size is actually generated from the bus number below the bridge.
+Because pretty much ANYTHING is better than trusting the BIOS tables.
 
-Eric
+That said, I'd really be a _lot_ more confident about it if we were to be =
+
+able to read the values from the hardware itself some way. There's =
+
+obviously a chicken-and-egg issue on mmcfg configuration, but it's one =
+
+that the BIOS startup code also has, so I assume that there is a solution =
+
+to that somewhere.
+
+		Linus
