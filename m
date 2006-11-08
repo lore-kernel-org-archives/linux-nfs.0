@@ -1,95 +1,96 @@
-From: ebiederm@xmission.com (Eric W. Biederman)
-Subject: Re: [discuss] Re: 2.6.19-rc4: known unfixed regressions
-	(v3)
-Date: Wed, 08 Nov 2006 12:24:54 -0700
-Message-ID: <m1r6wd3fnd.fsf@ebiederm.dsl.xmission.com>
-References: <Pine.LNX.4.64.0611080056480.12828@silvia.corp.fedex.com>
-	<20061107171143.GU27140@parisc-linux.org>
-	<200611080839.46670.ak@suse.de>
-	<20061108122237.GF27140@parisc-linux.org>
-	<Pine.LNX.4.64.0611080803280.3667@g5.osdl.org>
-	<m1d57x4z58.fsf@ebiederm.dsl.xmission.com>
-	<Pine.LNX.4.64.0611081048330.3667@g5.osdl.org>
+From: Ingo Saitz <Ingo.Saitz@stud.uni-hannover.de>
+Subject: Re: PROBLEM: can't mkdir() in 2.6.19-rc3 / 2.6.19-rc5
+Date: Thu, 9 Nov 2006 00:00:41 +0100
+Message-ID: <20061108230041.GA31610@schwan.zoo>
+References: <20061101021647.GA4203@schwan.zoo>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: Andrew Morton <akpm@osdl.org>, len.brown@intel.com,
-   Thierry Vignaud <tvignaud@mandriva.com>, Matthew Wilcox <matthew@wil.cx>,
-   Ernst Herzberg <earny@net4u.de>, Aaron Durbin <adurbin@google.com>,
-   Alex Romosan <romosan@sycorax.lbl.gov>, openib-general@openib.org,
-   Andi Kleen <ak@suse.de>, linux-ide@vger.kernel.org,
-   oprofile-list@lists.sourceforge.net, Jens Axboe <jens.axboe@oracle.com>,
-   Adrian Bunk <bunk@stusta.de>, linux-pci@atrey.karlin.mff.cuni.cz,
-   Elimar Riesebieter <riesebie@lxtec.de>, discuss@x86-64.org,
-   linux-pm@osdl.org, Komuro <komurojun-mbn@nifty.com>,
-   Jeff Chua <jeff.chua.linux@gmail.com>,
-   Tim Chen <tim.c.chen@linux.intel.com>, phil.el@wanadoo.fr, gregkh@suse.de,
-   neilb@cse.unsw.edu.au,
-   Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-   linux-acpi@vger.kernel.org, mingo@redhat.com, nfs@lists.sourceforge.net,
-   cpufreq@lists.linux.o
-Return-path: <linux-pm-bounces@lists.osdl.org>
-To: Linus Torvalds <torvalds@osdl.org>
-In-Reply-To: <Pine.LNX.4.64.0611081048330.3667@g5.osdl.org> (Linus Torvalds's
-	message of "Wed, 8 Nov 2006 10:52:05 -0800 (PST)")
-List-Unsubscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.osdl.org?subject=unsubscribe>
-List-Archive: <http://lists.osdl.org/pipermail/linux-pm>
-List-Post: <mailto:linux-pm@lists.osdl.org>
-List-Help: <mailto:linux-pm-request@lists.osdl.org?subject=help>
-List-Subscribe: <https://lists.osdl.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.osdl.org?subject=subscribe>
-Sender: linux-pm-bounces@lists.osdl.org
-Errors-To: linux-pm-bounces@lists.osdl.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============2047937308=="
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GhwPk-0005Kw-Jz
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 15:01:01 -0800
+Received: from mx.stud.uni-hannover.de
+	([130.75.176.3] helo=studserv.stud.uni-hannover.de ident=root)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GhwPi-0008Kg-9H
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 15:01:01 -0800
+Received: from schwan (ingo@localhost [127.0.0.1])
+	by studserv.stud.uni-hannover.de (8.13.8/8.13.8) with ESMTP id
+	kA8N0i4H024424
+	for <nfs@lists.sourceforge.net>; Thu, 9 Nov 2006 00:00:44 +0100 (MET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20061101021647.GA4203@schwan.zoo>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Linus Torvalds <torvalds@osdl.org> writes:
 
-> On Wed, 8 Nov 2006, Eric W. Biederman wrote:
->> =
+--===============2047937308==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="gBBFr7Ir9EOA20Yy"
+Content-Disposition: inline
 
->> The implementations I have seen, I believe have all been on bridges and
->> the maximum size is actually generated from the bus number below the bri=
-dge.
->
-> Hmm. It might be possible to first set up the MMCONFIG thing for the =
 
-> minimum range, then read the bus numbers from the host bridge on that bus=
-, =
+--gBBFr7Ir9EOA20Yy
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> and then expand the mmconfig range if necessary.
->
-> Because pretty much ANYTHING is better than trusting the BIOS tables.
->
-> That said, I'd really be a _lot_ more confident about it if we were to be =
+On Wed, Nov 01, 2006 at 03:16:47AM +0100, Ingo Saitz wrote:
+> [1.] One line summary of the problem:   =20
+>=20
+> Can't call mkdir() on 2.6.19-r3 nfsd
 
-> able to read the values from the hardware itself some way. There's =
+This is still present in 2.6.19-rc5 (-rc4 was completely broken, see
+<20061101024519.GA4426@schwan.zoo>), same host.
 
-> obviously a chicken-and-egg issue on mmcfg configuration, but it's one =
+    Ingo
 
-> that the BIOS startup code also has, so I assume that there is a solution =
+--gBBFr7Ir9EOA20Yy
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
 
-> to that somewhere.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.5 (GNU/Linux)
 
-cfc and cf8 still work on x86.  So you can start with the old path
-and then when you know mmconfig works you can upgrade.
+iD4DBQFFUmGZ4XrXtQkN2NURArk5AJiec/O7bc4+TGq10TN8j9ag7x/9AKC8ZyC2
+0iXvCbJK1T5lU2TWUEfmKQ==
+=IAC2
+-----END PGP SIGNATURE-----
 
-In fact mmconfig doesn't necessary allow access to the entire pci domain.
-On AMD systems currently you will get all of the subordinate busses but
-the cpus themselves will not show up in the mmconfig space.
+--gBBFr7Ir9EOA20Yy--
 
-So we should have the infrastructure to only use mmconfig for some set
-of busses.  If that interface is well described we can probably
-bootstrap sanely, only enabling what we know exists and like wise
-only reserving what we know is used.
 
-For chipsets I know that there is quite a bit of information publicly
-available.  For intel chipsets I believe those are registers they
-make available in their public docs.  For things like the Nvidia
-chipset the knowledge should be in the publicly available linuxbios
-code base.
+--===============2047937308==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Hopefully that is enough of a pointer to get people going.  I might
-have enough time to write the patch but I don't have enough time to
-maintain it until mmconfig becomes boring.
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============2047937308==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Eric
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2047937308==--
