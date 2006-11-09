@@ -1,28 +1,28 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: fix spurious error return from nfsd_create
-	in async case
-Date: Thu, 9 Nov 2006 12:29:24 +1100
-Message-ID: <17746.33908.348544.679986@cse.unsw.edu.au>
+From: Ingo Saitz <Ingo.Saitz@stud.uni-hannover.de>
+Subject: Re: PROBLEM: can't mkdir() in 2.6.19-rc3
+Date: Thu, 9 Nov 2006 02:35:22 +0100
+Message-ID: <20061109013521.GA1330@schwan.zoo>
 References: <20061101021647.GA4203@schwan.zoo>
 	<20061108234515.GD16390@fieldses.org>
-	<20061109004909.GA30367@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, aime.le-rouzic@bull.net,
-	nfs@lists.sourceforge.net, Al Viro <viro@zeniv.linux.org.uk>,
-	Ingo Saitz <Ingo.Saitz@stud.uni-hannover.de>
+Content-Type: multipart/mixed; boundary="===============2110941628=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GhyjY-00025T-09
-	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 17:29:36 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GhypL-0002b3-RV
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 17:35:35 -0800
+Received: from mx.stud.uni-hannover.de
+	([130.75.176.3] helo=studserv.stud.uni-hannover.de ident=root)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GhyjU-0003bG-Qv
-	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 17:29:37 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: message from J. Bruce Fields on Wednesday November 8
+	(Exim 4.44) id 1GhypK-0007AF-Im
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 17:35:37 -0800
+Received: from schwan (ingo@localhost [127.0.0.1])
+	by studserv.stud.uni-hannover.de (8.13.8/8.13.8) with ESMTP id
+	kA91ZNME027603
+	for <nfs@lists.sourceforge.net>; Thu, 9 Nov 2006 02:35:24 +0100 (MET)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <20061108234515.GD16390@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,52 +35,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday November 8, bfields@fieldses.org wrote:
-> Commit 6264d69d7df654ca64f625e9409189a0e50734e9 modified the
-> nfsd_create() error handling in such a way that nfsd_create will usually
-> return nfserr_perm even when succesful, if the export has the async
-> export option.
->     
-> This introduced a regression that could cause mkdir() to always return a
-> permissions error, even though the directory in question was actually
-> succesfully created.
->     
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-Acked-by: NeilBrown <neilb@suse.de>
+--===============2110941628==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="r5Pyd7+fXNt84Ff3"
+Content-Disposition: inline
 
-Thanks Bruce.  I checked the rest of that commit and I don't think the
-same problem occurs anywhere else.
 
-There is an 'err = nfserr_acces' in nfsd_lookup which is now dead
-code... but I guess it already was before the patch.
+--r5Pyd7+fXNt84Ff3
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-That "err = " that you fixed was dead code before the patch, but
-became a live problem.....
+On Wed, Nov 08, 2006 at 06:45:15PM -0500, J. Bruce Fields wrote:
+> Do you have the "async" option set on this export?  (What does
+>=20
+> 	exportfs -v
+>=20
+> say?)
 
-Thanks.
-NeilBrown
+Yes, i do use async as optin. exportfs -v says:
 
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 1a7ad8c..bb4d926 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1177,7 +1177,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
->  	/*
->  	 * Get the dir op function pointer.
->  	 */
-> -	err = nfserr_perm;
-> +	err = 0;
->  	switch (type) {
->  	case S_IFREG:
->  		host_err = vfs_create(dirp, dchild, iap->ia_mode, NULL);
+/DATA/media 10.4.0.225(rw,async,wdelay,root_squash,anonuid=3D65534,anongid=
+=3D65534)
+
+Also, your patch in <20061109004909.GA30367@fieldses.org> fixes this
+problem. Thanks.
+
+    Ingo
+
+--=20
+Man hat schon Igel nach Westen kotzen sehen!
+(alte indianische Weisheit)
+
+--r5Pyd7+fXNt84Ff3
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.5 (GNU/Linux)
+
+iD8DBQFFUoXZ4XrXtQkN2NURAjDJAJ0fLKBwCI5t11cM9UqVQqBiM0ArOgCdG40Q
+q3zn6xv1doNw30//C7nunZo=
+=ZmPX
+-----END PGP SIGNATURE-----
+
+--r5Pyd7+fXNt84Ff3--
+
+
+--===============2110941628==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============2110941628==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2110941628==--
