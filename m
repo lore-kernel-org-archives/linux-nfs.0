@@ -1,23 +1,27 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: PROBLEM: can't mkdir() in 2.6.19-rc3
-Date: Wed, 8 Nov 2006 18:45:15 -0500
-Message-ID: <20061108234515.GD16390@fieldses.org>
+Subject: [PATCH] nfsd: fix spurious error return from nfsd_create in
+	async case
+Date: Wed, 8 Nov 2006 19:49:09 -0500
+Message-ID: <20061109004909.GA30367@fieldses.org>
 References: <20061101021647.GA4203@schwan.zoo>
+	<20061108234515.GD16390@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@suse.de>, aime.le-rouzic@bull.net,
+	nfs@lists.sourceforge.net, Al Viro <viro@zeniv.linux.org.uk>,
+	Ingo Saitz <Ingo.Saitz@stud.uni-hannover.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ghx6i-0001CU-Uu
-	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 15:45:25 -0800
+	id 1Ghy6c-00072K-MA
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 16:49:22 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ghx6i-00036s-UZ
-	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 15:45:26 -0800
-To: Ingo Saitz <Ingo.Saitz@stud.uni-hannover.de>
-In-Reply-To: <20061101021647.GA4203@schwan.zoo>
+	(Exim 4.44) id 1Ghy6Z-0000QZ-Jt
+	for nfs@lists.sourceforge.net; Wed, 08 Nov 2006 16:49:23 -0800
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20061108234515.GD16390@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +34,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Nov 01, 2006 at 03:16:47AM +0100, Ingo Saitz wrote:
-> [2.] Full description of the problem/report:
-> 
-> When I call "mkdir foo" on an nfs mounted volume, the strace of mkdir shows
-> 
->     mkdir("foo", 0777)                      = -1 EPERM (Operation not permitted)
-> 
-> and the command fails. But if I do a "ls -ld foo" afterwards, the directory got
-> created:
-> 
->     drwxr-xr-x 2 ingo ingo 4096 2006-11-01 02:54 foo
-> 
-> The server is running 2.6.19-rc3, the client 2.6.18. The version of the
-> nfs-kernel-server ist 1.0.10. This did work with 2.6.18 as nfs server.
+Commit 6264d69d7df654ca64f625e9409189a0e50734e9 modified the
+nfsd_create() error handling in such a way that nfsd_create will usually
+return nfserr_perm even when succesful, if the export has the async
+export option.
+    
+This introduced a regression that could cause mkdir() to always return a
+permissions error, even though the directory in question was actually
+succesfully created.
+    
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-Do you have the "async" option set on this export?  (What does
-
-	exportfs -v
-
-say?)
-
---b.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 1a7ad8c..bb4d926 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1177,7 +1177,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+ 	/*
+ 	 * Get the dir op function pointer.
+ 	 */
+-	err = nfserr_perm;
++	err = 0;
+ 	switch (type) {
+ 	case S_IFREG:
+ 		host_err = vfs_create(dirp, dchild, iap->ia_mode, NULL);
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
