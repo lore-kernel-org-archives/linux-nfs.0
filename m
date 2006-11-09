@@ -1,23 +1,27 @@
-From: "Marco Schwarz" <marco.schwarz@gmx.net>
-Subject: Re: do_vfs_lock Messages
-Date: Thu, 09 Nov 2006 10:39:06 +0100
-Message-ID: <20061109093906.290540@gmx.net>
-References: <20061108144900.241780@gmx.net>
-	<1163007231.5712.42.camel@lade.trondhjem.org>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH 01/12] SUNRPC: allow creating an RPC service
+	without registering with portmapper
+Date: Thu, 9 Nov 2006 10:59:33 +0100
+Message-ID: <20061109095933.GA24104@suse.de>
+References: <20061101180808.14581.98744.stgit@schiele.dsl.sfldmi.ameritech.net>
+	<17746.41697.209294.695419@cse.unsw.edu.au>
+	<76bd70e30611081955k7060bd58h52c9a6ba76dca6cf@mail.gmail.com>
+	<17746.43863.57491.244513@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Chuck Lever <chucklever@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gi6NO-0004MQ-A2
-	for nfs@lists.sourceforge.net; Thu, 09 Nov 2006 01:39:14 -0800
-Received: from mail.gmx.de ([213.165.64.20] helo=mail.gmx.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gi6NO-00030N-0I
-	for nfs@lists.sourceforge.net; Thu, 09 Nov 2006 01:39:15 -0800
-In-Reply-To: <1163007231.5712.42.camel@lade.trondhjem.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	id 1Gi6hE-0006BG-Rl
+	for nfs@lists.sourceforge.net; Thu, 09 Nov 2006 01:59:44 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gi6hE-00057L-QU
+	for nfs@lists.sourceforge.net; Thu, 09 Nov 2006 01:59:46 -0800
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17746.43863.57491.244513@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,43 +34,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> On Wed, 2006-11-08 at 15:49 +0100, Marco Schwarz wrote:
-> > Hi,
-> > 
-> > I am getting A LOT of messages like
-> > 
-> > Nov  8 15:34:56 linux kernel: do_vfs_lock: VFS is out of sync with lock
-> manager!
-> > Nov  8 15:35:06 linux last message repeated 156 times
-> > 
-> > on a discless client system (root on NFS) with Kernel 2.6.18
-> > 
-> > Is this critical ? If not, can I supress it somehow ? It doesnt happen
-> with the same server and my older clients (running 2.4.something).
-> 
-> It isn't critical. Usually it just means that someone is interrupting
-> NFS lock calls. You can suppress it by changing the 'console_loglevel'
-> field in /proc/sys/kernel/printk. Use something like
-> 
-> echo "3       3       1       7" > /proc/sys/kernel/printk
-> 
-> Cheers,
->   Trond
+On Thu, Nov 09, 2006 at 03:15:19PM +1100, Neil Brown wrote:
+> So currently 'pmap_register' means two different things and we need to
+> split it so that we can mean one (don't register) without meaning the
+> other (socket is temporary).
 
-I tried to mount my nfs root with NOLOCK, shouldnt this also make those messages disappear ?
+I very much agree with that. I stumbled across this as well
+a while ago.
 
- host btest.fds{
-  hardware ethernet 00:17:31:37:A9:CF;
-  fixed-address 192.168.4.39;
-  filename "/tftpboot/pxelinux.0";
-  option root-path "/netclients/192.168.4.39_sles9,nolock,rsize=4096,wsize=4096";
- }
-
-It doesnt look like anything changed with NOLOCK, still lots of do_vfs_lock
-while booting up ...
-
-Best regards,
-Marco 
+Olaf
+-- 
+Walks like a duck. Quacks like a duck. Must be a chicken.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
