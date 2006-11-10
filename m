@@ -1,34 +1,33 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
 Subject: Re: [BUG] All Kerberos mounts stop working,
 	restarting rpc.svcgssd helps
-Date: Fri, 10 Nov 2006 16:41:40 -0500
-Message-ID: <20061110214140.GG9453@fieldses.org>
-References: <20061106234607.GA18236@uio.no>
-	<20061106234922.GM12372@fieldses.org>
-	<20061107004720.GA16731@uio.no>
-	<20061108004440.GL11346@fieldses.org>
-	<20061108005045.GA4524@uio.no>
+Date: Fri, 10 Nov 2006 16:43:31 -0500
+Message-ID: <4d569c330611101343p354fd2c6ja92abe54e7393c@mail.gmail.com>
+References: <20061106234607.GA18236@uio.no> <20061107004720.GA16731@uio.no>
+	<20061108004440.GL11346@fieldses.org> <20061108005045.GA4524@uio.no>
 	<4d569c330611101211y4846d2b2l2ad4be385688deff@mail.gmail.com>
 	<20061110202521.GE9453@fieldses.org>
 	<4d569c330611101239v46a8e444u15aa06433259d220@mail.gmail.com>
 	<20061110204917.GF9453@fieldses.org>
 	<4d569c330611101337g6f7bfd3ex2e6d347d5b030e98@mail.gmail.com>
+	<20061110214140.GG9453@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
 	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gie8B-0003yV-Ep
-	for nfs@lists.sourceforge.net; Fri, 10 Nov 2006 13:41:47 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gie8B-0004jd-Do
-	for nfs@lists.sourceforge.net; Fri, 10 Nov 2006 13:41:48 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <4d569c330611101337g6f7bfd3ex2e6d347d5b030e98@mail.gmail.com>
+	id 1Gie9y-0004Al-EG
+	for nfs@lists.sourceforge.net; Fri, 10 Nov 2006 13:43:40 -0800
+Received: from ug-out-1314.google.com ([66.249.92.171])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gie9y-00074m-Dg
+	for nfs@lists.sourceforge.net; Fri, 10 Nov 2006 13:43:39 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so652527ugc
+	for <nfs@lists.sourceforge.net>; Fri, 10 Nov 2006 13:43:33 -0800 (PST)
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20061110214140.GG9453@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,16 +40,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Nov 10, 2006 at 04:37:32PM -0500, Kevin Coffman wrote:
-> svcgssd actually fopens and fcloses the context channel and opens and
-> closes the init channel for each downcall.  So I don't see how that
-> would affect it either?
+On 11/10/06, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Nov 10, 2006 at 04:37:32PM -0500, Kevin Coffman wrote:
+> > svcgssd actually fopens and fcloses the context channel and opens and
+> > closes the init channel for each downcall.  So I don't see how that
+> > would affect it either?
+>
+> That's true for the context channel, but for the init channel, it
+> actually does have a file descriptor open all the time.  (It may open
+> and close a second one when it makes a downcall, I don't remember.)
 
-That's true for the context channel, but for the init channel, it
-actually does have a file descriptor open all the time.  (It may open
-and close a second one when it makes a downcall, I don't remember.)
-
---b.
+Oh yeah... it's gotta read something!
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
