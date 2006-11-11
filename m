@@ -1,19 +1,24 @@
-From: Stephen Liu <satimis@yahoo.com>
-Subject: Fail to start rpc nfsd
-Date: Sat, 11 Nov 2006 22:50:03 +0800 (CST)
-Message-ID: <20061111145003.65766.qmail@web35210.mail.mud.yahoo.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Fail to start rpc nfsd
+Date: Sat, 11 Nov 2006 13:04:20 -0500
+Message-ID: <1163268260.6612.17.camel@lade.trondhjem.org>
+References: <20061111145003.65766.qmail@web35210.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GiuBP-0004FW-DC
-	for nfs@lists.sourceforge.net; Sat, 11 Nov 2006 06:50:12 -0800
-Received: from web35210.mail.mud.yahoo.com ([66.163.179.89])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GiuBN-0001eu-Mt
-	for nfs@lists.sourceforge.net; Sat, 11 Nov 2006 06:50:12 -0800
-To: nfs@lists.sourceforge.net
+	id 1GixDd-0007lK-Qq
+	for nfs@lists.sourceforge.net; Sat, 11 Nov 2006 10:04:41 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/ikIfD6IuE2yFSc8NDUErVa982pc3+iKs=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GixDd-0003gr-MF
+	for nfs@lists.sourceforge.net; Sat, 11 Nov 2006 10:04:43 -0800
+To: Stephen Liu <satimis@yahoo.com>
+In-Reply-To: <20061111145003.65766.qmail@web35210.mail.mud.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,55 +31,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi folks,
+On Sat, 2006-11-11 at 22:50 +0800, Stephen Liu wrote:
+> Hi folks,
+> 
+> Ubuntu-6.06.1-LAMP-server-amd64
+> 
+> I'm following;
+> https://help.ubuntu.com/ubuntu/serverguide/C/index.html
+> Network File System (NFS)
+> https://help.ubuntu.com/ubuntu/serverguide/C/network-file-system.html
+> 
+> to build a LAMP server which is for test only, not for production.
+> Failed to start "nfs-kernel-server"
+> 
+> 
+> $ sudo /etc/init.d/nfs-kernel-server start
+> Password:
+>  * Exporting directories for NFS kernel daemon...
+> [ ok ]
+>  * Starting rpc nfsd...                              [fail]
+> 
+> 
+> $ cat /var/log/messages
+> ........
+> .........
+> Nov 11 22:36:15 ubuntu kernel: [  563.144537] NFSD: Using
+> /var/lib/nfs/v4recovery as the NFSv4 state recovery dire$Nov 11
+> 22:36:15
+> ubuntu kernel: [  563.144547] NFSD: recovery directory
+> /var/lib/nfs/v4recovery doesn't exist
+> Nov 11 22:36:15 ubuntu kernel: [  563.144550] NFSD: starting 90-second
+> grace period
+> Nov 11 22:36:50 ubuntu kernel: [  598.130968] portmap: server localhost
+> not responding, timed out
+> Nov 11 22:36:50 ubuntu kernel: [  598.130989] RPC: failed to contact
+> portmap (errno -5).
+> Nov 11 22:37:25 ubuntu kernel: [  633.112341] portmap: server localhost
+> not responding, timed out
+> Nov 11 22:37:25 ubuntu kernel: [  633.112361] RPC: failed to contact
+> portmap (errno -5).
+> Nov 11 22:38:00 ubuntu kernel: [  668.098108] portmap: server localhost
+> not responding, timed out
+> Nov 11 22:38:00 ubuntu kernel: [  668.098128] RPC: failed to contact
+> portmap (errno -5).
+> * end *
+> 
+> 
+> Please advise how to fix the problem.  TIA 
 
-Ubuntu-6.06.1-LAMP-server-amd64
+sudo /etc/init.d/portmap start
 
-I'm following;
-https://help.ubuntu.com/ubuntu/serverguide/C/index.html
-Network File System (NFS)
-https://help.ubuntu.com/ubuntu/serverguide/C/network-file-system.html
-
-to build a LAMP server which is for test only, not for production.
-Failed to start "nfs-kernel-server"
-
-
-$ sudo /etc/init.d/nfs-kernel-server start
-Password:
- * Exporting directories for NFS kernel daemon...
-[ ok ]
- * Starting rpc nfsd...                              [fail]
-
-
-$ cat /var/log/messages
-........
-.........
-Nov 11 22:36:15 ubuntu kernel: [  563.144537] NFSD: Using
-/var/lib/nfs/v4recovery as the NFSv4 state recovery dire$Nov 11
-22:36:15
-ubuntu kernel: [  563.144547] NFSD: recovery directory
-/var/lib/nfs/v4recovery doesn't exist
-Nov 11 22:36:15 ubuntu kernel: [  563.144550] NFSD: starting 90-second
-grace period
-Nov 11 22:36:50 ubuntu kernel: [  598.130968] portmap: server localhost
-not responding, timed out
-Nov 11 22:36:50 ubuntu kernel: [  598.130989] RPC: failed to contact
-portmap (errno -5).
-Nov 11 22:37:25 ubuntu kernel: [  633.112341] portmap: server localhost
-not responding, timed out
-Nov 11 22:37:25 ubuntu kernel: [  633.112361] RPC: failed to contact
-portmap (errno -5).
-Nov 11 22:38:00 ubuntu kernel: [  668.098108] portmap: server localhost
-not responding, timed out
-Nov 11 22:38:00 ubuntu kernel: [  668.098128] RPC: failed to contact
-portmap (errno -5).
-* end *
-
-
-Please advise how to fix the problem.  TIA
-
-B.R.
-Stephen
+Trond
 
 
 -------------------------------------------------------------------------
