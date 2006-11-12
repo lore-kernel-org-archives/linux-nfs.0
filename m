@@ -1,23 +1,23 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Fail to start rpc nfsd
-Date: Sun, 12 Nov 2006 07:16:06 -0500
-Message-ID: <1163333766.3131.7.camel@tleilax.poochiereds.net>
-References: <20061112001731.49149.qmail@web35208.mail.mud.yahoo.com>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1Gj53b-00057e-Bu delayed 10 hours
+Date: Sun, 12 Nov 2006 04:44:48 -0800
+Message-ID: <E1GjEhc-0002y3-7C@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjEG3-0006EH-RP
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:16:19 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GjEG4-0006P9-QB
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:16:21 -0800
-To: Stephen Liu <satimis@yahoo.com>
-In-Reply-To: <20061112001731.49149.qmail@web35208.mail.mud.yahoo.com>
+	id 1GjEhb-0008UN-Cm
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:44:47 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GjEhc-0005zy-Gl
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:44:48 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1GjEhc-0002y3-7C
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:44:48 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,57 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sun, 2006-11-12 at 08:17 +0800, Stephen Liu wrote:
-> Hi Trond,
-> 
-> Tks for your advice.
-> 
-> > > I'm following;
-> > > https://help.ubuntu.com/ubuntu/serverguide/C/index.html
-> > > Network File System (NFS)
-> > >
-> > https://help.ubuntu.com/ubuntu/serverguide/C/network-file-system.html
-> > > 
-> > > to build a LAMP server which is for test only, not for production.
-> > > Failed to start "nfs-kernel-server"
-> > > 
-> > > 
-> > > $ sudo /etc/init.d/nfs-kernel-server start
-> > > Password:
-> > >  * Exporting directories for NFS kernel daemon...
-> > > [ ok ]
-> > >  * Starting rpc nfsd...                              [fail]
-> 
-> - snip -
-> 
-> > > Please advise how to fix the problem.  TIA 
-> > 
-> > sudo /etc/init.d/portmap start
-> 
-> $ sudo /etc/init.d/portmap start
-> Password:
-> 
->  * Not starting portmap daemon.  Already running.     [ ok ]
-> * end *
-> 
-> It said already running.
-> 
-> What will be this command for;
-> /etc/init.d/nfs-kernel-server start
-> 
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 10 hours on the queue on externalmx-1.sourceforge.net.
 
-Depending on the distribution, it may just be that the script left a
-lockfile or something out there. Make sure it's actually running with
-'ps'.
+The message identifier is:     1Gj53b-00057e-Bu
+The subject of the message is: And within thee the Pelonite, of Israel, walked, in the king
+The date of the message is:    Sun, 12 Nov 2006 03:25:12 +0100
 
-If that's not it, then it's just not responding for some reason. Check
-your firewalling and make sure you're not blocking port 111. If that's
-not it, then it's probably hung for some reason and you'll need to do a
-bit of investigation as to why.
+The address to which the message has not yet been delivered is:
 
--- Jeff
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
 
-
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
