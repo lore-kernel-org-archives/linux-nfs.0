@@ -1,23 +1,21 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1Gj53b-00057e-Bu delayed 10 hours
-Date: Sun, 12 Nov 2006 04:44:48 -0800
-Message-ID: <E1GjEhc-0002y3-7C@externalmx-1.sourceforge.net>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [RFC: 2.6 patch] include/linux/nfsd/nfsfh.h: fix a NULL
+Date: Sun, 12 Nov 2006 14:17:48 +0100
+Message-ID: <20061112131748.GI25057@stusta.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjEhb-0008UN-Cm
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:44:47 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GjEhc-0005zy-Gl
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:44:48 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1GjEhc-0002y3-7C
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 04:44:48 -0800
-To: nfs@lists.sourceforge.net
+	id 1GjFDZ-00051l-D8
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 05:17:49 -0800
+Received: from emailhub.stusta.mhn.de ([141.84.69.5]
+	helo=mailout.stusta.mhn.de)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GjFDa-0007nn-4j
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 05:17:50 -0800
+To: neilb@cse.unsw.edu.au
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +28,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 10 hours on the queue on externalmx-1.sourceforge.net.
+dereference
+Reply-To: 
+Fcc: =sent-mail
 
-The message identifier is:     1Gj53b-00057e-Bu
-The subject of the message is: And within thee the Pelonite, of Israel, walked, in the king
-The date of the message is:    Sun, 12 Nov 2006 03:25:12 +0100
+When we know fhp->fh_dentry is NULL, a code path where it's being 
+dereferenced isn't a good choice.
 
-The address to which the message has not yet been delivered is:
+Spotted by the coverity checker.
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+--- linux-2.6/include/linux/nfsd/nfsfh.h.old	2006-11-12 14:13:34.000000000 +0100
++++ linux-2.6/include/linux/nfsd/nfsfh.h	2006-11-12 14:13:49.000000000 +0100
+@@ -330,8 +330,7 @@ fh_unlock(struct svc_fh *fhp)
+ {
+ 	if (!fhp->fh_dentry)
+ 		printk(KERN_ERR "fh_unlock: fh not verified!\n");
+-
+-	if (fhp->fh_locked) {
++	else if (fhp->fh_locked) {
+ 		fill_post_wcc(fhp);
+ 		mutex_unlock(&fhp->fh_dentry->d_inode->i_mutex);
+ 		fhp->fh_locked = 0;
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
