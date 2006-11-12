@@ -1,7 +1,7 @@
 From: Adrian Bunk <bunk@stusta.de>
-Subject: [RFC: 2.6 patch] include/linux/nfsd/nfsfh.h: fix a NULL
-Date: Sun, 12 Nov 2006 14:17:48 +0100
-Message-ID: <20061112131748.GI25057@stusta.de>
+Subject: include/linux/nfsd/nfsfh.h: NULL dereference
+Date: Sun, 12 Nov 2006 14:23:10 +0100
+Message-ID: <20061112132310.GJ25057@stusta.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
@@ -9,12 +9,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjFDZ-00051l-D8
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 05:17:49 -0800
+	id 1GjFIk-0005uc-Sh
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 05:23:12 -0800
 Received: from emailhub.stusta.mhn.de ([141.84.69.5]
 	helo=mailout.stusta.mhn.de)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GjFDa-0007nn-4j
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 05:17:50 -0800
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GjFIl-0001FK-L0
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 05:23:12 -0800
 To: neilb@cse.unsw.edu.au
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,29 +28,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-dereference
-Reply-To: 
-Fcc: =sent-mail
+The Coverity checker spotted the following:
 
-When we know fhp->fh_dentry is NULL, a code path where it's being 
-dereferenced isn't a good choice.
+<--  snip  -->
 
-Spotted by the coverity checker.
+...
+static __inline__ struct svc_fh *
+fh_copy(struct svc_fh *dst, struct svc_fh *src)
+{
+        if (src->fh_dentry || src->fh_locked) {
+                struct dentry *dentry = src->fh_dentry;
+                printk(KERN_ERR "fh_copy: copying %s/%s, already verified!\n",
+                        dentry->d_parent->d_name.name, dentry->d_name.name);
+        }
+                        
+        *dst = *src;
+        return dst;
+}
+...
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
+<--  snip  -->
 
---- linux-2.6/include/linux/nfsd/nfsfh.h.old	2006-11-12 14:13:34.000000000 +0100
-+++ linux-2.6/include/linux/nfsd/nfsfh.h	2006-11-12 14:13:49.000000000 +0100
-@@ -330,8 +330,7 @@ fh_unlock(struct svc_fh *fhp)
- {
- 	if (!fhp->fh_dentry)
- 		printk(KERN_ERR "fh_unlock: fh not verified!\n");
--
--	if (fhp->fh_locked) {
-+	else if (fhp->fh_locked) {
- 		fill_post_wcc(fhp);
- 		mutex_unlock(&fhp->fh_dentry->d_inode->i_mutex);
- 		fhp->fh_locked = 0;
+src->fh_dentry is being dereferenced when we discover it's NULL...
+
+cu
+Adrian
+
+-- 
+
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
 
 
 -------------------------------------------------------------------------
