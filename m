@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/13] SUNRPC: support IPv6 addresses in RPC server's
-	UDP receive path
-Date: Mon, 13 Nov 2006 07:58:40 -0500
-Message-ID: <20061113125840.4435.59215.stgit@localhost.localdomain>
+Subject: [PATCH 11/13] SUNRPC: Support IPv6 addresses in svc_tcp_accept
+Date: Mon, 13 Nov 2006 07:58:36 -0500
+Message-ID: <20061113125836.4435.36280.stgit@localhost.localdomain>
 References: <20061113125640.4435.11957.stgit@localhost.localdomain>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gjdfq-0004FA-Su
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:42 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1Gjdfn-0004Es-JO
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:36 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gjdfr-0004aN-Ss
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:40 -0800
+	(Exim 4.44) id 1Gjdfm-0004YD-60
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:36 -0800
 To: neilb@suse.de
 In-Reply-To: <20061113125640.4435.11957.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -32,91 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add support for IPv6 addresses in the RPC server's UDP receive path.
+Modify svc_tcp_accept to support connecting on IPv6 sockets.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- net/sunrpc/svcsock.c |   51 ++++++++++++++++++++++++++++++++++++++++++--------
- 1 files changed, 43 insertions(+), 8 deletions(-)
+ net/sunrpc/svcsock.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0d53aad..f75d9d5 100644
+index 47ed8d3..0d53aad 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -687,13 +687,53 @@ svc_write_space(struct sock *sk)
- 	}
- }
- 
-+static void svc_udp_get_sender_address(struct svc_rqst *rqstp,
-+					struct sk_buff *skb)
-+{
-+	switch (rqstp->rq_sock->sk_sk->sk_family) {
-+	case AF_INET:
-+		/* this seems to come from net/ipv4/udp.c:udp_recvmsg */
-+		do {
-+			struct sockaddr_in *sin =
-+				(struct sockaddr_in *) &rqstp->rq_addr;
-+
-+			sin->sin_family = AF_INET;
-+			sin->sin_port = skb->h.uh->source;
-+			sin->sin_addr.s_addr = skb->nh.iph->saddr;
-+			rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
-+		} while (0);
-+		break;
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	case AF_INET6:
-+		/* this is derived from net/ipv6/udp.c:udpv6_recvmesg */
-+		do {
-+			struct sockaddr_in6 *sin6 =
-+				(struct sockaddr_in6 *) &rqstp->rq_addr;
-+
-+			sin6->sin6_family = AF_INET6;
-+			sin6->sin6_port = skb->h.uh->source;
-+			sin6->sin6_flowinfo = 0;
-+			sin6->sin6_scope_id = 0;
-+			if (ipv6_addr_type(&sin6->sin6_addr) &
-+							IPV6_ADDR_LINKLOCAL)
-+				sin6->sin6_scope_id = IP6CB(skb)->iif;
-+			ipv6_addr_copy(&sin6->sin6_addr,
-+							&skb->nh.ipv6h->saddr);
-+			ipv6_addr_copy(&rqstp->rq_daddr.addr6,
-+							&skb->nh.ipv6h->saddr);
-+		} while (0);
-+		break;
-+#endif
-+	}
-+	return;
-+}
-+
- /*
-  * Receive a datagram from a UDP socket.
-  */
- static int
- svc_udp_recvfrom(struct svc_rqst *rqstp)
+@@ -916,7 +916,7 @@ #endif
+ static void
+ svc_tcp_accept(struct svc_sock *svsk)
  {
--	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
- 	struct svc_sock	*svsk = rqstp->rq_sock;
+-	struct sockaddr_in sin;
++	struct sockaddr_storage sin;
  	struct svc_serv	*serv = svsk->sk_server;
- 	struct sk_buff	*skb;
-@@ -745,14 +785,9 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 
- 	len  = skb->len - sizeof(struct udphdr);
- 	rqstp->rq_arg.len = len;
-+	rqstp->rq_prot = IPPROTO_UDP;
- 
--	rqstp->rq_prot        = IPPROTO_UDP;
--
--	/* Get sender address */
--	sin->sin_family = AF_INET;
--	sin->sin_port = skb->h.uh->source;
--	sin->sin_addr.s_addr = skb->nh.iph->saddr;
--	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
-+	svc_udp_get_sender_address(rqstp, skb);
- 
- 	if (skb_is_nonlinear(skb)) {
- 		/* we have to copy */
+ 	struct socket	*sock = svsk->sk_sock;
+ 	struct socket	*newsock;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
