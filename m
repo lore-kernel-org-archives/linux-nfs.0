@@ -1,23 +1,23 @@
-From: Stephen Liu <satimis@yahoo.com>
-Subject: Re: Fail to start rpc nfsd
-Date: Mon, 13 Nov 2006 12:10:23 +0800 (CST)
-Message-ID: <20061113041023.41362.qmail@web35205.mail.mud.yahoo.com>
-References: <1163388941.5736.8.camel@lade.trondhjem.org>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1Gj53b-00057e-Bu delayed 24 hours
+Date: Sun, 12 Nov 2006 20:10:39 -0800
+Message-ID: <E1GjT9b-0005Q0-QP@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjT9S-0007tI-05
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:30 -0800
-Received: from web35205.mail.mud.yahoo.com ([66.163.179.84])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GjT9Q-0005Zr-VK
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:31 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1163388941.5736.8.camel@lade.trondhjem.org>
+	id 1GjT9d-0007tk-2x
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:41 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GjT9c-0004vA-41
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:42 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1GjT9b-0005Q0-QP
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:39 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,82 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Trond,
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 24 hours on the queue on externalmx-1.sourceforge.net.
 
-Tks for your advice.
+The message identifier is:     1Gj53b-00057e-Bu
+The subject of the message is: And within thee the Pelonite, of Israel, walked, in the king
+The date of the message is:    Sun, 12 Nov 2006 03:25:12 +0100
 
+The address to which the message has not yet been delivered is:
 
-> > > > $ ps -ef | egrep '/nfs-kernel-server'
-> > > > satimis   4841  4786  0 08:16 pts/2    00:00:00 grep -E
-> > > > /nfs-kernel-server
-> > > 
-> > > It's portmap you need to grep for.
-> > 
-> > $ ps -ef | egrep portmap
-> > daemon    3513     1  0 07:58 ?        00:00:00 /sbin/portmap -i
-> > 127.0.0.1
-> > satimis   4902  4786  0 09:01 pts/2    00:00:00 grep -E portmap
-> > * end *
-> > 
-> > It is there.
-> 
-> Check that you don't have an entry in /etc/hosts.deny that is
-> blocking
-> access to portmap.
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
 
-Nothing enabled on /etc/hosts.deny file.  Just retain its original file
-without touched.
-
-
-> Also check that you don't have any iptables
-> entries
-> that are doing the same.
-
-$ sudo iptables --list
-Chain INPUT (policy ACCEPT)
-target     prot opt source               destination
-
-Chain FORWARD (policy ACCEPT)
-target     prot opt source               destination
-TCPMSS     tcp  --  anywhere             anywhere            tcp
-flags:SYN,RST/SYN tcpmss match 1400:1536 TCPMSS clamp to PMTU
-ACCEPT     all  --  192.168.0.0/16       anywhere
-ACCEPT     all  --  anywhere             192.168.0.0/16      state
-RELATED,ESTABLISHED
-
-Chain OUTPUT (policy ACCEPT)
-target     prot opt source               destination
-* end *
-
-
-$ sudo /etc/init.d/nfs-kernel-server restart
- * Stopping rpc mountd...                                              
- [ ok ]
- * Stopping rpc nfsd...                                                
- [ ok ]
- * Unexporting directories for NFS kernel daemon...                    
- [ ok ]
- * Exporting directories for NFS kernel daemon...                      
- [ ok ]
- * Starting rpc nfsd...                                                
- [fail]
-* end *
-
-Failed.
-
-
-$ sudo /etc/init.d/nfs-kernel-server force-reload
- * Re-exporting directories for NFS kernel daemon...                   
- [ ok ]
-* end *
-
-But "force-reload" was OK
-
-Tks.
-
-
-B.R.
-Stephen
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
