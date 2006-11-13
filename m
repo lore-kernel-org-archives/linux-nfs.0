@@ -1,23 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/13] SUNRPC: Support IPv6 addresses in svc_tcp_accept
-Date: Mon, 13 Nov 2006 07:58:36 -0500
-Message-ID: <20061113125836.4435.36280.stgit@localhost.localdomain>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: [PATCH 00/13] repost RPC server patches for IPv6 support
+Date: Mon, 13 Nov 2006 16:40:18 +0100
+Message-ID: <20061113154018.GC14789@suse.de>
 References: <20061113125640.4435.11957.stgit@localhost.localdomain>
-Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gjdfn-0004Es-JO
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:36 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1Gjdv6-0005xZ-KI
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:40:24 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gjdfm-0004YD-60
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:36 -0800
-To: neilb@suse.de
+	(Exim 4.44) id 1Gjdv4-0001Jr-TA
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:40:25 -0800
+To: Chuck Lever <chucklever@gmail.com>
 In-Reply-To: <20061113125640.4435.11957.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,28 +30,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Modify svc_tcp_accept to support connecting on IPv6 sockets.
+On Mon, Nov 13, 2006 at 07:56:40AM -0500, Chuck Lever wrote:
+> Hi Neil-
+> 
+> I think I've fixed most of the issues you and Olaf pointed out last week.
+> Have a look and let me know.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
----
+The patches look good, no additional comments from my side.
 
- net/sunrpc/svcsock.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 47ed8d3..0d53aad 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -916,7 +916,7 @@ #endif
- static void
- svc_tcp_accept(struct svc_sock *svsk)
- {
--	struct sockaddr_in sin;
-+	struct sockaddr_storage sin;
- 	struct svc_serv	*serv = svsk->sk_server;
- 	struct socket	*sock = svsk->sk_sock;
- 	struct socket	*newsock;
+Olaf
+-- 
+Walks like a duck. Quacks like a duck. Must be a chicken.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
