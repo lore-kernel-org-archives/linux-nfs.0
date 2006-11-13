@@ -1,23 +1,25 @@
-From: Stephen Liu <satimis@yahoo.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Fail to start rpc nfsd
-Date: Mon, 13 Nov 2006 09:13:42 +0800 (CST)
-Message-ID: <20061113011342.22713.qmail@web35213.mail.mud.yahoo.com>
-References: <20061113004930.GA22758@fieldses.org>
+Date: Sun, 12 Nov 2006 22:35:41 -0500
+Message-ID: <1163388941.5736.8.camel@lade.trondhjem.org>
+References: <20061113011342.22713.qmail@web35213.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjQOS-0000bT-Oz
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 17:13:49 -0800
-Received: from web35213.mail.mud.yahoo.com ([66.163.179.92])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GjQOR-0002Xz-Nu
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 17:13:50 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20061113004930.GA22758@fieldses.org>
+	id 1GjSc3-0004km-IG
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 19:35:59 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX19ZELhcS2ycnpAgqtcCN1taE+XYTFafO1E=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GjSc3-0004M8-Ca
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 19:36:00 -0800
+To: Stephen Liu <satimis@yahoo.com>
+In-Reply-To: <20061113011342.22713.qmail@web35213.mail.mud.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,49 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi J. Bruce,
-
-Tks for your advice.
-
-> > $ ps -ef | egrep '/nfs-kernel-server'
-> > satimis   4841  4786  0 08:16 pts/2    00:00:00 grep -E
-> > /nfs-kernel-server
+On Mon, 2006-11-13 at 09:13 +0800, Stephen Liu wrote:
+> Hi J. Bruce,
 > 
-> It's portmap you need to grep for.
+> Tks for your advice.
+> 
+> > > $ ps -ef | egrep '/nfs-kernel-server'
+> > > satimis   4841  4786  0 08:16 pts/2    00:00:00 grep -E
+> > > /nfs-kernel-server
+> > 
+> > It's portmap you need to grep for.
+> 
+> $ ps -ef | egrep portmap
+> daemon    3513     1  0 07:58 ?        00:00:00 /sbin/portmap -i
+> 127.0.0.1
+> satimis   4902  4786  0 09:01 pts/2    00:00:00 grep -E portmap
+> * end *
+> 
+> It is there.
 
-$ ps -ef | egrep portmap
-daemon    3513     1  0 07:58 ?        00:00:00 /sbin/portmap -i
-127.0.0.1
-satimis   4902  4786  0 09:01 pts/2    00:00:00 grep -E portmap
-* end *
+Check that you don't have an entry in /etc/hosts.deny that is blocking
+access to portmap. Also check that you don't have any iptables entries
+that are doing the same.
 
-It is there.
+Trond
 
-
-Why each time on running;
-$ sudo /etc/init.d/nfs-kernel-server restart
-Password:
- * Stopping rpc mountd...                                              
-                 [ ok ]
- * Stopping rpc nfsd...                                                
-                 [ ok ]
- * Unexporting directories for NFS kernel daemon...                    
-                 [ ok ]
- * Exporting directories for NFS kernel daemon...                      
-                 [ ok ]
- * Starting rpc nfsd...                                                
-                 [fail]
-* end *
-
-It hung on "Starting rpc nfsd..." a while before [fail] popup.  And
-each time after "running apt-get upgrade" or after installing new
-package it repeats running the above commands.  Finally failed.
-
-Is there anyway to fix the said problem?  TIA
-
-
-B.R.
-Stephen
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
