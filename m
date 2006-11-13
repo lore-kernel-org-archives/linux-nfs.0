@@ -1,23 +1,27 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1Gj53b-00057e-Bu delayed 24 hours
-Date: Sun, 12 Nov 2006 20:10:39 -0800
-Message-ID: <E1GjT9b-0005Q0-QP@externalmx-1.sourceforge.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [2.6 patch] include/linux/nfsd/nfsfh.h:fh_unlock():
+	change an error to a BUG_ON()
+Date: Mon, 13 Nov 2006 15:52:00 +1100
+Message-ID: <17751.63984.838723.340682@cse.unsw.edu.au>
+References: <20061112131748.GI25057@stusta.de>
+	<1163347127.6612.66.camel@lade.trondhjem.org>
+	<20061112174831.GD3382@stusta.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjT9d-0007tk-2x
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:41 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1GjTnn-0003EE-7J
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:52:11 -0800
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GjT9c-0004vA-41
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:42 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1GjT9b-0005Q0-QP
-	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:10:39 -0800
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1GjTno-0006TL-0b
+	for nfs@lists.sourceforge.net; Sun, 12 Nov 2006 20:52:12 -0800
+To: Adrian Bunk <bunk@stusta.de>
+In-Reply-To: message from Adrian Bunk on Sunday November 12
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +34,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 24 hours on the queue on externalmx-1.sourceforge.net.
+On Sunday November 12, bunk@stusta.de wrote:
+> > 
+> > This issue has come up on lkml before. Please just convert that check
+> > for fhp->fh_dentry into a BUG_ON().
+> 
+> Patch below.
+> 
 
-The message identifier is:     1Gj53b-00057e-Bu
-The subject of the message is: And within thee the Pelonite, of Israel, walked, in the king
-The date of the message is:    Sun, 12 Nov 2006 03:25:12 +0100
+Thanks.  I might that the opportunity to do a bit more cleaning up
+here and suggest this version .
 
-The address to which the message has not yet been delivered is:
+NeilBrown
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+---------------------------
+Subject: Replace some warning ins nfsfh.h with BUG_ON or WARN_ON
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+A couple of the warning will be followed by an Oops if they ever fire,
+so may as well be BUG_ON.  Another isn't obviously fatal but has never
+been known to fire, so make it a WARN_ON.
+
+Cc: Adrian Bunk <bunk@stusta.de>
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./include/linux/nfsd/nfsfh.h |   15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
+
+diff .prev/include/linux/nfsd/nfsfh.h ./include/linux/nfsd/nfsfh.h
+--- .prev/include/linux/nfsd/nfsfh.h	2006-11-13 15:44:24.000000000 +1100
++++ ./include/linux/nfsd/nfsfh.h	2006-11-13 15:47:02.000000000 +1100
+@@ -217,11 +217,7 @@ void	fh_put(struct svc_fh *);
+ static __inline__ struct svc_fh *
+ fh_copy(struct svc_fh *dst, struct svc_fh *src)
+ {
+-	if (src->fh_dentry || src->fh_locked) {
+-		struct dentry *dentry = src->fh_dentry;
+-		printk(KERN_ERR "fh_copy: copying %s/%s, already verified!\n",
+-			dentry->d_parent->d_name.name, dentry->d_name.name);
+-	}
++	WARN_ON(src->fh_dentry || src->fh_locked);
+ 			
+ 	*dst = *src;
+ 	return dst;
+@@ -300,10 +296,8 @@ fh_lock_nested(struct svc_fh *fhp, unsig
+ 	dfprintk(FILEOP, "nfsd: fh_lock(%s) locked = %d\n",
+ 			SVCFH_fmt(fhp), fhp->fh_locked);
+ 
+-	if (!fhp->fh_dentry) {
+-		printk(KERN_ERR "fh_lock: fh not verified!\n");
+-		return;
+-	}
++	BUG_ON(!dentry);
++
+ 	if (fhp->fh_locked) {
+ 		printk(KERN_WARNING "fh_lock: %s/%s already locked!\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name);
+@@ -328,8 +322,7 @@ fh_lock(struct svc_fh *fhp)
+ static inline void
+ fh_unlock(struct svc_fh *fhp)
+ {
+-	if (!fhp->fh_dentry)
+-		printk(KERN_ERR "fh_unlock: fh not verified!\n");
++	BUG_ON(!fhp->fh_dentry);
+ 
+ 	if (fhp->fh_locked) {
+ 		fill_post_wcc(fhp);
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
