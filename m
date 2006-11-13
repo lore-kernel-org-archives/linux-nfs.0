@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/13] SUNRPC: Make rq_daddr field address-version
-	independent
-Date: Mon, 13 Nov 2006 07:58:24 -0500
-Message-ID: <20061113125824.4435.64732.stgit@localhost.localdomain>
+Subject: [PATCH 04/13] SUNRPC: Don't set msg_name and msg_namelen when
+	calling sock_recvmsg
+Date: Mon, 13 Nov 2006 07:58:06 -0500
+Message-ID: <20061113125806.4435.91614.stgit@localhost.localdomain>
 References: <20061113125640.4435.11957.stgit@localhost.localdomain>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjdfR-0004DU-GA
+	id 1GjdfR-0004DS-CZ
 	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:13 -0800
 Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GjdfR-0004St-ED
+	(Exim 4.44) id 1GjdfR-0004HB-Bp
 	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 07:24:14 -0800
 To: neilb@suse.de
 In-Reply-To: <20061113125640.4435.11957.stgit@localhost.localdomain>
@@ -32,84 +32,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The rq_daddr field must support larger addresses.
+Clean-up: msg_name and msg_namelen are not used by sock_recvmsg, so
+don't bother to set them in svc_recvfrom.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- include/linux/sunrpc/svc.h |   14 ++++++++++----
- net/sunrpc/svcsock.c       |    4 ++--
- 2 files changed, 12 insertions(+), 6 deletions(-)
+ net/sunrpc/svcsock.c |   23 ++++++++---------------
+ 1 files changed, 8 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 7aa11f2..f3afdcb 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -11,6 +11,7 @@ #ifndef SUNRPC_SVC_H
- #define SUNRPC_SVC_H
- 
- #include <linux/in.h>
-+#include <linux/in6.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/auth.h>
-@@ -188,7 +189,13 @@ static inline void svc_putu32(struct kve
- 	iov->iov_len += sizeof(__be32);
- }
- 
--	
-+union svc_addr_u {
-+    struct in_addr	addr;
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+    struct in6_addr	addr6;
-+#endif
-+};
-+
- /*
-  * The context of a single thread, including the request currently being
-  * processed.
-@@ -224,8 +231,7 @@ struct svc_rqst {
- 	unsigned short
- 				rq_secure  : 1;	/* secure port */
- 
--
--	__be32			rq_daddr;	/* dest addr of request - reply from here */
-+	union svc_addr_u	rq_daddr;	/* dest addr of request - reply from here */
- 
- 	void *			rq_argp;	/* decoded arguments */
- 	void *			rq_resp;	/* xdr'd results */
-@@ -292,7 +298,7 @@ struct svc_deferred_req {
- 	struct sockaddr_storage	addr;
- 	int			addrlen;
- 	struct svc_sock		*svsk;	/* where reply must go */
--	__be32			daddr;	/* where reply must come from */
-+	union svc_addr_u	daddr;	/* where reply must come from */
- 	struct cache_deferred_req handle;
- 	int			argslen;
- 	__be32			args[0];
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 2e6e3e4..cced146 100644
+index d7b2ac3..5a251ae 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -446,7 +446,7 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 		cmh->cmsg_level = SOL_IP;
- 		cmh->cmsg_type = IP_PKTINFO;
- 		pki->ipi_ifindex = 0;
--		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr;
-+		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
+@@ -530,21 +530,14 @@ svc_recv_available(struct svc_sock *svsk
+ static int
+ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ {
+-	struct msghdr	msg;
+-	struct socket	*sock;
+-	int		len, alen;
+-
+-	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+-	sock = rqstp->rq_sock->sk_sock;
+-
+-	msg.msg_name    = &rqstp->rq_addr;
+-	msg.msg_namelen = sizeof(rqstp->rq_addr);
+-	msg.msg_control = NULL;
+-	msg.msg_controllen = 0;
+-
+-	msg.msg_flags	= MSG_DONTWAIT;
++	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct msghdr msg = {
++		.msg_flags	= MSG_DONTWAIT,
++	};
++	int len;
  
- 		if (sock_sendmsg(sock, &msg, 0) < 0)
- 			goto out;
-@@ -717,7 +717,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	sin->sin_family = AF_INET;
- 	sin->sin_port = skb->h.uh->source;
- 	sin->sin_addr.s_addr = skb->nh.iph->saddr;
--	rqstp->rq_daddr = skb->nh.iph->daddr;
-+	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
+-	len = kernel_recvmsg(sock, &msg, iov, nr, buflen, MSG_DONTWAIT);
++	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
++				msg.msg_flags);
  
- 	if (skb_is_nonlinear(skb)) {
- 		/* we have to copy */
+ 	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
+ 	 */
+@@ -552,7 +545,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	rqstp->rq_addrlen = svsk->sk_remotelen;
+ 
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+-		rqstp->rq_sock, iov[0].iov_base, iov[0].iov_len, len);
++		svsk, iov[0].iov_base, iov[0].iov_len, len);
+ 
+ 	return len;
+ }
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
