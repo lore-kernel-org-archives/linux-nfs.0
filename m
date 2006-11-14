@@ -1,23 +1,25 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1Gj53b-00057e-Bu delayed 48 hours
-Date: Mon, 13 Nov 2006 20:28:26 -0800
-Message-ID: <E1GjpuM-0003IT-CL@externalmx-1.sourceforge.net>
+From: Brad Barnett <lists@l8r.net>
+Subject: root NFS causes solid lockup, serial console no help,
+ watchdog NMI won't function on Dual AMD system
+Date: Tue, 14 Nov 2006 06:38:00 -0500
+Message-ID: <20061114063800.42bb402b@be.back.l8r.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjpuL-00013N-GO
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 20:28:25 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1GjwcA-0007IE-T6
+	for nfs@lists.sourceforge.net; Tue, 14 Nov 2006 03:38:07 -0800
+Received: from l8r.net ([206.248.172.29] ident=aliens)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GjpuM-0000d0-Kh
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 20:28:26 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1GjpuM-0003IT-CL
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 20:28:26 -0800
-To: nfs@lists.sourceforge.net
+	(Exim 4.44) id 1GjwcA-000117-PA
+	for nfs@lists.sourceforge.net; Tue, 14 Nov 2006 03:38:08 -0800
+Received: from be.back.l8r.net (bbarnett@be [10.10.10.10])
+	by l8r.net (8.13.4/8.13.4/Debian-3sarge1) with ESMTP id kAEBc0rX001732
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <nfs@lists.sourceforge.net>; Tue, 14 Nov 2006 06:38:01 -0500
+To: NFS List <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +32,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
-The message identifier is:     1Gj53b-00057e-Bu
-The subject of the message is: And within thee the Pelonite, of Israel, walked, in the king
-The date of the message is:    Sun, 12 Nov 2006 03:25:12 +0100
 
-The address to which the message has not yet been delivered is:
+Hello,
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+I have a couple of dual AMD Opteron system with differing motherboards. 
+On both of these differing pieces of hardware, I can not enable the NMI
+watchdog timer, with nmi_watchdog=1.  I constantly get:
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+testing NMI watchdog ... CPU#0: NMI appears to be stuck (0->0)!
+
+This happens when booting with both Debian's packaged kernels, 2.6.17-2
+and 2.6.18-2.  According to this page:
+
+http://www.mjmwired.net/kernel/Documentation/nmi_watchdog.txt
+
+nmi_watchdog=2 does not work with AMD systems at this time.
+
+Both boxes, aside from this, boot fine.  They use nfsroot, booting the
+kernel off of a local drive, and switching to nfsroot during the bootup. 
+They work flawlessly for anywhere from a week to a few days, then lock up
+solid.  I can not seem to reproduce this problem unless I am using
+nfsroot, and the above kernels seem fine without issue when booting and
+running off of a local drive.
+
+I can not get any information from a serial console, and just for fun I
+redirected syslog to another box, yet I did not see anything about the
+impending doom to come.  The console itself is simply a blank screen, and
+the keyboard is dead... 
+
+Does anyone have any suggestions for tracking this bug down?
+
+Thanks
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
