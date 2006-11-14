@@ -1,23 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: NFS specifically slow
-Date: Tue, 14 Nov 2006 14:44:48 +1100
-Message-ID: <17753.15280.665323.354631@cse.unsw.edu.au>
-References: <b03954e20611131441wd602331na2ecac03cf3c7578@mail.gmail.com>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1Gj53b-00057e-Bu delayed 48 hours
+Date: Mon, 13 Nov 2006 20:28:26 -0800
+Message-ID: <E1GjpuM-0003IT-CL@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GjpEG-0005dh-Ie
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 19:44:56 -0800
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1GjpuL-00013N-GO
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 20:28:25 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GjpEG-0005l5-Bo
-	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 19:44:57 -0800
-To: "Jeroen Maris" <jamaris@gmail.com>
-In-Reply-To: message from Jeroen Maris on Monday November 13
+	(Exim 4.44) id 1GjpuM-0000d0-Kh
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 20:28:26 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1GjpuM-0003IT-CL
+	for nfs@lists.sourceforge.net; Mon, 13 Nov 2006 20:28:26 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,38 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday November 13, jamaris@gmail.com wrote:
-> Hey.
-> I have a server with a raid5 array, consisting of 5 x 500 GB mounted as
-> /directory.
-> I export this directory in /etc/exports as "/array 192.168.1.2
-> (rw,sync,no_root_squash)".
-> On the client it is mounted with "server:/directory/ /directory nfs
-> rw,rsize=8192,wsize=8192,timeo=14,intr,hard 0 0"
-> 
-> Read performance is good; approximately 30 MB/s.
-> Write performance is very poor; approximately 5 MB/s.
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
-Hmmm... If I understand correctly, you get slow performance when
-writing to this raid5 and slow performance when reading from an ntfs
-local filesystem - yes?
-I suspect there are separate problems.
-I would suggest testing everything independently, reading from
-/dev/full and writing to /dev/null, e.g. with 'dd'.
+The message identifier is:     1Gj53b-00057e-Bu
+The subject of the message is: And within thee the Pelonite, of Israel, walked, in the king
+The date of the message is:    Sun, 12 Nov 2006 03:25:12 +0100
 
-Writing to a raid5 tends to be slow, especially lots of small sync
-writes as NFS requires.  5 MB/s seems a bit slow - assuming you have
-gigabit ethernet (it is reason for 100Mbit ethernet).
+The address to which the message has not yet been delivered is:
 
-What is the local write speed to the raid5 array like?
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
 
-Can you do a series for tests like:
-   dd if=/dev/full of=BIG bs=1024k count=100
-
-on various filesystems both locally and over NFS.  Maybe that will
-show a clearer pattern.
-
-NeilBrown
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
