@@ -1,23 +1,28 @@
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-Subject: Re: NFS corruption in 2.6.18.2?
-Date: Wed, 15 Nov 2006 18:29:47 +0100
-Message-ID: <20061115172947.GM10830@fit.vutbr.cz>
-References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH 001 of 4] Copy intr and soft flags to portmap-bind
+	client
+Date: Wed, 15 Nov 2006 14:38:45 -0500
+Message-ID: <76bd70e30611151138p1b41c85as5b954ed886051ff2@mail.gmail.com>
+References: <20061024122646.4426.patches@notabene> <1061024024851.4734@suse.de>
+	<76bd70e30610241605x13ae0bamdd306aee2f67d4e1@mail.gmail.com>
+	<1163610689.5691.174.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Cc: NeilBrown <neilb@suse.de>, Olaf Kirch <okir@suse.de>,
+	Chuck Lever <chuck.lever@oracle.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkOuz-0001oY-Ph
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:51:25 -0800
-Received: from kazi.fit.vutbr.cz ([147.229.8.12])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkOuy-0007Rr-FX
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:51:27 -0800
-To: Fredrik Lindgren <fli@swip.net>
-In-Reply-To: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
+	id 1GkQav-00041C-EN
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 11:38:50 -0800
+Received: from ug-out-1314.google.com ([66.249.92.174])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GkQat-00065t-Il
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 11:38:49 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so220651ugc
+	for <nfs@lists.sourceforge.net>; Wed, 15 Nov 2006 11:38:46 -0800 (PST)
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1163610689.5691.174.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,53 +35,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Nov 14, 2006 at 07:09:17PM +0100, Fredrik Lindgren wrote:
-> Hello
-> 
-> We're running a mail system with Linux machines being served by two
-> NetApps. (Debian stable, our "own" kernel off kernel.org)
-> 
-> At present we're running 2.6.13 kernels, we had some corruption issues
-> before that was fixed in 2.6.13. However when we tried to upgrade
-> to 2.6.18.2 the we see corruption again.
-> 
-> pre 2.6.13 the problem seemed to be that the file size was being
-> cached, which meant that sometimes there were blocks of NULL
-> characters in the files.
-> 
-> With 2.6.18.2 we see blocks of NULL chars in the data again, this time
-> it's sometimes in the middle of a message. pre 2.6.13 that didn't
-> happen,
-> then there were just big blocks of NULL chars between two messages. 
-> The only consistent thing is that it only occurs when the 1 machine
-> running 2.6.18.2 (out of 5) has delivered a message to the spool-file.
-> 
-> I don't know if it's relevant, but when checking the NFS stats I see
-> the 2.6.18.2 machine doing almost precisely half the amount of "GetAttr"
-> calls compared to the 2.6.13 machines.
-> 
-> Is this something anyone else has seen?
-> 
-> Also on a side note, the statistics still seem to be using signed
-> values, so we're seeing negative numbers on some stats after some
-> uptime. This is true for both using "nfsstat" and "cat
-> /proc/net/rpc/nfs.
+On 11/15/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2006-10-24 at 16:05 -0700, Chuck Lever wrote:
+> > Looking at this has forced me to actually think about it  ;-)
+> >
+> > Since portmapper is always a child task, I think it is safe and
+> > reasonable to use a "hard,intr" RPC client all the time.  The parent
+> > task will timeout automatically if it is a soft mount, right?  The RPC
+> > client should terminate the child if the parent dies.
+>
+> ...or to set it to always be soft.
 
-I have seen this behaviour with kernel 2.6.18 and above up to 19-rc4.
-Reported this, but no response.
+I suppose that would be OK, since call_bind_status will retry
+timed-out rpcbind requests for hard mounts.
 
-http://lkml.org/lkml/2006/9/28/89
+> Hmm... Looking at that code, though there is something that bothers me.
+> Why are we calling pmap_wake_portmap_waiters every time the call to
+> xprt_test_and_set_binding(xprt)!=0? That looks like a nasty bug.
 
---   
+Well the idea is to make sure the task isn't left on the binding queue
+if pmap_getport can't actually queue an rpcbind request.   I don't
+think it should be waking up all waiters, though -- that part is
+probably wrong.
 
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, BI/140a    Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 2, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
-
-  ICQ: 293092805  jabber: tomas.kasparek@jabber.cz
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
-
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
