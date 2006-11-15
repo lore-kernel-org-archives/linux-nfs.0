@@ -1,25 +1,26 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 04/10] SUNRPC: Move TCP state flags into xprtsock.c
-Date: Wed, 15 Nov 2006 12:28:44 -0500
-Message-ID: <1163611724.5691.188.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 09/10] SUNRPC: skb_read_bits is the same
+	as	xs_tcp_copy_data
+Date: Wed, 15 Nov 2006 12:33:45 -0500
+Message-ID: <1163612025.5691.190.camel@lade.trondhjem.org>
 References: <20061025164602.6410.27449.stgit@localhost.localdomain>
-	<20061025164706.6410.88080.stgit@localhost.localdomain>
+	<20061025164720.6410.93914.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkOZP-00083i-E0
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:29:07 -0800
+	id 1GkOeW-000077-Vz
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:34:25 -0800
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/g0Z35n6P8OZBzyzFRxK0QfZJkuKFptQU=])
+	ident=[U2FsdGVkX1+Y4WU3nPGXFwmzHvVaVFoOD4NQpDFHKtA=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkOZM-0001Bs-Qo
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:29:08 -0800
+	(Exim 4.44) id 1GkOeR-000322-E4
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:34:23 -0800
 To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <20061025164706.6410.88080.stgit@localhost.localdomain>
+In-Reply-To: <20061025164720.6410.93914.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,173 +34,160 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Wed, 2006-10-25 at 12:47 -0400, Chuck Lever wrote:
-> Move "XPRT_LAST_FRAG" and friends from xprt.h into xprtsock.c, and rename
-> them to use the naming scheme in use in xprtsock.c.
+> Clean-up: eliminate xs_tcp_copy_data -- it's exactly the same logic as the
+> common routine skb_read_bits.  The UDP and TCP socket read code now share
+> the same routine for copying data into an xdr_buf.
+> 
+> Now that skb_read_bits() is exported, rename it to avoid confusing it with
+> a generic skb_* function.  As these functions are XDR-specific, they should
+> not have names that suggest they are of generic use.  Also rename
+> skb_read_and_csum_bits() to be consistent.
 > 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  include/linux/sunrpc/xprt.h |    5 ----
->  net/sunrpc/xprtsock.c       |   48 +++++++++++++++++++++++++------------------
->  2 files changed, 28 insertions(+), 25 deletions(-)
+>  include/linux/sunrpc/xdr.h |    1 +
+>  net/sunrpc/socklib.c       |   14 +++++++-------
+>  net/sunrpc/xprtsock.c      |   24 ++++--------------------
+>  3 files changed, 12 insertions(+), 27 deletions(-)
 > 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 0a0ad1c..3ff8230 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -203,11 +203,6 @@ struct rpc_xprt {
->  	char *			address_strings[RPC_DISPLAY_MAX];
->  };
+> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> index ac69e55..b5728ca 100644
+> --- a/include/linux/sunrpc/xdr.h
+> +++ b/include/linux/sunrpc/xdr.h
+> @@ -156,6 +156,7 @@ typedef struct {
 >  
-> -#define XPRT_LAST_FRAG		(1 << 0)
-> -#define XPRT_COPY_RECM		(1 << 1)
-> -#define XPRT_COPY_XID		(1 << 2)
-> -#define XPRT_COPY_DATA		(1 << 3)
-> -
->  #ifdef __KERNEL__
+>  typedef size_t (*skb_read_actor_t)(skb_reader_t *desc, void *to, size_t len);
 >  
->  /*
+> +size_t xdr_skb_read_bits(skb_reader_t *desc, void *to, size_t len);
+>  extern int csum_partial_copy_to_xdr(struct xdr_buf *, struct sk_buff *);
+>  extern ssize_t xdr_partial_copy_from_skb(struct xdr_buf *, unsigned int,
+>  		skb_reader_t *, skb_read_actor_t);
+> diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
+> index 6f17527..4bb37e8 100644
+> --- a/net/sunrpc/socklib.c
+> +++ b/net/sunrpc/socklib.c
+> @@ -16,7 +16,7 @@ #include <linux/sunrpc/xdr.h>
+>  
+> 
+>  /**
+> - * skb_read_bits - copy some data bits from skb to internal buffer
+> + * xdr_skb_read_bits - copy some data bits from skb to internal buffer
+>   * @desc: sk_buff copy helper
+>   * @to: copy destination
+>   * @len: number of bytes to copy
+> @@ -24,11 +24,11 @@ #include <linux/sunrpc/xdr.h>
+>   * Possibly called several times to iterate over an sk_buff and copy
+>   * data out of it.
+>   */
+> -static size_t skb_read_bits(skb_reader_t *desc, void *to, size_t len)
+> +size_t xdr_skb_read_bits(skb_reader_t *desc, void *to, size_t len)
+>  {
+>  	if (len > desc->count)
+>  		len = desc->count;
+> -	if (skb_copy_bits(desc->skb, desc->offset, to, len))
+> +	if (unlikely(skb_copy_bits(desc->skb, desc->offset, to, (int) len)))
+
+Hmm... That cast looks iffy...
+
+>  		return 0;
+>  	desc->count -= len;
+>  	desc->offset += len;
+> @@ -36,14 +36,14 @@ static size_t skb_read_bits(skb_reader_t
+>  }
+>  
+>  /**
+> - * skb_read_and_csum_bits - copy and checksum from skb to buffer
+> + * xdr_skb_read_and_csum_bits - copy and checksum from skb to buffer
+>   * @desc: sk_buff copy helper
+>   * @to: copy destination
+>   * @len: number of bytes to copy
+>   *
+>   * Same as skb_read_bits, but calculate a checksum at the same time.
+>   */
+> -static size_t skb_read_and_csum_bits(skb_reader_t *desc, void *to, size_t len)
+> +static size_t xdr_skb_read_and_csum_bits(skb_reader_t *desc, void *to, size_t len)
+>  {
+>  	unsigned int	csum2, pos;
+>  
+> @@ -157,7 +157,7 @@ int csum_partial_copy_to_xdr(struct xdr_
+>  		goto no_checksum;
+>  
+>  	desc.csum = csum_partial(skb->data, desc.offset, skb->csum);
+> -	if (xdr_partial_copy_from_skb(xdr, 0, &desc, skb_read_and_csum_bits) < 0)
+> +	if (xdr_partial_copy_from_skb(xdr, 0, &desc, xdr_skb_read_and_csum_bits) < 0)
+>  		return -1;
+>  	if (desc.offset != skb->len) {
+>  		unsigned int csum2;
+> @@ -172,7 +172,7 @@ int csum_partial_copy_to_xdr(struct xdr_
+>  		netdev_rx_csum_fault(skb->dev);
+>  	return 0;
+>  no_checksum:
+> -	if (xdr_partial_copy_from_skb(xdr, 0, &desc, skb_read_bits) < 0)
+> +	if (xdr_partial_copy_from_skb(xdr, 0, &desc, xdr_skb_read_bits) < 0)
+>  		return -1;
+>  	if (desc.count)
+>  		return -1;
 > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index e7ecf99..0e01296 100644
+> index 781c58b..7ec1ea6 100644
 > --- a/net/sunrpc/xprtsock.c
 > +++ b/net/sunrpc/xprtsock.c
-> @@ -147,6 +147,14 @@ struct sock_xprt {
->  				tcp_flags;
->  };
+> @@ -661,22 +661,6 @@ static void xs_udp_data_ready(struct soc
+>  	read_unlock(&sk->sk_callback_lock);
+>  }
 >  
-> +/*
-> + * TCP receive state flags
-> + */
-> +#define XS_LAST_FRAG		(1UL << 0)
-> +#define XS_COPY_FRGH		(1UL << 1)
-> +#define XS_COPY_XID		(1UL << 2)
-> +#define XS_COPY_DATA		(1UL << 3)
-
-If you are going to rename these, how about just using RPCMSG_LAST_FRAG,
-RPCMSG_COPY_FRAGHDR (FRGH == ugh), RPCMSG_COPY_XID, and
-RPCMSG_COPY_DATA?
-
-> +
->  static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+> -static inline size_t xs_tcp_copy_data(skb_reader_t *desc, void *p, size_t len)
+> -{
+> -	if (len > desc->count)
+> -		len = desc->count;
+> -	if (skb_copy_bits(desc->skb, desc->offset, p, len)) {
+> -		dprintk("RPC:      failed to copy %zu bytes from skb. %zu bytes remain\n",
+> -				len, desc->count);
+> -		return 0;
+> -	}
+> -	desc->offset += len;
+> -	desc->count -= len;
+> -	dprintk("RPC:      copied %zu bytes from skb. %zu bytes remain\n",
+> -			len, desc->count);
+> -	return len;
+> -}
+> -
+>  static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, skb_reader_t *desc)
 >  {
->  	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-> @@ -663,12 +671,12 @@ static inline void xs_tcp_read_fraghdr(s
+>  	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
+> @@ -685,7 +669,7 @@ static inline void xs_tcp_read_fraghdr(s
 >  
->  	sx->tcp_reclen = ntohl(sx->tcp_fraghdr);
->  	if (sx->tcp_reclen & RPC_LAST_STREAM_FRAGMENT)
-> -		sx->tcp_flags |= XPRT_LAST_FRAG;
-> +		sx->tcp_flags |= XS_LAST_FRAG;
->  	else
-> -		sx->tcp_flags &= ~XPRT_LAST_FRAG;
-> +		sx->tcp_flags &= ~XS_LAST_FRAG;
->  	sx->tcp_reclen &= RPC_FRAGMENT_SIZE_MASK;
->  
-> -	sx->tcp_flags &= ~XPRT_COPY_RECM;
-> +	sx->tcp_flags &= ~XS_COPY_FRGH;
->  	sx->tcp_offset = 0;
->  
->  	/* Sanity check of the record length */
-> @@ -684,11 +692,11 @@ static inline void xs_tcp_read_fraghdr(s
->  static void xs_tcp_check_fraghdr(struct sock_xprt *sx)
->  {
->  	if (sx->tcp_offset == sx->tcp_reclen) {
-> -		sx->tcp_flags |= XPRT_COPY_RECM;
-> +		sx->tcp_flags |= XS_COPY_FRGH;
->  		sx->tcp_offset = 0;
-> -		if (sx->tcp_flags & XPRT_LAST_FRAG) {
-> -			sx->tcp_flags &= ~XPRT_COPY_DATA;
-> -			sx->tcp_flags |= XPRT_COPY_XID;
-> +		if (sx->tcp_flags & XS_LAST_FRAG) {
-> +			sx->tcp_flags &= ~XS_COPY_DATA;
-> +			sx->tcp_flags |= XS_COPY_XID;
->  			sx->tcp_copied = 0;
->  		}
->  	}
-> @@ -706,8 +714,8 @@ static inline void xs_tcp_read_xid(struc
+>  	p = ((char *) &sx->tcp_fraghdr) + sx->tcp_offset;
+>  	len = sizeof(sx->tcp_fraghdr) - sx->tcp_offset;
+> -	used = xs_tcp_copy_data(desc, p, len);
+> +	used = xdr_skb_read_bits(desc, p, len);
 >  	sx->tcp_offset += used;
 >  	if (used != len)
 >  		return;
-> -	sx->tcp_flags &= ~XPRT_COPY_XID;
-> -	sx->tcp_flags |= XPRT_COPY_DATA;
-> +	sx->tcp_flags &= ~XS_COPY_XID;
-> +	sx->tcp_flags |= XS_COPY_DATA;
->  	sx->tcp_copied = 4;
->  	dprintk("RPC:      reading reply for XID %08x\n",
->  			ntohl(sx->tcp_xid));
-> @@ -726,7 +734,7 @@ static inline void xs_tcp_read_request(s
->  	spin_lock(&xprt->transport_lock);
->  	req = xprt_lookup_rqst(xprt, sx->tcp_xid);
->  	if (!req) {
-> -		sx->tcp_flags &= ~XPRT_COPY_DATA;
-> +		sx->tcp_flags &= ~XS_COPY_DATA;
->  		dprintk("RPC:      XID %08x request not found!\n",
->  				ntohl(sx->tcp_xid));
->  		spin_unlock(&xprt->transport_lock);
-> @@ -757,13 +765,13 @@ static inline void xs_tcp_read_request(s
->  		/* Error when copying to the receive buffer,
->  		 * usually because we weren't able to allocate
->  		 * additional buffer pages. All we can do now
-> -		 * is turn off XPRT_COPY_DATA, so the request
-> +		 * is turn off XS_COPY_DATA, so the request
->  		 * will not receive any additional updates,
->  		 * and time out.
->  		 * Any remaining data from this record will
->  		 * be discarded.
->  		 */
-> -		sx->tcp_flags &= ~XPRT_COPY_DATA;
-> +		sx->tcp_flags &= ~XS_COPY_DATA;
->  		dprintk("RPC:      XID %08x truncated request\n",
->  				ntohl(sx->tcp_xid));
->  		dprintk("RPC:      xprt = %p, tcp_copied = %lu, tcp_offset = %u, tcp_reclen = %u\n",
-> @@ -777,14 +785,14 @@ static inline void xs_tcp_read_request(s
->  			xprt, sx->tcp_copied, sx->tcp_offset, sx->tcp_reclen);
+> @@ -731,7 +715,7 @@ static inline void xs_tcp_read_xid(struc
+>  	len = sizeof(sx->tcp_xid) - sx->tcp_offset;
+>  	dprintk("RPC:      reading XID (%Zu bytes)\n", len);
+>  	p = ((char *) &sx->tcp_xid) + sx->tcp_offset;
+> -	used = xs_tcp_copy_data(desc, p, len);
+> +	used = xdr_skb_read_bits(desc, p, len);
+>  	sx->tcp_offset += used;
+>  	if (used != len)
+>  		return;
+> @@ -771,12 +755,12 @@ static inline void xs_tcp_read_request(s
+>  		memcpy(&my_desc, desc, sizeof(my_desc));
+>  		my_desc.count = len;
+>  		r = xdr_partial_copy_from_skb(rcvbuf, sx->tcp_copied,
+> -					  &my_desc, xs_tcp_copy_data);
+> +					  &my_desc, xdr_skb_read_bits);
+>  		desc->count -= r;
+>  		desc->offset += r;
+>  	} else
+>  		r = xdr_partial_copy_from_skb(rcvbuf, sx->tcp_copied,
+> -					  desc, xs_tcp_copy_data);
+> +					  desc, xdr_skb_read_bits);
 >  
->  	if (sx->tcp_copied == req->rq_private_buf.buflen)
-> -		sx->tcp_flags &= ~XPRT_COPY_DATA;
-> +		sx->tcp_flags &= ~XS_COPY_DATA;
->  	else if (sx->tcp_offset == sx->tcp_reclen) {
-> -		if (sx->tcp_flags & XPRT_LAST_FRAG)
-> -			sx->tcp_flags &= ~XPRT_COPY_DATA;
-> +		if (sx->tcp_flags & XS_LAST_FRAG)
-> +			sx->tcp_flags &= ~XS_COPY_DATA;
->  	}
->  
->  out:
-> -	if (!(sx->tcp_flags & XPRT_COPY_DATA))
-> +	if (!(sx->tcp_flags & XS_COPY_DATA))
->  		xprt_complete_rqst(req->rq_task, sx->tcp_copied);
->  	spin_unlock(&xprt->transport_lock);
->  	xs_tcp_check_fraghdr(sx);
-> @@ -818,17 +826,17 @@ static int xs_tcp_data_recv(read_descrip
->  	do {
->  		/* Read in a new fragment marker if necessary */
->  		/* Can we ever really expect to get completely empty fragments? */
-> -		if (sx->tcp_flags & XPRT_COPY_RECM) {
-> +		if (sx->tcp_flags & XS_COPY_FRGH) {
->  			xs_tcp_read_fraghdr(xprt, &desc);
->  			continue;
->  		}
->  		/* Read in the xid if necessary */
-> -		if (sx->tcp_flags & XPRT_COPY_XID) {
-> +		if (sx->tcp_flags & XS_COPY_XID) {
->  			xs_tcp_read_xid(sx, &desc);
->  			continue;
->  		}
->  		/* Read in the request data */
-> -		if (sx->tcp_flags & XPRT_COPY_DATA) {
-> +		if (sx->tcp_flags & XS_COPY_DATA) {
->  			xs_tcp_read_request(xprt, &desc);
->  			continue;
->  		}
-> @@ -894,7 +902,7 @@ static void xs_tcp_state_change(struct s
->  			sx->tcp_offset = 0;
->  			sx->tcp_reclen = 0;
->  			sx->tcp_copied = 0;
-> -			sx->tcp_flags = XPRT_COPY_RECM | XPRT_COPY_XID;
-> +			sx->tcp_flags = XS_COPY_FRGH | XS_COPY_XID;
->  
->  			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
->  			xprt_wake_pending_tasks(xprt, 0);
+>  	if (r > 0) {
+>  		sx->tcp_copied += r;
 
 
 -------------------------------------------------------------------------
