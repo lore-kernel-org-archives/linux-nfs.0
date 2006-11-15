@@ -1,25 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 10/10] SUNRPC: Rename skb_reader_t and friends
-Date: Wed, 15 Nov 2006 12:36:35 -0500
-Message-ID: <1163612195.5691.193.camel@lade.trondhjem.org>
-References: <20061025164602.6410.27449.stgit@localhost.localdomain>
-	<20061025164722.6410.84105.stgit@localhost.localdomain>
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Subject: Re: NFS corruption in 2.6.18.2?
+Date: Wed, 15 Nov 2006 18:29:47 +0100
+Message-ID: <20061115172947.GM10830@fit.vutbr.cz>
+References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkOhV-0000QW-MN
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:37:29 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19swZuGOPfoOyHBhWZYBSfpxTO1ohsFWY4=])
+	id 1GkOuz-0001oY-Ph
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:51:25 -0800
+Received: from kazi.fit.vutbr.cz ([147.229.8.12])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkOhS-0003wg-UM
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:37:28 -0800
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <20061025164722.6410.84105.stgit@localhost.localdomain>
+	(Exim 4.44) id 1GkOuy-0007Rr-FX
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:51:27 -0800
+To: Fredrik Lindgren <fli@swip.net>
+In-Reply-To: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,148 +30,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-10-25 at 12:47 -0400, Chuck Lever wrote:
-> Clean-up:  hch suggested that the RPC client shouldn't pollute the name
-> space used by the generic skb manipulation routines in net/core/skbuff.c.
+On Tue, Nov 14, 2006 at 07:09:17PM +0100, Fredrik Lindgren wrote:
+> Hello
 > 
-> Rename a couple of types in xdr.h to adhere to this convention.
+> We're running a mail system with Linux machines being served by two
+> NetApps. (Debian stable, our "own" kernel off kernel.org)
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> At present we're running 2.6.13 kernels, we had some corruption issues
+> before that was fixed in 2.6.13. However when we tried to upgrade
+> to 2.6.18.2 the we see corruption again.
 > 
->  include/linux/sunrpc/xdr.h |    8 ++++----
->  net/sunrpc/socklib.c       |    8 ++++----
->  net/sunrpc/xprtsock.c      |   12 ++++++------
->  3 files changed, 14 insertions(+), 14 deletions(-)
+> pre 2.6.13 the problem seemed to be that the file size was being
+> cached, which meant that sometimes there were blocks of NULL
+> characters in the files.
 > 
-> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-> index b5728ca..a91a22a 100644
-> --- a/include/linux/sunrpc/xdr.h
-> +++ b/include/linux/sunrpc/xdr.h
-> @@ -152,14 +152,14 @@ typedef struct {
->  	unsigned int	offset;
->  	size_t		count;
->  	unsigned int	csum;
-> -} skb_reader_t;
-> +} xdr_skb_reader_t;
+> With 2.6.18.2 we see blocks of NULL chars in the data again, this time
+> it's sometimes in the middle of a message. pre 2.6.13 that didn't
+> happen,
+> then there were just big blocks of NULL chars between two messages. 
+> The only consistent thing is that it only occurs when the 1 machine
+> running 2.6.18.2 (out of 5) has delivered a message to the spool-file.
+> 
+> I don't know if it's relevant, but when checking the NFS stats I see
+> the 2.6.18.2 machine doing almost precisely half the amount of "GetAttr"
+> calls compared to the 2.6.13 machines.
+> 
+> Is this something anyone else has seen?
+> 
+> Also on a side note, the statistics still seem to be using signed
+> values, so we're seeing negative numbers on some stats after some
+> uptime. This is true for both using "nfsstat" and "cat
+> /proc/net/rpc/nfs.
 
-struct xdr_skb_reader {
- ....
-};
-? Might as well follow the ever-changing CodingStyle while we're
-renaming all this.
+I have seen this behaviour with kernel 2.6.18 and above up to 19-rc4.
+Reported this, but no response.
 
- 
-> -typedef size_t (*skb_read_actor_t)(skb_reader_t *desc, void *to, size_t len);
-> +typedef size_t (*xdr_skb_read_actor_t)(xdr_skb_reader_t *desc, void *to, size_t len);
->  
-> -size_t xdr_skb_read_bits(skb_reader_t *desc, void *to, size_t len);
-> +size_t xdr_skb_read_bits(xdr_skb_reader_t *desc, void *to, size_t len);
->  extern int csum_partial_copy_to_xdr(struct xdr_buf *, struct sk_buff *);
->  extern ssize_t xdr_partial_copy_from_skb(struct xdr_buf *, unsigned int,
-> -		skb_reader_t *, skb_read_actor_t);
-> +		xdr_skb_reader_t *, xdr_skb_read_actor_t);
->  
->  extern int xdr_encode_word(struct xdr_buf *, int, u32);
->  extern int xdr_decode_word(struct xdr_buf *, int, u32 *);
-> diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
-> index 4bb37e8..2ba1888 100644
-> --- a/net/sunrpc/socklib.c
-> +++ b/net/sunrpc/socklib.c
-> @@ -24,7 +24,7 @@ #include <linux/sunrpc/xdr.h>
->   * Possibly called several times to iterate over an sk_buff and copy
->   * data out of it.
->   */
-> -size_t xdr_skb_read_bits(skb_reader_t *desc, void *to, size_t len)
-> +size_t xdr_skb_read_bits(xdr_skb_reader_t *desc, void *to, size_t len)
->  {
->  	if (len > desc->count)
->  		len = desc->count;
-> @@ -43,7 +43,7 @@ size_t xdr_skb_read_bits(skb_reader_t *d
->   *
->   * Same as skb_read_bits, but calculate a checksum at the same time.
->   */
-> -static size_t xdr_skb_read_and_csum_bits(skb_reader_t *desc, void *to, size_t len)
-> +static size_t xdr_skb_read_and_csum_bits(xdr_skb_reader_t *desc, void *to, size_t len)
->  {
->  	unsigned int	csum2, pos;
->  
-> @@ -65,7 +65,7 @@ static size_t xdr_skb_read_and_csum_bits
->   * @copy_actor: virtual method for copying data
->   *
->   */
-> -ssize_t xdr_partial_copy_from_skb(struct xdr_buf *xdr, unsigned int base, skb_reader_t *desc, skb_read_actor_t copy_actor)
-> +ssize_t xdr_partial_copy_from_skb(struct xdr_buf *xdr, unsigned int base, xdr_skb_reader_t *desc, xdr_skb_read_actor_t copy_actor)
->  {
->  	struct page	**ppage = xdr->pages;
->  	unsigned int	len, pglen = xdr->page_len;
-> @@ -147,7 +147,7 @@ out:
->   */
->  int csum_partial_copy_to_xdr(struct xdr_buf *xdr, struct sk_buff *skb)
->  {
-> -	skb_reader_t	desc;
-> +	xdr_skb_reader_t	desc;
->  
->  	desc.skb = skb;
->  	desc.offset = sizeof(struct udphdr);
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 7ec1ea6..cedf752 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -661,7 +661,7 @@ static void xs_udp_data_ready(struct soc
->  	read_unlock(&sk->sk_callback_lock);
->  }
->  
-> -static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, skb_reader_t *desc)
-> +static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, xdr_skb_reader_t *desc)
->  {
->  	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
->  	size_t len, used;
-> @@ -707,7 +707,7 @@ static void xs_tcp_check_fraghdr(struct 
->  	}
->  }
->  
-> -static inline void xs_tcp_read_xid(struct sock_xprt *sx, skb_reader_t *desc)
-> +static inline void xs_tcp_read_xid(struct sock_xprt *sx, xdr_skb_reader_t *desc)
->  {
->  	size_t len, used;
->  	char *p;
-> @@ -727,7 +727,7 @@ static inline void xs_tcp_read_xid(struc
->  	xs_tcp_check_fraghdr(sx);
->  }
->  
-> -static inline void xs_tcp_read_request(struct rpc_xprt *xprt, skb_reader_t *desc)
-> +static inline void xs_tcp_read_request(struct rpc_xprt *xprt, xdr_skb_reader_t *desc)
->  {
->  	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
->  	struct rpc_rqst *req;
-> @@ -749,7 +749,7 @@ static inline void xs_tcp_read_request(s
->  	rcvbuf = &req->rq_private_buf;
->  	len = desc->count;
->  	if (len > sx->tcp_reclen - sx->tcp_offset) {
-> -		skb_reader_t my_desc;
-> +		xdr_skb_reader_t my_desc;
->  
->  		len = sx->tcp_reclen - sx->tcp_offset;
->  		memcpy(&my_desc, desc, sizeof(my_desc));
-> @@ -803,7 +803,7 @@ out:
->  	xs_tcp_check_fraghdr(sx);
->  }
->  
-> -static inline void xs_tcp_read_discard(struct sock_xprt *sx, skb_reader_t *desc)
-> +static inline void xs_tcp_read_discard(struct sock_xprt *sx, xdr_skb_reader_t *desc)
->  {
->  	size_t len;
->  
-> @@ -821,7 +821,7 @@ static int xs_tcp_data_recv(read_descrip
->  {
->  	struct rpc_xprt *xprt = rd_desc->arg.data;
->  	struct sock_xprt *sx = container_of(xprt, struct sock_xprt, xprt);
-> -	skb_reader_t desc = {
-> +	xdr_skb_reader_t desc = {
->  		.skb	= skb,
->  		.offset	= offset,
->  		.count	= len,
+http://lkml.org/lkml/2006/9/28/89
+
+--   
+
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, BI/140a    Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 2, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
+
+  ICQ: 293092805  jabber: tomas.kasparek@jabber.cz
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
 
 
 -------------------------------------------------------------------------
