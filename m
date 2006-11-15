@@ -1,19 +1,21 @@
-From: "Tomas Hidalgo Salvador" <thidalgo@tecnologia.cajamar.es>
-Subject: kernel 2.6 and NFS.
-Date: Wed, 15 Nov 2006 10:14:29 +0100
-Message-ID: <43126F3E01133C479B5AA462BBC82216B131E1@POSTAL01.dominio.es>
+From: "Andrei Maslennikov" <andrei.maslennikov@gmail.com>
+Subject: Advice needed to debug a failng mount command
+Date: Wed, 15 Nov 2006 12:03:53 +0100
+Message-ID: <515158c30611150303p5fe79561g894797d71c9c7162@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1464006875=="
+Content-Type: multipart/mixed; boundary="===============1716669666=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkGq6-0008Et-Su
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 01:13:51 -0800
-Received: from correo.cajamar.com ([62.201.1.20])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GkGq6-0002Ni-B3
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 01:13:52 -0800
-To: <nfs@lists.sourceforge.net>
+	id 1GkIYd-0002BB-Dn
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 03:03:55 -0800
+Received: from nf-out-0910.google.com ([64.233.182.185])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GkIYc-000110-0l
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 03:03:56 -0800
+Received: by nf-out-0910.google.com with SMTP id c31so1069049nfb
+	for <nfs@lists.sourceforge.net>; Wed, 15 Nov 2006 03:03:53 -0800 (PST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,339 +28,119 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
-
---===============1464006875==
-Content-class: urn:content-classes:message
+--===============1716669666==
 Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C70896.74847298"
+	boundary="----=_Part_30872_9052853.1163588633226"
+
+------=_Part_30872_9052853.1163588633226
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+We have an itanium2 machine installed with "CentOS release 4.4
+(Final)", the kernel in use is 2.6.9-42.0.2.EL. This box mounts two
+different NFS volumes from two identical servers. The NFS servers
+are installed with SUSE LINUX Enterprise Server 9 (x86_64) VERSION =
+9 PATCHLEVEL = 3 and the kernel in use is 2.6.5-7.244-smp. Both of
+them export NFS volumes using two bounded GigE interfaces (we use
+Adaptive Load Balancing of the bonding driver, mode=6).
+
+What happens is that itanium2 client can mount volumes from the nfs1
+server but not from the nfs2 server. At the same time there are
+other boxes that mount the volumes from both servers without
+problems. We have checked out the gigabit links on the client and
+server sides and everything seems to work fine.
+
+>From the nfs1 server, we can mount all volumes without problems.
+
+>From the nfs2 server we can not mount anything, the "mount" command
+issued on the client hangs forever and the only way to get out of
+this is to kill the [rpciod] proccess to bring the box back into a
+normal state. Without killing rpciod the box won't reboot. When
+the [rpciod] proccess is killed, it produces the following
+output:
+
+  nfs2-gig:/vol /vol mount: nfs2-gig:/vol: can't read superblock
+
+On the server side we can see this message in the log:
+
+  Nov 15 11:27:32 nfs2 rpc.mountd: authenticated mount request from
+  titanic2-gig.caspur.it:945 for /nfs2/vol (/nfs2/vol)
+
+So it seems to at least recognize the client correctly. Doing
+tcpdump on both client and server allows to see that both parties
+exchange the messages up to a certain point, and then everything
+hangs. Doing tcpdump with a "good" server shows a very similar
+pattern of exchanges, but it is hardly possible to locate the
+difference in a lot of messages.
+
+We have also tried to reboot the server, to no avail. Clearly
+the client is well positioned on the network, as with another
+identical server all works fine. So most probably the problem
+has to do with the server.
+
+We would greatly appreciate if someone could suggest us what
+to look at on the server side.
+
+Thanks ahead!
+
+------=_Part_30872_9052853.1163588633226
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+We have an itanium2 machine installed with &quot;CentOS release 4.4<br>
+(Final)&quot;, the kernel in use is 2.6.9-42.0.2.EL. This box mounts two<br>
+different NFS volumes from two identical servers. The NFS servers<br>
+are installed with SUSE LINUX Enterprise Server 9 (x86_64) VERSION =<br>
+9 PATCHLEVEL = 3 and the kernel in use is 2.6.5-7.244-smp. Both of<br>
+them export NFS volumes using two bounded GigE interfaces (we use<br>
+Adaptive Load Balancing of the bonding driver, mode=6).<br>
+<br>
+What happens is that itanium2 client can mount volumes from the nfs1<br>
+server but not from the nfs2 server. At the same time there are<br>
+other boxes that mount the volumes from both servers without<br>
+problems. We have checked out the gigabit links on the client and<br>
+server sides and everything seems to work fine.<br>
+<br>
+>From the nfs1 server, we can mount all volumes without problems.<br>
+<br>
+>From the nfs2 server we can not mount anything, the &quot;mount&quot; command <br>
+issued on the client hangs forever and the only way to get out of<br>
+this is to kill the [rpciod] proccess to bring the box back into a<br>
+normal state. Without killing rpciod the box won't reboot. When<br>
+the [rpciod] proccess is killed, it produces the following<br>
+output:<br>
+<br>
+&nbsp; nfs2-gig:/vol /vol mount: nfs2-gig:/vol: can't read superblock<br>
+<br>
+On the server side we can see this message in the log:<br>
+<br>
+&nbsp; Nov 15 11:27:32 nfs2 rpc.mountd: authenticated mount request from<br>
+&nbsp; <a href="http://titanic2-gig.caspur.it:945">titanic2-gig.caspur.it:945</a> for /nfs2/vol (/nfs2/vol)<br>
+<br>
+So it seems to at least recognize the client correctly. Doing<br>
+tcpdump on both client and server allows to see that both parties<br>
+exchange the messages up to a certain point, and then everything<br>
+hangs. Doing tcpdump with a &quot;good&quot; server shows a very similar<br>
+pattern of exchanges, but it is hardly possible to locate the<br>
+difference in a lot of messages.<br>
+<br>
+We have also tried to reboot the server, to no avail. Clearly<br>
+the client is well positioned on the network, as with another<br>
+identical server all works fine. So most probably the problem<br>
+has to do with the server.<br>
+<br>
+We would greatly appreciate if someone could suggest us what<br>
+to look at on the server side.<br>
+<br>
+Thanks ahead!<br>
+<br>
 
-This is a multi-part message in MIME format.
+------=_Part_30872_9052853.1163588633226--
 
-------_=_NextPart_001_01C70896.74847298
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
 
-=20
-
-I administer a system formed by 4 Linux Mail Server that shares the
-access to a NAS Server using nfs over udp.
-
-The file systems mounted through NFS are used like mailboxes of qmail
-with format "maildir".
-
-This works fine!  The system makes hundreds of thousands of requests of
-delivery and reception of mail.
-
-=20
-
-Servers characteristics:
-
-Processor: 4 x  Xeon 3.00GHz
-
-RAM Memory: 2Gb
-
-O.S.: Red Hat Enterprise Linux AS release 3 (Taroon Update 5)
-
-Kernel Version: 2.4.21-32.ELsmp
-
-=20
-
-Options in /etc/fstab for NFS
-
-=20
-
-# storage for Mail Service
-
-nas:/storageA           /mail/storageA          nfs
-rw,nfsvers=3D3,udp,lock 0 0
-
-nas:/storageB           /mail/storageB          nfs
-rw,nfsvers=3D3,udp,lock 0 0
-
-=20
-
-=20
-
-I have installed from scratch a server with Red Hat Enterprise Linux AS
-release 4 (Nahant Update 2) version.
-
-Kernel version: 2.6.9-22.ELsmp
-
-The configuration of /etc/fstab is the same one that in the other
-servers.
-
-Since its put into operation along with the other three servers, I have
-got many performance problems accessing the NFS.
-
-Sometimes the access time to the file systems mounted by NFS is very,
-very, very slow in all of the servers, causing that the mails cannot be
-stored in their mailboxes and increasing the local queue of qmail.
-
-The system is not operative from that moment.
-
-=20
-
-Is it compatible to have in the same schema clients with kernel 2,4 and
-2,6 accessing via nfs the same files in the same NAS server?=20
-
-=20
-
-Could these problems be caused by differences in kernel implementation
-of close-to-open cache consistency between 2.4 and 2.6 kernel versions?
-
-=20
-
-=20
-
-Many thanks for you help.
-
-=20
-
-=20
-
-=20
-
-
-------_=_NextPart_001_01C70896.74847298
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:v=3D"urn:schemas-microsoft-com:vml" =
-xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
-xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
-xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
-<meta http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dus-ascii">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-<style>
-<!--
- /* Font Definitions */
- @font-face
-	{font-family:"Trebuchet MS";
-	panose-1:2 11 6 3 2 2 2 2 2 4;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0cm;
-	margin-bottom:.0001pt;
-	font-size:12.0pt;
-	font-family:"Trebuchet MS";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;}
-span.EstiloCorreo17
-	{mso-style-type:personal-compose;
-	font-family:Arial;
-	color:windowtext;}
-@page Section1
-	{size:595.3pt 841.9pt;
-	margin:70.85pt 3.0cm 70.85pt 3.0cm;}
-div.Section1
-	{page:Section1;}
--->
-</style>
-
-</head>
-
-<body lang=3DES link=3Dblue vlink=3Dpurple>
-
-<div class=3DSection1>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I administer a system formed by 4 Linux Mail Server =
-that shares
-the access to a NAS Server using nfs over =
-udp.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>The file systems mounted through NFS are used like =
-mailboxes
-of qmail with format &#8220;maildir&#8221;.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>This works fine!&nbsp; The system makes hundreds of
-thousands of requests of delivery and reception of =
-mail.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Servers characteristics:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Processor: 4 x &nbsp;Xeon =
-3.00GHz<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>RAM Memory: 2Gb<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>O.S.: Red Hat Enterprise Linux AS release 3 (Taroon =
-Update
-5)<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Kernel Version: =
-2.4.21-32.ELsmp<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Options in /etc/fstab for =
-NFS<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'># storage for Mail =
-Service<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>nas:/storageA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
-;&nbsp;&nbsp;&nbsp;
-/mail/storageA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-nfs&nbsp;&nbsp;&nbsp;&nbsp; rw,nfsvers=3D3,udp,lock 0 =
-0<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>nas:/storageB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp=
-;&nbsp;&nbsp;&nbsp;
-/mail/storageB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-nfs&nbsp;&nbsp;&nbsp;&nbsp; rw,nfsvers=3D3,udp,lock 0 =
-0<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I have installed from scratch a server with Red Hat
-Enterprise Linux AS release 4 (Nahant Update 2) =
-version.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Kernel version: =
-2.6.9-22.ELsmp<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>The configuration of /etc/fstab is the same one that =
-in the
-other servers.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Since its put into operation along with the other =
-three servers,
-I have got many performance problems accessing the =
-NFS.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Sometimes the access time to the file systems mounted =
-by NFS
-is very, very, very slow in all of the servers, causing that the mails =
-cannot
-be stored in their mailboxes and increasing the local queue of =
-qmail.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>The system is not operative from that =
-moment.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Is it compatible to have in the same schema clients =
-with
-kernel 2,4 and 2,6 accessing via nfs the same files in the same NAS =
-server? <o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Could these problems be caused by differences in =
-kernel implementation
-of close-to-open cache consistency between 2.4 and 2.6 kernel =
-versions?<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Many thanks for you =
-help.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D3 face=3D"Trebuchet MS"><span =
-style=3D'font-size:
-12.0pt'>&nbsp;</span><o:p></o:p></font></p>
-
-<p class=3DMsoNormal><font size=3D3 face=3D"Trebuchet MS"><span =
-style=3D'font-size:
-12.0pt'><o:p>&nbsp;</o:p></span></font></p>
-
-</div>
-
-</body>
-
-</html>
-
-------_=_NextPart_001_01C70896.74847298--
-
-
---===============1464006875==
+--===============1716669666==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -369,7 +151,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1464006875==
+--===============1716669666==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -379,4 +161,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1464006875==--
+--===============1716669666==--
