@@ -1,27 +1,26 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 001 of 4] Copy intr and soft flags to	portmap-bind
-	client
-Date: Wed, 15 Nov 2006 12:11:29 -0500
-Message-ID: <1163610689.5691.174.camel@lade.trondhjem.org>
-References: <20061024122646.4426.patches@notabene> <1061024024851.4734@suse.de>
-	<76bd70e30610241605x13ae0bamdd306aee2f67d4e1@mail.gmail.com>
+Subject: Re: [PATCH 003 of 4] Make RPC 'ping' requests fail more
+	quickly.
+Date: Wed, 15 Nov 2006 12:14:30 -0500
+Message-ID: <1163610870.5691.177.camel@lade.trondhjem.org>
+References: <20061024122646.4426.patches@notabene> <1061024024903.4760@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>, Olaf Kirch <okir@suse.de>,
-	Chuck Lever <chuck.lever@oracle.com>, nfs@lists.sourceforge.net
+Cc: Olaf Kirch <okir@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkOIs-0006Bv-1B
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:12:02 -0800
+	id 1GkOLk-0006VP-Qk
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:15:01 -0800
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19PjRXMymaPenAYb5tBTc4JVN6G3V3CGHU=])
+	ident=[U2FsdGVkX1/eFJU9j3w6AOYShclcPNaonZfjOg8KGBY=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkOIr-0004R2-P6
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:12:03 -0800
-To: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <76bd70e30610241605x13ae0bamdd306aee2f67d4e1@mail.gmail.com>
+	(Exim 4.44) id 1GkOLj-0005NS-MS
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 09:15:02 -0800
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1061024024903.4760@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,22 +33,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-10-24 at 16:05 -0700, Chuck Lever wrote:
-> Looking at this has forced me to actually think about it  ;-)
+On Tue, 2006-10-24 at 12:49 +1000, NeilBrown wrote:
+> Sometimes when an RPC client is created, an initial 'PING' is sent to
+> the RPC/NULL procedure to make sure the server is running.
+> This is always done as a 'soft' call so a major timeout will be fatal.
 > 
-> Since portmapper is always a child task, I think it is safe and
-> reasonable to use a "hard,intr" RPC client all the time.  The parent
-> task will timeout automatically if it is a soft mount, right?  The RPC
-> client should terminate the child if the parent dies.
+> We change semantics so that if portmap reports that the service does
+> not exist, or if a ECONNREFUSED error is returned we abort early
+> rather than persist for the full timeout.
 
-...or to set it to always be soft. The main problem with that might be
-nfsroot.
+What if the server is in the process of booting? If the RPC layer
+doesn't handle that case, then we will have to add a loop to sleep and
+wait in the NLM client.
 
-Hmm... Looking at that code, though there is something that bothers me.
-Why are we calling pmap_wake_portmap_waiters every time the call to
-xprt_test_and_set_binding(xprt)!=0? That looks like a nasty bug.
-
-Trond
+Cheers
+  Trond
 
 
 -------------------------------------------------------------------------
