@@ -1,95 +1,154 @@
 From: Open Source <opensource3141@yahoo.com>
-Subject: "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Wed, 15 Nov 2006 14:39:55 -0800 (PST)
-Message-ID: <20061115223955.6581.qmail@web58103.mail.re3.yahoo.com>
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+Date: Wed, 15 Nov 2006 18:31:17 -0800 (PST)
+Message-ID: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkTQI-0006kP-A5
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 14:40:02 -0800
-Received: from web58103.mail.re3.yahoo.com ([68.142.236.126])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GkTQH-0001R3-ON
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 14:40:03 -0800
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
+Hi all,
 
-I am having a very similar problem to the one reported
-by Joachim Selke on the nfsv4 mailing list (see
-http://linux-nfs.org/pipermail/nfsv4/2006-October/005226.html).
-This might be out of the domain of the nfsv4 folks, so I'm
-posting here now.
+I think I have found the answer.  It is similar to this issue but not
+exactly the same as:
 
-I recently upgraded my client and server side kernels
-to 2.6.18.  I am unable to mount a second NFSv3+krb5
-share after already mounting another one somewhere else
-on the system.  For example,
-"mount server:/export/home /net/home" works, but a
-subsequent
-"mount server:/export/data /net/data" returns
+http://linux-nfs.org/pipermail/nfsv4/2005-November/002807.html
 
-mount.nfs: File exists
+Here's what is happening.  In 2.6.18 there is a new file called
+fs/nfs/client.c.  In this file it does the following for every new
+mount:
 
-I have no problems when performing the same with the
-client running 2.6.17 and the server running 2.6.18.
-I have been using NFSv3+krb5 for a long time with no
-problems.  My exports file on the server looks like:
+1) Lookup to see if an existing client has the same specification
+as the requested mount.
 
-/export/data gss/krb5(secure,rw,sync,wdelay,hide,no_subtree_check,auth_nlm,root_squash,anonuid=65534,anongid=65534)
-/export/data 192.168.0.0/24(secure,ro,sync,all_squash,anonuid=65534,anongid=65534)
+2) If so, clone that client.  If not, create a new one.
 
-which is the accepted way to export a NFSv3+krb5
-volume since the non-krb5 export is used for mounting
-and the krb5 export is used for actual file access.
+3) Create any pipes required by the auth pseudoflavor by
+calling rpcauth_create.
 
-(Also, my distribution is FC5 on the
-client and the server except for a slight version upgrade
-of util-linux and nfs-utils on the server to get around the
-following problem:
-http://linux-nfs.org/pipermail/nfsv4/2006-July/004694.html.)
+4) Continue with the mounting of the volume.
 
-Finally, I have done a wireshark dump and the initial part
-of the RPC occurs with no problems but then the do_mount_syscall
-function in mount.nfs:mount.c fails.  So I really think this is a
-client side issue.  This guess is also supported by the fact
-that the same 2.6.18 server works with a 2.6.17 client but
-not a 2.6.18 client.
+Now, if you have no connections to the server, a new rpc
+client is created and the pipes are created with no problems.
+For the second mount to the same server, the rpc client is
+cloned and has the same path in /var/lib/nfs/rpc_pipefs/nfs
+has the first connection.  Therefore on step 3 the pipe creation
+fails in net/sunrpc/auth_gss/auth_gss.c.  This causes the
+entire mount to fail.
 
-This is a very important issue for me so whatever advice
-you can provide would be much appreciated.  I am happy
-to provide more debugging information if you can tell me
-what to turn on.  With my current installation I see *nothing*
-in /var/log/messages on either the server or the client
-when mount spits out its error.
+This is a serious bug that prevents important functionality
+of nfsv3 with krb5.  I notice that kernel 2.6.19 is on release
+candidate 5.  Is there any way a surgical fix can be inserted
+into 2.6.19 before final release?
 
-Thanks in advance,
+This bug does not exist under 2.6.17 since client directories
+in /var/lib/nfs/rpc_pipefs/nfs are not reused across different
+nfsv3+krb5 mounts to the same server.
+
+Thanks,
 Paarvai
 
 
+----- Original Message ----
+From: Open Source <opensource3141@yahoo.com>
+To: J. Bruce Fields <bfields@fieldses.org>
+Cc: nfsv4@linux-nfs.org
+Sent: Wednesday, November 15, 2006 10:37:16 AM
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+
+A couple more things:
+
+I notice there is a new client.c for 2.6.18.  Maybe the problem lies
+there as code was ported from other places into that file?
+
+My error only shows up with nfsv3,krb5 mounts.  My volumes also
+have acls but I'm guessing that that is not causing any problems.
+
+Thanks,
+Paarvai
+
+
+----- Original Message ----
+From: Open Source <opensource3141@yahoo.com>
+To: J. Bruce Fields <bfields@fieldses.org>
+Cc: nfsv4@linux-nfs.org
+Sent: Monday, November 13, 2006 2:16:11 PM
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+
+Hi Bruce,
+
+Regarding whether there is an error reply from the server, I
+looked at the "MOUNT  V3 MNT Reply (Call In 46)" packet
+(which is the last MOUNT packet in the dump summary I
+sent previously).  This packet is going from the server
+to the client.  When I look at it in the "Packet Details" (tree view)
+under the "Mount Service" line, it says "Status: OK (0)"
+so I guess there are no errors.
+
+Yes, I did do an "exportfs -a" on the server after twiddling
+the root_squash business.
+
+Also, I am not trying to mount the same export in two places.
+On the client I have mounted server:/export/home to /net/home
+and then things fail when I try to mount server:/export/data to
+/net/data.
+
+Yes, I do think it is client side.  Things work when the client
+is 2.6.17 and the server is 2.6.18 but not when the client is
+2.6.18.
+
+Is there some logging I can do on the client side to see what
+might be happening?
+
+Thanks,
+Paarvai
+
+
+----- Original Message ----
+From: J. Bruce Fields <bfields@fieldses.org>
+To: Open Source <opensource3141@yahoo.com>
+Cc: nfsv4@linux-nfs.org
+Sent: Monday, November 13, 2006 1:08:29 PM
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+
+On Mon, Nov 13, 2006 at 12:31:20PM -0800, Open Source wrote:
+> Here's a sanitized summary of my traffic.  I don't know how useful
+> this might be, but if there is a specific line that might be helpful
+> I can expand that and possibly send it to you.
+
+OK, so none of those server replies are errors?  Then I guess it's the
+client complaining.
+
+Are you trying to mount the same export in two different places?  I
+think some of the recent client changes may prevent that.
+
+--b.
 
 
 
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+
+
+
+
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
