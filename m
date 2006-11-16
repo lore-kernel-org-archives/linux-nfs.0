@@ -1,20 +1,24 @@
-From: Ray <whatdoineed2do@yahoo.co.uk>
-Subject: nfs-utils-1.0.10/linux 2.6.18 bug?  unable to start nfsd;
-	nfssvc "Address already in use"
-Date: Thu, 16 Nov 2006 19:31:36 +0000 (GMT)
-Message-ID: <20061116193136.43065.qmail@web23314.mail.ird.yahoo.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/21] SUNRPC: another pmap wakeup fix
+Date: Thu, 16 Nov 2006 15:03:38 -0500
+Message-ID: <20061116200338.32549.58508.stgit@localhost.localdomain>
+References: <20061116200151.32549.88898.stgit@localhost.localdomain>
+Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="0-342127738-1163705496=:42004"
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gkmxp-0008JA-D2
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 11:31:57 -0800
-Received: from web23314.mail.ird.yahoo.com ([217.146.189.84])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gkmxn-0002Px-NY
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 11:31:58 -0800
-To: nfs@lists.sourceforge.net
+	id 1Gko0l-0006mo-R5
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 12:39:03 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gko0h-0000IQ-Kx
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 12:39:02 -0800
+To: trond.myklebust@fys.uio.no
+In-Reply-To: <20061116200151.32549.88898.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,198 +31,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---0-342127738-1163705496=:42004
-Content-Type: text/plain; charset=iso-8859-1
-Content-Id: 
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Don't wake up bind waiters if a task finds that another task is already
+trying to bind.
 
-hi NFS developers
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-issue is, using 2.6.18.2 kernel and 1.0.10 nfs utils
-but i am periodically having problems starting nfsd --
-it drops out after sysloging that "nfssvc "Address
-already in use" when there are actually no other nfsd
-instances running
+ net/sunrpc/pmap_clnt.c |   11 ++++++-----
+ 1 files changed, 6 insertions(+), 5 deletions(-)
 
-i strace'd the nfsd process and noticed these
-interesting lines:
-
-  1929  open("/proc/fs/nfsd/threads",
-O_WRONLY|O_LARGEFILE) =3D 4
-  1929  write(4, "8\n", 2)                =3D -1
-EADDRINUSE (Address already in use)=20
-
-it is this that appears to cause the nfsd to syslog.=20
-can you tell me if this is a bug in the
-kernel/nfsutils?  i see that the last changelog entry
-metnions about
-
-'rpc.nfsd N' won't work to change the number of
-threads after nfsd has been started
-
-the only way i could get nfsd to start was to bounce
-the box; stopping ALL portmap etc and
-unloading/reloading the kernel nfs modules didnt help=20
-
-attached is the strace output;  the nfs-utils was
-built without gss or nfsv4;  the kernel only has nvfs2
-and 3 enabled
-
-thanks in advnace
--ray
-
-ps -- appologies to NeilB; i already sent him this
-email already before i saw this dev list email
-
-Send instant messages to your online friends http://uk.messenger.yahoo.co=
-m=20
---0-342127738-1163705496=:42004
-Content-Type: application/octet-stream; name="nfsd.trace"
-Content-Transfer-Encoding: base64
-Content-Description: 695785594-nfsd.trace
-Content-Disposition: attachment; filename="nfsd.trace"
-
-MTkyOSAgZXhlY3ZlKCIvdXNyL3NiaW4vcnBjLm5mc2QiLCBbInJwYy5uZnNk
-IiwgIjgiXSwgWy8qIDIzIHZhcnMgKi9dKSA9IDAKMTkyOSAgdW5hbWUoe3N5
-cz0iTGludXgiLCBub2RlPSJkb2MiLCAuLi59KSA9IDAKMTkyOSAgYnJrKDAp
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgID0gMHg4MDRiMDAwCjE5Mjkg
-IGFjY2VzcygiL2V0Yy9sZC5zby5wcmVsb2FkIiwgUl9PSykgPSAtMSBFTk9F
-TlQgKE5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkpCjE5MjkgIG9wZW4oIi9l
-dGMvbGQuc28uY2FjaGUiLCBPX1JET05MWSkgPSAzCjE5MjkgIGZzdGF0NjQo
-Mywge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTQwMzM2LCAuLi59
-KSA9IDAKMTkyOSAgbW1hcDIoTlVMTCwgNDAzMzYsIFBST1RfUkVBRCwgTUFQ
-X1BSSVZBVEUsIDMsIDApID0gMHhiN2ZhYTAwMAoxOTI5ICBjbG9zZSgzKSAg
-ICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG9wZW4oIi9saWIv
-bGliYy5zby42IiwgT19SRE9OTFkpICA9IDMKMTkyOSAgcmVhZCgzLCAiXHg3
-Zlx4NDVceDRjXHg0Nlx4MDFceDAxXHgwMVx4MDBceDAwXHgwMFx4MDBceDAw
-XHgwMFx4MDAiLi4uLCA1MTIpID0gNTEyCjE5MjkgIGZzdGF0NjQoMywge3N0
-X21vZGU9U19JRlJFR3wwNzU1LCBzdF9zaXplPTE0MjMxNjEsIC4uLn0pID0g
-MAoxOTI5ICBtbWFwMigweDQxNjg2MDAwLCAxMTM3NzU2LCBQUk9UX1JFQUR8
-UFJPVF9FWEVDLCBNQVBfUFJJVkFURXxNQVBfREVOWVdSSVRFLCAzLCAwKSA9
-IDB4NDE2ODYwMDAKMTkyOSAgbW1hcDIoMHg0MTc5NjAwMCwgMTYzODQsIFBS
-T1RfUkVBRHxQUk9UX1dSSVRFLCBNQVBfUFJJVkFURXxNQVBfRklYRUR8TUFQ
-X0RFTllXUklURSwgMywgMHgxMTApID0gMHg0MTc5NjAwMAoxOTI5ICBtbWFw
-MigweDQxNzlhMDAwLCA3MjYwLCBQUk9UX1JFQUR8UFJPVF9XUklURSwgTUFQ
-X1BSSVZBVEV8TUFQX0ZJWEVEfE1BUF9BTk9OWU1PVVMsIC0xLCAwKSA9IDB4
-NDE3OWEwMDAKMTkyOSAgY2xvc2UoMykgICAgICAgICAgICAgICAgICAgICAg
-ICAgID0gMAoxOTI5ICBtbWFwMihOVUxMLCA0MDk2LCBQUk9UX1JFQUR8UFJP
-VF9XUklURSwgTUFQX1BSSVZBVEV8TUFQX0FOT05ZTU9VUywgLTEsIDApID0g
-MHhiN2ZhOTAwMAoxOTI5ICBtcHJvdGVjdCgweDQxNzk2MDAwLCA4MTkyLCBQ
-Uk9UX1JFQUQpID0gMAoxOTI5ICBtcHJvdGVjdCgweDQxNjgyMDAwLCA0MDk2
-LCBQUk9UX1JFQUQpID0gMAoxOTI5ICBzZXRfdGhyZWFkX2FyZWEoe2VudHJ5
-X251bWJlcjotMSAtPiA2LCBiYXNlX2FkZHI6MHhiN2ZhOWE5MCwgbGltaXQ6
-MTA0ODU3NSwgc2VnXzMyYml0OjEsIGNvbnRlbnRzOjAsIHJlYWRfZXhlY19v
-bmx5OjAsIGxpbWl0X2luX3BhZ2VzOjEsIHNlZ19ub3RfcHJlc2VudDowLCB1
-c2VhYmxlOjF9KSA9IDAKMTkyOSAgbXVubWFwKDB4YjdmYWEwMDAsIDQwMzM2
-KSAgICAgICAgID0gMAoxOTI5ICBicmsoMCkgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgPSAweDgwNGIwMDAKMTkyOSAgYnJrKDB4ODA2YzAwMCkgICAg
-ICAgICAgICAgICAgICAgID0gMHg4MDZjMDAwCjE5MjkgIG9wZW4oIi9ldGMv
-bnNzd2l0Y2guY29uZiIsIE9fUkRPTkxZKSA9IDMKMTkyOSAgZnN0YXQ2NCgz
-LCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTY4NiwgLi4ufSkg
-PSAwCjE5MjkgIG1tYXAyKE5VTEwsIDQwOTYsIFBST1RfUkVBRHxQUk9UX1dS
-SVRFLCBNQVBfUFJJVkFURXxNQVBfQU5PTllNT1VTLCAtMSwgMCkgPSAweGI3
-ZmIzMDAwCjE5MjkgIHJlYWQoMywgIiNcbiMgL2V0Yy9uc3N3aXRjaC5jb25m
-XG4jXG4jIEFuIGV4Ii4uLiwgNDA5NikgPSAxNjg2CjE5MjkgIHJlYWQoMywg
-IiIsIDQwOTYpICAgICAgICAgICAgICAgICA9IDAKMTkyOSAgY2xvc2UoMykg
-ICAgICAgICAgICAgICAgICAgICAgICAgID0gMAoxOTI5ICBtdW5tYXAoMHhi
-N2ZiMzAwMCwgNDA5NikgICAgICAgICAgPSAwCjE5MjkgIG9wZW4oIi9ldGMv
-bGQuc28uY2FjaGUiLCBPX1JET05MWSkgPSAzCjE5MjkgIGZzdGF0NjQoMywg
-e3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTQwMzM2LCAuLi59KSA9
-IDAKMTkyOSAgbW1hcDIoTlVMTCwgNDAzMzYsIFBST1RfUkVBRCwgTUFQX1BS
-SVZBVEUsIDMsIDApID0gMHhiN2ZhYTAwMAoxOTI5ICBjbG9zZSgzKSAgICAg
-ICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG9wZW4oIi9saWIvbGli
-bnNzX2ZpbGVzLnNvLjIiLCBPX1JET05MWSkgPSAzCjE5MjkgIHJlYWQoMywg
-Ilx4N2ZceDQ1XHg0Y1x4NDZceDAxXHgwMVx4MDFceDAwXHgwMFx4MDBceDAw
-XHgwMFx4MDBceDAwIi4uLiwgNTEyKSA9IDUxMgoxOTI5ICBmc3RhdDY0KDMs
-IHtzdF9tb2RlPVNfSUZSRUd8MDc1NSwgc3Rfc2l6ZT00MzU2OCwgLi4ufSkg
-PSAwCjE5MjkgIG1tYXAyKE5VTEwsIDM3NTEyLCBQUk9UX1JFQUR8UFJPVF9F
-WEVDLCBNQVBfUFJJVkFURXxNQVBfREVOWVdSSVRFLCAzLCAwKSA9IDB4Yjdm
-OWYwMDAKMTkyOSAgbW1hcDIoMHhiN2ZhNzAwMCwgODE5MiwgUFJPVF9SRUFE
-fFBST1RfV1JJVEUsIE1BUF9QUklWQVRFfE1BUF9GSVhFRHxNQVBfREVOWVdS
-SVRFLCAzLCAweDcpID0gMHhiN2ZhNzAwMAoxOTI5ICBjbG9zZSgzKSAgICAg
-ICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG1wcm90ZWN0KDB4Yjdm
-YTcwMDAsIDQwOTYsIFBST1RfUkVBRCkgPSAwCjE5MjkgIG11bm1hcCgweGI3
-ZmFhMDAwLCA0MDMzNikgICAgICAgICA9IDAKMTkyOSAgb3BlbigiL2V0Yy9z
-ZXJ2aWNlcyIsIE9fUkRPTkxZKSAgID0gMwoxOTI5ICBmY250bDY0KDMsIEZf
-R0VURkQpICAgICAgICAgICAgICAgPSAwCjE5MjkgIGZjbnRsNjQoMywgRl9T
-RVRGRCwgRkRfQ0xPRVhFQykgICA9IDAKMTkyOSAgZnN0YXQ2NCgzLCB7c3Rf
-bW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTk5MzYsIC4uLn0pID0gMAox
-OTI5ICBtbWFwMihOVUxMLCA0MDk2LCBQUk9UX1JFQUR8UFJPVF9XUklURSwg
-TUFQX1BSSVZBVEV8TUFQX0FOT05ZTU9VUywgLTEsIDApID0gMHhiN2ZiMzAw
-MAoxOTI5ICByZWFkKDMsICIjIC9ldGMvc2VydmljZXM6XG4jICRJZDogc2Vy
-dmljZXMiLi4uLCA0MDk2KSA9IDQwOTYKMTkyOSAgcmVhZCgzLCAiVEJJT1Mg
-TmFtZSBTZXJ2aWNlXG5uZXRiaW9zLW5zXHQxMyIuLi4sIDQwOTYpID0gNDA5
-NgoxOTI5ICByZWFkKDMsICJyY3NcdFx0OTk0L3VkcFxucG9wM3NcdFx0OTk1
-L3RjcFx0XHRcdFx0IyIuLi4sIDQwOTYpID0gNDA5NgoxOTI5ICBjbG9zZSgz
-KSAgICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG11bm1hcCgw
-eGI3ZmIzMDAwLCA0MDk2KSAgICAgICAgICA9IDAKMTkyOSAgY2hkaXIoIi92
-YXIvbGliL25mcyIpICAgICAgICAgICAgID0gMAoxOTI5ICBvcGVuKCIvZGV2
-L251bGwiLCBPX1JEV1J8T19MQVJHRUZJTEUpID0gMwoxOTI5ICBkdXAyKDMs
-IDApICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIGR1cDIoMywg
-MSkgICAgICAgICAgICAgICAgICAgICAgICA9IDEKMTkyOSAgZHVwMigzLCAy
-KSAgICAgICAgICAgICAgICAgICAgICAgID0gMgoxOTI5ICBvcGVuKCIvcHJv
-Yy9zZWxmL2ZkIiwgT19SRE9OTFl8T19OT05CTE9DS3xPX0xBUkdFRklMRXxP
-X0RJUkVDVE9SWSkgPSA0CjE5MjkgIGZzdGF0NjQoNCwge3N0X21vZGU9U19J
-RkRJUnwwNTAwLCBzdF9zaXplPTAsIC4uLn0pID0gMAoxOTI5ICBmY250bDY0
-KDQsIEZfU0VURkQsIEZEX0NMT0VYRUMpICAgPSAwCjE5MjkgIGdldGRlbnRz
-NjQoNCwgLyogNyBlbnRyaWVzICovLCAxMDI0KSA9IDE2OAoxOTI5ICBnZXRk
-ZW50czY0KDQsIC8qIDAgZW50cmllcyAqLywgMTAyNCkgPSAwCjE5MjkgIGNs
-b3NlKDQpICAgICAgICAgICAgICAgICAgICAgICAgICA9IDAKMTkyOSAgb3Bl
-bigiL3Byb2MvZnMvbmZzZC92ZXJzaW9ucyIsIE9fV1JPTkxZfE9fTEFSR0VG
-SUxFKSA9IDQKMTkyOSAgd3JpdGUoNCwgIisyICszICs0IFxuIiwgMTApICAg
-ICAgID0gMTAKMTkyOSAgY2xvc2UoNCkgICAgICAgICAgICAgICAgICAgICAg
-ICAgID0gMAoxOTI5ICBvcGVuKCIvcHJvYy9mcy9uZnNkL3BvcnRsaXN0Iiwg
-T19SRE9OTFl8T19MQVJHRUZJTEUpID0gLTEgRU5PRU5UIChObyBzdWNoIGZp
-bGUgb3IgZGlyZWN0b3J5KQoxOTI5ICBvcGVuKCIvcHJvYy9mcy9uZnNkL3Ro
-cmVhZHMiLCBPX1dST05MWXxPX0xBUkdFRklMRSkgPSA0CjE5MjkgIHdyaXRl
-KDQsICI4XG4iLCAyKSAgICAgICAgICAgICAgICA9IC0xIEVBRERSSU5VU0Ug
-KEFkZHJlc3MgYWxyZWFkeSBpbiB1c2UpCjE5MjkgIGNsb3NlKDQpICAgICAg
-ICAgICAgICAgICAgICAgICAgICA9IDAKMTkyOSAgdGltZShbMTE2MzcwMzYx
-MV0pICAgICAgICAgICAgICAgID0gMTE2MzcwMzYxMQoxOTI5ICBvcGVuKCIv
-ZXRjL2xvY2FsdGltZSIsIE9fUkRPTkxZKSAgPSA0CjE5MjkgIGZzdGF0NjQo
-NCwge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTEzMjMsIC4uLn0p
-ID0gMAoxOTI5ICBmc3RhdDY0KDQsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwg
-c3Rfc2l6ZT0xMzIzLCAuLi59KSA9IDAKMTkyOSAgbW1hcDIoTlVMTCwgNDA5
-NiwgUFJPVF9SRUFEfFBST1RfV1JJVEUsIE1BUF9QUklWQVRFfE1BUF9BTk9O
-WU1PVVMsIC0xLCAwKSA9IDB4YjdmYjMwMDAKMTkyOSAgcmVhZCg0LCAiXHg1
-NFx4NWFceDY5XHg2Nlx4MDBceDAwXHgwMFx4MDBceDAwXHgwMFx4MDBceDAw
-XHgwMFx4MDAiLi4uLCA0MDk2KSA9IDEzMjMKMTkyOSAgY2xvc2UoNCkgICAg
-ICAgICAgICAgICAgICAgICAgICAgID0gMAoxOTI5ICBtdW5tYXAoMHhiN2Zi
-MzAwMCwgNDA5NikgICAgICAgICAgPSAwCjE5MjkgIHN0YXQ2NCgiL2V0Yy9s
-b2NhbHRpbWUiLCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTMy
-MywgLi4ufSkgPSAwCjE5MjkgIHN0YXQ2NCgiL2V0Yy9sb2NhbHRpbWUiLCB7
-c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTMyMywgLi4ufSkgPSAw
-CjE5MjkgIHN0YXQ2NCgiL2V0Yy9sb2NhbHRpbWUiLCB7c3RfbW9kZT1TX0lG
-UkVHfDA2NDQsIHN0X3NpemU9MTMyMywgLi4ufSkgPSAwCjE5MjkgIGdldHBp
-ZCgpICAgICAgICAgICAgICAgICAgICAgICAgICA9IDE5MjkKMTkyOSAgc29j
-a2V0KFBGX1VOSVgsIFNPQ0tfREdSQU0sIDApICAgID0gNAoxOTI5ICBmY250
-bDY0KDQsIEZfU0VURkQsIEZEX0NMT0VYRUMpICAgPSAwCjE5MjkgIGNvbm5l
-Y3QoNCwge3NhX2ZhbWlseT1BRl9VTklYLCBwYXRoPSIvZGV2L2xvZyJ9LCAx
-NikgPSAwCjE5MjkgIHNlbmQoNCwgIjwyNz5Ob3YgMTYgMTk6MDA6MTEgbmZz
-ZFsxOTI5XTogIi4uLiwgNjIsIE1TR19OT1NJR05BTCkgPSA2MgoxOTI5ICBj
-bG9zZSg0KSAgICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIGV4
-aXRfZ3JvdXAoMSkgICAgICAgICAgICAgICAgICAgICA9ID8K
-
---0-342127738-1163705496=:42004
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+diff --git a/net/sunrpc/pmap_clnt.c b/net/sunrpc/pmap_clnt.c
+index e52afab..090a891 100644
+--- a/net/sunrpc/pmap_clnt.c
++++ b/net/sunrpc/pmap_clnt.c
+@@ -101,14 +101,14 @@ void rpc_getport(struct rpc_task *task)
+ 	/* Autobind on cloned rpc clients is discouraged */
+ 	BUG_ON(clnt->cl_parent != clnt);
+ 
++	status = -EACCES;		/* tell caller to check again */
++	if (xprt_test_and_set_binding(xprt))
++		goto bailout_nowake;
++
+ 	/* Put self on queue before sending rpcbind request, in case
+ 	 * pmap_getport_done completes before we return from rpc_run_task */
+ 	rpc_sleep_on(&xprt->binding, task, NULL, NULL);
+ 
+-	status = -EACCES;		/* tell caller to check again */
+-	if (xprt_test_and_set_binding(xprt))
+-		goto bailout_nofree;
+-
+ 	/* Someone else may have bound if we slept */
+ 	status = 0;
+ 	if (xprt_bound(xprt))
+@@ -143,8 +143,9 @@ bailout:
+ 	pmap_map_free(map);
+ 	xprt_put(xprt);
+ bailout_nofree:
+-	task->tk_status = status;
+ 	pmap_wake_portmap_waiters(xprt, status);
++bailout_nowake:
++	task->tk_status = status;
+ }
+ 
+ #ifdef CONFIG_ROOT_NFS
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---0-342127738-1163705496=:42004
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---0-342127738-1163705496=:42004--
