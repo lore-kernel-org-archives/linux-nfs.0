@@ -1,22 +1,23 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/21] SUNRPC: Move TCP state flags into xprtsock.c
-Date: Thu, 16 Nov 2006 15:04:07 -0500
-Message-ID: <20061116200407.32549.92799.stgit@localhost.localdomain>
+Subject: [PATCH 08/21] SUNRPC: Move rpc_xprt socket connect fields
+	into private data structure
+Date: Thu, 16 Nov 2006 15:04:11 -0500
+Message-ID: <20061116200411.32549.90220.stgit@localhost.localdomain>
 References: <20061116200151.32549.88898.stgit@localhost.localdomain>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gko14-0006qC-GB
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 12:39:22 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1Gko1F-0006qT-Ha
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 12:39:33 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gko15-0000RO-Cm
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 12:39:23 -0800
+	(Exim 4.44) id 1Gko1E-0004oy-5R
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 12:39:34 -0800
 To: trond.myklebust@fys.uio.no
 In-Reply-To: <20061116200151.32549.88898.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,169 +32,231 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Move "XPRT_LAST_FRAG" and friends from xprt.h into xprtsock.c, and rename
-them to use the naming scheme in use in xprtsock.c.
+Move the socket-specific connection management fields out of the generic
+rpc_xprt structure into a private data structure maintained in
+net/sunrpc/xprtsock.c.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    5 ----
- net/sunrpc/xprtsock.c       |   49 +++++++++++++++++++++++++------------------
- 2 files changed, 29 insertions(+), 25 deletions(-)
+ include/linux/sunrpc/xprt.h |    2 --
+ net/sunrpc/xprtsock.c       |   51 ++++++++++++++++++++++++++++---------------
+ 2 files changed, 33 insertions(+), 20 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 0a0ad1c..3ff8230 100644
+index 3ff8230..18bf72c 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -203,11 +203,6 @@ struct rpc_xprt {
- 	char *			address_strings[RPC_DISPLAY_MAX];
- };
+@@ -163,8 +163,6 @@ struct rpc_xprt {
+ 	unsigned long		connect_timeout,
+ 				bind_timeout,
+ 				reestablish_timeout;
+-	struct work_struct	connect_worker;
+-	unsigned short		port;
  
--#define XPRT_LAST_FRAG		(1 << 0)
--#define XPRT_COPY_RECM		(1 << 1)
--#define XPRT_COPY_XID		(1 << 2)
--#define XPRT_COPY_DATA		(1 << 3)
--
- #ifdef __KERNEL__
- 
- /*
+ 	/*
+ 	 * Disconnection of idle transports
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 2cef177..66096a9 100644
+index 66096a9..5e3e51c 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -147,6 +147,14 @@ struct sock_xprt {
+@@ -145,6 +145,12 @@ struct sock_xprt {
+ 
+ 	unsigned long		tcp_copied,
  				tcp_flags;
++
++	/*
++	 * Connection of transports
++	 */
++	struct work_struct	connect_worker;
++	unsigned short		port;
  };
  
-+/*
-+ * TCP receive state flags
-+ */
-+#define TCP_RCV_LAST_FRAG	(1UL << 0)
-+#define TCP_RCV_COPY_FRAGHDR	(1UL << 1)
-+#define TCP_RCV_COPY_XID	(1UL << 2)
-+#define TCP_RCV_COPY_DATA	(1UL << 3)
+ /*
+@@ -555,9 +561,11 @@ clear_close_wait:
+  */
+ static void xs_destroy(struct rpc_xprt *xprt)
+ {
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
 +
- static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+ 	dprintk("RPC:      xs_destroy xprt %p\n", xprt);
+ 
+-	cancel_delayed_work(&xprt->connect_worker);
++	cancel_delayed_work(&transport->connect_worker);
+ 	flush_scheduled_work();
+ 
+ 	xprt_disconnect(xprt);
+@@ -1075,20 +1083,20 @@ static void xs_set_port(struct rpc_xprt 
+ 	sap->sin_port = htons(port);
+ }
+ 
+-static int xs_bindresvport(struct rpc_xprt *xprt, struct socket *sock)
++static int xs_bindresvport(struct sock_xprt *transport, struct socket *sock)
  {
- 	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-@@ -663,12 +671,12 @@ static inline void xs_tcp_read_fraghdr(s
+ 	struct sockaddr_in myaddr = {
+ 		.sin_family = AF_INET,
+ 	};
+ 	int err;
+-	unsigned short port = xprt->port;
++	unsigned short port = transport->port;
  
- 	transport->tcp_reclen = ntohl(transport->tcp_fraghdr);
- 	if (transport->tcp_reclen & RPC_LAST_STREAM_FRAGMENT)
--		transport->tcp_flags |= XPRT_LAST_FRAG;
-+		transport->tcp_flags |= TCP_RCV_LAST_FRAG;
- 	else
--		transport->tcp_flags &= ~XPRT_LAST_FRAG;
-+		transport->tcp_flags &= ~TCP_RCV_LAST_FRAG;
- 	transport->tcp_reclen &= RPC_FRAGMENT_SIZE_MASK;
- 
--	transport->tcp_flags &= ~XPRT_COPY_RECM;
-+	transport->tcp_flags &= ~TCP_RCV_COPY_FRAGHDR;
- 	transport->tcp_offset = 0;
- 
- 	/* Sanity check of the record length */
-@@ -684,11 +692,11 @@ static inline void xs_tcp_read_fraghdr(s
- static void xs_tcp_check_fraghdr(struct sock_xprt *transport)
- {
- 	if (transport->tcp_offset == transport->tcp_reclen) {
--		transport->tcp_flags |= XPRT_COPY_RECM;
-+		transport->tcp_flags |= TCP_RCV_COPY_FRAGHDR;
- 		transport->tcp_offset = 0;
--		if (transport->tcp_flags & XPRT_LAST_FRAG) {
--			transport->tcp_flags &= ~XPRT_COPY_DATA;
--			transport->tcp_flags |= XPRT_COPY_XID;
-+		if (transport->tcp_flags & TCP_RCV_LAST_FRAG) {
-+			transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
-+			transport->tcp_flags |= TCP_RCV_COPY_XID;
- 			transport->tcp_copied = 0;
- 		}
- 	}
-@@ -706,8 +714,8 @@ static inline void xs_tcp_read_xid(struc
- 	transport->tcp_offset += used;
- 	if (used != len)
- 		return;
--	transport->tcp_flags &= ~XPRT_COPY_XID;
--	transport->tcp_flags |= XPRT_COPY_DATA;
-+	transport->tcp_flags &= ~TCP_RCV_COPY_XID;
-+	transport->tcp_flags |= TCP_RCV_COPY_DATA;
- 	transport->tcp_copied = 4;
- 	dprintk("RPC:      reading reply for XID %08x\n",
- 			ntohl(transport->tcp_xid));
-@@ -726,7 +734,7 @@ static inline void xs_tcp_read_request(s
- 	spin_lock(&xprt->transport_lock);
- 	req = xprt_lookup_rqst(xprt, transport->tcp_xid);
- 	if (!req) {
--		transport->tcp_flags &= ~XPRT_COPY_DATA;
-+		transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
- 		dprintk("RPC:      XID %08x request not found!\n",
- 				ntohl(transport->tcp_xid));
- 		spin_unlock(&xprt->transport_lock);
-@@ -757,13 +765,13 @@ static inline void xs_tcp_read_request(s
- 		/* Error when copying to the receive buffer,
- 		 * usually because we weren't able to allocate
- 		 * additional buffer pages. All we can do now
--		 * is turn off XPRT_COPY_DATA, so the request
-+		 * is turn off TCP_RCV_COPY_DATA, so the request
- 		 * will not receive any additional updates,
- 		 * and time out.
- 		 * Any remaining data from this record will
- 		 * be discarded.
- 		 */
--		transport->tcp_flags &= ~XPRT_COPY_DATA;
-+		transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
- 		dprintk("RPC:      XID %08x truncated request\n",
- 				ntohl(transport->tcp_xid));
- 		dprintk("RPC:      xprt = %p, tcp_copied = %lu, tcp_offset = %u, tcp_reclen = %u\n",
-@@ -779,14 +787,14 @@ static inline void xs_tcp_read_request(s
- 				transport->tcp_reclen);
- 
- 	if (transport->tcp_copied == req->rq_private_buf.buflen)
--		transport->tcp_flags &= ~XPRT_COPY_DATA;
-+		transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
- 	else if (transport->tcp_offset == transport->tcp_reclen) {
--		if (transport->tcp_flags & XPRT_LAST_FRAG)
--			transport->tcp_flags &= ~XPRT_COPY_DATA;
-+		if (transport->tcp_flags & TCP_RCV_LAST_FRAG)
-+			transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
- 	}
- 
- out:
--	if (!(transport->tcp_flags & XPRT_COPY_DATA))
-+	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
- 		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
- 	spin_unlock(&xprt->transport_lock);
- 	xs_tcp_check_fraghdr(transport);
-@@ -820,17 +828,17 @@ static int xs_tcp_data_recv(read_descrip
  	do {
- 		/* Read in a new fragment marker if necessary */
- 		/* Can we ever really expect to get completely empty fragments? */
--		if (transport->tcp_flags & XPRT_COPY_RECM) {
-+		if (transport->tcp_flags & TCP_RCV_COPY_FRAGHDR) {
- 			xs_tcp_read_fraghdr(xprt, &desc);
- 			continue;
- 		}
- 		/* Read in the xid if necessary */
--		if (transport->tcp_flags & XPRT_COPY_XID) {
-+		if (transport->tcp_flags & TCP_RCV_COPY_XID) {
- 			xs_tcp_read_xid(transport, &desc);
- 			continue;
- 		}
- 		/* Read in the request data */
--		if (transport->tcp_flags & XPRT_COPY_DATA) {
-+		if (transport->tcp_flags & TCP_RCV_COPY_DATA) {
- 			xs_tcp_read_request(xprt, &desc);
- 			continue;
- 		}
-@@ -896,7 +904,8 @@ static void xs_tcp_state_change(struct s
- 			transport->tcp_offset = 0;
- 			transport->tcp_reclen = 0;
- 			transport->tcp_copied = 0;
--			transport->tcp_flags = XPRT_COPY_RECM | XPRT_COPY_XID;
-+			transport->tcp_flags =
-+				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
+ 		myaddr.sin_port = htons(port);
+ 		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
+ 						sizeof(myaddr));
+ 		if (err == 0) {
+-			xprt->port = port;
++			transport->port = port;
+ 			dprintk("RPC:      xs_bindresvport bound to port %u\n",
+ 					port);
+ 			return 0;
+@@ -1097,7 +1105,7 @@ static int xs_bindresvport(struct rpc_xp
+ 			port = xprt_max_resvport;
+ 		else
+ 			port--;
+-	} while (err == -EADDRINUSE && port != xprt->port);
++	} while (err == -EADDRINUSE && port != transport->port);
  
- 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
- 			xprt_wake_pending_tasks(xprt, 0);
+ 	dprintk("RPC:      can't bind to reserved port (%d).\n", -err);
+ 	return err;
+@@ -1111,8 +1119,8 @@ static int xs_bindresvport(struct rpc_xp
+  */
+ static void xs_udp_connect_worker(void *args)
+ {
+-	struct rpc_xprt *xprt = (struct rpc_xprt *) args;
+-	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct sock_xprt *transport = (struct sock_xprt *)args;
++	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock = transport->sock;
+ 	int err, status = -EIO;
+ 
+@@ -1127,7 +1135,7 @@ static void xs_udp_connect_worker(void *
+ 		goto out;
+ 	}
+ 
+-	if (xprt->resvport && xs_bindresvport(xprt, sock) < 0) {
++	if (xprt->resvport && xs_bindresvport(transport, sock) < 0) {
+ 		sock_release(sock);
+ 		goto out;
+ 	}
+@@ -1196,8 +1204,8 @@ static void xs_tcp_reuse_connection(stru
+  */
+ static void xs_tcp_connect_worker(void *args)
+ {
+-	struct rpc_xprt *xprt = (struct rpc_xprt *)args;
+-	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct sock_xprt *transport = (struct sock_xprt *)args;
++	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock = transport->sock;
+ 	int err, status = -EIO;
+ 
+@@ -1211,7 +1219,7 @@ static void xs_tcp_connect_worker(void *
+ 			goto out;
+ 		}
+ 
+-		if (xprt->resvport && xs_bindresvport(xprt, sock) < 0) {
++		if (xprt->resvport && xs_bindresvport(transport, sock) < 0) {
+ 			sock_release(sock);
+ 			goto out;
+ 		}
+@@ -1303,14 +1311,14 @@ static void xs_connect(struct rpc_task *
+ 	if (transport->sock != NULL) {
+ 		dprintk("RPC:      xs_connect delayed xprt %p for %lu seconds\n",
+ 				xprt, xprt->reestablish_timeout / HZ);
+-		schedule_delayed_work(&xprt->connect_worker,
++		schedule_delayed_work(&transport->connect_worker,
+ 					xprt->reestablish_timeout);
+ 		xprt->reestablish_timeout <<= 1;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+ 	} else {
+ 		dprintk("RPC:      xs_connect scheduled xprt %p\n", xprt);
+-		schedule_work(&xprt->connect_worker);
++		schedule_work(&transport->connect_worker);
+ 
+ 		/* flush_scheduled_work can sleep... */
+ 		if (!RPC_IS_ASYNC(task))
+@@ -1326,8 +1334,10 @@ static void xs_connect(struct rpc_task *
+  */
+ static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ {
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++
+ 	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
+-			xprt->port,
++			transport->port,
+ 			xprt->stat.bind_count,
+ 			xprt->stat.sends,
+ 			xprt->stat.recvs,
+@@ -1344,13 +1354,14 @@ static void xs_udp_print_stats(struct rp
+  */
+ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ {
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	long idle_time = 0;
+ 
+ 	if (xprt_connected(xprt))
+ 		idle_time = (long)(jiffies - xprt->last_used) / HZ;
+ 
+ 	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
+-			xprt->port,
++			transport->port,
+ 			xprt->stat.bind_count,
+ 			xprt->stat.connect_count,
+ 			xprt->stat.connect_time,
+@@ -1424,7 +1435,7 @@ static struct rpc_xprt *xs_setup_xprt(st
+ 
+ 	memcpy(&xprt->addr, addr, addrlen);
+ 	xprt->addrlen = addrlen;
+-	xprt->port = xs_get_random_port();
++	new->port = xs_get_random_port();
+ 
+ 	return xprt;
+ }
+@@ -1439,10 +1450,12 @@ static struct rpc_xprt *xs_setup_xprt(st
+ struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ {
+ 	struct rpc_xprt *xprt;
++	struct sock_xprt *transport;
+ 
+ 	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
++	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+ 		xprt_set_bound(xprt);
+@@ -1452,7 +1465,7 @@ struct rpc_xprt *xs_setup_udp(struct soc
+ 	/* XXX: header size can vary due to auth type, IPv6, etc. */
+ 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
+ 
+-	INIT_WORK(&xprt->connect_worker, xs_udp_connect_worker, xprt);
++	INIT_WORK(&transport->connect_worker, xs_udp_connect_worker, transport);
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->connect_timeout = XS_UDP_CONN_TO;
+ 	xprt->reestablish_timeout = XS_UDP_REEST_TO;
+@@ -1482,10 +1495,12 @@ struct rpc_xprt *xs_setup_udp(struct soc
+ struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+ {
+ 	struct rpc_xprt *xprt;
++	struct sock_xprt *transport;
+ 
+ 	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
++	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+ 		xprt_set_bound(xprt);
+@@ -1494,7 +1509,7 @@ struct rpc_xprt *xs_setup_tcp(struct soc
+ 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+ 
+-	INIT_WORK(&xprt->connect_worker, xs_tcp_connect_worker, xprt);
++	INIT_WORK(&transport->connect_worker, xs_tcp_connect_worker, transport);
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->connect_timeout = XS_TCP_CONN_TO;
+ 	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
