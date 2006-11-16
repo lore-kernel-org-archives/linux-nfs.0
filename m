@@ -1,26 +1,26 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 003 of 4] Make RPC 'ping' requests fail more
-	quickly.
-Date: Thu, 16 Nov 2006 14:20:47 +1100
-Message-ID: <17755.55567.747018.295618@cse.unsw.edu.au>
-References: <20061024122646.4426.patches@notabene> <1061024024903.4760@suse.de>
-	<1163610870.5691.177.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 002 of 4] Make the initial RPC PING interruptible.
+Date: Thu, 16 Nov 2006 14:22:11 +1100
+Message-ID: <17755.55651.988725.653072@cse.unsw.edu.au>
+References: <20061024122646.4426.patches@notabene> <1061024024857.4748@suse.de>
+	<76bd70e30610241619m545c5a33k4ee4b156464ef41d@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Olaf Kirch <okir@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
-	nfs@lists.sourceforge.net
+	nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkXo6-0007Ue-Jz
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 19:20:54 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1GkXpQ-0007g5-P1
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 19:22:19 -0800
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkXo6-0000UB-Ii
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 19:20:55 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: message from Trond Myklebust on Wednesday November 15
+	(Exim 4.44) id 1GkXpQ-0000uf-IP
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 19:22:18 -0800
+To: "Chuck Lever" <chucklever@gmail.com>
+In-Reply-To: message from Chuck Lever on Tuesday October 24
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,31 +33,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday November 15, trond.myklebust@fys.uio.no wrote:
-> On Tue, 2006-10-24 at 12:49 +1000, NeilBrown wrote:
-> > Sometimes when an RPC client is created, an initial 'PING' is sent to
-> > the RPC/NULL procedure to make sure the server is running.
-> > This is always done as a 'soft' call so a major timeout will be fatal.
-> > 
-> > We change semantics so that if portmap reports that the service does
-> > not exist, or if a ECONNREFUSED error is returned we abort early
-> > rather than persist for the full timeout.
+On Tuesday October 24, chucklever@gmail.com wrote:
+> What's the harm in always using SOFT|INTR for doing pings?
 > 
-> What if the server is in the process of booting? If the RPC layer
-> doesn't handle that case, then we will have to add a loop to sleep and
-> wait in the NLM client.
+> I would think this would be a bit cleaner if you just eliminated the
+> "flags" parameter of rpc_ping() and calculated the correct task flags
+> inside rpc_ping().
 
-What is the purpose of the PING?
+Yes, that sounds right.
 
-It seems to me that it is intended to allow a one-time soft-fail.
-e.g. it would be used when first mounting a filesystem.  If the server
-isn't responding, then fail the mount, even if it is a hard mount.
-
-Once the PING succeeds we assume the server is genuine and all future
-requests follow whatever soft/hard/intr rules are given for the mount.
-
-If this is the case, then a PING should fail as soon as there seems to
-be a genuine justification for the failure, such as an rpcbind error.
+Thanks,
 
 NeilBrown
 
