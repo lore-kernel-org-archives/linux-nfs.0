@@ -1,35 +1,39 @@
-From: Kostas Georgiou <k.georgiou@imperial.ac.uk>
-Subject: Re: "mount: File exists" when trying to mount a second krb5
+From: Open Source <opensource3141@yahoo.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
 	volume!
-Date: Thu, 16 Nov 2006 15:35:28 +0000
-Message-ID: <20061116153528.GA6064@imperial.ac.uk>
-References: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
+Date: Thu, 16 Nov 2006 23:45:30 +0800 (CST)
+Message-ID: <20061116154530.82497.qmail@web58111.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkjHI-0000LX-6C
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 07:35:48 -0800
-Received: from heppc218.hep.ph.ic.ac.uk ([155.198.211.218])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkjHF-0004CN-24
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 07:35:46 -0800
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Kostas Georgiou <k.georgiou@imperial.ac.uk>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
+
+Hi Kostas,
+
+Understood.  But from what I know, usually people only
+mount one pseudofilesystem from an nfsv4 server
+onto their client.  I think that's why many people
+haven't seen this problem with nfsv4+krb5!
+
+Paarvai
+
+----- Original Message ----
+From: Kostas Georgiou <k.georgiou@imperial.ac.uk>
 To: Open Source <opensource3141@yahoo.com>
-In-Reply-To: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfsv4@linux-nfs.org; nfs@lists.sourceforge.net
+Sent: Thursday, November 16, 2006 7:35:28 AM
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5 volume!
 
 On Wed, Nov 15, 2006 at 06:31:17PM -0800, Open Source wrote:
 
@@ -43,12 +47,3 @@ For the record I have the same problem with nfs4+krb5 in 2.6.18
 so it's not just nfs3.
 
 Kostas
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
