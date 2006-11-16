@@ -1,20 +1,26 @@
-From: Tollef Fog Heen <tfheen@err.no>
-Subject: Problems building nfs with 2.6.19 kernel headers
-Date: Wed, 15 Nov 2006 18:43:20 -0800
-Message-ID: <455BD048.5020009@err.no>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 003 of 4] Make RPC 'ping' requests fail more
+	quickly.
+Date: Thu, 16 Nov 2006 14:20:47 +1100
+Message-ID: <17755.55567.747018.295618@cse.unsw.edu.au>
+References: <20061024122646.4426.patches@notabene> <1061024024903.4760@suse.de>
+	<1163610870.5691.177.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Olaf Kirch <okir@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GkXE9-00043A-7u
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 18:43:45 -0800
-Received: from doom.no ([194.24.252.214] helo=sigma.hardware.no)
+	id 1GkXo6-0007Ue-Jz
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 19:20:54 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GkXE9-0008CF-5d
-	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 18:43:46 -0800
-To: nfs@lists.sf.net
+	(Exim 4.44) id 1GkXo6-0000UB-Ii
+	for nfs@lists.sourceforge.net; Wed, 15 Nov 2006 19:20:55 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: message from Trond Myklebust on Wednesday November 15
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,18 +33,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Wednesday November 15, trond.myklebust@fys.uio.no wrote:
+> On Tue, 2006-10-24 at 12:49 +1000, NeilBrown wrote:
+> > Sometimes when an RPC client is created, an initial 'PING' is sent to
+> > the RPC/NULL procedure to make sure the server is running.
+> > This is always done as a 'soft' call so a major timeout will be fatal.
+> > 
+> > We change semantics so that if portmap reports that the service does
+> > not exist, or if a ECONNREFUSED error is returned we abort early
+> > rather than persist for the full timeout.
+> 
+> What if the server is in the process of booting? If the RPC layer
+> doesn't handle that case, then we will have to add a loop to sleep and
+> wait in the NLM client.
 
-I have trouble building nfs-utils with 2.6.19 kernel headers due to the 
-removal of UTS_RELEASE from linux/version.h.  This causes getkversion to 
-fail to build.
+What is the purpose of the PING?
 
-What is the purpose of getkversion and is there any reason not to remove it?
+It seems to me that it is intended to allow a one-time soft-fail.
+e.g. it would be used when first mounting a filesystem.  If the server
+isn't responding, then fail the mount, even if it is a hard mount.
 
-(Please Cc me on replies, I'm not on the list)
+Once the PING succeeds we assume the server is genuine and all future
+requests follow whatever soft/hard/intr rules are given for the mount.
 
-- tfheen
+If this is the case, then a PING should fail as soon as there seems to
+be a genuine justification for the failure, such as an rpcbind error.
 
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
