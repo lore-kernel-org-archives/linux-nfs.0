@@ -1,110 +1,145 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Problems with SLES10 (2.6.16.21-0.25-xen) NFS client:
-	no	locks, hanging mounts
-Date: Thu, 16 Nov 2006 12:10:09 -0500
-Message-ID: <1163697009.9593.25.camel@lade.trondhjem.org>
-References: <455C515D.12136.104B8B29@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+Date: Thu, 16 Nov 2006 12:46:04 -0500
+Message-ID: <1163699164.9593.29.camel@lade.trondhjem.org>
+References: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gkkks-0002VZ-Js
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 09:10:26 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/vLDWYVlxEMfw/t90XGhQOrOpPU997kh8=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gkkkt-0004Sc-A8
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 09:10:27 -0800
-To: Ulrich Windl <ulrich.windl@rz.uni-regensburg.de>
-In-Reply-To: <455C515D.12136.104B8B29@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Open Source <opensource3141@yahoo.com>
+In-Reply-To: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, 2006-11-16 at 11:54 +0100, Ulrich Windl wrote:
-> Hi,
+On Wed, 2006-11-15 at 18:31 -0800, Open Source wrote:
+> Hi all,
 > 
-> (I'm not subscribed to this list)
-> When I had a temporary need for more diskspace on a XEN VM running SLES10 
-> (x86_64), I tried to mount an NFS filesystem to Linux, but I had problems:
+> I think I have found the answer.  It is similar to this issue but not
+> exactly the same as:
 > 
-> 1) When Solaris 9 (SPARC) was the server (server1), mount succeeded, but locking 
-> failed:
+> http://linux-nfs.org/pipermail/nfsv4/2005-November/002807.html
 > 
-> Application (SuSE "build") said:
-> initializing rpm db...
-> warning: waiting for transaction lock on /var/lib/rpm/__db.000
-> error: can't create transaction lock on /var/lib/rpm/__db.000
+> Here's what is happening.  In 2.6.18 there is a new file called
+> fs/nfs/client.c.  In this file it does the following for every new
+> mount:
 > 
-> /var/log/messages said:
-> Nov 16 10:27:31 nfs-client kernel: lockd: failed to monitor server1
-> Nov 16 10:27:31 nfs-client kernel: lockd/statd: failed to create 
-> /var/lib/nfs/sm/server1: err=-2
+> 1) Lookup to see if an existing client has the same specification
+> as the requested mount.
+> 
+> 2) If so, clone that client.  If not, create a new one.
+> 
+> 3) Create any pipes required by the auth pseudoflavor by
+> calling rpcauth_create.
+> 
+> 4) Continue with the mounting of the volume.
+> 
+> Now, if you have no connections to the server, a new rpc
+> client is created and the pipes are created with no problems.
+> For the second mount to the same server, the rpc client is
+> cloned and has the same path in /var/lib/nfs/rpc_pipefs/nfs
+> has the first connection.  Therefore on step 3 the pipe creation
+> fails in net/sunrpc/auth_gss/auth_gss.c.  This causes the
+> entire mount to fail.
 
-err == -2 is the same as ENOENT.
+Thanks for debugging this! I think the right thing to do here is just to
+give the cloned clients their own rpc_pipefs directory. Can you see if
+the following patch fixes your problem?
 
-Does the directory /var/lib/nfs/sm exist and have the proper
-permissions?
-
-> 2) When trying to use SLES9 (i386, Kernel 2.6.5-7.282-default) as NFS server 
-> (server2), mount on the client hung hard (only kill -9 did work). The rpc.mountd 
-> was waiting for data while the client hung:
-> 
-> strace:
-> open("/proc/fs/nfsd/filehandle", O_RDWR) = 10
-> fstat64(10, {st_mode=S_IFREG|0600, st_size=0, ...}) = 0
-> mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 
-> 0x40019000
-> write(10, "*.dvm.our-domain,r"..., 85) = 85
-> read(10, "\\x0100000600fd000b020000006e2200"..., 4096) = 75
-> close(10)                               = 0
-> munmap(0x40019000, 4096)                = 0
-> write(8, "\200\0\0Pb\376%\321\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 84) = 84
-> select(1024, [3 4 5 6 7 8], NULL, NULL, NULL) = 1 (in [8])
-> poll([{fd=8, events=POLLIN, revents=POLLIN}], 1, 35000) = 1
-> read(8, "", 4000)                       = 0
-> close(8)                                = 0
-> select(1024, [3 4 5 6 7], NULL, NULL, NULL <unfinished ...>
-> 
-> Tracing the network traffic, I found this final data exchange:
-> 
-> 11:29:43.869678 IP (tos 0x0, ttl  64, id 50629, offset 0, flags [DF], proto: TCP 
-> (6), length: 200) nfs-client.dvm.our-domain.2253585828 > server2.dvm.our-
-> domain.nfs: 148 fsinfo fh 
-> Unknown/0100000600FD000B020000006E22000002000000000000000200000001000000
-> 11:29:43.909121 IP (tos 0x0, ttl  64, id 29964, offset 0, flags [DF], proto: TCP 
-> (6), length: 52) server2.dvm.our-domain.nfs > nfs-client.dvm.our-domain.1023: ., 
-> cksum 0x655b (correct), ack 542460337 win 6432 <nop,nop,timestamp 470378359 
-> 19011966>
-> 
-> Any helpful instructions?
-
-No idea about this one. It looks as if your server is failing to reply
-to the client's fsinfo inquiry. All it appears to have done is to ack
-the TCP message.
-
-Is mountd up and running?
-
-Cheers
+Cheers,
   Trond
 
+----------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: 1163695047 -0500
+SUNRPC: Give cloned RPC clients their own rpc_pipefs directory
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |   19 +++++++++++--------
+ 2 files changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index f6d1d64..a1be89d 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -53,6 +53,7 @@ struct rpc_clnt {
+ 	struct dentry *		cl_dentry;	/* inode */
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
++	struct rpc_program *	cl_program;
+ 	char			cl_inline_name[32];
+ };
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 587f3ec..4d269e5 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -141,6 +141,7 @@ static struct rpc_clnt * rpc_new_client(
+ 	clnt->cl_vers     = version->number;
+ 	clnt->cl_stats    = program->stats;
+ 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
++	clnt->cl_program  = program;
+ 
+ 	if (!xprt_bound(clnt->cl_xprt))
+ 		clnt->cl_autobind = 1;
+@@ -252,6 +253,7 @@ struct rpc_clnt *
+ rpc_clone_client(struct rpc_clnt *clnt)
+ {
+ 	struct rpc_clnt *new;
++	int err;
+ 
+ 	new = kmalloc(sizeof(*new), GFP_KERNEL);
+ 	if (!new)
+@@ -259,6 +261,11 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	memcpy(new, clnt, sizeof(*new));
+ 	atomic_set(&new->cl_count, 1);
+ 	atomic_set(&new->cl_users, 0);
++	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
++	if (err != 0) {
++		kfree(new);
++		return ERR_PTR(err);
++	}
+ 	new->cl_parent = clnt;
+ 	atomic_inc(&clnt->cl_count);
+ 	new->cl_xprt = xprt_get(clnt->cl_xprt);
+@@ -266,8 +273,6 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	new->cl_autobind = 0;
+ 	new->cl_oneshot = 0;
+ 	new->cl_dead = 0;
+-	if (!IS_ERR(new->cl_dentry))
+-		dget(new->cl_dentry);
+ 	rpc_init_rtt(&new->cl_rtt_default, clnt->cl_xprt->timeout.to_initval);
+ 	if (new->cl_auth)
+ 		atomic_inc(&new->cl_auth->au_count);
+@@ -328,16 +333,14 @@ rpc_destroy_client(struct rpc_clnt *clnt
+ 		rpcauth_destroy(clnt->cl_auth);
+ 		clnt->cl_auth = NULL;
+ 	}
+-	if (clnt->cl_parent != clnt) {
+-		if (!IS_ERR(clnt->cl_dentry))
+-			dput(clnt->cl_dentry);
+-		rpc_destroy_client(clnt->cl_parent);
+-		goto out_free;
+-	}
+ 	if (!IS_ERR(clnt->cl_dentry)) {
+ 		rpc_rmdir(clnt->cl_dentry);
+ 		rpc_put_mount();
+ 	}
++	if (clnt->cl_parent != clnt) {
++		rpc_destroy_client(clnt->cl_parent);
++		goto out_free;
++	}
+ 	if (clnt->cl_server != clnt->cl_inline_name)
+ 		kfree(clnt->cl_server);
+ out_free:
