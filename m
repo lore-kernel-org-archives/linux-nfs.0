@@ -1,145 +1,224 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
-Date: Thu, 16 Nov 2006 12:46:04 -0500
-Message-ID: <1163699164.9593.29.camel@lade.trondhjem.org>
-References: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
+From: Ray <whatdoineed2do@yahoo.co.uk>
+Subject: nfs-utils-1.0.10/linux 2.6.18 bug?  unable to start nfsd;
+	nfssvc "Address already in use"
+Date: Thu, 16 Nov 2006 19:31:36 +0000 (GMT)
+Message-ID: <20061116193136.43065.qmail@web23314.mail.ird.yahoo.com>
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="0-342127738-1163705496=:42004"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Gkmxp-0008JA-D2
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 11:31:57 -0800
+Received: from web23314.mail.ird.yahoo.com ([217.146.189.84])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gkmxn-0002Px-NY
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 11:31:58 -0800
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
+
+--0-342127738-1163705496=:42004
+Content-Type: text/plain; charset=iso-8859-1
+Content-Id: 
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+hi NFS developers
+
+issue is, using 2.6.18.2 kernel and 1.0.10 nfs utils
+but i am periodically having problems starting nfsd --
+it drops out after sysloging that "nfssvc "Address
+already in use" when there are actually no other nfsd
+instances running
+
+i strace'd the nfsd process and noticed these
+interesting lines:
+
+  1929  open("/proc/fs/nfsd/threads",
+O_WRONLY|O_LARGEFILE) =3D 4
+  1929  write(4, "8\n", 2)                =3D -1
+EADDRINUSE (Address already in use)=20
+
+it is this that appears to cause the nfsd to syslog.=20
+can you tell me if this is a bug in the
+kernel/nfsutils?  i see that the last changelog entry
+metnions about
+
+'rpc.nfsd N' won't work to change the number of
+threads after nfsd has been started
+
+the only way i could get nfsd to start was to bounce
+the box; stopping ALL portmap etc and
+unloading/reloading the kernel nfs modules didnt help=20
+
+attached is the strace output;  the nfs-utils was
+built without gss or nfsv4;  the kernel only has nvfs2
+and 3 enabled
+
+thanks in advnace
+-ray
+
+ps -- appologies to NeilB; i already sent him this
+email already before i saw this dev list email
+
+Send instant messages to your online friends http://uk.messenger.yahoo.co=
+m=20
+--0-342127738-1163705496=:42004
+Content-Type: application/octet-stream; name="nfsd.trace"
+Content-Transfer-Encoding: base64
+Content-Description: 695785594-nfsd.trace
+Content-Disposition: attachment; filename="nfsd.trace"
+
+MTkyOSAgZXhlY3ZlKCIvdXNyL3NiaW4vcnBjLm5mc2QiLCBbInJwYy5uZnNk
+IiwgIjgiXSwgWy8qIDIzIHZhcnMgKi9dKSA9IDAKMTkyOSAgdW5hbWUoe3N5
+cz0iTGludXgiLCBub2RlPSJkb2MiLCAuLi59KSA9IDAKMTkyOSAgYnJrKDAp
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgID0gMHg4MDRiMDAwCjE5Mjkg
+IGFjY2VzcygiL2V0Yy9sZC5zby5wcmVsb2FkIiwgUl9PSykgPSAtMSBFTk9F
+TlQgKE5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkpCjE5MjkgIG9wZW4oIi9l
+dGMvbGQuc28uY2FjaGUiLCBPX1JET05MWSkgPSAzCjE5MjkgIGZzdGF0NjQo
+Mywge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTQwMzM2LCAuLi59
+KSA9IDAKMTkyOSAgbW1hcDIoTlVMTCwgNDAzMzYsIFBST1RfUkVBRCwgTUFQ
+X1BSSVZBVEUsIDMsIDApID0gMHhiN2ZhYTAwMAoxOTI5ICBjbG9zZSgzKSAg
+ICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG9wZW4oIi9saWIv
+bGliYy5zby42IiwgT19SRE9OTFkpICA9IDMKMTkyOSAgcmVhZCgzLCAiXHg3
+Zlx4NDVceDRjXHg0Nlx4MDFceDAxXHgwMVx4MDBceDAwXHgwMFx4MDBceDAw
+XHgwMFx4MDAiLi4uLCA1MTIpID0gNTEyCjE5MjkgIGZzdGF0NjQoMywge3N0
+X21vZGU9U19JRlJFR3wwNzU1LCBzdF9zaXplPTE0MjMxNjEsIC4uLn0pID0g
+MAoxOTI5ICBtbWFwMigweDQxNjg2MDAwLCAxMTM3NzU2LCBQUk9UX1JFQUR8
+UFJPVF9FWEVDLCBNQVBfUFJJVkFURXxNQVBfREVOWVdSSVRFLCAzLCAwKSA9
+IDB4NDE2ODYwMDAKMTkyOSAgbW1hcDIoMHg0MTc5NjAwMCwgMTYzODQsIFBS
+T1RfUkVBRHxQUk9UX1dSSVRFLCBNQVBfUFJJVkFURXxNQVBfRklYRUR8TUFQ
+X0RFTllXUklURSwgMywgMHgxMTApID0gMHg0MTc5NjAwMAoxOTI5ICBtbWFw
+MigweDQxNzlhMDAwLCA3MjYwLCBQUk9UX1JFQUR8UFJPVF9XUklURSwgTUFQ
+X1BSSVZBVEV8TUFQX0ZJWEVEfE1BUF9BTk9OWU1PVVMsIC0xLCAwKSA9IDB4
+NDE3OWEwMDAKMTkyOSAgY2xvc2UoMykgICAgICAgICAgICAgICAgICAgICAg
+ICAgID0gMAoxOTI5ICBtbWFwMihOVUxMLCA0MDk2LCBQUk9UX1JFQUR8UFJP
+VF9XUklURSwgTUFQX1BSSVZBVEV8TUFQX0FOT05ZTU9VUywgLTEsIDApID0g
+MHhiN2ZhOTAwMAoxOTI5ICBtcHJvdGVjdCgweDQxNzk2MDAwLCA4MTkyLCBQ
+Uk9UX1JFQUQpID0gMAoxOTI5ICBtcHJvdGVjdCgweDQxNjgyMDAwLCA0MDk2
+LCBQUk9UX1JFQUQpID0gMAoxOTI5ICBzZXRfdGhyZWFkX2FyZWEoe2VudHJ5
+X251bWJlcjotMSAtPiA2LCBiYXNlX2FkZHI6MHhiN2ZhOWE5MCwgbGltaXQ6
+MTA0ODU3NSwgc2VnXzMyYml0OjEsIGNvbnRlbnRzOjAsIHJlYWRfZXhlY19v
+bmx5OjAsIGxpbWl0X2luX3BhZ2VzOjEsIHNlZ19ub3RfcHJlc2VudDowLCB1
+c2VhYmxlOjF9KSA9IDAKMTkyOSAgbXVubWFwKDB4YjdmYWEwMDAsIDQwMzM2
+KSAgICAgICAgID0gMAoxOTI5ICBicmsoMCkgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgPSAweDgwNGIwMDAKMTkyOSAgYnJrKDB4ODA2YzAwMCkgICAg
+ICAgICAgICAgICAgICAgID0gMHg4MDZjMDAwCjE5MjkgIG9wZW4oIi9ldGMv
+bnNzd2l0Y2guY29uZiIsIE9fUkRPTkxZKSA9IDMKMTkyOSAgZnN0YXQ2NCgz
+LCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTY4NiwgLi4ufSkg
+PSAwCjE5MjkgIG1tYXAyKE5VTEwsIDQwOTYsIFBST1RfUkVBRHxQUk9UX1dS
+SVRFLCBNQVBfUFJJVkFURXxNQVBfQU5PTllNT1VTLCAtMSwgMCkgPSAweGI3
+ZmIzMDAwCjE5MjkgIHJlYWQoMywgIiNcbiMgL2V0Yy9uc3N3aXRjaC5jb25m
+XG4jXG4jIEFuIGV4Ii4uLiwgNDA5NikgPSAxNjg2CjE5MjkgIHJlYWQoMywg
+IiIsIDQwOTYpICAgICAgICAgICAgICAgICA9IDAKMTkyOSAgY2xvc2UoMykg
+ICAgICAgICAgICAgICAgICAgICAgICAgID0gMAoxOTI5ICBtdW5tYXAoMHhi
+N2ZiMzAwMCwgNDA5NikgICAgICAgICAgPSAwCjE5MjkgIG9wZW4oIi9ldGMv
+bGQuc28uY2FjaGUiLCBPX1JET05MWSkgPSAzCjE5MjkgIGZzdGF0NjQoMywg
+e3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTQwMzM2LCAuLi59KSA9
+IDAKMTkyOSAgbW1hcDIoTlVMTCwgNDAzMzYsIFBST1RfUkVBRCwgTUFQX1BS
+SVZBVEUsIDMsIDApID0gMHhiN2ZhYTAwMAoxOTI5ICBjbG9zZSgzKSAgICAg
+ICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG9wZW4oIi9saWIvbGli
+bnNzX2ZpbGVzLnNvLjIiLCBPX1JET05MWSkgPSAzCjE5MjkgIHJlYWQoMywg
+Ilx4N2ZceDQ1XHg0Y1x4NDZceDAxXHgwMVx4MDFceDAwXHgwMFx4MDBceDAw
+XHgwMFx4MDBceDAwIi4uLiwgNTEyKSA9IDUxMgoxOTI5ICBmc3RhdDY0KDMs
+IHtzdF9tb2RlPVNfSUZSRUd8MDc1NSwgc3Rfc2l6ZT00MzU2OCwgLi4ufSkg
+PSAwCjE5MjkgIG1tYXAyKE5VTEwsIDM3NTEyLCBQUk9UX1JFQUR8UFJPVF9F
+WEVDLCBNQVBfUFJJVkFURXxNQVBfREVOWVdSSVRFLCAzLCAwKSA9IDB4Yjdm
+OWYwMDAKMTkyOSAgbW1hcDIoMHhiN2ZhNzAwMCwgODE5MiwgUFJPVF9SRUFE
+fFBST1RfV1JJVEUsIE1BUF9QUklWQVRFfE1BUF9GSVhFRHxNQVBfREVOWVdS
+SVRFLCAzLCAweDcpID0gMHhiN2ZhNzAwMAoxOTI5ICBjbG9zZSgzKSAgICAg
+ICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG1wcm90ZWN0KDB4Yjdm
+YTcwMDAsIDQwOTYsIFBST1RfUkVBRCkgPSAwCjE5MjkgIG11bm1hcCgweGI3
+ZmFhMDAwLCA0MDMzNikgICAgICAgICA9IDAKMTkyOSAgb3BlbigiL2V0Yy9z
+ZXJ2aWNlcyIsIE9fUkRPTkxZKSAgID0gMwoxOTI5ICBmY250bDY0KDMsIEZf
+R0VURkQpICAgICAgICAgICAgICAgPSAwCjE5MjkgIGZjbnRsNjQoMywgRl9T
+RVRGRCwgRkRfQ0xPRVhFQykgICA9IDAKMTkyOSAgZnN0YXQ2NCgzLCB7c3Rf
+bW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTk5MzYsIC4uLn0pID0gMAox
+OTI5ICBtbWFwMihOVUxMLCA0MDk2LCBQUk9UX1JFQUR8UFJPVF9XUklURSwg
+TUFQX1BSSVZBVEV8TUFQX0FOT05ZTU9VUywgLTEsIDApID0gMHhiN2ZiMzAw
+MAoxOTI5ICByZWFkKDMsICIjIC9ldGMvc2VydmljZXM6XG4jICRJZDogc2Vy
+dmljZXMiLi4uLCA0MDk2KSA9IDQwOTYKMTkyOSAgcmVhZCgzLCAiVEJJT1Mg
+TmFtZSBTZXJ2aWNlXG5uZXRiaW9zLW5zXHQxMyIuLi4sIDQwOTYpID0gNDA5
+NgoxOTI5ICByZWFkKDMsICJyY3NcdFx0OTk0L3VkcFxucG9wM3NcdFx0OTk1
+L3RjcFx0XHRcdFx0IyIuLi4sIDQwOTYpID0gNDA5NgoxOTI5ICBjbG9zZSgz
+KSAgICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIG11bm1hcCgw
+eGI3ZmIzMDAwLCA0MDk2KSAgICAgICAgICA9IDAKMTkyOSAgY2hkaXIoIi92
+YXIvbGliL25mcyIpICAgICAgICAgICAgID0gMAoxOTI5ICBvcGVuKCIvZGV2
+L251bGwiLCBPX1JEV1J8T19MQVJHRUZJTEUpID0gMwoxOTI5ICBkdXAyKDMs
+IDApICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIGR1cDIoMywg
+MSkgICAgICAgICAgICAgICAgICAgICAgICA9IDEKMTkyOSAgZHVwMigzLCAy
+KSAgICAgICAgICAgICAgICAgICAgICAgID0gMgoxOTI5ICBvcGVuKCIvcHJv
+Yy9zZWxmL2ZkIiwgT19SRE9OTFl8T19OT05CTE9DS3xPX0xBUkdFRklMRXxP
+X0RJUkVDVE9SWSkgPSA0CjE5MjkgIGZzdGF0NjQoNCwge3N0X21vZGU9U19J
+RkRJUnwwNTAwLCBzdF9zaXplPTAsIC4uLn0pID0gMAoxOTI5ICBmY250bDY0
+KDQsIEZfU0VURkQsIEZEX0NMT0VYRUMpICAgPSAwCjE5MjkgIGdldGRlbnRz
+NjQoNCwgLyogNyBlbnRyaWVzICovLCAxMDI0KSA9IDE2OAoxOTI5ICBnZXRk
+ZW50czY0KDQsIC8qIDAgZW50cmllcyAqLywgMTAyNCkgPSAwCjE5MjkgIGNs
+b3NlKDQpICAgICAgICAgICAgICAgICAgICAgICAgICA9IDAKMTkyOSAgb3Bl
+bigiL3Byb2MvZnMvbmZzZC92ZXJzaW9ucyIsIE9fV1JPTkxZfE9fTEFSR0VG
+SUxFKSA9IDQKMTkyOSAgd3JpdGUoNCwgIisyICszICs0IFxuIiwgMTApICAg
+ICAgID0gMTAKMTkyOSAgY2xvc2UoNCkgICAgICAgICAgICAgICAgICAgICAg
+ICAgID0gMAoxOTI5ICBvcGVuKCIvcHJvYy9mcy9uZnNkL3BvcnRsaXN0Iiwg
+T19SRE9OTFl8T19MQVJHRUZJTEUpID0gLTEgRU5PRU5UIChObyBzdWNoIGZp
+bGUgb3IgZGlyZWN0b3J5KQoxOTI5ICBvcGVuKCIvcHJvYy9mcy9uZnNkL3Ro
+cmVhZHMiLCBPX1dST05MWXxPX0xBUkdFRklMRSkgPSA0CjE5MjkgIHdyaXRl
+KDQsICI4XG4iLCAyKSAgICAgICAgICAgICAgICA9IC0xIEVBRERSSU5VU0Ug
+KEFkZHJlc3MgYWxyZWFkeSBpbiB1c2UpCjE5MjkgIGNsb3NlKDQpICAgICAg
+ICAgICAgICAgICAgICAgICAgICA9IDAKMTkyOSAgdGltZShbMTE2MzcwMzYx
+MV0pICAgICAgICAgICAgICAgID0gMTE2MzcwMzYxMQoxOTI5ICBvcGVuKCIv
+ZXRjL2xvY2FsdGltZSIsIE9fUkRPTkxZKSAgPSA0CjE5MjkgIGZzdGF0NjQo
+NCwge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTEzMjMsIC4uLn0p
+ID0gMAoxOTI5ICBmc3RhdDY0KDQsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwg
+c3Rfc2l6ZT0xMzIzLCAuLi59KSA9IDAKMTkyOSAgbW1hcDIoTlVMTCwgNDA5
+NiwgUFJPVF9SRUFEfFBST1RfV1JJVEUsIE1BUF9QUklWQVRFfE1BUF9BTk9O
+WU1PVVMsIC0xLCAwKSA9IDB4YjdmYjMwMDAKMTkyOSAgcmVhZCg0LCAiXHg1
+NFx4NWFceDY5XHg2Nlx4MDBceDAwXHgwMFx4MDBceDAwXHgwMFx4MDBceDAw
+XHgwMFx4MDAiLi4uLCA0MDk2KSA9IDEzMjMKMTkyOSAgY2xvc2UoNCkgICAg
+ICAgICAgICAgICAgICAgICAgICAgID0gMAoxOTI5ICBtdW5tYXAoMHhiN2Zi
+MzAwMCwgNDA5NikgICAgICAgICAgPSAwCjE5MjkgIHN0YXQ2NCgiL2V0Yy9s
+b2NhbHRpbWUiLCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTMy
+MywgLi4ufSkgPSAwCjE5MjkgIHN0YXQ2NCgiL2V0Yy9sb2NhbHRpbWUiLCB7
+c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTMyMywgLi4ufSkgPSAw
+CjE5MjkgIHN0YXQ2NCgiL2V0Yy9sb2NhbHRpbWUiLCB7c3RfbW9kZT1TX0lG
+UkVHfDA2NDQsIHN0X3NpemU9MTMyMywgLi4ufSkgPSAwCjE5MjkgIGdldHBp
+ZCgpICAgICAgICAgICAgICAgICAgICAgICAgICA9IDE5MjkKMTkyOSAgc29j
+a2V0KFBGX1VOSVgsIFNPQ0tfREdSQU0sIDApICAgID0gNAoxOTI5ICBmY250
+bDY0KDQsIEZfU0VURkQsIEZEX0NMT0VYRUMpICAgPSAwCjE5MjkgIGNvbm5l
+Y3QoNCwge3NhX2ZhbWlseT1BRl9VTklYLCBwYXRoPSIvZGV2L2xvZyJ9LCAx
+NikgPSAwCjE5MjkgIHNlbmQoNCwgIjwyNz5Ob3YgMTYgMTk6MDA6MTEgbmZz
+ZFsxOTI5XTogIi4uLiwgNjIsIE1TR19OT1NJR05BTCkgPSA2MgoxOTI5ICBj
+bG9zZSg0KSAgICAgICAgICAgICAgICAgICAgICAgICAgPSAwCjE5MjkgIGV4
+aXRfZ3JvdXAoMSkgICAgICAgICAgICAgICAgICAgICA9ID8K
+
+--0-342127738-1163705496=:42004
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Open Source <opensource3141@yahoo.com>
-In-Reply-To: <20061116023117.36380.qmail@web58102.mail.re3.yahoo.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-On Wed, 2006-11-15 at 18:31 -0800, Open Source wrote:
-> Hi all,
-> 
-> I think I have found the answer.  It is similar to this issue but not
-> exactly the same as:
-> 
-> http://linux-nfs.org/pipermail/nfsv4/2005-November/002807.html
-> 
-> Here's what is happening.  In 2.6.18 there is a new file called
-> fs/nfs/client.c.  In this file it does the following for every new
-> mount:
-> 
-> 1) Lookup to see if an existing client has the same specification
-> as the requested mount.
-> 
-> 2) If so, clone that client.  If not, create a new one.
-> 
-> 3) Create any pipes required by the auth pseudoflavor by
-> calling rpcauth_create.
-> 
-> 4) Continue with the mounting of the volume.
-> 
-> Now, if you have no connections to the server, a new rpc
-> client is created and the pipes are created with no problems.
-> For the second mount to the same server, the rpc client is
-> cloned and has the same path in /var/lib/nfs/rpc_pipefs/nfs
-> has the first connection.  Therefore on step 3 the pipe creation
-> fails in net/sunrpc/auth_gss/auth_gss.c.  This causes the
-> entire mount to fail.
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--0-342127738-1163705496=:42004
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Thanks for debugging this! I think the right thing to do here is just to
-give the cloned clients their own rpc_pipefs directory. Can you see if
-the following patch fixes your problem?
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
-Cheers,
-  Trond
-
-----------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: 1163695047 -0500
-SUNRPC: Give cloned RPC clients their own rpc_pipefs directory
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/clnt.c           |   19 +++++++++++--------
- 2 files changed, 12 insertions(+), 8 deletions(-)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index f6d1d64..a1be89d 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -53,6 +53,7 @@ struct rpc_clnt {
- 	struct dentry *		cl_dentry;	/* inode */
- 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
- 	struct rpc_rtt		cl_rtt_default;
-+	struct rpc_program *	cl_program;
- 	char			cl_inline_name[32];
- };
- 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 587f3ec..4d269e5 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -141,6 +141,7 @@ static struct rpc_clnt * rpc_new_client(
- 	clnt->cl_vers     = version->number;
- 	clnt->cl_stats    = program->stats;
- 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
-+	clnt->cl_program  = program;
- 
- 	if (!xprt_bound(clnt->cl_xprt))
- 		clnt->cl_autobind = 1;
-@@ -252,6 +253,7 @@ struct rpc_clnt *
- rpc_clone_client(struct rpc_clnt *clnt)
- {
- 	struct rpc_clnt *new;
-+	int err;
- 
- 	new = kmalloc(sizeof(*new), GFP_KERNEL);
- 	if (!new)
-@@ -259,6 +261,11 @@ rpc_clone_client(struct rpc_clnt *clnt)
- 	memcpy(new, clnt, sizeof(*new));
- 	atomic_set(&new->cl_count, 1);
- 	atomic_set(&new->cl_users, 0);
-+	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
-+	if (err != 0) {
-+		kfree(new);
-+		return ERR_PTR(err);
-+	}
- 	new->cl_parent = clnt;
- 	atomic_inc(&clnt->cl_count);
- 	new->cl_xprt = xprt_get(clnt->cl_xprt);
-@@ -266,8 +273,6 @@ rpc_clone_client(struct rpc_clnt *clnt)
- 	new->cl_autobind = 0;
- 	new->cl_oneshot = 0;
- 	new->cl_dead = 0;
--	if (!IS_ERR(new->cl_dentry))
--		dget(new->cl_dentry);
- 	rpc_init_rtt(&new->cl_rtt_default, clnt->cl_xprt->timeout.to_initval);
- 	if (new->cl_auth)
- 		atomic_inc(&new->cl_auth->au_count);
-@@ -328,16 +333,14 @@ rpc_destroy_client(struct rpc_clnt *clnt
- 		rpcauth_destroy(clnt->cl_auth);
- 		clnt->cl_auth = NULL;
- 	}
--	if (clnt->cl_parent != clnt) {
--		if (!IS_ERR(clnt->cl_dentry))
--			dput(clnt->cl_dentry);
--		rpc_destroy_client(clnt->cl_parent);
--		goto out_free;
--	}
- 	if (!IS_ERR(clnt->cl_dentry)) {
- 		rpc_rmdir(clnt->cl_dentry);
- 		rpc_put_mount();
- 	}
-+	if (clnt->cl_parent != clnt) {
-+		rpc_destroy_client(clnt->cl_parent);
-+		goto out_free;
-+	}
- 	if (clnt->cl_server != clnt->cl_inline_name)
- 		kfree(clnt->cl_server);
- out_free:
+--0-342127738-1163705496=:42004--
