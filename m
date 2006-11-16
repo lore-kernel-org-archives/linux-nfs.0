@@ -1,25 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS corruption in 2.6.18.2?
-Date: Thu, 16 Nov 2006 11:09:11 -0500
-Message-ID: <1163693351.9593.14.camel@lade.trondhjem.org>
-References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
-	<20061115172947.GM10830@fit.vutbr.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: lockd and krb5
+Date: Thu, 16 Nov 2006 11:27:58 -0500
+Message-ID: <20061116162758.GA28645@fieldses.org>
+References: <200611161137.28079.hcb@chaoticmind.net>
+	<4d569c330611160621w48c7a85cy9982ea8c9d96877@mail.gmail.com>
+	<200611161702.38857.hcb@chaoticmind.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gkjo4-0004G9-W7
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 08:09:41 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18HDttE+wX+7aZbnBu+ScoyMA2JExN38PA=])
+	id 1Gkk5r-0006Bj-H1
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 08:28:03 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gkjo3-0003dK-TU
-	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 08:09:42 -0800
-To: Kasparek Tomas <kasparek@fit.vutbr.cz>
-In-Reply-To: <20061115172947.GM10830@fit.vutbr.cz>
+	(Exim 4.44) id 1Gkk5r-00078K-5W
+	for nfs@lists.sourceforge.net; Thu, 16 Nov 2006 08:28:04 -0800
+To: Helge Bahmann <hcb@chaoticmind.net>
+In-Reply-To: <200611161702.38857.hcb@chaoticmind.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,17 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2006-11-15 at 18:29 +0100, Kasparek Tomas wrote:
-> I have seen this behaviour with kernel 2.6.18 and above up to 19-rc4.
-> Reported this, but no response.
+On Thu, Nov 16, 2006 at 05:02:38PM +0100, Helge Bahmann wrote:
+> Am Donnerstag, 16. November 2006 15:21 schrieb Kevin Coffman:
+> > I can't help directly with the locking behavior, but could it be
+> > related to expiring Kerberos credentials and/or gss contexts? 
 > 
-> http://lkml.org/lkml/2006/9/28/89
+> no credentials are valid
+> 
+> > Is the KDE startup that often triggers this at initial login, or at some
+> > other time?
+> 
+> seems completely erratic; it happens both at initial login as well as second 
+> login (after successful logout, but before credentials expire); if there is 
+> any regularity at all then it seems that initial login seems more likely to 
+> succeed
 
-Your test script doesn't use any form of locking. How are you ensuring
-that only one client has the file open at a time?
+Is the filesystem exported under both secuirty flavors (krb5 and sys),
+with the export options otherwise the same?
 
-Trond
-
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
