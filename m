@@ -1,68 +1,72 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: lockd and krb5
-Date: Fri, 17 Nov 2006 13:44:38 -0500
-Message-ID: <20061117184438.GF11882@fieldses.org>
-References: <200611161137.28079.hcb@chaoticmind.net>
-	<200611161702.38857.hcb@chaoticmind.net>
-	<20061116162758.GA28645@fieldses.org>
-	<200611170922.40447.hcb@chaoticmind.net>
+From: Open Source <opensource3141@yahoo.com>
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+Date: Fri, 17 Nov 2006 11:59:25 -0800 (PST)
+Message-ID: <20061117195925.71840.qmail@web58101.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gl8hj-0005JU-A5
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:44:48 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gl8hf-0000I6-7L
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:44:44 -0800
-To: Helge Bahmann <hcb@chaoticmind.net>
-In-Reply-To: <200611170922.40447.hcb@chaoticmind.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Nov 17, 2006 at 09:22:40AM +0100, Helge Bahmann wrote:
-> > > > Is the KDE startup that often triggers this at initial login, or at
-> > > > some other time?
-> > >
-> > > seems completely erratic; it happens both at initial login as well as
-> > > second login (after successful logout, but before credentials expire); if
-> > > there is any regularity at all then it seems that initial login seems
-> > > more likely to succeed
-> >
-> > Is the filesystem exported under both secuirty flavors (krb5 and sys),
-> > with the export options otherwise the same?
+Thanks Trond.  Saving the patch did the trick.  I had
+to do some manual hacking to get the patch to
+apply because you must have done your diff
+against a different kernel tree revision.  I'm using
+2.6.18 from FC5 updates.
+
+Once I massaged things, the patch compiled and it
+works.  I am able to mount more than one partition
+with no problems now.  However, I cannot speak
+to the finer points (like memory leaks, etc.) since
+I don't know the code so well.  I trust someone else
+will independently verify it (i.e., code review) before
+it gets into the kernel tree.
+
+So this brings me back to the question?  Can we get
+this is back into the main tree as soon as possible?
+2.6.19 is on rc5.  So ideally we could get it in there
+soon.  2.6.18 has a .2 subsubrelease.  So we could
+also get it into the .3 version soon.  Thoughts?
+
+Thanks again,
+Paarvai
+
+
+----- Original Message ----
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Open Source <opensource3141@yahoo.com>
+Cc: nfsv4@linux-nfs.org; nfs@lists.sourceforge.net
+Sent: Thursday, November 16, 2006 12:55:54 PM
+Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+
+On Thu, 2006-11-16 at 12:50 -0800, Open Source wrote:
+> I know this might be a dumb question but I'm
+> not able to apply the patch.  How do I do this?
 > 
-> it is exported to the following clients:
-> *(ro,all_sqash,fsid=9)
-> test.client.for.auth_unix(rw,sync,fsid=9)
-> gss/krb5(rw,sync,fsid=9)
+> I cut and paste everything from the "diff --git"
+> line into a file.
+> 
+> Then I did: "patch -p1 < nfs_pipe_fix.patch"
+> while sitting in the root directory of my kernel source.
+> 
+> I get the following error:
+> 
+> patching file include/linux/sunrpc/clnt.h
+> patch: **** malformed patch at line 11: };
 
-Do you see the same problems if your exports all have the same options?
-E.g.
+Don't cut n' paste, since that tends to mangle spaces, linefeed, etc.
+Just save the entire message using your mail browser's 'save to file'
+feature and feed the resulting file to 'patch -p1'.
 
-	*(rw,sync,fsid=9)
-	gss/krb5(rw,sync,fsid=9)
-
---b.
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+ Trond
