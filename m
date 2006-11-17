@@ -1,22 +1,26 @@
-From: Michael Walker <Michael.Walker@Cassatt.COM>
-Subject: NFS mounts being mounted read-only depending upon mount
-	order???
-Date: Fri, 17 Nov 2006 10:22:58 -0800
-Message-ID: <455DFE02.7050801@Cassatt.COM>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: lockd and krb5
+Date: Fri, 17 Nov 2006 13:44:38 -0500
+Message-ID: <20061117184438.GF11882@fieldses.org>
+References: <200611161137.28079.hcb@chaoticmind.net>
+	<200611161702.38857.hcb@chaoticmind.net>
+	<20061116162758.GA28645@fieldses.org>
+	<200611170922.40447.hcb@chaoticmind.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: michael.walker@cassatt.com
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gl8Mk-0003Cw-F0
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:23:06 -0800
-Received: from 63-192-139-32.cassatt.com ([63.192.139.32]
-	helo=GREYHOUND.cassatt.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gl8Mj-0007G3-3E
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:23:07 -0800
-To: nfs@lists.sourceforge.net
+	id 1Gl8hj-0005JU-A5
+	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:44:48 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gl8hf-0000I6-7L
+	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:44:44 -0800
+To: Helge Bahmann <hcb@chaoticmind.net>
+In-Reply-To: <200611170922.40447.hcb@chaoticmind.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,89 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Fri, Nov 17, 2006 at 09:22:40AM +0100, Helge Bahmann wrote:
+> > > > Is the KDE startup that often triggers this at initial login, or at
+> > > > some other time?
+> > >
+> > > seems completely erratic; it happens both at initial login as well as
+> > > second login (after successful logout, but before credentials expire); if
+> > > there is any regularity at all then it seems that initial login seems
+> > > more likely to succeed
+> >
+> > Is the filesystem exported under both secuirty flavors (krb5 and sys),
+> > with the export options otherwise the same?
+> 
+> it is exported to the following clients:
+> *(ro,all_sqash,fsid=9)
+> test.client.for.auth_unix(rw,sync,fsid=9)
+> gss/krb5(rw,sync,fsid=9)
 
-All,
+Do you see the same problems if your exports all have the same options?
+E.g.
 
-I'm having problems with the latest version of FC5 which
-contains kernel 2.6.18 - the problem is that NFS mounts
-of read-write file-systems are being mounted read-only, sometimes.
+	*(rw,sync,fsid=9)
+	gss/krb5(rw,sync,fsid=9)
 
-Whether a mount is mounted read-only or read-write seems
-to very depending upon what other directories were
-mounted from the same server and with what options.
-
-Take the following file-systems exported from my
-Linux Server server:
-
-    root@polyslo:/proc/fs/nfs# cat /etc/exports
-    /disk1/dir_ro   *(ro,no_root_squash,sync,wdelay,no_subtree_check)
-    /disk1/dir_rw   *(rw,no_root_squash,sync,wdelay,no_subtree_check)
-    root@polyslo:/proc/fs/nfs# showmount -e 10.20.20.48
-    Export list for 10.20.20.48:
-    /disk1/dir_rw *
-    /disk1/dir_ro *
-    root@polyslo:/proc/fs/nfs#
-
-If I now do the following mounts (in this order):
-
-    # Mount initial directory read-only - this is intentional
-    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
-
-    # Attempt to mount second directory read-write
-    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
-
-    # Now I attempt to touch a file in the rw directory:
-    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
-    touch: cannot touch `/tmp/dir_rw/hello': Read-only file system
-
-    # And if I take a look in the /proc/mounts directory - I see
-    # that the directory was truly mounted read-only
-
-    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
-    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
-    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
-    [root@vt-1 tmp]#
-
-The above seems wrong to me - can someone clarify what's going on.
-I know that this is new behavior that was not true in the past.  My
-RHEL_4U4 server running 2.6.9 kernel does not have this problem.
-
-Notice that if I change the order of the mounts I get different behavior:
-
-    # Initially mount the read-write directory:
-    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
-
-    # Then mount the read-only directory:
-    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
-
-    # Now the directories are mounted as I wish, I can write to the
-    # read-write mount:
-    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
-    [root@vt-1 tmp]#
-
-    # And the read-only directory is read-only:
-    [root@vt-1 tmp]# touch /tmp/dir_ro/hello
-    touch: cannot touch `/tmp/dir_ro/hello': Read-only file system
-    [root@vt-1 tmp]#
-
-    # And the /proc/mounts file reflects the states I expect
-    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
-    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
-    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
-    [root@vt-1 tmp]#
-
-
-Note that previously the order did not matter and the permissions
-always reflected the permissions of the individual mount requests.
-
-If someone could provide insights on what's going on above that
-would be great.  This is a artificial test case - but it's actually
-hitting code we have in production and will be a significant
-issue for us.
-
-Thanx much!
-
-_Mike_
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
