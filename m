@@ -1,23 +1,21 @@
-From: "Eileen Horne" <akstcabwellmnsdgs@abwell.com>
-Subject: Approval process
-Date: Fri, 17 Nov 2006 13:00:57 +0000 (UTC)
-Message-ID: <691823839.24300807911524@thebat.net>
+From: Michael Walker <Michael.Walker@Cassatt.COM>
+Subject: NFS mounts being mounted read-only depending upon mount
+	order???
+Date: Fri, 17 Nov 2006 10:22:58 -0800
+Message-ID: <455DFE02.7050801@Cassatt.COM>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1113343829=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: michael.walker@cassatt.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gl3Ik-0001t1-Ts
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 04:58:39 -0800
-Received: from acxz38.neoplus.adsl.tpnet.pl ([83.11.183.38])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gl3Ij-00038Y-NS
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 04:58:40 -0800
-Received: from 69.25.142.2 (HELO eforward1.name-services.com)
-	by lists.sourceforge.net with esmtp (C2;31P4W48B -:TV8?)
-	id 0M;T10-RA/)7B-WO
-	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 13:00:10 -0060
-Date: Fri, 17 Nov 2006 13:00:10 -0060
+	id 1Gl8Mk-0003Cw-F0
+	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:23:06 -0800
+Received: from 63-192-139-32.cassatt.com ([63.192.139.32]
+	helo=GREYHOUND.cassatt.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gl8Mj-0007G3-3E
+	for nfs@lists.sourceforge.net; Fri, 17 Nov 2006 10:23:07 -0800
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,68 +29,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1113343829==
-Content-Type: multipart/alternative;
-  boundary="----------7D3F219CA4F0C3"
 
-------------7D3F219CA4F0C3
-Content-Type: text/plain; charset=Windows-1252
-Content-Transfer-Encoding: quoted-printable
+All,
 
-Thank you for your loan request, which we recieved yesterday, your refinanc=
-e application has been acceptedBad credit OK, We are ready to give you a $3=
-53,000 loan, after further review, our lenders have established the lowest =
-monthly payments.Approval process will take only 1 minute.Please visit the =
-confirmation link below and fill-out our short 30 second Secure Web-Form. w=
-ww.formstarget.com
+I'm having problems with the latest version of FC5 which
+contains kernel 2.6.18 - the problem is that NFS mounts
+of read-write file-systems are being mounted read-only, sometimes.
 
-------------7D3F219CA4F0C3
-Content-Type: text/html; charset=Windows-1252
-Content-Transfer-Encoding: quoted-printable
+Whether a mount is mounted read-only or read-write seems
+to very depending upon what other directories were
+mounted from the same server and with what options.
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<HTML><HEAD><TITLE>We accepted your loan request</TITLE>
-</HEAD>
-<BODY>
+Take the following file-systems exported from my
+Linux Server server:
 
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Thank you for your loan reque=
-st, which we recieved yesterday, your refinance application has been accept=
-ed</FONT></DIV><BR>
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Bad credit OK, We are ready t=
-o give you a $353,000 loan, after further review, our lenders have establis=
-hed the lowest monthly payments.</FONT></DIV><BR>
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Approval process will take on=
-ly 1 minute.</FONT></DIV><BR>
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Please visit the confirmation=
- link below and fill-out our short 30 second Secure Web-Form. </FONT></DIV>=
-<BR>
-<a href=3D"http://www.formstarget.com">www.formstarget.com</a><BR>
-<BR>
+    root@polyslo:/proc/fs/nfs# cat /etc/exports
+    /disk1/dir_ro   *(ro,no_root_squash,sync,wdelay,no_subtree_check)
+    /disk1/dir_rw   *(rw,no_root_squash,sync,wdelay,no_subtree_check)
+    root@polyslo:/proc/fs/nfs# showmount -e 10.20.20.48
+    Export list for 10.20.20.48:
+    /disk1/dir_rw *
+    /disk1/dir_ro *
+    root@polyslo:/proc/fs/nfs#
 
-</BODY></HTML>
-------------7D3F219CA4F0C3--
+If I now do the following mounts (in this order):
+
+    # Mount initial directory read-only - this is intentional
+    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
+
+    # Attempt to mount second directory read-write
+    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
+
+    # Now I attempt to touch a file in the rw directory:
+    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
+    touch: cannot touch `/tmp/dir_rw/hello': Read-only file system
+
+    # And if I take a look in the /proc/mounts directory - I see
+    # that the directory was truly mounted read-only
+
+    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
+    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
+    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
+    [root@vt-1 tmp]#
+
+The above seems wrong to me - can someone clarify what's going on.
+I know that this is new behavior that was not true in the past.  My
+RHEL_4U4 server running 2.6.9 kernel does not have this problem.
+
+Notice that if I change the order of the mounts I get different behavior:
+
+    # Initially mount the read-write directory:
+    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
+
+    # Then mount the read-only directory:
+    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
+
+    # Now the directories are mounted as I wish, I can write to the
+    # read-write mount:
+    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
+    [root@vt-1 tmp]#
+
+    # And the read-only directory is read-only:
+    [root@vt-1 tmp]# touch /tmp/dir_ro/hello
+    touch: cannot touch `/tmp/dir_ro/hello': Read-only file system
+    [root@vt-1 tmp]#
+
+    # And the /proc/mounts file reflects the states I expect
+    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
+    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
+    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 0 0
+    [root@vt-1 tmp]#
 
 
+Note that previously the order did not matter and the permissions
+always reflected the permissions of the individual mount requests.
 
---===============1113343829==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+If someone could provide insights on what's going on above that
+would be great.  This is a artificial test case - but it's actually
+hitting code we have in production and will be a significant
+issue for us.
+
+Thanx much!
+
+_Mike_
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1113343829==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1113343829==--
