@@ -1,72 +1,68 @@
-From: Open Source <opensource3141@yahoo.com>
-Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
-Date: Fri, 17 Nov 2006 11:59:25 -0800 (PST)
-Message-ID: <20061117195925.71840.qmail@web58101.mail.re3.yahoo.com>
+From: Ray <whatdoineed2do@yahoo.co.uk>
+Subject: Re: nfs-utils-1.0.10/linux 2.6.18 bug? unable to start nfsd;
+	nfssvc "Address already in use"
+Date: Sat, 18 Nov 2006 10:42:29 +0000 (GMT)
+Message-ID: <20061118104230.24911.qmail@web23307.mail.ird.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GlNex-0003tk-6q
+	for nfs@lists.sourceforge.net; Sat, 18 Nov 2006 02:42:56 -0800
+Received: from web23307.mail.ird.yahoo.com ([217.146.189.77])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GlNeu-0000Su-OZ
+	for nfs@lists.sourceforge.net; Sat, 18 Nov 2006 02:42:55 -0800
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Thanks Trond.  Saving the patch did the trick.  I had
-to do some manual hacking to get the patch to
-apply because you must have done your diff
-against a different kernel tree revision.  I'm using
-2.6.18 from FC5 updates.
+>> issue is, using 2.6.18.2 kernel and 1.0.10 nfs
+utils
+>> but i am periodically having problems starting nfsd
+--
+>> it drops out after sysloging that "nfssvc "Address
+>> already in use" when there are actually no other
+nfsd
+>> instances running
+ 
+> Have you checked to see if port 2049 is in use?
 
-Once I massaged things, the patch compiled and it
-works.  I am able to mount more than one partition
-with no problems now.  However, I cannot speak
-to the finer points (like memory leaks, etc.) since
-I don't know the code so well.  I trust someone else
-will independently verify it (i.e., code review) before
-it gets into the kernel tree.
+hi,
+had the same problem again, and running 'netstat
+-anptu | grep :2049' as root tells me that the statd
+had stolen that port 
 
-So this brings me back to the question?  Can we get
-this is back into the main tree as soon as possible?
-2.6.19 is on rc5.  So ideally we could get it in there
-soon.  2.6.18 has a .2 subsubrelease.  So we could
-also get it into the .3 version soon.  Thoughts?
+udp        0      0 0.0.0.0:2049            0.0.0.0:* 
+                         954/rpc.statd
 
-Thanks again,
-Paarvai
+i think this is to do with the manner in which FC2
+starts the nfs (and related services) -- the 'nfs'
+service starts nfsd/quotad/mountd whilst there is a
+seperate 'nfslock' service which starts lockd and it
+is this latter service which is started first.
 
+i'll take a look at the scripts and re-order them.
+many thanks for the pointers
+ray
 
------ Original Message ----
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Open Source <opensource3141@yahoo.com>
-Cc: nfsv4@linux-nfs.org; nfs@lists.sourceforge.net
-Sent: Thursday, November 16, 2006 12:55:54 PM
-Subject: Re: "mount: File exists" when trying to mount a second krb5 volume!
+Send instant messages to your online friends http://uk.messenger.yahoo.com 
 
-On Thu, 2006-11-16 at 12:50 -0800, Open Source wrote:
-> I know this might be a dumb question but I'm
-> not able to apply the patch.  How do I do this?
-> 
-> I cut and paste everything from the "diff --git"
-> line into a file.
-> 
-> Then I did: "patch -p1 < nfs_pipe_fix.patch"
-> while sitting in the root directory of my kernel source.
-> 
-> I get the following error:
-> 
-> patching file include/linux/sunrpc/clnt.h
-> patch: **** malformed patch at line 11: };
-
-Don't cut n' paste, since that tends to mangle spaces, linefeed, etc.
-Just save the entire message using your mail browser's 'save to file'
-feature and feed the resulting file to 'patch -p1'.
-
-Cheers,
- Trond
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
