@@ -1,26 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: lockd and krb5
-Date: Sun, 19 Nov 2006 12:40:30 -0500
-Message-ID: <20061119174030.GA15608@fieldses.org>
-References: <200611161137.28079.hcb@chaoticmind.net>
-	<200611170922.40447.hcb@chaoticmind.net>
-	<20061117184438.GF11882@fieldses.org>
-	<200611191831.58047.hcb@chaoticmind.net>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [RFC: 2.6 patch] fs/lockd/host.c: make 2 functions static
+Date: Mon, 20 Nov 2006 03:24:20 +0100
+Message-ID: <20061120022420.GP31879@stusta.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Glqee-0005Lz-Lw
-	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 09:40:32 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Glqee-00031H-Ne
-	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 09:40:34 -0800
-To: Helge Bahmann <hcb@chaoticmind.net>
-In-Reply-To: <200611191831.58047.hcb@chaoticmind.net>
+	id 1GlyqN-0005TL-JB
+	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 18:25:11 -0800
+Received: from emailhub.stusta.mhn.de ([141.84.69.5]
+	helo=mailout.stusta.mhn.de)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GlyqO-0002bZ-Ca
+	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 18:25:12 -0800
+To: neilb@cse.unsw.edu.au, trond.myklebust@fys.uio.no
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,53 +28,116 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sun, Nov 19, 2006 at 06:31:57PM +0100, Helge Bahmann wrote:
-> Am Freitag, 17. November 2006 19:44 schrieben Sie:
-> > On Fri, Nov 17, 2006 at 09:22:40AM +0100, Helge Bahmann wrote:
-> > > > > > Is the KDE startup that often triggers this at initial login, or at
-> > > > > > some other time?
-> > > > >
-> > > > > seems completely erratic; it happens both at initial login as well as
-> > > > > second login (after successful logout, but before credentials
-> > > > > expire); if there is any regularity at all then it seems that initial
-> > > > > login seems more likely to succeed
-> > > >
-> > > > Is the filesystem exported under both secuirty flavors (krb5 and sys),
-> > > > with the export options otherwise the same?
-> > >
-> > > it is exported to the following clients:
-> > > *(ro,all_sqash,fsid=9)
-> > > test.client.for.auth_unix(rw,sync,fsid=9)
-> > > gss/krb5(rw,sync,fsid=9)
-> >
-> > Do you see the same problems if your exports all have the same options?
-> > E.g.
-> >
-> > 	*(rw,sync,fsid=9)
-> > 	gss/krb5(rw,sync,fsid=9)
-> 
-> this seems kind of pointless because then I would be exporting the whole 
-> filesystem with "sys" security which is exactly what I want to avoid
+This patch makes the following needlessly global functions static:
+- nlm_lookup_host()
+- nsm_find()
 
-I agree; but knowing whether you can reproduce the same problem with the
-above configuration might help determine where exactly the bug is.
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-(Unfortunately, though, there's a known problem here: since the lockd
-client always uses auth_sys, locking will not work on a client that
-doesn't have auth_sys access to the export.  I'm not sure yet what the
-right fix is for that problem.)
+---
 
-> but AFAIC remember the server had an active export entry with sys
-> security for the test machine with the exact same options as for
-> gss/krb5, only "world" export was marked ro,all_squash during the gss
-> test
+ fs/lockd/host.c             |   53 +++++++++++++++++++-----------------
+ include/linux/lockd/lockd.h |    2 -
+ 2 files changed, 28 insertions(+), 27 deletions(-)
 
-Yes, I'm not sure why that didn't work.
+--- linux-2.6.19-rc5-mm2/include/linux/lockd/lockd.h.old	2006-11-20 02:01:44.000000000 +0100
++++ linux-2.6.19-rc5-mm2/include/linux/lockd/lockd.h	2006-11-20 01:55:53.000000000 +0100
+@@ -164,14 +164,12 @@
+  */
+ struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int, const char *, int);
+ struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *, const char *, int);
+-struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int, const char *, int);
+ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
+ void		  nlm_rebind_host(struct nlm_host *);
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
+-struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
+ void		  nsm_release(struct nsm_handle *);
+ 
+ 
+--- linux-2.6.19-rc5-mm2/fs/lockd/host.c.old	2006-11-20 01:56:05.000000000 +0100
++++ linux-2.6.19-rc5-mm2/fs/lockd/host.c	2006-11-20 01:58:26.000000000 +0100
+@@ -36,34 +36,14 @@
+ static void			nlm_gc_hosts(void);
+ static struct nsm_handle *	__nsm_find(const struct sockaddr_in *,
+ 					const char *, int, int);
+-
+-/*
+- * Find an NLM server handle in the cache. If there is none, create it.
+- */
+-struct nlm_host *
+-nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
+-			const char *hostname, int hostname_len)
+-{
+-	return nlm_lookup_host(0, sin, proto, version,
+-			       hostname, hostname_len);
+-}
+-
+-/*
+- * Find an NLM client handle in the cache. If there is none, create it.
+- */
+-struct nlm_host *
+-nlmsvc_lookup_host(struct svc_rqst *rqstp,
+-			const char *hostname, int hostname_len)
+-{
+-	return nlm_lookup_host(1, &rqstp->rq_addr,
+-			       rqstp->rq_prot, rqstp->rq_vers,
+-			       hostname, hostname_len);
+-}
++static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
++					 const char *hostname,
++					 int hostname_len);
+ 
+ /*
+  * Common host lookup routine for server & client
+  */
+-struct nlm_host *
++static struct nlm_host *
+ nlm_lookup_host(int server, const struct sockaddr_in *sin,
+ 					int proto, int version,
+ 					const char *hostname,
+@@ -195,6 +175,29 @@
+ }
+ 
+ /*
++ * Find an NLM server handle in the cache. If there is none, create it.
++ */
++struct nlm_host *
++nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
++			const char *hostname, int hostname_len)
++{
++	return nlm_lookup_host(0, sin, proto, version,
++			       hostname, hostname_len);
++}
++
++/*
++ * Find an NLM client handle in the cache. If there is none, create it.
++ */
++struct nlm_host *
++nlmsvc_lookup_host(struct svc_rqst *rqstp,
++			const char *hostname, int hostname_len)
++{
++	return nlm_lookup_host(1, &rqstp->rq_addr,
++			       rqstp->rq_prot, rqstp->rq_vers,
++			       hostname, hostname_len);
++}
++
++/*
+  * Create the NLM RPC client for an NLM peer
+  */
+ struct rpc_clnt *
+@@ -495,7 +498,7 @@
+ 	return nsm;
+ }
+ 
+-struct nsm_handle *
++static struct nsm_handle *
+ nsm_find(const struct sockaddr_in *sin, const char *hostname, int hostname_len)
+ {
+ 	return __nsm_find(sin, hostname, hostname_len, 1);
 
-> but I will make sure to include this when I try to capture traffic
-> logs next week
-
-Thanks.--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
