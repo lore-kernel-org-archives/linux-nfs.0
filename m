@@ -1,25 +1,25 @@
-From: Michael Walker <Michael.Walker@Cassatt.COM>
-Subject: Re: NFS mounts being mounted read-only depending upon mount
-	order???
-Date: Mon, 20 Nov 2006 12:57:48 -0800
-Message-ID: <456216CC.40006@Cassatt.COM>
-References: <455DFE02.7050801@Cassatt.COM>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS mounts being mounted read-only depending upon
+	mount	order???
+Date: Mon, 20 Nov 2006 16:10:26 -0500
+Message-ID: <1164057026.5723.65.camel@lade.trondhjem.org>
+References: <455DFE02.7050801@Cassatt.COM>  <456216CC.40006@Cassatt.COM>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Michael Walker <Michael.Walker@Cassatt.COM>,
-	nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GmGDF-0002Sj-Vm
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 12:57:58 -0800
-Received: from 63-192-139-32.cassatt.com ([63.192.139.32]
-	helo=GREYHOUND.cassatt.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GmGDB-0001lG-3J
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 12:57:56 -0800
+	id 1GmGQ9-0003tZ-B5
+	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 13:11:17 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/rkvosPVkyr59++hYwGKAUI96QSAZwUbg=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GmGQ9-0005qA-VC
+	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 13:11:18 -0800
 To: Michael Walker <Michael.Walker@Cassatt.COM>
-In-Reply-To: <455DFE02.7050801@Cassatt.COM>
+In-Reply-To: <456216CC.40006@Cassatt.COM>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,116 +32,139 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-
-All,
-
-Any insights on this?
-
-I did find the following post from Trond which appears
-
-   http://lkml.org/lkml/2006/10/18/264
-
-Which seems to imply that this is a 'feature' and not
-a 'bug'?  Is that true - or have I missed something?
-
-
-Thanx,
-   _Mike_
-
-
-Michael Walker wrote:
+On Mon, 2006-11-20 at 12:57 -0800, Michael Walker wrote:
 > 
 > All,
 > 
-> I'm having problems with the latest version of FC5 which
-> contains kernel 2.6.18 - the problem is that NFS mounts
-> of read-write file-systems are being mounted read-only, sometimes.
+> Any insights on this?
 > 
-> Whether a mount is mounted read-only or read-write seems
-> to very depending upon what other directories were
-> mounted from the same server and with what options.
+> I did find the following post from Trond which appears
 > 
-> Take the following file-systems exported from my
-> Linux Server server:
+>    http://lkml.org/lkml/2006/10/18/264
 > 
->    root@polyslo:/proc/fs/nfs# cat /etc/exports
->    /disk1/dir_ro   *(ro,no_root_squash,sync,wdelay,no_subtree_check)
->    /disk1/dir_rw   *(rw,no_root_squash,sync,wdelay,no_subtree_check)
->    root@polyslo:/proc/fs/nfs# showmount -e 10.20.20.48
->    Export list for 10.20.20.48:
->    /disk1/dir_rw *
->    /disk1/dir_ro *
->    root@polyslo:/proc/fs/nfs#
-> 
-> If I now do the following mounts (in this order):
-> 
->    # Mount initial directory read-only - this is intentional
->    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
-> 
->    # Attempt to mount second directory read-write
->    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
-> 
->    # Now I attempt to touch a file in the rw directory:
->    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
->    touch: cannot touch `/tmp/dir_rw/hello': Read-only file system
-> 
->    # And if I take a look in the /proc/mounts directory - I see
->    # that the directory was truly mounted read-only
-> 
->    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
->    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs 
-> ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
-> 0 0
->    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs 
-> ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
-> 0 0
->    [root@vt-1 tmp]#
-> 
-> The above seems wrong to me - can someone clarify what's going on.
-> I know that this is new behavior that was not true in the past.  My
-> RHEL_4U4 server running 2.6.9 kernel does not have this problem.
-> 
-> Notice that if I change the order of the mounts I get different behavior:
-> 
->    # Initially mount the read-write directory:
->    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
-> 
->    # Then mount the read-only directory:
->    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
-> 
->    # Now the directories are mounted as I wish, I can write to the
->    # read-write mount:
->    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
->    [root@vt-1 tmp]#
-> 
->    # And the read-only directory is read-only:
->    [root@vt-1 tmp]# touch /tmp/dir_ro/hello
->    touch: cannot touch `/tmp/dir_ro/hello': Read-only file system
->    [root@vt-1 tmp]#
-> 
->    # And the /proc/mounts file reflects the states I expect
->    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
->    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs 
-> rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
-> 0 0
->    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs 
-> rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
-> 0 0
->    [root@vt-1 tmp]#
+> Which seems to imply that this is a 'feature' and not
+> a 'bug'?  Is that true - or have I missed something?
+
+That is quite correct (thanks for taking the time to search the list
+archives). For various reasons, we're trying to tighten the NFS cache
+consistency. That means that practices that were previously allowed
+(such as mounting different directories from the same filesystem using
+different mount options) have been restricted.
+The ability to have the same filesystem mounted both read-only and
+read-write will hopefully soon be allowed again, but it needs to be
+fixed at the VFS level. The patches to do so have circulated for quite
+some time now, but have not been merged due to disagreements over how
+the user interface for 'mount --bind' should be in this case.
+
+Cheers
+  Trond
+
+> Thanx,
+>    _Mike_
 > 
 > 
-> Note that previously the order did not matter and the permissions
-> always reflected the permissions of the individual mount requests.
+> Michael Walker wrote:
+> > 
+> > All,
+> > 
+> > I'm having problems with the latest version of FC5 which
+> > contains kernel 2.6.18 - the problem is that NFS mounts
+> > of read-write file-systems are being mounted read-only, sometimes.
+> > 
+> > Whether a mount is mounted read-only or read-write seems
+> > to very depending upon what other directories were
+> > mounted from the same server and with what options.
+> > 
+> > Take the following file-systems exported from my
+> > Linux Server server:
+> > 
+> >    root@polyslo:/proc/fs/nfs# cat /etc/exports
+> >    /disk1/dir_ro   *(ro,no_root_squash,sync,wdelay,no_subtree_check)
+> >    /disk1/dir_rw   *(rw,no_root_squash,sync,wdelay,no_subtree_check)
+> >    root@polyslo:/proc/fs/nfs# showmount -e 10.20.20.48
+> >    Export list for 10.20.20.48:
+> >    /disk1/dir_rw *
+> >    /disk1/dir_ro *
+> >    root@polyslo:/proc/fs/nfs#
+> > 
+> > If I now do the following mounts (in this order):
+> > 
+> >    # Mount initial directory read-only - this is intentional
+> >    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
+> > 
+> >    # Attempt to mount second directory read-write
+> >    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
+> > 
+> >    # Now I attempt to touch a file in the rw directory:
+> >    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
+> >    touch: cannot touch `/tmp/dir_rw/hello': Read-only file system
+> > 
+> >    # And if I take a look in the /proc/mounts directory - I see
+> >    # that the directory was truly mounted read-only
+> > 
+> >    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
+> >    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs 
+> > ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
+> > 0 0
+> >    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs 
+> > ro,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
+> > 0 0
+> >    [root@vt-1 tmp]#
+> > 
+> > The above seems wrong to me - can someone clarify what's going on.
+> > I know that this is new behavior that was not true in the past.  My
+> > RHEL_4U4 server running 2.6.9 kernel does not have this problem.
+> > 
+> > Notice that if I change the order of the mounts I get different behavior:
+> > 
+> >    # Initially mount the read-write directory:
+> >    mount -t nfs -o rw 10.20.20.48:/disk1/dir_rw /tmp/dir_rw
+> > 
+> >    # Then mount the read-only directory:
+> >    mount -t nfs -o ro 10.20.20.48:/disk1/dir_ro /tmp/dir_ro
+> > 
+> >    # Now the directories are mounted as I wish, I can write to the
+> >    # read-write mount:
+> >    [root@vt-1 tmp]# touch /tmp/dir_rw/hello
+> >    [root@vt-1 tmp]#
+> > 
+> >    # And the read-only directory is read-only:
+> >    [root@vt-1 tmp]# touch /tmp/dir_ro/hello
+> >    touch: cannot touch `/tmp/dir_ro/hello': Read-only file system
+> >    [root@vt-1 tmp]#
+> > 
+> >    # And the /proc/mounts file reflects the states I expect
+> >    [root@vt-1 tmp]# grep 10.20.20.48 /proc/mounts
+> >    10.20.20.48:/disk1/dir_rw /tmp/dir_rw nfs 
+> > rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
+> > 0 0
+> >    10.20.20.48:/disk1/dir_ro /tmp/dir_ro nfs 
+> > rw,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=10.20.20.48 
+> > 0 0
+> >    [root@vt-1 tmp]#
+> > 
+> > 
+> > Note that previously the order did not matter and the permissions
+> > always reflected the permissions of the individual mount requests.
+> > 
+> > If someone could provide insights on what's going on above that
+> > would be great.  This is a artificial test case - but it's actually
+> > hitting code we have in production and will be a significant
+> > issue for us.
+> > 
+> > Thanx much!
+> > 
+> > _Mike_
 > 
-> If someone could provide insights on what's going on above that
-> would be great.  This is a artificial test case - but it's actually
-> hitting code we have in production and will be a significant
-> issue for us.
 > 
-> Thanx much!
-> 
-> _Mike_
+> -------------------------------------------------------------------------
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+> opinions on IT & business topics through brief surveys - and earn cash
+> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
 -------------------------------------------------------------------------
