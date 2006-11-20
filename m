@@ -1,21 +1,25 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: [RFC: 2.6 patch] fs/lockd/host.c: make 2 functions static
-Date: Mon, 20 Nov 2006 03:24:20 +0100
-Message-ID: <20061120022420.GP31879@stusta.de>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: NFS Help! Terrible performance with sync,
+	fast performance with async
+Date: Sun, 19 Nov 2006 22:08:53 -0500
+Message-ID: <76bd70e30611191908u70f476f8iaf825ccc811367c@mail.gmail.com>
+References: <49BCFA109293624D9AE0EC6558C0D3B802A8B327@ATL1VEXC017.usdom004.tco.tc>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GlyqN-0005TL-JB
-	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 18:25:11 -0800
-Received: from emailhub.stusta.mhn.de ([141.84.69.5]
-	helo=mailout.stusta.mhn.de)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GlyqO-0002bZ-Ca
-	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 18:25:12 -0800
-To: neilb@cse.unsw.edu.au, trond.myklebust@fys.uio.no
+	id 1GlzWj-0001EJ-Vr
+	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 19:08:58 -0800
+Received: from nf-out-0910.google.com ([64.233.182.187])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GlzWk-0000xN-B1
+	for nfs@lists.sourceforge.net; Sun, 19 Nov 2006 19:08:59 -0800
+Received: by nf-out-0910.google.com with SMTP id c31so3809342nfb
+	for <nfs@lists.sourceforge.net>; Sun, 19 Nov 2006 19:08:54 -0800 (PST)
+To: "Chris Wornell" <CWornell@peerless.com>
+In-Reply-To: <49BCFA109293624D9AE0EC6558C0D3B802A8B327@ATL1VEXC017.usdom004.tco.tc>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,116 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patch makes the following needlessly global functions static:
-- nlm_lookup_host()
-- nsm_find()
+On 11/19/06, Chris Wornell <CWornell@peerless.com> wrote:
+>  Another question is I don't quite understand how the data corruption
+> happens if a power loss occurs on an NFS server using async. Even with sync,
+> data transferred over the wire maybe loss if the nfs server gets shut down
+> before that data is committed. Can anyone go into more detail on how the
+> data corruption happens?
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
+Have a look at
 
----
+http://nfs.sourceforge.net/#faq_b6
 
- fs/lockd/host.c             |   53 +++++++++++++++++++-----------------
- include/linux/lockd/lockd.h |    2 -
- 2 files changed, 28 insertions(+), 27 deletions(-)
-
---- linux-2.6.19-rc5-mm2/include/linux/lockd/lockd.h.old	2006-11-20 02:01:44.000000000 +0100
-+++ linux-2.6.19-rc5-mm2/include/linux/lockd/lockd.h	2006-11-20 01:55:53.000000000 +0100
-@@ -164,14 +164,12 @@
-  */
- struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int, const char *, int);
- struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *, const char *, int);
--struct nlm_host * nlm_lookup_host(int server, const struct sockaddr_in *, int, int, const char *, int);
- struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
- extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
--struct nsm_handle *nsm_find(const struct sockaddr_in *, const char *, int);
- void		  nsm_release(struct nsm_handle *);
- 
- 
---- linux-2.6.19-rc5-mm2/fs/lockd/host.c.old	2006-11-20 01:56:05.000000000 +0100
-+++ linux-2.6.19-rc5-mm2/fs/lockd/host.c	2006-11-20 01:58:26.000000000 +0100
-@@ -36,34 +36,14 @@
- static void			nlm_gc_hosts(void);
- static struct nsm_handle *	__nsm_find(const struct sockaddr_in *,
- 					const char *, int, int);
--
--/*
-- * Find an NLM server handle in the cache. If there is none, create it.
-- */
--struct nlm_host *
--nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
--			const char *hostname, int hostname_len)
--{
--	return nlm_lookup_host(0, sin, proto, version,
--			       hostname, hostname_len);
--}
--
--/*
-- * Find an NLM client handle in the cache. If there is none, create it.
-- */
--struct nlm_host *
--nlmsvc_lookup_host(struct svc_rqst *rqstp,
--			const char *hostname, int hostname_len)
--{
--	return nlm_lookup_host(1, &rqstp->rq_addr,
--			       rqstp->rq_prot, rqstp->rq_vers,
--			       hostname, hostname_len);
--}
-+static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
-+					 const char *hostname,
-+					 int hostname_len);
- 
- /*
-  * Common host lookup routine for server & client
-  */
--struct nlm_host *
-+static struct nlm_host *
- nlm_lookup_host(int server, const struct sockaddr_in *sin,
- 					int proto, int version,
- 					const char *hostname,
-@@ -195,6 +175,29 @@
- }
- 
- /*
-+ * Find an NLM server handle in the cache. If there is none, create it.
-+ */
-+struct nlm_host *
-+nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
-+			const char *hostname, int hostname_len)
-+{
-+	return nlm_lookup_host(0, sin, proto, version,
-+			       hostname, hostname_len);
-+}
-+
-+/*
-+ * Find an NLM client handle in the cache. If there is none, create it.
-+ */
-+struct nlm_host *
-+nlmsvc_lookup_host(struct svc_rqst *rqstp,
-+			const char *hostname, int hostname_len)
-+{
-+	return nlm_lookup_host(1, &rqstp->rq_addr,
-+			       rqstp->rq_prot, rqstp->rq_vers,
-+			       hostname, hostname_len);
-+}
-+
-+/*
-  * Create the NLM RPC client for an NLM peer
-  */
- struct rpc_clnt *
-@@ -495,7 +498,7 @@
- 	return nsm;
- }
- 
--struct nsm_handle *
-+static struct nsm_handle *
- nsm_find(const struct sockaddr_in *sin, const char *hostname, int hostname_len)
- {
- 	return __nsm_find(sin, hostname, hostname_len, 1);
-
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
