@@ -1,108 +1,151 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.6.16 with XEN (x86_64): nfsserver crashed kernel?
-Date: Mon, 20 Nov 2006 12:48:53 -0500
-Message-ID: <1164044933.5700.69.camel@lade.trondhjem.org>
-References: <45619CC9.25908.1060C916@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
+From: Open Source <opensource3141@yahoo.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
+	volume!
+Date: Mon, 20 Nov 2006 11:47:00 -0800 (PST)
+Message-ID: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GmDGc-0008RI-9F
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 09:49:14 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX188P78Lj+pNFCw3QlQpCa5hh6JdoZMbgNI=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GmDGb-00017u-0Q
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 09:49:15 -0800
-To: Ulrich Windl <ulrich.windl@rz.uni-regensburg.de>
-In-Reply-To: <45619CC9.25908.1060C916@Ulrich.Windl.rkdvmks1.ngate.uni-regensburg.de>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	Kostas Georgiou <k.georgiou@imperial.ac.uk>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, 2006-11-20 at 12:17 +0100, Ulrich Windl wrote:
-> Hi,
+Hi Trond,
+
+I can confirm that I also see a crash with your patch file in place!
+I'm not sure if that's because it didn't apply cleanly to begin with
+and my massaging might have caused a problem.  I don't think
+so though.
+
+Basically if you mount a couple NFSv3+krb5 partitions and
+then unmount one of them, the system locks up after about 2
+seconds.  I didn't see this before since I didn't use the
+automounter utility.
+
+Thanks,
+Paarvai
+
+
+----- Original Message ----
+From: Kostas Georgiou <k.georgiou@imperial.ac.uk>
+To: Open Source <opensource3141@yahoo.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>; nfs@lists.sourceforge.net; nfsv4@linux-nfs.org
+Sent: Saturday, November 18, 2006 7:15:04 AM
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5 volume!
+
+On Fri, Nov 17, 2006 at 11:59:25AM -0800, Open Source wrote:
+
+> Thanks Trond.  Saving the patch did the trick.  I had
+> to do some manual hacking to get the patch to
+> apply because you must have done your diff
+> against a different kernel tree revision.  I'm using
+> 2.6.18 from FC5 updates.
 > 
-> while investigating the problem of being unable to get NFS locks with SLES10 on 
-> AMD Opteron in XEN (kernel-xen-2.6.16.21-0.25), it seems NFS server crashed the 
-> kernel during shutdown. I have a log from serial console:
-> 
-> Boot logging started on /dev/ttyS0(/dev/console) at Mon Nov 20 11:23:17 2006
-> Master Resource Control: previous runlevel: 3, switching to runlevel: 
-> [80C[10D[1m6[m
-> 
-> Shutting down the Firewall [80C[10D[1;33mskipped[m
-> Unable to handle kernel paging request at 0000000100000027 RIP: 
-> <ffffffff8012746c>{dup_fd+412}
-> PGD 13b1e067 PUD 0 
-> Oops: 0002 [1] SMP 
-> last sysfs file: /devices/pci0000:00/0000:00:01.0/0000:01:01.1/subsystem_device
-> CPU 2 
-> Modules linked in: nfs nfsd exportfs lockd nfs_acl sunrpc hfs vfat fat joydev st 
-> nls_utf8 xt_pkttype ipt_LOG xt_limit ipt_TCPMSS xt_physdev bridge blkbk netbk 
-> netloop af_packet bonding button battery ac ip6t_REJECT xt_tcpudp ipt_REJECT 
-> xt_state iptable_mangle iptable_nat ip_nat sr_mod iptable_filter ip6table_mangle 
-> ip_conntrack nfnetlink ip_tables ip6table_filter ip6_tables x_tables ipv6 loop 
-> usb_storage usbhid hw_random ohci_hcd i2c_amd756 usbcore shpchp i2c_amd8111 
-> i2c_core pci_hotplug ide_cd cdrom e1000 reiserfs dm_snapshot dm_mod fan thermal 
-> processor sg mptsas mptscsih mptbase scsi_transport_sas amd74xx sd_mod scsi_mod 
-> ide_disk ide_core
-> Pid: 27024, comm: nfsserver Not tainted 2.6.16.21-0.25-xen #1
-> RIP: e030:[<ffffffff8012746c>] <ffffffff8012746c>{dup_fd+412}
-> RSP: e02b:ffff88000e013d98  EFLAGS: 00010206
-> RAX: dfffffffffffffff RBX: ffff8800155bd800 RCX: 000000000000003d
-> RDX: 0000000000000000 RSI: ffff88000f1b9000 RDI: 00000000ffffffff
-> RBP: ffff880000666b80 R08: 000000000000003e R09: ffff8800186362c0
-> R10: ffff880014aa49f0 R11: 000000000000003e R12: 0000000000000100
-> R13: ffff8800089c5b80 R14: ffff8800089c5ed8 R15: ffff88000e013e04
-> FS:  00002b37d9ce9ae0(0000) GS:ffffffff80421100(0000) knlGS:0000000000000000
-> CS:  e033 DS: 0000 ES: 0000
-> Process nfsserver (pid: 27024, threadinfo ffff88000e012000, task 
-> ffff8800075b2080)
-> Stack: 0000000045618214 ffff8800005b3350 ffff8800005b3350 ffff8800005b3100 
->        00000001075b2080 ffff8800005b3100 0000000000000000 ffff8800005b3100 
->        ffff8800075b2080 0000000000000000 
-> Call Trace: <ffffffff8012759d>{copy_files+79} 
-> <ffffffff801281d3>{copy_process+1235}
->        <ffffffff801297d4>{do_fork+197} <ffffffff8010aa6a>{system_call+134}
->        <ffffffff80179bff>{sys_newstat+40} <ffffffff80134b82>{sigprocmask+180}
->        <ffffffff8010aa6a>{system_call+134} 
-> <ffffffff8010ae25>{ptregscall_common+61}
-> 
-> Code: f0 ff 47 28 eb 1f 49 8b 71 20 4c 89 c2 44 88 c1 48 c1 ea 06 
-> RIP <ffffffff8012746c>{dup_fd+412} RSP <ffff88000e013d98>
-> CR2: 0000000100000027
+> Once I massaged things, the patch compiled and it
+> works.  I am able to mount more than one partition
+> with no problems now.  However, I cannot speak
+> to the finer points (like memory leaks, etc.) since
+> I don't know the code so well.  I trust someone else
+> will independently verify it (i.e., code review) before
+> it gets into the kernel tree.
 
-It looks as if you might be running the userland NFS server. That won't
-support NFS locking. If your applications require locking, then you need
-to use the kernel NFS server, knfsd.
+I did the same with the FC6 2.6.18 kernel and while it does allow
+me to have more than one mount from the server autofs decides that
+my home is not in use any more and it unmounts it, somehow this
+causes the system to freeze as well.
 
-As for the Oops, that is a different matter: it should never be possible
-for a user process to crash the kernel. However I cannot see that the
-above relates to NFS in any way, so you are probably better off
-reporting this to the main kernel mailing list at
-linux-kernel@vger.kernel.org.
+Nov 17 16:28:14 thufir automount[2483]: mount still busy /home
+Nov 17 16:29:29 thufir automount[2483]: expiring path /home/georgiou
+Nov 17 16:29:29 thufir automount[2483]: unmounting dir = /home/georgiou
+Nov 17 16:29:32 thufir automount[2483]: expired /home/georgiou
 
-Cheers,
-  Trond
+Here is the patch with my changes to apply in FC6 which most likely is
+bad since I really don't know the code at all :(
 
+Kostas Georgiou
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff -u a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -64,6 +64,7 @@
+     struct dentry *        cl_dentry;    /* inode */
+     struct rpc_clnt *    cl_parent;    /* Points to parent of clones */
+     struct rpc_rtt        cl_rtt_default;
++    struct rpc_program *    cl_program;
+     struct rpc_portmap    cl_pmap_default;
+     char            cl_inline_name[32];
+ };
+diff -u a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -154,6 +154,7 @@
+     clnt->cl_prot     = xprt->prot;
+     clnt->cl_stats    = program->stats;
+     clnt->cl_metrics  = rpc_alloc_iostats(clnt);
++    clnt->cl_program  = program;
+     rpc_init_wait_queue(&clnt->cl_pmap_default.pm_bindwait, "bindwait");
+ 
+     if (!clnt->cl_port)
+@@ -235,6 +236,7 @@
+ rpc_clone_client(struct rpc_clnt *clnt)
+ {
+     struct rpc_clnt *new;
++    int err;
+ 
+     new = kmalloc(sizeof(*new), GFP_KERNEL);
+     if (!new)
+@@ -242,6 +244,11 @@
+     memcpy(new, clnt, sizeof(*new));
+     atomic_set(&new->cl_count, 1);
+     atomic_set(&new->cl_users, 0);
++    err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
++    if (err != 0) {
++        kfree(new);
++        return ERR_PTR(err);
++    }
+     new->cl_parent = clnt;
+     atomic_inc(&clnt->cl_count);
+     /* Duplicate portmapper */
+@@ -250,8 +257,6 @@
+     new->cl_autobind = 0;
+     new->cl_oneshot = 0;
+     new->cl_dead = 0;
+-    if (!IS_ERR(new->cl_dentry))
+-        dget(new->cl_dentry);
+     rpc_init_rtt(&new->cl_rtt_default, clnt->cl_xprt->timeout.to_initval);
+     if (new->cl_auth)
+         atomic_inc(&new->cl_auth->au_count);
+@@ -313,12 +318,6 @@
+         rpcauth_destroy(clnt->cl_auth);
+         clnt->cl_auth = NULL;
+     }
+-    if (clnt->cl_parent != clnt) {
+-        if (!IS_ERR(clnt->cl_dentry))
+-            dput(clnt->cl_dentry);
+-        rpc_destroy_client(clnt->cl_parent);
+-        goto out_free;
+-    }
+     if (!IS_ERR(clnt->cl_dentry)) {
+         rpc_rmdir(clnt->cl_dentry);
+         rpc_put_mount();
+@@ -327,6 +326,10 @@
+         xprt_destroy(clnt->cl_xprt);
+         clnt->cl_xprt = NULL;
+     }
++    if (clnt->cl_parent != clnt) {
++        rpc_destroy_client(clnt->cl_parent);
++        goto out_free;
++    }
+     if (clnt->cl_server != clnt->cl_inline_name)
+         kfree(clnt->cl_server);
+ out_free:
