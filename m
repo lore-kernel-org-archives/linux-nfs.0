@@ -1,22 +1,22 @@
-From: Peter Staubach <staubach@redhat.com>
+From: "Steinar H. Gunderson" <sesse@debian.org>
 Subject: Re: nhfsstone license
-Date: Mon, 20 Nov 2006 17:24:52 -0500
-Message-ID: <45622B34.2080407@redhat.com>
+Date: Mon, 20 Nov 2006 23:26:58 +0100
+Message-ID: <20061120222658.GA12819@uio.no>
 References: <20061120215305.GA11924@uio.no>
 	<20061120222034.GD12285@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Steinar H. Gunderson" <sesse@debian.org>, 398058@bugs.debian.org
+Cc: nfs@lists.sourceforge.net, 398058@bugs.debian.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GmHa0-0004EG-Bl
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 14:25:32 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GmHa0-0004nW-EW
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 14:25:33 -0800
+	id 1GmHce-0004Wr-RA
+	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 14:28:16 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GmHce-0005tw-Rw
+	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 14:28:18 -0800
 To: "J. Bruce Fields" <bfields@fieldses.org>
 In-Reply-To: <20061120222034.GD12285@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,24 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> On Mon, Nov 20, 2006 at 10:53:05PM +0100, Steinar H. Gunderson wrote:
->   
+On Mon, Nov 20, 2006 at 05:20:34PM -0500, J. Bruce Fields wrote:
 >> If we cannot get this resolved, we'd have to remove nhfsstone from
 >> Debian main, which would be rather painful (if nothing else because
 >> we'd have to modify the upstream tarball)
->>     
->
 > No modification required if we remove it from upstream too.  Do people
 > use it?
 
-Considering that nhfsstone was the precursor to the precursor for SPECsfs,
-what would people use it for?  Perhaps it should be part of a testsuite
-collection, but it doesn't seem particularly useful in a normal context.
+I've never used it, at least. :-) Debian's "popularity contest"
+(popcon.debian.org; it's skewed, but it's still better than nothing) claims
+nhfsstone has 74 installations compared to nfs-common's 13910 or
+nfs-kernel-server's 4761, so I think it's safe to say it's significantly less
+popular than any of the other parts of the package.
 
-    Thanx...
+Is nhfsstone even reasonably up-to-date with regard to current NFS versions?
 
-       ps
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
