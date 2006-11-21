@@ -1,193 +1,203 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Tue, 21 Nov 2006 13:43:43 +0100
-Message-ID: <9a8748490611210443w7711b962u3fb35aef14746582@mail.gmail.com>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-	<17636.4462.975774.528003@cse.unsw.edu.au>
-	<9a8748490608170258s32df0272r60c8c540e5871485@mail.gmail.com>
-	<17641.10665.116168.867041@cse.unsw.edu.au>
-	<1156190098.6158.109.camel@localhost>
+From: Open Source <opensource3141@yahoo.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
+	volume!
+Date: Tue, 21 Nov 2006 07:16:17 -0800 (PST)
+Message-ID: <20061121151617.23703.qmail@web58113.mail.re3.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_Part_11969_4530314.1164113023165"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GmUyb-0003pD-4M
-	for nfs@lists.sourceforge.net; Tue, 21 Nov 2006 04:43:49 -0800
-Received: from nz-out-0102.google.com ([64.233.162.199])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GmUyb-00064L-42
-	for nfs@lists.sourceforge.net; Tue, 21 Nov 2006 04:43:50 -0800
-Received: by nz-out-0102.google.com with SMTP id i11so1961048nzi
-	for <nfs@lists.sourceforge.net>; Tue, 21 Nov 2006 04:43:48 -0800 (PST)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1156190098.6158.109.camel@localhost>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
-
-------=_Part_11969_4530314.1164113023165
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-On 21/08/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Mon, 2006-08-21 at 13:34 +1000, Neil Brown wrote:
-> > Looking in fs/nfs/file.c (at 2.6.18-rc4-mm1 if it matters, but 2.6.17
-> > is much the same)
-> >
-> >  - do_vfs_lock is only called when the filesystem was mounted with
-> >     -o nolock  EXCEPT
-> >  - If a lock request to the server in interrupted (when mounted with
-> >      -o intr) then do_vfs_lock is called to try to get the lock
-> >     locally.  Normally equivalent code will be called inside
-> >     fs/lockd/clntproc.c when the server replies that the lock has been
-> >     gained.  In the case of an interrupt though this doesn't happen
-> >     but the lock may still have happened on the server.  So we record
-> >     locally that the lock was gained, to ensure that it gets unlocked
-> >     when the process exits.
-> >
-> > As you don't have '-o nolocks' you must be hitting the second case.
-> > The lock call to the server returns -EINTR or -ERESTARTSYS and
-> > do_vfs_lock is called just-in-case.
-> > As this is a just-in-case call, it is quite possible that the lock is
-> > held by some other process, so getting an error is entirely possible.
-> > So printing the message in this case seems wrong.
-> >
-> > On the other hand, printing the message in any other case seems wrong
-> > too, as server locking is not being used, so there is nothing to get
-> > out of sync with.
-> >
-> > As a further complication, I don't think that in the just-in-case
-> > situation that it should risk waiting for the lock.
-> > Now maybe we can be sure there is a pending signal which will break
-> > out of any wait (though I'm worried about -ERESTARTSYS - that doesn't
-> > imply a signal does it?), but I would feel more comfortable if
-> > FL_SLEEP were turned off in that path.
-> >
-> > So: Trond:  Any obvious errors in the above?
-> > Is the following patch ok?
->
-> Could we instead replace it with a dprintk() that returns the value of
-> "res"? That will keep it useful for debugging purposes.
->
-
-How about the below?
-(compile tested only)
-
-Neil: I left your Signed-off-by line since I just modified your patch slightly.
-
-Since Gmail will probably mangle the inline patch, it is attached as well.
-
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Jesper Juhl <jesper.juhl@gmail.com>
---
-
- fs/nfs/file.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index cc93865..22572af 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -428,8 +428,8 @@ static int do_vfs_lock(struct file *file
-                        BUG();
-        }
-        if (res < 0)
--               printk(KERN_WARNING "%s: VFS is out of sync with lock
-manager!\n",
--                               __FUNCTION__);
-+               dprintk("%s: VFS is out of sync with lock manager (res
-= %d)!\n",
-+                               __FUNCTION__, res);
-        return res;
- }
-
-@@ -479,10 +479,13 @@ static int do_setlk(struct file *filp, i
-                 * we clean up any state on the server. We therefore
-                 * record the lock call as having succeeded in order to
-                 * ensure that locks_remove_posix() cleans it out when
--                * the process exits.
-+                * the process exits. Make sure not to sleep if
-+                * someone else holds the lock.
-                 */
--               if (status == -EINTR || status == -ERESTARTSYS)
-+               if (status == -EINTR || status == -ERESTARTSYS) {
-+                       fl->fl_flags &= ~FL_SLEEP;
-                        do_vfs_lock(filp, fl);
-+               }
-        } else
-                status = do_vfs_lock(filp, fl);
-        unlock_kernel();
-
-
-
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
-
-------=_Part_11969_4530314.1164113023165
-Content-Type: text/x-patch; name=VFS_is_out_of_sync_with_lock_manager.diff;
-	charset=ANSI_X3.4-1968
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_eusar882
-Content-Disposition: attachment;
-	filename="VFS_is_out_of_sync_with_lock_manager.diff"
-
-ClNpZ25lZC1vZmYtYnk6IE5laWwgQnJvd24gPG5laWxiQHN1c2UuZGU+ClNpZ25lZC1vZmYtYnk6
-IEplc3BlciBKdWhsIDxqZXNwZXIuanVobEBnbWFpbC5jb20+Ci0tIAoKIGZzL25mcy9maWxlLmMg
-fCAgIDExICsrKysrKystLS0tCiAxIGZpbGVzIGNoYW5nZWQsIDcgaW5zZXJ0aW9ucygrKSwgNCBk
-ZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMvZmlsZS5jIGIvZnMvbmZzL2ZpbGUuYwpp
-bmRleCBjYzkzODY1Li4yMjU3MmFmIDEwMDY0NAotLS0gYS9mcy9uZnMvZmlsZS5jCisrKyBiL2Zz
-L25mcy9maWxlLmMKQEAgLTQyOCw4ICs0MjgsOCBAQCBzdGF0aWMgaW50IGRvX3Zmc19sb2NrKHN0
-cnVjdCBmaWxlICpmaWxlCiAJCQlCVUcoKTsKIAl9CiAJaWYgKHJlcyA8IDApCi0JCXByaW50ayhL
-RVJOX1dBUk5JTkcgIiVzOiBWRlMgaXMgb3V0IG9mIHN5bmMgd2l0aCBsb2NrIG1hbmFnZXIhXG4i
-LAotCQkJCV9fRlVOQ1RJT05fXyk7CisJCWRwcmludGsoIiVzOiBWRlMgaXMgb3V0IG9mIHN5bmMg
-d2l0aCBsb2NrIG1hbmFnZXIgKHJlcyA9ICVkKSFcbiIsCisJCQkJX19GVU5DVElPTl9fLCByZXMp
-OwogCXJldHVybiByZXM7CiB9CiAKQEAgLTQ3OSwxMCArNDc5LDEzIEBAIHN0YXRpYyBpbnQgZG9f
-c2V0bGsoc3RydWN0IGZpbGUgKmZpbHAsIGkKIAkJICogd2UgY2xlYW4gdXAgYW55IHN0YXRlIG9u
-IHRoZSBzZXJ2ZXIuIFdlIHRoZXJlZm9yZQogCQkgKiByZWNvcmQgdGhlIGxvY2sgY2FsbCBhcyBo
-YXZpbmcgc3VjY2VlZGVkIGluIG9yZGVyIHRvCiAJCSAqIGVuc3VyZSB0aGF0IGxvY2tzX3JlbW92
-ZV9wb3NpeCgpIGNsZWFucyBpdCBvdXQgd2hlbgotCQkgKiB0aGUgcHJvY2VzcyBleGl0cy4KKwkJ
-ICogdGhlIHByb2Nlc3MgZXhpdHMuIE1ha2Ugc3VyZSBub3QgdG8gc2xlZXAgaWYKKwkJICogc29t
-ZW9uZSBlbHNlIGhvbGRzIHRoZSBsb2NrLgogCQkgKi8KLQkJaWYgKHN0YXR1cyA9PSAtRUlOVFIg
-fHwgc3RhdHVzID09IC1FUkVTVEFSVFNZUykKKwkJaWYgKHN0YXR1cyA9PSAtRUlOVFIgfHwgc3Rh
-dHVzID09IC1FUkVTVEFSVFNZUykgeworCQkJZmwtPmZsX2ZsYWdzICY9IH5GTF9TTEVFUDsKIAkJ
-CWRvX3Zmc19sb2NrKGZpbHAsIGZsKTsKKwkJfQogCX0gZWxzZQogCQlzdGF0dXMgPSBkb192ZnNf
-bG9jayhmaWxwLCBmbCk7CiAJdW5sb2NrX2tlcm5lbCgpOwoK
-------=_Part_11969_4530314.1164113023165
 Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org,
+	Kostas Georgiou <k.georgiou@imperial.ac.uk>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
+
+Hi Trond (and Bruce),
+
+Not sure if you saw my email from yesterday (as well as
+Kostas' email previous to mine).
+
+Actually it turns out that the problem I am seeing is much more
+severe than I had first thought.  I switched to NFSv4+krb5 and
+I saw the same issue there.  Without your patch, the behavior
+is basically the same as in NFSv3+krb5.  Namely, you cannot
+have a pseudofilesystem with more than 1 directory export.
+If you do, you can mount the pseudofilesystem on the client
+but when you run "ls" on the mount point you get a "file exists"
+error.  A quick look at the rpc_pipe_fs directory shows
+that only one clnt directory exists!  Basically we have the
+same problem as before.
+
+Your patch does fix the problem but when unmounting the
+filesystem (NFSv3) or pseudofilesystem (NFSv4), the kernel
+crashes.
+
+It appears that this is a very urgent problem since it prevents
+many people from using krb5 at all.  Is it possible for you to provide
+a more stable fix soon?  Kernel 2.6.19 is already in rc6.  We really
+need to get this thing fixed and back into the upstream sources ASAP!
+
+Thanks in advance for your help.
+
+Best regards,
+Paarvai
+
+----- Original Message ----
+From: Open Source <opensource3141@yahoo.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfsv4@linux-nfs.org; nfs@lists.sourceforge.net; Kostas Georgiou <k.georgiou@imperial.ac.uk>
+Sent: Monday, November 20, 2006 11:47:00 AM
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5 volume!
+
+Hi Trond,
+
+I can confirm that I also see a crash with your patch file in place!
+I'm not sure if that's because it didn't apply cleanly to begin with
+and my massaging might have caused a problem.  I don't think
+so though.
+
+Basically if you mount a couple NFSv3+krb5 partitions and
+then unmount one of them, the system locks up after about 2
+seconds.  I didn't see this before since I didn't use the
+automounter utility.
+
+Thanks,
+Paarvai
+
+
+----- Original Message ----
+From: Kostas Georgiou <k.georgiou@imperial.ac.uk>
+To: Open Source <opensource3141@yahoo.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>; nfs@lists.sourceforge.net; nfsv4@linux-nfs.org
+Sent: Saturday, November 18, 2006 7:15:04 AM
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5 volume!
+
+On Fri, Nov 17, 2006 at 11:59:25AM -0800, Open Source wrote:
+
+> Thanks Trond.  Saving the patch did the trick.  I had
+> to do some manual hacking to get the patch to
+> apply because you must have done your diff
+> against a different kernel tree revision.  I'm using
+> 2.6.18 from FC5 updates.
+> 
+> Once I massaged things, the patch compiled and it
+> works.  I am able to mount more than one partition
+> with no problems now.  However, I cannot speak
+> to the finer points (like memory leaks, etc.) since
+> I don't know the code so well.  I trust someone else
+> will independently verify it (i.e., code review) before
+> it gets into the kernel tree.
+
+I did the same with the FC6 2.6.18 kernel and while it does allow
+me to have more than one mount from the server autofs decides that
+my home is not in use any more and it unmounts it, somehow this
+causes the system to freeze as well.
+
+Nov 17 16:28:14 thufir automount[2483]: mount still busy /home
+Nov 17 16:29:29 thufir automount[2483]: expiring path /home/georgiou
+Nov 17 16:29:29 thufir automount[2483]: unmounting dir = /home/georgiou
+Nov 17 16:29:32 thufir automount[2483]: expired /home/georgiou
+
+Here is the patch with my changes to apply in FC6 which most likely is
+bad since I really don't know the code at all :(
+
+Kostas Georgiou
+
+diff -u a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -64,6 +64,7 @@
+     struct dentry *        cl_dentry;    /* inode */
+     struct rpc_clnt *    cl_parent;    /* Points to parent of clones */
+     struct rpc_rtt        cl_rtt_default;
++    struct rpc_program *    cl_program;
+     struct rpc_portmap    cl_pmap_default;
+     char            cl_inline_name[32];
+ };
+diff -u a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -154,6 +154,7 @@
+     clnt->cl_prot     = xprt->prot;
+     clnt->cl_stats    = program->stats;
+     clnt->cl_metrics  = rpc_alloc_iostats(clnt);
++    clnt->cl_program  = program;
+     rpc_init_wait_queue(&clnt->cl_pmap_default.pm_bindwait, "bindwait");
+ 
+     if (!clnt->cl_port)
+@@ -235,6 +236,7 @@
+ rpc_clone_client(struct rpc_clnt *clnt)
+ {
+     struct rpc_clnt *new;
++    int err;
+ 
+     new = kmalloc(sizeof(*new), GFP_KERNEL);
+     if (!new)
+@@ -242,6 +244,11 @@
+     memcpy(new, clnt, sizeof(*new));
+     atomic_set(&new->cl_count, 1);
+     atomic_set(&new->cl_users, 0);
++    err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
++    if (err != 0) {
++        kfree(new);
++        return ERR_PTR(err);
++    }
+     new->cl_parent = clnt;
+     atomic_inc(&clnt->cl_count);
+     /* Duplicate portmapper */
+@@ -250,8 +257,6 @@
+     new->cl_autobind = 0;
+     new->cl_oneshot = 0;
+     new->cl_dead = 0;
+-    if (!IS_ERR(new->cl_dentry))
+-        dget(new->cl_dentry);
+     rpc_init_rtt(&new->cl_rtt_default, clnt->cl_xprt->timeout.to_initval);
+     if (new->cl_auth)
+         atomic_inc(&new->cl_auth->au_count);
+@@ -313,12 +318,6 @@
+         rpcauth_destroy(clnt->cl_auth);
+         clnt->cl_auth = NULL;
+     }
+-    if (clnt->cl_parent != clnt) {
+-        if (!IS_ERR(clnt->cl_dentry))
+-            dput(clnt->cl_dentry);
+-        rpc_destroy_client(clnt->cl_parent);
+-        goto out_free;
+-    }
+     if (!IS_ERR(clnt->cl_dentry)) {
+         rpc_rmdir(clnt->cl_dentry);
+         rpc_put_mount();
+@@ -327,6 +326,10 @@
+         xprt_destroy(clnt->cl_xprt);
+         clnt->cl_xprt = NULL;
+     }
++    if (clnt->cl_parent != clnt) {
++        rpc_destroy_client(clnt->cl_parent);
++        goto out_free;
++    }
+     if (clnt->cl_server != clnt->cl_inline_name)
+         kfree(clnt->cl_server);
+ out_free:
+
+
+
+
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-------=_Part_11969_4530314.1164113023165
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-------=_Part_11969_4530314.1164113023165--
