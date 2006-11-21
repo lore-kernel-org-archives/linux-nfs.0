@@ -1,203 +1,100 @@
-From: Open Source <opensource3141@yahoo.com>
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Tue, 21 Nov 2006 07:16:17 -0800 (PST)
-Message-ID: <20061121151617.23703.qmail@web58113.mail.re3.yahoo.com>
+From: "Murali Bashyam" <mbcoder@gmail.com>
+Subject: Re: Disabling NFS client caching
+Date: Tue, 21 Nov 2006 11:54:18 -0800
+Message-ID: <9c8209a10611211154p5091f0c2l5379989d611a31f0@mail.gmail.com>
+References: <9c8209a10611201824h608c11f3s5bf9957c4ce0abd4@mail.gmail.com>
+	<1164084864.6377.30.camel@lade.trondhjem.org>
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1194319422=="
+Cc: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GmbhE-0001MH-5c
+	for nfs@lists.sourceforge.net; Tue, 21 Nov 2006 11:54:20 -0800
+Received: from nf-out-0910.google.com ([64.233.182.186])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GmbhE-0005ll-3h
+	for nfs@lists.sourceforge.net; Tue, 21 Nov 2006 11:54:21 -0800
+Received: by nf-out-0910.google.com with SMTP id c31so424423nfb
+	for <nfs@lists.sourceforge.net>; Tue, 21 Nov 2006 11:54:18 -0800 (PST)
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1164084864.6377.30.camel@lade.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
+
+--===============1194319422==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_46166_25447566.1164138858162"
+
+------=_Part_46166_25447566.1164138858162
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Thanks for the suggestion. I tried the O_DIRECT option with O_RDONLY, and i
+am still seeing a lot of reads not hitting the server, looks like they are
+being handled locally still. I've got the sizes and addresses page aligned.
+Is there anything else that needs to be done to bypass the caching?
+
+Thx,
+Murali
+
+On 11/20/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+>
+> On Mon, 2006-11-20 at 18:24 -0800, Murali Bashyam wrote:
+> > Hi
+> >
+> > Is there a way to disable Linux NFS client data caching (NOT
+> > attributes)?
+>
+> 'man 2 open'. Read all about O_DIRECT.
+>
+> Trond
+>
+>
+
+------=_Part_46166_25447566.1164138858162
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+<br>Thanks for the suggestion. I tried the O_DIRECT option with O_RDONLY, and i am still seeing a lot of reads not hitting the server, looks like they are being handled locally still. I've got the sizes and addresses page aligned. Is there anything else that needs to be done to bypass the caching?
+<br><br>Thx,<br>Murali<br><br><div><span class="gmail_quote">On 11/20/06, <b class="gmail_sendername">Trond Myklebust</b> &lt;<a href="mailto:trond.myklebust@fys.uio.no">trond.myklebust@fys.uio.no</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
+On Mon, 2006-11-20 at 18:24 -0800, Murali Bashyam wrote:<br>&gt; Hi<br>&gt;<br>&gt; Is there a way to disable Linux NFS client data caching (NOT<br>&gt; attributes)?<br><br>'man 2 open'. Read all about O_DIRECT.<br><br>Trond
+<br><br></blockquote></div><br>
+
+------=_Part_46166_25447566.1164138858162--
+
+
+--===============1194319422==
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org,
-	Kostas Georgiou <k.georgiou@imperial.ac.uk>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
-
-Hi Trond (and Bruce),
-
-Not sure if you saw my email from yesterday (as well as
-Kostas' email previous to mine).
-
-Actually it turns out that the problem I am seeing is much more
-severe than I had first thought.  I switched to NFSv4+krb5 and
-I saw the same issue there.  Without your patch, the behavior
-is basically the same as in NFSv3+krb5.  Namely, you cannot
-have a pseudofilesystem with more than 1 directory export.
-If you do, you can mount the pseudofilesystem on the client
-but when you run "ls" on the mount point you get a "file exists"
-error.  A quick look at the rpc_pipe_fs directory shows
-that only one clnt directory exists!  Basically we have the
-same problem as before.
-
-Your patch does fix the problem but when unmounting the
-filesystem (NFSv3) or pseudofilesystem (NFSv4), the kernel
-crashes.
-
-It appears that this is a very urgent problem since it prevents
-many people from using krb5 at all.  Is it possible for you to provide
-a more stable fix soon?  Kernel 2.6.19 is already in rc6.  We really
-need to get this thing fixed and back into the upstream sources ASAP!
-
-Thanks in advance for your help.
-
-Best regards,
-Paarvai
-
------ Original Message ----
-From: Open Source <opensource3141@yahoo.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: nfsv4@linux-nfs.org; nfs@lists.sourceforge.net; Kostas Georgiou <k.georgiou@imperial.ac.uk>
-Sent: Monday, November 20, 2006 11:47:00 AM
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5 volume!
-
-Hi Trond,
-
-I can confirm that I also see a crash with your patch file in place!
-I'm not sure if that's because it didn't apply cleanly to begin with
-and my massaging might have caused a problem.  I don't think
-so though.
-
-Basically if you mount a couple NFSv3+krb5 partitions and
-then unmount one of them, the system locks up after about 2
-seconds.  I didn't see this before since I didn't use the
-automounter utility.
-
-Thanks,
-Paarvai
-
-
------ Original Message ----
-From: Kostas Georgiou <k.georgiou@imperial.ac.uk>
-To: Open Source <opensource3141@yahoo.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>; nfs@lists.sourceforge.net; nfsv4@linux-nfs.org
-Sent: Saturday, November 18, 2006 7:15:04 AM
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5 volume!
-
-On Fri, Nov 17, 2006 at 11:59:25AM -0800, Open Source wrote:
-
-> Thanks Trond.  Saving the patch did the trick.  I had
-> to do some manual hacking to get the patch to
-> apply because you must have done your diff
-> against a different kernel tree revision.  I'm using
-> 2.6.18 from FC5 updates.
-> 
-> Once I massaged things, the patch compiled and it
-> works.  I am able to mount more than one partition
-> with no problems now.  However, I cannot speak
-> to the finer points (like memory leaks, etc.) since
-> I don't know the code so well.  I trust someone else
-> will independently verify it (i.e., code review) before
-> it gets into the kernel tree.
-
-I did the same with the FC6 2.6.18 kernel and while it does allow
-me to have more than one mount from the server autofs decides that
-my home is not in use any more and it unmounts it, somehow this
-causes the system to freeze as well.
-
-Nov 17 16:28:14 thufir automount[2483]: mount still busy /home
-Nov 17 16:29:29 thufir automount[2483]: expiring path /home/georgiou
-Nov 17 16:29:29 thufir automount[2483]: unmounting dir = /home/georgiou
-Nov 17 16:29:32 thufir automount[2483]: expired /home/georgiou
-
-Here is the patch with my changes to apply in FC6 which most likely is
-bad since I really don't know the code at all :(
-
-Kostas Georgiou
-
-diff -u a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -64,6 +64,7 @@
-     struct dentry *        cl_dentry;    /* inode */
-     struct rpc_clnt *    cl_parent;    /* Points to parent of clones */
-     struct rpc_rtt        cl_rtt_default;
-+    struct rpc_program *    cl_program;
-     struct rpc_portmap    cl_pmap_default;
-     char            cl_inline_name[32];
- };
-diff -u a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -154,6 +154,7 @@
-     clnt->cl_prot     = xprt->prot;
-     clnt->cl_stats    = program->stats;
-     clnt->cl_metrics  = rpc_alloc_iostats(clnt);
-+    clnt->cl_program  = program;
-     rpc_init_wait_queue(&clnt->cl_pmap_default.pm_bindwait, "bindwait");
- 
-     if (!clnt->cl_port)
-@@ -235,6 +236,7 @@
- rpc_clone_client(struct rpc_clnt *clnt)
- {
-     struct rpc_clnt *new;
-+    int err;
- 
-     new = kmalloc(sizeof(*new), GFP_KERNEL);
-     if (!new)
-@@ -242,6 +244,11 @@
-     memcpy(new, clnt, sizeof(*new));
-     atomic_set(&new->cl_count, 1);
-     atomic_set(&new->cl_users, 0);
-+    err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
-+    if (err != 0) {
-+        kfree(new);
-+        return ERR_PTR(err);
-+    }
-     new->cl_parent = clnt;
-     atomic_inc(&clnt->cl_count);
-     /* Duplicate portmapper */
-@@ -250,8 +257,6 @@
-     new->cl_autobind = 0;
-     new->cl_oneshot = 0;
-     new->cl_dead = 0;
--    if (!IS_ERR(new->cl_dentry))
--        dget(new->cl_dentry);
-     rpc_init_rtt(&new->cl_rtt_default, clnt->cl_xprt->timeout.to_initval);
-     if (new->cl_auth)
-         atomic_inc(&new->cl_auth->au_count);
-@@ -313,12 +318,6 @@
-         rpcauth_destroy(clnt->cl_auth);
-         clnt->cl_auth = NULL;
-     }
--    if (clnt->cl_parent != clnt) {
--        if (!IS_ERR(clnt->cl_dentry))
--            dput(clnt->cl_dentry);
--        rpc_destroy_client(clnt->cl_parent);
--        goto out_free;
--    }
-     if (!IS_ERR(clnt->cl_dentry)) {
-         rpc_rmdir(clnt->cl_dentry);
-         rpc_put_mount();
-@@ -327,6 +326,10 @@
-         xprt_destroy(clnt->cl_xprt);
-         clnt->cl_xprt = NULL;
-     }
-+    if (clnt->cl_parent != clnt) {
-+        rpc_destroy_client(clnt->cl_parent);
-+        goto out_free;
-+    }
-     if (clnt->cl_server != clnt->cl_inline_name)
-         kfree(clnt->cl_server);
- out_free:
-
-
-
-
-
-
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1194319422==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1194319422==--
