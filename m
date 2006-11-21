@@ -1,29 +1,21 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [PATCH] various minor manpage fixes
-Date: Mon, 20 Nov 2006 23:48:44 +0100
-Message-ID: <20061120224844.GA13637@uio.no>
-References: <20061120224752.GA13561@uio.no>
+From: "Murali Bashyam" <mbcoder@gmail.com>
+Subject: Disabling NFS client caching
+Date: Mon, 20 Nov 2006 18:24:14 -0800
+Message-ID: <9c8209a10611201824h608c11f3s5bf9957c4ce0abd4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============2133129138=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GmHxi-0006gp-Lr
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 14:50:02 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GmHxi-000424-Nj
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 14:50:04 -0800
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1GmHxd-0007KG-Hu
-	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 23:49:57 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1GmHwS-0003YY-00
-	for <nfs@lists.sourceforge.net>; Mon, 20 Nov 2006 23:48:44 +0100
+	id 1GmLJ3-0002aG-Cn
+	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 18:24:17 -0800
+Received: from nf-out-0910.google.com ([64.233.182.189])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GmLJ2-0002sB-E6
+	for nfs@lists.sourceforge.net; Mon, 20 Nov 2006 18:24:18 -0800
+Received: by nf-out-0910.google.com with SMTP id l36so8514nfa
+	for <nfs@lists.sourceforge.net>; Mon, 20 Nov 2006 18:24:14 -0800 (PST)
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20061120224752.GA13561@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,22 +28,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Nov 20, 2006 at 11:47:52PM +0100, Steinar H. Gunderson wrote:
-> Here's another patch that has been sitting in our tree for a while, which
-> should probably go in upstream. Changelog:
+--===============2133129138==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_30954_21543681.1164075854576"
 
-The subject is wrong, of course; I forgot to fix it when just copying the
-previous mail. Sorry about that. :-)
+------=_Part_30954_21543681.1164075854576
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+Hi
+
+Is there a way to disable Linux NFS client data caching (NOT attributes)?
+
+Murali
+
+------=_Part_30954_21543681.1164075854576
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi<br><br>Is there a way to disable Linux NFS client data caching (NOT attributes)?<br><br>Murali<br>
+
+------=_Part_30954_21543681.1164075854576--
+
+
+--===============2133129138==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============2133129138==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2133129138==--
