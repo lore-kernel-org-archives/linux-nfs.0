@@ -1,25 +1,25 @@
-From: Peter Astrand <astrand@cendio.se>
-Subject: Re: unfsd strange behaviour ?
-Date: Wed, 22 Nov 2006 18:10:37 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0611221804480.28977@maggie.lkpg.cendio.se>
-References: <9c8209a10611212358o75127f4qd433e37c32fefc29@mail.gmail.com>
-	<Pine.LNX.4.64.0611221027150.1093@maggie.lkpg.cendio.se>
-	<9c8209a10611220835h40af88fdpdb4c36327e674235@mail.gmail.com>
+From: Ric Wheeler <ric@emc.com>
+Subject: Re: 2007 Linux Storage & Filesystem Workshop
+Date: Wed, 22 Nov 2006 12:53:27 -0500
+Message-ID: <45644FF8.20409__25430.6044932038$1164218061$gmane$org@emc.com>
+References: <E1GkQQv-0001ZV-8X@candygram.thunk.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED;
-	BOUNDARY="789237761-1988547174-1164215400=:28977"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GmvcV-0003Om-5W
-	for nfs@lists.sourceforge.net; Wed, 22 Nov 2006 09:10:47 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GmvcU-0007f4-Vs
-	for nfs@lists.sourceforge.net; Wed, 22 Nov 2006 09:10:48 -0800
-To: Murali Bashyam <mbcoder@gmail.com>
-In-Reply-To: <9c8209a10611220835h40af88fdpdb4c36327e674235@mail.gmail.com>
+	id 1GmwID-0000OX-UD
+	for nfs@lists.sourceforge.net; Wed, 22 Nov 2006 09:53:54 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+317aO7qIxJoc34rSSVl6GPWeY681qb9E=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GmwIC-0006Cz-6j
+	for nfs@lists.sourceforge.net; Wed, 22 Nov 2006 09:53:55 -0800
+To: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	Linux-ide <linux-ide@vger.kernel.org>, linux-ext4@vger.kernel.org
+In-Reply-To: <E1GkQQv-0001ZV-8X@candygram.thunk.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,71 +31,125 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
-
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---789237761-1988547174-1164215400=:28977
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-ID: <Pine.LNX.4.64.0611221810331.28977@maggie.lkpg.cendio.se>
-Content-Transfer-Encoding: quoted-printable
+Resent-Message-Id: <20061122175357.D4BF212CC4@sc8-sf-spam2.sourceforge.net>
 
 
-> It's not a LOOKUP operation in the NFS sense, actually the FUSE module =
-that
-> is handling the operation reports it as a lookup (the unfsd backend cal=
-l
-> ends up being handled by a FUSE server that i am developing). What actu=
-ally
-> happens on the FUSE side is a operation (called getattr, not to be conf=
-used
-> with the NFS getattr) with a path name and the path name happens to be =
-a
-> altogether different file name.=20
 
-The FUSE getattr is probably the result of unfsd doing a normal stat().=20
-This is expected: When unfsd is "decomposing" a file handle into a path,=20
-it stat:s every file in the target directory (actually, plausible=20
-directories), until it finds a file with the correct st_dev and st_ino.=20
+Theodore Ts'o wrote:
+
+>The submission date for the Linux Storage and Filesystem Workshop is
+>coming up quickly, and I'd encourage folks who are interested to submit
+>a 2-3 paragraph position statement.  
+>
+>						- Ted
+>  
+>
+
+Just another reminder - please do send in a submission if you want to 
+attend. If you cannot send in a submission by the 24th, you can contact 
+me or someone else on the program committee and we can help.
+
+Thanks!
+
+ric
 
 
-> I noticed in the unfsd code that the unfsd is maintaining a file handle=
-=20
-> cache, and also issues backend operations based on the path name in tha=
-t=20
-> cache, could there be a stale entry in that cache? Is there a way to=20
-> turn off this file handle caching in unfsd? At this point i am not sure=
-=20
-> whether FUSE may be causing this behaviour or not.
+>http://www.usenix.org/events/lsf07/cfp/
+>
+>2007 Linux Storage & Filesystem Workshop Call for Position Statements
+>
+>2007 Linux Storage & Filesystem Workshop
+>February 12--13, 2007
+>San Jose, CA
+>
+>Co-located with the 5th USENIX Conference on File and Storage
+>Technologies (FAST '07), which will take place February
+>13--16, 2007
+>
+>Important Dates
+>Submissions due: November 24, 2006
+>Notification of acceptance: December 15, 2006
+>
+>Workshop Organizers
+>
+>Program Chair
+>Ric Wheeler, EMC
+>
+>Program Committee
+>Jens Axboe, Oracle
+>James Bottomley, SteelEye
+>Valerie Henson, Intel
+>Andrew Morton, Google
+>Trond Myklebust, Network Appliance
+>Brian Pawlowski, Network Appliance
+>Theodore Ts'o, IBM
+>
+>Overview
+>
+>The Linux Storage and Filesystem Workshop is a small, tightly focused,
+>by-invitation workshop. It is intended to bring together developers and
+>researchers interested in implementing improvements in the Linux
+>filesystem and storage subsystems that can find their way into the
+>mainline kernel and into Linux distributions in the 2--3-year
+>timeframe. The workshop will be two days, the second day overlapping
+>with FAST '07 tutorials. The workshop will be separated into storage and
+>filesystem tracks, with a combined plenary session.
+>
+>Topics and Submissions
+>
+>Researchers and developers who are interested in attending should submit
+>a 2--3-paragraph position statement that describes the topic or topics
+>they would like to discuss during the workshop, and whether such a topic
+>would suit the filesystem track, the storage track, or the plenary
+>session. Examples of topics of interest include:
+>
+>    * New trends in storage technologies likely to impact Linux in the 
+>	next 3--5 years
+>    * More realistic methods of measuring filesystem and storage performance
+>    * Proposed improvements to Linux filesystems, including, in particular:
+>          o Handling of storage errors
+>          o Filesystem repair techniques
+>          o Scaling to very large (terabyte) filesystems
+>    * Progress reports on implementation of features discussed at the 
+>	Portland Filesystem Summit
+>    * Changes to the interface between the operating system and storage devices
+>    * Proposed improvements to existing Linux storage subsystems, 
+>		particularly with an emphasis on:
+>          o Refactoring common code out of storage subsystems and into 
+>		the block layer
+>          o Better robustness and error recovery
+>          o Barrier implementations in the face of TCQ
+>          o Making use of storage capabilities (such as block guard or 
+>		non-power-of-2 block sizes) for novel filesystem and 
+>		application features
+>    * Progress reports on implementation of features discussed at the 
+>	Vancouver Storage Summit
+>    * Userspace tools for managing storage systems (including better 
+>	presentation to the user via sysfs)
+>    * Storage futures, including:
+>          o New transports
+>          o Changes to existing standards for new storage features
+>          o SAS/SATA convergence
+>          o Do we yet have a use for Object-Based Storage Devices (OSD)?
+>-
+>To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+>the body of a message to majordomo@vger.kernel.org
+>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>Please read the FAQ at  http://www.tux.org/lkml/
+>
+>  
+>
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-If you turn off the file handle cache, the number of stat()s will=20
-increase.=20
-
-Regards,=20
---=20
-Peter =C3=85strand		ThinLinc Chief Developer
-Cendio AB		http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping	Phone: +46-13-21 46 00
---789237761-1988547174-1164215400=:28977
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-1988547174-1164215400=:28977
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-1988547174-1164215400=:28977--
