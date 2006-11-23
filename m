@@ -1,33 +1,25 @@
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-Subject: Re: NFS corruption in 2.6.18.2?
-Date: Thu, 23 Nov 2006 22:33:11 +0100
-Message-ID: <20061123213311.GH40079@fit.vutbr.cz>
-References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
-	<20061123161738.GF40079@fit.vutbr.cz>
-	<20061123172456.GG40079@fit.vutbr.cz>
+From: Daniel Phillips <phillips@google.com>
+Subject: Re: [RFC] Change filesystem mount without
+	disconnecting	clients
+Date: Thu, 23 Nov 2006 14:35:56 -0800
+Message-ID: <4566224C.2070108@google.com>
+References: <4563C1A4.5060608@google.com>
+	<1164219346.5694.31.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Robert Nelson <rlnelson@google.com>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GnMC6-0004yZ-Kw
-	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 13:33:20 -0800
-Received: from kazi.fit.vutbr.cz ([147.229.8.12])
+	id 1GnNB0-0002hj-3D
+	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 14:36:15 -0800
+Received: from smtp-out.google.com ([216.239.45.12])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GnMC4-000300-2i
-	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 13:33:20 -0800
-Received: from kazi.fit.vutbr.cz (localhost [127.0.0.1])
-	by kazi.fit.vutbr.cz (envelope-from kasparek@fit.vutbr.cz)
-	(8.13.8/8.13.7) with ESMTP id kANLXBUR040659
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Thu, 23 Nov 2006 22:33:11 +0100 (CET)
-Received: (from kasparek@localhost)
-	by kazi.fit.vutbr.cz (8.13.8/8.13.1/Submit) id kANLXB42040658
-	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 22:33:11 +0100 (CET)
-	(envelope-from kasparek@fit.vutbr.cz)
-To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-In-Reply-To: <20061123172456.GG40079@fit.vutbr.cz>
+	(Exim 4.44) id 1GnNB1-00081R-A6
+	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 14:36:15 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1164219346.5694.31.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,48 +32,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Nov 23, 2006 at 06:24:56PM +0100, Kasparek Tomas wrote:
-> On Thu, Nov 23, 2006 at 05:17:38PM +0100, Kasparek Tomas wrote:
-> > 
-> > > >have seen this behaviour with kernel 2.6.18 and above up to 19-rc4.
-> > > > Reported this, but no response.
-> > > > 
-> > > > http://lkml.org/lkml/2006/9/28/89
-> > >
-> > > Your test script doesn't use any form of locking. How are you ensuring
-> > > that only one client has the file open at a time?
-> > 
-> > I use no locking at all, it's just synthetic test, I don't expect data to
-> > be ordered or whatever, but the problem is blocks of zeros inserted.
-> > It behaves right with the last 2.6.16.32, zeros are contained if clients
-> > are 2.6.18.3 and 2.6.19-rc4. 
-> > 
-> > I'm going to do more testing in next few days, so hoe bring some new info.
-> > 
-> > As I wrote before, it does not depend on the server (tried with FreeBSD
-> > server and several versions of linux 2.6.16.x and 2.6.18.x).
+Trond Myklebust wrote:
+>> The suspend is accomplished by taking a write lock on the export cache's
+>> hash_sem, which by fortuitous circumstance encloses all nfs transaction
+>> processing.  We then flush the export cache, driving the underlying
+>> filesystem mount count down to one, in which state it can be unmounted.
+>> Holding the hash_sem prevents mountd from reloading the export cache.  To
+>> resume, we just release the write lock.
 > 
-> Just update: 2.6.17.14 is ok
+> Definitely not the correct way to do this. Causing the NFS server to
+> hang for long periods of time will, for instance, cause all NFSv4 state
+> to be unnecessarily lost, forcing a full state recovery. It will also
+> cause UDP clients to flood the network with retries.
 
-did git bisect between 2.6.17 and 2.6.18 and found that the commit is:
+What is a long period of time in this context?  This suspend is only
+supposed to last a second or two while we mount the new filesystem.
+Will we really start losing v4 state in that time?
 
-44b11874ff583b6e766a05856b04f3c492c32b84
- NFS: Separate metadata and page cache revalidation mechanisms
+We have in mind to reduce the duration of the suspend to practically
+nothing eventually, by mounting the new filesystem _before_ suspending.
+The suspend latency in this case would be just a few milliseconds, plus
+the time to suspend the longest running filesystem transaction.
 
-will verify (with and without patch) tomorrow.
+We also don't suspend rpc receive, just rpc execute, which gives us a
+little more breathing room before all the nfsds block on processing.  We
+could go a little further in that direction by tweaking the nfsd flow
+to keep receiving requests even while processing is blocked.  But maybe
+we really still need to do...
 
-Bye
+> Ideally, you want to be returning NFS3ERR_JUKEBOX to the NFSv3 clients
+> (or NFS4ERR_DELAY for NFSv4) in order to request that they back off and
+> retry the operation later. For some operations that don't involve files
+> (e.g. the NFSv4 RENEW requests, NULL RPC pings) you may actually want to
+> process the request despite the disk being offline.
 
---   
+Ah, thanks, this will solidify the behaviour without changing the basic
+approach.
 
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, BI/140a    Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 2, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
+Regards,
 
-  ICQ: 293092805  jabber: tomas.kasparek@jabber.cz
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
-
+Daniel
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
