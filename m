@@ -1,26 +1,31 @@
-From: Peter Astrand <astrand@cendio.se>
-Subject: Re: unfsd strange behaviour ?
-Date: Thu, 23 Nov 2006 13:35:32 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0611231330340.3308@maggie.lkpg.cendio.se>
-References: <9c8209a10611212358o75127f4qd433e37c32fefc29@mail.gmail.com>
-	<Pine.LNX.4.64.0611221027150.1093@maggie.lkpg.cendio.se>
-	<9c8209a10611220835h40af88fdpdb4c36327e674235@mail.gmail.com>
-	<Pine.LNX.4.64.0611221804480.28977@maggie.lkpg.cendio.se>
-	<9c8209a10611221042v6d669d3tbabf405022f0efcb@mail.gmail.com>
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Subject: Re: NFS corruption in 2.6.18.2?
+Date: Thu, 23 Nov 2006 17:17:38 +0100
+Message-ID: <20061123161738.GF40079@fit.vutbr.cz>
+References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1342355276-1164285332=:3308"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GnDno-0007JZ-MU
-	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 04:35:40 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GnDno-00076y-Nv
-	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 04:35:42 -0800
-To: Murali Bashyam <mbcoder@gmail.com>
-In-Reply-To: <9c8209a10611221042v6d669d3tbabf405022f0efcb@mail.gmail.com>
+	id 1GnHGn-0004T7-IJ
+	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 08:17:49 -0800
+Received: from kazi.fit.vutbr.cz ([147.229.8.12])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GnHGm-0006u6-CH
+	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 08:17:50 -0800
+Received: from kazi.fit.vutbr.cz (localhost [127.0.0.1])
+	by kazi.fit.vutbr.cz (envelope-from kasparek@fit.vutbr.cz)
+	(8.13.8/8.13.7) with ESMTP id kANGHcbV083939
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Thu, 23 Nov 2006 17:17:38 +0100 (CET)
+Received: (from kasparek@localhost)
+	by kazi.fit.vutbr.cz (8.13.8/8.13.1/Submit) id kANGHcMP083938
+	for nfs@lists.sourceforge.net; Thu, 23 Nov 2006 17:17:38 +0100 (CET)
+	(envelope-from kasparek@fit.vutbr.cz)
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+In-Reply-To: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,59 +38,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
 
---789237761-1342355276-1164285332=:3308
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+> >have seen this behaviour with kernel 2.6.18 and above up to 19-rc4.
+> > Reported this, but no response.
+> > 
+> > http://lkml.org/lkml/2006/9/28/89
+>
+> Your test script doesn't use any form of locking. How are you ensuring
+> that only one client has the file open at a time?
 
-On Wed, 22 Nov 2006, Murali Bashyam wrote:
+I use no locking at all, it's just synthetic test, I don't expect data to
+be ordered or whatever, but the problem is blocks of zeros inserted.
+It behaves right with the last 2.6.16.32, zeros are contained if clients
+are 2.6.18.3 and 2.6.19-rc4. 
 
-> > If you turn off the file handle cache, the number of stat()s will
-> > increase.
->=20
-> So while performing the stat call, it has to map the file handle which =
-came
-> in the GETATTR NFS request to a file name, correct?=20
+I'm going to do more testing in next few days, so hoe bring some new info.
 
-Yes.=20
+As I wrote before, it does not depend on the server (tried with FreeBSD
+server and several versions of linux 2.6.16.x and 2.6.18.x).
+ 
+Regards
+ 
+--   
 
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, BI/140a    Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 2, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
 
-> My question was whether it is possible that the mapping can become=20
-> stale, if that mapping is cached.
+  ICQ: 293092805  jabber: tomas.kasparek@jabber.cz
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
 
-No, I don't think so. From looking at the source code, it seems like unfs=
-3=20
-does a stat() to verify that the file still has the correct st_dev and=20
-st_ino, even when the file handle cache is used.
-
-
-Regards,=20
---=20
-Peter =C3=85strand		ThinLinc Chief Developer
-Cendio AB		http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping	Phone: +46-13-21 46 00
---789237761-1342355276-1164285332=:3308
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-1342355276-1164285332=:3308
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-1342355276-1164285332=:3308--
