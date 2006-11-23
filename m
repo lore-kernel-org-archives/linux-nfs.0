@@ -1,112 +1,85 @@
-From: "Paarvai Naai" <opensource3141@gmail.com>
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Wed, 22 Nov 2006 14:43:30 -0800
-Message-ID: <52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
-References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
-	<1164228193.5694.38.camel@lade.trondhjem.org>
+From: Chris Caputo <ccaputo@alt.net>
+Subject: Re: NFS hang
+Date: Thu, 23 Nov 2006 07:40:23 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0611230737500.10489@nacho.alt.net>
+References: <1162840599.31460.8.camel@zod.rchland.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0363668443=="
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org,
-	Kostas Georgiou <k.georgiou@imperial.ac.uk>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1164228193.5694.38.camel@lade.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Mime-version: 1.0
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
-
---===============0363668443==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_10396_8930649.1164235410878"
-
-------=_Part_10396_8930649.1164235410878
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi Trond,
-
-I'm certain the problem is causing a crash on my machine.
-When I am on the console and just do an umount the machine is okay
-for about 2 seconds and then it crashes.  If I instead just try to do
-/sbin/reboot then I see a big OOPS when the initscripts end up
-unmounting the NFS filesystems, although it's hard to make sense
-of it or write any info down at that point.
-
-There is clearly something wrong but I'm starting to suspect it's
-because the patch might not be appropriate for the kernels
-that Kostas and I are using.  What version of the kernel (and
-CITI patch, if applicable) are you making the patch against?
-I'm using:
-
-http://mirrors.kernel.org/fedora/core/updates/5/SRPMS/kernel-2.6.18-1.2200.fc5.src.rpm
-
-Regards,
-Paarvai
-
-
-On 11/22/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->
-> On Mon, 2006-11-20 at 11:47 -0800, Open Source wrote:
-> > Hi Trond,
-> >
-> > I can confirm that I also see a crash with your patch file in place!
-> > I'm not sure if that's because it didn't apply cleanly to begin with
-> > and my massaging might have caused a problem.  I don't think
-> > so though.
-> >
-> > Basically if you mount a couple NFSv3+krb5 partitions and
-> > then unmount one of them, the system locks up after about 2
-> > seconds.  I didn't see this before since I didn't use the
-> > automounter utility.
->
-> I'm unable to reproduce whether using the automounter or not. Can you be
-> a bit more specific about what hangs? Are you seeing an Oops or anything
-> like that?
->
-> Trond
->
-> _______________________________________________
-> NFSv4 mailing list
-> NFSv4@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
->
-
-------=_Part_10396_8930649.1164235410878
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi Trond,<br><br>I'm certain the problem is causing a crash on my machine.<br>When I am on the console and just do an umount the machine is okay<br>for about 2 seconds and then it crashes.&nbsp; If I instead just try to do<br>/sbin/reboot then I see a big OOPS when the initscripts end up
-<br>unmounting the NFS filesystems, although it's hard to make sense<br>of it or write any info down at that point.<br><br>There is clearly something wrong but I'm starting to suspect it's<br>because the patch might not be appropriate for the kernels
-<br>that Kostas and I are using.&nbsp; What version of the kernel (and<br>CITI patch, if applicable) are you making the patch against?<br>I'm using:<br><br><a href="http://mirrors.kernel.org/fedora/core/updates/5/SRPMS/kernel-2.6.18-1.2200.fc5.src.rpm">
-http://mirrors.kernel.org/fedora/core/updates/5/SRPMS/kernel-2.6.18-1.2200.fc5.src.rpm</a><br><br>Regards,<br>Paarvai<br><br><br><div><span class="gmail_quote">On 11/22/06, <b class="gmail_sendername">Trond Myklebust</b> &lt;
-<a href="mailto:trond.myklebust@fys.uio.no">trond.myklebust@fys.uio.no</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-On Mon, 2006-11-20 at 11:47 -0800, Open Source wrote:<br>&gt; Hi Trond,<br>&gt;<br>&gt; I can confirm that I also see a crash with your patch file in place!<br>&gt; I'm not sure if that's because it didn't apply cleanly to begin with
-<br>&gt; and my massaging might have caused a problem.&nbsp;&nbsp;I don't think<br>&gt; so though.<br>&gt;<br>&gt; Basically if you mount a couple NFSv3+krb5 partitions and<br>&gt; then unmount one of them, the system locks up after about 2
-<br>&gt; seconds.&nbsp;&nbsp;I didn't see this before since I didn't use the<br>&gt; automounter utility.<br><br>I'm unable to reproduce whether using the automounter or not. Can you be<br>a bit more specific about what hangs? Are you seeing an Oops or anything
-<br>like that?<br><br>Trond<br><br>_______________________________________________<br>NFSv4 mailing list<br><a href="mailto:NFSv4@linux-nfs.org">NFSv4@linux-nfs.org</a><br><a href="http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4">
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4</a><br></blockquote></div><br>
-
-------=_Part_10396_8930649.1164235410878--
-
---===============0363668443==
 Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: Frank Filz <ffilz@us.ibm.com>, nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Gn9C5-0003YP-5V
+	for nfs@lists.sourceforge.net; Wed, 22 Nov 2006 23:40:25 -0800
+Received: from nacho.alt.net ([207.14.113.18])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gn9C6-0000qo-CM
+	for nfs@lists.sourceforge.net; Wed, 22 Nov 2006 23:40:26 -0800
+To: Josh Boyer <jwboyer@linux.vnet.ibm.com>
+In-Reply-To: <1162840599.31460.8.camel@zod.rchland.ibm.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Mon, 6 Nov 2006, Josh Boyer wrote:
+> We've got an IBM bladecenter we're using to do some NFS stress testing
+> (v3).  It seems with kernel 2.6.16.21 we get a hang during our stress
+> tests after roughly and hour or two.  The hanging process has a
+> backtrace that looks like this:
+> 
+> cp            D 000000000ff0b198  6672 16505  16296
+> (NOTLB)
+> Call Trace:
+> [C00000000F43B1D0] [C00000002DD5B088] 0xc00000002dd5b088 (unreliable)
+> [C00000000F43B3A0] [C00000000000F0B4] .__switch_to+0x12c/0x150
+> [C00000000F43B430] [C00000000039980C] .schedule+0xcec/0xe4c
+> [C00000000F43B540] [C00000000039A688] .io_schedule+0x68/0xb8
+> [C00000000F43B5D0] [C000000000093D60] .sync_page+0x7c/0x98
+> [C00000000F43B650] [C00000000039A8B4] .__wait_on_bit_lock+0x8c/0x114
+> [C00000000F43B700] [C000000000093C94] .__lock_page+0xa0/0xc8
+> [C00000000F43B820] [C000000000094A6C] .do_generic_mapping_read+0x21c/0x4a0
+> [C00000000F43B970] [C000000000095624] .__generic_file_aio_read+0x17c/0x228
+> [C00000000F43BA40] [C0000000000957C4] .generic_file_aio_read+0x44/0x54
+> [C00000000F43BAD0] [D000000000320F58] .nfs_file_read+0xb8/0xec [nfs]
+> [C00000000F43BB70] [C0000000000C5298] .do_sync_read+0xd4/0x130
+> [C00000000F43BCF0] [C0000000000C60E0] .vfs_read+0x128/0x20c
+> [C00000000F43BD90] [C0000000000C65C0] .sys_read+0x4c/0x8c
+> [C00000000F43BE30] [C00000000000871C] syscall_exit+0x0/0x40
+> 
+> So far, we've only been able to recreate this with the client and server
+> blades both in the same chassis.  We tried recreating with nfs_debug
+> enabled, but it did not hang.  So perhaps there is a correlation with
+> the high-speed network (gigabit ethernet over fibre) that comes with
+> that configuration.
+> 
+> Does anyone recognize the backtrace of the process or the symptoms of
+> the problem?  We'd appreciate any info that you may have.
+> 
+> Please CC me in responses as I'm not subscribed to this list.
+
+Hi.  I am digging into a hang file issue (albeit NFSv2) that I've narrowed 
+down to beginning with 2.6.11 and continuing to happen through 2.6.18, but 
+which does not happen on 2.6.10 or prior.
+
+I wonder if you could run your tests on 2.6.10 and 2.6.11.12 and share the 
+results with me.
+
+Thanks,
+Chris
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---===============0363668443==--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
