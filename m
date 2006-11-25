@@ -1,29 +1,25 @@
-From: Jason Uhlenkott <juhlenko@akamai.com>
-Subject: [TRIVIAL] Clean up nfs_create_request comments
-Date: Fri, 24 Nov 2006 23:26:26 -0800
-Message-ID: <20061125072626.GA23875@48M1231.sanmateo.corp.akamai.com>
+From: "Underwood W. Elijah" <bta@gtaa.ca>
+Subject: Some economists say more immigration to Europe is needed to
+	make up for falling birth rates.
+Date: Sat, 25 Nov 2006 09:37:47 +0200
+Message-ID: <000401c71065$c8776e40$3e6bd751@dvf>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gnrvo-0004Vb-Hn
-	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:26:36 -0800
-Received: from fw01.cmbrmaks.akamai.com ([80.67.64.10] helo=smtp2.akamai.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gnrvo-00068v-K4
-	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:26:37 -0800
-Received: from smtp2.akamai.com (vwall.kendall.corp.akamai.com [172.17.4.33])
-	by smtp2.akamai.com (8.13.8/8.12.10) with ESMTP id kAP7QrRq018897
-	for <nfs@lists.sourceforge.net>; Sat, 25 Nov 2006 02:26:53 -0500 (EST)
-Received: from 48M1231.sanmateo.corp.akamai.com
-	(48M1231.sanmateo.corp.akamai.com [172.23.9.157])
-	by smtp2.akamai.com (8.13.8/8.12.10) with ESMTP id kAP7QqFq018894
-	for <nfs@lists.sourceforge.net>; Sat, 25 Nov 2006 02:26:53 -0500 (EST)
-Received: from juhlenko by 48M1231.sanmateo.corp.akamai.com with local (Exim
-	4.50) id 1Gnrve-0007qb-O2
-	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:26:26 -0800
-To: nfs@lists.sourceforge.net
+	id 1GnsEz-0006NB-8v
+	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:46:25 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GnsEz-00022A-T2
+	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:46:26 -0800
+Received: from [81.215.90.104] (helo=dsl.dynamic8121590104.ttnet.net.tr)
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1GnsEs-0001cl-Ef
+	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:46:19 -0800
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,41 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Remove some stale comments about hard limits which went away in 2.5.
+This product has had a very low sales level and can no longer be
+supported in its current format.
+Will you publish a print version of your ebook?
+A nonprofit immigration agency filed an ethics complaint Wednesday
+against state Rep.
+the WHTI initiative was gaining momentum within the Department of
+Homeland . Give away a free ebook and then give people an option of
+buying the paid version of the ebook.
+Some economists say more immigration to Europe is needed to make up for
+falling birth rates.
 
-Signed-off-by: Jason Uhlenkott <juhlenko@akamai.com>
----
+ZZZ
 
---- linux.orig/fs/nfs/pagelist.c	2006-11-24 23:03:00.350861445 -0800
-+++ linux/fs/nfs/pagelist.c	2006-11-24 23:04:06.213414314 -0800
-@@ -49,9 +49,7 @@
-  * @count: number of bytes to read/write
-  *
-  * The page must be locked by the caller. This makes sure we never
-- * create two different requests for the same page, and avoids
-- * a possible deadlock when we reach the hard limit on the number
-- * of dirty pages.
-+ * create two different requests for the same page.
-  * User should ensure it is safe to sleep in this function.
-  */
- struct nfs_page *
-@@ -62,16 +60,12 @@
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_page		*req;
- 
--	/* Deal with hard limits.  */
- 	for (;;) {
- 		/* try to allocate the request struct */
- 		req = nfs_page_alloc();
- 		if (req != NULL)
- 			break;
- 
--		/* Try to free up at least one request in order to stay
--		 * below the hard limit
--		 */
- 		if (signalled() && (server->flags & NFS_MOUNT_INTR))
- 			return ERR_PTR(-ERESTARTSYS);
- 		yield();
+EXPLOSION!
+
+Date: Monday, November 27, 2006
+Company: CHINA HEALTH MGT NEW
+Symbol: C N H C
+Price: $1.44 (UP 7%! on Friday)
+Projected: $8
+
+C N H C  HAS BEGUN BOOMING! CHINA IS THE HOTTEST COUNTRY TO BE IN RIGHT
+NOW! ADD  C N H C  TO YOUR RADAR!
+
+ZZZ
+
+What will be the title of your ebook and will it have a subtitle?
+This product has had a very low sales level and can no longer be
+supported in its current format.
+Libyan leader Moamer Kadhafi opens the taps of immigration according to
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
