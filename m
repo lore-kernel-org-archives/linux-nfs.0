@@ -1,25 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: several oopses of nfsd in 2.6.16.29 where
-	/proc/fs/nfsd	mounted
-Date: Fri, 24 Nov 2006 14:45:29 -0500
-Message-ID: <1164397529.5702.58.camel@lade.trondhjem.org>
-References: <28552016.1164354672990.JavaMail.ngmail@webmail11>
+From: Jason Uhlenkott <juhlenko@akamai.com>
+Subject: [TRIVIAL] Clean up nfs_create_request comments
+Date: Fri, 24 Nov 2006 23:26:26 -0800
+Message-ID: <20061125072626.GA23875@48M1231.sanmateo.corp.akamai.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gngzf-0006R4-Sf
-	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 11:45:52 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+BV45HFCVEDlsvtlX//N3UFAag5oWUXUs=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gngze-0004kc-Sh
-	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 11:45:53 -0800
-To: linuxkernel@arcor.de
-In-Reply-To: <28552016.1164354672990.JavaMail.ngmail@webmail11>
+	id 1Gnrvo-0004Vb-Hn
+	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:26:36 -0800
+Received: from fw01.cmbrmaks.akamai.com ([80.67.64.10] helo=smtp2.akamai.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gnrvo-00068v-K4
+	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:26:37 -0800
+Received: from smtp2.akamai.com (vwall.kendall.corp.akamai.com [172.17.4.33])
+	by smtp2.akamai.com (8.13.8/8.12.10) with ESMTP id kAP7QrRq018897
+	for <nfs@lists.sourceforge.net>; Sat, 25 Nov 2006 02:26:53 -0500 (EST)
+Received: from 48M1231.sanmateo.corp.akamai.com
+	(48M1231.sanmateo.corp.akamai.com [172.23.9.157])
+	by smtp2.akamai.com (8.13.8/8.12.10) with ESMTP id kAP7QqFq018894
+	for <nfs@lists.sourceforge.net>; Sat, 25 Nov 2006 02:26:53 -0500 (EST)
+Received: from juhlenko by 48M1231.sanmateo.corp.akamai.com with local (Exim
+	4.50) id 1Gnrve-0007qb-O2
+	for nfs@lists.sourceforge.net; Fri, 24 Nov 2006 23:26:26 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,29 +36,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-11-24 at 08:51 +0100, linuxkernel@arcor.de wrote:
-> Hello list!
-> 
-> I just reported bug #7572 just before i read in bug #6172 that "The NFS server
-> maintainer doesn't use bugzilla."  which is very clever, very clever...
+Remove some stale comments about hard limits which went away in 2.5.
 
-Developers are fully entitled to use whatever debugging tools they want.
+Signed-off-by: Jason Uhlenkott <juhlenko@akamai.com>
+---
 
-> Anyways we use kernel 2.6.16.x series because it was promised that this would
-> be a "long -living kernel series".  So I hope that whatever will be the fix for these oopses
-> it will make it to the 2.6.16.x kernel.  Please have a look at the report:
-> 
-> http://bugzilla.kernel.org/show_bug.cgi?id=7572
-> 
-> Best thanks,
-> 
->       Peter
-
-You've reported this bug for 2.6.16, but it is unclear if you have tried
-a more recent kernel.
-
-Trond
-
+--- linux.orig/fs/nfs/pagelist.c	2006-11-24 23:03:00.350861445 -0800
++++ linux/fs/nfs/pagelist.c	2006-11-24 23:04:06.213414314 -0800
+@@ -49,9 +49,7 @@
+  * @count: number of bytes to read/write
+  *
+  * The page must be locked by the caller. This makes sure we never
+- * create two different requests for the same page, and avoids
+- * a possible deadlock when we reach the hard limit on the number
+- * of dirty pages.
++ * create two different requests for the same page.
+  * User should ensure it is safe to sleep in this function.
+  */
+ struct nfs_page *
+@@ -62,16 +60,12 @@
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct nfs_page		*req;
+ 
+-	/* Deal with hard limits.  */
+ 	for (;;) {
+ 		/* try to allocate the request struct */
+ 		req = nfs_page_alloc();
+ 		if (req != NULL)
+ 			break;
+ 
+-		/* Try to free up at least one request in order to stay
+-		 * below the hard limit
+-		 */
+ 		if (signalled() && (server->flags & NFS_MOUNT_INTR))
+ 			return ERR_PTR(-ERESTARTSYS);
+ 		yield();
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
