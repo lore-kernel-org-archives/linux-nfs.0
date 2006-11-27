@@ -1,7 +1,7 @@
-From: Chris Caputo <ccaputo@alt.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: NFS hang
-Date: Mon, 27 Nov 2006 21:46:39 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0611272141430.24703@nacho.alt.net>
+Date: Mon, 27 Nov 2006 16:54:13 -0500
+Message-ID: <1164664453.5727.44.camel@lade.trondhjem.org>
 References: <1162840599.31460.8.camel@zod.rchland.ibm.com>
 	<Pine.LNX.4.64.0611230737500.10489@nacho.alt.net>
 	<Pine.LNX.4.64.0611271907070.10489@nacho.alt.net>
@@ -12,17 +12,19 @@ References: <1162840599.31460.8.camel@zod.rchland.ibm.com>
 	<1164663614.10787.21.camel@zod.rchland.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Frank Filz <ffilz@us.ibm.com>, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Chris Caputo <ccaputo@alt.net>, Frank Filz <ffilz@us.ibm.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GooJJ-0002Xo-NN
-	for nfs@lists.sourceforge.net; Mon, 27 Nov 2006 13:46:45 -0800
-Received: from nacho.alt.net ([207.14.113.18])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1GooJI-0006F6-UA
-	for nfs@lists.sourceforge.net; Mon, 27 Nov 2006 13:46:47 -0800
+	id 1GooQx-0003Mw-Od
+	for nfs@lists.sourceforge.net; Mon, 27 Nov 2006 13:54:39 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+ssR9JMDmXCipiE1GadCcqvBkOLWOVjeU=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GooQw-00084L-Lo
+	for nfs@lists.sourceforge.net; Mon, 27 Nov 2006 13:54:41 -0800
 To: Josh Boyer <jwboyer@linux.vnet.ibm.com>
 In-Reply-To: <1164663614.10787.21.camel@zod.rchland.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -37,7 +39,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 27 Nov 2006, Josh Boyer wrote:
+On Mon, 2006-11-27 at 15:40 -0600, Josh Boyer wrote:
 > On Mon, 2006-11-27 at 21:22 +0000, Chris Caputo wrote:
 > > On Mon, 27 Nov 2006, Trond Myklebust wrote:
 > > > On Mon, 2006-11-27 at 19:33 +0000, Chris Caputo wrote:
@@ -72,13 +74,10 @@ On Mon, 27 Nov 2006, Josh Boyer wrote:
 > stack trace I originally posted?  If so, I can try to test this patch
 > out myself.
 
-Yes.  Your stack showed that your process was waiting for data to be read 
-via NFS.  It is possible that this bug resulted in your read request being 
-lost forever and thus your process hung forever.  And any other processes 
-which then attempted to read the same data would also hang.  It's 
-contagious.  :-)
+Possibly. It is worth trying.
 
-Chris
+Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
