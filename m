@@ -1,105 +1,91 @@
-From: "Paarvai Naai" <opensource3141@gmail.com>
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Tue, 28 Nov 2006 19:50:05 -0800
-Message-ID: <52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
-References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
-	<1164228193.5694.38.camel@lade.trondhjem.org>
-	<52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
-	<1164628684.3178.10.camel@localhost>
+From: Olaf Kirch <okir@suse.de>
+Subject: [PATCH] Do not leak memory in is_mountpoint()
+Date: Wed, 29 Nov 2006 12:51:03 +0100
+Message-ID: <20061129115103.GB18149@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2057945285=="
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
-	Kostas Georgiou <k.georgiou@imperial.ac.uk>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "Ian Kent" <raven@themaw.net>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1164628684.3178.10.camel@localhost>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Mime-version: 1.0
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
-
---===============2057945285==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_24315_2484201.1164772205250"
-
-------=_Part_24315_2484201.1164772205250
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi,
-
-I bit the bullet and compiled 2.6.19-rc6 (which was a rather
-frustrating experience for a number of unrelated reasons).  In
-any case, I don't see the crash there.  Hence, I'm fairly confident
-that the crash had to do with an incompatibility between the
-patch and 2.6.18.
-
-Now that the patch has been verified can we do something to
-get it into 2.6.19 before the final release.  This is a very serious
-bug that prevents people from using krb5 on a server with two
-such exports.  It needs to be fixed!
-
-Thanks again to all the help on this list.  Hopefully we can get this
-thing into the upstream kernel ASAP.
-
-Thoughts?
-
-Paarvai
-
-
-On 11/27/06, Ian Kent <raven@themaw.net> wrote:
->
-> On Wed, 2006-11-22 at 14:43 -0800, Paarvai Naai wrote:
-> > Hi Trond,
-> >
-> > I'm certain the problem is causing a crash on my machine.
-> > When I am on the console and just do an umount the machine is okay
-> > for about 2 seconds and then it crashes.  If I instead just try to do
-> > /sbin/reboot then I see a big OOPS when the initscripts end up
-> > unmounting the NFS filesystems, although it's hard to make sense
-> > of it or write any info down at that point.
->
-> Doesn't it get logged.
-> syslog should shutdown after autofs and NFS.
->
-> Ian
->
->
->
-
-------=_Part_24315_2484201.1164772205250
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi,<br><br>I bit the bullet and compiled 2.6.19-rc6 (which was a rather<br>frustrating experience for a number of unrelated reasons).&nbsp; In<br>any case, I don't see the crash there.&nbsp; Hence, I'm fairly confident<br>that the crash had to do with an incompatibility between the
-<br>patch and 2.6.18.<br><br>Now that the patch has been verified can we do something to<br>get it into 2.6.19 before the final release.&nbsp; This is a very serious<br>bug that prevents people from using krb5 on a server with two
-<br>such exports.&nbsp; It needs to be fixed!<br><br>Thanks again to all the help on this list.&nbsp; Hopefully we can get this<br>thing into the upstream kernel ASAP.<br><br>Thoughts?<br><br>Paarvai<br><br><br><div><span class="gmail_quote">
-On 11/27/06, <b class="gmail_sendername">Ian Kent</b> &lt;<a href="mailto:raven@themaw.net">raven@themaw.net</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-On Wed, 2006-11-22 at 14:43 -0800, Paarvai Naai wrote:<br>&gt; Hi Trond,<br>&gt;<br>&gt; I'm certain the problem is causing a crash on my machine.<br>&gt; When I am on the console and just do an umount the machine is okay
-<br>&gt; for about 2 seconds and then it crashes.&nbsp;&nbsp;If I instead just try to do<br>&gt; /sbin/reboot then I see a big OOPS when the initscripts end up<br>&gt; unmounting the NFS filesystems, although it's hard to make sense
-<br>&gt; of it or write any info down at that point.<br><br>Doesn't it get logged.<br>syslog should shutdown after autofs and NFS.<br><br>Ian<br><br><br></blockquote></div><br>
-
-------=_Part_24315_2484201.1164772205250--
-
---===============2057945285==
 Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: nfbrown@suse.de
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GpNy3-0004nL-6G
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 03:51:11 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GpNy2-0005th-Ev
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 03:51:11 -0800
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id AB616122BC
+	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 12:51:03 +0100 (CET)
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
+
+Not sure if this was discussed before. Anyway, I
+stumbled across this today.
+
+Cheers,
+Olaf
+------------------------------------------------------------------
+From: Olaf Kirch <okir@suse.de>
+Subject: Do not leak memory in is_mountpoint()
+
+Kind of obvious when you look at the code :-)
+
+Signed-off-by: Olaf Kirch <okir@suse.de>
+
+ support/misc/mountpoint.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
+
+Index: nfs-utils-1.0.8/support/misc/mountpoint.c
+===================================================================
+--- nfs-utils-1.0.8.orig/support/misc/mountpoint.c
++++ nfs-utils-1.0.8/support/misc/mountpoint.c
+@@ -20,17 +20,20 @@ is_mountpoint(char *path)
+ 	 */
+ 	char *dotdot;
+ 	struct stat stb, pstb;
++	int rv = 0;
+ 
+ 	dotdot = malloc(strlen(path)+4);
+ 	strcat(strcpy(dotdot, path), "/..");
+ 	if (lstat(path, &stb) != 0 ||
+ 	    lstat(dotdot, &pstb) != 0)
+-		return 0;
++		goto done;
+ 
+ 	if (stb.st_dev != pstb.st_dev
+ 	    || stb.st_ino == pstb.st_ino)
+-		return 1;
+-	return 0;
++		rv = 1;
++
++done:	free(dotdot);
++	return rv;
+ }
+ 
+ int
+-- 
+Walks like a duck. Quacks like a duck. Must be a chicken.
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---===============2057945285==--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
