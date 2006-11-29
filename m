@@ -1,28 +1,22 @@
-From: ara.t.howard@noaa.gov
-Subject: tuning guidelines
-Date: Wed, 29 Nov 2006 08:55:46 -0700 (MST)
-Message-ID: <Pine.LNX.4.62.0611290849570.20046@harp.ngdc.noaa.gov>
-Reply-To: ara.t.howard@noaa.gov
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1GpLKZ-0004Ec-5J delayed 10 hours
+Date: Wed, 29 Nov 2006 12:31:13 -0800
+Message-ID: <E1GpW5J-000435-0J@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GpRmv-0004fp-Qz
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 07:55:58 -0800
-Received: from harp.ngdc.noaa.gov ([140.172.178.33])
+	id 1GpW5K-0002yN-LH
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 12:31:14 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GpRmv-0000c6-1C
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 07:55:59 -0800
-Received: from harp.ngdc.noaa.gov (localhost.localdomain [127.0.0.1])
-	by harp.ngdc.noaa.gov (8.12.11.20060308/8.12.11) with ESMTP id
-	kATFtkZA015615
-	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 08:55:46 -0700
-Received: from localhost (ahoward@localhost)
-	by harp.ngdc.noaa.gov (8.12.11.20060308/8.12.11/Submit) with ESMTP id
-	kATFtkTG015611
-	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 08:55:46 -0700
+	(Exim 4.44) id 1GpW5J-0002l8-Al
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 12:31:15 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1GpW5J-000435-0J
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 12:31:13 -0800
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -36,26 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 10 hours on the queue on externalmx-1.sourceforge.net.
 
-we've got an nfs server and the data source/sink of a small (5 nodes) linux
-cluster running ruby queue.  node of the nodes work over nfs: they all follow
-a copy input local, perform work, copy output up to server approach.
+The message identifier is:     1GpLKZ-0004Ec-5J
+The subject of the message is: they may not Uncover her damsels of the way and Absalom
+The date of the message is:    Wed, 29 Nov 2006 14:29:42 +0530
 
-we're running about 2000 jobs per day with average input sizes ranging
-40mb-1gb and average outputs of 100mb-5gb.
+The address to which the message has not yet been delivered is:
 
-taking into account this sort of usage pattern, can someone reccomend a rough
-set of performance tuning guidelines or post a link on the subject?
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
 
-i'm not looking to to go too deep in tuning - just rough guidelines at this
-point: low hanging fruit.
-
-kind regards.
-
--a
--- 
-if you want others to be happy, practice compassion.
-if you want to be happy, practice compassion.  -- the dalai lama
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
