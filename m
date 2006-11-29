@@ -1,7 +1,8 @@
 From: Olaf Kirch <okir@suse.de>
-Subject: [PATCH] Do not leak memory in is_mountpoint()
-Date: Wed, 29 Nov 2006 12:51:03 +0100
-Message-ID: <20061129115103.GB18149@suse.de>
+Subject: Re: [PATCH] Do not leak memory in is_mountpoint()
+Date: Wed, 29 Nov 2006 13:13:44 +0100
+Message-ID: <20061129121344.GC18149@suse.de>
+References: <20061129115103.GB18149@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfbrown@suse.de
@@ -9,18 +10,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GpNy3-0004nL-6G
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 03:51:11 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1GpOK6-00078X-0K
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 04:13:58 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GpNy2-0005th-Ev
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 03:51:11 -0800
+	(Exim 4.44) id 1GpOK4-0005da-NA
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 04:13:59 -0800
 Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
 	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id AB616122BC
-	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 12:51:03 +0100 (CET)
+	by mx2.suse.de (Postfix) with ESMTP id CB4E5215E2
+	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 13:13:44 +0100 (CET)
 To: nfs@lists.sourceforge.net
+In-Reply-To: <20061129115103.GB18149@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,51 +35,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Wed, Nov 29, 2006 at 12:51:03PM +0100, Olaf Kirch wrote:
+> Not sure if this was discussed before. Anyway, I
+> stumbled across this today.
 
-Not sure if this was discussed before. Anyway, I
-stumbled across this today.
+Okay, sorry for the noise. I was looking at old source.
 
-Cheers,
 Olaf
-------------------------------------------------------------------
-From: Olaf Kirch <okir@suse.de>
-Subject: Do not leak memory in is_mountpoint()
-
-Kind of obvious when you look at the code :-)
-
-Signed-off-by: Olaf Kirch <okir@suse.de>
-
- support/misc/mountpoint.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
-
-Index: nfs-utils-1.0.8/support/misc/mountpoint.c
-===================================================================
---- nfs-utils-1.0.8.orig/support/misc/mountpoint.c
-+++ nfs-utils-1.0.8/support/misc/mountpoint.c
-@@ -20,17 +20,20 @@ is_mountpoint(char *path)
- 	 */
- 	char *dotdot;
- 	struct stat stb, pstb;
-+	int rv = 0;
- 
- 	dotdot = malloc(strlen(path)+4);
- 	strcat(strcpy(dotdot, path), "/..");
- 	if (lstat(path, &stb) != 0 ||
- 	    lstat(dotdot, &pstb) != 0)
--		return 0;
-+		goto done;
- 
- 	if (stb.st_dev != pstb.st_dev
- 	    || stb.st_ino == pstb.st_ino)
--		return 1;
--	return 0;
-+		rv = 1;
-+
-+done:	free(dotdot);
-+	return rv;
- }
- 
- int
 -- 
 Walks like a duck. Quacks like a duck. Must be a chicken.
 
