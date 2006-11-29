@@ -1,28 +1,29 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] Do not leak memory in is_mountpoint()
-Date: Wed, 29 Nov 2006 13:13:44 +0100
-Message-ID: <20061129121344.GC18149@suse.de>
-References: <20061129115103.GB18149@suse.de>
+From: ara.t.howard@noaa.gov
+Subject: tuning guidelines
+Date: Wed, 29 Nov 2006 08:55:46 -0700 (MST)
+Message-ID: <Pine.LNX.4.62.0611290849570.20046@harp.ngdc.noaa.gov>
+Reply-To: ara.t.howard@noaa.gov
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfbrown@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GpOK6-00078X-0K
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 04:13:58 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1GpRmv-0004fp-Qz
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 07:55:58 -0800
+Received: from harp.ngdc.noaa.gov ([140.172.178.33])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GpOK4-0005da-NA
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 04:13:59 -0800
-Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id CB4E5215E2
-	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 13:13:44 +0100 (CET)
+	(Exim 4.44) id 1GpRmv-0000c6-1C
+	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 07:55:59 -0800
+Received: from harp.ngdc.noaa.gov (localhost.localdomain [127.0.0.1])
+	by harp.ngdc.noaa.gov (8.12.11.20060308/8.12.11) with ESMTP id
+	kATFtkZA015615
+	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 08:55:46 -0700
+Received: from localhost (ahoward@localhost)
+	by harp.ngdc.noaa.gov (8.12.11.20060308/8.12.11/Submit) with ESMTP id
+	kATFtkTG015611
+	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 08:55:46 -0700
 To: nfs@lists.sourceforge.net
-In-Reply-To: <20061129115103.GB18149@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,15 +36,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Nov 29, 2006 at 12:51:03PM +0100, Olaf Kirch wrote:
-> Not sure if this was discussed before. Anyway, I
-> stumbled across this today.
 
-Okay, sorry for the noise. I was looking at old source.
+we've got an nfs server and the data source/sink of a small (5 nodes) linux
+cluster running ruby queue.  node of the nodes work over nfs: they all follow
+a copy input local, perform work, copy output up to server approach.
 
-Olaf
+we're running about 2000 jobs per day with average input sizes ranging
+40mb-1gb and average outputs of 100mb-5gb.
+
+taking into account this sort of usage pattern, can someone reccomend a rough
+set of performance tuning guidelines or post a link on the subject?
+
+i'm not looking to to go too deep in tuning - just rough guidelines at this
+point: low hanging fruit.
+
+kind regards.
+
+-a
 -- 
-Walks like a duck. Quacks like a duck. Must be a chicken.
+if you want others to be happy, practice compassion.
+if you want to be happy, practice compassion.  -- the dalai lama
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
