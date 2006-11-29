@@ -1,254 +1,105 @@
-From: =?GB2312?B?IjEy1MI5LTEwyNUvyc+6oyI=?= <asd75@tom.com>
-Subject: =?GB2312?B?P0VYQ0VMus1QUFTU2sbz0rW53MDt1tC1xLjfvLbTptPD?=
-Date: Tue, 28 Nov 2006 05:53:06 +0000 (UTC)
-Message-ID: <E1Govsi-0000cn-R1@mail.sourceforge.net>
-Reply-To: dfgv7@163.com
-Content-Type: multipart/mixed; boundary="===============0634600350=="
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Govsj-0008Sh-8M
-	for nfs@lists.sourceforge.net; Mon, 27 Nov 2006 21:51:49 -0800
-Received: from [121.55.40.106] (helo=tom.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Govsi-0000cn-R1
-	for nfs@lists.sourceforge.net; Mon, 27 Nov 2006 21:51:50 -0800
-To: "nfs" <nfs@lists.sourceforge.net>
-Date: Fri, 1 Dec 2006 13:54:21 +0800
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: "Paarvai Naai" <opensource3141@gmail.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
+	volume!
+Date: Tue, 28 Nov 2006 19:50:05 -0800
+Message-ID: <52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
+References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
+	<1164228193.5694.38.camel@lade.trondhjem.org>
+	<52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
+	<1164628684.3178.10.camel@localhost>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============2057945285=="
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	Kostas Georgiou <k.georgiou@imperial.ac.uk>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: "Ian Kent" <raven@themaw.net>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <1164628684.3178.10.camel@localhost>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Mime-version: 1.0
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
---===============0634600350==
-Content-Type: text/html;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+--===============2057945285==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_24315_2484201.1164772205250"
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE>=D0=C2=BD=A8=CD=F8=D2=B3 1</TITLE>
-<META http-equiv=3DContent-Language content=3Dzh-cn>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dgb2312">
-<META content=3D"MSHTML 6.00.2900.2523" name=3DGENERATOR></HEAD>
-<BODY>
-<TABLE id=3Dtable1 width=3D"100%" border=3D1>
-  <TBODY>
-  <TR>
-    <TD>
-      <P style=3D"LINE-HEIGHT: 200%" align=3Dcenter><FONT color=3D#0000ff=
-><FONT=20
-      size=3D2>=D6=F7=B0=EC=B5=A5=CE=BB=A3=BA =D2=D7=CC=DA=C6=F3=D2=B5=B9=
-=DC=C0=ED=D7=C9=D1=AF=D3=D0=CF=DE=B9=AB=CB=BE</FONT><SPAN lang=3Dzh-cn><F=
-ONT=20
-      size=3D6><B><BR></B></FONT></SPAN></FONT><font size=3D"5" color=3D"=
-#0000FF"><b>
-		EXCEL=BA=CDPPT=D4=DA=C6=F3=D2=B5=B9=DC=C0=ED=D6=D0=B5=C4=B8=DF=BC=B6=D3=
-=A6=D3=C3</b></font></P>
-      <P style=3D"LINE-HEIGHT: 150%"><B><SPAN class=3Dnoo><FONT color=3D#=
-0000ff=20
-      size=3D3>=BF=CE=B3=CC=B1=B3=BE=B0</FONT></SPAN></B><BR><FONT lang=3D=
-ZH-CN size=3D2>&nbsp;=20
-		=B2=BB=B9=DC=C4=FA=D4=DA=CA=B2=C3=B4=B8=DA=CE=BB=C9=CF=B9=A4=D7=F7=A3=AC=
-=C0=FB=D3=C3Excel=B5=E7=D7=D3=B1=ED=B8=F1=BD=F8=D0=D0=CA=FD=BE=DD=B7=D6=CE=
-=F6=BC=B8=BA=F5=D2=D1=BE=AD=B3=C9=CE=AA=C3=BF=B8=F6=BE=AD=C0=ED=C8=CB=B5=C4=
-=B1=D8=B1=B8=B9=A4=BE=DF=A3=AC=CE=DE=C2=DB=C4=FA=B4=D3=CA=C2=B2=C9=B9=BA=A1=
-=A2=CF=FA=CA=DB=A1=A2=B2=C6=CE=F1=B7=D6=CE=F6=BB=B9=CA=C7=BE=AD=D3=AA=BE=F6=
-=B2=DF=A3=AC=B5=E7=D7=D3=B1=ED=B8=F1=C4=DC=B9=BB=B0=EF=D6=FA=C4=E3=C9=B8=D1=
-=A1=CA=FD=BE=DD=A1=A2=B7=D6=CE=F6=CA=FD=BE=DD=B2=A2=D6=C6=D7=F7=B9=DC=C0=ED=
-=CD=BC=B1=ED=A3=ACExcel=B5=C4=B8=F7=D6=D6=B2=C6=CE=F1=BA=AF=CA=FD=CE=AA=C4=
-=FA=BD=F8=D0=D0=B1=BE=C1=BF=C0=FB=B7=D6=CE=F6=BA=CD=BE=AD=D3=AA=BE=F6=B2=DF=
-=CC=E1=B9=A9=C1=CB=B7=BD=B1=E3=A1=A3=C8=E7=B9=FB=C4=E3=B4=F2=CB=E3=C0=FB=D3=
-=C3Excel=CC=E1=B8=DF=B9=A4=D7=F7=D6=CA=C1=BF=BA=CD=D0=A7=C2=CA=A3=AC=D4=CB=
-=D3=C3Powerpoint=D6=C6=D7=F7=D3=C5=C3=C0=B5=C4=D1=DD=CA=BE=B1=A8=B8=E6=C8=
-=A1=B5=C3=B2=BB=CD=AC=B7=B2=CF=EC=B5=C4=D5=F0=BA=B3=D0=A7=B9=FB=A3=AC=C4=C7=
-=C3=B4=D5=E2=B8=F6=BF=CE=B3=CC=BE=CD=CA=C7=CE=AA=C4=E3=B6=A8=D6=C6=B5=C4=A1=
-=A3<br>
-		=C5=E0 =D1=B5 =CA=D5 =D2=E6=A3=BA<br>
-		=CC=E1=CC=E1=B8=DFEXCEL=BA=CDPPT=CA=B5=BC=CA=B2=D9=D7=F7=C4=DC=C1=A6=A3=
-=AC=CC=E1=B8=DF=B9=A4=D7=F7=D0=A7=C2=CA=A3=BB<br>
-		=D5=C6=CE=D5=C8=E7=BA=CE=C0=FB=D3=C3=B8=F7=D6=D6=BA=AF=CA=FD=BD=A8=C1=A2=
-=CA=FD=D1=A7=C4=A3=D0=CD=BD=F8=D0=D0=B8=DF=D0=A7=B2=C6=CE=F1=B7=D6=CE=F6=A3=
-=BB<br>
-		=D5=C6=CE=D5=BF=EC=CB=D9=CA=B5=CF=D6=B2=FA=C6=B7=A1=A2=BF=CD=BB=A7=B7=D6=
-=C0=E0=B5=C4=B7=BD=B7=A8=A3=AC=CA=B9=B9=AB=CB=BE=D0=A7=D2=E6=B1=B6=D4=F6=A3=
-=BB<br>
-		=D5=C6=CE=D5=BD=A8=C1=A2=B6=E0=D2=F2=CB=D8=C1=BF=B1=BE=C0=FB=C3=F4=B8=D0=
-=B7=D6=CE=F6=C4=A3=D0=CD=A3=AC=CA=B9=C4=E3=D6=B1=B9=DB=B5=D8=B7=A2=CF=D6=D7=
-=EE=BC=D1=D3=AF=C0=FB=C4=A3=CA=BD=A3=BB<br>
-		=D5=C6=CE=D5=C0=FB=D3=C3=B8=F7=D6=D6=D4=A4=B2=E2=B9=A4=BE=DF=A3=AC=D1=B0=
-=D5=D2=D3=AA=CF=FA=B7=BD=B0=B8=A3=BB<br>
-		=D5=C6=CE=D5=C8=E7=BA=CE=D6=C6=D7=F7=C1=EE=C0=CF=B0=E5=C2=FA=D2=E2=B5=C4=
-=B8=F7=C0=E0=CD=BC=B1=ED=BA=CD=B9=DC=C0=ED=B1=A8=B8=E6<BR>&nbsp;</FONT><S=
-PAN=20
-      class=3Dr3><B><FONT color=3D#0000ff size=3D3>=BF=CE=B3=CC=B4=F3=B8=D9=
-</FONT></B></SPAN><BR>
-		<FONT=20
-      face=3D=CB=CE=CC=E5 size=3D2><font color=3D"#0000FF">=D2=BB=A1=A2EX=
-CEL=BA=CDPowerpoint=B5=C4=B2=D9=D7=F7=BC=BC=C7=C9<br>
-		</font>1 EXCEL=BA=CDPowerpoint=C8=ED=BC=FE=B5=C4=BB=F9=B1=BE=B9=A6=C4=DC=
-<br>
-		=C3=FC=C1=EE=D3=EB=B9=A4=BE=DF=C0=B8=B5=C4=CA=B9=D3=C3=A1=A2=B9=A4=D7=F7=
-=B2=BE/=B9=A4=D7=F7=B1=ED=B5=C4=CA=B9=D3=C3=BC=B0=B6=E0=B4=B0=BF=DA=D5=B9=
-=CA=BE=A1=A2=B1=EA=D7=BC=B1=ED=B8=F1=B1=A3=BB=A4=BC=B0=CA=E4=C8=EB=CC=F5=BC=
-=FE=C9=E8=B6=A8=A1=A2=CF=E0=B6=D4=D2=FD=D3=C3/=BE=F8=B6=D4=D2=FD=D3=C3=A1=
-=A2=B9=AB=CA=BD=D3=EB=BA=AF=CA=FD<br>
-		2 =CA=FD=BE=DD=B9=DC=C0=ED=A3=BA<br>
-		=CA=FD=BE=DD=B8=F1=CA=BD=A1=A2=BD=A8=C1=A2=B9=AB=CA=BD=A1=A2=CA=FD=BE=DD=
-=B1=E0=BC=AD=A1=A2=CD=BC=B1=ED=D6=C6=D7=F7=A1=A2=C5=C5=D0=F2=A1=A2=C9=B8=D1=
-=A1=A1=A2=B7=D6=C0=E0=BB=E3=D7=DC<br>
-		3 =CA=FD=BE=DD=B7=D6=CE=F6=A3=BA<br>
-		=CA=FD=BE=DD=CD=B8=CA=D3=B1=ED(=CD=BC)=A1=A2=BA=AF=CA=FD=B5=C4=D3=A6=D3=
-=C3=A1=A2=B5=A5=B1=E4=C1=BF=C7=F3=BD=E2=A1=A2=C4=A3=C4=E2=D4=CB=CB=E3=B1=ED=
-=A1=A2=B9=E6=BB=AE=C7=F3=BD=E2<br>
-		4 =B2=BB=CD=AC=C0=E0=D0=CD=B1=A8=B8=E6=B5=C4=C4=A3=B0=E6=D1=DD=CA=BE=A3=
-=BA<br>
-		=D2=B5=BC=A8=B1=A8=B8=E6=A1=A2=CF=EE=C4=BF=BB=E3=B1=A8=A1=A2=B2=C6=CE=F1=
-=B1=A8=B8=E6=A1=A2=B2=FA=C6=B7=D5=B9=CA=BE=A1=A2=C6=C0=C9=F3/=C6=C0=B9=C0=
-=B1=A8=B8=E6<br>
-		5 =D3=C3PPT=BD=F8=D0=D0=D5=B9=CA=BE=BA=CD=B1=A8=B8=E6<br>
-		=B9=DC=C0=ED=BD=E1=B9=B9=A1=A2=B9=A4=D7=F7=C1=F7=B3=CC=A1=A2=D2=B5=BC=A8=
-=C7=F7=CA=C6=BA=CD=B7=D6=CE=F6=A1=A2=BE=BA=D5=F9=B6=D4=CA=D6=B5=C4=B6=D4=B1=
-=C8<br>
-		6 PPT=D3=EBEXCEL,OUTLOOK=B5=C4=C1=B4=BD=D3=CA=B9=D3=C3=BC=BC=C7=C9<BR><=
-font color=3D"#0000FF">=B6=FE=A1=A2=C8=E7=BA=CE=D4=CB=D3=C3=CD=BC=B1=ED=BD=
-=F8=D0=D0=CA=C2=CE=F1=B4=A6=C0=ED=BA=CD=B9=A4=D7=F7=B1=A8=B8=E6</font><br=
->
-		=D4=F5=D1=F9=BF=EC=CB=D9=B4=B4=BD=A8=B3=F6=C4=E3=D0=E8=D2=AA=B5=C4=CD=BC=
-=B1=ED<br>
-		=C8=E7=BA=CE=B4=B4=BD=A8=B6=AF=CC=AC=CD=BC<br>
-		=C8=E7=BA=CE=D2=F2=B5=D8=D6=C6=D2=CB=B5=D8=CA=B9=D3=C3=CD=BC=B1=ED<br>
-		=D0=D0=D5=FE=B9=DC=C0=ED=B1=ED=B8=F1=C9=E8=BC=C6<br>
-		=C8=CB=C1=A6=D7=CA=D4=B4=B9=DC=C0=ED=B1=ED=B8=F1=C9=E8=BC=C6<br>
-		=C8=E7=BA=CE=D7=D4=B6=AF=C9=FA=B3=C9=D4=B1=B9=A4=BF=BC=BA=CB=B9=A4=D7=CA=
-=B1=ED<br>
-		=C6=F3=D2=B5=CF=FA=CA=DB=D2=B5=BC=A8=B5=C4=CD=BC=B1=ED=B1=ED=B4=EF<br>
-		=B2=FA=C6=B7=CA=D0=B3=A1=D5=BC=D3=D0=C2=CA=B5=C4=CD=BC=B1=ED=B1=ED=B4=EF=
-<br>
-		=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=B7=D6=CE=F6=CA=D0=B3=A1=B5=F7=B2=E9=CE=CA=
-=BE=ED<br>
-		=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=D6=C6=D7=F7=BA=CD=B7=D6=CE=F6=CF=FA=CA=DB=
-=B1=A8=B1=ED<br>
-		=C8=E7=BA=CE=D4=CB=D3=C3EXCEL=D6=C6=D7=F7=BA=CD=B7=D6=CE=F6=B2=C6=CE=F1=
-=B1=A8=B1=ED<br>
-		=C8=CB=CA=C2=A1=A2=CE=EF=C1=CF=A1=A2=B2=C6=CE=F1=CA=FD=BE=DD=BF=E2=B5=C4=
-=C1=B4=BD=D3=BA=CD=D7=D4=B6=AF=B4=A6=C0=ED</FONT><BR><font size=3D"2"><fo=
-nt color=3D"#0000FF">=C8=FD=A1=A2=D4=CB=D3=C3EXCEL=BD=F8=D0=D0=D3=D0=D0=A7=
-=B9=DC=C0=ED=B5=C4=B0=B8=C0=FD=B7=D6=CE=F6</font><br>
-		=B3=C9=B1=BE=B7=D1=D3=C3=B7=D6=CE=F6=D3=EB=B9=DC=C0=ED<br>
-		=CF=FA=CA=DB=D2=B5=CE=F1=B9=DC=C0=ED=D3=EB=BE=F6=B2=DF<br>
-		=BF=CD=BB=A7=D3=AF=C0=FB=C4=DC=C1=A6=D3=EB=B7=D1=D3=C3=B7=D6=CE=F6<br>
-		=B2=C9=B9=BA=B9=DC=C0=ED=D0=C5=CF=A2=CF=B5=CD=B3=B5=C4=BD=A8=C1=A2=D3=EB=
-=D3=A6=D3=C3<br>
-		=B9=A4=D7=CA=BA=CB=CB=E3=CF=B5=CD=B3=B5=C4=BD=A8=C1=A2=D3=EB=D3=A6=D3=C3=
-<br>
-		=BF=E2=B4=E6=B9=DC=C0=ED=CF=B5=CD=B3=B5=C4=BD=A8=C1=A2=D3=EB=D3=A6=D3=C3=
-<br>
-		=B1=BE=C1=BF=C0=FB=BA=CD=C3=F4=B8=D0=D0=D4=B7=D6=CE=F6<br>
-		=CD=B6=D7=CA=CF=EE=C4=BF=C6=C0=BC=DB=D3=EB=BE=F6=B2=DF<BR><font color=3D=
-"#0000FF">=CB=C4=A1=A2=D4=CB=D3=C3PPT=BD=F8=D0=D0=B2=FA=C6=B7=D5=B9=CA=BE=
-=BA=CD=B9=DC=C0=ED=BE=AD=D3=AA=B1=A8=B8=E6</font><br>
-		=D3=C3=CD=BC=C6=AC=B2=E5=C8=EB=BC=BC=CA=F5=D6=C6=D7=F7=CF=EE=C4=BF=B7=D6=
-=CE=F6=B6=CC=C6=AC<br>
-		=B6=AF=BB=AD=D5=B9=CA=BE=B2=FA=C6=B7=D0=CD=BA=C5=BC=B0=B9=A6=C4=DC<br>
-		=CA=D0=B3=A1=B7=D6=CE=F6=BC=B0=CD=C6=B9=E3=BC=C6=BB=AE=D1=DD=CA=BE<br>
-		=D0=CE=CF=F3=BB=AF=B5=C4=B9=C9=B6=AB=B4=F3=BB=E1=D3=AA=D4=CB=B1=A8=B8=E6=
-<br>
-		=D6=C6=D7=F7=B6=AF=B8=D0=D0=FB=B4=AB=C6=AC<br>
-		=B7=E1=B8=BB=B6=E0=B2=CA=B5=C4=BF=C9=D0=D0=D0=D4=D1=D0=BE=BF=B1=A8=B8=E6=
-<br>
-		<font color=3D"#0000FF">=CE=E5=A1=A2=D1=A7=D4=B1=B0=B8=C0=FD=B7=D6=CE=F6=
-=BA=CD=CA=B5=C0=FD=D1=DD=C1=B7</font><BR></font><B><FONT color=3D#0000ff=20
-      size=3D3>=B5=BC=CA=A6=BC=F2=BD=E9</FONT></B><BR>&nbsp;<FONT size=3D=
-2>&nbsp; <FONT color=3D#000000>Mr=20
-      Wang=20
-      =A3=AC=B9=DC=C0=ED=B9=A4=B3=CC=CB=B6=CA=BF=A1=A2=B8=DF=BC=B6=BE=AD=BC=
-=C3=CA=A6=A3=AC=B9=FA=BC=CA=D6=B0=D2=B5=C5=E0=D1=B5=CA=A6=D0=AD=BB=E1=C8=CF=
-=D6=A4=D6=B0=D2=B5=C5=E0=D1=B5=CA=A6=A3=AC=C0=FA=C8=CE=BF=E7=B9=FA=B9=AB=CB=
-=BE=C9=FA=B2=FA=B8=BA=D4=F0=C8=CB=A1=A2=B9=A4=D2=B5=B9=A4=B3=CC=BE=AD=C0=ED=
-=A1=A2=D3=AA=D4=CB=D7=DC=BC=E0=B5=C8=B8=DF=BC=B6=B9=DC=C0=ED=D6=B0=CE=F1=B6=
-=E0=C4=EA=A3=AC=CD=AC=CA=B1=BB=B9=B5=A3=C8=CE=20
-      &lt; =BC=DB=D6=B5=B9=A4=B3=CC &gt; =D4=D3=D6=BE=C9=F3=B8=E5=C8=CB=A3=
-=AC=B6=D4=C6=F3=D2=B5=B9=DC=C0=ED=D3=D0=BD=CF=C9=EE=C8=EB=B5=C4=D1=D0=BE=BF=
-=A1=A3=20
-      =CD=F5=C0=CF=CA=A6=B4=D3=CA=C2=C6=F3=D2=B5=B9=DC=C0=ED=D7=C9=D1=AF=D3=
-=EB=C5=E0=D1=B5=B9=A4=D7=F7=B0=CB=C4=EA=C0=B4=A3=AC=CE=AA IBM =A1=A2 TDK=20
-      =A1=A2=CB=C9=CF=C2=A1=A2=BF=C9=BF=DA=BF=C9=C0=D6=A1=A2=BF=B5=CA=A6=B8=
-=B5=A1=A2=BB=E3=D4=B4=B9=FB=D6=AD=A1=A2=D1=A9=BD=F2=C6=A1=BE=C6=A1=A2=BC=AA=
-=B0=D9=C0=FB=CA=B3=C6=B7=A1=A2=B9=DA=BD=DD=B5=E7=D7=D3=A1=A2 INTEX=A1=A2=D5=
-=FD=D0=C2=CF=F0=BD=BA=A1=A2=C3=C0=B9=FA ITT=20
-      =BC=AF=CD=C5=A1=A2=B9=E3=C9=CF=BF=C6=BC=BC=A1=A2=C3=C0=B5=C4=BF=D5=B5=
-=F7=A1=A2=D6=D0=D0=CB=CD=A8=D1=B6=A1=A2=BE=A9=D0=C5=CD=A8=D0=C5=A1=A2=C1=AA=
-=CF=EB=B5=E7=C4=D4=A1=A2=B0=AC=BF=CB=C9=AD -=20
-      =BD=F0=C9=BD=CA=AF=BB=AF=A1=A2=D5=FD=B4=F3=BC=AF=CD=C5=A1=A2=CF=C3=BB=
-=AA=BC=AF=CD=C5=A1=A2=B2=D3=C0=A4=B9=C9=B7=DD=A1=A2NEC =B6=AB=BD=F0=B5=E7=
-=D7=D3=A1=A2=CC=AB=D4=AD=B8=D6=CC=FA=BC=AF=CD=C5=A1=A2 PHILIPS=20
-      =A1=A2=C9=EE=DB=DA=BF=AA=B7=A2=BF=C6=BC=BC=A1=A2=B4=F3=C0=E4=CD=F5=D4=
-=CB=CA=E4=D6=C6=C0=E4=A1=A2=C8=FD=D1=F3=BB=AA=C7=BF=A1=A2 TCL=20
-      =A1=A2=C3=C0=B5=C4=C6=FB=B3=B5=A1=A2=C2=A5=CA=CF=B5=E7=D7=D3=A1=A2=CE=
-=AC=D1=B6=C8=E1=D0=D4=B5=E7=C2=B7=B0=E5=A1=A2=C9=CF=BA=A3=B1=B4=B6=FB=B0=A2=
-=B6=FB=BF=A8=CC=D8=A1=A2=CC=EC=BD=F2=D4=FA=C5=AC=CE=F7=A1=A2=C9=CF=BA=A3=BF=
-=A8=B2=A9=CC=D8=B5=C8=BD=FC=C8=FD=B0=D9=BC=D2=C6=F3=D2=B5=CC=E1=B9=A9=C1=CB=
-=CF=EE=C4=BF=B8=A8=B5=BC=BB=F2=D7=A8=CC=E2=C5=E0=D1=B5=A1=A3=CD=F5=C0=CF=CA=
-=A6=CA=DA=BF=CE=BE=AD=D1=E9=B7=E1=B8=BB=A3=AC=B7=E7=B8=F1=D3=C4=C4=AC=DA=B6=
-=D0=B3=A1=A2=C2=DF=BC=AD=C7=E5=CE=FA=A1=A2=B9=FD=B3=CC=BB=A5=B6=AF=A3=AC=B0=
-=B8=C0=FD=C9=FA=B6=AF=A1=A2=C9=EE=CA=DC=D1=A7=D4=B1=CF=B2=B0=AE</FONT>=A1=
-=A3</FONT><FONT=20
-      color=3D#ff0000 size=3D2> <BR></FONT><B><FONT=20
-      size=3D2 color=3D"#0000ff">=CA=B1=BC=E4=B5=D8=B5=E3:</FONT> </B><FO=
-NT face=3D=CB=CE=CC=E5 size=3D2>11=D4=C218-19=C8=D5</FONT><FONT=20
-      size=3D2> (=D6=DC=C1=F9=C8=D5)&nbsp;&nbsp;&nbsp;=C9=CF=BA=A3&nbsp;&=
-nbsp; <BR></FONT><B><FONT=20
-      color=3D#0000ff size=3D2>=B7=D1=D3=C3:</FONT></B><FONT size=3D2> 19=
-80/=C8=CB<FONT=20
-      face=3D=CB=CE=CC=E5>(=BA=AC=BF=CE=B3=CC=B7=D1=A1=A2=BD=CC=B2=C4=A1=A2=
-=CE=E7=B2=CD=B5=C8)</FONT>&nbsp; &nbsp;&nbsp;=CB=C4=C8=CB=D2=D4=C9=CF=B2=CE=
-=BC=D3,=D4=F9=D3=E8=D2=BB=C3=FB=C3=FB=B6=EE<BR><FONT=20
-      color=3D#0000ff><B>=B1=A8=C3=FB=C8=C8=CF=DF:</B></FONT><FONT=20
-      color=3D#000000>&nbsp;&nbsp;021-51187126 &nbsp;</FONT>=D5=C5=D0=A1=BD=
-=E3<BR></FONT><FONT=20
-      color=3D#0000ff size=3D2><B>=B3=A7=C4=DA=C5=E0=D1=B5=BA=CD=D7=C9=D1=
-=AF=CF=EE=C4=BF:</B></FONT><FONT color=3D#000000=20
-      size=3D2><BR>&nbsp;&nbsp;&nbsp;=D2=D7=CC=DA=B9=AB=CB=BE=D6=C2=C1=A6=
-=D3=DA=C9=FA=B2=FA=A1=A2=D6=CA=C1=BF=A1=A2=B3=C9=B1=BE=BD=DA=D4=BC=B5=C8=B8=
-=F7=B7=BD=C3=E6=B5=C4=BF=CE=B3=CC=C5=E0=D1=B5=D3=EB=CF=EE=C4=BF=D7=C9=D1=AF=
-,=20
-      =BB=B6=D3=AD=C4=FA=B8=F9=BE=DD=D0=E8=D2=AA=CC=E1=B3=F6=BE=DF=CC=E5=D2=
-=AA=C7=F3=A3=AC=CE=D2=C3=C7=BD=AB=CE=AA=C4=FA=B6=A8=D6=C6=B3=A7=C4=DA=C5=E0=
-=D1=B5=BB=F2=D7=C9=D1=AF=CF=EE=C4=BF=A1=A3=C4=DA=D1=B5=C1=AA=CF=B5=A3=BA =
-021-51187132&nbsp; =C1=F5=D0=A1=BD=E3</FONT><FONT=20
-      size=3D2><BR><FONT=20
-      color=3D#ff0000>=C8=E7=C4=FA=B2=BB=D0=E8=D2=AA=B1=BE=B9=E3=B8=E6=A3=
-=AC=C7=EB=BB=D8=B8=B4=C0=B4=B5=E7=CB=B5=C3=F7,=CE=D2=C3=C7=BD=AB=B2=BB=D4=
-=D9=B7=A2=CB=CD=B8=F8=C4=FA.=D0=BB=D0=BB!</FONT></FONT></P></TD></TR></TB=
-ODY></TABLE></BODY></HTML>
-
-
---===============0634600350==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+------=_Part_24315_2484201.1164772205250
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0634600350==
+Hi,
+
+I bit the bullet and compiled 2.6.19-rc6 (which was a rather
+frustrating experience for a number of unrelated reasons).  In
+any case, I don't see the crash there.  Hence, I'm fairly confident
+that the crash had to do with an incompatibility between the
+patch and 2.6.18.
+
+Now that the patch has been verified can we do something to
+get it into 2.6.19 before the final release.  This is a very serious
+bug that prevents people from using krb5 on a server with two
+such exports.  It needs to be fixed!
+
+Thanks again to all the help on this list.  Hopefully we can get this
+thing into the upstream kernel ASAP.
+
+Thoughts?
+
+Paarvai
+
+
+On 11/27/06, Ian Kent <raven@themaw.net> wrote:
+>
+> On Wed, 2006-11-22 at 14:43 -0800, Paarvai Naai wrote:
+> > Hi Trond,
+> >
+> > I'm certain the problem is causing a crash on my machine.
+> > When I am on the console and just do an umount the machine is okay
+> > for about 2 seconds and then it crashes.  If I instead just try to do
+> > /sbin/reboot then I see a big OOPS when the initscripts end up
+> > unmounting the NFS filesystems, although it's hard to make sense
+> > of it or write any info down at that point.
+>
+> Doesn't it get logged.
+> syslog should shutdown after autofs and NFS.
+>
+> Ian
+>
+>
+>
+
+------=_Part_24315_2484201.1164772205250
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi,<br><br>I bit the bullet and compiled 2.6.19-rc6 (which was a rather<br>frustrating experience for a number of unrelated reasons).&nbsp; In<br>any case, I don't see the crash there.&nbsp; Hence, I'm fairly confident<br>that the crash had to do with an incompatibility between the
+<br>patch and 2.6.18.<br><br>Now that the patch has been verified can we do something to<br>get it into 2.6.19 before the final release.&nbsp; This is a very serious<br>bug that prevents people from using krb5 on a server with two
+<br>such exports.&nbsp; It needs to be fixed!<br><br>Thanks again to all the help on this list.&nbsp; Hopefully we can get this<br>thing into the upstream kernel ASAP.<br><br>Thoughts?<br><br>Paarvai<br><br><br><div><span class="gmail_quote">
+On 11/27/06, <b class="gmail_sendername">Ian Kent</b> &lt;<a href="mailto:raven@themaw.net">raven@themaw.net</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
+On Wed, 2006-11-22 at 14:43 -0800, Paarvai Naai wrote:<br>&gt; Hi Trond,<br>&gt;<br>&gt; I'm certain the problem is causing a crash on my machine.<br>&gt; When I am on the console and just do an umount the machine is okay
+<br>&gt; for about 2 seconds and then it crashes.&nbsp;&nbsp;If I instead just try to do<br>&gt; /sbin/reboot then I see a big OOPS when the initscripts end up<br>&gt; unmounting the NFS filesystems, although it's hard to make sense
+<br>&gt; of it or write any info down at that point.<br><br>Doesn't it get logged.<br>syslog should shutdown after autofs and NFS.<br><br>Ian<br><br><br></blockquote></div><br>
+
+------=_Part_24315_2484201.1164772205250--
+
+--===============2057945285==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0634600350==--
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============2057945285==--
