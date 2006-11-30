@@ -1,21 +1,22 @@
-From: "Murali Bashyam" <mbcoder@gmail.com>
-Subject: Improving unfsd scalability
-Date: Wed, 29 Nov 2006 22:54:53 -0800
-Message-ID: <9c8209a10611292254s79849a6ci11fe10341017ae7e@mail.gmail.com>
+From: Peter Astrand <astrand@cendio.se>
+Subject: Re: Improving unfsd scalability
+Date: Thu, 30 Nov 2006 11:00:25 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0611301056440.15692@maggie.lkpg.cendio.se>
+References: <9c8209a10611292254s79849a6ci11fe10341017ae7e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2034742284=="
+Content-Type: MULTIPART/Mixed; BOUNDARY="===============2034742284=="
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gpfos-0003lw-QY
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 22:54:54 -0800
-Received: from nf-out-0910.google.com ([64.233.182.189])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gpfos-0000BD-VV
-	for nfs@lists.sourceforge.net; Wed, 29 Nov 2006 22:54:56 -0800
-Received: by nf-out-0910.google.com with SMTP id c31so4914782nfb
-	for <nfs@lists.sourceforge.net>; Wed, 29 Nov 2006 22:54:53 -0800 (PST)
-To: nfs@lists.sourceforge.net
+	id 1GpiiZ-00051W-Rs
+	for nfs@lists.sourceforge.net; Thu, 30 Nov 2006 02:00:36 -0800
+Received: from mail.cendio.se ([193.12.253.69])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GpiiY-0003SS-UT
+	for nfs@lists.sourceforge.net; Thu, 30 Nov 2006 02:00:37 -0800
+To: Murali Bashyam <mbcoder@gmail.com>
+In-Reply-To: <9c8209a10611292254s79849a6ci11fe10341017ae7e@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,35 +29,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
 --===============2034742284==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_2567_8478624.1164869693269"
+Content-Type: TEXT/Plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-------=_Part_2567_8478624.1164869693269
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Wed, 29 Nov 2006, Murali Bashyam wrote:
 
-Hi
+> Has anyone attempted to speedup concurrently handling many client NFS
+> requests in unfsd? Any experience regarding multi-threading or running
+> multiple processes within unfsd? Any do's and don'ts?
 
-Has anyone attempted to speedup concurrently handling many client NFS
-requests in unfsd? Any experience regarding multi-threading or running
-multiple processes within unfsd? Any do's and don'ts?
+This is an interesting topic. I guess it depends a lot on which RPC=20
+library you are using. The "normal" ONC RPC implementation, found in glib=
+c=20
+for example, is as far as I know not thread safe. This might be a problem=
+.=20
+Correct me if I'm wrong.
 
-Thx,
-Murali
-
-------=_Part_2567_8478624.1164869693269
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi<br><br>Has anyone attempted to speedup concurrently handling many client NFS requests in unfsd? Any experience regarding multi-threading or running multiple processes within unfsd? Any do's and don'ts?<br><br>Thx,<br>Murali
-<br>
-
-------=_Part_2567_8478624.1164869693269--
-
-
+Regards,=20
+--=20
+Peter =C3=85strand		ThinLinc Chief Developer
+Cendio AB		http://www.cendio.se
+Teknikringen 3
+583 30 Link=C3=B6ping	Phone: +46-13-21 46 00
 --===============2034742284==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
