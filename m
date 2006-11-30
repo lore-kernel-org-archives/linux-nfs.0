@@ -1,27 +1,44 @@
-From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
-Subject: Terrible performance between 2.6.16 and 2.6.5
-Date: Thu, 30 Nov 2006 12:51:45 +0100
-Message-ID: <456EC5D1.9050008@bio.ifi.lmu.de>
+From: Josh Boyer <jwboyer@linux.vnet.ibm.com>
+Subject: Re: NFS hang
+Date: Thu, 30 Nov 2006 06:08:34 -0600
+Message-ID: <1164888514.19697.37.camel@crusty.rchland.ibm.com>
+References: <1162840599.31460.8.camel@zod.rchland.ibm.com>
+	<Pine.LNX.4.64.0611230737500.10489@nacho.alt.net>
+	<Pine.LNX.4.64.0611271907070.10489@nacho.alt.net>
+	<1164655027.5727.5.camel@lade.trondhjem.org>
+	<Pine.LNX.4.64.0611271929220.10489@nacho.alt.net>
+	<1164657487.5727.12.camel@lade.trondhjem.org>
+	<Pine.LNX.4.64.0611272110270.24703@nacho.alt.net>
+	<1164663614.10787.21.camel@zod.rchland.ibm.com>
+	<1164664453.5727.44.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Chris Caputo <ccaputo@alt.net>, Frank Filz <ffilz@us.ibm.com>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GpkVF-0008V1-M4
-	for nfs@lists.sourceforge.net; Thu, 30 Nov 2006 03:54:58 -0800
-Received: from acheron.ifi.lmu.de ([129.187.214.135])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GpkVE-0007gc-NQ
-	for nfs@lists.sourceforge.net; Thu, 30 Nov 2006 03:54:59 -0800
-Received: from internaldeliver.acheron.ifi.lmu.de (localhost [127.0.0.1])
-	by acheron.ifi.lmu.de (Postfix) with ESMTP id 1CBEE435FF
-	for <nfs@lists.sourceforge.net>; Thu, 30 Nov 2006 12:51:46 +0100 (CET)
-Received: from [141.84.1.30] (galois.bio.ifi.lmu.de [141.84.1.30])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by acheron.ifi.lmu.de (Postfix) with ESMTP id 06B29435C7
-	for <nfs@lists.sourceforge.net>; Thu, 30 Nov 2006 12:51:46 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1GpkhD-0001Oj-Be
+	for nfs@lists.sourceforge.net; Thu, 30 Nov 2006 04:07:19 -0800
+Received: from e35.co.us.ibm.com ([32.97.110.153])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GpkhC-0003LT-ES
+	for nfs@lists.sourceforge.net; Thu, 30 Nov 2006 04:07:20 -0800
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com
+	[9.17.195.106])
+	by e35.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id kAUC6rKt009795
+	for <nfs@lists.sourceforge.net>; Thu, 30 Nov 2006 07:06:53 -0500
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id
+	kAUC6qDm543532
+	for <nfs@lists.sourceforge.net>; Thu, 30 Nov 2006 05:06:52 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	kAUC6p6S027022
+	for <nfs@lists.sourceforge.net>; Thu, 30 Nov 2006 05:06:52 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1164664453.5727.44.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,48 +51,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Mon, 2006-11-27 at 16:54 -0500, Trond Myklebust wrote:
+> On Mon, 2006-11-27 at 15:40 -0600, Josh Boyer wrote:
+> > On Mon, 2006-11-27 at 21:22 +0000, Chris Caputo wrote:
+> > > On Mon, 27 Nov 2006, Trond Myklebust wrote:
+> > > > On Mon, 2006-11-27 at 19:33 +0000, Chris Caputo wrote:
+> > > > > On Mon, 27 Nov 2006, Trond Myklebust wrote:
+> > > > > > On Mon, 2006-11-27 at 19:09 +0000, Chris Caputo wrote:
+> > > > > > > -		if (!RPC_IS_QUEUED(task))
+> > > > > > > -			continue;
+> > > > > > > -		rpc_clear_running(task);
+> > > > > > > +		queue = task->u.tk_wait.rpc_waitq;
+> > > > > >
+> > > > > > NACK... There is no guarantee that task->u.tk_wait has any meaning here.
+> > > > > > Particularly not so in the case of an asynchronous task, where the
+> > > > > > storage is shared with the work_struct.
+> > > > >
+> > > > > Yikes.  Would you suggest I move the lock outside of the union and try
+> > > > > again?
+> > > >
+> > > > No. There is no way this can work. You would need something that
+> > > > guarantees that the task stays queued while you are taking the queue
+> > > > lock.
+> > > >
+> > > > Have you instead tried Christophe Saout's patch (see attachment)?
+> > >
+> > > Thank you for the suggestion.  With 65 minutes of uptime so far, Saout's
+> > > November 5th patch is looking good.  For reference, normally I see the
+> > > race happen in under 15 minutes.
+> > >
+> > > I'll report back if any problems develop.  This machine is an outgoing
+> > > newsfeed server and so it pounds on NFS client routines 24x7.
+> >
+> > Would the race condition that Chris described potentially lead to the
+> > stack trace I originally posted?  If so, I can try to test this patch
+> > out myself.
+> 
+> Possibly. It is worth trying.
 
-I just upgraded our NFS server from SuSE 9.2 (kernel 2.6.8) to SuSE 10.1
-(2.6.16.21). We have some SLES 9 (2.6.5) and some SLES 10 (2.6.16) clients
-acessing the NFS server.
+We've been testing this patch in our kernel and it looks good.  The
+tests have run for 2 days and 13 hours so far, which is longer than
+previous attempts.  I would suggest adding this to upstream (if it isn't
+already), and possibly even the stable release.
 
-When the server ran 2.6.8, the performance was always fine. After upgrading
-the SLES 10 clients still have nice performance, but the SLES 9 clients
-are terrible.
+josh
 
-Here's a test call I'm doing:
-  find /mnt/tmp/i586/9/SuSE-updates/ -name \*.rpm -exec rpm -qp {} \;
-It just queries all the rpm packages for their name.
-
-When I call this on a SLES 10 client I can monitor the network traffic
-on the server lies between 200k and some little peaks at 1.5M.
-
-Calling it on a SLES9 client looks fine at first, then after some RPMs
-the network traffic raises to about 20-30 MB/sec! Guess what the server
-says when 30 clients search for new RPMs with an algorithm similar to this.
-
-When I call the "find" a second time on the same SLES 9 clients it runs
-fine for some longer time, like it had cached the accesses or if it had some
-buffer that would fill and then slow the read down.
-
-On all clients we mount with "ro,tcp,hard,rsize=16384,wsize=16384".
-Changing sync/async on the server and the clients didn't help.
-
-Are there any known issues? Any ideas how I could debug this? We
-can't throw away SLES 9 on these clients, so I need to solve this :-(
-
-cu,
-Frank
-
-
-
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
