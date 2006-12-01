@@ -1,22 +1,31 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1GpLKZ-0004Ec-5J delayed 48 hours
-Date: Fri, 01 Dec 2006 01:48:32 -0800
-Message-ID: <E1Gq50S-0006VF-6x@externalmx-1.sourceforge.net>
+From: linuxkernel@arcor.de
+Subject: Re: several oopses of nfsd in 2.6.16.29
+Date: Fri, 1 Dec 2006 11:59:13 +0100 (CET)
+Message-ID: <3606592.1164970753868.JavaMail.ngmail@webmail13>
+References: <139134.1164970331572.JavaMail.ngmail@webmail13>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gq50R-0005Mq-Dd
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:48:31 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1Gq678-0003Z0-7D
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 02:59:30 -0800
+Received: from mail-in-07.arcor-online.net ([151.189.21.47])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gq50S-0003T7-OH
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:48:32 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1Gq50S-0006VF-6x
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:48:32 -0800
+	(Exim 4.44) id 1Gq678-0003hM-CE
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 02:59:31 -0800
+Received: from mail-in-01-z2.arcor-online.net (mail-in-05-z2.arcor-online.net
+	[151.189.8.17])
+	by mail-in-07.arcor-online.net (Postfix) with ESMTP id A2FE91F5F5F
+	for <nfs@lists.sourceforge.net>; Fri,  1 Dec 2006 11:59:27 +0100 (CET)
+Received: from mail-in-02.arcor-online.net (mail-in-02.arcor-online.net
+	[151.189.21.42])
+	by mail-in-01-z2.arcor-online.net (Postfix) with ESMTP id 9641F2DABC0
+	for <nfs@lists.sourceforge.net>; Fri,  1 Dec 2006 11:59:27 +0100 (CET)
+Received: from webmail13 (webmail13.arcor-online.net [151.189.8.66])
+	by mail-in-02.arcor-online.net (Postfix) with ESMTP id D2E0227FEF
+	for <nfs@lists.sourceforge.net>; Fri,  1 Dec 2006 11:59:26 +0100 (CET)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -30,29 +39,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
+ 
+(forgot to cc to the list)
 
-The message identifier is:     1GpLKZ-0004Ec-5J
-The subject of the message is: they may not Uncover her damsels of the way and Absalom
-The date of the message is:    Wed, 29 Nov 2006 14:29:42 +0530
+----- Original Nachricht ----
+Von:     linuxkernel@arcor.de
+An:      okir@suse.de
+Datum:   01.12.2006 11:52
+Betreff: Re: [NFS] several oopses of nfsd in 2.6.16.29
 
-The address to which the message has not yet been delivered is:
+ Hello,
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+thanks for your reply!
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+> On Fri, Dec 01, 2006 at 09:06:35AM +0100, linuxkernel@arcor.de wrote:
+> > it happened again, but this time without /proc/fs/nfsd mounted.  This is
+> getting on my nerves.
+> > Please see attached the oopses.  Now I switched to 2.6.16.33.
+> 
+> It doesn't look like this is necessarily nfsd's fault; this looks more
+
+ok, I only saw "Process: nfsd" in the oops, that's why I report it here.
+
+> like memory corruption to me.  Something stomped on either the inode or
+> (less likely) the inode->ops of some file.
+
+possible but oopses also occured on the other machine, although
+they weren't logged, but okay I'll run a memtest.    And the filesystems
+of these machines are synced via rsync, not via drbd, so the inodes
+are different.
+
+> 
+> I'd suggest building the kernel with slab debugging enabled and
+> see whether that turns up anything useful.
+
+do I have to do anything special besides building with CONFIG_DEBUG_SLAB?
+
+> 
+> There's a remote chance this is related to ACLs though, as the
+> first crash is in an ACL call. Are you using ACLs at all?
+
+yes, they are mounted with acl, but it is not used at the moment,
+I don't even think there is any file with acls set.
+
+Thanks again,
+
+      Peter
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
