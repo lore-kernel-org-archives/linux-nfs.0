@@ -1,32 +1,23 @@
-From: Chris Caputo <ccaputo@alt.net>
-Subject: Re: NFS hang
-Date: Fri, 1 Dec 2006 09:14:46 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0612010905240.4621@nacho.alt.net>
-References: <1162840599.31460.8.camel@zod.rchland.ibm.com>
-	<Pine.LNX.4.64.0611230737500.10489@nacho.alt.net>
-	<Pine.LNX.4.64.0611271907070.10489@nacho.alt.net>
-	<1164655027.5727.5.camel@lade.trondhjem.org>
-	<Pine.LNX.4.64.0611271929220.10489@nacho.alt.net>
-	<1164657487.5727.12.camel@lade.trondhjem.org>
-	<Pine.LNX.4.64.0611272110270.24703@nacho.alt.net>
-	<Pine.LNX.4.64.0611302108180.16297@nacho.alt.net>
-	<Pine.LNX.4.64.0612010337210.4621@nacho.alt.net>
-	<1164948671.5761.12.camel@lade.trondhjem.org>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: several oopses of nfsd in 2.6.16.29
+Date: Fri, 1 Dec 2006 10:26:00 +0100
+Message-ID: <20061201092559.GE11918@suse.de>
+References: <20695426.1164960395196.JavaMail.ngmail@webmail13>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Frank Filz <ffilz@us.ibm.com>,
-	Josh Boyer <jwboyer@linux.vnet.ibm.com>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gq4Tr-0002I2-Hq
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:14:52 -0800
-Received: from nacho.alt.net ([207.14.113.18])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gq4Tp-000674-FJ
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:14:50 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1164948671.5761.12.camel@lade.trondhjem.org>
+	id 1Gq4ef-0003It-Up
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:26:02 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gq4eg-0000vl-Mc
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:26:03 -0800
+To: linuxkernel@arcor.de
+In-Reply-To: <20695426.1164960395196.JavaMail.ngmail@webmail13>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,51 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 30 Nov 2006, Trond Myklebust wrote:
-> On Fri, 2006-12-01 at 04:20 +0000, Chris Caputo wrote:
-> > On Thu, 30 Nov 2006, Chris Caputo wrote:
-> > > I am not sure if this is related, but at just over 3 days of uptime with 
-> > > 2.6.19-rc6 and the Saout patch, I had this happen:
-> > > 
-> > > ---
-> > > BUG: unable to handle kernel NULL pointer dereference at virtual address 00000028
-> > >  printing eip:
-> > > c029cf64
-> > > EIP is at call_start+0x5c/0x6f
-> > 
-> > I believe the above is the following line in clnt.c:call_start():
-> > 
-> >   clnt->cl_stats->rpccnt++;
-> > 
-> > So call_start() was called with a NULL task->tk_client.
-> > 
-> > Similar result with 2.6.19...
-> > 
-> > BUG: unable to handle kernel NULL pointer dereference at virtual address 00000008
-> >  printing eip:
-> > c029ef8e
-> > EIP is at xprt_reserve+0x28/0x119
-> > 
-> > In this one xprt.c:xprt_reserve() is I believe crashing at:
-> > 
-> >   spin_lock(&xprt->reserve_lock);
-> > 
-> > due to a NULL task->tk_xprt.
-> > 
-> > Ideas on whether this is related to the Saout sched race patch or if this 
-> > is something else entirely?
-> 
-> I suspect that it is related, but not the same race. I've identified a
-> couple of other possible race conditions, mainly to do with the fact
-> that nothing prevents an rpc_task from being freed while you are inside
-> rpc_wake_up_task(). Could you try applying both the attached patches,
-> and see if that helps?
+On Fri, Dec 01, 2006 at 09:06:35AM +0100, linuxkernel@arcor.de wrote:
+> it happened again, but this time without /proc/fs/nfsd mounted.  This is getting on my nerves.
+> Please see attached the oopses.  Now I switched to 2.6.16.33.
 
-I compiled 2.6.19 with your patches in addition to the Saout patch and a 
-test is now in progress.
+It doesn't look like this is necessarily nfsd's fault; this looks more
+like memory corruption to me.  Something stomped on either the inode or
+(less likely) the inode->ops of some file.
 
-Thanks,
-Chris
+I'd suggest building the kernel with slab debugging enabled and
+see whether that turns up anything useful.
+
+There's a remote chance this is related to ACLs though, as the
+first crash is in an ACL call. Are you using ACLs at all?
+
+Olaf
+-- 
+Walks like a duck. Quacks like a duck. Must be a chicken.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
