@@ -1,59 +1,148 @@
-From: "Murata, Dennis" <DENNIS.MURATA@saic.com>
-Subject: Anecdotal evidence Linux nfs capability
-Date: Fri, 1 Dec 2006 10:06:43 -0800
-Message-ID: <56D01C1B776AEE4385D29F25E83E515C0873F485@0599-its-exmb02.us.saic.com>
+From: "Paarvai Naai" <opensource3141@gmail.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
+	volume!
+Date: Fri, 1 Dec 2006 10:34:31 -0800
+Message-ID: <52109fb10612011034v4f1feb27n59b6251edee6cfc1@mail.gmail.com>
+References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
+	<1164228193.5694.38.camel@lade.trondhjem.org>
+	<52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
+	<1164628684.3178.10.camel@localhost>
+	<52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1219796456=="
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	Kostas Georgiou <k.georgiou@imperial.ac.uk>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: "Ian Kent" <raven@themaw.net>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Mime-version: 1.0
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
+
+--===============1219796456==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_5124_11892133.1164998071310"
+
+------=_Part_5124_11892133.1164998071310
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi all,
+
+I really do appreciate the high quality technical assistance
+I have gotten to date from this list.  But at the same time,
+I am getting somewhat frustrated with the very spotty
+attention I am getting for a *critical* bug that somehow
+made it into the upstream kernel sources.  This is directly
+affecting the ability to use krb5 on either NFSv3 or NFSv4.
+
+First I had to actually dig through the source and find the
+bug.  Then I was offered a patch but when it didn't work
+there was very little response/assistance to help with my
+investigation into which kernel that patch is compatible with.
+Finally, I have been insisting that we get the fix back into the
+upstream sources and it appears that no one appreciates
+the importance.
+
+Can someone please help me attend to this?  I'm happy to
+assist with open source projects, but given that I have other
+industry responsibilities it's hard to stay totally on top of a
+problem that never should have been mine to contend with.
+
+Thanks for understanding.
+
+Best regards,
+Paarvai
+
+
+
+On 11/28/06, Paarvai Naai <opensource3141@gmail.com> wrote:
+>
+> Hi,
+>
+> I bit the bullet and compiled 2.6.19-rc6 (which was a rather
+> frustrating experience for a number of unrelated reasons).  In
+> any case, I don't see the crash there.  Hence, I'm fairly confident
+> that the crash had to do with an incompatibility between the
+> patch and 2.6.18.
+>
+> Now that the patch has been verified can we do something to
+> get it into 2.6.19 before the final release.  This is a very serious
+> bug that prevents people from using krb5 on a server with two
+> such exports.  It needs to be fixed!
+>
+> Thanks again to all the help on this list.  Hopefully we can get this
+> thing into the upstream kernel ASAP.
+>
+> Thoughts?
+>
+> Paarvai
+>
+>
+> On 11/27/06, Ian Kent <raven@themaw.net> wrote:
+> >
+> > On Wed, 2006-11-22 at 14:43 -0800, Paarvai Naai wrote:
+> > > Hi Trond,
+> > >
+> > > I'm certain the problem is causing a crash on my machine.
+> > > When I am on the console and just do an umount the machine is okay
+> > > for about 2 seconds and then it crashes.  If I instead just try to do
+> > > /sbin/reboot then I see a big OOPS when the initscripts end up
+> > > unmounting the NFS filesystems, although it's hard to make sense
+> > > of it or write any info down at that point.
+> >
+> > Doesn't it get logged.
+> > syslog should shutdown after autofs and NFS.
+> >
+> > Ian
+> >
+> >
+> >
+>
+
+------=_Part_5124_11892133.1164998071310
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi all,<br><br>I really do appreciate the high quality technical assistance<br>I have gotten to date from this list.&nbsp; But at the same time,<br>I am getting somewhat frustrated with the very spotty<br>attention I am getting for a *critical* bug that somehow
+<br>made it into the upstream kernel sources.&nbsp; This is directly<br>affecting the ability to use krb5 on either NFSv3 or NFSv4.<br><br>First I had to actually dig through the source and find the<br>bug.&nbsp; Then I was offered a patch but when it didn't work
+<br>there was very little response/assistance to help with my<br>investigation into which kernel that patch is compatible with.<br>Finally, I have been insisting that we get the fix back into the<br>upstream sources and it appears that no one appreciates
+<br>the importance.<br><br>Can someone please help me attend to this?&nbsp; I'm happy to<br>assist with open source projects, but given that I have other<br>industry responsibilities it's hard to stay totally on top of a<br>problem that never should have been mine to contend with.
+<br><br>Thanks for understanding.<br><br>Best regards,<br>Paarvai<br><br><br><br><div><span class="gmail_quote">On 11/28/06, <b class="gmail_sendername">Paarvai Naai</b> &lt;<a href="mailto:opensource3141@gmail.com">opensource3141@gmail.com
+</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">Hi,<br><br>I bit the bullet and compiled 2.6.19-rc6 (which was a rather
+<br>frustrating experience for a number of unrelated reasons).&nbsp; In<br>any case, I don't see the crash there.&nbsp; Hence, I'm fairly confident<br>that the crash had to do with an incompatibility between the
+<br>patch and 2.6.18.<br><br>Now that the patch has been verified can we do something to<br>get it into 2.6.19 before the final release.&nbsp; This is a very serious<br>bug that prevents people from using krb5 on a server with two
+<br>such exports.&nbsp; It needs to be fixed!<br><br>Thanks again to all the help on this list.&nbsp; Hopefully we can get this<br>thing into the upstream kernel ASAP.<br><br>Thoughts?<br><span class="sg"><br>Paarvai</span><div><span class="e" id="q_10f31d562a9ca235_2">
+<br><br><br><div><span class="gmail_quote">
+On 11/27/06, <b class="gmail_sendername">Ian Kent</b> &lt;<a href="mailto:raven@themaw.net" target="_blank" onclick="return top.js.OpenExtLink(window,event,this)">raven@themaw.net</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
+
+On Wed, 2006-11-22 at 14:43 -0800, Paarvai Naai wrote:<br>&gt; Hi Trond,<br>&gt;<br>&gt; I'm certain the problem is causing a crash on my machine.<br>&gt; When I am on the console and just do an umount the machine is okay
+<br>&gt; for about 2 seconds and then it crashes.&nbsp;&nbsp;If I instead just try to do<br>&gt; /sbin/reboot then I see a big OOPS when the initscripts end up<br>&gt; unmounting the NFS filesystems, although it's hard to make sense
+<br>&gt; of it or write any info down at that point.<br><br>Doesn't it get logged.<br>syslog should shutdown after autofs and NFS.<br><br>Ian<br><br><br></blockquote></div><br>
+
+</span></div></blockquote></div><br>
+
+------=_Part_5124_11892133.1164998071310--
+
+--===============1219796456==
 Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GqCnt-0006Nu-Ie
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 10:08:05 -0800
-Received: from cpmx.mail.saic.com ([139.121.17.160]
-	ident=[U2FsdGVkX198O0/rnY7O+t6FKjj3tpB1y+7DJJbMT6g=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GqCnt-0004SK-PC
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 10:08:07 -0800
-Received: from 0599-its-ieg01.mail.saic.com ([139.121.18.36] [139.121.18.36])
-	by cpmx.mail.saic.com for nfs@lists.sourceforge.net;
-	Fri, 1 Dec 2006 10:07:54 -0800
-Received: from cp-its-exbh01.mail.saic.com ([139.121.18.36])
-	by 0599-its-ieg01.mail.saic.com (SMSSMTP 4.0.5.66) with SMTP id
-	M2006120110075402349
-	for <nfs@lists.sourceforge.net>; Fri, 01 Dec 2006 10:07:54 -0800
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-We are in the process of configuring a Linux nfs server.  The hardware
-platform is a Dell Poweredge 2850, dual Xeon 3.6Ghz, 6GB memory running RHEL
-4 update 2.  The number of clients using the server will be ~1000 x86_64
-dual processor opteron workstations.  The data that will be accessed will be
-95% read only, possible more like 99% read only, that will consist of mainly
-executables, i.e. not large multi-gigabyte data files.
-I am trying to gather evidence that the Linux nfs server should be able/not
-able to handle the workload.  I would really appreciate it if anyone with
-large installations would post what they have and average nfsopts for their
-nfs servers.  We will not be using a server farm, so I am interested in
-nfsopts per server.
-
-Thanks
-Wayne  
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============1219796456==--
