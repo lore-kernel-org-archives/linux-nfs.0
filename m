@@ -1,30 +1,27 @@
-From: Peter Astrand <astrand@cendio.se>
-Subject: Re: Improving unfsd scalability: TI-RPC
-Date: Fri, 1 Dec 2006 14:52:26 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0612011448540.29202@maggie.lkpg.cendio.se>
-References: <9c8209a10611292254s79849a6ci11fe10341017ae7e@mail.gmail.com>
-	<Pine.LNX.4.64.0611301056440.15692@maggie.lkpg.cendio.se>
-	<20061130102238.GA11918@suse.de>
-	<9c8209a10611300958q7fd8bcb8u1001cc936062308b@mail.gmail.com>
-	<20061130181308.GA12747@suse.de>
-	<Pine.LNX.4.64.0611301919430.25539@maggie.lkpg.cendio.se>
-	<20061130200110.GA26145@suse.de>
-	<1164973277.23144.81.camel@frecb000687.frec.bull.fr>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [PATCH 0/2] mountd: clean up rmtab handling
+Date: Fri, 01 Dec 2006 10:29:14 -0500
+Message-ID: <45704A4A.6000007@poochiereds.net>
+References: <1161781620.7078.50.camel@dantu.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED;
-	BOUNDARY="789237761-1174584289-1164981026=:29202"
-Cc: cyril.lacabanne@ema.fr, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gq8ob-0003qc-Hh
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 05:52:33 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gq8ob-0004xq-3h
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 05:52:34 -0800
-To: Tony Reix <tony.reix@bull.net>
-In-Reply-To: <1164973277.23144.81.camel@frecb000687.frec.bull.fr>
+	id 1GqAPP-0005Xg-1s
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 07:34:41 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GqAPO-0003Uq-36
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 07:34:40 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1GqAPB-0007SR-Pb
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 07:34:30 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1161781620.7078.50.camel@dantu.rdu.redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,64 +34,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Jeff Layton wrote:
+> We have had a few reports from customers that showmount -a is just plain
+> broken.
 
---789237761-1174584289-1164981026=:29202
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-ID: <Pine.LNX.4.64.0612011450281.29202@maggie.lkpg.cendio.se>
-Content-Transfer-Encoding: quoted-printable
+...
 
-On Fri, 1 Dec 2006, Tony Reix wrote:
+> The following two patches remedy this. They both should only affect the
+> case where new_cache is set.
+> 
+> -- Jeff
 
-> > > instead? TI-RPC? It has thread support, but it's also much more=20
-> > > complicated. The implementation is not as tested and the libtirpc=20
-> > > implementation is not based on the latest Sun release. And, libtirp=
-c has=20
-> > > not been ported to Windows yet, and the thread stuff makes porting=20
-> > > somewhat difficult.=20
-> >=20
-> > I'm not a huge fan of TIRPC either.
->=20
-> Hi Olaf, Peter,
->=20
-> We'll have a student, Cyril, in 2007 during 5 months about TI-RPC.
-> His main goal deals with writing tests for RPC and TI-RPC lib.
-> But any ideas are welcome to improve TI-RPC and make you a fan of it !
-> Do you have a list of complaints about TI-RPC ?
+It's been a little over a month since I originally posted these patches 
+and haven't received much comment though Neil and I have traded some 
+emails off list concerning it. I'd like to move the discussion back to 
+the mailing list to get a wider audience and see if we can come to some 
+sort of resolution.
 
-This sounds great. Have you decided on the test framework and/or language=
-=20
-yet? pynfs might be useful... :-)
+When we last communicated, he mentioned a scheme whereby we could 
+generate the showmount -a info on the fly rather than trying to maintain 
+the rmtab. That sounds like a good approach, but I don't see how that 
+can work without some changes in how the caches are managed.
 
-To all: I've created a Sourceforge project for libtirpc. No source code=20
-has been imported yet, but I will fix this in a near future.=20
+Neil, would it be reasonable to commit these patches now to fix the 
+immediate problem and then work on the new scheme that synthesizes the 
+info out of the kernel caches like you proposed?
 
-Regards,=20
---=20
-Peter =C3=85strand		ThinLinc Chief Developer
-Cendio AB		http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping	Phone: +46-13-21 46 00
---789237761-1174584289-1164981026=:29202
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- Jeff
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-1174584289-1164981026=:29202
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-1174584289-1164981026=:29202--
