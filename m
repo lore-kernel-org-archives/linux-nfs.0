@@ -1,32 +1,29 @@
-From: linuxkernel@arcor.de
-Subject: Re: several oopses of nfsd in 2.6.16.29
-Date: Fri, 1 Dec 2006 11:59:13 +0100 (CET)
-Message-ID: <3606592.1164970753868.JavaMail.ngmail@webmail13>
-References: <139134.1164970331572.JavaMail.ngmail@webmail13>
+From: Tony Reix <tony.reix@bull.net>
+Subject: Re: Improving unfsd scalability: TI-RPC
+Date: Fri, 01 Dec 2006 12:41:16 +0100
+Message-ID: <1164973277.23144.81.camel@frecb000687.frec.bull.fr>
+References: <9c8209a10611292254s79849a6ci11fe10341017ae7e@mail.gmail.com>
+	<Pine.LNX.4.64.0611301056440.15692@maggie.lkpg.cendio.se>
+	<20061130102238.GA11918@suse.de>
+	<9c8209a10611300958q7fd8bcb8u1001cc936062308b@mail.gmail.com>
+	<20061130181308.GA12747@suse.de>
+	<Pine.LNX.4.64.0611301919430.25539@maggie.lkpg.cendio.se>
+	<20061130200110.GA26145@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: Peter Astrand <astrand@cendio.se>, cyril.lacabanne@ema.fr,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gq678-0003Z0-7D
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 02:59:30 -0800
-Received: from mail-in-07.arcor-online.net ([151.189.21.47])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gq678-0003hM-CE
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 02:59:31 -0800
-Received: from mail-in-01-z2.arcor-online.net (mail-in-05-z2.arcor-online.net
-	[151.189.8.17])
-	by mail-in-07.arcor-online.net (Postfix) with ESMTP id A2FE91F5F5F
-	for <nfs@lists.sourceforge.net>; Fri,  1 Dec 2006 11:59:27 +0100 (CET)
-Received: from mail-in-02.arcor-online.net (mail-in-02.arcor-online.net
-	[151.189.21.42])
-	by mail-in-01-z2.arcor-online.net (Postfix) with ESMTP id 9641F2DABC0
-	for <nfs@lists.sourceforge.net>; Fri,  1 Dec 2006 11:59:27 +0100 (CET)
-Received: from webmail13 (webmail13.arcor-online.net [151.189.8.66])
-	by mail-in-02.arcor-online.net (Postfix) with ESMTP id D2E0227FEF
-	for <nfs@lists.sourceforge.net>; Fri,  1 Dec 2006 11:59:26 +0100 (CET)
-To: nfs@lists.sourceforge.net
+	id 1Gq6lh-0007WN-7i
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 03:41:25 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gq6lg-0003ou-U7
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 03:41:26 -0800
+To: Olaf Kirch <okir@suse.de>
+In-Reply-To: <20061130200110.GA26145@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,59 +36,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
- 
-(forgot to cc to the list)
+Le jeudi 30 novembre 2006 =E0 21:01 +0100, Olaf Kirch a =E9crit :
+> =
 
------ Original Nachricht ----
-Von:     linuxkernel@arcor.de
-An:      okir@suse.de
-Datum:   01.12.2006 11:52
-Betreff: Re: [NFS] several oopses of nfsd in 2.6.16.29
+> > instead? TI-RPC? It has thread support, but it's also much more =
 
- Hello,
+> > complicated. The implementation is not as tested and the libtirpc =
 
-thanks for your reply!
+> > implementation is not based on the latest Sun release. And, libtirpc ha=
+s =
 
-> On Fri, Dec 01, 2006 at 09:06:35AM +0100, linuxkernel@arcor.de wrote:
-> > it happened again, but this time without /proc/fs/nfsd mounted.  This is
-> getting on my nerves.
-> > Please see attached the oopses.  Now I switched to 2.6.16.33.
-> 
-> It doesn't look like this is necessarily nfsd's fault; this looks more
+> > not been ported to Windows yet, and the thread stuff makes porting =
 
-ok, I only saw "Process: nfsd" in the oops, that's why I report it here.
+> > somewhat difficult. =
 
-> like memory corruption to me.  Something stomped on either the inode or
-> (less likely) the inode->ops of some file.
+> =
 
-possible but oopses also occured on the other machine, although
-they weren't logged, but okay I'll run a memtest.    And the filesystems
-of these machines are synced via rsync, not via drbd, so the inodes
-are different.
+> I'm not a huge fan of TIRPC either.
 
-> 
-> I'd suggest building the kernel with slab debugging enabled and
-> see whether that turns up anything useful.
+Hi Olaf, Peter,
 
-do I have to do anything special besides building with CONFIG_DEBUG_SLAB?
+We'll have a student, Cyril, in 2007 during 5 months about TI-RPC.
+His main goal deals with writing tests for RPC and TI-RPC lib.
+But any ideas are welcome to improve TI-RPC and make you a fan of it !
+Do you have a list of complaints about TI-RPC ?
 
-> 
-> There's a remote chance this is related to ACLs though, as the
-> first crash is in an ACL call. Are you using ACLs at all?
+Regards,
 
-yes, they are mounted with acl, but it is not used at the moment,
-I don't even think there is any file with acls set.
-
-Thanks again,
-
-      Peter
+Tony
 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
