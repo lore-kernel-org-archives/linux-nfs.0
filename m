@@ -1,52 +1,47 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Fri, 01 Dec 2006 14:16:47 -0500
-Message-ID: <1165000607.17881.23.camel@lade.trondhjem.org>
-References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
-	<1164228193.5694.38.camel@lade.trondhjem.org>
-	<52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
-	<1164628684.3178.10.camel@localhost>
-	<52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
-	<52109fb10612011034v4f1feb27n59b6251edee6cfc1@mail.gmail.com>
-	<1164998608.16282.6.camel@lade.trondhjem.org>
-	<52109fb10612011104l67d2f126hb53d82edb6fef64b@mail.gmail.com>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: cel's patch set released for 2.6.19
+Date: Fri, 1 Dec 2006 15:21:29 -0500
+Message-ID: <76bd70e30612011221g6db7538ar2151cbe152d0dc36@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
-	Kostas Georgiou <k.georgiou@imperial.ac.uk>, Ian Kent <raven@themaw.net>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Paarvai Naai <opensource3141@gmail.com>
-In-Reply-To: <52109fb10612011104l67d2f126hb53d82edb6fef64b@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GqEt5-0003di-66
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 12:21:35 -0800
+Received: from ug-out-1314.google.com ([66.249.92.169])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GqEt5-0002yG-8e
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 12:21:36 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so2513192ugc
+	for <nfs@lists.sourceforge.net>; Fri, 01 Dec 2006 12:21:30 -0800 (PST)
+To: "NFS List" <nfs@lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-12-01 at 11:04 -0800, Paarvai Naai wrote:
-> Thank you for your quick response.  I'm not too familiar with the
-> term "injury time" and the like.  But regardless, what is the
-> purpose of a rc series if we can't get an important bug fix into it.
+I've published a version of the patchset containing the remaining
+transport switch patches, ported to 2.6.19, on this website:
 
-That depends entirely on the nature of the bug. This one does not
-corrupt data, it does not cause an Oops, so we have time to look
-carefully at a solution.
+  http://oss.oracle.com/~cel/linux-2.6/2.6.19/
 
-> Here's what I propose and I am happy to help facilitate to 
-> some degree.  We should definitely get it into 2.6.19.x ASAP
-> and obviously into 2.6.20.  And Fedora often adds extra
-> patches into their source RPMs.  This is the most important
-> for my company.  Even if we don't have it in 2.6.19 vanilla,
-> if I had a "certified" patch from you, we can try to take it
-> to Fedora and get it into their source RPM.
+-- 
+"We who cut mere stones must always be envisioning cathedrals"
+   -- Quarry worker's creed
 
-The procedures for dealing with kernel regressions are already well
-established. I will be following them as usual.
-
-Trond
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
