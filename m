@@ -1,23 +1,23 @@
-From: Olaf Kirch <okir@suse.de>
-Subject: Re: several oopses of nfsd in 2.6.16.29
-Date: Fri, 1 Dec 2006 10:26:00 +0100
-Message-ID: <20061201092559.GE11918@suse.de>
-References: <20695426.1164960395196.JavaMail.ngmail@webmail13>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1GpLKZ-0004Ec-5J delayed 48 hours
+Date: Fri, 01 Dec 2006 01:48:32 -0800
+Message-ID: <E1Gq50S-0006VF-6x@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gq4ef-0003It-Up
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:26:02 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1Gq50R-0005Mq-Dd
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:48:31 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gq4eg-0000vl-Mc
-	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:26:03 -0800
-To: linuxkernel@arcor.de
-In-Reply-To: <20695426.1164960395196.JavaMail.ngmail@webmail13>
+	(Exim 4.44) id 1Gq50S-0003T7-OH
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:48:32 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1Gq50S-0006VF-6x
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 01:48:32 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,23 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Dec 01, 2006 at 09:06:35AM +0100, linuxkernel@arcor.de wrote:
-> it happened again, but this time without /proc/fs/nfsd mounted.  This is getting on my nerves.
-> Please see attached the oopses.  Now I switched to 2.6.16.33.
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
-It doesn't look like this is necessarily nfsd's fault; this looks more
-like memory corruption to me.  Something stomped on either the inode or
-(less likely) the inode->ops of some file.
+The message identifier is:     1GpLKZ-0004Ec-5J
+The subject of the message is: they may not Uncover her damsels of the way and Absalom
+The date of the message is:    Wed, 29 Nov 2006 14:29:42 +0530
 
-I'd suggest building the kernel with slab debugging enabled and
-see whether that turns up anything useful.
+The address to which the message has not yet been delivered is:
 
-There's a remote chance this is related to ACLs though, as the
-first crash is in an ACL call. Are you using ACLs at all?
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
 
-Olaf
--- 
-Walks like a duck. Quacks like a duck. Must be a chicken.
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
