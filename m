@@ -1,82 +1,71 @@
-From: "Paarvai Naai" <opensource3141@gmail.com>
-Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Fri, 1 Dec 2006 12:57:33 -0800
-Message-ID: <52109fb10612011257s37d64003lb83fd0bbf623233f@mail.gmail.com>
-References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
-	<1164228193.5694.38.camel@lade.trondhjem.org>
-	<52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
-	<1164628684.3178.10.camel@localhost>
-	<52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
-	<52109fb10612011034v4f1feb27n59b6251edee6cfc1@mail.gmail.com>
-	<1164998608.16282.6.camel@lade.trondhjem.org>
-	<52109fb10612011104l67d2f126hb53d82edb6fef64b@mail.gmail.com>
-	<1165000607.17881.23.camel@lade.trondhjem.org>
+From: Weikuan Yu <wyu@ornl.gov>
+Subject: NFS export of TMPFS
+Date: Fri, 01 Dec 2006 16:46:41 -0500
+Message-ID: <4570A2C1.3060707@ornl.gov>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1036457295=="
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
-	Kostas Georgiou <k.georgiou@imperial.ac.uk>, Ian Kent <raven@themaw.net>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1165000607.17881.23.camel@lade.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Mime-version: 1.0
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GqGDT-0003iW-H0
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 13:46:43 -0800
+Received: from emroute1.ornl.gov ([160.91.4.119])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GqGDT-0004W0-Or
+	for nfs@lists.sourceforge.net; Fri, 01 Dec 2006 13:46:45 -0800
+Received: from emroute1.ornl.gov ([127.0.0.1])
+	by emroute1.ornl.gov (PMDF V6.3-x3 #31246)
+	with ESMTP id <0J9M00HCZ75T3Q@emroute1.ornl.gov> for
+	nfs@lists.sourceforge.net; Fri, 01 Dec 2006 16:46:42 -0500 (EST)
+Received: from CONVERSION-DAEMON.emroute1.ornl.gov by emroute1.ornl.gov
+	(PMDF V6.3-x3 #31246) id <0J9M00L0175TFW@emroute1.ornl.gov> for
+	nfs@lists.sourceforge.net; Fri, 01 Dec 2006 16:46:41 -0500 (EST)
+Received: from [160.91.44.76] (crossfire.ornl.gov [160.91.44.76])
+	by emroute1.ornl.gov (PMDF V6.3-x3 #31246)
+	with ESMTPSA id <0J9M00K4275TV8@emroute1.ornl.gov> for
+	nfs@lists.sourceforge.net; Fri, 01 Dec 2006 16:46:41 -0500 (EST)
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1036457295==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_7523_509484.1165006653482"
+Hi,
 
-------=_Part_7523_509484.1165006653482
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+I am trying to export a memory-based file system via NFS. However, I am 
+not able to do with either ramfs or tmpfs. Here is the reported error. 
+Is there a protection in NFS server to prevent this?
 
-On 12/1/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+I also tried to use ramdisk. That worked, however, I am not able to 
+create a ramdisk of more than 1G. I need to create a ramdisk that is 2G 
+or more. Any insights on this.
 
-> The procedures for dealing with kernel regressions are already well
-> established. I will be following them as usual.
->
-> Trond
->
->
-That's good to know.  What is the well-established procedure for Fedora?
-I really want to make sure it gets in ASAP.  The importance of this
-(basically that the current bug *nearly completely breaks* krb5 with
-NFS) needs to be impressed on them.
+I will be happy if I can get solutions for either of the approaches. Or 
+is there any other alternatives?
 
 Thanks,
-Paarvai
+Weikuan
 
-------=_Part_7523_509484.1165006653482
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+[root@yoda1 ~]# mount -t tmpfs none /nfs
+[root@yoda1 ~]# df -h /nfs
+Filesystem            Size  Used Avail Use% Mounted on
+none                  506M     0  506M   0% /nfs
+[root@yoda1 ~]# ssh node0002
+-bash-3.00# mount 192.168.1.254:/nfs /nfs
+mount: 192.168.1.254:/nfs failed, reason given by server: Permission denied
 
-<div><span class="gmail_quote">On 12/1/06, <b class="gmail_sendername">Trond Myklebust</b> &lt;<a href="mailto:trond.myklebust@fys.uio.no" target="_blank" onclick="return top.js.OpenExtLink(window,event,this)">trond.myklebust@fys.uio.no
-</a>&gt; wrote:
-</span><br><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">The procedures for dealing with kernel regressions are already well<br>established. I will be following them as usual.
-<br><br>Trond<br><br></blockquote></div><br>That's good to know.&nbsp; What is the well-established procedure for Fedora?<br>I really want to make sure it gets in ASAP.&nbsp; The importance of this<br>(basically that the current bug *nearly completely breaks* krb5 with
-<br>NFS) needs to be impressed on them.<br><br>Thanks,<br>Paarvai<br><br><br><br>
-
-------=_Part_7523_509484.1165006653482--
-
---===============1036457295==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---===============1036457295==--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
