@@ -1,21 +1,25 @@
-From: "Mikko Rahkonen" <mikko.rahkonen@gmail.com>
-Subject: NFS: exporting a hfsplus volume in Linux 2.6.19
-Date: Sun, 3 Dec 2006 11:47:59 +0200
-Message-ID: <ff320860612030147r6e2fe53dl2c30dd71badf3adb@mail.gmail.com>
+From: "Clair Toney" <viceroy'spresumptuousness@acad.ursinus.edu>
+Subject: fwd: Toney
+Date: Sun, 3 Dec 2006 15:24:21 +0000 (UTC)
+Message-ID: <01c716ef$104fab80$6c822ecf@viceroy'spresumptuousness>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gqnx3-0006l7-TK
-	for nfs@lists.sourceforge.net; Sun, 03 Dec 2006 01:48:02 -0800
-Received: from ug-out-1314.google.com ([66.249.92.174])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gqnx3-00073Y-1X
-	for nfs@lists.sourceforge.net; Sun, 03 Dec 2006 01:48:03 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so2751661ugc
-	for <nfs@lists.sourceforge.net>; Sun, 03 Dec 2006 01:47:59 -0800 (PST)
-To: nfs@lists.sourceforge.net
+	id 1GqtCM-0008HA-GR
+	for nfs@lists.sourceforge.net; Sun, 03 Dec 2006 07:24:11 -0800
+Received: from 212214206112-solvesborgs-bredband-net.host.songnetworks.se
+	([212.214.206.112]) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1GqtCK-00056c-D9
+	for nfs@lists.sourceforge.net; Sun, 03 Dec 2006 07:24:11 -0800
+Received: from 198.17.40.24 (HELO mailsrvr1.ursinus.edu)
+	by lists.sourceforge.net with esmtp (0=Y.-FFX8 :I*-()
+	id 2G)'C7-,=1CU2-II
+	for nfs@lists.sourceforge.net; Sun, 3 Dec 2006 15:24:03 -0060
+To: <nfs@lists.sourceforge.net>
+Date: Sun, 3 Dec 2006 15:24:03 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,29 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi
+Smart Money Equities would like to thank our valued 
+readers for making 2006 a great year.  Please continue 
+to support Smart Money Equities by visiting our sponsors 
+and featured advertisers.  Here's our next Hot Pick!
 
-Is exporting a hfsplus filesystem currently supported in Linux NFS
-implementation?
 
-I'm trying to NFS export a hfsplus volume in Linux. I get a permission denied
-error when mounting the Linux NFS export from a client (Mac OS X or Linux) even
-though user permissions are correct for the volume and mount point (other NFS
-exports of different filesystems are working as expected).
+Company: Premium Petroleum, Inc. 
 
-I know I can use a samba export (it works) but NFS is much more
-efficient. The main
-reason for using the hfsplus filesystem is that I can use this
-external hard drive volume
-locally from Mac OS X if needed without any filesystem drivers
-installed in Mac OS X
-(there is an ext2 driver for OS X but it's still quite unstable) and
-FAT has this 4GB file
-size limit.
+Symbol: PPTL   
+Current Price: Around $0.01
+Target Price: $0.06
 
-Thanks!
--- 
-Mikko
+A major release is coming out or the company this week.  
+While we can't divulge the complete report we can say 
+that it is going to push this one much higher!
+ 
+PPTL will be benefiting from a massive PR campaign that 
+will have investors lining up to get in.  We are giving 
+our members the heads up early so that you can get the 
+maximum benefit!
+It's first day of this campaign you know what will happend
+next several days...
+
+Go Smart Money!
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
