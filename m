@@ -1,72 +1,103 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH 0/2] mountd: clean up rmtab handling
-Date: Mon, 04 Dec 2006 10:05:17 -0500
-Message-ID: <4574392D.9080807@poochiereds.net>
-References: <1161781620.7078.50.camel@dantu.rdu.redhat.com>	<45704A4A.6000007@poochiereds.net>
-	<17779.42545.642976.873602@cse.unsw.edu.au>
+From: "Paarvai Naai" <opensource3141@gmail.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
+	volume!
+Date: Mon, 4 Dec 2006 10:55:38 -0800
+Message-ID: <52109fb10612041055j41596e67racc9c3194fef413@mail.gmail.com>
+References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
+	<1164228193.5694.38.camel@lade.trondhjem.org>
+	<52109fb10611221443w356ff6s4eae49ebb0d935ec@mail.gmail.com>
+	<1164628684.3178.10.camel@localhost>
+	<52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
+	<52109fb10612011034v4f1feb27n59b6251edee6cfc1@mail.gmail.com>
+	<1164998608.16282.6.camel@lade.trondhjem.org>
+	<52109fb10612011104l67d2f126hb53d82edb6fef64b@mail.gmail.com>
+	<1165000607.17881.23.camel@lade.trondhjem.org>
+	<52109fb10612011257s37d64003lb83fd0bbf623233f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrFO2-0005M0-4K
-	for nfs@lists.sourceforge.net; Mon, 04 Dec 2006 07:05:42 -0800
-Received: from ms-smtp-02.southeast.rr.com ([24.25.9.101])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GrFO3-00032O-5t
-	for nfs@lists.sourceforge.net; Mon, 04 Dec 2006 07:05:43 -0800
-To: Neil Brown <neilb@suse.de>
-In-Reply-To: <17779.42545.642976.873602@cse.unsw.edu.au>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============2075764107=="
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	Kostas Georgiou <k.georgiou@imperial.ac.uk>, Ian Kent <raven@themaw.net>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+In-Reply-To: <52109fb10612011257s37d64003lb83fd0bbf623233f@mail.gmail.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Mime-version: 1.0
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Neil Brown wrote:
-> 
-> I'm not convinced... I don't like the idea of mapping an IP address to
-> a hostname and then just working with the hostname.  Because it is
-> really IP addresses that you trust, not host names (in the case of
-> multi-homed hosts particularly).
-> 
+--===============2075764107==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_41600_13700707.1165258538015"
 
-The patch I posted doesn't do that though. Perhaps I didn't explain it 
-well enough...
+------=_Part_41600_13700707.1165258538015
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-All that patch does is get rid of the caching of the hostname list in 
-my_client. Currently, what happens is that we build a comma separated 
-list of "hostnames" and stuff that into my_client.m_hostname. We build 
-this comma-separated list via client_compose, which just calls 
-client_check repeatedly to see what hostnames this address matches.
-
-The patch I posted still uses the exact same decision making process to 
-see if an address matches an nfs_client entry (client_check). It just no 
-longer does this in two stages via the comma-separated list.
-
-The patch I posted should make no change in behavior of whether a host 
-is allowed or denied, aside from the particular case that we already 
-discussed where a cached my_client hostname list is no longer correct.
-
-All that said, I'm OK with pulling this info out of the kernel caches 
-instead. I'll have a look over the latest patch that you sent and see if 
-it does what we need.
+I have added this bug to bugzilla.redhat.com and requested that they
+push Trond's patch into their source RPMs as soon as possible.  Sorry if
+I'm stepping on anyone toes, but I just felt that I had to proceed since I
+didn't receive a response to my previous question (see below).
 
 Thanks,
-Jeff
+Paarvai
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+On 12/1/06, Paarvai Naai <opensource3141@gmail.com> wrote:
+>
+> On 12/1/06, Trond Myklebust <trond.myklebust@fys.uio.no > wrote:
+>
+> > The procedures for dealing with kernel regressions are already well
+> > established. I will be following them as usual.
+> >
+> > Trond
+> >
+> >
+> That's good to know.  What is the well-established procedure for Fedora?
+> I really want to make sure it gets in ASAP.  The importance of this
+> (basically that the current bug *nearly completely breaks* krb5 with
+> NFS) needs to be impressed on them.
+>
+> Thanks,
+> Paarvai
+>
+>
+>
+>
+
+------=_Part_41600_13700707.1165258538015
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+I have added this bug to <a href="http://bugzilla.redhat.com">bugzilla.redhat.com</a> and requested that they<br>push Trond's patch into their source RPMs as soon as possible.&nbsp; Sorry if<br>I'm stepping on anyone toes, but I just felt that I had to proceed since I
+<br>didn't receive a response to my previous question (see below).<br><br>Thanks,<br>Paarvai<br><br><div><span class="gmail_quote">On 12/1/06, <b class="gmail_sendername">Paarvai Naai</b> &lt;<a href="mailto:opensource3141@gmail.com">
+opensource3141@gmail.com</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;"><div><span class="q"><span class="gmail_quote">
+On 12/1/06, <b class="gmail_sendername">Trond Myklebust</b> &lt;<a href="mailto:trond.myklebust@fys.uio.no" target="_blank" onclick="return top.js.OpenExtLink(window,event,this)">trond.myklebust@fys.uio.no
+</a>&gt; wrote:
+</span><br></span><span class="q"><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">The procedures for dealing with kernel regressions are already well
+<br>established. I will be following them as usual.
+<br><br>Trond<br><br></blockquote></span></div><br>That's good to know.&nbsp; What is the well-established procedure for Fedora?<br>I really want to make sure it gets in ASAP.&nbsp; The importance of this<br>(basically that the current bug *nearly completely breaks* krb5 with
+<br>NFS) needs to be impressed on them.<br><br>Thanks,<br><span class="sg">Paarvai<br><br><br><br>
+
+</span></blockquote></div><br>
+
+------=_Part_41600_13700707.1165258538015--
+
+--===============2075764107==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============2075764107==--
