@@ -1,24 +1,30 @@
-From: "Warren Beldad" <advisory22@gmail.com>
-Subject: Re: large files on nfs share
-Date: Mon, 4 Dec 2006 16:39:28 +0800
-Message-ID: <b5ba2f6a0612040039o46ddf382k86010a443baf8a69@mail.gmail.com>
-References: <941ca8f70612031233i1ccc8fddq3e27a9610f5b481a@mail.gmail.com>
+From: Tony Reix <tony.reix@bull.net>
+Subject: Re: Improving unfsd scalability: TI-RPC test suite
+Date: Mon, 04 Dec 2006 09:51:59 +0100
+Message-ID: <1165222319.18251.10.camel@frecb000687.frec.bull.fr>
+References: <9c8209a10611292254s79849a6ci11fe10341017ae7e@mail.gmail.com>
+	<Pine.LNX.4.64.0611301056440.15692@maggie.lkpg.cendio.se>
+	<20061130102238.GA11918@suse.de>
+	<9c8209a10611300958q7fd8bcb8u1001cc936062308b@mail.gmail.com>
+	<20061130181308.GA12747@suse.de>
+	<Pine.LNX.4.64.0611301919430.25539@maggie.lkpg.cendio.se>
+	<20061130200110.GA26145@suse.de>
+	<1164973277.23144.81.camel@frecb000687.frec.bull.fr>
+	<Pine.LNX.4.64.0612011448540.29202@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0445126223=="
-Cc: nfs <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: cyril.lacabanne@ema.fr, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gr9MG-0000k7-7n
-	for nfs@lists.sourceforge.net; Mon, 04 Dec 2006 00:39:28 -0800
-Received: from wx-out-0506.google.com ([66.249.82.224])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gr9MH-00016P-CX
-	for nfs@lists.sourceforge.net; Mon, 04 Dec 2006 00:39:29 -0800
-Received: by wx-out-0506.google.com with SMTP id i30so5469370wxd
-	for <nfs@lists.sourceforge.net>; Mon, 04 Dec 2006 00:39:28 -0800 (PST)
-To: "Allan Wilson" <allanwilson@gmail.com>
-In-Reply-To: <941ca8f70612031233i1ccc8fddq3e27a9610f5b481a@mail.gmail.com>
+	id 1Gr9Yj-000206-QD
+	for nfs@lists.sourceforge.net; Mon, 04 Dec 2006 00:52:21 -0800
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gr9Yj-0000Cf-JK
+	for nfs@lists.sourceforge.net; Mon, 04 Dec 2006 00:52:23 -0800
+To: Peter Astrand <astrand@cendio.se>
+In-Reply-To: <Pine.LNX.4.64.0612011448540.29202@maggie.lkpg.cendio.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,84 +37,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0445126223==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_31167_998239.1165221568051"
+Le vendredi 01 d=E9cembre 2006 =E0 14:52 +0100, Peter Astrand a =E9crit :
+> On Fri, 1 Dec 2006, Tony Reix wrote:
 
-------=_Part_31167_998239.1165221568051
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+> > We'll have a student, Cyril, in 2007 during 5 months about TI-RPC.
+> > His main goal deals with writing tests for RPC and TI-RPC lib.
+> =
 
-have you tried copying that file into your local disk. can it copy the whole
-file?
-whats the error? something like the file is no longer there or the network
-is unavailable....
+> This sounds great. Have you decided on the test framework and/or language =
 
-On 12/4/06, Allan Wilson <allanwilson@gmail.com> wrote:
->
-> I am running a nfs server on Ubuntu Edgy and have some large movies stored
-> on that box. One is 4.9GB and the other is 5.9GB. I can play the movies on
-> another linux box by mounting the share or on a windows computer using
-> "Windows Services for Unix" but no matter what I choose I can only see about
-> 14minutes of each video before it tells me end of file. I have tried
-> different players xine and mplayer both do the same thing. It has to be a
-> nfs server setting but I don't know what it is. Any ideas?
->
-> Allan
->
-> -------------------------------------------------------------------------
-> Take Surveys. Earn Cash. Influence the Future of IT
-> Join SourceForge.net's Techsay panel and you'll get the chance to share
-> your
-> opinions on IT & business topics through brief surveys - and earn cash
-> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
->
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
->
->
+> yet? pynfs might be useful... :-)
 
-------=_Part_31167_998239.1165221568051
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Not decided yet. The decision will be done after the student has built
+the design of the tests to be done. C and Python are candidates. Since
+the test suite is aimed to be delivered to the LTP project, we'll follow
+their rules.
 
-have you tried copying that file into your local disk. can it copy the whole file?<br>whats the error? something like the file is no longer there or the network is unavailable....<br><br><div><span class="gmail_quote">On 12/4/06, 
-<b class="gmail_sendername">Allan Wilson</b> &lt;<a href="mailto:allanwilson@gmail.com">allanwilson@gmail.com</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-I am running a nfs server on Ubuntu Edgy and have some large movies stored on that box. One is 4.9GB and the other is 5.9GB. I can play the movies on another linux box by mounting the share or on a windows computer using &quot;Windows Services for Unix&quot; but no matter what I choose I can only see about 14minutes of each video before it tells me end of file. I have tried different players xine and mplayer both do the same thing. It has to be a nfs server setting but I don't know what it is. Any ideas?
-<br><span class="sg"><br>Allan<br>
+Though the TI-RPC already appears in FC6 with no known issues, providing
+a RPC test suite will help to stabilize it.
 
-</span><br>-------------------------------------------------------------------------<br>Take Surveys. Earn Cash. Influence the Future of IT<br>Join SourceForge.net's Techsay panel and you'll get the chance to share your<br>
-opinions on IT &amp; business topics through brief surveys - and earn cash<br><a onclick="return top.js.OpenExtLink(window,event,this)" href="http://www.techsay.com/default.php?page=join.php&amp;p=sourceforge&amp;CID=DEVDEV" target="_blank">
-http://www.techsay.com/default.php?page=join.php&amp;p=sourceforge&amp;CID=DEVDEV</a><br><br>_______________________________________________<br>NFS maillist &nbsp;- &nbsp;<a onclick="return top.js.OpenExtLink(window,event,this)" href="mailto:NFS@lists.sourceforge.net">
-NFS@lists.sourceforge.net</a><br><a onclick="return top.js.OpenExtLink(window,event,this)" href="https://lists.sourceforge.net/lists/listinfo/nfs" target="_blank">https://lists.sourceforge.net/lists/listinfo/nfs</a><br><br>
-<br></blockquote></div><br>
+Regards,
 
-------=_Part_31167_998239.1165221568051--
+Tony
 
-
---===============0445126223==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0445126223==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0445126223==--
