@@ -1,70 +1,88 @@
-From: "Sheri Pendleton" <centralizedquarterbacked@abralan.ru>
-Subject: it's me Sheri
-Date: Tue, 5 Dec 2006 13:22:07 +0000 (UTC)
-Message-ID: <01c71870$4e14fab0$6c822ecf@centralizedquarterbacked>
+From: "Paarvai Naai" <opensource3141@gmail.com>
+Subject: Re: [NFS] "mount: File exists" when trying to mount a second krb5
+	volume!
+Date: Tue, 5 Dec 2006 11:06:26 -0800
+Message-ID: <52109fb10612051106y4dfe0844sa5fd2e3e497c6c56@mail.gmail.com>
+References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
+	<1164628684.3178.10.camel@localhost>
+	<52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
+	<52109fb10612011034v4f1feb27n59b6251edee6cfc1@mail.gmail.com>
+	<1164998608.16282.6.camel@lade.trondhjem.org>
+	<52109fb10612011104l67d2f126hb53d82edb6fef64b@mail.gmail.com>
+	<1165000607.17881.23.camel@lade.trondhjem.org>
+	<52109fb10612011257s37d64003lb83fd0bbf623233f@mail.gmail.com>
+	<52109fb10612041055j41596e67racc9c3194fef413@mail.gmail.com>
+	<Pine.LNX.4.64.0612051132150.29520@raven.themaw.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GraF4-00079i-2O
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 05:21:50 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GraF5-0005h4-AE
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 05:21:51 -0800
-Received: from ebz251.internetdsl.tpnet.pl ([83.14.155.251])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GraEq-0002xi-IZ
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 05:21:49 -0800
-Received: from 62.213.78.18 (HELO abralan.ru)
-	by lists.sourceforge.net with esmtp (O=/@9LX*25 XV.B)
-	id /*@-8L-.+=Q(7-U+
-	for nfs@lists.sourceforge.net; Tue, 5 Dec 2006 13:21:42 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Tue, 5 Dec 2006 13:21:42 -0060
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	Kostas Georgiou <k.georgiou@imperial.ac.uk>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: "Ian Kent" <raven@themaw.net>
+In-Reply-To: <Pine.LNX.4.64.0612051132150.29520@raven.themaw.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-You cannot make big returns on an oil company AFTER huge
-profits are reported.  You also can't make them by getting 
-in AFTER successful drilling results.  Everyone needs a 
-helping hand at getting in BEFORE the big events, and 
-that's what we are giving you here.
+Hi Ian,
 
-Great product, great sector, tightly held, with great 
-results expected any day.  Cana Petroleum is going to make 
-you a winner!
+Regarding the resolution of the issue, Trond sent out a patch.  Please see:
 
-Symbol: CNPM
-Current Price: Around  $0.78 
-Projected Price:       $5.40
+http://linux-nfs.org/pipermail/nfsv4/2006-November/005315.html
 
-Watch it on Tuesday, December 5th.  This one is going to 
-have you wearing a big smile all day long!  
+I've verified this patch on my system and Trond had it working as well.
+The initial confusion was that the patch did not apply to 2.6.18 and
+when I hacked it up it was causing segfaults on umount.  But that's not
+really a concern since we can get the patch into 2.6.19 and up.
 
-Major oil discovery?  We are not permitted to say at this 
-point.  All we can say is that this one is going to see 
-amazing appreciation in a very short period of time!  This 
-is your opportunity.  Excel with CNPM!  
+Thanks,
+Paarvai
 
 
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+On 12/4/06, Ian Kent <raven@themaw.net> wrote:
+> On Mon, 4 Dec 2006, Paarvai Naai wrote:
+>
+> > I have added this bug to bugzilla.redhat.com and requested that they
+> > push Trond's patch into their source RPMs as soon as possible.  Sorry if
+> > I'm stepping on anyone toes, but I just felt that I had to proceed since I
+> > didn't receive a response to my previous question (see below).
+>
+> Sorry, I meant to say to log a bug.
+>
+> But, looking at the history in this thread, it appears that a solution
+> hasn't been reached.
+>
+> >
+> > Thanks,
+> > Paarvai
+> >
+> > On 12/1/06, Paarvai Naai <opensource3141@gmail.com> wrote:
+> > >
+> > > On 12/1/06, Trond Myklebust <trond.myklebust@fys.uio.no > wrote:
+> > >
+> > > > The procedures for dealing with kernel regressions are already well
+> > > > established. I will be following them as usual.
+> > > >
+> > > > Trond
+> > > >
+> > > >
+> > > That's good to know.  What is the well-established procedure for Fedora?
+> > > I really want to make sure it gets in ASAP.  The importance of this
+> > > (basically that the current bug *nearly completely breaks* krb5 with
+> > > NFS) needs to be impressed on them.
+> > >
+> > > Thanks,
+> > > Paarvai
+> > >
+> > >
+> > >
+> > >
+> >
+>
