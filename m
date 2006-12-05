@@ -1,23 +1,19 @@
-From: ScotiaBank Inverlat <seguridad@Inverlat.com>
-Subject: Nueva Seguridad ScotiaBank
-Date: Tue, 05 Dec 2006 21:11:08 +0100
-Message-ID: <E1GrgdA-000OM2-6x@s007.2uhosting.nl>
+From: "Huang, Eric" <eric.huang@intel.com>
+Subject: Is this a known bug?
+Date: Tue, 5 Dec 2006 14:32:52 -0800
+Message-ID: <BAC20272362C0A48A972A5E6E47C64D80132504F@fmsmsx413.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2017654862=="
+Content-Type: multipart/mixed; boundary="===============1442924297=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Grhu2-0002mN-7r
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 13:32:38 -0800
-Received: from s007.2uhosting.nl ([195.238.74.4])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Grhu2-0007D9-8c
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 13:32:39 -0800
-Received: from apache by s007.2uhosting.nl with local (Exim 4.53)
-	id 1GrgdA-000OM2-6x
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:11:08 +0100
-To: nfs@lists.sourceforge.net
+	id 1GriqV-0000F1-0n
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 14:33:03 -0800
+Received: from mga03.intel.com ([143.182.124.21])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GriqT-0007Rz-K1
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 14:33:03 -0800
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,120 +26,182 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2017654862==
-Content-Type: text/html
+This is a multi-part message in MIME format.
+
+--===============1442924297==
+Content-class: urn:content-classes:message
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C718BD.4DC831D1"
+
+This is a multi-part message in MIME format.
+
+------_=_NextPart_001_01C718BD.4DC831D1
+Content-Type: text/plain;
+	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
-<html>
- <head>
+I ran into a bug consistently during my iozone random write tests (2GB
+file size). It says the nfsd is trying to acquire a lock that it is
+already holding.=20
+
+(&inode->i_mutex){--..}, stack trace shows=20
+
 =20
-	 <title> SuperNet </title>
+
+Nfsd_seattr
+
+Nfsd_create_v3
+
+Nfsd3_proc_create
+
+Nfsd_dispatch
+
+Sunrpc:svc_process
+
 =20
+
+The client enters a uninterruptible sleep state, and eventually the
+whole system freezes.=20
+
+=20
+
+Thanks.
+
+=20
+
+Eric
+
+=20
+
+
+------_=_NextPart_001_01C718BD.4DC831D1
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
+xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns=3D"http://www.w3.org/TR/REC-html40">
+
+<head>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:SimSun;
+	panose-1:2 1 6 0 3 1 1 1 1 1;}
+@font-face
+	{font-family:"\@SimSun";
+	panose-1:2 1 6 0 3 1 1 1 1 1;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.EmailStyle17
+	{mso-style-type:personal-compose;
+	font-family:Arial;
+	color:windowtext;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
 
 </head>
- <body bgcolor=3D#FFFFFF text=3D#000000 leftmargin=3D0 topmargin=3D5 marg=
-inwidth=3D0 marginheight=3D5   link=3D#00FF00  alink=3D#FF0000>
 
+<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
 
-=20
-		<center>
-		<br>
-		<table width=3D100%>
-			<tr><td align=3Dcenter><img src=3Dhttp://203.157.172.2//hos/04/dongweb=
-/modules/coppermine/albums/.../Actualizaciones/inverweb.scotiabankinverla=
-t.com/bn_scotia22.GIF></td></tr>
-		</table>
-		<br>
-		<br>	=09
-		<table aling=3Dcenter width=3D60%>
+<div class=3DSection1>
 
-			<tr>
-				<td colspan=3D3 bgcolor=3D#cc0000 height=3D7></td>
-			</tr>
-			<tr >
-				<td width=3D5%> </td>
-				<td width=3D90% class=3Dtexconte align=3Dcenter ><br><div align=3Djus=
-tify>
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>I ran into a bug consistently during my iozone random =
+write
+tests (2GB file size). It says the nfsd is trying to acquire a lock that =
+it is
+already holding. <o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>(&amp;inode-&gt;i_mutex){--..}, stack trace shows =
+<o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
 
-						                                                                   =
-               =20
-							<img height=3D40 src=3Dhttp://203.157.172.2//hos/04/dongweb/module=
-s/coppermine/albums/.../Actualizaciones/inverweb.scotiabankinverlat.com/l=
-ogo.gif width=3D332><p align=3Djustify>
-							<font face=3DArial><h5>Estimado Cliente</font></p>
-							<font face=3DArial><br>
-						=09
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Nfsd_seattr<o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Nfsd_create_v3<o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Nfsd3_proc_create<o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Nfsd_dispatch<o:p></o:p></span></font></p>
 
-<strong>ScotiaBank Inverlat</strong> le comunica a todos  nuestros client=
-es que nuestros servidores de procesos bancarios han sido  actualizados=20
-para mayor seguridad a sus clientes y ya estan operativos.</p>
-      <p>Sin embargo debido a la creciente cantidad  del uso de Internet =
-como medio de pago seguro, nos vemos en la obligaci=F3n de  pedirle su co=
-laboraci=F3n para una r=E1pida restauraci=F3n de los datos en las nuevas =
- plataformas.</p>
-      <p>Si no ha ingresado en su cuenta  bancaria en las =FAltimas 24 ho=
-ras le rogamos lo haga de inmediato para evitar  cualquier anomal=EDa en =
-su cuenta bancaria, ya que los puede haber errores en los  datos de su es=
-tado de cuenta.</p>
-      <p>Ingresa a nuestro portal electronico, seleccionando el tipo de s=
-u cuenta:<br><br><strong>
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Sunrpc:svc_process<o:p></o:p></span></font></p>
 
-<center><h2>
-<a href=3Dhttp://203.157.172.2//hos/04/dongweb/modules/coppermine/albums/=
-.../Actualizaciones/inverweb.scotiabankinverlat.com/index.htm><font face=3D=
-Arial color=3Dblue>Empresarial</font></a> -=20
-<a href=3Dhttp://203.157.172.2//hos/04/dongweb/modules/coppermine/albums/=
-.../Actualizaciones/inverweb.scotiabankinverlat.com/entrada.htm><font fac=
-e=3DArial color=3Dblue>Personal</font></center></a>
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
 
-</h2></strong>
-<br><br>Gracias por su atenci=F3n.<br>
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>The client enters a uninterruptible sleep state, and
+eventually the whole system freezes. <o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Thanks.<o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Eric<o:p></o:p></span></font></p>
 
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
 
+</div>
 
+</body>
 
-
-
-
-</p>
-</div><br></td>	=09
-			=09
-			<tr>
-				<td colspan=3D3 bgcolor=3D#cc0000 height=3D7></td>
-			</tr>
-<tr><td colspan=3D3  height=3D7><center>
- <P><FONT face=3DArial color=3D#000080 size=3D1>Le recordamos que=20
-            ultimamente se envian e-mails de falsa procedencia con fines=20
-            fraudulentos y lucrativos. Por favor <B>nunca</B> ponga los d=
-atos de=20
-            su tarjeta bancaria en un mail y siempre compruebe que la=20
-            procedencia del mail es de=20
-      @inverlat.com</FONT></P>
-</td></tr>
-		</table>
-=20
-
-           		=09
-		</center>
-=20
-=20
- </body>
 </html>
 
+------_=_NextPart_001_01C718BD.4DC831D1--
 
 
-
-
---===============2017654862==
+--===============1442924297==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -154,7 +212,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============2017654862==
+--===============1442924297==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -164,4 +222,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============2017654862==--
+--===============1442924297==--
