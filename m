@@ -1,23 +1,29 @@
-From: "Fredrik Lindgren" <fli@swip.net>
-Subject: Re: NFS corruption in 2.6.18.2?
-Date: Tue, 05 Dec 2006 12:09:14 +0100
-Message-ID: <37b13306c6b2f0469e1f8ce63a6a6706@swip.net>
-References: <1164395516.5702.53.camel@lade.trondhjem.org>
+From: "Sheri Pendleton" <centralizedquarterbacked@abralan.ru>
+Subject: it's me Sheri
+Date: Tue, 5 Dec 2006 13:22:07 +0000 (UTC)
+Message-ID: <01c71870$4e14fab0$6c822ecf@centralizedquarterbacked>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrYAv-0001xK-0v
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 03:09:25 -0800
-Received: from mailfe08.swip.net ([212.247.154.225] helo=swip.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GrYAv-000158-G5
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 03:09:25 -0800
-In-Reply-To: <1164395516.5702.53.camel@lade.trondhjem.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	"Kasparek Tomas" <kasparek@fit.vutbr.cz>
+	id 1GraF4-00079i-2O
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 05:21:50 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GraF5-0005h4-AE
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 05:21:51 -0800
+Received: from ebz251.internetdsl.tpnet.pl ([83.14.155.251])
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1GraEq-0002xi-IZ
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 05:21:49 -0800
+Received: from 62.213.78.18 (HELO abralan.ru)
+	by lists.sourceforge.net with esmtp (O=/@9LX*25 XV.B)
+	id /*@-8L-.+=Q(7-U+
+	for nfs@lists.sourceforge.net; Tue, 5 Dec 2006 13:21:42 -0060
+To: <nfs@lists.sourceforge.net>
+Date: Tue, 5 Dec 2006 13:21:42 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,50 +36,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> > > > > As I wrote before, it does not depend on the server 
-> > > > > (tried with FreeBSD server and several versions of
-> > > > > linux 2.6.16.x and 2.6.18.x).
-> > > > 
-> > > > Just update: 2.6.17.14 is ok
-> > > 
-> > > did git bisect between 2.6.17 and 2.6.18 and found that 
-> > > the commit is:
-> > > 
-> > > 44b11874ff583b6e766a05856b04f3c492c32b84
-> > >  NFS: Separate metadata and page cache revalidation mechanisms
-> > > 
-> > > will verify (with and without patch) tomorrow.
-> > 
-> > 2.6.18.3 with reversed 
-> > 44b11874ff583b6e766a05856b04f3c492c32b84 is OK.
-> > 
-> > exact patch used included.
-> 
-> If you are not using any form of synchronisation, then your test would
-> appear to be violating the close-to-open cache consistency rules (see
-> http://nfs.sourceforge.net/#faq_a8).
+You cannot make big returns on an oil company AFTER huge
+profits are reported.  You also can't make them by getting 
+in AFTER successful drilling results.  Everyone needs a 
+helping hand at getting in BEFORE the big events, and 
+that's what we are giving you here.
 
-Hello,
+Great product, great sector, tightly held, with great 
+results expected any day.  Cana Petroleum is going to make 
+you a winner!
 
-I have tested our application (CommuniGate Pro) with 2.6.18.3 with
-Mr. Kaspareks patch applied and I'm seeing no corruption after several
-days of uptime. Without the patch I usually see bogus data in in some
-files within an hour.
+Symbol: CNPM
+Current Price: Around  $0.78 
+Projected Price:       $5.40
 
-Also, anyone has any input in why 2.6.18.3 (both with and without
-Mr Kaspareks patch) does about half the amount of GETATTR calls
-compared to 2.6.13 with our application? Is this an indended change?
-Not that I'm complaining or anything, but it would be nice to know
-that it was intentional :)
+Watch it on Tuesday, December 5th.  This one is going to 
+have you wearing a big smile all day long!  
 
-Wheter CGP voilates the "close-to-open cache consistency rules" or not,
-I don't know. but the fact is that it works with a stock 2.6.13 and 
-2.6.18.3 sans patch 44b11874ff583b6e766a05856b04f3c492c32b84, it breaks
-on 2.6.18.3.
-
-Regards,
-  Fredrik Lindgren
-
+Major oil discovery?  We are not permitted to say at this 
+point.  All we can say is that this one is going to see 
+amazing appreciation in a very short period of time!  This 
+is your opportunity.  Excel with CNPM!  
 
 
 
