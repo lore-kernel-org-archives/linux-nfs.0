@@ -1,105 +1,131 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 8/10] lockd: always preallocate block in nlmsvc_lock()
-Date: Wed,  6 Dec 2006 00:34:18 -0500
-Message-ID: <11653832612071-git-send-email-bfields@fieldses.org>
-References: <11653832602203-git-send-email-bfields@fieldses.org> <1165383260627-git-send-email-bfields@fieldses.org> <11653832603105-git-send-email-bfields@fieldses.org> <11653832601058-git-send-email-bfields@fieldses.org> <11653832601635-git-send-email-bfields@fieldses.org> <1165383260424-git-send-email-bfields@fieldses.org> <11653832601925-git-send-email-bfields@fieldses.org> <1165383260548-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 9/10] lockd: add code to handle deferred lock requests
+Date: Wed,  6 Dec 2006 00:34:19 -0500
+Message-ID: <11653832611976-git-send-email-bfields@fieldses.org>
+References: <11653832602203-git-send-email-bfields@fieldses.org> <1165383260627-git-send-email-bfields@fieldses.org> <11653832603105-git-send-email-bfields@fieldses.org> <11653832601058-git-send-email-bfields@fieldses.org> <11653832601635-git-send-email-bfields@fieldses.org> <1165383260424-git-send-email-bfields@fieldses.org> <11653832601925-git-send-email-bfields@fieldses.org> <1165383260548-git-send-email-bfields@fieldses.org> <11653832612071-git-send-email-bfields@fieldses.org>
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <1165383260548-git-send-email-bfields@fieldses.org>
-Message-Id: <aee338c430e7f0a9afe63ea80d0278b97b01eeee.1165380893.git.bfields@citi.umich.edu>
+In-Reply-To: <11653832612071-git-send-email-bfields@fieldses.org>
+Message-Id: <4fbe0004219a67cb6da4d1b3a1cfd16a9cb09ed7.1165380893.git.bfields@citi.umich.edu>
 In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 To: me <bfields@umich.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-From: J. Bruce Fields <bfields@fieldses.org>
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-Normally we could skip ever having to allocate a block in the case where
-the client asks for a non-blocking lock, or asks for a blocking lock that
-succeeds immediately.
+Rewrite nlmsvc_lock() to use the asynchronous interface.
 
-However we're going to want to always look up a block first in order to
-check whether we're revisiting a deferred lock call, and to be prepared to
-handle the case where the filesystem returns -EINPROGRESS--in that case we
-want to make sure the lock we've given the filesystem is the one embedded
-in the block that we'll use to track the deferred request.
+As with testlock, we answer nlm requests in nlmsvc_lock by first looking up
+the block and then using the results we find in the block if B_QUEUED is
+set, and calling vfs_lock_file() otherwise.
+
+If this a new lock request and we get -EINPROGRESS return on a non-blocking
+request then we defer the request.
+
+Also modify nlmsvc_unlock() to call the filesystem method if appropriate.
 
 Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svclock.c |   34 +++++++++++-----------------------
- 1 files changed, 11 insertions(+), 23 deletions(-)
+ fs/lockd/svclock.c |   40 ++++++++++++++++++++++++++++++++++------
+ fs/lockd/svcsubs.c |    2 +-
+ 2 files changed, 35 insertions(+), 7 deletions(-)
 
 diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 21185a7..134a40e 100644
+index 134a40e..90bac90 100644
 --- a/fs/lockd/svclock.c
 +++ b/fs/lockd/svclock.c
-@@ -471,7 +471,7 @@ __be32
- nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
- {
--	struct nlm_block	*block, *newblock = NULL;
-+	struct nlm_block	*block = NULL;
- 	int			error;
- 	__be32			ret;
+@@ -499,17 +499,44 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	} else
+ 		lock->fl.fl_flags &= ~FL_SLEEP;
  
-@@ -484,17 +484,20 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 				wait);
- 
- 
+-	error = posix_lock_file(file->f_file, &lock->fl);
 -	lock->fl.fl_flags &= ~FL_SLEEP;
--again:
- 	/* Lock file against concurrent access */
- 	mutex_lock(&file->f_mutex);
--	/* Get existing block (in case client is busy-waiting) */
-+	/* Get existing block (in case client is busy-waiting)
-+	 * or create new block
-+	 */
- 	block = nlmsvc_lookup_block(file, lock);
- 	if (block == NULL) {
--		if (newblock != NULL)
--			lock = &newblock->b_call->a_args.lock;
--	} else
-+		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		ret = nlm_lck_denied_nolocks;
-+		if (block == NULL)
+ 
+-	dprintk("lockd: posix_lock_file returned %d\n", error);
++	if (block->b_flags & B_QUEUED) {
++		dprintk("lockd: nlmsvc_lock deferred block %p flags %d\n",
++							block, block->b_flags);
++		if (block->b_granted) {
++			nlmsvc_unlink_block(block);
++			ret = nlm_granted;
 +			goto out;
- 		lock = &block->b_call->a_args.lock;
-+	} else
++		}
++		if (block->b_flags & B_TOO_LATE) {
++			nlmsvc_unlink_block(block);
++			ret = nlm_lck_denied;
++			goto out;
++		}
++		ret = nlm_drop_reply;
++		goto out;
++	}
+ 
++	if (!wait)
 +		lock->fl.fl_flags &= ~FL_SLEEP;
++	error = vfs_lock_file(file->f_file, &lock->fl);
++	lock->fl.fl_flags &= ~FL_SLEEP;
++
++	dprintk("lockd: vfs_lock_file returned %d\n", error);
+ 	switch(error) {
+ 		case 0:
+ 			ret = nlm_granted;
+ 			goto out;
+ 		case -EAGAIN:
++			ret = nlm_lck_denied;
+ 			break;
++		case -EINPROGRESS:
++			if (wait)
++				break;
++			/* Filesystem lock operation is in progress
++			   Add it to the queue waiting for callback */
++			ret = nlmsvc_defer_lock_rqst(rqstp, block);
++			goto out;
+ 		case -EDEADLK:
+ 			ret = nlm_deadlock;
+ 			goto out;
+@@ -623,7 +650,7 @@ nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
+ 	nlmsvc_cancel_blocked(file, lock);
  
- 	error = posix_lock_file(file->f_file, &lock->fl);
+ 	lock->fl.fl_type = F_UNLCK;
+-	error = posix_lock_file(file->f_file, &lock->fl);
++	error = vfs_lock_file(file->f_file, &lock->fl);
+ 
+ 	return (error < 0)? nlm_lck_denied_nolocks : nlm_granted;
+ }
+@@ -769,14 +796,15 @@ nlmsvc_grant_blocked(struct nlm_block *block)
+ 
+ 	/* Try the lock operation again */
+ 	lock->fl.fl_flags |= FL_SLEEP;
+-	error = posix_lock_file(file->f_file, &lock->fl);
++	error = vfs_lock_file(file->f_file, &lock->fl);
  	lock->fl.fl_flags &= ~FL_SLEEP;
-@@ -520,26 +523,11 @@ again:
- 		goto out;
  
- 	ret = nlm_lck_blocked;
--	if (block != NULL)
--		goto out;
--
--	/* If we don't have a block, create and initialize it. Then
--	 * retry because we may have slept in kmalloc. */
--	/* We have to release f_mutex as nlmsvc_create_block may try to
--	 * to claim it while doing host garbage collection */
--	if (newblock == NULL) {
--		mutex_unlock(&file->f_mutex);
--		dprintk("lockd: blocking on this lock (allocating).\n");
--		if (!(newblock = nlmsvc_create_block(rqstp, file, lock, cookie)))
--			return nlm_lck_denied_nolocks;
--		goto again;
--	}
- 
- 	/* Append to list of blocked */
--	nlmsvc_insert_block(newblock, NLM_NEVER);
-+	nlmsvc_insert_block(block, NLM_NEVER);
- out:
- 	mutex_unlock(&file->f_mutex);
--	nlmsvc_release_block(newblock);
- 	nlmsvc_release_block(block);
- 	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
- 	return ret;
+ 	switch (error) {
+ 	case 0:
+ 		break;
+ 	case -EAGAIN:
+-		dprintk("lockd: lock still blocked\n");
++	case -EINPROGRESS:
++		dprintk("lockd: lock still blocked error %d\n", error);
+ 		nlmsvc_insert_block(block, NLM_NEVER);
+ 		nlmsvc_release_block(block);
+ 		return;
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index e83024e..bb2f6b1 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -182,7 +182,7 @@ again:
+ 			lock.fl_type  = F_UNLCK;
+ 			lock.fl_start = 0;
+ 			lock.fl_end   = OFFSET_MAX;
+-			if (posix_lock_file(file->f_file, &lock) < 0) {
++			if (vfs_lock_file(file->f_file, &lock) < 0) {
+ 				printk("lockd: unlock failure in %s:%d\n",
+ 						__FILE__, __LINE__);
+ 				return 1;
 -- 
 1.4.4.1
 
