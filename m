@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 9/10] lockd: add code to handle deferred lock requests
-Date: Wed,  6 Dec 2006 00:34:19 -0500
-Message-ID: <4fbe0004219a67cb6da4d1b3a1cfd16a9cb09ed7.1165380893.git.bfields__1078.23979710719$1165383326$gmane$org@citi.umich.edu>
+Subject: [PATCH 10/10] gfs2: nfs lock support for gfs2
+Date: Wed,  6 Dec 2006 00:34:20 -0500
+Message-ID: <1165383261264-git-send-email-bfields@fieldses.org>
 References: <11653832602203-git-send-email-bfields@fieldses.org>
 	<1165383260627-git-send-email-bfields@fieldses.org>
 	<11653832603105-git-send-email-bfields@fieldses.org>
@@ -11,6 +11,7 @@ References: <11653832602203-git-send-email-bfields@fieldses.org>
 	<11653832601925-git-send-email-bfields@fieldses.org>
 	<1165383260548-git-send-email-bfields@fieldses.org>
 	<11653832612071-git-send-email-bfields@fieldses.org>
+	<11653832611976-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
@@ -18,15 +19,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrpQH-0006XU-Dq
+	id 1GrpQH-0006XY-IX
 	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:25 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GrpQH-0008BC-W1
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:26 -0800
+	(Exim 4.44) id 1GrpQI-0008BA-15
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:27 -0800
 To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <11653832612071-git-send-email-bfields@fieldses.org>
-Message-Id: <4fbe0004219a67cb6da4d1b3a1cfd16a9cb09ed7.1165380893.git.bfields@citi.umich.edu>
+In-Reply-To: <11653832611976-git-send-email-bfields@fieldses.org>
+Message-Id: <70549752c06e54117024429649fd7aa813f21bec.1165380893.git.bfields@citi.umich.edu>
 In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 To: me <bfields@umich.edu>
@@ -42,118 +43,300 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+From: J. Bruce Fields <bfields@fieldses.org>
+
 From: Marc Eshel <eshel@almaden.ibm.com>
 
-Rewrite nlmsvc_lock() to use the asynchronous interface.
+Add NFS lock support to GFS2.  (Untested.)
 
-As with testlock, we answer nlm requests in nlmsvc_lock by first looking up
-the block and then using the results we find in the block if B_QUEUED is
-set, and calling vfs_lock_file() otherwise.
-
-If this a new lock request and we get -EINPROGRESS return on a non-blocking
-request then we defer the request.
-
-Also modify nlmsvc_unlock() to call the filesystem method if appropriate.
-
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svclock.c |   40 ++++++++++++++++++++++++++++++++++------
- fs/lockd/svcsubs.c |    2 +-
- 2 files changed, 35 insertions(+), 7 deletions(-)
+ fs/gfs2/lm.c                   |   10 ++++
+ fs/gfs2/lm.h                   |    2 +
+ fs/gfs2/locking/dlm/lock_dlm.h |    2 +
+ fs/gfs2/locking/dlm/mount.c    |    1 +
+ fs/gfs2/locking/dlm/plock.c    |   95 +++++++++++++++++++++++++++++++++++++++-
+ fs/gfs2/ops_export.c           |   52 ++++++++++++++++++++++
+ include/linux/lm_interface.h   |    3 +
+ include/linux/lock_dlm_plock.h |    3 +
+ 8 files changed, 166 insertions(+), 2 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 134a40e..90bac90 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -499,17 +499,44 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	} else
- 		lock->fl.fl_flags &= ~FL_SLEEP;
- 
--	error = posix_lock_file(file->f_file, &lock->fl);
--	lock->fl.fl_flags &= ~FL_SLEEP;
- 
--	dprintk("lockd: posix_lock_file returned %d\n", error);
-+	if (block->b_flags & B_QUEUED) {
-+		dprintk("lockd: nlmsvc_lock deferred block %p flags %d\n",
-+							block, block->b_flags);
-+		if (block->b_granted) {
-+			nlmsvc_unlink_block(block);
-+			ret = nlm_granted;
-+			goto out;
-+		}
-+		if (block->b_flags & B_TOO_LATE) {
-+			nlmsvc_unlink_block(block);
-+			ret = nlm_lck_denied;
-+			goto out;
-+		}
-+		ret = nlm_drop_reply;
-+		goto out;
-+	}
- 
-+	if (!wait)
-+		lock->fl.fl_flags &= ~FL_SLEEP;
-+	error = vfs_lock_file(file->f_file, &lock->fl);
-+	lock->fl.fl_flags &= ~FL_SLEEP;
-+
-+	dprintk("lockd: vfs_lock_file returned %d\n", error);
- 	switch(error) {
- 		case 0:
- 			ret = nlm_granted;
- 			goto out;
- 		case -EAGAIN:
-+			ret = nlm_lck_denied;
- 			break;
-+		case -EINPROGRESS:
-+			if (wait)
-+				break;
-+			/* Filesystem lock operation is in progress
-+			   Add it to the queue waiting for callback */
-+			ret = nlmsvc_defer_lock_rqst(rqstp, block);
-+			goto out;
- 		case -EDEADLK:
- 			ret = nlm_deadlock;
- 			goto out;
-@@ -623,7 +650,7 @@ nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
- 	nlmsvc_cancel_blocked(file, lock);
- 
- 	lock->fl.fl_type = F_UNLCK;
--	error = posix_lock_file(file->f_file, &lock->fl);
-+	error = vfs_lock_file(file->f_file, &lock->fl);
- 
- 	return (error < 0)? nlm_lck_denied_nolocks : nlm_granted;
+diff --git a/fs/gfs2/lm.c b/fs/gfs2/lm.c
+index effe4a3..cf7fd52 100644
+--- a/fs/gfs2/lm.c
++++ b/fs/gfs2/lm.c
+@@ -197,6 +197,16 @@ int gfs2_lm_plock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+ 	return error;
  }
-@@ -769,14 +796,15 @@ nlmsvc_grant_blocked(struct nlm_block *block)
  
- 	/* Try the lock operation again */
- 	lock->fl.fl_flags |= FL_SLEEP;
--	error = posix_lock_file(file->f_file, &lock->fl);
-+	error = vfs_lock_file(file->f_file, &lock->fl);
- 	lock->fl.fl_flags &= ~FL_SLEEP;
++int gfs2_lm_plock_async(struct gfs2_sbd *sdp, struct lm_lockname *name,
++		  struct file *file, int cmd, struct file_lock *fl)
++{
++	int error = -EIO;
++	if (likely(!test_bit(SDF_SHUTDOWN, &sdp->sd_flags)))
++		error = sdp->sd_lockstruct.ls_ops->lm_plock_async(
++				sdp->sd_lockstruct.ls_lockspace, name, file, cmd, fl);
++	return error;
++}
++
+ int gfs2_lm_punlock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+ 		    struct file *file, struct file_lock *fl)
+ {
+diff --git a/fs/gfs2/lm.h b/fs/gfs2/lm.h
+index 21cdc30..1ddd1fd 100644
+--- a/fs/gfs2/lm.h
++++ b/fs/gfs2/lm.h
+@@ -34,6 +34,8 @@ int gfs2_lm_plock_get(struct gfs2_sbd *sdp, struct lm_lockname *name,
+ 		      struct file *file, struct file_lock *fl);
+ int gfs2_lm_plock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+ 		  struct file *file, int cmd, struct file_lock *fl);
++int gfs2_lm_plock_async(struct gfs2_sbd *sdp, struct lm_lockname *name,
++		  struct file *file, int cmd, struct file_lock *fl);
+ int gfs2_lm_punlock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+ 		    struct file *file, struct file_lock *fl);
+ void gfs2_lm_recovery_done(struct gfs2_sbd *sdp, unsigned int jid,
+diff --git a/fs/gfs2/locking/dlm/lock_dlm.h b/fs/gfs2/locking/dlm/lock_dlm.h
+index 33af707..82af860 100644
+--- a/fs/gfs2/locking/dlm/lock_dlm.h
++++ b/fs/gfs2/locking/dlm/lock_dlm.h
+@@ -179,6 +179,8 @@ int gdlm_plock_init(void);
+ void gdlm_plock_exit(void);
+ int gdlm_plock(void *, struct lm_lockname *, struct file *, int,
+ 		struct file_lock *);
++int gdlm_plock_async(void *, struct lm_lockname *, struct file *, int,
++		struct file_lock *);
+ int gdlm_plock_get(void *, struct lm_lockname *, struct file *,
+ 		struct file_lock *);
+ int gdlm_punlock(void *, struct lm_lockname *, struct file *,
+diff --git a/fs/gfs2/locking/dlm/mount.c b/fs/gfs2/locking/dlm/mount.c
+index cdd1694..4339e3f 100644
+--- a/fs/gfs2/locking/dlm/mount.c
++++ b/fs/gfs2/locking/dlm/mount.c
+@@ -244,6 +244,7 @@ const struct lm_lockops gdlm_ops = {
+ 	.lm_lock = gdlm_lock,
+ 	.lm_unlock = gdlm_unlock,
+ 	.lm_plock = gdlm_plock,
++	.lm_plock_async = gdlm_plock_async,
+ 	.lm_punlock = gdlm_punlock,
+ 	.lm_plock_get = gdlm_plock_get,
+ 	.lm_cancel = gdlm_cancel,
+diff --git a/fs/gfs2/locking/dlm/plock.c b/fs/gfs2/locking/dlm/plock.c
+index 7365aec..c21e667 100644
+--- a/fs/gfs2/locking/dlm/plock.c
++++ b/fs/gfs2/locking/dlm/plock.c
+@@ -102,6 +102,93 @@ int gdlm_plock(void *lockspace, struct lm_lockname *name,
+ 	return rv;
+ }
  
- 	switch (error) {
- 	case 0:
- 		break;
- 	case -EAGAIN:
--		dprintk("lockd: lock still blocked\n");
-+	case -EINPROGRESS:
-+		dprintk("lockd: lock still blocked error %d\n", error);
- 		nlmsvc_insert_block(block, NLM_NEVER);
- 		nlmsvc_release_block(block);
- 		return;
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index e83024e..bb2f6b1 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -182,7 +182,7 @@ again:
- 			lock.fl_type  = F_UNLCK;
- 			lock.fl_start = 0;
- 			lock.fl_end   = OFFSET_MAX;
--			if (posix_lock_file(file->f_file, &lock) < 0) {
-+			if (vfs_lock_file(file->f_file, &lock) < 0) {
- 				printk("lockd: unlock failure in %s:%d\n",
- 						__FILE__, __LINE__);
- 				return 1;
++int gdlm_plock_async(void *lockspace, struct lm_lockname *name,
++	       struct file *file, int cmd, struct file_lock *fl)
++{
++	struct gdlm_ls *ls = lockspace;
++	struct plock_op *op;
++	int rv;
++
++	op = kzalloc(sizeof(*op), GFP_KERNEL);
++	if (!op)
++		return -ENOMEM;
++
++	op->info.optype		= GDLM_PLOCK_OP_LOCK;
++	op->info.pid		= fl->fl_pid;
++	op->info.ex		= (fl->fl_type == F_WRLCK);
++	op->info.wait		= IS_SETLKW(cmd);
++	op->info.fsid		= ls->id;
++	op->info.number		= name->ln_number;
++	op->info.start		= fl->fl_start;
++	op->info.end		= fl->fl_end;
++	op->info.owner		= (__u64)(long) fl->fl_owner;
++	if (fl->fl_lmops) {
++		op->info.callback	= fl->fl_lmops->fl_notify;
++		/* might need to make a copy */
++		op->info.fl		= fl;
++		op->info.file		= file;
++	} else
++		op->info.callback	= NULL;
++
++	send_op(op);
++
++	if (op->info.callback == NULL)
++		wait_event(recv_wq, (op->done != 0));
++	else
++		return -EINPROGRESS;
++		
++	spin_lock(&ops_lock);
++	if (!list_empty(&op->list)) {
++		printk(KERN_INFO "plock op on list\n");
++		list_del(&op->list);
++	}
++	spin_unlock(&ops_lock);
++
++	rv = op->info.rv;
++
++	if (!rv) {
++		if (posix_lock_file_wait(file, fl) < 0)
++			log_error("gdlm_plock: vfs lock error %x,%llx",
++				  name->ln_type,
++				  (unsigned long long)name->ln_number);
++	} else {
++		/* XXX: We need to cancel the lock here: */
++		printk("gfs2 lock granted after lock request failed; dangling lock!\n");
++	}
++
++	kfree(op);
++	return rv;
++}
++
++int gdlm_plock_callback(struct plock_op *op)
++{
++	struct file *file;
++	struct file_lock *fl;
++	int rv;
++
++	spin_lock(&ops_lock);
++	if (!list_empty(&op->list)) {
++		printk(KERN_INFO "plock op on list\n");
++		list_del(&op->list);
++	}
++	spin_unlock(&ops_lock);
++
++	rv = op->info.rv;
++
++	if (!rv) {
++		/* check if the following are still valid or make a copy */
++		file = op->info.file;
++		fl = op->info.fl;
++		
++		if (posix_lock_file_wait(file, fl) < 0)
++			log_error("gdlm_plock: vfs lock error file %p fl %p",
++				  file, fl);
++	}
++
++	kfree(op);
++	return rv;
++}
++
+ int gdlm_punlock(void *lockspace, struct lm_lockname *name,
+ 		 struct file *file, struct file_lock *fl)
+ {
+@@ -242,8 +329,12 @@ static ssize_t dev_write(struct file *file, const char __user *u, size_t count,
+ 	}
+ 	spin_unlock(&ops_lock);
+ 
+-	if (found)
+-		wake_up(&recv_wq);
++	if (found) {
++		if (op->info.callback)
++			gdlm_plock_callback(op);
++		else
++			wake_up(&recv_wq);
++	}
+ 	else
+ 		printk(KERN_INFO "gdlm dev_write no op %x %llx\n", info.fsid,
+ 			(unsigned long long)info.number);
+diff --git a/fs/gfs2/ops_export.c b/fs/gfs2/ops_export.c
+index 86127d9..80ca84f 100644
+--- a/fs/gfs2/ops_export.c
++++ b/fs/gfs2/ops_export.c
+@@ -22,6 +22,7 @@
+ #include "glock.h"
+ #include "glops.h"
+ #include "inode.h"
++#include "lm.h"
+ #include "ops_export.h"
+ #include "rgrp.h"
+ #include "util.h"
+@@ -287,6 +288,56 @@ fail:
+ 	gfs2_glock_dq_uninit(&i_gh);
+ 	return ERR_PTR(error);
+ }
++/**
++ * gfs2_exp_lock - acquire/release a posix lock on a file
++ * @file: the file pointer
++ * @cmd: either modify or retrieve lock state, possibly wait
++ * @fl: type and range of lock
++ *
++ * Returns: errno
++ */
++
++static int gfs2_exp_lock(struct file *file, int cmd, struct file_lock *fl)
++{
++	struct gfs2_inode *ip = GFS2_I(file->f_mapping->host);
++	struct gfs2_sbd *sdp = GFS2_SB(file->f_mapping->host);
++	struct lm_lockname name =
++		{ .ln_number = ip->i_num.no_addr,
++		  .ln_type = LM_TYPE_PLOCK };
++
++	if (!(fl->fl_flags & FL_POSIX))
++		return -ENOLCK;
++	if ((ip->i_di.di_mode & (S_ISGID | S_IXGRP)) == S_ISGID)
++		return -ENOLCK;
++
++	if (sdp->sd_args.ar_localflocks) {
++		if (IS_GETLK(cmd)) {
++			struct file_lock tmp;
++			int ret;
++			ret = posix_test_lock(file, fl, &tmp);
++			fl->fl_type = F_UNLCK;
++			if (ret)
++				memcpy(fl, &tmp, sizeof(struct file_lock));
++			return 0;
++		} else {
++			return posix_lock_file_wait(file, fl);
++		}
++	}
++
++	if (IS_GETLK(cmd))
++		return gfs2_lm_plock_get(sdp, &name, file, fl);
++	else if (fl->fl_type == F_UNLCK)
++		return gfs2_lm_punlock(sdp, &name, file, fl);
++	else {
++		/* If fl_notify is set make an async lock request
++		   and reply withh -EINPROGRESS. When lock is granted
++		   the gfs2_lm_plock_async should callback to fl_notify */
++		if (fl->fl_lmops->fl_notify)
++			return gfs2_lm_plock_async(sdp, &name, file, cmd, fl);
++		else
++			return gfs2_lm_plock(sdp, &name, file, cmd, fl);
++	}
++}
+ 
+ struct export_operations gfs2_export_ops = {
+ 	.decode_fh = gfs2_decode_fh,
+@@ -294,5 +345,6 @@ struct export_operations gfs2_export_ops = {
+ 	.get_name = gfs2_get_name,
+ 	.get_parent = gfs2_get_parent,
+ 	.get_dentry = gfs2_get_dentry,
++	.lock = gfs2_exp_lock,
+ };
+ 
+diff --git a/include/linux/lm_interface.h b/include/linux/lm_interface.h
+index 1418fdc..28d5445 100644
+--- a/include/linux/lm_interface.h
++++ b/include/linux/lm_interface.h
+@@ -213,6 +213,9 @@ struct lm_lockops {
+ 	int (*lm_plock) (void *lockspace, struct lm_lockname *name,
+ 			 struct file *file, int cmd, struct file_lock *fl);
+ 
++	int (*lm_plock_async) (void *lockspace, struct lm_lockname *name,
++			 struct file *file, int cmd, struct file_lock *fl);
++
+ 	int (*lm_punlock) (void *lockspace, struct lm_lockname *name,
+ 			   struct file *file, struct file_lock *fl);
+ 
+diff --git a/include/linux/lock_dlm_plock.h b/include/linux/lock_dlm_plock.h
+index fc34151..809c5b7 100644
+--- a/include/linux/lock_dlm_plock.h
++++ b/include/linux/lock_dlm_plock.h
+@@ -35,6 +35,9 @@ struct gdlm_plock_info {
+ 	__u64 start;
+ 	__u64 end;
+ 	__u64 owner;
++	void *callback;
++	void *fl;
++	void *file;
+ };
+ 
+ #endif
 -- 
 1.4.4.1
 
