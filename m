@@ -1,106 +1,331 @@
-From: Kevin Jamieson <kevin@kevinjamieson.com>
-Subject: Re: several oopses of nfsd in 2.6.16.29 (patch)
-Date: Wed, 06 Dec 2006 02:29:48 -0800
-Message-ID: <45769B9C.4080009@kevinjamieson.com>
-Reply-To: kevin@kevinjamieson.com
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [PATCH 10/10] gfs2: nfs lock support for gfs2
+Date: Wed, 06 Dec 2006 12:02:48 +0000
+Message-ID: <1165406568.3752.683.camel@quoit.chygwyn.com>
+References: <11653832602203-git-send-email-bfields@fieldses.org>
+	 <1165383260627-git-send-email-bfields@fieldses.org>
+	 <11653832603105-git-send-email-bfields@fieldses.org>
+	 <11653832601058-git-send-email-bfields@fieldses.org>
+	 <11653832601635-git-send-email-bfields@fieldses.org>
+	 <1165383260424-git-send-email-bfields@fieldses.org>
+	 <11653832601925-git-send-email-bfields@fieldses.org>
+	 <1165383260548-git-send-email-bfields@fieldses.org>
+	 <11653832612071-git-send-email-bfields@fieldses.org>
+	 <11653832611976-git-send-email-bfields@fieldses.org>
+	 <70549752c06e54117024429649fd7aa813f21bec.1165380893.git.bfields@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gru68-0001l1-LP
-	for nfs@lists.sourceforge.net; Wed, 06 Dec 2006 02:33:56 -0800
-Received: from shawidc-mo1.cg.shawcable.net ([24.71.223.10]
-	helo=pd5mo1so.prod.shaw.ca)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gru68-0002Ts-R6
-	for nfs@lists.sourceforge.net; Wed, 06 Dec 2006 02:33:58 -0800
-Received: from pd4mr4so.prod.shaw.ca
-	(pd4mr4so-qfe3.prod.shaw.ca [10.0.141.215]) by l-daemon
-	(Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15 2004))
-	with ESMTP id <0J9U00348L544WA0@l-daemon> for nfs@lists.sourceforge.net;
-	Wed, 06 Dec 2006 03:29:28 -0700 (MST)
-Received: from pn2ml2so.prod.shaw.ca ([10.0.121.146])
-	by pd4mr4so.prod.shaw.ca (Sun Java System Messaging Server 6.2-7.05
-	(built Sep
-	5 2006)) with ESMTP id <0J9U00LDHL540DJ1@pd4mr4so.prod.shaw.ca> for
-	nfs@lists.sourceforge.net; Wed, 06 Dec 2006 03:29:28 -0700 (MST)
-Received: from mail.kevinjamieson.com ([24.87.84.75])
-	by l-daemon (Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15
-	2004))
-	with ESMTP id <0J9U004CWL54ZJW0@l-daemon> for nfs@lists.sourceforge.net;
-	Wed, 06 Dec 2006 03:29:28 -0700 (MST)
-Received: from [192.168.1.110] (bender.lan.kevinjamieson.com [192.168.1.110])
-	by mail.kevinjamieson.com (Postfix) with ESMTP id 87E3FE6326	for
-	<nfs@lists.sourceforge.net>; Wed, 06 Dec 2006 02:30:02 -0800 (PST)
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: David Teigland <teigland@redhat.com>, cluster-devel@redhat.com,
+	Wendy Cheng <wcheng@redhat.com>,
+	Marc Eshel <eshel@almaden.ibm.com>, nfs@lists.sourceforge.net,
+	me <bfields@umich.edu>, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <70549752c06e54117024429649fd7aa813f21bec.1165380893.git.bfields@citi.umich.edu>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Kevin Jamieson wrote:
+Hi,
 
-> I am seeing similar oopses on a 2.6.16.21 Linux server in conjunction 
-> with a Solaris 8 client using NFSv2 with ACL support enabled (although 
-> no ACLs actually created). The problem does not occur with NFSv3 or with 
-> ACL support disabled.
+This looks good to me, and I'm copying in Dave & Wendy who have both
+done previous work in this area for further comment. Provided we can get
+this tested, I'd be happy to accept the patch in its current form.
 
-I believe I've tracked the problem I'm seeing down to the release function for the setacl/getattr/access procedures in fs/nfsd/nfs2acl.c having the wrong type for the resp parameter.
+Steve.
 
-The below patch (against SuSE's 2.6.16.21-0.8) appears to resolve the problem (in limited testing thus far).
+On Wed, 2006-12-06 at 00:34 -0500, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@fieldses.org>
+> 
+> From: Marc Eshel <eshel@almaden.ibm.com>
+> 
+> Add NFS lock support to GFS2.  (Untested.)
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  fs/gfs2/lm.c                   |   10 ++++
+>  fs/gfs2/lm.h                   |    2 +
+>  fs/gfs2/locking/dlm/lock_dlm.h |    2 +
+>  fs/gfs2/locking/dlm/mount.c    |    1 +
+>  fs/gfs2/locking/dlm/plock.c    |   95 +++++++++++++++++++++++++++++++++++++++-
+>  fs/gfs2/ops_export.c           |   52 ++++++++++++++++++++++
+>  include/linux/lm_interface.h   |    3 +
+>  include/linux/lock_dlm_plock.h |    3 +
+>  8 files changed, 166 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/gfs2/lm.c b/fs/gfs2/lm.c
+> index effe4a3..cf7fd52 100644
+> --- a/fs/gfs2/lm.c
+> +++ b/fs/gfs2/lm.c
+> @@ -197,6 +197,16 @@ int gfs2_lm_plock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+>  	return error;
+>  }
+>  
+> +int gfs2_lm_plock_async(struct gfs2_sbd *sdp, struct lm_lockname *name,
+> +		  struct file *file, int cmd, struct file_lock *fl)
+> +{
+> +	int error = -EIO;
+> +	if (likely(!test_bit(SDF_SHUTDOWN, &sdp->sd_flags)))
+> +		error = sdp->sd_lockstruct.ls_ops->lm_plock_async(
+> +				sdp->sd_lockstruct.ls_lockspace, name, file, cmd, fl);
+> +	return error;
+> +}
+> +
+>  int gfs2_lm_punlock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+>  		    struct file *file, struct file_lock *fl)
+>  {
+> diff --git a/fs/gfs2/lm.h b/fs/gfs2/lm.h
+> index 21cdc30..1ddd1fd 100644
+> --- a/fs/gfs2/lm.h
+> +++ b/fs/gfs2/lm.h
+> @@ -34,6 +34,8 @@ int gfs2_lm_plock_get(struct gfs2_sbd *sdp, struct lm_lockname *name,
+>  		      struct file *file, struct file_lock *fl);
+>  int gfs2_lm_plock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+>  		  struct file *file, int cmd, struct file_lock *fl);
+> +int gfs2_lm_plock_async(struct gfs2_sbd *sdp, struct lm_lockname *name,
+> +		  struct file *file, int cmd, struct file_lock *fl);
+>  int gfs2_lm_punlock(struct gfs2_sbd *sdp, struct lm_lockname *name,
+>  		    struct file *file, struct file_lock *fl);
+>  void gfs2_lm_recovery_done(struct gfs2_sbd *sdp, unsigned int jid,
+> diff --git a/fs/gfs2/locking/dlm/lock_dlm.h b/fs/gfs2/locking/dlm/lock_dlm.h
+> index 33af707..82af860 100644
+> --- a/fs/gfs2/locking/dlm/lock_dlm.h
+> +++ b/fs/gfs2/locking/dlm/lock_dlm.h
+> @@ -179,6 +179,8 @@ int gdlm_plock_init(void);
+>  void gdlm_plock_exit(void);
+>  int gdlm_plock(void *, struct lm_lockname *, struct file *, int,
+>  		struct file_lock *);
+> +int gdlm_plock_async(void *, struct lm_lockname *, struct file *, int,
+> +		struct file_lock *);
+>  int gdlm_plock_get(void *, struct lm_lockname *, struct file *,
+>  		struct file_lock *);
+>  int gdlm_punlock(void *, struct lm_lockname *, struct file *,
+> diff --git a/fs/gfs2/locking/dlm/mount.c b/fs/gfs2/locking/dlm/mount.c
+> index cdd1694..4339e3f 100644
+> --- a/fs/gfs2/locking/dlm/mount.c
+> +++ b/fs/gfs2/locking/dlm/mount.c
+> @@ -244,6 +244,7 @@ const struct lm_lockops gdlm_ops = {
+>  	.lm_lock = gdlm_lock,
+>  	.lm_unlock = gdlm_unlock,
+>  	.lm_plock = gdlm_plock,
+> +	.lm_plock_async = gdlm_plock_async,
+>  	.lm_punlock = gdlm_punlock,
+>  	.lm_plock_get = gdlm_plock_get,
+>  	.lm_cancel = gdlm_cancel,
+> diff --git a/fs/gfs2/locking/dlm/plock.c b/fs/gfs2/locking/dlm/plock.c
+> index 7365aec..c21e667 100644
+> --- a/fs/gfs2/locking/dlm/plock.c
+> +++ b/fs/gfs2/locking/dlm/plock.c
+> @@ -102,6 +102,93 @@ int gdlm_plock(void *lockspace, struct lm_lockname *name,
+>  	return rv;
+>  }
+>  
+> +int gdlm_plock_async(void *lockspace, struct lm_lockname *name,
+> +	       struct file *file, int cmd, struct file_lock *fl)
+> +{
+> +	struct gdlm_ls *ls = lockspace;
+> +	struct plock_op *op;
+> +	int rv;
+> +
+> +	op = kzalloc(sizeof(*op), GFP_KERNEL);
+> +	if (!op)
+> +		return -ENOMEM;
+> +
+> +	op->info.optype		= GDLM_PLOCK_OP_LOCK;
+> +	op->info.pid		= fl->fl_pid;
+> +	op->info.ex		= (fl->fl_type == F_WRLCK);
+> +	op->info.wait		= IS_SETLKW(cmd);
+> +	op->info.fsid		= ls->id;
+> +	op->info.number		= name->ln_number;
+> +	op->info.start		= fl->fl_start;
+> +	op->info.end		= fl->fl_end;
+> +	op->info.owner		= (__u64)(long) fl->fl_owner;
+> +	if (fl->fl_lmops) {
+> +		op->info.callback	= fl->fl_lmops->fl_notify;
+> +		/* might need to make a copy */
+> +		op->info.fl		= fl;
+> +		op->info.file		= file;
+> +	} else
+> +		op->info.callback	= NULL;
+> +
+> +	send_op(op);
+> +
+> +	if (op->info.callback == NULL)
+> +		wait_event(recv_wq, (op->done != 0));
+> +	else
+> +		return -EINPROGRESS;
+> +		
+> +	spin_lock(&ops_lock);
+> +	if (!list_empty(&op->list)) {
+> +		printk(KERN_INFO "plock op on list\n");
+> +		list_del(&op->list);
+> +	}
+> +	spin_unlock(&ops_lock);
+> +
+> +	rv = op->info.rv;
+> +
+> +	if (!rv) {
+> +		if (posix_lock_file_wait(file, fl) < 0)
+> +			log_error("gdlm_plock: vfs lock error %x,%llx",
+> +				  name->ln_type,
+> +				  (unsigned long long)name->ln_number);
+> +	} else {
+> +		/* XXX: We need to cancel the lock here: */
+> +		printk("gfs2 lock granted after lock request failed; dangling lock!\n");
+> +	}
+> +
+> +	kfree(op);
+> +	return rv;
+> +}
+> +
+> +int gdlm_plock_callback(struct plock_op *op)
+> +{
+> +	struct file *file;
+> +	struct file_lock *fl;
+> +	int rv;
+> +
+> +	spin_lock(&ops_lock);
+> +	if (!list_empty(&op->list)) {
+> +		printk(KERN_INFO "plock op on list\n");
+> +		list_del(&op->list);
+> +	}
+> +	spin_unlock(&ops_lock);
+> +
+> +	rv = op->info.rv;
+> +
+> +	if (!rv) {
+> +		/* check if the following are still valid or make a copy */
+> +		file = op->info.file;
+> +		fl = op->info.fl;
+> +		
+> +		if (posix_lock_file_wait(file, fl) < 0)
+> +			log_error("gdlm_plock: vfs lock error file %p fl %p",
+> +				  file, fl);
+> +	}
+> +
+> +	kfree(op);
+> +	return rv;
+> +}
+> +
+>  int gdlm_punlock(void *lockspace, struct lm_lockname *name,
+>  		 struct file *file, struct file_lock *fl)
+>  {
+> @@ -242,8 +329,12 @@ static ssize_t dev_write(struct file *file, const char __user *u, size_t count,
+>  	}
+>  	spin_unlock(&ops_lock);
+>  
+> -	if (found)
+> -		wake_up(&recv_wq);
+> +	if (found) {
+> +		if (op->info.callback)
+> +			gdlm_plock_callback(op);
+> +		else
+> +			wake_up(&recv_wq);
+> +	}
+>  	else
+>  		printk(KERN_INFO "gdlm dev_write no op %x %llx\n", info.fsid,
+>  			(unsigned long long)info.number);
+> diff --git a/fs/gfs2/ops_export.c b/fs/gfs2/ops_export.c
+> index 86127d9..80ca84f 100644
+> --- a/fs/gfs2/ops_export.c
+> +++ b/fs/gfs2/ops_export.c
+> @@ -22,6 +22,7 @@
+>  #include "glock.h"
+>  #include "glops.h"
+>  #include "inode.h"
+> +#include "lm.h"
+>  #include "ops_export.h"
+>  #include "rgrp.h"
+>  #include "util.h"
+> @@ -287,6 +288,56 @@ fail:
+>  	gfs2_glock_dq_uninit(&i_gh);
+>  	return ERR_PTR(error);
+>  }
+> +/**
+> + * gfs2_exp_lock - acquire/release a posix lock on a file
+> + * @file: the file pointer
+> + * @cmd: either modify or retrieve lock state, possibly wait
+> + * @fl: type and range of lock
+> + *
+> + * Returns: errno
+> + */
+> +
+> +static int gfs2_exp_lock(struct file *file, int cmd, struct file_lock *fl)
+> +{
+> +	struct gfs2_inode *ip = GFS2_I(file->f_mapping->host);
+> +	struct gfs2_sbd *sdp = GFS2_SB(file->f_mapping->host);
+> +	struct lm_lockname name =
+> +		{ .ln_number = ip->i_num.no_addr,
+> +		  .ln_type = LM_TYPE_PLOCK };
+> +
+> +	if (!(fl->fl_flags & FL_POSIX))
+> +		return -ENOLCK;
+> +	if ((ip->i_di.di_mode & (S_ISGID | S_IXGRP)) == S_ISGID)
+> +		return -ENOLCK;
+> +
+> +	if (sdp->sd_args.ar_localflocks) {
+> +		if (IS_GETLK(cmd)) {
+> +			struct file_lock tmp;
+> +			int ret;
+> +			ret = posix_test_lock(file, fl, &tmp);
+> +			fl->fl_type = F_UNLCK;
+> +			if (ret)
+> +				memcpy(fl, &tmp, sizeof(struct file_lock));
+> +			return 0;
+> +		} else {
+> +			return posix_lock_file_wait(file, fl);
+> +		}
+> +	}
+> +
+> +	if (IS_GETLK(cmd))
+> +		return gfs2_lm_plock_get(sdp, &name, file, fl);
+> +	else if (fl->fl_type == F_UNLCK)
+> +		return gfs2_lm_punlock(sdp, &name, file, fl);
+> +	else {
+> +		/* If fl_notify is set make an async lock request
+> +		   and reply withh -EINPROGRESS. When lock is granted
+> +		   the gfs2_lm_plock_async should callback to fl_notify */
+> +		if (fl->fl_lmops->fl_notify)
+> +			return gfs2_lm_plock_async(sdp, &name, file, cmd, fl);
+> +		else
+> +			return gfs2_lm_plock(sdp, &name, file, cmd, fl);
+> +	}
+> +}
+>  
+>  struct export_operations gfs2_export_ops = {
+>  	.decode_fh = gfs2_decode_fh,
+> @@ -294,5 +345,6 @@ struct export_operations gfs2_export_ops = {
+>  	.get_name = gfs2_get_name,
+>  	.get_parent = gfs2_get_parent,
+>  	.get_dentry = gfs2_get_dentry,
+> +	.lock = gfs2_exp_lock,
+>  };
+>  
+> diff --git a/include/linux/lm_interface.h b/include/linux/lm_interface.h
+> index 1418fdc..28d5445 100644
+> --- a/include/linux/lm_interface.h
+> +++ b/include/linux/lm_interface.h
+> @@ -213,6 +213,9 @@ struct lm_lockops {
+>  	int (*lm_plock) (void *lockspace, struct lm_lockname *name,
+>  			 struct file *file, int cmd, struct file_lock *fl);
+>  
+> +	int (*lm_plock_async) (void *lockspace, struct lm_lockname *name,
+> +			 struct file *file, int cmd, struct file_lock *fl);
+> +
+>  	int (*lm_punlock) (void *lockspace, struct lm_lockname *name,
+>  			   struct file *file, struct file_lock *fl);
+>  
+> diff --git a/include/linux/lock_dlm_plock.h b/include/linux/lock_dlm_plock.h
+> index fc34151..809c5b7 100644
+> --- a/include/linux/lock_dlm_plock.h
+> +++ b/include/linux/lock_dlm_plock.h
+> @@ -35,6 +35,9 @@ struct gdlm_plock_info {
+>  	__u64 start;
+>  	__u64 end;
+>  	__u64 owner;
+> +	void *callback;
+> +	void *fl;
+> +	void *file;
+>  };
+>  
+>  #endif
 
-Kevin
-
-
---- linux-2.6.16.21-0.8/fs/nfsd/nfs2acl.c.bak	2006-12-05 23:42:27.000000000 +0000
-+++ linux-2.6.16.21-0.8/fs/nfsd/nfs2acl.c	2006-12-06 10:06:01.000000000 +0000
-@@ -287,8 +287,15 @@
- 	return 1;
- }
- 
--static int nfsaclsvc_release_fhandle(struct svc_rqst *rqstp, u32 *p,
--		struct nfsd_fhandle *resp)
-+static int nfsaclsvc_release_attrstat(struct svc_rqst *rqstp, u32 *p,
-+		struct nfsd_attrstat *resp)
-+{
-+	fh_put(&resp->fh);
-+	return 1;
-+}
-+
-+static int nfsaclsvc_release_access(struct svc_rqst *rqstp, u32 *p,
-+		struct nfsd3_accessres *resp)
- {
- 	fh_put(&resp->fh);
- 	return 1;
-@@ -322,9 +329,9 @@
- static struct svc_procedure		nfsd_acl_procedures2[] = {
-   PROC(null,	void,		void,		void,	  RC_NOCACHE, ST),
-   PROC(getacl,	getacl,		getacl,		getacl,	  RC_NOCACHE, ST+1+2*(1+ACL)),
--  PROC(setacl,	setacl,		attrstat,	fhandle,  RC_NOCACHE, ST+AT),
--  PROC(getattr, fhandle,	attrstat,	fhandle,  RC_NOCACHE, ST+AT),
--  PROC(access,	access,		access,		fhandle,  RC_NOCACHE, ST+AT+1),
-+  PROC(setacl,	setacl,		attrstat,	attrstat, RC_NOCACHE, ST+AT),
-+  PROC(getattr, fhandle,	attrstat,	attrstat, RC_NOCACHE, ST+AT),
-+  PROC(access,	access,		access,		access,   RC_NOCACHE, ST+AT+1),
- };
- 
- struct svc_version	nfsd_acl_version2 = {
-
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
