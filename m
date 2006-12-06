@@ -1,29 +1,32 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 6/10] lockd: pass cookie in nlmsvc_testlock
-Date: Wed,  6 Dec 2006 00:34:16 -0500
-Message-ID: <b24eab1e47a44c1855d47d54b2858a7e5c2d4653.1165380893.git.bfields__37567.6069445491$1165383326$gmane$org@citi.umich.edu>
+Subject: [PATCH 9/10] lockd: add code to handle deferred lock requests
+Date: Wed,  6 Dec 2006 00:34:19 -0500
+Message-ID: <4fbe0004219a67cb6da4d1b3a1cfd16a9cb09ed7.1165380893.git.bfields__1078.23979710719$1165383326$gmane$org@citi.umich.edu>
 References: <11653832602203-git-send-email-bfields@fieldses.org>
 	<1165383260627-git-send-email-bfields@fieldses.org>
 	<11653832603105-git-send-email-bfields@fieldses.org>
 	<11653832601058-git-send-email-bfields@fieldses.org>
 	<11653832601635-git-send-email-bfields@fieldses.org>
 	<1165383260424-git-send-email-bfields@fieldses.org>
+	<11653832601925-git-send-email-bfields@fieldses.org>
+	<1165383260548-git-send-email-bfields@fieldses.org>
+	<11653832612071-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrpQH-0006XV-FB
+	id 1GrpQH-0006XU-Dq
 	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:25 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GrpQH-0006d3-Ur
+	(Exim 4.44) id 1GrpQH-0008BC-W1
 	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:26 -0800
 To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <1165383260424-git-send-email-bfields@fieldses.org>
-Message-Id: <b24eab1e47a44c1855d47d54b2858a7e5c2d4653.1165380893.git.bfields@citi.umich.edu>
+In-Reply-To: <11653832612071-git-send-email-bfields@fieldses.org>
+Message-Id: <4fbe0004219a67cb6da4d1b3a1cfd16a9cb09ed7.1165380893.git.bfields@citi.umich.edu>
 In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 To: me <bfields@umich.edu>
@@ -41,77 +44,116 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Marc Eshel <eshel@almaden.ibm.com>
 
-Change NLM internal interface to pass more information for test lock; we
-need this to make sure the cookie information is pushed down to the place
-where we do request deferral, which is handled for testlock by the
-following patch.
+Rewrite nlmsvc_lock() to use the asynchronous interface.
+
+As with testlock, we answer nlm requests in nlmsvc_lock by first looking up
+the block and then using the results we find in the block if B_QUEUED is
+set, and calling vfs_lock_file() otherwise.
+
+If this a new lock request and we get -EINPROGRESS return on a non-blocking
+request then we defer the request.
+
+Also modify nlmsvc_unlock() to call the filesystem method if appropriate.
 
 Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svc4proc.c         |    2 +-
- fs/lockd/svclock.c          |    5 +++--
- fs/lockd/svcproc.c          |    2 +-
- include/linux/lockd/lockd.h |    4 ++--
- 4 files changed, 7 insertions(+), 6 deletions(-)
+ fs/lockd/svclock.c |   40 ++++++++++++++++++++++++++++++++++------
+ fs/lockd/svcsubs.c |    2 +-
+ 2 files changed, 35 insertions(+), 7 deletions(-)
 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 0ce5c81..eb5994e 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -99,7 +99,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
- 
- 	/* Now check for conflicting locks */
--	resp->status = nlmsvc_testlock(file, &argp->lock, &resp->lock);
-+	resp->status = nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie);
- 
- 	dprintk("lockd: TEST4          status %d\n", ntohl(resp->status));
- 	nlm_release_host(host);
 diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 90aa4a5..e342046 100644
+index 134a40e..90bac90 100644
 --- a/fs/lockd/svclock.c
 +++ b/fs/lockd/svclock.c
-@@ -549,8 +549,9 @@ out:
-  * Test for presence of a conflicting lock.
-  */
- __be32
--nlmsvc_testlock(struct nlm_file *file, struct nlm_lock *lock,
--				       struct nlm_lock *conflock)
-+nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
-+		struct nlm_lock *lock, struct nlm_lock *conflock,
-+		struct nlm_cookie *cookie)
- {
- 	dprintk("lockd: nlmsvc_testlock(%s/%ld, ty=%d, %Ld-%Ld)\n",
- 				file->f_file->f_dentry->d_inode->i_sb->s_id,
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 32e99a6..d4257a5 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -127,7 +127,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+@@ -499,17 +499,44 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	} else
+ 		lock->fl.fl_flags &= ~FL_SLEEP;
  
- 	/* Now check for conflicting locks */
--	resp->status = cast_status(nlmsvc_testlock(file, &argp->lock, &resp->lock));
-+	resp->status = cast_status(nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie));
+-	error = posix_lock_file(file->f_file, &lock->fl);
+-	lock->fl.fl_flags &= ~FL_SLEEP;
  
- 	dprintk("lockd: TEST          status %d vers %d\n",
- 		ntohl(resp->status), rqstp->rq_vers);
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index ac865f8..863bc23 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -197,8 +197,8 @@ typedef int	  (*nlm_host_match_fn_t)(struct nlm_host *cur, struct nlm_host *ref)
- __be32		  nlmsvc_lock(struct svc_rqst *, struct nlm_file *,
- 					struct nlm_lock *, int, struct nlm_cookie *);
- __be32		  nlmsvc_unlock(struct nlm_file *, struct nlm_lock *);
--__be32		  nlmsvc_testlock(struct nlm_file *, struct nlm_lock *,
--					struct nlm_lock *);
-+__be32		  nlmsvc_testlock(struct svc_rqst *, struct nlm_file *,
-+			struct nlm_lock *, struct nlm_lock *, struct nlm_cookie *);
- __be32		  nlmsvc_cancel_blocked(struct nlm_file *, struct nlm_lock *);
- unsigned long	  nlmsvc_retry_blocked(void);
- void		  nlmsvc_traverse_blocks(struct nlm_host *, struct nlm_file *,
+-	dprintk("lockd: posix_lock_file returned %d\n", error);
++	if (block->b_flags & B_QUEUED) {
++		dprintk("lockd: nlmsvc_lock deferred block %p flags %d\n",
++							block, block->b_flags);
++		if (block->b_granted) {
++			nlmsvc_unlink_block(block);
++			ret = nlm_granted;
++			goto out;
++		}
++		if (block->b_flags & B_TOO_LATE) {
++			nlmsvc_unlink_block(block);
++			ret = nlm_lck_denied;
++			goto out;
++		}
++		ret = nlm_drop_reply;
++		goto out;
++	}
+ 
++	if (!wait)
++		lock->fl.fl_flags &= ~FL_SLEEP;
++	error = vfs_lock_file(file->f_file, &lock->fl);
++	lock->fl.fl_flags &= ~FL_SLEEP;
++
++	dprintk("lockd: vfs_lock_file returned %d\n", error);
+ 	switch(error) {
+ 		case 0:
+ 			ret = nlm_granted;
+ 			goto out;
+ 		case -EAGAIN:
++			ret = nlm_lck_denied;
+ 			break;
++		case -EINPROGRESS:
++			if (wait)
++				break;
++			/* Filesystem lock operation is in progress
++			   Add it to the queue waiting for callback */
++			ret = nlmsvc_defer_lock_rqst(rqstp, block);
++			goto out;
+ 		case -EDEADLK:
+ 			ret = nlm_deadlock;
+ 			goto out;
+@@ -623,7 +650,7 @@ nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
+ 	nlmsvc_cancel_blocked(file, lock);
+ 
+ 	lock->fl.fl_type = F_UNLCK;
+-	error = posix_lock_file(file->f_file, &lock->fl);
++	error = vfs_lock_file(file->f_file, &lock->fl);
+ 
+ 	return (error < 0)? nlm_lck_denied_nolocks : nlm_granted;
+ }
+@@ -769,14 +796,15 @@ nlmsvc_grant_blocked(struct nlm_block *block)
+ 
+ 	/* Try the lock operation again */
+ 	lock->fl.fl_flags |= FL_SLEEP;
+-	error = posix_lock_file(file->f_file, &lock->fl);
++	error = vfs_lock_file(file->f_file, &lock->fl);
+ 	lock->fl.fl_flags &= ~FL_SLEEP;
+ 
+ 	switch (error) {
+ 	case 0:
+ 		break;
+ 	case -EAGAIN:
+-		dprintk("lockd: lock still blocked\n");
++	case -EINPROGRESS:
++		dprintk("lockd: lock still blocked error %d\n", error);
+ 		nlmsvc_insert_block(block, NLM_NEVER);
+ 		nlmsvc_release_block(block);
+ 		return;
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index e83024e..bb2f6b1 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -182,7 +182,7 @@ again:
+ 			lock.fl_type  = F_UNLCK;
+ 			lock.fl_start = 0;
+ 			lock.fl_end   = OFFSET_MAX;
+-			if (posix_lock_file(file->f_file, &lock) < 0) {
++			if (vfs_lock_file(file->f_file, &lock) < 0) {
+ 				printk("lockd: unlock failure in %s:%d\n",
+ 						__FILE__, __LINE__);
+ 				return 1;
 -- 
 1.4.4.1
 
