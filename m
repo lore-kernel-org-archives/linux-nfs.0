@@ -1,42 +1,18 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: [PATCH 5/10] lockd: handle fl_notify callbacks
 Date: Wed,  6 Dec 2006 00:34:15 -0500
-Message-ID: <1165383260424-git-send-email-bfields@fieldses.org>
-References: <11653832602203-git-send-email-bfields@fieldses.org>
-	<1165383260627-git-send-email-bfields@fieldses.org>
-	<11653832603105-git-send-email-bfields@fieldses.org>
-	<11653832601058-git-send-email-bfields@fieldses.org>
-	<11653832601635-git-send-email-bfields@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Message-ID: <e9e7fa0047137e5c988edaacc3dc70a84eb02efb.1165380893.git.bfields__12683.5681418472$1165383397$gmane$org@citi.umich.edu>
+References: <11653832602203-git-send-email-bfields@fieldses.org> <1165383260627-git-send-email-bfields@fieldses.org> <11653832603105-git-send-email-bfields@fieldses.org> <11653832601058-git-send-email-bfields@fieldses.org> <11653832601635-git-send-email-bfields@fieldses.org>
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrpQM-0006YU-7r
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:30 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GrpQN-0008BU-6L
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:31 -0800
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 To: linux-fsdevel@vger.kernel.org
 In-Reply-To: <11653832601635-git-send-email-bfields@fieldses.org>
 Message-Id: <e9e7fa0047137e5c988edaacc3dc70a84eb02efb.1165380893.git.bfields@citi.umich.edu>
 In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 To: me <bfields@umich.edu>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
 From: Marc Eshel <eshel@almaden.ibm.com>
 
@@ -204,12 +180,3 @@ index 32f4cc4..90aa4a5 100644
 -- 
 1.4.4.1
 
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
