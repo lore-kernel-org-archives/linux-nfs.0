@@ -1,39 +1,30 @@
-From: Kevin Jamieson <kevin@kevinjamieson.com>
-Subject: Re: several oopses of nfsd in 2.6.16.29
-Date: Tue, 05 Dec 2006 21:33:16 -0800
-Message-ID: <4576561C.9040607@kevinjamieson.com>
-Reply-To: kevin@kevinjamieson.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 4/10] locks: add fl_notify arguments
+Date: Wed,  6 Dec 2006 00:34:14 -0500
+Message-ID: <11653832601635-git-send-email-bfields@fieldses.org>
+References: <11653832602203-git-send-email-bfields@fieldses.org>
+	<1165383260627-git-send-email-bfields@fieldses.org>
+	<11653832603105-git-send-email-bfields@fieldses.org>
+	<11653832601058-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrpQJ-0006YC-W5
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:28 -0800
-Received: from shawidc-mo1.cg.shawcable.net ([24.71.223.10]
-	helo=pd2mo1so.prod.shaw.ca)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GrpQK-0008Cn-RC
+	id 1GrpQL-0006YP-Qf
 	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:29 -0800
-Received: from pd4mr3so.prod.shaw.ca
-	(pd4mr3so-qfe3.prod.shaw.ca [10.0.141.214]) by l-daemon
-	(Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15 2004))
-	with ESMTP id <0J9U00AHR7EZGR40@l-daemon> for nfs@lists.sourceforge.net;
-	Tue, 05 Dec 2006 22:32:59 -0700 (MST)
-Received: from pn2ml1so.prod.shaw.ca ([10.0.121.145])
-	by pd4mr3so.prod.shaw.ca (Sun Java System Messaging Server 6.2-7.05
-	(built Sep
-	5 2006)) with ESMTP id <0J9U00JT17EWU671@pd4mr3so.prod.shaw.ca> for
-	nfs@lists.sourceforge.net; Tue, 05 Dec 2006 22:32:59 -0700 (MST)
-Received: from mail.kevinjamieson.com ([24.87.84.75])
-	by l-daemon (Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15
-	2004))
-	with ESMTP id <0J9U005VL7EWUN30@l-daemon> for nfs@lists.sourceforge.net;
-	Tue, 05 Dec 2006 22:32:56 -0700 (MST)
-Received: from [192.168.1.110] (bender.lan.kevinjamieson.com [192.168.1.110])
-	by mail.kevinjamieson.com (Postfix) with ESMTP id 6ACDBE6326	for
-	<nfs@lists.sourceforge.net>; Tue, 05 Dec 2006 21:33:29 -0800 (PST)
-To: nfs@lists.sourceforge.net
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GrpQM-0006dL-UB
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:31 -0800
+To: linux-fsdevel@vger.kernel.org
+In-Reply-To: <11653832601058-git-send-email-bfields@fieldses.org>
+Message-Id: <665bfdae3a5b77bb7755f4735069b7188f815d89.1165380893.git.bfields@citi.umich.edu>
+In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
+References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
+To: me <bfields@umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -46,251 +37,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
- > There's a remote chance this is related to ACLs though, as the
- > first crash is in an ACL call. Are you using ACLs at all?
+From: J. Bruce Fields <bfields@fieldses.org>
 
-I am seeing similar oopses on a 2.6.16.21 Linux server in conjunction 
-with a Solaris 8 client using NFSv2 with ACL support enabled (although 
-no ACLs actually created). The problem does not occur with NFSv3 or with 
-ACL support disabled.
+We're using fl_notify to asynchronously return the result of a lock
+request.  So we want fl_notify to be able to return a status and, if
+appropriate, a conflicting lock.
 
-On the Linux server:
+This only current caller of fl_notify is in the blocked case, in which case
+we don't use these extra arguments.
 
-dc1-gn1:~ # uname -a
-Linux dc1-gn1 2.6.16.21-0.8-smp #1 SMP Mon Jul 3 18:25:39 UTC 2006 i686 
-i686 i386 GNU/Linux
-dc1-gn1:~ # cat /etc/exports
-/tmp 192.168.0.0/16(ro,all_squash,anonuid=60000,sync)
-dc1-gn1:~ # ls /tmp
-foo
-dc1-gn1:~ #
+We also allow fl_notify to return an error.  (Also ignored for now.)
 
-On the Solaris client:
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/lockd/svclock.c |    7 ++++---
+ fs/locks.c         |    2 +-
+ include/linux/fs.h |    2 +-
+ 3 files changed, 6 insertions(+), 5 deletions(-)
 
-bash-2.03# uname -a
-SunOS diamond 5.8 Generic_108528-29 sun4u sparc SUNW,Ultra-60
-bash-2.03# mount -F nfs -o vers=2 192.168.130.41:/tmp /mnt/dev 
-
-bash-2.03# ls /mnt/dev
-bash-2.03# ls /mnt/dev
-
-
-The second "ls" from the client triggers an oops on the server (the 
-first oops in the below log).
-
-Running a local "ls" on the Linux server itself anytime after the first 
-"ls" on the Solaris client also triggers an oops (the second oops in the 
-below log) and causes ls to abort:
-
-dc1-gn1:~ # ls /tmp
-Segmentation fault
-
-
-This was found on the stock SuSE SLES 10 2.6.16.21 kernel, which has the 
-following config:
-
-CONFIG_NFS_FS=m
-CONFIG_NFS_V3=y
-CONFIG_NFS_V3_ACL=y
-CONFIG_NFS_V4=y
-CONFIG_NFS_DIRECTIO=y
-CONFIG_NFSD=m
-CONFIG_NFSD_V2_ACL=y
-CONFIG_NFSD_V3=y
-CONFIG_NFSD_V3_ACL=y
-CONFIG_NFSD_V4=y
-CONFIG_NFSD_TCP=y
-CONFIG_NFS_ACL_SUPPORT=m
-CONFIG_NFS_COMMON=y
-CONFIG_NCPFS_NFS_NS=y
-
-The problem could not be reproduced using NFS vers=3 on the Solaris 
-client (with or without ACLs enabled), and could also not be reproduced 
-after rebuilding the kernel with ACLs disabled (CONFIG_NFSD_V2_ACL=n and 
-CONFIG_NFSD_V3_ACL=n). So it looks like something in the NFSv2 ACL code 
-may be clobbering memory.
-
-(I also briefly tested a more recent SuSE kernel (2.6.18.2), and the 
-problem was still reproducible.)
-
-
-Kernel log output with nfsd debug logging enabled:
-
-(The mount)
-
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: exp_rootfh(/tmp [f795fd74] 
-192.168.0.0/16:sda1/170370)
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: fh_compose(exp 08:01/170370 //tmp, 
-ino=170370)
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 0
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 3
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: GETATTR  32: 00000001 01000800 
-00029982 00000000 00000000 00000000
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: Dropping request due to malloc 
-failure!
-Dec  6 05:04:08 dc1-gn1 kernel: found domain 192.168.0.0/16
-Dec  6 05:04:08 dc1-gn1 kernel: found fsidtype 0
-Dec  6 05:04:08 dc1-gn1 kernel: found fsid length 8
-Dec  6 05:04:08 dc1-gn1 kernel: Path seems to be </tmp>
-Dec  6 05:04:08 dc1-gn1 kernel: Found the path /tmp
-Dec  6 05:04:08 dc1-gn1 kernel: And found export
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 3
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: GETATTR  32: 00000001 01000800 
-00029982 00000000 00000000 00000000
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 17
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: STATFS   32: 00000001 01000800 
-00029982 00000000 00000000 00000000
-Dec  6 05:04:08 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-
-(The first "ls" from the client)
-
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 3
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd: GETATTR  32: 00000001 01000800 
-00029982 00000000 00000000 00000000
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 4
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd: ACCESS(2acl)   32: 00000001 
-01000800 00029982 00000000 00000000 00000000 0x1
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 16
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd: READDIR  32: 00000001 01000800 
-00029982 00000000 00000000 00000000 1048 bytes at 0
-Dec  6 05:04:21 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-
-(The second "ls" from the client)
-
-Dec  6 05:04:29 dc1-gn1 kernel: nfsd_dispatch: vers 2 proc 3
-Dec  6 05:04:29 dc1-gn1 kernel: nfsd: GETATTR  32: 00000001 01000800 
-00029982 00000000 00000000 00000000
-Dec  6 05:04:29 dc1-gn1 kernel: nfsd: fh_verify(32: 00000001 01000800 
-00029982 00000000 00000000 00000000)
-Dec  6 05:04:29 dc1-gn1 kernel: Unable to handle kernel paging request 
-at virtual address 207a4133
-Dec  6 05:04:29 dc1-gn1 kernel:  printing eip:
-Dec  6 05:04:29 dc1-gn1 kernel: c0163819
-Dec  6 05:04:29 dc1-gn1 kernel: *pde = 00000000
-Dec  6 05:04:29 dc1-gn1 kernel: Oops: 0000 [#1]
-Dec  6 05:04:29 dc1-gn1 kernel: SMP
-Dec  6 05:04:29 dc1-gn1 kernel: last sysfs file: 
-/devices/pci0000:00/0000:00:1e.0/0000:04:03.0/subsystem_device
-Dec  6 05:04:29 dc1-gn1 kernel: Modules linked in: nfsd lockd nfs_acl 
-sunrpc xt_pkttype ipt_LOG xt_limit ip6t_REJECT xt_tcpudp ipt_REJECT 
-xt_state iptable_mangle iptable_nat ip_nat iptable_filter 
-ip6table_mangle ip_conntrack nfnetlink ip_tables ip6table_filter 
-ip6_tables x_tables ipv6 xfs_quota loop xfs_dmapi xfs exportfs dmapi 
-shpchp pci_hotplug i2c_i801 i2c_core i8xx_tco e100 intel_agp mii 
-uhci_hcd agpgart e1000 ehci_hcd usbcore ext3 jbd edd fan thermal 
-processor sg sr_mod cdrom ata_piix libata sd_mod scsi_mod
-Dec  6 05:04:29 dc1-gn1 kernel: CPU:    0
-Dec  6 05:04:29 dc1-gn1 kernel: EIP:    0060:[<c0163819>]    Not tainted VLI
-Dec  6 05:04:29 dc1-gn1 kernel: EFLAGS: 00010246   (2.6.16.21-0.8-smp #1)
-Dec  6 05:04:29 dc1-gn1 kernel: EIP is at vfs_getattr+0x39/0x9f
-Dec  6 05:04:29 dc1-gn1 kernel: eax: 207a40f7   ebx: f79bc0d3   ecx: 
-f6597f08   edx: f795fd74
-Dec  6 05:04:29 dc1-gn1 kernel: esi: f6597f08   edi: f795fd74   ebp: 
-f6597f08   esp: f6597ef0
-Dec  6 05:04:29 dc1-gn1 kernel: ds: 007b   es: 007b   ss: 0068
-Dec  6 05:04:29 dc1-gn1 kernel: Process nfsd (pid: 4866, 
-threadinfo=f6596000 task=dfc0e330)
-Dec  6 05:04:29 dc1-gn1 kernel: Stack: <0>dfd42ac0 f61e7000 f6597f08 
-f6060020 dfeba200 f95c6fc5 0000fffe f795fd74
-Dec  6 05:04:29 dc1-gn1 kernel:        f795fd74 f6b63a80 f795fd74 
-f95c174f 00000000 dfeba200 f6597f38 00000005
-Dec  6 05:04:29 dc1-gn1 kernel:        f61e7008 dfeba200 f6060000 
-c01204a7 f61e7800 f61e7000 dfeba200 dfeba200
-Dec  6 05:04:29 dc1-gn1 kernel: Call Trace:
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95c6fc5>] 
-nfs2svc_encode_fattr+0x25/0x39 [nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95c174f>] fh_verify+0x45f/0x4c4 [nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<c01204a7>] printk+0x14/0x18
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95c7f64>] 
-nfsaclsvc_encode_attrstatres+0x0/0x1b [nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95c7f6c>] 
-nfsaclsvc_encode_attrstatres+0x8/0x1b [nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95bf135>] nfsd_dispatch+0x125/0x170 
-[nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f956f2c8>] svc_process+0x366/0x5b2 
-[sunrpc]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95bf57b>] nfsd+0x18e/0x2eb [nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<f95bf3ed>] nfsd+0x0/0x2eb [nfsd]
-Dec  6 05:04:29 dc1-gn1 kernel:  [<c0102005>] kernel_thread_helper+0x5/0xb
-Dec  6 05:04:29 dc1-gn1 kernel: Code: 8b 5a 0c f6 83 4d 01 00 00 02 75 
-19 83 3d 44 ff 3b c0 00 74 10 8b 0d 40 ff 3b c0 ff 91 c4 00 00 00 85 c0 
-75 66 8b 83 94 00 00 00 <8b> 70 3c 85 f6 74 0b 8b 04 24 89 e9 89 fa ff 
-d6 eb 4e 89 d8 89
-
-(The local "ls")
-
-Dec  6 05:05:24 dc1-gn1 kernel:  NFSD: laundromat service - starting
-Dec  6 05:05:24 dc1-gn1 kernel: NFSD: end of grace period
-Dec  6 05:05:24 dc1-gn1 kernel: NFSD: laundromat_main - sleeping for 90 
-seconds
-Dec  6 05:05:25 dc1-gn1 kernel: Unable to handle kernel paging request 
-at virtual address 207a411f
-Dec  6 05:05:25 dc1-gn1 kernel:  printing eip:
-Dec  6 05:05:25 dc1-gn1 kernel: c0168a61
-Dec  6 05:05:25 dc1-gn1 kernel: *pde = 00000000
-Dec  6 05:05:25 dc1-gn1 kernel: Oops: 0000 [#2]
-Dec  6 05:05:25 dc1-gn1 kernel: SMP
-Dec  6 05:05:25 dc1-gn1 kernel: last sysfs file: 
-/devices/pci0000:00/0000:00:1e.0/0000:04:03.0/subsystem_device
-Dec  6 05:05:25 dc1-gn1 kernel: Modules linked in: nfsd lockd nfs_acl 
-sunrpc xt_pkttype ipt_LOG xt_limit ip6t_REJECT xt_tcpudp ipt_REJECT 
-xt_state iptable_mangle iptable_nat ip_nat iptable_filter 
-ip6table_mangle ip_conntrack nfnetlink ip_tables ip6table_filter 
-ip6_tables x_tables ipv6 xfs_quota loop xfs_dmapi xfs exportfs dmapi 
-shpchp pci_hotplug i2c_i801 i2c_core i8xx_tco e100 intel_agp mii 
-uhci_hcd agpgart e1000 ehci_hcd usbcore ext3 jbd edd fan thermal 
-processor sg sr_mod cdrom ata_piix libata sd_mod scsi_mod
-Dec  6 05:05:25 dc1-gn1 kernel: CPU:    0
-Dec  6 05:05:25 dc1-gn1 kernel: EIP:    0060:[<c0168a61>]    Not tainted VLI
-Dec  6 05:05:25 dc1-gn1 kernel: EFLAGS: 00210202   (2.6.16.21-0.8-smp #1)
-Dec  6 05:05:25 dc1-gn1 kernel: EIP is at __link_path_walk+0x851/0xc7e
-Dec  6 05:05:25 dc1-gn1 kernel: eax: 207a40f7   ebx: f79bc0d3   ecx: 
-f7ddf004   edx: f795fd74
-Dec  6 05:05:25 dc1-gn1 kernel: esi: f7d36d3c   edi: f7ddf001   ebp: 
-f72e9f10   esp: f72e9e20
-Dec  6 05:05:25 dc1-gn1 kernel: ds: 007b   es: 007b   ss: 0068
-Dec  6 05:05:25 dc1-gn1 kernel: Process ls (pid: 6162, 
-threadinfo=f72e8000 task=c1a9f350)
-Dec  6 05:05:25 dc1-gn1 kernel: Stack: <0>f7ddf004 00000000 00000001 
-c01419c1 00000003 c0304350 f76e6000 c0304350
-Dec  6 05:05:25 dc1-gn1 kernel:        00000000 00295e98 00000003 
-f7ddf001 dfd42ac0 f795fd74 f72e8000 f72e9f10
-Dec  6 05:05:25 dc1-gn1 kernel:        dfc76cf0 dfd42ac0 c0168ed7 
-f7ddf000 dfc76cf0 dfd42ac0 00000000 f663b0cc
-Dec  6 05:05:25 dc1-gn1 kernel: Call Trace:
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c01419c1>] find_get_page+0x18/0x38
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c0168ed7>] link_path_walk+0x49/0xbd
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c0149da8>] vma_prio_tree_insert+0x17/0x2a
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c016926c>] do_path_lookup+0x1df/0x242
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c01699c4>] __user_walk_fd+0x29/0x3a
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c0163926>] vfs_stat_fd+0x15/0x3c
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c0149da8>] vma_prio_tree_insert+0x17/0x2a
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c01639da>] sys_stat64+0xf/0x23
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c029131e>] do_page_fault+0x16e/0x525
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c02911b0>] do_page_fault+0x0/0x525
-Dec  6 05:05:25 dc1-gn1 kernel:  [<c0103beb>] sysenter_past_esp+0x54/0x79
-Dec  6 05:05:25 dc1-gn1 kernel: Code: 04 00 00 8b 44 24 34 f6 44 24 08 
-01 8b 58 0c 0f 84 f1 02 00 00 85 db 0f 84 e9 02 00 00 8b 83 94 00 00 00 
-85 c0 0f 84 db 02 00 00 <83> 78 28 00 0f 84 d1 02 00 00 b8 00 e0 ff ff 
-21 e0 8b 00 83 b8
-
-
-Let me know if there is any additional information I can provide that 
-would be useful.
-
-Thanks,
-
-Kevin
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 2ce4dc6..32f4cc4 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -637,12 +637,13 @@ nlmsvc_cancel_blocked(struct nlm_file *file, struct nlm_lock *lock)
+  * This function doesn't grant the blocked lock instantly, but rather moves
+  * the block to the head of nlm_blocked where it can be picked up by lockd.
+  */
+-static void
+-nlmsvc_notify_blocked(struct file_lock *fl)
++static int
++nlmsvc_notify_blocked(struct file_lock *fl, struct file_lock *conf, int result)
+ {
+ 	struct nlm_block	*block;
+ 
+-	dprintk("lockd: VFS unblock notification for block %p\n", fl);
++	dprintk("lockd: nlmsvc_notify_blocked lock %p conf %p result %d\n",
++							fl, conf, result);
+ 	list_for_each_entry(block, &nlm_blocked, b_list) {
+ 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
+ 			nlmsvc_insert_block(block, 0);
+diff --git a/fs/locks.c b/fs/locks.c
+index 451a61a..959347e 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -544,7 +544,7 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
+ 				struct file_lock, fl_block);
+ 		__locks_delete_block(waiter);
+ 		if (waiter->fl_lmops && waiter->fl_lmops->fl_notify)
+-			waiter->fl_lmops->fl_notify(waiter);
++			waiter->fl_lmops->fl_notify(waiter, NULL, -EAGAIN);
+ 		else
+ 			wake_up(&waiter->fl_wait);
+ 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b1d287b..9b57afc 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -795,7 +795,7 @@ struct file_lock_operations {
+ 
+ struct lock_manager_operations {
+ 	int (*fl_compare_owner)(struct file_lock *, struct file_lock *);
+-	void (*fl_notify)(struct file_lock *);	/* unblock callback */
++	int (*fl_notify)(struct file_lock *, struct file_lock *, int);
+ 	void (*fl_copy_lock)(struct file_lock *, struct file_lock *);
+ 	void (*fl_release_private)(struct file_lock *);
+ 	void (*fl_break)(struct file_lock *);
+-- 
+1.4.4.1
 
 
 -------------------------------------------------------------------------
