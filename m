@@ -1,14 +1,10 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 7/10] lockd: handle test_lock deferrals
-Date: Wed,  6 Dec 2006 00:34:17 -0500
-Message-ID: <c214e0a0062abdbb72f0810c25ab7688e51b4dbd.1165380893.git.bfields__42157.5957713232$1165383329$gmane$org@citi.umich.edu>
+Subject: [PATCH 3/10] lockd: request deferral routine
+Date: Wed,  6 Dec 2006 00:34:13 -0500
+Message-ID: <610c7d52f6363606200fa1016804e7116d580c36.1165380893.git.bfields__3367.93009560115$1165383336$gmane$org@citi.umich.edu>
 References: <11653832602203-git-send-email-bfields@fieldses.org>
 	<1165383260627-git-send-email-bfields@fieldses.org>
 	<11653832603105-git-send-email-bfields@fieldses.org>
-	<11653832601058-git-send-email-bfields@fieldses.org>
-	<11653832601635-git-send-email-bfields@fieldses.org>
-	<1165383260424-git-send-email-bfields@fieldses.org>
-	<11653832601925-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
@@ -16,15 +12,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GrpQH-0006Xa-Ng
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:25 -0800
+	id 1GrpQJ-0006Y7-SO
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:27 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GrpQI-0008BB-Gi
-	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:27 -0800
+	(Exim 4.44) id 1GrpQK-0008BG-Ru
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:29 -0800
 To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <11653832601925-git-send-email-bfields@fieldses.org>
-Message-Id: <c214e0a0062abdbb72f0810c25ab7688e51b4dbd.1165380893.git.bfields@citi.umich.edu>
+In-Reply-To: <11653832603105-git-send-email-bfields@fieldses.org>
+Message-Id: <610c7d52f6363606200fa1016804e7116d580c36.1165380893.git.bfields@citi.umich.edu>
 In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 To: me <bfields@umich.edu>
@@ -42,103 +38,83 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Marc Eshel <eshel@almaden.ibm.com>
 
-Rewrite nlmsvc_testlock() to use the new asynchronous interface: instead of
-immediately doing a posix_test_lock(), we first look for a matching block.
-If the subsequent test_lock returns anything other than -EINPROGRESS, we
-then remove the block we've found and return the results.
+We need to keep some state for a pending asynchronous lock request, so this
+patch adds that state to struct nlm_block.
 
-If it returns -EINPROGRESS, then we defer the lock request.
-
-In the case where the block we find in the first step has B_QUEUED set,
-we bypass the vfs_test_lock entirely, instead using the block to decide how
-to respond:
-	with nlm_lck_denied if B_TOO_LATE is set.
-	with nlm_granted if B_GOT_CALLBACK is set.
-	by dropping if neither B_TOO_LATE nor B_GOT_CALLBACK is set
+This also adds a function which defers the request, by calling
+rqstp->rq_chandle.defer and storing the resulting deferred request in a
+nlm_block structure which we insert into lockd's global block list.  That
+new function isn't called yet, so it's dead code until a later patch.
 
 Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svclock.c |   59 ++++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 48 insertions(+), 11 deletions(-)
+ fs/lockd/svclock.c          |   25 +++++++++++++++++++++++++
+ include/linux/lockd/lockd.h |   10 ++++++++++
+ 2 files changed, 35 insertions(+), 0 deletions(-)
 
 diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e342046..21185a7 100644
+index f523ca2..2ce4dc6 100644
 --- a/fs/lockd/svclock.c
 +++ b/fs/lockd/svclock.c
-@@ -553,6 +553,9 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 		struct nlm_lock *lock, struct nlm_lock *conflock,
- 		struct nlm_cookie *cookie)
- {
-+	struct nlm_block *block = NULL;
-+	int error;
-+
- 	dprintk("lockd: nlmsvc_testlock(%s/%ld, ty=%d, %Ld-%Ld)\n",
- 				file->f_file->f_dentry->d_inode->i_sb->s_id,
- 				file->f_file->f_dentry->d_inode->i_ino,
-@@ -560,19 +563,53 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 				(long long)lock->fl.fl_start,
- 				(long long)lock->fl.fl_end);
- 
--	if (posix_test_lock(file->f_file, &lock->fl, &conflock->fl)) {
--		dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
--				conflock->fl.fl_type,
--				(long long)conflock->fl.fl_start,
--				(long long)conflock->fl.fl_end);
--		conflock->caller = "somehost";	/* FIXME */
--		conflock->len = strlen(conflock->caller);
--		conflock->oh.len = 0;		/* don't return OH info */
--		conflock->svid = conflock->fl.fl_pid;
--		return nlm_lck_denied;
-+	/* Get existing block (in case client is busy-waiting) */
-+	block = nlmsvc_lookup_block(file, lock);
-+
-+	if (block == NULL) {
-+		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		if (block == NULL)
-+			return nlm_granted;
- 	}
-+	if (block->b_flags & B_QUEUED) {
-+		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
-+			block, block->b_flags, block->b_fl);
-+		if (block->b_flags & B_TOO_LATE) {
-+			nlmsvc_unlink_block(block);
-+			return nlm_lck_denied;
-+		}
-+		if (block->b_flags & B_GOT_CALLBACK) {
-+			if (block->b_fl != NULL) {
-+				conflock->fl = *block->b_fl;
-+				goto conf_lock;
-+			}
-+			else {
-+				nlmsvc_unlink_block(block);
-+				return nlm_granted;
-+			}
-+		}
-+		return nlm_drop_reply;
-+ 	}
- 
--	return nlm_granted;
-+	error = vfs_test_lock(file->f_file, &lock->fl, &conflock->fl);
-+	if (!error) {
-+		nlmsvc_unlink_block(block);
-+		return nlm_granted;
-+        }
-+	if (error == -EINPROGRESS)
-+		return nlmsvc_defer_lock_rqst(rqstp, block);
-+
-+conf_lock:
-+	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
-+		conflock->fl.fl_type, (long long)conflock->fl.fl_start,
-+		(long long)conflock->fl.fl_end);
-+	conflock->caller = "somehost";	/* FIXME */
-+	conflock->len = strlen(conflock->caller);
-+	conflock->oh.len = 0;		/* don't return OH info */
-+	conflock->svid = conflock->fl.fl_pid;
-+	if (block)
-+		nlmsvc_unlink_block(block);
-+	return nlm_lck_denied;
+@@ -437,6 +437,31 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
  }
+ 
+ /*
++ * Deferred lock request handling for non-blocking lock
++ */
++static u32
++nlmsvc_defer_lock_rqst(struct svc_rqst *rqstp, struct nlm_block *block)
++{
++	u32 status = nlm_lck_denied_nolocks;
++
++	block->b_flags |= B_QUEUED;
++
++	nlmsvc_insert_block(block, NLM_TIMEOUT);
++
++	block->b_cache_req = &rqstp->rq_chandle;
++	if (rqstp->rq_chandle.defer) {
++		block->b_deferred_req =
++			rqstp->rq_chandle.defer(block->b_cache_req);
++		if (block->b_deferred_req != NULL)
++			status = nlm_drop_reply;
++	}
++	dprintk("lockd: nlmsvc_defer_lock_rqst block %p flags %d status %d\n",
++		block, block->b_flags, status);
++
++	return status;
++}
++
++/*
+  * Attempt to establish a lock, and if it can't be granted, block it
+  * if required.
+  */
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 862d973..ac865f8 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -119,6 +119,9 @@ struct nlm_file {
+  * couldn't be granted because of a conflicting lock).
+  */
+ #define NLM_NEVER		(~(unsigned long) 0)
++/* timeout on non-blocking call: */
++#define NLM_TIMEOUT		(7 * HZ)
++
+ struct nlm_block {
+ 	struct kref		b_count;	/* Reference count */
+ 	struct list_head	b_list;		/* linked list of all blocks */
+@@ -130,6 +133,13 @@ struct nlm_block {
+ 	unsigned int		b_id;		/* block id */
+ 	unsigned char		b_granted;	/* VFS granted lock */
+ 	struct nlm_file *	b_file;		/* file in question */
++	struct cache_req *	b_cache_req;	/* deferred request handling */
++	struct file_lock *	b_fl;		/* set for GETLK */
++	struct cache_deferred_req * b_deferred_req;
++	unsigned int		b_flags;	/* block flags */
++#define B_QUEUED		1	/* lock queued */
++#define B_GOT_CALLBACK		2	/* got lock or conflicting lock */
++#define B_TOO_LATE		4	/* too late for non-blocking lock */
+ };
  
  /*
 -- 
