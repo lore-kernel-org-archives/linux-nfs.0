@@ -1,120 +1,259 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 7/10] lockd: handle test_lock deferrals
-Date: Wed,  6 Dec 2006 00:34:17 -0500
-Message-ID: <1165383260548-git-send-email-bfields@fieldses.org>
-References: <11653832602203-git-send-email-bfields@fieldses.org> <1165383260627-git-send-email-bfields@fieldses.org> <11653832603105-git-send-email-bfields@fieldses.org> <11653832601058-git-send-email-bfields@fieldses.org> <11653832601635-git-send-email-bfields@fieldses.org> <1165383260424-git-send-email-bfields@fieldses.org> <11653832601925-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 1/10] lockd: add new export operation for nfsv4/lockd
+	locking
+Date: Wed,  6 Dec 2006 00:34:11 -0500
+Message-ID: <1165383260627-git-send-email-bfields@fieldses.org>
+References: <11653832602203-git-send-email-bfields@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GrpQH-0006Xb-PU
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:25 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GrpQI-0008B9-17
+	for nfs@lists.sourceforge.net; Tue, 05 Dec 2006 21:34:27 -0800
 To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <11653832601925-git-send-email-bfields@fieldses.org>
-Message-Id: <c214e0a0062abdbb72f0810c25ab7688e51b4dbd.1165380893.git.bfields@citi.umich.edu>
-In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
-References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
+In-Reply-To: <11653832602203-git-send-email-bfields@fieldses.org>
+Message-Id: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 To: me <bfields@umich.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Marc Eshel <eshel@almaden.ibm.com>
 
-Rewrite nlmsvc_testlock() to use the new asynchronous interface: instead of
-immediately doing a posix_test_lock(), we first look for a matching block.
-If the subsequent test_lock returns anything other than -EINPROGRESS, we
-then remove the block we've found and return the results.
+There is currently a filesystem ->lock() method, but it is defined only by
+a few filesystems that are not exported via nfsd.  So none of the lock
+routines that are used by lockd or nfsv4 bother to call those methods.
 
-If it returns -EINPROGRESS, then we defer the lock request.
+Filesystems such as cluster filesystems would like to do their own locking
+and also would like to be exportable via NFS.
 
-In the case where the block we find in the first step has B_QUEUED set,
-we bypass the vfs_test_lock entirely, instead using the block to decide how
-to respond:
-	with nlm_lck_denied if B_TOO_LATE is set.
-	with nlm_granted if B_GOT_CALLBACK is set.
-	by dropping if neither B_TOO_LATE nor B_GOT_CALLBACK is set
+So we add a new lock() export operation, and new routines vfs_lock_file,
+vfs_test_lock, and vfs_cancel_lock, which call the new export operation,
+falling back on the appropriate local operation if the export operation is
+unavailable.
+
+These new functions are intended to be used by lockd and nfsd; lockd and
+nfsd changes to take advantage of them are made by later patches.
+
+Acquiring a lock may require communication with remote hosts, and to avoid
+blocking lockd or nfsd threads during such communication, we allow the
+results to be returned asynchronously.
+
+When a ->lock() call needs to block, the file system will return
+-EINPROGRESS, and then later return the results with a call to the routine
+in the fl_notify field of the lock_manager_operations struct.
+
+Note that this is different from the ->lock() call discovering that there
+is a conflict which would cause the caller to block; this is still handled
+in the same way as before.  In fact, we don't currently handle "blocking"
+locks at all; those are less urgent, because the filesystem can always just
+return an immediate -EAGAIN without denying the lock.
+
+So this asynchronous interface is only used in the case of a non-blocking
+lock, where we must know whether to allow or deny the lock now.
+
+(Note: with this patch, we haven't yet modified lockd to handle such a
+callback, which we must do so before a filesystem can safely use it in this
+way.)
 
 Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svclock.c |   59 ++++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 48 insertions(+), 11 deletions(-)
+ fs/lockd/svclock.c         |  108 +++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/fs.h         |    2 +
+ include/linux/lockd/bind.h |    4 ++
+ 3 files changed, 113 insertions(+), 1 deletions(-)
 
 diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e342046..21185a7 100644
+index 7e219b9..f523ca2 100644
 --- a/fs/lockd/svclock.c
 +++ b/fs/lockd/svclock.c
-@@ -553,6 +553,9 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 		struct nlm_lock *lock, struct nlm_lock *conflock,
- 		struct nlm_cookie *cookie)
- {
-+	struct nlm_block *block = NULL;
+@@ -20,6 +20,7 @@
+  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
+  */
+ 
++#include <linux/module.h>
+ #include <linux/types.h>
+ #include <linux/errno.h>
+ #include <linux/kernel.h>
+@@ -51,6 +52,111 @@ static const struct rpc_call_ops nlmsvc_grant_ops;
+  */
+ static LIST_HEAD(nlm_blocked);
+ 
++ /**
++ * vfs_lock_file - file byte range lock
++ * @filp: The file to apply the lock to
++ * @fl: The lock to be applied
++ *
++ * To avoid blocking kernel daemons, such as lockd, that need to acquire POSIX
++ * locks, the ->lock() interface may return asynchronously, before the lock has
++ * been granted or denied by the underlying filesystem, if (and only if)
++ * fl_notify is set. Callers expecting ->lock() to return asynchronously
++ * will only use F_SETLK, not F_SETLKW; they will set FL_SLEEP if (and only if)
++ * the request is for a blocking lock. When ->lock() does return asynchronously,
++ * it must return -EINPROGRESS, and call ->fl_notify() when the lock
++ * request completes.
++ * If the request is for non-blocking lock the file system should return
++ * -EINPROGRESS then try to get the lock and call the callback routine with
++ * the result. If the request timed out the callback routine will return a
++ * nonzero return code and the file system should release the lock. The file
++ * system is also responsible to keep a corresponding posix lock when it
++ * grants a lock so the VFS can find out which locks are locally held and do
++ * the correct lock cleanup when required.
++ * The underlying filesystem must not drop the kernel lock or call
++ * ->fl_notify() before returning to the caller with a -EINPROGRESS
++ * return code.
++ */
++int vfs_lock_file(struct file *filp, struct file_lock *fl)
++{
++	struct super_block *sb;
++
++	sb = filp->f_dentry->d_inode->i_sb;
++	if (sb->s_export_op && sb->s_export_op->lock)
++		return sb->s_export_op->lock(filp, F_SETLK, fl);
++	else
++		return posix_lock_file(filp, fl);
++}
++EXPORT_SYMBOL(vfs_lock_file);
++
++/**
++ * vfs_lock_file - file byte range lock
++ * @filp: The file to apply the lock to
++ * @fl: The lock to be applied
++ * @conf: Place to return a copy of the conflicting lock, if found.
++ *
++ * read comments for vfs_lock_file()
++ */
++int vfs_lock_file_conf(struct file *filp, struct file_lock *fl, struct file_lock *conf)
++{
++	struct super_block *sb;
++
++	sb = filp->f_dentry->d_inode->i_sb;
++	if (sb->s_export_op && sb->s_export_op->lock) {
++		locks_copy_lock(conf, fl);
++		return sb->s_export_op->lock(filp, F_SETLK, fl);
++	} else
++		return posix_lock_file_conf(filp, fl, conf);
++}
++EXPORT_SYMBOL(vfs_lock_file_conf);
++
++/**
++ * vfs_test_lock - test file byte range lock
++ * @filp: The file to test lock for
++ * @fl: The lock to test
++ * @conf: Place to return a copy of the conflicting lock, if found.
++ */
++int vfs_test_lock(struct file *filp, struct file_lock *fl, struct file_lock *conf)
++{
 +	int error;
++	struct super_block *sb;
 +
- 	dprintk("lockd: nlmsvc_testlock(%s/%ld, ty=%d, %Ld-%Ld)\n",
- 				file->f_file->f_dentry->d_inode->i_sb->s_id,
- 				file->f_file->f_dentry->d_inode->i_ino,
-@@ -560,19 +563,53 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 				(long long)lock->fl.fl_start,
- 				(long long)lock->fl.fl_end);
- 
--	if (posix_test_lock(file->f_file, &lock->fl, &conflock->fl)) {
--		dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
--				conflock->fl.fl_type,
--				(long long)conflock->fl.fl_start,
--				(long long)conflock->fl.fl_end);
--		conflock->caller = "somehost";	/* FIXME */
--		conflock->len = strlen(conflock->caller);
--		conflock->oh.len = 0;		/* don't return OH info */
--		conflock->svid = conflock->fl.fl_pid;
--		return nlm_lck_denied;
-+	/* Get existing block (in case client is busy-waiting) */
-+	block = nlmsvc_lookup_block(file, lock);
-+
-+	if (block == NULL) {
-+		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		if (block == NULL)
-+			return nlm_granted;
- 	}
-+	if (block->b_flags & B_QUEUED) {
-+		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
-+			block, block->b_flags, block->b_fl);
-+		if (block->b_flags & B_TOO_LATE) {
-+			nlmsvc_unlink_block(block);
-+			return nlm_lck_denied;
++	conf->fl_type = F_UNLCK;
++	sb = filp->f_dentry->d_inode->i_sb;
++	if (sb->s_export_op && sb->s_export_op->lock) {
++ 		locks_copy_lock(conf, fl);
++		error = sb->s_export_op->lock(filp, F_GETLK, conf);
++		if (!error) {
++			if (conf->fl_type != F_UNLCK)
++				error =  1;
 +		}
-+		if (block->b_flags & B_GOT_CALLBACK) {
-+			if (block->b_fl != NULL) {
-+				conflock->fl = *block->b_fl;
-+				goto conf_lock;
-+			}
-+			else {
-+				nlmsvc_unlink_block(block);
-+				return nlm_granted;
-+			}
-+		}
-+		return nlm_drop_reply;
-+ 	}
- 
--	return nlm_granted;
-+	error = vfs_test_lock(file->f_file, &lock->fl, &conflock->fl);
-+	if (!error) {
-+		nlmsvc_unlink_block(block);
-+		return nlm_granted;
-+        }
-+	if (error == -EINPROGRESS)
-+		return nlmsvc_defer_lock_rqst(rqstp, block);
++		return error;
++ 	} else
++		return posix_test_lock(filp, fl, conf);
++}
++EXPORT_SYMBOL(vfs_test_lock);
 +
-+conf_lock:
-+	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
-+		conflock->fl.fl_type, (long long)conflock->fl.fl_start,
-+		(long long)conflock->fl.fl_end);
-+	conflock->caller = "somehost";	/* FIXME */
-+	conflock->len = strlen(conflock->caller);
-+	conflock->oh.len = 0;		/* don't return OH info */
-+	conflock->svid = conflock->fl.fl_pid;
-+	if (block)
-+		nlmsvc_unlink_block(block);
-+	return nlm_lck_denied;
- }
- 
++/**
++ * vfs_cancel_lock - file byte range unblock lock
++ * @filp: The file to apply the unblock to
++ * @fl: The lock to be unblocked
++ *
++ * FL_CANCELED is used to cancel blocked requests
++ */
++int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
++{
++	int status;
++	struct super_block *sb;
++
++	fl->fl_flags |= FL_CANCEL;
++	sb = filp->f_dentry->d_inode->i_sb;
++	if (sb->s_export_op && sb->s_export_op->lock)
++		status = sb->s_export_op->lock(filp, F_SETLK, fl);
++	else
++		status = posix_unblock_lock(filp, fl);
++	fl->fl_flags &= ~FL_CANCEL;
++	return status;
++}
++
  /*
+  * Insert a blocked lock into the global list
+  */
+@@ -241,7 +347,7 @@ static int nlmsvc_unlink_block(struct nlm_block *block)
+ 	dprintk("lockd: unlinking block %p...\n", block);
+ 
+ 	/* Remove block from list */
+-	status = posix_unblock_lock(block->b_file->f_file, &block->b_call->a_args.lock.fl);
++	status = vfs_cancel_lock(block->b_file->f_file, &block->b_call->a_args.lock.fl);
+ 	nlmsvc_remove_block(block);
+ 	return status;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 2fe6e3f..b1d287b 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -770,6 +770,7 @@ extern spinlock_t files_lock;
+ 
+ #define FL_POSIX	1
+ #define FL_FLOCK	2
++#define FL_CANCEL	4	/* set to request cancelling a lock */
+ #define FL_ACCESS	8	/* not trying to lock, just looking */
+ #define FL_EXISTS	16	/* when unlocking, test for existence */
+ #define FL_LEASE	32	/* lease held on this file */
+@@ -1372,6 +1373,7 @@ struct export_operations {
+ 		int (*acceptable)(void *context, struct dentry *de),
+ 		void *context);
+ 
++	int (*lock) (struct file *, int, struct file_lock *);
+ 
+ };
+ 
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index aa50d89..780bec4 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -38,4 +38,8 @@ extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
+ extern int	lockd_up(int proto);
+ extern void	lockd_down(void);
+ 
++extern int vfs_lock_file(struct file *, struct file_lock *);
++extern int vfs_lock_file_conf(struct file *, struct file_lock *, struct file_lock *);
++extern int vfs_test_lock(struct file *, struct file_lock *, struct file_lock *);
++
+ #endif /* LINUX_LOCKD_BIND_H */
 -- 
 1.4.4.1
 
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
