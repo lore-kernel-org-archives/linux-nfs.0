@@ -1,79 +1,51 @@
-From: "Mohamed Rankin" <wastefulnesstempest@acanimalrescue.org>
-Subject: Mohamed check this.
-Date: Thu, 7 Dec 2006 14:22:46 +0000 (UTC)
-Message-ID: <01c71a0b$1cf996b0$6c822ecf@wastefulnesstempest>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 10/10] gfs2: nfs lock support for gfs2
+Date: Thu, 7 Dec 2006 10:23:59 -0500
+Message-ID: <20061207152359.GB13613@fieldses.org>
+References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu> <70549752c06e54117024429649fd7aa813f21bec.1165380893.git.bfields@citi.umich.edu> <20061206154951.GB16378@redhat.com> <20061206195722.GH1714@fieldses.org> <20061206205822.GB25322@redhat.com> <4577B912.2030500@almaden.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GsK8n-0001BH-5D
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 06:22:39 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GsK8o-00065r-8K
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 06:22:26 -0800
-Received: from anancy-157-1-10-153.w86-204.abo.wanadoo.fr ([86.204.209.153])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GsK8l-00079W-Hm
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 06:22:24 -0800
-Received: from 69.49.140.59 (HELO mx10.psouth.net)
-	by lists.sourceforge.net with esmtp (0U:W9N=H Q8(19)
-	id *L4A6/-X)0HV--D(
-	for nfs@lists.sourceforge.net; Thu, 7 Dec 2006 14:22:23 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Thu, 7 Dec 2006 14:22:23 -0060
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: David Teigland <teigland@redhat.com>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Marc Eshel <eshel@almaden.ibm.com>
+In-Reply-To: <4577B912.2030500@almaden.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-These days it's like the dot com revolution round two.  The 
-only difference is, this time there will be no crash.  
-Everyone is wiser and the internet has already proven that 
-it is THE place to do business.
+On Wed, Dec 06, 2006 at 10:47:46PM -0800, Marc Eshel wrote:
+> Here is a rewrite of gdlm_plock_callback(). We still need to add the 
+> lock cancel.
+> Marc.
+> 
+> int gdlm_plock_callback(struct plock_op *op)
+> {
+>     struct file *file;
+>     struct file_lock *fl;
+>     int (*notify)(void *, void *, int) = NULL;
+>     int rv;
+> 
+>    spin_lock(&ops_lock);
+>    if (!list_empty(&op->list)) {
+>        printk(KERN_INFO "plock op on list\n");
+>        list_del(&op->list);
+>    }
+>    spin_unlock(&ops_lock);
+> 
+>    rv = op->info.rv;
+> 
+>    /* check if the following 2 are still valid or make a copy */
+>    file = op->info.file;
+>    fl = op->info.fl;
+>    notify = op->info.callback;
+> 
+>    if (!rv) { /* got fs lock */
+>        rv = posix_lock_file(file, fl);
+>        if (rv) { /* did not get posix lock */
 
-Acquisitions are happening at a record pace.  Google 
-picking up Youtube. News corp picking up Myspace, the list 
-goes on.  
+If we never request the local lock until after we've gotten the lock
+from GFS, then this should never happen.  So I think this could just be
+a BUG_ON(rv)--except that would mean a failure in the lock manager could
+oops the kernel, so maybe it'd be better just to printk.
 
-In all of these acquisitions those that are already holding 
-an interest in these smaller companies are making a fortune 
-in the process.  Word on the street is that our next pick 
-is about to be acquired by a big player!
-
-Premier Holdings Group 
-
-Symbol: PMHD
-Current Price:   0.37
-Target price:    1.35
-
-PMHD is a high tech company involved in a wide range of 
-internet related businesses from broadband to online 
-commerce.  This is one hot item!
-
-Remember, we get you the inside scoop BEFORE it hits the 
-street.  With the acquisition set to be announced shortly 
-the time to act is now.  Once the word is out it will be 
-too late to get in, as we expect this one to go up quickly. 
-
-Go PMHD!
-
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--b.
