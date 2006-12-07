@@ -1,20 +1,29 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] add missing long option for -r in mountd
-Date: Tue, 19 Dec 2006 11:59:07 -0500
-Message-ID: <45881A5B.7080900@redhat.com>
+From: "Suzette Sargent" <regalscrooner's@abbynissan.com>
+Subject: Suzette check this.
+Date: Thu, 7 Dec 2006 08:46:02 +0000 (UTC)
+Message-ID: <01c719dc$61bdd9c0$6c822ecf@regalscrooner's>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GwiJ8-0006xI-Ng
-	for nfs@lists.sourceforge.net; Tue, 19 Dec 2006 08:59:14 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwiJ9-0004VF-1U
-	for nfs@lists.sourceforge.net; Tue, 19 Dec 2006 08:59:16 -0800
-To: nfs@lists.sourceforge.net
+	id 1GsErj-0000RS-SK
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 00:44:28 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GsErk-0005AS-5F
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 00:44:29 -0800
+Received: from freebsd.soyuzkontrakt.ru ([194.186.42.35])
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1GsErf-0006g1-2x
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 00:44:26 -0800
+Received: from 216.113.192.13 (HELO corp-mail.uniserve.com)
+	by lists.sourceforge.net with esmtp (>21PG-CD0NA CD76U)
+	id ..3)5F-M22YOS-3:
+	for nfs@lists.sourceforge.net; Thu, 7 Dec 2006 08:47:52 -0180
+To: <nfs@lists.sourceforge.net>
+Date: Thu, 7 Dec 2006 08:47:52 -0180
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,21 +36,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I forgot a bit of code that needs to go into patch 3 that I posted yesterday.
-This adds a long option for the -r option. I'll post manpage update patches
-once I get them written up.
+These days it's like the dot com revolution round two.  The 
+only difference is, this time there will be no crash.  
+Everyone is wiser and the internet has already proven that 
+it is THE place to do business.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acquisitions are happening at a record pace.  Google 
+picking up Youtube. News corp picking up Myspace, the list 
+goes on.  
 
---- nfs-utils-1.0.10/utils/mountd/mountd.c.longopt
-+++ nfs-utils-1.0.10/utils/mountd/mountd.c
-@@ -67,6 +67,7 @@ static struct option longopts[] =
-  	{ "ha-callout", 1, 0, 'H' },
-  	{ "state-directory-path", 1, 0, 's' },
-  	{ "num-threads", 1, 0, 't' },
-+	{ "reverse-lookup", 0, 0, 'r' },
-  	{ NULL, 0, 0, 0 }
-  };
+In all of these acquisitions those that are already holding 
+an interest in these smaller companies are making a fortune 
+in the process.  Word on the street is that our next pick 
+is about to be acquired by a big player!
+
+Premier Holdings Group 
+
+Symbol: PMHD
+Current Price:   0.37
+Target price:    1.35
+
+PMHD is a high tech company involved in a wide range of 
+internet related businesses from broadband to online 
+commerce.  This is one hot item!
+
+Remember, we get you the inside scoop BEFORE it hits the 
+street.  With the acquisition set to be announced shortly 
+the time to act is now.  Once the word is out it will be 
+too late to get in, as we expect this one to go up quickly. 
+
+Go PMHD!
+
 
 
 -------------------------------------------------------------------------
