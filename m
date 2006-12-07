@@ -1,29 +1,29 @@
-From: "Suzette Sargent" <regalscrooner's@abbynissan.com>
-Subject: Suzette check this.
-Date: Thu, 7 Dec 2006 08:46:02 +0000 (UTC)
-Message-ID: <01c719dc$61bdd9c0$6c822ecf@regalscrooner's>
+From: "Mohamed Rankin" <wastefulnesstempest@acanimalrescue.org>
+Subject: Mohamed check this.
+Date: Thu, 7 Dec 2006 14:22:46 +0000 (UTC)
+Message-ID: <01c71a0b$1cf996b0$6c822ecf@wastefulnesstempest>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GsErj-0000RS-SK
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 00:44:28 -0800
+	id 1GsK8n-0001BH-5D
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 06:22:39 -0800
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GsErk-0005AS-5F
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 00:44:29 -0800
-Received: from freebsd.soyuzkontrakt.ru ([194.186.42.35])
+	(Exim 4.44) id 1GsK8o-00065r-8K
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 06:22:26 -0800
+Received: from anancy-157-1-10-153.w86-204.abo.wanadoo.fr ([86.204.209.153])
 	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GsErf-0006g1-2x
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 00:44:26 -0800
-Received: from 216.113.192.13 (HELO corp-mail.uniserve.com)
-	by lists.sourceforge.net with esmtp (>21PG-CD0NA CD76U)
-	id ..3)5F-M22YOS-3:
-	for nfs@lists.sourceforge.net; Thu, 7 Dec 2006 08:47:52 -0180
+	id 1GsK8l-00079W-Hm
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 06:22:24 -0800
+Received: from 69.49.140.59 (HELO mx10.psouth.net)
+	by lists.sourceforge.net with esmtp (0U:W9N=H Q8(19)
+	id *L4A6/-X)0HV--D(
+	for nfs@lists.sourceforge.net; Thu, 7 Dec 2006 14:22:23 -0060
 To: <nfs@lists.sourceforge.net>
-Date: Thu, 7 Dec 2006 08:47:52 -0180
+Date: Thu, 7 Dec 2006 14:22:23 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
