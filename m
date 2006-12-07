@@ -1,44 +1,64 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] [PATCH 10/10] gfs2: nfs lock support for gfs2
-Date: Thu, 07 Dec 2006 13:52:24 -0500
-Message-ID: <1165517544.2903.4.camel@lade.trondhjem.org>
-References: <20061207152359.GB13613@fieldses.org>
-	 <OF3AAB0892.7839D917-ON8825723D.0055EEC9-8825723D.00563276@us.ibm.com>
-	 <20061207162110.GA16858@fieldses.org>
+Subject: Re: Replication for NFSv4
+Date: Thu, 07 Dec 2006 14:21:19 -0500
+Message-ID: <1165519279.2903.8.camel@lade.trondhjem.org>
+References: <20061207162620.9618182f.dn.tlp@gmx.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Marc Eshel <eshel@almaden.ibm.com>, linux-fsdevel@vger.kernel.org,
-	David Teigland <teigland@redhat.com>, nfs@lists.sourceforge.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20061207162110.GA16858@fieldses.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GsOoU-0000cA-8L
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 11:21:46 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+87kpi/opESnR7DRWjt3ICZcn1qubVw2I=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GsOoU-00011l-0h
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 11:21:47 -0800
+To: Simon Peter <dn.tlp@gmx.net>
+In-Reply-To: <20061207162620.9618182f.dn.tlp@gmx.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2006-12-07 at 11:21 -0500, J. Bruce Fields wrote:
-> On Thu, Dec 07, 2006 at 07:43:48AM -0800, Marc Eshel wrote:
-> > nfs-bounces@lists.sourceforge.net wrote on 12/07/2006 07:23:59 AM:
-> > 
-> > > On Wed, Dec 06, 2006 at 10:47:46PM -0800, Marc Eshel wrote:
-> > > >    if (!rv) { /* got fs lock */
-> > > >        rv = posix_lock_file(file, fl);
-> > > >        if (rv) { /* did not get posix lock */
-> > > 
-> > > If we never request the local lock until after we've gotten the lock
-> > > from GFS, then this should never happen.  So I think this could just be
-> > > a BUG_ON(rv)--except that would mean a failure in the lock manager could
-> > > oops the kernel, so maybe it'd be better just to printk.
-> > 
-> > It can happen if you can not allocate memory. 
+On Thu, 2006-12-07 at 16:26 +0100, Simon Peter wrote:
+> (I crosspost this to both NFS lists, as I think it is interesting to
+> readers of either one)
 > 
-> OK, you're right.
+> Hi,
 > 
-> Hm, the NFS client just seems to print out a warning at this point,
-> though.
+> I developed a replication solution for NFSv4, allowing for a wide
+> variety of replication strategies to be employed with NFSv4. It is
+> entirely protocol based and thus works with all NFSv4 implementations.
+> 
+> It is still in beta stage, but already useable. If anyone is
+> interested, a preliminary website with more information can be found
+> here: http://www.cs.ucr.edu/~simon/replication/
 
-Feel free to suggest alternatives. If you cannot even allocate the
-memory necessary to add a struct file_lock, then how can you expect to
-find enough resources to be able to marshall up an RPC call?
+Note that we already have some of the functionality required for
+replication support in the 2.6.18 client. We do not have support for
+advanced features such as client failover to other replicas, though.
+Does your solution implement something like that?
 
-Trond
+Cheers
+  Trond
 
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
