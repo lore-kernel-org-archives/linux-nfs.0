@@ -1,51 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 10/10] gfs2: nfs lock support for gfs2
-Date: Thu, 7 Dec 2006 10:23:59 -0500
-Message-ID: <20061207152359.GB13613@fieldses.org>
-References: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu> <70549752c06e54117024429649fd7aa813f21bec.1165380893.git.bfields@citi.umich.edu> <20061206154951.GB16378@redhat.com> <20061206195722.GH1714@fieldses.org> <20061206205822.GB25322@redhat.com> <4577B912.2030500@almaden.ibm.com>
+From: Simon Peter <dn.tlp@gmx.net>
+Subject: Replication for NFSv4
+Date: Thu, 7 Dec 2006 16:26:20 +0100
+Message-ID: <20061207162620.9618182f.dn.tlp@gmx.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Teigland <teigland@redhat.com>,
-	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Marc Eshel <eshel@almaden.ibm.com>
-In-Reply-To: <4577B912.2030500@almaden.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1GsL8x-0008Q1-2b
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 07:26:40 -0800
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1GsL8t-0003z1-P3
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 07:26:40 -0800
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Dec 06, 2006 at 10:47:46PM -0800, Marc Eshel wrote:
-> Here is a rewrite of gdlm_plock_callback(). We still need to add the 
-> lock cancel.
-> Marc.
-> 
-> int gdlm_plock_callback(struct plock_op *op)
-> {
->     struct file *file;
->     struct file_lock *fl;
->     int (*notify)(void *, void *, int) = NULL;
->     int rv;
-> 
->    spin_lock(&ops_lock);
->    if (!list_empty(&op->list)) {
->        printk(KERN_INFO "plock op on list\n");
->        list_del(&op->list);
->    }
->    spin_unlock(&ops_lock);
-> 
->    rv = op->info.rv;
-> 
->    /* check if the following 2 are still valid or make a copy */
->    file = op->info.file;
->    fl = op->info.fl;
->    notify = op->info.callback;
-> 
->    if (!rv) { /* got fs lock */
->        rv = posix_lock_file(file, fl);
->        if (rv) { /* did not get posix lock */
+(I crosspost this to both NFS lists, as I think it is interesting to
+readers of either one)
 
-If we never request the local lock until after we've gotten the lock
-from GFS, then this should never happen.  So I think this could just be
-a BUG_ON(rv)--except that would mean a failure in the lock manager could
-oops the kernel, so maybe it'd be better just to printk.
+Hi,
 
---b.
+I developed a replication solution for NFSv4, allowing for a wide
+variety of replication strategies to be employed with NFSv4. It is
+entirely protocol based and thus works with all NFSv4 implementations.
+
+It is still in beta stage, but already useable. If anyone is
+interested, a preliminary website with more information can be found
+here: http://www.cs.ucr.edu/~simon/replication/
+
+Or just drop me an email. I would be happy to get in touch with the NFS
+community.
+
+Simon
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
