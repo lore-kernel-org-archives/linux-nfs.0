@@ -1,78 +1,44 @@
-From: "Omar Fink" <incurredthroatily@accelsa.com.mx>
-Subject: Omar check this.
-Date: Thu, 7 Dec 2006 17:41:15 +0000 (UTC)
-Message-ID: <01c71a26$ebdf5530$6c822ecf@incurredthroatily>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] [PATCH 10/10] gfs2: nfs lock support for gfs2
+Date: Thu, 07 Dec 2006 13:52:24 -0500
+Message-ID: <1165517544.2903.4.camel@lade.trondhjem.org>
+References: <20061207152359.GB13613@fieldses.org>
+	 <OF3AAB0892.7839D917-ON8825723D.0055EEC9-8825723D.00563276@us.ibm.com>
+	 <20061207162110.GA16858@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GsNEw-0006OE-Ma
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 09:40:58 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GsNEx-0006s4-S2
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 09:41:00 -0800
-Received: from [86.90.177.39] (helo=ip565ab127.direct-adsl.nl)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GsNEr-0005K8-NL
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 09:40:57 -0800
-Received: from 148.233.140.197 (HELO mx.accelsa.com.mx)
-	by lists.sourceforge.net with esmtp (4(7(A2SE 1.?@MV)
-	id 1M0=C5-+6-AFV-5C
-	for nfs@lists.sourceforge.net; Thu, 7 Dec 2006 17:41:27 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Thu, 7 Dec 2006 17:41:27 -0060
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Marc Eshel <eshel@almaden.ibm.com>, linux-fsdevel@vger.kernel.org,
+	David Teigland <teigland@redhat.com>, nfs@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20061207162110.GA16858@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-These days it's like the dot com revolution round two.  The 
-only difference is, this time there will be no crash.  
-Everyone is wiser and the internet has already proven that 
-it is THE place to do business.
+On Thu, 2006-12-07 at 11:21 -0500, J. Bruce Fields wrote:
+> On Thu, Dec 07, 2006 at 07:43:48AM -0800, Marc Eshel wrote:
+> > nfs-bounces@lists.sourceforge.net wrote on 12/07/2006 07:23:59 AM:
+> > 
+> > > On Wed, Dec 06, 2006 at 10:47:46PM -0800, Marc Eshel wrote:
+> > > >    if (!rv) { /* got fs lock */
+> > > >        rv = posix_lock_file(file, fl);
+> > > >        if (rv) { /* did not get posix lock */
+> > > 
+> > > If we never request the local lock until after we've gotten the lock
+> > > from GFS, then this should never happen.  So I think this could just be
+> > > a BUG_ON(rv)--except that would mean a failure in the lock manager could
+> > > oops the kernel, so maybe it'd be better just to printk.
+> > 
+> > It can happen if you can not allocate memory. 
+> 
+> OK, you're right.
+> 
+> Hm, the NFS client just seems to print out a warning at this point,
+> though.
 
-Acquisitions are happening at a record pace.  Google 
-picking up Youtube. News corp picking up Myspace, the list 
-goes on.  
+Feel free to suggest alternatives. If you cannot even allocate the
+memory necessary to add a struct file_lock, then how can you expect to
+find enough resources to be able to marshall up an RPC call?
 
-In all of these acquisitions those that are already holding 
-an interest in these smaller companies are making a fortune 
-in the process.  Word on the street is that our next pick 
-is about to be acquired by a big player!
+Trond
 
-Premier Holdings Group 
-
-Symbol: PMHD
-Current Price:   0.37
-Target price:    1.35
-
-PMHD is a high tech company involved in a wide range of 
-internet related businesses from broadband to online 
-commerce.  This is one hot item!
-
-Remember, we get you the inside scoop BEFORE it hits the 
-street.  With the acquisition set to be announced shortly 
-the time to act is now.  Once the word is out it will be 
-too late to get in, as we expect this one to go up quickly. 
-
-Go PMHD!
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
