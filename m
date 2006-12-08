@@ -1,30 +1,27 @@
-From: "Cesar Bateman" <suitcasesangry@abcaz.com>
-Subject: Greetings Cesar
-Date: Fri, 8 Dec 2006 12:57:10 +0000 (UTC)
-Message-ID: <01c71ac9$da4b8700$6c822ecf@suitcasesangry>
+From: "Jesper Juhl" <jesper.juhl@gmail.com>
+Subject: Re: Let's get rid of those annoying "VFS is out of sync with
+	lock manager" messages (includes proposed patch)
+Date: Fri, 8 Dec 2006 15:35:15 +0100
+Message-ID: <9a8748490612080635o3432d410gbb147c977de21499@mail.gmail.com>
+References: <200612072208.16350.jesper.juhl@gmail.com>
+	<17784.56763.794504.185193@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GsfHd-0003Rq-Ac
-	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 04:56:57 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GsfHd-0006zH-J7
-	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 04:56:58 -0800
-Received: from adsl-84-226-97-200.adslplus.ch ([84.226.97.200]
-	helo=adsl-89-217-139-128.adslplus.ch)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GsfHZ-00026k-Gf
-	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 04:56:56 -0800
-Received: from 217.28.130.71 (HELO mxa.hostedservice.com)
-	by lists.sourceforge.net with esmtp (0)97P*5R. ;A..)
-	id 0=<(L5-8E8PMF-?9
-	for nfs@lists.sourceforge.net; Fri, 8 Dec 2006 13:07:45 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Fri, 8 Dec 2006 13:07:45 -0060
+	id 1Gsgol-00058m-On
+	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 06:35:15 -0800
+Received: from wr-out-0506.google.com ([64.233.184.225])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gsgol-0003aS-UP
+	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 06:35:17 -0800
+Received: by wr-out-0506.google.com with SMTP id i20so525842wra
+	for <nfs@lists.sourceforge.net>; Fri, 08 Dec 2006 06:35:15 -0800 (PST)
+To: "Neil Brown" <neilb@suse.de>
+In-Reply-To: <17784.56763.794504.185193@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,26 +34,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-LOOK AT OUR RECENT NEWS! ASK YOUR BROKER NOW!
-INVESTORS ALERT! Friday, Dec 8, DTGP
+On 08/12/06, Neil Brown <neilb@suse.de> wrote:
+> On Thursday December 7, jesper.juhl@gmail.com wrote:
+> >
+> > So I took Neils patch, made the change Trond suggested and the result is
+> > below.
+> >
+> > Comments?  Ok to merge?
+>
+> Yes, except that you need a changelog comment at the top.  Possibly
+> based very heavily on the text I wrote, but written to justify the
+> patch rather than to explain the bug.
+>
+> NeilBrown
+>
 
-Company: Doll Technology Group (OTCBB:DTGP)
-Symbol: DTGP
-Current Price: $0.016 (Trading at a Discount!)
-3-day Target: $0.07 
+How about this for a changelog entry?  :
 
-Friday, Dec 8, will bring big trading for DTGP, which will mean it goes up!
-Ladies and gentlemen, this one is incredible. 
-This company is currently preparing to introduce their stock DTGP to brokers
-across the country.
-Look at their recent news and see what they are doing, and have been doing
-in the past few Month.
+Convert "VFS is out of sync with lock manager!" printk in
+do_vfs_lock() to dprintk() since the message is useless in normal use
+but could possibly be useful as a debugging aid.
+Also turn off FL_SLEEP when calling do_vfs_lock() just in case after
+getting -EINTR or -ERESTARTSYS.
 
-About DTGP:
-Doll Technology Group (OTCBB:DTGP)  diversified company formed to develop and commercialize products and technologies that address Aircraft Safety, Water Conservation, Fire Protection, Rust and Corrosion, and Construction, among others.
 
-CALL YOUR BROKER NOW!
+> >
+> >
+> > Signed-off-by: Neil Brown <neilb@suse.de>
+> > Signed-off-by: Jesper Juhl <jesper.juhl@gmail.com>
+> > ---
+> >
+> >  fs/nfs/file.c |   11 +++++++----
+> >  1 files changed, 7 insertions(+), 4 deletions(-)
+> >
+> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> > index cc93865..22572af 100644
+> > --- a/fs/nfs/file.c
+> > +++ b/fs/nfs/file.c
+> > @@ -428,8 +428,8 @@ static int do_vfs_lock(struct file *file
+> >                       BUG();
+> >       }
+> >       if (res < 0)
+> > -             printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n",
+> > -                             __FUNCTION__);
+> > +             dprintk("%s: VFS is out of sync with lock manager (res = %d)!\n",
+> > +                             __FUNCTION__, res);
+> >       return res;
+> >  }
+> >
+> > @@ -479,10 +479,13 @@ static int do_setlk(struct file *filp, i
+> >                * we clean up any state on the server. We therefore
+> >                * record the lock call as having succeeded in order to
+> >                * ensure that locks_remove_posix() cleans it out when
+> > -              * the process exits.
+> > +              * the process exits. Make sure not to sleep if
+> > +              * someone else holds the lock.
+> >                */
+> > -             if (status == -EINTR || status == -ERESTARTSYS)
+> > +             if (status == -EINTR || status == -ERESTARTSYS) {
+> > +                     fl->fl_flags &= ~FL_SLEEP;
+> >                       do_vfs_lock(filp, fl);
+> > +             }
+> >       } else
+> >               status = do_vfs_lock(filp, fl);
+> >       unlock_kernel();
+> >
+>
 
+
+-- 
+Jesper Juhl <jesper.juhl@gmail.com>
+Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please      http://www.expita.com/nomime.html
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
