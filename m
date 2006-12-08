@@ -1,10 +1,10 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 009 of 13] knfsd: SUNRPC: teach svc_sendto() to deal with IPv6 addresses
-Date: Fri, 8 Dec 2006 23:02:35 +1100
-Message-ID: <1061208120235.18233@suse.de>
+Subject: [PATCH 012 of 13] knfsd: SUNRPC: support IPv6 addresses in RPC server's UDP receive path
+Date: Fri, 8 Dec 2006 23:02:53 +1100
+Message-ID: <1061208120253.18269@suse.de>
 References: <20061208225655.17970.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1425443AbWLHMDz@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1425439AbWLHMCr@vger.kernel.org>
 To: Andrew Morton <akpm@osdl.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
@@ -12,65 +12,57 @@ List-ID: <nfs.lists.sourceforge.net>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-CMSG_DATA comes in different sizes, depending on address family.
+Add support for IPv6 addresses in the RPC server's UDP receive path.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/svcsock.c |   69 ++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 52 insertions(+), 17 deletions(-)
+ ./net/sunrpc/svcsock.c |   51 +++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 43 insertions(+), 8 deletions(-)
 
 diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2006-12-08 13:57:20.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2006-12-08 13:58:10.000000000 +1100
-@@ -36,6 +36,7 @@
- #include <net/sock.h>
- #include <net/checksum.h>
- #include <net/ip.h>
-+#include <net/ipv6.h>
- #include <net/tcp_states.h>
- #include <asm/uaccess.h>
- #include <asm/ioctls.h>
-@@ -438,6 +439,47 @@ svc_wake_up(struct svc_serv *serv)
+--- .prev/net/sunrpc/svcsock.c	2006-12-08 13:59:06.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2006-12-08 13:59:22.000000000 +1100
+@@ -717,13 +717,53 @@ svc_write_space(struct sock *sk)
  	}
  }
  
-+union svc_pktinfo_u {
-+	struct in_pktinfo pkti;
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	struct in6_pktinfo pkti6;
-+#endif
-+};
-+
-+static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
++static void svc_udp_get_sender_address(struct svc_rqst *rqstp,
++					struct sk_buff *skb)
 +{
 +	switch (rqstp->rq_sock->sk_sk->sk_family) {
 +	case AF_INET:
++		/* this seems to come from net/ipv4/udp.c:udp_recvmsg */
 +		do {
-+			struct in_pktinfo *pki =
-+					(struct in_pktinfo *) CMSG_DATA(cmh);
++			struct sockaddr_in *sin =
++				(struct sockaddr_in *) &rqstp->rq_addr;
 +
-+			cmh->cmsg_level = SOL_IP;
-+			cmh->cmsg_type = IP_PKTINFO;
-+			pki->ipi_ifindex = 0;
-+			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
-+			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
++			sin->sin_family = AF_INET;
++			sin->sin_port = skb->h.uh->source;
++			sin->sin_addr.s_addr = skb->nh.iph->saddr;
++			rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
 +		} while (0);
 +		break;
 +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 +	case AF_INET6:
++		/* this is derived from net/ipv6/udp.c:udpv6_recvmesg */
 +		do {
-+			struct in6_pktinfo *pki =
-+					(struct in6_pktinfo *) CMSG_DATA(cmh);
++			struct sockaddr_in6 *sin6 =
++				(struct sockaddr_in6 *) &rqstp->rq_addr;
 +
-+			cmh->cmsg_level = SOL_IPV6;
-+			cmh->cmsg_type = IPV6_PKTINFO;
-+			pki->ipi6_ifindex = 0;
-+			ipv6_addr_copy(&pki->ipi6_addr,
-+					&rqstp->rq_daddr.addr6);
-+			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
++			sin6->sin6_family = AF_INET6;
++			sin6->sin6_port = skb->h.uh->source;
++			sin6->sin6_flowinfo = 0;
++			sin6->sin6_scope_id = 0;
++			if (ipv6_addr_type(&sin6->sin6_addr) &
++							IPV6_ADDR_LINKLOCAL)
++				sin6->sin6_scope_id = IP6CB(skb)->iif;
++			ipv6_addr_copy(&sin6->sin6_addr,
++							&skb->nh.ipv6h->saddr);
++			ipv6_addr_copy(&rqstp->rq_daddr.addr6,
++							&skb->nh.ipv6h->saddr);
 +		} while (0);
 +		break;
 +#endif
@@ -79,47 +71,29 @@ diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
 +}
 +
  /*
-  * Generic sendto routine
+  * Receive a datagram from a UDP socket.
   */
-@@ -447,9 +489,8 @@ svc_sendto(struct svc_rqst *rqstp, struc
+ static int
+ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ {
+-	struct sockaddr_in *sin = (struct sockaddr_in *) &rqstp->rq_addr;
  	struct svc_sock	*svsk = rqstp->rq_sock;
- 	struct socket	*sock = svsk->sk_sock;
- 	int		slen;
--	char 		buffer[CMSG_SPACE(sizeof(struct in_pktinfo))];
-+	char 		buffer[CMSG_SPACE(sizeof(union svc_pktinfo_u))];
- 	struct cmsghdr *cmh = (struct cmsghdr *)buffer;
--	struct in_pktinfo *pki = (struct in_pktinfo *)CMSG_DATA(cmh);
- 	int		len = 0;
- 	int		result;
- 	int		size;
-@@ -462,21 +503,15 @@ svc_sendto(struct svc_rqst *rqstp, struc
- 	slen = xdr->len;
+ 	struct svc_serv	*serv = svsk->sk_server;
+ 	struct sk_buff	*skb;
+@@ -775,14 +815,9 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
  
- 	if (rqstp->rq_prot == IPPROTO_UDP) {
--		/* set the source and destination */
--		struct msghdr	msg;
--		msg.msg_name    = &rqstp->rq_addr;
--		msg.msg_namelen = rqstp->rq_addrlen;
--		msg.msg_iov     = NULL;
--		msg.msg_iovlen  = 0;
--		msg.msg_flags	= MSG_MORE;
+ 	len  = skb->len - sizeof(struct udphdr);
+ 	rqstp->rq_arg.len = len;
++	rqstp->rq_prot = IPPROTO_UDP;
+ 
+-	rqstp->rq_prot        = IPPROTO_UDP;
 -
--		msg.msg_control = cmh;
--		msg.msg_controllen = sizeof(buffer);
--		cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
--		cmh->cmsg_level = SOL_IP;
--		cmh->cmsg_type = IP_PKTINFO;
--		pki->ipi_ifindex = 0;
--		pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
-+		struct msghdr msg = {
-+			.msg_name	= &rqstp->rq_addr,
-+			.msg_namelen	= rqstp->rq_addrlen,
-+			.msg_control	= cmh,
-+			.msg_controllen	= sizeof(buffer),
-+			.msg_flags	= MSG_MORE,
-+		};
-+
-+		svc_set_cmsg_data(rqstp, cmh);
+-	/* Get sender address */
+-	sin->sin_family = AF_INET;
+-	sin->sin_port = skb->h.uh->source;
+-	sin->sin_addr.s_addr = skb->nh.iph->saddr;
+-	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
++	svc_udp_get_sender_address(rqstp, skb);
  
- 		if (sock_sendmsg(sock, &msg, 0) < 0)
- 			goto out;
+ 	if (skb_is_nonlinear(skb)) {
+ 		/* we have to copy */
