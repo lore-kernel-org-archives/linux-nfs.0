@@ -1,21 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 005 of 18] knfsd: nfsd: simplify exp_pseudoroot
-Date: Fri, 8 Dec 2006 12:13:46 +1100
-Message-ID: <1061208011346.30615@suse.de>
+Subject: [PATCH 004 of 18] knfsd: nfsd: make exp_rootfh handle
+	exp_parent errors
+Date: Fri, 8 Dec 2006 12:13:41 +1100
+Message-ID: <1061208011341.30603@suse.de>
 References: <20061208120939.30428.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GsUIx-00037e-6V
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 17:13:35 -0800
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1GsUIt-00037M-3H
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 17:13:31 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GsUIx-00014E-3E
-	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 17:13:36 -0800
+	(Exim 4.44) id 1GsUIs-0004rl-WC
+	for nfs@lists.sourceforge.net; Thu, 07 Dec 2006 17:13:32 -0800
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,35 +33,32 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J.Bruce Fields <bfields@fieldses.org>
 
-Note there's no need for special handling of -EAGAIN here; nfserrno() does
-what we want already.  So this is a pure cleanup with no change in
-functionality.
+Since exp_parent can fail by returning an error (-EAGAIN) in addition 
+to by returning NULL, we should check for that case in exp_rootfh.
+
+(TODO: we should check that userland handles these errors too.)
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/export.c |    6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ ./fs/nfsd/export.c |    4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
---- .prev/fs/nfsd/export.c	2006-12-08 12:08:20.000000000 +1100
-+++ ./fs/nfsd/export.c	2006-12-08 12:08:25.000000000 +1100
-@@ -1163,12 +1163,10 @@ exp_pseudoroot(struct auth_domain *clp, 
- 	mk_fsid_v1(fsidv, 0);
- 
- 	exp = exp_find(clp, 1, fsidv, creq);
--	if (IS_ERR(exp) && PTR_ERR(exp) == -EAGAIN)
--		return nfserr_dropit;
-+	if (IS_ERR(exp))
-+		return nfserrno(PTR_ERR(exp));
- 	if (exp == NULL)
- 		return nfserr_perm;
--	else if (IS_ERR(exp))
--		return nfserrno(PTR_ERR(exp));
- 	rv = fh_compose(fhp, exp, exp->ex_dentry, NULL);
- 	exp_put(exp);
- 	return rv;
+--- .prev/fs/nfsd/export.c	2006-12-08 12:07:28.000000000 +1100
++++ ./fs/nfsd/export.c	2006-12-08 12:08:20.000000000 +1100
+@@ -1104,6 +1104,10 @@ exp_rootfh(svc_client *clp, char *path, 
+ 		 path, nd.dentry, clp->name,
+ 		 inode->i_sb->s_id, inode->i_ino);
+ 	exp = exp_parent(clp, nd.mnt, nd.dentry, NULL);
++	if (IS_ERR(exp)) {
++		err = PTR_ERR(exp);
++		goto out;
++	}
+ 	if (!exp) {
+ 		dprintk("nfsd: exp_rootfh export not found.\n");
+ 		goto out;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
