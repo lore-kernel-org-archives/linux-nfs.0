@@ -1,27 +1,26 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: NFS related BUGs at shutdown - do_exit() + lock held at
-	task exit time - 2.6.17.8
-Date: Fri, 8 Dec 2006 21:02:40 +0100
-Message-ID: <9a8748490612081202n752529c1x84afacb07547e767@mail.gmail.com>
-References: <9a8748490612080341j4f0fa7b5l2f7272df0df55073@mail.gmail.com>
-	<1165601022.5676.22.camel@lade.trondhjem.org>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 1/10] lockd: add new export operation for
+ nfsv4/lockd locking
+Date: Sat, 09 Dec 2006 00:53:22 -0500
+Message-ID: <457A4F52.1020709@redhat.com>
+References: <11653832602203-git-send-email-bfields@fieldses.org>
+	<1165383260627-git-send-email-bfields@fieldses.org>
+Reply-To: wcheng@redhat.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	me <bfields@umich.edu>, Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gslvd-0007i3-F1
-	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 12:02:41 -0800
-Received: from wx-out-0506.google.com ([66.249.82.238])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gslvd-0007o5-Ce
-	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 12:02:42 -0800
-Received: by wx-out-0506.google.com with SMTP id i30so1455895wxd
-	for <nfs@lists.sourceforge.net>; Fri, 08 Dec 2006 12:02:40 -0800 (PST)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <1165601022.5676.22.camel@lade.trondhjem.org>
+	id 1Gsv22-00032E-71
+	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 21:45:54 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gsv22-0002Nx-EJ
+	for nfs@lists.sourceforge.net; Fri, 08 Dec 2006 21:45:55 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1165383260627-git-send-email-bfields@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,24 +33,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 08/12/06, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Fri, 2006-12-08 at 12:41 +0100, Jesper Juhl wrote:
-> > Greetings,
-> >
-> > I just got a kernel crash when shutting down a webserver. Nothing made
-> > it to the logs, but I managed to get a photo of the dump on screen :
-> > http://www.kernel.org/pub/linux/kernel/people/juhl/images/2.6.17.8-kernel-crash.jpg
->
-> It is hard to see what is going on there. AFAICS, the more interesting
-> stuff to do with the Oops itself has scrolled off the screen. Any chance
-> it may have been syslogged?
->
-Unfortunately no - I checked. All I have is that photo :-(
+J. Bruce Fields wrote:
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+>From: Marc Eshel <eshel@almaden.ibm.com>
+>
+>There is currently a filesystem ->lock() method, but it is defined only by
+>a few filesystems that are not exported via nfsd.  So none of the lock
+>routines that are used by lockd or nfsv4 bother to call those methods.
+>
+>Filesystems such as cluster filesystems would like to do their own locking
+>and also would like to be exportable via NFS.
+>
+>So we add a new lock() export operation, and new routines vfs_lock_file,
+>vfs_test_lock, and vfs_cancel_lock, which call the new export operation,
+>falling back on the appropriate local operation if the export operation is
+>unavailable.
+>
+>These new functions are intended to be used by lockd and nfsd; lockd and
+>nfsd changes to take advantage of them are made by later patches.
+>
+>  
+>
+Starting to read these patches .. I see these new APIs are placed in 
+lockd directory. Was there any discussion before to make these generic 
+vfs layer functions ? I'm just curious.
+
+-- Wendy
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
