@@ -1,24 +1,23 @@
-From: "Alfredo Parsons" <becomeskitty's@accuchex.com>
-Subject: Parsons advice
-Date: Sun, 10 Dec 2006 02:22:35 +0000 (UTC)
-Message-ID: <01c71c02$08cb4500$6c822ecf@becomeskitty's>
+From: "Solomon Clement" <debugChandragupta's@aardvarkantique.com>
+Subject: Clement advice
+Date: Sun, 10 Dec 2006 09:08:01 -0120
+Message-ID: <01c71c3a$b18e6a90$6c822ecf@debugChandragupta's>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GtEKf-0003va-Uk
-	for nfs@lists.sourceforge.net; Sat, 09 Dec 2006 18:22:26 -0800
-Received: from [217.17.251.139] (helo=SpeedTouch.lan)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GtEKg-0005eP-Lz
-	for nfs@lists.sourceforge.net; Sat, 09 Dec 2006 18:22:27 -0800
-Received: from 12.43.55.233 (HELO mx1.accuchex.com)
-	by lists.sourceforge.net with esmtp ()2*21XB.77- S1GT)
-	id KL,UA8-+2I5*+-+1
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 02:22:26 -0180
+	id 1GtKez-0005bf-GC
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 01:07:49 -0800
+Received: from bzq-88-153-101-103.red.bezeqint.net ([88.153.101.103])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GtKez-0005Gf-CD
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 01:07:50 -0800
+Received: from 209.204.245.174 (HELO mail.aardvarkantique.com)
+	by lists.sourceforge.net with esmtp ()(<;SRTM; 5P/L)
+	id /CT07(->42-44-A,
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 09:08:01 -0120
 To: <nfs@lists.sourceforge.net>
-Date: Sun, 10 Dec 2006 02:22:26 -0180
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
