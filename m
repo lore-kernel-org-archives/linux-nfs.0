@@ -1,23 +1,19 @@
-From: "Solomon Clement" <debugChandragupta's@aardvarkantique.com>
-Subject: Clement advice
-Date: Sun, 10 Dec 2006 09:08:01 -0120
-Message-ID: <01c71c3a$b18e6a90$6c822ecf@debugChandragupta's>
+From: "Baptiste Gaillard" <b_gaillard@hotmail.com>
+Subject: NFS V3 and Fat 32 problem
+Date: Sun, 10 Dec 2006 13:18:22 +0000
+Message-ID: <BAY124-F39D4AAA3125E51A94DDE27EAD10@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="iso-8859-1"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GtKez-0005bf-GC
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 01:07:49 -0800
-Received: from bzq-88-153-101-103.red.bezeqint.net ([88.153.101.103])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GtKez-0005Gf-CD
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 01:07:50 -0800
-Received: from 209.204.245.174 (HELO mail.aardvarkantique.com)
-	by lists.sourceforge.net with esmtp ()(<;SRTM; 5P/L)
-	id /CT07(->42-44-A,
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 09:08:01 -0120
-To: <nfs@lists.sourceforge.net>
+	id 1GtOZX-0005Te-Rb
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 05:18:27 -0800
+Received: from bay0-omc2-s30.bay0.hotmail.com ([65.54.246.166])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GtOZY-0000DE-16
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 05:18:29 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,38 +26,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Looking to put some spring in your step?  Ready for your big break?
-Look no further.
+Hi, i'm trying to export a FAT32 partition using NFS v3. The operation =
 
-Wild Brush Energy
-Symbol: WBRS
+succeed but when I mount this partition on a client I observe a strange =
 
-Current Price:  Around   $0.05
-Short Term Target:         $0.12
-Long Term Target:         $0.40
+problem, the size of the partition isn't right (on the clients). The =
 
-The energy sector is THE place to be, with some energy companies seeing 
-appreciation of 400% or more this year alone!  WBRS is involved in some 
-of the most exciting gas plays in North America.  It's a proven winner in a 
-red hot market.
+partition I export is 250Go but my clients only display 33.32Go of them. =
 
-But that's just the beginning.  Rumor has it that there may soon be a 
-merger between WBRS and another major energy player with close ties to 
-the company.  In fact this major player's stock was up 50% Friday on 
-strong volume as insiders took positions.
+Also, on the , I observe that files are absent, but on the server those =
 
-We believe that WBRS is looking at the same rapid appreciation.  Once 
-the merger is announced there will be a scramble to get in.  Play it smart.  
-Take a position BEFORE the announcement and ride this one all the way 
-to the bank!
-Tell to everyone about this message.Post it on the forum.
+files are really here !
+
+The partition i'm trying to export is on an USB disk and is formated in =
+
+FAT32, i suppose the problem comes from FAT/VFAT but i don't know what =
+
+exactly is the problem.
+
+I've tried to mount this partition using two different clients, a MacBook =
+
+whith MacOSX 10.4 and a PC with an Ubuntu, there is always the same problem=
+. =
+
+So I suppose the problem comes from the server, here is the configuration o=
+f =
+
+my server:
+
+Gentoo Linux - kernel 2.6.18-gentoo-r3, NFS V3 compiled inside.
+
+The /etc/exports file:
+/media/lacie 192.168.1.3(rw,sync,insecure)    # for the MacBook
+/media/lacie 192.168.1.4(ro,sync)                 # PC with ubuntu
+
+
+Do you know what could be the problem ?
+
+Thanks.
+
+Baptiste Gaillard
+
+
+PS:Sorry if it is difficult to understand me, I'm french ;-)
+
+_________________________________________________________________
+D=E9couvrez le blog Eragon sur Windows Live Spaces! =
+
+http://eragon-heroic-fantasy.spaces.live.com/
 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
