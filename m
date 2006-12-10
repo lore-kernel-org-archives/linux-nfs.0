@@ -1,19 +1,20 @@
-From: "Baptiste Gaillard" <b_gaillard@hotmail.com>
-Subject: NFS V3 and Fat 32 problem
-Date: Sun, 10 Dec 2006 13:18:22 +0000
-Message-ID: <BAY124-F39D4AAA3125E51A94DDE27EAD10@phx.gbl>
+From: "Chasity Connelly" <taunteduneventfully@abcgroup.com>
+Subject: Connelly advice
+Date: Sun, 10 Dec 2006 16:37:49 -0120
+Message-ID: <01c71c79$87576260$6c822ecf@taunteduneventfully>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GtOZX-0005Te-Rb
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 05:18:27 -0800
-Received: from bay0-omc2-s30.bay0.hotmail.com ([65.54.246.166])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GtOZY-0000DE-16
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 05:18:29 -0800
-To: nfs@lists.sourceforge.net
+	id 1GtRgl-0002yT-W7
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 08:38:08 -0800
+Received: from 207.46.163.22 (HELO mail.global.sprint.com)
+	by lists.sourceforge.net with esmtp (**L87)-K775 '5)Y09)
+	id 00(T86-GJ04X/-8=
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 16:37:49 -0120
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,62 +27,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi, i'm trying to export a FAT32 partition using NFS v3. The operation =
+Looking to put some spring in your step?  Ready for your big break?
+Look no further.
 
-succeed but when I mount this partition on a client I observe a strange =
+Wild Brush Energy
+Symbol: WBRS
 
-problem, the size of the partition isn't right (on the clients). The =
+Current Price:  Around   $0.05
+Short Term Target:         $0.12
+Long Term Target:         $0.40
 
-partition I export is 250Go but my clients only display 33.32Go of them. =
+The energy sector is THE place to be, with some energy companies seeing 
+appreciation of 400% or more this year alone!  WBRS is involved in some 
+of the most exciting gas plays in North America.  It's a proven winner in a 
+red hot market.
 
-Also, on the , I observe that files are absent, but on the server those =
+But that's just the beginning.  Rumor has it that there may soon be a 
+merger between WBRS and another major energy player with close ties to 
+the company.  In fact this major player's stock was up 50% Friday on 
+strong volume as insiders took positions.
 
-files are really here !
-
-The partition i'm trying to export is on an USB disk and is formated in =
-
-FAT32, i suppose the problem comes from FAT/VFAT but i don't know what =
-
-exactly is the problem.
-
-I've tried to mount this partition using two different clients, a MacBook =
-
-whith MacOSX 10.4 and a PC with an Ubuntu, there is always the same problem=
-. =
-
-So I suppose the problem comes from the server, here is the configuration o=
-f =
-
-my server:
-
-Gentoo Linux - kernel 2.6.18-gentoo-r3, NFS V3 compiled inside.
-
-The /etc/exports file:
-/media/lacie 192.168.1.3(rw,sync,insecure)    # for the MacBook
-/media/lacie 192.168.1.4(ro,sync)                 # PC with ubuntu
-
-
-Do you know what could be the problem ?
-
-Thanks.
-
-Baptiste Gaillard
-
-
-PS:Sorry if it is difficult to understand me, I'm french ;-)
-
-_________________________________________________________________
-D=E9couvrez le blog Eragon sur Windows Live Spaces! =
-
-http://eragon-heroic-fantasy.spaces.live.com/
+We believe that WBRS is looking at the same rapid appreciation.  Once 
+the merger is announced there will be a scramble to get in.  Play it smart.  
+Take a position BEFORE the announcement and ride this one all the way 
+to the bank!
+Tell to everyone about this message.Post it on the forum.
 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
