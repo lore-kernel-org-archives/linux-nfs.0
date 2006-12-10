@@ -1,23 +1,30 @@
-From: "Deanna Richmond" <Bridgerchopper's@accessloans.com>
-Subject: Richmond advice
-Date: Sun, 10 Dec 2006 00:37:41 -0120
-Message-ID: <01c71bf3$6674c500$6c822ecf@Bridgerchopper's>
+From: sean <seandarcy2@gmail.com>
+Subject: server shows client mounted, but client sees permission denied
+Date: Sat, 09 Dec 2006 19:38:29 -0500
+Message-ID: <elfku6$nvt$1@sea.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GtChN-0002yW-PG
-	for nfs@lists.sourceforge.net; Sat, 09 Dec 2006 16:37:46 -0800
-Received: from [85.101.116.125] (helo=dsl.static85101116125.ttnet.net.tr)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GtChN-0005vl-Ek
-	for nfs@lists.sourceforge.net; Sat, 09 Dec 2006 16:37:47 -0800
-Received: from 198.70.161.145 (HELO mail.parishnational.com)
-	by lists.sourceforge.net with esmtp (Y><A.=0< A:KO(A)
-	id .:L/6Q-J=0A)+-00
-	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 00:37:41 -0120
-To: <nfs@lists.sourceforge.net>
+	id 1GtDpV-00017i-JM
+	for nfs@lists.sourceforge.net; Sat, 09 Dec 2006 17:50:13 -0800
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GtDpV-0006Js-M3
+	for nfs@lists.sourceforge.net; Sat, 09 Dec 2006 17:50:15 -0800
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1GtDpK-0003B3-17
+	for nfs@lists.sourceforge.net; Sun, 10 Dec 2006 02:50:02 +0100
+Received: from 69-183-161-241.ded.snet.net ([69.183.161.241])
+	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Sun, 10 Dec 2006 02:50:02 +0100
+Received: from seandarcy2 by 69-183-161-241.ded.snet.net with local (Gmexim
+	0.1 (Debian)) id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Sun, 10 Dec 2006 02:50:02 +0100
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,31 +37,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Looking to put some spring in your step?  Ready for your big break?
-Look no further.
+Using Fedora Core 6, nfs v3.
 
-Wild Brush Energy
-Symbol: WBRS
+  mount -v  my.doc
+mount: trying 75.yy.76.28 prog 100003 vers 3 prot tcp port 2049
+mount: trying 75.yy.76.28 prog 100005 vers 3 prot udp port 988
+mount: linuxbox:/home/transfer/my.doc failed, reason given 
+by server: Permission denied
 
-Current Price:  Around   $0.05
-Short Term Target:         $0.12
-Long Term Target:         $0.40
+But on the server syslog:
 
-The energy sector is THE place to be, with some energy companies seeing 
-appreciation of 400% or more this year alone!  WBRS is involved in some 
-of the most exciting gas plays in North America.  It's a proven winner in a 
-red hot market.
+  rpc.mountd: authenticated mount request my.client.net:941 
+for /home/transfer/my.doc (/home/transfer/my.doc)
 
-But that's just the beginning.  Rumor has it that there may soon be a 
-merger between WBRS and another major energy player with close ties to 
-the company.  In fact this major player's stock was up 50% Friday on 
-strong volume as insiders took positions.
+and
+cat /var/lib/nfs/etab
+/home/transfer/my.doc 
+*(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,mapping=identity,anonuid=-2,anongid=-2)
 
-We believe that WBRS is looking at the same rapid appreciation.  Once 
-the merger is announced there will be a scramble to get in.  Play it smart.  
-Take a position BEFORE the announcement and ride this one all the way 
-to the bank!
-Tell to everyone about this message.Post it on the forum.
+cat /var/lib/nfs/rmtab
+*:/home/transfer/my.doc:0x00000003
+
+I've flushed iptables. Nothing in hosts.deny. hosts.allow 
+has ALL: ALL
+
+Any help really appreciated.
+
+sean
 
 
 -------------------------------------------------------------------------
