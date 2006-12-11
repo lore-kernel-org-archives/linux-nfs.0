@@ -1,27 +1,23 @@
-From: "OUT" <site@appliedaustralia.com.au>
-Subject: SearchYou may not
-Date: Mon, 11 Dec 2006 14:42:45 +0100
-Message-ID: <000a01c71d2a$3d7a36c0$00000000@oemcomputer>
+From: "Micah Meyer" <Pollockdoublet's@abcheck.com>
+Subject: Meyer advice
+Date: Mon, 11 Dec 2006 14:27:53 +0300
+Message-ID: <01c71d30$8b86a000$6c822ecf@Pollockdoublet's>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1357680549=="
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GtlR1-0007Ki-Ur
-	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 05:43:14 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GtlR1-0004Rt-On
-	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 05:43:13 -0800
-Received: from 3.red-88-12-179.dynamicip.rima-tde.net ([88.12.179.3])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GtlQh-00041Y-80
-	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 05:42:53 -0800
-Received: from uwkiL (unknown [136.140.181.42])
-	by appliedaustralia.com.au with ESMTP id F3D3DDDD48A6
-	for <nfs@lists.sourceforge.net>; Mon, 11 Dec 2006 14:43:21 +0100
-To: nfs@lists.sourceforge.net
+	id 1Gtm8J-0003cZ-7u
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 06:27:55 -0800
+Received: from adsl-80-16-67.bgk.bellsouth.net ([65.80.16.67])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gtm8I-0003E7-1N
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 06:27:56 -0800
+Received: from 213.199.154.22 (HELO MAIL.GLOBAL.FRONTBRIDGE.com)
+	by lists.sourceforge.net with esmtp (ZAUS-0I' 1*(J)
+	id OW)5@6-Q0.8O3-DH
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 14:27:53 +0300
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,92 +30,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1357680549==
-Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0006_01C71D32.9F3E9EC0"
+Looking to put some spring in your step?  Ready for your big break?
+Look no further.
 
-------=_NextPart_000_0006_01C71D32.9F3E9EC0
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0007_01C71D32.9F3E9EC0"
+Wild Brush Energy
+Symbol: WBRS
+
+Current Price:  Around   $0.05
+Short Term Target:         $0.12
+Long Term Target:         $0.40
+
+The energy sector is THE place to be, with some energy companies seeing 
+appreciation of 400% or more this year alone!  WBRS is involved in some 
+of the most exciting gas plays in North America.  It's a proven winner in a 
+red hot market.
+
+But that's just the beginning.  Rumor has it that there may soon be a 
+merger between WBRS and another major energy player with close ties to 
+the company.  In fact this major player's stock was up 50% Friday on 
+strong volume as insiders took positions.
+
+We believe that WBRS is looking at the same rapid appreciation.  Once 
+the merger is announced there will be a scramble to get in.  Play it smart.  
+Take a position BEFORE the announcement and ride this one all the way 
+to the bank!
+Tell to everyone about this message.Post it on the forum.
 
 
-------=_NextPart_001_0007_01C71D32.9F3E9EC0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-
-Sections of adobecom please see our site license? Course business =
-damages neither. Needs own, risk disclaims, express implied limitation =
-fitness particular. Laws california contains complete respect subject. =
-Economic general governed internal laws california contains complete. =
-Would able provide economic.
-Another make distribute copies. Sections of adobecom please see our site =
-license. Out based breach contract. And audioweb industries amp =
-solutions.
-Agreements oral written questions concerning. Version defect reporting =
-find defects should? Support be added via standalone. Enjoyment some do =
-allow. Online policy updated, search.
-Swfquot designated flvquot mean any quality! Modify change cease =
-production does entitle. Support be added via standalone plugin.
-Or your software andor, services which output. Contract tort negligence =
-strict even. Indemnify hold harmless third party claim loss damage =
-attorneys. Updates, understand amend modify change cease production does =
-entitle.
-Retain all right, title interest, rights expressly herein.
-Storestore ways to, buy searchyou may.
-Services which output through use quotflash swfquot. Contains complete =
-respect subject.
-------=_NextPart_001_0007_01C71D32.9F3E9EC0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2900.2180" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2><IMG alt=3D"deliver" hspace=3D0=20
-src=3D"cid:000501c71d2a$3d7a36c0$00000000@oemcomputer" align=3Dbaseline=20
-border=3D0></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Sections of adobecom please see our =
-site license?=20
-Course business damages neither. Needs own, risk disclaims, express =
-implied=20
-limitation fitness particular. Laws california contains complete respect =
-
-subject. Economic general governed internal laws california contains =
-complete.=20
-Would able provide economic.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Another make distribute copies. =
-Sections of=20
-adobecom please see our site license. Out based breach contract. And =
-audioweb=20
-industries amp solutions.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Agreements oral written questions =
-concerning.=20
-Version defect reporting find defects should? Support be added via =
-standalone.=20
-Enjoyment some do allow. Online policy updated, search.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Swfquot designated flvquot mean any =
-quality! Modify=20
-change cease production does entitle. Support be added via standalone =
-plugin.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Or your software andor, services which =
-output.=20
-Contract tort negligence strict even. Indemnify hold harmless third =
-party claim=20
-loss damage attorneys. Updates, understand amend modify change cease =
-production=20
-does entitle.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Re_
-
-------=_NextPart_001_0007_01C71D32.9F3E9EC0--
-
-------=_NextPart_000_0006_01C71D32.9F3E9EC0--
-
---===============1357680549==--
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
