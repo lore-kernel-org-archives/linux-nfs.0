@@ -1,22 +1,27 @@
-From: "Micah Meyer" <Pollockdoublet's@abcheck.com>
-Subject: Meyer advice
-Date: Mon, 11 Dec 2006 14:27:53 +0300
-Message-ID: <01c71d30$8b86a000$6c822ecf@Pollockdoublet's>
+From: "Chance Case" <narkrelax@accenti.ru>
+Subject: Case advice
+Date: Mon, 11 Dec 2006 18:02:06 +0000
+Message-ID: <01c71d4e$784bb2f0$6c822ecf@narkrelax>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gtm8J-0003cZ-7u
-	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 06:27:55 -0800
-Received: from adsl-80-16-67.bgk.bellsouth.net ([65.80.16.67])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gtm8I-0003E7-1N
-	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 06:27:56 -0800
-Received: from 213.199.154.22 (HELO MAIL.GLOBAL.FRONTBRIDGE.com)
-	by lists.sourceforge.net with esmtp (ZAUS-0I' 1*(J)
-	id OW)5@6-Q0.8O3-DH
-	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 14:27:53 +0300
+	id 1GtpTn-0004so-75
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 10:02:19 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GtpTn-0007a1-4q
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 10:02:20 -0800
+Received: from pd957db41.dip.t-dialin.net ([217.87.219.65])
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1GtpTY-0005mp-O0
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 10:02:06 -0800
+Received: from 62.205.161.195 (HELO mx.accenti.ru)
+	by lists.sourceforge.net with esmtp (KW:W0A85'3 8V05,9)
+	id ,=,:?I-;8J,N)-X7
+	for nfs@lists.sourceforge.net; Mon, 11 Dec 2006 18:02:06 +0000
 To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
