@@ -1,24 +1,23 @@
-From: "Christian G. Warden" <cwarden@xerus.org>
-Subject: Re: nfs3/krb5 mounts fail
-Date: Tue, 12 Dec 2006 15:38:13 -0800
-Message-ID: <20061212233813.GD21890@xerus.org>
-References: <20061211185547.GD25219@xerus.org>
-	<4d569c330612120920g3d36cfe6j8baaf3054fec6ac3@mail.gmail.com>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 002 of 14] knfsd: SUNRPC: allow creating an RPC
+	service without registering with portmapper
+Date: Wed, 13 Dec 2006 10:58:44 +1100
+Message-ID: <1061212235844.21366@suse.de>
+References: <20061213105528.21128.patches@notabene>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="a8Wt8u1KmwUX3Y2C"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuHCd-0000Nc-It
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:38:27 -0800
-Received: from sage.xerus.org ([64.74.153.194] ident=Debian-exim)
+	id 1GuHW3-0002RB-H5
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:58:32 -0800
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GuHCd-0007Hu-JJ
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:38:29 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <4d569c330612120920g3d36cfe6j8baaf3054fec6ac3@mail.gmail.com>
+	(Exim 4.44) id 1GuHW3-0006Nu-V9
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:58:33 -0800
+To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,106 +31,184 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
---a8Wt8u1KmwUX3Y2C
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+From: Chuck Lever <chuck.lever@oracle.com>
+Sometimes we need to create an RPC service but not register it with the
+local portmapper.  NFSv4 delegation callback, for example.
 
-On Tue, Dec 12, 2006 at 12:20:33PM -0500, Kevin Coffman wrote:
-> On 12/11/06, Christian G. Warden <cwarden@xerus.org> wrote:
-> >I'm having a problem where nfs3 filesystems mounted with krb5 fail after
-> >about 2 hours.  In userspace, I get a permission denied error when
-> >trying to access such a filesystem.  Restarting rpc.svcgssd on the
-> >server fixes the problem.
-> >
-> >Below is the debugging output from the client and server?  Does anything
-> >indicate where the problem might be?
-> >
-> >Thanks,
-> >Christian
-> 
-> I'm not sure what is going on.  What kernel version is on the server?
+Change the svc_makesock() API to allow optionally creating temporary or
+permanent sockets, optionally registering with the local portmapper, and
+make it return the ephemeral port of the new socket.
 
-It's 2.6.17 (Debian kernel 2.6.17-2-xen-686) on the server and 2.6.18
-(Debian kernel 2.6.18-3-xen-686) on the client.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/lockd/svc.c                 |   26 ++++++++++++++++----------
+ ./fs/nfs/callback.c              |   20 +++++++++-----------
+ ./fs/nfsd/nfssvc.c               |    6 ++++--
+ ./include/linux/sunrpc/svcsock.h |    2 +-
+ ./net/sunrpc/svcsock.c           |    6 ++++--
+ 5 files changed, 34 insertions(+), 26 deletions(-)
+
+diff .prev/fs/lockd/svc.c ./fs/lockd/svc.c
+--- .prev/fs/lockd/svc.c	2006-12-13 10:28:52.000000000 +1100
++++ ./fs/lockd/svc.c	2006-12-13 10:29:09.000000000 +1100
+@@ -223,23 +223,29 @@ static int find_socket(struct svc_serv *
+ 	return found;
+ }
  
-> The svcgssd messages indicate it is happy and sending down a context,
-> but it appears that the kernel is dropping the request?
-> 
-> >Dec 11 10:18:35 fs01 kernel: svc: got len=532
-> >Dec 11 10:18:35 fs01 kernel: svc: svc_authenticate (6)
-> >Dec 11 10:18:35 fs01 kernel: RPC:      svcauth_gss: argv->iov_len = 504
-> >Dec 11 10:18:35 fs01 kernel: Want update, refage=120, age=0
-> >Dec 11 10:18:35 fs01 kernel: svc: svc_process dropit
-> >Dec 11 10:18:35 fs01 kernel: svc: socket e6db9240 dropped request
-> 
-> Followed by:
-> 
-> >Dec 11 10:18:35 fs01 kernel: RPC:      Succesfully imported new context.
-> 
-> Could you send a network trace containing the conversation between
-> client and server when this happens?
++/*
++ * Make any sockets that are needed but not present.
++ * If nlm_udpport or nlm_tcpport were set as module
++ * options, make those sockets unconditionally
++ */
+ static int make_socks(struct svc_serv *serv, int proto)
+ {
+-	/* Make any sockets that are needed but not present.
+-	 * If nlm_udpport or nlm_tcpport were set as module
+-	 * options, make those sockets unconditionally
+-	 */
+-	static int		warned;
++	static int warned;
+ 	int err = 0;
++
+ 	if (proto == IPPROTO_UDP || nlm_udpport)
+ 		if (!find_socket(serv, IPPROTO_UDP))
+-			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport);
+-	if (err == 0 && (proto == IPPROTO_TCP || nlm_tcpport))
++			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport,
++						SVC_SOCK_DEFAULTS);
++	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+ 		if (!find_socket(serv, IPPROTO_TCP))
+-			err= svc_makesock(serv, IPPROTO_TCP, nlm_tcpport);
+-	if (!err)
++			err = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport,
++						SVC_SOCK_DEFAULTS);
++
++	if (err >= 0) {
+ 		warned = 0;
+-	else if (warned++ == 0)
++		err = 0;
++	} else if (warned++ == 0)
+ 		printk(KERN_WARNING
+ 		       "lockd_up: makesock failed, error=%d\n", err);
+ 	return err;
 
-The dump is attached.
+diff .prev/fs/nfs/callback.c ./fs/nfs/callback.c
+--- .prev/fs/nfs/callback.c	2006-12-13 10:28:52.000000000 +1100
++++ ./fs/nfs/callback.c	2006-12-13 10:29:09.000000000 +1100
+@@ -106,7 +106,6 @@ static void nfs_callback_svc(struct svc_
+ int nfs_callback_up(void)
+ {
+ 	struct svc_serv *serv;
+-	struct svc_sock *svsk;
+ 	int ret = 0;
+ 
+ 	lock_kernel();
+@@ -119,17 +118,14 @@ int nfs_callback_up(void)
+ 	ret = -ENOMEM;
+ 	if (!serv)
+ 		goto out_err;
+-	/* FIXME: We don't want to register this socket with the portmapper */
+-	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport);
+-	if (ret < 0)
++
++	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
++							SVC_SOCK_ANONYMOUS);
++	if (ret <= 0)
+ 		goto out_destroy;
+-	if (!list_empty(&serv->sv_permsocks)) {
+-		svsk = list_entry(serv->sv_permsocks.next,
+-				struct svc_sock, sk_list);
+-		nfs_callback_tcpport = ntohs(inet_sk(svsk->sk_sk)->sport);
+-		dprintk ("Callback port = 0x%x\n", nfs_callback_tcpport);
+-	} else
+-		BUG();
++	nfs_callback_tcpport = ret;
++	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
++
+ 	ret = svc_create_thread(nfs_callback_svc, serv);
+ 	if (ret < 0)
+ 		goto out_destroy;
+@@ -140,6 +136,8 @@ out:
+ 	unlock_kernel();
+ 	return ret;
+ out_destroy:
++	dprintk("Couldn't create callback socket or server thread; err = %d\n",
++		ret);
+ 	svc_destroy(serv);
+ out_err:
+ 	nfs_callback_info.users--;
 
-Thanks for your help.
+diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
+--- .prev/fs/nfsd/nfssvc.c	2006-12-13 10:28:52.000000000 +1100
++++ ./fs/nfsd/nfssvc.c	2006-12-13 10:29:09.000000000 +1100
+@@ -235,7 +235,8 @@ static int nfsd_init_socks(int port)
+ 
+ 	error = lockd_up(IPPROTO_UDP);
+ 	if (error >= 0) {
+-		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
++		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
++					SVC_SOCK_DEFAULTS);
+ 		if (error < 0)
+ 			lockd_down();
+ 	}
+@@ -245,7 +246,8 @@ static int nfsd_init_socks(int port)
+ #ifdef CONFIG_NFSD_TCP
+ 	error = lockd_up(IPPROTO_TCP);
+ 	if (error >= 0) {
+-		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
++		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
++					SVC_SOCK_DEFAULTS);
+ 		if (error < 0)
+ 			lockd_down();
+ 	}
 
-Christian
+diff .prev/include/linux/sunrpc/svcsock.h ./include/linux/sunrpc/svcsock.h
+--- .prev/include/linux/sunrpc/svcsock.h	2006-12-13 10:28:59.000000000 +1100
++++ ./include/linux/sunrpc/svcsock.h	2006-12-13 10:29:09.000000000 +1100
+@@ -62,7 +62,7 @@ struct svc_sock {
+ /*
+  * Function prototypes.
+  */
+-int		svc_makesock(struct svc_serv *, int, unsigned short);
++int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
+ void		svc_delete_socket(struct svc_sock *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
 
---a8Wt8u1KmwUX3Y2C
-Content-Type: application/octet-stream
-Content-Disposition: attachment; filename="dump.out"
-Content-Transfer-Encoding: base64
-
-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
-d7gFSnCZ
-
---a8Wt8u1KmwUX3Y2C
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+--- .prev/net/sunrpc/svcsock.c	2006-12-13 10:28:59.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2006-12-13 10:29:09.000000000 +1100
+@@ -1659,9 +1659,11 @@ svc_delete_socket(struct svc_sock *svsk)
+  * @serv: RPC server structure
+  * @protocol: transport protocol to use
+  * @port: port to use
++ * @flags: requested socket characteristics
+  *
+  */
+-int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port)
++int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
++			int flags)
+ {
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+@@ -1670,7 +1672,7 @@ int svc_makesock(struct svc_serv *serv, 
+ 	};
+ 
+ 	dprintk("svc: creating socket proto = %d\n", protocol);
+-	return svc_create_socket(serv, protocol, &sin, SVC_SOCK_DEFAULTS);
++	return svc_create_socket(serv, protocol, &sin, flags);
+ }
+ 
+ /*
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---a8Wt8u1KmwUX3Y2C
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---a8Wt8u1KmwUX3Y2C--
