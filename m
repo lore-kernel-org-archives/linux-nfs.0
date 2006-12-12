@@ -1,32 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS corruption in 2.6.18.2?
-Date: Tue, 12 Dec 2006 11:43:05 -0500
-Message-ID: <1165941785.5788.42.camel@lade.trondhjem.org>
-References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
-	<20061123161738.GF40079@fit.vutbr.cz>
-	<20061123172456.GG40079@fit.vutbr.cz>
-	<20061123213311.GH40079@fit.vutbr.cz>
-	<20061124064752.GI40079@fit.vutbr.cz>
-	<1164395516.5702.53.camel@lade.trondhjem.org>
-	<20061125182600.GA74811@fit.vutbr.cz>
-	<1164479583.5886.4.camel@lade.trondhjem.org>
-	<20061212134501.GK39055@fit.vutbr.cz>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: nfs3/krb5 mounts fail
+Date: Tue, 12 Dec 2006 12:20:33 -0500
+Message-ID: <4d569c330612120920g3d36cfe6j8baaf3054fec6ac3@mail.gmail.com>
+References: <20061211185547.GD25219@xerus.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuAk9-00066n-BP
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 08:44:37 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+6WQrDXljD+owxUE3eGROqYLjovdopnxU=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GuAk6-0007On-CG
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 08:44:38 -0800
-To: Kasparek Tomas <kasparek@fit.vutbr.cz>
-In-Reply-To: <20061212134501.GK39055@fit.vutbr.cz>
+	id 1GuBIy-0001v8-Gw
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 09:20:36 -0800
+Received: from an-out-0708.google.com ([209.85.132.240])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuBIw-0004yi-U3
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 09:20:37 -0800
+Received: by an-out-0708.google.com with SMTP id d40so770260and
+	for <nfs@lists.sourceforge.net>; Tue, 12 Dec 2006 09:20:34 -0800 (PST)
+To: "Christian G. Warden" <cwarden@xerus.org>
+In-Reply-To: <20061211185547.GD25219@xerus.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,29 +31,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2006-12-12 at 14:45 +0100, Kasparek Tomas wrote:
+On 12/11/06, Christian G. Warden <cwarden@xerus.org> wrote:
+> I'm having a problem where nfs3 filesystems mounted with krb5 fail after
+> about 2 hours.  In userspace, I get a permission denied error when
+> trying to access such a filesystem.  Restarting rpc.svcgssd on the
+> server fixes the problem.
+>
+> Below is the debugging output from the client and server?  Does anything
+> indicate where the problem might be?
+>
+> Thanks,
+> Christian
 
-> Hi, still me with the same problem, sorry for being pain in the ass, but I
-> need to solve it somehow (being not able to change the applications used).
-> 
-> I have tried mounting the share with 'noac' option as mentioned in the FAQ,
-> but the behaviour is the same.
-> 
-> Would you have any other advice how to get the old behaviour (for me that
-> means that of kernel 2.6.16.x)?
-> 
-> (I tested some newer kernels to - 2.6.18.5 and 19.1 just for the case
-> someting changes but no success there.)
+I'm not sure what is going on.  What kernel version is on the server?
 
-Could you try 2.6.19 w/ the NFS_ALL patch from
-http://client.linux-nfs.org/Linux-2.6.x/2.6.19/ ?
+The svcgssd messages indicate it is happy and sending down a context,
+but it appears that the kernel is dropping the request?
 
-I know of one corruption issue that was happening there due to a race
-between invalidate_inode_pages2() and the write code.
+> Dec 11 10:18:35 fs01 kernel: svc: got len=532
+> Dec 11 10:18:35 fs01 kernel: svc: svc_authenticate (6)
+> Dec 11 10:18:35 fs01 kernel: RPC:      svcauth_gss: argv->iov_len = 504
+> Dec 11 10:18:35 fs01 kernel: Want update, refage=120, age=0
+> Dec 11 10:18:35 fs01 kernel: svc: svc_process dropit
+> Dec 11 10:18:35 fs01 kernel: svc: socket e6db9240 dropped request
 
-Cheers
-  Trond
+Followed by:
 
+> Dec 11 10:18:35 fs01 kernel: RPC:      Succesfully imported new context.
+
+Could you send a network trace containing the conversation between
+client and server when this happens?
+
+Thanks,
+K.C.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
