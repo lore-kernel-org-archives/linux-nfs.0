@@ -1,15 +1,38 @@
-From: "Audra Mcneil" <unconstitutionalgenerates@abc123.ru>
-Subject: Good Morning Audra
-Date: Tue, 12 Dec 2006 12:50:19 -0540
-Message-ID: <01c71dec$148d7250$6c822ecf@unconstitutionalgenerates>
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Subject: Re: NFS corruption in 2.6.18.2?
+Date: Tue, 12 Dec 2006 14:45:01 +0100
+Message-ID: <20061212134501.GK39055@fit.vutbr.cz>
+References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
+	<20061123161738.GF40079@fit.vutbr.cz>
+	<20061123172456.GG40079@fit.vutbr.cz>
+	<20061123213311.GH40079@fit.vutbr.cz>
+	<20061124064752.GI40079@fit.vutbr.cz>
+	<1164395516.5702.53.camel@lade.trondhjem.org>
+	<20061125182600.GA74811@fit.vutbr.cz>
+	<1164479583.5886.4.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from 81.176.68.81 (HELO mail.abc123.ru)
-	by lists.sourceforge.net with esmtp (LFWG6V,V6 UB2Q1)
-	id )M426/-EJ4WGW--)
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 12:50:19 -0540
-To: <nfs@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Gu7wU-0007sP-VV
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 05:45:11 -0800
+Received: from kazi.fit.vutbr.cz ([147.229.8.12])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gu7wT-0003vG-TZ
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 05:45:12 -0800
+Received: from kazi.fit.vutbr.cz (localhost [127.0.0.1])
+	by kazi.fit.vutbr.cz (envelope-from kasparek@fit.vutbr.cz)
+	(8.13.8/8.13.7) with ESMTP id kBCDj1W7086152
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Tue, 12 Dec 2006 14:45:01 +0100 (CET)
+Received: (from kasparek@localhost)
+	by kazi.fit.vutbr.cz (8.13.8/8.13.1/Submit) id kBCDj135086150
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 14:45:01 +0100 (CET)
+	(envelope-from kasparek@fit.vutbr.cz)
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1164479583.5886.4.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,37 +45,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Investor alert for Tuesday, December 12th!					
-News Alert!						
-			
-Company:  Wild Brush Energy				
-Symbol:  WBRS					
-Current Price:  $0.046		
-Short-term target: $0.12				
-					
-WBRS is engaged in some of the most lucrative gas regions in North 						
-America.  Major discoveries are happening all the time and WBRS is in 			
-the thick of it.			
-					
-With the array of drilling projects Wild Brush has going on at the moment 				
-tension is building.  As the drilling gets closer to completion insiders are 				
-accumulating ahead of that major discovery announcement.		
-							
-Word has just begun to leak out that there may soon be a 			
-merger between WBRS and another major energy player with 						
-close ties to the company.  In fact this major player's 							
-stock was up 30% Monday on very strong volume.  WBRS is 						
-showing similar signs this Monday and is looking like there 					
-will be big gains on Tuesday.			
-Once the merger is announced there will be a rush to get in.  						
-Play it smart. Take a position BEFORE the press release and 						
-ride this one.							
---	
-INDEPENDENCE, Missouri (CNN) -- Kofi Annan had some strong words Monday for the United States in his farewell speech as secretary-general of the United Nations.
-WASHINGTON (AP) -- Peering deep into the sea, scientists are finding creatures more mysterious than many could have imagined.
-PORTLAND, Oregon (AP) -- Rescue teams headed up the flanks of Mount Hood on Monday to search for three climbers reported missing in heavy snow, the Hood River County sheriff's office said.
-		
+On Sat, Nov 25, 2006 at 01:33:03PM -0500, Trond Myklebust wrote:
+> On Sat, 2006-11-25 at 19:26 +0100, Kasparek Tomas wrote:
+> > On Fri, Nov 24, 2006 at 02:11:55PM -0500, Trond Myklebust wrote:
+> > > > > > On Thu, Nov 23, 2006 at 05:17:38PM +0100, Kasparek Tomas wrote:
+> > > > > > Just update: 2.6.17.14 is ok
+> > > > > 
+> > > > > did git bisect between 2.6.17 and 2.6.18 and found that the commit is:
+> > > > > 
+> > > > > 44b11874ff583b6e766a05856b04f3c492c32b84
+> > > > >  NFS: Separate metadata and page cache revalidation mechanisms
+> > > > > 
+> > > > > will verify (with and without patch) tomorrow.
+> > > > 
+> > > > 2.6.18.3 with reversed 44b11874ff583b6e766a05856b04f3c492c32b84 is OK.
+> > > > 
+> > > > exact patch used included.
+> > > 
+> > > If you are not using any form of synchronisation, then your test would
+> > > appear to be violating the close-to-open cache consistency rules (see
+> > > http://nfs.sourceforge.net/#faq_a8).
+> > 
+> > Yes, I understand this, but with no synchronization I should get old or
+> > somewhat 'not current' data at worst, I don't expect to get some data
+> > generated by the kernel. The test is synthetic, it was constructed to be
+> > as easy as possible, but this one works well on 2.6.16 (mean no zeros, data
+> > are sometimes overwriten or mixed from several clients as a result of no
+> > locking, but that's ok for my application).
+> 
+> No. Extending the file on the server while your client has pending
+> background writes can result in exactly the behaviour that you're
+> observing.
 
+Hi, still me with the same problem, sorry for being pain in the ass, but I
+need to solve it somehow (being not able to change the applications used).
+
+I have tried mounting the share with 'noac' option as mentioned in the FAQ,
+but the behaviour is the same.
+
+Would you have any other advice how to get the old behaviour (for me that
+means that of kernel 2.6.16.x)?
+
+(I tested some newer kernels to - 2.6.18.5 and 19.1 just for the case
+someting changes but no success there.)
+
+Regards.
+
+--   
+
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, BI/140a    Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 2, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
+
+  ICQ: 293092805  jabber: tomas.kasparek@jabber.cz
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
 
 
 -------------------------------------------------------------------------
