@@ -1,24 +1,32 @@
-From: "Halevy, Benny" <bhalevy@panasas.com>
-Subject: Re: [PATCH] kfree in fs/nfsd/nfs4xdr.c:savemem()
-Date: Sun, 31 Dec 2006 15:22:41 -0500
-Message-ID: <E472128B1EB43941B4E7FB268020C89B149CEF@riverside.int.panasas.com>
-References: <45927293.7010903@panasas.com>
-	<20061229225848.GB18002@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS corruption in 2.6.18.2?
+Date: Tue, 12 Dec 2006 11:43:05 -0500
+Message-ID: <1165941785.5788.42.camel@lade.trondhjem.org>
+References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
+	<20061123161738.GF40079@fit.vutbr.cz>
+	<20061123172456.GG40079@fit.vutbr.cz>
+	<20061123213311.GH40079@fit.vutbr.cz>
+	<20061124064752.GI40079@fit.vutbr.cz>
+	<1164395516.5702.53.camel@lade.trondhjem.org>
+	<20061125182600.GA74811@fit.vutbr.cz>
+	<1164479583.5886.4.camel@lade.trondhjem.org>
+	<20061212134501.GK39055@fit.vutbr.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H17DU-0005eG-4s
-	for nfs@lists.sourceforge.net; Sun, 31 Dec 2006 12:23:36 -0800
-Received: from gw-e.panasas.com ([65.194.124.178] helo=cassoulet.panasas.com)
+	id 1GuAk9-00066n-BP
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 08:44:37 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+6WQrDXljD+owxUE3eGROqYLjovdopnxU=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H17DT-0005r5-F0
-	for nfs@lists.sourceforge.net; Sun, 31 Dec 2006 12:23:37 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
+	(Exim 4.44) id 1GuAk6-0007On-CG
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 08:44:38 -0800
+To: Kasparek Tomas <kasparek@fit.vutbr.cz>
+In-Reply-To: <20061212134501.GK39055@fit.vutbr.cz>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,55 +39,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
->  
-> On Wed, Dec 27, 2006 at 03:18:11PM +0200, Benny Halevy wrote:
-> > The wrong pointer is being kfree'd in savemem() when defer_free
-> > returns with an error.
-> 
-> Makes sense to me, thanks!
-> 
-> That makes "new" unnecessary.  Any objection to the following?
-> (untested).
+On Tue, 2006-12-12 at 14:45 +0100, Kasparek Tomas wrote:
 
-This seems to be right on the spot...
+> Hi, still me with the same problem, sorry for being pain in the ass, but I
+> need to solve it somehow (being not able to change the applications used).
+> 
+> I have tried mounting the share with 'noac' option as mentioned in the FAQ,
+> but the behaviour is the same.
+> 
+> Would you have any other advice how to get the old behaviour (for me that
+> means that of kernel 2.6.16.x)?
+> 
+> (I tested some newer kernels to - 2.6.18.5 and 19.1 just for the case
+> someting changes but no success there.)
 
-> 
-> Since this seems to be a rare memory leak, I'm inclined to leave this
-> till after 2.6.20.
+Could you try 2.6.19 w/ the NFS_ALL patch from
+http://client.linux-nfs.org/Linux-2.6.x/2.6.19/ ?
 
-Agreed.
+I know of one corruption issue that was happening there due to a race
+between invalidate_inode_pages2() and the write code.
 
-> 
-> --b.
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index dabd527..91284a0 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -199,18 +199,16 @@ defer_free(struct nfsd4_compoundargs *argp,
->  
->  static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
->  {
-> -	void *new = NULL;
->  	if (p == argp->tmp) {
-> -		new = kmalloc(nbytes, GFP_KERNEL);
-> -		if (!new) return NULL;
-> -		p = new;
-> +		p = kmalloc(nbytes, GFP_KERNEL);
-> +		if (!p) return NULL;
->  		memcpy(p, argp->tmp, nbytes);
->  	} else {
->  		BUG_ON(p != argp->tmpp);
->  		argp->tmpp = NULL;
->  	}
->  	if (defer_free(argp, kfree, p)) {
-> -		kfree(new);
-> +		kfree(p);
->  		return NULL;
->  	} else
->  		return (char *)p;
-> 
+Cheers
+  Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
