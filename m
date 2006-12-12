@@ -1,8 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 005 of 14] knfsd: SUNRPC: Use sockaddr_storage to
-	store address in svc_deferred_req
-Date: Wed, 13 Dec 2006 10:58:59 +1100
-Message-ID: <1061212235859.21410@suse.de>
+Subject: [PATCH 004 of 14] knfsd: SUNRPC: Don't set msg_name and
+	msg_namelen when calling sock_recvmsg
+Date: Wed, 13 Dec 2006 10:58:55 +1100
+Message-ID: <1061212235855.21396@suse.de>
 References: <20061213105528.21128.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuHWI-0002Rx-FI
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:58:46 -0800
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1GuHWB-0002RX-Ha
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:58:39 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GuHWH-0006RB-8Y
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:58:48 -0800
+	(Exim 4.44) id 1GuHWC-0006Pw-D4
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:58:41 -0800
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,55 +32,57 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 From: Chuck Lever <chuck.lever@oracle.com>
-Sockaddr_storage will allow us to store arbitrary socket addresses in
-the svc_deferred_req struct.
+Clean-up: msg_name and msg_namelen are not used by sock_recvmsg, so
+don't bother to set them in svc_recvfrom.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./include/linux/sunrpc/svc.h |    3 ++-
- ./net/sunrpc/svcsock.c       |    6 ++++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
-
-diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
---- .prev/include/linux/sunrpc/svc.h	2006-12-13 10:28:52.000000000 +1100
-+++ ./include/linux/sunrpc/svc.h	2006-12-13 10:29:18.000000000 +1100
-@@ -289,7 +289,8 @@ static inline void svc_free_res_pages(st
- 
- struct svc_deferred_req {
- 	u32			prot;	/* protocol (UDP or TCP) */
--	struct sockaddr_in	addr;
-+	struct sockaddr_storage	addr;
-+	int			addrlen;
- 	struct svc_sock		*svsk;	/* where reply must go */
- 	__be32			daddr;	/* where reply must come from */
- 	struct cache_deferred_req handle;
+ ./net/sunrpc/svcsock.c |   23 ++++++++---------------
+ 1 file changed, 8 insertions(+), 15 deletions(-)
 
 diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2006-12-13 10:29:15.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2006-12-13 10:29:18.000000000 +1100
-@@ -1713,7 +1713,8 @@ svc_defer(struct cache_req *req)
+--- .prev/net/sunrpc/svcsock.c	2006-12-13 10:29:13.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2006-12-13 10:29:15.000000000 +1100
+@@ -560,21 +560,14 @@ svc_recv_available(struct svc_sock *svsk
+ static int
+ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ {
+-	struct msghdr	msg;
+-	struct socket	*sock;
+-	int		len, alen;
+-
+-	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+-	sock = rqstp->rq_sock->sk_sock;
+-
+-	msg.msg_name    = &rqstp->rq_addr;
+-	msg.msg_namelen = sizeof(rqstp->rq_addr);
+-	msg.msg_control = NULL;
+-	msg.msg_controllen = 0;
+-
+-	msg.msg_flags	= MSG_DONTWAIT;
++	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct msghdr msg = {
++		.msg_flags	= MSG_DONTWAIT,
++	};
++	int len;
  
- 		dr->handle.owner = rqstp->rq_server;
- 		dr->prot = rqstp->rq_prot;
--		dr->addr = rqstp->rq_addr;
-+		memcpy(&dr->addr, &rqstp->rq_addr, rqstp->rq_addrlen);
-+		dr->addrlen = rqstp->rq_addrlen;
- 		dr->daddr = rqstp->rq_daddr;
- 		dr->argslen = rqstp->rq_arg.len >> 2;
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
-@@ -1737,7 +1738,8 @@ static int svc_deferred_recv(struct svc_
- 	rqstp->rq_arg.page_len = 0;
- 	rqstp->rq_arg.len = dr->argslen<<2;
- 	rqstp->rq_prot        = dr->prot;
--	rqstp->rq_addr        = dr->addr;
-+	memcpy(&rqstp->rq_addr, &dr->addr, dr->addrlen);
-+	rqstp->rq_addrlen     = dr->addrlen;
- 	rqstp->rq_daddr       = dr->daddr;
- 	rqstp->rq_respages    = rqstp->rq_pages;
- 	return dr->argslen<<2;
+-	len = kernel_recvmsg(sock, &msg, iov, nr, buflen, MSG_DONTWAIT);
++	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
++				msg.msg_flags);
+ 
+ 	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
+ 	 */
+@@ -582,7 +575,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	rqstp->rq_addrlen = svsk->sk_remotelen;
+ 
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+-		rqstp->rq_sock, iov[0].iov_base, iov[0].iov_len, len);
++		svsk, iov[0].iov_base, iov[0].iov_len, len);
+ 
+ 	return len;
+ }
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
