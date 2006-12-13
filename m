@@ -1,24 +1,28 @@
-From: "Delmar Talley" <stairwaysmilquetoast@abodeasia.com>
-Subject: It ready
-Date: Wed, 13 Dec 2006 07:56:14 +0000 (UTC)
-Message-ID: <01c71e8b$27a5c050$6c822ecf@stairwaysmilquetoast>
+From: Stefan Palme <kleiner@hora-obscura.de>
+Subject: possible solution for userid mapping problem
+Date: Wed, 13 Dec 2006 10:10:19 +0100
+Message-ID: <1166001020.26144.14.camel@devel.office.ancoso-development.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuOy7-0007M3-HE
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 23:55:59 -0800
-Received: from anancy-157-1-127-88.w90-6.abo.wanadoo.fr ([90.6.98.88])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuOy7-0006Uh-Mc
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 23:56:01 -0800
-Received: from 69.59.179.28 (HELO mail.abodeasia.com)
-	by lists.sourceforge.net with esmtp (VR32;6W7 )I=7)
-	id ,*8F7?-TH5*1)-C>
-	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 07:49:01 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Wed, 13 Dec 2006 07:49:01 -0060
+	id 1GuQ8H-0006T6-25
+	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 01:10:33 -0800
+Received: from moutng.kundenserver.de ([212.227.126.183])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuQ8F-0000MI-H8
+	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 01:10:34 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by smtp.hora-obscura.de (Postfix) with ESMTP id 0088058400D
+	for <nfs@lists.sourceforge.net>; Wed, 13 Dec 2006 10:10:22 +0100 (CET)
+Received: from devel.office.ancoso-development.de
+	(p54B94F07.dip0.t-ipconnect.de [84.185.79.7])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by smtp.hora-obscura.de (Postfix) with ESMTP id 7836A584003
+	for <nfs@lists.sourceforge.net>; Wed, 13 Dec 2006 10:10:19 +0100 (CET)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,30 +35,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-News Alert!
 
-Fueled by the possibility of an upcoming merger, Wild Brush 
-Energy (WBRS) is gearing up for an explosion.  Tension is 
-building and soon the scramble to take a position will push 
-this one off the charts.
+Hi all,
 
-Wild Brush Energy
-Symbol: WBRS
-Current Price: $0.05
-Short Term Target: $0.32
-Long Term Target: $0.80
+I have an NFS server exporting a directory to another machine. This
+directory is used by an application server on the NFS server host.
+The application server runs under a special uid/gid, and the exported
+directory is owned and only accessible by this special user.
 
-WBRS is engaged in some of the most lucrative gas regions in North 
-America.  Major discoveries are happening all the time and WBRS is in 
-the thick of it.
+The same application server runs on the NFS client host, and I want
+this application server to use the same directory via NFS 
+(from application server's point of view there is no problem using
+a "shared directory" in this context).
 
-With the array of drilling projects Wild Brush has going on at the moment 
-tension is building.  As the drilling gets closer to completion insiders are 
-accumulating ahead of that major discovery announcement.
+The only problem: the special user used for the application server
+has different uids/gids on both hosts. Since I had to learn, that 
+there is no "official" way to map different uids, I think about
+mapping *all* userids to the application servers userid as "anonuid".
 
-Finally the market is ready for explosion
-Wednesday December 13 2006. will be a huge growth of WBRS at 1.00 am
-Get ready to make some cash today!
+So on the NFS server the exports file would contain
+
+  /var/lib/appserver/data   1.2.3.4/32(rw,async,all_squash,anonuid=123,anongid=123)
+
+(where the application servers special user account has
+uid=gid=123).
+
+The NFS client would mount this directory normally via
+
+  mount -t nfs 4.3.2.1:/var/lib/appserver/data /var/lib/appserver/data
+
+So I hope to give the NFS-clients-application-server-user (uid=gid=456)
+access to the data of the NFS-servers-application-server-user (uid=gid=123).
+
+>From the technical point of view this seems to work (I've tested this
+setup successfully). My actual question is, if it is *nice* to do
+this (because it seems to me like a kind of hack), and if there is maybe
+a better solution for this?
+
+TIA
+Regards
+-stefan-
+
 
 
 -------------------------------------------------------------------------
