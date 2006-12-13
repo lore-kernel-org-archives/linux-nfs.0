@@ -1,25 +1,25 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH 010 of 14] knfsd: SUNRPC: add a "generic" function
- to see if the peer uses a secure port
-Date: Tue, 12 Dec 2006 17:42:07 -0800
-Message-ID: <20061212174207.6180df0f.akpm@osdl.org>
-References: <20061213105528.21128.patches@notabene>
-	<1061212235927.21484@suse.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: sco 5(server) linux(client,
+	FC4) cp stalls after a few	ten KBs
+Date: Tue, 12 Dec 2006 20:58:35 -0500
+Message-ID: <1165975115.5695.21.camel@lade.trondhjem.org>
+References: <457F5AE6.90900@gamebox.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuJ8O-0004Th-9S
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 17:42:12 -0800
-Received: from smtp.osdl.org ([65.172.181.25])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1GuJ8P-0000b2-IK
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 17:42:13 -0800
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1061212235927.21484@suse.de>
+	id 1GuJOX-00068H-MQ
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 17:58:53 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+r1k2kHgdv8FrN8rqtyozjTCvxPekZN5A=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GuJOX-0005Vn-9o
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 17:58:54 -0800
+To: Georg Ritter <newsgr.2007@gamebox.net>
+In-Reply-To: <457F5AE6.90900@gamebox.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,47 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 13 Dec 2006 10:59:27 +1100
-NeilBrown <neilb@suse.de> wrote:
-
-> From: Chuck Lever <chuck.lever@oracle.com>
-> The only reason svcsock.c looks at a sockaddr's port is to check whether
-> the remote peer is connecting from a privileged port.  Refactor this check
-> to hide processing that is specific to address format.
+On Wed, 2006-12-13 at 02:44 +0100, Georg Ritter wrote:
+> Dear NFS gurus :-),
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
-> Signed-off-by: Neil Brown <neilb@suse.de>
+> Problem:
+> FC4 box as client to a SCO 5 server stops copying after a few 10 KBs, worked on 
+> same hardware with RH9 as client, and currently still works for a mdk10 client.
 > 
-> ### Diffstat output
->  ./net/sunrpc/svcsock.c |   20 +++++++++++++++++---
->  1 file changed, 17 insertions(+), 3 deletions(-)
-> 
-> diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
-> --- .prev/net/sunrpc/svcsock.c	2006-12-13 10:32:15.000000000 +1100
-> +++ ./net/sunrpc/svcsock.c	2006-12-13 10:32:17.000000000 +1100
-> @@ -926,6 +926,20 @@ svc_tcp_data_ready(struct sock *sk, int 
->  		wake_up_interruptible(sk->sk_sleep);
->  }
->  
-> +static inline int svc_port_is_privileged(struct sockaddr *sin)
-> +{
-> +	switch (sin->sa_family) {
-> +	case AF_INET:
-> +		return ntohs(((struct sockaddr_in *)sin)->sin_port) < 1024;
-> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> +	case AF_INET6:
-> +		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port) < 1024;
-> +#endif
-> +	default:
-> +		return 0;
-> +	}
-> +}
+> I would be grateful for a hint or better a way to fix it, as I have no idea of 
+> what else could be wrong and where/how to investigate it further.
 
-I'm a bit surprised to see this test implemented in sunrpc - it's the sort
-of thing which core networking should implement?
+How about starting with a tcpdump of the client and server behaviour?
+Also, when forcing tcp mounts, you can use 'netstat -t' to monitor the
+TCP link.
 
-And should that "1024" be PROT_SOCK?
+Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
