@@ -1,23 +1,24 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 014 of 14] knfsd: Don't mess with the 'mode' when
-	storing a exclusive-create cookie.
-Date: Wed, 13 Dec 2006 10:59:49 +1100
-Message-ID: <1061212235949.21551@suse.de>
-References: <20061213105528.21128.patches@notabene>
+From: Georg Ritter <newsgr.2007@gamebox.net>
+Subject: sco 5(server) linux(client, FC4) cp stalls after a few ten KBs
+Date: Wed, 13 Dec 2006 02:44:06 +0100
+Message-ID: <457F5AE6.90900@gamebox.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuHX4-0002ZM-Ok
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:59:35 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GuHX5-00050y-7L
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 15:59:36 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1GuIGd-0007R0-K1
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 16:46:39 -0800
+Received: from viefep16-int.chello.at ([213.46.255.18]
+	helo=viefep14-int.chello.at)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuIGd-00036R-JU
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 16:46:41 -0800
+Received: from [213.47.225.118] by viefep14-int.chello.at
+	(InterMail vM.6.01.05.04 201-2131-123-105-20051025) with ESMTP
+	id <20061213004618.HTHZ21691.viefep14-int.chello.at@[213.47.225.118]>
+	for <nfs@lists.sourceforge.net>; Wed, 13 Dec 2006 01:46:18 +0100
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,98 +31,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Dear NFS gurus :-),
 
-From: Peter Staubach <staubach@redhat.com>
+Problem:
+FC4 box as client to a SCO 5 server stops copying after a few 10 KBs, worked on 
+same hardware with RH9 as client, and currently still works for a mdk10 client.
 
-NFS V3 (and V4) support exclusive create by passing a 'cookie' which
-can get stored with the file.  If the file exists but has exactly the
-right cookie stored, then we assume this is a retransmit and the
-exclusive create was successful.
+I would be grateful for a hint or better a way to fix it, as I have no idea of 
+what else could be wrong and where/how to investigate it further.
 
-The cookie is 64bits and is traditionally stored in the mtime and
-atime fields.  This causes a problem with Solaris7 as negative mtime
-or atime confuse it.  So we moved two bits into the mode word instead.
+Longer description:
+I ran into the following problem, after upgrading from RH9 to FC4 (and also 
+another FC6 box has the same "behaviour") and completely ran out of ideas.
 
-But inherited ACLs sometimes overwrite the mode word on create, so
-this is a problem.
+Setup:
+FC4/FC6 boxes as clients connecting to an SCO nfs server, small LAN, all class A 
+IPs.
 
-So we give up and just store 62 of the 64 bits and assume that is
-close enough.
+Client can mount the exports from the SCO server, but after a few 10KB of data 
+the speed drops near or to zero and it gets stuck and still seems to copy a few 
+bytes every 30 secs or minute.
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+Findings so far:
+mdk10 laptop as a client can mount the SCO dirs and copies full speed.
 
-### Diffstat output
- ./fs/nfsd/vfs.c |   21 +++++----------------
- 1 file changed, 5 insertions(+), 16 deletions(-)
+It used to work with the exact same hardware but RH9 instead of FC4/FC6.
 
-diff .prev/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
---- .prev/fs/nfsd/vfs.c	2006-12-08 12:08:37.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2006-12-13 10:44:55.000000000 +1100
-@@ -1248,7 +1248,6 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 	__be32		err;
- 	int		host_err;
- 	__u32		v_mtime=0, v_atime=0;
--	int		v_mode=0;
- 
- 	err = nfserr_perm;
- 	if (!flen)
-@@ -1285,16 +1284,11 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		goto out;
- 
- 	if (createmode == NFS3_CREATE_EXCLUSIVE) {
--		/* while the verifier would fit in mtime+atime,
--		 * solaris7 gets confused (bugid 4218508) if these have
--		 * the high bit set, so we use the mode as well
-+		/* solaris7 gets confused (bugid 4218508) if these have
-+		 * the high bit set, so just clear the high bits.
- 		 */
- 		v_mtime = verifier[0]&0x7fffffff;
- 		v_atime = verifier[1]&0x7fffffff;
--		v_mode  = S_IFREG
--			| ((verifier[0]&0x80000000) >> (32-7)) /* u+x */
--			| ((verifier[1]&0x80000000) >> (32-9)) /* u+r */
--			;
- 	}
- 	
- 	if (dchild->d_inode) {
-@@ -1322,7 +1316,6 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		case NFS3_CREATE_EXCLUSIVE:
- 			if (   dchild->d_inode->i_mtime.tv_sec == v_mtime
- 			    && dchild->d_inode->i_atime.tv_sec == v_atime
--			    && dchild->d_inode->i_mode  == v_mode
- 			    && dchild->d_inode->i_size  == 0 )
- 				break;
- 			 /* fallthru */
-@@ -1344,26 +1337,22 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 	}
- 
- 	if (createmode == NFS3_CREATE_EXCLUSIVE) {
--		/* Cram the verifier into atime/mtime/mode */
-+		/* Cram the verifier into atime/mtime */
- 		iap->ia_valid = ATTR_MTIME|ATTR_ATIME
--			| ATTR_MTIME_SET|ATTR_ATIME_SET
--			| ATTR_MODE;
-+			| ATTR_MTIME_SET|ATTR_ATIME_SET;
- 		/* XXX someone who knows this better please fix it for nsec */ 
- 		iap->ia_mtime.tv_sec = v_mtime;
- 		iap->ia_atime.tv_sec = v_atime;
- 		iap->ia_mtime.tv_nsec = 0;
- 		iap->ia_atime.tv_nsec = 0;
--		iap->ia_mode  = v_mode;
- 	}
- 
- 	/* Set file attributes.
--	 * Mode has already been set but we might need to reset it
--	 * for CREATE_EXCLUSIVE
- 	 * Irix appears to send along the gid when it tries to
- 	 * implement setgid directories via NFS. Clear out all that cruft.
- 	 */
-  set_attr:
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID)) != 0) {
-+	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
-  		__be32 err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
- 		if (err2)
- 			err = err2;
+Looks like a buffer gets filled and then it gets stuck.
+
+nfsd on the SCO don't die away.
+
+No errors on SCO portmap (-v -d) (additionally it worked before, and serves the 
+mdk10 box, without touching the settings on the SCO server)
+
+setting the debugging output on FC4 to 32565 with echo into the according 
+/proc/... vars reveals no obvious error message.
+
+No errors with nfsstat neither on SCO nor FC4.
+
+Network is at good health.
+
+It works the other way round (SCO as client mounting from FC4 box)
+
+Disabled (on FC4) firewall and selinux. No such things on the SCO box.
+
+Seem to be ok in principal because it mounts and copies fine up to the stop 
+after a few ten KBs.
+
+Tried different kernels on the FC4 box (all plain vanilla kernels offered via 
+official update path)
+
+Tried many different options on the mount command: vers=2, nolock different 
+package sizes, forcing tcp etc.: no effect
+
+
+
+Thanks,
+
+         Georg
+
+P.S. More details from the FC4 (client) box available (logfiles, etc).
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
