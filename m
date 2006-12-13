@@ -1,26 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 000 of 14] knfsd: Assorted nfsd patches for 2.6.20
- - prepare for IPv6 and more
-Date: Wed, 13 Dec 2006 22:13:55 +1100
-Message-ID: <17791.57459.23780.747689@cse.unsw.edu.au>
-References: <20061213105528.21128.patches@notabene>
-	<457F9243.9090701@garzik.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/2] mountd: clean up rmtab handling
+Date: Wed, 13 Dec 2006 08:17:43 -0500
+Message-ID: <457FFD77.6070507@redhat.com>
+References: <1161781620.7078.50.camel@dantu.rdu.redhat.com>	<45704A4A.6000007@poochiereds.net>	<17779.42545.642976.873602@cse.unsw.edu.au>	<4574392D.9080807@poochiereds.net>	<17788.44467.578376.702580@cse.unsw.edu.au>	<457CD334.6080700@redhat.com>
+	<17790.229.867008.833159@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuS3T-0002Oj-6s
-	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 03:13:43 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GuS3T-0004dF-AX
-	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 03:13:44 -0800
-To: Jeff Garzik <jeff@garzik.org>
-In-Reply-To: message from Jeff Garzik on Wednesday December 13
+	id 1GuTyE-0006OD-GG
+	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 05:16:26 -0800
+Received: from ms-smtp-02.southeast.rr.com ([24.25.9.101])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuTyF-00081T-El
+	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 05:16:27 -0800
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17790.229.867008.833159@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,36 +30,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday December 13, jeff@garzik.org wrote:
-> NeilBrown wrote:
-> > Following are 14 patches for knfsd that are suitable for inclusion in 2.6.20.
-> > First 13 are from Chuck Lever and make preparations for IPv6 support (I think we've
-> > get them right this time).
-> > 
-> > Last is from Peter Staubach and fixes and issue with exclusive create
-> > interacting badly with some ACLs.
-> 
-> 
-> Any word on this 2.6.19 oops?
-> 
-> http://lkml.org/lkml/2006/12/8/110
+Neil Brown wrote:
+ >
+ > Does that make sense?
 
-Not yet... I've been spending my spare time looking for an md oops :-)
+Yes. Thanks for explaining that -- it makes total sense now. I was focusing
+on auth_authenticate, which I don't think would behave differently, but you're
+clearly correct that we'd need to ensure the same for the kernel caches.
 
-A quick look suggests that it cannot possibly happen ...
+ >> As you said, neither the rmtab or the kernel cache is an ideal place to pull
+ >> this info. So, my inclincation is to stick with the rmtab, and simply have it
+ >> track what we know is trackable -- mount and unmount calls into mountd. I
+ >> think having false positives is preferable to possibly having some mounts
+ >> that are not reflected at all because they have gone idle.
+ >
+ > Ok, how about this as a way forward.
+ >
+ >  1/ remove that 'my_client' caching.
+ >  2/ Remove the updates of rmtab on client upcalls and simply do rmtab
+ >     updates with hostname (from get_reliable_hostbyaddr) and path name
+ >     from MOUNT or UMOUNT requests
+ >  3/ Add -I flag which:
+ >       passes IP address rather than client_compose name to kernel and
+ >       adds rmtab entries on kernel upcalls.  It also hard-removes
+ >       rmtab entries on 'UMOUNT' and flush the kernel cache so that the
+ >       next access for that host/path causes an upcall.
+ >  4/ Add a -? flag (haven't chosen a letter yet) which:
+ >       implies -I, but when asked for a 'DUMP', it calls gethosytbyname
+ >       on each IP address to ge a hostname.
+ >
+ > Then the default would be vaguely usable, and more precise information
+ > would be available (at a cost).
+ >
 
-cancel_rearming_delayed_workqueue appears to be being called with a
-bad "struct workqueue_struct *".  But that really must have been
-initialised when the first nfsd thread started...
+At first glance, that sounds reasonable. I'll have a closer look at the code
+and your idea and see if I can come up with a patch.
 
-It looks like cwq in flush_cpu_workqueue is 0x0000040000000100.  Is
-that the sort of address you would expect?  Where do alloc_percpu 
-data structures live?  The '4' wouldn't be a single-bit memory error,
-would it? (that would be too easy).
+ >> Either way, a manpage update is probably also in order to outline the folly
+ >> of depending on showmount -a :-).
+ >
+ > Yes, I would happily accept a patch making such a change.
+ >
 
-So: no, no real progress.   Is it repeatable?
+Once we come to consensus on a code patch, I'll have a look at what manpage
+changes need to be made.
 
-NeilBrown
+Thanks,
+Jeff
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
