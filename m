@@ -1,24 +1,25 @@
-From: Georg Ritter <newsgr.2007@gamebox.net>
-Subject: sco 5(server) linux(client, FC4) cp stalls after a few ten KBs
-Date: Wed, 13 Dec 2006 02:44:06 +0100
-Message-ID: <457F5AE6.90900@gamebox.net>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH 010 of 14] knfsd: SUNRPC: add a "generic" function
+ to see if the peer uses a secure port
+Date: Tue, 12 Dec 2006 17:42:07 -0800
+Message-ID: <20061212174207.6180df0f.akpm@osdl.org>
+References: <20061213105528.21128.patches@notabene>
+	<1061212235927.21484@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuIGd-0007R0-K1
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 16:46:39 -0800
-Received: from viefep16-int.chello.at ([213.46.255.18]
-	helo=viefep14-int.chello.at)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuIGd-00036R-JU
-	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 16:46:41 -0800
-Received: from [213.47.225.118] by viefep14-int.chello.at
-	(InterMail vM.6.01.05.04 201-2131-123-105-20051025) with ESMTP
-	id <20061213004618.HTHZ21691.viefep14-int.chello.at@[213.47.225.118]>
-	for <nfs@lists.sourceforge.net>; Wed, 13 Dec 2006 01:46:18 +0100
-To: nfs@lists.sourceforge.net
+	id 1GuJ8O-0004Th-9S
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 17:42:12 -0800
+Received: from smtp.osdl.org ([65.172.181.25])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1GuJ8P-0000b2-IK
+	for nfs@lists.sourceforge.net; Tue, 12 Dec 2006 17:42:13 -0800
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1061212235927.21484@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,66 +32,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Dear NFS gurus :-),
+On Wed, 13 Dec 2006 10:59:27 +1100
+NeilBrown <neilb@suse.de> wrote:
 
-Problem:
-FC4 box as client to a SCO 5 server stops copying after a few 10 KBs, worked on 
-same hardware with RH9 as client, and currently still works for a mdk10 client.
+> From: Chuck Lever <chuck.lever@oracle.com>
+> The only reason svcsock.c looks at a sockaddr's port is to check whether
+> the remote peer is connecting from a privileged port.  Refactor this check
+> to hide processing that is specific to address format.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./net/sunrpc/svcsock.c |   20 +++++++++++++++++---
+>  1 file changed, 17 insertions(+), 3 deletions(-)
+> 
+> diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+> --- .prev/net/sunrpc/svcsock.c	2006-12-13 10:32:15.000000000 +1100
+> +++ ./net/sunrpc/svcsock.c	2006-12-13 10:32:17.000000000 +1100
+> @@ -926,6 +926,20 @@ svc_tcp_data_ready(struct sock *sk, int 
+>  		wake_up_interruptible(sk->sk_sleep);
+>  }
+>  
+> +static inline int svc_port_is_privileged(struct sockaddr *sin)
+> +{
+> +	switch (sin->sa_family) {
+> +	case AF_INET:
+> +		return ntohs(((struct sockaddr_in *)sin)->sin_port) < 1024;
+> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+> +	case AF_INET6:
+> +		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port) < 1024;
+> +#endif
+> +	default:
+> +		return 0;
+> +	}
+> +}
 
-I would be grateful for a hint or better a way to fix it, as I have no idea of 
-what else could be wrong and where/how to investigate it further.
+I'm a bit surprised to see this test implemented in sunrpc - it's the sort
+of thing which core networking should implement?
 
-Longer description:
-I ran into the following problem, after upgrading from RH9 to FC4 (and also 
-another FC6 box has the same "behaviour") and completely ran out of ideas.
-
-Setup:
-FC4/FC6 boxes as clients connecting to an SCO nfs server, small LAN, all class A 
-IPs.
-
-Client can mount the exports from the SCO server, but after a few 10KB of data 
-the speed drops near or to zero and it gets stuck and still seems to copy a few 
-bytes every 30 secs or minute.
-
-Findings so far:
-mdk10 laptop as a client can mount the SCO dirs and copies full speed.
-
-It used to work with the exact same hardware but RH9 instead of FC4/FC6.
-
-Looks like a buffer gets filled and then it gets stuck.
-
-nfsd on the SCO don't die away.
-
-No errors on SCO portmap (-v -d) (additionally it worked before, and serves the 
-mdk10 box, without touching the settings on the SCO server)
-
-setting the debugging output on FC4 to 32565 with echo into the according 
-/proc/... vars reveals no obvious error message.
-
-No errors with nfsstat neither on SCO nor FC4.
-
-Network is at good health.
-
-It works the other way round (SCO as client mounting from FC4 box)
-
-Disabled (on FC4) firewall and selinux. No such things on the SCO box.
-
-Seem to be ok in principal because it mounts and copies fine up to the stop 
-after a few ten KBs.
-
-Tried different kernels on the FC4 box (all plain vanilla kernels offered via 
-official update path)
-
-Tried many different options on the mount command: vers=2, nolock different 
-package sizes, forcing tcp etc.: no effect
-
-
-
-Thanks,
-
-         Georg
-
-P.S. More details from the FC4 (client) box available (logfiles, etc).
+And should that "1024" be PROT_SOCK?
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
