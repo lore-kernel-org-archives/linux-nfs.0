@@ -1,25 +1,28 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/10] lockd: add new export operation for
-	nfsv4/lockd locking
-Date: Thu, 14 Dec 2006 18:04:42 -0500
-Message-ID: <20061214230442.GB5147@fieldses.org>
-References: <11653832602203-git-send-email-bfields@fieldses.org>
-	<8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
+From: "Christian G. Warden" <cwarden@xerus.org>
+Subject: Re: nfs3/krb5 mounts fail
+Date: Thu, 14 Dec 2006 15:04:47 -0800
+Message-ID: <20061214230447.GI21890@xerus.org>
+References: <20061211185547.GD25219@xerus.org>
+	<4d569c330612120920g3d36cfe6j8baaf3054fec6ac3@mail.gmail.com>
+	<20061212233813.GD21890@xerus.org>
+	<4d569c330612121807x6a37db7av427cec506dd0b15b@mail.gmail.com>
+	<4d569c330612121817u715a0ad2g10b2f7a46a4a26fe@mail.gmail.com>
+	<20061213043848.GA23539@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
+Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Guzd8-00017v-AU
-	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 15:04:46 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1GuzdS-0001DC-F5
+	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 15:05:06 -0800
+Received: from sage.xerus.org ([64.74.153.194] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Guzd9-0003V0-HR
-	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 15:04:47 -0800
-To: linux-fsdevel@vger.kernel.org
-In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
+	(Exim 4.44) id 1GuzdR-00086e-L1
+	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 15:05:07 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20061213043848.GA23539@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,39 +35,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-By the way, one other issue I think we'll need to resolve:
+On Tue, Dec 12, 2006 at 11:38:49PM -0500, J. Bruce Fields wrote:
+> On Tue, Dec 12, 2006 at 09:17:43PM -0500, Kevin Coffman wrote:
+> > I believe this looks exactly like the problem discussed here:
+> > http://marc.theaimsgroup.com/?l=linux-nfs&m=116225377701186&w=2
+> > 
+> > I don't recall coming up with a solution.  The theory was possibly a
+> > memory leak.
+> 
+> I don't know.
+> 
+> > Bruce, could this be related to the leaks recently discovered and plugged?
+> 
+> There'd be no harm in trying a kernel with those bugs fixed:
+> 
+> http://www.citi.umich.edu/projects/nfsv4/linux/kernel-patches/2.6.19-rc6-1/linux-2.6.19-rc6-CITI_NFS4_ALL-1.diff
+> 
+> But I don't think any of those bugs would explain this.
 
-On Wed, Dec 06, 2006 at 12:34:11AM -0500, J. Bruce Fields wrote:
-> +/**
-> + * vfs_cancel_lock - file byte range unblock lock
-> + * @filp: The file to apply the unblock to
-> + * @fl: The lock to be unblocked
-> + *
-> + * FL_CANCELED is used to cancel blocked requests
-> + */
-> +int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
-> +{
-> +	int status;
-> +	struct super_block *sb;
-> +
-> +	fl->fl_flags |= FL_CANCEL;
-> +	sb = filp->f_dentry->d_inode->i_sb;
-> +	if (sb->s_export_op && sb->s_export_op->lock)
-> +		status = sb->s_export_op->lock(filp, F_SETLK, fl);
-> +	else
-> +		status = posix_unblock_lock(filp, fl);
-> +	fl->fl_flags &= ~FL_CANCEL;
-> +	return status;
-> +}
+FWIW, I upgraded the server to 2.6.18 yesterday, and have been running
+for 29 hours without a problem.  I'll keep my fingers crossed.
 
-So we're passing cancel requests to the filesystem by setting an
-FL_CANCEL flag in fl_flags and then calling the lock operation.  I think
-Trond has said he'd rather keep fl_flags for permanent characteristics
-of the lock in question, rather than as a channel for passing arguments
-to lock operations.  Also, the GFS patch isn't checking FL_CANCEL, so
-that's a bug.
-
---b.
+Christian
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
