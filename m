@@ -1,24 +1,26 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: Re: nhfsstone license
-Date: Thu, 14 Dec 2006 03:12:33 +0100
-Message-ID: <20061214021233.GA17872@uio.no>
-References: <20061120215305.GA11924@uio.no>
-	<20061120222034.GD12285@fieldses.org>
+From: Ian Kent <raven@themaw.net>
+Subject: [PATCH] nfs-utils - mtab locking needed on add as well as
+	update
+Date: Thu, 14 Dec 2006 20:34:52 +0900
+Message-ID: <1166096092.3324.8.camel@raven.themaw.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, 398058@bugs.debian.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gug5W-0003S4-Az
-	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 18:12:46 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gug5W-0004Kd-G4
-	for nfs@lists.sourceforge.net; Wed, 13 Dec 2006 18:12:47 -0800
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20061120222034.GD12285@fieldses.org>
+	id 1GuorW-0006ml-8m
+	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 03:34:54 -0800
+Received: from out4.smtp.messagingengine.com ([66.111.4.28])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GuorX-0006WV-IT
+	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 03:34:55 -0800
+Received: from out1.internal (unknown [10.202.2.149])
+	by out1.messagingengine.com (Postfix) with ESMTP id BFB2C51334
+	for <nfs@lists.sourceforge.net>; Thu, 14 Dec 2006 06:34:54 -0500 (EST)
+Received: from [10.49.97.36] (203-59-152-254.dyn.iinet.net.au [203.59.152.254])
+	by mail.messagingengine.com (Postfix) with ESMTP id AC7181C7D0
+	for <nfs@lists.sourceforge.net>; Thu, 14 Dec 2006 06:34:53 -0500 (EST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +33,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Nov 20, 2006 at 05:20:34PM -0500, J. Bruce Fields wrote:
-> No modification required if we remove it from upstream too.  Do people
-> use it?
 
-It seems like nobody does, judging from the response. Is there any chance of
-a relatively quick 1.0.11 without nhfsstone? We have frozen in Debian at the
-moment, but fixing such a license bug would probably be allowed past the
-freeze.
+Hi all,
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+I noticed some mtab corruption the other day when doing some autofs
+testing but thought nothing of it.
+
+When investigating another issue I came across utils/mount.c:add_mtab
+which looks like it adds an entry to /etc/mtab without performing
+correct locking. Perhaps this is not needed when adding entries but I
+think it is.
+
+Comments please?
+
+---
+--- nfs-utils-1.0.9/utils/mount/mount.c.mtab-locking	2006-12-14 20:11:18.000000000 +0900
++++ nfs-utils-1.0.9/utils/mount/mount.c	2006-12-14 20:11:35.000000000 +0900
+@@ -149,11 +149,7 @@
+ 	ment.mnt_freq = 0;
+ 	ment.mnt_passno= 0;
+ 
+-	if ((fd = open(MOUNTED"~", O_RDWR|O_CREAT|O_EXCL, 0600)) == -1)	{
+-		fprintf(stderr, "Can't get "MOUNTED"~ lock file");
+-		return 1;
+-	}
+-        close(fd);
++	lock_mtab();
+ 
+         if ((mtab = setmntent(MOUNTED, "a+")) == NULL) {
+ 		fprintf(stderr, "Can't open " MOUNTED);
+@@ -161,21 +157,22 @@
+ 	}
+ 
+         if (addmntent(mtab, &ment) == 1) {
++		endmntent(mtab);
++		unlock_mtab();
+ 		fprintf(stderr, "Can't write mount entry");
+ 		return 1;
+ 	}
+ 
+         if (fchmod(fileno(mtab), 0644) == -1) {
++		endmntent(mtab);
++		unlock_mtab();
+ 		fprintf(stderr, "Can't set perms on " MOUNTED);
+ 		return 1;
+ 	}
+ 
+ 	endmntent(mtab);
+ 
+-	if (unlink(MOUNTED"~") == -1) {
+-		fprintf(stderr, "Can't remove "MOUNTED"~");
+-		return 1;
+-	}
++	unlock_mtab();
+ 
+ 	return 0;
+ }
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
