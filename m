@@ -1,25 +1,25 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: asynchronous locks for cluster exports
-Date: Thu, 14 Dec 2006 17:51:27 -0500
-Message-ID: <20061214225127.GA5147@fieldses.org>
+Subject: Re: [PATCH 1/10] lockd: add new export operation for
+	nfsv4/lockd locking
+Date: Thu, 14 Dec 2006 18:04:42 -0500
+Message-ID: <20061214230442.GB5147@fieldses.org>
 References: <11653832602203-git-send-email-bfields@fieldses.org>
-	<20061207165108.GA21009@infradead.org>
+	<8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Marc Eshel <eshel@almaden.ibm.com>
+Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GuzQP-0008IN-1v
-	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 14:51:37 -0800
+	id 1Guzd8-00017v-AU
+	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 15:04:46 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GuzQQ-0004MJ-91
-	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 14:51:38 -0800
-To: Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20061207165108.GA21009@infradead.org>
+	(Exim 4.44) id 1Guzd9-0003V0-HR
+	for nfs@lists.sourceforge.net; Thu, 14 Dec 2006 15:04:47 -0800
+To: linux-fsdevel@vger.kernel.org
+In-Reply-To: <8eb625184e6025f7f3d081dfe0a805abdd62a068.1165380892.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,42 +32,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Dec 07, 2006 at 04:51:08PM +0000, Christoph Hellwig wrote:
-> On Wed, Dec 06, 2006 at 12:34:10AM -0500, J. Bruce Fields wrote:
-> > We'd like an asynchronous posix locking interface so that we can provide NFS
-> > 	- We added a new ->lock() export operation, figuring this was a feature
-> > 	  that only lockd and nfsd care about for now, and that we'd rather not
-> > 	  muck about with common locking code.  But the export operation is
-> > 	  pretty much identical to the file ->lock() operation; would it make
-> > 	  more sense to use that?
-> 
-> This definitly needs to be merged back into the ->lock file operation
+By the way, one other issue I think we'll need to resolve:
 
-So the interesting question is whether we can merge the semantics in a
-reasonable way.  The export operation implemented by the current version
-of these patches returns more or less immediately with success, -EAGAIN,
-or -EINPROGRESS; in the latter case the filesystem later calls fl_notify
-to communicate the results.  The existing file lock operation normally
-blocks until the lock is actually granted.
+On Wed, Dec 06, 2006 at 12:34:11AM -0500, J. Bruce Fields wrote:
+> +/**
+> + * vfs_cancel_lock - file byte range unblock lock
+> + * @filp: The file to apply the unblock to
+> + * @fl: The lock to be unblocked
+> + *
+> + * FL_CANCELED is used to cancel blocked requests
+> + */
+> +int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
+> +{
+> +	int status;
+> +	struct super_block *sb;
+> +
+> +	fl->fl_flags |= FL_CANCEL;
+> +	sb = filp->f_dentry->d_inode->i_sb;
+> +	if (sb->s_export_op && sb->s_export_op->lock)
+> +		status = sb->s_export_op->lock(filp, F_SETLK, fl);
+> +	else
+> +		status = posix_unblock_lock(filp, fl);
+> +	fl->fl_flags &= ~FL_CANCEL;
+> +	return status;
+> +}
 
-The one file lock operation could do both, and just switch between the
-two cases depending on whether fl_notify is defined.  Would the
-semantics be clear enough?
-
-I find the existing use of ->lock() a little odd as it is; stuff like this,
-from fcntl_getlk():
-
-	if (filp->f_op && filp->f_op->lock) {
-		error = filp->f_op->lock(filp, F_GETLK, &file_lock);
-		if (file_lock.fl_ops && file_lock.fl_ops->fl_release_private)
-			file_lock.fl_ops->fl_release_private(&file_lock);
-		if (error < 0)
-			goto out;
-		else
-			fl = (file_lock.fl_type == F_UNLCK ? NULL : &file_lock);
-	} else {
-		fl = (posix_test_lock(filp, &file_lock, &cfl) ? &cfl : NULL);
-	}
+So we're passing cancel requests to the filesystem by setting an
+FL_CANCEL flag in fl_flags and then calling the lock operation.  I think
+Trond has said he'd rather keep fl_flags for permanent characteristics
+of the lock in question, rather than as a channel for passing arguments
+to lock operations.  Also, the GFS patch isn't checking FL_CANCEL, so
+that's a bug.
 
 --b.
 
