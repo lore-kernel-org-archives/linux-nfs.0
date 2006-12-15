@@ -1,26 +1,26 @@
-From: Jesper Juhl <jesper.juhl@gmail.com>
-Subject: [PATCH] VFS: turn off FL_SLEEP when calling do_vfs_lock()
-	just in case and get rid of "VFS is out of sync with lock
-	manager" messages
-Date: Fri, 15 Dec 2006 14:50:52 +0100
-Message-ID: <200612151450.53029.jesper.juhl@gmail.com>
+From: Alan Feltz <alanf@quasar.phsx.ku.edu>
+Subject: nfs-utils-1.0.10: Incorrect macro call argument in nfsd.c
+Date: Fri, 15 Dec 2006 10:39:50 -0600
+Message-ID: <4582cfd6.2gzodu+zmJqH3EJD%alanf@quasar.phsx.ku.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
-	Jesper Juhl <jesper.juhl@gmail.com>, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GvDSv-0002pH-NR
-	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 05:51:09 -0800
-Received: from ug-out-1314.google.com ([66.249.92.171])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GvDSw-0004A5-I2
-	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 05:51:11 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so826085ugc
-	for <nfs@lists.sourceforge.net>; Fri, 15 Dec 2006 05:51:07 -0800 (PST)
-To: linux-kernel@vger.kernel.org
+	id 1GvG6f-0004es-HW
+	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 08:40:21 -0800
+Received: from quasar.phsx.ku.edu ([129.237.97.163])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GvG6e-0006wL-Q5
+	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 08:40:23 -0800
+Received: from quasar.phsx.ku.edu (localhost [127.0.0.1])
+	by quasar.phsx.ku.edu (8.13.1/8.13.1) with ESMTP id kBFGdoUT019473
+	for <nfs@lists.sourceforge.net>; Fri, 15 Dec 2006 10:39:50 -0600
+Received: (from alanf@localhost)
+	by quasar.phsx.ku.edu (8.13.1/8.13.1/Submit) id kBFGdoO3019472
+	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 10:39:50 -0600
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,54 +34,26 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Convert "VFS is out of sync with lock manager!" printk() in
-do_vfs_lock() to dprintk() since the message is useless in normal use
-but could possibly be useful as a debugging aid.
-Also turn off FL_SLEEP when calling do_vfs_lock() just in case, after
-getting -EINTR or -ERESTARTSYS.
+Hello,
 
-Patch has been tested on a production webserver and works just fine.
+In one of the sanity checks in nfsd.c, the macro  NFSCTL_TCPISSET  is
+being called with an incorrect argument.  The current argument is
+versbits .  It should be protobits .
+
+Patch is below.
 
 
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Jesper Juhl <jesper.juhl@gmail.com>
----
-
- fs/nfs/file.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 0dd6be3..4cf4166 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -434,8 +434,8 @@ static int do_vfs_lock(struct file *file
- 			BUG();
- 	}
- 	if (res < 0)
--		printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n",
--				__FUNCTION__);
-+		dprintk("%s: VFS is out of sync with lock manager (res = %d)!\n",
-+				__FUNCTION__, res);
- 	return res;
- }
- 
-@@ -485,10 +485,13 @@ static int do_setlk(struct file *filp, i
- 		 * we clean up any state on the server. We therefore
- 		 * record the lock call as having succeeded in order to
- 		 * ensure that locks_remove_posix() cleans it out when
--		 * the process exits.
-+		 * the process exits. Make sure not to sleep if
-+		 * someone else holds the lock.
- 		 */
--		if (status == -EINTR || status == -ERESTARTSYS)
-+		if (status == -EINTR || status == -ERESTARTSYS) {
-+			fl->fl_flags &= ~FL_SLEEP;
- 			do_vfs_lock(filp, fl);
-+		}
- 	} else
- 		status = do_vfs_lock(filp, fl);
- 	unlock_kernel();
-
+--- nfs-utils-1.0.10/utils/nfsd/nfsd.c.orig     2006-12-14 21:56:48.000000000 -0600
++++ nfs-utils-1.0.10/utils/nfsd/nfsd.c  2006-12-14 21:57:56.000000000 -0600
+@@ -118,7 +118,7 @@ main(int argc, char **argv)
+                fprintf(stderr, "no version specified\n");
+                exit(1);
+        }
+-       if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(versbits)) {
++       if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
+                fprintf(stderr, "version 4 requires the TCP protocol\n");
+                exit(1);
+        }
 
 
 -------------------------------------------------------------------------
