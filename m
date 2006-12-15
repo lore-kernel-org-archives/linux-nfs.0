@@ -1,66 +1,41 @@
-From: Alan Feltz <alanf@quasar.phsx.ku.edu>
-Subject: nfs-utils-1.0.10: Incorrect macro call argument in nfsd.c
-Date: Fri, 15 Dec 2006 10:39:50 -0600
-Message-ID: <4582cfd6.2gzodu+zmJqH3EJD%alanf@quasar.phsx.ku.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: asynchronous locks for cluster exports
+Date: Fri, 15 Dec 2006 14:51:51 -0500
+Message-ID: <20061215195151.GH30858@fieldses.org>
+References: <11653832602203-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GvG6f-0004es-HW
-	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 08:40:21 -0800
-Received: from quasar.phsx.ku.edu ([129.237.97.163])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GvG6e-0006wL-Q5
-	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 08:40:23 -0800
-Received: from quasar.phsx.ku.edu (localhost [127.0.0.1])
-	by quasar.phsx.ku.edu (8.13.1/8.13.1) with ESMTP id kBFGdoUT019473
-	for <nfs@lists.sourceforge.net>; Fri, 15 Dec 2006 10:39:50 -0600
-Received: (from alanf@localhost)
-	by quasar.phsx.ku.edu (8.13.1/8.13.1/Submit) id kBFGdoO3019472
-	for nfs@lists.sourceforge.net; Fri, 15 Dec 2006 10:39:50 -0600
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: linux-fsdevel@vger.kernel.org
+In-Reply-To: <11653832602203-git-send-email-bfields@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
+On Wed, Dec 06, 2006 at 12:34:10AM -0500, J. Bruce Fields wrote:
+> We'd like an asynchronous posix locking interface so that we can provide NFS
+> clients with cluster-coherent locking without blocking lockd while the
+> filesystem goes off and talks to other nodes.
+> 
+> So, here's one attempt.  It also includes an draft implementation of the
+> filesystem side for GFS2, which may well be wrong--it's not even tested
+> yet--but hopefully gives some idea what would be necessary.
 
-Hello,
+By the way, I'm keeping updated versions of this patch series in the
+server-cluster-locking-api branch of the repository at
+git://linux-nfs.org/~bfields/linux.git.
 
-In one of the sanity checks in nfsd.c, the macro  NFSCTL_TCPISSET  is
-being called with an incorrect argument.  The current argument is
-versbits .  It should be protobits .
+So if you already have a git tree sitting around (cloned with something
+like "git clone
+git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git")
 
-Patch is below.
+They you should be able to get this with
 
+	git fetch git://linux-nfs.org/~bfields/linux.git +server-cluster-locking-api:server-cluster-locking-api
+	git checkout server-cluster-locking-api
 
---- nfs-utils-1.0.10/utils/nfsd/nfsd.c.orig     2006-12-14 21:56:48.000000000 -0600
-+++ nfs-utils-1.0.10/utils/nfsd/nfsd.c  2006-12-14 21:57:56.000000000 -0600
-@@ -118,7 +118,7 @@ main(int argc, char **argv)
-                fprintf(stderr, "no version specified\n");
-                exit(1);
-        }
--       if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(versbits)) {
-+       if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
-                fprintf(stderr, "version 4 requires the TCP protocol\n");
-                exit(1);
-        }
+Alternatively you can browse the patches without git from
 
+	http://linux-nfs.org/cgi-bin/gitweb.cgi?p=bfields-2.6.git;a=shortlog;h=server-cluster-locking-api
 
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--b.
