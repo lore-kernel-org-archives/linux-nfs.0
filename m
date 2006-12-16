@@ -1,21 +1,25 @@
-From: devzero@web.de
+From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
 Subject: Re:
  =?iso-8859-15?q?kernel+userspace_based_nfsd_running_in_para?=
  =?iso-8859-15?q?llel__on_linux=3F?=
-Date: Sat, 16 Dec 2006 19:07:54 +0100
-Message-ID: <1499275894@web.de>
+Date: Sat, 16 Dec 2006 22:01:43 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0612162156180.30063@maggie.lkpg.cendio.se>
+References: <1499275894@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
+Content-Type: MULTIPART/MIXED;
+	BOUNDARY="789237761-2037102972-1166302903=:30063"
+Cc: Bernd Schubert <bernd-schubert@gmx.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gvdx5-0004UF-2c
-	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 10:08:03 -0800
-Received: from fmmailgate09.web.de ([217.72.192.184])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gvdx2-0005Me-4U
-	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 10:08:01 -0800
-To: Bernd Schubert <bernd-schubert@gmx.de>, nfs@lists.sourceforge.net
+	id 1GvgfH-0005mT-Gj
+	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 13:01:51 -0800
+Received: from mail.cendio.se ([193.12.253.69])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GvgfH-0003OF-Lv
+	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 13:01:53 -0800
+To: devzero@web.de
+In-Reply-To: <1499275894@web.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,72 +32,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Bernd, =
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
+--789237761-2037102972-1166302903=:30063
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-> we are are already doing this for a long time.
+On Sat, 16 Dec 2006, devzero@web.de wrote:
 
-any caveats with this? just tune one of both to use different port ?
+> > Hmm, I thing this is presently not possible. I might be wrong, but I th=
+ink=20
+> > neither knfsd nor any userspace nfs daemon presently supports binding t=
+o=20
+> > selected interfaces. Thinks they alsways bind to all interfaces.
+>=20
+> i wonder very often, why there are so many applications out there which=
+=20
+> actually _DON`T_ support this. if you are a security aware person, this=
+=20
 
-> Hmm, I thing this is presently not possible. I might be wrong, but I thin=
-k =
+Actually, unfs3 does support this. Just use the -l argument.=20
 
-> neither knfsd nor any userspace nfs daemon presently supports binding to =
-
-> selected interfaces. Thinks they alsways bind to all interfaces.
-
-i wonder very often, why there are so many applications out there which act=
-ually _DON`T_  support this. if you are a security aware person, this is a =
-very nice feature to be able to make your box more secure, without any fire=
-walling at all. an interface which isn`t actually listening is more secure =
-than one being firewalled, because you could have misconfigured your firewa=
-ll or it could be down by accident. such feature gives so much greater flex=
-ibility - i wished i would be able to tell "-bind 1.2.3.4:1234" instead of =
-just "-port 1234" to every type of application opening a listening socket.
-
-> We doing it by using different ports for the daemons, knfsd is running as =
-
-> usual on 2049 and unfsd (unfs3) is running on another port.  One also nee=
-ds =
-
-> to tell one of the daemon not to register to the portmapper, unfs3 also =
-
-> supports that.
-
-ah, thanks - this looks like one of those "caveats". btw - what about using=
- userspace nfsd via xinetd? xinetd supports binding to dedicated interfaces.
-
-> > if there isn&#180;t a killer argument against this (does not work by de=
-sign
-> > because...), i would like to try to elaborate to make this work. if this
-> > fails because there is no way to specify a dedicated interface to liste=
-n on
-> > - maybe this could be fixed with some few modifications to the code...
-> =
-
-> Any argument against simply using different ports?
-
-ease of use for the clients? (because it&#180;s easier to tell them to conn=
-ect to a different ip than to a different port) - what if the client doesn`=
-t support connecting to different port (ok, don`t know details yet about nf=
-s clients and specifying ports - but i know many apps which are not able to=
- use another port than the standard/default one.
-
-thanks!
-
-roland
-
-_______________________________________________________________________
-Viren-Scan f=FCr Ihren PC! Jetzt f=FCr jeden. Sofort, online und kostenlos.
-Gleich testen! http://www.pc-sicherheit.web.de/freescan/?mc=3D022222
-
+Regards,=20
+---
+Peter =C3=85strand=09=09ThinLinc Chief Developer
+Cendio AB=09=09http://www.cendio.se
+Teknikringen 3
+583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
+--789237761-2037102972-1166302903=:30063
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--789237761-2037102972-1166302903=:30063
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--789237761-2037102972-1166302903=:30063--
