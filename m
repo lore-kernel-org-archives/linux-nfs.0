@@ -1,22 +1,23 @@
-From: devzero@web.de
-Subject: Re:
- =?iso-8859-15?q?kernel+userspace_based_nfsd_running_in_para?=
- =?iso-8859-15?q?llel__on_linux=3F?=
-Date: Sat, 16 Dec 2006 22:53:58 +0100
-Message-ID: <1499583832@web.de>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: kernel+userspace based nfsd running in parallel on linux?
+Date: Sat, 16 Dec 2006 22:55:44 +0100
+Message-ID: <20061216215544.GA5968@suse.de>
+References: <1499049521@web.de> <200612161717.31090.bernd-schubert@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
-Cc: Bernd Schubert <bernd-schubert@gmx.de>, nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: devzero@web.de, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GvhTr-0002HU-78
-	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 13:54:07 -0800
-Received: from fmmailgate05.web.de ([217.72.192.243])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GvhTr-00036c-3L
-	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 13:54:08 -0800
-To: astrand@cendio.se
+	id 1GvhVX-0002OH-V0
+	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 13:55:52 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GvhVY-0000Vx-7L
+	for nfs@lists.sourceforge.net; Sat, 16 Dec 2006 13:55:53 -0800
+To: Bernd Schubert <bernd-schubert@gmx.de>
+In-Reply-To: <200612161717.31090.bernd-schubert@gmx.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,73 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-thanks - i just came across unfs3 some hours ago after searching this list =
-for a while - i didn&#180;t know that there exists a nfsv3 userspace implem=
-entation.
+On Sat, Dec 16, 2006 at 05:17:30PM +0100, Bernd Schubert wrote:
+> Hmm, I thing this is presently not possible. I might be wrong, but I think 
+> neither knfsd nor any userspace nfs daemon presently supports binding to 
+> selected interfaces. Thinks they alsways bind to all interfaces.
+> We doing it by using different ports for the daemons, knfsd is running as 
+> usual on 2049 and unfsd (unfs3) is running on another port.  One also needs 
+> to tell one of the daemon not to register to the portmapper, unfs3 also 
+> supports that.
 
-so - maybe it`s a good replacement for classic userspace nfsd and i don`t n=
-eed knfsd at all - looks like it also supports files >2gb.
+The big problem will be mountd. There's only one portmapper, and you
+can register only one mountd - and the file handles given out by unfs
+mountd don't work with the kernel nfsd and vice versa.
 
-will give it a try!
+Oh, and what about locking? :)
 
-
-
-> -----Urspr=FCngliche Nachricht-----
-> Von: Peter =C5strand <astrand@cendio.se>
-> Gesendet: 16.12.06 22:01:53
-> An: devzero@web.de
-> CC: Bernd Schubert <bernd-schubert@gmx.de>, nfs@lists.sourceforge.net
-> Betreff: Re: [NFS] kernel+userspace based nfsd running in parallel  on li=
-nux?
-
-
-> On Sat, 16 Dec 2006, devzero@web.de wrote:
-> =
-
-> > > Hmm, I thing this is presently not possible. I might be wrong, but I =
-think =
-
-> > > neither knfsd nor any userspace nfs daemon presently supports binding=
- to =
-
-> > > selected interfaces. Thinks they alsways bind to all interfaces.
-> > =
-
-> > i wonder very often, why there are so many applications out there which =
-
-> > actually _DON`T_ support this. if you are a security aware person, this =
-
-> =
-
-> Actually, unfs3 does support this. Just use the -l argument. =
-
-> =
-
-> Regards, =
-
-> ---
-> Peter =C3&#65533;strand		ThinLinc Chief Developer
-> Cendio AB		http://www.cendio.se
-> Teknikringen 3
-> 583 30 Link=C3=B6ping	Phone: +46-13-21 46 00
-> =
-
-
-
-___________________________________________________________________________=
-___
-"Ein Herz f=FCr Kinder" - Ihre Spende hilft! Aktion: www.deutschlandsegelt.=
-de
-Unser Dankesch=F6n: Ihr Name auf dem Segel der 1. deutschen America's Cup-Y=
-acht!
-
+Olaf
+-- 
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
