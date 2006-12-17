@@ -1,25 +1,25 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
-Subject: Re: kernel+userspace based nfsd running in parallel on linux?
-Date: Sun, 17 Dec 2006 11:25:45 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0612170140250.31965@maggie.lkpg.cendio.se>
-References: <1499049521@web.de> <200612161717.31090.bernd-schubert@gmx.de>
-	<20061216215544.GA5968@suse.de>
+From: Ingo Oeser <ioe-lkml@rameria.de>
+Subject: Re: [PATCH 009 of 14] knfsd: SUNRPC: teach svc_sendto() to
+	deal with IPv6 addresses
+Date: Sun, 17 Dec 2006 16:15:40 +0100
+Message-ID: <200612171615.41972.ioe-lkml@rameria.de>
+References: <20061213105528.21128.patches@notabene>
+	<1061212235922.21469@suse.de>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-632541144-1166316134=:31965"
+Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GvtDO-0005Lt-Mi
-	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 02:25:54 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GvtDM-00069U-L5
-	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 02:25:56 -0800
-Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
-	by mail.cendio.se (Postfix) with ESMTP id C63EB25DB24
-	for <nfs@lists.sourceforge.net>; Sun, 17 Dec 2006 11:25:45 +0100 (CET)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20061216215544.GA5968@suse.de>
+	id 1Gvxjy-00048J-DS
+	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 07:15:50 -0800
+Received: from smtprelay01.ispgateway.de ([80.67.18.13])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gvxjz-00037d-E1
+	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 07:15:51 -0800
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <1061212235922.21469@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,61 +32,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Wednesday, 13. December 2006 00:59, NeilBrown wrote:
+> diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
+> --- .prev/net/sunrpc/svcsock.c	2006-12-13 10:31:39.000000000 +1100
+> +++ ./net/sunrpc/svcsock.c	2006-12-13 10:32:15.000000000 +1100
+> @@ -438,6 +439,47 @@ svc_wake_up(struct svc_serv *serv)
+>  	}
+>  }
+>  
+> +union svc_pktinfo_u {
+> +	struct in_pktinfo pkti;
+> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+> +	struct in6_pktinfo pkti6;
+> +#endif
+> +};
+> +
+> +static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+> +{
+> +	switch (rqstp->rq_sock->sk_sk->sk_family) {
+> +	case AF_INET:
+> +		do {
+> +			struct in_pktinfo *pki =
+> +					(struct in_pktinfo *) CMSG_DATA(cmh);
 
---789237761-632541144-1166316134=:31965
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <Pine.LNX.4.64.0612171100551.26028@maggie.lkpg.cendio.se>
+			struct in_pktinfo *pki = CMSG_DATA(cmh);
 
-On Sat, 16 Dec 2006, Olaf Kirch wrote:
+Ugly casting not needed here, since CMSG_DATA should return "void *",
+which can be casted to any pointer.
 
-> > to tell one of the daemon not to register to the portmapper, unfs3 also=
-=20
-> > supports that.
->=20
-> The big problem will be mountd. There's only one portmapper, and you
-> can register only one mountd - and the file handles given out by unfs
-> mountd don't work with the kernel nfsd and vice versa.
+> +
+> +			cmh->cmsg_level = SOL_IP;
+> +			cmh->cmsg_type = IP_PKTINFO;
+> +			pki->ipi_ifindex = 0;
+> +			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
+> +			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+> +		} while (0);
+> +		break;
+> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+> +	case AF_INET6:
+> +		do {
+> +			struct in6_pktinfo *pki =
+> +					(struct in6_pktinfo *) CMSG_DATA(cmh);
+> +
 
-This is no problem, you can run both the nfs and mount service without the=
-=20
-portmapper. They can even run on the same port. So, typically you run=20
-unfs3 with:
+No casting needed, so:
 
-unfsd -n 4711 -m 4711 -p
+			struct in6_pktinfo *pki = CMSG_DATA(cmh);
 
-=2E..and then mount with:
 
-mount -t nfs -o mountvers=3D3,mountport=3D4711,nfsvers=3D3,port=3D4711,tcp =
-server:/path /local/path
+Regards
 
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-632541144-1166316134=:31965
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Ingo Oeser
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-632541144-1166316134=:31965
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-632541144-1166316134=:31965--
