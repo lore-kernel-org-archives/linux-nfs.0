@@ -1,25 +1,20 @@
-From: "Karl Grimes" <seizesboomeranging@access.unizh.ch>
-Subject: Karl
-Date: Mon, 18 Dec 2006 19:44:44 +0000 (UTC)
-Message-ID: <01c722a2$01024200$6c822ecf@seizesboomeranging>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/3] don't rely on old info in my_client
+Date: Mon, 18 Dec 2006 15:43:16 -0500
+Message-ID: <4586FD64.5030205@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GwHp8-0003cs-VW
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 04:42:31 -0800
-Received: from [200.103.147.37]
-	(helo=200-103-147-37.ctame706.dsl.brasiltelecom.net.br)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwHp8-0002mF-M2
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 04:42:32 -0800
-Received: from 130.60.127.101 (HELO idmailgate2.unizh.ch)
-	by lists.sourceforge.net with esmtp (78*)3C,6+ <)<'AC)
-	id 1;DJ,6-09A.+2-28
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:42:40 +0180
-To: <nfs@lists.sourceforge.net>
-Date: Mon, 18 Dec 2006 12:42:40 +0180
+	id 1GwPKb-0006A8-47
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:43:29 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwPKY-00022s-Tm
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:43:27 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,34 +27,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The hottest pick this year!	
-	
-It just doesn't get any better than this.  Booming sector, tightly held, with 	
-an incredible PR blitz starting up.  Not only that, but the company is set to 	
-release some smashing news.	
-	
-Physicians Adult Daycare, Inc.	
-	
-Symbol: PHYA	
-Current Price:                         $1.90 (+18% Friday!)	
-Short-Term Projected Price:  $4.25	
-Long-Term Target Price:       $10.20	
-	
-As the population ages, the economic value in the US market for adult 	
-daycare is projected to grow nearly 600%.  Globally the potential market 	
-is a staggering $45 billion.	
-	
-PHYA is already hitting it big in the sector.  With solid acquisitions, 	
-expert management, and a red hot sector, PHYA is looking at record 	
-earnings.	
-	
-Check your favorite news source.  Check your Level 2 market data.  You 	
-will see that this one is set for an explosion.	
-	
-With the huge publicity that is on the way THIS is where you want to be.  	
-Make sure you get in early on December, 18th.  Win big with PHYA!	
+Here's a new set of patches to fix up "showmount -a", based on the approach
+suggested by Neil. This first patch is fairly simple. It just stops
+the current caching of my_client.
 
+For an explanation, consider this situation with the current code:
 
+1) Client mounts an NFS export from server that is restricted to a particular
+hostname or netgroup.
+
+2) DNS or netgroup changes so that the client would be denied.
+
+3) Client attempts mount again. Mount succeeds, even though it shouldn't due
+to the fact that mountd relies on cached info in my_client.
+
+This situation can occur as long as no other client attempts a mount between
+1 and 3 above. The patch below removes this caching, and causes a new
+invocation of client_compose for each pass through auth_authenticate:
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+
+--- nfs-utils-1.0.10/utils/mountd/auth.c.nocache
++++ nfs-utils-1.0.10/utils/mountd/auth.c
+@@ -76,21 +76,16 @@ auth_authenticate_internal(char *what, s
+  	if (new_cache) {
+  		int i;
+  		/* return static nfs_export with details filled in */
+-		if (my_client.m_naddr != 1 ||
+-		    my_client.m_addrlist[0].s_addr != caller->sin_addr.s_addr) {
+-			/* different client to last time, so do a lookup */
+-			char *n;
+-			my_client.m_naddr = 0;
+-			my_client.m_addrlist[0] = caller->sin_addr;
+-			n = client_compose(caller->sin_addr);
+-			*error = unknown_host;
+-			if (!n)
+-				return NULL;
+-			strcpy(my_client.m_hostname, *n?n:"DEFAULT");
+-			free(n);
+-			my_client.m_naddr = 1;
+-		}
+-
++		char *n;
++		my_client.m_naddr = 0;
++		my_client.m_addrlist[0] = caller->sin_addr;
++		n = client_compose(caller->sin_addr);
++		*error = unknown_host;
++		if (!n)
++			return NULL;
++		strcpy(my_client.m_hostname, *n?n:"DEFAULT");
++		free(n);
++		my_client.m_naddr = 1;
+  		my_exp.m_client = &my_client;
+
+  		exp = NULL;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
