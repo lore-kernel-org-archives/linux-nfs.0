@@ -1,25 +1,25 @@
-From: Ingo Oeser <ioe-lkml@rameria.de>
-Subject: Re: [PATCH 009 of 14] knfsd: SUNRPC: teach svc_sendto() to
-	deal with IPv6 addresses
-Date: Sun, 17 Dec 2006 16:15:40 +0100
-Message-ID: <200612171615.41972.ioe-lkml@rameria.de>
-References: <20061213105528.21128.patches@notabene>
-	<1061212235922.21469@suse.de>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: kernel+userspace based nfsd running in parallel on linux?
+Date: Mon, 18 Dec 2006 08:21:30 +0100
+Message-ID: <20061218072130.GA11302@suse.de>
+References: <1499049521@web.de> <200612161717.31090.bernd-schubert@gmx.de>
+	<20061216215544.GA5968@suse.de>
+	<Pine.LNX.4.64.0612170140250.31965@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gvxjy-00048J-DS
-	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 07:15:50 -0800
-Received: from smtprelay01.ispgateway.de ([80.67.18.13])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gvxjz-00037d-E1
-	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 07:15:51 -0800
-To: NeilBrown <neilb@suse.de>
-In-Reply-To: <1061212235922.21469@suse.de>
+	id 1GwCoa-0005do-UL
+	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 23:21:37 -0800
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GwCoZ-0005ZH-V9
+	for nfs@lists.sourceforge.net; Sun, 17 Dec 2006 23:21:38 -0800
+To: Peter =?iso-8859-1?Q?=C5strand?= <astrand@cendio.se>
+In-Reply-To: <Pine.LNX.4.64.0612170140250.31965@maggie.lkpg.cendio.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,63 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday, 13. December 2006 00:59, NeilBrown wrote:
-> diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
-> --- .prev/net/sunrpc/svcsock.c	2006-12-13 10:31:39.000000000 +1100
-> +++ ./net/sunrpc/svcsock.c	2006-12-13 10:32:15.000000000 +1100
-> @@ -438,6 +439,47 @@ svc_wake_up(struct svc_serv *serv)
->  	}
->  }
->  
-> +union svc_pktinfo_u {
-> +	struct in_pktinfo pkti;
-> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> +	struct in6_pktinfo pkti6;
-> +#endif
-> +};
-> +
-> +static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
-> +{
-> +	switch (rqstp->rq_sock->sk_sk->sk_family) {
-> +	case AF_INET:
-> +		do {
-> +			struct in_pktinfo *pki =
-> +					(struct in_pktinfo *) CMSG_DATA(cmh);
+On Sun, Dec 17, 2006 at 11:25:45AM +0100, Peter =C5strand wrote:
+> This is no problem, you can run both the nfs and mount service without th=
+e =
 
-			struct in_pktinfo *pki = CMSG_DATA(cmh);
-
-Ugly casting not needed here, since CMSG_DATA should return "void *",
-which can be casted to any pointer.
-
-> +
-> +			cmh->cmsg_level = SOL_IP;
-> +			cmh->cmsg_type = IP_PKTINFO;
-> +			pki->ipi_ifindex = 0;
-> +			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
-> +			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
-> +		} while (0);
-> +		break;
-> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> +	case AF_INET6:
-> +		do {
-> +			struct in6_pktinfo *pki =
-> +					(struct in6_pktinfo *) CMSG_DATA(cmh);
-> +
-
-No casting needed, so:
-
-			struct in6_pktinfo *pki = CMSG_DATA(cmh);
+> portmapper. They can even run on the same port. So, typically you run =
 
 
-Regards
+Yeah, I know. But is that what he was asking for?
 
-Ingo Oeser
+Olaf
+-- =
+
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
