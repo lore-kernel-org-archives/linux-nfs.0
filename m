@@ -1,19 +1,20 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/3] don't rely on old info in my_client
-Date: Mon, 18 Dec 2006 15:43:16 -0500
-Message-ID: <4586FD64.5030205@redhat.com>
+Subject: [PATCH 2/3] remove extraneous mountlist_add/del calls and
+ change remaining ones to use IP addresses
+Date: Mon, 18 Dec 2006 15:43:56 -0500
+Message-ID: <4586FD8C.2050602@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GwPKb-0006A8-47
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:43:29 -0800
+	id 1GwPL8-0006Bz-Ts
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:44:02 -0800
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwPKY-00022s-Tm
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:43:27 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwPL9-0002Ct-Iv
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:44:04 -0800
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,60 +28,108 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Here's a new set of patches to fix up "showmount -a", based on the approach
-suggested by Neil. This first patch is fairly simple. It just stops
-the current caching of my_client.
+Neil suggested a patch to change the mountlist_add and mountlist_del calls to
+use IP addresses instead of the names returned by client_compose based on a
+command line option flag.
 
-For an explanation, consider this situation with the current code:
+I don't see any real reason to put client_compose strings into the rmtab, so
+this patch makes it so that it adds IP addresses instead of those strings to
+the rmtab by default.
 
-1) Client mounts an NFS export from server that is restricted to a particular
-hostname or netgroup.
+It also removes all mountlist_add calls that are being done from kernel cache
+routines. My main concern there is NFSv4. We don't seem to make any upcalls to
+mountd on NFSv4 unmounts, and I don't see a way to reliably remove NFSv4
+entries. So, I figured I'd stick with having mountlist_add only called when
+a v2 or v3 mount call is made, and mountlist_del called only on the
+corresponding unmount call.
 
-2) DNS or netgroup changes so that the client would be denied.
-
-3) Client attempts mount again. Mount succeeds, even though it shouldn't due
-to the fact that mountd relies on cached info in my_client.
-
-This situation can occur as long as no other client attempts a mount between
-1 and 3 above. The patch below removes this caching, and causes a new
-invocation of client_compose for each pass through auth_authenticate:
+Neil, I'm open to respinning this so that it gets called again from the kernel
+caching routines, but I'm not sure how to prevent the rmtab from growing w/o
+bound that way.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
---- nfs-utils-1.0.10/utils/mountd/auth.c.nocache
-+++ nfs-utils-1.0.10/utils/mountd/auth.c
-@@ -76,21 +76,16 @@ auth_authenticate_internal(char *what, s
-  	if (new_cache) {
-  		int i;
-  		/* return static nfs_export with details filled in */
--		if (my_client.m_naddr != 1 ||
--		    my_client.m_addrlist[0].s_addr != caller->sin_addr.s_addr) {
--			/* different client to last time, so do a lookup */
--			char *n;
--			my_client.m_naddr = 0;
--			my_client.m_addrlist[0] = caller->sin_addr;
--			n = client_compose(caller->sin_addr);
--			*error = unknown_host;
--			if (!n)
--				return NULL;
--			strcpy(my_client.m_hostname, *n?n:"DEFAULT");
--			free(n);
--			my_client.m_naddr = 1;
--		}
--
-+		char *n;
-+		my_client.m_naddr = 0;
-+		my_client.m_addrlist[0] = caller->sin_addr;
-+		n = client_compose(caller->sin_addr);
-+		*error = unknown_host;
-+		if (!n)
-+			return NULL;
-+		strcpy(my_client.m_hostname, *n?n:"DEFAULT");
-+		free(n);
-+		my_client.m_naddr = 1;
-  		my_exp.m_client = &my_client;
+--- nfs-utils-1.0.10/utils/mountd/cache.c.mlcleanup
++++ nfs-utils-1.0.10/utils/mountd/cache.c
+@@ -83,9 +83,6 @@ void auth_unix_ip(FILE *f)
+  		qword_print(f, *client?client:"DEFAULT");
+  	qword_eol(f);
 
-  		exp = NULL;
+-	if (client && strcmp(ipaddr, client))
+-		mountlist_add(ipaddr, *client?client:"DEFAULT");
+-
+  	if (client) free(client);
+  	
+  }
+@@ -295,7 +292,6 @@ void nfsd_export(FILE *f)
+  		qword_printint(f, found->m_export.e_anonuid);
+  		qword_printint(f, found->m_export.e_anongid);
+  		qword_printint(f, found->m_export.e_fsid);
+-		mountlist_add(dom, path);
+  	}
+  	qword_eol(f);
+   out:
+@@ -373,8 +369,6 @@ void cache_export_ent(char *domain, stru
+  	qword_eol(f);
+
+  	fclose(f);
+-
+-	mountlist_add(domain, exp->e_path);
+  }
+
+  void cache_export(nfs_export *exp)
+@@ -393,9 +387,6 @@ void cache_export(nfs_export *exp)
+  	
+  	fclose(f);
+
+-	if (strcmp(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname))
+-		mountlist_add(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname);
+-
+  	cache_export_ent(exp->m_client->m_hostname, &exp->m_export);
+  }
+
+--- nfs-utils-1.0.10/utils/mountd/mountd.c.mlcleanup
++++ nfs-utils-1.0.10/utils/mountd/mountd.c
+@@ -225,14 +225,11 @@ mount_umnt_1_svc(struct svc_req *rqstp,
+  	if (!(exp = auth_authenticate("unmount", sin, p))) {
+  		return 1;
+  	}
+-	if (new_cache) {
+-		if (strcmp(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname))
+-			mountlist_del(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname);
+-		mountlist_del(exp->m_client->m_hostname, p);
+-	} else {
+-		mountlist_del(exp->m_client->m_hostname, p);
++
++	if (!new_cache)
+  		export_reset (exp);
+-	}
++
++	mountlist_del(inet_ntoa(sin->sin_addr), p);
+  	return 1;
+  }
+
+@@ -421,8 +418,10 @@ get_rootfh(struct svc_req *rqstp, dirpat
+  		fh = cache_get_filehandle(exp, v3?64:32, p);
+  		if (fh == NULL)
+  			*error = NFSERR_ACCES;
+-		else
++		else {
+  			*error = NFS_OK;
++			mountlist_add(inet_ntoa(sin->sin_addr), p);
++		}
+  		return fh;
+  	} else {
+  		struct nfs_fh_len  *fh;
+@@ -443,7 +442,7 @@ get_rootfh(struct svc_req *rqstp, dirpat
+  						stb.st_dev, stb.st_ino);
+  		}
+  		if (fh != NULL) {
+-			mountlist_add(exp->m_client->m_hostname, p);
++			mountlist_add(inet_ntoa(sin->sin_addr), p);
+  			*error = NFS_OK;
+  			export_reset (exp);
+  			return fh;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
