@@ -1,20 +1,20 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/3] remove extraneous mountlist_add/del calls and
- change remaining ones to use IP addresses
-Date: Mon, 18 Dec 2006 15:43:56 -0500
-Message-ID: <4586FD8C.2050602@redhat.com>
+Subject: [PATCH 3/3] add -r flag to make mountd do reverse resolve of
+ ipaddress on the fly
+Date: Mon, 18 Dec 2006 15:44:11 -0500
+Message-ID: <4586FD9B.5020106@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de
+Cc: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GwPL8-0006Bz-Ts
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:44:02 -0800
+	id 1GwPLN-0006G4-7N
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:44:17 -0800
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwPL9-0002Ct-Iv
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:44:04 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GwPLO-0002Mh-FM
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 12:44:18 -0800
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,108 +28,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil suggested a patch to change the mountlist_add and mountlist_del calls to
-use IP addresses instead of the names returned by client_compose based on a
-command line option flag.
+For those that want "traditional" showmount -a behavior from their mountd
+(hostname:/path instead of ipaddr:/path). This patch adds a '-r' flag that
+does a reverse-resolve for each IP address listed in the rmtab when
+a dump operation is called.
 
-I don't see any real reason to put client_compose strings into the rmtab, so
-this patch makes it so that it adds IP addresses instead of those strings to
-the rmtab by default.
-
-It also removes all mountlist_add calls that are being done from kernel cache
-routines. My main concern there is NFSv4. We don't seem to make any upcalls to
-mountd on NFSv4 unmounts, and I don't see a way to reliably remove NFSv4
-entries. So, I figured I'd stick with having mountlist_add only called when
-a v2 or v3 mount call is made, and mountlist_del called only on the
-corresponding unmount call.
-
-Neil, I'm open to respinning this so that it gets called again from the kernel
-caching routines, but I'm not sure how to prevent the rmtab from growing w/o
-bound that way.
+Probably not a good idea for those concerned about performance, but since it's
+not the default option, I don't see it being an issue.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
---- nfs-utils-1.0.10/utils/mountd/cache.c.mlcleanup
-+++ nfs-utils-1.0.10/utils/mountd/cache.c
-@@ -83,9 +83,6 @@ void auth_unix_ip(FILE *f)
-  		qword_print(f, *client?client:"DEFAULT");
-  	qword_eol(f);
-
--	if (client && strcmp(ipaddr, client))
--		mountlist_add(ipaddr, *client?client:"DEFAULT");
--
-  	if (client) free(client);
-  	
-  }
-@@ -295,7 +292,6 @@ void nfsd_export(FILE *f)
-  		qword_printint(f, found->m_export.e_anonuid);
-  		qword_printint(f, found->m_export.e_anongid);
-  		qword_printint(f, found->m_export.e_fsid);
--		mountlist_add(dom, path);
-  	}
-  	qword_eol(f);
-   out:
-@@ -373,8 +369,6 @@ void cache_export_ent(char *domain, stru
-  	qword_eol(f);
-
-  	fclose(f);
--
--	mountlist_add(domain, exp->e_path);
-  }
-
-  void cache_export(nfs_export *exp)
-@@ -393,9 +387,6 @@ void cache_export(nfs_export *exp)
-  	
-  	fclose(f);
-
--	if (strcmp(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname))
--		mountlist_add(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname);
--
-  	cache_export_ent(exp->m_client->m_hostname, &exp->m_export);
-  }
-
---- nfs-utils-1.0.10/utils/mountd/mountd.c.mlcleanup
+--- nfs-utils-1.0.10/utils/mountd/mountd.c.revres
 +++ nfs-utils-1.0.10/utils/mountd/mountd.c
-@@ -225,14 +225,11 @@ mount_umnt_1_svc(struct svc_req *rqstp,
-  	if (!(exp = auth_authenticate("unmount", sin, p))) {
-  		return 1;
-  	}
--	if (new_cache) {
--		if (strcmp(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname))
--			mountlist_del(inet_ntoa(exp->m_client->m_addrlist[0]), exp->m_client->m_hostname);
--		mountlist_del(exp->m_client->m_hostname, p);
--	} else {
--		mountlist_del(exp->m_client->m_hostname, p);
-+
-+	if (!new_cache)
-  		export_reset (exp);
--	}
-+
-+	mountlist_del(inet_ntoa(sin->sin_addr), p);
-  	return 1;
-  }
+@@ -37,6 +37,7 @@ static void		usage(const char *, int exi
+  static exports		get_exportlist(void);
+  static struct nfs_fh_len *get_rootfh(struct svc_req *, dirpath *, mountstat3 *, int v3);
 
-@@ -421,8 +418,10 @@ get_rootfh(struct svc_req *rqstp, dirpat
-  		fh = cache_get_filehandle(exp, v3?64:32, p);
-  		if (fh == NULL)
-  			*error = NFSERR_ACCES;
--		else
-+		else {
-  			*error = NFS_OK;
-+			mountlist_add(inet_ntoa(sin->sin_addr), p);
-+		}
-  		return fh;
-  	} else {
-  		struct nfs_fh_len  *fh;
-@@ -443,7 +442,7 @@ get_rootfh(struct svc_req *rqstp, dirpat
-  						stb.st_dev, stb.st_ino);
-  		}
-  		if (fh != NULL) {
--			mountlist_add(exp->m_client->m_hostname, p);
-+			mountlist_add(inet_ntoa(sin->sin_addr), p);
-  			*error = NFS_OK;
-  			export_reset (exp);
-  			return fh;
++int reverse_resolve = 0;
+  int new_cache = 0;
+
+  /* PRC: a high-availability callout program can be specified with -H
+@@ -557,7 +558,7 @@ main(int argc, char **argv)
+
+  	/* Parse the command line options and arguments. */
+  	opterr = 0;
+-	while ((c = getopt_long(argc, argv, "o:n:Fd:f:p:P:hH:N:V:vs:t:", longopts, NULL)) != EOF)
++	while ((c = getopt_long(argc, argv, "o:n:Fd:f:p:P:hH:N:V:vrs:t:", longopts, NULL)) != EOF)
+  		switch (c) {
+  		case 'o':
+  			descriptors = atoi(optarg);
+@@ -597,6 +598,9 @@ main(int argc, char **argv)
+  		case 'n':
+  			_rpcfdtype = SOCK_DGRAM;
+  			break;
++		case 'r':
++			reverse_resolve = 1;
++			break;
+  		case 's':
+  			if ((state_dir = xstrdup(optarg)) == NULL) {
+  				fprintf(stderr, "%s: xstrdup(%s) failed!\n",
+--- nfs-utils-1.0.10/utils/mountd/rmtab.c.revres
++++ nfs-utils-1.0.10/utils/mountd/rmtab.c
+@@ -25,6 +25,8 @@
+
+  #include <limits.h> /* PATH_MAX */
+
++extern int reverse_resolve;
++
+  /* If new path is a link do not destroy it but place the
+   * file where the link points.
+   */
+@@ -185,6 +187,8 @@ mountlist_list(void)
+  	struct rmtabent		*rep;
+  	struct stat		stb;
+  	int			lockid;
++	struct in_addr		addr;
++	struct hostent		*he;
+
+  	if ((lockid = xflock(_PATH_RMTAB, "r")) < 0)
+  		return NULL;
+@@ -204,7 +208,14 @@ mountlist_list(void)
+  		setrmtabent("r");
+  		while ((rep = getrmtabent(1, NULL)) != NULL) {
+  			m = (mountlist) xmalloc(sizeof(*m));
+-			m->ml_hostname = xstrdup(rep->r_client);
++
++			if (reverse_resolve &&
++			   inet_aton((const char *) rep->r_client, &addr) &&
++			   (he = gethostbyaddr(&addr, sizeof(addr), AF_INET)))
++				m->ml_hostname = xstrdup(he->h_name);
++			else
++				m->ml_hostname = xstrdup(rep->r_client);
++
+  			m->ml_directory = xstrdup(rep->r_path);
+  			m->ml_next = mlist;
+  			mlist = m;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
