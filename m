@@ -1,26 +1,27 @@
-From: Neil Brown <neilb@suse.de>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Subject: Re: nhfsstone license
-Date: Tue, 19 Dec 2006 09:49:36 +1100
-Message-ID: <17799.6912.961640.948936@cse.unsw.edu.au>
+Date: Mon, 18 Dec 2006 23:52:02 +0100
+Message-ID: <20061218225202.GA18493@uio.no>
 References: <20061120215305.GA11924@uio.no>
 	<20061120222034.GD12285@fieldses.org>
 	<20061214021233.GA17872@uio.no>
+	<17799.6912.961640.948936@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	nfs@lists.sourceforge.net, 398058@bugs.debian.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GwRIR-0002Xw-Ti
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 14:49:24 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1GwRLK-0002sc-Fh
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 14:52:22 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GwRIS-0007Zi-6a
-	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 14:49:25 -0800
-To: "Steinar H. Gunderson" <sesse@debian.org>
-In-Reply-To: message from Steinar H. Gunderson on Thursday December 14
+	(Exim 4.44) id 1GwRLK-0008Is-OP
+	for nfs@lists.sourceforge.net; Mon, 18 Dec 2006 14:52:24 -0800
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <17799.6912.961640.948936@cse.unsw.edu.au>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,21 +34,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday December 14, sesse@debian.org wrote:
-> On Mon, Nov 20, 2006 at 05:20:34PM -0500, J. Bruce Fields wrote:
-> > No modification required if we remove it from upstream too.  Do people
-> > use it?
-> 
-> It seems like nobody does, judging from the response. Is there any chance of
-> a relatively quick 1.0.11 without nhfsstone? We have frozen in Debian at the
-> moment, but fixing such a license bug would probably be allowed past the
-> freeze.
+On Tue, Dec 19, 2006 at 09:49:36AM +1100, Neil Brown wrote:
+>> It seems like nobody does, judging from the response. Is there any chance of
+>> a relatively quick 1.0.11 without nhfsstone? We have frozen in Debian at the
+>> moment, but fixing such a license bug would probably be allowed past the
+>> freeze.
+> I've removed nhfstone from the git repository, but I'm not going to
+> roll up an 1.0.11 release just now - sorry.
+> Maybe in January.
 
-I've removed nhfstone from the git repository, but I'm not going to
-roll up an 1.0.11 release just now - sorry.
-Maybe in January.
+No hard feelings, we're just going to fix it for the next release instead, I
+guess. :-)
 
-NeilBrown
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
