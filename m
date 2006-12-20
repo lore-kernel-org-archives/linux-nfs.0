@@ -1,8 +1,11 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] add missing long option for -r in mountd
-Date: Wed, 20 Dec 2006 06:33:42 +1100
-Message-ID: <17800.16022.401754.554726@cse.unsw.edu.au>
-References: <45881A5B.7080900@redhat.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [RFC:PATCH] nfs-utils - showmount RPC timeout
+	handling	-	second attempt
+Date: Wed, 20 Dec 2006 12:59:21 +0900
+Message-ID: <1166587161.4364.5.camel@raven.themaw.net>
+References: <1166499757.3482.40.camel@raven.themaw.net>
+	<17799.25999.584498.734073@cse.unsw.edu.au>
+	<1166526978.4400.8.camel@raven.themaw.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,14 +13,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GwkiO-0006ei-EV
-	for nfs@lists.sourceforge.net; Tue, 19 Dec 2006 11:33:28 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GwkiM-0000gQ-F0
-	for nfs@lists.sourceforge.net; Tue, 19 Dec 2006 11:33:30 -0800
-To: Jeff Layton <jlayton@redhat.com>
-In-Reply-To: message from Jeff Layton on Tuesday December 19
+	id 1Gwsby-00051e-AV
+	for nfs@lists.sourceforge.net; Tue, 19 Dec 2006 19:59:22 -0800
+Received: from out4.smtp.messagingengine.com ([66.111.4.28])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gwsby-0000uK-Ft
+	for nfs@lists.sourceforge.net; Tue, 19 Dec 2006 19:59:23 -0800
+To: Neil Brown <neilb@suse.de>
+In-Reply-To: <1166526978.4400.8.camel@raven.themaw.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,34 +32,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday December 19, jlayton@redhat.com wrote:
-> I forgot a bit of code that needs to go into patch 3 that I posted yesterday.
-> This adds a long option for the -r option. I'll post manpage update patches
-> once I get them written up.
+On Tue, 2006-12-19 at 20:16 +0900, Ian Kent wrote:
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
-Thanks.
-
+> I've made the changes suggested.
 > 
-> --- nfs-utils-1.0.10/utils/mountd/mountd.c.longopt
-> +++ nfs-utils-1.0.10/utils/mountd/mountd.c
-> @@ -67,6 +67,7 @@ static struct option longopts[] =
->   	{ "ha-callout", 1, 0, 'H' },
->   	{ "state-directory-path", 1, 0, 's' },
->   	{ "num-threads", 1, 0, 't' },
-> +	{ "reverse-lookup", 0, 0, 'r' },
->   	{ NULL, 0, 0, 0 }
->   };
+> Removing the NULL PROC calls had no adverse affect on timing that I
+> could tell. My thoughts on that must have been due to some confusion in
+> the past. That's good.
+> 
+> I still like the bind so I've left in in but ultimately it's up to you
+> to decide whether to include it.
+> 
+> Anything else, anything I missed?
 
-Your patches have some odd white-space damage. The lines that are
-unchanged should start with one space, then a tab, but they actually
-start with two spaces, so 'patch' cannot cope at all.  Fortunately
-'wiggle' gets it close enough that it is easy to fix by hand, but it
-would be nice if you could figure out what is happening.
+Something I got wrong.
 
-Thanks,
-NeilBrown
+A bit more testing shows that the write file descriptor is actually
+needed.
+
+I found that without it select will timeout even when the connection
+should succeed, not sure why. Anyone?
+
+Ian
+
+---
+--- nfs-utils-1.0.9/utils/showmount/showmount.c.reduce-timeout-2	2006-12-20 12:40:04.000000000 +0900
++++ nfs-utils-1.0.9/utils/showmount/showmount.c	2006-12-20 12:41:09.000000000 +0900
+@@ -89,7 +89,7 @@
+ {
+ 	int flags, ret;
+ 	socklen_t len;
+-	fd_set rset;
++	fd_set rset, wset;
+ 
+ 	flags = fcntl(fd, F_GETFL, 0);
+ 	if (flags < 0)
+@@ -117,8 +117,9 @@
+ 	/* now wait */
+ 	FD_ZERO(&rset);
+ 	FD_SET(fd, &rset);
++	wset = rset;
+ 
+-	ret = select(fd + 1, &rset, NULL, NULL, tout);
++	ret = select(fd + 1, &rset, &wset, NULL, tout);
+ 	if (ret <= 0) {
+ 		if (ret == 0)
+ 			ret = -ETIMEDOUT;
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
