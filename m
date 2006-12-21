@@ -1,24 +1,15 @@
-From: "Goldie Trent" <disquietspanned@abisse.com>
-Subject: It's Goldie
-Date: Thu, 21 Dec 2006 00:15:00 +0000 (UTC)
-Message-ID: <01c72494$fda95040$6c822ecf@disquietspanned>
+From: "Millie Camacho" <drowsydisablement@abrasiv.cz>
+Subject: It's Millie
+Date: Thu, 21 Dec 2006 06:03:01 +0300
+Message-ID: <01c724c5$ac05b180$6c822ecf@drowsydisablement>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GxBZy-0006Rc-61
-	for nfs@lists.sourceforge.net; Wed, 20 Dec 2006 16:14:34 -0800
-Received: from p54bfe7e3.dip.t-dialin.net ([84.191.231.227])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GxBZx-0005py-6f
-	for nfs@lists.sourceforge.net; Wed, 20 Dec 2006 16:14:35 -0800
-Received: from 217.147.195.100 (HELO messagerie.nwt.fr)
-	by lists.sourceforge.net with esmtp (X6+FZR:X-3O) 43AGA)
-	id R0XMH2-21DV@U-+=
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 00:14:33 -0060
+Received: from 213.175.39.142 (HELO fw.abrasiv.cz)
+	by lists.sourceforge.net with esmtp (@SWD8;>A '0003+)
+	id YQ2U4E-Y5A094-GZ
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 06:03:01 +0300
 To: <nfs@lists.sourceforge.net>
-Date: Thu, 21 Dec 2006 00:14:33 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
