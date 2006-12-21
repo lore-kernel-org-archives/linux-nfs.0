@@ -1,30 +1,22 @@
-From: "T. Horsnell" <tsh@mrc-lmb.cam.ac.uk>
-Subject: fsid and stale-filehandle
-Date: Thu, 21 Dec 2006 11:17:19 +0000 (GMT)
-Message-ID: <E1GxLvL-0014jr-6F@alf1.lmb.internal>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Fwd: [PATCH] move NFS_DEBUG definition
+Date: Thu, 21 Dec 2006 14:18:48 +0200
+Message-ID: <458A7BA8.9060009@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GxLw2-0003HQ-N6
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 03:18:02 -0800
-Received: from ppsw-9.csi.cam.ac.uk ([131.111.8.139])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GxLw1-0001dv-KU
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 03:18:04 -0800
-Received: from server1.mrc-lmb.cam.ac.uk ([131.111.85.23]:49023)
-	by ppsw-9.csi.cam.ac.uk (ppsw.cam.ac.uk [131.111.8.139]:25)
-	with esmtp id 1GxLvL-0006fG-Uw (Exim 4.63) for
-	nfs@lists.sourceforge.net
-	(return-path <tsh@mrc-lmb.cam.ac.uk>); Thu, 21 Dec 2006 11:17:20 +0000
-Received: from alf1.lmb.internal ([10.1.0.1])
-	by server1.mrc-lmb.cam.ac.uk with esmtp (Exim 4.10)
-	id 1GxLvL-00025s-00
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 11:17:19 +0000
-Received: from tsh by alf1.lmb.internal with local (Exim 4.32)
-	id 1GxLvL-0014jr-6F
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 11:17:19 +0000
+	id 1GxMss-00010i-1j
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 04:18:50 -0800
+Received: from gw-e.panasas.com ([65.194.124.178] helo=cassoulet.panasas.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1GxMss-0006dw-94
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 04:18:51 -0800
+Received: from riverside.int.panasas.com (localhost.localdomain [127.0.0.1])
+	by cassoulet.panasas.com (8.13.1/8.13.1) with ESMTP id kBLCI9XG026135
+	for <nfs@lists.sourceforge.net>; Thu, 21 Dec 2006 07:18:09 -0500
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -38,69 +30,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I want to use the exports fsid= option to avoid 
-'NFS stale-filehandle' errors, but have some questions.
 
-1. If I use the fsid= option for any filesystem in
-   my exportfs file, do I have to use it for *all*
-   entries? If not, how do I avoid choosing an fsid
-   which may be the same as one calculated by the system
-   for those entries where I havent specified it?
 
-2. Someone on the fedora list said that export options
-   chosen for a filesystem with a particular fsid will
-   apply to *all* clients using that fsid. So that if
-   I have exports entries like:
+-------- Original Message --------
+Subject: [PATCH] move NFS_DEBUG definition
+Date: Wed, 20 Dec 2006 22:29:46 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: nfsv4@linux-nfs.org
 
-   /filesystem client1(ro,fsid=10) client2(rw,fsid=10)
+Trond, looks like the changes to include/linux/nfs_fs.h in 2.6.18
+that moved the #include's of sunrpc header files into the #ifdef __KERNEL__ block
+disabled nfs debugging for all nfs c file not including any sunrpc header.
 
-   either the filesystem will be exported ro to both
-   clients, or it will be exported rw to both, (he
-   couldnt say which would take precedence).
-   Is this correct? Do I have to use a different fsid
-   for each filesystem/client pair if I want different
-   export options for them?
+The following patch moves the definition down, right before its use
+for defining ifdebug.
 
-3. According to 'man stat', 'stat -f /filesystem' should show me
-   the filesystem ID in hex of /filesystem, but all I get is
-   zero for my exported fs's:
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-[root@dev1 ~]# stat -f /test10
-  File: "/test10"
-    ID: 0        Namelen: 255     Type: ext2/ext3
-Block size: 4096       Fundamental block size: 4096
-Blocks: Total: 8750377    Free: 8705316    Available: 8260818
-Inodes: Total: 4447744    Free: 4447732
-[root@dev1 ~]# stat -f /test11
-  File: "/test11"
-    ID: 0        Namelen: 255     Type: ext2/ext3
-Block size: 4096       Fundamental block size: 4096
-Blocks: Total: 2520130    Free: 1393714    Available: 1265697
-Inodes: Total: 1281696    Free: 1106401
-[root@dev1 ~]# 
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -9,14 +9,6 @@
+ #ifndef _LINUX_NFS_FS_H
+ #define _LINUX_NFS_FS_H
+ 
+-/*
+- * Enable debugging support for nfs client.
+- * Requires RPC_DEBUG.
+- */
+-#ifdef RPC_DEBUG
+-# define NFS_DEBUG
+-#endif
+-
+ /* Default timeout values */
+ #define NFS_MAX_UDP_TIMEOUT	(60*HZ)
+ #define NFS_MAX_TCP_TIMEOUT	(600*HZ)
+@@ -628,6 +620,14 @@ extern void * nfs_root_data(void);
+ #define NFSDBG_ODIRECT		0x1000
+ #define NFSDBG_ALL		0xFFFF
+ 
++/*
++ * Enable debugging support for nfs client.
++ * Requires RPC_DEBUG.
++ */
++#ifdef RPC_DEBUG
++# define NFS_DEBUG
++#endif
++
+ #ifdef __KERNEL__
+ # undef ifdebug
+ # ifdef NFS_DEBUG
 
-[root@dev1 ~]# mount
-/dev/hdb2 on / type ext3 (rw)
-proc on /proc type proc (rw)
-sysfs on /sys type sysfs (rw)
-devpts on /dev/pts type devpts (rw,gid=5,mode=620)
-tmpfs on /dev/shm type tmpfs (rw)
-/dev/sda1 on /test10 type ext3 (rw)
-/dev/sdb2 on /test11 type ext3 (rw)
-none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
-sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
-nfsd on /proc/fs/nfsd type nfsd (rw)
-[root@dev1 ~]# 
-
-[root@dev1 ~]# cat /etc/exports
-/test10 fm*.lmb.internal(no_root_squash,fsid=1)
-/test11 fm*.lmb.internal(no_root_squash,fsid=2)
-[root@dev1 ~]# 
-
-Any ideas anyone?
-
-Cheers,
-Terry.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
