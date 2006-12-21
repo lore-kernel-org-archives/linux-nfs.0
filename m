@@ -1,26 +1,30 @@
-From: Stefan Palme <kleiner@hora-obscura.de>
-Subject: many files in exported directory
-Date: Thu, 21 Dec 2006 10:44:25 +0100
-Message-ID: <1166694265.9506.59.camel@devel.office.ancoso-development.de>
+From: "T. Horsnell" <tsh@mrc-lmb.cam.ac.uk>
+Subject: fsid and stale-filehandle
+Date: Thu, 21 Dec 2006 11:17:19 +0000 (GMT)
+Message-ID: <E1GxLvL-0014jr-6F@alf1.lmb.internal>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GxKTd-0002Xx-Q1
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 01:44:38 -0800
-Received: from moutng.kundenserver.de ([212.227.126.183])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GxKTd-0006hQ-KF
-	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 01:44:39 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by smtp.hora-obscura.de (Postfix) with ESMTP id 8114C58400C
-	for <nfs@lists.sourceforge.net>; Thu, 21 Dec 2006 10:44:29 +0100 (CET)
-Received: from [192.168.2.126] (p54B940E6.dip0.t-ipconnect.de [84.185.64.230])
-	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
-	(No client certificate requested)
-	by smtp.hora-obscura.de (Postfix) with ESMTP id 4EEA858400B
-	for <nfs@lists.sourceforge.net>; Thu, 21 Dec 2006 10:44:27 +0100 (CET)
+	id 1GxLw2-0003HQ-N6
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 03:18:02 -0800
+Received: from ppsw-9.csi.cam.ac.uk ([131.111.8.139])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GxLw1-0001dv-KU
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 03:18:04 -0800
+Received: from server1.mrc-lmb.cam.ac.uk ([131.111.85.23]:49023)
+	by ppsw-9.csi.cam.ac.uk (ppsw.cam.ac.uk [131.111.8.139]:25)
+	with esmtp id 1GxLvL-0006fG-Uw (Exim 4.63) for
+	nfs@lists.sourceforge.net
+	(return-path <tsh@mrc-lmb.cam.ac.uk>); Thu, 21 Dec 2006 11:17:20 +0000
+Received: from alf1.lmb.internal ([10.1.0.1])
+	by server1.mrc-lmb.cam.ac.uk with esmtp (Exim 4.10)
+	id 1GxLvL-00025s-00
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 11:17:19 +0000
+Received: from tsh by alf1.lmb.internal with local (Exim 4.32)
+	id 1GxLvL-0014jr-6F
+	for nfs@lists.sourceforge.net; Thu, 21 Dec 2006 11:17:19 +0000
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,57 +38,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+I want to use the exports fsid= option to avoid 
+'NFS stale-filehandle' errors, but have some questions.
 
-Hi,
+1. If I use the fsid= option for any filesystem in
+   my exportfs file, do I have to use it for *all*
+   entries? If not, how do I avoid choosing an fsid
+   which may be the same as one calculated by the system
+   for those entries where I havent specified it?
 
-in one NFS-exported directory I have a lot of small files:
+2. Someone on the fedora list said that export options
+   chosen for a filesystem with a particular fsid will
+   apply to *all* clients using that fsid. So that if
+   I have exports entries like:
 
-  [s15223736 binary]# ls | wc -l
-  57072
-  [s15223736 binary]# du -h
-  276M    .
-  [s15223736 binary]# 
+   /filesystem client1(ro,fsid=10) client2(rw,fsid=10)
 
+   either the filesystem will be exported ro to both
+   clients, or it will be exported rw to both, (he
+   couldnt say which would take precedence).
+   Is this correct? Do I have to use a different fsid
+   for each filesystem/client pair if I want different
+   export options for them?
 
-Doing a "ls" on the NFS-client takes very very long before the
-first output appears. Because some applications working on this
-NFS-imported directory very often use a kind of "ls" in this
-directory, this applications seem to hang often.
+3. According to 'man stat', 'stat -f /filesystem' should show me
+   the filesystem ID in hex of /filesystem, but all I get is
+   zero for my exported fs's:
 
-What can I change in my configuration to improve performance?
+[root@dev1 ~]# stat -f /test10
+  File: "/test10"
+    ID: 0        Namelen: 255     Type: ext2/ext3
+Block size: 4096       Fundamental block size: 4096
+Blocks: Total: 8750377    Free: 8705316    Available: 8260818
+Inodes: Total: 4447744    Free: 4447732
+[root@dev1 ~]# stat -f /test11
+  File: "/test11"
+    ID: 0        Namelen: 255     Type: ext2/ext3
+Block size: 4096       Fundamental block size: 4096
+Blocks: Total: 2520130    Free: 1393714    Available: 1265697
+Inodes: Total: 1281696    Free: 1106401
+[root@dev1 ~]# 
 
-Current NFS-server configuration: 
-  * linux-2.6.17 with NFSv3-support compiled in
-  * nfs-utils-1.0.6
-  * /etc/exports:
-       /.../binary IP/32(rw,async,all_squash,anonuid=64,anongid=261)
+[root@dev1 ~]# mount
+/dev/hdb2 on / type ext3 (rw)
+proc on /proc type proc (rw)
+sysfs on /sys type sysfs (rw)
+devpts on /dev/pts type devpts (rw,gid=5,mode=620)
+tmpfs on /dev/shm type tmpfs (rw)
+/dev/sda1 on /test10 type ext3 (rw)
+/dev/sdb2 on /test11 type ext3 (rw)
+none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+nfsd on /proc/fs/nfsd type nfsd (rw)
+[root@dev1 ~]# 
 
-Current NFS-client configuration:
-  * linux-2.6.18 with NFSv3 and NFSv4 support compiled in
-  * nfs-utils-1.0.6
-  * /etc/fstab:
-      IP:/.../binary    /.../binary      nfs     soft,intr
+[root@dev1 ~]# cat /etc/exports
+/test10 fm*.lmb.internal(no_root_squash,fsid=1)
+/test11 fm*.lmb.internal(no_root_squash,fsid=2)
+[root@dev1 ~]# 
 
+Any ideas anyone?
 
-Any hints?
-Thanks and best regards
--stefan-
-
-
--- 
--------------------------------------------------------------------
-Dipl. Inf. (FH) Stefan Palme
- 
-email: kleiner@hora-obscura.de
-www:   http://hbci4java.kapott.org
-icq:   36376278
-phon:  +49 341 3910484
-fax:   +49 1212 517956219
-mobil: +49 178 3227887
- 
-key fingerprint: 1BA7 D217 36A1 534C A5AD  F18A E2D1 488A E904 F9EC
--------------------------------------------------------------------
-
+Cheers,
+Terry.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
