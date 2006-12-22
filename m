@@ -1,29 +1,20 @@
-From: "Tamera Dyer"@sc8-sf-spam2.sourceforge.net
-Subject: Choosing Online Pharmacy.
-Date: Fri, 22 Dec 2006 10:24:49 +0000 (UTC)
-Message-ID: <01c725b3$2ca25bc0$6c822ecf@kasey590>
+From: Rudy Zijlstra <rudy@edsons.demon.nl>
+Subject: Kernel BUG
+Date: Fri, 22 Dec 2006 12:59:42 +0100
+Message-ID: <458BC8AE.2030507@edsons.demon.nl>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0153332358=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GxhZG-0008Tg-Jy
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 02:23:59 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GxhZF-00045H-W8
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 02:24:00 -0800
-Received: from diab1.nepa.ru ([195.234.211.34])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1GxhZB-00012s-Fi
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 02:23:56 -0800
-Received: from 72.232.198.50 (HELO 1resourceone.net)
-	by lists.sourceforge.net with esmtp (-3C4LZQ6A1 G58T)
-	id .75S95-5::./F-3Q
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 10:23:08 -0180
-To: <nfs@lists.sourceforge.net>
-Date: Fri, 22 Dec 2006 10:23:08 -0180
+	id 1Gxj46-0000n4-8L
+	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 03:59:54 -0800
+Received: from post-25.mail.nl.demon.net ([194.159.73.195])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gxj47-0000vu-Et
+	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 03:59:55 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,83 +27,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+Hi,
 
---===============0153332358==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_000E_01C725CC.51EF93C0"
+I have a system where whenever i trigger a ongoing consistent NFS load i 
+get the following kernel BUG:
 
-This is a multi-part message in MIME format.
+----------
+kernel BUG at mm/truncate.c:311!
+invalid opcode: 0000 [#1]
+SMP
+Modules linked in: cx88_alsa cx88_dvb cx88_vp3054_i2c or51132 
+video_buf_dvb isl6421 zl10353
+cx24123 cx22702 cx88_blackbird cx8802 cx2341x cx8800 cx88xx ir_common 
+i2c_algo_bit tveeprom
+compat_ioctl32 btcx_risc i2c_piix4 b2c2_flexcop_pci b2c2_flexcop mt352 
+mt312 bcm3510 stv0297
+ nxt200x lgdt330x budget_av dvb_pll saa7146_vv video_buf videodev 
+v4l1_compat v4l2_common tu
+a6100 budget_core saa7146 ttpci_eeprom tda10021 tda1004x stv0299 
+dvb_core pcnet32
+CPU:    1
+EIP:    0060:[<c01489f0>]    Not tainted VLI
+EFLAGS: 00010002   (2.6.19.1 #1)
+EIP is at invalidate_complete_page2+0x45/0x84
+eax: 8000082d   ebx: c1171e00   ecx: 00000000   edx: 00000000
+esi: d2299db4   edi: 000b6096   ebp: 00000000   esp: d3f53db4
+ds: 007b   es: 007b   ss: 0068
+Process mythbackend (pid: 3584, ti=d3f52000 task=d5400550 task.ti=d3f52000)
+Stack: c1171e00 000000d0 c1171e00 00000000 c0148b97 d2299db4 c1171e00 
+000b6095
+       0000000e 00000001 ffffffff 00000000 00000000 00000000 0000000e 
+00000000
+       c1171e00 c1171e20 c11a1e40 c11a1e60 c1245c00 c1245c20 c12694c0 
+c12694e0
+Call Trace:
+ [<c0148b97>] invalidate_inode_pages2_range+0x168/0x264
+ [<c0148cb2>] invalidate_inode_pages2+0x1f/0x25
+ [<c01fa9ab>] nfs_revalidate_mapping+0x98/0x143
+ [<c01632c4>] pipe_write+0x44d/0x459
+ [<c01f9206>] nfs_file_read+0x91/0xf0
+ [<c015d386>] do_sync_read+0xdd/0x11a
+ [<c012daca>] autoremove_wake_function+0x0/0x4b
+ [<c0398b12>] sock_ioctl+0x1b1/0x1d1
+ [<c015d463>] vfs_read+0xa0/0x16b
+ [<c015d7fe>] sys_read+0x4b/0x71
+ [<c0102bc3>] syscall_call+0x7/0xb
+ =======================
+Code: c7 44 24 04 d0 00 00 00 89 1c 24 e8 1b b7 ff ff 31 d2 85 c0 74 4d 
+8d 46 10 e8 4e fe 2b
+ 00 8b 03 a8 10 75 34 8b 03 f6 c4 08 74 08 <0f> 0b 37 01 07 b0 43 c0 89 
+1c 24 e8 b0 86 ff ff
+ f0 81 46 10 00
+EIP: [<c01489f0>] invalidate_complete_page2+0x45/0x84 SS:ESP 0068:d3f53db4
 
-------=_NextPart_000_000E_01C725CC.51EF93C0
-Content-Type: text/plain;
-	charset="Windows-1252"
-Content-Transfer-Encoding: 7bit
+---------
 
-{bulk_site">URL 
+Captured using serial console.
 
-And you won't regret because they do have high-quality meds as well as guaranteed instant shipping. __________ __________ __________
+Anybody an idea?
 
-With best regards
-- National Pharmacist Association -
+Its on a dual processor Netfinity 5000. Two PIII 500 processors, 512MB 
+memory.
 
+Cheers,
 
-
-
-
-------=_NextPart_000_000E_01C725CC.51EF93C0
-Content-Type: text/html;
-	charset="Windows-1252"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE></TITLE>
-<META content=3D"text/html; charset=3DWindows-1252" http-equiv=3DContent-Type>
-<META content=3D"MSHTML 4.71.1712.3" name=3DGENERATOR></HEAD>
-<BODY>
-{bulk_site">URL</a> <br>
-<br>
-
-And you won't regret because they do have high-quality meds as well as guar=
-anteed instant shipping. <br>
-<font color=3D"0C1995">__________ __________ __________</font><br>
-<br>
-
-<font color=3D"FF0000">With best regards<br>
-- <u>National Pharmacist Association</u> -</font></b></font><br>
-<br>
-</td>
-</tr>
-
-</table>
-</body>
-</html>
-
-</BODY></HTML>
-
-------=_NextPart_000_000E_01C725CC.51EF93C0--
-
-
-
---===============0153332358==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Rudy
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0153332358==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0153332358==--
