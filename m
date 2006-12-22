@@ -1,40 +1,23 @@
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-Subject: Re: NFS corruption in 2.6.18.2?
-Date: Fri, 22 Dec 2006 10:39:24 +0100
-Message-ID: <20061222093924.GR93107@fit.vutbr.cz>
-References: <50e235a50d0f2b4fb34eed1c840565e3@swip.net>
-	<20061123161738.GF40079@fit.vutbr.cz>
-	<20061123172456.GG40079@fit.vutbr.cz>
-	<20061123213311.GH40079@fit.vutbr.cz>
-	<20061124064752.GI40079@fit.vutbr.cz>
-	<1164395516.5702.53.camel@lade.trondhjem.org>
-	<20061125182600.GA74811@fit.vutbr.cz>
-	<1164479583.5886.4.camel@lade.trondhjem.org>
-	<20061212134501.GK39055@fit.vutbr.cz>
-	<1165941785.5788.42.camel@lade.trondhjem.org>
+From: "T. Horsnell" <tsh@mrc-lmb.cam.ac.uk>
+Subject: Re: fsid and stale-filehandle
+Date: Fri, 22 Dec 2006 10:07:23 +0000 (GMT)
+Message-ID: <E1GxhJD-001s27-Jd@alf1.lmb.internal>
+References: <17803.5304.326896.669709@cse.unsw.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GxgsK-0004GQ-QD
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 01:39:36 -0800
-Received: from kazi.fit.vutbr.cz ([147.229.8.12])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1GxgsI-0006QH-RS
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 01:39:38 -0800
-Received: from kazi.fit.vutbr.cz (localhost [127.0.0.1])
-	by kazi.fit.vutbr.cz (envelope-from kasparek@fit.vutbr.cz)
-	(8.13.8/8.13.7) with ESMTP id kBM9dOwd097778
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Fri, 22 Dec 2006 10:39:24 +0100 (CET)
-Received: (from kasparek@localhost)
-	by kazi.fit.vutbr.cz (8.13.8/8.13.1/Submit) id kBM9dOfN097777
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 10:39:24 +0100 (CET)
-	(envelope-from kasparek@fit.vutbr.cz)
-To: nfs@lists.sourceforge.net
-In-Reply-To: <1165941785.5788.42.camel@lade.trondhjem.org>
+	id 1GxhJa-0006t8-9P
+	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 02:07:46 -0800
+Received: from ppsw-9.csi.cam.ac.uk ([131.111.8.139])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GxhJZ-0006qX-9A
+	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 02:07:47 -0800
+In-Reply-To: <17803.5304.326896.669709@cse.unsw.edu.au> from Neil Brown at "Dec
+	22, 2006 10:11:52 am"
+To: Neil Brown <neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -47,48 +30,85 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Dec 12, 2006 at 11:43:05AM -0500, Trond Myklebust wrote:
-> On Tue, 2006-12-12 at 14:45 +0100, Kasparek Tomas wrote:
-> 
-> > Hi, still me with the same problem, sorry for being pain in the ass, but I
-> > need to solve it somehow (being not able to change the applications used).
-> > 
-> > I have tried mounting the share with 'noac' option as mentioned in the FAQ,
-> > but the behaviour is the same.
-> > 
-> > Would you have any other advice how to get the old behaviour (for me that
-> > means that of kernel 2.6.16.x)?
-> > 
-> > (I tested some newer kernels to - 2.6.18.5 and 19.1 just for the case
-> > someting changes but no success there.)
-> 
-> Could you try 2.6.19 w/ the NFS_ALL patch from
-> http://client.linux-nfs.org/Linux-2.6.x/2.6.19/ ?
-> 
-> I know of one corruption issue that was happening there due to a race
-> between invalidate_inode_pages2() and the write code.
+>On Thursday December 21, tsh@mrc-lmb.cam.ac.uk wrote:
+>> I want to use the exports fsid= option to avoid 
+>> 'NFS stale-filehandle' errors, but have some questions.
+>
+>Are you getting these errors because the major/minor numbers of your
+>devices keep changing?  That is the only reason I can think of there
+>fsid= would make a difference.
 
-Hi,
+Exactly. I have a fileserver supporting some 50 SCSI disks and growing,
+with around 100 NFS clients, mainly in the form of a compute farm.
+Sometimes its necessary to replace failed disks or add capacity by replacing
+disks with larger ones, (or move complete SCSI shelves to a different SCSI
+bus as I had to do recently), which often results in different /dev/sdNnames
+when the server reboots. Meanwhile, clients may have these filesystems
+automounted, and the stale filehandles then happen when they next access them.
+I was messing with udev to generate persistent device names, but then someone
+pointed me to fsid which seemed the perfect solution.
 
-sorry it takes so long, I finnaly tried it and results are the same
+>
+>> 
+>> 1. If I use the fsid= option for any filesystem in
+>>    my exportfs file, do I have to use it for *all*
+>>    entries? If not, how do I avoid choosing an fsid
+>>    which may be the same as one calculated by the system
+>>    for those entries where I havent specified it?
+>
+>No, you don't have to use it for all entries.
+>You cannot choose an fsid which is the same as one calculated by the
+>system.  system-chosen number and user-chosen number are in separate
+>number-spaces. 
+>
+>> 
+>> 2. Someone on the fedora list said that export options
+>>    chosen for a filesystem with a particular fsid will
+>>    apply to *all* clients using that fsid. So that if
+>>    I have exports entries like:
+>> 
+>>    /filesystem client1(ro,fsid=10) client2(rw,fsid=10)
+>> 
+>>    either the filesystem will be exported ro to both
+>>    clients, or it will be exported rw to both, (he
+>>    couldnt say which would take precedence).
+>>    Is this correct? Do I have to use a different fsid
+>>    for each filesystem/client pair if I want different
+>>    export options for them?
+>
+>No, this isn't correct.  The different clients will get different
+>export options.  They can have different fsids, but there is no need
+>(and it would probably just be confusing).
+>
+>> 
+>> 3. According to 'man stat', 'stat -f /filesystem' should show me
+>>    the filesystem ID in hex of /filesystem, but all I get is
+>>    zero for my exported fs's:
+>> 
+>> [root@dev1 ~]# stat -f /test10
+>>   File: "/test10"
+>>     ID: 0        Namelen: 255     Type: ext2/ext3
+>> Block size: 4096       Fundamental block size: 4096
+>> Blocks: Total: 8750377    Free: 8705316    Available: 8260818
+>> Inodes: Total: 4447744    Free: 4447732
+>> [root@dev1 ~]# stat -f /test11
+>>   File: "/test11"
+>>     ID: 0        Namelen: 255     Type: ext2/ext3
+>> Block size: 4096       Fundamental block size: 4096
+>> Blocks: Total: 2520130    Free: 1393714    Available: 1265697
+>> Inodes: Total: 1281696    Free: 1106401
+>> [root@dev1 ~]# 
+>
+>ext3 only got support the fsid (ID: in stat -f) very recently.  It
+>isn't in 2.6.18 and early.
+>But this fsid is completely unrelated to the nfsd fsid.
 
-- 2.6.19 + NFS_ALL (both with/withnout noac)
-- 2.6.20-rc1 (both with/withnout noac)
+Ah, right. So there's no way I can see the fsid of an NFS filesystem then.
+But in view of your reply above, I guess I dont need to.
+Thanks for all this info Neil. 
 
-Will try to do more investigations afer Xmas.
-
-Regards
-
---   
-
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, BI/140a    Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 2, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
-
-  ICQ: 293092805  jabber: tomas.kasparek@jabber.cz
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
-
+Cheers,
+Terry.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
