@@ -1,28 +1,19 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: [PATCH] Make mountd complain on unsupported uid mapping
-	schemes
-Date: Sat, 23 Dec 2006 13:28:20 +0100
-Message-ID: <20061223122820.GA1145@uio.no>
+From: "Deganis Diego" <Nelson@kolesky.com>
+Subject: Adding few more inches to your meat.
+Date: Sat, 23 Dec 2006 15:59:57 +0000
+Message-ID: <262e01c726ab$0311854b$caf6145a@AOrleans-154-1-187-202.w90-20.abo.wanadoo.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gy5z7-000628-9j
-	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 04:28:17 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Gy5z7-0002tO-HE
-	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 04:28:18 -0800
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1Gy5z0-0005gl-76
-	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 13:28:10 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1Gy5zA-0000Io-00
-	for <nfs@lists.sourceforge.net>; Sat, 23 Dec 2006 13:28:20 +0100
-To: nfs@lists.sourceforge.net
+	id 1Gy9IG-00008u-HV
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 08:00:17 -0800
+Received: from aorleans-154-1-187-202.w90-20.abo.wanadoo.fr ([90.20.246.202])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gy9IE-0007Af-RK
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 08:00:18 -0800
+To: "Achatz John" <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,42 +26,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-[As usual, please Cc me on any replies]
+YO Buddy
 
-I just put the following patch into Debian's nfs-utils; I thought it might be
-useful for upstream as well:
+I don't care why your member is so small, but 70% of women do.
+They are pretty sure that bigger Johnson will make their desire
+stronger. You have the chance to change your life.
 
-  The NFS kernel server does not support uid mappings, activated with flags
-  such as "map_daemon" in exports. There is already code that parses these
-  flags, and gives an error at mount time if an unsupported flag (ie. any
-  but the default) is given. However, at some point the kernel changed the
-  export interface, and the new code forgot to include the relevant check.
-  Thus, simply copy the check from the old to the new code, which makes
-  sure mountd behaves the same in this aspect regardless of kernel version,
-  and makes sure the admin does not inadvertently use map_daemon and expect
-  it to work.
+Here http://prudery.us you can get the thing.
 
-  Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
+It will help you for sure.
+The remedy can be sent worldwide.
+If you wont be satisfied - we will return all you money.
+No bullshit.
 
---- nfs-utils-1.0.10.orig/utils/mountd/cache.c
-+++ nfs-utils-1.0.10/utils/mountd/cache.c
-@@ -381,6 +381,12 @@
- {
- 	FILE *f;
- 
-+	if (exp->m_export.e_maptype != CLE_MAP_IDENT) {
-+		xlog(L_ERROR, "%s: unsupported mapping; kernel supports only 'identity' (default)",
-+		    exp->m_export.m_path);
-+		return;
-+	}
-+
- 	f = fopen("/proc/net/rpc/auth.unix.ip/channel", "w");
- 	if (!f)
- 		return;
-
-/* Steinar */
 -- 
-Homepage: http://www.sesse.net/
+htmmmrlnkrmgmmlrkjkhfrkfjqkfkjjjjsjujkkojqjnffjgkkjk
+cvmbndfjkghwrglkfjggdfgr
+playing  the fool, which included sending us those  telegrams marked " Yalta
+".'
+     'Aha,  aha  ... I see  now . . .' crooned  Rimsky,  his yellowish eyes
+flashing. In his mind's eye he saw Stepa being  solemnly dismissed  from his
+job. Freedom! At last Rimsky would be rid  of that idiot Likhodeyev! Perhaps
+something even worse than the sack was in store for Stepan Bogdanovich . . .
+'  Tell  me  all the  details!  ' cried  Rimsky,  banging  his desk  with  a
+paper-weight.
+     Varenukha began telling the story. As  soon as he  had  arrived  at the
+place where the  treasurer had sent  him, he was  immediately  shown  in and
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
