@@ -1,24 +1,19 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: Kernel BUG
-Date: Fri, 22 Dec 2006 14:42:00 +0100
-Message-ID: <1166794920.32117.42.camel@twins>
-References: <458BC8AE.2030507@edsons.demon.nl>
+From: "Portlands April" <rlllhhqypnv@ccnyi.com>
+Subject: Hey
+Date: Sat, 23 Dec 2006 04:49:31 -0900
+Message-ID: <D8987E5D649D343.7BDBAE5940@ccnyi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	nfs <nfs@lists.sourceforge.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="===============0752219970=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gxkh4-0002lk-Vo
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 05:44:15 -0800
-Received: from amsfep16-int.chello.nl ([62.179.120.11])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gxkh5-00075Z-1U
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 05:44:16 -0800
-To: Rudy Zijlstra <rudy@edsons.demon.nl>
-In-Reply-To: <458BC8AE.2030507@edsons.demon.nl>
+	id 1GxqOS-0000Ve-41
+	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 11:49:24 -0800
+Received: from [125.183.188.68] (helo=[125.183.188.68])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GxqOR-0007Zu-E4
+	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 11:49:25 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,30 +26,107 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2006-12-22 at 12:59 +0100, Rudy Zijlstra wrote:
-> Hi,
-> 
-> I have a system where whenever i trigger a ongoing consistent NFS load i 
-> get the following kernel BUG:
-> 
-> ----------
-> kernel BUG at mm/truncate.c:311!
+--===============0752219970==
+Content-Type: multipart/related;
+	boundary="----=_NextPart_000_0001_01C7264D.BC3D26D0"
 
-Lotsa changes there:
-try these:
- http://client.linux-nfs.org/Linux-2.6.x/2.6.19/linux-2.6.19-NFS_ALL.dif
+------=_NextPart_000_0001_01C7264D.BC3D26D0
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-And:
-  http://lkml.org/lkml/2006/12/19/279
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.2912" name=3D"GENERATOR">
+</HEAD>
+<BODY>
+<DIV><FONT face=3DArial size=3D2><STRONG>TTEN Continues Explosive=20
+Growth</STRONG></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><STRONG><U>TTEN *** TTEN *** =
+TTEN<BR>TTEN - Ten=20
+&amp; 10, Inc.</U></STRONG></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><STRONG>Current Price</STRONG>:=20
+08<BR><STRONG>Short Term Target:</STRONG> .50</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><STRONG>TTEN</STRONG> recently =
+announced a key=20
+development which will enable them to provide Value Added Services to =
+the=20
+<STRONG>55 million wireless subscribers</STRONG> of ChinaMobile's =
+Guangzhou=20
+Division through its joint venture with IEC. <STRONG>China Mobile is the =
+largest=20
+telecommunications provider in China</STRONG>, and the largest among all =
+the=20
+overseas listed Chinese companies on the Hong Kong and NewYork Stock=20
+Exchanges.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><STRONG>TTEN</STRONG> is made up of 4 =
+operating=20
+subsidiaries:</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial=20
+size=3D2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p; Tech=20
+10: WIFI and=20
+WiMAX<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;=20
+Mobile 10: Music and mobile entertainment delivered via Internet, G3,=20
+etc<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
+ Dream=20
+Learning Center: Digital Media Learning=20
+products<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
+nbsp;=20
+Ten &amp; 10 Network: Sales and marketing</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2>Telecommunications is globally a =
+TRILLION dollar=20
+industry.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><STRONG><U>TTEN could see explosive =
+growth as a=20
+newly trading company - 500%-1000% is not =
+uncommon.</U></STRONG></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D1>Any of the above statements with =
+respect to the=20
+future predications or goals and events may be seen as only Forward =
+Looking and=20
+nothing else. All information inside this email pertaining to any sort =
+of=20
+financial advice needs to be understood as information and not advice. =
+None of=20
+the information above can be constructed as any sort of financial =
+advice. This=20
+is a paid advertisement.</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0001_01C7264D.BC3D26D0--
 
 
 
+--===============0752219970==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0752219970==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0752219970==--
