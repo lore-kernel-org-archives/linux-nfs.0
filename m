@@ -1,25 +1,28 @@
-From: Rudy Zijlstra <rudy@edsons.demon.nl>
-Subject: Re: Kernel BUG
-Date: Sat, 23 Dec 2006 00:46:30 +0100
-Message-ID: <458C6E56.3070700@edsons.demon.nl>
-References: <458BC8AE.2030507@edsons.demon.nl>
-	<1166794920.32117.42.camel@twins>
+From: "Steinar H. Gunderson" <sesse@debian.org>
+Subject: [PATCH] Make mountd complain on unsupported uid mapping
+	schemes
+Date: Sat, 23 Dec 2006 13:28:20 +0100
+Message-ID: <20061223122820.GA1145@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs <nfs@lists.sourceforge.net>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gxu64-0006U4-Au
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 15:46:40 -0800
-Received: from post-25.mail.nl.demon.net ([194.159.73.195])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Gxu63-0002CZ-0U
-	for nfs@lists.sourceforge.net; Fri, 22 Dec 2006 15:46:40 -0800
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
-In-Reply-To: <1166794920.32117.42.camel@twins>
+	id 1Gy5z7-000628-9j
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 04:28:17 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Gy5z7-0002tO-HE
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 04:28:18 -0800
+Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
+	helo=trofast.sesse.net)
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1Gy5z0-0005gl-76
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 13:28:10 +0100
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1Gy5zA-0000Io-00
+	for <nfs@lists.sourceforge.net>; Sat, 23 Dec 2006 13:28:20 +0100
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +35,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Peter Zijlstra wrote:
+[As usual, please Cc me on any replies]
 
->On Fri, 2006-12-22 at 12:59 +0100, Rudy Zijlstra wrote:
->  
->
->>Hi,
->>
->>I have a system where whenever i trigger a ongoing consistent NFS load i 
->>get the following kernel BUG:
->>
->>----------
->>kernel BUG at mm/truncate.c:311!
->>    
->>
->
->Lotsa changes there:
->try these:
-> http://client.linux-nfs.org/Linux-2.6.x/2.6.19/linux-2.6.19-NFS_ALL.dif
->
->And:
->  http://lkml.org/lkml/2006/12/19/279
->
->  
->
-Thanks, i have now a 2.6.19.1 patched with the above NFS_ALL patchset 
-running under load since about 17:00 and still going strong. So seems to 
-have solved the problem!
+I just put the following patch into Debian's nfs-utils; I thought it might be
+useful for upstream as well:
 
-Also, performance seems to have significantly increased. I am testing 
-this with MythTv with the storage over NFS. With HD LiveTV (which  is 
-what i use to test this), this translates into about 43Mbps total load, 
-from almost 15Mbps video stream which is present 3x on the ethernet:
-1/ from card to NFS disk
-2/ read from NFS disk
-3/ stream to viewer app.
+  The NFS kernel server does not support uid mappings, activated with flags
+  such as "map_daemon" in exports. There is already code that parses these
+  flags, and gives an error at mount time if an unsupported flag (ie. any
+  but the default) is given. However, at some point the kernel changed the
+  export interface, and the new code forgot to include the relevant check.
+  Thus, simply copy the check from the old to the new code, which makes
+  sure mountd behaves the same in this aspect regardless of kernel version,
+  and makes sure the admin does not inadvertently use map_daemon and expect
+  it to work.
 
-Doing this with HD streams before the patch set resulted in regular 
-picture hickups. No hickups visible anymore (that i have seen, i have 
-not been present all this time).
+  Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
 
-Regards,
+--- nfs-utils-1.0.10.orig/utils/mountd/cache.c
++++ nfs-utils-1.0.10/utils/mountd/cache.c
+@@ -381,6 +381,12 @@
+ {
+ 	FILE *f;
+ 
++	if (exp->m_export.e_maptype != CLE_MAP_IDENT) {
++		xlog(L_ERROR, "%s: unsupported mapping; kernel supports only 'identity' (default)",
++		    exp->m_export.m_path);
++		return;
++	}
++
+ 	f = fopen("/proc/net/rpc/auth.unix.ip/channel", "w");
+ 	if (!f)
+ 		return;
 
-Rudy
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
