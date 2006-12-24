@@ -1,19 +1,24 @@
-From: "Deganis Diego" <Nelson@kolesky.com>
-Subject: Adding few more inches to your meat.
-Date: Sat, 23 Dec 2006 15:59:57 +0000
-Message-ID: <262e01c726ab$0311854b$caf6145a@AOrleans-154-1-187-202.w90-20.abo.wanadoo.fr>
+From: "Erika Monroe" <Freddieecumenical@acandt.com>
+Subject: Erika
+Date: Sun, 24 Dec 2006 03:03:15 +0000 (UTC)
+Message-ID: <01c72708$07a3b7a0$6c822ecf@Freddieecumenical>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Gy9IG-00008u-HV
-	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 08:00:17 -0800
-Received: from aorleans-154-1-187-202.w90-20.abo.wanadoo.fr ([90.20.246.202])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Gy9IE-0007Af-RK
-	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 08:00:18 -0800
-To: "Achatz John" <nfs@lists.sourceforge.net>
+	id 1GyJdi-0005e8-6g
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 19:03:06 -0800
+Received: from 67.65.242.136.duracom.net ([67.65.242.136])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GyJde-0007GX-TG
+	for nfs@lists.sourceforge.net; Sat, 23 Dec 2006 19:03:07 -0800
+Received: from 69.20.116.25 (HELO server86.appriver.com)
+	by lists.sourceforge.net with esmtp ('79U*,6W' 9*2'R))
+	id 0*9W2--0H8Y7I-A4
+	for nfs@lists.sourceforge.net; Sun, 24 Dec 2006 03:03:04 +0360
+To: <nfs@lists.sourceforge.net>
+Date: Sun, 24 Dec 2006 03:03:04 +0360
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,33 +31,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-YO Buddy
-
-I don't care why your member is so small, but 70% of women do.
-They are pretty sure that bigger Johnson will make their desire
-stronger. You have the chance to change your life.
-
-Here http://prudery.us you can get the thing.
-
-It will help you for sure.
-The remedy can be sent worldwide.
-If you wont be satisfied - we will return all you money.
-No bullshit.
-
--- 
-htmmmrlnkrmgmmlrkjkhfrkfjqkfkjjjjsjujkkojqjnffjgkkjk
-cvmbndfjkghwrglkfjggdfgr
-playing  the fool, which included sending us those  telegrams marked " Yalta
-".'
-     'Aha,  aha  ... I see  now . . .' crooned  Rimsky,  his yellowish eyes
-flashing. In his mind's eye he saw Stepa being  solemnly dismissed  from his
-job. Freedom! At last Rimsky would be rid  of that idiot Likhodeyev! Perhaps
-something even worse than the sack was in store for Stepan Bogdanovich . . .
-'  Tell  me  all the  details!  ' cried  Rimsky,  banging  his desk  with  a
-paper-weight.
-     Varenukha began telling the story. As  soon as he  had  arrived  at the
-place where the  treasurer had sent  him, he was  immediately  shown  in and
-
+2005 was the year of the oil company with many of these	 	
+companies posting record profits.  2006 has been the year	 
+of alternative fuels with companies involved in this sector	
+blowing off the charts.  This trend shows no signs of	
+abating.	 	
+Our next feature is right in the thick of the high-growth	
+alternative energy sector and they are doing incredible	 
+things.	 
+	 
+AlgoDyne Ethanol Energy	
+	 
+Symbol:  ADYN	
+	
+Current Price:            $1.30	 
+Short Term Target:        $3.50	 	
+Long Term Projected:      $10.00	
+	 
+It doesn't take a genius to know why alternative energy is	 
+such a high-growth area right now.  Smart traders know how	 
+to watch global trends and seize the moment.	 	
+	
+AlgoDyne is where it's at.  AlgoDyne has developed a	  
+turnkey solution in their proprietary micro-algae based	 
+process which can produce direct electricity, eco-friendly	 
+fuels, and valuable bi-products.	 	
+	 
+The company has just hit its sweet spot in the development	  
+phase and is set to release some astounding results.  These	 
+revelations are being backed up by a far-reaching PR	 	 
+campaign.	 
+	
+It is essential to get in early in order to enjoy the	 
+biggest gains.  Come Tuesday, December 26th this one will	  
+be rapidly going up to meet our target price!	 
+	
+Do not delay!  Win with ADYN!	 	
 
 
 -------------------------------------------------------------------------
