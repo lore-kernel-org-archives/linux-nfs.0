@@ -1,62 +1,45 @@
-From: "Connie Copeland" <akstcfodorsmnsdgs@fodors.com>
-Subject: status update
-Date: Thu, 28 Dec 2006 10:38:06 +0000 (UTC)
-Message-ID: <01c72a6c$25d83770$6c822ecf@akstcfodorsmnsdgs>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [NFS] VFS: Busy inodes after unmount. Self-destruct in 5 seconds.
+ Have a nice day...
+Date: Thu, 28 Dec 2006 08:02:09 -0500
+Message-ID: <4593C051.2020400@redhat.com>
+References: <200612281027.09783.jesper.juhl@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GzsdQ-0005yR-NN
-	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 02:37:18 -0800
-Received: from xdsl-81-173-185-137.netcologne.de ([81.173.185.137])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GzsdR-000258-VM
-	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 02:37:18 -0800
-Received: from 216.82.253.3 (HELO cluster5.us.messagelabs.com)
-	by lists.sourceforge.net with esmtp (A9QV0A6> 8?A()
-	id G:2@;:-?2A6HQ-?>
-	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 10:37:18 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Thu, 28 Dec 2006 10:37:18 -0060
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753526AbWL1NC0@vger.kernel.org>
+To: Jesper Juhl <jesper.juhl@gmail.com>
+In-Reply-To: <200612281027.09783.jesper.juhl@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-VMCI * VMCI * VMCI * 
+Jesper Juhl wrote:
+> I get this message in my webservers (with NFS mounted homedirs) logs once 
+> in a while : 
+> 
+>   kernel: VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
+> 
+> It doesn't seem to have any bad effect on anything, but it would be nice 
+> to know if there is any cause for concern.
+> 
 
-Make Some Bank For The Holidays! 
- 
-Symbol: VMCI 
-Company: VEMICS INC 
-Last Trade: $0.45 
-Target: $5 
-Rating: Strong B.u.y
-Market: Bullish 
+It is cause for concern. This means that the filesystem was unmounted (and the 
+superblock was freed), but the inode structs are still hanging around. The 
+"self-destruct" is telling you that eventually, this machine will crash due to 
+this. If you see this message you should probably plan a reboot sometime.
 
+What will happen is that eventually the kernel may try to reference these 
+inodes, but they now have pointers into a freed superblock. If that superblock 
+memory was reused for another purpose, you'll likely crash.
 
-VMCI is ready to explode! 
-Watch it on thur DEC 28! 
-Happy Holidays!
+IMO, we should probably consider this to be a BUG(), but that only really is 
+helpful if you can capture a coredump and can try to track down why these inodes 
+couldn't be flushed correctly. In the very least, it's probably time to change 
+this message to be less cryptic.
 
-I hope it was a helper news. I'll email or fax you later next week.
+I've seen some sporadic reports of this problem on earlier kernels in situations 
+where a NFS server is unable to be contacted for a while, but have not gotten 
+enough info to get a handle on it.
 
-Connie Copeland.
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+-- Jeff
