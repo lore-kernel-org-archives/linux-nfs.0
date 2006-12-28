@@ -1,24 +1,24 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: VFS: Busy inodes after unmount. Self-destruct in 5
- seconds. Have a nice day...
-Date: Thu, 28 Dec 2006 19:32:26 +0900 (WST)
-Message-ID: <Pine.LNX.4.64.0612281930120.5917@raven.themaw.net>
-References: <200612281027.09783.jesper.juhl@gmail.com>
+From: "Connie Copeland" <akstcfodorsmnsdgs@fodors.com>
+Subject: status update
+Date: Thu, 28 Dec 2006 10:38:06 +0000 (UTC)
+Message-ID: <01c72a6c$25d83770$6c822ecf@akstcfodorsmnsdgs>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1GzsYT-0005UB-0w
-	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 02:32:09 -0800
-Received: from out4.smtp.messagingengine.com ([66.111.4.28])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GzsYT-0004qx-FI
-	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 02:32:10 -0800
-To: Jesper Juhl <jesper.juhl@gmail.com>
-In-Reply-To: <200612281027.09783.jesper.juhl@gmail.com>
+	id 1GzsdQ-0005yR-NN
+	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 02:37:18 -0800
+Received: from xdsl-81-173-185-137.netcologne.de ([81.173.185.137])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1GzsdR-000258-VM
+	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 02:37:18 -0800
+Received: from 216.82.253.3 (HELO cluster5.us.messagelabs.com)
+	by lists.sourceforge.net with esmtp (A9QV0A6> 8?A()
+	id G:2@;:-?2A6HQ-?>
+	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 10:37:18 -0060
+To: <nfs@lists.sourceforge.net>
+Date: Thu, 28 Dec 2006 10:37:18 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 28 Dec 2006, Jesper Juhl wrote:
+VMCI * VMCI * VMCI * 
 
-> 
-> I get this message in my webservers (with NFS mounted homedirs) logs once 
-> in a while : 
-> 
->   kernel: VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
-> 
-> It doesn't seem to have any bad effect on anything, but it would be nice 
-> to know if there is any cause for concern.
+Make Some Bank For The Holidays! 
+ 
+Symbol: VMCI 
+Company: VEMICS INC 
+Last Trade: $0.45 
+Target: $5 
+Rating: Strong B.u.y
+Market: Bullish 
 
-It's at least a memory leak.
 
-> 
-> The NFS server is running 2.6.18.1 and the webservers are running 2.6.17.8
+VMCI is ready to explode! 
+Watch it on thur DEC 28! 
+Happy Holidays!
 
-Strange, I've not heard of this message appearing for a long time now.
+I hope it was a helper news. I'll email or fax you later next week.
 
-Ian
+Connie Copeland.
 
 
 -------------------------------------------------------------------------
