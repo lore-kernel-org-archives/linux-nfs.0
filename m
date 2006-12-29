@@ -1,45 +1,53 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [NFS] VFS: Busy inodes after unmount. Self-destruct in 5 seconds.
- Have a nice day...
-Date: Thu, 28 Dec 2006 08:02:09 -0500
-Message-ID: <4593C051.2020400@redhat.com>
-References: <200612281027.09783.jesper.juhl@gmail.com>
+From: "howard chen" <howachen@gmail.com>
+Subject: NFS has caching?
+Date: Fri, 29 Dec 2006 10:22:07 +0800
+Message-ID: <b66ddc900612281822n3df54e44se296b937b58d158@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753526AbWL1NC0@vger.kernel.org>
-To: Jesper Juhl <jesper.juhl@gmail.com>
-In-Reply-To: <200612281027.09783.jesper.juhl@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1H07No-0001eE-TR
+	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 18:22:08 -0800
+Received: from ug-out-1314.google.com ([66.249.92.174])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H07Np-00074R-7x
+	for nfs@lists.sourceforge.net; Thu, 28 Dec 2006 18:22:10 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so4254296ugc
+	for <nfs@lists.sourceforge.net>; Thu, 28 Dec 2006 18:22:07 -0800 (PST)
+To: nfs@lists.sourceforge.net
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Jesper Juhl wrote:
-> I get this message in my webservers (with NFS mounted homedirs) logs once 
-> in a while : 
-> 
->   kernel: VFS: Busy inodes after unmount. Self-destruct in 5 seconds.  Have a nice day...
-> 
-> It doesn't seem to have any bad effect on anything, but it would be nice 
-> to know if there is any cause for concern.
-> 
+I have around 100 files, currently NFS shared among 5 servers, all
+servers access the file quite frequently, e.g. 10 hits per second per
+server.
 
-It is cause for concern. This means that the filesystem was unmounted (and the 
-superblock was freed), but the inode structs are still hanging around. The 
-"self-destruct" is telling you that eventually, this machine will crash due to 
-this. If you see this message you should probably plan a reboot sometime.
+I cannot afford to rync since i want the delay of write as small as
+possible, e.g. less than 1 second.
 
-What will happen is that eventually the kernel may try to reference these 
-inodes, but they now have pointers into a freed superblock. If that superblock 
-memory was reused for another purpose, you'll likely crash.
 
-IMO, we should probably consider this to be a BUG(), but that only really is 
-helpful if you can capture a coredump and can try to track down why these inodes 
-couldn't be flushed correctly. In the very least, it's probably time to change 
-this message to be less cryptic.
+I want to know, since the file will be accessed quite frequent, does
+NFS has build-in caching functions that if files are not modified, it
+will not try to fetch from the network?
 
-I've seen some sporadic reports of this problem on earlier kernels in situations 
-where a NFS server is unable to be contacted for a while, but have not gotten 
-enough info to get a handle on it.
 
--- Jeff
+Thanks.
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
