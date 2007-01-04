@@ -1,24 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: cp: getting attribute `system.nfs4_acl' Operation not
-	supported
-Date: Thu, 4 Jan 2007 17:08:54 -0500
-Message-ID: <20070104220854.GC2216@fieldses.org>
-References: <C1C2D3EA.28C7%rsalmon@tulane.edu>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: [PATCH] fix rpc.gssd -d
+Date: Fri, 5 Jan 2007 00:51:40 +0100
+Message-ID: <20070104235140.GA5288@uio.no>
+References: <20070104194625.GA3000@uio.no>
+	<4d569c330701041254m5a1fc1aem17a9eaadcbeaadfb@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2alc-0002hO-MP
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 14:08:56 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
+	id 1H2cMS-0005YW-GZ
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 15:51:04 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2ald-0000US-3W
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 14:08:58 -0800
-To: Rene Salmon <rsalmon@tulane.edu>
-In-Reply-To: <C1C2D3EA.28C7%rsalmon@tulane.edu>
+	(Exim 4.44) id 1H2cMS-0004kd-PE
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 15:51:06 -0800
+To: Kevin Coffman <kwc@citi.umich.edu>
+In-Reply-To: <4d569c330701041254m5a1fc1aem17a9eaadcbeaadfb@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jan 04, 2007 at 03:55:22PM -0600, Rene Salmon wrote:
-> Hi list,
-> 
-> I am getting this message when I try to do a cp on an nfsv4 mounted file
-> system:
-> 
-> cp: getting attribute `system.nfs4_acl' of
-> `rsalmon/test-q/single-cpu/ForRene.f': Operation not supported
-> 
-> I found one thread in the list archives about this:
-> http://linux-nfs.org/pipermail/nfsv4/2006-February/003518.html
-> 
-> >From the thread it looks like this was already fixed.  I am running kernel
-> 2.9.16.29.  Any ideas as to if this kernel contains this fix?
+On Thu, Jan 04, 2007 at 03:54:05PM -0500, Kevin Coffman wrote:
+> Thanks Steinar.  I'll get to this and the AM_MAINTAINER_MODE patch
+> soon and resend them to Neil.  (Your other recent patches are out of
+> my arena.)
 
-The fix is in 2.6.17.  I don't know if it went into the 2.6.16.x
-series--I doubt it.
+Thanks.
 
---b.
+By the way, I checked out the git repository (finding out the URL was
+non-trivial, though!) and discovered that the bzero patch was not applied (I
+believe it was sent in quite a while ago). Neil, did you forget, is it in
+a queue somewhere, or did I just check out the wrong one? (I used
+git://git.linux-nfs.org/pub/linux/nfs-utils/.)
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
