@@ -1,28 +1,23 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [PATCH] Allow default options in /etc/exports
-Date: Thu, 4 Jan 2007 15:09:34 +0100
-Message-ID: <20070104140934.GA476@uio.no>
-References: <20061226225848.GA18366@uio.no>
+From: Olaf Kirch <okir@suse.de>
+Subject: Re: Please remove getkversion
+Date: Thu, 4 Jan 2007 16:41:34 +0100
+Message-ID: <20070104154134.GA29909@suse.de>
+References: <20070104134504.GA31206@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2TH8-0000so-Ct
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 06:08:58 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1H2Uir-0001tw-N9
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 07:41:42 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2TH8-0003rX-FJ
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 06:08:59 -0800
-Received: from trofast.sesse.net ([129.241.93.32])
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1H2TH5-0006CD-8i
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 15:08:55 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1H2THi-00008O-00
-	for <nfs@lists.sourceforge.net>; Thu, 04 Jan 2007 15:09:34 +0100
-To: nfs@lists.sourceforge.net
-In-Reply-To: <20061226225848.GA18366@uio.no>
+	(Exim 4.44) id 1H2Uis-0004We-2H
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 07:41:43 -0800
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+In-Reply-To: <20070104134504.GA31206@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,14 +30,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Dec 26, 2006 at 11:58:48PM +0100, Steinar H. Gunderson wrote:
-> +/srv/www        -sync,rw server @trusted @external(ro)
+On Thu, Jan 04, 2007 at 02:45:05PM +0100, Steinar H. Gunderson wrote:
+> getkversion fails when building against newer kernel headers, since
+> UTS_RELEASE is no longer exported to userspace (nor is there any adequate
+> replacement that I know of). This has already hit Ubuntu (making nfs-utils
+> not build anymore), so they've simply stopped building it -- we're doing so
+> in Debian as well, as we'll probably hit the same problems, and getkversion
+> isn't really in use anyhow.
 
-FWIW, the - here should be a \-.
+Given that it was a hack to start with, I'm suprised it has
+been building for that long :)
 
-/* Steinar */
+Olaf
 -- 
-Homepage: http://www.sesse.net/
+Olaf Kirch   |  --- o --- Nous sommes du soleil we love when we play
+okir@suse.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
