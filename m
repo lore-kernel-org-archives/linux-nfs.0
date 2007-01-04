@@ -1,24 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Stephan Henningsen <sth@amplex.dk>
 Subject: Re: Trouble accessing NFS mountpoint as user
-Date: Thu, 04 Jan 2007 10:09:27 +0100
-Message-ID: <1167901767.6046.17.camel@lade.trondhjem.org>
+Date: Thu, 04 Jan 2007 11:22:06 +0100
+Message-ID: <459CD54E.9050107@amplex.dk>
 References: <459CB96A.1060806@amplex.dk>
+	<1167901767.6046.17.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2Obc-0005WK-HM
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 01:09:48 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+HoO2eJPNXORXXZbkw6dlAfa8JkXpEfl8=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2Obc-0001BR-QM
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 01:09:50 -0800
-To: Stephan Henningsen <sth@amplex.dk>
-In-Reply-To: <459CB96A.1060806@amplex.dk>
+	id 1H2Pjz-0004Kl-3B
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 02:22:31 -0800
+Received: from [62.242.67.89] (helo=server.amplex.dk)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H2Pk0-0003rs-BL
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 02:22:32 -0800
+To: nfs@lists.sourceforge.net
+In-Reply-To: <1167901767.6046.17.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +29,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-01-04 at 09:23 +0100, Stephan Henningsen wrote:
-> Hi,
-> 
-> I'm exporting a directory on my server.  Access to the export is restricted 
->   to local users by permissions.
-> 
-> When I mount it as user (or root) on my client, only root has access to the 
-> mountpoint.  The client user's permissions match those of the export on the 
-> server.
+Trond Myklebust wrote:
+> NFS will only support a maximum of 16 supplemental groups. That is a
+> protocol limitation, not a Linux implementation issue.
 
-NFS will only support a maximum of 16 supplemental groups. That is a
-protocol limitation, not a Linux implementation issue. See for instance
+I just did "chgrp dialout /var/files" on the server, changing to one of the 
+first 16 supplemental groups, and now it works.  Thank you very much for 
+solving this mystery!
 
-http://nfsworld.blogspot.com/2005/03/whats-deal-on-16-group-id-limitation.html
+ > See for instance
+> http://nfsworld.blogspot.com/2005/03/whats-deal-on-16-group-id-limitation.html 
+> if you want a more complete explanation of why this is the case.
 
-if you want a more complete explanation of why this is the case.
+This suggests moving from NFS3 to NFS4.  Is that an easy task?  Mount as 
+"nfs4" instead of "nfs" and compile the kernel nfs server to support nfs4?
 
-Cheers,
-  Trond
+-- 
+Stephan Henningsen
 
 
 -------------------------------------------------------------------------
