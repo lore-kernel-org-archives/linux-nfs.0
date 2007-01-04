@@ -1,26 +1,24 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: [PATCH] fix rpc.gssd -d
-Date: Thu, 4 Jan 2007 20:46:25 +0100
-Message-ID: <20070104194625.GA3000@uio.no>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: trying to unload nfsd
+Date: Thu, 04 Jan 2007 15:06:48 -0500
+Message-ID: <1167941208.18576.28.camel@pc.ilinx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0836225447=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2YXB-0004Xj-Cm
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 11:45:53 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1H2YrY-0006do-BI
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 12:06:56 -0800
+Received: from linux.interlinx.bc.ca ([66.11.173.224])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2YX7-0000uM-Ob
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 11:45:55 -0800
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1H2YX1-0005hr-U5
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 20:45:44 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1H2YXh-0000n3-00
-	for <nfs@lists.sourceforge.net>; Thu, 04 Jan 2007 20:46:25 +0100
+	(Exim 4.44) id 1H2YrY-0007cD-M7
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 12:06:58 -0800
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher RC4-MD5 (128/128 bits))
+	(No client certificate requested)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id B1D94F678D
+	for <nfs@lists.sourceforge.net>; Thu,  4 Jan 2007 15:06:49 -0500 (EST)
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,33 +32,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Fix an off-by-one in the handling of the -d option to rpc.gssd; this makes
-the option usable again (it would complain that the string was too long).
-This patch is originally by Liam Bedford, and extracted from
 
-  https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/76409
+--===============0836225447==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="=-202ZMeCXhi49rCURbB8Y"
 
---- nfs-utils-1.0.10.orig/utils/gssd/gssd.c
-+++ nfs-utils-1.0.10/utils/gssd/gssd.c
-@@ -118,7 +118,7 @@ main(int argc, char *argv[])
-                                break;
-                        case 'd':
-                                strncpy(ccachedir, optarg, sizeof(ccachedir));
--                               if (ccachedir[sizeof(ccachedir-1)] != '\0')
-+                               if (ccachedir[sizeof(ccachedir)-1] != '\0')
-                                        errx(1, "ccachedir path name too long");
-                                break;
-                        default:
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+--=-202ZMeCXhi49rCURbB8Y
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+I have umounted all of my nfs filesystems and stopped the nfs services.
+I still can't unload the nfsd module:
+
+$ sudo /sbin/lsmod | grep nfsd
+nfsd                  277152  4=20
+exportfs                7680  1 nfsd
+lockd                  77616  1 nfsd
+nfs_acl                 5120  1 nfsd
+sunrpc                174840  7 nfsd,lockd,nfs_acl
+
+The only thing I can see that could be pinning it still is:
+
+$ grep nfs /proc/mounts
+sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw 0 0
+
+But I can't seem to umount that:
+
+$ sudo umount /var/lib/nfs/rpc_pipefs
+umount: /var/lib/nfs/rpc_pipefs: device is busy
+umount: /var/lib/nfs/rpc_pipefs: device is busy
+
+What could be pinning that fs/mount-point?
+
+b.
+
+--=20
+My other computer is your Microsoft Windows server.
+
+Brian J. Murrell
+
+--=-202ZMeCXhi49rCURbB8Y
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBFnV5Yl3EQlGLyuXARApVXAJ0UfvYK/qJowGfa1WSqd8j7iAmWXwCfe4cO
+5MUNtWim5K7uWvUi7cSkbhY=
+=2d2G
+-----END PGP SIGNATURE-----
+
+--=-202ZMeCXhi49rCURbB8Y--
+
+
+
+--===============0836225447==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0836225447==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0836225447==--
