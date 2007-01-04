@@ -1,25 +1,26 @@
-From: "Ingmar" <i2a@gmx.net>
-Subject: NFS file .lock problem?
-Date: Thu, 4 Jan 2007 19:25:01 +0100
-Message-ID: <20070104181136.M28899@quicknet.nl>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: [PATCH] fix rpc.gssd -d
+Date: Thu, 4 Jan 2007 20:46:25 +0100
+Message-ID: <20070104194625.GA3000@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2XH9-0002g8-77
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 10:25:15 -0800
-Received: from mx102.multikabel.net ([212.127.254.140])
+	id 1H2YXB-0004Xj-Cm
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 11:45:53 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2XH9-00010l-Hm
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 10:25:16 -0800
-Received: from vmx60.multikabel.net ([212.127.254.141])
-	by mx102.multikabel.net with esmtp (Exim 4.54) id 1H2XH1-0007db-Ib
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 19:25:07 +0100
-Received: from www.malloc.nl (84-104-186-89.cable.quicknet.nl [84.104.186.89])
-	by vmx60.multikabel.net (8.13.7/8.13.3) with ESMTP id l04IP0JX021620
-	for <nfs@lists.sourceforge.net>; Thu, 4 Jan 2007 19:25:07 +0100
+	(Exim 4.44) id 1H2YX7-0000uM-Ob
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 11:45:55 -0800
+Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
+	helo=trofast.sesse.net)
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1H2YX1-0005hr-U5
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 20:45:44 +0100
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1H2YXh-0000n3-00
+	for <nfs@lists.sourceforge.net>; Thu, 04 Jan 2007 20:46:25 +0100
 To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,36 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi All,
+Fix an off-by-one in the handling of the -d option to rpc.gssd; this makes
+the option usable again (it would complain that the string was too long).
+This patch is originally by Liam Bedford, and extracted from
 
-I am having a problem with the Openoffice.org suite and am guessing it has something to do
-with NFS.
+  https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/76409
 
-I am using NFS to mount my home dir, and Writer it will hang as soon as you (for example)
-remove the ruler check from the document interface.
+--- nfs-utils-1.0.10.orig/utils/gssd/gssd.c
++++ nfs-utils-1.0.10/utils/gssd/gssd.c
+@@ -118,7 +118,7 @@ main(int argc, char *argv[])
+                                break;
+                        case 'd':
+                                strncpy(ccachedir, optarg, sizeof(ccachedir));
+-                               if (ccachedir[sizeof(ccachedir-1)] != '\0')
++                               if (ccachedir[sizeof(ccachedir)-1] != '\0')
+                                        errx(1, "ccachedir path name too long");
+                                break;
+                        default:
 
-When using another account with an local/"on disk" home dir there is no problem.
-
-Something similar occurs with aMule, it is unable to write a lock file.
-
-Are there any special options needed by NFS to export or mount the directory.
-
-My current export and mount lines are:
-
-/* /etc/exports */
-/home/i2a          192.168.0.21(rw,sync)
-
-/* /etc/fstab */
-192.168.0.254:/home/i2a  /home/i2a  nfs  rw,retrans=3,intr,noac
-
-
-Thanks and regards,
-  Ingmar
-
--------------------------------------------------------------------------------
-unfair competition, n.:
-	Selling cheaper than we do.
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
