@@ -1,28 +1,24 @@
-From: "Edna Franco" <crescent'sAryan's@ac-bordeaux.fr>
-Subject: Edna wrote:
-Date: Fri, 5 Jan 2007 01:23:46 -0540
-Message-ID: <01c73068$252237c0$6c822ecf@crescent'sAryan's>
+From: Stephan Henningsen <sth@amplex.dk>
+Subject: Re: Trouble accessing NFS mountpoint as user
+Date: Fri, 05 Jan 2007 07:56:25 +0100
+Message-ID: <459DF699.6010303@amplex.dk>
+References: <459CB96A.1060806@amplex.dk>
+	<1167901767.6046.17.camel@lade.trondhjem.org>
+	<459CD54E.9050107@amplex.dk> <20070104210041.GA15676@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2doC-0007HA-1x
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 17:23:48 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2doC-0006HG-IX
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 17:23:49 -0800
-Received: from [211.209.85.250] (helo=CPQ24050265755.hananet.net)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1H2do9-0005sG-EZ
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 17:23:46 -0800
-Received: from 194.199.33.75 (HELO envoi.ac-bordeaux.fr)
-	by lists.sourceforge.net with esmtp (YBA-N<)F6C W0AS)
-	id 0(7,S+-209*F*-?*
-	for nfs@lists.sourceforge.net; Fri, 5 Jan 2007 01:23:46 -0540
-To: <nfs@lists.sourceforge.net>
+	id 1H2j0V-00048F-U3
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 22:56:52 -0800
+Received: from [62.242.67.89] (helo=server.amplex.dk)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H2j0W-0000Fa-Cm
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 22:56:53 -0800
+To: Frank van Maarseveen <frankvm@frankvm.com>
+In-Reply-To: <20070104210041.GA15676@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,30 +31,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Get the New Year Rolling Right	
+Frank van Maarseveen wrote:
+> There's an alternative: See http://www.frankvm.com/nfs-ngroups/ for a
+> patch to get rid of the 16 groups limit on linux NFS2/NFS3 clients without
+> breaking the protocol.
 
-Company: PHYA	
-Current Price: $1.70	
-Target Price: $4.00	
+Interesting patch, thanks.  However, I'm already in the middle of switching 
+to NFSv4.
 
-
-	Physicians Adult Daycare (PHYA) is set up for huge returns.	
-This news is hot off the press and going to have a huge impact over the coming days:	 
-	Physicians Adult Daycare, Inc. to Increase Revenue by 83%.
-
-	HOUSTON, TX--(MARKET WIRE)--Jan 3, 2007 -- Physicians Adult	 
-Daycare, Inc. announced today that an agreement to purchase an	
-additional adult daycare company has been executed.    
-
-	 Go to your favorite financial news source to read the details.	 
-While there also read about the big negotiations going on with major Asian investors.	
-Further acquisitions are in the works and we are expecting a huge	
-revelation to come out of the company any day! ! 
-
-
-
-	All of these fortuitous events are coming together and sending this one 
-straight up!  Don't miss it!
+-- 
+Stephan Henningsen
 
 
 
