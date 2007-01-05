@@ -1,24 +1,28 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [PATCH] fix rpc.gssd -d
-Date: Fri, 5 Jan 2007 00:51:40 +0100
-Message-ID: <20070104235140.GA5288@uio.no>
-References: <20070104194625.GA3000@uio.no>
-	<4d569c330701041254m5a1fc1aem17a9eaadcbeaadfb@mail.gmail.com>
+From: "Edna Franco" <crescent'sAryan's@ac-bordeaux.fr>
+Subject: Edna wrote:
+Date: Fri, 5 Jan 2007 01:23:46 -0540
+Message-ID: <01c73068$252237c0$6c822ecf@crescent'sAryan's>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2cMS-0005YW-GZ
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 15:51:04 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1H2doC-0007HA-1x
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 17:23:48 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2cMS-0004kd-PE
-	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 15:51:06 -0800
-To: Kevin Coffman <kwc@citi.umich.edu>
-In-Reply-To: <4d569c330701041254m5a1fc1aem17a9eaadcbeaadfb@mail.gmail.com>
+	(Exim 4.44) id 1H2doC-0006HG-IX
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 17:23:49 -0800
+Received: from [211.209.85.250] (helo=CPQ24050265755.hananet.net)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1H2do9-0005sG-EZ
+	for nfs@lists.sourceforge.net; Thu, 04 Jan 2007 17:23:46 -0800
+Received: from 194.199.33.75 (HELO envoi.ac-bordeaux.fr)
+	by lists.sourceforge.net with esmtp (YBA-N<)F6C W0AS)
+	id 0(7,S+-209*F*-?*
+	for nfs@lists.sourceforge.net; Fri, 5 Jan 2007 01:23:46 -0540
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +35,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jan 04, 2007 at 03:54:05PM -0500, Kevin Coffman wrote:
-> Thanks Steinar.  I'll get to this and the AM_MAINTAINER_MODE patch
-> soon and resend them to Neil.  (Your other recent patches are out of
-> my arena.)
+Get the New Year Rolling Right	
 
-Thanks.
+Company: PHYA	
+Current Price: $1.70	
+Target Price: $4.00	
 
-By the way, I checked out the git repository (finding out the URL was
-non-trivial, though!) and discovered that the bzero patch was not applied (I
-believe it was sent in quite a while ago). Neil, did you forget, is it in
-a queue somewhere, or did I just check out the wrong one? (I used
-git://git.linux-nfs.org/pub/linux/nfs-utils/.)
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+	Physicians Adult Daycare (PHYA) is set up for huge returns.	
+This news is hot off the press and going to have a huge impact over the coming days:	 
+	Physicians Adult Daycare, Inc. to Increase Revenue by 83%.
+
+	HOUSTON, TX--(MARKET WIRE)--Jan 3, 2007 -- Physicians Adult	 
+Daycare, Inc. announced today that an agreement to purchase an	
+additional adult daycare company has been executed.    
+
+	 Go to your favorite financial news source to read the details.	 
+While there also read about the big negotiations going on with major Asian investors.	
+Further acquisitions are in the works and we are expecting a huge	
+revelation to come out of the company any day! ! 
+
+
+
+	All of these fortuitous events are coming together and sending this one 
+straight up!  Don't miss it!
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
