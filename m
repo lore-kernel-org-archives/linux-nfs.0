@@ -1,24 +1,15 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: trying to unload nfsd
-Date: Fri, 05 Jan 2007 13:17:46 +0100
-Message-ID: <1167999466.6050.36.camel@lade.trondhjem.org>
-References: <1167941208.18576.28.camel@pc.ilinx>
+From: "Emile Voss" <revisitinggloss@abacon.com>
+Subject: Emile wrote:
+Date: Fri, 5 Jan 2007 16:54:56 +0240
+Message-ID: <01c730ea$3a8df1d0$6c822ecf@revisitinggloss>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2o1M-0001vv-JH
-	for nfs@lists.sourceforge.net; Fri, 05 Jan 2007 04:18:04 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1++eyxwSC9Vr5ntXMlGTGQMdLxMRYXIpSY=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2o1M-0004Pg-Ni
-	for nfs@lists.sourceforge.net; Fri, 05 Jan 2007 04:18:06 -0800
-To: "Brian J. Murrell" <brian@interlinx.bc.ca>
-In-Reply-To: <1167941208.18576.28.camel@pc.ilinx>
+Received: from 64.18.5.11 (HELO abacon.com.mail6.psmtp.com)
+	by lists.sourceforge.net with esmtp (JDASCP1A )W,@)
+	id .JZI00-O-K-/Q-T5
+	for nfs@lists.sourceforge.net; Fri, 5 Jan 2007 16:54:56 +0240
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,37 +22,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-01-04 at 15:06 -0500, Brian J. Murrell wrote:
-> I have umounted all of my nfs filesystems and stopped the nfs services.
-> I still can't unload the nfsd module:
-> 
-> $ sudo /sbin/lsmod | grep nfsd
-> nfsd                  277152  4 
-> exportfs                7680  1 nfsd
-> lockd                  77616  1 nfsd
-> nfs_acl                 5120  1 nfsd
-> sunrpc                174840  7 nfsd,lockd,nfs_acl
-> 
-> The only thing I can see that could be pinning it still is:
-> 
-> $ grep nfs /proc/mounts
-> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw 0 0
-> 
-> But I can't seem to umount that:
-> 
-> $ sudo umount /var/lib/nfs/rpc_pipefs
-> umount: /var/lib/nfs/rpc_pipefs: device is busy
-> umount: /var/lib/nfs/rpc_pipefs: device is busy
-> 
-> What could be pinning that fs/mount-point?
+Get the New Year Rolling Right! ! 
 
-Nothing in the sunrpc module depends on anything in nfsd as you can see
-from the above lsmod output.
+Company: PHYA	
+Current Price: $1.70	
+Target Price: $4.00	
 
-I'd rather expect that you've forgotten to kill off rpc.mountd,
-rpc.idmapd and/or rpc.svcgssd.
 
-Trond
+	 Physicians Adult Daycare (PHYA) is set up for huge returns.	
+This news is hot off the press and going to have a huge impact over the coming days:	
+	 Physicians Adult Daycare, Inc. to Increase Revenue by 83%!    
+
+	HOUSTON, TX--(MARKET WIRE)--Jan 3, 2007 -- Physicians Adult	
+Daycare, Inc. announced today that an agreement to purchase an	
+additional adult daycare company has been executed	
+
+
+
+	Go to your favorite financial news source to read the details.	
+While there also read about the big negotiations going on with major Asian investors.	
+Further acquisitions are in the works and we are expecting a huge	
+revelation to come out of the company any day!
+
+
+
+	All of these fortuitous events are coming together and sending this one 
+straight up!  Don't miss it.
+
 
 
 -------------------------------------------------------------------------
