@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS file .lock problem?
-Date: Fri, 05 Jan 2007 13:10:40 +0100
-Message-ID: <1167999040.6050.30.camel@lade.trondhjem.org>
-References: <20070104181136.M28899@quicknet.nl>
+Subject: Re: trying to unload nfsd
+Date: Fri, 05 Jan 2007 13:17:46 +0100
+Message-ID: <1167999466.6050.36.camel@lade.trondhjem.org>
+References: <1167941208.18576.28.camel@pc.ilinx>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,15 +10,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H2nuY-00014n-GG
-	for nfs@lists.sourceforge.net; Fri, 05 Jan 2007 04:11:02 -0800
+	id 1H2o1M-0001vv-JH
+	for nfs@lists.sourceforge.net; Fri, 05 Jan 2007 04:18:04 -0800
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+/mvw92qcnIJGbmGmLfK3+NFDRNYrHee0=])
+	ident=[U2FsdGVkX1++eyxwSC9Vr5ntXMlGTGQMdLxMRYXIpSY=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H2nuY-00027G-Lg
-	for nfs@lists.sourceforge.net; Fri, 05 Jan 2007 04:11:04 -0800
-To: Ingmar <i2a@gmx.net>
-In-Reply-To: <20070104181136.M28899@quicknet.nl>
+	(Exim 4.44) id 1H2o1M-0004Pg-Ni
+	for nfs@lists.sourceforge.net; Fri, 05 Jan 2007 04:18:06 -0800
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
+In-Reply-To: <1167941208.18576.28.camel@pc.ilinx>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-01-04 at 19:25 +0100, Ingmar wrote:
-> Hi All,
+On Thu, 2007-01-04 at 15:06 -0500, Brian J. Murrell wrote:
+> I have umounted all of my nfs filesystems and stopped the nfs services.
+> I still can't unload the nfsd module:
 > 
-> I am having a problem with the Openoffice.org suite and am guessing it has something to do
-> with NFS.
+> $ sudo /sbin/lsmod | grep nfsd
+> nfsd                  277152  4 
+> exportfs                7680  1 nfsd
+> lockd                  77616  1 nfsd
+> nfs_acl                 5120  1 nfsd
+> sunrpc                174840  7 nfsd,lockd,nfs_acl
 > 
-> I am using NFS to mount my home dir, and Writer it will hang as soon as you (for example)
-> remove the ruler check from the document interface.
+> The only thing I can see that could be pinning it still is:
 > 
-> When using another account with an local/"on disk" home dir there is no problem.
+> $ grep nfs /proc/mounts
+> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw 0 0
 > 
-> Something similar occurs with aMule, it is unable to write a lock file.
+> But I can't seem to umount that:
 > 
-> Are there any special options needed by NFS to export or mount the directory.
+> $ sudo umount /var/lib/nfs/rpc_pipefs
+> umount: /var/lib/nfs/rpc_pipefs: device is busy
+> umount: /var/lib/nfs/rpc_pipefs: device is busy
+> 
+> What could be pinning that fs/mount-point?
 
-Are you running rpc.statd on both machines? Are there any
-firewalls/netfilters that might get in the way of the NLM and NSM
-protocols?
+Nothing in the sunrpc module depends on anything in nfsd as you can see
+from the above lsmod output.
+
+I'd rather expect that you've forgotten to kill off rpc.mountd,
+rpc.idmapd and/or rpc.svcgssd.
 
 Trond
 
