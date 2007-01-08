@@ -1,7 +1,8 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: setacl, data caching
-Date: Mon, 8 Jan 2007 16:28:48 -0500
-Message-ID: <20070108212848.GB1686@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: setacl, data caching
+Date: Mon, 08 Jan 2007 18:58:16 -0500
+Message-ID: <1168300696.6964.49.camel@lade.trondhjem.org>
+References: <20070108212848.GB1686@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -9,13 +10,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H4231-0000q2-Ro
-	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 13:28:51 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=pickle.fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H4232-0004vc-C5
-	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 13:28:53 -0800
-To: Trond Myklebust <trond@netapp.com>
+	id 1H44Nt-00009K-3s
+	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 15:58:33 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H44Ns-0000OF-O7
+	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 15:58:34 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20070108212848.GB1686@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,21 +29,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Why does the nfs3_proc_setacls() need the begin_data_update() and
-end_data_update()?:
+On Mon, 2007-01-08 at 16:28 -0500, J. Bruce Fields wrote:
+> Why does the nfs3_proc_setacls() need the begin_data_update() and
+> end_data_update()?:
+> 
+> 	nfs_begin_data_update(inode);
+>         msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
+>         status = rpc_call_sync(server->client_acl, &msg, 0);
+>         spin_lock(&inode->i_lock);
+>         NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ACCESS;
+>         spin_unlock(&inode->i_lock);
+>         nfs_end_data_update(inode);
+> 
+> It looks like the effect of those are to invalidate the page cache for that
+> inode.  Why do we want to do that when we modify the ACL?
 
-	nfs_begin_data_update(inode);
-        msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
-        status = rpc_call_sync(server->client_acl, &msg, 0);
-        spin_lock(&inode->i_lock);
-        NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ACCESS;
-        spin_unlock(&inode->i_lock);
-        nfs_end_data_update(inode);
+The cache invalidation is only true for directories, however even there
+it is not strictly necessary. What is necessary, though, is to declare
+the attribute cache as unstable while the setacl call is on the wire.
 
-It looks like the effect of those are to invalidate the page cache for that
-inode.  Why do we want to do that when we modify the ACL?
+Note that we have a similar inefficiency in nfs_rename().
 
---b.
+Cheers,
+  Trond
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
