@@ -1,23 +1,24 @@
-From: oudoubah@altern.org
-Subject: Re: nfs over ssh : invalid protocol
-Date: Mon, 8 Jan 2007 16:18:01 +0100 (CET)
-Message-ID: <60484.193.178.136.53.1168269481.squirrel@altern.org>
-References: <36900.193.178.136.53.1168256160.squirrel@altern.org>
-	<f992145d0701080534r3b979de3yea805c59509ad672@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: trying to unload nfsd
+Date: Mon, 08 Jan 2007 10:57:04 -0500
+Message-ID: <45A269D0.40909@RedHat.com>
+References: <1167941208.18576.28.camel@pc.ilinx>
+	<1167999466.6050.36.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: "Brian J. Murrell" <brian@interlinx.bc.ca>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H3vHS-00048Y-CO
-	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 06:15:18 -0800
-Received: from altern.org ([80.67.174.57] helo=filer2.altern.org ident=postfix)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H3vHJ-0005FM-Mi
-	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 06:15:11 -0800
-In-Reply-To: <f992145d0701080534r3b979de3yea805c59509ad672@mail.gmail.com>
-To: "Pierre Lombard" <lombard.pierre@gmail.com>
+	id 1H3wsX-0006HE-66
+	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 07:57:41 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H3wsX-0004uR-Lw
+	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 07:57:43 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1167999466.6050.36.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,70 +32,23 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
->> ssh -f -L38000:10.0.0.1:2049 -L38001:10.0.0.1:32767 -l save 10.0.0.1
->> sleep 60
->> mount -t nfs -o
->> tcp,sync,rsize=8192,wsize=8192,soft,timeo=60,port=38000,mountport=38001
->> localhost:/images /tmp/save.11601
->> mount to NFS server 'localhost' failed: possible invalid protocol.
 
->> There is a firewall between the two servers, and only the port 22 and
->> 111
->> are open.
->>
+Trond Myklebust wrote:
 
->
-> Maybe mountd is not running on port 32767 for those very servers - did
-> you check with rpcinfo ?
+> I'd rather expect that you've forgotten to kill off rpc.mountd,
+> rpc.idmapd and/or rpc.svcgssd.
+Right... here is what I do to unload both nfsd and sunrpc
+service nfs stop && service rpcidmapd stop &&
+umount /proc/fs/nfsd  && rmmod nfsd
+rmmod lockd && rmmod nfs_acl
+umount /var/lib/nfs/rpc_pipefs && rmmod sunrpc
 
-On the client :
-# rpcinfo -p 10.0.0.1
-   program no_version protocole  no_port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp  32765  status
-    100024    1   tcp  32765  status
-    100011    1   udp  32769  rquotad
-    100011    2   udp  32769  rquotad
-    100011    1   tcp  32769  rquotad
-    100011    2   tcp  32769  rquotad
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    4   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100003    4   tcp   2049  nfs
-    100021    1   udp  57059  nlockmgr
-    100021    3   udp  57059  nlockmgr
-    100021    4   udp  57059  nlockmgr
-    100021    1   tcp  32768  nlockmgr
-    100021    3   tcp  32768  nlockmgr
-    100021    4   tcp  32768  nlockmgr
-    100005    1   udp  32767  mountd
-    100005    1   tcp  32767  mountd
-    100005    2   udp  32767  mountd
-    100005    2   tcp  32767  mountd
-    100005    3   udp  32767  mountd
-    100005    3   tcp  32767  mountd
+(Note: this assumes there are entires in /etc/fstab
+for both /proc/fs/nfsd and var/lib/nfs/rpc_pipefs.
+It also assumes the Secure NFS gssd daeamon are not
+running).
 
-
-On the nfs server :
-#cat /etc/sysconfig/nfs
-STATD_PORT=32765
-STATD_OUTGOING_PORT=32766
-MOUNTD_PORT=32767
-LOCKD_TCPPORT=32768
-RQUOTAD_PORT=32769
-
-I have the problem on 2 computers. One is in the same network and is not
-firewalled. I tried to mount the nfs (without ssh tunnel), and it works.
-The problem appears only when i try to make the encapsulation.
-
-(I don't know if my problem is best for nfs mailing-list or ssh mailing
-list.)
-
-Oudoubah
-
+steved.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
