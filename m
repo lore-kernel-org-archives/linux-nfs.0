@@ -1,20 +1,22 @@
-From: "Mack Bird" <vergesmarketplace's@accel-kkr.com>
-Subject: HELLO
-Date: Sun, 7 Jan 2007 14:51:39 -0420
-Message-ID: <01c7326b$5634f870$6c822ecf@vergesmarketplace's>
+From: oudoubah@altern.org
+Subject: nfs over ssh : invalid protocol
+Date: Mon, 8 Jan 2007 12:36:00 +0100 (CET)
+Message-ID: <36900.193.178.136.53.1168256160.squirrel@altern.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H3ZN5-0004uG-11
-	for nfs@lists.sourceforge.net; Sun, 07 Jan 2007 06:51:41 -0800
-Received: from 65.55.251.22 (HELO MAIL.GLOBAL.FRONTBRIDGE.com)
-	by lists.sourceforge.net with esmtp (C?/*W2F4 1OM-4<)
-	id 555)C---T;33O-08
-	for nfs@lists.sourceforge.net; Sun, 7 Jan 2007 14:51:39 -0420
-To: <nfs@lists.sourceforge.net>
+	id 1H3roW-0007Zi-Vf
+	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 02:33:13 -0800
+Received: from altern.org ([80.67.174.57] helo=filer2.altern.org ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H3roW-00087U-9g
+	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 02:33:14 -0800
+Received: from altern.org (localhost.localdomain [127.0.0.1])
+	by filer2.altern.org (Postfix) with ESMTP id 8596B490A553
+	for <nfs@lists.sourceforge.net>; Mon,  8 Jan 2007 12:36:00 +0100 (CET)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,31 +29,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-After the Bell News to Send HXPN Flying!!!
+Hi,
 
-ENCINO, CA--(MARKET WIRE)--Jan 5, 2007 (4:05pm) -- Harris
-Exploration, Inc. (Other OTC:HXPN.PK - News) advises shareholders it
-has authorized a Letter of Intent with Minera Cristal of Ecuador, regarding
-the opportunity to acquire up to a 100% position in their Balsapamba
-property, located in the Bolivar Province, Ecuador, South America.
+I try to mount a nfs share over ssh with this commands (in a script) :
+ssh -f -L${NFSPORT}:${IPSERVER}:2049 -L${NFSMOUNTPORT}:${IPSERVER}:32767
+-l root ${IPSERVER} sleep 60
+mount -t nfs -o
+tcp,sync,rsize=8192,wsize=8192,soft,timeo=60,port=$NFSPORT,mountport=$NFSMOUNTPORT
+$NOMSERVER:/$REPSERVER $REP
 
-Harris Exploration
+The tunnel is OK. The mount command works on some servers, but on other
+servers i have an error message. Here is what i see on the term :
+ssh -f -L38000:10.0.0.1:2049 -L38001:10.0.0.1:32767 -l save 10.0.0.1 sleep 60
+[OK]
+mount -t nfs -o
+tcp,sync,rsize=8192,wsize=8192,soft,timeo=60,port=38000,mountport=38001
+localhost:/images /tmp/save.11601
+mount to NFS server 'localhost' failed: possible invalid protocol.
+[KO]
 
-Symbol: HXPN
-Current Price:     $1.50 (+20%)
-Short Term Target:  $5.00
+There is a firewall between the two servers, and only the port 22 and 111
+are open.
 
-With the price of precious medals continuing to skyrocket, mining
-companies had another year of record profits.  With limited supply and
-high demand, experts agree that the mining boom shows no signs of
-abating.
+Do you have any idea?
 
-Harris Exploration is in the right place at the right time and has just begun
-a major PR campaign to let everyone know about it!  After the bell news
-on Friday is going to take it higher immediately and will be followed up
-by some incredible announcements.  We give this one a STRONG BUY!
+Thanks!
 
-Get in while there is still time!!!
+Oudoubah
 
 
 -------------------------------------------------------------------------
