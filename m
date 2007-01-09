@@ -1,30 +1,23 @@
-From: Adrian Phillips <a.phillips@met.no>
+From: oudoubah@altern.org
 Subject: Re: nfs over ssh : invalid protocol
-Date: Tue, 09 Jan 2007 06:55:59 +0100
-Message-ID: <87ac0seob4.fsf@freeze.oslo.dnmi.no>
+Date: Tue, 9 Jan 2007 10:52:56 +0100 (CET)
+Message-ID: <59048.193.178.136.53.1168336376.squirrel@altern.org>
 References: <36900.193.178.136.53.1168256160.squirrel@altern.org>
+	<87ac0seob4.fsf@freeze.oslo.dnmi.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H49yQ-0000Fp-4n
-	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 21:56:38 -0800
-Received: from smtp1.oslo.dnmi.no ([128.39.62.241])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H49yQ-0000qN-KM
-	for nfs@lists.sourceforge.net; Mon, 08 Jan 2007 21:56:40 -0800
-Received: from freeze.oslo.dnmi.no ([157.249.16.34])
-	by smtp1.oslo.dnmi.no with esmtp (Exim 4.50) id 1H49xn-00076v-9D
-	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 05:55:59 +0000
-Received: from tandem by freeze.oslo.dnmi.no with local (Exim 3.36 #1)
-	id 1H49xn-0001gY-00
-	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 05:55:59 +0000
-To: nfs@lists.sourceforge.net
-In-Reply-To: <36900.193.178.136.53.1168256160.squirrel@altern.org>
-	(oudoubah@altern.org's
-	message of "Mon, 8 Jan 2007 12:36:00 +0100 (CET)")
+	id 1H4CgI-00082S-It
+	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 00:50:06 -0800
+Received: from altern.org ([80.67.174.57] helo=filer2.altern.org ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H4CgI-0005ME-CH
+	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 00:50:08 -0800
+In-Reply-To: <87ac0seob4.fsf@freeze.oslo.dnmi.no>
+To: "Adrian Phillips" <a.phillips@met.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,20 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
->>>>> "Oudoubah" == oudoubah  <oudoubah@altern.org> writes:
+>     Oudoubah> There is a firewall between the two servers, and only
+>     Oudoubah> the port 22 and 111 are open.
+>
+> Try openvpn through one of these ports instead.
 
-    Oudoubah> There is a firewall between the two servers, and only
-    Oudoubah> the port 22 and 111 are open.
+One of the server is critical, so i'm not allowed to install anything on
+it. But thanks for the advice.
 
-Try openvpn through one of these ports instead.
+> Does forcing the use of a protocol version (for instance nfsvers=3) help ?
 
-Sincerely,
+It doesn't help
 
-Adrian Phillips
+> Is it really possible to use statd/lockd over SSH? Otherwise, I would try
+mounting with "nolock".
 
--- 
-Who really wrote the works of William Shakespeare ?
-http://www.pbs.org/wgbh/pages/frontline/shakespeare/
+I tried with this option, but the error still occurs.
+
+
+> If that fails, a Wireshark trace should give you a hint. Another hint is
+> that some versions of Fedora and RHEL have a broken mount command (unless
+> the updates are installed), see
+>https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=140016.
+
+The two servers are Red Hat 3.4.3-9.EL4. I'll search if i'm concerned by
+the bug.
+How can i do a wireshark trace?
+
+Oudoubah
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
