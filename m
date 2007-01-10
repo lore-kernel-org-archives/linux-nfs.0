@@ -1,22 +1,26 @@
-From: "Andrew Lee" <andrew@sonysnowie.com>
-Subject: nfs mount problem on vxfs
-Date: Tue, 9 Jan 2007 14:51:36 -0500 (EST)
-Message-ID: <56800.63.119.254.10.1168372296.squirrel@mail.sonysnowie.com>
+From: "Mattie " <Growth_Fund_@gmail.com>
+Subject: Re: Also, once you begin the process,
+	You will not make payments on your Account  1f17 tcsk
+Date: Tue, 09 Jan 2007 23:20:28 -0200
+Message-ID: <5b0001c73444$bfbec700$4a4993f2@Growth_Fund_>
+Reply-To: Jeff <Growth_Fund_@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============1547749258=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H4N0b-0000hb-6x
-	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 11:51:45 -0800
-Received: from outbound-mail-46.bluehost.com ([69.89.18.15])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1H4N0Z-0008I7-FI
-	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 11:51:46 -0800
-Received: from [127.0.0.1] (helo=box176.bluehost.com)
-	by box176.bluehost.com with esmtp (Exim 4.52) id 1H4N0S-0007AJ-Ie
-	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 12:51:37 -0700
-To: nfs@lists.sourceforge.net
+	id 1H4Rd3-0005x3-Dr
+	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 16:47:45 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1H4Rd4-0006cK-0x
+	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 16:47:47 -0800
+Received: from [72.2.24.181] (helo=gmail.com)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1H4Rd2-0003i0-9N
+	for nfs@lists.sourceforge.net; Tue, 09 Jan 2007 16:47:45 -0800
+To: "Petersen " <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,32 +33,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
+This is a multi-part message in MIME format.
 
-I recently upgraded my redhat box to SuSE linux, the kernel version is
-2.6.5-7.252-bigsmp
+--===============1547749258==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_C06_049A_FD6C549D.8503DEDB"
 
-Here is my nfs server version
+This is a multi-part message in MIME format.
 
-yast2-nfs-client-2.9.11-23.2
-yast2-nfs-server-2.9.9-23.2
+------=_NextPart_C06_049A_FD6C549D.8503DEDB
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-I exported 2 directories, one is the /tmp on local reiserfs, and the other
-one is a /emc on vxfs (emc disk). I tried multiple nfs clients, the client
-can mount the /tmp, but none of them can mount the /emc directory, the
-client just hung.
 
-Any idea? is that a bug or some configuration problem on my nfs server?
 
-Thanks.
 
-Andrew
+constitutionally
+
+
+
+Eliminate all of your CreditCard Debt.  
+
+  Our attorneys have discovered a loop hole in the banking laws. Using th=
+is discovery we have been successful at totally eliminating peoples Credi=
+tCardDebt with out them paying another dime.
+We GuaranteeThat we can do this for you.
+
+Continue here 
+
+
+
+------=_NextPart_C06_049A_FD6C549D.8503DEDB
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+<html>
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-885=
+9-1">
+<title>constitutionally</title>
+</head>
+<body>
+<p><strong><font color=3D"#CC0000" size=3D"2" face=3D"Arial, Helvetica, s=
+ans-serif">Eliminate all of your CreditCard Debt.</font></strong>  <br>
+  <strong><font color=3D"#CC0000" size=3D"2" face=3D"Arial, Helvetica, sa=
+ns-serif">Our attorneys have discovered a loop hole in the banking laws. =
+Using this discovery we have been successful at totally eliminating peopl=
+es CreditCardDebt with out them paying another dime.
+We GuaranteeThat we can do this for you.</font></strong></p>
+<p><strong><font color=3D"#CC0000" size=3D"2" face=3D"Arial, Helvetica, s=
+ans-serif"><a href=3D"http://0x00000000000000059.0x068.0x0000000000000000=
+070.0x000000018">Continue here</a> </font></strong></p>
+</body>
+</html>
+
+
+------=_NextPart_C06_049A_FD6C549D.8503DEDB--
+
+
+
+--===============1547749258==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1547749258==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1547749258==--
