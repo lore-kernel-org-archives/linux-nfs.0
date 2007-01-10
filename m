@@ -1,24 +1,23 @@
-From: "T. Wyatt - News Service" <portmanteauxhideouts@abc.net.au>
-Subject: Howard Stern earns $83M bonus
-Date: Wed, 10 Jan 2007 12:34:01 -0540
-Message-ID: <01c734b3$9b8eb600$6c822ecf@portmanteauxhideouts>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: nfs mount problem on vxfs
+Date: Wed, 10 Jan 2007 12:47:04 +0000
+Message-ID: <20070110124704.GA3350@infradead.org>
+References: <56800.63.119.254.10.1168372296.squirrel@mail.sonysnowie.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0376449349=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H4cXN-0004ii-5R
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 04:26:37 -0800
-Received: from 221x243x207x116.ap221.ftth.ucom.ne.jp ([221.243.207.116]
-	helo=FM-5C1C21483EBD.usen.ad.jp)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H4cXN-0004c7-Jk
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 04:26:38 -0800
-Received: from 203.2.218.145 (HELO smtp.abc.net.au)
-	by lists.sourceforge.net with esmtp (2*F9KLR6)95 .6WWC9)
-	id '0AU,0-7(64).-ZC
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 12:34:01 -0540
-To: <nfs@lists.sourceforge.net>
+	id 1H4crD-0006vz-OV
+	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 04:47:07 -0800
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1H4crD-0002Tv-NP
+	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 04:47:09 -0800
+To: Andrew Lee <andrew@sonysnowie.com>
+In-Reply-To: <56800.63.119.254.10.1168372296.squirrel@mail.sonysnowie.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,124 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Tue, Jan 09, 2007 at 02:51:36PM -0500, Andrew Lee wrote:
+> Hi all,
+> 
+> I recently upgraded my redhat box to SuSE linux, the kernel version is
+> 2.6.5-7.252-bigsmp
+> 
+> Here is my nfs server version
+> 
+> yast2-nfs-client-2.9.11-23.2
+> yast2-nfs-server-2.9.9-23.2
+> 
+> I exported 2 directories, one is the /tmp on local reiserfs, and the other
+> one is a /emc on vxfs (emc disk). I tried multiple nfs clients, the client
+> can mount the /tmp, but none of them can mount the /emc directory, the
+> client just hung.
 
---===============0376449349==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0006_01C734FF.0B765E00"
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0006_01C734FF.0B765E00
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-
-The hottest pick this year!
-
-It just doesn't get any better than this.  Booming sector, tightly held,
-with an incredible PR blitz starting up.  Not only that, but the company is set
-to release some smashing news.
-
-Physicians Adult Daycare, Inc.
-
-Symbol: PHYA
-Current Price: $1.65
-Short-Term Projected Price: $4.25
-Long-Term Target Price: $10.20
-
-As the population ages, the economic value in the US market for adult
-daycare is projected to grow nearly 600%.  Globally the potential market
-is a staggering $45 billion.
-
-PHYA is already hitting it big in the sector.  With solid acquisitions,
-expert management, and a red hot sector, PHYA is looking at record
-earnings.
-
-Check your favorite news source.  Check your Level 2 market data.  You
-will see that this one is set for an explosion.
-
-With the huge publicity that is on the way THIS is where you want to be.
-Make sure you get in early on December, 11th.  Win big with PHYA!
-
-
-------=_NextPart_000_0006_01C734FF.0B765E00
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" xmlns:w=3D"urn:sc=
-hemas-microsoft-com:office:word" xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; charset=3Dus-ascii">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-</head>
-<body>
-<BODY>
-<P align=3Dcenter><FONT size=3D2>The hottest pick this year!<BR>
-<BR>
-<FONT face=3D"Comic Sans MS">It just doesn't get any better than this.&nbsp=
-; Booming 
-sector, tightly held, with<BR>
-an incredible PR blitz starting up.  Not only that, but the company is set =
-to<BR>
-release some smashing news.<BR>
-</FONT><BR>
-<FONT face=3DArial><STRONG>Physicians Adult Daycare, Inc.</STRONG><BR>
-<BR>
-Symbol: <STRONG>PHYA</STRONG><BR>
-Current Price: $1.65<BR>
-<FONT color=3D#008000>Short-Term Projected Price:</FONT> $4.25<BR>
-<FONT color=3D#0000ff>Long-Term Target Price:</FONT> $10.20<BR></FONT><BR>
-<FONT face=3D"Comic Sans MS"><FONT face=3D"Times New Roman">As the populati=
-on ages, the economic value in the US market for adult<BR>
-daycare is projected <FONT color=3D#ff0000>to <STRONG>grow</STRONG> <STRONG=
->nearly 600%</STRONG>.</FONT> Globally the potential market<BR>
-is a staggering <STRONG>$45 billion</STRONG>.</FONT><BR>
-</FONT><BR>
-<FONT face=3D"Comic Sans MS"><STRONG>PHYA</STRONG> is already hitting it bi=
-g in the sector.  With solid acquisitions,<BR>
-expert management, and a red hot sector, PHYA is looking at record<BR>
-earnings.</FONT><BR>
-<BR>
-<FONT color=3D#000080><STRONG><FONT color=3D#ff0000>Check</FONT></STRONG> y=
-our favorite news source.  <FONT color=3D#ff0000><STRONG>Check</STRONG></FO=
-NT> your Level 2 market data.  You<BR>
-will see that this one is set for an <STRONG><FONT color=3D#ff0000>explosio=
-n</FONT>.</STRONG><BR>
-</FONT><BR>With the huge publicity that is on the way THIS is where you wan=
-t to be. <BR>
-Make sure you get in early on<FONT color=3D#008000> December, 11th</FONT>. =
- Win big with 
-<STRONG>PHYA</STRONG>!</FONT> </P></BODY>
-
-</body>
-</html>
-
-------=_NextPart_000_0006_01C734FF.0B765E00--
-
-
-
---===============0376449349==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+I haven't added support for nfs exporting to the vxfs driver.  To be honest
+it's quite old and didn't resource (time and actual  vxfs native systems)
+to test it again.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0376449349==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0376449349==--
