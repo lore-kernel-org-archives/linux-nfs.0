@@ -1,24 +1,21 @@
-From: "W. Kern - News Service" <caninebeast's@abitur.mipt.ru>
-Subject: Senator's condition upgraded after brain surgery
-Date: Wed, 10 Jan 2007 19:34:34 +0000 (UTC)
-Message-ID: <01c734ee$60d76c60$6c822ecf@caninebeast's>
+From: "wim appermans" <wim.lists@gmail.com>
+Subject: NFS3ERR_ACCES on getattribute
+Date: Thu, 11 Jan 2007 00:52:01 +0100
+Message-ID: <e468ef330701101552n2e2ee36w47497e19dd9cf136@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0116885347=="
+Content-Type: multipart/mixed; boundary="===============2035638725=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H4jCg-0006BF-K0
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 11:33:46 -0800
-Received: from p508717f7.dip0.t-ipconnect.de ([80.135.23.247])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H4jCf-0002fo-1m
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 11:33:44 -0800
-Received: from 193.125.143.173 (HELO relay.mipt.ru)
-	by lists.sourceforge.net with esmtp (3QOY=05*4)8O .ZU(0)
-	id 00AR>,-V2NCLA-:<
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 19:34:43 -0060
-To: <nfs@lists.sourceforge.net>
-Date: Wed, 10 Jan 2007 19:34:43 -0060
+	id 1H4nEg-0000qi-AO
+	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 15:52:02 -0800
+Received: from an-out-0708.google.com ([209.85.132.247])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H4nEh-00036G-4n
+	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 15:52:04 -0800
+Received: by an-out-0708.google.com with SMTP id d40so309576and
+	for <nfs@lists.sourceforge.net>; Wed, 10 Jan 2007 15:52:02 -0800 (PST)
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,106 +28,138 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
-
---===============0116885347==
+--===============2035638725==
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0006_01C734F6.C29BD460"
+	boundary="----=_Part_617_1611699.1168473121933"
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0006_01C734F6.C29BD460
-Content-Type: text/plain;
-	charset="windows-1250"
+------=_Part_617_1611699.1168473121933
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-The hottest pick this year!
+Hi,
 
-It just doesn't get any better than this.  Booming sector, tightly held,
-with an incredible PR blitz starting up.  Not only that, but the company is set
-to release some smashing news.
+I'm struggeling for a while now with nfs, and I don't really know how
+to go forward anymore, so I was hoping someone over here could give me
+some ideas...
 
-Physicians Adult Daycare, Inc.
+The setup is rather simple: one linux machine, acting running an nfs
+server and a few linux clients. Athentication and stuff is done via
+ldap
 
-Symbol: PHYA
-Current Price: $1.65
-Short-Term Projected Price: $4.25
-Long-Term Target Price: $10.20
+What we're seeing is that on the clients, files seem to be randomly
+inaccessable.
+I'm mounting /home. and if I do someting like 'find .' in my homedir,
+nfs will give randomly errors on files that are not accessible. The
+thing is, the files it list have the right permissions. And if I run
+the command a few times in a row, the files it complains about are not
+the same. It also gives 'stale filehandler' errors.
 
-As the population ages, the economic value in the US market for adult
-daycare is projected to grow nearly 600%.  Globally the potential market
-is a staggering $45 billion.
+I got a small test now that fails consistently. It goes like this:
 
-PHYA is already hitting it big in the sector.  With solid acquisitions,
-expert management, and a red hot sector, PHYA is looking at record
-earnings.
+* mount the nfs drive
+* do an ls of a specific directory (this is a dir that I saw turning up
+a lot in the 'find' errors)
+* ls works correctly
+* do an ls again
+* now ls fails and gives me 'access denied'
 
-Check your favorite news source.  Check your Level 2 market data.  You
-will see that this one is set for an explosion.
+If I unmount and repeat: same behaviour
 
-With the huge publicity that is on the way THIS is where you want to be.
-Make sure you get in early on December, 11th.  Win big with PHYA!
+I made a trace with wireshark, and this is what I get:
+
+  V3 NULL Call (Reply In 42)
+  V3 NULL Reply (Call In 40)
+  V3 NULL Call (Reply In 82)
+  V3 NULL Reply (Call In 80)
+  V3 FSINFO Call (Reply In 85), FH:0x0493dc00
+  V3 FSINFO Reply (Call In 84)
+  V3 GETATTR Call (Reply In 87), FH:0x0493dc00
+  V3 GETATTR Reply (Call In 86)  Directory mode:2775 uid:0 gid:50
+  V3 ACCESS Call (Reply In 92), FH:0x0493dc00
+  V3 ACCESS Reply (Call In 91)
+  V3 LOOKUP Call (Reply In 95), DH:0x0493dc00/chrisr
+  V3 LOOKUP Reply (Call In 94), FH:0x086861a2
+  V3 ACCESS Call (Reply In 97), FH:0x086861a2
+  V3 ACCESS Reply (Call In 96)
+  V3 LOOKUP Call (Reply In 99), DH:0x086861a2/.evolution
+  V3 LOOKUP Reply (Call In 98), FH:0x446a61a2
+  V3 GETATTR Call (Reply In 101), FH:0x446a61a2
+  V3 GETATTR Reply (Call In 100)  Directory mode:0777 uid:2000
+gid:2000
+  V3 ACCESS Call (Reply In 103), FH:0x446a61a2
+  V3 ACCESS Reply (Call In 102)
+  V3 READDIRPLUS Call (Reply In 106), FH:0x446a61a2
+  V3 READDIRPLUS Reply (Call In 104) . .. addressbook cache calendar
+mail memos signatures tasks camel-cert.db cert8.db key3.db secmod.db
+  V3 GETATTR Call (Reply In 109), FH:0x446a61a2
+  V3 GETATTR Reply (Call In 108) Error:NFS3ERR_ACCES
+
+So if I understand correclty (I'm new to nfs. bear with me), The client
+first gets the filehandler of the directory of which I do an ls, and
+then does a READDIRPLUS. All is fine so far.
+When I do the second ls, it does a GETATTR, which gets an NFS3ERR_ACCES
+back.
+
+So there are a few things I don't understand.
+
+* why does a GETATTR goes well the first time, and gets an error the
+second time
+* why is the second GETATTR done in the first place, isn't this
+supposed to be cached? (I remeber reading something about attribute
+caching somewhere, but I'm not sure it has anything to do with this)
+* what does the NFS3ERR_ACCES mean. Can it have something to do with
+file locking?
+
+Another thing I should probably tell is that the same dirs are also
+shared with CIFS. Can there be some kind of conflict between CIFS and
+NFS
+
+And if it has something to do with locking, is there a way to find out
+who is locking what and why?
+(some pointers to a comprehensive description of the whole lcoking
+thing would also be appreciated. this is all rather obscure to me)
+
+Can the LDAP setup have anything to do with it? I think not, since nfs
+just compares gid and uid numbers and doesn't have to do a lookup of
+any group or user names, but maybe I'm missing something.
+
+Any help would be greatly appreciated. Also pointers on how to get more
+information on what's happening on the NFS server side or what there is
+still to do to get a better understanding on what is going on..
+
+Thanks,
+
+Wim
+
+------=_Part_617_1611699.1168473121933
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi,<br><br>I&#39;m struggeling for a while now with nfs, and I don&#39;t really know how<br>to go forward anymore, so I was hoping someone over here could give me<br>some ideas...<br><br>The setup is rather simple: one linux machine, acting running an nfs
+<br>server and a few linux clients. Athentication and stuff is done via<br>ldap<br><br>What we&#39;re seeing is that on the clients, files seem to be randomly<br>inaccessable.<br>I&#39;m mounting /home. and if I do someting like &#39;find .&#39; in my homedir,
+<br>nfs will give randomly errors on files that are not accessible. The<br>thing is, the files it list have the right permissions. And if I run<br>the command a few times in a row, the files it complains about are not<br>
+the same. It also gives &#39;stale filehandler&#39; errors.<br><br>I got a small test now that fails consistently. It goes like this:<br><br>* mount the nfs drive<br>* do an ls of a specific directory (this is a dir that I saw turning up
+<br>a lot in the &#39;find&#39; errors)<br>* ls works correctly<br>* do an ls again<br>* now ls fails and gives me &#39;access denied&#39;<br><br>If I unmount and repeat: same behaviour<br><br>I made a trace with wireshark, and this is what I get:
+<br><br> &nbsp; V3 NULL Call (Reply In 42)<br> &nbsp; V3 NULL Reply (Call In 40)<br> &nbsp; V3 NULL Call (Reply In 82)<br> &nbsp; V3 NULL Reply (Call In 80)<br> &nbsp; V3 FSINFO Call (Reply In 85), FH:0x0493dc00<br> &nbsp; V3 FSINFO Reply (Call In 84)
+<br> &nbsp; V3 GETATTR Call (Reply In 87), FH:0x0493dc00<br> &nbsp; V3 GETATTR Reply (Call In 86) &nbsp;Directory mode:2775 uid:0 gid:50<br> &nbsp; V3 ACCESS Call (Reply In 92), FH:0x0493dc00<br> &nbsp; V3 ACCESS Reply (Call In 91)<br> &nbsp; V3 LOOKUP Call (Reply In 95), DH:0x0493dc00/chrisr
+<br> &nbsp; V3 LOOKUP Reply (Call In 94), FH:0x086861a2<br> &nbsp; V3 ACCESS Call (Reply In 97), FH:0x086861a2<br> &nbsp; V3 ACCESS Reply (Call In 96)<br> &nbsp; V3 LOOKUP Call (Reply In 99), DH:0x086861a2/.evolution<br> &nbsp; V3 LOOKUP Reply (Call In 98), FH:0x446a61a2
+<br> &nbsp; V3 GETATTR Call (Reply In 101), FH:0x446a61a2<br> &nbsp; V3 GETATTR Reply (Call In 100) &nbsp;Directory mode:0777 uid:2000<br>gid:2000<br> &nbsp; V3 ACCESS Call (Reply In 103), FH:0x446a61a2<br> &nbsp; V3 ACCESS Reply (Call In 102)<br>
+ &nbsp; V3 READDIRPLUS Call (Reply In 106), FH:0x446a61a2<br> &nbsp; V3 READDIRPLUS Reply (Call In 104) . .. addressbook cache calendar<br>mail memos signatures tasks camel-cert.db cert8.db key3.db secmod.db<br> &nbsp; V3 GETATTR Call (Reply In 109), FH:0x446a61a2
+<br> &nbsp; V3 GETATTR Reply (Call In 108) Error:NFS3ERR_ACCES<br><br>So if I understand correclty (I&#39;m new to nfs. bear with me), The client<br>first gets the filehandler of the directory of which I do an ls, and<br>then does a READDIRPLUS. All is fine so far.
+<br>When I do the second ls, it does a GETATTR, which gets an NFS3ERR_ACCES<br>back.<br><br>So there are a few things I don&#39;t understand.<br><br>* why does a GETATTR goes well the first time, and gets an error the<br>
+second time<br>* why is the second GETATTR done in the first place, isn&#39;t this<br>supposed to be cached? (I remeber reading something about attribute<br>caching somewhere, but I&#39;m not sure it has anything to do with this)
+<br>* what does the NFS3ERR_ACCES mean. Can it have something to do with<br>file locking?<br><br>Another thing I should probably tell is that the same dirs are also<br>shared with CIFS. Can there be some kind of conflict between CIFS and
+<br>NFS<br><br>And if it has something to do with locking, is there a way to find out<br>who is locking what and why?<br>(some pointers to a comprehensive description of the whole lcoking<br>thing would also be appreciated. this is all rather obscure to me)
+<br><br>Can the LDAP setup have anything to do with it? I think not, since nfs<br>just compares gid and uid numbers and doesn&#39;t have to do a lookup of<br>any group or user names, but maybe I&#39;m missing something.<br>
+<br>Any help would be greatly appreciated. Also pointers on how to get more<br>information on what&#39;s happening on the NFS server side or what there is<br>still to do to get a better understanding on what is going on..
+<br><br>Thanks,<br><br>Wim
+
+------=_Part_617_1611699.1168473121933--
 
 
-------=_NextPart_000_0006_01C734F6.C29BD460
-Content-Type: text/html;
-	charset="windows-1250"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" xmlns:w=3D"urn:sc=
-hemas-microsoft-com:office:word" xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; charset=3Dwindows-1250">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-</head>
-<body>
-<BODY>
-<P align=3Dcenter><FONT size=3D2>The hottest pick this year!<BR>
-<BR>
-<FONT face=3D"Comic Sans MS">It just doesn't get any better than this.&nbsp=
-; Booming 
-sector, tightly held, with<BR>
-an incredible PR blitz starting up.  Not only that, but the company is set =
-to<BR>
-release some smashing news.<BR>
-</FONT><BR>
-<FONT face=3DArial><STRONG>Physicians Adult Daycare, Inc.</STRONG><BR>
-<BR>
-Symbol: <STRONG>PHYA</STRONG><BR>
-Current Price: $1.65<BR>
-<FONT color=3D#008000>Short-Term Projected Price:</FONT> $4.25<BR>
-<FONT color=3D#0000ff>Long-Term Target Price:</FONT> $10.20<BR></FONT><BR>
-<FONT face=3D"Comic Sans MS"><FONT face=3D"Times New Roman">As the populati=
-on ages, the economic value in the US market for adult<BR>
-daycare is projected <FONT color=3D#ff0000>to <STRONG>grow</STRONG> <STRONG=
->nearly 600%</STRONG>.</FONT> Globally the potential market<BR>
-is a staggering <STRONG>$45 billion</STRONG>.</FONT><BR>
-</FONT><BR>
-<FONT face=3D"Comic Sans MS"><STRONG>PHYA</STRONG> is already hitting it bi=
-g in the sector.  With solid acquisitions,<BR>
-expert management, and a red hot sector, PHYA is looking at record<BR>
-earnings.</FONT><BR>
-<BR>
-<FONT color=3D#000080><STRONG><FONT color=3D#ff0000>Check</FONT></STRONG> y=
-our favorite news source.  <FONT color=3D#ff0000><STRONG>Check</STRONG></FO=
-NT> your Level 2 market data.  You<BR>
-will see that this one is set for an <STRONG><FONT color=3D#ff0000>explosio=
-n</FONT>.</STRONG><BR>
-</FONT><BR>With the huge publicity that is on the way THIS is where you wan=
-t to be. <BR>
-Make sure you get in early on<FONT color=3D#008000> December, 11th</FONT>. =
- Win big with 
-<STRONG>PHYA</STRONG>!</FONT> </P></BODY>
-
-</body>
-</html>
-
-------=_NextPart_000_0006_01C734F6.C29BD460--
-
-
-
---===============0116885347==
+--===============2035638725==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -141,7 +170,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0116885347==
+--===============2035638725==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -151,4 +180,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0116885347==--
+--===============2035638725==--
