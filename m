@@ -1,24 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS3ERR_ACCES on getattribute
-Date: Thu, 11 Jan 2007 10:21:45 -0500
-Message-ID: <1168528905.6170.27.camel@lade.trondhjem.org>
-References: <e468ef330701101552n2e2ee36w47497e19dd9cf136@mail.gmail.com>
+From: "U. Sykes - News Service" <parboilsdilate@accelerate-nms.de>
+Subject: Man in hot pants struts in boots, cheers city  MORE ...
+Date: Thu, 11 Jan 2007 20:21:35 -0120
+Message-ID: <01c735be$1739c9b0$6c822ecf@parboilsdilate>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H51kf-0003g8-KO
-	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 07:22:04 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18tIIHAIO/T5MirbHN9iAxMgXjchF1np4M=])
+	id 1H56Qt-0003Me-98
+	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 12:21:55 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H51kf-0000jc-IT
-	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 07:22:03 -0800
-To: wim appermans <wim.lists@gmail.com>
-In-Reply-To: <e468ef330701101552n2e2ee36w47497e19dd9cf136@mail.gmail.com>
+	(Exim 4.44) id 1H56Qq-0002Xr-Sf
+	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 12:21:56 -0800
+Received: from [85.104.168.164] (helo=dsl85-104-43172.ttnet.net.tr)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1H56Qj-0005Jm-7U
+	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 12:21:46 -0800
+Received: from 212.63.136.134 (HELO mail.accelerate-nms.de)
+	by lists.sourceforge.net with esmtp (7NQ=-Y2/332@ PZB6@0)
+	id (6?1,+-D24>*V-*N
+	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 20:21:35 -0120
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,113 +35,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-01-11 at 00:52 +0100, wim appermans wrote:
-> Hi,
-> 
-> I'm struggeling for a while now with nfs, and I don't really know how
-> to go forward anymore, so I was hoping someone over here could give me
-> some ideas...
-> 
-> The setup is rather simple: one linux machine, acting running an nfs 
-> server and a few linux clients. Athentication and stuff is done via
-> ldap
-> 
-> What we're seeing is that on the clients, files seem to be randomly
-> inaccessable.
-> I'm mounting /home. and if I do someting like 'find .' in my homedir, 
-> nfs will give randomly errors on files that are not accessible. The
-> thing is, the files it list have the right permissions. And if I run
-> the command a few times in a row, the files it complains about are not
-> the same. It also gives 'stale filehandler' errors.
-> 
-> I got a small test now that fails consistently. It goes like this:
-> 
-> * mount the nfs drive
-> * do an ls of a specific directory (this is a dir that I saw turning
-> up 
-> a lot in the 'find' errors)
-> * ls works correctly
-> * do an ls again
-> * now ls fails and gives me 'access denied'
-> 
-> If I unmount and repeat: same behaviour
-> 
-> I made a trace with wireshark, and this is what I get: 
-> 
->   V3 NULL Call (Reply In 42)
->   V3 NULL Reply (Call In 40)
->   V3 NULL Call (Reply In 82)
->   V3 NULL Reply (Call In 80)
->   V3 FSINFO Call (Reply In 85), FH:0x0493dc00
->   V3 FSINFO Reply (Call In 84) 
->   V3 GETATTR Call (Reply In 87), FH:0x0493dc00
->   V3 GETATTR Reply (Call In 86)  Directory mode:2775 uid:0 gid:50
->   V3 ACCESS Call (Reply In 92), FH:0x0493dc00
->   V3 ACCESS Reply (Call In 91)
->   V3 LOOKUP Call (Reply In 95), DH:0x0493dc00/chrisr 
->   V3 LOOKUP Reply (Call In 94), FH:0x086861a2
->   V3 ACCESS Call (Reply In 97), FH:0x086861a2
->   V3 ACCESS Reply (Call In 96)
->   V3 LOOKUP Call (Reply In 99), DH:0x086861a2/.evolution
->   V3 LOOKUP Reply (Call In 98), FH:0x446a61a2 
->   V3 GETATTR Call (Reply In 101), FH:0x446a61a2
->   V3 GETATTR Reply (Call In 100)  Directory mode:0777 uid:2000
-> gid:2000
->   V3 ACCESS Call (Reply In 103), FH:0x446a61a2
->   V3 ACCESS Reply (Call In 102)
->   V3 READDIRPLUS Call (Reply In 106), FH:0x446a61a2
->   V3 READDIRPLUS Reply (Call In 104) . .. addressbook cache calendar
-> mail memos signatures tasks camel-cert.db cert8.db key3.db secmod.db
->   V3 GETATTR Call (Reply In 109), FH:0x446a61a2 
->   V3 GETATTR Reply (Call In 108) Error:NFS3ERR_ACCES
-> 
-> So if I understand correclty (I'm new to nfs. bear with me), The
-> client
-> first gets the filehandler of the directory of which I do an ls, and
-> then does a READDIRPLUS. All is fine so far. 
-> When I do the second ls, it does a GETATTR, which gets an
-> NFS3ERR_ACCES
-> back.
-> 
-> So there are a few things I don't understand.
-> 
-> * why does a GETATTR goes well the first time, and gets an error the
-> second time
-> * why is the second GETATTR done in the first place, isn't this
-> supposed to be cached? (I remeber reading something about attribute
-> caching somewhere, but I'm not sure it has anything to do with this) 
-> * what does the NFS3ERR_ACCES mean. Can it have something to do with
-> file locking?
-> 
-> Another thing I should probably tell is that the same dirs are also
-> shared with CIFS. Can there be some kind of conflict between CIFS and 
-> NFS
-> 
-> And if it has something to do with locking, is there a way to find out
-> who is locking what and why?
-> (some pointers to a comprehensive description of the whole lcoking
-> thing would also be appreciated. this is all rather obscure to me) 
-> 
-> Can the LDAP setup have anything to do with it? I think not, since nfs
-> just compares gid and uid numbers and doesn't have to do a lookup of
-> any group or user names, but maybe I'm missing something.
-> 
-> Any help would be greatly appreciated. Also pointers on how to get
-> more
-> information on what's happening on the NFS server side or what there
-> is
-> still to do to get a better understanding on what is going on.. 
-> 
-> Thanks,
-> 
-> Wim 
+This could be your big break!
+This tightly held issue is in a booming sector and has just begun a 
+PR blitz that is starting to have everyone 
+talking about it and rushing to get in.  When interest like 
+this is generated there is only one way to go and that's UP!	
 
-Mind telling us a bit about which kernels you are using, and what
-your /etc/exports looks like? A little bit of info on how the
-filesystems you are exporting are organised might help too...
+Symbol: RRLB 
+}Short Term Target:  $5.00
+Long term Target: $10
 
-Cheers,
-  Trond
+RRLB is in the right place at the right time and is letting everyone know it with a major PR campaign! 
+Friday's announcement is just the start.  More great news is on the way. 
+This is a company that can quite literally strike gold and when that announcement hits the street watch out.
+Get in while there is still time.
+
+
 
 
 -------------------------------------------------------------------------
