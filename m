@@ -1,21 +1,25 @@
-From: "wim appermans" <wim.lists@gmail.com>
-Subject: NFS3ERR_ACCES on getattribute
-Date: Thu, 11 Jan 2007 00:52:01 +0100
-Message-ID: <e468ef330701101552n2e2ee36w47497e19dd9cf136@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfs mount problem on vxfs
+Date: Thu, 11 Jan 2007 13:12:49 +1100
+Message-ID: <17829.40225.312372.954156@notabene.brown>
+References: <56800.63.119.254.10.1168372296.squirrel@mail.sonysnowie.com>
+	<20070110124704.GA3350@infradead.org>
+	<1168447645.13083.2.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2035638725=="
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H4nEg-0000qi-AO
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 15:52:02 -0800
-Received: from an-out-0708.google.com ([209.85.132.247])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H4nEh-00036G-4n
-	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 15:52:04 -0800
-Received: by an-out-0708.google.com with SMTP id d40so309576and
-	for <nfs@lists.sourceforge.net>; Wed, 10 Jan 2007 15:52:02 -0800 (PST)
-To: nfs@lists.sourceforge.net
+	id 1H4pRd-0005Qp-6i
+	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 18:13:33 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1H4pRe-0005z3-2I
+	for nfs@lists.sourceforge.net; Wed, 10 Jan 2007 18:13:35 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: message from Trond Myklebust on Wednesday January 10
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,156 +32,286 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2035638725==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_617_1611699.1168473121933"
+On Wednesday January 10, trond.myklebust@fys.uio.no wrote:
+> On Wed, 2007-01-10 at 12:47 +0000, Christoph Hellwig wrote:
+> 
+> > I haven't added support for nfs exporting to the vxfs driver.  To be honest
+> > it's quite old and didn't resource (time and actual  vxfs native systems)
+> > to test it again.
+> 
+> That brings up a point. Given that vxfs doesn't even define s_export_op,
+> why is he seeing a hang rather than an error?
+> 
+> It sounds to me as if he should be getting an EINVAL error on the call
+> to 'exportfs' on the server, as well as an immediate EACCES error when
+> he tries to mount it from the client.
+> 
+> Neil?
 
-------=_Part_617_1611699.1168473121933
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+'exportfs' doesn't talk to the kernel any more.  It just validates
+/etc/exports and copies it to /var/lib/nfs/etab.  It might flush the
+kernel tables but that is all.  So it cannot report an error.
 
-Hi,
+Then when the mount is attempted, mountd exports the filesystem
+without checking for errors....  I guess that could be fixed.
+Then mountd tries to get the filehandle which probably triggers an
+upcall to mountd which blocks and everything hangs.
 
-I'm struggeling for a while now with nfs, and I don't really know how
-to go forward anymore, so I was hoping someone over here could give me
-some ideas...
-
-The setup is rather simple: one linux machine, acting running an nfs
-server and a few linux clients. Athentication and stuff is done via
-ldap
-
-What we're seeing is that on the clients, files seem to be randomly
-inaccessable.
-I'm mounting /home. and if I do someting like 'find .' in my homedir,
-nfs will give randomly errors on files that are not accessible. The
-thing is, the files it list have the right permissions. And if I run
-the command a few times in a row, the files it complains about are not
-the same. It also gives 'stale filehandler' errors.
-
-I got a small test now that fails consistently. It goes like this:
-
-* mount the nfs drive
-* do an ls of a specific directory (this is a dir that I saw turning up
-a lot in the 'find' errors)
-* ls works correctly
-* do an ls again
-* now ls fails and gives me 'access denied'
-
-If I unmount and repeat: same behaviour
-
-I made a trace with wireshark, and this is what I get:
-
-  V3 NULL Call (Reply In 42)
-  V3 NULL Reply (Call In 40)
-  V3 NULL Call (Reply In 82)
-  V3 NULL Reply (Call In 80)
-  V3 FSINFO Call (Reply In 85), FH:0x0493dc00
-  V3 FSINFO Reply (Call In 84)
-  V3 GETATTR Call (Reply In 87), FH:0x0493dc00
-  V3 GETATTR Reply (Call In 86)  Directory mode:2775 uid:0 gid:50
-  V3 ACCESS Call (Reply In 92), FH:0x0493dc00
-  V3 ACCESS Reply (Call In 91)
-  V3 LOOKUP Call (Reply In 95), DH:0x0493dc00/chrisr
-  V3 LOOKUP Reply (Call In 94), FH:0x086861a2
-  V3 ACCESS Call (Reply In 97), FH:0x086861a2
-  V3 ACCESS Reply (Call In 96)
-  V3 LOOKUP Call (Reply In 99), DH:0x086861a2/.evolution
-  V3 LOOKUP Reply (Call In 98), FH:0x446a61a2
-  V3 GETATTR Call (Reply In 101), FH:0x446a61a2
-  V3 GETATTR Reply (Call In 100)  Directory mode:0777 uid:2000
-gid:2000
-  V3 ACCESS Call (Reply In 103), FH:0x446a61a2
-  V3 ACCESS Reply (Call In 102)
-  V3 READDIRPLUS Call (Reply In 106), FH:0x446a61a2
-  V3 READDIRPLUS Reply (Call In 104) . .. addressbook cache calendar
-mail memos signatures tasks camel-cert.db cert8.db key3.db secmod.db
-  V3 GETATTR Call (Reply In 109), FH:0x446a61a2
-  V3 GETATTR Reply (Call In 108) Error:NFS3ERR_ACCES
-
-So if I understand correclty (I'm new to nfs. bear with me), The client
-first gets the filehandler of the directory of which I do an ls, and
-then does a READDIRPLUS. All is fine so far.
-When I do the second ls, it does a GETATTR, which gets an NFS3ERR_ACCES
-back.
-
-So there are a few things I don't understand.
-
-* why does a GETATTR goes well the first time, and gets an error the
-second time
-* why is the second GETATTR done in the first place, isn't this
-supposed to be cached? (I remeber reading something about attribute
-caching somewhere, but I'm not sure it has anything to do with this)
-* what does the NFS3ERR_ACCES mean. Can it have something to do with
-file locking?
-
-Another thing I should probably tell is that the same dirs are also
-shared with CIFS. Can there be some kind of conflict between CIFS and
-NFS
-
-And if it has something to do with locking, is there a way to find out
-who is locking what and why?
-(some pointers to a comprehensive description of the whole lcoking
-thing would also be appreciated. this is all rather obscure to me)
-
-Can the LDAP setup have anything to do with it? I think not, since nfs
-just compares gid and uid numbers and doesn't have to do a lookup of
-any group or user names, but maybe I'm missing something.
-
-Any help would be greatly appreciated. Also pointers on how to get more
-information on what's happening on the NFS server side or what there is
-still to do to get a better understanding on what is going on..
+I'd better go add some error checking.
 
 Thanks,
+NeilBrown
 
-Wim
+commit 8fd9fad1ea4b25b8962d70133f476650ef0637b0
+Author: Neil Brown <neilb@suse.de>
+Date:   Thu Jan 11 12:45:48 2007 +1100
 
-------=_Part_617_1611699.1168473121933
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+    Error check messages sent to the kernel.
+    
+    And make sure that if we fail to export a filesystem in mountd,
+    then we don't try to get a filehandle on it, or a deadlock
+    might occur.
 
-Hi,<br><br>I&#39;m struggeling for a while now with nfs, and I don&#39;t really know how<br>to go forward anymore, so I was hoping someone over here could give me<br>some ideas...<br><br>The setup is rather simple: one linux machine, acting running an nfs
-<br>server and a few linux clients. Athentication and stuff is done via<br>ldap<br><br>What we&#39;re seeing is that on the clients, files seem to be randomly<br>inaccessable.<br>I&#39;m mounting /home. and if I do someting like &#39;find .&#39; in my homedir,
-<br>nfs will give randomly errors on files that are not accessible. The<br>thing is, the files it list have the right permissions. And if I run<br>the command a few times in a row, the files it complains about are not<br>
-the same. It also gives &#39;stale filehandler&#39; errors.<br><br>I got a small test now that fails consistently. It goes like this:<br><br>* mount the nfs drive<br>* do an ls of a specific directory (this is a dir that I saw turning up
-<br>a lot in the &#39;find&#39; errors)<br>* ls works correctly<br>* do an ls again<br>* now ls fails and gives me &#39;access denied&#39;<br><br>If I unmount and repeat: same behaviour<br><br>I made a trace with wireshark, and this is what I get:
-<br><br> &nbsp; V3 NULL Call (Reply In 42)<br> &nbsp; V3 NULL Reply (Call In 40)<br> &nbsp; V3 NULL Call (Reply In 82)<br> &nbsp; V3 NULL Reply (Call In 80)<br> &nbsp; V3 FSINFO Call (Reply In 85), FH:0x0493dc00<br> &nbsp; V3 FSINFO Reply (Call In 84)
-<br> &nbsp; V3 GETATTR Call (Reply In 87), FH:0x0493dc00<br> &nbsp; V3 GETATTR Reply (Call In 86) &nbsp;Directory mode:2775 uid:0 gid:50<br> &nbsp; V3 ACCESS Call (Reply In 92), FH:0x0493dc00<br> &nbsp; V3 ACCESS Reply (Call In 91)<br> &nbsp; V3 LOOKUP Call (Reply In 95), DH:0x0493dc00/chrisr
-<br> &nbsp; V3 LOOKUP Reply (Call In 94), FH:0x086861a2<br> &nbsp; V3 ACCESS Call (Reply In 97), FH:0x086861a2<br> &nbsp; V3 ACCESS Reply (Call In 96)<br> &nbsp; V3 LOOKUP Call (Reply In 99), DH:0x086861a2/.evolution<br> &nbsp; V3 LOOKUP Reply (Call In 98), FH:0x446a61a2
-<br> &nbsp; V3 GETATTR Call (Reply In 101), FH:0x446a61a2<br> &nbsp; V3 GETATTR Reply (Call In 100) &nbsp;Directory mode:0777 uid:2000<br>gid:2000<br> &nbsp; V3 ACCESS Call (Reply In 103), FH:0x446a61a2<br> &nbsp; V3 ACCESS Reply (Call In 102)<br>
- &nbsp; V3 READDIRPLUS Call (Reply In 106), FH:0x446a61a2<br> &nbsp; V3 READDIRPLUS Reply (Call In 104) . .. addressbook cache calendar<br>mail memos signatures tasks camel-cert.db cert8.db key3.db secmod.db<br> &nbsp; V3 GETATTR Call (Reply In 109), FH:0x446a61a2
-<br> &nbsp; V3 GETATTR Reply (Call In 108) Error:NFS3ERR_ACCES<br><br>So if I understand correclty (I&#39;m new to nfs. bear with me), The client<br>first gets the filehandler of the directory of which I do an ls, and<br>then does a READDIRPLUS. All is fine so far.
-<br>When I do the second ls, it does a GETATTR, which gets an NFS3ERR_ACCES<br>back.<br><br>So there are a few things I don&#39;t understand.<br><br>* why does a GETATTR goes well the first time, and gets an error the<br>
-second time<br>* why is the second GETATTR done in the first place, isn&#39;t this<br>supposed to be cached? (I remeber reading something about attribute<br>caching somewhere, but I&#39;m not sure it has anything to do with this)
-<br>* what does the NFS3ERR_ACCES mean. Can it have something to do with<br>file locking?<br><br>Another thing I should probably tell is that the same dirs are also<br>shared with CIFS. Can there be some kind of conflict between CIFS and
-<br>NFS<br><br>And if it has something to do with locking, is there a way to find out<br>who is locking what and why?<br>(some pointers to a comprehensive description of the whole lcoking<br>thing would also be appreciated. this is all rather obscure to me)
-<br><br>Can the LDAP setup have anything to do with it? I think not, since nfs<br>just compares gid and uid numbers and doesn&#39;t have to do a lookup of<br>any group or user names, but maybe I&#39;m missing something.<br>
-<br>Any help would be greatly appreciated. Also pointers on how to get more<br>information on what&#39;s happening on the NFS server side or what there is<br>still to do to get a better understanding on what is going on..
-<br><br>Thanks,<br><br>Wim
-
-------=_Part_617_1611699.1168473121933--
-
-
---===============2035638725==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 3e25761..aba37c2 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -132,7 +132,7 @@ struct nfs_fh_len *	getfh_size(struct sockaddr *addr, const char *, int size);
+ void qword_print(FILE *f, char *str);
+ void qword_printhex(FILE *f, char *str, int slen);
+ void qword_printint(FILE *f, int num);
+-void qword_eol(FILE *f);
++int qword_eol(FILE *f);
+ int readline(int fd, char **buf, int *lenp);
+ int qword_get(char **bpp, char *dest, int bufsize);
+ int qword_get_int(char **bpp, int *anint);
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index 3e868d8..36473cf 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -109,10 +109,10 @@ void qword_printint(FILE *f, int num)
+ 	fprintf(f, "%d ", num);
+ }
+ 
+-void qword_eol(FILE *f)
++int qword_eol(FILE *f)
+ {
+ 	fprintf(f,"\n");
+-	fflush(f);
++	return fflush(f);
+ }
+ 
+ 
+diff --git a/support/nfs/nfsexport.c b/support/nfs/nfsexport.c
+index aa0e49b..f129fd2 100644
+--- a/support/nfs/nfsexport.c
++++ b/support/nfs/nfsexport.c
+@@ -38,6 +38,7 @@ exp_unexp(struct nfsctl_export *exp, int export)
+ 	char fsidstr[8];
+ 	__u16 dev;
+ 	__u32 inode;
++	int err;
+ 
+ 
+ 	f = fopen("/proc/net/rpc/nfsd.export/channel", "w");
+@@ -53,7 +54,7 @@ exp_unexp(struct nfsctl_export *exp, int export)
+ 	} else
+ 		qword_printint(f, 1);
+ 
+-	qword_eol(f);
++	err = qword_eol(f);
+ 	fclose(f);
+ 
+ 	if (stat(exp->ex_path, &stb) != 0)
+@@ -71,7 +72,7 @@ exp_unexp(struct nfsctl_export *exp, int export)
+ 		} else
+ 			qword_printint(f, 1);
+ 
+-		qword_eol(f);
++		err = qword_eol(f) || err;
+ 	}
+ 	qword_print(f,exp->ex_client);
+ 	qword_printint(f,0);
+@@ -85,9 +86,9 @@ exp_unexp(struct nfsctl_export *exp, int export)
+ 		qword_print(f, exp->ex_path);
+ 	} else
+ 		qword_printint(f, 1);
+-	qword_eol(f);
++	err = qword_eol(f) || err;
+ 	fclose(f);
+-	return 0;
++	return err;
+ }
+ 
+ int
+diff --git a/utils/gssd/cacheio.c b/utils/gssd/cacheio.c
+index 75c7a5d..f2f2960 100644
+--- a/utils/gssd/cacheio.c
++++ b/utils/gssd/cacheio.c
+@@ -173,11 +173,13 @@ void qword_printint(FILE *f, int num)
+ 	printerr(2, "%d ", num);
+ }
+ 
+-void qword_eol(FILE *f)
++int qword_eol(FILE *f)
+ {
++	int err;
+ 	fprintf(f,"\n");
+-	fflush(f);
++	err = fflush(f);
+ 	printerr(2, "\n");
++	return err;
+ }
+ 
+ 
+diff --git a/utils/gssd/cacheio.h b/utils/gssd/cacheio.h
+index cc97b36..dfff258 100644
+--- a/utils/gssd/cacheio.h
++++ b/utils/gssd/cacheio.h
+@@ -40,7 +40,7 @@ void qword_addeol(char **bpp, int *lp);
+ void qword_print(FILE *f, char *str);
+ void qword_printhex(FILE *f, char *str, int slen);
+ void qword_printint(FILE *f, int num);
+-void qword_eol(FILE *f);
++int qword_eol(FILE *f);
+ int readline(int fd, char **buf, int *lenp);
+ int qword_get(char **bpp, char *dest, int bufsize);
+ int qword_get_int(char **bpp, int *anint);
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index 7981399..4037159 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -72,6 +72,7 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 	FILE *f;
+ 	int i;
+ 	char *fname = NULL;
++	int err;
+ 
+ 	printerr(1, "doing downcall\n");
+ 	if ((fname = mech2file(mech)) == NULL)
+@@ -93,9 +94,9 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 		qword_printint(f, cred->cr_groups[i]);
+ 	qword_print(f, fname);
+ 	qword_printhex(f, context_token->value, context_token->length);
+-	qword_eol(f);
++	err = qword_eol(f);
+ 	fclose(f);
+-	return 0;
++	return err;
+ out_err:
+ 	printerr(0, "WARNING: downcall failed\n");
+ 	return -1;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 726b98f..dcb5dac 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -35,7 +35,7 @@
+  * Record is terminated with newline.
+  *
+  */
+-void cache_export_ent(char *domain, struct exportent *exp);
++int cache_export_ent(char *domain, struct exportent *exp);
+ 
+ 
+ char *lbuf  = NULL;
+@@ -352,12 +352,12 @@ int cache_process_req(fd_set *readfds)
+  * % echo $domain $path $[now+30*60] $options $anonuid $anongid $fsid > /proc/net/rpc/nfsd.export/channel
+  */
+ 
+-void cache_export_ent(char *domain, struct exportent *exp)
++int cache_export_ent(char *domain, struct exportent *exp)
+ {
+-
++	int err;
+ 	FILE *f = fopen("/proc/net/rpc/nfsd.export/channel", "w");
+ 	if (!f)
+-		return;
++		return -1;
+ 
+ 	qword_print(f, domain);
+ 	qword_print(f, exp->e_path);
+@@ -366,28 +366,32 @@ void cache_export_ent(char *domain, struct exportent *exp)
+ 	qword_printint(f, exp->e_anonuid);
+ 	qword_printint(f, exp->e_anongid);
+ 	qword_printint(f, exp->e_fsid);
+-	qword_eol(f);
++	err = qword_eol(f);
+ 
+ 	fclose(f);
++	return err;
+ }
+ 
+-void cache_export(nfs_export *exp)
++int cache_export(nfs_export *exp)
+ {
++	int err;
+ 	FILE *f;
+ 
+ 	f = fopen("/proc/net/rpc/auth.unix.ip/channel", "w");
+ 	if (!f)
+-		return;
++		return -1;
+ 
+ 	qword_print(f, "nfsd");
+ 	qword_print(f, inet_ntoa(exp->m_client->m_addrlist[0]));
+ 	qword_printint(f, time(0)+30*60);
+ 	qword_print(f, exp->m_client->m_hostname);
+-	qword_eol(f);
++	err = qword_eol(f);
+ 	
+ 	fclose(f);
+ 
+-	cache_export_ent(exp->m_client->m_hostname, &exp->m_export);
++	err = cache_export_ent(exp->m_client->m_hostname, &exp->m_export)
++		|| err;
++	return err;
+ }
+ 
+ /* Get a filehandle.
+@@ -413,9 +417,10 @@ cache_get_filehandle(nfs_export *exp, int len, char *p)
+ 	qword_print(f, exp->m_client->m_hostname);
+ 	qword_print(f, p);
+ 	qword_printint(f, len);	
+-	qword_eol(f);
++	failed = qword_eol(f);
+ 	
+-	failed = (fgets(buf, sizeof(buf), f) == NULL);
++	if (!failed)
++		failed = (fgets(buf, sizeof(buf), f) == NULL);
+ 	fclose(f);
+ 	if (failed)
+ 		return NULL;
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 08f294d..72332ce 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -29,7 +29,7 @@
+ 
+ extern void	cache_open(void);
+ extern struct nfs_fh_len *cache_get_filehandle(nfs_export *exp, int len, char *p);
+-extern void cache_export(nfs_export *exp);
++extern int cache_export(nfs_export *exp);
+ 
+ extern void my_svc_run(void);
+ 
+@@ -416,7 +416,10 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, mountstat3 *error, int v3)
+ 		 */
+ 		struct nfs_fh_len  *fh;
+ 
+-		cache_export(exp);
++		if (cache_export(exp)) {
++			*error = NFSERR_ACCES;
++			return NULL;
++		}
+ 		fh = cache_get_filehandle(exp, v3?64:32, p);
+ 		if (fh == NULL) 
+ 			*error = NFSERR_ACCES;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============2035638725==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2035638725==--
