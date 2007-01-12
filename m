@@ -1,28 +1,24 @@
-From: "U. Sykes - News Service" <parboilsdilate@accelerate-nms.de>
-Subject: Man in hot pants struts in boots, cheers city  MORE ...
-Date: Thu, 11 Jan 2007 20:21:35 -0120
-Message-ID: <01c735be$1739c9b0$6c822ecf@parboilsdilate>
+From: "Lina Sizemore" <huskaegis's@abcoggins.com>
+Subject: Madonna defends Rosie in Trump feud
+Date: Fri, 12 Jan 2007 12:01:22 +0000 (UTC)
+Message-ID: <01c73641$5e4bf980$6c822ecf@huskaegis's>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H56Qt-0003Me-98
-	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 12:21:55 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H56Qq-0002Xr-Sf
-	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 12:21:56 -0800
-Received: from [85.104.168.164] (helo=dsl85-104-43172.ttnet.net.tr)
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1H56Qj-0005Jm-7U
-	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 12:21:46 -0800
-Received: from 212.63.136.134 (HELO mail.accelerate-nms.de)
-	by lists.sourceforge.net with esmtp (7NQ=-Y2/332@ PZB6@0)
-	id (6?1,+-D24>*V-*N
-	for nfs@lists.sourceforge.net; Thu, 11 Jan 2007 20:21:35 -0120
+	id 1H5L5t-00089Z-TG
+	for nfs@lists.sourceforge.net; Fri, 12 Jan 2007 04:01:13 -0800
+Received: from dslb-084-058-129-038.pools.arcor-ip.net ([84.58.129.38])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H5L5t-0004y4-2o
+	for nfs@lists.sourceforge.net; Fri, 12 Jan 2007 04:01:15 -0800
+Received: from 198.31.50.21 (HELO mail.abcoggins.com)
+	by lists.sourceforge.net with esmtp (VV/GF;N*63/, .K+/)
+	id 629P*2-91=A57-),
+	for nfs@lists.sourceforge.net; Fri, 12 Jan 2007 12:01:18 -0060
 To: <nfs@lists.sourceforge.net>
+Date: Fri, 12 Jan 2007 12:01:18 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,22 +31,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This could be your big break!
-This tightly held issue is in a booming sector and has just begun a 
-PR blitz that is starting to have everyone 
-talking about it and rushing to get in.  When interest like 
-this is generated there is only one way to go and that's UP!	
-
-Symbol: RRLB 
-}Short Term Target:  $5.00
-Long term Target: $10
-
-RRLB is in the right place at the right time and is letting everyone know it with a major PR campaign! 
-Friday's announcement is just the start.  More great news is on the way. 
-This is a company that can quite literally strike gold and when that announcement hits the street watch out.
-Get in while there is still time.
+Breaking News Released!
 
 
+Sym bol: GLOW
+On: PinkSheets
+5-Days Target: $2.80
+Long Term Target: $8.00
+
+Take a look at the annoucement and reveiw the technology, but grab some GLOW
+before they drop the release to push this stock to the dollar marker.
+
+
+RECENT NEWS HEADLINE: (GO READ ALL THE NEWS ON GLOW RIGHT NOW!)
 
 
 -------------------------------------------------------------------------
