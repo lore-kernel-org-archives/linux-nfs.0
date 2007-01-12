@@ -1,13 +1,13 @@
 From: =?gb2312?B?x7bI68q9?= <vartmp1@sohu.com>
 Subject: =?gb2312?B?QVJNOS9MaW51eC9XaW5kb3dzQ0XF4NG10MXPoiEg?=
-Date: Sat, 13 Jan 2007 00:57:08 +0800
-Message-ID: <2007011372300.50870@MS-262209156232.net>
+Date: Fri, 12 Jan 2007 22:31:49 +0800
+Message-ID: <2007011203388.88272@MS-262209156232.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1614202044=="
+Content-Type: multipart/mixed; boundary="===============1623379445=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from egen1 (unknown [132.193.21.177])
-	by smtp73 (Coremail) with SMTP id BjBQGmiU7lWCCmJT.1
-	for <nfs@lists.sourceforge.net>; Sat, 13 Jan 2007 00:57:08 +0800 (CST)
+Received: from qstiqfmg2 (unknown [19.51.139.68])
+	by smtp69 (Coremail) with SMTP id AmQyfPy9jOlEK4ix.1
+	for <nfs@lists.sourceforge.net>; Fri, 12 Jan 2007 22:31:49 +0800 (CST)
 To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -23,13 +23,13 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============1614202044==
+--===============1623379445==
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_007A_01C60DA9.0A1CD27A"
+	boundary="----=_NextPart_001_00BE_01CE4562.F41F3A21"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_001_007A_01C60DA9.0A1CD27A
+------=_NextPart_001_00BE_01CE4562.F41F3A21
 Content-Type: text/plain;
 	charset="GB2312"
 Content-Transfer-Encoding: base64
@@ -41,25 +41,24 @@ LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCsXg0bXW
 Ly93d3cubWRldnNvZnQuY29tL2NuL0FydGljbGVfU3BlY2lhbExpc3RfYTAwMi5hc3AgDQrF4NG1
 yrG85CCjuiAgICAgDQogICAgye7b2iCjuiAyMDA3xOox1MIyMC0yMbrFo6i12jE4xtqjqSANCiAg
 ICDJz7qjIKO6IDIwMDfE6jHUwjI3LTI4usWjqLXaMTjG2qOpIA0KICAgILGxvqkgo7ogMjAwN8Tq
-MtTCMy00usUgIKOotdoxOMbao6kNCiANCsXg0bXW98ziIKO6QVJNOS9saW51eMe2yOvKvcjt07K8
-/tCtzay/qreiyei8xsXg0bWjqLi9y81BUk05v6q3oszXvP678kFSTbfC1ebG96OpIA0KxeDRtc/q
-x+kgo7podHRwOi8vd3d3Lm1kZXZzb2Z0LmNvbS9jbi9BcnRpY2xlX1NwZWNpYWxMaXN0X2EwMDEu
-YXNwIA0KxeDRtcqxvOQgo7ogICAgICAgICAgICAgICANCiAgICAgICAgye7b2iCjujIwMDfE6jLU
-wjMtOLrFICAgICAgo6i12jc1xtqjqSANCiAgICAgICAgyc+6oyCjujIwMDfE6jHUwjIyLTI1usUg
-o6i12jc1xtqjqSANCiAgICAgICAgsbG+qSCjujIwMDfE6jHUwjI3LTMwusUgo6i12jc1xtqjqSAN
-CsXg0bW12LXjIKO6DQogICAgICAgIMnu29ogo7rJ7tvaxM/Jvb/GtLTW0NDEKM6itc/J7tvaxeDR
-tbv5tdggKSANCiAgICAgICAgyc+6oyCjusnPuqPG1raryO28/tSwxeDRtdbQ0MQxusXCpTPCpSjO
-orXPyc+6o8Xg0bW7+bXYICkgDQogICAgICAgILGxvqkgo7q6o7Xt0MXPosK3MzO6xTUwOcrSKM6i
-tc+xsb6pxeDRtbv5tdgpIA0KuavLvtb30rMgo7ogd3d3Lm1kZXZzb2Z0LmNvbS9jbiANCsXg0bXT
-ys/kIKO6IHNhbGVzQG1kZXZzb2Z0LmNvbbvyaGh1dTEyQDE2My5jb20gDQrF4NG1yMjP3yCjuiAw
-NzU1LTgxMjgzOTMxICAgIA0KwarPtcjLICAgo7ogu8bPyMn6ICAgc2FsZXNAbWRldnNvZnQuY29t
-IA0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLSANCtLUyc/Oqrvh1LG3/s7x0MXPoqOsyOe4+MTjtPjA
-tLK7sePJ7rHtx7jS4qOszcu2qcfru9i4tLW9o7podW5hbnNsQHRvbS5jb20g0LvQu6OhIA0KLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLQ==
+MtTCMy00usUgICAgo6i12jE4xtqjqQ0KIA0KxeDRtdb3zOIgo7pBUk05L2xpbnV4x7bI68q9yO3T
+srz+0K3NrL+qt6LJ6LzGxeDRtaOouL3LzUFSTTm/qreizNe8/rvyQVJNt8LV5sb3o6kgDQrF4NG1
+z+rH6SCjumh0dHA6Ly93d3cubWRldnNvZnQuY29tL2NuL0FydGljbGVfU3BlY2lhbExpc3RfYTAw
+MS5hc3AgDQrF4NG1yrG85CCjuiAgICAgICAgICAgICAgIA0KICAgICAgICDJ7tvaIKO6MjAwN8Tq
+MtTCMy04usUgICAgICCjqLXaNzXG2qOpIA0KICAgICAgICDJz7qjIKO6MjAwN8TqMdTCMjItMjW6
+xSCjqLXaNzXG2qOpIA0KICAgICAgICCxsb6pIKO6MjAwN8TqMdTCMjctMzC6xSCjqLXaNzXG2qOp
+IA0KxeDRtbXYteMgo7oNCiAgICAgICAgye7b2iCjusnu29rEz8m9v8a0tNbQ0MQozqK1z8nu29rF
+4NG1u/m12CApIA0KICAgICAgICDJz7qjIKO6yc+6o8bWtqvI7bz+1LDF4NG11tDQxDG6xcKlM8Kl
+KM6itc/Jz7qjxeDRtbv5tdggKSANCiAgICAgICAgsbG+qSCjurqjte3Qxc+iwrczM7rFNTA5ytIo
+zqK1z7GxvqnF4NG1u/m12CkgDQq5q8u+1vfSsyCjuiB3d3cubWRldnNvZnQuY29tL2NuIA0KxeDR
+tdPKz+Qgo7ogc2FsZXNAbWRldnNvZnQuY29tDQrF4NG1yMjP3yCjuiAwNzU1LTgxMjgzOTMxICAg
+IA0KwarPtcjLICAgo7ogu8bPyMn6ICAgDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tIA0K0tTJz86q
+u+HUsbf+zvHQxc+io6zI57j4xOO0+MC0srux48nuse3HuNLio6zNy7apx+u72Li0tb2jumh1bmFu
+c2xAdG9tLmNvbSDQu9C7o6EgDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
 
-------=_NextPart_001_007A_01C60DA9.0A1CD27A
+------=_NextPart_001_00BE_01CE4562.F41F3A21
 Content-Type: text/html;
 	charset="GB2312"
 Content-Transfer-Encoding: base64
@@ -76,45 +75,43 @@ PC9BPiA8QlI+xeDRtcqxvOQgJiM2NTMwNjsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgPEJSPiZu
 YnNwOyZuYnNwOyZuYnNwOyDJ7tvaICYjNjUzMDY7IDIwMDfE6jHUwjIwLTIxusUmIzY1Mjg4O7Xa
 MTjG2iYjNjUyODk7IDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsgyc+6oyAmIzY1MzA2OyAyMDA3xOox
 1MIyNy0yOLrFJiM2NTI4ODu12jE4xtomIzY1Mjg5OyA8QlI+Jm5ic3A7Jm5ic3A7Jm5ic3A7ILGx
-vqkgJiM2NTMwNjsgMjAwN8TqMtTCMy00usUmbmJzcDsgJiM2NTI4ODu12jE4xtomIzY1Mjg5OzxC
-Uj4mbmJzcDs8QlI+xeDRtdb3zOIgJiM2NTMwNjtBUk05L2xpbnV4x7bI68q9yO3Tsrz+0K3NrL+q
-t6LJ6LzGxeDRtSYjNjUyODg7uL3LzUFSTTm/qreizNe8/rvyQVJNt8LV5sb3JiM2NTI4OTsgPEJS
-PsXg0bXP6sfpICYjNjUzMDY7PEEgaHJlZj0iaHR0cDovL3d3dy5tZGV2c29mdC5jb20vY24vQXJ0
-aWNsZV9TcGVjaWFsTGlzdF9hMDAxLmFzcCI+aHR0cDovL3d3dy5tZGV2c29mdC5jb20vY24vQXJ0
-aWNsZV9TcGVjaWFsTGlzdF9hMDAxLmFzcDwvQT4gPEJSPsXg0bXKsbzkICYjNjUzMDY7Jm5ic3A7
-Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5i
-c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsm
-bmJzcDsmbmJzcDsgye7b2iAmIzY1MzA2OzIwMDfE6jLUwjMtOLrFJm5ic3A7Jm5ic3A7Jm5ic3A7
-Jm5ic3A7Jm5ic3A7ICYjNjUyODg7tdo3NcbaJiM2NTI4OTsgPEJSPiZuYnNwOyZuYnNwOyZuYnNw
-OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyDJz7qjICYjNjUzMDY7MjAwN8TqMdTCMjItMjW6xSAm
-IzY1Mjg4O7XaNzXG2iYjNjUyODk7IDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsm
-bmJzcDsmbmJzcDsgsbG+qSAmIzY1MzA2OzIwMDfE6jHUwjI3LTMwusUgJiM2NTI4ODu12jc1xtom
-IzY1Mjg5OyA8L1A+DQo8UD7F4NG1tdi14yAmIzY1MzA2OzxCUj4mbmJzcDsmbmJzcDsmbmJzcDsm
-bmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgye7b2iAmIzY1MzA2O8nu29rEz8m9v8a0tNbQ0MQozqK1
-z8nu29rF4NG1u/m12CApIDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsm
-bmJzcDsgyc+6oyAmIzY1MzA2O8nPuqPG1raryO28/tSwxeDRtdbQ0MQxusXCpTPCpSjOorXPyc+6
-o8Xg0bW7+bXYICkgPEJSPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
-OyCxsb6pICYjNjUzMDY7uqO17dDFz6LCtzMzusU1MDnK0ijOorXPsbG+qcXg0bW7+bXYKSA8L1A+
-DQo8UD65q8u+1vfSsyAmIzY1MzA2OyA8QSBocmVmPSJodHRwOi8vd3d3Lm1kZXZzb2Z0LmNvbS9j
-biI+d3d3Lm1kZXZzb2Z0LmNvbS9jbjwvQT4gPEJSPsXg0bXTys/kICYjNjUzMDY7IDxBIGhyZWY9
-Im1haWx0bzpzYWxlc0BtZGV2c29mdC5jb20iPnNhbGVzQG1kZXZzb2Z0LmNvbTwvQT678jxBIGhy
-ZWY9Im1haWx0bzpoaHV1MTJAMTYzLmNvbSI+aGh1dTEyQDE2My5jb208L0E+IDxCUj7F4NG1yMjP
-3yAmIzY1MzA2OyAwNzU1LTgxMjgzOTMxJm5ic3A7Jm5ic3A7Jm5ic3A7IDxCUj7Bqs+1yMsmbmJz
-cDsmbmJzcDsgJiM2NTMwNjsgu8bPyMn6Jm5ic3A7Jm5ic3A7IDxBIGhyZWY9Im1haWx0bzpzYWxl
-c0BtZGV2c29mdC5jb20iPnNhbGVzQG1kZXZzb2Z0LmNvbTwvQT4gPC9QPg0KPFA+LS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLSA8QlI+0tTJz86qu+HUsbf+zvHQxc+iJiM2NTI5MjvI57j4xOO0+MC0srux
-48nuse3HuNLiJiM2NTI5MjvNy7apx+u72Li0tb0mIzY1MzA2OzxBIGhyZWY9Im1haWx0bzpodW5h
-bnNsQHRvbS5jb20iPmh1bmFuc2xAdG9tLmNvbTwvQT4g0LvQuyYjNjUyODE7IDxCUj4tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tPC9QPjwvQk9EWT48L0hUTUw+
+vqkgJiM2NTMwNjsgMjAwN8TqMtTCMy00usUmbmJzcDsmbmJzcDsmbmJzcDsgJiM2NTI4ODu12jE4
+xtomIzY1Mjg5OzxCUj4mbmJzcDs8QlI+xeDRtdb3zOIgJiM2NTMwNjtBUk05L2xpbnV4x7bI68q9
+yO3Tsrz+0K3NrL+qt6LJ6LzGxeDRtSYjNjUyODg7uL3LzUFSTTm/qreizNe8/rvyQVJNt8LV5sb3
+JiM2NTI4OTsgPEJSPsXg0bXP6sfpICYjNjUzMDY7PEEgaHJlZj0iaHR0cDovL3d3dy5tZGV2c29m
+dC5jb20vY24vQXJ0aWNsZV9TcGVjaWFsTGlzdF9hMDAxLmFzcCI+aHR0cDovL3d3dy5tZGV2c29m
+dC5jb20vY24vQXJ0aWNsZV9TcGVjaWFsTGlzdF9hMDAxLmFzcDwvQT4gPEJSPsXg0bXKsbzkICYj
+NjUzMDY7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5i
+c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsm
+bmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgye7b2iAmIzY1MzA2OzIwMDfE6jLUwjMtOLrFJm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7ICYjNjUyODg7tdo3NcbaJiM2NTI4OTsgPEJSPiZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyDJz7qjICYjNjUzMDY7MjAwN8Tq
+MdTCMjItMjW6xSAmIzY1Mjg4O7XaNzXG2iYjNjUyODk7IDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsm
+bmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgsbG+qSAmIzY1MzA2OzIwMDfE6jHUwjI3LTMwusUgJiM2
+NTI4ODu12jc1xtomIzY1Mjg5OyA8L1A+DQo8UD7F4NG1tdi14yAmIzY1MzA2OzxCUj4mbmJzcDsm
+bmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsgye7b2iAmIzY1MzA2O8nu29rEz8m9
+v8a0tNbQ0MQozqK1z8nu29rF4NG1u/m12CApIDxCUj4mbmJzcDsmbmJzcDsmbmJzcDsmbmJzcDsm
+bmJzcDsmbmJzcDsmbmJzcDsgyc+6oyAmIzY1MzA2O8nPuqPG1raryO28/tSwxeDRtdbQ0MQxusXC
+pTPCpSjOorXPyc+6o8Xg0bW7+bXYICkgPEJSPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyCxsb6pICYjNjUzMDY7uqO17dDFz6LCtzMzusU1MDnK0ijOorXPsbG+qcXg
+0bW7+bXYKSA8L1A+DQo8UD65q8u+1vfSsyAmIzY1MzA2OyA8QSBocmVmPSJodHRwOi8vd3d3Lm1k
+ZXZzb2Z0LmNvbS9jbiI+d3d3Lm1kZXZzb2Z0LmNvbS9jbjwvQT4gPEJSPsXg0bXTys/kICYjNjUz
+MDY7IDxBIGhyZWY9Im1haWx0bzpzYWxlc0BtZGV2c29mdC5jb20iPnNhbGVzQG1kZXZzb2Z0LmNv
+bTwvQT48QlI+xeDRtcjIz98gJiM2NTMwNjsgMDc1NS04MTI4MzkzMSZuYnNwOyZuYnNwOyZuYnNw
+OyA8QlI+warPtcjLJm5ic3A7Jm5ic3A7ICYjNjUzMDY7ILvGz8jJ+iZuYnNwOyZuYnNwOyA8L1A+
+DQo8UD4tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tIDxCUj7S1MnPzqq74dSxt/7O8dDFz6ImIzY1Mjky
+O8jnuPjE47T4wLSyu7Hjye6x7ce40uImIzY1MjkyO83LtqnH67vYuLS1vSYjNjUzMDY7PEEgaHJl
+Zj0ibWFpbHRvOmh1bmFuc2xAdG9tLmNvbSI+aHVuYW5zbEB0b20uY29tPC9BPiDQu9C7JiM2NTI4
+MTsgPEJSPi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS08L1A+PC9CT0RZPjwvSFRNTD4=
 
-------=_NextPart_001_007A_01C60DA9.0A1CD27A--
+------=_NextPart_001_00BE_01CE4562.F41F3A21--
 
 
 
 
---===============1614202044==
+--===============1623379445==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -125,7 +122,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1614202044==
+--===============1623379445==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -135,4 +132,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1614202044==--
+--===============1623379445==--
