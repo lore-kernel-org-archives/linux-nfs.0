@@ -1,24 +1,20 @@
-From: "Katrina Cain" <sternestplaymates@acdair.com>
-Subject: Stinky flower mystery solved
-Date: Mon, 15 Jan 2007 19:29:27 +0000 (UTC)
-Message-ID: <01c738cb$ffb8b4c0$6c822ecf@sternestplaymates>
+From: "Nadine Durham" <philter'stousle@absign.com>
+Subject: The user to choose
+Date: Sun, 14 Jan 2007 09:12:36 -0120
+Message-ID: <01c737bc$21f34980$6c822ecf@philter'stousle>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H6VnB-00070a-CT
-	for nfs@lists.sourceforge.net; Mon, 15 Jan 2007 09:38:46 -0800
-Received: from h135n8c1o994.bredband.skanova.com ([81.225.47.135])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H6VnC-0007KI-9E
-	for nfs@lists.sourceforge.net; Mon, 15 Jan 2007 09:38:47 -0800
-Received: from 69.15.230.131 (HELO mail.acdair.com)
-	by lists.sourceforge.net with esmtp (2279B3DU P0*7.@)
-	id )7/.AU-=R:+C7--4
-	for nfs@lists.sourceforge.net; Mon, 15 Jan 2007 17:38:42 -0060
+	id 1H6Czi-0004bM-HE
+	for nfs@lists.sourceforge.net; Sun, 14 Jan 2007 13:34:26 -0800
+Received: from 209.191.89.172 (HELO mx1.biz.mail.yahoo.com)
+	by lists.sourceforge.net with esmtp (49562W-K *2H)P)
+	id U@.+G(-/W,4=+-K:
+	for nfs@lists.sourceforge.net; Sun, 14 Jan 2007 09:12:36 -0120
 To: <nfs@lists.sourceforge.net>
-Date: Mon, 15 Jan 2007 17:38:42 -0060
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +27,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-WATCH LYJN LIKE A HAWK THURSDAY! THE ALERT IS ON!
+Harris Exploration Hits Gold!
 
+Inner origin from the survey site said that HXPN has made
+a big breakthrough.  Word is that results show a 12.5 gm/T
+rating on the property.  With onsite equipment afford to 
+process 100 tons a day it equates to yields of 1250 gm/day.
+At current market prices this would generate yearly earnings of over $10mil.
 
-Sym bol: LYJN
-On: PinkSheets
-5-Days Target: $2.80
-Long Term Target: $8.00
+Taking into attention both the size and the high soil
+ratings this gives Harris Exploration a book value of roughly $5.00 which
+we have pegged as our target price.
 
-Exposure of there technology to the market has generated a great deal of interest
-and word on the street is that they are preparing a announcment concerning several
-large contracts with major providers, giving them a 
-huge competative jump in the market.
+Harris Exploration
 
+Symbol: HXPN
+Last Value:     $1.62
+Sho rt Term Tar get:  $5.00
 
-DO YOUR DUE DILIGENCE ON THIS STOCK!!
-RADAR IT FOR FRIDAY NOW!
+This press-release will hit the street very soon and send this symbol
+flying.  We advise our readers to get in now and divest at
+the tar get price.Recomme\ndation: think
 
 
 -------------------------------------------------------------------------
