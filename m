@@ -1,83 +1,169 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: FILE_SYNC slower than UNSTABLE + COMMIT
-Date: Sat, 13 Jan 2007 16:43:16 -0500
-Message-ID: <76bd70e30701131343l11bf198am99c908db6b11ed4d@mail.gmail.com>
-References: <jeirfb4knt.fsf@sonoasystems.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: RE: Finding hardlinks
+Date: Mon, 15 Jan 2007 10:45:07 +0200
+Message-ID: <45AB3F13.7010008@panasas.com>
+References: <C98692FD98048C41885E0B0FACD9DFB8023DF912@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H5qel-0003Xh-T3
-	for nfs@lists.sourceforge.net; Sat, 13 Jan 2007 13:43:32 -0800
-Received: from ug-out-1314.google.com ([66.249.92.168])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H5qen-0004Ay-71
-	for nfs@lists.sourceforge.net; Sat, 13 Jan 2007 13:43:21 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so1045146ugc
-	for <nfs@lists.sourceforge.net>; Sat, 13 Jan 2007 13:43:17 -0800 (PST)
-To: "Venkatesh K S" <vsharma@sonoasystems.com>
-In-Reply-To: <jeirfb4knt.fsf@sonoasystems.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Spencer Shepler <spencer.shepler@sun.com>, nfs@lists.sourceforge.net,
+	nfsv4@ietf.org
+Return-path: <nfsv4-bounces@ietf.org>
+To: "Noveck, Dave" <Dave.Noveck@netapp.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <C98692FD98048C41885E0B0FACD9DFB8023DF912@exnane01.hq.netapp.com>
+List-Unsubscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www1.ietf.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www1.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Errors-To: nfsv4-bounces@ietf.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On 13 Jan 2007 09:56:14 +0530, Venkatesh K S <vsharma@sonoasystems.com> wrote:
-> I have 2 different kernel versions and I notice that the way
-> the nfs client honors O_SYNC is different.
-> In 2.6.12 variant the client issues UNSTABLE followed by
-> a COMMIT call.
-> In 2.6.16 variant the nfs client issues a FILE_SYNC call.
->
-> The FILE_SYNC call turns out to be about 3 times slower
-> against our server. Infact a simple write followed by a
-> fsync also turns out to be FILE_SYNC calls. The mount
-> is not a "sync" mount.
->
->
-> Is there a way a to make these calls in 2.6.16 or later release
-> UNSTABLE + COMMIT ?
->
-> Are FILE_SYNC calls always slower (I wud assume for NVRAM based server
-> it may be as fast as UNSTABLE). In which case this fix into a newer
-> kernel seems to be biased towards working well with such servers
+How about discussing this topic in the upcoming Connectathon?
 
-There are several reasons why using a FILE_SYNC write is preferable.
-You might find some discussion of this in the NFS mailing list
-archives.
+Benny
 
-1.  Fewer operations on the wire.  When the network latency is long,
-this is a preferrable optimization.  I recall discussing handling only
-small (ie less than 2*wsize) writes this way; you should check how
-large O_SYNC writes are handled these days.
+Noveck, Dave wrote:
+> For now, I'm not going to address the controversial issues here,
+> mainly because I haven't decided how I feel about them yet.
+> 
+>      Whether allowing multiple filehandles per object is a good
+>      or even reasonably acceptable idea.
+> 
+>      What the fact that RFC3530 talks about implies about what
+>      clients should do about the issue.
+> 
+> One thing that I hope is not controversial is that the v4.1 spec
+> should either get rid of this or make it clear and implementable.
+> I expect plenty of controversy about which of those to choose, but
+> hope that there isn't any about the proposition that we have to 
+> choose one of those two.
+> 
+>> SECINFO information is, for instance, given
+>> out on a per-filehandle basis, does that mean that the server will
+> have
+>> different security policies? 
+> 
+> Well yes, RFC3530 does say "The new SECINFO operation will allow the 
+> client to determine, on a per filehandle basis", but I think that
+> just has to be considered as an error rather than indicating that if
+> you have two different filehandles for the same object, they can have 
+> different security policies.  SECINFO in RFC3530 takes a directory fh
+> and a name, so if there are multiple filehandles for the object with
+> that name, there is no way for SECINFO to associate different policies
+> with different filehandles.  All it has is the name to go by.  I think
+> this should be corrected to "on a per-object basis" in the new spec no 
+> matter what we do on other issues.
+> 
+> I think the principle here has to be that if we do allow multiple 
+> fh's to map to the same object, we require that they designate the 
+> same object, and thus it is not allowed for the server to act as if 
+> you have multiple different object with different characteristics.
+> 
+> Similarly as to:
+> 
+>> In some places, people haven't even started
+>> to think about the consequences: 
+>>
+>>     If GETATTR directed to the two filehandles does not return the
+>>     fileid attribute for both of the handles, then it cannot be
+>>     determined whether the two objects are the same.  Therefore,
+>>     operations which depend on that knowledge (e.g., client side data
+>>     caching) cannot be done reliably.
+> 
+> I think they (and maybe "they" includes me, I haven't checked the
+> history
+> here) started to think about them, but went in a bad direction.
+> 
+> The implication here that you can have a different set of attributes
+> supported for the same object based on which filehandle is used to 
+> access the attributes is totally bogus.
+> 
+> The definition of supp_attr says "The bit vector which would retrieve
+> all mandatory and recommended attributes that are supported for this 
+> object.  The scope of this attribute applies to all objects with a
+> matching fsid."  So having the same object have different attributes
+> supported based on the filehandle used or even two objects in the same
+> fs having different attributes supported, in particular having fileid
+> supported for one and not the other just isn't valid.
+> 
+>> The fact is that RFC3530 contains masses of rope with which
+>> to allow server and client vendors to hang themselves. 
+> 
+> If that means simply making poor choices, then OK.  But if there are 
+> other cases where you feel that the specification of a feature is simply
+> 
+> incoherent and the consequences not really thought out, then I think 
+> we need to discuss them and not propagate that state of affairs to v4.1.
+> 
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no] 
+> Sent: Friday, January 05, 2007 5:29 AM
+> To: Benny Halevy
+> Cc: Jan Harkes; Miklos Szeredi; nfsv4@ietf.org;
+> linux-kernel@vger.kernel.org; Mikulas Patocka;
+> linux-fsdevel@vger.kernel.org; Jeff Layton; Arjan van de Ven
+> Subject: Re: [nfsv4] RE: Finding hardlinks
+> 
+> 
+> On Fri, 2007-01-05 at 10:28 +0200, Benny Halevy wrote:
+>> Trond Myklebust wrote:
+>>> Exactly where do you see us violating the close-to-open cache
+>>> consistency guarantees?
+>>>
+>> I haven't seen that. What I did see is cache inconsistency when
+> opening
+>> the same file with different file descriptors when the filehandle
+> changes.
+>> My testing shows that at least fsync and close fail with EIO when the
+> filehandle
+>> changed while there was dirty data in the cache and that's good.
+> Still,
+>> not sharing the cache while the file is opened (even on a different
+> file
+>> descriptors by the same process) seems impractical.
+> 
+> Tough. I'm not going to commit to adding support for multiple
+> filehandles. The fact is that RFC3530 contains masses of rope with which
+> to allow server and client vendors to hang themselves. The fact that the
+> protocol claims support for servers that use multiple filehandles per
+> inode does not mean it is necessarily a good idea. It adds unnecessary
+> code complexity, it screws with server scalability (extra GETATTR calls
+> just in order to probe existing filehandles), and it is insufficiently
+> well documented in the RFC: SECINFO information is, for instance, given
+> out on a per-filehandle basis, does that mean that the server will have
+> different security policies? In some places, people haven't even started
+> to think about the consequences:
+> 
+>       If GETATTR directed to the two filehandles does not return the
+>       fileid attribute for both of the handles, then it cannot be
+>       determined whether the two objects are the same.  Therefore,
+>       operations which depend on that knowledge (e.g., client side data
+>       caching) cannot be done reliably.
+> 
+> This implies the combination is legal, but offers no indication as to
+> how you would match OPEN/CLOSE requests via different paths. AFAICS you
+> would have to do non-cached I/O with no share modes (i.e. NFSv3-style
+> "special" stateids). There is no way in hell we will ever support
+> non-cached I/O in NFS other than the special case of O_DIRECT.
+> 
+> 
+> ...and no, I'm certainly not interested in "fixing" the RFC on this
+> point in any way other than getting this crap dropped from the spec. I
+> see no use for it at all.
+> 
+> Trond
+> 
+> 
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www1.ietf.org/mailman/listinfo/nfsv4
 
-2.  The client logic is simpler and less CPU intensive.  Clients
-really can't guess which write model that a server might prefer, so
-they should optimize for their own advantage, not the server's.
 
-3.  Most servers use a write delay tactic to make FILE_SYNC writes
-more efficient (in terms of disk writes).  This might make FILE_SYNC
-writes slower than UNSTABLE+COMMIT while retaining server disk
-subsystem scalability.
-
--- 
-"We who cut mere stones must always be envisioning cathedrals"
-   -- Quarry worker's creed
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www1.ietf.org/mailman/listinfo/nfsv4
