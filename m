@@ -1,28 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Announcing cel's patchset for 2.6.20-rc4
-Date: Tue, 16 Jan 2007 14:36:21 -0500
-Message-ID: <45AD2935.7060404@oracle.com>
-References: <45ACFC86.1070800@oracle.com>
-Reply-To: chuck.lever@oracle.com
+From: "Timothy S. Nelson" <wayland@smartchat.net.au>
+Subject: exportfs hangs when LDAP is in hosts line in nsswitch.conf
+Date: Wed, 17 Jan 2007 20:30:45 +1100 (EST)
+Message-ID: <Pine.LNX.4.64.0701172028560.7061@taliesin.nelson.org.au>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070806020806020001030000"
-Cc: Chris Mason <chris.mason@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H6u7I-0003TS-5K
-	for nfs@lists.sourceforge.net; Tue, 16 Jan 2007 11:37:08 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H6u7H-0000o9-L9
-	for nfs@lists.sourceforge.net; Tue, 16 Jan 2007 11:37:10 -0800
-Received: from rgmsgw02.us.oracle.com (rgmsgw02.us.oracle.com [138.1.186.52])
-	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id
-	l0GJb0JB023730
-	for <nfs@lists.sourceforge.net>; Tue, 16 Jan 2007 12:37:00 -0700
+	id 1H77vm-0003F9-O4
+	for nfs@lists.sourceforge.net; Wed, 17 Jan 2007 02:22:11 -0800
+Received: from ipmail03.adl2.internode.on.net ([203.16.214.135])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H77vj-0005Uk-Hz
+	for nfs@lists.sourceforge.net; Wed, 17 Jan 2007 02:22:08 -0800
 To: nfs@lists.sourceforge.net
-In-Reply-To: <45ACFC86.1070800@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,66 +26,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070806020806020001030000
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+ 	Hi all.
 
-Hrm.  Reposting with correct kernel version.
+ 	I'm using a standard install of CentOS 4 (rpm -q tells me it's 
+nfs-utils-1.0.6-70.EL4), and am trying to get /etc/nsswitch.conf to use LDAP. 
+At the moment everything works, except that when I make the "hosts" line in 
+nsswitch.conf say "files ldap dns", then exportfs hangs.
 
-Chuck Lever wrote:
-> I've posted a "technology preview" release of my patch set for 2.6.20 at 
-> oss.oracle.com:
-> 
->   http://oss.oracle.com/~cel/linux-2.6/2.6.20-rc4/
-> 
-> This is a preview to allow developers who use the patch set to learn 
-> about changes to the 2.6.20 version of the patch set before it is released.
-> 
-> This release includes:
-> 
-> o  the final patches in the RPC transport switch series
-> o  support for rpcbind protocol versions 3 and 4
-> o  RPC client support for IPv6
-> o  some support for IPv6 in the NFS client and RPC server
-> o  elimination of the global kernel lock from the NFS client
-> o  miscellaneous bug fixes and clean ups
-> 
-> The release notes have more details.
+ 	I've submitted a bug report at the link below, with an attached strace 
+of exportfs.  If anyone has any bright ideas, let me know.
+
+http://sourceforge.net/tracker/index.php?func=detail&aid=1636336&group_id=14&atid=100014
+
+ 	:)
 
 
---------------070806020806020001030000
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+---------------------------------------------------------------------
+| Name: Tim Nelson                 | Because the Creator is,        |
+| E-mail: wayland@smartchat.net.au | I am                           |
+---------------------------------------------------------------------
 
-YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
-IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmUgTGludXggUHJvamVjdHMgR3Jv
-dXANCmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRv
-dCBjb20NCnRpdGxlOlByaW5jaXBsZSBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0
-OCA2MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNh
-cmQNCg0K
---------------070806020806020001030000
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+----BEGIN GEEK CODE BLOCK----
+Version 3.12
+GCS d+++ s+: a- C++$ U+++$ P+++$ L+++ E- W+ N+ w--- V- 
+PE(+) Y+>++ PGP->+++ R(+) !tv b++ DI++++ D G+ e++>++++ h! y-
+-----END GEEK CODE BLOCK-----
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------070806020806020001030000
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070806020806020001030000--
