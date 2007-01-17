@@ -1,62 +1,106 @@
-From: "Timothy S. Nelson" <wayland@smartchat.net.au>
-Subject: exportfs hangs when LDAP is in hosts line in nsswitch.conf
-Date: Wed, 17 Jan 2007 20:30:45 +1100 (EST)
-Message-ID: <Pine.LNX.4.64.0701172028560.7061@taliesin.nelson.org.au>
+From: shi chao <shic@nanjing-fnst.com>
+Subject: [Patch]: Kernel panic (handle kernel NULL pointer) occurred
+	in NFSv4 by the nfs_update_inode()
+Date: Wed, 17 Jan 2007 12:13:09 +0000 (UTC)
+Message-ID: <1169186790.3184.13.camel@LINE>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H77vm-0003F9-O4
-	for nfs@lists.sourceforge.net; Wed, 17 Jan 2007 02:22:11 -0800
-Received: from ipmail03.adl2.internode.on.net ([203.16.214.135])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H77vj-0005Uk-Hz
-	for nfs@lists.sourceforge.net; Wed, 17 Jan 2007 02:22:08 -0800
-To: nfs@lists.sourceforge.net
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset="utf-8"
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Date: Fri, 19 Jan 2007 01:06:30 -0500
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
- 	Hi all.
-
- 	I'm using a standard install of CentOS 4 (rpm -q tells me it's 
-nfs-utils-1.0.6-70.EL4), and am trying to get /etc/nsswitch.conf to use LDAP. 
-At the moment everything works, except that when I make the "hosts" line in 
-nsswitch.conf say "files ldap dns", then exportfs hangs.
-
- 	I've submitted a bug report at the link below, with an attached strace 
-of exportfs.  If anyone has any bright ideas, let me know.
-
-http://sourceforge.net/tracker/index.php?func=detail&aid=1636336&group_id=14&atid=100014
-
- 	:)
-
-
----------------------------------------------------------------------
-| Name: Tim Nelson                 | Because the Creator is,        |
-| E-mail: wayland@smartchat.net.au | I am                           |
----------------------------------------------------------------------
-
-----BEGIN GEEK CODE BLOCK----
-Version 3.12
-GCS d+++ s+: a- C++$ U+++$ P+++$ L+++ E- W+ N+ w--- V- 
-PE(+) Y+>++ PGP->+++ R(+) !tv b++ DI++++ D G+ e++>++++ h! y-
------END GEEK CODE BLOCK-----
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+SGksIGFsbAoKICBJIGhhdmUgYmVlbiB3b3JraW5nIG9uIHRyeWluZyB0byBldmFsdWF0ZSB0aGUg
+cm9idXN0bmVzcyBvZiB0aGUgTkZTLgogIFdoZW4gSSBydW4gdGhlIGZpbGVzIGNyZWF0aW5nIHRl
+c3Qgb24gTkZTdjQsIHRoZSBrZXJuZWwgcGFuaWMgKGhhbmRsZQprZXJuZWwgTlVMTCBwb2ludGVy
+KSBoYXBwZW5lZCBkdXJpbmcgdGhlIHRlc3Qgd2hlbgp0aGUgL3Byb2Mvc3lzL3N1bnJwYy9uZnNf
+ZGVidWcgd2FzIHNldCB0byA2NTUzNS4gCiAgClRoZSB0ZXN0IEkgcnVuIGlzOgogICBNb3VudDog
+CiAgICAgICBtb3VudCAtdCBuZnM0ICAxOTIuMTY4LjAuMjE6LyAgL21udAogICBUZXN0IHNjcmlw
+dDoKICAgICAgICAgQSBwcm9jZXNzIGNyZWF0ZXMgYW5kIG9wZW5zIDEwMjQgZmlsZXMgb24gTkZT
+djQKICAgICAgICAgVGhlIHByb2Nlc3Mgd3JpdGVzIHNvbWUgdGVzdCBtZXNzYWdlIHRvIGVhY2gg
+ZmlsZS4KICAgICAgICAgVGhlIHByb2Nlc3MgY2xvc2VzIGFsbCB0aGUgb3BlbmluZyBmaWxlcyBh
+bmQgZXhpdC4KICAgICAgICAgQWZ0ZXIgdGhlIHByb2Nlc3MgZXhpdCwgdGhlIHRlc3QgYmVnaW5z
+IHRvIHVtb3VudCB0aGUgTkZTdjQKaW1tZWRpYXRlbHkuCgpJbiBub3JtYWwgY2FzZSwgSSBoYXZl
+bid0IGZvdW5kIHRoZSBwcm9ibGVtIGluIHRoZSB0ZXN0OyBidXQgd2hlbgp0aGUgL3Byb2Mvc3lz
+L3N1bnJwYy9uZnNfZGVidWcgaXMgc2V0IHRvIGRlYnVnIG1vZGUoNjU1MzUpLCB0aGUgcGFuaWMK
+cHJvYmxlbSB3aWxsIHVzdWFsbHkgaGFwcGVucy4KClRoZSBrZXJuZWwgcGFuaWMgbG9nIGlzIGFz
+IGZvbGxvd3M6CgpORlM6IG5mc191cGRhdGVfaW5vZGUoMDoxOC8yMDQ5OTgwIGN0PTEgaW5mbz0w
+eGUpCkJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVmZXJlbmNl
+IGF0IHZpcnR1YWwgYWRkcmVzcwowMDAwMDAwYwogcHJpbnRpbmcgZWlwOiBkZWI4MjYwNQoqcGRl
+ID0gMDAxZjMwNjcKT29wczogMDAwMCBbIzFdClNNUApsYXN0IHN5c2ZzIGZpbGU6IC9ibG9jay9o
+ZGEvcmVtb3ZhYmxlCk1vZHVsZXMgbGlua2VkIGluOiBuZnMgZnNjYWNoZSBuZnNkIMKhwq0uIMKh
+wq3CocKtLgpDUFU6ICAgIDAKRUlQOiAgICAwMDYwOls8ZGViODI2MDU+XSAgICBOb3QgdGFpbnRl
+ZCBWTEkKRUZMQUdTOiAwMDAxMDI0NiAgICgyLjYuMTgtMS4yNzQ3LmVsNSAjMSkKRUlQIGlzIGF0
+IG5mc191cGRhdGVfaW5vZGUrMHhiMC8weDY5MiBbbmZzXQrCocKtc2tpcMKhwq0uClByb2Nlc3Mg
+cnBjaW9kLzAgKHBpZDogMTg2NSwgdGk9ZGQzYWMwMDAgdGFzaz1kZGQ0NzU1MCB0YXNrLnRpPWRk
+M2FjMDAwKQpTdGFjazogZGViYTA2MDkgwqHCrSDCocKtCkNhbGwgVHJhY2U6CiBbPGRlYjgyYzFm
+Pl0gbmZzX3JlZnJlc2hfaW5vZGUrMHgzOC8weDFiMCBbbmZzXQogWzxkZWE5ZjYwMj5dIHJwY19l
+eGl0X3Rhc2srMHgxZS8weDZjIFtzdW5ycGNdCiBbPGRlYTlmMzE0Pl0gX19ycGNfZXhlY3V0ZSsw
+eDgyLzB4MWIzIFtzdW5ycGNdCiBbPGMwNDMzODk5Pl0gcnVuX3dvcmtxdWV1ZSsweDgzLzB4YzUK
+IFs8YzA0MzQxNzE+XSB3b3JrZXJfdGhyZWFkKzB4ZDkvMHgxMGMKIFs8YzA0MzY2MjA+XSBrdGhy
+ZWFkKzB4YzAvMHhlYwogWzxjMDQwNGQ2Mz5dIGtlcm5lbF90aHJlYWRfaGVscGVyKzB4Ny8weDEw
+CkRXQVJGMiB1bndpbmRlciBzdHVjayBhdCBrZXJuZWxfdGhyZWFkX2hlbHBlcisweDcvMHgxMAoK
+SSBoYXZlIGludmVzdGlnYXRlZCB0aGUgcHJvYmxlbSwgYW5kIGZvdW5kIHRoZSBjYXVzZSB3YXMg
+dGhlIE5VTEwKcG9pbnRlciBpX3NiLT5zX3Jvb3QgaW4gdGhlICJuZnNfdXBkYXRlX2lub2RlKCki
+IHdoZW4gdGhlIHBhbmljCmhhcHBlbmVkLgoKICBJbiB0aGUga2VybmVsLCBhdCB0aGUgZW5kIG9m
+IHRoZSBmaWxlIGNsb3Npbmcgb3BlcmF0aW9uLCB0aGUKbmZzX2ZpbGVfcmVsZWFzZSgpIHdpbGwg
+YmUgaW52b2tlZC4KCiAgSSBoYXZlIGZvdW5kIHRoZSBvcGVyYXRpb24gcHJvY2VzcyBvZiB0aGUg
+a2VybmVsIGlzIGFzIGZvbGxvd3M6ICAKICBuZnNfZmlsZV9yZWxlYXNlKCkKICAgICAgIHwtLSBO
+RlNfUFJPVE8oaW5vZGUpLT5maWxlX3JlbGVhc2UgKCkgICAKICAgICAgICAgICAgIHwKICAgICAg
+ICAgICBuZnNfZmlsZV9jbGVhcl9vcGVuX2NvbnRleHQoKQogICAgICAgICAgICAgfAogICAgICAg
+ICAgICBwdXRfbmZzX29wZW5fY29udGV4dCgpCiAgICAgICAgICAgICAgIHwgLS0gbmZzNF9jbG9z
+ZV9zdGF0ZQogICAgICAgICAgICAgICB8ICAgICAgIHwgLS0gbmZzNF9jbG9zZV9vcHMKICAgICAg
+ICAgICAgICAgfCAgICAgICAgICAgICAgICAgfAogICAgICAgICAgICAgICB8ICAgICAgICAgICAg
+ICAgbmZzNF9kb19jbG9zZSgpCiAgICAgICAgICAgICAgIHwgICAgICAgICAgICAgICAgICB8CiAg
+ICAgICAgICAgICAgIHwgICAgICAgICAgICAgICAgIG5mc191cGRhdGVfaW5vZGUoKQogICAgICAg
+ICAgICAgICB8ICAgICAgICAgICAgICAgICAgICAgICAgfC0tIGlub2RlID09IGlub2RlLT5pX3Ni
+LQo+c19yb290LT5kX2lub2RlCiAgICAgICAgICAgICAgIHwKICAgICAgICAgICAgICAgfCAtLSBt
+bnRwdXQoY3R4X3Zmc21udCkKICAgICAgICAgICAgICAgICAgICAgIHwKICAgICAgICAgICAgICAg
+ICAgICAgYXRvbWljX2RlY19hbmRfbG9jaygmbW50LT5tbnRfY291bnQsCiZ2ZnNtb3VudF9sb2Nr
+KQoKQWZ0ZXIgdGhlIGFzeW5jaHJvbm91cyBSUEMgY2FsbCAibmZzNF9jbG9zZV9vcHMiIGlzIGlu
+dm9rZWQgaW4KcHV0X25mc19vcGVuX2NvbnRleHQoKSwgdGhlIGtlcm5lbCBpbnZva2VzIHRoZSBt
+bnRwdXQoKSwgYW5kIHRoZSBtbnQtCj5tbnRfY291bnQgaXMgZGVjcmVhc2VkLiBJbiBteSB0ZXN0
+LCBhZnRlciB0aGUgZmlsZSBjbG9zaW5nIG9wZXJhdGlvbiwKdGhlIHN5c191bW9udCgpIHdhcyBl
+eGVjdXRlZCBpbW1lZGlhdGVseS4gSW4gbm9ybWFsIGNhc2UsIHRoZQphc3luY2hyb25vdXMgUlBD
+IGNhbGwgIm5mczRfY2xvc2Vfb3BzIiBjYW4gYmUgY29tcGxldGVkIHF1aWNrbHksIGFuZCBpdApy
+YXJlbHkgZXZlciBoYXBwZW5zIHRoYXQgdGhlIHN5c191bW91bnQoKSBpcyBpbnZva2VkIGJlZm9y
+ZSB0aGUgZW5kIG9mCm5mc191cGRhdGVfaW5vZGUoKSBvcGVyYXRpb24uIEJ1dCB3aGVuIHRoZSBz
+dW5ycGMvbmZzX2RlYnVnIGlzIHNldCB0bwpkZWJ1ZyBtb2RlLCBhIGxvdCBvZiBwcmludGsgb3Bl
+cmF0aW9ucyB3aWxsIGJlIGludm9rZWQgaW4gTkZTLiBEdWUgdG8KdGhlIGxvdHMgb2YgcHJpbmsg
+b3BlcmF0aW9ucywgdGhlIFJQQyBjYWxsICJuZnM0X2Nsb3NlX29wcyIgd2lsbCBlYXNpbHkKYmUg
+ZGVsYXllZCwgdGhlbiBpdCBpcyBwb3NzaWJsZSB0aGF0IHRoZSBzeXNfdW1vdW50KCkgaXMgaW52
+b2tlZCBiZWZvcmUKdGhlIGVuZCBvZiBuZnNfdXBkYXRlX2lub2RlKCkgb3BlcmF0aW9uLiBJbiB0
+aGUgZG9fdW1vbnQoKSAoQmVjYXVzZSBtbnQtCj5tbnRfY291bnQgaGFzIGJlZW4gZGVjcmVhc2Vk
+LCB1bW91bnQgY2FuIGJlIGV4ZWN1dGVkIHN1Y2Nlc3NmdWxseSksIHRoZQpzYi0+c19yb290IHdp
+bGwgYmUgc2V0IHRvIE5VTEwgaW4gdGhlIHNocmlua19kY2FjaGVfZm9yX3Vtb3VudCAoKSB3aGlj
+aAppcyBpbnZva2VkIGJ5IHRoZSBuZnNfa2lsbF9zdXBlcigpLgpUaGVyZWZvcmUsIGtlcm5lbCBw
+YW5pYyBvY2N1cnJlZCBieSB0aGUgTlVMTCBwb2ludGVyIGFjY2VzcyB3aGVuCm5mc191cGRhdGVf
+ZGF0ZSgpIGFjY2Vzc2VkIGlub2RlLT5pX3NiLT5zX3Jvb3QuCgpCZWNhdXNlIHRoZXJlIGlzIGEg
+cG9zc2liaWxpdHkgdGhhdCBzYi0+c19yb290IG9mIGEgc3VwZXJfYmxvY2sgaXMgc2V0CnRvIE5V
+TEwgd2l0aCB1bW91bnQgd2hlbiBuZnM0X2Nsb3NlX29wcyAoKSBpcyBub3QgZmluaXNoZWQgaW4g
+dGhlIE5GUy4gCkl0IGlzIHJlYWxseSBuZWNlc3NhcnkgdG8gY2hlY2sgYW4gZW1wdHkgcG9pbnRl
+ciBmb3IgdGhlIGlub2RlLT5pX3NiLQo+c19yb290IGluIHRoZSBuZnNfdXBkYXRlX2RhdGUoKS4K
+ClRoaXMgcHJvYmxlbSBzdGlsbCBleGlzdHMgaW4gdGhlIGxhdGVzdCBsaW51eCBrZXJuZWwuClRv
+IHJlc29sdmUgdGhpcyBwcm9ibGVtLCBJIGhhdmUgbWFkZSB0aGUgcGF0Y2ggYmVsb3cgZm9yIHRo
+ZQpsaW51eC0yLjYuMTkuMi4gQWZ0ZXIgdGhlIHBhdGNoIGlzIGFwcGxpZWQsIHRoZSBwcm9ibGVt
+IGNhbiBiZSByZXNvbHZlZC4Kc2lnbmVkLW9mZi1ieTpTaGlDaGFvIDxzaGljQG5hbmppbmctZm5z
+dC5jb20+CgotLS0gb2xkL2ZzL25mcy9pbm9kZS5jCTIwMDctMDEtMTcgMTc6MTk6NDguOTk0MDIw
+Mjg4IC0wNTAwCisrKyBuZXcvZnMvbmZzL2lub2RlLmMJMjAwNy0wMS0xNyAxNzoyMDoyNi41NzAz
+MDc4MjQgLTA1MDAKQEAgLTkxNCw3ICs5MTQsNyBAQAogCiAJc2VydmVyID0gTkZTX1NFUlZFUihp
+bm9kZSk7CiAJLyogVXBkYXRlIHRoZSBmc2lkIGlmIGFuZCBvbmx5IGlmIHRoaXMgaXMgdGhlIHJv
+b3QgZGlyZWN0b3J5ICovCi0JaWYgKGlub2RlID09IGlub2RlLT5pX3NiLT5zX3Jvb3QtPmRfaW5v
+ZGUKKwlpZiAoIGlub2RlLT5pX3NiLT5zX3Jvb3QgJiYgaW5vZGUgPT0gaW5vZGUtPmlfc2ItPnNf
+cm9vdC0+ZF9pbm9kZQogCQkJJiYgIW5mc19mc2lkX2VxdWFsKCZzZXJ2ZXItPmZzaWQsICZmYXR0
+ci0+ZnNpZCkpCiAJCXNlcnZlci0+ZnNpZCA9IGZhdHRyLT5mc2lkOwogCgoKX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTkZTdjQgbWFpbGluZyBsaXN0Ck5G
+U3Y0QGxpbnV4LW5mcy5vcmcKaHR0cDovL2xpbnV4LW5mcy5vcmcvY2dpLWJpbi9tYWlsbWFuL2xp
+c3RpbmZvL25mc3Y0
