@@ -1,21 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/14] SUNRPC: Make rpc_free API more generic
-Date: Thu, 18 Jan 2007 18:30:02 -0500
-Message-ID: <20070118233002.23310.88831.stgit@localhost.localdomain>
+Subject: [PATCH 10/14] SUNRPC: Enable support for rpcbind versions 3
+	and 4 via CONFIG options
+Date: Thu, 18 Jan 2007 18:30:45 -0500
+Message-ID: <20070118233045.23310.43704.stgit@localhost.localdomain>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7giZ-0002p6-L9
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:53 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1H7gie-0002pS-Ns
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:56 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7gia-0003Mv-6V
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:53 -0800
+	(Exim 4.44) id 1H7gig-0004U5-8i
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:58 -0800
 To: trond.myklybust@fys.uio.no
 In-Reply-To: <20070118232356.23310.6705.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -30,88 +31,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Don't diddle with rq_buffer and rq_bufsize inside of rpc_free.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/sched.h |    2 +-
- include/linux/sunrpc/xprt.h  |    2 +-
- net/sunrpc/sched.c           |   15 +++++++--------
- net/sunrpc/xprt.c            |    2 +-
- 4 files changed, 10 insertions(+), 11 deletions(-)
+ fs/Kconfig        |   24 ++++++++++++++++++++++++
+ net/sunrpc/clnt.c |    8 +++++---
+ 2 files changed, 29 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 97c7616..88e6e39 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -265,7 +265,7 @@ struct rpc_task *rpc_wake_up_next(struct
- void		rpc_wake_up_status(struct rpc_wait_queue *, int);
- void		rpc_delay(struct rpc_task *, unsigned long);
- void *		rpc_malloc(struct rpc_task *, size_t);
--void		rpc_free(struct rpc_task *);
-+void		rpc_free(struct rpc_task *, void *, size_t);
- int		rpciod_up(void);
- void		rpciod_down(void);
- int		__rpc_wait_for_completion_task(struct rpc_task *task, int (*)(void *));
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index f780e72..51c3660 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -112,7 +112,7 @@ struct rpc_xprt_ops {
- 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
- 	void		(*connect)(struct rpc_task *task);
- 	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
--	void		(*buf_free)(struct rpc_task *task);
-+	void		(*buf_free)(struct rpc_task *task, void *buffer, size_t size);
- 	int		(*send_request)(struct rpc_task *task);
- 	void		(*set_retrans_timeout)(struct rpc_task *task);
- 	void		(*timer)(struct rpc_task *task);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 08104dd..c689196 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -763,20 +763,19 @@ void * rpc_malloc(struct rpc_task *task,
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 8cd2417..b49d1b5 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -1764,6 +1764,30 @@ config NFS_COMMON
+ config SUNRPC
+ 	tristate
  
- /**
-  * rpc_free - free buffer allocated via rpc_malloc
-- * @task: RPC task with a buffer to be freed
-+ * @task: RPC task used when this buffer was allocated
-+ * @buffer: buffer to free
-  *
-  */
--void rpc_free(struct rpc_task *task)
-+void rpc_free(struct rpc_task *task, void *buffer, size_t size)
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
++config RPCBIND_VERSION3
++	bool "Support for rpcbind version 3"
++	depends on SUNRPC && EXPERIMENTAL
++	default n
++	help
++	  The in-kernel Linux RPC client already supports rpcbind version 2.
++	  This option adds support to the Linux in-kernel RPC client for
++	  rpcbind version 3.
++
++	  Not all servers support rpcbind version 3, and the client support is
++	  still experimental.  If unsure, say N.
++
++config RPCBIND_VERSION4
++	bool "Support for rpcbind version 4"
++	depends on SUNRPC && EXPERIMENTAL && RPCBIND_VERSION3
++	default n
++	help
++	  The in-kernel Linux RPC client already supports rpcbind version 2.
++	  This option adds support to the Linux in-kernel RPC client for
++	  rpcbind version 4.
++
++	  Not all servers support rpcbind version 4, and the client support is
++	  still experimental.  If unsure, say N.
++
+ config SUNRPC_GSS
+ 	tristate
  
--	if (req->rq_buffer) {
--		if (req->rq_bufsize == RPC_BUFFER_MAXSIZE)
--			mempool_free(req->rq_buffer, rpc_buffer_mempool);
-+	if (req) {
-+		if (size <= RPC_BUFFER_MAXSIZE)
-+			mempool_free(buffer, rpc_buffer_mempool);
- 		else
--			kfree(req->rq_buffer);
--		req->rq_buffer = NULL;
--		req->rq_bufsize = 0;
-+			kfree(buffer);
- 	}
- }
- 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index cf59f7d..9f787ac 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -855,7 +855,7 @@ void xprt_release(struct rpc_task *task)
- 		mod_timer(&xprt->timer,
- 				xprt->last_used + xprt->idle_timeout);
- 	spin_unlock_bh(&xprt->transport_lock);
--	xprt->ops->buf_free(task);
-+	xprt->ops->buf_free(task, req->rq_buffer, req->rq_bufsize);
- 	task->tk_rqstp = NULL;
- 	if (req->rq_release_snd_buf)
- 		req->rq_release_snd_buf(req);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 244cce4..493b950 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -894,9 +894,11 @@ call_bind_status(struct rpc_task *task)
+ 				task->tk_pid);
+ 		break;
+ 	case -EPROTONOSUPPORT:
+-		dprintk("RPC: %5u remote rpcbind version 2 unavailable\n",
+-				task->tk_pid);
+-		break;
++		dprintk("RPC: %5u remote rpcbind version unavailable, retrying\n",
++ 				task->tk_pid);
++		task->tk_status = 0;
++		task->tk_action = call_bind;
++		return;
+ 	default:
+ 		dprintk("RPC: %5u unrecognized rpcbind error (%d)\n",
+ 				task->tk_pid, -task->tk_status);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
