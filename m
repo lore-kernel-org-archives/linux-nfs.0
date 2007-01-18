@@ -1,22 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/14] SUNRPC: switch the RPC server to use the new
-	rpcbind registration API
-Date: Thu, 18 Jan 2007 18:30:31 -0500
-Message-ID: <20070118233031.23310.24982.stgit@localhost.localdomain>
+Subject: [PATCH 09/14] NFS: switch NFSROOT to use new rpcbind client
+Date: Thu, 18 Jan 2007 18:30:41 -0500
+Message-ID: <20070118233041.23310.43925.stgit@localhost.localdomain>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7gib-0002p8-Lm
+	id 1H7gib-0002p7-Ll
 	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:53 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7giY-0004TZ-Lp
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:52 -0800
+	(Exim 4.44) id 1H7gia-0003Mw-8V
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:53 -0800
 To: trond.myklybust@fys.uio.no
 In-Reply-To: <20070118232356.23310.6705.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,29 +30,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Eventually this interface will support versions 3 and 4 of the rpcbind
-protocol, which will allow the Linux RPC server to register services on
-IPv6 addresses.
+It is arguable whether NFSROOT will support IPv6, and thus whether the
+rpcb_getport_external API needs to support rpcbind versions greater than 2.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svc.c |    2 +-
+ fs/nfs/nfsroot.c |    2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6627759..d38d74a 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -666,7 +666,7 @@ svc_register(struct svc_serv *serv, int 
- 			if (progp->pg_vers[i]->vs_hidden)
- 				continue;
+diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+index 75f819d..49d1008 100644
+--- a/fs/nfs/nfsroot.c
++++ b/fs/nfs/nfsroot.c
+@@ -428,7 +428,7 @@ static int __init root_nfs_getport(int p
+ 	printk(KERN_NOTICE "Looking up port of RPC %d/%d on %u.%u.%u.%u\n",
+ 		program, version, NIPQUAD(servaddr));
+ 	set_sockaddr(&sin, servaddr, 0);
+-	return rpc_getport_external(&sin, program, version, proto);
++	return rpcb_getport_external(&sin, program, version, proto);
+ }
  
--			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-+			error = rpcb_register(progp->pg_prog, i, proto, port, &dummy);
- 			if (error < 0)
- 				break;
- 			if (port && !dummy) {
+ 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
