@@ -1,24 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/13] SUNRPC: update internal API: separate pmap
-	register and temp sockets
-Date: Thu, 18 Jan 2007 18:50:20 -0500
-Message-ID: <20070118235020.24266.22841.stgit@localhost.localdomain>
-References: <20070118234855.24266.37463.stgit@localhost.localdomain>
+Subject: Eliminating the BKL from the NFS and RPC clients
+Date: Thu, 18 Jan 2007 18:40:53 -0500
+Message-ID: <45B00585.10001@oracle.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------000701090307000802070707"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7h1Z-000534-El
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:29 -0800
+	id 1H7h1g-00053T-Uy
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:37 -0800
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7h1a-0008Vs-Vn
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:31 -0800
-To: neilb@suse.de
-In-Reply-To: <20070118234855.24266.37463.stgit@localhost.localdomain>
+	(Exim 4.44) id 1H7gtB-0006f0-Ez
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:41:50 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,156 +29,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Currently in the RPC server, registering with the local portmapper and
-creating "permanent" sockets are tied together.  Expand the internal APIs
-to allow these two socket characteristics to be separately specified.
+This is a multi-part message in MIME format.
+--------------000701090307000802070707
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This will be externalized in the next patch.
+Hi all-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
----
+I'd like some wider review of the series of patches that eliminate the 
+BKL from the NFS and RPC client.  There are quite a few of them, so 
+instead of spamming the list, here's the URL:
 
- include/linux/sunrpc/svcsock.h |    7 ++++++
- net/sunrpc/svcsock.c           |   47 +++++++++++++++++++++++-----------------
- 2 files changed, 34 insertions(+), 20 deletions(-)
+   http://oss.oracle.com/~cel/linux-2.6/2.6.20-rc4/patches
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 98b21ad..3c38789 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -74,4 +74,11 @@ int		svc_addsock(struct svc_serv *serv,
- 			    char *name_return,
- 			    int *proto);
- 
-+/*
-+ * svc_makesock socket characteristics
-+ */
-+#define SVC_SOCK_DEFAULTS	(0U)
-+#define SVC_SOCK_ANONYMOUS	(1U << 0)	/* don't register with pmap */
-+#define SVC_SOCK_TEMPORARY	(1U << 1)	/* flag socket as temporary */
-+
- #endif /* SUNRPC_SVCSOCK_H */
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 99f54fb..40b0f04 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -69,7 +69,7 @@ #define RPCDBG_FACILITY	RPCDBG_SVCSOCK
- 
- 
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
--					 int *errp, int pmap_reg);
-+					 int *, int);
- static void		svc_udp_data_ready(struct sock *, int);
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
-@@ -922,7 +922,8 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	 */
- 	newsock->sk->sk_sndtimeo = HZ*30;
- 
--	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
-+	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
-+				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
- 		goto failed;
- 
- 
-@@ -1456,12 +1457,14 @@ svc_age_temp_sockets(unsigned long closu
-  * Initialize socket for RPC use and create svc_sock struct
-  * XXX: May want to setsockopt SO_SNDBUF and SO_RCVBUF.
-  */
--static struct svc_sock *
--svc_setup_socket(struct svc_serv *serv, struct socket *sock,
--					int *errp, int pmap_register)
-+static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
-+						struct socket *sock,
-+						int *errp, int flags)
- {
- 	struct svc_sock	*svsk;
- 	struct sock	*inet;
-+	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
-+	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
- 
- 	dprintk("svc: svc_setup_socket %p\n", sock);
- 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
-@@ -1503,7 +1506,7 @@ svc_setup_socket(struct svc_serv *serv, 
- 		svc_tcp_init(svsk);
- 
- 	spin_lock_bh(&serv->sv_lock);
--	if (!pmap_register) {
-+	if (is_temporary) {
- 		set_bit(SK_TEMP, &svsk->sk_flags);
- 		list_add(&svsk->sk_list, &serv->sv_tempsocks);
- 		serv->sv_tmpcnt++;
-@@ -1547,7 +1550,7 @@ int svc_addsock(struct svc_serv *serv,
- 	else if (so->state > SS_UNCONNECTED)
- 		err = -EISCONN;
- 	else {
--		svsk = svc_setup_socket(serv, so, &err, 1);
-+		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
- 		if (svsk)
- 			err = 0;
- 	}
-@@ -1563,8 +1566,8 @@ EXPORT_SYMBOL_GPL(svc_addsock);
- /*
-  * Create socket for RPC service.
-  */
--static int
--svc_create_socket(struct svc_serv *serv, int protocol, struct sockaddr_in *sin)
-+static int svc_create_socket(struct svc_serv *serv, int protocol,
-+				struct sockaddr_in *sin, int flags)
- {
- 	struct svc_sock	*svsk;
- 	struct socket	*sock;
-@@ -1600,8 +1603,8 @@ svc_create_socket(struct svc_serv *serv,
- 			goto bummer;
- 	}
- 
--	if ((svsk = svc_setup_socket(serv, sock, &error, 1)) != NULL)
--		return 0;
-+	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL)
-+		return ntohs(inet_sk(svsk->sk_sk)->sport);
- 
- bummer:
- 	dprintk("svc: svc_create_socket error = %d\n", -error);
-@@ -1651,19 +1654,23 @@ svc_delete_socket(struct svc_sock *svsk)
- 	svc_sock_put(svsk);
- }
- 
--/*
-- * Make a socket for nfsd and lockd
-+/**
-+ * svc_makesock - Make a socket for nfsd and lockd
-+ * @serv: RPC server structure
-+ * @protocol: transport protocol to use
-+ * @port: port to use
-+ *
-  */
--int
--svc_makesock(struct svc_serv *serv, int protocol, unsigned short port)
-+int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port)
- {
--	struct sockaddr_in	sin;
-+	struct sockaddr_in sin = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= INADDR_ANY,
-+		.sin_port		= htons(port),
-+	};
- 
- 	dprintk("svc: creating socket proto = %d\n", protocol);
--	sin.sin_family      = AF_INET;
--	sin.sin_addr.s_addr = INADDR_ANY;
--	sin.sin_port        = htons(port);
--	return svc_create_socket(serv, protocol, &sin);
-+	return svc_create_socket(serv, protocol, &sin, SVC_SOCK_DEFAULTS);
- }
- 
- /*
+The BKL patches are numbered 052 through 138.  I know there are a lot of 
+these, but each is tiny, so we can use 'git bisect' easily to narrow 
+down a problematic case.  In addition, they are, by and large, not 
+interdependent (although order is important) so you can apply a few of 
+them from the series at a time, if that is desired.
+
+--------------000701090307000802070707
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
+IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmUgTGludXggUHJvamVjdHMgR3Jv
+dXANCmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRv
+dCBjb20NCnRpdGxlOlByaW5jaXBsZSBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0
+OCA2MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNh
+cmQNCg0K
+--------------000701090307000802070707
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------000701090307000802070707
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------000701090307000802070707--
