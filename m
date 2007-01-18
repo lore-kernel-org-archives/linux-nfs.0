@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/13] SUNRPC: add a "generic" function to see if the
-	peer uses a secure port
-Date: Thu, 18 Jan 2007 18:50:54 -0500
-Message-ID: <20070118235054.24266.17595.stgit@localhost.localdomain>
+Subject: [PATCH 12/13] SUNRPC: support IPv6 addresses in RPC server's
+	UDP receive path
+Date: Thu, 18 Jan 2007 18:51:02 -0500
+Message-ID: <20070118235101.24266.22501.stgit@localhost.localdomain>
 References: <20070118234855.24266.37463.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7h26-00057v-Jh
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:51:03 -0800
+	id 1H7h2F-0005CD-1f
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:51:11 -0800
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7h28-0001Bp-2J
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:51:04 -0800
+	(Exim 4.44) id 1H7h2G-0001HH-B3
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:51:12 -0800
 To: neilb@suse.de
 In-Reply-To: <20070118234855.24266.37463.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,68 +31,112 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The only reason svcsock.c looks at a sockaddr's port is to check whether
-the remote peer is connecting from a privileged port.  Refactor this check
-to hide processing that is specific to address format.
+Add support for IPv6 addresses in the RPC server's UDP receive path.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- net/sunrpc/svcsock.c |   19 ++++++++++++++++---
- 1 files changed, 16 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc.h |    5 ++++
+ net/sunrpc/svcsock.c       |   55 ++++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 50 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 4989701..ddf4773 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -927,6 +927,20 @@ svc_tcp_data_ready(struct sock *sk, int 
- 		wake_up_interruptible(sk->sk_sleep);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 7ba9dda..f5924c1 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -266,6 +266,11 @@ static inline struct sockaddr_in *svc_ad
+ 	return (struct sockaddr_in *) &rqst->rq_addr;
  }
  
-+static inline int svc_port_is_privileged(struct sockaddr *sin)
++static inline struct sockaddr_in6 *svc_addr_in6(struct svc_rqst *rqst)
 +{
-+	switch (sin->sa_family) {
++	return (struct sockaddr_in6 *) &rqst->rq_addr;
++}
++
+ static inline struct sockaddr *svc_addr(struct svc_rqst *rqst)
+ {
+ 	return (struct sockaddr *) &rqst->rq_addr;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index b3efa23..7f4f428 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -715,13 +715,55 @@ svc_write_space(struct sock *sk)
+ 	}
+ }
+ 
++static void svc_udp_get_sender_address(struct svc_rqst *rqstp,
++					struct sk_buff *skb)
++{
++	switch (rqstp->rq_sock->sk_sk->sk_family) {
 +	case AF_INET:
-+		return ntohs(((struct sockaddr_in *)sin)->sin_port) < PROT_SOCK;
++		/* this seems to come from net/ipv4/udp.c:udp_recvmsg */
++		do {
++			struct sockaddr_in *sin = svc_addr_in(rqstp);
++
++			sin->sin_family = AF_INET;
++			sin->sin_port = skb->h.uh->source;
++			sin->sin_addr.s_addr = skb->nh.iph->saddr;
++			rqstp->rq_addrlen = sizeof(struct sockaddr_in);
++			/* Remember which interface received this request */
++			rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
++		} while (0);
++		break;
 +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 +	case AF_INET6:
-+		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port) < PROT_SOCK;
++		/* this is derived from net/ipv6/udp.c:udpv6_recvmesg */
++		do {
++			struct sockaddr_in6 *sin6 = svc_addr_in6(rqstp);
++
++			sin6->sin6_family = AF_INET6;
++			sin6->sin6_port = skb->h.uh->source;
++			sin6->sin6_flowinfo = 0;
++			sin6->sin6_scope_id = 0;
++			if (ipv6_addr_type(&sin6->sin6_addr) &
++							IPV6_ADDR_LINKLOCAL)
++				sin6->sin6_scope_id = IP6CB(skb)->iif;
++			ipv6_addr_copy(&sin6->sin6_addr,
++							&skb->nh.ipv6h->saddr);
++			rqstp->rq_addrlen = sizeof(struct sockaddr_in);
++			/* Remember which interface received this request */
++			ipv6_addr_copy(&rqstp->rq_daddr.addr6,
++							&skb->nh.ipv6h->saddr);
++		} while (0);
++		break;
 +#endif
-+	default:
-+		return 0;
 +	}
++	return;
 +}
 +
  /*
-  * Accept a TCP connection
+  * Receive a datagram from a UDP socket.
   */
-@@ -973,7 +987,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	 * hosts here, but when we get encryption, the IP of the host won't
- 	 * tell us anything.  For now just warn about unpriv connections.
- 	 */
--	if (ntohs(sin.sin_port) >= 1024) {
-+	if (!svc_port_is_privileged((struct sockaddr *) &sin)) {
- 		dprintk(KERN_WARNING
- 			"%s: connect from unprivileged port: %s\n",
- 			serv->sv_name,
-@@ -1313,7 +1327,6 @@ int
- svc_recv(struct svc_rqst *rqstp, long timeout)
+ static int
+ svc_udp_recvfrom(struct svc_rqst *rqstp)
  {
- 	struct svc_sock		*svsk = NULL;
--	struct sockaddr_in	*sin = svc_addr_in(rqstp);
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	struct svc_pool		*pool = rqstp->rq_pool;
- 	int			len, i;
-@@ -1408,7 +1421,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	svsk->sk_lastrecv = get_seconds();
- 	clear_bit(SK_OLD, &svsk->sk_flags);
+-	struct sockaddr_in *sin = svc_addr_in(rqstp);
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+ 	struct svc_serv	*serv = svsk->sk_server;
+ 	struct sk_buff	*skb;
+@@ -774,16 +816,9 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	len  = skb->len - sizeof(struct udphdr);
+ 	rqstp->rq_arg.len = len;
  
--	rqstp->rq_secure = ntohs(sin->sin_port) < PROT_SOCK;
-+	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
- 	rqstp->rq_chandle.defer = svc_defer;
+-	rqstp->rq_prot        = IPPROTO_UDP;
+-
+-	/* Get sender address */
+-	sin->sin_family = AF_INET;
+-	sin->sin_port = skb->h.uh->source;
+-	sin->sin_addr.s_addr = skb->nh.iph->saddr;
+-	rqstp->rq_addrlen = sizeof(struct sockaddr_in);
++	rqstp->rq_prot = IPPROTO_UDP;
  
- 	if (serv->sv_stats)
+-	/* Remember which interface received this request */
+-	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
++	svc_udp_get_sender_address(rqstp, skb);
+ 
+ 	if (skb_is_nonlinear(skb)) {
+ 		/* we have to copy */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
