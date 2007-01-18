@@ -1,22 +1,23 @@
-From: Dan Goetzman <dan_goetzman@bmc.com>
-Subject: NFS "Not a directory" problem
-Date: Wed, 31 Jan 2007 15:53:38 -0600
-Message-ID: <45C10FE2.9060606@bmc.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/14] SUNRPC: Make rpc_free API more generic
+Date: Thu, 18 Jan 2007 18:30:02 -0500
+Message-ID: <20070118233002.23310.88831.stgit@localhost.localdomain>
+References: <20070118232356.23310.6705.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCNOl-0001Wn-Nd
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 13:53:48 -0800
-Received: from sky.bmc.com ([198.207.223.240] helo=babbler.bmc.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCNOm-0005Co-Cx
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 13:53:49 -0800
-Received: from color.bmc.com (houcfs2.bmc.com [172.19.17.2])
-	by babbler.bmc.com (Postfix) with ESMTP id 0010A1307ED
-	for <nfs@lists.sourceforge.net>; Wed, 31 Jan 2007 15:53:38 -0600 (CST)
+	id 1H7giZ-0002p6-L9
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:53 -0800
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1H7gia-0003Mv-6V
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:53 -0800
+To: trond.myklybust@fys.uio.no
+In-Reply-To: <20070118232356.23310.6705.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,86 +30,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Linux client = 2.6.19-1.2895.fc6
-NFS server = Tru64 5.1B-2 (aka 5.1 + PK4)
+Don't diddle with rq_buffer and rq_bufsize inside of rpc_free.
 
-NFS mount is NFSV3 over UDP or TCP. NFSV2 works OK, NFSV3 has the 
-following problem;
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-$ cd /mnt/
-$ cd fvance
-$ cd src
- returns "*Not a directory*" error message.
- src is simply a directory under "fvance". Normally a umount/mount cycle 
-will remove the problem and then all is well.
+ include/linux/sunrpc/sched.h |    2 +-
+ include/linux/sunrpc/xprt.h  |    2 +-
+ net/sunrpc/sched.c           |   15 +++++++--------
+ net/sunrpc/xprt.c            |    2 +-
+ 4 files changed, 10 insertions(+), 11 deletions(-)
 
-Turning debug on with "*rpcdebug -m nfs -s all*" and I get the following 
-in messages;
-
-*When it works;*
-> Jan 31 15:30:40 rds-icap kernel: NFS:      
-> nfs_updatepage(HISTFILES/.sh_history-rds-icap.bmc.com 8@1542)
-> Jan 31 15:30:40 rds-icap kernel: NFS:      nfs_updatepage returns 0 
-> (isize 1550)
-> Jan 31 15:30:40 rds-icap kernel: NFS: permission(0:25/8), mask=0x1, res=0
-> Jan 31 15:30:40 rds-icap kernel: NFS: revalidating (0:25/656353)
-> Jan 31 15:30:40 rds-icap kernel: NFS call  getattr
-> Jan 31 15:30:40 rds-icap kernel: NFS reply getattr: 0
-> Jan 31 15:30:40 rds-icap kernel: NFS: nfs_update_inode(0:25/656353 
-> ct=1 info=0x6)
-> Jan 31 15:30:40 rds-icap kernel: NFS: (0:25/656353) revalidation complete
-> Jan 31 15:30:40 rds-icap kernel: NFS: 
-> nfs_lookup_revalidate(fvance/src) is valid
-> Jan 31 15:30:40 rds-icap kernel: NFS: permission(0:25/656353), 
-> mask=0x1, res=0
-*When it fails;*
-> Jan 31 15:25:31 rds-icap kernel: NFS:      
-> nfs_updatepage(HISTFILES/.sh_history-rds-icap.bmc.com 8@1454)
-> Jan 31 15:25:31 rds-icap kernel: NFS:      nfs_updatepage returns 0 
-> (isize 1462)
-> Jan 31 15:25:31 rds-icap kernel: NFS call  access
-> Jan 31 15:25:31 rds-icap kernel: NFS: nfs_update_inode(0:26/8 ct=1 
-> info=0x6)
-> Jan 31 15:25:31 rds-icap kernel: NFS reply access: 0
-> Jan 31 15:25:31 rds-icap kernel: NFS: permission(0:26/8), mask=0x1, res=0
-> Jan 31 15:25:31 rds-icap kernel: NFS: 
-> nfs_lookup_revalidate(fvance/src) is valid
-> Jan 31 15:25:31 rds-icap kernel: NFS call  lookup src
-> Jan 31 15:25:31 rds-icap kernel: NFS reply lookup: 0
-> Jan 31 15:25:31 rds-icap kernel: --> nfs_xdev_get_sb()
-> Jan 31 15:25:31 rds-icap kernel: --> 
-> nfs_clone_server(,ffffffffcc98e21e:0,)
-> Jan 31 15:25:31 rds-icap kernel: --> nfs_probe_fsinfo()
-> Jan 31 15:25:31 rds-icap kernel: NFS call  fsinfo
-> Jan 31 15:25:31 rds-icap kernel: NFS reply fsinfo: 0
-> Jan 31 15:25:31 rds-icap kernel: NFS call  pathconf
-> Jan 31 15:25:31 rds-icap kernel: NFS reply pathconf: 0
-> Jan 31 15:25:31 rds-icap kernel: <-- nfs_probe_fsinfo() = 0
-> Jan 31 15:25:31 rds-icap kernel: Cloned FSID: ffffffffcc98e21e:0
-> Jan 31 15:25:31 rds-icap kernel: <-- nfs_clone_server() = db5db8c0
-> Jan 31 15:25:31 rds-icap kernel: --> nfs_free_server()
-> Jan 31 15:25:31 rds-icap kernel: --> nfs_put_client({3})
-> Jan 31 15:25:31 rds-icap kernel: <-- nfs_free_server()
-> Jan 31 15:25:31 rds-icap kernel: do_proc_get_root: call  fsinfo
-> Jan 31 15:25:31 rds-icap kernel: do_proc_get_root: reply fsinfo: 0
-> Jan 31 15:25:31 rds-icap kernel: NFS: nfs_update_inode(0:26/656353 
-> ct=2 info=0x6)
-> Jan 31 15:25:31 rds-icap kernel: NFS: nfs_fhget(0:26/656353 ct=2)
-> Jan 31 15:25:31 rds-icap kernel: <-- nfs_xdev_get_sb() = 0
-Note,
-inode for parent of fvance = 2
-inode for fvance is 8
-inode for src is 656353
-
-Anyone help me figure out what is going wrong here?
--Dan Goetzman
-
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 97c7616..88e6e39 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -265,7 +265,7 @@ struct rpc_task *rpc_wake_up_next(struct
+ void		rpc_wake_up_status(struct rpc_wait_queue *, int);
+ void		rpc_delay(struct rpc_task *, unsigned long);
+ void *		rpc_malloc(struct rpc_task *, size_t);
+-void		rpc_free(struct rpc_task *);
++void		rpc_free(struct rpc_task *, void *, size_t);
+ int		rpciod_up(void);
+ void		rpciod_down(void);
+ int		__rpc_wait_for_completion_task(struct rpc_task *task, int (*)(void *));
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index f780e72..51c3660 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -112,7 +112,7 @@ struct rpc_xprt_ops {
+ 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
+ 	void		(*connect)(struct rpc_task *task);
+ 	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
+-	void		(*buf_free)(struct rpc_task *task);
++	void		(*buf_free)(struct rpc_task *task, void *buffer, size_t size);
+ 	int		(*send_request)(struct rpc_task *task);
+ 	void		(*set_retrans_timeout)(struct rpc_task *task);
+ 	void		(*timer)(struct rpc_task *task);
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 08104dd..c689196 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -763,20 +763,19 @@ void * rpc_malloc(struct rpc_task *task,
+ 
+ /**
+  * rpc_free - free buffer allocated via rpc_malloc
+- * @task: RPC task with a buffer to be freed
++ * @task: RPC task used when this buffer was allocated
++ * @buffer: buffer to free
+  *
+  */
+-void rpc_free(struct rpc_task *task)
++void rpc_free(struct rpc_task *task, void *buffer, size_t size)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 
+-	if (req->rq_buffer) {
+-		if (req->rq_bufsize == RPC_BUFFER_MAXSIZE)
+-			mempool_free(req->rq_buffer, rpc_buffer_mempool);
++	if (req) {
++		if (size <= RPC_BUFFER_MAXSIZE)
++			mempool_free(buffer, rpc_buffer_mempool);
+ 		else
+-			kfree(req->rq_buffer);
+-		req->rq_buffer = NULL;
+-		req->rq_bufsize = 0;
++			kfree(buffer);
+ 	}
+ }
+ 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index cf59f7d..9f787ac 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -855,7 +855,7 @@ void xprt_release(struct rpc_task *task)
+ 		mod_timer(&xprt->timer,
+ 				xprt->last_used + xprt->idle_timeout);
+ 	spin_unlock_bh(&xprt->transport_lock);
+-	xprt->ops->buf_free(task);
++	xprt->ops->buf_free(task, req->rq_buffer, req->rq_bufsize);
+ 	task->tk_rqstp = NULL;
+ 	if (req->rq_release_snd_buf)
+ 		req->rq_release_snd_buf(req);
 
 -------------------------------------------------------------------------
-Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier.
-Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
