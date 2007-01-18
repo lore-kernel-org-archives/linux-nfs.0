@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/14] SUNRPC: remove old portmapper
-Date: Thu, 18 Jan 2007 18:30:49 -0500
-Message-ID: <20070118233049.23310.5702.stgit@localhost.localdomain>
+Subject: [PATCH 12/14] SUNRPC: RPC buffer size estimates are too large
+Date: Thu, 18 Jan 2007 18:30:53 -0500
+Message-ID: <20070118233052.23310.25010.stgit@localhost.localdomain>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7gii-0002po-2H
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:31:00 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1H7gil-0002rv-2y
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:31:04 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7gii-0003OL-TT
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:31:01 -0800
+	(Exim 4.44) id 1H7gil-0003Of-Uh
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:31:04 -0800
 To: trond.myklybust@fys.uio.no
 In-Reply-To: <20070118232356.23310.6705.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -30,466 +30,494 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-net/sunrpc/pmap_clnt.c has been replaced by net/sunrpc/rpcb_clnt.c.
+The RPC buffer size estimation logic in net/sunrpc/clnt.c always
+significantly overestimates the requirements for the buffer size.
+A little instrumentation demonstrated that in fact rpc_malloc was never
+allocating the buffer from the mempool, but almost always called kmalloc.
+
+To compute the size of the RPC buffer more precisely, split p_bufsiz into
+two fields; one for the argument size, and one for the result size.  The
+goal is to keep the size requirement for RPC buffers at or below 2KiB.
+
+So now we will compute the sum of the exact call and reply header sizes,
+and split the RPC buffer precisely between the two.  That should keep all
+RPCs within the 2KiB buffer mempool limit.
+
+And, we can finally be rid of RPC_SLACK_SPACE!
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/clnt.h     |    3 
- include/linux/sunrpc/debug.h    |    1 
- include/linux/sunrpc/msg_prot.h |    4 
- net/sunrpc/Makefile             |    2 
- net/sunrpc/pmap_clnt.c          |  381 ---------------------------------------
- 5 files changed, 1 insertions(+), 390 deletions(-)
+ fs/lockd/mon.c              |   10 +++----
+ fs/lockd/xdr.c              |    7 +----
+ fs/lockd/xdr4.c             |    7 +----
+ fs/nfs/mount_clnt.c         |    7 +++--
+ fs/nfs/nfs2xdr.c            |    7 +----
+ fs/nfs/nfs3xdr.c            |   13 ++++-----
+ fs/nfs/nfs4xdr.c            |    7 +----
+ fs/nfsd/nfs4callback.c      |    7 +----
+ include/linux/sunrpc/clnt.h |    3 +-
+ include/linux/sunrpc/xprt.h |    3 +-
+ net/sunrpc/clnt.c           |   64 ++++++++++++++++++++++++-------------------
+ net/sunrpc/rpcb_clnt.c      |   21 +++++++++-----
+ net/sunrpc/xprt.c           |    4 +--
+ 13 files changed, 81 insertions(+), 79 deletions(-)
 
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index eb243ed..2102e2d 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -225,16 +225,13 @@ #define SM_mon_sz	(SM_mon_id_sz+4)
+ #define SM_monres_sz	2
+ #define SM_unmonres_sz	1
+ 
+-#ifndef MAX
+-# define MAX(a, b)	(((a) > (b))? (a) : (b))
+-#endif
+-
+ static struct rpc_procinfo	nsm_procedures[] = {
+ [SM_MON] = {
+ 		.p_proc		= SM_MON,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_mon,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_stat_res,
+-		.p_bufsiz	= MAX(SM_mon_sz, SM_monres_sz) << 2,
++		.p_arglen	= SM_mon_sz,
++		.p_replen	= SM_monres_sz,
+ 		.p_statidx	= SM_MON,
+ 		.p_name		= "MONITOR",
+ 	},
+@@ -242,7 +239,8 @@ static struct rpc_procinfo	nsm_procedure
+ 		.p_proc		= SM_UNMON,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_unmon,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_stat,
+-		.p_bufsiz	= MAX(SM_mon_id_sz, SM_unmonres_sz) << 2,
++		.p_arglen	= SM_mon_id_sz,
++		.p_replen	= SM_unmonres_sz,
+ 		.p_statidx	= SM_UNMON,
+ 		.p_name		= "UNMONITOR",
+ 	},
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 34dae5d..75dd023 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -531,10 +531,6 @@ #define NLM_testres_sz		NLM_cookie_sz+1+
+ #define NLM_res_sz		NLM_cookie_sz+1
+ #define NLM_norep_sz		0
+ 
+-#ifndef MAX
+-# define MAX(a, b)		(((a) > (b))? (a) : (b))
+-#endif
+-
+ /*
+  * For NLM, a void procedure really returns nothing
+  */
+@@ -545,7 +541,8 @@ #define PROC(proc, argtype, restype)	\
+ 	.p_proc      = NLMPROC_##proc,					\
+ 	.p_encode    = (kxdrproc_t) nlmclt_encode_##argtype,		\
+ 	.p_decode    = (kxdrproc_t) nlmclt_decode_##restype,		\
+-	.p_bufsiz    = MAX(NLM_##argtype##_sz, NLM_##restype##_sz) << 2,	\
++	.p_arglen    = NLM_##argtype##_sz,				\
++	.p_replen    = NLM_##restype##_sz,				\
+ 	.p_statidx   = NLMPROC_##proc,					\
+ 	.p_name      = #proc,						\
+ 	}
+diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+index a782405..d354f3f 100644
+--- a/fs/lockd/xdr4.c
++++ b/fs/lockd/xdr4.c
+@@ -537,10 +537,6 @@ #define NLM4_testres_sz		NLM4_cookie_sz+
+ #define NLM4_res_sz		NLM4_cookie_sz+1
+ #define NLM4_norep_sz		0
+ 
+-#ifndef MAX
+-# define MAX(a,b)		(((a) > (b))? (a) : (b))
+-#endif
+-
+ /*
+  * For NLM, a void procedure really returns nothing
+  */
+@@ -551,7 +547,8 @@ #define PROC(proc, argtype, restype)				
+ 	.p_proc      = NLMPROC_##proc,					\
+ 	.p_encode    = (kxdrproc_t) nlm4clt_encode_##argtype,		\
+ 	.p_decode    = (kxdrproc_t) nlm4clt_decode_##restype,		\
+-	.p_bufsiz    = MAX(NLM4_##argtype##_sz, NLM4_##restype##_sz) << 2,	\
++	.p_arglen    = NLM4_##argtype##_sz,				\
++	.p_replen    = NLM4_##restype##_sz,				\
+ 	.p_statidx   = NLMPROC_##proc,					\
+ 	.p_name      = #proc,						\
+ 	}
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index f75fe72..ca5a266 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -133,13 +133,15 @@ xdr_decode_fhstatus3(struct rpc_rqst *re
+ 
+ #define MNT_dirpath_sz		(1 + 256)
+ #define MNT_fhstatus_sz		(1 + 8)
++#define MNT_fhstatus3_sz	(1 + 16)
+ 
+ static struct rpc_procinfo	mnt_procedures[] = {
+ [MNTPROC_MNT] = {
+ 	  .p_proc		= MNTPROC_MNT,
+ 	  .p_encode		= (kxdrproc_t) xdr_encode_dirpath,	
+ 	  .p_decode		= (kxdrproc_t) xdr_decode_fhstatus,
+-	  .p_bufsiz		= MNT_dirpath_sz << 2,
++	  .p_arglen		= MNT_dirpath_sz,
++	  .p_replen		= MNT_fhstatus_sz,
+ 	  .p_statidx		= MNTPROC_MNT,
+ 	  .p_name		= "MOUNT",
+ 	},
+@@ -150,7 +152,8 @@ static struct rpc_procinfo mnt3_procedur
+ 	  .p_proc		= MOUNTPROC3_MNT,
+ 	  .p_encode		= (kxdrproc_t) xdr_encode_dirpath,
+ 	  .p_decode		= (kxdrproc_t) xdr_decode_fhstatus3,
+-	  .p_bufsiz		= MNT_dirpath_sz << 2,
++	  .p_arglen		= MNT_dirpath_sz,
++	  .p_replen		= MNT_fhstatus3_sz,
+ 	  .p_statidx		= MOUNTPROC3_MNT,
+ 	  .p_name		= "MOUNT",
+ 	},
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 3be4e72..abd9f8b 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -687,16 +687,13 @@ nfs_stat_to_errno(int stat)
+ 	return nfs_errtbl[i].errno;
+ }
+ 
+-#ifndef MAX
+-# define MAX(a, b)	(((a) > (b))? (a) : (b))
+-#endif
+-
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFSPROC_##proc] = {							\
+ 	.p_proc	    =  NFSPROC_##proc,					\
+ 	.p_encode   =  (kxdrproc_t) nfs_xdr_##argtype,			\
+ 	.p_decode   =  (kxdrproc_t) nfs_xdr_##restype,			\
+-	.p_bufsiz   =  MAX(NFS_##argtype##_sz,NFS_##restype##_sz) << 2,	\
++	.p_arglen   =  NFS_##argtype##_sz,				\
++	.p_replen   =  NFS_##restype##_sz,				\
+ 	.p_timer    =  timer,						\
+ 	.p_statidx  =  NFSPROC_##proc,					\
+ 	.p_name     =  #proc,						\
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 0ace092..b51df8e 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1102,16 +1102,13 @@ nfs3_xdr_setaclres(struct rpc_rqst *req,
+ }
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
+-#ifndef MAX
+-# define MAX(a, b)	(((a) > (b))? (a) : (b))
+-#endif
+-
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
+ 	.p_encode    = (kxdrproc_t) nfs3_xdr_##argtype,			\
+ 	.p_decode    = (kxdrproc_t) nfs3_xdr_##restype,			\
+-	.p_bufsiz    = MAX(NFS3_##argtype##_sz,NFS3_##restype##_sz) << 2,	\
++	.p_arglen    = NFS3_##argtype##_sz,				\
++	.p_replen    = NFS3_##restype##_sz,				\
+ 	.p_timer     = timer,						\
+ 	.p_statidx   = NFS3PROC_##proc,					\
+ 	.p_name      = #proc,						\
+@@ -1153,7 +1150,8 @@ static struct rpc_procinfo	nfs3_acl_proc
+ 		.p_proc = ACLPROC3_GETACL,
+ 		.p_encode = (kxdrproc_t) nfs3_xdr_getaclargs,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_getaclres,
+-		.p_bufsiz = MAX(ACL3_getaclargs_sz, ACL3_getaclres_sz) << 2,
++		.p_arglen = ACL3_getaclargs_sz,
++		.p_replen = ACL3_getaclres_sz,
+ 		.p_timer = 1,
+ 		.p_name = "GETACL",
+ 	},
+@@ -1161,7 +1159,8 @@ static struct rpc_procinfo	nfs3_acl_proc
+ 		.p_proc = ACLPROC3_SETACL,
+ 		.p_encode = (kxdrproc_t) nfs3_xdr_setaclargs,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_setaclres,
+-		.p_bufsiz = MAX(ACL3_setaclargs_sz, ACL3_setaclres_sz) << 2,
++		.p_arglen = ACL3_setaclargs_sz,
++		.p_replen = ACL3_setaclres_sz,
+ 		.p_timer = 0,
+ 		.p_name = "SETACL",
+ 	},
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0cf3fa3..198f1b5 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4544,16 +4544,13 @@ nfs4_stat_to_errno(int stat)
+ 	return stat;
+ }
+ 
+-#ifndef MAX
+-# define MAX(a, b)	(((a) > (b))? (a) : (b))
+-#endif
+-
+ #define PROC(proc, argtype, restype)				\
+ [NFSPROC4_CLNT_##proc] = {					\
+ 	.p_proc   = NFSPROC4_COMPOUND,				\
+ 	.p_encode = (kxdrproc_t) nfs4_xdr_##argtype,		\
+ 	.p_decode = (kxdrproc_t) nfs4_xdr_##restype,		\
+-	.p_bufsiz = MAX(NFS4_##argtype##_sz,NFS4_##restype##_sz) << 2,	\
++	.p_arglen = NFS4_##argtype##_sz,			\
++	.p_replen = NFS4_##restype##_sz,			\
+ 	.p_statidx = NFSPROC4_CLNT_##proc,			\
+ 	.p_name   = #proc,					\
+     }
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index f57655a..69a721a 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -315,16 +315,13 @@ out:
+ /*
+  * RPC procedure tables
+  */
+-#ifndef MAX
+-# define MAX(a, b)      (((a) > (b))? (a) : (b))
+-#endif
+-
+ #define PROC(proc, call, argtype, restype)                              \
+ [NFSPROC4_CLNT_##proc] = {                                      	\
+         .p_proc   = NFSPROC4_CB_##call,					\
+         .p_encode = (kxdrproc_t) nfs4_xdr_##argtype,                    \
+         .p_decode = (kxdrproc_t) nfs4_xdr_##restype,                    \
+-        .p_bufsiz = MAX(NFS4_##argtype##_sz,NFS4_##restype##_sz) << 2,  \
++        .p_arglen = NFS4_##argtype##_sz,                                \
++        .p_replen = NFS4_##restype##_sz,                                \
+         .p_statidx = NFSPROC4_CB_##call,				\
+ 	.p_name   = #proc,                                              \
+ }
 diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 502e5ea..c78b913 100644
+index c78b913..5a8f9c2 100644
 --- a/include/linux/sunrpc/clnt.h
 +++ b/include/linux/sunrpc/clnt.h
-@@ -119,8 +119,6 @@ struct rpc_clnt *rpc_clone_client(struct
- int		rpc_shutdown_client(struct rpc_clnt *);
- int		rpc_destroy_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
--void		rpc_getport(struct rpc_task *);
--int		rpc_register(u32, u32, int, unsigned short, int *);
- int		rpcb_register(u32, u32, int, unsigned short, int *);
- void		rpcb_getport(struct rpc_task *);
+@@ -83,7 +83,8 @@ struct rpc_procinfo {
+ 	u32			p_proc;		/* RPC procedure number */
+ 	kxdrproc_t		p_encode;	/* XDR encode function */
+ 	kxdrproc_t		p_decode;	/* XDR decode function */
+-	unsigned int		p_bufsiz;	/* req. buffer size */
++	unsigned int		p_arglen;	/* argument hdr length (u32) */
++	unsigned int		p_replen;	/* reply hdr length (u32) */
+ 	unsigned int		p_count;	/* call count */
+ 	unsigned int		p_timer;	/* Which RTT timer to use */
+ 	u32			p_statidx;	/* Which procedure to account */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 6c035cb..192b74d 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -84,7 +84,8 @@ struct rpc_rqst {
+ 	struct list_head	rq_list;
  
-@@ -144,7 +142,6 @@ char *		rpc_peeraddr2str(struct rpc_clnt
+ 	__u32 *			rq_buffer;	/* XDR encode buffer */
+-	size_t			rq_bufsize;
++	size_t			rq_callsize,
++				rq_rcvsize;
+ 
+ 	struct xdr_buf		rq_private_buf;		/* The receive buffer
+ 							 * used in the softirq.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 493b950..eafe045 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -36,8 +36,6 @@ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/metrics.h>
+ 
+ 
+-#define RPC_SLACK_SPACE		(1024)	/* total overkill */
+-
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_CALL
+ #endif
+@@ -753,23 +751,33 @@ call_allocate(struct rpc_task *task)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = task->tk_xprt;
+-	unsigned int	bufsiz;
+ 
+ 	dprint_status(task);
+ 
++	task->tk_status = 0;
+ 	task->tk_action = call_bind;
++
+ 	if (req->rq_buffer)
+ 		return;
+ 
+-	/* FIXME: compute buffer requirements more exactly using
+-	 * auth->au_wslack */
+-	bufsiz = task->tk_msg.rpc_proc->p_bufsiz + RPC_SLACK_SPACE;
+-
+-	req->rq_buffer = xprt->ops->buf_alloc(task, bufsiz << 1);
+-	if (req->rq_buffer != NULL) {
+-		req->rq_bufsize = bufsiz;
++	/*
++	 * Calculate the size (in quads) of the RPC call
++	 * and reply headers, and convert both values
++	 * to byte sizes.
++	 */
++ 	req->rq_callsize = RPC_CALLHDRSIZE +
++	 		   (task->tk_auth->au_cslack << 1) +
++ 			   task->tk_msg.rpc_proc->p_arglen;
++ 	req->rq_callsize <<= 2;
++ 	req->rq_rcvsize = RPC_REPHDRSIZE +
++	 		  task->tk_auth->au_cslack +
++ 			  task->tk_msg.rpc_proc->p_replen;
++ 	req->rq_rcvsize <<= 2;
++ 
++ 	req->rq_buffer = xprt->ops->buf_alloc(task,
++					req->rq_callsize + req->rq_rcvsize);
++	if (req->rq_buffer != NULL)
+ 		return;
+-	}
+ 
+ 	dprintk("RPC: %5u rpc_buffer allocation failed\n", task->tk_pid);
+ 
+@@ -795,6 +803,17 @@ rpc_task_force_reencode(struct rpc_task 
+ 	task->tk_rqstp->rq_snd_buf.len = 0;
+ }
+ 
++static inline void
++rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
++{
++	buf->head[0].iov_base = start;
++	buf->head[0].iov_len = len;
++	buf->tail[0].iov_len = 0;
++	buf->page_len = 0;
++	buf->len = 0;
++	buf->buflen = len;
++}
++
  /*
-  * Helper function for NFSroot support
+  * 3.	Encode arguments of an RPC call
   */
--int		rpc_getport_external(struct sockaddr_in *, __u32, __u32, int);
- int		rpcb_getport_external(struct sockaddr_in *, __u32, __u32, int);
+@@ -802,28 +821,17 @@ static void
+ call_encode(struct rpc_task *task)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+-	struct xdr_buf *sndbuf = &req->rq_snd_buf;
+-	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
+-	unsigned int	bufsiz;
+ 	kxdrproc_t	encode;
+ 	__be32		*p;
  
- #endif /* __KERNEL__ */
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index 7b11c74..a3754d9 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -17,7 +17,6 @@ #define RPCDBG_CALL		0x0002
- #define RPCDBG_DEBUG		0x0004
- #define RPCDBG_NFS		0x0008
- #define RPCDBG_AUTH		0x0010
--#define RPCDBG_PMAP		0x0020
- #define RPCDBG_BIND		0x0020
- #define RPCDBG_SCHED		0x0040
- #define RPCDBG_TRANS		0x0080
-diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
-index 606cb21..784d4c3 100644
---- a/include/linux/sunrpc/msg_prot.h
-+++ b/include/linux/sunrpc/msg_prot.h
-@@ -78,10 +78,6 @@ enum rpc_auth_stat {
- 	RPCSEC_GSS_CTXPROBLEM = 14
+ 	dprint_status(task);
+ 
+-	/* Default buffer setup */
+-	bufsiz = req->rq_bufsize >> 1;
+-	sndbuf->head[0].iov_base = (void *)req->rq_buffer;
+-	sndbuf->head[0].iov_len  = bufsiz;
+-	sndbuf->tail[0].iov_len  = 0;
+-	sndbuf->page_len	 = 0;
+-	sndbuf->len		 = 0;
+-	sndbuf->buflen		 = bufsiz;
+-	rcvbuf->head[0].iov_base = (void *)((char *)req->rq_buffer + bufsiz);
+-	rcvbuf->head[0].iov_len  = bufsiz;
+-	rcvbuf->tail[0].iov_len  = 0;
+-	rcvbuf->page_len	 = 0;
+-	rcvbuf->len		 = 0;
+-	rcvbuf->buflen		 = bufsiz;
++	rpc_xdr_buf_init(&req->rq_snd_buf,
++			 req->rq_buffer,
++			 req->rq_callsize);
++	rpc_xdr_buf_init(&req->rq_rcv_buf, 
++			 (char *)req->rq_buffer + req->rq_callsize,
++			 req->rq_rcvsize);
+ 
+ 	/* Encode header and provided arguments */
+ 	encode = task->tk_msg.rpc_proc->p_encode;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 8f3e133..5a44079 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -438,21 +438,24 @@ static struct rpc_procinfo rpcb_procedur
+ 		.p_proc		= RPCB_SET,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_set,
+-		.p_bufsiz	= 4,
++		.p_arglen	= 4,
++		.p_replen	= 1,
+ 		.p_count	= 1,
+ 	},
+ 	[RPCB_UNSET] = {
+ 		.p_proc		= RPCB_UNSET,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_set,
+-		.p_bufsiz	= 4,
++		.p_arglen	= 4,
++		.p_replen	= 1,
+ 		.p_count	= 1,
+ 	},
+ 	[RPCB_GETADDR] = {
+ 		.p_proc		= RPCB_GETPORT,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_getport,
+-		.p_bufsiz	= 4,
++		.p_arglen	= 4,
++		.p_replen	= 1,
+ 		.p_count	= 1,
+ 	},
  };
- 
--#define RPC_PMAP_PROGRAM	100000
--#define RPC_PMAP_VERSION	2
--#define RPC_PMAP_PORT		111
--
- #define RPC_MAXNETNAMELEN	256
- 
- /*
-diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-index 3417a1e..8ebfc4d 100644
---- a/net/sunrpc/Makefile
-+++ b/net/sunrpc/Makefile
-@@ -9,7 +9,7 @@ obj-$(CONFIG_SUNRPC_GSS) += auth_gss/
- sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
- 	    auth.o auth_null.o auth_unix.o \
- 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
--	    pmap_clnt.o rpcb_clnt.o timer.o xdr.o \
-+	    rpcb_clnt.o timer.o xdr.o \
- 	    sunrpc_syms.o cache.o rpc_pipe.o
- sunrpc-$(CONFIG_PROC_FS) += stats.o
- sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-diff --git a/net/sunrpc/pmap_clnt.c b/net/sunrpc/pmap_clnt.c
-deleted file mode 100644
-index 8d9e780..0000000
---- a/net/sunrpc/pmap_clnt.c
-+++ /dev/null
-@@ -1,381 +0,0 @@
--/*
-- * linux/net/sunrpc/pmap_clnt.c
-- *
-- * In-kernel RPC portmapper client.
-- *
-- * Portmapper supports version 2 of the rpcbind protocol (RFC 1833).
-- *
-- * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
-- */
--
--#include <linux/types.h>
--#include <linux/socket.h>
--#include <linux/kernel.h>
--#include <linux/errno.h>
--#include <linux/uio.h>
--#include <linux/in.h>
--#include <linux/sunrpc/clnt.h>
--#include <linux/sunrpc/sched.h>
--
--#ifdef RPC_DEBUG
--# define RPCDBG_FACILITY	RPCDBG_PMAP
--#endif
--
--#define PMAP_SET		1
--#define PMAP_UNSET		2
--#define PMAP_GETPORT		3
--
--struct portmap_args {
--	u32			pm_prog;
--	u32			pm_vers;
--	u32			pm_prot;
--	unsigned short		pm_port;
--	struct rpc_xprt *	pm_xprt;
--};
--
--static struct rpc_procinfo	pmap_procedures[];
--static struct rpc_clnt *	pmap_create(char *, struct sockaddr_in *, int, int);
--static void			pmap_getport_done(struct rpc_task *, void *);
--static struct rpc_program	pmap_program;
--
--static void pmap_getport_prepare(struct rpc_task *task, void *calldata)
--{
--	struct portmap_args *map = calldata;
--	struct rpc_message msg = {
--		.rpc_proc	= &pmap_procedures[PMAP_GETPORT],
--		.rpc_argp	= map,
--		.rpc_resp	= &map->pm_port,
--	};
--
--	rpc_call_setup(task, &msg, 0);
--}
--
--static inline struct portmap_args *pmap_map_alloc(void)
--{
--	return kmalloc(sizeof(struct portmap_args), GFP_NOFS);
--}
--
--static inline void pmap_map_free(struct portmap_args *map)
--{
--	kfree(map);
--}
--
--static void pmap_map_release(void *data)
--{
--	pmap_map_free(data);
--}
--
--static const struct rpc_call_ops pmap_getport_ops = {
--	.rpc_call_prepare	= pmap_getport_prepare,
--	.rpc_call_done		= pmap_getport_done,
--	.rpc_release		= pmap_map_release,
--};
--
--static inline void pmap_wake_portmap_waiters(struct rpc_xprt *xprt, int status)
--{
--	xprt_clear_binding(xprt);
--	rpc_wake_up_status(&xprt->binding, status);
--}
--
--/**
-- * rpc_getport - obtain the port for a given RPC service on a given host
-- * @task: task that is waiting for portmapper request
-- *
-- * This one can be called for an ongoing RPC request, and can be used in
-- * an async (rpciod) context.
-- */
--void rpc_getport(struct rpc_task *task)
--{
--	struct rpc_clnt *clnt = task->tk_client;
--	struct rpc_xprt *xprt = task->tk_xprt;
--	struct sockaddr_in addr;
--	struct portmap_args *map;
--	struct rpc_clnt	*pmap_clnt;
--	struct rpc_task *child;
--	int status;
--
--	dprintk("RPC: %5u rpc_getport(%s, %u, %u, %d)\n",
--			task->tk_pid, clnt->cl_server,
--			clnt->cl_prog, clnt->cl_vers, xprt->prot);
--
--	/* Autobind on cloned rpc clients is discouraged */
--	BUG_ON(clnt->cl_parent != clnt);
--
--	status = -EACCES;		/* tell caller to check again */
--	if (xprt_test_and_set_binding(xprt))
--		goto bailout_nowake;
--
--	/* Put self on queue before sending rpcbind request, in case
--	 * pmap_getport_done completes before we return from rpc_run_task */
--	rpc_sleep_on(&xprt->binding, task, NULL, NULL);
--
--	/* Someone else may have bound if we slept */
--	status = 0;
--	if (xprt_bound(xprt))
--		goto bailout_nofree;
--
--	status = -ENOMEM;
--	map = pmap_map_alloc();
--	if (!map)
--		goto bailout_nofree;
--	map->pm_prog = clnt->cl_prog;
--	map->pm_vers = clnt->cl_vers;
--	map->pm_prot = xprt->prot;
--	map->pm_port = 0;
--	map->pm_xprt = xprt_get(xprt);
--
--	rpc_peeraddr(clnt, (struct sockaddr *) &addr, sizeof(addr));
--	pmap_clnt = pmap_create(clnt->cl_server, &addr, map->pm_prot, 0);
--	status = PTR_ERR(pmap_clnt);
--	if (IS_ERR(pmap_clnt))
--		goto bailout;
--
--	status = -EIO;
--	child = rpc_run_task(pmap_clnt, RPC_TASK_ASYNC, &pmap_getport_ops, map);
--	if (IS_ERR(child))
--		goto bailout;
--	rpc_put_task(child);
--
--	task->tk_xprt->stat.bind_count++;
--	return;
--
--bailout:
--	pmap_map_free(map);
--	xprt_put(xprt);
--bailout_nofree:
--	pmap_wake_portmap_waiters(xprt, status);
--bailout_nowake:
--	task->tk_status = status;
--}
--
--#ifdef CONFIG_ROOT_NFS
--/**
-- * rpc_getport_external - obtain the port for a given RPC service on a given host
-- * @sin: address of remote peer
-- * @prog: RPC program number to bind
-- * @vers: RPC version number to bind
-- * @prot: transport protocol to use to make this request
-- *
-- * This one is called from outside the RPC client in a synchronous task context.
-- */
--int rpc_getport_external(struct sockaddr_in *sin, __u32 prog, __u32 vers, int prot)
--{
--	struct portmap_args map = {
--		.pm_prog	= prog,
--		.pm_vers	= vers,
--		.pm_prot	= prot,
--		.pm_port	= 0
--	};
--	struct rpc_message msg = {
--		.rpc_proc	= &pmap_procedures[PMAP_GETPORT],
--		.rpc_argp	= &map,
--		.rpc_resp	= &map.pm_port,
--	};
--	struct rpc_clnt	*pmap_clnt;
--	char		hostname[32];
--	int		status;
--
--	dprintk("RPC:       rpc_getport_external(%u.%u.%u.%u, %u, %u, %d)\n",
--			NIPQUAD(sin->sin_addr.s_addr), prog, vers, prot);
--
--	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(sin->sin_addr.s_addr));
--	pmap_clnt = pmap_create(hostname, sin, prot, 0);
--	if (IS_ERR(pmap_clnt))
--		return PTR_ERR(pmap_clnt);
--
--	/* Setup the call info struct */
--	status = rpc_call_sync(pmap_clnt, &msg, 0);
--
--	if (status >= 0) {
--		if (map.pm_port != 0)
--			return map.pm_port;
--		status = -EACCES;
--	}
--	return status;
--}
--#endif
--
--/*
-- * Portmapper child task invokes this callback via tk_exit.
-- */
--static void pmap_getport_done(struct rpc_task *child, void *data)
--{
--	struct portmap_args *map = data;
--	struct rpc_xprt *xprt = map->pm_xprt;
--	int status = child->tk_status;
--
--	if (status < 0) {
--		/* Portmapper not available */
--		xprt->ops->set_port(xprt, 0);
--	} else if (map->pm_port == 0) {
--		/* Requested RPC service wasn't registered */
--		xprt->ops->set_port(xprt, 0);
--		status = -EACCES;
--	} else {
--		/* Succeeded */
--		xprt->ops->set_port(xprt, map->pm_port);
--		xprt_set_bound(xprt);
--		status = 0;
--	}
--
--	dprintk("RPC: %5u pmap_getport_done(status %d, port %u)\n",
--			child->tk_pid, status, map->pm_port);
--
--	pmap_wake_portmap_waiters(xprt, status);
--	xprt_put(xprt);
--}
--
--/**
-- * rpc_register - set or unset a port registration with the local portmapper
-- * @prog: RPC program number to bind
-- * @vers: RPC version number to bind
-- * @prot: transport protocol to use to make this request
-- * @port: port value to register
-- * @okay: result code
-- *
-- * port == 0 means unregister, port != 0 means register.
-- */
--int rpc_register(u32 prog, u32 vers, int prot, unsigned short port, int *okay)
--{
--	struct sockaddr_in	sin = {
--		.sin_family	= AF_INET,
--		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
--	};
--	struct portmap_args	map = {
--		.pm_prog	= prog,
--		.pm_vers	= vers,
--		.pm_prot	= prot,
--		.pm_port	= port,
--	};
--	struct rpc_message msg = {
--		.rpc_proc	= &pmap_procedures[port ? PMAP_SET : PMAP_UNSET],
--		.rpc_argp	= &map,
--		.rpc_resp	= okay,
--	};
--	struct rpc_clnt		*pmap_clnt;
--	int error = 0;
--
--	dprintk("RPC:       registering (%u, %u, %d, %u) with portmapper.\n",
--			prog, vers, prot, port);
--
--	pmap_clnt = pmap_create("localhost", &sin, IPPROTO_UDP, 1);
--	if (IS_ERR(pmap_clnt)) {
--		error = PTR_ERR(pmap_clnt);
--		dprintk("RPC:       couldn't create pmap client. Error = %d\n",
--				error);
--		return error;
--	}
--
--	error = rpc_call_sync(pmap_clnt, &msg, 0);
--
--	if (error < 0) {
--		printk(KERN_WARNING
--			"RPC: failed to contact portmap (errno %d).\n",
--			error);
--	}
--	dprintk("RPC:       registration status %d/%d\n", error, *okay);
--
--	/* Client deleted automatically because cl_oneshot == 1 */
--	return error;
--}
--
--static struct rpc_clnt *pmap_create(char *hostname, struct sockaddr_in *srvaddr, int proto, int privileged)
--{
--	struct rpc_create_args args = {
--		.protocol	= proto,
--		.address	= (struct sockaddr *)srvaddr,
--		.addrsize	= sizeof(*srvaddr),
--		.servername	= hostname,
--		.program	= &pmap_program,
--		.version	= RPC_PMAP_VERSION,
--		.authflavor	= RPC_AUTH_UNIX,
--		.flags		= (RPC_CLNT_CREATE_ONESHOT |
--				   RPC_CLNT_CREATE_NOPING),
--	};
--
--	srvaddr->sin_port = htons(RPC_PMAP_PORT);
--	if (!privileged)
--		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
--	return rpc_create(&args);
--}
--
--/*
-- * XDR encode/decode functions for PMAP
-- */
--static int xdr_encode_mapping(struct rpc_rqst *req, __be32 *p, struct portmap_args *map)
--{
--	dprintk("RPC:       xdr_encode_mapping(%u, %u, %u, %u)\n",
--			map->pm_prog, map->pm_vers,
--			map->pm_prot, map->pm_port);
--	*p++ = htonl(map->pm_prog);
--	*p++ = htonl(map->pm_vers);
--	*p++ = htonl(map->pm_prot);
--	*p++ = htonl(map->pm_port);
--
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--static int xdr_decode_port(struct rpc_rqst *req, __be32 *p, unsigned short *portp)
--{
--	*portp = (unsigned short) ntohl(*p++);
--	return 0;
--}
--
--static int xdr_decode_bool(struct rpc_rqst *req, __be32 *p, unsigned int *boolp)
--{
--	*boolp = (unsigned int) ntohl(*p++);
--	return 0;
--}
--
--static struct rpc_procinfo	pmap_procedures[] = {
--[PMAP_SET] = {
--	  .p_proc		= PMAP_SET,
--	  .p_encode		= (kxdrproc_t) xdr_encode_mapping,	
--	  .p_decode		= (kxdrproc_t) xdr_decode_bool,
--	  .p_bufsiz		= 4,
--	  .p_count		= 1,
--	  .p_statidx		= PMAP_SET,
--	  .p_name		= "SET",
--	},
--[PMAP_UNSET] = {
--	  .p_proc		= PMAP_UNSET,
--	  .p_encode		= (kxdrproc_t) xdr_encode_mapping,	
--	  .p_decode		= (kxdrproc_t) xdr_decode_bool,
--	  .p_bufsiz		= 4,
--	  .p_count		= 1,
--	  .p_statidx		= PMAP_UNSET,
--	  .p_name		= "UNSET",
--	},
--[PMAP_GETPORT] = {
--	  .p_proc		= PMAP_GETPORT,
--	  .p_encode		= (kxdrproc_t) xdr_encode_mapping,
--	  .p_decode		= (kxdrproc_t) xdr_decode_port,
--	  .p_bufsiz		= 4,
--	  .p_count		= 1,
--	  .p_statidx		= PMAP_GETPORT,
--	  .p_name		= "GETPORT",
--	},
--};
--
--static struct rpc_version	pmap_version2 = {
--	.number		= 2,
--	.nrprocs	= 4,
--	.procs		= pmap_procedures
--};
--
--static struct rpc_version *	pmap_version[] = {
--	NULL,
--	NULL,
--	&pmap_version2
--};
--
--static struct rpc_stat		pmap_stats;
--
--static struct rpc_program	pmap_program = {
--	.name		= "portmap",
--	.number		= RPC_PMAP_PROGRAM,
--	.nrvers		= ARRAY_SIZE(pmap_version),
--	.version	= pmap_version,
--	.stats		= &pmap_stats,
--};
+@@ -462,21 +465,24 @@ static struct rpc_procinfo rpcb_procedur
+ 		.p_proc		= RPCB_SET,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_set,
+-		.p_bufsiz	= 4,
++		.p_arglen	= 4,
++		.p_replen	= 1,
+ 		.p_count	= 1,
+ 	},
+ 	[RPCB_UNSET] = {
+ 		.p_proc		= RPCB_UNSET,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_set,
+-		.p_bufsiz	= 4,
++		.p_arglen	= 4,
++		.p_replen	= 1,
+ 		.p_count	= 1,
+ 	},
+ 	[RPCB_GETADDR] = {
+ 		.p_proc		= RPCB_GETADDR,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_getaddr,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_getaddr,
+-		.p_bufsiz	= 36,
++		.p_arglen	= 36,
++		.p_replen	= 33,
+ 		.p_count	= 1,
+ 	},
+ };
+@@ -486,7 +492,8 @@ static struct rpc_procinfo rpcb_procedur
+ 		.p_proc		= RPCB_GETVERSADDR,
+ 		.p_encode	= (kxdrproc_t) xdr_encode_getaddr,
+ 		.p_decode	= (kxdrproc_t) xdr_decode_getaddr,
+-		.p_bufsiz	= 36,
++		.p_arglen	= 36,
++		.p_replen	= 33,
+ 		.p_count	= 1,
+ 	},
+ };
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 86181ac..7725d63 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -823,7 +823,6 @@ static void xprt_request_init(struct rpc
+ 	req->rq_task	= task;
+ 	req->rq_xprt    = xprt;
+ 	req->rq_buffer  = NULL;
+-	req->rq_bufsize = 0;
+ 	req->rq_xid     = xprt_alloc_xid(xprt);
+ 	req->rq_release_snd_buf = NULL;
+ 	xprt_reset_majortimeo(req);
+@@ -855,7 +854,8 @@ void xprt_release(struct rpc_task *task)
+ 		mod_timer(&xprt->timer,
+ 				xprt->last_used + xprt->idle_timeout);
+ 	spin_unlock_bh(&xprt->transport_lock);
+-	xprt->ops->buf_free(task, req->rq_buffer, req->rq_bufsize);
++	xprt->ops->buf_free(task, req->rq_buffer,
++			    req->rq_callsize + req->rq_rcvsize);
+ 	task->tk_rqstp = NULL;
+ 	if (req->rq_release_snd_buf)
+ 		req->rq_release_snd_buf(req);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
