@@ -1,25 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 12/14] SUNRPC: RPC buffer size estimates are too
-	large
-Date: Thu, 18 Jan 2007 18:49:56 -0500
-Message-ID: <20070118234956.GC14242@fieldses.org>
-References: <20070118232356.23310.6705.stgit@localhost.localdomain>
-	<20070118233052.23310.25010.stgit@localhost.localdomain>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/13] SUNRPC: update internal API: separate pmap
+	register and temp sockets
+Date: Thu, 18 Jan 2007 18:50:20 -0500
+Message-ID: <20070118235020.24266.22841.stgit@localhost.localdomain>
+References: <20070118234855.24266.37463.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: trond.myklybust@fys.uio.no, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7h1V-00052G-Vb
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:26 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1H7h1Z-000534-El
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:29 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7h1B-0008Rs-1c
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:06 -0800
-To: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20070118233052.23310.25010.stgit@localhost.localdomain>
+	(Exim 4.44) id 1H7h1a-0008Vs-Vn
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:31 -0800
+To: neilb@suse.de
+In-Reply-To: <20070118234855.24266.37463.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,28 +31,150 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jan 18, 2007 at 06:30:53PM -0500, Chuck Lever wrote:
-> The RPC buffer size estimation logic in net/sunrpc/clnt.c always
-> significantly overestimates the requirements for the buffer size.
-> A little instrumentation demonstrated that in fact rpc_malloc was never
-> allocating the buffer from the mempool, but almost always called kmalloc.
-> 
-> To compute the size of the RPC buffer more precisely, split p_bufsiz into
-> two fields; one for the argument size, and one for the result size.  The
-> goal is to keep the size requirement for RPC buffers at or below 2KiB.
-> 
-> So now we will compute the sum of the exact call and reply header sizes,
-> and split the RPC buffer precisely between the two.  That should keep all
-> RPCs within the 2KiB buffer mempool limit.
-> 
-> And, we can finally be rid of RPC_SLACK_SPACE!
+Currently in the RPC server, registering with the local portmapper and
+creating "permanent" sockets are tied together.  Expand the internal APIs
+to allow these two socket characteristics to be separately specified.
 
-I'm a little worried about krb5, and especially the integrity and
-privacy code--I don't think this accounts for the space they need.
+This will be externalized in the next patch.
 
-I'm not sure how best to estimate their requirements....
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
+---
 
---b.
+ include/linux/sunrpc/svcsock.h |    7 ++++++
+ net/sunrpc/svcsock.c           |   47 +++++++++++++++++++++++-----------------
+ 2 files changed, 34 insertions(+), 20 deletions(-)
+
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 98b21ad..3c38789 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -74,4 +74,11 @@ int		svc_addsock(struct svc_serv *serv,
+ 			    char *name_return,
+ 			    int *proto);
+ 
++/*
++ * svc_makesock socket characteristics
++ */
++#define SVC_SOCK_DEFAULTS	(0U)
++#define SVC_SOCK_ANONYMOUS	(1U << 0)	/* don't register with pmap */
++#define SVC_SOCK_TEMPORARY	(1U << 1)	/* flag socket as temporary */
++
+ #endif /* SUNRPC_SVCSOCK_H */
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 99f54fb..40b0f04 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -69,7 +69,7 @@ #define RPCDBG_FACILITY	RPCDBG_SVCSOCK
+ 
+ 
+ static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+-					 int *errp, int pmap_reg);
++					 int *, int);
+ static void		svc_udp_data_ready(struct sock *, int);
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+@@ -922,7 +922,8 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 	 */
+ 	newsock->sk->sk_sndtimeo = HZ*30;
+ 
+-	if (!(newsvsk = svc_setup_socket(serv, newsock, &err, 0)))
++	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
++				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
+ 		goto failed;
+ 
+ 
+@@ -1456,12 +1457,14 @@ svc_age_temp_sockets(unsigned long closu
+  * Initialize socket for RPC use and create svc_sock struct
+  * XXX: May want to setsockopt SO_SNDBUF and SO_RCVBUF.
+  */
+-static struct svc_sock *
+-svc_setup_socket(struct svc_serv *serv, struct socket *sock,
+-					int *errp, int pmap_register)
++static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
++						struct socket *sock,
++						int *errp, int flags)
+ {
+ 	struct svc_sock	*svsk;
+ 	struct sock	*inet;
++	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
++	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
+ 
+ 	dprintk("svc: svc_setup_socket %p\n", sock);
+ 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
+@@ -1503,7 +1506,7 @@ svc_setup_socket(struct svc_serv *serv, 
+ 		svc_tcp_init(svsk);
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+-	if (!pmap_register) {
++	if (is_temporary) {
+ 		set_bit(SK_TEMP, &svsk->sk_flags);
+ 		list_add(&svsk->sk_list, &serv->sv_tempsocks);
+ 		serv->sv_tmpcnt++;
+@@ -1547,7 +1550,7 @@ int svc_addsock(struct svc_serv *serv,
+ 	else if (so->state > SS_UNCONNECTED)
+ 		err = -EISCONN;
+ 	else {
+-		svsk = svc_setup_socket(serv, so, &err, 1);
++		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
+ 		if (svsk)
+ 			err = 0;
+ 	}
+@@ -1563,8 +1566,8 @@ EXPORT_SYMBOL_GPL(svc_addsock);
+ /*
+  * Create socket for RPC service.
+  */
+-static int
+-svc_create_socket(struct svc_serv *serv, int protocol, struct sockaddr_in *sin)
++static int svc_create_socket(struct svc_serv *serv, int protocol,
++				struct sockaddr_in *sin, int flags)
+ {
+ 	struct svc_sock	*svsk;
+ 	struct socket	*sock;
+@@ -1600,8 +1603,8 @@ svc_create_socket(struct svc_serv *serv,
+ 			goto bummer;
+ 	}
+ 
+-	if ((svsk = svc_setup_socket(serv, sock, &error, 1)) != NULL)
+-		return 0;
++	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL)
++		return ntohs(inet_sk(svsk->sk_sk)->sport);
+ 
+ bummer:
+ 	dprintk("svc: svc_create_socket error = %d\n", -error);
+@@ -1651,19 +1654,23 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	svc_sock_put(svsk);
+ }
+ 
+-/*
+- * Make a socket for nfsd and lockd
++/**
++ * svc_makesock - Make a socket for nfsd and lockd
++ * @serv: RPC server structure
++ * @protocol: transport protocol to use
++ * @port: port to use
++ *
+  */
+-int
+-svc_makesock(struct svc_serv *serv, int protocol, unsigned short port)
++int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port)
+ {
+-	struct sockaddr_in	sin;
++	struct sockaddr_in sin = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= INADDR_ANY,
++		.sin_port		= htons(port),
++	};
+ 
+ 	dprintk("svc: creating socket proto = %d\n", protocol);
+-	sin.sin_family      = AF_INET;
+-	sin.sin_addr.s_addr = INADDR_ANY;
+-	sin.sin_port        = htons(port);
+-	return svc_create_socket(serv, protocol, &sin);
++	return svc_create_socket(serv, protocol, &sin, SVC_SOCK_DEFAULTS);
+ }
+ 
+ /*
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
