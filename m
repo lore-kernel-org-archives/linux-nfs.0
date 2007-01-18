@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/14] SUNRPC: fix print format for tk_pid in auth_gss
-	support
-Date: Thu, 18 Jan 2007 18:29:32 -0500
-Message-ID: <20070118232931.23310.75923.stgit@localhost.localdomain>
+Subject: [PATCH 06/14] SUNRPC: introduce rpcbind: replacement for
+	in-kernel portmapper
+Date: Thu, 18 Jan 2007 18:30:12 -0500
+Message-ID: <20070118233012.23310.70826.stgit@localhost.localdomain>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7giI-0002oY-4c
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:34 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1H7giO-0002oh-Ej
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:40 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7giJ-0003KF-2L
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:36 -0800
+	(Exim 4.44) id 1H7giO-0004RW-Bo
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:30:42 -0800
 To: trond.myklybust@fys.uio.no
 In-Reply-To: <20070118232356.23310.6705.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,601 +31,641 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The tk_pid field is an unsigned short.  The proper print format specifier for
-that type is %5u, not %4d.
+Introduce a replacement for the in-kernel portmapper client that supports
+all 3 versions of the rpcbind protocol.  This code is not used yet.
 
-Also clean up some miscellaneous print formatting nits.
+Original code by Groupe Bull updated for the latest kernel, with multiple
+bug fixes.
+
+Note that rpcb_clnt.c does not yet support registering via versions 3 and
+4 of the rpcbind protocol.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/auth_gss/auth_gss.c         |   52 +++++++++++++++++---------------
- net/sunrpc/auth_gss/gss_krb5_crypto.c  |    8 ++---
- net/sunrpc/auth_gss/gss_krb5_mech.c    |    3 +-
- net/sunrpc/auth_gss/gss_krb5_seal.c    |    2 +
- net/sunrpc/auth_gss/gss_krb5_seqnum.c  |    2 +
- net/sunrpc/auth_gss/gss_krb5_unseal.c  |    2 +
- net/sunrpc/auth_gss/gss_krb5_wrap.c    |    4 +-
- net/sunrpc/auth_gss/gss_mech_switch.c  |    6 ++--
- net/sunrpc/auth_gss/gss_spkm3_mech.c   |    9 +++---
- net/sunrpc/auth_gss/gss_spkm3_seal.c   |   14 +++++----
- net/sunrpc/auth_gss/gss_spkm3_token.c  |   14 +++++----
- net/sunrpc/auth_gss/gss_spkm3_unseal.c |    9 +++---
- net/sunrpc/auth_gss/svcauth_gss.c      |   11 ++++---
- 13 files changed, 73 insertions(+), 63 deletions(-)
+ include/linux/sunrpc/clnt.h  |    3 
+ include/linux/sunrpc/debug.h |    1 
+ include/linux/sunrpc/xprt.h  |    1 
+ net/sunrpc/Makefile          |    2 
+ net/sunrpc/rpcb_clnt.c       |  539 ++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprt.c            |    1 
+ 6 files changed, 546 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index e1a104a..2fe8e91 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -241,7 +241,7 @@ gss_fill_context(const void *p, const vo
- 	}
- 	return q;
- err:
--	dprintk("RPC:      gss_fill_context returning %ld\n", -PTR_ERR(p));
-+	dprintk("RPC:       gss_fill_context returning %ld\n", -PTR_ERR(p));
- 	return p;
- }
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index a1be89d..502e5ea 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -121,6 +121,8 @@ int		rpc_destroy_client(struct rpc_clnt 
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_getport(struct rpc_task *);
+ int		rpc_register(u32, u32, int, unsigned short, int *);
++int		rpcb_register(u32, u32, int, unsigned short, int *);
++void		rpcb_getport(struct rpc_task *);
  
-@@ -276,10 +276,10 @@ __gss_find_upcall(struct gss_auth *gss_a
- 		if (pos->uid != uid)
- 			continue;
- 		atomic_inc(&pos->count);
--		dprintk("RPC:      gss_find_upcall found msg %p\n", pos);
-+		dprintk("RPC:       gss_find_upcall found msg %p\n", pos);
- 		return pos;
- 	}
--	dprintk("RPC:      gss_find_upcall found nothing\n");
-+	dprintk("RPC:       gss_find_upcall found nothing\n");
- 	return NULL;
- }
+ void		rpc_call_setup(struct rpc_task *, struct rpc_message *, int);
  
-@@ -393,7 +393,8 @@ gss_refresh_upcall(struct rpc_task *task
- 	struct gss_upcall_msg *gss_msg;
- 	int err = 0;
+@@ -143,6 +145,7 @@ char *		rpc_peeraddr2str(struct rpc_clnt
+  * Helper function for NFSroot support
+  */
+ int		rpc_getport_external(struct sockaddr_in *, __u32, __u32, int);
++int		rpcb_getport_external(struct sockaddr_in *, __u32, __u32, int);
  
--	dprintk("RPC: %4u gss_refresh_upcall for uid %u\n", task->tk_pid, cred->cr_uid);
-+	dprintk("RPC: %5u gss_refresh_upcall for uid %u\n", task->tk_pid,
-+								cred->cr_uid);
- 	gss_msg = gss_setup_upcall(task->tk_client, gss_auth, cred);
- 	if (IS_ERR(gss_msg)) {
- 		err = PTR_ERR(gss_msg);
-@@ -413,8 +414,8 @@ gss_refresh_upcall(struct rpc_task *task
- 	spin_unlock(&gss_auth->lock);
- 	gss_release_msg(gss_msg);
- out:
--	dprintk("RPC: %4u gss_refresh_upcall for uid %u result %d\n", task->tk_pid,
--			cred->cr_uid, err);
-+	dprintk("RPC: %5u gss_refresh_upcall for uid %u result %d\n",
-+			task->tk_pid, cred->cr_uid, err);
- 	return err;
- }
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_CLNT_H */
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index 60fce3c..7b11c74 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -18,6 +18,7 @@ #define RPCDBG_DEBUG		0x0004
+ #define RPCDBG_NFS		0x0008
+ #define RPCDBG_AUTH		0x0010
+ #define RPCDBG_PMAP		0x0020
++#define RPCDBG_BIND		0x0020
+ #define RPCDBG_SCHED		0x0040
+ #define RPCDBG_TRANS		0x0080
+ #define RPCDBG_SVCSOCK		0x0100
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 51c3660..6c035cb 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -150,6 +150,7 @@ struct rpc_xprt {
+ 	unsigned long		state;		/* transport state */
+ 	unsigned char		shutdown   : 1,	/* being shut down */
+ 				resvport   : 1; /* use a reserved port */
++	unsigned int		bind_index;	/* bind function index */
  
-@@ -426,7 +427,7 @@ gss_create_upcall(struct gss_auth *gss_a
- 	DEFINE_WAIT(wait);
- 	int err = 0;
- 
--	dprintk("RPC: gss_upcall for uid %u\n", cred->cr_uid);
-+	dprintk("RPC:       gss_upcall for uid %u\n", cred->cr_uid);
- 	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
- 	if (IS_ERR(gss_msg)) {
- 		err = PTR_ERR(gss_msg);
-@@ -454,7 +455,8 @@ out_intr:
- 	finish_wait(&gss_msg->waitqueue, &wait);
- 	gss_release_msg(gss_msg);
- out:
--	dprintk("RPC: gss_create_upcall for uid %u result %d\n", cred->cr_uid, err);
-+	dprintk("RPC:       gss_create_upcall for uid %u result %d\n",
-+			cred->cr_uid, err);
- 	return err;
- }
- 
-@@ -546,14 +548,14 @@ gss_pipe_downcall(struct file *filp, con
- 	}
- 	gss_put_ctx(ctx);
- 	kfree(buf);
--	dprintk("RPC:      gss_pipe_downcall returning length %Zu\n", mlen);
-+	dprintk("RPC:       gss_pipe_downcall returning length %Zu\n", mlen);
- 	return mlen;
- err_put_ctx:
- 	gss_put_ctx(ctx);
- err:
- 	kfree(buf);
- out:
--	dprintk("RPC:      gss_pipe_downcall returning %d\n", err);
-+	dprintk("RPC:       gss_pipe_downcall returning %d\n", err);
- 	return err;
- }
- 
-@@ -591,7 +593,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg
- 	static unsigned long ratelimit;
- 
- 	if (msg->errno < 0) {
--		dprintk("RPC:      gss_pipe_destroy_msg releasing msg %p\n",
-+		dprintk("RPC:       gss_pipe_destroy_msg releasing msg %p\n",
- 				gss_msg);
- 		atomic_inc(&gss_msg->count);
- 		gss_unhash_msg(gss_msg);
-@@ -618,7 +620,7 @@ gss_create(struct rpc_clnt *clnt, rpc_au
- 	struct rpc_auth * auth;
- 	int err = -ENOMEM; /* XXX? */
- 
--	dprintk("RPC:      creating GSS authenticator for client %p\n",clnt);
-+	dprintk("RPC:       creating GSS authenticator for client %p\n", clnt);
- 
- 	if (!try_module_get(THIS_MODULE))
- 		return ERR_PTR(err);
-@@ -670,8 +672,8 @@ gss_destroy(struct rpc_auth *auth)
- {
- 	struct gss_auth *gss_auth;
- 
--	dprintk("RPC:      destroying GSS authenticator %p flavor %d\n",
--		auth, auth->au_flavor);
-+	dprintk("RPC:       destroying GSS authenticator %p flavor %d\n",
-+			auth, auth->au_flavor);
- 
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
- 	rpc_unlink(gss_auth->dentry);
-@@ -689,7 +691,7 @@ gss_destroy(struct rpc_auth *auth)
- static void
- gss_destroy_ctx(struct gss_cl_ctx *ctx)
- {
--	dprintk("RPC:      gss_destroy_ctx\n");
-+	dprintk("RPC:       gss_destroy_ctx\n");
- 
- 	if (ctx->gc_gss_ctx)
- 		gss_delete_sec_context(&ctx->gc_gss_ctx);
-@@ -703,7 +705,7 @@ gss_destroy_cred(struct rpc_cred *rc)
- {
- 	struct gss_cred *cred = container_of(rc, struct gss_cred, gc_base);
- 
--	dprintk("RPC:      gss_destroy_cred \n");
-+	dprintk("RPC:       gss_destroy_cred \n");
- 
- 	if (cred->gc_ctx)
- 		gss_put_ctx(cred->gc_ctx);
-@@ -726,7 +728,7 @@ gss_create_cred(struct rpc_auth *auth, s
- 	struct gss_cred	*cred = NULL;
- 	int err = -ENOMEM;
- 
--	dprintk("RPC:      gss_create_cred for uid %d, flavor %d\n",
-+	dprintk("RPC:       gss_create_cred for uid %d, flavor %d\n",
- 		acred->uid, auth->au_flavor);
- 
- 	if (!(cred = kzalloc(sizeof(*cred), GFP_KERNEL)))
-@@ -745,7 +747,7 @@ gss_create_cred(struct rpc_auth *auth, s
- 	return &cred->gc_base;
- 
- out_err:
--	dprintk("RPC:      gss_create_cred failed with error %d\n", err);
-+	dprintk("RPC:       gss_create_cred failed with error %d\n", err);
- 	return ERR_PTR(err);
- }
- 
-@@ -799,7 +801,7 @@ gss_marshal(struct rpc_task *task, __be3
- 	struct kvec	iov;
- 	struct xdr_buf	verf_buf;
- 
--	dprintk("RPC: %4u gss_marshal\n", task->tk_pid);
-+	dprintk("RPC: %5u gss_marshal\n", task->tk_pid);
- 
- 	*p++ = htonl(RPC_AUTH_GSS);
- 	cred_len = p++;
-@@ -865,7 +867,7 @@ gss_validate(struct rpc_task *task, __be
- 	u32		flav,len;
- 	u32		maj_stat;
- 
--	dprintk("RPC: %4u gss_validate\n", task->tk_pid);
-+	dprintk("RPC: %5u gss_validate\n", task->tk_pid);
- 
- 	flav = ntohl(*p++);
- 	if ((len = ntohl(*p++)) > RPC_MAX_AUTH_SIZE)
-@@ -888,12 +890,12 @@ gss_validate(struct rpc_task *task, __be
- 	 * calculate the length of the verifier: */
- 	task->tk_auth->au_verfsize = XDR_QUADLEN(len) + 2;
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %4u GSS gss_validate: gss_verify_mic succeeded.\n",
-+	dprintk("RPC: %5u gss_validate: gss_verify_mic succeeded.\n",
- 			task->tk_pid);
- 	return p + XDR_QUADLEN(len);
- out_bad:
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %4u gss_validate failed.\n", task->tk_pid);
-+	dprintk("RPC: %5u gss_validate failed.\n", task->tk_pid);
- 	return NULL;
- }
- 
-@@ -1063,7 +1065,7 @@ gss_wrap_req(struct rpc_task *task,
- 	struct gss_cl_ctx *ctx = gss_cred_get_ctx(cred);
- 	int             status = -EIO;
- 
--	dprintk("RPC: %4u gss_wrap_req\n", task->tk_pid);
-+	dprintk("RPC: %5u gss_wrap_req\n", task->tk_pid);
- 	if (ctx->gc_proc != RPC_GSS_PROC_DATA) {
- 		/* The spec seems a little ambiguous here, but I think that not
- 		 * wrapping context destruction requests makes the most sense.
-@@ -1086,7 +1088,7 @@ gss_wrap_req(struct rpc_task *task,
- 	}
- out:
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %4u gss_wrap_req returning %d\n", task->tk_pid, status);
-+	dprintk("RPC: %5u gss_wrap_req returning %d\n", task->tk_pid, status);
- 	return status;
- }
- 
-@@ -1192,7 +1194,7 @@ out_decode:
- 	status = decode(rqstp, p, obj);
- out:
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %4u gss_unwrap_resp returning %d\n", task->tk_pid,
-+	dprintk("RPC: %5u gss_unwrap_resp returning %d\n", task->tk_pid,
- 			status);
- 	return status;
- }
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index d926cda..cd64efd 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -66,7 +66,7 @@ krb5_encrypt(
- 		goto out;
- 
- 	if (crypto_blkcipher_ivsize(tfm) > 16) {
--		dprintk("RPC:      gss_k5encrypt: tfm iv size to large %d\n",
-+		dprintk("RPC:       gss_k5encrypt: tfm iv size to large %d\n",
- 		         crypto_blkcipher_ivsize(tfm));
- 		goto out;
- 	}
-@@ -79,7 +79,7 @@ krb5_encrypt(
- 
- 	ret = crypto_blkcipher_encrypt_iv(&desc, sg, sg, length);
- out:
--	dprintk("RPC:      krb5_encrypt returns %d\n",ret);
-+	dprintk("RPC:       krb5_encrypt returns %d\n", ret);
- 	return ret;
- }
- 
-@@ -102,7 +102,7 @@ krb5_decrypt(
- 		goto out;
- 
- 	if (crypto_blkcipher_ivsize(tfm) > 16) {
--		dprintk("RPC:      gss_k5decrypt: tfm iv size to large %d\n",
-+		dprintk("RPC:       gss_k5decrypt: tfm iv size to large %d\n",
- 			crypto_blkcipher_ivsize(tfm));
- 		goto out;
- 	}
-@@ -114,7 +114,7 @@ krb5_decrypt(
- 
- 	ret = crypto_blkcipher_decrypt_iv(&desc, sg, sg, length);
- out:
--	dprintk("RPC:      gss_k5decrypt returns %d\n",ret);
-+	dprintk("RPC:       gss_k5decrypt returns %d\n",ret);
- 	return ret;
- }
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 05d4bee..7b19432 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -175,7 +175,8 @@ gss_import_sec_context_kerberos(const vo
- 	}
- 
- 	ctx_id->internal_ctx_id = ctx;
--	dprintk("RPC:      Successfully imported new context.\n");
+ 	/*
+ 	 * Connection of transports
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index cdcab9c..3417a1e 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -9,7 +9,7 @@ obj-$(CONFIG_SUNRPC_GSS) += auth_gss/
+ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+ 	    auth.o auth_null.o auth_unix.o \
+ 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
+-	    pmap_clnt.o timer.o xdr.o \
++	    pmap_clnt.o rpcb_clnt.o timer.o xdr.o \
+ 	    sunrpc_syms.o cache.o rpc_pipe.o
+ sunrpc-$(CONFIG_PROC_FS) += stats.o
+ sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+new file mode 100644
+index 0000000..8f3e133
+--- /dev/null
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -0,0 +1,539 @@
++/*
++ * linux/net/sunrpc/rpcb_clnt.c
++ *
++ * In-kernel rpcbind client supporting versions 2, 3, and 4 of the rpcbind
++ * protocol (RFC 1833).
++ *
++ * Added by Gilles Quillard, Bull Open Source, 2005 <gilles.quillard@bull.net>
++ *
++ * Based on net/sunrpc/pmap_clnt.c,
++ *  Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
++ */
 +
-+	dprintk("RPC:       Successfully imported new context.\n");
- 	return 0;
++#include <linux/types.h>
++#include <linux/socket.h>
++#include <linux/kernel.h>
++#include <linux/errno.h>
++
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/sched.h>
++
++#ifdef RPC_DEBUG
++# define RPCDBG_FACILITY	RPCDBG_BIND
++#endif
++
++#define RPC_BIND_PROGRAM	(100000U)
++#define RPC_BIND_PORT		(111U)
++
++#define RPCB_SET		(1)
++#define RPCB_UNSET		(2)
++#define RPCB_GETPORT		(3)
++#define RPCB_GETADDR		(3)
++#define RPCB_GETVERSADDR	(9)
++
++/* US-ASCII netid strings -- must work even on s/390 */
++#define RPCB_NETID_UDP	"\165\144\160"		/* "udp" */
++#define RPCB_NETID_TCP	"\164\143\160"		/* "tcp" */
++
++static void			rpcb_getport_done(struct rpc_task *, void *);
++extern struct rpc_program	rpcb_program;
++
++struct rpcbind_args {
++	struct rpc_xprt *	r_xprt;
++
++	u32			r_prog;
++	u32			r_vers;
++	u32			r_prot;
++	unsigned short		r_port;
++	char *			r_netid;
++	char			r_addr[128];
++	char *			r_owner;
++};
++
++static struct rpc_procinfo rpcb_procedures2[];
++static struct rpc_procinfo rpcb_procedures3[];
++
++static struct rpcb_info {
++	int			rpc_vers;
++	struct rpc_procinfo *	rpc_proc;
++} rpcb_next_version[];
++
++static void rpcb_getport_prepare(struct rpc_task *task, void *calldata)
++{
++	struct rpcbind_args *map = calldata;
++	struct rpc_xprt *xprt = map->r_xprt;
++	struct rpc_message msg = {
++		.rpc_proc	= rpcb_next_version[xprt->bind_index].rpc_proc,
++		.rpc_argp	= map,
++		.rpc_resp	= &map->r_port,
++	};
++
++	rpc_call_setup(task, &msg, 0);
++}
++
++static inline struct rpcbind_args *rpcb_map_alloc(void)
++{
++	return kzalloc(sizeof(struct rpcbind_args), GFP_ATOMIC);
++}
++
++static inline void rpcb_map_free(struct rpcbind_args *map)
++{
++	kfree(map);
++}
++
++static void rpcb_map_release(void *data)
++{
++	rpcb_map_free(data);
++}
++
++static const struct rpc_call_ops rpcb_getport_ops = {
++	.rpc_call_prepare	= rpcb_getport_prepare,
++	.rpc_call_done		= rpcb_getport_done,
++	.rpc_release		= rpcb_map_release,
++};
++
++static void rpcb_wake_rpcbind_waiters(struct rpc_xprt *xprt, int status)
++{
++	xprt_clear_binding(xprt);
++	rpc_wake_up_status(&xprt->binding, status);
++}
++
++static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr, int proto, int version, int privileged)
++{
++	struct rpc_create_args args = {
++		.protocol	= proto,
++		.address	= srvaddr,
++		.addrsize	= sizeof(struct sockaddr_in),
++		.servername	= hostname,
++		.program	= &rpcb_program,
++		.version	= version,
++		.authflavor	= RPC_AUTH_NULL,
++		.flags		= (RPC_CLNT_CREATE_ONESHOT |
++				   RPC_CLNT_CREATE_NOPING),
++	};
++
++	((struct sockaddr_in *)srvaddr)->sin_port = htons(RPC_BIND_PORT);
++	if (!privileged)
++		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
++	return rpc_create(&args);
++}
++
++/**
++ * rpcb_register - set or unset a port registration with the local portmapper
++ * @prog: RPC program number to bind
++ * @vers: RPC version number to bind
++ * @prot: transport protocol to use to make this request
++ * @port: port value to register
++ * @okay: result code
++ *
++ * port == 0 means unregister, port != 0 means register.
++ *
++ * This routine supports only rpcbind version 2.
++ */
++int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port, int *okay)
++{
++	struct sockaddr_in sin = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
++	};
++	struct rpcbind_args map = {
++		.r_prog		= prog,
++		.r_vers		= vers,
++		.r_prot		= prot,
++		.r_port		= port,
++	};
++	struct rpc_message msg = {
++		.rpc_proc	= &rpcb_procedures2[port ? RPCB_SET : RPCB_UNSET],
++		.rpc_argp	= &map,
++		.rpc_resp	= okay,
++	};
++	struct rpc_clnt *rpcb_clnt;
++	int error = 0;
++
++	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
++			"rpcbind\n", (port ? "" : "un"),
++			prog, vers, prot, port);
++
++	rpcb_clnt = rpcb_create("localhost", (struct sockaddr *) &sin,
++					IPPROTO_UDP, 2, 1);
++	if (IS_ERR(rpcb_clnt))
++		return PTR_ERR(rpcb_clnt);
++
++	error = rpc_call_sync(rpcb_clnt, &msg, 0);
++
++	if (error < 0)
++		printk(KERN_WARNING "RPC: failed to contact local rpcbind "
++				"server (errno %d).\n", -error);
++	dprintk("RPC:       registration status %d/%d\n", error, *okay);
++
++	return error;
++}
++
++#ifdef CONFIG_ROOT_NFS
++/**
++ * rpcb_getport_external - obtain the port for a given RPC service on a given host
++ * @sin: address of remote peer
++ * @prog: RPC program number to bind
++ * @vers: RPC version number to bind
++ * @prot: transport protocol to use to make this request
++ *
++ * Called from outside the RPC client in a synchronous task context.
++ *
++ * For now, this supports only version 2 queries, but is used only by
++ * mount_clnt for NFS_ROOT.
++ */
++int rpcb_getport_external(struct sockaddr_in *sin, __u32 prog, __u32 vers, int prot)
++{
++	struct rpcbind_args map = {
++		.r_prog		= prog,
++		.r_vers		= vers,
++		.r_prot		= prot,
++		.r_port		= 0,
++	};
++	struct rpc_message msg = {
++		.rpc_proc	= &rpcb_procedures2[RPCB_GETPORT],
++		.rpc_argp	= &map,
++		.rpc_resp	= &map.r_port,
++	};
++	struct rpc_clnt	*rpcb_clnt;
++	char hostname[40];
++	int status;
++
++	dprintk("RPC:       rpcb_getport_external(%u.%u.%u.%u, %u, %u, %d)\n",
++			NIPQUAD(sin->sin_addr.s_addr), prog, vers, prot);
++
++	sprintf(hostname, "%u.%u.%u.%u", NIPQUAD(sin->sin_addr.s_addr));
++	rpcb_clnt = rpcb_create(hostname, (struct sockaddr *)sin, prot, 2, 0);
++	if (IS_ERR(rpcb_clnt))
++		return PTR_ERR(rpcb_clnt);
++
++	status = rpc_call_sync(rpcb_clnt, &msg, 0);
++
++	if (status >= 0) {
++		if (map.r_port != 0)
++			return map.r_port;
++		status = -EACCES;
++	}
++	return status;
++}
++#endif
++
++/**
++ * rpcb_getport - obtain the port for a given RPC service on a given host
++ * @task: task that is waiting for portmapper request
++ *
++ * This one can be called for an ongoing RPC request, and can be used in
++ * an async (rpciod) context.
++ */
++void rpcb_getport(struct rpc_task *task)
++{
++	struct rpc_clnt *clnt = task->tk_client;
++	int bind_version;
++	struct rpc_xprt *xprt = task->tk_xprt;
++	struct rpc_clnt	*rpcb_clnt;
++	static struct rpcbind_args *map;
++	struct rpc_task	*child;
++	struct sockaddr addr;
++	int status;
++
++	dprintk("RPC: %5u rpcb_getport(%s, %u, %u, %d)\n",
++			task->tk_pid, clnt->cl_server,
++			clnt->cl_prog, clnt->cl_vers, xprt->prot);
++
++	/* Autobind on cloned rpc clients is discouraged */
++	BUG_ON(clnt->cl_parent != clnt);
++
++	if (xprt_test_and_set_binding(xprt)) {
++		status = -EACCES;		/* tell caller to check again */
++		dprintk("RPC: %5u rpcb_getport waiting for another binder\n",
++				task->tk_pid);
++		goto bailout_nowake;
++	}
++
++	/* Put self on queue before sending rpcbind request, in case
++	 * rpcb_getport_done completes before we return from rpc_run_task */
++	rpc_sleep_on(&xprt->binding, task, NULL, NULL);
++
++	/* Someone else may have bound if we slept */
++	if (xprt_bound(xprt)) {
++		status = 0;
++		dprintk("RPC: %5u rpcb_getport already bound\n", task->tk_pid);
++		goto bailout_nofree;
++	}
++
++	if (rpcb_next_version[xprt->bind_index].rpc_proc == NULL) {
++		xprt->bind_index = 0;
++		status = -EACCES;		/* tell caller to check again */
++		dprintk("RPC: %5u rpcb_getport no more getport versions "
++				"available\n", task->tk_pid);
++		goto bailout_nofree;
++	}
++	bind_version = rpcb_next_version[xprt->bind_index].rpc_vers;
++
++	dprintk("RPC: %5u rpcb_getport trying rpcbind version %u\n",
++			task->tk_pid, bind_version);
++
++	map = rpcb_map_alloc();
++	if (!map) {
++		status = -ENOMEM;
++		dprintk("RPC: %5u rpcb_getport no memory available\n",
++				task->tk_pid);
++		goto bailout_nofree;
++	}
++	map->r_prog = clnt->cl_prog;
++	map->r_vers = clnt->cl_vers;
++	map->r_prot = xprt->prot;
++	map->r_port = 0;
++	map->r_xprt = xprt_get(xprt);
++	map->r_netid = (xprt->prot == IPPROTO_TCP) ? RPCB_NETID_TCP :
++						   RPCB_NETID_UDP;
++	memcpy(&map->r_addr, rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR),
++			sizeof(map->r_addr));
++	map->r_owner = "rpcb";		/* ignored for GETADDR */
++
++	rpc_peeraddr(clnt, (void *)&addr, sizeof(addr));
++	rpcb_clnt = rpcb_create(clnt->cl_server, &addr, xprt->prot, bind_version, 0);
++	if (IS_ERR(rpcb_clnt)) {
++		status = PTR_ERR(rpcb_clnt);
++		dprintk("RPC: %5u rpcb_getport rpcb_create failed, error %ld\n",
++				task->tk_pid, PTR_ERR(rpcb_clnt));
++		goto bailout;
++	}
++
++	child = rpc_run_task(rpcb_clnt, RPC_TASK_ASYNC, &rpcb_getport_ops, map);
++	if (IS_ERR(child)) {
++		status = -EIO;
++		dprintk("RPC: %5u rpcb_getport rpc_run_task failed\n",
++				task->tk_pid);
++		goto bailout;
++	}
++	rpc_put_task(child);
++
++	task->tk_xprt->stat.bind_count++;
++	return;
++
++bailout:
++	rpcb_map_free(map);
++	xprt_put(xprt);
++bailout_nofree:
++	rpcb_wake_rpcbind_waiters(xprt, status);
++bailout_nowake:
++	task->tk_status = status;
++}
++
++/*
++ * Rpcbind child task calls this callback via tk_exit.
++ */
++static void rpcb_getport_done(struct rpc_task *child, void *data)
++{
++	struct rpcbind_args *map = data;
++	struct rpc_xprt *xprt = map->r_xprt;
++	int status = child->tk_status;
++
++	if (status != -EPROTONOSUPPORT)
++		xprt->bind_index = 0;
++	else
++		xprt->bind_index++;
++
++	if (status < 0) {
++		/* rpcbind server not available on remote host? */
++		xprt->ops->set_port(xprt, 0);
++	} else if (map->r_port == 0) {
++		/* Requested RPC service wasn't registered on remote host */
++		xprt->ops->set_port(xprt, 0);
++		status = -EACCES;
++	} else {
++		/* Succeeded */
++		xprt->ops->set_port(xprt, map->r_port);
++		xprt_set_bound(xprt);
++		status = 0;
++	}
++
++	dprintk("RPC: %5u rpcb_getport_done(status %d, port %u)\n",
++			child->tk_pid, status, map->r_port);
++
++	rpcb_wake_rpcbind_waiters(xprt, status);
++	xprt_put(xprt);
++}
++
++/*
++ * rpcbind version 2 XDR encode/decode routines
++ */
++static int xdr_encode_mapping(struct rpc_rqst *req, __be32 *p, struct rpcbind_args *rpcb)
++{
++	dprintk("RPC:       xdr_encode_mapping(%u, %u, %d, %u)\n",
++		rpcb->r_prog, rpcb->r_vers, rpcb->r_prot, rpcb->r_port);
++	*p++ = htonl(rpcb->r_prog);
++	*p++ = htonl(rpcb->r_vers);
++	*p++ = htonl(rpcb->r_prot);
++	*p++ = htonl(rpcb->r_port);
++
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++	return 0;
++}
++
++static int xdr_decode_getport(struct rpc_rqst *req, __be32 *p, unsigned short *portp)
++{
++	*portp = (unsigned short) ntohl(*p++);
++	return 0;
++}
++
++static int xdr_decode_set(struct rpc_rqst *req, __be32 *p, unsigned int *boolp)
++{
++	*boolp = (unsigned int) ntohl(*p++);
++	return 0;
++}
++
++/*
++ * rpcbind version 3 XDR encode/decode routines
++ */
++static int xdr_encode_getaddr(struct rpc_rqst *req, __be32 *p, struct rpcbind_args *rpcb)
++{
++	dprintk("RPC:       xdr_encode_getaddr(%u, %u, %s)\n",
++		rpcb->r_prog, rpcb->r_vers, rpcb->r_addr);
++	*p++ = htonl(rpcb->r_prog);
++	*p++ = htonl(rpcb->r_vers);
++
++	p = xdr_encode_string(p, rpcb->r_netid);
++	p = xdr_encode_string(p, rpcb->r_addr);
++	p = xdr_encode_string(p, rpcb->r_owner);
++
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++
++	return 0;
++}
++
++static int xdr_decode_getaddr(struct rpc_rqst *req, __be32 *p, unsigned short *portp)
++{
++	char *addr;
++	int addr_len, c, i, f, first, val;
++
++	*portp = 0;
++	addr_len = (unsigned int) ntohl(*p++);
++	addr = (char *)p;
++	val = 0;
++	first = 1;
++	f = 1;
++	for (i = addr_len - 1; i > 0; i--) {
++		c = addr[i];
++		if (c >= '0' && c <= '9') {
++			val += (c - '0') * f;
++			f *= 10;
++		} else if (c == '.') {
++			if (first) {
++				*portp = val;
++				val = first = 0;
++				f = 1;
++			} else {
++				*portp |= (val << 8);
++				break;
++			}
++		}
++	}
++	return 0;
++}
++
++static struct rpc_procinfo rpcb_procedures2[] = {
++	[RPCB_SET] = {
++		.p_proc		= RPCB_SET,
++		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
++		.p_decode	= (kxdrproc_t) xdr_decode_set,
++		.p_bufsiz	= 4,
++		.p_count	= 1,
++	},
++	[RPCB_UNSET] = {
++		.p_proc		= RPCB_UNSET,
++		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
++		.p_decode	= (kxdrproc_t) xdr_decode_set,
++		.p_bufsiz	= 4,
++		.p_count	= 1,
++	},
++	[RPCB_GETADDR] = {
++		.p_proc		= RPCB_GETPORT,
++		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
++		.p_decode	= (kxdrproc_t) xdr_decode_getport,
++		.p_bufsiz	= 4,
++		.p_count	= 1,
++	},
++};
++
++static struct rpc_procinfo rpcb_procedures3[] = {
++	[RPCB_SET] = {
++		.p_proc		= RPCB_SET,
++		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
++		.p_decode	= (kxdrproc_t) xdr_decode_set,
++		.p_bufsiz	= 4,
++		.p_count	= 1,
++	},
++	[RPCB_UNSET] = {
++		.p_proc		= RPCB_UNSET,
++		.p_encode	= (kxdrproc_t) xdr_encode_mapping,
++		.p_decode	= (kxdrproc_t) xdr_decode_set,
++		.p_bufsiz	= 4,
++		.p_count	= 1,
++	},
++	[RPCB_GETADDR] = {
++		.p_proc		= RPCB_GETADDR,
++		.p_encode	= (kxdrproc_t) xdr_encode_getaddr,
++		.p_decode	= (kxdrproc_t) xdr_decode_getaddr,
++		.p_bufsiz	= 36,
++		.p_count	= 1,
++	},
++};
++
++static struct rpc_procinfo rpcb_procedures4[] = {
++	[RPCB_GETVERSADDR] = {
++		.p_proc		= RPCB_GETVERSADDR,
++		.p_encode	= (kxdrproc_t) xdr_encode_getaddr,
++		.p_decode	= (kxdrproc_t) xdr_decode_getaddr,
++		.p_bufsiz	= 36,
++		.p_count	= 1,
++	},
++};
++
++static struct rpcb_info rpcb_next_version[] = {
++#if defined(CONFIG_RPCBIND_VERSION4)
++	{ 4, &rpcb_procedures4[RPCB_GETVERSADDR] },
++#endif
++#if defined(CONFIG_RPCBIND_VERSION3)
++	{ 3, &rpcb_procedures3[RPCB_GETADDR] },
++#endif
++	{ 2, &rpcb_procedures2[RPCB_GETPORT] },
++	{ 0, NULL },
++};
++
++static struct rpc_version rpcb_version2 = {
++	.number		= 2,
++	.nrprocs	= 4,
++	.procs		= rpcb_procedures2
++};
++
++static struct rpc_version rpcb_version3 = {
++	.number		= 3,
++	.nrprocs	= 4,
++	.procs		= rpcb_procedures3
++};
++
++static struct rpc_version rpcb_version4 = {
++	.number		= 4,
++	.nrprocs	= 10,
++	.procs		= rpcb_procedures4
++};
++
++static struct rpc_version *rpcb_version[] = {
++	NULL,
++	NULL,
++	&rpcb_version2,
++	&rpcb_version3,
++	&rpcb_version4
++};
++
++static struct rpc_stat rpcb_stats;
++
++struct rpc_program rpcb_program = {
++	.name		= "rpcbind",
++	.number		= RPC_BIND_PROGRAM,
++	.nrvers		= ARRAY_SIZE(rpcb_version),
++	.version	= rpcb_version,
++	.stats		= &rpcb_stats,
++};
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 9f787ac..86181ac 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -928,6 +928,7 @@ struct rpc_xprt *xprt_create_transport(i
+ 	xprt->timer.data = (unsigned long) xprt;
+ 	xprt->last_used = jiffies;
+ 	xprt->cwnd = RPC_INITCWND;
++	xprt->bind_index = 0;
  
- out_err_free_key2:
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index d0bb506..a0d9faa 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -83,7 +83,7 @@ gss_get_mic_kerberos(struct gss_ctx *gss
- 	s32			now;
- 	u32			seq_send;
- 
--	dprintk("RPC:     gss_krb5_seal\n");
-+	dprintk("RPC:       gss_krb5_seal\n");
- 
- 	now = get_seconds();
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seqnum.c b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
-index c604baf..2f0b112 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seqnum.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
-@@ -70,7 +70,7 @@ krb5_get_seq_num(struct crypto_blkcipher
- 	s32 code;
- 	unsigned char plain[8];
- 
--	dprintk("RPC:      krb5_get_seq_num:\n");
-+	dprintk("RPC:       krb5_get_seq_num:\n");
- 
- 	if ((code = krb5_decrypt(key, cksum, buf, plain, 8)))
- 		return code;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-index 87f8977..e30a993 100644
---- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-@@ -86,7 +86,7 @@ gss_verify_mic_kerberos(struct gss_ctx *
- 	unsigned char		*ptr = (unsigned char *)read_token->data;
- 	int			bodysize;
- 
--	dprintk("RPC:      krb5_read_token\n");
-+	dprintk("RPC:       krb5_read_token\n");
- 
- 	if (g_verify_token_header(&ctx->mech_used, &bodysize, &ptr,
- 					read_token->len))
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index fe25b3d..42b3220 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -129,7 +129,7 @@ gss_wrap_kerberos(struct gss_ctx *ctx, i
- 	struct page		**tmp_pages;
- 	u32			seq_send;
- 
--	dprintk("RPC:     gss_wrap_kerberos\n");
-+	dprintk("RPC:       gss_wrap_kerberos\n");
- 
- 	now = get_seconds();
- 
-@@ -215,7 +215,7 @@ gss_unwrap_kerberos(struct gss_ctx *ctx,
- 	int			data_len;
- 	int			blocksize;
- 
--	dprintk("RPC:      gss_unwrap_kerberos\n");
-+	dprintk("RPC:       gss_unwrap_kerberos\n");
- 
- 	ptr = (u8 *)buf->head[0].iov_base + offset;
- 	if (g_verify_token_header(&kctx->mech_used, &bodysize, &ptr,
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 3db7453..c7681db 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -113,7 +113,7 @@ gss_mech_register(struct gss_api_mech *g
- 	spin_lock(&registered_mechs_lock);
- 	list_add(&gm->gm_list, &registered_mechs);
- 	spin_unlock(&registered_mechs_lock);
--	dprintk("RPC:      registered gss mechanism %s\n", gm->gm_name);
-+	dprintk("RPC:       registered gss mechanism %s\n", gm->gm_name);
- 	return 0;
- }
- 
-@@ -125,7 +125,7 @@ gss_mech_unregister(struct gss_api_mech 
- 	spin_lock(&registered_mechs_lock);
- 	list_del(&gm->gm_list);
- 	spin_unlock(&registered_mechs_lock);
--	dprintk("RPC:      unregistered gss mechanism %s\n", gm->gm_name);
-+	dprintk("RPC:       unregistered gss mechanism %s\n", gm->gm_name);
- 	gss_mech_free(gm);
- }
- 
-@@ -298,7 +298,7 @@ gss_unwrap(struct gss_ctx	*ctx_id,
- u32
- gss_delete_sec_context(struct gss_ctx	**context_handle)
- {
--	dprintk("RPC:      gss_delete_sec_context deleting %p\n",
-+	dprintk("RPC:       gss_delete_sec_context deleting %p\n",
- 			*context_handle);
- 
- 	if (!*context_handle)
-diff --git a/net/sunrpc/auth_gss/gss_spkm3_mech.c b/net/sunrpc/auth_gss/gss_spkm3_mech.c
-index 8ef3f1c..7e15aa6 100644
---- a/net/sunrpc/auth_gss/gss_spkm3_mech.c
-+++ b/net/sunrpc/auth_gss/gss_spkm3_mech.c
-@@ -97,7 +97,8 @@ gss_import_sec_context_spkm3(const void 
- 	if (IS_ERR(p))
- 		goto out_err_free_ctx;
- 	if (version != 1) {
--		dprintk("RPC: unknown spkm3 token format: obsolete nfs-utils?\n");
-+		dprintk("RPC:       unknown spkm3 token format: "
-+				"obsolete nfs-utils?\n");
- 		goto out_err_free_ctx;
- 	}
- 
-@@ -138,7 +139,7 @@ gss_import_sec_context_spkm3(const void 
- 
- 	ctx_id->internal_ctx_id = ctx;
- 
--	dprintk("Successfully imported new spkm context.\n");
-+	dprintk("RPC:       Successfully imported new spkm context.\n");
- 	return 0;
- 
- out_err_free_intg_key:
-@@ -183,7 +184,7 @@ gss_verify_mic_spkm3(struct gss_ctx		*ct
- 
- 	maj_stat = spkm3_read_token(sctx, checksum, signbuf, SPKM_MIC_TOK);
- 
--	dprintk("RPC: gss_verify_mic_spkm3 returning %d\n", maj_stat);
-+	dprintk("RPC:       gss_verify_mic_spkm3 returning %d\n", maj_stat);
- 	return maj_stat;
- }
- 
-@@ -197,7 +198,7 @@ gss_get_mic_spkm3(struct gss_ctx	*ctx,
- 
- 	err = spkm3_make_token(sctx, message_buffer,
- 				message_token, SPKM_MIC_TOK);
--	dprintk("RPC: gss_get_mic_spkm3 returning %d\n", err);
-+	dprintk("RPC:       gss_get_mic_spkm3 returning %d\n", err);
- 	return err;
- }
- 
-diff --git a/net/sunrpc/auth_gss/gss_spkm3_seal.c b/net/sunrpc/auth_gss/gss_spkm3_seal.c
-index b179d58..104cbf4 100644
---- a/net/sunrpc/auth_gss/gss_spkm3_seal.c
-+++ b/net/sunrpc/auth_gss/gss_spkm3_seal.c
-@@ -75,20 +75,21 @@ spkm3_make_token(struct spkm3_ctx *ctx,
- 	now = jiffies;
- 
- 	if (ctx->ctx_id.len != 16) {
--		dprintk("RPC: spkm3_make_token BAD ctx_id.len %d\n",
-+		dprintk("RPC:       spkm3_make_token BAD ctx_id.len %d\n",
- 				ctx->ctx_id.len);
- 		goto out_err;
- 	}
- 
- 	if (!g_OID_equal(&ctx->intg_alg, &hmac_md5_oid)) {
--		dprintk("RPC: gss_spkm3_seal: unsupported I-ALG algorithm."
--				"only support hmac-md5 I-ALG.\n");
-+		dprintk("RPC:       gss_spkm3_seal: unsupported I-ALG "
-+				"algorithm.  only support hmac-md5 I-ALG.\n");
- 		goto out_err;
- 	} else
- 		checksum_type = CKSUMTYPE_HMAC_MD5;
- 
- 	if (!g_OID_equal(&ctx->conf_alg, &cast5_cbc_oid)) {
--		dprintk("RPC: gss_spkm3_seal: unsupported C-ALG algorithm\n");
-+		dprintk("RPC:       gss_spkm3_seal: unsupported C-ALG "
-+				"algorithm\n");
- 		goto out_err;
- 	}
- 
-@@ -113,7 +114,8 @@ spkm3_make_token(struct spkm3_ctx *ctx,
- 
- 		spkm3_make_mic_token(&ptr, tokenlen, &mic_hdr, &md5cksum, md5elen, md5zbit);
- 	} else if (toktype == SPKM_WRAP_TOK) { /* Not Supported */
--		dprintk("RPC: gss_spkm3_seal: SPKM_WRAP_TOK not supported\n");
-+		dprintk("RPC:       gss_spkm3_seal: SPKM_WRAP_TOK "
-+				"not supported\n");
- 		goto out_err;
- 	}
- 
-@@ -153,7 +155,7 @@ make_spkm3_checksum(s32 cksumtype, struc
- 			cksumname = "md5";
- 			break;
- 		default:
--			dprintk("RPC:      spkm3_make_checksum:"
-+			dprintk("RPC:       spkm3_make_checksum:"
- 					" unsupported checksum %d", cksumtype);
- 			return GSS_S_FAILURE;
- 	}
-diff --git a/net/sunrpc/auth_gss/gss_spkm3_token.c b/net/sunrpc/auth_gss/gss_spkm3_token.c
-index 35188b6..156413a 100644
---- a/net/sunrpc/auth_gss/gss_spkm3_token.c
-+++ b/net/sunrpc/auth_gss/gss_spkm3_token.c
-@@ -209,7 +209,7 @@ spkm3_verify_mic_token(unsigned char **t
- 
- 	/* spkm3 innercontext token preamble */
- 	if ((ptr[0] != 0xa4) || (ptr[2] != 0x30)) {
--		dprintk("RPC: BAD SPKM ictoken preamble\n"); 
-+		dprintk("RPC:       BAD SPKM ictoken preamble\n");
- 		goto out;
- 	}
- 
-@@ -217,25 +217,25 @@ spkm3_verify_mic_token(unsigned char **t
- 
- 	/* token type */
- 	if ((ptr[4] != 0x02) || (ptr[5] != 0x02)) {
--		dprintk("RPC: BAD asn1 SPKM3 token type\n");
-+		dprintk("RPC:       BAD asn1 SPKM3 token type\n");
- 		goto out;
- 	}
- 
- 	/* only support SPKM_MIC_TOK */
- 	if((ptr[6] != 0x01) || (ptr[7] != 0x01)) {
--		dprintk("RPC: ERROR unsupported SPKM3 token \n");
-+		dprintk("RPC:       ERROR unsupported SPKM3 token \n");
- 		goto out;
- 	}
- 
- 	/* contextid */
- 	if (ptr[8] != 0x03) {
--		dprintk("RPC: BAD SPKM3 asn1 context-id type\n");
-+		dprintk("RPC:       BAD SPKM3 asn1 context-id type\n");
- 		goto out;
- 	}
- 
- 	ctxelen = ptr[9];
- 	if (ctxelen > 17) {  /* length includes asn1 zbit octet */
--		dprintk("RPC: BAD SPKM3 contextid len %d\n", ctxelen);
-+		dprintk("RPC:       BAD SPKM3 contextid len %d\n", ctxelen);
- 		goto out;
- 	}
- 
-@@ -251,7 +251,9 @@ spkm3_verify_mic_token(unsigned char **t
- 	*/
- 
- 	if (*mic_hdrlen != 6 + ctxelen) {
--		dprintk("RPC: BAD SPKM_ MIC_TOK header len %d: we only support default int-alg (should be absent) and do not support snd-seq\n", *mic_hdrlen);
-+		dprintk("RPC:       BAD SPKM_ MIC_TOK header len %d: we only "
-+				"support default int-alg (should be absent) "
-+				"and do not support snd-seq\n", *mic_hdrlen);
- 		goto out;
- 	}
- 	/* checksum */
-diff --git a/net/sunrpc/auth_gss/gss_spkm3_unseal.c b/net/sunrpc/auth_gss/gss_spkm3_unseal.c
-index e54581c..ac1ad6b 100644
---- a/net/sunrpc/auth_gss/gss_spkm3_unseal.c
-+++ b/net/sunrpc/auth_gss/gss_spkm3_unseal.c
-@@ -72,7 +72,7 @@ spkm3_read_token(struct spkm3_ctx *ctx,
- 	/* decode the token */
- 
- 	if (toktype != SPKM_MIC_TOK) {
--		dprintk("RPC: BAD SPKM3 token type: %d\n", toktype);
-+		dprintk("RPC:       BAD SPKM3 token type: %d\n", toktype);
- 		goto out;
- 	}
- 
-@@ -80,7 +80,7 @@ spkm3_read_token(struct spkm3_ctx *ctx,
- 		goto out;
- 
- 	if (*cksum++ != 0x03) {
--		dprintk("RPC: spkm3_read_token BAD checksum type\n");
-+		dprintk("RPC:       spkm3_read_token BAD checksum type\n");
- 		goto out;
- 	}
- 	md5elen = *cksum++;
-@@ -97,7 +97,8 @@ spkm3_read_token(struct spkm3_ctx *ctx,
- 	 */
- 	ret = GSS_S_DEFECTIVE_TOKEN;
- 	if (!g_OID_equal(&ctx->intg_alg, &hmac_md5_oid)) {
--		dprintk("RPC: gss_spkm3_seal: unsupported I-ALG algorithm\n");
-+		dprintk("RPC:       gss_spkm3_seal: unsupported I-ALG "
-+				"algorithm\n");
- 		goto out;
- 	}
- 
-@@ -113,7 +114,7 @@ spkm3_read_token(struct spkm3_ctx *ctx,
- 	ret = GSS_S_BAD_SIG;
- 	code = memcmp(md5cksum.data, wire_cksum.data, wire_cksum.len);
- 	if (code) {
--		dprintk("RPC: bad MIC checksum\n");
-+		dprintk("RPC:       bad MIC checksum\n");
- 		goto out;
- 	}
- 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 066c64a..8944cab 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -669,14 +669,14 @@ gss_verify_header(struct svc_rqst *rqstp
- 	}
- 
- 	if (gc->gc_seq > MAXSEQ) {
--		dprintk("RPC:      svcauth_gss: discarding request with large sequence number %d\n",
--				gc->gc_seq);
-+		dprintk("RPC:       svcauth_gss: discarding request with "
-+				"large sequence number %d\n", gc->gc_seq);
- 		*authp = rpcsec_gsserr_ctxproblem;
- 		return SVC_DENIED;
- 	}
- 	if (!gss_check_seq_num(rsci, gc->gc_seq)) {
--		dprintk("RPC:      svcauth_gss: discarding request with old sequence number %d\n",
--				gc->gc_seq);
-+		dprintk("RPC:       svcauth_gss: discarding request with "
-+				"old sequence number %d\n", gc->gc_seq);
- 		return SVC_DROP;
- 	}
- 	return SVC_OK;
-@@ -958,7 +958,8 @@ svcauth_gss_accept(struct svc_rqst *rqst
- 	__be32		*reject_stat = resv->iov_base + resv->iov_len;
- 	int		ret;
- 
--	dprintk("RPC:      svcauth_gss: argv->iov_len = %zd\n",argv->iov_len);
-+	dprintk("RPC:       svcauth_gss: argv->iov_len = %zd\n",
-+			argv->iov_len);
- 
- 	*authp = rpc_autherr_badcred;
- 	if (!svcdata)
+ 	rpc_init_wait_queue(&xprt->binding, "xprt_binding");
+ 	rpc_init_wait_queue(&xprt->pending, "xprt_pending");
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
