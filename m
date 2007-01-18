@@ -1,21 +1,25 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/13] RPC server pre-requisites for IPv6
-Date: Thu, 18 Jan 2007 18:48:55 -0500
-Message-ID: <20070118234855.24266.37463.stgit@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 12/14] SUNRPC: RPC buffer size estimates are too
+	large
+Date: Thu, 18 Jan 2007 18:49:56 -0500
+Message-ID: <20070118234956.GC14242@fieldses.org>
+References: <20070118232356.23310.6705.stgit@localhost.localdomain>
+	<20070118233052.23310.25010.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: trond.myklybust@fys.uio.no, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7h1V-00052G-Lh
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:25 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1H7h1V-00052G-Vb
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:26 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7h1U-0008Un-Iq
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:24 -0800
-To: neilb@suse.de
+	(Exim 4.44) id 1H7h1B-0008Rs-1c
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 15:50:06 -0800
+To: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20070118233052.23310.25010.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,16 +32,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+On Thu, Jan 18, 2007 at 06:30:53PM -0500, Chuck Lever wrote:
+> The RPC buffer size estimation logic in net/sunrpc/clnt.c always
+> significantly overestimates the requirements for the buffer size.
+> A little instrumentation demonstrated that in fact rpc_malloc was never
+> allocating the buffer from the mempool, but almost always called kmalloc.
+> 
+> To compute the size of the RPC buffer more precisely, split p_bufsiz into
+> two fields; one for the argument size, and one for the result size.  The
+> goal is to keep the size requirement for RPC buffers at or below 2KiB.
+> 
+> So now we will compute the sum of the exact call and reply header sizes,
+> and split the RPC buffer precisely between the two.  That should keep all
+> RPCs within the 2KiB buffer mempool limit.
+> 
+> And, we can finally be rid of RPC_SLACK_SPACE!
 
-Please consider these patches for 2.6.21.  They can replace the similar patch
-set that is currently included in Andrew's kernel.  These patches address a
-few minor bugs, and may fix a problem that Andrew is currently seeing.
+I'm a little worried about krb5, and especially the integrity and
+privacy code--I don't think this accounts for the space they need.
 
-Thanks.
+I'm not sure how best to estimate their requirements....
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
