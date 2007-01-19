@@ -1,25 +1,26 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 10/14] SUNRPC: Enable support for rpcbind versions
-	3 and 4 via CONFIG options
-Date: Fri, 19 Jan 2007 00:11:31 +0000
-Message-ID: <20070119001131.GC13473@infradead.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 01/14] NFS: fix print format for tk_pid
+Date: Thu, 18 Jan 2007 19:10:44 -0500
+Message-ID: <45B00C84.7030809@oracle.com>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
-	<20070118233045.23310.43704.stgit@localhost.localdomain>
+	<20070118232925.23310.31437.stgit@localhost.localdomain>
+	<20070119000319.GA13473@infradead.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------080802020600030506030603"
 Cc: trond.myklybust@fys.uio.no, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7hMK-00080a-K9
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:11:56 -0800
-Received: from pentafluge.infradead.org ([213.146.154.40])
+	id 1H7hN6-0008BC-JH
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:12:44 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7hML-0005xo-5v
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:11:58 -0800
-To: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20070118233045.23310.43704.stgit@localhost.localdomain>
+	(Exim 4.44) id 1H7hN6-0006C9-Qt
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:12:46 -0800
+To: Christoph Hellwig <hch@infradead.org>
+In-Reply-To: <20070119000319.GA13473@infradead.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,23 +33,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> +config RPCBIND_VERSION3
-> +	bool "Support for rpcbind version 3"
-> +	default n
+This is a multi-part message in MIME format.
+--------------080802020600030506030603
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-default n is the default behaviour, you don't need to specify it.
+Christoph Hellwig wrote:
+> On Thu, Jan 18, 2007 at 06:29:27PM -0500, Chuck Lever wrote:
+>> The tk_pid field is an unsigned short.  The proper print format specifier for
+>> that type is %5u, not %4d.
+>>
+>> Also clean up some miscellaneous print formatting nits.
+> 
+> Once you cleanup all these printks please make sure to add line breaks
+> after at most 80 characters.
 
-> +config RPCBIND_VERSION4
-> +	bool "Support for rpcbind version 4"
+For the record, I think I was careful to do this, but I don't have a 
+neat little tool like Neil does to verify line length explicitly.
 
-Do we really need two config options for this?
+--------------080802020600030506030603
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture Linux Projects Group
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principle Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------080802020600030506030603
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------080802020600030506030603
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------080802020600030506030603--
