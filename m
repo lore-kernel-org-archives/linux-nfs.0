@@ -1,25 +1,28 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 06/14] SUNRPC: introduce rpcbind: replacement for
-	in-kernel portmapper
-Date: Fri, 19 Jan 2007 00:09:52 +0000
-Message-ID: <20070119000952.GB13473@infradead.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 12/14] SUNRPC: RPC buffer size estimates are too
+ large
+Date: Thu, 18 Jan 2007 19:08:40 -0500
+Message-ID: <45B00C08.30502@oracle.com>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
-	<20070118233012.23310.70826.stgit@localhost.localdomain>
+	<20070118233052.23310.25010.stgit@localhost.localdomain>
+	<20070118234956.GC14242@fieldses.org> <45B008C8.6080601@oracle.com>
+	<20070119000052.GD14242@fieldses.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1141146948=="
+Content-Type: multipart/mixed; boundary="------------070301090505090606040301"
 Cc: trond.myklybust@fys.uio.no, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H7hKP-0007ZR-4z
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:09:57 -0800
-Received: from pentafluge.infradead.org ([213.146.154.40])
+	id 1H7hKj-0007ic-6N
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:10:17 -0800
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H7hKP-00066B-Jf
-	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:09:58 -0800
-To: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20070118233012.23310.70826.stgit@localhost.localdomain>
+	(Exim 4.44) id 1H7hKf-0006DJ-I9
+	for nfs@lists.sourceforge.net; Thu, 18 Jan 2007 16:10:14 -0800
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20070119000052.GD14242@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,62 +35,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1141146948==
-Content-Type: text/plain; charset=unknown-8bit
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+This is a multi-part message in MIME format.
+--------------070301090505090606040301
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Thu, Jan 18, 2007 at 06:30:12PM -0500, Chuck Lever wrote:
-> Introduce a replacement for the in-kernel portmapper client that suppor=
-ts
-> all 3 versions of the rpcbind protocol.  This code is not used yet.
->=20
-> Original code by Groupe Bull updated for the latest kernel, with multip=
-le
-> bug fixes.
->=20
-> Note that rpcb_clnt.c does not yet support registering via versions 3 a=
-nd
-> 4 of the rpcbind protocol.
+J. Bruce Fields wrote:
+> The problem is that integrity protection also adds another 8 bytes
+> (length and sequence number) to the body of each rpc, and privacy in
+> addition adds some variable amount of mechanism-specific encryption
+> overhead (a few tens of bytes for krb5, I think).
 
-I don't quite like the way you introduce rcpbind.  It exports the same
-API as the old portmap service, just using the rpcb_ prefix instead
-of rpc_.  Why don't you transpar=E6ntly switch over the implementation to
-the new model?
+tk_auth->au_cslack should account for this, right?  It should provide 
+the largest number of bytes that could be required for the send and 
+receive buffers.
 
+> But if you're always allowing 400 bytes for the verifier then in
+> practice we're not going to have any problems with the current
+> mechanisms.
 
-More comments on the actual code:
+In practice, yes.  I would prefer we get this as right as possible now, 
+so we don't get bitten by it when someone invents a GSS flavor that 
+needs huge verifiers.
 
-> --- /dev/null
-> +++ b/net/sunrpc/rpcb_clnt.c
-> @@ -0,0 +1,539 @@
-> +/*
-> + * linux/net/sunrpc/rpcb_clnt.c
+--------------070301090505090606040301
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-Please don't mention the filename in the top of file comment.  It's usele=
-ss
-and even worse easily gets out of sync and confuses people then.
-
-> +static inline struct rpcbind_args *rpcb_map_alloc(void)
-> +{
-> +	return kzalloc(sizeof(struct rpcbind_args), GFP_ATOMIC);
-> +}
-> +
-> +static inline void rpcb_map_free(struct rpcbind_args *map)
-> +{
-> +	kfree(map);
-> +}
-
-Please kill these useless wrappers.
-
-> +static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *s=
-rvaddr, int proto, int version, int privileged)
-
-Please make sure to properly break lines after 80 chars.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture Linux Projects Group
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principle Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
 
-
---===============1141146948==
+--------------070301090505090606040301
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -98,7 +88,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1141146948==
+--------------070301090505090606040301
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -108,4 +98,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1141146948==--
+--------------070301090505090606040301--
