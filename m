@@ -1,28 +1,24 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 13/14] NLM: Shrink the maximum request size of
-	NLM4 requests
-Date: Sat, 20 Jan 2007 09:26:56 +0000
-Message-ID: <20070120092656.GA28676@infradead.org>
-References: <20070118232356.23310.6705.stgit@localhost.localdomain>
-	<20070118233056.23310.1289.stgit@localhost.localdomain>
-	<20070119001355.GD13473@infradead.org>
-	<45B145C1.5080007@oracle.com>
+Subject: Re: Eliminating the BKL from the NFS and RPC clients
+Date: Sat, 20 Jan 2007 09:33:14 +0000
+Message-ID: <20070120093314.GA29643@infradead.org>
+References: <45B00585.10001@oracle.com> <20070119012349.GA25491@infradead.org>
+	<1169184980.6158.19.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H8CVb-0001Xq-47
-	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:27:35 -0800
+	id 1H8CbW-00024R-8U
+	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:33:42 -0800
 Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H8CVb-0001jA-KS
-	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:27:37 -0800
-To: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <45B145C1.5080007@oracle.com>
+	(Exim 4.44) id 1H8CbW-0007kx-RK
+	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:33:44 -0800
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1169184980.6158.19.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,30 +31,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jan 19, 2007 at 05:27:13PM -0500, Chuck Lever wrote:
-> Christoph Hellwig wrote:
-> >On Thu, Jan 18, 2007 at 06:30:56PM -0500, Chuck Lever wrote:
-> >>NLM version 4 requests estimate the call and reply header sizes rather
-> >>conservatively, using the very maximum size allowed in the protocol even
-> >>though Linux always uses only a small fraction of the allowable space.
-> >>
-> >>Reduce the size of caller and lock arguments to conserve RPC buffer space
-> >>while XDR encoding NLM4 arguments..
-> >
-> >>+#ifndef MIN
-> >>+# define MIN(a, b)	(((a) < (b)) ? (a) : (b))
-> >>+#endif
-> >
-> >please use the kernel min or min_t macros instead.
-> 
-> min/min_t don't work for integer constants, which is what I'm using 
-> MIN() for.  What should I use instead?
+On Fri, Jan 19, 2007 at 12:36:20AM -0500, Trond Myklebust wrote:
+> No. Attributes may change at any moment on the server. That is _very_
+> different to the case where the user or the client changes the
+> attributes via setattr. For one thing, we don't have to notify the
+> server. Secondly, we do want to be able to update those attributes from
+> asynchronous contexts (for instance when a WRITE request returns with
+> updated).
+> The client should in any case _never_ be overriding the server
+> attributes. The only exception to that rule is if we have cached writes
+> which change the file size. We do try to detect that...
 
-I suspect the right thing is to fix min/max/min_t/max_t for it using gcc
-hackery like __builtin_constant_p.  Then again I don't understand enough
-of that nor do I expect you to know this deep magic.  So Let's keep one
-MIN/MAX in some central sunrpc header for now and add a block comment
-describing why you need it.
+Sorry, my previous mail wasn't clear enough on how I want setattr
+used here.  I think it's right to make all these attribute updates through
+->setattr so filesystem can deal with them explicitly.  Of course we'd
+still need to treat explicit updates different from implicit one,
+probably by adding in ATTR_IMPLIZIT for the later.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
