@@ -1,28 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 12/14] SUNRPC: RPC buffer size estimates are
-	too	large
-Date: Fri, 19 Jan 2007 18:12:31 -0500
-Message-ID: <1169248351.6262.55.camel@lade.trondhjem.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 13/14] NLM: Shrink the maximum request size of
+	NLM4 requests
+Date: Sat, 20 Jan 2007 09:26:56 +0000
+Message-ID: <20070120092656.GA28676@infradead.org>
 References: <20070118232356.23310.6705.stgit@localhost.localdomain>
-	<20070118233052.23310.25010.stgit@localhost.localdomain>
-	<1169246214.6262.36.camel@lade.trondhjem.org>
-	<45B14A46.4020508@oracle.com>
+	<20070118233056.23310.1289.stgit@localhost.localdomain>
+	<20070119001355.GD13473@infradead.org>
+	<45B145C1.5080007@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H82ui-0006TN-Ts
-	for nfs@lists.sourceforge.net; Fri, 19 Jan 2007 15:12:52 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/Z/ba4EelME7kEndoQYopnrzrw7SdJI5A=])
+	id 1H8CVb-0001Xq-47
+	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:27:35 -0800
+Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H82uj-0004Kg-66
-	for nfs@lists.sourceforge.net; Fri, 19 Jan 2007 15:12:54 -0800
-To: chuck.lever@oracle.com
-In-Reply-To: <45B14A46.4020508@oracle.com>
+	(Exim 4.44) id 1H8CVb-0001jA-KS
+	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:27:37 -0800
+To: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <45B145C1.5080007@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,51 +35,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-01-19 at 17:46 -0500, Chuck Lever wrote:
-> Trond Myklebust wrote:
-> > On Thu, 2007-01-18 at 18:30 -0500, Chuck Lever wrote:
-> >> The RPC buffer size estimation logic in net/sunrpc/clnt.c always
-> >> significantly overestimates the requirements for the buffer size.
-> >> A little instrumentation demonstrated that in fact rpc_malloc was never
-> >> allocating the buffer from the mempool, but almost always called kmalloc.
+On Fri, Jan 19, 2007 at 05:27:13PM -0500, Chuck Lever wrote:
+> Christoph Hellwig wrote:
+> >On Thu, Jan 18, 2007 at 06:30:56PM -0500, Chuck Lever wrote:
+> >>NLM version 4 requests estimate the call and reply header sizes rather
+> >>conservatively, using the very maximum size allowed in the protocol even
+> >>though Linux always uses only a small fraction of the allowable space.
 > >>
-> >> To compute the size of the RPC buffer more precisely, split p_bufsiz into
-> >> two fields; one for the argument size, and one for the result size.  The
-> >> goal is to keep the size requirement for RPC buffers at or below 2KiB.
-> >>
-> >> So now we will compute the sum of the exact call and reply header sizes,
-> >> and split the RPC buffer precisely between the two.  That should keep all
-> >> RPCs within the 2KiB buffer mempool limit.
-> > 
-> > How about adding a temporary BUG_ON() into call_allocate to ensure
-> > task->tk_msg.rpc_proc->p_arglen is always non-zero. We also want to
-> > check for non-zero values of task->tk_msg.rpc_proc->p_replen when
-> > task->tk_msg.rpc_proc->p_decode is non-null.
+> >>Reduce the size of caller and lock arguments to conserve RPC buffer space
+> >>while XDR encoding NLM4 arguments..
+> >
+> >>+#ifndef MIN
+> >>+# define MIN(a, b)	(((a) < (b)) ? (a) : (b))
+> >>+#endif
+> >
+> >please use the kernel min or min_t macros instead.
 > 
-> Hmmm.  A sanity check is reasonable, but do we really want a runtime 
-> check for values that are fixed at compile time?  I'm also not in love 
-> with BUG_ON() -- maybe something like aborting the task and printing a 
-> console warning would be less disruptive.
+> min/min_t don't work for integer constants, which is what I'm using 
+> MIN() for.  What should I use instead?
 
-How is that less disruptive? A bug by any other name....
-
-The point is just to make sure that all existing structures have been
-converted and that we haven't missed anything. Feel free to queue up a
-patch for the release after this patch has been merged in order to
-remove it.
-
-> > Finally, what is the purpose of req->rq_callsize and req->rq_rcvsize?
-> > They don't appear to be used anywhere.
-> 
-> In my code, they are used in call_encode and xprt_release in addition to 
-> call_allocate.  They basically replace rq_bufsize.
-
-In that case, why not just add them in the patch that contains the code
-that uses them?
-
-Cheers,
-  Trond
-
+I suspect the right thing is to fix min/max/min_t/max_t for it using gcc
+hackery like __builtin_constant_p.  Then again I don't understand enough
+of that nor do I expect you to know this deep magic.  So Let's keep one
+MIN/MAX in some central sunrpc header for now and add a block comment
+describing why you need it.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
