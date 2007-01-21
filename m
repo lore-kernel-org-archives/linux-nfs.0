@@ -1,24 +1,25 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Eliminating the BKL from the NFS and RPC clients
-Date: Sat, 20 Jan 2007 09:33:14 +0000
-Message-ID: <20070120093314.GA29643@infradead.org>
-References: <45B00585.10001@oracle.com> <20070119012349.GA25491@infradead.org>
-	<1169184980.6158.19.camel@lade.trondhjem.org>
+From: Maria S. <Dianne@sbcglobal.net>
+Subject: trabajo
+Date: Sun, 21 Jan 2007 09:45:05 +0100
+Message-ID: <B0A09673.2268706@sbcglobal.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H8CbW-00024R-8U
-	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:33:42 -0800
-Received: from pentafluge.infradead.org ([213.146.154.40])
+	id 1H8YKt-0003CW-P8
+	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 00:46:00 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H8CbW-0007kx-RK
-	for nfs@lists.sourceforge.net; Sat, 20 Jan 2007 01:33:44 -0800
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1169184980.6158.19.camel@lade.trondhjem.org>
+	(Exim 4.44) id 1H8YKu-0000VR-GH
+	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 00:46:01 -0800
+Received: from rle011550-1-gw.clients.easynet.fr ([212.180.33.209]
+	helo=tnt-2-209.pops.easynet.fr)
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1H8YKr-0004nk-56
+	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 00:45:59 -0800
+To: nfs@lists.sourceforge.net
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +32,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jan 19, 2007 at 12:36:20AM -0500, Trond Myklebust wrote:
-> No. Attributes may change at any moment on the server. That is _very_
-> different to the case where the user or the client changes the
-> attributes via setattr. For one thing, we don't have to notify the
-> server. Secondly, we do want to be able to update those attributes from
-> asynchronous contexts (for instance when a WRITE request returns with
-> updated).
-> The client should in any case _never_ be overriding the server
-> attributes. The only exception to that rule is if we have cached writes
-> which change the file size. We do try to detect that...
+Buenos Dias,
 
-Sorry, my previous mail wasn't clear enough on how I want setattr
-used here.  I think it's right to make all these attribute updates through
-->setattr so filesystem can deal with them explicitly.  Of course we'd
-still need to treat explicit updates different from implicit one,
-probably by adding in ATTR_IMPLIZIT for the later.
+Nuestra compania internacional ofrece el trabajo.
+Podras ganar 150-300 Euros por dia.
+Esto es legal y es seguro.
+
+Nuestras exigencias:
+1) Debes vivir en la Espana;
+2) Debes tener el tiempo libre por la manana;
+3) Debes ser mas mayor cerca de 20 anos.
+
+Para el recibo de las instrucciones respondan
+solamente a este email: BBMO@KM.RU
+
+Saludos,
+Maria
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
