@@ -1,23 +1,21 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] SUNRPC: Invalid BUG_ON() popping in
-	rpc_release_task()
-Date: Sun, 21 Jan 2007 12:25:33 -0500
-Message-ID: <1169400333.5764.2.camel@lade.trondhjem.org>
-References: <45B35421.1010908@RedHat.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [2.6 patch] net/sunrpc/: cleanups
+Date: Sun, 21 Jan 2007 20:13:52 +0100
+Message-ID: <20070121191352.GP9093@stusta.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-o/ws5PS95QO0doYiTtDa"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: trond.myklebust@fys.uio.no, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, neilb@cse.unsw.edu.au
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H8gRo-0003bH-7i
-	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 09:25:40 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H8gRo-0005AX-MC
-	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 09:25:41 -0800
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <45B35421.1010908@RedHat.com>
+	id 1H8i9N-000550-Eq
+	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 11:14:45 -0800
+Received: from mailout.stusta.mhn.de ([141.84.69.5])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1H8i9J-0008As-DH
+	for nfs@lists.sourceforge.net; Sun, 21 Jan 2007 11:14:46 -0800
+To: netdev@vger.kernel.org
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,147 +28,411 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This patch contains the following cleanups:
+- proper prototypes in header files for global variables and functions
+- make the following needlessly global struct static:
+  - auth_gss/gss_spkm3_seal.c: struct cast5_cbc_oid
+- make the following needlessly global variables static:
+  - xprtsock.c: xprt_udp_slot_table_entries
+  - xprtsock.c: xprt_tcp_slot_table_entries
+  - xprtsock.c: xprt_min_resvport
+  - xprtsock.c: xprt_max_resvport
+- make the following needlessly global functions static:
+  - auth_gss/gss_spkm3_seal.c: gss_mech_get()
+  - clnt.c: rpc_ping()
+  - xdr.c: write_bytes_to_xdr_buf()
+- remove the following unused EXPORT_SYMBOL's:
+  - auth_gss/gss_mech_switch.c: gss_mech_get_by_name
+  - auth_gss/gss_mech_switch.c: gss_mech_get_by_pseudoflavor
+  - auth_gss/gss_mech_switch.c: gss_pseudoflavor_to_service
+  - auth_gss/gss_mech_switch.c: gss_service_to_auth_domain_name
+  - auth_gss/gss_mech_switch.c: gss_mech_put
+  - auth_gss/svcauth_gss.c: svcauth_gss_register_pseudoflavor
+  - auth_gss/svcauth_gss.c: svcauth_gss_unregister_pseudoflavor
+  - auth_gss/gss_spkm3_seal.c: make_spkm3_checksum
+  - stats.c: rpc_alloc_iostats
+  - stats.c: rpc_free_iostats
+  - sunrpc_syms.c: rpc_wake_up_next
+  - sunrpc_syms.c: rpc_killall_tasks
+  - sunrpc_syms.c: xprt_set_timeout
+  - sunrpc_syms.c: svc_drop
+  - sunrpc_syms.c: svc_authenticate
+- remove the following unused EXPORT_SYMBOL_GPL:
+  - clnt.c: rpc_peeraddr2str
 
---=-o/ws5PS95QO0doYiTtDa
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
 
-On Sun, 2007-01-21 at 06:53 -0500, Steve Dickson wrote:
-> Over the weekend, while doing some Secure NFS testing, I found
-> that the BUG_ON() in  rpc_release_task() would pop when
-> the Kerberos server was not set up correctly (which I know is a
-> very common problem when people start using this feature).
-> 
-> The code path looks like:
-> rpc_call_sync() calls rpc_call_setup() which calls rpcauth_bindcred()
-> which fails (due to a krb5 problem) and sets tk_status to -EACCES.
-> 
-> Back in rpc_call_sync(), since (tk_status != 0) rpc_release_task()
-> is called. Unfortunately, since this task was never active,
-> (meaning rpc_execute() and rpc_set_active() were never called)
-> the tk_magic id was never set and the global task list was
-> never set up. So when rpc_release_task() is call, the world
-> come tumbling down...
-> 
-> So the attached patch ensures the RPC_TASK_ACTIVE run state bit
-> is set before calling the BUG_ON() and cleaning up the task
-> list.
-> 
-> 
-> steved.
-
-I've already posted the attach patch to fix this issue.
-
-Cheers,
-  Trond
-
-
---=-o/ws5PS95QO0doYiTtDa
-Content-Disposition: inline; filename=linux-2.6.20-001-fix_rpc_call_sync.dif
-Content-Type: message/rfc822; name=linux-2.6.20-001-fix_rpc_call_sync.dif
-
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Tue, 16 Jan 2007 07:23:06 -0500
-NFS: Fix Oops in rpc_call_sync()
-Subject: No Subject
-Message-Id: <1169400333.5764.3.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-
-We shouldn't be calling rpc_release_task() for tasks that are not active.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/sched.h |    1 -
- net/sunrpc/clnt.c            |    8 +++-----
- net/sunrpc/sched.c           |    3 ++-
- 3 files changed, 5 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/clnt.h           |    1 -
+ include/linux/sunrpc/gss_api.h        |    3 ---
+ include/linux/sunrpc/gss_spkm3.h      |    1 -
+ include/linux/sunrpc/rpc_pipe_fs.h    |    3 +++
+ include/linux/sunrpc/svcauth.h        |    1 +
+ include/linux/sunrpc/xdr.h            |    1 -
+ include/linux/sunrpc/xprt.h           |   12 +++---------
+ net/sunrpc/auth_gss/gss_mech_switch.c |   14 +-------------
+ net/sunrpc/auth_gss/gss_spkm3_seal.c  |    3 +--
+ net/sunrpc/auth_gss/svcauth_gss.c     |    4 ----
+ net/sunrpc/clnt.c                     |    5 +++--
+ net/sunrpc/stats.c                    |    2 --
+ net/sunrpc/sunrpc_syms.c              |   16 +++-------------
+ net/sunrpc/xdr.c                      |    3 ++-
+ net/sunrpc/xprtsock.c                 |    9 +++++----
+ 15 files changed, 22 insertions(+), 56 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 97c7616..8b6ce60 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -250,7 +250,6 @@ void		rpc_init_task(struct rpc_task *tas
- 				int flags, const struct rpc_call_ops *ops,
- 				void *data);
- void		rpc_put_task(struct rpc_task *);
--void		rpc_release_task(struct rpc_task *);
- void		rpc_exit_task(struct rpc_task *);
- void		rpc_release_calldata(const struct rpc_call_ops *, void *);
- void		rpc_killall_tasks(struct rpc_clnt *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index aba528b..16c9fbc 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -490,16 +490,14 @@ int rpc_call_sync(struct rpc_clnt *clnt,
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/gss_api.h.old	2007-01-20 15:37:56.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/gss_api.h	2007-01-20 15:38:07.000000000 +0100
+@@ -123,9 +123,6 @@
+ /* Similar, but get by pseudoflavor. */
+ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
  
- 	/* Set up the call info struct and execute the task */
- 	status = task->tk_status;
--	if (status != 0) {
--		rpc_release_task(task);
-+	if (status != 0)
- 		goto out;
--	}
- 	atomic_inc(&task->tk_count);
- 	status = rpc_execute(task);
- 	if (status == 0)
- 		status = task->tk_status;
--	rpc_put_task(task);
- out:
-+	rpc_put_task(task);
- 	rpc_restore_sigmask(&oldset);
- 	return status;
+-/* Just increments the mechanism's reference count and returns its input: */
+-struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+-
+ /* For every successful gss_mech_get or gss_mech_get_by_* call there must be a
+  * corresponding call to gss_mech_put. */
+ void gss_mech_put(struct gss_api_mech *);
+--- linux-2.6.20-rc4-mm1/net/sunrpc/auth_gss/gss_mech_switch.c.old	2007-01-20 15:38:19.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/auth_gss/gss_mech_switch.c	2007-01-20 15:39:45.000000000 +0100
+@@ -137,15 +137,13 @@
+ 
+ EXPORT_SYMBOL(gss_mech_unregister);
+ 
+-struct gss_api_mech *
++static struct gss_api_mech *
+ gss_mech_get(struct gss_api_mech *gm)
+ {
+ 	__module_get(gm->gm_owner);
+ 	return gm;
  }
-@@ -537,7 +535,7 @@ rpc_call_async(struct rpc_clnt *clnt, st
- 	if (status == 0)
- 		rpc_execute(task);
- 	else
--		rpc_release_task(task);
-+		rpc_put_task(task);
  
- 	rpc_restore_sigmask(&oldset);		
- 	return status;
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 79bc4cd..fc083f0 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -42,6 +42,7 @@ static mempool_t	*rpc_buffer_mempool __r
- static void			__rpc_default_timer(struct rpc_task *task);
- static void			rpciod_killall(void);
- static void			rpc_async_schedule(struct work_struct *);
-+static void			 rpc_release_task(struct rpc_task *task);
+-EXPORT_SYMBOL(gss_mech_get);
+-
+ struct gss_api_mech *
+ gss_mech_get_by_name(const char *name)
+ {
+@@ -164,8 +162,6 @@
+ 
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_get_by_name);
+-
+ static inline int
+ mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+@@ -197,8 +193,6 @@
+ 	return gm;
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_get_by_pseudoflavor);
+-
+ u32
+ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+@@ -211,8 +205,6 @@
+ 	return 0;
+ }
+ 
+-EXPORT_SYMBOL(gss_pseudoflavor_to_service);
+-
+ char *
+ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
+ {
+@@ -225,8 +217,6 @@
+ 	return NULL;
+ }
+ 
+-EXPORT_SYMBOL(gss_service_to_auth_domain_name);
+-
+ void
+ gss_mech_put(struct gss_api_mech * gm)
+ {
+@@ -234,8 +224,6 @@
+ 		module_put(gm->gm_owner);
+ }
+ 
+-EXPORT_SYMBOL(gss_mech_put);
+-
+ /* The mech could probably be determined from the token instead, but it's just
+  * as easy for now to pass it in. */
+ int
+--- linux-2.6.20-rc4-mm1/net/sunrpc/auth_gss/svcauth_gss.c.old	2007-01-20 15:41:02.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/auth_gss/svcauth_gss.c	2007-01-20 20:52:55.000000000 +0100
+@@ -775,8 +775,6 @@
+ 	return stat;
+ }
+ 
+-EXPORT_SYMBOL(svcauth_gss_register_pseudoflavor);
+-
+ void svcauth_gss_unregister_pseudoflavor(char *name)
+ {
+ 	struct auth_domain *dom;
+@@ -788,8 +786,6 @@
+ 	}
+ }
+ 
+-EXPORT_SYMBOL(svcauth_gss_unregister_pseudoflavor);
+-
+ static inline int
+ read_u32_from_xdr_buf(struct xdr_buf *buf, int base, u32 *obj)
+ {
+--- linux-2.6.20-rc4-mm1/net/sunrpc/stats.c.old	2007-01-20 15:41:45.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/stats.c	2007-01-20 15:43:26.000000000 +0100
+@@ -117,7 +117,6 @@
+ 	new = kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
+ 	return new;
+ }
+-EXPORT_SYMBOL(rpc_alloc_iostats);
+ 
+ /**
+  * rpc_free_iostats - release an rpc_iostats structure
+@@ -128,7 +127,6 @@
+ {
+ 	kfree(stats);
+ }
+-EXPORT_SYMBOL(rpc_free_iostats);
+ 
+ /**
+  * rpc_count_iostats - tally up per-task stats
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/gss_spkm3.h.old	2007-01-20 15:44:53.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/gss_spkm3.h	2007-01-20 15:44:59.000000000 +0100
+@@ -24,7 +24,6 @@
+ 
+ /* OIDs declarations for K-ALG, I-ALG, C-ALG, and OWF-ALG */
+ extern const struct xdr_netobj hmac_md5_oid;
+-extern const struct xdr_netobj cast5_cbc_oid;
+ 
+ /* SPKM InnerContext Token types */
+ 
+--- linux-2.6.20-rc4-mm1/net/sunrpc/auth_gss/gss_spkm3_seal.c.old	2007-01-20 15:44:10.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/auth_gss/gss_spkm3_seal.c	2007-01-20 20:52:24.000000000 +0100
+@@ -48,7 +48,7 @@
+ #endif
+ 
+ const struct xdr_netobj hmac_md5_oid = { 8, "\x2B\x06\x01\x05\x05\x08\x01\x01"};
+-const struct xdr_netobj cast5_cbc_oid = {9, "\x2A\x86\x48\x86\xF6\x7D\x07\x42\x0A"};
++static const struct xdr_netobj cast5_cbc_oid = {9, "\x2A\x86\x48\x86\xF6\x7D\x07\x42\x0A"};
  
  /*
-  * RPC tasks sit here while waiting for conditions to improve.
-@@ -896,7 +897,7 @@ void rpc_put_task(struct rpc_task *task)
+  * spkm3_make_token()
+@@ -183,4 +183,3 @@
+ 	return err ? GSS_S_FAILURE : 0;
  }
- EXPORT_SYMBOL(rpc_put_task);
  
--void rpc_release_task(struct rpc_task *task)
-+static void rpc_release_task(struct rpc_task *task)
+-EXPORT_SYMBOL(make_spkm3_checksum);
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/clnt.h.old	2007-01-20 15:45:17.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/clnt.h	2007-01-20 15:45:24.000000000 +0100
+@@ -135,7 +135,6 @@
+ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
+ size_t		rpc_max_payload(struct rpc_clnt *);
+ void		rpc_force_rebind(struct rpc_clnt *);
+-int		rpc_ping(struct rpc_clnt *clnt, int flags);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ char *		rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ 
+--- linux-2.6.20-rc4-mm1/net/sunrpc/clnt.c.old	2007-01-20 15:45:34.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/clnt.c	2007-01-20 20:51:41.000000000 +0100
+@@ -64,6 +64,8 @@
+ static __be32 *	call_header(struct rpc_task *task);
+ static __be32 *	call_verify(struct rpc_task *task);
+ 
++static int	rpc_ping(struct rpc_clnt *clnt, int flags);
++
+ 
+ static int
+ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+@@ -600,7 +602,6 @@
+ 	else
+ 		return "unprintable";
+ }
+-EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
+ 
+ void
+ rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+@@ -1395,7 +1396,7 @@
+ 	.p_decode = rpcproc_decode_null,
+ };
+ 
+-int rpc_ping(struct rpc_clnt *clnt, int flags)
++static int rpc_ping(struct rpc_clnt *clnt, int flags)
  {
- #ifdef RPC_DEBUG
- 	BUG_ON(task->tk_magic != RPC_TASK_MAGIC_ID);
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &rpcproc_null,
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/xdr.h.old	2007-01-20 15:46:49.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/xdr.h	2007-01-20 15:46:56.000000000 +0100
+@@ -143,7 +143,6 @@
+ extern int xdr_buf_subsegment(struct xdr_buf *, struct xdr_buf *, unsigned int, unsigned int);
+ extern int xdr_buf_read_netobj(struct xdr_buf *, struct xdr_netobj *, unsigned int);
+ extern int read_bytes_from_xdr_buf(struct xdr_buf *, unsigned int, void *, unsigned int);
+-extern int write_bytes_to_xdr_buf(struct xdr_buf *, unsigned int, void *, unsigned int);
+ 
+ /*
+  * Helper structure for copying from an sk_buff.
+--- linux-2.6.20-rc4-mm1/net/sunrpc/xdr.c.old	2007-01-20 15:47:04.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/xdr.c	2007-01-20 15:47:29.000000000 +0100
+@@ -736,7 +736,8 @@
+ }
+ 
+ /* obj is assumed to point to allocated memory of size at least len: */
+-int write_bytes_to_xdr_buf(struct xdr_buf *buf, unsigned int base, void *obj, unsigned int len)
++static int write_bytes_to_xdr_buf(struct xdr_buf *buf, unsigned int base,
++				  void *obj, unsigned int len)
+ {
+ 	struct xdr_buf subbuf;
+ 	int status;
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/xprt.h.old	2007-01-20 15:48:05.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/xprt.h	2007-01-20 15:52:08.000000000 +0100
+@@ -17,19 +17,10 @@
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/msg_prot.h>
+ 
+-extern unsigned int xprt_udp_slot_table_entries;
+-extern unsigned int xprt_tcp_slot_table_entries;
+-
+ #define RPC_MIN_SLOT_TABLE	(2U)
+ #define RPC_DEF_SLOT_TABLE	(16U)
+ #define RPC_MAX_SLOT_TABLE	(128U)
+ 
+-/*
+- * Parameters for choosing a free port
+- */
+-extern unsigned int xprt_min_resvport;
+-extern unsigned int xprt_max_resvport;
+-
+ #define RPC_MIN_RESVPORT	(1U)
+ #define RPC_MAX_RESVPORT	(65535U)
+ #define RPC_DEF_MIN_RESVPORT	(665U)
+@@ -242,6 +233,9 @@
+ struct rpc_xprt *	xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
+ struct rpc_xprt *	xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
+ 
++int			init_socket_xprt(void);
++void			cleanup_socket_xprt(void);
++
+ /*
+  * Reserved bit positions in xprt->state
+  */
+--- linux-2.6.20-rc4-mm1/net/sunrpc/xprtsock.c.old	2007-01-20 15:48:19.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/xprtsock.c	2007-01-20 15:54:04.000000000 +0100
+@@ -28,6 +28,7 @@
+ #include <linux/tcp.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/xprt.h>
+ #include <linux/file.h>
+ 
+ #include <net/sock.h>
+@@ -38,11 +39,11 @@
+ /*
+  * xprtsock tunables
+  */
+-unsigned int xprt_udp_slot_table_entries = RPC_DEF_SLOT_TABLE;
+-unsigned int xprt_tcp_slot_table_entries = RPC_DEF_SLOT_TABLE;
++static unsigned int xprt_udp_slot_table_entries = RPC_DEF_SLOT_TABLE;
++static unsigned int xprt_tcp_slot_table_entries = RPC_DEF_SLOT_TABLE;
+ 
+-unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
+-unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
++static unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
++static unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
+ 
+ /*
+  * We can register our own files under /proc/sys/sunrpc by
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/rpc_pipe_fs.h.old	2007-01-20 15:55:03.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/rpc_pipe_fs.h	2007-01-20 15:55:22.000000000 +0100
+@@ -48,5 +48,8 @@
+ extern struct vfsmount *rpc_get_mount(void);
+ extern void rpc_put_mount(void);
+ 
++extern int register_rpc_pipefs(void);
++extern void unregister_rpc_pipefs(void);
++
+ #endif
+ #endif
+--- linux-2.6.20-rc4-mm1/include/linux/sunrpc/svcauth.h.old	2007-01-20 15:56:27.000000000 +0100
++++ linux-2.6.20-rc4-mm1/include/linux/sunrpc/svcauth.h	2007-01-20 15:57:00.000000000 +0100
+@@ -111,6 +111,7 @@
+ #define	SVC_PENDING	8
+ #define	SVC_COMPLETE	9
+ 
++extern struct cache_detail ip_map_cache;
+ 
+ extern int	svc_authenticate(struct svc_rqst *rqstp, __be32 *authp);
+ extern int	svc_authorise(struct svc_rqst *rqstp);
+--- linux-2.6.20-rc4-mm1/net/sunrpc/sunrpc_syms.c.old	2007-01-20 15:52:16.000000000 +0100
++++ linux-2.6.20-rc4-mm1/net/sunrpc/sunrpc_syms.c	2007-01-20 20:50:39.000000000 +0100
+@@ -20,13 +20,15 @@
+ #include <linux/sunrpc/auth.h>
+ #include <linux/workqueue.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
++#include <linux/sunrpc/xprt.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
++#include <linux/sunrpc/svcauth.h>
+ 
+ 
+ /* RPC scheduler */
+ EXPORT_SYMBOL(rpc_execute);
+ EXPORT_SYMBOL(rpc_init_task);
+ EXPORT_SYMBOL(rpc_sleep_on);
+-EXPORT_SYMBOL(rpc_wake_up_next);
+ EXPORT_SYMBOL(rpc_wake_up_task);
+ EXPORT_SYMBOL(rpciod_down);
+ EXPORT_SYMBOL(rpciod_up);
+@@ -38,7 +40,6 @@
+ EXPORT_SYMBOL(rpc_bind_new_program);
+ EXPORT_SYMBOL(rpc_destroy_client);
+ EXPORT_SYMBOL(rpc_shutdown_client);
+-EXPORT_SYMBOL(rpc_killall_tasks);
+ EXPORT_SYMBOL(rpc_call_sync);
+ EXPORT_SYMBOL(rpc_call_async);
+ EXPORT_SYMBOL(rpc_call_setup);
+@@ -52,9 +53,6 @@
+ EXPORT_SYMBOL(rpc_queue_upcall);
+ EXPORT_SYMBOL(rpc_mkpipe);
+ 
+-/* Client transport */
+-EXPORT_SYMBOL(xprt_set_timeout);
+-
+ /* Client credential cache */
+ EXPORT_SYMBOL(rpcauth_register);
+ EXPORT_SYMBOL(rpcauth_unregister);
+@@ -72,7 +70,6 @@
+ EXPORT_SYMBOL(svc_set_num_threads);
+ EXPORT_SYMBOL(svc_exit_thread);
+ EXPORT_SYMBOL(svc_destroy);
+-EXPORT_SYMBOL(svc_drop);
+ EXPORT_SYMBOL(svc_process);
+ EXPORT_SYMBOL(svc_recv);
+ EXPORT_SYMBOL(svc_wake_up);
+@@ -80,7 +77,6 @@
+ EXPORT_SYMBOL(svc_reserve);
+ EXPORT_SYMBOL(svc_auth_register);
+ EXPORT_SYMBOL(auth_domain_lookup);
+-EXPORT_SYMBOL(svc_authenticate);
+ EXPORT_SYMBOL(svc_set_client);
+ 
+ /* RPC statistics */
+@@ -134,12 +130,6 @@
+ EXPORT_SYMBOL(nlm_debug);
+ #endif
+ 
+-extern int register_rpc_pipefs(void);
+-extern void unregister_rpc_pipefs(void);
+-extern struct cache_detail ip_map_cache;
+-extern int init_socket_xprt(void);
+-extern void cleanup_socket_xprt(void);
+-
+ static int __init
+ init_sunrpc(void)
+ {
 
---=-o/ws5PS95QO0doYiTtDa
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---=-o/ws5PS95QO0doYiTtDa
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---=-o/ws5PS95QO0doYiTtDa--
