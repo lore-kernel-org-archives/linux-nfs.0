@@ -1,7 +1,9 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 000 of 5] knfsd: Introduction - Assorted bugfixes
-Date: Tue, 23 Jan 2007 11:22:03 +1100
-Message-ID: <20070123111558.27683.patches@notabene>
+Subject: [PATCH 001 of 5] knfsd: Update email address and status for
+	NFSD in MAINTAINERS.
+Date: Tue, 23 Jan 2007 11:22:08 +1100
+Message-ID: <1070123002208.27814@suse.de>
+References: <20070123111558.27683.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
@@ -9,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H99Qk-0007R3-Dg
-	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 16:22:30 -0800
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1H99Qq-0007R8-M3
+	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 16:22:38 -0800
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H99Qk-0002AR-VG
-	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 16:22:32 -0800
+	(Exim 4.44) id 1H99Qq-0002CE-RI
+	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 16:22:38 -0800
 To: Andrew Morton <akpm@osdl.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,18 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Following are 5 patches for kNFSd suitable for inclusion in 2.6.20.
-
-A couple should go to 2.6.19-stable, but I'll send those separately.
-
-NeilBrown
 
 
- [PATCH 001 of 5] knfsd: Update email address and status for NFSD in MAINTAINERS.
- [PATCH 002 of 5] knfsd: Fix setting of ACL server versions.
- [PATCH 003 of 5] knfsd: Fix an NFSD bug with full sized, non-page-aligned reads.
- [PATCH 004 of 5] knfsd: Replace some warning ins nfsfh.h with BUG_ON or WARN_ON
- [PATCH 005 of 5] knfsd: Don't mess with the 'mode' when storing a exclusive-create cookie.
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./MAINTAINERS |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff .prev/MAINTAINERS ./MAINTAINERS
+--- .prev/MAINTAINERS	2007-01-23 11:13:46.000000000 +1100
++++ ./MAINTAINERS	2007-01-23 11:14:14.000000000 +1100
+@@ -1941,11 +1941,10 @@ S:	Maintained
+ 
+ KERNEL NFSD
+ P:	Neil Brown
+-M:	neilb@cse.unsw.edu.au
++M:	neilb@suse.de
+ L:	nfs@lists.sourceforge.net
+ W:	http://nfs.sourceforge.net/
+-W:	http://www.cse.unsw.edu.au/~neilb/patches/linux-devel/
+-S:	Maintained
++S:	Supported
+ 
+ KERNEL VIRTUAL MACHINE (KVM)
+ P:	Avi Kivity
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
