@@ -1,24 +1,19 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 005 of 5] knfsd: Don't mess with the 'mode' when
-	storing a exclusive-create cookie.
-Date: Tue, 23 Jan 2007 11:22:31 +1100
-Message-ID: <1070123002231.27868@suse.de>
-References: <20070123111558.27683.patches@notabene>
+From: "Chris " <Online_quotes_@gmail.com>
+Subject: Re: Market News Release: USSG Appoints...   cq18 89
+Date: Tue, 23 Jan 2007 02:15:48 -0400
+Message-ID: <237a01c73e94$659a9560$ec983653@Online_quotes_>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="===============0342256836=="
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H99RA-0007Rl-FH
-	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 16:22:56 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H99RB-0002Gi-Fu
-	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 16:22:58 -0800
-To: Andrew Morton <akpm@osdl.org>
+	id 1H9EG1-0001cL-Ge
+	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 21:31:45 -0800
+Received: from [72.2.24.183] (helo=gmail.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9EG3-0004nq-4y
+	for nfs@lists.sourceforge.net; Mon, 22 Jan 2007 21:31:47 -0800
+To: <nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,104 +26,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
 
-From: Peter Staubach <staubach@redhat.com>
+--===============0342256836==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_155_94C8_013E511A.62E0C180"
 
-NFS V3 (and V4) support exclusive create by passing a 'cookie' which
-can get stored with the file.  If the file exists but has exactly the
-right cookie stored, then we assume this is a retransmit and the
-exclusive create was successful.
+This is a multi-part message in MIME format.
 
-The cookie is 64bits and is traditionally stored in the mtime and
-atime fields.  This causes a problem with Solaris7 as negative mtime
-or atime confuse it.  So we moved two bits into the mode word instead.
+------=_NextPart_155_94C8_013E511A.62E0C180
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-But inherited ACLs sometimes overwrite the mode word on create, so
-this is a problem.
 
-So we give up and just store 62 of the 64 bits and assume that is
-close enough.
 
-Signed-off-by: Neil Brown <neilb@suse.de>
 
-### Diffstat output
- ./fs/nfsd/vfs.c |   21 +++++----------------
- 1 file changed, 5 insertions(+), 16 deletions(-)
+apperceptive
 
-diff .prev/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
---- .prev/fs/nfsd/vfs.c	2007-01-23 11:14:54.000000000 +1100
-+++ ./fs/nfsd/vfs.c	2007-01-23 11:15:06.000000000 +1100
-@@ -1249,7 +1249,6 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 	__be32		err;
- 	int		host_err;
- 	__u32		v_mtime=0, v_atime=0;
--	int		v_mode=0;
- 
- 	err = nfserr_perm;
- 	if (!flen)
-@@ -1286,16 +1285,11 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		goto out;
- 
- 	if (createmode == NFS3_CREATE_EXCLUSIVE) {
--		/* while the verifier would fit in mtime+atime,
--		 * solaris7 gets confused (bugid 4218508) if these have
--		 * the high bit set, so we use the mode as well
-+		/* solaris7 gets confused (bugid 4218508) if these have
-+		 * the high bit set, so just clear the high bits.
- 		 */
- 		v_mtime = verifier[0]&0x7fffffff;
- 		v_atime = verifier[1]&0x7fffffff;
--		v_mode  = S_IFREG
--			| ((verifier[0]&0x80000000) >> (32-7)) /* u+x */
--			| ((verifier[1]&0x80000000) >> (32-9)) /* u+r */
--			;
- 	}
- 	
- 	if (dchild->d_inode) {
-@@ -1323,7 +1317,6 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 		case NFS3_CREATE_EXCLUSIVE:
- 			if (   dchild->d_inode->i_mtime.tv_sec == v_mtime
- 			    && dchild->d_inode->i_atime.tv_sec == v_atime
--			    && dchild->d_inode->i_mode  == v_mode
- 			    && dchild->d_inode->i_size  == 0 )
- 				break;
- 			 /* fallthru */
-@@ -1345,26 +1338,22 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
- 	}
- 
- 	if (createmode == NFS3_CREATE_EXCLUSIVE) {
--		/* Cram the verifier into atime/mtime/mode */
-+		/* Cram the verifier into atime/mtime */
- 		iap->ia_valid = ATTR_MTIME|ATTR_ATIME
--			| ATTR_MTIME_SET|ATTR_ATIME_SET
--			| ATTR_MODE;
-+			| ATTR_MTIME_SET|ATTR_ATIME_SET;
- 		/* XXX someone who knows this better please fix it for nsec */ 
- 		iap->ia_mtime.tv_sec = v_mtime;
- 		iap->ia_atime.tv_sec = v_atime;
- 		iap->ia_mtime.tv_nsec = 0;
- 		iap->ia_atime.tv_nsec = 0;
--		iap->ia_mode  = v_mode;
- 	}
- 
- 	/* Set file attributes.
--	 * Mode has already been set but we might need to reset it
--	 * for CREATE_EXCLUSIVE
- 	 * Irix appears to send along the gid when it tries to
- 	 * implement setgid directories via NFS. Clear out all that cruft.
- 	 */
-  set_attr:
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID)) != 0) {
-+	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
-  		__be32 err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
- 		if (err2)
- 			err = err2;
+
+
+
+papillomatosis thesauroses
+
+  
+    Press Release: USSG gibsons
+  
+  
+    USA Signal Technology USSG Appoints Strategic &amp; Learning Services=
+ Its Manufacturers Representative for New Mexico. sprawly
+
+DALLAS, TX--(MARKET WIRE)--Jan 22, 2007 -- USA Signal Technology, Inc. US=
+SG, a Dallas, Texas-based Company that designs, manufactures and markets =
+state-of-the-art traffic signaling and video surveillance monitoring syst=
+ems, as well as LED (Light Emitting Diode) traffic signals, has appointed=
+ Strategic &amp; Learning Services, Inc. as its sales representative comp=
+any for New Mexico. It previously appointed sales representatives for Ark=
+ansas, Louisiana, Oklahoma, and Texas. hesitations
+  
+  
+    Get the Whole Story on USSG - HERE wrasse
+  
+
+
+sphenosquamosal lipotrophic
+
+
+
+
+
+
+
+
+
+------=_NextPart_155_94C8_013E511A.62E0C180
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+<html>
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-885=
+9-1">
+<title>apperceptive</title>
+</head>
+
+<body>
+<p><font color=3D"#FFFFFF">papillomatosis thesauroses</font></p>
+<table width=3D"70%" border=3D"1" cellspacing=3D"0" bordercolor=3D"#FFFF3=
+3">
+  <tr>
+    <td bordercolor=3D"#FF9933" bgcolor=3D"#FFFFCC"><font color=3D"#CC000=
+0" size=3D"2" face=3D"Arial, Helvetica, sans-serif"><strong>Press Release=
+: USSG <font color=3D"#FFFFCC">gibsons</font></strong></font></td>
+  </tr>
+  <tr>
+    <td bordercolor=3D"#FF9933" bgcolor=3D"#FFFFCC"><font color=3D"#3300F=
+F" size=3D"2" face=3D"Arial, Helvetica, sans-serif">USA Signal Technology=
+ USSG Appoints Strategic &amp; Learning Services Its Manufacturers Repres=
+entative for New Mexico. <font color=3D"#FFFFCC">sprawly</font><br>
+DALLAS, TX--(MARKET WIRE)--Jan 22, 2007 -- USA Signal Technology, Inc. US=
+SG, a Dallas, Texas-based Company that designs, manufactures and markets =
+state-of-the-art traffic signaling and video surveillance monitoring syst=
+ems, as well as LED (Light Emitting Diode) traffic signals, has appointed=
+ Strategic &amp; Learning Services, Inc. as its sales representative comp=
+any for New Mexico. It previously appointed sales representatives for Ark=
+ansas, Louisiana, Oklahoma, and Texas. <font color=3D"#FFFFCC">hesitation=
+s</font></font></td>
+  </tr>
+  <tr>
+    <td bordercolor=3D"#FF9933" bgcolor=3D"#FFFFCC"><font color=3D"#3300F=
+F" size=3D"2" face=3D"Arial, Helvetica, sans-serif">Get the Whole Story o=
+n USSG - <a href=3D"http://biz.yahoo.com/iw/070122/0205731.html">HERE</a>=
+ <font color=3D"#FFFFCC">wrasse</font></font></td>
+  </tr>
+</table>
+<p><font color=3D"#FFFFFF">sphenosquamosal lipotrophic</font><font size=3D=
+"2" face=3D"Arial, Helvetica, sans-serif"><br>
+</font></p>
+<p><font size=3D"2" face=3D"Arial, Helvetica, sans-serif"><br>
+</font></p>
+</body>
+</html>
+
+
+------=_NextPart_155_94C8_013E511A.62E0C180--
+
+
+
+--===============0342256836==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0342256836==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0342256836==--
