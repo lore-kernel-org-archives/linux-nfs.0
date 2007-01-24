@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/15] SUNRPC: Eliminate side effects from rpc_malloc
-Date: Wed, 24 Jan 2007 14:19:51 -0500
-Message-ID: <20070124191951.31133.48036.stgit@localhost.localdomain>
+Subject: [PATCH 05/15] SUNRPC: Make rpc_free API more generic
+Date: Wed, 24 Jan 2007 14:19:54 -0500
+Message-ID: <20070124191954.31133.68874.stgit@localhost.localdomain>
 References: <20070124191704.31133.12713.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9ngK-00018f-Vd
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:17 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1H9ngO-000197-Vr
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:21 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H9ngH-0000yA-3T
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:15 -0800
+	(Exim 4.44) id 1H9ngO-00010Y-Vs
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:22 -0800
 In-Reply-To: <20070124191704.31133.12713.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -30,66 +30,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Currently rpc_malloc sets req->rq_buffer internally.  Make this a cleaner
-interface:  return a pointer to the new buffer (or NULL) and make the
-caller set req->rq_buffer and req->rq_bufsize.
+Don't diddle with rq_buffer and rq_bufsize inside of rpc_free.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/clnt.c  |    5 ++++-
- net/sunrpc/sched.c |   14 +++-----------
- 2 files changed, 7 insertions(+), 12 deletions(-)
+ include/linux/sunrpc/sched.h |    2 +-
+ include/linux/sunrpc/xprt.h  |    2 +-
+ net/sunrpc/sched.c           |   15 +++++++--------
+ net/sunrpc/xprt.c            |    2 +-
+ 4 files changed, 10 insertions(+), 11 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f837335..244cce4 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -765,8 +765,11 @@ call_allocate(struct rpc_task *task)
- 	 * auth->au_wslack */
- 	bufsiz = task->tk_msg.rpc_proc->p_bufsiz + RPC_SLACK_SPACE;
- 
--	if (xprt->ops->buf_alloc(task, bufsiz << 1) != NULL)
-+	req->rq_buffer = xprt->ops->buf_alloc(task, bufsiz << 1);
-+	if (req->rq_buffer != NULL) {
-+		req->rq_bufsize = bufsiz;
- 		return;
-+	}
- 
- 	dprintk("RPC: %5u rpc_buffer allocation failed\n", task->tk_pid);
- 
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 97c7616..88e6e39 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -265,7 +265,7 @@ struct rpc_task *rpc_wake_up_next(struct
+ void		rpc_wake_up_status(struct rpc_wait_queue *, int);
+ void		rpc_delay(struct rpc_task *, unsigned long);
+ void *		rpc_malloc(struct rpc_task *, size_t);
+-void		rpc_free(struct rpc_task *);
++void		rpc_free(struct rpc_task *, void *, size_t);
+ int		rpciod_up(void);
+ void		rpciod_down(void);
+ int		__rpc_wait_for_completion_task(struct rpc_task *task, int (*)(void *));
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index f780e72..51c3660 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -112,7 +112,7 @@ struct rpc_xprt_ops {
+ 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
+ 	void		(*connect)(struct rpc_task *task);
+ 	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
+-	void		(*buf_free)(struct rpc_task *task);
++	void		(*buf_free)(struct rpc_task *task, void *buffer, size_t size);
+ 	int		(*send_request)(struct rpc_task *task);
+ 	void		(*set_retrans_timeout)(struct rpc_task *task);
+ 	void		(*timer)(struct rpc_task *task);
 diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index cb0c5f4..08104dd 100644
+index 08104dd..c689196 100644
 --- a/net/sunrpc/sched.c
 +++ b/net/sunrpc/sched.c
-@@ -749,7 +749,6 @@ static void rpc_async_schedule(struct wo
-  */
- void * rpc_malloc(struct rpc_task *task, size_t size)
- {
--	struct rpc_rqst *req = task->tk_rqstp;
- 	gfp_t	gfp;
- 
- 	if (task->tk_flags & RPC_TASK_SWAPPER)
-@@ -757,16 +756,9 @@ void * rpc_malloc(struct rpc_task *task,
- 	else
- 		gfp = GFP_NOFS;
- 
--	if (size > RPC_BUFFER_MAXSIZE) {
--		req->rq_buffer = kmalloc(size, gfp);
--		if (req->rq_buffer)
--			req->rq_bufsize = size;
--	} else {
--		req->rq_buffer = mempool_alloc(rpc_buffer_mempool, gfp);
--		if (req->rq_buffer)
--			req->rq_bufsize = RPC_BUFFER_MAXSIZE;
--	}
--	return req->rq_buffer;
-+	if (size <= RPC_BUFFER_MAXSIZE)
-+		return mempool_alloc(rpc_buffer_mempool, gfp);
-+	return kmalloc(size, gfp);
- }
+@@ -763,20 +763,19 @@ void * rpc_malloc(struct rpc_task *task,
  
  /**
+  * rpc_free - free buffer allocated via rpc_malloc
+- * @task: RPC task with a buffer to be freed
++ * @task: RPC task used when this buffer was allocated
++ * @buffer: buffer to free
+  *
+  */
+-void rpc_free(struct rpc_task *task)
++void rpc_free(struct rpc_task *task, void *buffer, size_t size)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 
+-	if (req->rq_buffer) {
+-		if (req->rq_bufsize == RPC_BUFFER_MAXSIZE)
+-			mempool_free(req->rq_buffer, rpc_buffer_mempool);
++	if (req) {
++		if (size <= RPC_BUFFER_MAXSIZE)
++			mempool_free(buffer, rpc_buffer_mempool);
+ 		else
+-			kfree(req->rq_buffer);
+-		req->rq_buffer = NULL;
+-		req->rq_bufsize = 0;
++			kfree(buffer);
+ 	}
+ }
+ 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index cf59f7d..9f787ac 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -855,7 +855,7 @@ void xprt_release(struct rpc_task *task)
+ 		mod_timer(&xprt->timer,
+ 				xprt->last_used + xprt->idle_timeout);
+ 	spin_unlock_bh(&xprt->transport_lock);
+-	xprt->ops->buf_free(task);
++	xprt->ops->buf_free(task, req->rq_buffer, req->rq_bufsize);
+ 	task->tk_rqstp = NULL;
+ 	if (req->rq_release_snd_buf)
+ 		req->rq_release_snd_buf(req);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
