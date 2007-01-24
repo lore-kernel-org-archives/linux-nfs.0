@@ -1,94 +1,85 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 3/3] NFS: Ensure we support selinux xattrs
-Date: Wed, 24 Jan 2007 11:54:57 -0800
-Message-ID: <20070124195457.21259.53047.stgit@lade.trondhjem.org>
-References: <20070124195307.21259.64156.stgit@lade.trondhjem.org>
-Content-Type: text/plain; charset=utf-8; format=fixed
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
-	sds@tycho.nsa.gov
-To: torvalds@osdl.org, akpm@osdl.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932477AbXAXUUl@vger.kernel.org>
-In-Reply-To: <20070124195307.21259.64156.stgit@lade.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Eliminating the BKL from the NFS and RPC clients
+Date: Wed, 24 Jan 2007 15:28:05 -0500
+Message-ID: <45B7C155.3020900@oracle.com>
+References: <45B00585.10001@oracle.com>	 <20070119012349.GA25491@infradead.org>
+	<1169184980.6158.19.camel@lade.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------040409010508010305000409"
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1H9ok4-0008DJ-Vf
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:29:13 -0800
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1H9ok3-0008Mg-CP
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:29:14 -0800
+In-Reply-To: <1169184980.6158.19.camel@lade.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+This is a multi-part message in MIME format.
+--------------040409010508010305000409
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Some programs (e.g. GNU "cp") are currently crashing because NFS
-allows you to inquire about SELinux security attributes (vfs_getxattr()
-automatically handles this), but returns -EOPNOTSUPP when they later
-attempt to set the SELinux security attributes.
+Trond Myklebust wrote:
+> On Fri, 2007-01-19 at 01:23 +0000, Christoph Hellwig wrote:
+>> 056-nfs-smp-change_attribute.diff: 
+>> 	are the barriers really enough?  Don't you need at least a lock on 
+>> 	the writer side?
+> 
+> The change attribute should always be updated under the inode->lock
+> anyway. I'm not really sure we need these.
 
-The following patch just ensures that we pass the request to set security
-attributes on to the default SELinux handler.
+What about nfs_end_data_update ?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+--------------040409010508010305000409
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
- fs/nfs/nfs3acl.c  |   13 +++++++++++++
- fs/nfs/nfs4proc.c |   14 ++++++++++++++
- 2 files changed, 27 insertions(+), 0 deletions(-)
+YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
+IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmUgTGludXggUHJvamVjdHMgR3Jv
+dXANCmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRv
+dCBjb20NCnRpdGxlOlByaW5jaXBsZSBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0
+OCA2MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNh
+cmQNCg0K
+--------------040409010508010305000409
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 7322da4..5970e7b 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -4,6 +4,9 @@ #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
- #include <linux/posix_acl_xattr.h>
- #include <linux/nfsacl.h>
-+#include <linux/security.h>
-+#include <linux/xattr.h>
-+#include <linux/fsnotify.h>
- 
- #define NFSDBG_FACILITY	NFSDBG_PROC
- 
-@@ -82,6 +85,16 @@ int nfs3_setxattr(struct dentry *dentry,
- 	struct posix_acl *acl;
- 	int type, error;
- 
-+	/* Selinux support */
-+	if (!strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN)) {
-+		const char *suffix = name + XATTR_SECURITY_PREFIX_LEN;
-+		error = security_inode_setsecurity(inode, suffix, value,
-+				size, flags);
-+		if (!error)
-+			fsnotify_xattr(dentry);
-+		return error;
-+	}
-+
- 	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
- 		type = ACL_TYPE_ACCESS;
- 	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b3fd29b..ac1082b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -48,6 +48,9 @@ #include <linux/nfs_page.h>
- #include <linux/smp_lock.h>
- #include <linux/namei.h>
- #include <linux/mount.h>
-+#include <linux/security.h>
-+#include <linux/xattr.h>
-+#include <linux/fsnotify.h>
- 
- #include "nfs4_fs.h"
- #include "delegation.h"
-@@ -3547,6 +3550,17 @@ int nfs4_setxattr(struct dentry *dentry,
- {
- 	struct inode *inode = dentry->d_inode;
- 
-+	/* Selinux support */
-+	if (!strncmp(key, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN)) {
-+		const char *suffix = key + XATTR_SECURITY_PREFIX_LEN;
-+		int error;
-+		error = security_inode_setsecurity(inode, suffix, buf,
-+				buflen, flags);
-+		if (!error)
-+			fsnotify_xattr(dentry);
-+		return error;
-+	}
-+
- 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
- 		return -EOPNOTSUPP;
- 
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------040409010508010305000409
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------040409010508010305000409--
