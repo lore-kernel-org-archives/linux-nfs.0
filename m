@@ -1,24 +1,26 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/3] NFS: Fix Oops in rpc_call_sync()
-Date: Wed, 24 Jan 2007 11:54:53 -0800
-Message-ID: <20070124195453.21259.74390.stgit@lade.trondhjem.org>
+From: Stephen Smalley <sds@tycho.nsa.gov>
+Subject: Re: [PATCH 3/3] NFS: Ensure we support selinux xattrs
+Date: Wed, 24 Jan 2007 15:08:08 -0500
+Message-ID: <1169669288.15390.155.camel@moss-spartans.epoch.ncsc.mil>
 References: <20070124195307.21259.64156.stgit@lade.trondhjem.org>
+	<20070124195457.21259.53047.stgit@lade.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: sds@tycho.nsa.gov, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: torvalds@osdl.org, akpm@osdl.org
+Cc: akpm@osdl.org, Jim Meyering <meyering@redhat.com>,
+	linux-kernel@vger.kernel.org, Eric Paris <eparis@redhat.com>,
+	James Morris <jmorris@namei.org>, torvalds@osdl.org,
+	nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9oD0-0004gK-58
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:55:02 -0800
-Received: from dsl081-065-125.sfo1.dsl.speakeasy.net ([64.81.65.125]
-	helo=lade.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9oD1-0002YU-GG
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:55:03 -0800
-In-Reply-To: <20070124195307.21259.64156.stgit@lade.trondhjem.org>
+	id 1H9oSP-0006JQ-Rt
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:10:58 -0800
+Received: from zombie.ncsc.mil ([144.51.88.131] helo=jazzdrum.ncsc.mil)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9oSO-0002bD-Ha
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:10:59 -0800
+In-Reply-To: <20070124195457.21259.53047.stgit@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,84 +33,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Wed, 2007-01-24 at 11:54 -0800, Trond Myklebust wrote:
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Some programs (e.g. GNU "cp") are currently crashing because NFS
+> allows you to inquire about SELinux security attributes (vfs_getxattr()
+> automatically handles this), but returns -EOPNOTSUPP when they later
+> attempt to set the SELinux security attributes.
+> 
+> The following patch just ensures that we pass the request to set security
+> attributes on to the default SELinux handler.
 
-Fix the Oops in http://bugzilla.linux-nfs.org/show_bug.cgi?id=138
-We shouldn't be calling rpc_release_task() for tasks that are not active.
+That seems like a bug in cp, and it can happen under other circumstances
+as well (mount with context= option).
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+I don't think you want to just set the incore inode security state on
+the client side, as that won't be preserved.
 
- include/linux/sunrpc/sched.h |    1 -
- net/sunrpc/clnt.c            |    8 +++-----
- net/sunrpc/sched.c           |    3 ++-
- 3 files changed, 5 insertions(+), 7 deletions(-)
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/nfs3acl.c  |   13 +++++++++++++
+>  fs/nfs/nfs4proc.c |   14 ++++++++++++++
+>  2 files changed, 27 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+> index 7322da4..5970e7b 100644
+> --- a/fs/nfs/nfs3acl.c
+> +++ b/fs/nfs/nfs3acl.c
+> @@ -4,6 +4,9 @@ #include <linux/nfs3.h>
+>  #include <linux/nfs_fs.h>
+>  #include <linux/posix_acl_xattr.h>
+>  #include <linux/nfsacl.h>
+> +#include <linux/security.h>
+> +#include <linux/xattr.h>
+> +#include <linux/fsnotify.h>
+>  
+>  #define NFSDBG_FACILITY	NFSDBG_PROC
+>  
+> @@ -82,6 +85,16 @@ int nfs3_setxattr(struct dentry *dentry,
+>  	struct posix_acl *acl;
+>  	int type, error;
+>  
+> +	/* Selinux support */
+> +	if (!strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN)) {
+> +		const char *suffix = name + XATTR_SECURITY_PREFIX_LEN;
+> +		error = security_inode_setsecurity(inode, suffix, value,
+> +				size, flags);
+> +		if (!error)
+> +			fsnotify_xattr(dentry);
+> +		return error;
+> +	}
+> +
+>  	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+>  		type = ACL_TYPE_ACCESS;
+>  	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index b3fd29b..ac1082b 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -48,6 +48,9 @@ #include <linux/nfs_page.h>
+>  #include <linux/smp_lock.h>
+>  #include <linux/namei.h>
+>  #include <linux/mount.h>
+> +#include <linux/security.h>
+> +#include <linux/xattr.h>
+> +#include <linux/fsnotify.h>
+>  
+>  #include "nfs4_fs.h"
+>  #include "delegation.h"
+> @@ -3547,6 +3550,17 @@ int nfs4_setxattr(struct dentry *dentry,
+>  {
+>  	struct inode *inode = dentry->d_inode;
+>  
+> +	/* Selinux support */
+> +	if (!strncmp(key, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN)) {
+> +		const char *suffix = key + XATTR_SECURITY_PREFIX_LEN;
+> +		int error;
+> +		error = security_inode_setsecurity(inode, suffix, buf,
+> +				buflen, flags);
+> +		if (!error)
+> +			fsnotify_xattr(dentry);
+> +		return error;
+> +	}
+> +
+>  	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+>  		return -EOPNOTSUPP;
+>  
+-- 
+Stephen Smalley
+National Security Agency
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 97c7616..8b6ce60 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -250,7 +250,6 @@ void		rpc_init_task(struct rpc_task *tas
- 				int flags, const struct rpc_call_ops *ops,
- 				void *data);
- void		rpc_put_task(struct rpc_task *);
--void		rpc_release_task(struct rpc_task *);
- void		rpc_exit_task(struct rpc_task *);
- void		rpc_release_calldata(const struct rpc_call_ops *, void *);
- void		rpc_killall_tasks(struct rpc_clnt *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index aba528b..16c9fbc 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -490,16 +490,14 @@ int rpc_call_sync(struct rpc_clnt *clnt,
- 
- 	/* Set up the call info struct and execute the task */
- 	status = task->tk_status;
--	if (status != 0) {
--		rpc_release_task(task);
-+	if (status != 0)
- 		goto out;
--	}
- 	atomic_inc(&task->tk_count);
- 	status = rpc_execute(task);
- 	if (status == 0)
- 		status = task->tk_status;
--	rpc_put_task(task);
- out:
-+	rpc_put_task(task);
- 	rpc_restore_sigmask(&oldset);
- 	return status;
- }
-@@ -537,7 +535,7 @@ rpc_call_async(struct rpc_clnt *clnt, st
- 	if (status == 0)
- 		rpc_execute(task);
- 	else
--		rpc_release_task(task);
-+		rpc_put_task(task);
- 
- 	rpc_restore_sigmask(&oldset);		
- 	return status;
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 79bc4cd..fc083f0 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -42,6 +42,7 @@ static mempool_t	*rpc_buffer_mempool __r
- static void			__rpc_default_timer(struct rpc_task *task);
- static void			rpciod_killall(void);
- static void			rpc_async_schedule(struct work_struct *);
-+static void			 rpc_release_task(struct rpc_task *task);
- 
- /*
-  * RPC tasks sit here while waiting for conditions to improve.
-@@ -896,7 +897,7 @@ void rpc_put_task(struct rpc_task *task)
- }
- EXPORT_SYMBOL(rpc_put_task);
- 
--void rpc_release_task(struct rpc_task *task)
-+static void rpc_release_task(struct rpc_task *task)
- {
- #ifdef RPC_DEBUG
- 	BUG_ON(task->tk_magic != RPC_TASK_MAGIC_ID);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
