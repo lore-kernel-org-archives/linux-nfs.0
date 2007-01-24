@@ -1,34 +1,22 @@
-From: "Paarvai Naai" <opensource3141@gmail.com>
-Subject: Re: "mount: File exists" when trying to mount a second krb5
-	volume!
-Date: Tue, 23 Jan 2007 14:52:28 -0800
-Message-ID: <52109fb10701231452i4e83a106hafa1405b966231c6@mail.gmail.com>
-References: <20061120194700.135.qmail@web58109.mail.re3.yahoo.com>
-	<52109fb10611281950s50b5d618v21c5818f12ad6b74@mail.gmail.com>
-	<52109fb10612011034v4f1feb27n59b6251edee6cfc1@mail.gmail.com>
-	<1164998608.16282.6.camel@lade.trondhjem.org>
-	<52109fb10612011104l67d2f126hb53d82edb6fef64b@mail.gmail.com>
-	<1165000607.17881.23.camel@lade.trondhjem.org>
-	<52109fb10612011257s37d64003lb83fd0bbf623233f@mail.gmail.com>
-	<52109fb10612041055j41596e67racc9c3194fef413@mail.gmail.com>
-	<Pine.LNX.4.64.0612051132150.29520@raven.themaw.net>
-	<52109fb10612051106y4dfe0844sa5fd2e3e497c6c56@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: nfs sec=krb5 on RHEL and CentOS
+Date: Wed, 24 Jan 2007 06:05:55 -0500
+Message-ID: <45B73D93.1020508@RedHat.com>
+References: <a3b675320701211411r45d010f8jd7132deedcf68804@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: james bardin <jbardin@bu.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9UVE-0004sG-FV
-	for nfs@lists.sourceforge.net; Tue, 23 Jan 2007 14:52:32 -0800
-Received: from ug-out-1314.google.com ([66.249.92.170])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9UVE-0001p3-39
-	for nfs@lists.sourceforge.net; Tue, 23 Jan 2007 14:52:34 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so1338679ugc
-	for <nfs@lists.sourceforge.net>; Tue, 23 Jan 2007 14:52:28 -0800 (PST)
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-In-Reply-To: <52109fb10612051106y4dfe0844sa5fd2e3e497c6c56@mail.gmail.com>
+	id 1H9fwp-00065K-C6
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 03:05:47 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9fwq-0004Nf-VM
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 03:05:49 -0800
+In-Reply-To: <a3b675320701211411r45d010f8jd7132deedcf68804@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,30 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
 
-Sadly, Trond's patch has *still* not made it to the upstream sources.
-For example, Fedora Core 6 has released a kernel package based on
-2.6.19.2 and it doesn't appear to have the fix.
+Sorry for the delayed response...
 
-I'm confused as to why this fairly serious regression has not been
-corrected by either 2.6.19.1 or 2.6.19.2.  What can be done to get
-this remedied asap?
+james bardin wrote:
+> I couldn't get sec=krb5 to work on clients running RHEL4 (and CentOS),
+> so I built a slightly newer version of nfs-utils. (nfs-utils-1.0.7-13)
+Go back and grab the latest rhel4 nfs-utils which is 1.0.6-77. That has
+been updated with a number of patches that are in the upstream
+version...
 
-Incidentally, the folks at bugzilla.redhat.com are now on top of this
-problem for the upcoming RHEL 5, but that doesn't help non-RHEL users
-any!
+> 
+> A mkdir return a file exists error, but the directory is created.
+> Redirecting std out to a file returns an ioerror, and the file is
+> created but empty.
+> Vim creates swap files, they fail so it doesn't use them, but reports
+> them as existing.
+> 
+> I can chmod, chown existing files as expected.
+hmm... if this continues after you updated your nfs-utils, please
+open a bug reported and post a bzip2 binary tethereal trace
+something similar to:
+     tethereal -w /tmp/data.pcap host <server> ; bzip2 /tmp/data.pcap
 
-Thanks,
-Paarvai
-
-
-> > > > On 12/1/06, Trond Myklebust <trond.myklebust@fys.uio.no > wrote:
-> > > >
-> > > > > The procedures for dealing with kernel regressions are already well
-> > > > > established. I will be following them as usual.
-> > > > >
-> > > > > Trond
+steved.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
