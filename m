@@ -1,29 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 13/15] SUNRPC: RPC buffer size estimates are too
- large
-Date: Wed, 24 Jan 2007 16:28:51 -0500
-Message-ID: <45B7CF93.80500@oracle.com>
-References: <20070124191704.31133.12713.stgit@localhost.localdomain>
-	<20070124192020.31133.78494.stgit@localhost.localdomain>
-	<20070124203739.GA6587@fieldses.org> <45B7C482.9090807@oracle.com>
-	<20070124205134.GC6587@fieldses.org> <45B7CB0A.5040505@oracle.com>
-	<20070124212501.GG6587@fieldses.org>
-Reply-To: chuck.lever@oracle.com
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070608080609080802060508"
-Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Marvin Humphrey <marvin@rectangular.com>
+Subject: Lucene, delete-on-last-close, and flock emulation
+Date: Wed, 24 Jan 2007 14:04:35 -0800
+Message-ID: <873E10FD-9682-46D8-9A5D-D6AD6C60060C@rectangular.com>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9ph3-0005tl-S7
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 13:30:10 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H9ph2-0000De-14
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 13:30:11 -0800
-In-Reply-To: <20070124212501.GG6587@fieldses.org>
+	id 1H9qEY-0000nm-9S
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 14:04:46 -0800
+Received: from www.rectangular.com ([68.116.38.223] helo=rectangular.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9qEY-00063W-NU
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 14:04:48 -0800
+Received: from [67.189.26.9] (helo=[10.0.1.3])
+	by rectangular.com with esmtpa (Exim 4.44) id 1H9qbJ-000IKl-TF
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 14:28:18 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,62 +29,107 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070608080609080802060508
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Greetings,
 
-J. Bruce Fields wrote:
-> On Wed, Jan 24, 2007 at 04:09:30PM -0500, Chuck Lever wrote:
->> These values are just for estimating the largest size the buffers will 
->> need to be for this call and reply.  Alignment issues need to be handled 
->>  somewhere else.
-> 
-> OK, I'm an idiot--so cslack is just for calculating the maximum size,
-> rslack is for placing the data correctly.  So now I understand what
-> you're doing, and don't see any more problem with it.
+The Apache Lucene search engine library currently suffers from a  
+design flaw that causes problems when indexes located on NFS volumes  
+are updated.  The same flaw afflicts my Perl/C port of Lucene,  
+KinoSearch.  My goal is to eliminate the problem for both libraries.   
+I hope that someone subscribed to this list can help by clarifying  
+one item from the FAQ, and possibly offering further guidance.
 
-Well, it might do to rename au_cslack and au_rslack so that the 
-confusion isn't spread further  ;-)
+Lucene depends upon delete-on-last-close semantics.
 
---------------070608080609080802060508
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+Lucene indexes are comprised of many files.  Once written, no files  
+are ever modified -- instead, they are rendered obsolete when more  
+recent versions arrive.  Which files are the most recent can be  
+determined by examining a base-36 numerical increment embedded in the  
+file name: "foo_z53" is more recent than "foo_z52".
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture Linux Projects Group
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principle Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+When an index-reading app is created, it opens the most recent set of  
+files available, and never updates.  If new files are written, the  
+reader won't know about them; it stays focused on the snapshot that  
+was present at its moment of creation.
+
+Index-writing applications, once they have completed writing a set of  
+updated files, unlink any files which are now "obsolete".  If a  
+reader still happens to be using one of these "obsolete" files,  
+delete-on-last-close ordinarily prevents the reader from being cut  
+off from the needed resource.
+
+On NFS, this design breaks, since NFS does not support delete-on-last- 
+close.  When the index-writing application deletes an "obsolete" file  
+which is still in use by a reader, the reader crashes with a Stale  
+NFS Filehandle exception.
+
+Lucene does not currently exploit advisory read-locking at all.  One  
+possible solution to this problem is to have readers secure advisory  
+locks against the files they need, and for index-writing applications  
+to spare files when such locks are detected.  Unfortunately, it is  
+very difficult for library code to enforce the level of discipline  
+needed by fcntl() locks.  flock() would work much better.
+
+I read in the manpage for flock(),
+
+     flock(2) does not lock files over NFS. Use fcntl(2) instead:
+     that does work over NFS, given a sufficiently recent version
+     of Linux and a server which supports locking.
+
+However, apparently this is no longer accurate as of 2.6.12,  
+according to both the FAQ and this October 2005 post from Trond  
+Myklebust: <http://sourceforge.net/mailarchive/message.php? 
+msg_id=17217586>.
+
+What I am confused about is how faithful the flock() emulation is.   
+The FAQ states:
+
+     On local Linux filesystems, POSIX locks and BSD locks are
+     invisible to one another. Thus, due to this emulation,
+     applications running on a Linux NFS server will still see
+     files locked by NFS clients as being locked with a fcntl()/POSIX
+     lock, whether the application on the client is using a BSD-style
+     or a POSIX-style lock. If the server application uses flock()BSD
+     locks, it will not see the locks the NFS clients use.
+
+This says to me that we must always check for both fcntl and flock  
+locks before zapping a file.  However, I am worried that if an  
+application opens a file and checks for the existence of an fcntl  
+lock, it may force an inappropriate lock release if a lock is held  
+elsewhere within the process.  Is that a possibility?  Or is the flock 
+() emulator applying fcntl() locks against some symbolic stand-in?   
+And if it is locking a stand-in, are there circumstances under which  
+it is outright impossible for an application to figure out whether  
+someone, somewhere has secured a lock against a file on an NFS volume?
+
+I recognize that even in a best-case scenario, flock() over NFS will  
+only help us with recent systems, which isn't ideal.  Fortunately,  
+the penalty for lock failure is only a crashed searching application,  
+rather than index corruption (Lucene uses a dot-lock mechanism for  
+serializing writer access, which I take should be bulletproof on NFS  
+after kernel 2.6.5 made O_EXCL creates atomic).  However, if an  
+alternative design occurs to you, I'm all ears.
+
+Lastly, we have been scratching our heads as to how we might detect  
+at index-creation time that the user has specified that the index be  
+located on an NFS volume.  We would like to warn the user in such a  
+case.  A couple hacks have been proposed, but they are decidedly non- 
+portable.  If someone can suggest a algorithm that will determine  
+whether we can count on delete-on-last-close by failing reliably on  
+an NFS volume, we would be grateful.
+
+Cheers,
+
+Marvin Humphrey
+Rectangular Research
+http://www.rectangular.com/
 
 
---------------070608080609080802060508
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------070608080609080802060508
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070608080609080802060508--
