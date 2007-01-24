@@ -1,25 +1,30 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Eliminating the BKL from the NFS and RPC clients
-Date: Wed, 24 Jan 2007 15:28:05 -0500
-Message-ID: <45B7C155.3020900@oracle.com>
-References: <45B00585.10001@oracle.com>	 <20070119012349.GA25491@infradead.org>
-	<1169184980.6158.19.camel@lade.trondhjem.org>
-Reply-To: chuck.lever@oracle.com
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH 3/3] NFS: Ensure we support selinux xattrs
+Date: Wed, 24 Jan 2007 12:29:26 -0800 (PST)
+Message-ID: <Pine.LNX.4.64.0701241228050.3606@woody.linux-foundation.org>
+References: <20070124195307.21259.64156.stgit@lade.trondhjem.org>
+	<20070124195457.21259.53047.stgit@lade.trondhjem.org>
+	<1169669288.15390.155.camel@moss-spartans.epoch.ncsc.mil>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040409010508010305000409"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@osdl.org>,
+	Jim Meyering <meyering@redhat.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Eric Paris <eparis@redhat.com>, James Morris <jmorris@namei.org>,
+	nfs@lists.sourceforge.net
+To: Stephen Smalley <sds@tycho.nsa.gov>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9ok4-0008DJ-Vf
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:29:13 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H9ok3-0008Mg-CP
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:29:14 -0800
-In-Reply-To: <1169184980.6158.19.camel@lade.trondhjem.org>
+	id 1H9okP-0008Dg-Hk
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:29:33 -0800
+Received: from smtp.osdl.org ([65.172.181.24])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1H9okP-0004AK-L0
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 12:29:35 -0800
+In-Reply-To: <1169669288.15390.155.camel@moss-spartans.epoch.ncsc.mil>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,54 +37,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------040409010508010305000409
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Trond Myklebust wrote:
-> On Fri, 2007-01-19 at 01:23 +0000, Christoph Hellwig wrote:
->> 056-nfs-smp-change_attribute.diff: 
->> 	are the barriers really enough?  Don't you need at least a lock on 
->> 	the writer side?
+
+On Wed, 24 Jan 2007, Stephen Smalley wrote:
 > 
-> The change attribute should always be updated under the inode->lock
-> anyway. I'm not really sure we need these.
+> I don't think you want to just set the incore inode security state on
+> the client side, as that won't be preserved.
 
-What about nfs_end_data_update ?
+I agree. The fix seems much worse than the problem.
 
---------------040409010508010305000409
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+It doesn't seem to be a kernel bug (except insofar that you can argue that 
+enabling ACL's at all is a bug), and it also doesn't look like a 
+regression.
 
-YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
-IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmUgTGludXggUHJvamVjdHMgR3Jv
-dXANCmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRv
-dCBjb20NCnRpdGxlOlByaW5jaXBsZSBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0
-OCA2MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNh
-cmQNCg0K
---------------040409010508010305000409
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+		Linus
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------040409010508010305000409
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------040409010508010305000409--
