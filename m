@@ -1,25 +1,27 @@
-From: James Bardin <jbardin@bu.edu>
-Subject: Re: nfs sec=krb5 on RHEL and CentOS
-Date: Wed, 24 Jan 2007 10:03:52 -0500
-Message-ID: <45B77558.4080700@bu.edu>
-References: <a3b675320701211411r45d010f8jd7132deedcf68804@mail.gmail.com>
-	<45B73D93.1020508@RedHat.com>
+From: "Katelyn Murdock" <freehold'soutplaying@abacus-engr.com>
+Subject: 'Chemical Ali' trial hears tape
+Date: Wed, 24 Jan 2007 19:00:49 +0300
+Message-ID: <01c73fe9$f631fef0$6c822ecf@freehold'soutplaying>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9jff-00053T-KY
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 07:04:19 -0800
-Received: from wr-out-0506.google.com ([64.233.184.227])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1H9jfc-0007fr-6b
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 07:04:18 -0800
-Received: by wr-out-0506.google.com with SMTP id i20so142843wra
-	for <nfs@lists.sourceforge.net>; Wed, 24 Jan 2007 07:03:54 -0800 (PST)
-In-Reply-To: <45B73D93.1020508@RedHat.com>
+	id 1H9nMY-0007Mf-5A
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:00:50 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1H9nMX-0006VB-Jv
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:00:52 -0800
+Received: from [74.230.179.243] (helo=dkcphmx18.softcom.dk)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1H9nMV-0001Fv-27
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:00:47 -0800
+Received: from 194.106.221.43 (HELO cluster3a.eu.messagelabs.com)
+	by lists.sourceforge.net with (8.07.2/8.49.6) ESMTP id uzhacnr4elb2kb7
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 19:00:49 +0300
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,26 +34,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+The Beauty of the peenny stoock arena is that issues appreciate so quickly!  
+A bit of inside info and returns of 1000% are not unheard of.  We are 
+bringing you what is REAL HOT right now.
+Weekly blitz has started. Millions of people will see
+this letter todays morning.Guess what will be next few days.Did you end your papertrade already ?Time to try it on real.
 
+With profitable deals in China, American Unity 
+Investments (AUNI-OTC-BB) is exactly where you want to be.
 
-Steve Dickson wrote:
->
-> Sorry for the delayed response...
-That's ok, thanks for the assistance. This is kind of a show stopper for 
-us, as we have to be standardized on RHEL/CentOS this summer.
-I does work with a new kernel (2.6.19.2), but that's not feasible for 
-our entire install base right now.
+Currently trading at around 16 cents, AUNI^OB is firing up a massive 
+publicity blitz to showcase their successful dealings in China.
 
-> Go back and grab the latest rhel4 nfs-utils which is 1.0.6-77. That has
-> been updated with a number of patches that are in the upstream
-> version...
->
-Can you point me to the package? I can't seem to find anything but 
-nfs-utils-1.0.6-70.EL4.src.rpm (from redhat's ftp site), and this is the 
-version I started with.
+We are looking at this one shooting up to the $1.00 mark once results are 
+announced and the advertising officially begins (several days)!
+Rise projected 75% up.
+Wednesday expectations around +25% +0.04(0.20) at least and  +87.5% +0.14(0.30) at most (not bad).
+You know thet we know some things new. Look at monday result - it flying already - was 0.08 now 0.168.
 
-thanks
--jim
+7378717878787A686B776A73796B456E793374776A746C336A
+giparh
 
 
 
