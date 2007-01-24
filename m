@@ -1,23 +1,23 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/15] SUNRPC: switch the RPC server to use the new
-	rpcbind registration API
-Date: Wed, 24 Jan 2007 14:20:07 -0500
-Message-ID: <20070124192007.31133.2169.stgit@localhost.localdomain>
+Subject: [PATCH 08/15] SUNRPC: switch socket-based RPC transports to
+	use rpcbind
+Date: Wed, 24 Jan 2007 14:20:04 -0500
+Message-ID: <20070124192004.31133.42543.stgit@localhost.localdomain>
 References: <20070124191704.31133.12713.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1H9ngk-0001A6-78
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:42 -0800
+	id 1H9ngY-00019h-O7
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:30 -0800
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1H9ngi-00015k-Td
-	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:44 -0800
+	(Exim 4.44) id 1H9ngY-0004QI-4y
+	for nfs@lists.sourceforge.net; Wed, 24 Jan 2007 11:21:32 -0800
 In-Reply-To: <20070124191704.31133.12713.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,29 +31,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Eventually this interface will support versions 3 and 4 of the rpcbind
-protocol, which will allow the Linux RPC server to register services on
-IPv6 addresses.
+Now that we have a version of the portmapper that supports versions 3 and 4
+of the rpcbind protocol, use it for new RPC client connections over
+sockets.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/xprtsock.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6627759..d38d74a 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -666,7 +666,7 @@ svc_register(struct svc_serv *serv, int 
- 			if (progp->pg_vers[i]->vs_hidden)
- 				continue;
- 
--			error = rpc_register(progp->pg_prog, i, proto, port, &dummy);
-+			error = rpcb_register(progp->pg_prog, i, proto, port, &dummy);
- 			if (error < 0)
- 				break;
- 			if (port && !dummy) {
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 64736b3..78d5494 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1477,7 +1477,7 @@ static struct rpc_xprt_ops xs_udp_ops = 
+ 	.set_buffer_size	= xs_udp_set_buffer_size,
+ 	.reserve_xprt		= xprt_reserve_xprt_cong,
+ 	.release_xprt		= xprt_release_xprt_cong,
+-	.rpcbind		= rpc_getport,
++	.rpcbind		= rpcb_getport,
+ 	.set_port		= xs_set_port,
+ 	.connect		= xs_connect,
+ 	.buf_alloc		= rpc_malloc,
+@@ -1494,7 +1494,7 @@ static struct rpc_xprt_ops xs_udp_ops = 
+ static struct rpc_xprt_ops xs_tcp_ops = {
+ 	.reserve_xprt		= xprt_reserve_xprt,
+ 	.release_xprt		= xs_tcp_release_xprt,
+-	.rpcbind		= rpc_getport,
++	.rpcbind		= rpcb_getport,
+ 	.set_port		= xs_set_port,
+ 	.connect		= xs_connect,
+ 	.buf_alloc		= rpc_malloc,
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
