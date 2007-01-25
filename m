@@ -1,12 +1,23 @@
-From: Christian Robottom Reis <kiko@async.com.br>
-Subject: Performance expectations of NFS
-Date: Thu, 25 Jan 2007 17:31:21 -0200
-Message-ID: <20070125193121.GA7267@anthem.async.com.br>
-Mime-Version: 1.0
+From: Marvin Humphrey <marvin@rectangular.com>
+Subject: Re: Lucene, delete-on-last-close, and flock emulation
+Date: Thu, 25 Jan 2007 11:36:41 -0800
+Message-ID: <9DE715C1-E01B-4FE1-858E-AE9409BD1F84@rectangular.com>
+References: <873E10FD-9682-46D8-9A5D-D6AD6C60060C@rectangular.com>
+	<1169694418.8355.5.camel@lade.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-Cc: Johan Dahlin <jdahlin@async.com.br>
-To: NFS@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HAAP4-00032q-4V
+	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 11:37:01 -0800
+Received: from www.rectangular.com ([68.116.38.223] helo=rectangular.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HAAP0-0002EQ-1Q
+	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 11:36:57 -0800
+In-Reply-To: <1169694418.8355.5.camel@lade.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,60 +30,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello there,
+On Jan 24, 2007, at 7:06 PM, Trond Myklebust wrote:
+> You could easily fix this by having the reader create a hard link  
+> to the
+> index file. e.g.
+>
+> ln foo foo-client.my.org-$$
+> open("foo-client.my.org-$$");
+> ....
+> read()
+> ...
+> close()
+> rm foo-client.my.org-$$
 
-    I run a small (10-node) diskless network in our company, and I've
-been a user of Linux as server and client in it for many years now.
-Most of the time my users are very happy with the system, and it
-performs very reliably; however, I do get complaints that the network is
-slow, and I always want to advocate that diskless should be as fast
-enough as local disks (even though it really isn't!)
+Interesting approach.  Lucene is written in Java, and to my  
+knowledge, Java doesn't provide support for hard linking on principle  
+because it's system specific -- so hard linking wasn't on the radar  
+screen.  It would actually be easier to implement this in my Perl/C  
+port because there's link() from either Perl or <unistd.h>.
 
-So a user today presented me with a real-world benchmark of an operation
-that he does regularly. It's basically issueing a copy of a code checkout:
+The first drawback is that this scheme requires that read apps have  
+write permissions on the NFS volume.  A dot-lock read-locking scheme  
+I proposed received this response on the KinoSearch list:
 
-    % cp -r gazpacho gazpacho-new
+     We do not enable NFS writes, only reads (which is why
+     Slashdot is able to reliably use NFS for its heavy
+     load :-).  So I don't think that will work, if I
+     understand you correctly.
 
-This is a 33MB tree with 2674 files. Network is a switched 100Mbit/s,
-and you can netcat a file over HTTP at about 10MB/s from the server; I
-think that suggests the network is fine.
+The second is that it might get pretty messy.  Reading apps may stay  
+open for days at a time, but it would be pretty dicy for library code  
+to require mandatory periodic timestamp updates -- so it's hard to  
+devise a sensible strategy for culling orphaned links.  And Lucene  
+indexes are directories with tens, often hundreds of files in them.   
+So if you have a lot of clients, we're talking about a large number  
+of links.
 
-Unscientific average times for variations of this benchmark are as
-follows:
+On the upside, delete-on-last-close uses reference-counting, and hard  
+linking is basically a reference-counting technique.  So in spirit,  
+hard linking is exactly the right approach -- better than read  
+locking, and much more in line with Lucene's current design.
 
-  0:05  - Server: locally on RAID-5
-  0:06  - Client: copying from NFS mount to tmpfs
-  2:31  - Client: Copying from NFS mount to NFS mount
-          (i.e., the simple command above)
-  3:30  - Client: Copying from NFS mount to NFS mount over an existing
-          tree.
-  5:08  - Client: Copying from tmpfs to NFS mount
-  0:48  - Client: Deleting copy of tree on NFS mount
+> Why do read locking at all?
 
-Now I know that file creation is synchronous, and that because of this,
-the NFS copy will /always/ run significantly slower. But I was amazed at
-just how much faster reading was than writing, and at how fast reading
-actually is -- it's much faster than I expected NFS could be.
+It's only one out of 6 or 7 approaches we've considered so far, none  
+of which are satisfactory.  If we can avoid it, great!
 
-I also found it interesting that copying from NFS mount to NFS mount was
-faster than copying from local filesystem to NFS mount; I imagine there
-is a protocol optimization for that common scenario.
+Marvin Humphrey
+Rectangular Research
+http://www.rectangular.com/
 
-But what I'd really like to know if there is a way of making the
-above operation run in significantly less time than it is today, or if
-our expectations are just unrealistic given the complexity of network
-filesystems. I'd be pretty happy with an operation that ran in, say, 40
-seconds -- but 2:30 is a pretty long time. I've tried toying with rsize
-and wsize, async and sync, and tcp rmem and wmem proc settings. None of
-those changes makes a real difference. So my questions are:
 
-    Are there practical ways of speeding the operation up?
-
-    Would people with better hardware see significantly reduced times?
-
-I appreciate any advice and discussion on the topic. Thanks!
--- 
-Christian Robottom Reis | http://async.com.br/~kiko/ | [+55 16] 3376 0125
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
