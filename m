@@ -1,38 +1,25 @@
-From: Arnau Bria <arnau@fnal.gov>
+From: Arnau Bria <arnau@emergetux.net>
 Subject: nfs problem
-Date: Thu, 25 Jan 2007 15:30:53 +0100
-Message-ID: <20070125153053.26ccee52@lx-arnau.pic.es>
+Date: Thu, 25 Jan 2007 15:31:53 +0100
+Message-ID: <20070125153153.23f5df6a@lx-arnau.pic.es>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HA5e4-0001zu-BD
-	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 06:32:08 -0800
-Received: from mailgw2.fnal.gov ([131.225.111.12])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HA5e3-0000K7-UG
-	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 06:32:10 -0800
-Received: from mailav1.fnal.gov (mailav1.fnal.gov [131.225.111.18])
-	by mailgw2.fnal.gov
-	(iPlanet Messaging Server 5.2 HotFix 2.06 (built Mar 28 2005))
-	with SMTP id <0JCF003UXHJ2LH@mailgw2.fnal.gov> for
-	nfs@lists.sourceforge.net; Thu, 25 Jan 2007 08:32:00 -0600 (CST)
-Received: from mailgw2.fnal.gov ([131.225.111.12])
-	by mailav1.fnal.gov (SAVSMTP 3.1.7.47) with SMTP id
-	M2007012508320030726 for
-	<nfs@lists.sourceforge.net>; Thu, 25 Jan 2007 08:32:00 -0600
-Received: from conversion-daemon.mailgw2.fnal.gov by mailgw2.fnal.gov
-	(iPlanet Messaging Server 5.2 HotFix 2.06 (built Mar 28 2005))
-	id <0JCF00701HE9PZ@mailgw2.fnal.gov> (original mail from
-	arnau@fnal.gov)
-	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 08:32:00 -0600 (CST)
+	id 1HA5f0-00025r-FA
+	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 06:33:06 -0800
+Received: from 41.red-80-37-233.staticip.rima-tde.net ([80.37.233.41]
+	helo=afrodita.emergetux.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HA5ez-0005xn-Fo
+	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 06:33:08 -0800
 Received: from lx-arnau.pic.es (lx-arnau.pic.es [193.146.196.198])
-	by mailgw2.fnal.gov
-	(iPlanet Messaging Server 5.2 HotFix 2.06 (built Mar 28 2005))
-	with ESMTPSA id <0JCF003NCHPAYO@mailgw2.fnal.gov> for
-	nfs@lists.sourceforge.net; Thu, 25 Jan 2007 08:32:00 -0600 (CST)
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by afrodita.emergetux.net (Postfix) with ESMTP id C95217C16C
+	for <nfs@lists.sourceforge.net>; Thu, 25 Jan 2007 15:32:03 +0100 (CET)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -143,16 +130,21 @@ and client uses autofs:
 /home /etc/auto.home --timeout=600
 
 # cat /etc/auto.home
-cdfcaf          -rw,hard,intr,async,rsize=8192,wsize=8192 IP_SERVER:/home/cdfcaf
-cdfsoft         -rw,hard,intr,async,rsize=8192,wsize=8192 IP_SERVER:/home/cdfsoft
-sam             -rw,hard,intr,async,rsize=8192,wsize=8192 IP_SERVER:/home/sam
-cafmon          -rw,hard,intr,async,rsize=8192,wsize=8192 IP_SERVER:/home/cafmon
+cdfcaf          -rw,hard,intr,async,rsize=8192,wsize=8192
+IP_SERVER:/home/cdfcaf cdfsoft
+-rw,hard,intr,async,rsize=8192,wsize=8192 IP_SERVER:/home/cdfsoft
+sam             -rw,hard,intr,async,rsize=8192,wsize=8192
+IP_SERVER:/home/sam cafmon
+-rw,hard,intr,async,rsize=8192,wsize=8192 IP_SERVER:/home/cafmon
 
 
 Anyone knows where is the source of this problem?
 
 Thanks in advance,
 Arnau
+
+PS: sorry to admins, I used a non subscribed account for my first
+post :-(
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
