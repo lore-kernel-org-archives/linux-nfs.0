@@ -1,29 +1,23 @@
-From: James Bardin <jbardin@bu.edu>
-Subject: Re: nfs sec=krb5 on RHEL and CentOS
-Date: Thu, 25 Jan 2007 18:40:55 -0500
-Message-ID: <45B94007.60609@bu.edu>
-References: <a3b675320701211411r45d010f8jd7132deedcf68804@mail.gmail.com>	
-	<45B73D93.1020508@RedHat.com> <45B7C85C.80105@bu.edu>	
-	<20070124233908.GS6587@fieldses.org>	
-	<a3b675320701241614p360a596fjb92723eb5ce6dfd9@mail.gmail.com>	
-	<45B9084F.7090307@bu.edu> <45B92779.3000202@bu.edu>
-	<4d569c330701251514p3bde8ec9uaf5d07084e94888e@mail.gmail.com>
+From: Christian Robottom Reis <kiko@async.com.br>
+Subject: Re: Performance expectations of NFS
+Date: Thu, 25 Jan 2007 22:54:25 -0200
+Message-ID: <20070126005425.GB29218@anthem.async.com.br>
+References: <20070125193121.GA7267@anthem.async.com.br>
+	<200701252350.22255.bernd-schubert@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: , Johan Dahlin <jdahlin@async.com.br>, nfs@lists.sourceforge.net
+To: Bernd Schubert <bernd-schubert@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HAEDE-00026i-VL
-	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 15:41:02 -0800
-Received: from wx-out-0506.google.com ([66.249.82.230])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HAEDE-0001xE-4j
-	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 15:41:02 -0800
-Received: by wx-out-0506.google.com with SMTP id i30so1081140wxd
-	for <nfs@lists.sourceforge.net>; Thu, 25 Jan 2007 15:40:59 -0800 (PST)
-In-Reply-To: <4d569c330701251514p3bde8ec9uaf5d07084e94888e@mail.gmail.com>
+	id 1HAFMR-0000rt-6p
+	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 16:54:35 -0800
+Received: from frodo.hserus.net ([204.74.68.40])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HAFMR-0000zY-Uk
+	for nfs@lists.sourceforge.net; Thu, 25 Jan 2007 16:54:37 -0800
+In-Reply-To: <200701252350.22255.bernd-schubert@gmx.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,75 +30,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Thu, Jan 25, 2007 at 11:50:21PM +0100, Bernd Schubert wrote:
+> Hi Christian,
+> 
+> >   0:05  - Server: locally on RAID-5
+> >   0:06  - Client: copying from NFS mount to tmpfs
+> >   2:31  - Client: Copying from NFS mount to NFS mount
+> >           (i.e., the simple command above)
+> >   3:30  - Client: Copying from NFS mount to NFS mount over an existing
+> >           tree.
+> >   5:08  - Client: Copying from tmpfs to NFS mount
+> >   0:48  - Client: Deleting copy of tree on NFS mount
+> 
+> I guess your exports has the "sync" option or your didn't set  async or sync 
+> at all (sync is then the default)? Can you repeat the test again using the 
+> async option? But please, also read carefully the explanations of "man 5 
+> exports" about this topic. 
 
+This /was/ using the async option. Using sync causes the times to worsen
+by about 70% (so the NFS to NFS copy takes about 5 minutes).
 
-Kevin Coffman wrote:
-> On 1/25/07, James Bardin <jbardin@bu.edu> wrote:
->>
->> > I'm almost there!
->> > Between the nfs-utils patch, and the noacl option, I have my 32bit
->> > systems working. (thanks Steve)
->> >
->> > On x86_64, I'm having kerberos problems (exact same config):
->> >
->> > rpc.gssd[4871]: handling krb5 upcall
->> > rpc.gssd[4871]: getting credentials for client with uid xxxx for
->> > server yyyy.bu.edu
->> > rpc.gssd[4871]: CC file 'krb5cc_xxxx_bSULEy' being considered
->> > rpc.gssd[4871]: CC file 'krb5cc_xxxx_bSULEy' matches name check and
->> > has mtime of 1169750861
->> > rpc.gssd[4871]: using FILE:/tmp/krb5cc_xxxx_bSULEy as credentials
->> > cache for client with uid xxxx for server yyyy.bu.edu
->> > rpc.gssd[4871]: creating context using euid xxxx (save_uid 0)
->> > rpc.gssd[4871]: creating tcp client for server yyyy.bu.edu
->> > rpc.gssd[4871]: WARNING: can't create rpc_clnt for server
->> > engna1.bu.edu for user with uid xxxx: RPC: Success rpc.gssd[4871]:
->> > WARNING: Failed to create krb5 context for user with uid xxxx for
->> > server yyyy.bu.edu
->> > rpc.gssd[4871]: doing error downcall
->> >
->> >
->> x86_64 is working on an older version, I read the errata, and it
->> shouldn't effect us, but something is wrong in the new ones. This is
->> with sec=krb5.
->> nfs-utils-1.0.6-77 causes the above problems
->> nfs-utils-1.0.6-70 will hang on rpc.gssd
->> nfs-utils-1.0.6-65 is working.
->>
->>
->>
->> > Kevin Coffman wrote:
->> > Unless Steve has pulled in more fixes than I think, you'll probably
->> > need to upgrade libgssapi and maybe nfs-utils to get 64-bit working.
->> > I was going to look at what is in nfs-utils-1.0.6-77, but my RHEL 4
->> > subscription has expired :-/.  Working on that.
->> >
->> > Offhand, I don't recall exactly when those changes went in, but I'll
->> > check.
->> I'm trying to keep to the RHEL src tree as much as possible, this is
->> going on a lot of machines.
->> Do you know of a patch/update for libgssapi that I could try?
->>
->> thanks
->> -jim
->
-> OK, sorry for the false alarm.  I've looked closer at what is included
-> in nfs-utils-1.0.6-70 on another RHEL system here.  From what I can
-> tell, the -70 version should have the 64-bit fixes that I am aware of.
-> It sounds like the -65 had them as well.
->
-> It looks like Steve Dickson has been working hard!  He may be the best
-> person to say what changed between nfs-utils-1.0.6-65 and -70 and -77
-> versions that might be causing your problems.
->
-> K.C.
->
-I don't know if it's related, but sometimes when I build an nfs-utils 
-src.rpm, it dumps out saying the GSS with KRB5 support not found. If I 
-try to build again, it works???
+> Just for fun, take ethereal and capture some data, once with the async and 
+> once with the sync option. Now have a look how much time each operation of 
+> the nfs client takes before it gets confirmed by the server. Especially look 
+> at the commit calls, once with sync and once with async option.
 
+Yeah, that's a great idea; I should do that tomorrow.
 
+> I guess if one could convince the nfs clients to reduce the number of commit 
+> calls, write operations would be much much faster. Don't know if that is 
+> possible at all, though.
 
+I get the feeling that the real bottleneck is synchronous file
+creation. What I would like to understand is whether this is done for
+reliability or to preserve filesystem semantics.
+-- 
+Christian Robottom Reis | http://async.com.br/~kiko/ | [+55 16] 3376 0125
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
