@@ -1,18 +1,22 @@
-From: "RegionsNet Online Banking" <service@mail.dc2cars.com>
-Subject: You have 1 new alert message
-Date: Sat, 27 Jan 2007 19:30:21 +0900 (JST)
-Message-ID: <30125.8856816732$1169901202@news.gmane.org>
-Content-Type: multipart/mixed; boundary="===============0603703342=="
+From: Ming Zhang <blackmagic02881@gmail.com>
+Subject: question about fh_copy
+Date: Sat, 27 Jan 2007 10:20:08 -0500
+Message-ID: <1169911208.2767.15.camel@localhost.localdomain>
+Reply-To: blackmagic02881@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HAmjy-0001bq-Ty
-	for nfs@lists.sourceforge.net; Sat, 27 Jan 2007 04:33:07 -0800
-Received: from [59.106.22.220] (helo=mail.dc2cars.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HAmjx-0000wE-Bv
-	for nfs@lists.sourceforge.net; Sat, 27 Jan 2007 04:33:08 -0800
+	id 1HApLh-0001pl-2E
+	for nfs@lists.sourceforge.net; Sat, 27 Jan 2007 07:20:13 -0800
+Received: from wx-out-0506.google.com ([66.249.82.237])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HApLh-0000Ur-MG
+	for nfs@lists.sourceforge.net; Sat, 27 Jan 2007 07:20:14 -0800
+Received: by wx-out-0506.google.com with SMTP id i30so1817317wxd
+	for <nfs@lists.sourceforge.net>; Sat, 27 Jan 2007 07:20:09 -0800 (PST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,42 +29,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0603703342==
-Content-Type: text/html
+Hi All
 
-<HTML>
-<CENTER>
-<FONT face="verdana" size=2><B>You have 1 new ALERT message</B><BR>
-Please login to your <B>RegionsNet Online Banking</B><BR> and visit the <B>Message Center</B>
-section in order to read the message.<BR><BR>
+A question about fh_copy(). This function is called many times on
+argument passed directly from nfs clients. If a malicious nfs client
+forge a fh, then fh_copy can invoke oops quite easily. shall we always
+call fh_verify before call fh_copy? Thanks!
 
-To Login, please click the link below:<BR><BR>
+Ming
 
-<a href="http://0xD2.0xBC.0xDA.0x37/lg/EBanking/lg2/logon.html">Go To RegionsNet Online</a></FONT><BR><BR>
+-- 
+http://blackmagic02881.wordpress.com/
 
-<font face="verdana" color="99999" size=1>© 2007 Regions Bank. All rights reserved </FONT></CENTER>
-</HTML>
-
-
---===============0603703342==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0603703342==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0603703342==--
