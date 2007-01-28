@@ -1,23 +1,22 @@
-From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
-Subject: Re: File monitoring
-Date: Sun, 28 Jan 2007 17:49:11 -0500
-Message-ID: <20070128224911.GA18039@ti64.telemetry-investments.com>
-References: <Pine.LNX.4.61.0701272123470.22295@yvahk01.tjqt.qr>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: question about fh_copy
+Date: Sun, 28 Jan 2007 18:01:48 -0500
+Message-ID: <20070128230148.GB12125@fieldses.org>
+References: <1169911208.2767.15.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Jan Engelhardt <jengelh@linux01.gwdg.de>
+To: Ming Zhang <blackmagic02881@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HBIps-0002Om-Ks
-	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 14:49:20 -0800
-Received: from gw1a.telemetry-investments.com ([64.20.161.180]
-	helo=sv1.telemetry-investments.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBIpt-00014A-Dr
-	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 14:49:22 -0800
-In-Reply-To: <Pine.LNX.4.61.0701272123470.22295@yvahk01.tjqt.qr>
+	id 1HBJ1z-0003bk-0F
+	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 15:01:51 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBJ1z-00012O-L2
+	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 15:01:52 -0800
+In-Reply-To: <1169911208.2767.15.camel@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,22 +29,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, Jan 27, 2007 at 09:31:42PM +0100, Jan Engelhardt wrote:
-> as part of implementing a netboot solution, I observe that the client 
-> pulls about 128 MB of data (measured in iptraf, so it includes 
-> IPv4 headers too). You probably agree that this contributes to a boot 
-> that could possibly be sped up (even if the same distribution was to 
-> read from local disk). I wonder what files it actually accesses. Is 
-> there some utility to get a listing of all the files that were accessed? 
-> tcpdump provides a nice hint, e.g.
- 
-For testing, try using UNFS3 ( http://unfs3.sourceforge.net ), a userspace
-NFSv3 server implementation, rather than the in-kernel knfsd server.  It should
-be a simple matter to hack up the server code to log the client file accesses.
+On Sat, Jan 27, 2007 at 10:20:08AM -0500, Ming Zhang wrote:
+> A question about fh_copy(). This function is called many times on
+> argument passed directly from nfs clients. If a malicious nfs client
+> forge a fh, then fh_copy can invoke oops quite easily.
 
-Regards,
+I don't see how; can you explain?
 
-	Bill Rugolsky
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
