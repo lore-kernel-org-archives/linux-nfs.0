@@ -1,26 +1,21 @@
-From: Jim Davis <jdavis@CS.Arizona.EDU>
-Subject: rpc.gssd segfault on FC5 client
-Date: Mon, 29 Jan 2007 13:35:19 -0700
-Message-ID: <45BE5A87.3010204@CS.Arizona.EDU>
-References: <1169911208.2767.15.camel@localhost.localdomain>	<20070128230148.GB12125@fieldses.org>	<1170030999.9144.8.camel@localhost.localdomain>	<20070129010419.GF12125@fieldses.org>
-	<1170079837.2871.15.camel@localhost.localdomain>
+From: "Dan Goetzman" <dan.goetzman@gmail.com>
+Subject: NFS client problems with Tru64 NFS server
+Date: Mon, 29 Jan 2007 15:42:42 -0600
+Message-ID: <63f285650701291342w396ae046t1d38de91ec4345fc@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============1085250644=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HBdXW-00047X-IW
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 12:55:46 -0800
-Received: from optima.cs.arizona.edu ([192.12.69.5])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBdXU-0007RC-UT
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 12:55:48 -0800
-Received: from [172.16.1.9] (bsod.cs.arizona.edu [172.16.1.9])
-	by optima.cs.arizona.edu (8.13.4/8.13.4) with ESMTP id l0TKZKQn052414
-	for <nfs@lists.sourceforge.net>; Mon, 29 Jan 2007 13:35:22 -0700 (MST)
-	(envelope-from jdavis@CS.Arizona.EDU)
-In-Reply-To: <1170079837.2871.15.camel@localhost.localdomain>
+	id 1HBeGy-0000ad-8k
+	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 13:42:44 -0800
+Received: from an-out-0708.google.com ([209.85.132.246])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBeGy-0001k5-IB
+	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 13:42:45 -0800
+Received: by an-out-0708.google.com with SMTP id d40so1313024and
+	for <nfs@lists.sourceforge.net>; Mon, 29 Jan 2007 13:42:43 -0800 (PST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,96 +28,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I'm trying to set up Kerberized NFSv3 between a Network Appliance NFS 
-server and a Fedora Core 5 and 6 clients, following the outline in 
-http://www.netapp.com/library/tr/3481.pdf.  FC6 is working, but trying 
-to start rpc.gssd on FC5 fails as the daemon dies with a segmentation fault:
+--===============1085250644==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_141930_28992053.1170106962534"
 
-Script started on Mon Jan 29 13:23:46 2007
-angora$ cd /
-angora$ uname -r
-2.6.18-1.2257.fc5smp
-angora$ rpm -qf /usr/sbin/rpc.gssd
-nfs-utils-1.0.8-4.fc5
-angora$ sudo /usr/kerberos/sbin/ktutil
-ktutil:  read_kt /etc/krb5.keytab
-ktutil:  l -e
-slot KVNO Principal
----- ---- 
----------------------------------------------------------------------
-    1    3 nfs/angora.cs.arizona.edu@CS.ARIZONA.EDU (DES cbc mode with 
-CRC-32)
-ktutil:  angora$
-angora$ sudo sh-c "ulimit -c unlimited;/usr/sbin/rpc.gssd -f -vvv"
-Using keytab file '/etc/krb5.keytab'
-Processing keytab entry for principal 
-'nfs/angora.cs.arizona.edu@CS.ARIZONA.EDU'
-We will use this entry (nfs/angora.cs.arizona.edu@CS.ARIZONA.EDU)
-sh: line 1:  9479 Segmentation fault      (core dumped) 
-/usr/sbin/rpc.gssd -f -vvv
-angora$ sudo gdb /usr/lib/debug/usr/sbin/rpc.gssd.debug /core.9479
-GNU gdb Red Hat Linux (6.3.0.0-1.134.fc5rh)
-Copyright 2004 Free Software Foundation, Inc.
-GDB is free software, covered by the GNU General Public License, and you are
-welcome to change it and/or distribute copies of it under certain 
-conditions.
-Type "show copying" to see the conditions.
-There is absolutely no warranty for GDB.  Type "show warranty" for details.
-This GDB was configured as "i386-redhat-linux-gnu"...Using host 
-libthread_db library "/lib/libthread_db.so.1".
+------=_Part_141930_28992053.1170106962534
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Using 2.6.19-1.2895.fc6 I have problems with Tru64 NFS file servers using
+recent Linux NFS clients. I get the error "Not a directory" when I try to cd
+to various sub dirs on the NFS filesystem. The problem, I think,  appears to
+be that the NFS client code detects the directory is on a different
+filesystem (it is not). Or at least that is what it appears like to me. The
+problem remains for a given mount once a sub directory has this problem. A
+umount/mount will clear the problem but then I will see in on another sub
+directory.
+
+I think the Linux NFS client might not be handling the Tru64 FSID's
+correctly?
+The output of /proc/fs/nfsfs/volumes for the remote NFS filesystem appears
+like;
+
+NV SERVER   PORT DEV     FSID
+v3 ac13cc8d  801 0:18    6bb2b101:0
+v3 ac13110f  801 0:36    ffffffffcc98e21e
+
+ Note the second V3 mount, the FSID returned by the Tru64 server is not
+displayed with the fsid major and fsid minor format. I checked with a
+network trace and this "ffffffffcc98e211e" is in fact the correct FSID
+returned by the Tru64 NFS server (using ADVFS filesystems). This problem
+only appears on NFSV3, not NFSV2 and seems to be only with recent Linux
+kernels (seen here in Fedora Core 6 and I have seen the same with RHAS 5).
+
+Dan Goetzman
+
+------=_Part_141930_28992053.1170106962534
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Using 2.6.19-1.2895.fc6 I have problems with Tru64 NFS file servers using recent Linux NFS clients. I get the error &quot;Not a directory&quot; when I try to cd to various sub dirs on the NFS filesystem. The problem, I think,&nbsp; appears to be that the NFS client code detects the directory is on a different filesystem (it is not). Or at least that is what it appears like to me. The problem remains for a given mount once a sub directory has this problem. A umount/mount will clear the problem but then I will see in on another sub directory.
+<br><br>I think the Linux NFS client might not be handling the Tru64 FSID&#39;s correctly?<br>The output of /proc/fs/nfsfs/volumes for the remote NFS filesystem appears like;<br><br>NV SERVER&nbsp;&nbsp; PORT DEV&nbsp;&nbsp;&nbsp;&nbsp; FSID<br>v3 ac13cc8d&nbsp; 801 0:18&nbsp;&nbsp;&nbsp; 6bb2b101:0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<br>v3 ac13110f&nbsp; 801 0:36&nbsp;&nbsp;&nbsp; ffffffffcc98e21e<br><br>&nbsp;Note the second V3 mount, the FSID returned by the Tru64 server is not displayed with the fsid major and fsid minor format. I checked with a network trace and this &quot;ffffffffcc98e211e&quot; is in fact the correct FSID returned by the Tru64 NFS server (using ADVFS filesystems). This problem only appears on NFSV3, not NFSV2 and seems to be only with recent Linux kernels (seen here in Fedora Core 6 and I have seen the same with RHAS 5).
+<br><br>Dan Goetzman<br><br>&nbsp;<br>
+
+------=_Part_141930_28992053.1170106962534--
 
 
-warning: core file may not match specified executable file.
-Failed to read a valid object file image from memory.
-Core was generated by `/usr/sbin/rpc.gssd -f -vvv'.
-Program terminated with signal 11, Segmentation fault.
-#0  0x00428d58 in ?? ()
-(gdb) bt
-#0  0x00428d58 in ?? ()
-#1  0x00000004 in ?? ()
-#2  0x08019c78 in ?? ()
-#3  0x0042cdc9 in ?? ()
-#4  0x08019c00 in ?? ()
-#5  0xbfb4f27c in ?? ()
-#6  0x00c34918 in ?? ()
-#7  0x00471e00 in ?? ()
-#8  0x08019c2c in ?? ()
-#9  0x00000018 in ?? ()
-#10 0x00000001 in ?? ()
-#11 0xbfb4f25c in ?? ()
-#12 0xbfb4f258 in ?? ()
-#13 0xbfb4f240 in ?? ()
-#14 0x08019c60 in ?? ()
-#15 0xbfb4f204 in ?? ()
-#16 0xbfb4f1f8 in ?? ()
-#17 0xbfb4f228 in ?? ()
-#18 0x08019c08 in ?? ()
-#19 0xbfb4f178 in ?? ()
-#20 0x08019c38 in ?? ()
-#21 0xbfb4f300 in ?? ()
-#22 0x007abc0e in ?? ()
----Type <return> to continue, or q <return> to quit---
-#23 0xbfb4f2f0 in ?? ()
-#24 0x007abb91 in ?? ()
-#25 0x080169a0 in ?? ()
-#26 0x00000028 in ?? ()
-#27 0xbfb4f178 in ?? ()
-#28 0x00000000 in ?? ()
-(gdb) angora$
-angora$ exit
-exit
-
-Script done on Mon Jan 29 13:25:13 2007
-angora$
-
-Any ideas on what I've missed, or how to get more useful information out 
-of the core dump?
+--===============1085250644==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1085250644==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1085250644==--
