@@ -1,26 +1,24 @@
-From: Ming Zhang <blackmagic02881@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: question about fh_copy
-Date: Sun, 28 Jan 2007 19:36:39 -0500
-Message-ID: <1170030999.9144.8.camel@localhost.localdomain>
+Date: Sun, 28 Jan 2007 20:04:19 -0500
+Message-ID: <20070129010419.GF12125@fieldses.org>
 References: <1169911208.2767.15.camel@localhost.localdomain>
 	<20070128230148.GB12125@fieldses.org>
-Reply-To: blackmagic02881@gmail.com
+	<1170030999.9144.8.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Ming Zhang <blackmagic02881@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HBKVl-0004NY-2G
-	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 16:36:41 -0800
-Received: from wx-out-0506.google.com ([66.249.82.226])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBKVl-00086G-On
-	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 16:36:43 -0800
-Received: by wx-out-0506.google.com with SMTP id i30so2329171wxd
-	for <nfs@lists.sourceforge.net>; Sun, 28 Jan 2007 16:36:40 -0800 (PST)
-In-Reply-To: <20070128230148.GB12125@fieldses.org>
+	id 1HBKwc-00074a-BJ
+	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 17:04:26 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBKwY-0003h5-4F
+	for nfs@lists.sourceforge.net; Sun, 28 Jan 2007 17:04:23 -0800
+In-Reply-To: <1170030999.9144.8.camel@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,34 +31,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sun, 2007-01-28 at 18:01 -0500, J. Bruce Fields wrote:
-> On Sat, Jan 27, 2007 at 10:20:08AM -0500, Ming Zhang wrote:
-> > A question about fh_copy(). This function is called many times on
-> > argument passed directly from nfs clients. If a malicious nfs client
-> > forge a fh, then fh_copy can invoke oops quite easily.
+On Sun, Jan 28, 2007 at 07:36:39PM -0500, Ming Zhang wrote:
+> On Sun, 2007-01-28 at 18:01 -0500, J. Bruce Fields wrote:
+> > On Sat, Jan 27, 2007 at 10:20:08AM -0500, Ming Zhang wrote:
+> > > A question about fh_copy(). This function is called many times on
+> > > argument passed directly from nfs clients. If a malicious nfs client
+> > > forge a fh, then fh_copy can invoke oops quite easily.
+> > 
+> > I don't see how; can you explain?
 > 
-> I don't see how; can you explain?
+> svc_process at http://lxr.linux.no/source/net/sunrpc/svc.c?v=2.6.18#L386
+> invoke a rpc processing function, for example, nfsd3_proc_getattr
+> then at http://lxr.linux.no/source/fs/nfsd/nfs3proc.c?v=2.6.18#L64
+> invoke fh_copy before fh_verify. since src coming from client, client
+> can forge a fh to let code
+> http://lxr.linux.no/source/include/linux/nfsd/nfsfh.h?v=2.6.18#L222 get
+> executed. if fh_dentry is a invalid pointer, it can get oops.
 
-svc_process at http://lxr.linux.no/source/net/sunrpc/svc.c?v=2.6.18#L386
-invoke a rpc processing function, for example, nfsd3_proc_getattr
-then at http://lxr.linux.no/source/fs/nfsd/nfs3proc.c?v=2.6.18#L64
-invoke fh_copy before fh_verify. since src coming from client, client
-can forge a fh to let code
-http://lxr.linux.no/source/include/linux/nfsd/nfsfh.h?v=2.6.18#L222 get
-executed. if fh_dentry is a invalid pointer, it can get oops.
+The fh_dentry field does not contain client-provided data; look at
+nfs3xdr.c:decode_fh() to see how the svc_fh structure is initialized.
 
-or think in another way, if the fh will always be valid with all
-contents, then what is the point to call fh_verify to do "sanity checks
-on the dentry in a client file handle", quoted from fh_verify comment at
-http://lxr.linux.no/source/fs/nfsd/nfsfh.c?v=2.6.18#L105?
-
-Ming
-
-> 
-> --b.
--- 
-http://blackmagic02881.wordpress.com/
-
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
