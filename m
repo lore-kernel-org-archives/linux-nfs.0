@@ -1,72 +1,128 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Mon, 29 Jan 2007 09:16:50 -0500
-Message-ID: <1170080210.5757.6.camel@lade.trondhjem.org>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-	 <17636.4462.975774.528003@cse.unsw.edu.au>
-	 <9a8748490608170258s32df0272r60c8c540e5871485@mail.gmail.com>
-	 <17641.10665.116168.867041@cse.unsw.edu.au>
-	 <1156190098.6158.109.camel@localhost>
-	 <17853.33116.113629.65031@notabene.brown>
+From: Jim Davis <jdavis@CS.Arizona.EDU>
+Subject: rpc.gssd segfault on FC5 client
+Date: Mon, 29 Jan 2007 13:35:19 -0700
+Message-ID: <45BE5A87.3010204@CS.Arizona.EDU>
+References: <1169911208.2767.15.camel@localhost.localdomain>	<20070128230148.GB12125@fieldses.org>	<1170030999.9144.8.camel@localhost.localdomain>	<20070129010419.GF12125@fieldses.org>
+	<1170079837.2871.15.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jesper Juhl <jesper.juhl@gmail.com>, nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751487AbXA2ORM@vger.kernel.org>
-In-Reply-To: <17853.33116.113629.65031@notabene.brown>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HBdXW-00047X-IW
+	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 12:55:46 -0800
+Received: from optima.cs.arizona.edu ([192.12.69.5])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBdXU-0007RC-UT
+	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 12:55:48 -0800
+Received: from [172.16.1.9] (bsod.cs.arizona.edu [172.16.1.9])
+	by optima.cs.arizona.edu (8.13.4/8.13.4) with ESMTP id l0TKZKQn052414
+	for <nfs@lists.sourceforge.net>; Mon, 29 Jan 2007 13:35:22 -0700 (MST)
+	(envelope-from jdavis@CS.Arizona.EDU)
+In-Reply-To: <1170079837.2871.15.camel@localhost.localdomain>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-01-29 at 16:08 +1100, Neil Brown wrote:
-> On Monday August 21, trond.myklebust@fys.uio.no wrote:
-> > 
-> > Could we instead replace it with a dprintk() that returns the value of
-> > "res"? That will keep it useful for debugging purposes.
-> 
-> (only 5 months later...)
-> 
-> Sure, how about this?
-> 
-> Thanks,
-> NeilBrown
+I'm trying to set up Kerberized NFSv3 between a Network Appliance NFS 
+server and a Fedora Core 5 and 6 clients, following the outline in 
+http://www.netapp.com/library/tr/3481.pdf.  FC6 is working, but trying 
+to start rpc.gssd on FC5 fails as the daemon dies with a segmentation fault:
 
-ACKed.
+Script started on Mon Jan 29 13:23:46 2007
+angora$ cd /
+angora$ uname -r
+2.6.18-1.2257.fc5smp
+angora$ rpm -qf /usr/sbin/rpc.gssd
+nfs-utils-1.0.8-4.fc5
+angora$ sudo /usr/kerberos/sbin/ktutil
+ktutil:  read_kt /etc/krb5.keytab
+ktutil:  l -e
+slot KVNO Principal
+---- ---- 
+---------------------------------------------------------------------
+    1    3 nfs/angora.cs.arizona.edu@CS.ARIZONA.EDU (DES cbc mode with 
+CRC-32)
+ktutil:  angora$
+angora$ sudo sh-c "ulimit -c unlimited;/usr/sbin/rpc.gssd -f -vvv"
+Using keytab file '/etc/krb5.keytab'
+Processing keytab entry for principal 
+'nfs/angora.cs.arizona.edu@CS.ARIZONA.EDU'
+We will use this entry (nfs/angora.cs.arizona.edu@CS.ARIZONA.EDU)
+sh: line 1:  9479 Segmentation fault      (core dumped) 
+/usr/sbin/rpc.gssd -f -vvv
+angora$ sudo gdb /usr/lib/debug/usr/sbin/rpc.gssd.debug /core.9479
+GNU gdb Red Hat Linux (6.3.0.0-1.134.fc5rh)
+Copyright 2004 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain 
+conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-redhat-linux-gnu"...Using host 
+libthread_db library "/lib/libthread_db.so.1".
 
-Thanks Neil!
 
-Trond
+warning: core file may not match specified executable file.
+Failed to read a valid object file image from memory.
+Core was generated by `/usr/sbin/rpc.gssd -f -vvv'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x00428d58 in ?? ()
+(gdb) bt
+#0  0x00428d58 in ?? ()
+#1  0x00000004 in ?? ()
+#2  0x08019c78 in ?? ()
+#3  0x0042cdc9 in ?? ()
+#4  0x08019c00 in ?? ()
+#5  0xbfb4f27c in ?? ()
+#6  0x00c34918 in ?? ()
+#7  0x00471e00 in ?? ()
+#8  0x08019c2c in ?? ()
+#9  0x00000018 in ?? ()
+#10 0x00000001 in ?? ()
+#11 0xbfb4f25c in ?? ()
+#12 0xbfb4f258 in ?? ()
+#13 0xbfb4f240 in ?? ()
+#14 0x08019c60 in ?? ()
+#15 0xbfb4f204 in ?? ()
+#16 0xbfb4f1f8 in ?? ()
+#17 0xbfb4f228 in ?? ()
+#18 0x08019c08 in ?? ()
+#19 0xbfb4f178 in ?? ()
+#20 0x08019c38 in ?? ()
+#21 0xbfb4f300 in ?? ()
+#22 0x007abc0e in ?? ()
+---Type <return> to continue, or q <return> to quit---
+#23 0xbfb4f2f0 in ?? ()
+#24 0x007abb91 in ?? ()
+#25 0x080169a0 in ?? ()
+#26 0x00000028 in ?? ()
+#27 0xbfb4f178 in ?? ()
+#28 0x00000000 in ?? ()
+(gdb) angora$
+angora$ exit
+exit
 
-> 
-> Remove warning: VFS is out of sync with lock manager.
-> 
-> But keep it as a dprintk
-> 
-> The message can be generated in a quite normal situation:
->  If a 'lock' request is interrupted, then the lock client needs to
->   record that the server has the lock, incase it does.
->  When we come the unlock, the server might say it doesn't, even
->   though we think it does (or might) and this generates the message.
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
-> ### Diffstat output
->  ./fs/nfs/file.c |    5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff .prev/fs/nfs/file.c ./fs/nfs/file.c
-> --- .prev/fs/nfs/file.c	2007-01-29 16:04:09.000000000 +1100
-> +++ ./fs/nfs/file.c	2007-01-29 16:04:45.000000000 +1100
-> @@ -434,8 +434,9 @@ static int do_vfs_lock(struct file *file
->  			BUG();
->  	}
->  	if (res < 0)
-> -		printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n",
-> -				__FUNCTION__);
-> +		dprintk(KERN_WARNING "%s: VFS is out of sync with lock manager"
-> +			" - error %d!\n",
-> +				__FUNCTION__, res);
->  	return res;
->  }
->  
+Script done on Mon Jan 29 13:25:13 2007
+angora$
+
+Any ideas on what I've missed, or how to get more useful information out 
+of the core dump?
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys - and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
