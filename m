@@ -1,79 +1,72 @@
-From: Ming Zhang <blackmagic02881@gmail.com>
-Subject: Re: question about fh_copy
-Date: Mon, 29 Jan 2007 09:10:37 -0500
-Message-ID: <1170079837.2871.15.camel@localhost.localdomain>
-References: <1169911208.2767.15.camel@localhost.localdomain>
-	<20070128230148.GB12125@fieldses.org>
-	<1170030999.9144.8.camel@localhost.localdomain>
-	<20070129010419.GF12125@fieldses.org>
-Reply-To: blackmagic02881@gmail.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
+	manager!
+Date: Mon, 29 Jan 2007 09:16:50 -0500
+Message-ID: <1170080210.5757.6.camel@lade.trondhjem.org>
+References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
+	 <17636.4462.975774.528003@cse.unsw.edu.au>
+	 <9a8748490608170258s32df0272r60c8c540e5871485@mail.gmail.com>
+	 <17641.10665.116168.867041@cse.unsw.edu.au>
+	 <1156190098.6158.109.camel@localhost>
+	 <17853.33116.113629.65031@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HBXDU-0008D4-Qc
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 06:10:40 -0800
-Received: from an-out-0708.google.com ([209.85.132.243])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBXDU-0000RK-9Q
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 06:10:42 -0800
-Received: by an-out-0708.google.com with SMTP id d40so1061155and
-	for <nfs@lists.sourceforge.net>; Mon, 29 Jan 2007 06:10:39 -0800 (PST)
-In-Reply-To: <20070129010419.GF12125@fieldses.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Jesper Juhl <jesper.juhl@gmail.com>, nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751487AbXA2ORM@vger.kernel.org>
+In-Reply-To: <17853.33116.113629.65031@notabene.brown>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Sun, 2007-01-28 at 20:04 -0500, J. Bruce Fields wrote:
-> On Sun, Jan 28, 2007 at 07:36:39PM -0500, Ming Zhang wrote:
-> > On Sun, 2007-01-28 at 18:01 -0500, J. Bruce Fields wrote:
-> > > On Sat, Jan 27, 2007 at 10:20:08AM -0500, Ming Zhang wrote:
-> > > > A question about fh_copy(). This function is called many times on
-> > > > argument passed directly from nfs clients. If a malicious nfs client
-> > > > forge a fh, then fh_copy can invoke oops quite easily.
-> > > 
-> > > I don't see how; can you explain?
+On Mon, 2007-01-29 at 16:08 +1100, Neil Brown wrote:
+> On Monday August 21, trond.myklebust@fys.uio.no wrote:
 > > 
-> > svc_process at http://lxr.linux.no/source/net/sunrpc/svc.c?v=2.6.18#L386
-> > invoke a rpc processing function, for example, nfsd3_proc_getattr
-> > then at http://lxr.linux.no/source/fs/nfsd/nfs3proc.c?v=2.6.18#L64
-> > invoke fh_copy before fh_verify. since src coming from client, client
-> > can forge a fh to let code
-> > http://lxr.linux.no/source/include/linux/nfsd/nfsfh.h?v=2.6.18#L222 get
-> > executed. if fh_dentry is a invalid pointer, it can get oops.
+> > Could we instead replace it with a dprintk() that returns the value of
+> > "res"? That will keep it useful for debugging purposes.
 > 
-> The fh_dentry field does not contain client-provided data; look at
-> nfs3xdr.c:decode_fh() to see how the svc_fh structure is initialized.
+> (only 5 months later...)
+> 
+> Sure, how about this?
+> 
+> Thanks,
+> NeilBrown
 
-my fault. in decode_fh, it only copy fh_handle. i read it too fast and
-thought it copy the whole svc_fh.
+ACKed.
 
-sorry for the noise.
+Thanks Neil!
 
-
+Trond
 
 > 
-> --b.
--- 
-http://blackmagic02881.wordpress.com/
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys - and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+> Remove warning: VFS is out of sync with lock manager.
+> 
+> But keep it as a dprintk
+> 
+> The message can be generated in a quite normal situation:
+>  If a 'lock' request is interrupted, then the lock client needs to
+>   record that the server has the lock, incase it does.
+>  When we come the unlock, the server might say it doesn't, even
+>   though we think it does (or might) and this generates the message.
+> 
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./fs/nfs/file.c |    5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff .prev/fs/nfs/file.c ./fs/nfs/file.c
+> --- .prev/fs/nfs/file.c	2007-01-29 16:04:09.000000000 +1100
+> +++ ./fs/nfs/file.c	2007-01-29 16:04:45.000000000 +1100
+> @@ -434,8 +434,9 @@ static int do_vfs_lock(struct file *file
+>  			BUG();
+>  	}
+>  	if (res < 0)
+> -		printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n",
+> -				__FUNCTION__);
+> +		dprintk(KERN_WARNING "%s: VFS is out of sync with lock manager"
+> +			" - error %d!\n",
+> +				__FUNCTION__, res);
+>  	return res;
+>  }
+>  
