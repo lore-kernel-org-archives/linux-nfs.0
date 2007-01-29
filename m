@@ -1,32 +1,23 @@
-From: Jim Davis <jdavis@CS.Arizona.EDU>
-Subject: Re: rpc.gssd segfault on FC5 client
-Date: Mon, 29 Jan 2007 16:34:35 -0700
-Message-ID: <45BE848B.2030907@CS.Arizona.EDU>
-References: <1169911208.2767.15.camel@localhost.localdomain>	
-	<20070128230148.GB12125@fieldses.org>	
-	<1170030999.9144.8.camel@localhost.localdomain>	
-	<20070129010419.GF12125@fieldses.org>	
-	<1170079837.2871.15.camel@localhost.localdomain>	
-	<45BE5A87.3010204@CS.Arizona.EDU>	
-	<4d569c330701291402pa6760c4mf64cbfd82cfc6fd2@mail.gmail.com>	
-	<45BE6FF9.6000101@CS.Arizona.EDU>	
-	<4d569c330701291444n36e3a891t318bcfe192c75a04@mail.gmail.com>	
-	<45BE7A11.1060706@CS.Arizona.EDU>
-	<4d569c330701291518q5ece6beeoebff95c2ba44c3b7@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS client problems with Tru64 NFS server
+Date: Mon, 29 Jan 2007 18:59:38 -0500
+Message-ID: <1170115178.6688.24.camel@lade.trondhjem.org>
+References: <63f285650701291342w396ae046t1d38de91ec4345fc@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
+To: Dan Goetzman <dan.goetzman@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HBg1L-00043P-SF
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 15:34:44 -0800
-Received: from optima.cs.arizona.edu ([192.12.69.5])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBg1L-00072x-IT
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 15:34:45 -0800
-In-Reply-To: <4d569c330701291518q5ece6beeoebff95c2ba44c3b7@mail.gmail.com>
+	id 1HBgQ0-0006gv-QY
+	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 16:00:13 -0800
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/vrcE5OzjtYVBSSUY6y3z+54ezCa2SlM4=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBgQ0-0007qv-4F
+	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 16:00:14 -0800
+In-Reply-To: <63f285650701291342w396ae046t1d38de91ec4345fc@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,33 +30,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Kevin Coffman wrote:
-> On 1/29/07, Jim Davis <jdavis@cs.arizona.edu> wrote:
->> Kevin Coffman wrote:
->> > I'm not seeing nfs-utils-debuginfo available.  What is included with
->> > nfs-utils-debuginfo-1.0.8.rc2-4.FC5.2 ?
->>
->> Oh, right, I downloaded that rpm to another system and tarred the
->> contents across to this one.  (That system had the same problem but I
->> decided to focus on just this one.)  The rpm is supposed to have
->> debuggable versions of the nfs-utils in it:
+On Mon, 2007-01-29 at 15:42 -0600, Dan Goetzman wrote:
+> Using 2.6.19-1.2895.fc6 I have problems with Tru64 NFS file servers
+> using recent Linux NFS clients. I get the error "Not a directory" when
+> I try to cd to various sub dirs on the NFS filesystem. The problem, I
+> think,  appears to be that the NFS client code detects the directory
+> is on a different filesystem (it is not). Or at least that is what it
+> appears like to me. The problem remains for a given mount once a sub
+> directory has this problem. A umount/mount will clear the problem but
+> then I will see in on another sub directory. 
 > 
-> So it looks like running /usr/lib/debug/usr/sbin/rpc.gssd.debug might
-> give us a backtrace to work with?
+> I think the Linux NFS client might not be handling the Tru64 FSID's
+> correctly?
 
-Well, I'm not really clear on how the debuginfo stuff is supposed to be 
-used, but it doesn't seem that I can run that file directly.  The best I 
-could come up with after googling around is that it's meant to fed to 
-gdb to analyze core dumps from the real executable.  But it's quite 
-possible I'm missing something there...
+...or Tru64 is possibly not handling FSIDs correctly :-)?
 
-sh-3.1# ls -l /usr/lib/debug/usr/sbin/rpc.gssd.debug
--rwxr-xr-x 1 root root 60564 Feb 12  2006 
-/usr/lib/debug/usr/sbin/rpc.gssd.debug
-sh-3.1# /usr/lib/debug/usr/sbin/rpc.gssd.debug -f
-sh: /usr/lib/debug/usr/sbin/rpc.gssd.debug: Permission denied
+> The output of /proc/fs/nfsfs/volumes for the remote NFS filesystem
+> appears like;
+> 
+> NV SERVER   PORT DEV     FSID
+> v3 ac13cc8d  801 0:18    6bb2b101:0       
+> v3 ac13110f  801 0:36    ffffffffcc98e21e
+> 
+>  Note the second V3 mount, the FSID returned by the Tru64 server is
+> not displayed with the fsid major and fsid minor format. I checked
+> with a network trace and this "ffffffffcc98e211e" is in fact the
+> correct FSID returned by the Tru64 NFS server (using ADVFS
+> filesystems). This problem only appears on NFSV3, not NFSV2 and seems
+> to be only with recent Linux kernels (seen here in Fedora Core 6 and I
+> have seen the same with RHAS 5). 
 
+The only requirement that we have for fsids is that they remain unique
+and consistent for the entire filesystem. If the fsid changes as the
+client enters a new subdirectory, then we will create a submount for
+that subdirectory. The reason why we have to do this is that the fileid
+is not guaranteed to be unique across different fsids (this is true also
+of NFSv2 and NFSv3).
 
+Note that we do allow the server to change the fsid, as long as it is
+done for the whole filesystem. If we detect that the fsid has changed
+for the parent directory as well as for the subdirectory, then we should
+normally simply update our cached value for the fsid for this filesystem
+instead of creating a submount.
+
+Cheers,
+  Trond
 
 
 -------------------------------------------------------------------------
