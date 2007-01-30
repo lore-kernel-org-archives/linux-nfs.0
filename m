@@ -1,22 +1,21 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 00/13] RPC server pre-requisites for IPv6
-Date: Tue, 30 Jan 2007 16:24:07 +1100
-Message-ID: <17854.54903.29418.138244@notabene.brown>
-References: <20070118234855.24266.37463.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+From: bestcasinos@go.ro
+Subject: A Friend
+Date: Tue, 30 Jan 2007 15:18:28 -0500
+Message-ID: <E1HBzQy-0004Do-54@cpanel24.fuitadnet.com>
+Content-Type: multipart/mixed; boundary="===============0203532202=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HBlTv-000412-A1
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 21:24:35 -0800
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBlTw-0006qu-SY
-	for nfs@lists.sourceforge.net; Mon, 29 Jan 2007 21:24:37 -0800
-In-Reply-To: message from Chuck Lever on Thursday January 18
+	id 1HBzZi-0001wR-Px
+	for nfs@lists.sourceforge.net; Tue, 30 Jan 2007 12:27:35 -0800
+Received: from cpanel24.fuitadnet.com ([67.15.40.14])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HBzZh-0004f3-A8
+	for nfs@lists.sourceforge.net; Tue, 30 Jan 2007 12:27:32 -0800
+Received: from root by cpanel24.fuitadnet.com with local (Exim 4.63)
+	(envelope-from <root@cpanel24.fuitadnet.com>) id 1HBzQy-0004Do-54
+	for nfs@lists.sourceforge.net; Tue, 30 Jan 2007 15:18:28 -0500
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,46 +28,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday January 18, chuck.lever@oracle.com wrote:
-> Hi Neil-
-> 
-> Please consider these patches for 2.6.21.  They can replace the similar patch
-> set that is currently included in Andrew's kernel.  These patches address a
-> few minor bugs, and may fix a problem that Andrew is currently seeing.
+--===============0203532202==
+Content-Type: text/html
 
-Thanks Chuck, and sorry for the delay in getting to then.
 
-Once patches are in Andrew's tree it is really a lot easier to get
-incremental patches rather than replacements.  For one thing it makes
-review much easier.
+<html>
+<style type="text/css">
+<!--
+.style11 {font-family: Arial, Helvetica, sans-serif}
+body,td,th {
+	color: #CCCCCC;
+}
+-->
+</style>
+<body>
+<table id="all" cellspacing="0" cellpadding="5" width="600" border="0">
+  <tbody>
+    <tr>
+      <td><table id="content" cellspacing="0" cellpadding="0" width="590" border="0">
+        <tbody>
+         
+          <tr>
+            <td><img height="3" src="http://www.partypoker.com/mail-images/spacer.gif" width="1" /></td>
+          </tr>
+          <tr>
+            <td><table id="copy" cellspacing="0" cellpadding="15" width="100%" bgcolor="#ffffff" border="1">
+              <tbody>
+                <tr>
+                  <td bgcolor="#505050"><p><span class="style11"><strong>Hello</strong>,</span></p>
+                          <p class="style11">A friend told us to give you the world's online best gambling deals! </p>
+                          <p class="style11">That's right: If you open an account at eny of our listing poker or casinos deals you will get special bonus.</p>
+                          <p class="style11">Here's what you need to do:</p>
+                    <ul class="style11">
+                            <li>Go to <a href="http://www.bestcasinos.go.ro" target="_blank" rel="nofollow">http://www.bestcasinos.go.ro</a> and click on whatever you like. </li>
+      <li>Make your first deposit. </li>
+			<li>And get the best bonus ever ! </li>
+                    </ul>
+                    <p class="style11">As soon as you've made a deposit and satisfied the bonus release conditions*   at either of our poker or casino deals, you'll instantly receive the best bonus ever:</p>
+                    <span class="style11">If you have any questions or concerns, please do not hesitate to   contact us. Our Customer Care Department is open 24/7 and we look forward to   serving you.                    </span>
+                    <p class="style11">Sincerely,</p>
+                    <p class="style11"><strong>Best Casinos</strong></p>                    </td>
+                </tr>
+              </tbody>
+            </table></td>
+          </tr>
+        </tbody>
+      </table></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>
 
-I couldn't find anything significant in the first 6 patches of what is
-in -mm, so I am ignoring them.  If there is something I missed, please
-tell me or send an incremental patch.
 
-The remaining 7 (7..13) look fine. 
-I noticed you replacing
-  struct sockaddr_in *sin
-with
-  struct sockaddr *sin
-a couple of times and wondered if the name should change with the
-type (as 'sin' is really an abbreviation of sockaddr_in).  But figured
-it is probably fine as it is.
 
-I'll send them off to Andrew shortly.
-
-How much further do we need to go until kernel-side support for an
-IPv6 NFS server is all there?  I'm guessing there are not a lot more
-placed that need fixing, but some of them might be big fixes ??
-
-Thanks,
-NeilBrown
+--===============0203532202==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0203532202==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0203532202==--
