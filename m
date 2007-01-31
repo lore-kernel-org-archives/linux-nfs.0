@@ -1,28 +1,22 @@
-From: "Jeff Mcmillan" <slickerexhumations@abs-cbni.com>
-Subject: fw: Lynn - did you saw WEXE yesterday
-Date: Wed, 31 Jan 2007 19:28:30 +0000 (UTC)
-Message-ID: <01c7456d$a6f3dd20$6c822ecf@slickerexhumations>
+From: Dan Goetzman <dan_goetzman@bmc.com>
+Subject: NFS "Not a directory" problem
+Date: Wed, 31 Jan 2007 15:53:38 -0600
+Message-ID: <45C10FE2.9060606@bmc.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCL7J-0002XV-0y
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 11:27:41 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HCL7G-0006Ct-Gr
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 11:27:38 -0800
-Received: from p548b7ec8.dip.t-dialin.net ([84.139.126.200])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1HCL77-0008IE-KS
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 11:27:28 -0800
-Received: from 204.212.102.19 (HELO notessvr2.abs-cbni.com)
-	by lists.sourceforge.net with (8.90.9/8.42.5) ESMTP id gts53fkn7vbnh1
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 19:26:05 -0060
-Date: Wed, 31 Jan 2007 19:26:05 -0060
+	id 1HCNOl-0001Wn-Nd
+	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 13:53:48 -0800
+Received: from sky.bmc.com ([198.207.223.240] helo=babbler.bmc.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCNOm-0005Co-Cx
+	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 13:53:49 -0800
+Received: from color.bmc.com (houcfs2.bmc.com [172.19.17.2])
+	by babbler.bmc.com (Postfix) with ESMTP id 0010A1307ED
+	for <nfs@lists.sourceforge.net>; Wed, 31 Jan 2007 15:53:38 -0600 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,25 +29,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-WHAT IS WALL ST THINKING ABOUT? 
-ONLY - West Excelsior Enterprises, Inc. (Pinksh-e-ets: WEXE) 
- 
-WEXE ALMOST ABOUT TO EXPLOODE
-It is currently trading at a low and major news expected in the coming days. This sttock could triple in the next 5-7 trading sessions. 
-Look at history value of this company.
-Our predictions have been right on the money and our last pick did 1,200% up in just 2 short week (10 trading sessions). DO NOT LET THIS ONE PASS YOU BY. Call your broker for more information. 
- 
-Comppany name: West Excelsior Enterprises, Inc. 
-symb: WEXE 
-Mar.ket cap: 60,000,000.00 (approx) 
-Todayss last: 0.60 
-7 Day Target: 1.90 (5 trading sessions = 7 days) 
+Linux client = 2.6.19-1.2895.fc6
+NFS server = Tru64 5.1B-2 (aka 5.1 + PK4)
 
-MASSIVE NEWS IS EXPECTED ON THIS ONE - GET IN NOW!
+NFS mount is NFSV3 over UDP or TCP. NFSV2 works OK, NFSV3 has the 
+following problem;
 
-7378717878787A686B776A73796B456E793374776A746C336A
-Terrax
+$ cd /mnt/
+$ cd fvance
+$ cd src
+ returns "*Not a directory*" error message.
+ src is simply a directory under "fvance". Normally a umount/mount cycle 
+will remove the problem and then all is well.
 
+Turning debug on with "*rpcdebug -m nfs -s all*" and I get the following 
+in messages;
+
+*When it works;*
+> Jan 31 15:30:40 rds-icap kernel: NFS:      
+> nfs_updatepage(HISTFILES/.sh_history-rds-icap.bmc.com 8@1542)
+> Jan 31 15:30:40 rds-icap kernel: NFS:      nfs_updatepage returns 0 
+> (isize 1550)
+> Jan 31 15:30:40 rds-icap kernel: NFS: permission(0:25/8), mask=0x1, res=0
+> Jan 31 15:30:40 rds-icap kernel: NFS: revalidating (0:25/656353)
+> Jan 31 15:30:40 rds-icap kernel: NFS call  getattr
+> Jan 31 15:30:40 rds-icap kernel: NFS reply getattr: 0
+> Jan 31 15:30:40 rds-icap kernel: NFS: nfs_update_inode(0:25/656353 
+> ct=1 info=0x6)
+> Jan 31 15:30:40 rds-icap kernel: NFS: (0:25/656353) revalidation complete
+> Jan 31 15:30:40 rds-icap kernel: NFS: 
+> nfs_lookup_revalidate(fvance/src) is valid
+> Jan 31 15:30:40 rds-icap kernel: NFS: permission(0:25/656353), 
+> mask=0x1, res=0
+*When it fails;*
+> Jan 31 15:25:31 rds-icap kernel: NFS:      
+> nfs_updatepage(HISTFILES/.sh_history-rds-icap.bmc.com 8@1454)
+> Jan 31 15:25:31 rds-icap kernel: NFS:      nfs_updatepage returns 0 
+> (isize 1462)
+> Jan 31 15:25:31 rds-icap kernel: NFS call  access
+> Jan 31 15:25:31 rds-icap kernel: NFS: nfs_update_inode(0:26/8 ct=1 
+> info=0x6)
+> Jan 31 15:25:31 rds-icap kernel: NFS reply access: 0
+> Jan 31 15:25:31 rds-icap kernel: NFS: permission(0:26/8), mask=0x1, res=0
+> Jan 31 15:25:31 rds-icap kernel: NFS: 
+> nfs_lookup_revalidate(fvance/src) is valid
+> Jan 31 15:25:31 rds-icap kernel: NFS call  lookup src
+> Jan 31 15:25:31 rds-icap kernel: NFS reply lookup: 0
+> Jan 31 15:25:31 rds-icap kernel: --> nfs_xdev_get_sb()
+> Jan 31 15:25:31 rds-icap kernel: --> 
+> nfs_clone_server(,ffffffffcc98e21e:0,)
+> Jan 31 15:25:31 rds-icap kernel: --> nfs_probe_fsinfo()
+> Jan 31 15:25:31 rds-icap kernel: NFS call  fsinfo
+> Jan 31 15:25:31 rds-icap kernel: NFS reply fsinfo: 0
+> Jan 31 15:25:31 rds-icap kernel: NFS call  pathconf
+> Jan 31 15:25:31 rds-icap kernel: NFS reply pathconf: 0
+> Jan 31 15:25:31 rds-icap kernel: <-- nfs_probe_fsinfo() = 0
+> Jan 31 15:25:31 rds-icap kernel: Cloned FSID: ffffffffcc98e21e:0
+> Jan 31 15:25:31 rds-icap kernel: <-- nfs_clone_server() = db5db8c0
+> Jan 31 15:25:31 rds-icap kernel: --> nfs_free_server()
+> Jan 31 15:25:31 rds-icap kernel: --> nfs_put_client({3})
+> Jan 31 15:25:31 rds-icap kernel: <-- nfs_free_server()
+> Jan 31 15:25:31 rds-icap kernel: do_proc_get_root: call  fsinfo
+> Jan 31 15:25:31 rds-icap kernel: do_proc_get_root: reply fsinfo: 0
+> Jan 31 15:25:31 rds-icap kernel: NFS: nfs_update_inode(0:26/656353 
+> ct=2 info=0x6)
+> Jan 31 15:25:31 rds-icap kernel: NFS: nfs_fhget(0:26/656353 ct=2)
+> Jan 31 15:25:31 rds-icap kernel: <-- nfs_xdev_get_sb() = 0
+Note,
+inode for parent of fvance = 2
+inode for fvance is 8
+inode for src is 656353
+
+Anyone help me figure out what is going wrong here?
+-Dan Goetzman
 
 
 -------------------------------------------------------------------------
