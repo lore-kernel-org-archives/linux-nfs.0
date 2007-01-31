@@ -1,32 +1,21 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Wed, 31 Jan 2007 00:42:43 +0100
-Message-ID: <9a8748490701301542r33317ca7id9deb63fca2fb2dc@mail.gmail.com>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-	<17636.4462.975774.528003@cse.unsw.edu.au>
-	<9a8748490608170258s32df0272r60c8c540e5871485@mail.gmail.com>
-	<17641.10665.116168.867041@cse.unsw.edu.au>
-	<1156190098.6158.109.camel@localhost>
-	<17853.33116.113629.65031@notabene.brown>
-	<1170080210.5757.6.camel@lade.trondhjem.org>
+From: "Trinabh Shukla" <trinabh@gmail.com>
+Subject: Move .nfsXXXX files
+Date: Wed, 31 Jan 2007 19:03:15 +0530
+Message-ID: <6ffeae550701310533p3bc731b3of53e4da4dd05d98d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed; boundary="===============0627103216=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HC2ch-0004oL-Ig
-	for nfs@lists.sourceforge.net; Tue, 30 Jan 2007 15:42:47 -0800
-Received: from wx-out-0506.google.com ([66.249.82.236])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HC2ce-0008CS-Gd
-	for nfs@lists.sourceforge.net; Tue, 30 Jan 2007 15:42:49 -0800
-Received: by wx-out-0506.google.com with SMTP id i30so52514wxd
-	for <nfs@lists.sourceforge.net>; Tue, 30 Jan 2007 15:42:43 -0800 (PST)
-In-Reply-To: <1170080210.5757.6.camel@lade.trondhjem.org>
+	id 1HCFaP-0002zM-6h
+	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 05:33:17 -0800
+Received: from ug-out-1314.google.com ([66.249.92.171])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCFaQ-0008J8-Qh
+	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 05:33:19 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so165837ugc
+	for <nfs@lists.sourceforge.net>; Wed, 31 Jan 2007 05:33:16 -0800 (PST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,42 +28,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 29/01/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Mon, 2007-01-29 at 16:08 +1100, Neil Brown wrote:
-> > On Monday August 21, trond.myklebust@fys.uio.no wrote:
-> > >
-> > > Could we instead replace it with a dprintk() that returns the value of
-> > > "res"? That will keep it useful for debugging purposes.
-> >
-> > (only 5 months later...)
-> >
-> > Sure, how about this?
-> >
-> > Thanks,
-> > NeilBrown
->
-> ACKed.
->
-> Thanks Neil!
->
+--===============0627103216==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_3173_307377.1170250395686"
 
-Finally getting that in will be sooooo nice :-)  Thank you.
+------=_Part_3173_307377.1170250395686
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Btw: any reason why not to include the
-  fl->fl_flags &= ~FL_SLEEP;
-bit as well?  As in http://lkml.org/lkml/2006/11/27/41  ??
+The .nfsXXXX file get created when I remove a file while it's being kept
+open by one of the process. Due to this I can't remove directory which hold
+this file. So I want to move this .nfsXXXX file on different temp directory
+on the same nfs file system and delete that directory. Here it's working
+properly.
+
+But let me know that is it a correct solution? And removal of .nfs files
+does not cause the server serious integrity.
+
+Also it will be good, if you lead some pointers about how this .nfsXXXX
+files handle by the NFS server.
+
+Thanks,
+-Trinabh
+
+------=_Part_3173_307377.1170250395686
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+The .nfsXXXX file get created when I remove a file while it&#39;s being kept open by one of the process. Due to this I can&#39;t remove directory which hold this file. So I want to move this .nfsXXXX file on different temp directory on the same nfs file system and delete that directory. Here it&#39;s working properly. 
+<br><br>But let me know that is it a correct solution? And removal of .nfs files does not cause the server serious integrity. <br><br>Also it will be good, if you lead some pointers about how this .nfsXXXX files handle by the NFS server. 
+<br><br>Thanks,<br>-Trinabh <br> 
+
+------=_Part_3173_307377.1170250395686--
 
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+--===============0627103216==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys - and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0627103216==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0627103216==--
