@@ -1,32 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: 2.6.17.8 - do_vfs_lock: VFS is out of sync with lock
-	manager!
-Date: Fri, 2 Feb 2007 09:39:21 +1100
-Message-ID: <17858.27673.476380.463938@notabene.brown>
-References: <9a8748490608080739w2e14e5ceg44a7bf0a3b475704@mail.gmail.com>
-	<17636.4462.975774.528003@cse.unsw.edu.au>
-	<9a8748490608170258s32df0272r60c8c540e5871485@mail.gmail.com>
-	<17641.10665.116168.867041@cse.unsw.edu.au>
-	<1156190098.6158.109.camel@localhost>
-	<17853.33116.113629.65031@notabene.brown>
-	<1170080210.5757.6.camel@lade.trondhjem.org>
-	<9a8748490701301542r33317ca7id9deb63fca2fb2dc@mail.gmail.com>
+From: Don Allingham <don.allingham@dothill.com>
+Subject: NFS randomly denying permission to files
+Date: Thu, 01 Feb 2007 15:42:36 -0700
+Message-ID: <1170369756.1221.8.camel@allingham.power.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Jesper Juhl" <jesper.juhl@gmail.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCkaw-0004x4-It
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 14:39:54 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCkaw-0007Ig-4F
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 14:39:56 -0800
-In-Reply-To: message from Jesper Juhl on Wednesday January 31
+	id 1HCkdm-0005MO-EX
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 14:42:50 -0800
+Received: from artecon.dothill.com ([155.254.128.254] helo=dothill.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCkdk-0008Ct-12
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 14:42:52 -0800
+Received: from earthex1.dothill.com (earthex1 [206.6.180.60])
+	by dothill.com (8.12.9+Sun/8.12.5) with ESMTP id l11MRBCe001149
+	for <nfs@lists.sourceforge.net>; Thu, 1 Feb 2007 14:27:12 -0800 (PST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,29 +29,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday January 31, jesper.juhl@gmail.com wrote:
-> On 29/01/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> Finally getting that in will be sooooo nice :-)  Thank you.
-> 
-> Btw: any reason why not to include the
->   fl->fl_flags &= ~FL_SLEEP;
-> bit as well?  As in http://lkml.org/lkml/2006/11/27/41  ??
-> 
+I have recently upgraded my NFS (and NIS) server to a newer system.
+Unfortunately, this has caused some very strange errors. Certain
+directories (such as .mozilla/firefox) will give Permission denied
+errors about 50% of the time.
 
-Uhmm... I guess I had forgotten it ....
+$ ls
+8g3rtccm.default  pluginreg.dat  profiles.ini
+$ ls
+8g3rtccm.default  pluginreg.dat  profiles.ini
+$ ls
+ls: .: Permission denied
+$ ls
+ls: .: Permission denied
 
-Looking again, I cannot convince myself that it is needed.
-The comment says "If we were signalled ...", and if we were signalled
-then do_vfs_lock won't block anyway.  I think I was probably being
-over-cautious as I didn't know the significance of testing for
--ERESTARTSYS.
-However it seems to only get returned if a signal is pending (so why
-EINTR isn't returned I still don't know) so a signal must be pending
-on that piece of code, so there is no need to clear FL_SLEEP.
+The client is using the same mount command as before, only with a
+different server name. Both the old and new servers are running Ubuntu
+6.10 (one is a older P4, the new one is a dual processor Opteron)
 
-Thanks,
-NeilBrown
+The fstab for the client has the line:
+
+vlsi-fs0:/export /home nfs rw,rsize=8192,wsize=8192,intr,hard 0 0
+
+The host export file is pretty simple:
+
+/export *(rw,no_root_squash,sync)
+
+UIDs and GIDs for all files are the same (even though the NIS server
+changed as well).
+
+Any ideas on how to debug this problem?
+
+Thanks
+Don
+ 
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
