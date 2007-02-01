@@ -1,22 +1,20 @@
-From: "Joaquin Starks" <puttersmacrobiotics@aadey.force9.co.uk>
-Subject: President Bush attends Prayer Breakfast Live
-Date: Thu, 1 Feb 2007 14:50:42 -0120
-Message-ID: <01c74610$58f74690$6c822ecf@puttersmacrobiotics>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] Update README
+Date: Thu, 1 Feb 2007 12:38:47 -0500
+Message-ID: <20070201173847.GA26741@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: NeilBrown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCdH5-00023Q-2l
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 06:50:55 -0800
-Received: from [85.96.221.131] (helo=dsl.dynamic8596221131.ttnet.net.tr)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCdH4-0007kO-Hi
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 06:50:57 -0800
-Received: from 212.159.11.36 (HELO mx.core.plus.net)
-	by lists.sourceforge.net with (8.37.2/8.16.4) ESMTP id 1tp8u3rv9tnmno
-	for nfs@lists.sourceforge.net; Thu, 1 Feb 2007 14:50:42 -0120
+	id 1HCfti-0006cx-9Y
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 09:38:58 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCftd-0004MN-Ar
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 09:38:56 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,22 +27,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Good day.
-We will try it today morning, restricts are removed, market are waiting for detonation.
-And today this company will start to rise fast.
-We hope you didnt sell you shhares yet. 
-Because today we will try to push up the charts and get additional investors from there.
+The README has bit-rotted: redhat and debian packaging scripts are no
+longer included, util-linux mount is (in theory) no longer required, and
+instructions on building from latest git would be useful.
 
-Cooommpany: WEST EXCELSIOR ENT (WEXE at PK)  
-Priccee: $0.60 
-Symmbbol: WEXE 
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
 
+I'm autotool-clueless and have no clue about the "ltmain.sh" thing
+mentioned in the last section; I just followed the bootstrapping
+instructions in the commit message for 922d6cfd and found I needed a
+copy of ltmain.sh to make it work.
 
-Company need aprox 250k $ to finish it's new project.
-After thet price will go to the sky.7378717878787A686B776A73796B456E793374776A746C336A
-Watch WEXE traddde on Feb 1! 
-This one will definitely be a runnner!
+ README |   40 +++++++++++++++-------------------------
+ 1 files changed, 15 insertions(+), 25 deletions(-)
 
+diff --git a/README b/README
+index 3fa3a58..f5a2aee 100644
+--- a/README
++++ b/README
+@@ -16,10 +16,9 @@ libraries.  They are available from
+ Otherwise use --disable-nfsv4
+ 
+ 
+-1. COMPILING WITHOUT PACKAGE MANAGEMENT
++1. COMPILING
+ 
+-To compile without using a package management system, unpack the
+-sources and run these commands:
++Unpack the sources and run these commands:
+ 
+     # ./configure
+     # make
+@@ -28,38 +27,29 @@ To install binaries and documenation, run this command:
+ 
+     # make install
+ 
+-You will have to install the two NFS service scripts yourself.
+-Service scripts for RedHat 6.x and 7.x are in etc/redhat.  They
+-have been tested on RedHat 6.2 and 7.1.
+ 
++2. COMPILING FROM GIT
+ 
+-2. COMPILING WITH RPM
++Getting nfs-utils for the first time:
+ 
+-On RedHat 6.2 and 7.1, you can use
++	git clone git://linux-nfs.org/nfs-utils
+ 
+-    # rpm -ta nfs-utils-1.0.1.tar.gz
++Updating to the latest head after you've already got it.
+ 
+-to build the source and binary RPMs.
++	git pull
+ 
++Building requires that autotools be installed:
+ 
+-3. COMPILING FOR DEBIAN
+-
+-The nfs-utils tree has an up-to-date debian directory, so the usual
+-debian build scripts should work.  The simplest way to build binary
+-debs, however, is simply to become root (or use fakeroot) and run:
+-
+-    # debian/rules binary
+-
+-
+-4. REQUIRED VERSIONS OF OTHER TOOLS
+-
+-Proper NFS operation requires a 'mount' program from util-linux 2.11f
+-or later.
++	aclocal -I aclocal
++	autoheader
++	automake
++	autoconf
+ 
++You may also need to copy ltmain.sh to the current directory if the
++above doesn't do that.  Usually there's a copy in
++/usr/share/libtool/ltmain.sh.  Finally, build as usual as above.
+ 
+ Share And Enjoy!
+ 
+     --	the nfs-utils developers
+ 	<nfs@lists.sourceforge.net>
+-	26 Dec 2001
+-
+-- 
+1.5.0.rc1.g72fe
 
 
 -------------------------------------------------------------------------
