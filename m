@@ -1,24 +1,23 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Move .nfsXXXX files
-Date: Wed, 31 Jan 2007 19:42:28 -0800
-Message-ID: <1170301348.5795.33.camel@lade.trondhjem.org>
-References: <6ffeae550701310533p3bc731b3of53e4da4dd05d98d@mail.gmail.com>
+Subject: Re: NFS "Not a directory" problem
+Date: Wed, 31 Jan 2007 20:31:44 -0800
+Message-ID: <1170304304.5795.39.camel@lade.trondhjem.org>
+References: <45C10FE2.9060606@bmc.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Trinabh Shukla <trinabh@gmail.com>
+To: Dan Goetzman <dan_goetzman@bmc.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCSqZ-0003Am-Ol
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 19:42:53 -0800
+	id 1HCTcC-0007a0-4c
+	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 20:32:07 -0800
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/gzQ70bncne+KjukgsYwENZ+pSgBZajEM=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HCSqb-0006xC-Ca
-	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 19:42:53 -0800
-In-Reply-To: <6ffeae550701310533p3bc731b3of53e4da4dd05d98d@mail.gmail.com>
+	ident=[U2FsdGVkX18MWd0QrLqKUJ7T/AeXttqkQEXlOHDFg/s=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCTcC-0007x5-Ex
+	for nfs@lists.sourceforge.net; Wed, 31 Jan 2007 20:32:06 -0800
+In-Reply-To: <45C10FE2.9060606@bmc.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,32 +30,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-01-31 at 19:03 +0530, Trinabh Shukla wrote:
-> The .nfsXXXX file get created when I remove a file while it's being
-> kept open by one of the process. Due to this I can't remove directory
-> which hold this file. So I want to move this .nfsXXXX file on
-> different temp directory on the same nfs file system and delete that
-> directory. Here it's working properly. 
+On Wed, 2007-01-31 at 15:53 -0600, Dan Goetzman wrote:
+> Linux client = 2.6.19-1.2895.fc6
+> NFS server = Tru64 5.1B-2 (aka 5.1 + PK4)
 > 
-> But let me know that is it a correct solution? And removal of .nfs
-> files does not cause the server serious integrity. 
+> NFS mount is NFSV3 over UDP or TCP. NFSV2 works OK, NFSV3 has the 
+> following problem;
+> 
+> $ cd /mnt/
+> $ cd fvance
+> $ cd src
+>  returns "*Not a directory*" error message.
+>  src is simply a directory under "fvance". Normally a umount/mount cycle 
+> will remove the problem and then all is well.
+> 
+> Turning debug on with "*rpcdebug -m nfs -s all*" and I get the following 
+> in messages;
+> 
+> *When it works;*
+> > Jan 31 15:30:40 rds-icap kernel: NFS:      
+> > nfs_updatepage(HISTFILES/.sh_history-rds-icap.bmc.com 8@1542)
+> > Jan 31 15:30:40 rds-icap kernel: NFS:      nfs_updatepage returns 0 
+> > (isize 1550)
+> > Jan 31 15:30:40 rds-icap kernel: NFS: permission(0:25/8), mask=0x1, res=0
+> > Jan 31 15:30:40 rds-icap kernel: NFS: revalidating (0:25/656353)
+> > Jan 31 15:30:40 rds-icap kernel: NFS call  getattr
+> > Jan 31 15:30:40 rds-icap kernel: NFS reply getattr: 0
+> > Jan 31 15:30:40 rds-icap kernel: NFS: nfs_update_inode(0:25/656353 
+> > ct=1 info=0x6)
+> > Jan 31 15:30:40 rds-icap kernel: NFS: (0:25/656353) revalidation complete
+> > Jan 31 15:30:40 rds-icap kernel: NFS: 
+> > nfs_lookup_revalidate(fvance/src) is valid
+> > Jan 31 15:30:40 rds-icap kernel: NFS: permission(0:25/656353), 
+> > mask=0x1, res=0
+> *When it fails;*
+> > Jan 31 15:25:31 rds-icap kernel: NFS:      
+> > nfs_updatepage(HISTFILES/.sh_history-rds-icap.bmc.com 8@1454)
+> > Jan 31 15:25:31 rds-icap kernel: NFS:      nfs_updatepage returns 0 
+> > (isize 1462)
+> > Jan 31 15:25:31 rds-icap kernel: NFS call  access
+> > Jan 31 15:25:31 rds-icap kernel: NFS: nfs_update_inode(0:26/8 ct=1 
+> > info=0x6)
+> > Jan 31 15:25:31 rds-icap kernel: NFS reply access: 0
+> > Jan 31 15:25:31 rds-icap kernel: NFS: permission(0:26/8), mask=0x1, res=0
+> > Jan 31 15:25:31 rds-icap kernel: NFS: 
+> > nfs_lookup_revalidate(fvance/src) is valid
+> > Jan 31 15:25:31 rds-icap kernel: NFS call  lookup src
+> > Jan 31 15:25:31 rds-icap kernel: NFS reply lookup: 0
+> > Jan 31 15:25:31 rds-icap kernel: --> nfs_xdev_get_sb()
+> > Jan 31 15:25:31 rds-icap kernel: --> 
+> > nfs_clone_server(,ffffffffcc98e21e:0,)
+> > Jan 31 15:25:31 rds-icap kernel: --> nfs_probe_fsinfo()
+> > Jan 31 15:25:31 rds-icap kernel: NFS call  fsinfo
+> > Jan 31 15:25:31 rds-icap kernel: NFS reply fsinfo: 0
+> > Jan 31 15:25:31 rds-icap kernel: NFS call  pathconf
+> > Jan 31 15:25:31 rds-icap kernel: NFS reply pathconf: 0
+> > Jan 31 15:25:31 rds-icap kernel: <-- nfs_probe_fsinfo() = 0
+> > Jan 31 15:25:31 rds-icap kernel: Cloned FSID: ffffffffcc98e21e:0
+> > Jan 31 15:25:31 rds-icap kernel: <-- nfs_clone_server() = db5db8c0
+> > Jan 31 15:25:31 rds-icap kernel: --> nfs_free_server()
+> > Jan 31 15:25:31 rds-icap kernel: --> nfs_put_client({3})
+> > Jan 31 15:25:31 rds-icap kernel: <-- nfs_free_server()
+> > Jan 31 15:25:31 rds-icap kernel: do_proc_get_root: call  fsinfo
+> > Jan 31 15:25:31 rds-icap kernel: do_proc_get_root: reply fsinfo: 0
+> > Jan 31 15:25:31 rds-icap kernel: NFS: nfs_update_inode(0:26/656353 
+> > ct=2 info=0x6)
+> > Jan 31 15:25:31 rds-icap kernel: NFS: nfs_fhget(0:26/656353 ct=2)
+> > Jan 31 15:25:31 rds-icap kernel: <-- nfs_xdev_get_sb() = 0
+> Note,
+> inode for parent of fvance = 2
+> inode for fvance is 8
+> inode for src is 656353
+> 
+> Anyone help me figure out what is going wrong here?
+> -Dan Goetzman
 
-The .nfsXXX file is a sign that some process still has that file open.
-If you forcibly delete the file, you are very likely to screw up that
-process. Better then just to kill the process.
+I'd like to see what values the server is returning for the fsid on
+GETATTR/LOOKUP calls to the parent of fvance, fvance, and fvance/src in
+the case where the 'not a directory' issue turns up.
+Can you show us a binary tcpdump (or some equivalent) of such an event?
 
-You might be able to move the file to another directory, but the problem
-then is that the process that tried to delete the file may not have
-write access to that directory. In this case, the unlink may fail, and
-you will be left with a dangling .nfsXXX file.
-
-> Also it will be good, if you lead some pointers about how
-> this .nfsXXXX files handle by the NFS server. 
-
-As far as the NFS server is concerned, this is a file just like any
-other. The server attaches no special meaning to it.
-
-Trond
+Cheers,
+  Trond
 
 
 -------------------------------------------------------------------------
