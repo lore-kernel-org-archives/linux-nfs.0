@@ -1,119 +1,99 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 013 of 14] knfsd: SUNRPC: support IPv6 addresses in RPC server's UDP receive path.
-Date: Fri, 2 Feb 2007 15:40:44 +1100
-Message-ID: <1070202044044.19169@suse.de>
+Subject: [PATCH 003 of 14] knfsd: SUNRPC: aplit svc_sock_enqueue out
+	of svc_setup_socket.
+Date: Fri, 2 Feb 2007 15:39:52 +1100
+Message-ID: <1070202043952.18971@suse.de>
 References: <20070202153531.18622.patches@notabene>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1422961AbXBBEmk@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HCqDi-00086F-Jo
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 20:42:57 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCqDk-0007Ue-8F
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 20:40:20 -0800
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-From: Chuck Lever <chuck.lever@oracle.com>
-Add support for IPv6 addresses in the RPC server's UDP receive path.
+Rather than calling svc_sock_enqueue at the end of svc_setup_socket,
+we now call it (via svc_sock_recieved) after calling svc_setup_socket
+at each call site.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
+We do this because a subsequent patch will insert some code between
+the two calls at one call site.
+
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./include/linux/sunrpc/svc.h |    5 +++
- ./net/sunrpc/svcsock.c       |   55 +++++++++++++++++++++++++++++++++++--------
- 2 files changed, 50 insertions(+), 10 deletions(-)
-
-diff .prev/include/linux/sunrpc/svc.h ./include/linux/sunrpc/svc.h
---- .prev/include/linux/sunrpc/svc.h	2007-02-02 15:22:32.000000000 +1100
-+++ ./include/linux/sunrpc/svc.h	2007-02-02 15:22:58.000000000 +1100
-@@ -270,6 +270,11 @@ static inline struct sockaddr_in *svc_ad
- 	return (struct sockaddr_in *) &rqst->rq_addr;
- }
- 
-+static inline struct sockaddr_in6 *svc_addr_in6(struct svc_rqst *rqst)
-+{
-+	return (struct sockaddr_in6 *) &rqst->rq_addr;
-+}
-+
- static inline struct sockaddr *svc_addr(struct svc_rqst *rqst)
- {
- 	return (struct sockaddr *) &rqst->rq_addr;
+ ./net/sunrpc/svcsock.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
 diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2007-02-02 15:22:40.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2007-02-02 15:22:58.000000000 +1100
-@@ -715,13 +715,55 @@ svc_write_space(struct sock *sk)
- 	}
+--- .prev/net/sunrpc/svcsock.c	2007-02-02 15:15:11.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2007-02-02 15:18:37.000000000 +1100
+@@ -925,7 +925,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
+ 				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
+ 		goto failed;
+-
++	svc_sock_received(newsvsk);
+ 
+ 	/* make sure that we don't have too many active connections.
+ 	 * If we have, something must be dropped.
+@@ -1532,8 +1532,6 @@ static struct svc_sock *svc_setup_socket
+ 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+ 				svsk, svsk->sk_sk);
+ 
+-	clear_bit(SK_BUSY, &svsk->sk_flags);
+-	svc_sock_enqueue(svsk);
+ 	return svsk;
  }
  
-+static void svc_udp_get_sender_address(struct svc_rqst *rqstp,
-+					struct sk_buff *skb)
-+{
-+	switch (rqstp->rq_sock->sk_sk->sk_family) {
-+	case AF_INET:
-+		/* this seems to come from net/ipv4/udp.c:udp_recvmsg */
-+		do {
-+			struct sockaddr_in *sin = svc_addr_in(rqstp);
-+
-+			sin->sin_family = AF_INET;
-+			sin->sin_port = skb->h.uh->source;
-+			sin->sin_addr.s_addr = skb->nh.iph->saddr;
-+			rqstp->rq_addrlen = sizeof(struct sockaddr_in);
-+			/* Remember which interface received this request */
-+			rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
-+		} while (0);
-+		break;
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	case AF_INET6:
-+		/* this is derived from net/ipv6/udp.c:udpv6_recvmesg */
-+		do {
-+			struct sockaddr_in6 *sin6 = svc_addr_in6(rqstp);
-+
-+			sin6->sin6_family = AF_INET6;
-+			sin6->sin6_port = skb->h.uh->source;
-+			sin6->sin6_flowinfo = 0;
-+			sin6->sin6_scope_id = 0;
-+			if (ipv6_addr_type(&sin6->sin6_addr) &
-+							IPV6_ADDR_LINKLOCAL)
-+				sin6->sin6_scope_id = IP6CB(skb)->iif;
-+			ipv6_addr_copy(&sin6->sin6_addr,
-+							&skb->nh.ipv6h->saddr);
-+			rqstp->rq_addrlen = sizeof(struct sockaddr_in);
-+			/* Remember which interface received this request */
-+			ipv6_addr_copy(&rqstp->rq_daddr.addr6,
-+							&skb->nh.ipv6h->saddr);
-+		} while (0);
-+		break;
-+#endif
+@@ -1557,8 +1555,10 @@ int svc_addsock(struct svc_serv *serv,
+ 		err = -EISCONN;
+ 	else {
+ 		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
+-		if (svsk)
++		if (svsk) {
++			svc_sock_received(svsk);
+ 			err = 0;
++		}
+ 	}
+ 	if (err) {
+ 		sockfd_put(so);
+@@ -1609,8 +1609,10 @@ static int svc_create_socket(struct svc_
+ 			goto bummer;
+ 	}
+ 
+-	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL)
++	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
++		svc_sock_received(svsk);
+ 		return ntohs(inet_sk(svsk->sk_sk)->sport);
 +	}
-+	return;
-+}
-+
- /*
-  * Receive a datagram from a UDP socket.
-  */
- static int
- svc_udp_recvfrom(struct svc_rqst *rqstp)
- {
--	struct sockaddr_in *sin = svc_addr_in(rqstp);
- 	struct svc_sock	*svsk = rqstp->rq_sock;
- 	struct svc_serv	*serv = svsk->sk_server;
- 	struct sk_buff	*skb;
-@@ -774,16 +816,9 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	len  = skb->len - sizeof(struct udphdr);
- 	rqstp->rq_arg.len = len;
  
--	rqstp->rq_prot        = IPPROTO_UDP;
--
--	/* Get sender address */
--	sin->sin_family = AF_INET;
--	sin->sin_port = skb->h.uh->source;
--	sin->sin_addr.s_addr = skb->nh.iph->saddr;
--	rqstp->rq_addrlen = sizeof(struct sockaddr_in);
-+	rqstp->rq_prot = IPPROTO_UDP;
- 
--	/* Remember which interface received this request */
--	rqstp->rq_daddr.addr.s_addr = skb->nh.iph->daddr;
-+	svc_udp_get_sender_address(rqstp, skb);
- 
- 	if (skb_is_nonlinear(skb)) {
- 		/* we have to copy */
+ bummer:
+ 	dprintk("svc: svc_create_socket error = %d\n", -error);
+
+-------------------------------------------------------------------------
+Using Tomcat but need to do more? Need to support web services, security?
+Get stuff done quickly with pre-integrated technology to make your job easier.
+Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
