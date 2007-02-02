@@ -1,70 +1,184 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 012 of 14] knfsd: SUNRPC: Support IPv6 addresses in svc_tcp_accept
-Date: Fri, 2 Feb 2007 15:40:39 +1100
-Message-ID: <1070202044039.19150@suse.de>
+Subject: [PATCH 002 of 14] knfsd: SUNRPC: allow creating an RPC service without registering with portmapper
+Date: Fri, 2 Feb 2007 15:39:47 +1100
+Message-ID: <1070202043947.18952@suse.de>
 References: <20070202153531.18622.patches@notabene>
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1422997AbXBBElb@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S965375AbXBBEkr@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
 
 From: Chuck Lever <chuck.lever@oracle.com>
-Modify svc_tcp_accept to support connecting on IPv6 sockets.
+Sometimes we need to create an RPC service but not register it with the
+local portmapper.  NFSv4 delegation callback, for example.
+
+Change the svc_makesock() API to allow optionally creating temporary or
+permanent sockets, optionally registering with the local portmapper, and
+make it return the ephemeral port of the new socket.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/svcsock.c |   13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
+ ./fs/lockd/svc.c                 |   26 ++++++++++++++++----------
+ ./fs/nfs/callback.c              |   20 +++++++++-----------
+ ./fs/nfsd/nfssvc.c               |    6 ++++--
+ ./include/linux/sunrpc/svcsock.h |    2 +-
+ ./net/sunrpc/svcsock.c           |    6 ++++--
+ 5 files changed, 34 insertions(+), 26 deletions(-)
+
+diff .prev/fs/lockd/svc.c ./fs/lockd/svc.c
+--- .prev/fs/lockd/svc.c	2007-02-02 14:31:52.000000000 +1100
++++ ./fs/lockd/svc.c	2007-02-02 14:40:41.000000000 +1100
+@@ -223,23 +223,29 @@ static int find_socket(struct svc_serv *
+ 	return found;
+ }
+ 
++/*
++ * Make any sockets that are needed but not present.
++ * If nlm_udpport or nlm_tcpport were set as module
++ * options, make those sockets unconditionally
++ */
+ static int make_socks(struct svc_serv *serv, int proto)
+ {
+-	/* Make any sockets that are needed but not present.
+-	 * If nlm_udpport or nlm_tcpport were set as module
+-	 * options, make those sockets unconditionally
+-	 */
+-	static int		warned;
++	static int warned;
+ 	int err = 0;
++
+ 	if (proto == IPPROTO_UDP || nlm_udpport)
+ 		if (!find_socket(serv, IPPROTO_UDP))
+-			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport);
+-	if (err == 0 && (proto == IPPROTO_TCP || nlm_tcpport))
++			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport,
++						SVC_SOCK_DEFAULTS);
++	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+ 		if (!find_socket(serv, IPPROTO_TCP))
+-			err= svc_makesock(serv, IPPROTO_TCP, nlm_tcpport);
+-	if (!err)
++			err = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport,
++						SVC_SOCK_DEFAULTS);
++
++	if (err >= 0) {
+ 		warned = 0;
+-	else if (warned++ == 0)
++		err = 0;
++	} else if (warned++ == 0)
+ 		printk(KERN_WARNING
+ 		       "lockd_up: makesock failed, error=%d\n", err);
+ 	return err;
+
+diff .prev/fs/nfs/callback.c ./fs/nfs/callback.c
+--- .prev/fs/nfs/callback.c	2007-02-02 14:31:52.000000000 +1100
++++ ./fs/nfs/callback.c	2007-02-02 14:40:41.000000000 +1100
+@@ -106,7 +106,6 @@ static void nfs_callback_svc(struct svc_
+ int nfs_callback_up(void)
+ {
+ 	struct svc_serv *serv;
+-	struct svc_sock *svsk;
+ 	int ret = 0;
+ 
+ 	lock_kernel();
+@@ -119,17 +118,14 @@ int nfs_callback_up(void)
+ 	ret = -ENOMEM;
+ 	if (!serv)
+ 		goto out_err;
+-	/* FIXME: We don't want to register this socket with the portmapper */
+-	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport);
+-	if (ret < 0)
++
++	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
++							SVC_SOCK_ANONYMOUS);
++	if (ret <= 0)
+ 		goto out_destroy;
+-	if (!list_empty(&serv->sv_permsocks)) {
+-		svsk = list_entry(serv->sv_permsocks.next,
+-				struct svc_sock, sk_list);
+-		nfs_callback_tcpport = ntohs(inet_sk(svsk->sk_sk)->sport);
+-		dprintk ("Callback port = 0x%x\n", nfs_callback_tcpport);
+-	} else
+-		BUG();
++	nfs_callback_tcpport = ret;
++	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
++
+ 	ret = svc_create_thread(nfs_callback_svc, serv);
+ 	if (ret < 0)
+ 		goto out_destroy;
+@@ -140,6 +136,8 @@ out:
+ 	unlock_kernel();
+ 	return ret;
+ out_destroy:
++	dprintk("Couldn't create callback socket or server thread; err = %d\n",
++		ret);
+ 	svc_destroy(serv);
+ out_err:
+ 	nfs_callback_info.users--;
+
+diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
+--- .prev/fs/nfsd/nfssvc.c	2007-02-02 14:31:52.000000000 +1100
++++ ./fs/nfsd/nfssvc.c	2007-02-02 14:40:41.000000000 +1100
+@@ -235,7 +235,8 @@ static int nfsd_init_socks(int port)
+ 
+ 	error = lockd_up(IPPROTO_UDP);
+ 	if (error >= 0) {
+-		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port);
++		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
++					SVC_SOCK_DEFAULTS);
+ 		if (error < 0)
+ 			lockd_down();
+ 	}
+@@ -245,7 +246,8 @@ static int nfsd_init_socks(int port)
+ #ifdef CONFIG_NFSD_TCP
+ 	error = lockd_up(IPPROTO_TCP);
+ 	if (error >= 0) {
+-		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port);
++		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
++					SVC_SOCK_DEFAULTS);
+ 		if (error < 0)
+ 			lockd_down();
+ 	}
+
+diff .prev/include/linux/sunrpc/svcsock.h ./include/linux/sunrpc/svcsock.h
+--- .prev/include/linux/sunrpc/svcsock.h	2007-02-02 14:39:07.000000000 +1100
++++ ./include/linux/sunrpc/svcsock.h	2007-02-02 14:40:41.000000000 +1100
+@@ -62,7 +62,7 @@ struct svc_sock {
+ /*
+  * Function prototypes.
+  */
+-int		svc_makesock(struct svc_serv *, int, unsigned short);
++int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
+ void		svc_delete_socket(struct svc_sock *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
 
 diff .prev/net/sunrpc/svcsock.c ./net/sunrpc/svcsock.c
---- .prev/net/sunrpc/svcsock.c	2007-02-02 15:22:33.000000000 +1100
-+++ ./net/sunrpc/svcsock.c	2007-02-02 15:22:40.000000000 +1100
-@@ -949,7 +949,8 @@ static inline int svc_port_is_privileged
- static void
- svc_tcp_accept(struct svc_sock *svsk)
+--- .prev/net/sunrpc/svcsock.c	2007-02-02 14:39:07.000000000 +1100
++++ ./net/sunrpc/svcsock.c	2007-02-02 14:40:41.000000000 +1100
+@@ -1665,9 +1665,11 @@ svc_delete_socket(struct svc_sock *svsk)
+  * @serv: RPC server structure
+  * @protocol: transport protocol to use
+  * @port: port to use
++ * @flags: requested socket characteristics
+  *
+  */
+-int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port)
++int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
++			int flags)
  {
--	struct sockaddr_in sin;
-+	struct sockaddr_storage addr;
-+	struct sockaddr	*sin = (struct sockaddr *) &addr;
- 	struct svc_serv	*serv = svsk->sk_server;
- 	struct socket	*sock = svsk->sk_sock;
- 	struct socket	*newsock;
-@@ -976,8 +977,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	set_bit(SK_CONN, &svsk->sk_flags);
- 	svc_sock_enqueue(svsk);
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+@@ -1676,7 +1678,7 @@ int svc_makesock(struct svc_serv *serv, 
+ 	};
  
--	slen = sizeof(sin);
--	err = kernel_getpeername(newsock, (struct sockaddr *) &sin, &slen);
-+	err = kernel_getpeername(newsock, sin, &slen);
- 	if (err < 0) {
- 		if (net_ratelimit())
- 			printk(KERN_WARNING "%s: peername failed (err %d)!\n",
-@@ -989,12 +989,11 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	 * hosts here, but when we get encryption, the IP of the host won't
- 	 * tell us anything.  For now just warn about unpriv connections.
- 	 */
--	if (!svc_port_is_privileged((struct sockaddr *) &sin)) {
-+	if (!svc_port_is_privileged(sin)) {
- 		dprintk(KERN_WARNING
- 			"%s: connect from unprivileged port: %s\n",
- 			serv->sv_name,
--			__svc_print_addr((struct sockaddr *) &sin, buf,
--								sizeof(buf)));
-+			__svc_print_addr(sin, buf, sizeof(buf)));
- 	}
- 	dprintk("%s: connect from %s\n", serv->sv_name,
- 		__svc_print_addr((struct sockaddr *) &sin, buf,
-@@ -1008,7 +1007,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
- 				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
- 		goto failed;
--	memcpy(&newsvsk->sk_remote, &sin, slen);
-+	memcpy(&newsvsk->sk_remote, sin, slen);
- 	newsvsk->sk_remotelen = slen;
+ 	dprintk("svc: creating socket proto = %d\n", protocol);
+-	return svc_create_socket(serv, protocol, &sin, SVC_SOCK_DEFAULTS);
++	return svc_create_socket(serv, protocol, &sin, flags);
+ }
  
- 	svc_sock_received(newsvsk);
+ /*
