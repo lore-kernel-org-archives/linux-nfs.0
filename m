@@ -1,23 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Possible jiffy wrap-around problem in NFS client.
-Date: Fri, 02 Feb 2007 09:53:55 -0800
-Message-ID: <1170438835.5890.4.camel@lade.trondhjem.org>
-References: <17858.40219.500690.988191@notabene.brown>
+Subject: Re: PATCH/RFC Add support for using UUID to
+	identify	filesystem in filehandle
+Date: Fri, 02 Feb 2007 11:31:30 -0800
+Message-ID: <1170444690.5890.33.camel@lade.trondhjem.org>
+References: <17859.3893.523905.884732@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HD2c6-0005lX-NP
-	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 09:54:18 -0800
+	id 1HD48J-0008Fh-T5
+	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 11:31:41 -0800
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+5E1q2QdMyTrBAtmw66PaCK6if/wsqpeY=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HD2c6-0008Lb-7z
-	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 09:54:20 -0800
-In-Reply-To: <17858.40219.500690.988191@notabene.brown>
+	ident=[U2FsdGVkX1/UbBGjpAQj5s4VxomzzBeP1rGW6cFmLgA=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HD48H-0008IW-Vk
+	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 11:31:40 -0800
+In-Reply-To: <17859.3893.523905.884732@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +32,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-02-02 at 13:08 +1100, Neil Brown wrote:
-> Hi Trond (and anyone else who might know...)
+On Fri, 2007-02-02 at 21:15 +1100, Neil Brown wrote:
+> If anyone wants to review these patches, or comment on the design, I'd
+> appreciate it....
 > 
->  I'm chasing an apparent NFS client problem, and I'm wondering if it
->  could be a jiffy-wrap around problem.
+> The way nfsd has identified filesystems has bothered me for a while.
 > 
->  In particular, ->cache_change_attribute.
+> The default mechanism is to use the major/minor device number of the
+> block device that holds the filesystem.  This doesn't work for
+> filesystems without a block device, and has problems if the
+> major/minor number changes, as can happen with hardware changes and
+> kernel upgrades.
 > 
->  This seems to be set to 'jiffies' only when the inode is first
->  allocated, or when we have changed the file, or when a GETATTR or wcc
->  shows that the file has changed.
->  So if a file is unchanged on the server, cache_change_attribute will
->  not change after it is first assigned.
+> The alternate introduced some time ago is to explicitly give a number
+> to identify each filesystem with fsid=XXX in /etc/exports.  This
+> overcomes the above problems but requires manually assigning numbers
+> which isn't always ideal.
 > 
->  If the file remains in cache for 24 days (2^31 jiffies at 1000Hz),
-> 	data_stable = nfs_verify_change_attribute(inode, fattr->time_start);
-> 	if (data_stable)
-> 		nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE|NFS_INO_INVALID_ATIME);
->  in nfs_update_inode will start clearing those flags (as
->  cache_change_attribute will always be in the future) and so will
->  trigger more GETATTR requests.
+> What this patch set does is allow you to use a UUID extracted from the
+> filesystem with libblkid.
 > 
->  Could this be correct?
+> UUIDs are 16 bytes long and there is not enough room to store that in
+> an NFSv2 filehandle (along with identification of the file).
+> So for NFSv2 we hash the UUID down to 8 or 4 bytes (using simple xor).
+> If the exportpoint is the root of a filesystem, we use an 8 byte
+> hash.  If it is lower in the filesystem we use a 4 byte hash and a 4
+> byte inode number.
+> 
+> NFSv3 (and v4) filehandles have lots more room, so there we use the
+> full 16byte uuid and an optional 64bit inode number.
+> 
+> Note that with lots of filesystems exported with NFSv2 there is an
+> increased chance of uuid collision.  Don't do that.  Use v3.
+> 
+> You currently specify the uuid by putting
+>    fsuuid
+> in the export flags (and you can give an explicit uuid if you want
+> to).
+> I wonder if I should just over-load fsid, and have
+>    fsid=uuid
+> (exactly that) to mean use a libblkid uuid, and
+>    fsid=xxxxxxxx:xxxxxxxx:xxxxxxxx:xxxxxxxx
+> (hex digits for the 'x's) for an explicit uuid.
+> I would want to be able to specify both an old fsid and a new uuid (for a
+> transition period, to avoid clients suddenly having their file
+> handles rejected) so maybe you can just specify "fsid=" twice.
+> 
+> What do people think?
+> 
+> It would be nice to be able to call-out to a support program if a given
+> uuid didn't match any mounted filesystem.  It could then mount the
+> filesystem (maybe from a media-changer) and export it.  I haven't
+> implemented that yet.
+> 
+> Maybe even a call-out the get the uuid of a filesystem that libblkid
+> doesn't understand??  Would that be useful?
+> 
+> Maybe 'fsuuid' should be a default.  If the kernel supports
+> uuid-filehandles, mounted should always provide a uuid to the kernel
+> and hand out uuid filehandles whenever appropriate.... Or maybe it
+> should only default on v3, as on v2 there is a small chance that you
+> can break a working setup.
+> 
+> Thought? comments? Testing?  Review?
 
-...but if the file isn't changing on the server, why would any of the
-above flags be set in the first place? Is this a situation in which the
-client is writing to the file?
+I like the idea of using a UUID. That makes server setup infinitely more
+easy, and should definitely be the default.
+
+What are the filesystems that support 16 byte UUIDs these days? Should
+we also support hashed labels for those that do not?
+
+About the code. It would really be nice if you could avoid all these
+open-coded filehandle version numbers and fsid types. Use of a macro or
+enum to name them would certainly help the casual code reviewer. Also,
+names like "mk_fsid_v7" do tend to confuse. Perhaps something like
+mk_fsid_uuid() and mk_fsid_uuid_root_export() (for v6)?
 
 Cheers,
   Trond
