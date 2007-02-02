@@ -1,25 +1,21 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: NFS randomly denying permission to files
-Date: Fri, 2 Feb 2007 12:23:25 +1100
-Message-ID: <17858.37517.24831.277303@notabene.brown>
-References: <1170369756.1221.8.camel@allingham.power.com>
-	<17858.28322.401622.364015@notabene.brown>
-	<9DDB513B94253445879B44C250C9BD9A07360F37@venusex1.power.com>
+Subject: Possible jiffy wrap-around problem in NFS client.
+Date: Fri, 2 Feb 2007 13:08:27 +1100
+Message-ID: <17858.40219.500690.988191@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "Don Allingham" <Don.Allingham@dothill.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCn9h-0005cs-V0
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 17:23:58 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1HCnrD-0001gy-Hh
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 18:08:55 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HCn9h-0000xM-Gy
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 17:23:59 -0800
-In-Reply-To: message from Don Allingham on Thursday February 1
+	(Exim 4.44) id 1HCnrE-0004pG-RZ
+	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 18:08:57 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,30 +28,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday February 1, Don.Allingham@dothill.com wrote:
-> 
-> Kernel version for the server and clients are (uname -a):
-> 
-> Linux vlsi-fs0 2.6.17-10-generic #2 SMP Tue Dec 5 21:16:35 UTC 2006 x86_64 GNU/Linux
-> 
-> The no_subtree_check option seems to have made a big difference. 
 
-Hmmm... The bug I was thinking of (affected ext3 with dir_index if you
-didn't use no_subtree_check) was fixed will before 2.6.17 came out.
+Hi Trond (and anyone else who might know...)
 
-What filesystem are you using?  If ext3, what does
-  tune2fs -l /dev/XXXX
-say (for the device holding the filesystem).
+ I'm chasing an apparent NFS client problem, and I'm wondering if it
+ could be a jiffy-wrap around problem.
 
-> 
-> I'm not familar with tcpdump. However, the new system is on a 1G
-> ethernet link, and the old was on a 10/100 link. However, I will
-> investigate this if I start seeing the problem again. 
+ In particular, ->cache_change_attribute.
 
-I wouldn't both.  If no_subtree_check fixes it, then tcpdump won't
-show us anything interesting.
+ This seems to be set to 'jiffies' only when the inode is first
+ allocated, or when we have changed the file, or when a GETATTR or wcc
+ shows that the file has changed.
+ So if a file is unchanged on the server, cache_change_attribute will
+ not change after it is first assigned.
 
+ If the file remains in cache for 24 days (2^31 jiffies at 1000Hz),
+	data_stable = nfs_verify_change_attribute(inode, fattr->time_start);
+	if (data_stable)
+		nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE|NFS_INO_INVALID_ATIME);
+ in nfs_update_inode will start clearing those flags (as
+ cache_change_attribute will always be in the future) and so will
+ trigger more GETATTR requests.
+
+ Could this be correct?
+ If so, what is the best fix?  Maybe somewhere central like
+ nfs_update_inode we could put:
+
+   if (time_after(nfsi->cache_change_attribute, jiffies))
+		nfsi->cache_change_attributes = jiffies;
+
+ so that we only trigger extra GETATTRS once every 3 weeks.
+
+
+ This came up with a customer using SLES10 (which has very similar
+ cache_change_attribute code) with several web servers serving data
+ from 1 central NFS server.
+ The web servers have almost everything they need in local cache, so
+ the vast majority of their NFS requests are GETATTR, one for every
+ 'open'.  After a period of time (at least 15 days, I'm getting
+ confirmation of actual time if they have it) the web servers start
+ generating about twice the number of GETATTR requests, often 5 or 7
+ per 'open'.
+
+Thanks,
 NeilBrown
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
