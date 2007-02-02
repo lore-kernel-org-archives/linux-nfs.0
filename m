@@ -1,22 +1,11 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: NFS randomly denying permission to files
-Date: Fri, 2 Feb 2007 09:50:10 +1100
-Message-ID: <17858.28322.401622.364015@notabene.brown>
-References: <1170369756.1221.8.camel@allingham.power.com>
+From: =?ISO-2022-JP?B?GyRCMSdFWhsoQiAbJEIxUU40GyhC?= <udo@dtc.co.jp>
+Subject: about cache delegation
+Date: Fri, 02 Feb 2007 09:10:29 +0900
+Message-ID: <20070202090903.97D5.UDO@dtc.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Don Allingham <don.allingham@dothill.com>
+To: NFS@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HCklQ-0006A1-4f
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 14:50:44 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HCklR-0002J6-Me
-	for nfs@lists.sourceforge.net; Thu, 01 Feb 2007 14:50:46 -0800
-In-Reply-To: message from Don Allingham on Thursday February 1
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,18 +18,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday February 1, don.allingham@dothill.com wrote:
-> 
-> Any ideas on how to debug this problem?
-> 
+Hello everyone;
 
-Kernel version?
+I want to use NFS4 cache delegation,but I can't find useful information.
+Could any one tell me as follows?
+1. How to config cache delegation?
+2. How can I confirm cache delegation works correctly?
 
-tcpdump -s 0  trace?
+OS:fedora core 6
+Kernel:2.6.18-1.2798.fc6
+# rpm -qa | grep nfs
+nfs-utils-1.0.9-8.fc6
+nfs-utils-lib-1.0.8-7.2
+system-config-nfs-1.3.19-1.1
 
-no_subtree_check export option?
-
-NeilBrown
+TKS,
+PRS199
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
