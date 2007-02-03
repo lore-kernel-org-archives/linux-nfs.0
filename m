@@ -1,13 +1,13 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 9/14] lockd: handle fl_notify callbacks
-Date: Sat,  3 Feb 2007 00:34:05 -0500
-Message-ID: <24280.1571301699$1170483214@news.gmane.org>
-References: 11704806552464-git-send-email- <11704808501171-git-send-email-> <11704808502512-git-send-email-> <11704808513862-git-send-email-> <1170480851972-git-send-email-> <11704808513070-git-send-email-> <117048085185-git-send-email-> <11704808513263-git-send-email-> <11704808513185-git-send-email->
+Subject: [PATCH 7/14] nfsd4: Convert NFSv4 to new lock interface
+Date: Sat,  3 Feb 2007 00:34:03 -0500
+Message-ID: <32973.988625645$1170483220@news.gmane.org>
+References: 11704806552464-git-send-email- <11704808501171-git-send-email-> <11704808502512-git-send-email-> <11704808513862-git-send-email-> <1170480851972-git-send-email-> <11704808513070-git-send-email-> <117048085185-git-send-email->
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <11704808513185-git-send-email->
-Message-Id: <6f2a40ca33ea2b58e3f515bea9be1e0fa8cda6aa.1170479265.git.bfields@citi.umich.edu>
+In-Reply-To: <117048085185-git-send-email->
+Message-Id: <d1c313156428c533721d67f938ca72759b192156.1170479265.git.bfields@citi.umich.edu>
 In-Reply-To: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
 References: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
@@ -15,167 +15,96 @@ List-ID: <nfs.lists.sourceforge.net>
 
 From: Marc Eshel <eshel@almaden.ibm.com> - unquoted
 
-Add code to handle file system callback when the lock is finally granted.
+Convert NFSv4 to the new lock interface.  We don't define any callback for now,
+so we're not taking advantage of the asynchronous feature--that's less critical
+for the multi-threaded nfsd then it is for the single-threaded lockd.  But this
+does allow a cluster filesystems to export cluster-coherent locking to NFS.
 
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Note that it's cluster filesystems that are the issue--of the filesystems that
+define lock methods (nfs, cifs, etc.), most are not exportable by nfsd.
+
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svclock.c |   78 ++++++++++++++++++++++++++++++++++++++++++++++++----
- 1 files changed, 72 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c |   23 ++++++++++++++++-------
+ 1 files changed, 16 insertions(+), 7 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 00e657a..a558360 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -261,6 +261,8 @@ static void nlmsvc_free_block(struct kref *kref)
- 	nlmsvc_freegrantargs(block->b_call);
- 	nlm_release_call(block->b_call);
- 	nlm_release_file(block->b_file);
-+	if (block->b_fl)
-+		kfree(block->b_fl);
- 	kfree(block);
- }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9de89df..5d5a454 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -50,6 +50,7 @@
+ #include <linux/nfsd/xdr4.h>
+ #include <linux/namei.h>
+ #include <linux/mutex.h>
++#include <linux/lockd/bind.h>
  
-@@ -525,6 +527,32 @@ nlmsvc_cancel_blocked(struct nlm_file *file, struct nlm_lock *lock)
- }
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
  
- /*
-+ * This is a callback from the filesystem for VFS file lock requests.
-+ * It will be used if fl_notify is defined and the filesystem can not
-+ * respond to the request immediately.
-+ * For GETLK request it will copy the reply to the nlm_block.
-+ * For SETLK or SETLKW request it will get the local posix lock.
-+ * In all cases it will move the block to the head of nlm_blocked q where
-+ * nlmsvc_retry_blocked() can send back a reply for SETLKW or revisit the
-+ * deferred rpc for GETLK and SETLK.
-+ */
-+static void
-+nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
-+			     int result)
-+{
-+	block->b_flags |= B_GOT_CALLBACK;
-+	if (result == 0)
-+		block->b_granted = 1;
-+	else
-+		block->b_flags |= B_TOO_LATE;
-+	if (conf) {
-+		block->b_fl = kzalloc(sizeof(struct file_lock), GFP_KERNEL);
-+		if (block->b_fl)
-+			locks_copy_lock(block->b_fl, conf);
+@@ -2772,7 +2773,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * locks_copy_lock: */
+ 	conflock.fl_ops = NULL;
+ 	conflock.fl_lmops = NULL;
+-	err = posix_lock_file_conf(filp, &file_lock, &conflock);
++	err = vfs_lock_file_conf(filp, &file_lock, &conflock);
+ 	switch (-err) {
+ 	case 0: /* success! */
+ 		update_stateid(&lock_stp->st_stateid);
+@@ -2789,7 +2790,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_deadlock;
+ 		break;
+ 	default:        
+-		dprintk("NFSD: nfsd4_lock: posix_lock_file_conf() failed! status %d\n",err);
++		dprintk("NFSD: nfsd4_lock: vfs_lock_file_conf() failed! status %d\n",err);
+ 		status = nfserr_resource;
+ 		break;
+ 	}
+@@ -2815,6 +2816,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct file file;
+ 	struct file_lock file_lock;
+ 	struct file_lock conflock;
++	int error;
+ 	__be32 status;
+ 
+ 	if (nfs4_in_grace())
+@@ -2870,16 +2872,23 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfs4_transform_lock_offset(&file_lock);
+ 
+-	/* posix_test_lock uses the struct file _only_ to resolve the inode.
++	/* vfs_test_lock uses the struct file _only_ to resolve the inode.
+ 	 * since LOCKT doesn't require an OPEN, and therefore a struct
+-	 * file may not exist, pass posix_test_lock a struct file with
++	 * file may not exist, pass vfs_test_lock a struct file with
+ 	 * only the dentry:inode set.
+ 	 */
+ 	memset(&file, 0, sizeof (struct file));
+ 	file.f_path.dentry = cstate->current_fh.fh_dentry;
+ 
+ 	status = nfs_ok;
+-	if (posix_test_lock(&file, &file_lock, &conflock)) {
++	conflock.fl_ops = NULL;
++	conflock.fl_lmops = NULL;
++	error = vfs_test_lock(&file, &file_lock, &conflock);
++	if (error) {
++		status = nfserrno(error);
++		goto out;
 +	}
-+}
-+
-+/*
-  * Unblock a blocked lock request. This is a callback invoked from the
-  * VFS layer when a lock on which we blocked is removed.
-  *
-@@ -535,18 +563,33 @@ static int
- nlmsvc_notify_blocked(struct file_lock *fl, struct file_lock *conf, int result)
- {
- 	struct nlm_block	*block;
-+	int rc = -ENOENT;
- 
- 	dprintk("lockd: nlmsvc_notify_blocked lock %p conf %p result %d\n",
- 							fl, conf, result);
-+	lock_kernel();
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
-+			dprintk("lockd: nlmsvc_notify_blocked block %p flags %d\n",
-+							block, block->b_flags);
-+			if (block->b_flags & B_QUEUED) {
-+				if (block->b_flags & B_TOO_LATE) {
-+					rc = -ENOLCK;
-+					break;
-+				}
-+				nlmsvc_update_deferred_block(block, conf, result);
-+			}
- 			nlmsvc_insert_block(block, 0);
- 			svc_wake_up(block->b_daemon);
--			return;
-+			rc = 0;
-+			break;
- 		}
++	if (conflock.fl_type != F_UNLCK) {
+ 		status = nfserr_denied;
+ 		nfs4_set_lock_denied(&conflock, &lockt->lt_denied);
  	}
-+	unlock_kernel();
- 
--	printk(KERN_WARNING "lockd: notification for unknown block!\n");
-+	if (rc == -ENOENT)
-+		printk(KERN_WARNING "lockd: notification for unknown block!\n");
-+	return rc;
- }
- 
- static int nlmsvc_same_owner(struct file_lock *fl1, struct file_lock *fl2)
-@@ -579,6 +622,8 @@ nlmsvc_grant_blocked(struct nlm_block *block)
- 
- 	dprintk("lockd: grant blocked lock %p\n", block);
- 
-+	kref_get(&block->b_count);
-+
- 	/* Unlink block request from list */
- 	nlmsvc_unlink_block(block);
- 
-@@ -601,11 +646,13 @@ nlmsvc_grant_blocked(struct nlm_block *block)
- 	case -EAGAIN:
- 		dprintk("lockd: lock still blocked\n");
- 		nlmsvc_insert_block(block, NLM_NEVER);
-+		nlmsvc_release_block(block);
- 		return;
- 	default:
- 		printk(KERN_WARNING "lockd: unexpected error %d in %s!\n",
- 				-error, __FUNCTION__);
- 		nlmsvc_insert_block(block, 10 * HZ);
-+		nlmsvc_release_block(block);
- 		return;
+@@ -2934,9 +2943,9 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	/*
+ 	*  Try to unlock the file in the VFS.
+ 	*/
+-	err = posix_lock_file(filp, &file_lock);
++	err = vfs_lock_file(filp, F_SETLK, &file_lock);
+ 	if (err) {
+-		dprintk("NFSD: nfs4_locku: posix_lock_file failed!\n");
++		dprintk("NFSD: nfs4_locku: vfs_lock_file failed!\n");
+ 		goto out_nfserr;
  	}
- 
-@@ -618,7 +665,6 @@ callback:
- 	nlmsvc_insert_block(block, 30 * HZ);
- 
- 	/* Call the client */
--	kref_get(&block->b_count);
- 	if (nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG,
- 						&nlmsvc_grant_ops) < 0)
- 		nlmsvc_release_block(block);
-@@ -693,6 +739,23 @@ nlmsvc_grant_reply(struct nlm_cookie *cookie, __be32 status)
- 	nlmsvc_release_block(block);
- }
- 
-+/* Helper function to handle retry of a deferred block.
-+ * If it is a blocking lock, call grant_blocked.
-+ * For a non-blocking lock or test lock, revisit the request.
-+ */
-+static void
-+retry_deferred_block(struct nlm_block *block)
-+{
-+	if (!(block->b_flags & B_GOT_CALLBACK))
-+		block->b_flags |= B_TOO_LATE;
-+	nlmsvc_insert_block(block, NLM_TIMEOUT);
-+	dprintk("revisit block %p flags %d\n",	block, block->b_flags);
-+	if (block->b_deferred_req) {
-+		block->b_deferred_req->revisit(block->b_deferred_req, 0);
-+		block->b_deferred_req = NULL;
-+	}
-+}
-+
- /*
-  * Retry all blocked locks that have been notified. This is where lockd
-  * picks up locks that can be granted, or grant notifications that must
-@@ -716,9 +779,12 @@ nlmsvc_retry_blocked(void)
- 
- 		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
- 			block, block->b_when);
--		kref_get(&block->b_count);
--		nlmsvc_grant_blocked(block);
--		nlmsvc_release_block(block);
-+		if (block->b_flags & B_QUEUED) {
-+			dprintk("nlmsvc_retry_blocked delete block (%p, granted=%d, flags=%d)\n",
-+				block, block->b_granted, block->b_flags);
-+			retry_deferred_block(block);
-+		} else
-+			nlmsvc_grant_blocked(block);
- 	}
- 
- 	return timeout;
+ 	/*
 -- 
 1.5.0.rc1.g72fe
 
