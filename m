@@ -1,7 +1,10 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/14] locks: always unlock on close
-Date: Sat,  3 Feb 2007 00:33:57 -0500
-Message-ID: <43081.9762325429$1170480875@news.gmane.org>
+Subject: [PATCH 3/14] locks: factor out generic/filesystem switch from
+	setlock code
+Date: Sat,  3 Feb 2007 00:33:59 -0500
+Message-ID: <21763.5422865444$1170480877@news.gmane.org>
+References: 11704806552464-git-send-email- <11704808501171-git-send-email->
+	<11704808502512-git-send-email->
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
@@ -10,14 +13,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDDXR-0001HT-AV
+	id 1HDDXR-0001HQ-NG
 	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:15 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDDXR-0001BY-Un
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDDXS-0001Bd-AT
 	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:15 -0800
-In-Reply-To: 11704806552464-git-send-email-
-References: 11704806552464-git-send-email-
-Message-Id: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
+In-Reply-To: <11704808502512-git-send-email->
+Message-Id: <1dd47bf9aeb6f19c82a59efb2f4236f23f73019d.1170479265.git.bfields@citi.umich.edu>
+In-Reply-To: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
+References: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,41 +36,131 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Marc Eshel <eshel@almaden.ibm.com> - unquoted
 
-Currently locks_remove_posix has a shortcut which returns without doing
-anything if it doesn't see anything on the inode's lock list.
+Factor out the code that switches between generic and filesystem-specific lock
+methods; eventually we want to call this from lock managers (lockd and nfsd)
+too; currently they only call the generic methods.
 
-That may be the wrong thing to do if a filesystem (such as a network or cluster
-filesystem) wants to bookkeep locks on its own.
+This patch does that for all the setlk code.
 
-A filesystem should still be able to keep track of locally held locks (such as
-all the locks held by one local process), but the occasional kmalloc() failure,
-for example, could get the two sets of data structures out of sync, and it
-seems best to allow the filesystem to be authoritative.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 ---
- fs/locks.c |    8 --------
- 1 files changed, 0 insertions(+), 8 deletions(-)
+ fs/locks.c                 |   68 +++++++++++++++++++++++--------------------
+ include/linux/lockd/bind.h |    1 +
+ 2 files changed, 37 insertions(+), 32 deletions(-)
 
 diff --git a/fs/locks.c b/fs/locks.c
-index 52a8100..4390a95 100644
+index 95246dc..c88139d 100644
 --- a/fs/locks.c
 +++ b/fs/locks.c
-@@ -1917,14 +1917,6 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
- {
- 	struct file_lock lock;
+@@ -1691,6 +1691,21 @@ out:
+ 	return error;
+ }
  
--	/*
--	 * If there are no locks held on this file, we don't need to call
--	 * posix_lock_file().  Another process could be setting a lock on this
--	 * file at the same time, but we wouldn't remove that lock anyway.
--	 */
--	if (!filp->f_path.dentry->d_inode->i_flock)
--		return;
++/**
++ * vfs_lock_file - file byte range lock
++ * @filp: The file to apply the lock to
++ * @cmd: type of locking operation (F_SETLK, F_GETLK, etc.)
++ * @fl: The lock to be applied
++ */
++int vfs_lock_file(struct file *filp, unsigned int cmd, struct file_lock *fl)
++{
++	if (filp->f_op && filp->f_op->lock)
++		return filp->f_op->lock(filp, cmd, fl);
++	else
++		return posix_lock_file(filp, fl);
++}
++EXPORT_SYMBOL(vfs_lock_file);
++
+ /* Apply the lock described by l to an open file descriptor.
+  * This implements both the F_SETLK and F_SETLKW commands of fcntl().
+  */
+@@ -1753,21 +1768,17 @@ again:
+ 	if (error)
+ 		goto out;
+ 
+-	if (filp->f_op && filp->f_op->lock != NULL)
+-		error = filp->f_op->lock(filp, cmd, file_lock);
+-	else {
+-		for (;;) {
+-			error = posix_lock_file(filp, file_lock);
+-			if ((error != -EAGAIN) || (cmd == F_SETLK))
+-				break;
+-			error = wait_event_interruptible(file_lock->fl_wait,
+-					!file_lock->fl_next);
+-			if (!error)
+-				continue;
 -
- 	lock.fl_type = F_UNLCK;
- 	lock.fl_flags = FL_POSIX | FL_CLOSE;
- 	lock.fl_start = 0;
+-			locks_delete_block(file_lock);
++	for (;;) {
++		error = vfs_lock_file(filp, cmd, file_lock);
++		if ((error != -EAGAIN) || (cmd == F_SETLK))
+ 			break;
+-		}
++		error = wait_event_interruptible(file_lock->fl_wait,
++				!file_lock->fl_next);
++		if (!error)
++			continue;
++
++		locks_delete_block(file_lock);
++		break;
+ 	}
+ 
+ 	/*
+@@ -1889,21 +1900,17 @@ again:
+ 	if (error)
+ 		goto out;
+ 
+-	if (filp->f_op && filp->f_op->lock != NULL)
+-		error = filp->f_op->lock(filp, cmd, file_lock);
+-	else {
+-		for (;;) {
+-			error = posix_lock_file(filp, file_lock);
+-			if ((error != -EAGAIN) || (cmd == F_SETLK64))
+-				break;
+-			error = wait_event_interruptible(file_lock->fl_wait,
+-					!file_lock->fl_next);
+-			if (!error)
+-				continue;
+-
+-			locks_delete_block(file_lock);
++	for (;;) {
++		error = vfs_lock_file(filp, cmd, file_lock);
++		if ((error != -EAGAIN) || (cmd == F_SETLK64))
+ 			break;
+-		}
++		error = wait_event_interruptible(file_lock->fl_wait,
++				!file_lock->fl_next);
++		if (!error)
++			continue;
++
++		locks_delete_block(file_lock);
++		break;
+ 	}
+ 
+ 	/*
+@@ -1940,10 +1947,7 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
+ 	lock.fl_ops = NULL;
+ 	lock.fl_lmops = NULL;
+ 
+-	if (filp->f_op && filp->f_op->lock != NULL)
+-		filp->f_op->lock(filp, F_SETLK, &lock);
+-	else
+-		posix_lock_file(filp, &lock);
++	vfs_lock_file(filp, F_SETLK, &lock);
+ 
+ 	if (lock.fl_ops && lock.fl_ops->fl_release_private)
+ 		lock.fl_ops->fl_release_private(&lock);
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index f78b24a..c88da8e 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -39,5 +39,6 @@ extern int	lockd_up(int proto);
+ extern void	lockd_down(void);
+ 
+ extern int vfs_test_lock(struct file *, struct file_lock *, struct file_lock *);
++extern int vfs_lock_file(struct file *, int cmd, struct file_lock *);
+ 
+ #endif /* LINUX_LOCKD_BIND_H */
 -- 
 1.5.0.rc1.g72fe
 
