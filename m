@@ -1,28 +1,23 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 4/14] locks: add locking function that returns
-	conflicting lock
-Date: Sat,  3 Feb 2007 00:34:00 -0500
-Message-ID: <39241.9278309264$1170480874@news.gmane.org>
-References: 11704806552464-git-send-email- <11704808501171-git-send-email->
-	<11704808502512-git-send-email-> <11704808513862-git-send-email->
+Subject: [PATCH 1/14] locks: always unlock on close
+Date: Sat,  3 Feb 2007 00:33:57 -0500
+Message-ID: <43081.9762325429$1170480875@news.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDDXQ-0001HK-7K
-	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:13 -0800
+	id 1HDDXR-0001HT-AV
+	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:15 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HDDXR-0000it-Qv
-	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:14 -0800
-In-Reply-To: <11704808513862-git-send-email->
-Message-Id: <96a0abaf64b433a7e7450e7e35d0baf2c44103db.1170479265.git.bfields@citi.umich.edu>
-In-Reply-To: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
-References: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDDXR-0001BY-Un
+	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:15 -0800
+In-Reply-To: 11704806552464-git-send-email-
+References: 11704806552464-git-send-email-
+Message-Id: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,59 +32,41 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Marc Eshel <eshel@almaden.ibm.com> - unquoted
 
-The nfsv4 protocol's lock operation, in the case of a conflict, returns
-information about the conflicting lock.
+Currently locks_remove_posix has a shortcut which returns without doing
+anything if it doesn't see anything on the inode's lock list.
 
-It's unclear how clients can use this, so for now we're not going so far as to
-add a filesystem method that can return a conflicting lock, but we may as well
-return something in the local case when it's easy to.
+That may be the wrong thing to do if a filesystem (such as a network or cluster
+filesystem) wants to bookkeep locks on its own.
 
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+A filesystem should still be able to keep track of locally held locks (such as
+all the locks held by one local process), but the occasional kmalloc() failure,
+for example, could get the two sets of data structures out of sync, and it
+seems best to allow the filesystem to be authoritative.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/locks.c                 |   18 ++++++++++++++++++
- include/linux/lockd/bind.h |    1 +
- 2 files changed, 19 insertions(+), 0 deletions(-)
+ fs/locks.c |    8 --------
+ 1 files changed, 0 insertions(+), 8 deletions(-)
 
 diff --git a/fs/locks.c b/fs/locks.c
-index c88139d..1bd6418 100644
+index 52a8100..4390a95 100644
 --- a/fs/locks.c
 +++ b/fs/locks.c
-@@ -1706,6 +1706,24 @@ int vfs_lock_file(struct file *filp, unsigned int cmd, struct file_lock *fl)
- }
- EXPORT_SYMBOL(vfs_lock_file);
+@@ -1917,14 +1917,6 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
+ {
+ 	struct file_lock lock;
  
-+/**
-+ * vfs_lock_file_conf - file byte range lock
-+ * @filp: The file to apply the lock to
-+ * @fl: The lock to be applied
-+ * @conf: Place to return a copy of the conflicting lock, if found.
-+ *
-+ * read comments for vfs_lock_file()
-+ */
-+int vfs_lock_file_conf(struct file *filp, struct file_lock *fl, struct file_lock *conf)
-+{
-+	if (filp->f_op && filp->f_op->lock) {
-+		__locks_copy_lock(conf, fl);
-+		return filp->f_op->lock(filp, F_SETLK, fl);
-+	} else
-+		return posix_lock_file_conf(filp, fl, conf);
-+}
-+EXPORT_SYMBOL(vfs_lock_file_conf);
-+
- /* Apply the lock described by l to an open file descriptor.
-  * This implements both the F_SETLK and F_SETLKW commands of fcntl().
-  */
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index c88da8e..01c25e4 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -40,5 +40,6 @@ extern void	lockd_down(void);
- 
- extern int vfs_test_lock(struct file *, struct file_lock *, struct file_lock *);
- extern int vfs_lock_file(struct file *, int cmd, struct file_lock *);
-+extern int vfs_lock_file_conf(struct file *, struct file_lock *, struct file_lock *);
- 
- #endif /* LINUX_LOCKD_BIND_H */
+-	/*
+-	 * If there are no locks held on this file, we don't need to call
+-	 * posix_lock_file().  Another process could be setting a lock on this
+-	 * file at the same time, but we wouldn't remove that lock anyway.
+-	 */
+-	if (!filp->f_path.dentry->d_inode->i_flock)
+-		return;
+-
+ 	lock.fl_type = F_UNLCK;
+ 	lock.fl_flags = FL_POSIX | FL_CLOSE;
+ 	lock.fl_start = 0;
 -- 
 1.5.0.rc1.g72fe
 
