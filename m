@@ -1,28 +1,25 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 8/14] lockd: save lock state on deferral
-Date: Sat,  3 Feb 2007 00:34:04 -0500
-Message-ID: <40476.1517340832$1170480890@news.gmane.org>
+Subject: [PATCH 6/14] locks: add lock cancel command
+Date: Sat,  3 Feb 2007 00:34:02 -0500
+Message-ID: <6816.47257083586$1170480891@news.gmane.org>
 References: 11704806552464-git-send-email- <11704808501171-git-send-email->
 	<11704808502512-git-send-email-> <11704808513862-git-send-email->
-	<1170480851972-git-send-email->
-	<11704808513070-git-send-email-> <117048085185-git-send-email->
-	<11704808513263-git-send-email->
+	<1170480851972-git-send-email-> <11704808513070-git-send-email->
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDDXR-0001HO-NE
-	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:15 -0800
+	id 1HDDXS-0001HW-8M
+	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:17 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HDDXS-0000j0-9u
-	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:15 -0800
-In-Reply-To: <11704808513263-git-send-email->
-Message-Id: <8096fc4eb11f5c5678197fdee8afe0e2780357fc.1170479265.git.bfields@citi.umich.edu>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDDXT-0001Bg-0o
+	for nfs@lists.sourceforge.net; Fri, 02 Feb 2007 21:34:16 -0800
+In-Reply-To: <11704808513070-git-send-email->
+Message-Id: <fdf19cb6a33a08dd9220cdf2379d712d3c15e66f.1170479265.git.bfields@citi.umich.edu>
 In-Reply-To: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
 References: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -39,85 +36,76 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Marc Eshel <eshel@almaden.ibm.com> - unquoted
 
-We need to keep some state for a pending asynchronous lock request, so this
-patch adds that state to struct nlm_block.
+Lock managers need to be able to cancel pending lock requests.  In the case
+where the exported filesystem manages its own locks, it's not sufficient just
+to call posix_unblock_lock(); we need to let the filesystem know what's
+happening too.
 
-This also adds a function which defers the request, by calling
-rqstp->rq_chandle.defer and storing the resulting deferred request in a
-nlm_block structure which we insert into lockd's global block list.  That
-new function isn't called yet, so it's dead code until a later patch.
+We do this by adding a new fcntl lock command: FL_CANCELLK.  Some day this
+might also be made available to userspace applications that could benefit from
+an asynchronous locking api.
 
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 ---
- fs/lockd/svclock.c          |   25 +++++++++++++++++++++++++
- include/linux/lockd/lockd.h |   10 ++++++++++
- 2 files changed, 35 insertions(+), 0 deletions(-)
+ fs/locks.c                 |   17 +++++++++++++++++
+ include/linux/fcntl.h      |    4 ++++
+ include/linux/lockd/bind.h |    1 +
+ 3 files changed, 22 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index d2c8020..00e657a 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -331,6 +331,31 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
- }
+diff --git a/fs/locks.c b/fs/locks.c
+index 819dc28..8ee72b3 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -2061,6 +2061,23 @@ posix_unblock_lock(struct file *filp, struct file_lock *waiter)
  
- /*
-+ * Deferred lock request handling for non-blocking lock
+ EXPORT_SYMBOL(posix_unblock_lock);
+ 
++/**
++ * vfs_cancel_lock - file byte range unblock lock
++ * @filp: The file to apply the unblock to
++ * @fl: The lock to be unblocked
++ *
++ * Used by lock managers to cancel blocked requests
 + */
-+static u32
-+nlmsvc_defer_lock_rqst(struct svc_rqst *rqstp, struct nlm_block *block)
++int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
 +{
-+	u32 status = nlm_lck_denied_nolocks;
-+
-+	block->b_flags |= B_QUEUED;
-+
-+	nlmsvc_insert_block(block, NLM_TIMEOUT);
-+
-+	block->b_cache_req = &rqstp->rq_chandle;
-+	if (rqstp->rq_chandle.defer) {
-+		block->b_deferred_req =
-+			rqstp->rq_chandle.defer(block->b_cache_req);
-+		if (block->b_deferred_req != NULL)
-+			status = nlm_drop_reply;
-+	}
-+	dprintk("lockd: nlmsvc_defer_lock_rqst block %p flags %d status %d\n",
-+		block, block->b_flags, status);
-+
-+	return status;
++	if (filp->f_op && filp->f_op->lock)
++		return filp->f_op->lock(filp, F_CANCELLK, fl);
++	else
++		return posix_unblock_lock(filp, fl);
 +}
 +
-+/*
-  * Attempt to establish a lock, and if it can't be granted, block it
-  * if required.
-  */
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index ac25b56..1df10d7 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -119,6 +119,9 @@ struct nlm_file {
-  * couldn't be granted because of a conflicting lock).
-  */
- #define NLM_NEVER		(~(unsigned long) 0)
-+/* timeout on non-blocking call: */
-+#define NLM_TIMEOUT		(7 * HZ)
++EXPORT_SYMBOL(vfs_cancel_lock);
 +
- struct nlm_block {
- 	struct kref		b_count;	/* Reference count */
- 	struct list_head	b_list;		/* linked list of all blocks */
-@@ -130,6 +133,13 @@ struct nlm_block {
- 	unsigned int		b_id;		/* block id */
- 	unsigned char		b_granted;	/* VFS granted lock */
- 	struct nlm_file *	b_file;		/* file in question */
-+	struct cache_req *	b_cache_req;	/* deferred request handling */
-+	struct file_lock *	b_fl;		/* set for GETLK */
-+	struct cache_deferred_req * b_deferred_req;
-+	unsigned int		b_flags;	/* block flags */
-+#define B_QUEUED		1	/* lock queued */
-+#define B_GOT_CALLBACK		2	/* got lock or conflicting lock */
-+#define B_TOO_LATE		4	/* too late for non-blocking lock */
- };
+ static void lock_get_status(char* out, struct file_lock *fl, int id, char *pfx)
+ {
+ 	struct inode *inode = NULL;
+diff --git a/include/linux/fcntl.h b/include/linux/fcntl.h
+index 996f561..40b9326 100644
+--- a/include/linux/fcntl.h
++++ b/include/linux/fcntl.h
+@@ -3,6 +3,10 @@
  
- /*
+ #include <asm/fcntl.h>
+ 
++/* Cancel a blocking posix lock; internal use only until we expose an
++ * asynchronous lock api to userspace: */
++#define F_CANCELLK	(F_LINUX_SPECIFIC_BASE+5)
++
+ #define F_SETLEASE	(F_LINUX_SPECIFIC_BASE+0)
+ #define F_GETLEASE	(F_LINUX_SPECIFIC_BASE+1)
+ 
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index 01c25e4..1333dcf 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -41,5 +41,6 @@ extern void	lockd_down(void);
+ extern int vfs_test_lock(struct file *, struct file_lock *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, int cmd, struct file_lock *);
+ extern int vfs_lock_file_conf(struct file *, struct file_lock *, struct file_lock *);
++extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ 
+ #endif /* LINUX_LOCKD_BIND_H */
 -- 
 1.5.0.rc1.g72fe
 
