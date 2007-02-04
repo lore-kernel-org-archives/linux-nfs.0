@@ -1,25 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] fix rpc.gssd -d
-Date: Mon, 5 Feb 2007 09:53:59 +1100
-Message-ID: <17862.25607.109790.62992@notabene.brown>
-References: <20070104194625.GA3000@uio.no>
-	<4d569c330701041254m5a1fc1aem17a9eaadcbeaadfb@mail.gmail.com>
+Subject: Re: Manpage inconsistency
+Date: Mon, 5 Feb 2007 10:02:42 +1100
+Message-ID: <17862.26130.704626.300662@notabene.brown>
+References: <20070104131046.GA30920@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
-	nfs@lists.sourceforge.net
-To: "Kevin Coffman" <kwc@citi.umich.edu>
+Cc: nfs@lists.sourceforge.net
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDqFk-00014x-Nb
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 14:54:34 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HDqFj-0006oi-TN
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 14:54:34 -0800
-In-Reply-To: message from Kevin Coffman on Thursday January 4
+	id 1HDqO8-0001zN-VM
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 15:03:13 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDqO9-0008L1-BJ
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 15:03:14 -0800
+In-Reply-To: message from Steinar H. Gunderson on Thursday January 4
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,60 +29,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday January 4, kwc@citi.umich.edu wrote:
-> Thanks Steinar.  I'll get to this and the AM_MAINTAINER_MODE patch
-> soon and resend them to Neil.  (Your other recent patches are out of
-> my arena.)
+On Thursday January 4, sgunderson@bigfoot.com wrote:
+> Hi,
+> 
+> It seems like the man page for rpc.statd claims that it lives in /sbin.
+> However, make install puts it in /usr/sbin. Which should be corrected? :-)
+> 
+> (It should be mentioned that in Debian, we move both rpc.statd, rpc.lockd and
+> showmount into /sbin, since we might need them at boot time and patch the
+> manpages appropriately, but at least upstream should be consistent with
+> itself.)
 
-I've applied this patch as it is trivially correct.
-Thanks.
+I've remove the path from the man page so it doesn't say "/sbin" or
+"/usr/sbin".
+
+But I'm surprised you want it in /sbin.  I would mount '/usr' with '-o nolocks'
+After all, you cannot run statd until /var is mounted.....
+
+But whatever...
+
 NeilBrown
-
-> 
-> K.C.
-> 
-> On 1/4/07, Steinar H. Gunderson <sgunderson@bigfoot.com> wrote:
-> > Fix an off-by-one in the handling of the -d option to rpc.gssd; this makes
-> > the option usable again (it would complain that the string was too long).
-> > This patch is originally by Liam Bedford, and extracted from
-> >
-> >   https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/76409
-> >
-> > --- nfs-utils-1.0.10.orig/utils/gssd/gssd.c
-> > +++ nfs-utils-1.0.10/utils/gssd/gssd.c
-> > @@ -118,7 +118,7 @@ main(int argc, char *argv[])
-> >                                 break;
-> >                         case 'd':
-> >                                 strncpy(ccachedir, optarg, sizeof(ccachedir));
-> > -                               if (ccachedir[sizeof(ccachedir-1)] != '\0')
-> > +                               if (ccachedir[sizeof(ccachedir)-1] != '\0')
-> >                                         errx(1, "ccachedir path name too long");
-> >                                 break;
-> >                         default:
-> >
-> > /* Steinar */
-> > --
-> > Homepage: http://www.sesse.net/
-> >
-> > -------------------------------------------------------------------------
-> > Take Surveys. Earn Cash. Influence the Future of IT
-> > Join SourceForge.net's Techsay panel and you'll get the chance to share your
-> > opinions on IT & business topics through brief surveys - and earn cash
-> > http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> >
-> >
-> 
-> -------------------------------------------------------------------------
-> Take Surveys. Earn Cash. Influence the Future of IT
-> Join SourceForge.net's Techsay panel and you'll get the chance to share your
-> opinions on IT & business topics through brief surveys - and earn cash
-> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
