@@ -1,23 +1,26 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/14] locks: factor out generic/filesystem switch from setlock code
-Date: Sun, 4 Feb 2007 08:37:32 +0000
-Message-ID: <20070204083731.GA29531@infradead.org>
-References: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu> <1dd47bf9aeb6f19c82a59efb2f4236f23f73019d.1170479265.git.bfields@citi.umich.edu> <20070203085136.GC18828@infradead.org> <20070203051638.GA29763@cynthia.pants.nu>
+Subject: Re: [PATCH 2/14] locks: factor out generic/filesystem switch from test_lock
+Date: Sun, 4 Feb 2007 08:41:10 +0000
+Message-ID: <20070204084110.GB29531@infradead.org>
+References: <ad8373acbb12f165b625f6065bc0ca86f3982b7f.1170479265.git.bfields@citi.umich.edu> <5cdd83858bf5c75e14742bbd03b462f5ec4997fe.1170479265.git.bfields@citi.umich.edu> <20070203085025.GB18828@infradead.org> <20070204014844.GG7588@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Christoph Hellwig <hch@infradead.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
 	Marc Eshel <eshel@almaden.ibm.com>
-To: Brad Boyer <flar@allandria.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070203051638.GA29763@cynthia.pants.nu>
+In-Reply-To: <20070204014844.GG7588@fieldses.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Feb 02, 2007 at 09:16:38PM -0800, Brad Boyer wrote:
-> Any particular reason?
+On Sat, Feb 03, 2007 at 08:48:44PM -0500, J. Bruce Fields wrote:
+> Actually, I wonder if there's any reason we couldn't also just give
+> posix_test_lock() the same interface as ->lock?  (The latter uses the
+> same file_lock argument for the input and (in the case where it finds
+> a conflicting lock) the output, where the former uses an extra argument
+> to pass back the lock.)  That'd make this a little simpler too.
 
-In general we want everything that's internal to be _GPL, and a symbol
-that's only for use in the lock manager falls under that category.
+yes, giving posix_test_lock the same interface as ->lock would be
+even better. 
 
