@@ -1,23 +1,25 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: Please add AM_MAINTAINER_MODE to configure.in
-Date: Mon, 5 Feb 2007 09:37:19 +1100
-Message-ID: <17862.24607.837254.907122@notabene.brown>
-References: <20070104132251.GA31023@uio.no>
+Subject: Re: [PATCH] fix rpc.gssd -d
+Date: Mon, 5 Feb 2007 09:51:44 +1100
+Message-ID: <17862.25472.95210.3356@notabene.brown>
+References: <20070104194625.GA3000@uio.no>
+	<4d569c330701041254m5a1fc1aem17a9eaadcbeaadfb@mail.gmail.com>
+	<20070104235140.GA5288@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
 To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDpzt-0007oF-8h
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 14:38:09 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1HDqDb-0000uB-TY
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 14:52:20 -0800
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HDpza-0003Cu-8z
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 14:37:52 -0800
-In-Reply-To: message from Steinar H. Gunderson on Thursday January 4
+	(Exim 4.44) id 1HDqDW-0006DS-ED
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 14:52:15 -0800
+In-Reply-To: message from Steinar H. Gunderson on Friday January 5
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,24 +32,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday January 4, sgunderson@bigfoot.com wrote:
-> Hi,
+On Friday January 5, sgunderson@bigfoot.com wrote:
+> On Thu, Jan 04, 2007 at 03:54:05PM -0500, Kevin Coffman wrote:
+> > Thanks Steinar.  I'll get to this and the AM_MAINTAINER_MODE patch
+> > soon and resend them to Neil.  (Your other recent patches are out of
+> > my arena.)
 > 
-> Could you please add AM_MAINTAINER_MODE to configure.in? I'd like to set
-> --enable-maintainer-mode in the Debian packages (to prevent configure and
-> friends from being regenerated from possibly broken or incompatible autofoo),
-> but the macro needs to be in place in configure.in (which should probably be
-> renamed to configure.ac by now?) for the switch to exist.
+> Thanks.
+> 
+> By the way, I checked out the git repository (finding out the URL was
+> non-trivial, though!) and discovered that the bzero patch was not applied (I
+> believe it was sent in quite a while ago). Neil, did you forget, is it in
+> a queue somewhere, or did I just check out the wrong one? (I used
+> git://git.linux-nfs.org/pub/linux/nfs-utils/.)
 
- From my limited reading, --enable-maintainer-mode effective negates
- the effect of putting AM_MAINTAINER_MODE in configure.in.  So I'm
- confused.
+  git://linux-nfs.org/nfs-utils
+should be enough
 
- And there is a suggestion of that AM_MAINTAINER_MODE is a bad thing:
-
-  http://www.gnu.org/software/automake/manual/html_node/maintainer-mode.html
-
-So I need more information before I know how to proceed.
+I don't remember a bzero patch.  Is it just replacing the bzero in
+support/nfs/svc_socket.c with a memset ??
 
 NeilBrown
 
