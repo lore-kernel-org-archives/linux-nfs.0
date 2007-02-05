@@ -1,23 +1,22 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: Please add AM_MAINTAINER_MODE to configure.in
-Date: Mon, 5 Feb 2007 00:45:55 +0100
-Message-ID: <20070204234555.GA6139@uio.no>
-References: <20070104132251.GA31023@uio.no>
-	<17862.24607.837254.907122@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] Allow default options in /etc/exports
+Date: Mon, 5 Feb 2007 11:35:23 +1100
+Message-ID: <17862.31691.37417.435244@notabene.brown>
+References: <20061226225848.GA18366@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: "Steinar H. Gunderson" <sesse@debian.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDr4A-0006WT-HZ
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 15:46:39 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDr4C-0001YZ-40
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 15:46:40 -0800
-In-Reply-To: <17862.24607.837254.907122@notabene.brown>
+	id 1HDrpt-0002kx-Lk
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:35:58 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDrpv-0004v6-Ah
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:35:59 -0800
+In-Reply-To: message from Steinar H. Gunderson on Tuesday December 26
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +29,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Feb 05, 2007 at 09:37:19AM +1100, Neil Brown wrote:
->  From my limited reading, --enable-maintainer-mode effective negates
->  the effect of putting AM_MAINTAINER_MODE in configure.in.  So I'm
->  confused.
+On Tuesday December 26, sesse@debian.org wrote:
+> [Cc-on-reply, please]
 
-AM_MAINTAINER_MODE simply puts the option in there. The default doesn't
-change AFAICS.
+Always.... doesn't everybody?
 
->  And there is a suggestion of that AM_MAINTAINER_MODE is a bad thing:
 > 
->   http://www.gnu.org/software/automake/manual/html_node/maintainer-mode.html
+> Merry Christmas, to those of you who celebrate that. :-) I found some time to
+> write a patch for a two-year-old feature request which was slowly getting
+> more and more annoying; hope it can go into upstream, even though it won't
+> reach our upcoming Debian release.
+
+Yes, I like it.  I've applied it.
+
+I would like to have system-wide defaults too (as you mention).  Any
+suggestions on syntax?  Having
+
+-sync,no_root_squash,no_subtree_check
+
+would be syntactically consistent (which is good) but is kind-a ugly.
+
+Thanks,
+
+NeilBrown
+
+
 > 
-> So I need more information before I know how to proceed.
-
-It is primarily useful for packagers. I need to know that my package builds
-the same regardless of what's on the system (except for dependencies, of
-course) -- by default the builds break if the user has autoconf installed but
-none of the other dependencies. (As most of our builds are done fully
-automated, there's simply no such control, unless I go to great lengths to
-annoy users.) --enable-maintainer-mode simply removes all the magic from the
-build and gives the builder control -- which is useful for a distribution
-packager, but perhaps less so for a developer.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+> Patch: Allow default options in /etc/exports
+> 
+>   Implement default options in /etc/exports, to fix a long-standing wishlist
+>   bug in Debian. (The user claims the syntax matches that of OpenBSD.) This
+>   makes it possible to write "/srv/www -sync,no_subtree_check host1 host2 host3"
+>   instead of having to write (sync,no_subtree_check) over and over and over
+>   again, driving the administrator slowly mad. Such option lines can be
+>   placed anywhere on the line, and affects anything after them (I do not
+>   know if OpenBSD allows this). The patch is slightly convoluted in order to
+>   avoid triggering spurious warnings; for instance, we want
+>   "/srv/www -sync host1" to trigger a warning, but not "/srv/www
+>   -sync,no_subtree_check host1" or "/srv/www -sync host1(no_subtree_check)".
+> 
+>   There was also a suggestion for a truly global (ie. per-file) option list,
+>   but this seemed like the safest bet, given that it matches that of other
+>   implementations.
+> 
+>   Also, the man page is updated with information on the new possibilities,
+>   and an example.
+> 
+>   Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
