@@ -1,23 +1,26 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1HDpCC-0004uy-LD delayed 10 hours
-Date: Mon, 05 Feb 2007 02:23:31 -0800
-Message-ID: <E1HE10V-0002m8-Fi@externalmx-1.sourceforge.net>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: Please add AM_MAINTAINER_MODE to configure.in
+Date: Mon, 5 Feb 2007 09:41:18 -0500
+Message-ID: <4d569c330702050641s3dfd1bd0ibd3beff851c6b64f@mail.gmail.com>
+References: <20070104132251.GA31023@uio.no>
+	<17862.24607.837254.907122@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
+	nfs@lists.sourceforge.net
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HE10V-0003W1-0l
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 02:23:31 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HE10V-0005QL-OF
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 02:23:32 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1HE10V-0002m8-Fi
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 02:23:31 -0800
+	id 1HE524-0005HK-4o
+	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 06:41:24 -0800
+Received: from ug-out-1314.google.com ([66.249.92.169])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HE523-0001UI-Hg
+	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 06:41:26 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so1286547ugc
+	for <nfs@lists.sourceforge.net>; Mon, 05 Feb 2007 06:41:19 -0800 (PST)
+In-Reply-To: <17862.24607.837254.907122@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +33,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 10 hours on the queue on externalmx-1.sourceforge.net.
+On 2/4/07, Neil Brown <neilb@suse.de> wrote:
+> On Thursday January 4, sgunderson@bigfoot.com wrote:
+> > Hi,
+> >
+> > Could you please add AM_MAINTAINER_MODE to configure.in? I'd like to set
+> > --enable-maintainer-mode in the Debian packages (to prevent configure and
+> > friends from being regenerated from possibly broken or incompatible autofoo),
+> > but the macro needs to be in place in configure.in (which should probably be
+> > renamed to configure.ac by now?) for the switch to exist.
+>
+>  From my limited reading, --enable-maintainer-mode effective negates
+>  the effect of putting AM_MAINTAINER_MODE in configure.in.  So I'm
+>  confused.
+>
+>  And there is a suggestion of that AM_MAINTAINER_MODE is a bad thing:
+>
+>   http://www.gnu.org/software/automake/manual/html_node/maintainer-mode.html
+>
+> So I need more information before I know how to proceed.
 
-The message identifier is:     1HDpCC-0004uy-LD
-The subject of the message is: But one, preach the grievousness of the host and turned white and
-The date of the message is:    Sun, 04 Feb 2007 22:48:52 +0100
+I've been working for a few weeks with this included.  As a developer
+actively making changes to Makefile.am, etc., I just configure with
+--enable-maintainer-mode.
 
-The address to which the message has not yet been delivered is:
+I've run into the timestamp problem in the past on machines with older
+versions of autoconf where the makefile thinks that autoconf needs to
+be re-run.  That can be a pain.
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
-
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+K.C.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
