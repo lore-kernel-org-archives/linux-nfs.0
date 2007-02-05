@@ -1,23 +1,22 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [PATCH] Allow default options in /etc/exports
-Date: Mon, 5 Feb 2007 01:48:44 +0100
-Message-ID: <20070205004844.GA6459@uio.no>
-References: <20061226225848.GA18366@uio.no>
-	<17862.31691.37417.435244@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] Update README
+Date: Mon, 5 Feb 2007 14:10:12 +1100
+Message-ID: <17862.40980.246111.403067@notabene.brown>
+References: <20070201173847.GA26741@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDs2t-00043z-HC
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:49:23 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDs2u-0007vd-65
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:49:25 -0800
-In-Reply-To: <17862.31691.37417.435244@notabene.brown>
+	id 1HDuFl-0001aR-Vm
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 19:10:50 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDuFl-0005MZ-J4
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 19:10:51 -0800
+In-Reply-To: message from J. Bruce Fields on Thursday February 1
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,30 +29,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Feb 05, 2007 at 11:35:23AM +1100, Neil Brown wrote:
->> [Cc-on-reply, please]
-> Always.... doesn't everybody?
+On Thursday February 1, bfields@fieldses.org wrote:
+> The README has bit-rotted: redhat and debian packaging scripts are no
+> longer included, util-linux mount is (in theory) no longer required, and
+> instructions on building from latest git would be useful.
 
-Not always. I tried subscribing to the list, but it doesn't seem like it
-worked, for some reason -- odd. SourceForge is not always my friend, although
-you'd believe it would be hard to go wrong with Mailman...
+Thanks.
 
-> I would like to have system-wide defaults too (as you mention).  Any
-> suggestions on syntax?  Having
 > 
-> -sync,no_root_squash,no_subtree_check
-> 
-> would be syntactically consistent (which is good) but is kind-a ugly.
+> I'm autotool-clueless and have no clue about the "ltmain.sh" thing
+> mentioned in the last section; I just followed the bootstrapping
+> instructions in the commit message for 922d6cfd and found I needed a
+> copy of ltmain.sh to make it work.
 
-My first hunch is to put it on the command line (so one could have it in
-/etc/default/nfs-common), but I realize that would be confusing (and possibly
-different across distributions, and less flexible). I'm a bit short on good
-syntax suggestions apart from that, really -- adding a different kind of line
-sounds a bit like opening a can of worms syntax-wise...
+I just run
+   ./autogen.sh
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+works every time... I might change that in the README.
+
+NeilBrown
+
+> -4. REQUIRED VERSIONS OF OTHER TOOLS
+> -
+> -Proper NFS operation requires a 'mount' program from util-linux 2.11f
+> -or later.
+> +	aclocal -I aclocal
+> +	autoheader
+> +	automake
+> +	autoconf
+>  
+> +You may also need to copy ltmain.sh to the current directory if the
+> +above doesn't do that.  Usually there's a copy in
+> +/usr/share/libtool/ltmain.sh.  Finally, build as usual as above.
+>  
+>  Share And Enjoy!
+>  
+>      --	the nfs-utils developers
+>  	<nfs@lists.sourceforge.net>
+> -	26 Dec 2001
+> -
+> -- 
+> 1.5.0.rc1.g72fe
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
