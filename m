@@ -1,22 +1,24 @@
-From: Neil Brown <neilb@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH] Update README
-Date: Mon, 5 Feb 2007 14:10:12 +1100
-Message-ID: <17862.40980.246111.403067@notabene.brown>
+Date: Sun, 4 Feb 2007 23:29:13 -0500
+Message-ID: <20070205042913.GD12422@fieldses.org>
 References: <20070201173847.GA26741@fieldses.org>
+	<17862.40980.246111.403067@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDuFl-0001aR-Vm
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 19:10:50 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDuFl-0005MZ-J4
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 19:10:51 -0800
-In-Reply-To: message from J. Bruce Fields on Thursday February 1
+	id 1HDvTe-00012B-Kp
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 20:29:14 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HDvTf-0005aY-Bf
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 20:29:16 -0800
+In-Reply-To: <17862.40980.246111.403067@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,47 +31,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday February 1, bfields@fieldses.org wrote:
-> The README has bit-rotted: redhat and debian packaging scripts are no
-> longer included, util-linux mount is (in theory) no longer required, and
-> instructions on building from latest git would be useful.
-
-Thanks.
-
+On Mon, Feb 05, 2007 at 02:10:12PM +1100, Neil Brown wrote:
+> On Thursday February 1, bfields@fieldses.org wrote:
+> > The README has bit-rotted: redhat and debian packaging scripts are no
+> > longer included, util-linux mount is (in theory) no longer required, and
+> > instructions on building from latest git would be useful.
 > 
-> I'm autotool-clueless and have no clue about the "ltmain.sh" thing
-> mentioned in the last section; I just followed the bootstrapping
-> instructions in the commit message for 922d6cfd and found I needed a
-> copy of ltmain.sh to make it work.
+> Thanks.
+> 
+> > 
+> > I'm autotool-clueless and have no clue about the "ltmain.sh" thing
+> > mentioned in the last section; I just followed the bootstrapping
+> > instructions in the commit message for 922d6cfd and found I needed a
+> > copy of ltmain.sh to make it work.
+> 
+> I just run
+>    ./autogen.sh
 
-I just run
-   ./autogen.sh
+Oh, good grief.  Sometimes I really miss the ovious....
 
-works every time... I might change that in the README.
+> works every time... I might change that in the README.
 
-NeilBrown
+OK, thanks!
 
-> -4. REQUIRED VERSIONS OF OTHER TOOLS
-> -
-> -Proper NFS operation requires a 'mount' program from util-linux 2.11f
-> -or later.
-> +	aclocal -I aclocal
-> +	autoheader
-> +	automake
-> +	autoconf
->  
-> +You may also need to copy ltmain.sh to the current directory if the
-> +above doesn't do that.  Usually there's a copy in
-> +/usr/share/libtool/ltmain.sh.  Finally, build as usual as above.
->  
->  Share And Enjoy!
->  
->      --	the nfs-utils developers
->  	<nfs@lists.sourceforge.net>
-> -	26 Dec 2001
-> -
-> -- 
-> 1.5.0.rc1.g72fe
+--b.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
