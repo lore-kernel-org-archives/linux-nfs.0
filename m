@@ -1,26 +1,21 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: Please add AM_MAINTAINER_MODE to configure.in
-Date: Mon, 5 Feb 2007 09:41:18 -0500
-Message-ID: <4d569c330702050641s3dfd1bd0ibd3beff851c6b64f@mail.gmail.com>
-References: <20070104132251.GA31023@uio.no>
-	<17862.24607.837254.907122@notabene.brown>
+From: "Suresh Jayaraman" <sjayaraman@novell.com>
+Subject: Re: Move .nfsXXXX files
+Date: Mon, 05 Feb 2007 10:51:11 -0700
+Message-ID: <45C7BD8B.8E99.00F4.0@novell.com>
+References: <6ffeae550701310533p3bc731b3of53e4da4dd05d98d@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
-	nfs@lists.sourceforge.net
-To: "Neil Brown" <neilb@suse.de>
+To: "Trinabh Shukla" <trinabh@gmail.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HE524-0005HK-4o
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 06:41:24 -0800
-Received: from ug-out-1314.google.com ([66.249.92.169])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HE523-0001UI-Hg
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 06:41:26 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so1286547ugc
-	for <nfs@lists.sourceforge.net>; Mon, 05 Feb 2007 06:41:19 -0800 (PST)
-In-Reply-To: <17862.24607.837254.907122@notabene.brown>
+	id 1HE7xG-0001pc-T3
+	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 09:48:38 -0800
+Received: from lucius.provo.novell.com ([137.65.248.127])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HE7xF-0004C5-5X
+	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 09:48:40 -0800
+In-Reply-To: <6ffeae550701310533p3bc731b3of53e4da4dd05d98d@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,35 +28,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 2/4/07, Neil Brown <neilb@suse.de> wrote:
-> On Thursday January 4, sgunderson@bigfoot.com wrote:
-> > Hi,
-> >
-> > Could you please add AM_MAINTAINER_MODE to configure.in? I'd like to set
-> > --enable-maintainer-mode in the Debian packages (to prevent configure and
-> > friends from being regenerated from possibly broken or incompatible autofoo),
-> > but the macro needs to be in place in configure.in (which should probably be
-> > renamed to configure.ac by now?) for the switch to exist.
->
->  From my limited reading, --enable-maintainer-mode effective negates
->  the effect of putting AM_MAINTAINER_MODE in configure.in.  So I'm
->  confused.
->
->  And there is a suggestion of that AM_MAINTAINER_MODE is a bad thing:
->
->   http://www.gnu.org/software/automake/manual/html_node/maintainer-mode.html
->
-> So I need more information before I know how to proceed.
+>On January 31, 2007 at 7:03 PM, "Trinabh Shukla" <trinabh@gmail.com> wrote:
 
-I've been working for a few weeks with this included.  As a developer
-actively making changes to Makefile.am, etc., I just configure with
---enable-maintainer-mode.
+> The .nfsXXXX file get created when I remove a file while it's being kept
+> open by one of the process. Due to this I can't remove directory which hold
+> this file. So I want to move this .nfsXXXX file on different temp directory
+> on the same nfs file system and delete that directory. Here it's working
+> properly.
+>
+> But let me know that is it a correct solution? And removal of .nfs files
+> does not cause the server serious integrity.
+ 
+If you're not bothered about the process which has that file open,
+better kill the process. Moving to temp dir has problems as Trond 
+mentioned, even if sticky bit(chmod 777+t) is set for the temp dir.
 
-I've run into the timestamp problem in the past on machines with older
-versions of autoconf where the makefile thinks that autoconf needs to
-be re-run.  That can be a pain.
+> Also it will be good, if you lead some pointers about how this .nfsXXXX
+> files handle by the NFS server.
 
-K.C.
+As the server has no clue of file opens, it cannot implement "delete on 
+last close". Also, there is a possibility that client could crash or 
+neglect to remove the hidden files. So server may want to cleanup
+these files periodically. Some servers (eg. Solaris servers) have a cron 
+script which searches exported filesystem for these files that
+haven't not been accessed for a while and deletes them.
+
+Thanks,
+Suresh
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
