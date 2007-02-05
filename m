@@ -1,22 +1,23 @@
-From: Neil Brown <neilb@suse.de>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Subject: Re: [PATCH] Allow default options in /etc/exports
-Date: Mon, 5 Feb 2007 11:35:23 +1100
-Message-ID: <17862.31691.37417.435244@notabene.brown>
+Date: Mon, 5 Feb 2007 01:48:44 +0100
+Message-ID: <20070205004844.GA6459@uio.no>
 References: <20061226225848.GA18366@uio.no>
+	<17862.31691.37417.435244@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "Steinar H. Gunderson" <sesse@debian.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HDrpt-0002kx-Lk
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:35:58 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDrpv-0004v6-Ah
-	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:35:59 -0800
-In-Reply-To: message from Steinar H. Gunderson on Tuesday December 26
+	id 1HDs2t-00043z-HC
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:49:23 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HDs2u-0007vd-65
+	for nfs@lists.sourceforge.net; Sun, 04 Feb 2007 16:49:25 -0800
+In-Reply-To: <17862.31691.37417.435244@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,53 +30,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday December 26, sesse@debian.org wrote:
-> [Cc-on-reply, please]
+On Mon, Feb 05, 2007 at 11:35:23AM +1100, Neil Brown wrote:
+>> [Cc-on-reply, please]
+> Always.... doesn't everybody?
 
-Always.... doesn't everybody?
+Not always. I tried subscribing to the list, but it doesn't seem like it
+worked, for some reason -- odd. SourceForge is not always my friend, although
+you'd believe it would be hard to go wrong with Mailman...
 
+> I would like to have system-wide defaults too (as you mention).  Any
+> suggestions on syntax?  Having
 > 
-> Merry Christmas, to those of you who celebrate that. :-) I found some time to
-> write a patch for a two-year-old feature request which was slowly getting
-> more and more annoying; hope it can go into upstream, even though it won't
-> reach our upcoming Debian release.
-
-Yes, I like it.  I've applied it.
-
-I would like to have system-wide defaults too (as you mention).  Any
-suggestions on syntax?  Having
-
--sync,no_root_squash,no_subtree_check
-
-would be syntactically consistent (which is good) but is kind-a ugly.
-
-Thanks,
-
-NeilBrown
-
-
+> -sync,no_root_squash,no_subtree_check
 > 
-> Patch: Allow default options in /etc/exports
-> 
->   Implement default options in /etc/exports, to fix a long-standing wishlist
->   bug in Debian. (The user claims the syntax matches that of OpenBSD.) This
->   makes it possible to write "/srv/www -sync,no_subtree_check host1 host2 host3"
->   instead of having to write (sync,no_subtree_check) over and over and over
->   again, driving the administrator slowly mad. Such option lines can be
->   placed anywhere on the line, and affects anything after them (I do not
->   know if OpenBSD allows this). The patch is slightly convoluted in order to
->   avoid triggering spurious warnings; for instance, we want
->   "/srv/www -sync host1" to trigger a warning, but not "/srv/www
->   -sync,no_subtree_check host1" or "/srv/www -sync host1(no_subtree_check)".
-> 
->   There was also a suggestion for a truly global (ie. per-file) option list,
->   but this seemed like the safest bet, given that it matches that of other
->   implementations.
-> 
->   Also, the man page is updated with information on the new possibilities,
->   and an example.
-> 
->   Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
+> would be syntactically consistent (which is good) but is kind-a ugly.
+
+My first hunch is to put it on the command line (so one could have it in
+/etc/default/nfs-common), but I realize that would be confusing (and possibly
+different across distributions, and less flexible). I'm a bit short on good
+syntax suggestions apart from that, really -- adding a different kind of line
+sounds a bit like opening a can of worms syntax-wise...
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
