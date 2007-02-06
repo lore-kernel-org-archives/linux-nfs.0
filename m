@@ -1,7 +1,7 @@
 From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1HDpCC-0004uy-LD delayed 24 hours
-Date: Mon, 05 Feb 2007 15:48:44 -0800
-Message-ID: <E1HEDZk-0004Uq-Qq@externalmx-1.sourceforge.net>
+Subject: Warning: message 1HDpCC-0004uy-LD delayed 48 hours
+Date: Tue, 06 Feb 2007 14:59:38 -0800
+Message-ID: <E1HEZHm-0007zf-Sm@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,15 +9,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HEDZk-0008Lb-J9
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 15:48:44 -0800
+	id 1HEZHm-0005lx-G8
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 15:00:19 -0800
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HEDZl-0007La-4Q
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 15:48:46 -0800
+	(Exim 4.44) id 1HEZHn-000069-6U
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 14:59:40 -0800
 Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1HEDZk-0004Uq-Qq
-	for nfs@lists.sourceforge.net; Mon, 05 Feb 2007 15:48:44 -0800
+	id 1HEZHm-0007zf-Sm
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 14:59:38 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,7 +32,7 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This message was created automatically by mail delivery software.
 A message that you sent has not yet been delivered to one or more of its
-recipients after more than 24 hours on the queue on externalmx-1.sourceforge.net.
+recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
 The message identifier is:     1HDpCC-0004uy-LD
 The subject of the message is: But one, preach the grievousness of the host and turned white and
