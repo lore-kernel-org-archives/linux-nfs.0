@@ -1,24 +1,14 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] Allow default options in /etc/exports
-Date: Wed, 7 Feb 2007 13:28:12 +1100
-Message-ID: <20070207022812.GB27634@sgi.com>
-References: <20061226225848.GA18366@uio.no>
-	<17862.31691.37417.435244@notabene.brown>
-	<20070205004844.GA6459@uio.no>
+From: =?shift-jis?B?cmVpbmE=?= <erina_s841@yahoo.fr>
+Subject: =?iso-2022-jp?b?GyRCPCM4MxsoQg==?=
+Date: Tue,  6 Feb 2007 21:52:07 -0800 (PST)
+Message-ID: <E1HEfiG-00061Q-HE@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Content-Type: multipart/mixed; boundary="===============1625336237=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HEcY5-0002KH-MS
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 18:28:41 -0800
-Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HEcY6-0005KY-CD
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 18:28:43 -0800
-In-Reply-To: <20070205004844.GA6459@uio.no>
+Received: from vthlokcjb6 (unknown [31.204.204.51])
+	by smtp48 (Coremail) with SMTP id L2cXqgcfeL4aDHs8.1
+	for <nfs@lists.sourceforge.net>; Wed, 07 Feb 2007 13:51:23 +0800 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,47 +21,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Feb 05, 2007 at 01:48:44AM +0100, Steinar H. Gunderson wrote:
-> On Mon, Feb 05, 2007 at 11:35:23AM +1100, Neil Brown wrote:
-> > I would like to have system-wide defaults too (as you mention).  Any
-> > suggestions on syntax?  Having
-> > 
-> > -sync,no_root_squash,no_subtree_check
-> > 
-> > would be syntactically consistent (which is good) but is kind-a ugly.
-> 
-> My first hunch is to put it on the command line (so one could have it in
-> /etc/default/nfs-common), but I realize that would be confusing (and possibly
-> different across distributions, and less flexible). I'm a bit short on good
-> syntax suggestions apart from that, really -- adding a different kind of line
-> sounds a bit like opening a can of worms syntax-wise...
+This is a multi-part message in MIME format.
 
-How about making the line the exact same syntax as normal
-lines but a pseudo export point string which is not a valid
-absolute pathname, something like "defaults".  For example:
+--===============1625336237==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0007_01C73CAB.AA3EE030"
 
-defaults	*(rw,sync,no_subtree_check)
-/foo
-/bar		*(insecure)
+This is a multi-part message in MIME format.
 
-could mean the same as
+------=_NextPart_000_0007_01C73CAB.AA3EE030
+Content-Type: text/plain;
+	charset="iso-2022-jp
 
-/foo		*(rw,sync,no_subtree_check)
-/bar		*(rw,sync,no_subtree_check,insecure)
 
-There are export options which cannot usefully appear in such a
-defaults line (fsid certainly, perhaps also mountpoint=/somewhere).
 
-Greg.
--- 
-Greg (not Dave) Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+------=_NextPart_000_0007_01C73CAB.AA3EE030--
+
+--===============1625336237==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier.
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============1625336237==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1625336237==--
