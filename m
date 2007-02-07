@@ -1,23 +1,29 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1HDd33-0006cx-NT delayed 72 hours
-Date: Wed, 07 Feb 2007 07:39:20 -0800
-Message-ID: <E1HEotE-0006o5-EA@externalmx-1.sourceforge.net>
+From: "Tabetha Zarnstorff" <moorlanddisassociating@johnm.com>
+Subject: moorlanddisassociating wrote: Would you ...
+Date: Wed, 7 Feb 2007 21:47:10 +0300
+Message-ID: <VBF1VZ14U9C_U9V9V_RH8OGA@johnm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============1295245327=="
+To: <nfs@aol.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HEotI-0006iz-8Z
-	for nfs@lists.sourceforge.net; Wed, 07 Feb 2007 07:39:24 -0800
+	id 1HEucs-0008K5-MN
+	for nfs@lists.sourceforge.net; Wed, 07 Feb 2007 13:46:50 -0800
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HEotE-0001IJ-R7
-	for nfs@lists.sourceforge.net; Wed, 07 Feb 2007 07:39:23 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1HEotE-0006o5-EA
-	for nfs@lists.sourceforge.net; Wed, 07 Feb 2007 07:39:20 -0800
+	(Exim 4.44) id 1HEuct-00066y-G5
+	for nfs@lists.sourceforge.net; Wed, 07 Feb 2007 13:46:52 -0800
+Received: from [190.10.193.217] (helo=casa.cue.satnet.net)
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1HEucq-0001HW-4C
+	for nfs@lists.sourceforge.net; Wed, 07 Feb 2007 13:46:49 -0800
+Received: from y9y2ww.syracuseut.com ([109.35.70.195])
+	by cq.certifiedway.com (Sun Java System Messaging Server 6.1 HotFix
+	0.07 (built Dec 23 2007)) with ESMTP id
+	<nb1f6v6pgpdnojo@139.30.161.66.certifiedway.com> for
+	nfs@lists.sourceforge.net; Wed, 7 Feb 2007 21:47:10 +0300 (IST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +36,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 72 hours on the queue on externalmx-1.sourceforge.net.
+--===============1295245327==
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-The message identifier is:     1HDd33-0006cx-NT
-The subject of the message is: falleth on the Lord in the children of Egypt.  Yea their
-The date of the message is:    Sun, 04 Feb 2007 10:49:71 +0200
+Now HPGI is preparing for the gold extraction. 
+A lot of experts are working on the field and are making preparations for
+efficient and active working. 
 
-The address to which the message has not yet been delivered is:
+“We are delighted with the acquisition of Orion and we feel the property has 
+excellent potential to produce results that will exceed our expectations,” 
+commented Ted Pomerleau, President and Chairman of Hemisphere Gold.
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+as we have said the State Department also noted that Suriname's efforts
+in recent years to liberalize economic policy created new possibilities 
+for U.S. exports and investments. 
+More over in the situation of changeable global economy more countries
+start to buy gold for their reserves.But what is important is that a start has been
+made in buying in the market.
+New information from HPGI will be in the near future.
+Also company are starting to hire staff for mine gold region.
+Underplay is our style (HPGI)
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+
+
+
+
+
+
+
+
+
+
+w3ujc8kdksm7d6afwva6gnd05r68dsuqya9el0
+7378717878787A686B776A73796B456E793374776A746C336A
+EDCVFBXC8MH2VTVP48A1CW63XQX8CKIZ3B7HGQX8G8SW
+
+
+
+
+
+--===============1295245327==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier.
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+--===============1295245327==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1295245327==--
