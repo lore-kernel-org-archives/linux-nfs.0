@@ -1,23 +1,22 @@
 From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1HDpCC-0004uy-LD delayed 48 hours
-Date: Tue, 06 Feb 2007 14:59:38 -0800
-Message-ID: <E1HEZHm-0007zf-Sm@externalmx-1.sourceforge.net>
+Subject: Warning: message 1HDd33-0006cx-NT delayed 48 hours
+Date: Tue, 06 Feb 2007 16:56:28 -0800
+Message-ID: <E1HEb6q-0007K8-9i@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HEZHm-0005lx-G8
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 15:00:19 -0800
+	id 1HEb6p-0001NK-Mc
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 16:56:27 -0800
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HEZHn-000069-6U
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 14:59:40 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HEb6q-00080m-I5
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 16:56:29 -0800
 Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1HEZHm-0007zf-Sm
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 14:59:38 -0800
+	id 1HEb6q-0007K8-9i
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 16:56:28 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,9 +33,9 @@ This message was created automatically by mail delivery software.
 A message that you sent has not yet been delivered to one or more of its
 recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
-The message identifier is:     1HDpCC-0004uy-LD
-The subject of the message is: But one, preach the grievousness of the host and turned white and
-The date of the message is:    Sun, 04 Feb 2007 22:48:52 +0100
+The message identifier is:     1HDd33-0006cx-NT
+The subject of the message is: falleth on the Lord in the children of Egypt.  Yea their
+The date of the message is:    Sun, 04 Feb 2007 10:49:71 +0200
 
 The address to which the message has not yet been delivered is:
 
