@@ -1,24 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] knfsd: Fix a race in closing NFSd connections.
-Date: Wed, 7 Feb 2007 13:09:28 +1100
-Message-ID: <17865.13528.750067.168258@notabene.brown>
-References: <20070207110636.9166.patches@notabene> <1070207001026.9413@suse.de>
-	<20070206175152.39d767dd.akpm@linux-foundation.org>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [PATCH] Allow default options in /etc/exports
+Date: Wed, 7 Feb 2007 13:28:12 +1100
+Message-ID: <20070207022812.GB27634@sgi.com>
+References: <20061226225848.GA18366@uio.no>
+	<17862.31691.37417.435244@notabene.brown>
+	<20070205004844.GA6459@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, stable@kernel.org,
-	linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HEcG5-0000So-Tc
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 18:10:06 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HEcG6-00013j-Hm
-	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 18:10:07 -0800
-In-Reply-To: message from Andrew Morton on Tuesday February 6
+	id 1HEcY5-0002KH-MS
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 18:28:41 -0800
+Received: from omx2-ext.sgi.com ([192.48.171.19] helo=omx2.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HEcY6-0005KY-CD
+	for nfs@lists.sourceforge.net; Tue, 06 Feb 2007 18:28:43 -0800
+In-Reply-To: <20070205004844.GA6459@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +31,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday February 6, akpm@linux-foundation.org wrote:
+On Mon, Feb 05, 2007 at 01:48:44AM +0100, Steinar H. Gunderson wrote:
+> On Mon, Feb 05, 2007 at 11:35:23AM +1100, Neil Brown wrote:
+> > I would like to have system-wide defaults too (as you mention).  Any
+> > suggestions on syntax?  Having
+> > 
+> > -sync,no_root_squash,no_subtree_check
+> > 
+> > would be syntactically consistent (which is good) but is kind-a ugly.
 > 
-> This patch assumes the presence of
-> knfsd-sunrpc-allow-creating-an-rpc-service-without-registering-with-portmapper.patch which
-> obviously isn't appropriate for -stable.
+> My first hunch is to put it on the command line (so one could have it in
+> /etc/default/nfs-common), but I realize that would be confusing (and possibly
+> different across distributions, and less flexible). I'm a bit short on good
+> syntax suggestions apart from that, really -- adding a different kind of line
+> sounds a bit like opening a can of worms syntax-wise...
 
-Only because they change adjacent lines.  There is no semantic
-dependency.
-The patch I sent will apply *correctly* against -stable with
-"--fuzz=3".
-I cannot send a fuzz-free patch if that would make Mr Stable happy.
+How about making the line the exact same syntax as normal
+lines but a pseudo export point string which is not a valid
+absolute pathname, something like "defaults".  For example:
 
-> 
-> Please confirm that the patch which I merged is still OK, thanks.
+defaults	*(rw,sync,no_subtree_check)
+/foo
+/bar		*(insecure)
 
-Yes, the patch which you merged is OK.
+could mean the same as
 
-Thanks,
-NeilBrown
+/foo		*(rw,sync,no_subtree_check)
+/bar		*(rw,sync,no_subtree_check,insecure)
+
+There are export options which cannot usefully appear in such a
+defaults line (fsid certainly, perhaps also mountpoint=/somewhere).
+
+Greg.
+-- 
+Greg (not Dave) Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
