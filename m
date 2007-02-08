@@ -1,22 +1,21 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 06/12] Stop using storage after free
-Date: Thu, 08 Feb 2007 17:27:19 -0500
-Message-ID: <20070208222719.23464.48489.stgit@rock.citi.umich.edu>
+Subject: [PATCH 05/12] Fix memory leak in idmapd.
+Date: Thu, 08 Feb 2007 17:27:14 -0500
+Message-ID: <20070208222714.23464.2972.stgit@rock.citi.umich.edu>
 References: <20070208222606.23464.71348.stgit@rock.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HFHk5-0006sg-LZ
-	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 14:27:49 -0800
+	id 1HFHk4-0006sS-Qb
+	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 14:27:48 -0800
 Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HFHk7-0006nX-AX
-	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 14:27:51 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HFHk6-0004Pd-Hq
+	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 14:27:50 -0800
 In-Reply-To: <20070208222606.23464.71348.stgit@rock.citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -35,61 +34,63 @@ From: Kevin Coffman <kwc@citi.umich.edu>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 
-The previous patch seems to expose a use after free bug in dirscancb. At
-least, I could reliably reproduce a segfault by doing a bunch of mounts
-and then unmounting them all. The code uses the following list macro:
+There is a pretty nasty memory leak in idmapd in dirscancb(). Some of
+our customers have reported that idmapd can eat gigabytes of memory on
+machines with a large number of mounts and unmounts and a long uptime.
 
-      TAILQ_FOREACH(ic, icq, ic_next) {
-
-...to iterate over all of the ic entries and clean up any that no longer
-have a corresponding directory in rpc_pipefs. This macro unrolls into:
-
-      for(ic=icq->tqh_first; ic != NULL; ic=ic->ic_next.tqe_next) {
-
-...but within this loop, we can free ic, and then the for loop can trip
-over that when it tries to do the iteration. The attached patch works
-around this by not using the TAILQ_FOREACH macro and saving off the
-tqe_next pointer prior to the free.
-
-Again, this was tested on a patched 1.0.6, but the 1.0.10 code is very
-similar, and I think the problem exists there as well.
+That function uses scandir(), which malloc's an array of strings, but
+dirscancb() never frees the strings or the array. The following patch
+should correct this, but I've not yet tested it on 1.0.10 (only on the
+RHEL4 1.0.6 version). Still, the code is very similar and I'm fairly
+certain the problem exists in both versions.
 ---
 
- utils/idmapd/idmapd.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ utils/idmapd/idmapd.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index cbb0b6a..b30b69e 100644
+index 19bf7a6..cbb0b6a 100644
 --- a/utils/idmapd/idmapd.c
 +++ b/utils/idmapd/idmapd.c
-@@ -444,7 +444,7 @@ dirscancb(int fd, short which, void *dat
- {
- 	int nent, i;
- 	struct dirent **ents;
--	struct idmap_client *ic;
-+	struct idmap_client *ic, *nextic;
- 	char path[PATH_MAX];
- 	struct idmap_clientq *icq = data;
+@@ -464,7 +464,7 @@ dirscancb(int fd, short which, void *dat
+ 				goto next;
  
-@@ -498,7 +498,9 @@ dirscancb(int fd, short which, void *dat
- 		}
- 	}
+ 			if ((ic = calloc(1, sizeof(*ic))) == NULL)
+-				return;
++				goto out;
+ 			strlcpy(ic->ic_clid, ents[i]->d_name + 4,
+ 			    sizeof(ic->ic_clid));
+ 			path[0] = '\0';
+@@ -474,7 +474,7 @@ dirscancb(int fd, short which, void *dat
+ 			if ((ic->ic_dirfd = open(path, O_RDONLY, 0)) == -1) {
+ 				idmapd_warn("dirscancb: open(%s)", path);
+ 				free(ic);
+-				return;
++				goto out;
+ 			}
  
--	TAILQ_FOREACH(ic, icq, ic_next) {
-+	ic = TAILQ_FIRST(icq);
-+	while(ic != NULL) {
-+		nextic=TAILQ_NEXT(ic, ic_next);
- 		if (!ic->ic_scanned) {
- 			event_del(&ic->ic_event);
- 			close(ic->ic_fd);
-@@ -511,6 +513,7 @@ dirscancb(int fd, short which, void *dat
- 			free(ic);
+ 			strlcat(path, "/idmap", sizeof(path));
+@@ -486,7 +486,7 @@ dirscancb(int fd, short which, void *dat
+ 			if (nfsopen(ic) == -1) {
+ 				close(ic->ic_dirfd);
+ 				free(ic);
+-				return;
++				goto out;
+ 			}
+ 
+ 			ic->ic_id = "Client";
+@@ -512,6 +512,11 @@ dirscancb(int fd, short which, void *dat
  		} else
  			ic->ic_scanned = 0;
-+		ic = nextic;
  	}
++
++out:
++	for (i = 0;  i < nent; i++)
++		free(ents[i]);
++	free(ents);
+ 	return;
+ }
  
- out:
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
