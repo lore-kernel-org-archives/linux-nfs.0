@@ -1,25 +1,28 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: PATCH/RFC Add support for using UUID to
-	identify	filesystem in filehandle
-Date: Fri, 9 Feb 2007 21:42:18 +1100
-Message-ID: <17868.20490.168908.226415@notabene.brown>
-References: <17859.3893.523905.884732@notabene.brown>
-	<1170444690.5890.33.camel@lade.trondhjem.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [PATCH 03/12] Extend the exportfs interface to pass
+	fslocations info into the kernel.
+Date: Fri, 9 Feb 2007 09:19:44 -0500
+Message-ID: <4d569c330702090619m1ddb8c2j5068d454f27051d4@mail.gmail.com>
+References: <20070208222606.23464.71348.stgit@rock.citi.umich.edu>
+	<20070208222704.23464.86120.stgit@rock.citi.umich.edu>
+	<17867.49873.883604.237104@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Fredric Isaman <iisaman@citi.umich.edu>,
+	nfs@lists.sourceforge.net
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HFTDU-0007ca-Fo
-	for nfs@lists.sourceforge.net; Fri, 09 Feb 2007 02:42:56 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HFTDW-0001Xn-6n
-	for nfs@lists.sourceforge.net; Fri, 09 Feb 2007 02:42:58 -0800
-In-Reply-To: message from Trond Myklebust on Friday February 2
+	id 1HFWbH-00058l-P2
+	for nfs@lists.sourceforge.net; Fri, 09 Feb 2007 06:19:43 -0800
+Received: from ug-out-1314.google.com ([66.249.92.171])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HFWbJ-00053m-Cb
+	for nfs@lists.sourceforge.net; Fri, 09 Feb 2007 06:19:45 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so788912ugc
+	for <nfs@lists.sourceforge.net>; Fri, 09 Feb 2007 06:19:44 -0800 (PST)
+In-Reply-To: <17867.49873.883604.237104@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,35 +35,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday February 2, trond.myklebust@fys.uio.no wrote:
-> 
-> I like the idea of using a UUID. That makes server setup infinitely more
-> easy, and should definitely be the default.
-> 
-> What are the filesystems that support 16 byte UUIDs these days? Should
-> we also support hashed labels for those that do not?
+On 2/8/07, Neil Brown <neilb@suse.de> wrote:
+> On Thursday February 8, kwc@citi.umich.edu wrote:
+> > From: Kevin Coffman <kwc@citi.umich.edu>
+> >
+> > Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> > Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+> >
+> > Extend exportfs interface to pass fslocations info into the kernel,
+> > using syntax modelled after AIX.  Adds "--refer" and "--replicas"
+> > options to exportfs to enable use of the kernel fslocation code.
+>
+> I cannot see the "--refer" and "--replicas" implemented or documented
+> in the patch.  I think the changelog entry must be out of date, and
+> when we remove that sentence, there isn't much left....
 
-libblkid seems to find 16byte uuids for
-   ext2, ext3, xfs, reiserfs, reiser4, jfs, ocfs, ocfs2
+I guess that should read "refer=" and "replicas=".
 
-So that excludes FAT (which has a 4 byte uuid), minix, ISO9660, UDF
-and some very minor filesystems.
+> > +/* Called by setting 'Method = stub' in config file.  Just returns
+> > + * some syntactically correct gibberish for testing purposes.
+> > + */
+> > +static struct servers *method_stub(char *key)
+> > +{
+> > +     struct servers *sp;
+> > +     struct mount_point *mp;
+> > +
+> > +     syslog(LOG_INFO, "called method_stub");
+> > +     sp = malloc(sizeof(struct servers));
+> > +     if (!sp)
+> > +             return NULL;
+> > +     mp = calloc(1, sizeof(struct mount_point));
+> > +     if (!mp) {
+> > +             free(sp);
+> > +             return NULL;
+> > +     }
+> > +     sp->h_num = 1;
+> > +     sp->h_mp[0] = mp;
+> > +     mp->h_host = strdup("stub_server");
+> > +     mp->h_path = strdup("/my/test/path");
+> > +     sp->h_referral = 1;
+> > +     return sp;
+> > +}
+>
+>
+> This makes perfect sense for testing during development, but do you
+> really want it in the released version?
+> If so, should there be "#ifdef DEBUG" or something around it ??
 
-ISO9660 seems to be the only significant one that has a label but not
-a uuid.
+Sounds reasonable.
 
-> 
-> About the code. It would really be nice if you could avoid all these
-> open-coded filehandle version numbers and fsid types. Use of a macro or
-> enum to name them would certainly help the casual code reviewer. Also,
-> names like "mk_fsid_v7" do tend to confuse. Perhaps something like
-> mk_fsid_uuid() and mk_fsid_uuid_root_export() (for v6)?
+> And I'm a little confused by the replicas_lookup, method_list stuff.
+> I think it is just parsing the format from /etc/exports so that it can
+> be written in the different format to the kernel.
+> It would seem more appropriate to do this when parsing the
+> /etc/exports (to /etab) file rather than every time we talk to the
+> kernel.  Is there are reason for the way it is?
+> (Just trying to make sure I understand).
 
-Fair comment.  I'll have a look and a think and see what makes it most
-readable.
+I'll have to defer to Fred on this.  I think he is going to be out for a week.
 
-Thanks,
-NeilBrown
+K.C.
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
