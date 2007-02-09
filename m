@@ -1,26 +1,38 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: NFSv3 + krb5 home directory problem
-Date: Thu, 8 Feb 2007 21:53:45 -0500
-Message-ID: <4d569c330702081853qca7178as27659b4e469f6e5@mail.gmail.com>
-References: <20070208222606.23464.71348.stgit@rock.citi.umich.edu>
-	<20070208222750.23464.34565.stgit@rock.citi.umich.edu>
-	<45CBAAC2.1090105@CS.Arizona.EDU>
+From: "fj-shic" <shic@np.css.fujitsu.com>
+Subject: [PATCH] nfs-utils - the problem about the "nfs bindresvport:
+	Address already in use" in NFSv3
+Date: Fri, 9 Feb 2007 11:53:42 +0900
+Message-ID: <0aa301c74bf5$81eb9840$adb1220a@shic>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Jim Davis" <jdavis@cs.arizona.edu>
+Cc: cluster-devel@redhat.com
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HFLtR-0002UE-2M
-	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 18:53:45 -0800
-Received: from ug-out-1314.google.com ([66.249.92.171])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HFLtS-0004Ko-PV
-	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 18:53:47 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so662577ugc
-	for <nfs@lists.sourceforge.net>; Thu, 08 Feb 2007 18:53:45 -0800 (PST)
-In-Reply-To: <45CBAAC2.1090105@CS.Arizona.EDU>
+	id 1HFLtc-0002Ud-5P
+	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 18:53:56 -0800
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HFLtc-0006t1-Kk
+	for nfs@lists.sourceforge.net; Thu, 08 Feb 2007 18:53:58 -0800
+Received: from m1.gw.fujitsu.co.jp ([10.0.50.71])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id
+	l192rk2k012232
+	for <nfs@lists.sourceforge.net> (envelope-from shic@np.css.fujitsu.com);
+	Fri, 9 Feb 2007 11:53:47 +0900
+Received: from smail (m1 [127.0.0.1])
+	by outgoing.m1.gw.fujitsu.co.jp (Postfix) with ESMTP id B349424005C
+	for <nfs@lists.sourceforge.net>; Fri,  9 Feb 2007 11:53:46 +0900 (JST)
+Received: from s5.gw.fujitsu.co.jp (s5.gw.fujitsu.co.jp [10.0.50.95])
+	by m1.gw.fujitsu.co.jp (Postfix) with ESMTP id 7FF402DC06A
+	for <nfs@lists.sourceforge.net>; Fri,  9 Feb 2007 11:53:46 +0900 (JST)
+Received: from s5.gw.fujitsu.co.jp (s5 [127.0.0.1])
+	by s5.gw.fujitsu.co.jp (Postfix) with ESMTP id 6A415161C00B
+	for <nfs@lists.sourceforge.net>; Fri,  9 Feb 2007 11:53:46 +0900 (JST)
+Received: from ml2.s.css.fujitsu.com (ml2.s.css.fujitsu.com [10.23.4.192])
+	by s5.gw.fujitsu.co.jp (Postfix) with ESMTP id EBDDF161C00C
+	for <nfs@lists.sourceforge.net>; Fri,  9 Feb 2007 11:53:45 +0900 (JST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,35 +45,96 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 2/8/07, Jim Davis <jdavis@cs.arizona.edu> wrote:
-> I've been trying to get NFSv3 home directory mounts with sec=krb5
-> working between a Netapp filer running OnTap 7.0.5 and a Fedora Core 6
-> client with the latest nfs-* RPMs installed and kernel version
-> 2.6.18-1.2869.fc6.  Our KDCs run FreeBSD 6.1 with the MIT Kerberos
-> port installed.  Authentication seems to work okay,
->
+Hi, All
 
-> Running rpc.gssd in verbose mode produced
->
-> Script started on Thu Feb  8 15:30:29 2007
-> bsod$ /sbin/lsmod | grep sunrpc
-> sunrpc                158333  6
-> nfs,lockd,nfs_acl,rpcsec_gss_krb5,auth_rpcgss
-> bsod$ mount | grep rpc_pipe
-> sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
-> bsod$ sudo strace -o /tmp/rpc.gssd -f /usr/sbin/rpc.gssd -f -vvv
-> Using keytab file '/etc/krb5.keytab'
-> Processing keytab entry for principal
-> 'nfs/bsod.cs.arizona.edu@CS.ARIZONA.EDU'
-> We will use this entry (nfs/bsod.cs.arizona.edu@CS.ARIZONA.EDU)
-> Using (machine) credentials cache:
-> 'MEMORY:/tmp/krb5cc_machine_CS.ARIZONA.EDU'
->
-> That's the extent of output while the commands above ran.
 
-So there is never an upcall to request a context for testacct.  That
-seems like a kernel issue.  Any chance you have a different kernel
-still on that machine you could try?
+
+When I did some NFSv3 mount operations, I found the problem abut the  "nfs 
+binodresvport: Address already in use" in NFSv3.
+
+I mounted NFSv3 in TCP protocol, after lots of continuous mount operations, 
+the error "nfs bindresvport: Address already in use" always happened, as the 
+count of the mounted NFS reaches about 500, even I added the "insecure" 
+option to the exports entry of the NFS server.
+
+
+
+My system is RHEL5 and the mount operation for NFSv3 is implemented in 
+nfs-utils-1.0.9-10.
+
+ I have investigated the problem, and found the cause was the limitation of 
+the bindresvport in nfsmount.
+
+
+
+ In nfsmount, nfsmount() will create a socket for NFS, and just bind the 
+socket to a reserve port. For the bindresvport() just can use the port 
+number in the range 512-1023, after the lots of continuous mount operations, 
+the reserved ports will all be in TIME_WAIT during the mount storm but can 
+not be released in time, then next mount operation will usually fails by 
+bindresvport().
+
+
+
+In NFS server exports configuration, the 'insecure' option allows clients 
+with NFS implementations that don't use a reserved port for NFS, so I think 
+the port range can be expended so the entire port space can be tried, for a 
+reserved port is not always needed when the 'insecure' option is allowed.
+
+
+ For the problem in the nfsmount, I have made the patch below for the 
+limitation of the bindresvport, and make the socket can be bound to a 
+non-reserve port when the bindresvport fails.
+ I have tested it as the "insecure" is set, after the patch is applied, the 
+limitation with "nfs binodresvport:" can be avoided.
+
+
+
+Any idea for it is welcome!
+
+Thanks
+
+Regards
+
+ShiChao
+ signed-off-by:ShiChao <shic@nanjing-fnst.com>
+--- nfs-utils-1.0.9-orig/utils/mount/nfsmount.c 2007-01-31 
+17:12:26.000000000 -0500
++++ nfs-utils-1.0.9/utils/mount/nfsmount.c 2007-02-01 
+05:13:48.000000000 -0500
+@@ -851,6 +851,7 @@
+  time_t t;
+  time_t prevt;
+  time_t timeout;
++  struct sockaddr_in laddr;
+
+  /* The version to try is either specified or 0
+     In case it is 0 we tell the caller what we tried */
+@@ -1139,10 +1140,18 @@
+   perror(_("nfs socket"));
+   goto fail;
+  }
++
+  if (bindresvport(fsock, 0) < 0) {
+-  perror(_("nfs bindresvport"));
+-  goto fail;
+- }
++  perror(_("nfs bindresvport fail, try a non-reserver port"));
++  laddr.sin_family = AF_INET;
++  laddr.sin_port = 0;
++  laddr.sin_addr.s_addr = htonl(INADDR_ANY);
++  if ( bind(fsock, (struct sockaddr *)&laddr, sizeof(laddr)) < 0 ){
++   perror(_("nfs bind"));
++   goto fail;
++  }
++  }
++
+ #ifdef NFS_MOUNT_DEBUG
+  printf(_("using port %d for nfs deamon\n"), nfs_pmap->pm_port);
+ #endif
+
+
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
