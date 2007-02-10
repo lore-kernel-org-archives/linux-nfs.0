@@ -1,24 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] sunrpc: remove dead variable 'rpciod_running'
-Date: Fri, 09 Feb 2007 16:03:21 -0800
-Message-ID: <45CD0BC9.2030208@oracle.com>
-References: <20070209200649.GA9686@infradead.org>
-Reply-To: chuck.lever@oracle.com
+From: "=?windows-1255?Q?=E3=EC=E9=FA?=" <lagit@012.net.il>
+Subject: =?windows-1255?b?7vH06fcg8u0g4fjh5fjp7S0g5OLp8iDk5u7vIOzy?=
+	=?windows-1255?b?4eX4IOzu8vnp7Q==?=
+Date: Sat, 10 Feb 2007 10:05:56 +0200
+Message-ID: <2a64194391d0ae9ca617be9c001776bf@012.net.il>
+Reply-To: lagit@012.net.il
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070609060502000308090302"
-Cc: nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: multipart/mixed; boundary="===============0110720046=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HFfil-0000Jx-CS
-	for nfs@lists.sourceforge.net; Fri, 09 Feb 2007 16:04:12 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HFfil-00057W-QW
-	for nfs@lists.sourceforge.net; Fri, 09 Feb 2007 16:04:05 -0800
-In-Reply-To: <20070209200649.GA9686@infradead.org>
+	id 1HFnGo-0003mo-A0
+	for nfs@lists.sourceforge.net; Sat, 10 Feb 2007 00:07:42 -0800
+Received: from 89.0.247.132.dynamic.barak-online.net ([89.0.247.132]
+	helo=yahoo.com) by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1HFnGp-0004Jy-HA
+	for nfs@lists.sourceforge.net; Sat, 10 Feb 2007 00:07:44 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,55 +29,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070609060502000308090302
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+--===============0110720046==
+Content-Type: text/html;
+	charset="windows-1255"
 
-At a glance, this looks reasonable.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1255">
+</head>
+<body style="FONT-FAMILY: Tahoma">
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 4.9pt 0pt 0cm; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 20pt; COLOR: #cc0066; FONT-FAMILY: Tahoma"><font size=7>"הצלחה 
+מעשית" </font></span></b></p>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 4.9pt 0pt 0cm; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 20pt; COLOR: #cc0066; FONT-FAMILY: Tahoma">מתיאוריה 
+למעשה</span></b></p>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 4.9pt 0pt 0cm; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 20pt; COLOR: #cc0066; FONT-FAMILY: Tahoma">הסדנה המשולבת 
+להצלחה בשיווק רשתי </span></b></p>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 16pt; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana"><o:p><font 
+color=#333399><span lang=HE 
+style="FONT-SIZE: 18pt; COLOR: #cc0066; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana"><img 
+src="http://www.topper.org.il/_Uploads/ImagesGallery/417gesher.jpg" 
+border=0><o:p></o:p></span>&nbsp;</font></o:p></span></b></p>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 18pt; COLOR: #cc0066; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana">הדרך 
+להשיג כל מטרה אותה אתם מציבים לעצמכם<br></span></b><b><span lang=HE 
+style="FONT-SIZE: 18pt; COLOR: #cc0066; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana">באמצעות 
+שילוב 3 טכניקות מעשיות שהוכיחו עצמן בעולם הרחב<o:p></o:p></span></b></p>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 18pt; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana"><o:p><font 
+color=#333399></font></o:p></span></b></p>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 16pt; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana"><o:p><font 
+color=#333399><a 
+href="http://213.8.103.239/dll/cts/rekcilc.asp?kamb=dalit2">לפרטים לחצו כאן 
+</a></font></o:p></span></b>
+<p class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt; TEXT-ALIGN: center" 
+align=center><b><span lang=HE 
+style="FONT-SIZE: 16pt; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana"><o:p><font 
+color=#333399></font></o:p></span></b></p><span lang=HE 
+style="FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana"><o:p><font 
+color=#333399>&nbsp;</font></o:p></span> 
+<p></p>
+<p align=center><b><span lang=HE dir=rtl 
+style="FONT-SIZE: 18pt; COLOR: #333399; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana; mso-fareast-font-family: 'Times New Roman'; mso-ansi-language: EN-US; mso-fareast-language: EN-US; mso-bidi-language: HE">יום 
+מדהים יצירתי ושמח, דלית</span></b></p>
+<p align=center><b><span lang=HE dir=rtl 
+style="FONT-SIZE: 18pt; COLOR: #333399; FONT-FAMILY: Arial; mso-ascii-font-family: Verdana; mso-hansi-font-family: Verdana; mso-fareast-font-family: 'Times New Roman'; mso-ansi-language: EN-US; mso-fareast-language: EN-US; mso-bidi-language: HE"><a href="lagit@012.net.il"><font size=3>להסרה לחצו 
+כאן</font> </a></span></b></p>
+</body>
+</html>
 
-Christoph Hellwig wrote:
-> rpciod_running is not used at all, but due to the way DECLARE_MUTEX_LOCKED
-> works we don't get a warning for it.
-> 
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> Index: linux-2.6/net/sunrpc/sched.c
-> ===================================================================
-> --- linux-2.6.orig/net/sunrpc/sched.c	2007-02-06 15:55:43.000000000 +0100
-> +++ linux-2.6/net/sunrpc/sched.c	2007-02-06 15:55:45.000000000 +0100
-> @@ -973,8 +973,6 @@
->  	spin_unlock(&rpc_sched_lock);
->  }
->  
-> -static DECLARE_MUTEX_LOCKED(rpciod_running);
-> -
->  static void rpciod_killall(void)
->  {
->  	unsigned long flags;
 
 
---------------070609060502000308090302
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture Linux Projects Group
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------070609060502000308090302
+--===============0110720046==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -90,7 +103,7 @@ Using Tomcat but need to do more? Need to support web services, security?
 Get stuff done quickly with pre-integrated technology to make your job easier.
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
 http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
---------------070609060502000308090302
+--===============0110720046==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -100,4 +113,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------070609060502000308090302--
+--===============0110720046==--
