@@ -1,22 +1,23 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 005 of 9] knfsd: nfsd4: fix memory leak on kmalloc
-	failure in savemem
-Date: Tue, 13 Feb 2007 10:44:26 +1100
-Message-ID: <1070212234426.29285@suse.de>
+Subject: [PATCH 006 of 9] knfsd: nfsd4: fix error return on
+	unsupported acl
+Date: Tue, 13 Feb 2007 10:44:32 +1100
+Message-ID: <1070212234432.29300@suse.de>
 References: <20070213103941.28958.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGkrF-0005cz-O6
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:45:17 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGkrH-0002F1-FU
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:45:19 -0800
+	id 1HGkrN-0005dA-H7
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:45:25 -0800
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HGkrO-0000sd-2E
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:45:27 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,43 +31,47 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-From: J. Bruce Fields <bfields@snoopy.citi.umich.edu>
-The wrong pointer is being kfree'd in savemem() when defer_free
-returns with an error.
+From: J. Bruce Fields <bfields@citi.umich.edu>
+We should be returning ATTRNOTSUPP, not NOTSUPP, when acls are unsupported.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Also fix a comment.
+
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4xdr.c |    8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ ./fs/nfsd/nfs4xdr.c |    2 +-
+ ./fs/nfsd/vfs.c     |    5 ++++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
 diff .prev/fs/nfsd/nfs4xdr.c ./fs/nfsd/nfs4xdr.c
---- .prev/fs/nfsd/nfs4xdr.c	2007-02-13 10:23:49.000000000 +1100
-+++ ./fs/nfsd/nfs4xdr.c	2007-02-13 10:36:40.000000000 +1100
-@@ -199,18 +199,16 @@ defer_free(struct nfsd4_compoundargs *ar
+--- .prev/fs/nfsd/nfs4xdr.c	2007-02-13 10:36:40.000000000 +1100
++++ ./fs/nfsd/nfs4xdr.c	2007-02-13 10:37:00.000000000 +1100
+@@ -253,7 +253,7 @@ nfsd4_decode_fattr(struct nfsd4_compound
+ 		return status;
  
- static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
- {
--	void *new = NULL;
- 	if (p == argp->tmp) {
--		new = kmalloc(nbytes, GFP_KERNEL);
--		if (!new) return NULL;
--		p = new;
-+		p = kmalloc(nbytes, GFP_KERNEL);
-+		if (!p) return NULL;
- 		memcpy(p, argp->tmp, nbytes);
- 	} else {
- 		BUG_ON(p != argp->tmpp);
- 		argp->tmpp = NULL;
- 	}
- 	if (defer_free(argp, kfree, p)) {
--		kfree(new);
-+		kfree(p);
- 		return NULL;
- 	} else
- 		return (char *)p;
+ 	/*
+-	 * According to spec, unsupported attributes return ERR_NOTSUPP;
++	 * According to spec, unsupported attributes return ERR_ATTRNOTSUPP;
+ 	 * read-only attributes return ERR_INVAL.
+ 	 */
+ 	if ((bmval[0] & ~NFSD_SUPPORTED_ATTRS_WORD0) || (bmval[1] & ~NFSD_SUPPORTED_ATTRS_WORD1))
+
+diff .prev/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
+--- .prev/fs/nfsd/vfs.c	2007-02-13 09:50:24.000000000 +1100
++++ ./fs/nfsd/vfs.c	2007-02-13 10:37:00.000000000 +1100
+@@ -466,7 +466,10 @@ out:
+ 	posix_acl_release(dpacl);
+ 	return (error);
+ out_nfserr:
+-	error = nfserrno(host_error);
++	if (host_error == -EOPNOTSUPP)
++		error = nfserr_attrnotsupp;
++	else
++		error = nfserrno(host_error);
+ 	goto out;
+ }
+ 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
