@@ -1,21 +1,23 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 001 of 9] knfsd: nfsd4: fix non-terminated string
-Date: Tue, 13 Feb 2007 10:44:02 +1100
-Message-ID: <1070212234402.29224@suse.de>
+Subject: [PATCH 002 of 9] knfsd: nfsd4: relax checking of ACL
+	inheritance bits
+Date: Tue, 13 Feb 2007 10:44:07 +1100
+Message-ID: <1070212234407.29239@suse.de>
 References: <20070213103941.28958.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGkqi-0005WA-BV
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:44 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGkqi-00025x-UD
+	id 1HGkqk-0005WF-Am
 	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:46 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HGkqj-0000hY-HY
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:48 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,55 +32,83 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
-The server name is expected to be a null-terminated string, so we can't
-pass in the raw client identifier.
+The rfc allows us to be more permissive about the ACL inheritance bits we
+accept:
 
-What's more, the client identifier is just a binary, not necessarily
-printable, blob.  Let's just use the ip address instead.  The server
-name appears to exist just to help debugging by making some printk's
-more informative.
+	"If the server supports a single "inherit ACE" flag that applies to
+	both files and directories, the server may reject the request
+	(i.e., requiring the client to set both the file and directory
+	inheritance flags). The server may also accept the request and
+	silently turn on the ACE4_DIRECTORY_INHERIT_ACE flag."
 
-Note that the string is copies into the rpc client structure, so
-the pointer to the local variable does not outlive the function call.
+Let's take the latter option--the ACL is a complex attribute that could be
+rejected for a wide variety of reasons, and the protocol gives us little
+ability to explain the reason for the rejection, so erroring out is a
+user-unfriendly last resort.
 
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4callback.c |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ ./fs/nfsd/nfs4acl.c |   23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
-diff .prev/fs/nfsd/nfs4callback.c ./fs/nfsd/nfs4callback.c
---- .prev/fs/nfsd/nfs4callback.c	2007-02-13 09:50:26.000000000 +1100
-+++ ./fs/nfsd/nfs4callback.c	2007-02-13 10:00:59.000000000 +1100
-@@ -387,7 +387,6 @@ nfsd4_probe_callback(struct nfs4_client 
- 		.address	= (struct sockaddr *)&addr,
- 		.addrsize	= sizeof(addr),
- 		.timeout	= &timeparms,
--		.servername	= clp->cl_name.data,
- 		.program	= program,
- 		.version	= nfs_cb_version[1]->number,
- 		.authflavor	= RPC_AUTH_UNIX,	/* XXX: need AUTH_GSS... */
-@@ -397,6 +396,7 @@ nfsd4_probe_callback(struct nfs4_client 
- 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
- 		.rpc_argp       = clp,
- 	};
-+	char clientname[16];
- 	int status;
+diff .prev/fs/nfsd/nfs4acl.c ./fs/nfsd/nfs4acl.c
+--- .prev/fs/nfsd/nfs4acl.c	2007-02-13 09:50:26.000000000 +1100
++++ ./fs/nfsd/nfs4acl.c	2007-02-13 10:01:42.000000000 +1100
+@@ -61,9 +61,11 @@
  
- 	if (atomic_read(&cb->cb_set))
-@@ -419,6 +419,11 @@ nfsd4_probe_callback(struct nfs4_client 
- 	memset(program->stats, 0, sizeof(cb->cb_stat));
- 	program->stats->program = program;
+ /* flags used to simulate posix default ACLs */
+ #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
+-		| NFS4_ACE_DIRECTORY_INHERIT_ACE | NFS4_ACE_INHERIT_ONLY_ACE)
++		| NFS4_ACE_DIRECTORY_INHERIT_ACE)
  
-+	/* Just here to make some printk's more useful: */
-+	snprintf(clientname, sizeof(clientname),
-+		"%u.%u.%u.%u", NIPQUAD(addr.sin_addr));
-+	args.servername = clientname;
-+
- 	/* Create RPC client */
- 	cb->cb_client = rpc_create(&args);
- 	if (IS_ERR(cb->cb_client)) {
+-#define NFS4_SUPPORTED_FLAGS (NFS4_INHERITANCE_FLAGS | NFS4_ACE_IDENTIFIER_GROUP)
++#define NFS4_SUPPORTED_FLAGS (NFS4_INHERITANCE_FLAGS \
++		| NFS4_ACE_INHERIT_ONLY_ACE \
++		| NFS4_ACE_IDENTIFIER_GROUP)
+ 
+ #define MASK_EQUAL(mask1, mask2) \
+ 	( ((mask1) & NFS4_ACE_MASK_ALL) == ((mask2) & NFS4_ACE_MASK_ALL) )
+@@ -707,11 +709,16 @@ nfs4_acl_split(struct nfs4_acl *acl, str
+ 		if (ace->flag & ~NFS4_SUPPORTED_FLAGS)
+ 			return -EINVAL;
+ 
+-		switch (ace->flag & NFS4_INHERITANCE_FLAGS) {
+-		case 0:
++		if ((ace->flag & NFS4_INHERITANCE_FLAGS) == 0) {
+ 			/* Leave this ace in the effective acl: */
+ 			continue;
+-		case NFS4_INHERITANCE_FLAGS:
++		}
++		/*
++		 * Note that when only one of FILE_INHERIT or DIRECTORY_INHERIT
++		 * is set, we're effectively turning on the other.  That's OK,
++		 * according to rfc 3530.
++		 */
++		if (ace->flag & NFS4_ACE_INHERIT_ONLY_ACE) {
+ 			/* Add this ace to the default acl and remove it
+ 			 * from the effective acl: */
+ 			error = nfs4_acl_add_ace(dacl, ace->type, ace->flag,
+@@ -721,17 +728,13 @@ nfs4_acl_split(struct nfs4_acl *acl, str
+ 			list_del(h);
+ 			kfree(ace);
+ 			acl->naces--;
+-			break;
+-		case NFS4_INHERITANCE_FLAGS & ~NFS4_ACE_INHERIT_ONLY_ACE:
++		} else {
+ 			/* Add this ace to the default, but leave it in
+ 			 * the effective acl as well: */
+ 			error = nfs4_acl_add_ace(dacl, ace->type, ace->flag,
+ 				ace->access_mask, ace->whotype, ace->who);
+ 			if (error)
+ 				return error;
+-			break;
+-		default:
+-			return -EINVAL;
+ 		}
+ 	}
+ 	return 0;
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
