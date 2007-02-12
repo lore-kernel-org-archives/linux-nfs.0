@@ -1,23 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 002 of 9] knfsd: nfsd4: relax checking of ACL
-	inheritance bits
-Date: Tue, 13 Feb 2007 10:44:07 +1100
-Message-ID: <1070212234407.29239@suse.de>
+Subject: [PATCH 003 of 9] knfsd: nfsd4: simplify nfsv4->posix
+	translation
+Date: Tue, 13 Feb 2007 10:44:12 +1100
+Message-ID: <1070212234412.29254@suse.de>
 References: <20070213103941.28958.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGkqk-0005WF-Am
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:46 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HGkqj-0000hY-HY
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:48 -0800
+	id 1HGkqo-0005WK-7K
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:50 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGkqn-00026g-Bl
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:52 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,83 +31,192 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
-The rfc allows us to be more permissive about the ACL inheritance bits we
-accept:
+The code that splits an incoming nfsv4 ACL into inheritable and effective parts
+can be combined with the the code that translates each to a posix acl,
+resulting in simpler code that requires one less pass through the ACL.
 
-	"If the server supports a single "inherit ACE" flag that applies to
-	both files and directories, the server may reject the request
-	(i.e., requiring the client to set both the file and directory
-	inheritance flags). The server may also accept the request and
-	silently turn on the ACE4_DIRECTORY_INHERIT_ACE flag."
-
-Let's take the latter option--the ACL is a complex attribute that could be
-rejected for a wide variety of reasons, and the protocol gives us little
-ability to explain the reason for the rejection, so erroring out is a
-user-unfriendly last resort.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4acl.c |   23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+ ./fs/nfsd/nfs4acl.c |  133 ++++++++++++++--------------------------------------
+ 1 file changed, 38 insertions(+), 95 deletions(-)
 
 diff .prev/fs/nfsd/nfs4acl.c ./fs/nfsd/nfs4acl.c
---- .prev/fs/nfsd/nfs4acl.c	2007-02-13 09:50:26.000000000 +1100
-+++ ./fs/nfsd/nfs4acl.c	2007-02-13 10:01:42.000000000 +1100
-@@ -61,9 +61,11 @@
+--- .prev/fs/nfsd/nfs4acl.c	2007-02-13 10:01:42.000000000 +1100
++++ ./fs/nfsd/nfs4acl.c	2007-02-13 10:04:17.000000000 +1100
+@@ -129,9 +129,7 @@ struct ace_container {
  
- /* flags used to simulate posix default ACLs */
- #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
--		| NFS4_ACE_DIRECTORY_INHERIT_ACE | NFS4_ACE_INHERIT_ONLY_ACE)
-+		| NFS4_ACE_DIRECTORY_INHERIT_ACE)
+ static short ace2type(struct nfs4_ace *);
+ static int _posix_to_nfsv4_one(struct posix_acl *, struct nfs4_acl *, unsigned int);
+-static struct posix_acl *_nfsv4_to_posix_one(struct nfs4_acl *, unsigned int);
+ int nfs4_acl_add_ace(struct nfs4_acl *, u32, u32, u32, int, uid_t);
+-static int nfs4_acl_split(struct nfs4_acl *, struct nfs4_acl *);
  
--#define NFS4_SUPPORTED_FLAGS (NFS4_INHERITANCE_FLAGS | NFS4_ACE_IDENTIFIER_GROUP)
-+#define NFS4_SUPPORTED_FLAGS (NFS4_INHERITANCE_FLAGS \
-+		| NFS4_ACE_INHERIT_ONLY_ACE \
-+		| NFS4_ACE_IDENTIFIER_GROUP)
+ struct nfs4_acl *
+ nfs4_acl_posix_to_nfsv4(struct posix_acl *pacl, struct posix_acl *dpacl,
+@@ -344,46 +342,6 @@ sort_pacl(struct posix_acl *pacl)
+ 	return;
+ }
  
- #define MASK_EQUAL(mask1, mask2) \
- 	( ((mask1) & NFS4_ACE_MASK_ALL) == ((mask2) & NFS4_ACE_MASK_ALL) )
-@@ -707,11 +709,16 @@ nfs4_acl_split(struct nfs4_acl *acl, str
- 		if (ace->flag & ~NFS4_SUPPORTED_FLAGS)
- 			return -EINVAL;
- 
--		switch (ace->flag & NFS4_INHERITANCE_FLAGS) {
--		case 0:
-+		if ((ace->flag & NFS4_INHERITANCE_FLAGS) == 0) {
- 			/* Leave this ace in the effective acl: */
- 			continue;
--		case NFS4_INHERITANCE_FLAGS:
-+		}
-+		/*
-+		 * Note that when only one of FILE_INHERIT or DIRECTORY_INHERIT
-+		 * is set, we're effectively turning on the other.  That's OK,
-+		 * according to rfc 3530.
-+		 */
-+		if (ace->flag & NFS4_ACE_INHERIT_ONLY_ACE) {
- 			/* Add this ace to the default acl and remove it
- 			 * from the effective acl: */
- 			error = nfs4_acl_add_ace(dacl, ace->type, ace->flag,
-@@ -721,17 +728,13 @@ nfs4_acl_split(struct nfs4_acl *acl, str
- 			list_del(h);
- 			kfree(ace);
- 			acl->naces--;
--			break;
--		case NFS4_INHERITANCE_FLAGS & ~NFS4_ACE_INHERIT_ONLY_ACE:
-+		} else {
- 			/* Add this ace to the default, but leave it in
- 			 * the effective acl as well: */
- 			error = nfs4_acl_add_ace(dacl, ace->type, ace->flag,
- 				ace->access_mask, ace->whotype, ace->who);
- 			if (error)
- 				return error;
--			break;
--		default:
--			return -EINVAL;
- 		}
+-int
+-nfs4_acl_nfsv4_to_posix(struct nfs4_acl *acl, struct posix_acl **pacl,
+-		struct posix_acl **dpacl, unsigned int flags)
+-{
+-	struct nfs4_acl *dacl;
+-	int error = -ENOMEM;
+-
+-	*pacl = NULL;
+-	*dpacl = NULL;
+-
+-	dacl = nfs4_acl_new();
+-	if (dacl == NULL)
+-		goto out;
+-
+-	error = nfs4_acl_split(acl, dacl);
+-	if (error)
+-		goto out_acl;
+-
+-	*pacl = _nfsv4_to_posix_one(acl, flags);
+-	if (IS_ERR(*pacl)) {
+-		error = PTR_ERR(*pacl);
+-		*pacl = NULL;
+-		goto out_acl;
+-	}
+-
+-	*dpacl = _nfsv4_to_posix_one(dacl, flags);
+-	if (IS_ERR(*dpacl)) {
+-		error = PTR_ERR(*dpacl);
+-		*dpacl = NULL;
+-	}
+-out_acl:
+-	if (error) {
+-		posix_acl_release(*pacl);
+-		*pacl = NULL;
+-	}
+-	nfs4_acl_free(dacl);
+-out:
+-	return error;
+-}
+-
+ /*
+  * While processing the NFSv4 ACE, this maintains bitmasks representing
+  * which permission bits have been allowed and which denied to a given
+@@ -668,76 +626,61 @@ static void process_one_v4_ace(struct po
  	}
- 	return 0;
+ }
+ 
+-static struct posix_acl *
+-_nfsv4_to_posix_one(struct nfs4_acl *n4acl, unsigned int flags)
++int nfs4_acl_nfsv4_to_posix(struct nfs4_acl *acl, struct posix_acl **pacl,
++			    struct posix_acl **dpacl, unsigned int flags)
+ {
+-	struct posix_acl_state state;
+-	struct posix_acl *pacl;
++	struct posix_acl_state effective_acl_state, default_acl_state;
+ 	struct nfs4_ace *ace;
+ 	int ret;
+ 
+-	ret = init_state(&state, n4acl->naces);
++	ret = init_state(&effective_acl_state, acl->naces);
+ 	if (ret)
+-		return ERR_PTR(ret);
+-
+-	list_for_each_entry(ace, &n4acl->ace_head, l_ace)
+-		process_one_v4_ace(&state, ace);
+-
+-	pacl = posix_state_to_acl(&state, flags);
+-
+-	free_state(&state);
+-
+-	if (!IS_ERR(pacl))
+-		sort_pacl(pacl);
+-	return pacl;
+-}
+-
+-static int
+-nfs4_acl_split(struct nfs4_acl *acl, struct nfs4_acl *dacl)
+-{
+-	struct list_head *h, *n;
+-	struct nfs4_ace *ace;
+-	int error = 0;
+-
+-	list_for_each_safe(h, n, &acl->ace_head) {
+-		ace = list_entry(h, struct nfs4_ace, l_ace);
+-
++		return ret;
++	ret = init_state(&default_acl_state, acl->naces);
++	if (ret)
++		goto out_estate;
++	ret = -EINVAL;
++	list_for_each_entry(ace, &acl->ace_head, l_ace) {
+ 		if (ace->type != NFS4_ACE_ACCESS_ALLOWED_ACE_TYPE &&
+ 		    ace->type != NFS4_ACE_ACCESS_DENIED_ACE_TYPE)
+-			return -EINVAL;
+-
++			goto out_dstate;
+ 		if (ace->flag & ~NFS4_SUPPORTED_FLAGS)
+-			return -EINVAL;
+-
++			goto out_dstate;
+ 		if ((ace->flag & NFS4_INHERITANCE_FLAGS) == 0) {
+-			/* Leave this ace in the effective acl: */
++			process_one_v4_ace(&effective_acl_state, ace);
+ 			continue;
+ 		}
++		if (!(flags & NFS4_ACL_DIR))
++			goto out_dstate;
+ 		/*
+ 		 * Note that when only one of FILE_INHERIT or DIRECTORY_INHERIT
+ 		 * is set, we're effectively turning on the other.  That's OK,
+ 		 * according to rfc 3530.
+ 		 */
+-		if (ace->flag & NFS4_ACE_INHERIT_ONLY_ACE) {
+-			/* Add this ace to the default acl and remove it
+-			 * from the effective acl: */
+-			error = nfs4_acl_add_ace(dacl, ace->type, ace->flag,
+-				ace->access_mask, ace->whotype, ace->who);
+-			if (error)
+-				return error;
+-			list_del(h);
+-			kfree(ace);
+-			acl->naces--;
+-		} else {
+-			/* Add this ace to the default, but leave it in
+-			 * the effective acl as well: */
+-			error = nfs4_acl_add_ace(dacl, ace->type, ace->flag,
+-				ace->access_mask, ace->whotype, ace->who);
+-			if (error)
+-				return error;
+-		}
++		process_one_v4_ace(&default_acl_state, ace);
++
++		if (!(ace->flag & NFS4_ACE_INHERIT_ONLY_ACE))
++			process_one_v4_ace(&effective_acl_state, ace);
+ 	}
+-	return 0;
++	*pacl = posix_state_to_acl(&effective_acl_state, flags);
++	if (IS_ERR(*pacl)) {
++		ret = PTR_ERR(*pacl);
++		goto out_dstate;
++	}
++	*dpacl = posix_state_to_acl(&default_acl_state, flags);
++	if (IS_ERR(*dpacl)) {
++		ret = PTR_ERR(*dpacl);
++		posix_acl_release(*pacl);
++		goto out_dstate;
++	}
++	sort_pacl(*pacl);
++	sort_pacl(*dpacl);
++	ret = 0;
++out_dstate:
++	free_state(&default_acl_state);
++out_estate:
++	free_state(&effective_acl_state);
++	return ret;
+ }
+ 
+ static short
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
