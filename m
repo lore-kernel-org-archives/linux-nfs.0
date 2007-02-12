@@ -1,23 +1,24 @@
-From: Neil Brown <neilb@suse.de>
+From: Arnaud Giersch <arnaud.giersch@free.fr>
 Subject: Re: nfssvc: writting fds to kernel failed: errno 0 (Success)
-Date: Mon, 12 Feb 2007 10:39:49 +1100
-Message-ID: <17871.43333.241970.724805@notabene.brown>
+Date: Mon, 12 Feb 2007 01:42:56 +0100
+Message-ID: <87abzk5hpr.fsf@groumpf.homeip.net>
 References: <87fy9c5m0l.fsf@groumpf.homeip.net>
+	<17871.43333.241970.724805@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="iso-8859-1"
 Cc: nfs@lists.sourceforge.net
-To: Arnaud Giersch <arnaud.giersch@free.fr>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGOIz-0007Ss-Hb
-	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 15:40:25 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HGOJ1-0000jr-35
-	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 15:40:27 -0800
-In-Reply-To: message from Arnaud Giersch on Monday February 12
+	id 1HGPHY-00051Q-RN
+	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 16:43:00 -0800
+Received: from smtp4-g19.free.fr ([212.27.42.30])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGPHY-0008Fa-FY
+	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 16:43:02 -0800
+In-Reply-To: <17871.43333.241970.724805@notabene.brown> (Neil Brown's message
+	of "Mon, 12 Feb 2007 10:39:49 +1100")
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,49 +31,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday February 12, arnaud.giersch@free.fr wrote:
-> Hi,
-> 
-> Since two months, I can see the following strange messages logged each
-> time that rpc.nfsd is started:
-> 
-> Feb 11 21:46:23 bilbo nfsd[18672]: nfssvc: writting fds to kernel failed: errno 0 (Success)
-> Feb 11 21:46:23 bilbo nfsd[18672]: nfssvc: writting fds to kernel failed: errno 0 (Success)
-> 
-> It seems however harmless, the NFS server works fine.  
+Lundi 12 f=E9vrier 2007, vers 00:39:49 (+0100), Neil Brown a =E9crit:
 
-Yes, it is harmless - except that it causes concern.
+> On Monday February 12, arnaud.giersch@free.fr wrote:
+>> Feb 11 21:46:23 bilbo nfsd[18672]: nfssvc: writting fds to kernel failed=
+: errno 0 (Success)
+[...]
+> The following kernel patch should stop the error (and a separate patch
+> will fix the typo in the error message...)
 
-The following kernel patch should stop the error (and a separate patch
-will fix the typo in the error message...)
+Thanks.  The patch looks ok to me, but I am sorry I can't test it for
+the moment.  =
 
-Thanks,
-NeilBrown
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+The machines running an NFS server that I have access to are either
+our main server at work, or my old home server which takes several
+hours to build a new kernel.
 
-### Diffstat output
- ./fs/nfsd/nfsctl.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff .prev/fs/nfsd/nfsctl.c ./fs/nfsd/nfsctl.c
---- .prev/fs/nfsd/nfsctl.c	2007-02-12 10:37:53.000000000 +1100
-+++ ./fs/nfsd/nfsctl.c	2007-02-12 10:38:11.000000000 +1100
-@@ -123,7 +123,7 @@ static ssize_t nfsctl_transaction_write(
- 		return PTR_ERR(data);
- 
- 	rv =  write_op[ino](file, data, size);
--	if (rv>0) {
-+	if (rv >= 0) {
- 		simple_transaction_set(file, rv);
- 		rv = size;
- 	}
+        Arnaud Giersch
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
-Get stuff done quickly with pre-integrated technology to make your job easier.
+Get stuff done quickly with pre-integrated technology to make your job easi=
+er.
 Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
-http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+http://sel.as-us.falkag.net/sel?cmd=3Dlnk&kid=3D120709&bid=3D263057&dat=3D1=
+21642
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
