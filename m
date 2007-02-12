@@ -1,22 +1,23 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 004 of 4] knfsd: Allow the server to provide a gid
-	list when using AUTH_UNIX authentication.
-Date: Mon, 12 Feb 2007 16:49:59 +1100
-Message-ID: <1070212054959.26824@suse.de>
+Subject: [PATCH 002 of 4] knfsd: Tidy up choice of
+	filesystem-identifier when creating a filehandle.
+Date: Mon, 12 Feb 2007 16:49:46 +1100
+Message-ID: <1070212054946.26790@suse.de>
 References: <20070212164133.26352.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGU5G-0001sw-MM
-	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 21:50:38 -0800
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGU5H-0001ng-PM
-	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 21:50:40 -0800
+	id 1HGU5H-0001t7-MG
+	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 21:50:39 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HGU5H-0001sG-K4
+	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 21:50:41 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,297 +31,226 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-AUTH_UNIX authentication (the standard with NFS) has a limit of 16
-groups ids.  This causes problems for people in more than 16
-groups.
+If we are using the same version/fsid as a current filehandle, then
+there is no need to verify the the numbers are valid for this
+export, and they must be (we used them to find this export).
 
-So allow the server to map a uid into a list of group ids based on
-local knowledge rather depending on the (possibly truncated) list
-from the client.
+This allows us to simplify the fsid selection code.
 
-If there is no process on the server responding to upcalls,
-the gidlist in the request will still be used.
+Also change "ref_fh_version" and "ref_fh_fsid_type" to "version" and
+"fsid_type", as the important thing isn't that they are the
+version/type of the reference filehandle, but they are the chosen type
+for the new filehandle.
+
+And tidy up some indenting.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./net/sunrpc/sunrpc_syms.c  |    5 
- ./net/sunrpc/svcauth_unix.c |  225 +++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 224 insertions(+), 6 deletions(-)
+ ./fs/nfsd/nfsfh.c |  124 ++++++++++++++++++++++++++----------------------------
+ 1 file changed, 60 insertions(+), 64 deletions(-)
 
-diff .prev/net/sunrpc/sunrpc_syms.c ./net/sunrpc/sunrpc_syms.c
---- .prev/net/sunrpc/sunrpc_syms.c	2007-02-12 16:34:14.000000000 +1100
-+++ ./net/sunrpc/sunrpc_syms.c	2007-02-12 16:41:02.000000000 +1100
-@@ -136,7 +136,7 @@ EXPORT_SYMBOL(nlm_debug);
- 
- extern int register_rpc_pipefs(void);
- extern void unregister_rpc_pipefs(void);
--extern struct cache_detail ip_map_cache;
-+extern struct cache_detail ip_map_cache, unix_gid_cache;
- extern int init_socket_xprt(void);
- extern void cleanup_socket_xprt(void);
- 
-@@ -156,6 +156,7 @@ init_sunrpc(void)
- 	rpc_proc_init();
- #endif
- 	cache_register(&ip_map_cache);
-+	cache_register(&unix_gid_cache);
- 	init_socket_xprt();
- out:
- 	return err;
-@@ -169,6 +170,8 @@ cleanup_sunrpc(void)
- 	rpc_destroy_mempool();
- 	if (cache_unregister(&ip_map_cache))
- 		printk(KERN_ERR "sunrpc: failed to unregister ip_map cache\n");
-+	if (cache_unregister(&unix_gid_cache))
-+	      printk(KERN_ERR "sunrpc: failed to unregister unix_gid cache\n");
- #ifdef RPC_DEBUG
- 	rpc_unregister_sysctl();
- #endif
-
-diff .prev/net/sunrpc/svcauth_unix.c ./net/sunrpc/svcauth_unix.c
---- .prev/net/sunrpc/svcauth_unix.c	2007-02-12 16:34:14.000000000 +1100
-+++ ./net/sunrpc/svcauth_unix.c	2007-02-12 16:41:02.000000000 +1100
-@@ -418,6 +418,214 @@ svcauth_unix_info_release(void *info)
- 	cache_put(&ipm->h, &ip_map_cache);
+diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
+--- .prev/fs/nfsd/nfsfh.c	2007-02-12 16:39:19.000000000 +1100
++++ ./fs/nfsd/nfsfh.c	2007-02-12 16:39:36.000000000 +1100
+@@ -211,7 +211,7 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 				fileid_type = 2;
+ 		} else
+ 			fileid_type = fh->fh_fileid_type;
+-		
++
+ 		if (fileid_type == 0)
+ 			dentry = dget(exp->ex_dentry);
+ 		else {
+@@ -291,7 +291,7 @@ static inline int _fh_update(struct dent
+ 			     __u32 *datap, int *maxsize)
+ {
+ 	struct export_operations *nop = exp->ex_mnt->mnt_sb->s_export_op;
+-	
++
+ 	if (dentry == exp->ex_dentry) {
+ 		*maxsize = 0;
+ 		return 0;
+@@ -316,7 +316,8 @@ static inline void _fh_update_old(struct
  }
  
-+/****************************************************************************
-+ * auth.unix.gid cache
-+ * simple cache to map a UID to a list of GIDs
-+ * because AUTH_UNIX aka AUTH_SYS has a max of 16
-+ */
-+#define	GID_HASHBITS	8
-+#define	GID_HASHMAX	(1<<GID_HASHBITS)
-+#define	GID_HASHMASK	(GID_HASHMAX - 1)
-+
-+struct unix_gid {
-+	struct cache_head	h;
-+	uid_t			uid;
-+	struct group_info	*gi;
-+};
-+static struct cache_head	*gid_table[GID_HASHMAX];
-+
-+static void unix_gid_put(struct kref *kref)
-+{
-+	struct cache_head *item = container_of(kref, struct cache_head, ref);
-+	struct unix_gid *ug = container_of(item, struct unix_gid, h);
-+	if (test_bit(CACHE_VALID, &item->flags) &&
-+	    !test_bit(CACHE_NEGATIVE, &item->flags))
-+		put_group_info(ug->gi);
-+	kfree(ug);
-+}
-+
-+static int unix_gid_match(struct cache_head *corig, struct cache_head *cnew)
-+{
-+	struct unix_gid *orig = container_of(corig, struct unix_gid, h);
-+	struct unix_gid *new = container_of(cnew, struct unix_gid, h);
-+	return orig->uid == new->uid;
-+}
-+static void unix_gid_init(struct cache_head *cnew, struct cache_head *citem)
-+{
-+	struct unix_gid *new = container_of(cnew, struct unix_gid, h);
-+	struct unix_gid *item = container_of(citem, struct unix_gid, h);
-+	new->uid = item->uid;
-+}
-+static void unix_gid_update(struct cache_head *cnew, struct cache_head *citem)
-+{
-+	struct unix_gid *new = container_of(cnew, struct unix_gid, h);
-+	struct unix_gid *item = container_of(citem, struct unix_gid, h);
-+
-+	get_group_info(item->gi);
-+	new->gi = item->gi;
-+}
-+static struct cache_head *unix_gid_alloc(void)
-+{
-+	struct unix_gid *g = kmalloc(sizeof(*g), GFP_KERNEL);
-+	if (g)
-+		return &g->h;
-+	else
-+		return NULL;
-+}
-+
-+static void unix_gid_request(struct cache_detail *cd,
-+			     struct cache_head *h,
-+			     char **bpp, int *blen)
-+{
-+	char tuid[20];
-+	struct unix_gid *ug = container_of(h, struct unix_gid, h);
-+
-+	snprintf(tuid, 20, "%u", ug->uid);
-+	qword_add(bpp, blen, tuid);
-+	(*bpp)[-1] = '\n';
-+}
-+
-+static struct unix_gid *unix_gid_lookup(uid_t uid);
-+extern struct cache_detail unix_gid_cache;
-+
-+static int unix_gid_parse(struct cache_detail *cd,
-+			char *mesg, int mlen)
-+{
-+	/* uid expiry Ngid gid0 gid1 ... gidN-1 */
-+	int uid;
-+	int gids;
-+	int rv;
-+	int i;
-+	int err;
-+	time_t expiry;
-+	struct unix_gid ug, *ugp;
-+
-+	if (mlen <= 0 || mesg[mlen-1] != '\n')
-+		return -EINVAL;
-+	mesg[mlen-1] = 0;
-+
-+	rv = get_int(&mesg, &uid);
-+	if (rv)
-+		return -EINVAL;
-+	ug.uid = uid;
-+
-+	expiry = get_expiry(&mesg);
-+	if (expiry == 0)
-+		return -EINVAL;
-+
-+	rv = get_int(&mesg, &gids);
-+	if (rv || gids < 0 || gids > 8192)
-+		return -EINVAL;
-+
-+	ug.gi = groups_alloc(gids);
-+	if (!ug.gi)
-+		return -ENOMEM;
-+
-+	for (i = 0 ; i < gids ; i++) {
-+		int gid;
-+		rv = get_int(&mesg, &gid);
-+		err = -EINVAL;
-+		if (rv)
-+			goto out;
-+		GROUP_AT(ug.gi, i) = gid;
-+	}
-+
-+	ugp = unix_gid_lookup(uid);
-+	if (ugp) {
-+		struct cache_head *ch;
-+		ug.h.flags = 0;
-+		ug.h.expiry_time = expiry;
-+		ch = sunrpc_cache_update(&unix_gid_cache,
-+					 &ug.h, &ugp->h,
-+					 hash_long(uid, GID_HASHBITS));
-+		if (!ch)
-+			err = -ENOMEM;
-+		else {
-+			err = 0;
-+			cache_put(ch, &unix_gid_cache);
-+		}
-+	} else
-+		err = -ENOMEM;
-+ out:
-+	if (ug.gi)
-+		put_group_info(ug.gi);
-+	return err;
-+}
-+
-+static int unix_gid_show(struct seq_file *m,
-+			 struct cache_detail *cd,
-+			 struct cache_head *h)
-+{
-+	struct unix_gid *ug;
-+	int i;
-+	int glen;
-+
-+	if (h == NULL) {
-+		seq_puts(m, "#uid cnt: gids...\n");
-+		return 0;
-+	}
-+	ug = container_of(h, struct unix_gid, h);
-+	if (test_bit(CACHE_VALID, &h->flags) &&
-+	    !test_bit(CACHE_NEGATIVE, &h->flags))
-+		glen = ug->gi->ngroups;
-+	else
-+		glen = 0;
-+
-+	seq_printf(m, "%d %d:", ug->uid, glen);
-+	for (i = 0; i < glen; i++)
-+		seq_printf(m, " %d", GROUP_AT(ug->gi, i));
-+	seq_printf(m, "\n");
-+	return 0;
-+}
-+
-+struct cache_detail unix_gid_cache = {
-+	.owner		= THIS_MODULE,
-+	.hash_size	= GID_HASHMAX,
-+	.hash_table	= gid_table,
-+	.name		= "auth.unix.gid",
-+	.cache_put	= unix_gid_put,
-+	.cache_request	= unix_gid_request,
-+	.cache_parse	= unix_gid_parse,
-+	.cache_show	= unix_gid_show,
-+	.match		= unix_gid_match,
-+	.init		= unix_gid_init,
-+	.update		= unix_gid_update,
-+	.alloc		= unix_gid_alloc,
-+};
-+
-+static struct unix_gid *unix_gid_lookup(uid_t uid)
-+{
-+	struct unix_gid ug;
-+	struct cache_head *ch;
-+
-+	ug.uid = uid;
-+	ch = sunrpc_cache_lookup(&unix_gid_cache, &ug.h,
-+				 hash_long(uid, GID_HASHBITS));
-+	if (ch)
-+		return container_of(ch, struct unix_gid, h);
-+	else
-+		return NULL;
-+}
-+
-+static int unix_gid_find(uid_t uid, struct group_info **gip,
-+			 struct svc_rqst *rqstp)
-+{
-+	struct unix_gid *ug = unix_gid_lookup(uid);
-+	if (!ug)
-+		return -EAGAIN;
-+	switch (cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle)) {
-+	case -ENOENT:
-+		*gip = NULL;
-+		return 0;
-+	case 0:
-+		*gip = ug->gi;
-+		get_group_info(*gip);
-+		return 0;
-+	default:
-+		return -EAGAIN;
-+	}
-+}
-+
- static int
- svcauth_unix_set_client(struct svc_rqst *rqstp)
+ __be32
+-fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry, struct svc_fh *ref_fh)
++fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
++	   struct svc_fh *ref_fh)
  {
-@@ -543,12 +751,19 @@ svcauth_unix_accept(struct svc_rqst *rqs
- 	slen = svc_getnl(argv);			/* gids length */
- 	if (slen > 16 || (len -= (slen + 2)*4) < 0)
- 		goto badcred;
--	cred->cr_group_info = groups_alloc(slen);
--	if (cred->cr_group_info == NULL)
-+	if (unix_gid_find(cred->cr_uid, &cred->cr_group_info, rqstp)
-+	    == -EAGAIN)
- 		return SVC_DROP;
--	for (i = 0; i < slen; i++)
--		GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
+ 	/* ref_fh is a reference file handle.
+ 	 * if it is non-null and for the same filesystem, then we should compose
+@@ -326,8 +327,8 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 	 *
+ 	 */
+ 
+-	u8 ref_fh_version = 0;
+-	u8 ref_fh_fsid_type = 0;
++	u8 version = 1;
++	u8 fsid_type = 0;
+ 	struct inode * inode = dentry->d_inode;
+ 	struct dentry *parent = dentry->d_parent;
+ 	__u32 *datap;
+@@ -339,57 +340,52 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 		parent->d_name.name, dentry->d_name.name,
+ 		(inode ? inode->i_ino : 0));
+ 
++	/* Choose filehandle version and fsid type based on
++	 * the reference filehandle (if it is in the same export)
++	 * or the export options.
++	 */
+ 	if (ref_fh && ref_fh->fh_export == exp) {
+-		ref_fh_version = ref_fh->fh_handle.fh_version;
+-		if (ref_fh_version == 0xca)
+-			ref_fh_fsid_type = 0;
++		version = ref_fh->fh_handle.fh_version;
++		if (version == 0xca)
++			fsid_type = 0;
+ 		else
+-			ref_fh_fsid_type = ref_fh->fh_handle.fh_fsid_type;
+-		if (ref_fh_fsid_type > 3)
+-			ref_fh_fsid_type = 0;
 -
-+	if (cred->cr_group_info == NULL) {
-+		cred->cr_group_info = groups_alloc(slen);
-+		if (cred->cr_group_info == NULL)
-+			return SVC_DROP;
-+		for (i = 0; i < slen; i++)
-+			GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
-+	} else {
-+		for (i = 0; i < slen ; i++)
-+			svc_getnl(argv);
-+	}
- 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
- 		*authp = rpc_autherr_badverf;
- 		return SVC_DENIED;
+-		/* make sure ref_fh type works for given export */
+-		if (ref_fh_fsid_type == 1 &&
+-		    !(exp->ex_flags & NFSEXP_FSID)) {
+-			/* if we don't have an fsid, we cannot provide one... */
+-			ref_fh_fsid_type = 0;
+-		}
++			fsid_type = ref_fh->fh_handle.fh_fsid_type;
++		/* We know this version/type works for this export
++		 * so there is no need for further checks.
++		 */
+ 	} else if (exp->ex_flags & NFSEXP_FSID)
+-		ref_fh_fsid_type = 1;
+-
+-	if (!old_valid_dev(ex_dev) && ref_fh_fsid_type == 0) {
++		fsid_type = 1;
++	else if (!old_valid_dev(ex_dev))
+ 		/* for newer device numbers, we must use a newer fsid format */
+-		ref_fh_version = 1;
+-		ref_fh_fsid_type = 3;
+-	}
+-	if (old_valid_dev(ex_dev) &&
+-	    (ref_fh_fsid_type == 2 || ref_fh_fsid_type == 3))
+-		/* must use type1 for smaller device numbers */
+-		ref_fh_fsid_type = 0;
++		fsid_type = 3;
++	else
++		fsid_type = 0;
+ 
+ 	if (ref_fh == fhp)
+ 		fh_put(ref_fh);
+ 
+ 	if (fhp->fh_locked || fhp->fh_dentry) {
+ 		printk(KERN_ERR "fh_compose: fh %s/%s not initialized!\n",
+-			parent->d_name.name, dentry->d_name.name);
++		       parent->d_name.name, dentry->d_name.name);
+ 	}
+ 	if (fhp->fh_maxsize < NFS_FHSIZE)
+ 		printk(KERN_ERR "fh_compose: called with maxsize %d! %s/%s\n",
+-		       fhp->fh_maxsize, parent->d_name.name, dentry->d_name.name);
++		       fhp->fh_maxsize,
++		       parent->d_name.name, dentry->d_name.name);
+ 
+ 	fhp->fh_dentry = dget(dentry); /* our internal copy */
+ 	fhp->fh_export = exp;
+ 	cache_get(&exp->h);
+ 
+-	if (ref_fh_version == 0xca) {
++	if (version == 0xca) {
+ 		/* old style filehandle please */
+ 		memset(&fhp->fh_handle.fh_base, 0, NFS_FHSIZE);
+ 		fhp->fh_handle.fh_size = NFS_FHSIZE;
+ 		fhp->fh_handle.ofh_dcookie = 0xfeebbaca;
+ 		fhp->fh_handle.ofh_dev =  old_encode_dev(ex_dev);
+ 		fhp->fh_handle.ofh_xdev = fhp->fh_handle.ofh_dev;
+-		fhp->fh_handle.ofh_xino = ino_t_to_u32(exp->ex_dentry->d_inode->i_ino);
++		fhp->fh_handle.ofh_xino =
++			ino_t_to_u32(exp->ex_dentry->d_inode->i_ino);
+ 		fhp->fh_handle.ofh_dirino = ino_t_to_u32(parent_ino(dentry));
+ 		if (inode)
+ 			_fh_update_old(dentry, exp, &fhp->fh_handle);
+@@ -398,38 +394,38 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 		fhp->fh_handle.fh_version = 1;
+ 		fhp->fh_handle.fh_auth_type = 0;
+ 		datap = fhp->fh_handle.fh_auth+0;
+-		fhp->fh_handle.fh_fsid_type = ref_fh_fsid_type;
+-		switch (ref_fh_fsid_type) {
+-			case 0:
+-				/*
+-				 * fsid_type 0:
+-				 * 2byte major, 2byte minor, 4byte inode
+-				 */
+-				mk_fsid_v0(datap, ex_dev,
+-					exp->ex_dentry->d_inode->i_ino);
+-				break;
+-			case 1:
+-				/* fsid_type 1 == 4 bytes filesystem id */
+-				mk_fsid_v1(datap, exp->ex_fsid);
+-				break;
+-			case 2:
+-				/*
+-				 * fsid_type 2:
+-				 * 4byte major, 4byte minor, 4byte inode
+-				 */
+-				mk_fsid_v2(datap, ex_dev,
+-					exp->ex_dentry->d_inode->i_ino);
+-				break;
+-			case 3:
+-				/*
+-				 * fsid_type 3:
+-				 * 4byte devicenumber, 4byte inode
+-				 */
+-				mk_fsid_v3(datap, ex_dev,
+-					exp->ex_dentry->d_inode->i_ino);
+-				break;
++		fhp->fh_handle.fh_fsid_type = fsid_type;
++		switch (fsid_type) {
++		case 0:
++			/*
++			 * fsid_type 0:
++			 * 2byte major, 2byte minor, 4byte inode
++			 */
++			mk_fsid_v0(datap, ex_dev,
++				   exp->ex_dentry->d_inode->i_ino);
++			break;
++		case 1:
++			/* fsid_type 1 == 4 bytes filesystem id */
++			mk_fsid_v1(datap, exp->ex_fsid);
++			break;
++		case 2:
++			/*
++			 * fsid_type 2:
++			 * 4byte major, 4byte minor, 4byte inode
++			 */
++			mk_fsid_v2(datap, ex_dev,
++				   exp->ex_dentry->d_inode->i_ino);
++			break;
++		case 3:
++			/*
++			 * fsid_type 3:
++			 * 4byte devicenumber, 4byte inode
++			 */
++			mk_fsid_v3(datap, ex_dev,
++				   exp->ex_dentry->d_inode->i_ino);
++			break;
+ 		}
+-		len = key_len(ref_fh_fsid_type);
++		len = key_len(fsid_type);
+ 		datap += len/4;
+ 		fhp->fh_handle.fh_size = 4 + len;
+ 
+@@ -456,7 +452,7 @@ fh_update(struct svc_fh *fhp)
+ {
+ 	struct dentry *dentry;
+ 	__u32 *datap;
+-	
++
+ 	if (!fhp->fh_dentry)
+ 		goto out_bad;
+ 
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
