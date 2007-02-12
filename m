@@ -1,23 +1,22 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 002 of 4] knfsd: Tidy up choice of
-	filesystem-identifier when creating a filehandle.
-Date: Mon, 12 Feb 2007 16:49:46 +1100
-Message-ID: <1070212054946.26790@suse.de>
-References: <20070212164133.26352.patches@notabene>
+From: Matthew Hodgson <matthew@arasphere.net>
+Subject: BUG: at fs/nfs/pagelist.c:339 nfs_scan_dirty() (fwd)
+Date: Mon, 12 Feb 2007 16:37:22 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0702121635490.32298@phoenix.arasphere.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGU5H-0001t7-MG
-	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 21:50:39 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HGU5H-0001sG-K4
-	for nfs@lists.sourceforge.net; Sun, 11 Feb 2007 21:50:41 -0800
+	id 1HGeBN-0000Ih-NH
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 08:37:38 -0800
+Received: from 87-194-2-4.bethere.co.uk ([87.194.2.4] helo=mail.arasphere.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGeBM-0007xj-B5
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 08:37:39 -0800
+Received: from localhost ([127.0.0.1])
+	by mail.arasphere.net with esmtp (Exim 4.54) id 1HGeB8-0008Qt-UO
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 16:37:22 +0000
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,227 +29,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hi all,
 
-If we are using the same version/fsid as a current filehandle, then
-there is no need to verify the the numbers are valid for this
-export, and they must be (we used them to find this export).
+Apologies for the fwd - I suspect this bug report got lost in the noise of 
+the LKML.  Hopefully this is a more appropriate place for it...
 
-This allows us to simplify the fsid selection code.
+thanks,
 
-Also change "ref_fh_version" and "ref_fh_fsid_type" to "version" and
-"fsid_type", as the important thing isn't that they are the
-version/type of the reference filehandle, but they are the chosen type
-for the new filehandle.
+M.
 
-And tidy up some indenting.
+---------- Forwarded message ----------
+Date: Mon, 12 Feb 2007 01:37:34 +0000
+From: Matthew Hodgson <matthew@arasphere.net>
+To: linux-kernel@vger.kernel.org
+Subject: BUG: at fs/nfs/pagelist.c:339 nfs_scan_dirty()
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+Hi,
 
-### Diffstat output
- ./fs/nfsd/nfsfh.c |  124 ++++++++++++++++++++++++++----------------------------
- 1 file changed, 60 insertions(+), 64 deletions(-)
+I just upgraded from 2.6.13.4 to 2.6.20 on a Pentium M, and on booting off an 
+NFS root encountered the following bug somewhere after loading the w83627hf 
+module and before ohci1394:
 
-diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
---- .prev/fs/nfsd/nfsfh.c	2007-02-12 16:39:19.000000000 +1100
-+++ ./fs/nfsd/nfsfh.c	2007-02-12 16:39:36.000000000 +1100
-@@ -211,7 +211,7 @@ fh_verify(struct svc_rqst *rqstp, struct
- 				fileid_type = 2;
- 		} else
- 			fileid_type = fh->fh_fileid_type;
--		
-+
- 		if (fileid_type == 0)
- 			dentry = dget(exp->ex_dentry);
- 		else {
-@@ -291,7 +291,7 @@ static inline int _fh_update(struct dent
- 			     __u32 *datap, int *maxsize)
- {
- 	struct export_operations *nop = exp->ex_mnt->mnt_sb->s_export_op;
--	
-+
- 	if (dentry == exp->ex_dentry) {
- 		*maxsize = 0;
- 		return 0;
-@@ -316,7 +316,8 @@ static inline void _fh_update_old(struct
- }
- 
- __be32
--fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry, struct svc_fh *ref_fh)
-+fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
-+	   struct svc_fh *ref_fh)
- {
- 	/* ref_fh is a reference file handle.
- 	 * if it is non-null and for the same filesystem, then we should compose
-@@ -326,8 +327,8 @@ fh_compose(struct svc_fh *fhp, struct sv
- 	 *
- 	 */
- 
--	u8 ref_fh_version = 0;
--	u8 ref_fh_fsid_type = 0;
-+	u8 version = 1;
-+	u8 fsid_type = 0;
- 	struct inode * inode = dentry->d_inode;
- 	struct dentry *parent = dentry->d_parent;
- 	__u32 *datap;
-@@ -339,57 +340,52 @@ fh_compose(struct svc_fh *fhp, struct sv
- 		parent->d_name.name, dentry->d_name.name,
- 		(inode ? inode->i_ino : 0));
- 
-+	/* Choose filehandle version and fsid type based on
-+	 * the reference filehandle (if it is in the same export)
-+	 * or the export options.
-+	 */
- 	if (ref_fh && ref_fh->fh_export == exp) {
--		ref_fh_version = ref_fh->fh_handle.fh_version;
--		if (ref_fh_version == 0xca)
--			ref_fh_fsid_type = 0;
-+		version = ref_fh->fh_handle.fh_version;
-+		if (version == 0xca)
-+			fsid_type = 0;
- 		else
--			ref_fh_fsid_type = ref_fh->fh_handle.fh_fsid_type;
--		if (ref_fh_fsid_type > 3)
--			ref_fh_fsid_type = 0;
--
--		/* make sure ref_fh type works for given export */
--		if (ref_fh_fsid_type == 1 &&
--		    !(exp->ex_flags & NFSEXP_FSID)) {
--			/* if we don't have an fsid, we cannot provide one... */
--			ref_fh_fsid_type = 0;
--		}
-+			fsid_type = ref_fh->fh_handle.fh_fsid_type;
-+		/* We know this version/type works for this export
-+		 * so there is no need for further checks.
-+		 */
- 	} else if (exp->ex_flags & NFSEXP_FSID)
--		ref_fh_fsid_type = 1;
--
--	if (!old_valid_dev(ex_dev) && ref_fh_fsid_type == 0) {
-+		fsid_type = 1;
-+	else if (!old_valid_dev(ex_dev))
- 		/* for newer device numbers, we must use a newer fsid format */
--		ref_fh_version = 1;
--		ref_fh_fsid_type = 3;
--	}
--	if (old_valid_dev(ex_dev) &&
--	    (ref_fh_fsid_type == 2 || ref_fh_fsid_type == 3))
--		/* must use type1 for smaller device numbers */
--		ref_fh_fsid_type = 0;
-+		fsid_type = 3;
-+	else
-+		fsid_type = 0;
- 
- 	if (ref_fh == fhp)
- 		fh_put(ref_fh);
- 
- 	if (fhp->fh_locked || fhp->fh_dentry) {
- 		printk(KERN_ERR "fh_compose: fh %s/%s not initialized!\n",
--			parent->d_name.name, dentry->d_name.name);
-+		       parent->d_name.name, dentry->d_name.name);
- 	}
- 	if (fhp->fh_maxsize < NFS_FHSIZE)
- 		printk(KERN_ERR "fh_compose: called with maxsize %d! %s/%s\n",
--		       fhp->fh_maxsize, parent->d_name.name, dentry->d_name.name);
-+		       fhp->fh_maxsize,
-+		       parent->d_name.name, dentry->d_name.name);
- 
- 	fhp->fh_dentry = dget(dentry); /* our internal copy */
- 	fhp->fh_export = exp;
- 	cache_get(&exp->h);
- 
--	if (ref_fh_version == 0xca) {
-+	if (version == 0xca) {
- 		/* old style filehandle please */
- 		memset(&fhp->fh_handle.fh_base, 0, NFS_FHSIZE);
- 		fhp->fh_handle.fh_size = NFS_FHSIZE;
- 		fhp->fh_handle.ofh_dcookie = 0xfeebbaca;
- 		fhp->fh_handle.ofh_dev =  old_encode_dev(ex_dev);
- 		fhp->fh_handle.ofh_xdev = fhp->fh_handle.ofh_dev;
--		fhp->fh_handle.ofh_xino = ino_t_to_u32(exp->ex_dentry->d_inode->i_ino);
-+		fhp->fh_handle.ofh_xino =
-+			ino_t_to_u32(exp->ex_dentry->d_inode->i_ino);
- 		fhp->fh_handle.ofh_dirino = ino_t_to_u32(parent_ino(dentry));
- 		if (inode)
- 			_fh_update_old(dentry, exp, &fhp->fh_handle);
-@@ -398,38 +394,38 @@ fh_compose(struct svc_fh *fhp, struct sv
- 		fhp->fh_handle.fh_version = 1;
- 		fhp->fh_handle.fh_auth_type = 0;
- 		datap = fhp->fh_handle.fh_auth+0;
--		fhp->fh_handle.fh_fsid_type = ref_fh_fsid_type;
--		switch (ref_fh_fsid_type) {
--			case 0:
--				/*
--				 * fsid_type 0:
--				 * 2byte major, 2byte minor, 4byte inode
--				 */
--				mk_fsid_v0(datap, ex_dev,
--					exp->ex_dentry->d_inode->i_ino);
--				break;
--			case 1:
--				/* fsid_type 1 == 4 bytes filesystem id */
--				mk_fsid_v1(datap, exp->ex_fsid);
--				break;
--			case 2:
--				/*
--				 * fsid_type 2:
--				 * 4byte major, 4byte minor, 4byte inode
--				 */
--				mk_fsid_v2(datap, ex_dev,
--					exp->ex_dentry->d_inode->i_ino);
--				break;
--			case 3:
--				/*
--				 * fsid_type 3:
--				 * 4byte devicenumber, 4byte inode
--				 */
--				mk_fsid_v3(datap, ex_dev,
--					exp->ex_dentry->d_inode->i_ino);
--				break;
-+		fhp->fh_handle.fh_fsid_type = fsid_type;
-+		switch (fsid_type) {
-+		case 0:
-+			/*
-+			 * fsid_type 0:
-+			 * 2byte major, 2byte minor, 4byte inode
-+			 */
-+			mk_fsid_v0(datap, ex_dev,
-+				   exp->ex_dentry->d_inode->i_ino);
-+			break;
-+		case 1:
-+			/* fsid_type 1 == 4 bytes filesystem id */
-+			mk_fsid_v1(datap, exp->ex_fsid);
-+			break;
-+		case 2:
-+			/*
-+			 * fsid_type 2:
-+			 * 4byte major, 4byte minor, 4byte inode
-+			 */
-+			mk_fsid_v2(datap, ex_dev,
-+				   exp->ex_dentry->d_inode->i_ino);
-+			break;
-+		case 3:
-+			/*
-+			 * fsid_type 3:
-+			 * 4byte devicenumber, 4byte inode
-+			 */
-+			mk_fsid_v3(datap, ex_dev,
-+				   exp->ex_dentry->d_inode->i_ino);
-+			break;
- 		}
--		len = key_len(ref_fh_fsid_type);
-+		len = key_len(fsid_type);
- 		datap += len/4;
- 		fhp->fh_handle.fh_size = 4 + len;
- 
-@@ -456,7 +452,7 @@ fh_update(struct svc_fh *fhp)
- {
- 	struct dentry *dentry;
- 	__u32 *datap;
--	
-+
- 	if (!fhp->fh_dentry)
- 		goto out_bad;
- 
+BUG: at fs/nfs/pagelist.c:339 nfs_scan_dirty()
+   [<c01da1b6>] nfs_scan_dirty+0x168/0x17d
+   [<c01dd54a>] nfs_wait_on_requests_locked+0x9c/0xac
+   [<c01dda9b>] nfs_sync_mapping_wait+0xad/0x256
+   [<c01de35a>] nfs_sync_mapping_range+0x83/0x9e
+   [<c01d8037>] nfs_getattr+0x37/0x98
+   [<c01d8000>] nfs_getattr+0x0/0x98
+   [<c014be19>] vfs_getattr+0x21/0x30
+   [<c014c203>] vfs_stat_fd+0x2e/0x40
+   [<c0224ec4>] __copy_to_user_ll+0xc9/0xd4
+   [<c014c2a2>] sys_stat64+0xf/0x23
+   [<c010f5bb>] do_page_fault+0x277/0x528
+   [<c0149c61>] vfs_read+0xfa/0x134
+   [<c010f344>] do_page_fault+0x0/0x528
+   [<c0102c98>] syscall_call+0x7/0xb
+   =======================
+
+So far the machine appears stable other than this - but after having had a year 
+or so of perfect uptime on the box under 2.6.13.4 with no such kernel errors, I 
+thought you might like to know in case this indicates something more serious.
+
+The kernel options given to boot off NFS were...
+
+root=/dev/nfs rw 
+nfsroot=192.168.0.x:/home/stb,v3,hard,intr,nolock,retrans=6,rsize=16384,wsize=16384 
+ip=dhcp
+
+...and the full dmesg, kernel config, lspci and lsmod output may be found at 
+http://www.arasphere.net/linux/nfs-bug.  The NFS server is running the default 
+NFS v3 options on 2.6.20 on Core 2 Duo.  No patches have been applied to either 
+kernel.
+
+Any advice on whether I should be worried by this, whether it indicates that 
+something significant is wrong, and how I might help debug it would be 
+appreciated.
+
+thanks.
+
+Matthew.
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
