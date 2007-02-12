@@ -1,21 +1,22 @@
-From: "Jacenty Redinger" <emoryu@cadenas.de>
-Subject: new nurselin
-Date: Mon, 12 Feb 2007 22:00:18 +0100
-Message-ID: <01c74ee8$cd12a980$ecd5de54@soldatosmoki>
-Reply-To: Jacenty Redinger <emoryu@cadenas.de>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 9] knfsd: NFSv4 ACL improvements and a couple
+	of bug fixes.
+Date: Tue, 13 Feb 2007 10:43:56 +1100
+Message-ID: <20070213103941.28958.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: "Devan Chisum" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGiHU-0003vC-0m
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 13:00:15 -0800
-Received: from host-84-222-213-236.cust-adsl.tiscali.it ([84.222.213.236]
-	helo=cadenas.de) by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1HGiHU-0005G1-As
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 13:00:14 -0800
+	id 1HGkqZ-0005Vw-DM
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:39 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HGkqZ-0000ft-V2
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:44:37 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,24 +29,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+following are 9 patches from Bruce Fields for the NFSv4 server,
+mostly ACL related.
+Suitable for 2.6.21.
 
-Economize 50% on
-
-Vaiagra
-Vaulium
-Ciualis
-
-http://www.tetrx-com
-
-Replace "-" with "." in the above link.
+Thanks,
+NeilBrown
 
 
-
-Crouch, speaking more loudly, drowning out his sons voice.
-We have heard the evidence against you. The four of you stand accused
-of capturing an Auror Frank Longbottom and subjecting him to the
-
+ [PATCH 001 of 9] knfsd: nfsd4: fix non-terminated string
+ [PATCH 002 of 9] knfsd: nfsd4: relax checking of ACL inheritance bits
+ [PATCH 003 of 9] knfsd: nfsd4: simplify nfsv4->posix translation
+ [PATCH 004 of 9] knfsd: nfsd4: represent nfsv4 acl with array instead of linked list
+ [PATCH 005 of 9] knfsd: nfsd4: fix memory leak on kmalloc failure in savemem
+ [PATCH 006 of 9] knfsd: nfsd4: fix error return on unsupported acl
+ [PATCH 007 of 9] knfsd: nfsd4: acls: don't return explicit mask
+ [PATCH 008 of 9] knfsd: nfsd4: acls: avoid unnecessary denies
+ [PATCH 009 of 9] knfsd: nfsd4: fix handling of directories without default ACLs
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
