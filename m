@@ -1,22 +1,28 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 009 of 9] knfsd: nfsd4: fix handling of directories
-	without default ACLs
-Date: Tue, 13 Feb 2007 10:45:07 +1100
-Message-ID: <1070212234507.29358@suse.de>
-References: <20070213103941.28958.patches@notabene>
+From: Norman Weathers <norman.r.weathers@conocophillips.com>
+Subject: Broken nfsd in recent kernels
+Date: Mon, 12 Feb 2007 18:26:08 -0600
+Message-ID: <1171326368.8065.36.camel@hoeplx2923>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HGkre-0005eI-V0
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:45:43 -0800
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HGkrg-0002Io-Eq
-	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 15:45:45 -0800
+	id 1HGlUt-0001UI-Ci
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 16:26:17 -0800
+Received: from mailman1.ppco.com ([138.32.33.10])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1HGlUu-00027u-MX
+	for nfs@lists.sourceforge.net; Mon, 12 Feb 2007 16:26:17 -0800
+Received: from bvlextrd2.conoco.net (bvlextrd2.conoco.net [158.139.203.93])
+	by mailman1.ppco.com (Switch-3.1.8/Switch-3.1.7) with ESMTP id
+	l1D0Q9ZB007187
+	for <nfs@lists.sourceforge.net>; Mon, 12 Feb 2007 18:26:09 -0600
+Received: from bvlexbh2.conoco.net (bvlexbh2.conoco.net [138.32.45.42])
+	by mail1.ppco.com (Switch-3.1.8/Switch-3.1.7) with ESMTP id
+	l1D0Q9ZC010512
+	for <nfs@lists.sourceforge.net>; Mon, 12 Feb 2007 18:26:09 -0600
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,78 +35,171 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hello,
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
-When setting an ACL that lacks inheritable ACEs on a directory, we
-should set a default ACL of zero length, not a default ACL with all bits
-denied.
+I have noticed, at least in our Fedora 6 test case, that recent kernels
+(2.6.18 and 2.6.19) that there appears to be a "read hell" issue.  Has
+anyone else seen this?
 
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@suse.de>
+For instance, using iozone, during a write case (32 kb blocks) to a Sun
+x4100 running Fedora Core 6 and the Fedora core kernels, I get decent
+throughput.  But, as soon as the test goes from write to rewrite, I see
+a large amount of read activity (via iostat) on the NFS server.  It
+looks like 4kb read blocks.
 
-### Diffstat output
- ./fs/nfsd/nfs4acl.c |   21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+The host nodes involved have the following configuration:
 
-diff .prev/fs/nfsd/nfs4acl.c ./fs/nfsd/nfs4acl.c
---- .prev/fs/nfsd/nfs4acl.c	2007-02-13 10:38:09.000000000 +1100
-+++ ./fs/nfsd/nfs4acl.c	2007-02-13 10:38:26.000000000 +1100
-@@ -416,6 +416,7 @@ struct posix_ace_state_array {
-  * calculated so far: */
- 
- struct posix_acl_state {
-+	int empty;
- 	struct posix_ace_state owner;
- 	struct posix_ace_state group;
- 	struct posix_ace_state other;
-@@ -431,6 +432,7 @@ init_state(struct posix_acl_state *state
- 	int alloc;
- 
- 	memset(state, 0, sizeof(struct posix_acl_state));
-+	state->empty = 1;
- 	/*
- 	 * In the worst case, each individual acl could be for a distinct
- 	 * named user or group, but we don't no which, so we allocate
-@@ -498,6 +500,20 @@ posix_state_to_acl(struct posix_acl_stat
- 	int nace;
- 	int i, error = 0;
- 
-+	/*
-+	 * ACLs with no ACEs are treated differently in the inheritable
-+	 * and effective cases: when there are no inheritable ACEs, we
-+	 * set a zero-length default posix acl:
-+	 */
-+	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT)) {
-+		pacl = posix_acl_alloc(0, GFP_KERNEL);
-+		return pacl ? pacl : ERR_PTR(-ENOMEM);
-+	}
-+	/*
-+	 * When there are no effective ACEs, the following will end
-+	 * up setting a 3-element effective posix ACL with all
-+	 * permissions zero.
-+	 */
- 	nace = 4 + state->users->n + state->groups->n;
- 	pacl = posix_acl_alloc(nace, GFP_KERNEL);
- 	if (!pacl)
-@@ -613,6 +629,8 @@ static void process_one_v4_ace(struct po
- 	u32 mask = ace->access_mask;
- 	int i;
- 
-+	state->empty = 0;
-+
- 	switch (ace2type(ace)) {
- 	case ACL_USER_OBJ:
- 		if (ace->type == NFS4_ACE_ACCESS_ALLOWED_ACE_TYPE) {
-@@ -717,7 +735,8 @@ int nfs4_acl_nfsv4_to_posix(struct nfs4_
- 		ret = PTR_ERR(*pacl);
- 		goto out_dstate;
- 	}
--	*dpacl = posix_state_to_acl(&default_acl_state, flags);
-+	*dpacl = posix_state_to_acl(&default_acl_state,
-+						flags | NFS4_ACL_TYPE_DEFAULT);
- 	if (IS_ERR(*dpacl)) {
- 		ret = PTR_ERR(*dpacl);
- 		posix_acl_release(*pacl);
+uname -a
+Linux hoepld15 2.6.18-1.2868.fc6 #1 SMP Fri Dec 15 17:29:48 EST 2006
+x86_64 x86_64 x86_64 GNU/Linux
+
+free:
+             total       used       free     shared    buffers
+cached
+Mem:       8044904    7968452      76452          0      17592
+7489888
+-/+ buffers/cache:     460972    7583932
+Swap:      4192956        156    4192800
+
+cat /proc/cpuinfo
+processor       : 0
+vendor_id       : AuthenticAMD
+cpu family      : 15
+model           : 33
+model name      : Dual Core AMD Opteron(tm) Processor 280
+stepping        : 2
+cpu MHz         : 2400.000
+cache size      : 1024 KB
+physical id     : 0
+siblings        : 2
+core id         : 0
+cpu cores       : 2
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 1
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge
+mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext
+fxsr_opt lm 3dnowext 3dnow pni lahf_lm cmp_legacy
+bogomips        : 4789.93
+TLB size        : 1024 4K pages
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management: ts fid vid ttp
+
+processor       : 1
+vendor_id       : AuthenticAMD
+cpu family      : 15
+model           : 33
+model name      : Dual Core AMD Opteron(tm) Processor 280
+stepping        : 2
+cpu MHz         : 2400.000
+cache size      : 1024 KB
+physical id     : 0
+siblings        : 2
+core id         : 1
+cpu cores       : 2
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 1
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge
+mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext
+fxsr_opt lm 3dnowext 3dnow pni lahf_lm cmp_legacy
+bogomips        : 4689.98
+TLB size        : 1024 4K pages
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management: ts fid vid ttp
+
+processor       : 2
+vendor_id       : AuthenticAMD
+cpu family      : 15
+model           : 33
+model name      : Dual Core AMD Opteron(tm) Processor 280
+stepping        : 2
+cpu MHz         : 2400.000
+cache size      : 1024 KB
+physical id     : 1
+siblings        : 2
+core id         : 0
+cpu cores       : 2
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 1
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge
+mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext
+fxsr_opt lm 3dnowext 3dnow pni lahf_lm cmp_legacy
+bogomips        : 4785.70
+TLB size        : 1024 4K pages
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management: ts fid vid ttp
+
+processor       : 3
+vendor_id       : AuthenticAMD
+cpu family      : 15
+model           : 33
+model name      : Dual Core AMD Opteron(tm) Processor 280
+stepping        : 2
+cpu MHz         : 2400.000
+cache size      : 1024 KB
+physical id     : 1
+siblings        : 2
+core id         : 1
+cpu cores       : 2
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 1
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge
+mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext
+fxsr_opt lm 3dnowext 3dnow pni lahf_lm cmp_legacy
+bogomips        : 4785.70
+TLB size        : 1024 4K pages
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management: ts fid vid ttp
+
+
+I can run from any of our Fedora Clients (3, 4, or 6) and completely
+swamp the server with read requests when there shouldn't be any read
+requests at all.
+
+I find that if I try to open a file that isn't there with an
+fopen(name,"w"), I am ok because I truncate the file.  If I try and
+fopen(name,"r+"), then I get into trouble where it wants to read these
+4KB blocks.  It is not a trivial amount as on our system I am able to
+pull of almost 2000 tps of 4 KB blocks, which kills our boxes.  I know
+it is the NFS layer because if I run the disk exercise programs such as
+iozone and another in house program locally on the NFS server, it is
+fine, but the minute I run it remote, and it tries to open a file that
+already exists and has > 0 bytes, it goes nuts.  I haven't been able to
+try a vanilla kernel yet because I am having trouble finding a node free
+that I can test with.
+
+Also, I have ruled out 64 bit and 32 bit problems.  The NFS server I had
+been using is a 64 bit box, but I just tested the same thing serving a
+filesystem from my 32 bit laptop, and it also has the issue (it is a FC6
+as well).  Also, I have ruled out filesystems.  The 64 bit server was
+using XFS, and my laptop is using ext3, and both systems have the same
+issue.
+
+If there is any other information I can get you, please let me know.
+
+In the mean time, we are trying to setup some tests using the latest
+(2.6.20) kernel.
+
+Thanks for your time,
+
+Norman Weathers
+
+
 
 -------------------------------------------------------------------------
 Using Tomcat but need to do more? Need to support web services, security?
