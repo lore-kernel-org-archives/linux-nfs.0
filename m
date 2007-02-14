@@ -1,36 +1,27 @@
-From: shic <shic@np.css.fujitsu.com>
-Subject: A problem with the load_elf_interp() in fs/binfmt_elf
-Date: Wed, 14 Feb 2007 17:14:09 +0900
-Message-ID: <45D2C4D1.4030809@np.css.fujitsu.com>
+From: Ming Zhang <blackmagic02881@gmail.com>
+Subject: Re: [PATCH 001 of 9] knfsd: nfsd4: fix non-terminated string
+Date: Wed, 14 Feb 2007 08:00:18 -0500
+Message-ID: <1171458018.2638.1.camel@localhost.localdomain>
+References: <20070213103941.28958.patches@notabene>
+	<1070212234402.29224@suse.de>
+Reply-To: blackmagic02881@gmail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HHFHX-00064P-Nj
-	for nfs@lists.sourceforge.net; Wed, 14 Feb 2007 00:14:29 -0800
-Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HHFHT-0007eI-Jw
-	for nfs@lists.sourceforge.net; Wed, 14 Feb 2007 00:14:26 -0800
-Received: from m5.gw.fujitsu.co.jp ([10.0.50.75])
-	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id
-	l1E8EEWv027991
-	for <nfs@lists.sourceforge.net> (envelope-from shic@np.css.fujitsu.com);
-	Wed, 14 Feb 2007 17:14:14 +0900
-Received: from smail (m5 [127.0.0.1])
-	by outgoing.m5.gw.fujitsu.co.jp (Postfix) with ESMTP id 904882AC026
-	for <nfs@lists.sourceforge.net>; Wed, 14 Feb 2007 17:14:14 +0900 (JST)
-Received: from s11.gw.fujitsu.co.jp (s11.gw.fujitsu.co.jp [10.0.50.81])
-	by m5.gw.fujitsu.co.jp (Postfix) with ESMTP id 67E4712C0CD
-	for <nfs@lists.sourceforge.net>; Wed, 14 Feb 2007 17:14:14 +0900 (JST)
-Received: from s11.gw.fujitsu.co.jp (s11 [127.0.0.1])
-	by s11.gw.fujitsu.co.jp (Postfix) with ESMTP id 2D639161C00D
-	for <nfs@lists.sourceforge.net>; Wed, 14 Feb 2007 17:14:14 +0900 (JST)
-Received: from ml0b.s.css.fujitsu.com (ml0b.s.css.fujitsu.com [10.23.4.188])
-	by s11.gw.fujitsu.co.jp (Postfix) with ESMTP id 638BF161C009
-	for <nfs@lists.sourceforge.net>; Wed, 14 Feb 2007 17:14:13 +0900 (JST)
+	id 1HHJkD-0000TN-OI
+	for nfs@lists.sourceforge.net; Wed, 14 Feb 2007 05:00:21 -0800
+Received: from wr-out-0506.google.com ([64.233.184.226])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HHJkE-0006zb-B9
+	for nfs@lists.sourceforge.net; Wed, 14 Feb 2007 05:00:23 -0800
+Received: by wr-out-0506.google.com with SMTP id i21so246286wra
+	for <nfs@lists.sourceforge.net>; Wed, 14 Feb 2007 05:00:20 -0800 (PST)
+In-Reply-To: <1070212234402.29224@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,54 +34,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi ,All
+On Tue, 2007-02-13 at 10:44 +1100, NeilBrown wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
+> The server name is expected to be a null-terminated string, so we can't
+> pass in the raw client identifier.
+> 
+> What's more, the client identifier is just a binary, not necessarily
+> printable, blob.  Let's just use the ip address instead.  The server
+> name appears to exist just to help debugging by making some printk's
+> more informative.
+> 
+> Note that the string is copies into the rpc client structure, so
+> the pointer to the local variable does not outlive the function call.
+> 
+> Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./fs/nfsd/nfs4callback.c |    7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+> 
+> diff .prev/fs/nfsd/nfs4callback.c ./fs/nfsd/nfs4callback.c
+> --- .prev/fs/nfsd/nfs4callback.c	2007-02-13 09:50:26.000000000 +1100
+> +++ ./fs/nfsd/nfs4callback.c	2007-02-13 10:00:59.000000000 +1100
+> @@ -387,7 +387,6 @@ nfsd4_probe_callback(struct nfs4_client 
+>  		.address	= (struct sockaddr *)&addr,
+>  		.addrsize	= sizeof(addr),
+>  		.timeout	= &timeparms,
+> -		.servername	= clp->cl_name.data,
+>  		.program	= program,
+>  		.version	= nfs_cb_version[1]->number,
+>  		.authflavor	= RPC_AUTH_UNIX,	/* XXX: need AUTH_GSS... */
+> @@ -397,6 +396,7 @@ nfsd4_probe_callback(struct nfs4_client 
+>  		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
+>  		.rpc_argp       = clp,
+>  	};
+> +	char clientname[16];
+>  	int status;
+>  
+>  	if (atomic_read(&cb->cb_set))
+> @@ -419,6 +419,11 @@ nfsd4_probe_callback(struct nfs4_client 
+>  	memset(program->stats, 0, sizeof(cb->cb_stat));
+>  	program->stats->program = program;
+>  
+> +	/* Just here to make some printk's more useful: */
+> +	snprintf(clientname, sizeof(clientname),
+> +		"%u.%u.%u.%u", NIPQUAD(addr.sin_addr));
 
-When I did some NFS mount operations, I found a problem with the load_elf_interp() in the fs/binfmt_elf. 
+can use NIPQUAD_FMT here instead of "%u.%u.%u.%u".
 
-I mounted a number of NFS, after lots of continuous mount operations, the fatal error "Segmentation fault" happened with the mount.nfs4, as the count of the mount operations reached about 1000~3000.
+btw, will the ip address here possibly be an ipv6 address?
 
-Using the strace, I found the mount.nfs4 fails just at the execve().The strace log is as follows.
-execve("/sbin/mount.nfs4", ["mount.nfs4", "192.168.236.8:/", "/mnt/nfspt/num_mount_014847/nfs-"...], [/* 24 vars */]) = -1 EINVAL (Invalid argument)
---- SIGSEGV (Segmentation fault) @ 0 (0) ---
-+++ killed by SIGSEGV +++
-
-I have investigate it, and found the problem exists in the load_elf_interp() when the "Segmentation fault" happened.
-
-When the mount.nfs4 is executed, the execve() in the kernel is invoked as follows.  
- sys_execve
-  | - 
-  do_execve
-       |
-       | - search_binary_handler   
-            |-  linux_binfmt= elf_format
-            |-  
-            |- elf_format-> load_elf_binary
-                 | -  elf_entry = load_elf_interp()
-                     |-    
-                     |  if  (BAD_ADDR(elf_entry)) 
-                     |  force_sig(SIGSEGV, 
-                     |     retval =-EINVAL;
-
-In the do_execve(), after setting up some data structure, the do_execve() will invoke the search_binary_handler() to get the corresponding ELF binary loader for the mount.nfs4, and read the ELF executable image into memory.
-In my test, when the "segment fault" of mount.nfs4 happened, in the procedure of load_elf_binary(),the address elf_entry of the interp segment read from the load_elf_interp() was judged a BAD_ADDR and afterwards the kernel send a forcible signal "SIGSEGV" to the process of mount.nfs4, and exit with the retval "EINVAL".
-After I debug the kernel, I have found the cause is the address map_addr in the load_elf_interp(). 
-When the problem happens, the map_addr returned from the elf_map() is judged a valid address by BAD_ADDR() in load_elf_interp() , but unluckily the address elf_entry returned by  "map_addr - ELF_PAGESTART(eppnt->p_vaddr)" is judged an invalid address by BAD_ADDR(), then the problem happens in the load_elf_binary().
-
-By now, I've still not got a good method to resolve this problem in the load_elf_interp().
-Any good ideas?
-
-Thanks.
-
-Best Regards.
-Shi Chao
-
-
-
-
-
-
-
-
+> +	args.servername = clientname;
+> +
+>  	/* Create RPC client */
+>  	cb->cb_client = rpc_create(&args);
+>  	if (IS_ERR(cb->cb_client)) {
+> 
+> -------------------------------------------------------------------------
+> Using Tomcat but need to do more? Need to support web services, security?
+> Get stuff done quickly with pre-integrated technology to make your job easier.
+> Download IBM WebSphere Application Server v.1.0.1 based on Apache Geronimo
+> http://sel.as-us.falkag.net/sel?cmd=lnk&kid=120709&bid=263057&dat=121642
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+-- 
+http://blackmagic02881.wordpress.com/
 
 
 -------------------------------------------------------------------------
