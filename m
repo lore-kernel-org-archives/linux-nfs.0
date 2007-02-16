@@ -1,23 +1,23 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: WebNFS support
-Date: Fri, 16 Feb 2007 15:14:49 +0100
-Message-ID: <200702161514.50493.olaf.kirch@oracle.com>
-References: <45D5FC14.8E99.00F4.0@novell.com>
-	<Pine.LNX.4.64.0702161427080.32604@maggie.lkpg.cendio.se>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1HHuHQ-0001Ym-J1 delayed 10 hours
+Date: Fri, 16 Feb 2007 06:39:23 -0800
+Message-ID: <E1HI4F9-0007u6-8d@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
-Cc: Peter =?iso-8859-15?q?=C5strand?= <astrand@cendio.se>
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HI3rU-0002Np-Ec
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:14:57 -0800
-Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HI3rV-0005PJ-Uw
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:14:58 -0800
-In-Reply-To: <Pine.LNX.4.64.0702161427080.32604@maggie.lkpg.cendio.se>
+	id 1HI4F7-0004to-LW
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:39:22 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HI4F9-00036j-Hw
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:39:23 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1HI4F9-0007u6-8d
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:39:23 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 16 February 2007 14:31, Peter =C5strand wrote:
-> I have some plans to implement WebNFS support in userspace server unfs3,
-> though. Since it can already run the NFS and MOUNT protocol on the same
-> TCP port, I haven't considered WebNFS support critical.
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 10 hours on the queue on externalmx-1.sourceforge.net.
 
-At some point in the very distant past I added WebNFS support to
-unfsd. There was zero interest in it. I think webnfs was an Internet
-bubble idea, ie very trendy but devoid of any technical use.
-May it rest in peace.
+The message identifier is:     1HHuHQ-0001Ym-J1
+The subject of the message is: Can't find high-value tablets?
+The date of the message is:    Fri, 16 Feb 2007 09:31:05 +0530
 
-Olaf
--- =
+The address to which the message has not yet been delivered is:
 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
+
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
