@@ -1,23 +1,23 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
+From: Olaf Kirch <olaf.kirch@oracle.com>
 Subject: Re: WebNFS support
-Date: Fri, 16 Feb 2007 14:31:50 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0702161427080.32604@maggie.lkpg.cendio.se>
+Date: Fri, 16 Feb 2007 15:14:49 +0100
+Message-ID: <200702161514.50493.olaf.kirch@oracle.com>
 References: <45D5FC14.8E99.00F4.0@novell.com>
+	<Pine.LNX.4.64.0702161427080.32604@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED;
-	BOUNDARY="789237761-1706607673-1171632710=:32604"
-Cc: nfs@lists.sourceforge.net
-To: Suresh Jayaraman <sjayaraman@novell.com>
+Content-Type: text/plain; charset="iso-8859-15"
+Cc: Peter =?iso-8859-15?q?=C5strand?= <astrand@cendio.se>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HI3Bw-0006WO-78
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 05:32:00 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HI3Bw-00012g-6F
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 05:32:02 -0800
-In-Reply-To: <45D5FC14.8E99.00F4.0@novell.com>
+	id 1HI3rU-0002Np-Ec
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:14:57 -0800
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HI3rV-0005PJ-Uw
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:14:58 -0800
+In-Reply-To: <Pine.LNX.4.64.0702161427080.32604@maggie.lkpg.cendio.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,48 +30,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Friday 16 February 2007 14:31, Peter =C5strand wrote:
+> I have some plans to implement WebNFS support in userspace server unfs3,
+> though. Since it can already run the NFS and MOUNT protocol on the same
+> TCP port, I haven't considered WebNFS support critical.
 
---789237761-1706607673-1171632710=:32604
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+At some point in the very distant past I added WebNFS support to
+unfsd. There was zero interest in it. I think webnfs was an Internet
+bubble idea, ie very trendy but devoid of any technical use.
+May it rest in peace.
 
-On Fri, 16 Feb 2007, Suresh Jayaraman wrote:
+Olaf
+-- =
 
-> Does Linux implementation support WebNFS?
-
-As far as I know: No, neither the server nor client.=20
-
-I have some plans to implement WebNFS support in userspace server unfs3,=20
-though. Since it can already run the NFS and MOUNT protocol on the same=20
-TCP port, I haven't considered WebNFS support critical.
-
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-1706607673-1171632710=:32604
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-1706607673-1171632710=:32604
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-1706607673-1171632710=:32604--
