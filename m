@@ -1,19 +1,23 @@
-From: "Byron " <Front_End_Load_@gmail.com>
-Subject: Re: your overdue account 01843
-Date: Fri, 16 Feb 2007 17:07:31 -0900
-Message-ID: <6F9B1011.668269B@gmail.com>
+From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
+Subject: Warning: message 1HHuHQ-0001Ym-J1 delayed 24 hours
+Date: Fri, 16 Feb 2007 23:42:41 -0800
+Message-ID: <E1HIKDR-0000wH-0I@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0699614532=="
-To: "Cornelius " <mahogany-developers@lists.sourceforge.net>,
-	"Washburn " <evms-devel@lists.sourceforge.net>,
-	"Hogue " <htdig-announce-request@lists.sourceforge.net>,
-	"Goodrich " <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list1-new-b.sourceforge.net ([10.3.1.93]
-	helo=sc8-sf-list1-new.sourceforge.net)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HIEV9-0006rn-HN
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 17:36:35 -0800
+	id 1HIKDP-0006tt-CM
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 23:42:39 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HIKDR-00047x-9z
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 23:42:41 -0800
+Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
+	id 1HIKDR-0000wH-0I
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 23:42:41 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,104 +30,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0699614532==
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+This message was created automatically by mail delivery software.
+A message that you sent has not yet been delivered to one or more of its
+recipients after more than 24 hours on the queue on externalmx-1.sourceforge.net.
 
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<title>inconveniencing</title>
-<style type="text/css">
-<!--
-a:link {
-	color: #FFFFFF;
-}
-a:visited {
-	color: #FFFFFF;
-}
-a:hover {
-	color: #FFFFFF;
-}
-a:active {
-	color: #FFFFFF;
-}
--->
-</style>
-</head>
-<body>
-<p><font color="#FFFFFF">branchiae</font> <font
-color="#FFFFFF">storehouses</font></p>
-<table width="65%" border="1" align="center" cellpadding="4"
-cellspacing="0"
-bordercolor="#FF0000">
-  <tr>
-    <td bgcolor="#FFCCCC"><p><strong><font color="#CC0000" size="2"
-face="Arial, Helvetica, sans-serif">Use the law to Wipe Out Credit Card
-Debt... </font></strong> <font
-color="#FFCCCC">retrude</font><br>
-    </p></td>
-  </tr>
-  <tr>
-    <td bgcolor="#FF0000"><p align="center"><font color="#CC0000" size="3"
-face="Arial, Helvetica, sans-serif"><font color="#FF0000"
-size="2">pothook</font><strong><font
-color="#FF0000"><br>
-    </font></strong><strong><font
-color="#FF0000">
-      
-      3
-      </font><font color="#FFFFFF">215</font><font color="#FF0000">
-        4
-        </font><font color="#FFFFFF">-</font><font color="#FF0000">
-          2
-          </font><font color="#FFFFFF">525</font><font color="#FF0000"
-          %color="#FF0000">
-            6
-            </font><font color="#FFFFFF">-</font><font color="#FF0000"
-            %color="#FF0000">
-              4
-    </font><font color="#FFFFFF">1560<br>
-    </font></strong></font><font color="#FF0000"
-size="2">stickleback</font></p></td>
-  </tr>
-  <tr>
-    <td bgcolor="#FFCCCC"><p><strong><font color="#CC0000" size="2"
-face="Arial, Helvetica, sans-serif">Stop Making Monthly Payments
-Immediately
-Eliminate ALL Collection and Harassment Calls. </font></strong><font
-color="#FFCCCC">nonswimmers</font></p></td>
-  </tr>
-</table>
-<p><font color="#FFFFFF">separatists</font></p>
-<p>&nbsp;</p>
-</body>
-</html>
+The message identifier is:     1HHuHQ-0001Ym-J1
+The subject of the message is: Can't find high-value tablets?
+The date of the message is:    Fri, 16 Feb 2007 09:31:05 +0530
 
+The address to which the message has not yet been delivered is:
 
+  nfs@lists.sourceforge.net
+    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
+    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
+    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
+    451-The mail server(s) for the domain may be temporarily unreachable, or
+    451-they may be permanently unreachable from this server. In the latter case,
+    451-you need to change the address or create an MX record for its domain
+    451-if it is supposed to be generally access
 
-
-
---===============0699614532==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+No action is required on your part. Delivery attempts will continue for
+some time, and this warning may be repeated at intervals if the message
+remains undelivered. Eventually the mail delivery software will give up,
+and when that happens, the message will be returned to you.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0699614532==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0699614532==--
