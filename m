@@ -1,24 +1,19 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
-Subject: Re: WebNFS support
-Date: Fri, 16 Feb 2007 15:49:50 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0702161539470.2004@maggie.lkpg.cendio.se>
-References: <45D5FC14.8E99.00F4.0@novell.com>
-	<Pine.LNX.4.64.0702161427080.32604@maggie.lkpg.cendio.se>
-	<200702161514.50493.olaf.kirch@oracle.com>
+From: "Byron " <Front_End_Load_@gmail.com>
+Subject: Re: your overdue account 01843
+Date: Fri, 16 Feb 2007 17:07:31 -0900
+Message-ID: <6F9B1011.668269B@gmail.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-250869244-1171637390=:2004"
-Cc: nfs@lists.sourceforge.net
-To: Olaf Kirch <olaf.kirch@oracle.com>
+Content-Type: multipart/mixed; boundary="===============0699614532=="
+To: "Cornelius " <mahogany-developers@lists.sourceforge.net>,
+	"Washburn " <evms-devel@lists.sourceforge.net>,
+	"Hogue " <htdig-announce-request@lists.sourceforge.net>,
+	"Goodrich " <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
+Received: from sc8-sf-list1-new-b.sourceforge.net ([10.3.1.93]
+	helo=sc8-sf-list1-new.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HI4PT-00062W-Ok
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:50:03 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HI4PT-0006qh-9y
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 06:50:05 -0800
-In-Reply-To: <200702161514.50493.olaf.kirch@oracle.com>
+	id 1HIEV9-0006rn-HN
+	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 17:36:35 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,45 +26,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+--===============0699614532==
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 
---789237761-250869244-1171637390=:2004
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>inconveniencing</title>
+<style type="text/css">
+<!--
+a:link {
+	color: #FFFFFF;
+}
+a:visited {
+	color: #FFFFFF;
+}
+a:hover {
+	color: #FFFFFF;
+}
+a:active {
+	color: #FFFFFF;
+}
+-->
+</style>
+</head>
+<body>
+<p><font color="#FFFFFF">branchiae</font> <font
+color="#FFFFFF">storehouses</font></p>
+<table width="65%" border="1" align="center" cellpadding="4"
+cellspacing="0"
+bordercolor="#FF0000">
+  <tr>
+    <td bgcolor="#FFCCCC"><p><strong><font color="#CC0000" size="2"
+face="Arial, Helvetica, sans-serif">Use the law to Wipe Out Credit Card
+Debt... </font></strong> <font
+color="#FFCCCC">retrude</font><br>
+    </p></td>
+  </tr>
+  <tr>
+    <td bgcolor="#FF0000"><p align="center"><font color="#CC0000" size="3"
+face="Arial, Helvetica, sans-serif"><font color="#FF0000"
+size="2">pothook</font><strong><font
+color="#FF0000"><br>
+    </font></strong><strong><font
+color="#FF0000">
+      
+      3
+      </font><font color="#FFFFFF">215</font><font color="#FF0000">
+        4
+        </font><font color="#FFFFFF">-</font><font color="#FF0000">
+          2
+          </font><font color="#FFFFFF">525</font><font color="#FF0000"
+          %color="#FF0000">
+            6
+            </font><font color="#FFFFFF">-</font><font color="#FF0000"
+            %color="#FF0000">
+              4
+    </font><font color="#FFFFFF">1560<br>
+    </font></strong></font><font color="#FF0000"
+size="2">stickleback</font></p></td>
+  </tr>
+  <tr>
+    <td bgcolor="#FFCCCC"><p><strong><font color="#CC0000" size="2"
+face="Arial, Helvetica, sans-serif">Stop Making Monthly Payments
+Immediately
+Eliminate ALL Collection and Harassment Calls. </font></strong><font
+color="#FFCCCC">nonswimmers</font></p></td>
+  </tr>
+</table>
+<p><font color="#FFFFFF">separatists</font></p>
+<p>&nbsp;</p>
+</body>
+</html>
 
-On Fri, 16 Feb 2007, Olaf Kirch wrote:
 
-> On Friday 16 February 2007 14:31, Peter =C3=85strand wrote:
-> > I have some plans to implement WebNFS support in userspace server unfs3=
-,
-> > though. Since it can already run the NFS and MOUNT protocol on the same
-> > TCP port, I haven't considered WebNFS support critical.
->=20
-> At some point in the very distant past I added WebNFS support to
-> unfsd. There was zero interest in it. I think webnfs was an Internet
-> bubble idea, ie very trendy but devoid of any technical use.
-> May it rest in peace.
 
-I'm not sure I agree. Although you *can* use plain NFSv3 in a way that's=20
-pretty close to WebNFS (just one TCP port, no portmapper etc), the WebNFS=
-=20
-spec actually specifies & standardizes how this should be done. The NFS=20
-URL is also nice.=20
 
-I think it's somewhat sad that WebNFS (or WebNFS-like NFSv3 setups)=20
-didn't become more successful. Instead, folks are using protocols like=20
-FTP, SFTP, SCP, WebDav, CIFS etc in contexts where NFSv3 could do the job=
-=20
-equally well or even better.=20
 
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-250869244-1171637390=:2004
+--===============0699614532==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -80,7 +116,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-250869244-1171637390=:2004
+--===============0699614532==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -90,4 +126,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---789237761-250869244-1171637390=:2004--
+--===============0699614532==--
