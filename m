@@ -1,7 +1,7 @@
 From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1HHuHQ-0001Ym-J1 delayed 24 hours
-Date: Fri, 16 Feb 2007 23:42:41 -0800
-Message-ID: <E1HIKDR-0000wH-0I@externalmx-1.sourceforge.net>
+Subject: Warning: message 1HHuHQ-0001Ym-J1 delayed 48 hours
+Date: Sun, 18 Feb 2007 01:42:34 -0800
+Message-ID: <E1HIiZ0-0007cZ-Qr@externalmx-1.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,15 +9,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HIKDP-0006tt-CM
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 23:42:39 -0800
+	id 1HIiZ1-0007on-Da
+	for nfs@lists.sourceforge.net; Sun, 18 Feb 2007 01:42:35 -0800
 Received: from externalmx-1.sourceforge.net ([12.152.184.25])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HIKDR-00047x-9z
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 23:42:41 -0800
+	(Exim 4.44) id 1HIiZ1-0000Mi-32
+	for nfs@lists.sourceforge.net; Sun, 18 Feb 2007 01:42:35 -0800
 Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1HIKDR-0000wH-0I
-	for nfs@lists.sourceforge.net; Fri, 16 Feb 2007 23:42:41 -0800
+	id 1HIiZ0-0007cZ-Qr
+	for nfs@lists.sourceforge.net; Sun, 18 Feb 2007 01:42:34 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,7 +32,7 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This message was created automatically by mail delivery software.
 A message that you sent has not yet been delivered to one or more of its
-recipients after more than 24 hours on the queue on externalmx-1.sourceforge.net.
+recipients after more than 48 hours on the queue on externalmx-1.sourceforge.net.
 
 The message identifier is:     1HHuHQ-0001Ym-J1
 The subject of the message is: Can't find high-value tablets?
