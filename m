@@ -1,23 +1,19 @@
-From: Mail Delivery System <Mailer-Daemon@lists.sourceforge.net>
-Subject: Warning: message 1HHuHQ-0001Ym-J1 delayed 72 hours
-Date: Sun, 18 Feb 2007 20:40:01 -0800
-Message-ID: <E1HJ0Jl-0005Kh-6p@externalmx-1.sourceforge.net>
+From: <bt.email.antivirus@bt.com>
+Subject: BT Messaging Anti-Virus Alert
+Date: Mon, 19 Feb 2007 08:34:58 -0000
+Message-ID: <003601c75400$d6a99680$aaa420d9@domain1.systemhost.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0535962307=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJ0Jk-0004iL-Pw
-	for nfs@lists.sourceforge.net; Sun, 18 Feb 2007 20:40:00 -0800
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HJ0Jl-0007EI-Hp
-	for nfs@lists.sourceforge.net; Sun, 18 Feb 2007 20:40:02 -0800
-Received: from exim by externalmx-1.sourceforge.net with local (Exim 4.41)
-	id 1HJ0Jl-0005Kh-6p
-	for nfs@lists.sourceforge.net; Sun, 18 Feb 2007 20:40:01 -0800
+	id 1HJ3zJ-0004bw-8F
+	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 00:35:18 -0800
+Received: from smtp3.smtp.bt.com ([217.32.164.138])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJ3zJ-0005wm-Ur
+	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 00:35:11 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +26,156 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This message was created automatically by mail delivery software.
-A message that you sent has not yet been delivered to one or more of its
-recipients after more than 72 hours on the queue on externalmx-1.sourceforge.net.
+This is a multi-part message in MIME format.
 
-The message identifier is:     1HHuHQ-0001Ym-J1
-The subject of the message is: Can't find high-value tablets?
-The date of the message is:    Fri, 16 Feb 2007 09:31:05 +0530
+--===============0535962307==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0037_01C75400.D6A99680"
+Content-Class: urn:content-classes:message
 
-The address to which the message has not yet been delivered is:
+This is a multi-part message in MIME format.
 
-  nfs@lists.sourceforge.net
-    Delay reason: SMTP error from remote mailer after RCPT TO:<nfs@lists.sourceforge.net>:
-    host mail.sourceforge.net [66.35.250.206]: 451-Could not complete sender verify callout
-    451-Could not complete sender verify callout for <nfs@lists.sourceforge.net>.
-    451-The mail server(s) for the domain may be temporarily unreachable, or
-    451-they may be permanently unreachable from this server. In the latter case,
-    451-you need to change the address or create an MX record for its domain
-    451-if it is supposed to be generally access
+------=_NextPart_000_0037_01C75400.D6A99680
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: 7bit
 
-No action is required on your part. Delivery attempts will continue for
-some time, and this warning may be repeated at intervals if the message
-remains undelivered. Eventually the mail delivery software will give up,
-and when that happens, the message will be returned to you.
+Notification Of Blocked e-mail - This message is intended for BT
+employees only. 
+All other recipients: Please ignore this message and accept our apology
+for any inconvenience (N.B. the links below are private).
+
+An e-mail (summarised below) has been blocked at the BT e-mail gateway
+because it contained an attachment of a potentially dangerous type
+<http://askcharley.intra.bt.com/wrapper.cfm?wrapper=security/blocked.htm
+>  or a computer virus. 
+
+Date/Time:       "19 Feb 2007 08:34:58" 
+From:              "nfs-bounces@lists.sourceforge.net" 
+Subject:           "[NFS] failure notice" 
+Blocked file:     "[Message Body]" 
+Virus Name:     "W32/Mytob.dam!zip" 
+
+
+
+BT Employees: If there is a legitimate business requirement for this
+e-mail, please ask the originator to re-send it. You must advise them to
+follow the special instructions, which you will find at this location
+<http://antivirus.intra.bt.com/zippass.htm>  for re-sending e-mail of
+this type. They should also ensure that the e-mail is virus-free.
+
+More information on blocked attachments can be found at
+http://askcharley.intra.bt.com/wrapper.cfm?wrapper=security/blocked.htm
+<http://askcharley.intra.bt.com/wrapper.cfm?wrapper=security/blocked.htm
+> 
+
+Please do not reply to this email. Thank you.
+
+
+BT EUT - Messaging & Real Time Collaboration 
+
+British Telecommunications plc
+Registered office: 81 Newgate Street London EC1A 7AJ
+Registered in England no. 1800000 
+This electronic message contains information from British
+Telecommunications plc which may be privileged or confidential. 
+If you are not the intended recipient be aware that any disclosure,
+copying, distribution or use of the contents of this information is
+prohibited. 
+
+Generated by: C03
+ 
+
+
+------=_NextPart_000_0037_01C75400.D6A99680
+Content-Type: text/html;
+	charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Notification Of Blocked e-mail</title>
+</head>
+
+<body>
+
+<b><font color="#ff0000" size="2" face="Arial"><u>
+<p>Notification Of Blocked e-mail - This message is intended for BT employees 
+only. <br>
+All other recipients: Please ignore this message and accept our apology for any 
+inconvenience (N.B. the links below are private).</p>
+</u></font><font face="Arial" size="2">
+<p>An e-mail (summarised below) has been blocked at the BT e-mail gateway 
+because it contained an attachment of a </font></b><font face="Arial" size="2">
+<a href="http://askcharley.intra.bt.com/wrapper.cfm?wrapper=security/blocked.htm">
+<font color="#0000ff"><u>potentially dangerous type</u></font></a> <b>or a 
+computer virus. <font face="Arial"><br>
+</font></b><font color="#000080" size="2"><br>
+
+Date/Time: &nbsp; &nbsp; &nbsp; "19 Feb 2007 08:34:58" <BR>
+From: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;"nfs-bounces@lists.sourceforge.net" <BR>
+Subject: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "[NFS] failure notice" <BR>
+Blocked file: &nbsp; &nbsp; "[Message Body]" <BR>
+Virus Name: &nbsp; &nbsp; "W32/Mytob.dam!zip" <BR><BR>
+
+<b><font color="#ff0000">
+<p>BT Employees:</font> </b>If there is a legitimate business requirement for 
+this e-mail, please ask the originator to re-send it. You must advise them to 
+follow the special instructions, which you will find at
+<a href="http://antivirus.intra.bt.com/zippass.htm"><font color="#0000ff"><u>
+this location</u></font></a> for re-sending e-mail of this type. They should also 
+ensure that the e-mail is virus-free.</p>
+<p>More information on blocked attachments can be found at
+<a href="http://askcharley.intra.bt.com/wrapper.cfm?wrapper=security/blocked.htm">
+<font color="#0000ff"><u>
+http://askcharley.intra.bt.com/wrapper.cfm?wrapper=security/blocked.htm</u></font></a></p>
+<b>
+<p>Please do not reply to this email. Thank you.<br>
+<br>
+<br>
+<i>BT EUT - Messaging & Real Time Collaboration</i> <br>
+<br>
+</b><font size="1">British Telecommunications plc<br>
+Registered office: 81 Newgate Street London EC1A 7AJ<br>
+Registered in England no. 1800000 <br>
+This electronic message contains information from British Telecommunications plc 
+which may be privileged or confidential. <br>
+If you are not the intended recipient be aware that any disclosure, copying, 
+distribution or use of the contents of this information is prohibited. </p>
+</font></font><b><font face="Arial" size="1" color="#808080">
+<p>Generated by: C03</font><font face="Arial" size="2" color="#808080"><br>
+&nbsp;</p>
+</font></b>
+
+</body>
+
+</html>
+
+------=_NextPart_000_0037_01C75400.D6A99680--
+
+
+--===============0535962307==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0535962307==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0535962307==--
