@@ -1,20 +1,29 @@
-From: Chuck Ebbert <cebbert@redhat.com>
-Subject: sunrpc oops in cache_clean(), kernel 2.6.19.3
-Date: Mon, 19 Feb 2007 11:42:16 -0500
-Message-ID: <45D9D368.5010900@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Announcing cel's patchset for 2.6.20
+Date: Mon, 19 Feb 2007 08:58:39 -0800
+Message-ID: <45D9D73F.9080706@oracle.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel <linux-kernel@vger.kernel.org>,
-	nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------060209010204050308030203"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJBau-00087q-5R
-	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 08:42:28 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJBav-0004v5-TW
-	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 08:42:30 -0800
+	id 1HJBrQ-0002oP-V9
+	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 08:59:33 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HJBrO-0003dE-IV
+	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 08:59:32 -0800
+Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l1JGx1Ao006006
+	for <nfs@lists.sourceforge.net>; Mon, 19 Feb 2007 10:59:01 -0600
+Received: from rcsmt250.oracle.com (rcsmt250.oracle.com [148.87.90.195])
+	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l1JGvNjT009552
+	for <nfs@lists.sourceforge.net>; Mon, 19 Feb 2007 09:59:00 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,79 +36,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is happening at line 443 in cache_clean() -- "ch" (in ebx)
-points into userspace data addresses:
+This is a multi-part message in MIME format.
+--------------060209010204050308030203
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
+Cel's NFS and RPC patchset for the 2.6.20 kernel is now available here:
 
-420 /* find a cleanable entry in the bucket and clean it, or set to next bucket */
-421
-422 if (current_detail && current_index < current_detail->hash_size) {
-423 	struct cache_head *ch, **cp;
-424 	struct cache_detail *d;
-425
-426 	write_lock(&current_detail->hash_lock);
-427
-428 	/* Ok, now to clean this strand */
-429
-430 	cp = & current_detail->hash_table[current_index];
-431 	ch = *cp;
-432 	for (; ch; cp= & ch->next, ch= *cp) {
-433 		if (current_detail->nextcheck > ch->expiry_time)
-434 			current_detail->nextcheck = ch->expiry_time+1;
-435 		if (ch->expiry_time >= get_seconds()
-436 		    && ch->last_refresh >= current_detail->flush_time
-437 			)
-438 			continue;
-439 		if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
-440 			queue_loose(current_detail, ch);
-441
-442 		if (atomic_read(&ch->ref.refcount) == 1)
-443 			break;
-444 	}
+http://oss.oracle.com/~cel/linux-2.6/2.6.20/
 
+and via git:
 
-BUG: unable to handle kernel paging request at virtual address 51c503f6
- printing eip:
-f0b973d9
-*pde = 00000000
-Oops: 0000 [#1]
-SMP
-last sysfs file: /devices/pci0000:00/0000:00:01.0/irq
-Modules linked in: nfsd exportfs lockd nfs_acl sunrpc ipv6 ipt_REJECT xt_state
-ip_conntrack nfnetlink xt_tcpudp iptable_filter ip_tables x_tables video sbs
-i2c_ec button battery asus_acpi ac lp sg scb2_flash floppy mtdcore chipreg
-map_funcs 3c59x i2c_piix4 mii pcspkr i2c_core tg3 parport_pc parport serio_raw
-ide_cd cdrom dm_snapshot dm_zero dm_mirror dm_mod mptspi mptscsih mptbase
-scsi_transport_spi sd_mod scsi_mod raid456 xor ext3 jbd ehci_hcd ohci_hcd uhci_hcd
-   1
-   0060:[<f0b973d9>]    Not tainted VLI
-EFLAGS: 00010202   (2.6.19-1.2911.fc6 #1)
-EIP is at cache_clean+0xb5/0x194 [sunrpc]
-eax: ffffffff   ebx: 51c503f2   ecx: f0bae840   edx: f0bae840
-cce9dc80   edi: efd811c0   ebp: 00000282   esp: c17d9f58
-ds: 007b   es: 007b   ss: 0068
-Process events/1 (pid: 9, ti=c17d9000 task=eff45630 task.ti=c17d9000)
-Stack: f0baea00 f0baea04 f0b97cd4 c043692f 00000282 efd811c0 efd811e0 f0b97ccf
-       00000000 efd811e0 efd811c0 efd811d8 00000000 c04372ec 00000001 00000000
-       00000001 00010000 00000000 00000000 eff45630 c04215f1 00100100 00200200
-Call Trace:
- [<f0b97cd4>] do_cache_clean+0x5/0x2e [sunrpc]
- [<c043692f>] run_workqueue+0x97/0xdd
- [<c04372ec>] worker_thread+0xd9/0x10d
- [<c0439878>] kthread+0xc0/0xec
- [<c0404c03>] kernel_thread_helper+0x7/0x10
- =======================
-Code: 8d f6 00 00 00 8d 41 0c e8 37 e5 a8 cf a1 64 08 bb f0 8d 34 85 00 00 00 00
-a1 60 08 bb f0 03 70 08 8b 1e eb 47 8b 15 60 08 bb f0 <8b> 43 04 39 42 50 7e 04
-40 89 42 50 8b 43 04 3b 05 00 60 85 c0
-[<f0b973d9>] cache_clean+0xb5/0x194 [sunrpc] SS:ESP 0068:c17d9f58
+http://linux-nfs.org/cgi-bin/gitweb.cgi?p=cel-2.6.git;a=shortlog;h=cel-pub-2.6.20
 
+This patch series contains the following:
+
+1.  Patches now included in 2.6.21
+2.  Remaining transport switch patches
+3.  The new in-kernel rpcbind client implementation
+4.  IPv6 support for the RPC client
+5.  IPv6 support for the NFS client
+6.  Unfinished IPv6 support for the RPC server
+7.  Patches that remove the global kernel lock from the NFS client
+8.  Experimental patches to clean up the XDR routines
+
+--------------060209010204050308030203
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
+IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmUgTGludXggUHJvamVjdHMgR3Jv
+dXANCmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRv
+dCBjb20NCnRpdGxlOlByaW5jaXBhbCBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0
+OCA2MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNh
+cmQNCg0K
+--------------060209010204050308030203
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------060209010204050308030203
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060209010204050308030203--
