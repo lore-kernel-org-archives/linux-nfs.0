@@ -1,32 +1,20 @@
-From: Rich <rich@hq.vsaa.lv>
-Subject: poor nfs performance & hangs with latest kernels
-Date: Mon, 19 Feb 2007 16:49:57 +0200
-Message-ID: <45D9B915.2010305@hq.vsaa.lv>
+From: Chuck Ebbert <cebbert@redhat.com>
+Subject: sunrpc oops in cache_clean(), kernel 2.6.19.3
+Date: Mon, 19 Feb 2007 11:42:16 -0500
+Message-ID: <45D9D368.5010900@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+To: linux-kernel <linux-kernel@vger.kernel.org>,
+	nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJ9qF-0007cC-Mx
-	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 06:50:11 -0800
-Received: from [81.198.191.135] (helo=ns1.vsaa.lv)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJ9qF-0002DT-Hh
-	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 06:50:13 -0800
-Received: from hq.vsaa.lv (tvertne.vsaa.lv [10.196.1.66])
-	by ns1.vsaa.lv (8.13.1/8.13.1) with ESMTP id l1JEnwZU021515
-	for <nfs@lists.sourceforge.net>; Mon, 19 Feb 2007 16:49:59 +0200
-Received: from localhost (localhost [127.0.0.1])
-	by hq.vsaa.lv (Postfix) with ESMTP id 9CAF715B561
-	for <nfs@lists.sourceforge.net>; Mon, 19 Feb 2007 16:49:58 +0200 (EET)
-Received: from hq.vsaa.lv ([127.0.0.1])
-	by localhost (hq.vsaa.lv [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id V4BcFympzxI4 for <nfs@lists.sourceforge.net>;
-	Mon, 19 Feb 2007 16:49:57 +0200 (EET)
-Received: from [10.196.5.213] (unknown [10.196.5.213])
-	by hq.vsaa.lv (Postfix) with ESMTP id 5ABF715B560
-	for <nfs@lists.sourceforge.net>; Mon, 19 Feb 2007 16:49:57 +0200 (EET)
+	id 1HJBau-00087q-5R
+	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 08:42:28 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJBav-0004v5-TW
+	for nfs@lists.sourceforge.net; Mon, 19 Feb 2007 08:42:30 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,61 +27,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-hi. i am having a pretty weird nfs performance problems.
-(please, cc me, as i am not on the list).
+This is happening at line 443 in cache_clean() -- "ch" (in ebx)
+points into userspace data addresses:
 
-when there is some intensive nfs activity (write), all other nfs 
-operations slow down to crawl or even stop at all during that time.
 
-i have been able to reproduce the problem with kernel versions 
-2.6.16.40, 2.6.19.2 and 2.6.20 (on  slackware-11.0).
-another person reproduced the hang with 2.6.19-1.2911.fc6 (fedora core 6).
+420 /* find a cleanable entry in the bucket and clean it, or set to next bucket */
+421
+422 if (current_detail && current_index < current_detail->hash_size) {
+423 	struct cache_head *ch, **cp;
+424 	struct cache_detail *d;
+425
+426 	write_lock(&current_detail->hash_lock);
+427
+428 	/* Ok, now to clean this strand */
+429
+430 	cp = & current_detail->hash_table[current_index];
+431 	ch = *cp;
+432 	for (; ch; cp= & ch->next, ch= *cp) {
+433 		if (current_detail->nextcheck > ch->expiry_time)
+434 			current_detail->nextcheck = ch->expiry_time+1;
+435 		if (ch->expiry_time >= get_seconds()
+436 		    && ch->last_refresh >= current_detail->flush_time
+437 			)
+438 			continue;
+439 		if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
+440 			queue_loose(current_detail, ch);
+441
+442 		if (atomic_read(&ch->ref.refcount) == 1)
+443 			break;
+444 	}
 
-when the problem appears, access to the same data both locally and even 
-over ssh is happening  without any slowdown, but nfs access is sometimes 
-slowed down significantly, in some cases  even being unable to list a 
-directory for 30 minutes.
-in some cases, not only nfs slowdown happens, but whole system hangs.
 
-i have tried nfstools 1.0.10 and 1.0.7 & portmap 5.0 (though their 
-versions seem to have no impact).
+BUG: unable to handle kernel paging request at virtual address 51c503f6
+ printing eip:
+f0b973d9
+*pde = 00000000
+Oops: 0000 [#1]
+SMP
+last sysfs file: /devices/pci0000:00/0000:00:01.0/irq
+Modules linked in: nfsd exportfs lockd nfs_acl sunrpc ipv6 ipt_REJECT xt_state
+ip_conntrack nfnetlink xt_tcpudp iptable_filter ip_tables x_tables video sbs
+i2c_ec button battery asus_acpi ac lp sg scb2_flash floppy mtdcore chipreg
+map_funcs 3c59x i2c_piix4 mii pcspkr i2c_core tg3 parport_pc parport serio_raw
+ide_cd cdrom dm_snapshot dm_zero dm_mirror dm_mod mptspi mptscsih mptbase
+scsi_transport_spi sd_mod scsi_mod raid456 xor ext3 jbd ehci_hcd ohci_hcd uhci_hcd
+   1
+   0060:[<f0b973d9>]    Not tainted VLI
+EFLAGS: 00010202   (2.6.19-1.2911.fc6 #1)
+EIP is at cache_clean+0xb5/0x194 [sunrpc]
+eax: ffffffff   ebx: 51c503f2   ecx: f0bae840   edx: f0bae840
+cce9dc80   edi: efd811c0   ebp: 00000282   esp: c17d9f58
+ds: 007b   es: 007b   ss: 0068
+Process events/1 (pid: 9, ti=c17d9000 task=eff45630 task.ti=c17d9000)
+Stack: f0baea00 f0baea04 f0b97cd4 c043692f 00000282 efd811c0 efd811e0 f0b97ccf
+       00000000 efd811e0 efd811c0 efd811d8 00000000 c04372ec 00000001 00000000
+       00000001 00010000 00000000 00000000 eff45630 c04215f1 00100100 00200200
+Call Trace:
+ [<f0b97cd4>] do_cache_clean+0x5/0x2e [sunrpc]
+ [<c043692f>] run_workqueue+0x97/0xdd
+ [<c04372ec>] worker_thread+0xd9/0x10d
+ [<c0439878>] kthread+0xc0/0xec
+ [<c0404c03>] kernel_thread_helper+0x7/0x10
+ =======================
+Code: 8d f6 00 00 00 8d 41 0c e8 37 e5 a8 cf a1 64 08 bb f0 8d 34 85 00 00 00 00
+a1 60 08 bb f0 03 70 08 8b 1e eb 47 8b 15 60 08 bb f0 <8b> 43 04 39 42 50 7e 04
+40 89 42 50 8b 43 04 3b 05 00 60 85 c0
+[<f0b973d9>] cache_clean+0xb5/0x194 [sunrpc] SS:ESP 0068:c17d9f58
 
-there is one scenario where it is very easy to reproduce the problem 
-(note : don't try this on a  remote system or one you can not afford to 
-hard reboot) :
-
-export a local directory. i'm using 
-localhost(rw,no_root_squash,sync,no_subtree_check).
-mount it locally and try to perform a write operation :
-dd if=/dev/zero of=/mounted_nfs/testfile bs=512k count=2048
-
-depending on machine, i jave managed to get from 32mb (my workstation) 
-to ~ 880mb (server) files. then, either nfs becomes unaccessible (for 
-all hosts and all disks/exported filesystems), or machine hangs 
-completely. if machine does not hang, it's load increases steadily, and 
-all cpus are shown to have very high iowait load.
-
-using 2.6.16.21, i was unable to hang my workstation, but server, even 
-though it survived the test, is still having excessive load (~ 4). top 
-lists as most resource hungry processes nfsd, kjournald and
-kblockd.
-in this case, stopping nfs server seems to lower the load and return the 
-system to normal state.
-
-this seems to be very similar to already reported bug, 
-http://bugme.osdl.org/show_bug.cgi?id=7943
-
-has anybody else seen such a behaviour ?
-i would appreciate if somebody could test this or provide additional 
-things to test. flips on #linux-nfs noted that "it would be good to get 
-a sysrq-t listing". if required, i could try this on my workstation with 
-either 16.21, 19.1 or .20 - though, if really needed, probably with any 
-kernel version :)
-in such a case i would be glad to receive some guidance how to best 
-perform this activity and gather output.
-thanks.
--- 
-  Rich
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
