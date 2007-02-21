@@ -1,24 +1,21 @@
-From: Jean-Noel Bouvier <jean-noel.bouvier@imag.fr>
-Subject: Re: poor nfs performance & hangs with latest kernels
-Date: Wed, 21 Feb 2007 14:40:03 +0100
-Message-ID: <45DC4BB3.7090706@imag.fr>
-References: <45D9B915.2010305@hq.vsaa.lv>
-	<17882.49990.799201.335846@notabene.brown>
+From: Greg Banks <gnb@sgi.com>
+Subject: [PATCH] provide sunrpc pool_mode module option
+Date: Thu, 22 Feb 2007 01:58:18 +1100
+Message-ID: <20070221145818.GC23394@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: rich@hq.vsaa.lv, nfs@lists.sourceforge.net
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJriu-0003y0-Lw
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 05:41:32 -0800
-Received: from imag.imag.fr ([129.88.30.1])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HJriw-0004Dr-5r
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 05:41:34 -0800
-In-Reply-To: <17882.49990.799201.335846@notabene.brown>
+	id 1HJsvO-0004Fa-DZ
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 06:58:30 -0800
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=netops-testserver-4.corp.sgi.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJsvO-0007Gv-8w
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 06:58:32 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,110 +28,156 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello,
 
-I encounter the same NFS bad performance for kernels newer than 2.6.16.31
+Provide a module option "pool_mode" for sunrpc.ko which allows a
+sysadmin to choose the mode for mapping svc_pools to CPUs.  Values are:
 
-Tests : tar -xvf linux-2.4.32.tar
+auto	    choose a mapping mode heuristically
+global	    (default, same as the pre-2.6.19 code) a single global pool
+percpu	    one pool per CPU
+pernode	    one pool per NUMA node
 
-Environment :
-- client 2.6.16.31
-- client mounts a XFS file system through NFS on a remote machine with
-options = rw,tcp,intr
-- server : exporting file system with options = rw,sync,insecure
+Note that since 2.6.19 the hardcoded behaviour has been "auto",
+this patch makes the default "global".
 
-Results : (according to server kernel version)
-2.6.15.7 => 1 minute 10 sec
-2.6.16.31 => 1 minute 02 sec
-2.6.17.14 => 15 minutes
-2.6.18.3 => 15 minutes
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+---
 
-Neil Brown wrote:
-> On Monday February 19, rich@hq.vsaa.lv wrote:
-> 
->>hi. i am having a pretty weird nfs performance problems.
->>(please, cc me, as i am not on the list).
->>
->>when there is some intensive nfs activity (write), all other nfs 
->>operations slow down to crawl or even stop at all during that time.
->>
->>i have been able to reproduce the problem with kernel versions 
->>2.6.16.40, 2.6.19.2 and 2.6.20 (on  slackware-11.0).
->>another person reproduced the hang with 2.6.19-1.2911.fc6 (fedora core 6).
-> 
-> 
-> Are there any kernels where you cannot reproduce the problem?
+ net/sunrpc/svc.c |   76 ++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 60 insertions(+), 16 deletions(-)
 
-2.6.16.31 and 2.6.15.7 are OK.
+Index: linux/net/sunrpc/svc.c
+===================================================================
+--- linux.orig/net/sunrpc/svc.c	2007-02-05 05:44:54.000000000 +1100
++++ linux/net/sunrpc/svc.c	2007-02-22 01:17:24.971676217 +1100
+@@ -31,7 +31,7 @@
+  * Mode for mapping cpus to pools.
+  */
+ enum {
+-	SVC_POOL_NONE = -1,	/* uninitialised, choose one of the others */
++	SVC_POOL_AUTO = -1,	/* choose one of the others */
+ 	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
+ 				 * (legacy & UP mode) */
+ 	SVC_POOL_PERCPU,	/* one pool per cpu */
+@@ -46,13 +46,55 @@ static struct svc_pool_map {
+ 	int mode;			/* Note: int not enum to avoid
+ 					 * warnings about "enumeration value
+ 					 * not handled in switch" */
++	int initialised;
+ 	unsigned int npools;
+ 	unsigned int *pool_to;		/* maps pool id to cpu or node */
+ 	unsigned int *to_pool;		/* maps cpu or node to pool id */
+ } svc_pool_map = {
+-	.mode = SVC_POOL_NONE
++	.mode = SVC_POOL_GLOBAL,
++	.initialised = 0
+ };
+ 
++static int
++param_set_pool_mode(const char *val, struct kernel_param *kp)
++{
++	int *ip = (int *)kp->arg;
++
++	if (!strcmp(val, "auto"))
++		*ip = SVC_POOL_AUTO;
++	else if (!strcmp(val, "global"))
++		*ip = SVC_POOL_GLOBAL;
++	else if (!strcmp(val, "percpu"))
++		*ip = SVC_POOL_PERCPU;
++	else if (!strcmp(val, "pernode"))
++		*ip = SVC_POOL_PERNODE;
++	else
++		return -EINVAL;
++	return 0;
++}
++
++static int
++param_get_pool_mode(char *buf, struct kernel_param *kp)
++{
++	int *ip = (int *)kp->arg;
++
++	switch (*ip)
++	{
++	case SVC_POOL_AUTO:
++		return strlcpy(buf, "auto", 20);
++	case SVC_POOL_GLOBAL:
++		return strlcpy(buf, "global", 20);
++	case SVC_POOL_PERCPU:
++		return strlcpy(buf, "percpu", 20);
++	case SVC_POOL_PERNODE:
++		return strlcpy(buf, "pernode", 20);
++	default:
++		return sprintf(buf, "%d", *ip);
++	}
++}
++
++module_param_call(pool_mode, param_set_pool_mode, param_get_pool_mode,
++		 &svc_pool_map.mode, 0644);
+ 
+ /*
+  * Detect best pool mapping mode heuristically,
+@@ -174,10 +216,12 @@ svc_pool_map_init(void)
+ 	struct svc_pool_map *m = &svc_pool_map;
+ 	int npools = -1;
+ 
+-	if (m->mode != SVC_POOL_NONE)
++	if (m->initialised)
+ 		return m->npools;
++	m->initialised = 1;
+ 
+-	m->mode = svc_pool_map_choose_mode();
++	if (m->mode == SVC_POOL_AUTO)
++		m->mode = svc_pool_map_choose_mode();
+ 
+ 	switch (m->mode) {
+ 	case SVC_POOL_PERCPU:
+@@ -212,10 +256,9 @@ svc_pool_map_set_cpumask(unsigned int pi
+ 
+ 	/*
+ 	 * The caller checks for sv_nrpools > 1, which
+-	 * implies that we've been initialized and the
+-	 * map mode is not NONE.
++	 * implies that we've been initialized.
+ 	 */
+-	BUG_ON(m->mode == SVC_POOL_NONE);
++	BUG_ON(!m->initialised);
+ 
+ 	switch (m->mode)
+ 	{
+@@ -246,18 +289,19 @@ svc_pool_for_cpu(struct svc_serv *serv, 
+ 	unsigned int pidx = 0;
+ 
+ 	/*
+-	 * SVC_POOL_NONE happens in a pure client when
++	 * !m->initialised happens in a pure client when
+ 	 * lockd is brought up, so silently treat it the
+ 	 * same as SVC_POOL_GLOBAL.
+ 	 */
+-
+-	switch (m->mode) {
+-	case SVC_POOL_PERCPU:
+-		pidx = m->to_pool[cpu];
+-		break;
+-	case SVC_POOL_PERNODE:
+-		pidx = m->to_pool[cpu_to_node(cpu)];
+-		break;
++	if (m->initialised) {
++		switch (m->mode) {
++		case SVC_POOL_PERCPU:
++			pidx = m->to_pool[cpu];
++			break;
++		case SVC_POOL_PERNODE:
++			pidx = m->to_pool[cpu_to_node(cpu)];
++			break;
++		}
+ 	}
+ 	return &serv->sv_pools[pidx % serv->sv_nrpools];
+ }
 
->>when the problem appears, access to the same data both locally and even 
->>over ssh is happening  without any slowdown, but nfs access is sometimes 
->>slowed down significantly, in some cases  even being unable to list a 
->>directory for 30 minutes.
->>in some cases, not only nfs slowdown happens, but whole system hangs.
-> 
-> 
-> So we need to find out exactly what is happening when things slow
-> down.
-> Some things that might be useful:
->   a tcpdump trace (use -s 0) of traffic which things are going slowly.
->   "cat /proc/meminfo /proc/slabinfo".  Get a copy when everything is
->      fine, then another few then things are going slowly.
->   Maybe "echo t > /proc/sysrq-trigger" and collect the kernel logs.
->     If some processes are in 'D' status, this could give useful
->     information.
 
-Results :
-
-- 2.6.16.31 : load average 1; 5 threads and nfsd process are never with
-'D' status.
-- 2.6.18.3 : load average 5; 2 threads and nfsd process are often with
-'D' status.
-
-> Get the various information on both the server and client if
-> possible.  Hopefully somewhere in all of that will be a clue.
-> 
-> 
->>there is one scenario where it is very easy to reproduce the problem 
->>(note : don't try this on a  remote system or one you can not afford to 
->>hard reboot) :
->>
->>export a local directory. i'm using 
->>localhost(rw,no_root_squash,sync,no_subtree_check).
->>mount it locally and try to perform a write operation :
->>dd if=/dev/zero of=/mounted_nfs/testfile bs=512k count=2048
-> 
-> 
-> This scenario is known to cause problems, is very hard to fix, and is
-> a case of "well don't do that then".  The problems here are probably
-> unrelated to the problems you are having between separate machines.
-> 
-> 
->>using 2.6.16.21, i was unable to hang my workstation, but server, even 
->>though it survived the test, is still having excessive load (~ 4). top 
->>lists as most resource hungry processes nfsd, kjournald and
->>kblockd.
-> 
-> 
-> So 2.6.16.21 survives but 2.6.16.40 doesn't?  Is that a reliable
-> result?  Is that with separate server and client, or server and client
-> on the same machine?
-> 
-> NeilBrown
-> 
-> -------------------------------------------------------------------------
-> Take Surveys. Earn Cash. Influence the Future of IT
-> Join SourceForge.net's Techsay panel and you'll get the chance to share your
-> opinions on IT & business topics through brief surveys-and earn cash
-> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-
-
-
+-- 
+Greg (not Dave) Banks, R&D Software Engineer, SGI Australian Software Group.
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
