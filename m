@@ -1,22 +1,24 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: mount problems - possibly 64bit
-Date: Wed, 21 Feb 2007 13:25:37 +0100
-Message-ID: <200702211325.37444.bernd-schubert@gmx.de>
-References: <wolfgang-1070221123827.A0217144@noten5.maas-noten.de>
+From: Jean-Noel Bouvier <jean-noel.bouvier@imag.fr>
+Subject: Re: poor nfs performance & hangs with latest kernels
+Date: Wed, 21 Feb 2007 14:40:03 +0100
+Message-ID: <45DC4BB3.7090706@imag.fr>
+References: <45D9B915.2010305@hq.vsaa.lv>
+	<17882.49990.799201.335846@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: wolfgang@noten5.maas-noten.de
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: rich@hq.vsaa.lv, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJqXa-0004Aq-4v
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 04:25:47 -0800
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HJqXb-0003sT-Nq
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 04:25:48 -0800
-In-Reply-To: <wolfgang-1070221123827.A0217144@noten5.maas-noten.de>
+	id 1HJriu-0003y0-Lw
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 05:41:32 -0800
+Received: from imag.imag.fr ([129.88.30.1])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HJriw-0004Dr-5r
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 05:41:34 -0800
+In-Reply-To: <17882.49990.799201.335846@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,31 +31,116 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday 21 February 2007 12:38, wolfgang@noten5.maas-noten.de wrote:
-> I am trying to replace servers in an existing network by better ones
-> (kernel 2.6.16 on amd 64bit) The server has
-> nfs-server-2.2beta51-225.x86_64.rpm installed
+Hello,
 
-Thats the userspace server, isn't it? Take the kernel server (or at least =
+I encounter the same NFS bad performance for kernels newer than 2.6.16.31
 
-unfs3, if you really need a userspave daemon).
+Tests : tar -xvf linux-2.4.32.tar
+
+Environment :
+- client 2.6.16.31
+- client mounts a XFS file system through NFS on a remote machine with
+options = rw,tcp,intr
+- server : exporting file system with options = rw,sync,insecure
+
+Results : (according to server kernel version)
+2.6.15.7 => 1 minute 10 sec
+2.6.16.31 => 1 minute 02 sec
+2.6.17.14 => 15 minutes
+2.6.18.3 => 15 minutes
+
+Neil Brown wrote:
+> On Monday February 19, rich@hq.vsaa.lv wrote:
+> 
+>>hi. i am having a pretty weird nfs performance problems.
+>>(please, cc me, as i am not on the list).
+>>
+>>when there is some intensive nfs activity (write), all other nfs 
+>>operations slow down to crawl or even stop at all during that time.
+>>
+>>i have been able to reproduce the problem with kernel versions 
+>>2.6.16.40, 2.6.19.2 and 2.6.20 (on  slackware-11.0).
+>>another person reproduced the hang with 2.6.19-1.2911.fc6 (fedora core 6).
+> 
+> 
+> Are there any kernels where you cannot reproduce the problem?
+
+2.6.16.31 and 2.6.15.7 are OK.
+
+>>when the problem appears, access to the same data both locally and even 
+>>over ssh is happening  without any slowdown, but nfs access is sometimes 
+>>slowed down significantly, in some cases  even being unable to list a 
+>>directory for 30 minutes.
+>>in some cases, not only nfs slowdown happens, but whole system hangs.
+> 
+> 
+> So we need to find out exactly what is happening when things slow
+> down.
+> Some things that might be useful:
+>   a tcpdump trace (use -s 0) of traffic which things are going slowly.
+>   "cat /proc/meminfo /proc/slabinfo".  Get a copy when everything is
+>      fine, then another few then things are going slowly.
+>   Maybe "echo t > /proc/sysrq-trigger" and collect the kernel logs.
+>     If some processes are in 'D' status, this could give useful
+>     information.
+
+Results :
+
+- 2.6.16.31 : load average 1; 5 threads and nfsd process are never with
+'D' status.
+- 2.6.18.3 : load average 5; 2 threads and nfsd process are often with
+'D' status.
+
+> Get the various information on both the server and client if
+> possible.  Hopefully somewhere in all of that will be a clue.
+> 
+> 
+>>there is one scenario where it is very easy to reproduce the problem 
+>>(note : don't try this on a  remote system or one you can not afford to 
+>>hard reboot) :
+>>
+>>export a local directory. i'm using 
+>>localhost(rw,no_root_squash,sync,no_subtree_check).
+>>mount it locally and try to perform a write operation :
+>>dd if=/dev/zero of=/mounted_nfs/testfile bs=512k count=2048
+> 
+> 
+> This scenario is known to cause problems, is very hard to fix, and is
+> a case of "well don't do that then".  The problems here are probably
+> unrelated to the problems you are having between separate machines.
+> 
+> 
+>>using 2.6.16.21, i was unable to hang my workstation, but server, even 
+>>though it survived the test, is still having excessive load (~ 4). top 
+>>lists as most resource hungry processes nfsd, kjournald and
+>>kblockd.
+> 
+> 
+> So 2.6.16.21 survives but 2.6.16.40 doesn't?  Is that a reliable
+> result?  Is that with separate server and client, or server and client
+> on the same machine?
+> 
+> NeilBrown
+> 
+> -------------------------------------------------------------------------
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+> opinions on IT & business topics through brief surveys-and earn cash
+> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 
--- =
 
-Bernd Schubert
-PCI / Theoretische Chemie
-Universit=E4t Heidelberg
-INF 229
-69120 Heidelberg
+
 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
