@@ -1,56 +1,229 @@
-From: Jean-Denis Girard <jd.girard@sysnux.pf>
-Subject: Re: Server not working since 2.6.20-rc
-Date: Tue, 20 Feb 2007 14:51:07 -1000
-Message-ID: <45DB977B.9020301@sysnux.pf>
-References: <45DB8447.1060903@sysnux.pf>
-	<17883.36278.831305.989168@notabene.brown>
+From: Greg KH <greg@kroah.com>
+Subject: [patch 21/21] knfsd: Fix a race in closing NFSd connections.
+Date: Tue, 20 Feb 2007 17:39:00 -0800
+Message-ID: <20070221013900.GV30227@kroah.com>
+References: <20070221012758.925122216@mini.kroah.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-To: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJfxo-0005l7-Fg
-	for nfs@lists.sourceforge.net; Tue, 20 Feb 2007 17:08:17 -0800
-Received: from smtpq.mana.pf ([202.3.225.153] ident=mirapoint)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJfxo-00077b-OX
-	for nfs@lists.sourceforge.net; Tue, 20 Feb 2007 17:08:10 -0800
-In-Reply-To: <17883.36278.831305.989168@notabene.brown>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, nfs@lists.sourceforge.net,
+	Neil Brown <neilb@suse.de>
+To: linux-kernel@vger.kernel.org, stable@kernel.org,
+	Andrew Morton <akpm@osdl.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751076AbXBUBlD@vger.kernel.org>
+In-Reply-To: <20070221013619.GA30227@kroah.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Neil Brown a =E9crit :
-> Do you have /proc/fs/nfsd mounted?
+-stable review patch.  If anyone has any objections, please let us know.
 
-Ok, I had to manually mount /proc/fs/nfsd on the server and everything =
+------------------
+If you lose this race, it can iput a socket inode twice and you
+get a BUG in fs/inode.c
 
-is back to normal. Did that change with 2.6.20, or did I miss something?
+When I added the option for user-space to close a socket,
+I added some cruft to svc_delete_socket so that I could call
+that function when closing a socket per user-space request.
+
+This was the wrong thing to do.  I should have just set SK_CLOSE
+and let normal mechanisms do the work.
+
+Not only wrong, but buggy.  The locking is all wrong and it openned
+up a race where-by a socket could be closed twice.
+
+So this patch:
+  Introduces svc_close_socket which sets SK_CLOSE then either leave
+  the close up to a thread, or calls svc_delete_socket if it can
+  get SK_BUSY.
+
+  Adds a bias to sk_busy which is removed when SK_DEAD is set,
+  This avoid races around shutting down the socket.
+
+  Changes several 'spin_lock' to 'spin_lock_bh' where the _bh 
+  was missing.
+
+Bugzilla-url: http://bugzilla.kernel.org/show_bug.cgi?id=7916
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 
-Thanks to everybody,
--- =
+---
+ include/linux/sunrpc/svcsock.h |    2 -
+ net/sunrpc/svc.c               |    4 +--
+ net/sunrpc/svcsock.c           |   52 +++++++++++++++++++++++++++++------------
+ 3 files changed, 41 insertions(+), 17 deletions(-)
 
-Jean-Denis Girard
+--- linux-2.6.19.4.orig/include/linux/sunrpc/svcsock.h
++++ linux-2.6.19.4/include/linux/sunrpc/svcsock.h
+@@ -63,7 +63,7 @@ struct svc_sock {
+  * Function prototypes.
+  */
+ int		svc_makesock(struct svc_serv *, int, unsigned short);
+-void		svc_delete_socket(struct svc_sock *);
++void		svc_close_socket(struct svc_sock *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
+ void		svc_drop(struct svc_rqst *);
+--- linux-2.6.19.4.orig/net/sunrpc/svc.c
++++ linux-2.6.19.4/net/sunrpc/svc.c
+@@ -387,7 +387,7 @@ svc_destroy(struct svc_serv *serv)
+ 		svsk = list_entry(serv->sv_tempsocks.next,
+ 				  struct svc_sock,
+ 				  sk_list);
+-		svc_delete_socket(svsk);
++		svc_close_socket(svsk);
+ 	}
+ 	if (serv->sv_shutdown)
+ 		serv->sv_shutdown(serv);
+@@ -396,7 +396,7 @@ svc_destroy(struct svc_serv *serv)
+ 		svsk = list_entry(serv->sv_permsocks.next,
+ 				  struct svc_sock,
+ 				  sk_list);
+-		svc_delete_socket(svsk);
++		svc_close_socket(svsk);
+ 	}
+ 	
+ 	cache_clean_deferred(serv);
+--- linux-2.6.19.4.orig/net/sunrpc/svcsock.c
++++ linux-2.6.19.4/net/sunrpc/svcsock.c
+@@ -61,6 +61,12 @@
+  *		after a clear, the socket must be read/accepted
+  *		 if this succeeds, it must be set again.
+  *	SK_CLOSE can set at any time. It is never cleared.
++ *      sk_inuse contains a bias of '1' until SK_DEAD is set.
++ *             so when sk_inuse hits zero, we know the socket is dead
++ *             and no-one is using it.
++ *      SK_DEAD can only be set while SK_BUSY is held which ensures
++ *             no other thread will be using the socket or will try to
++ *	       set SK_DEAD.
+  *
+  */
+ 
+@@ -69,6 +75,7 @@
+ 
+ static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+ 					 int *errp, int pmap_reg);
++static void		svc_delete_socket(struct svc_sock *svsk);
+ static void		svc_udp_data_ready(struct sock *, int);
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+@@ -299,8 +306,9 @@ void svc_reserve(struct svc_rqst *rqstp,
+ static inline void
+ svc_sock_put(struct svc_sock *svsk)
+ {
+-	if (atomic_dec_and_test(&svsk->sk_inuse) &&
+-			test_bit(SK_DEAD, &svsk->sk_flags)) {
++	if (atomic_dec_and_test(&svsk->sk_inuse)) {
++		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
++
+ 		dprintk("svc: releasing dead socket\n");
+ 		if (svsk->sk_sock->file)
+ 			sockfd_put(svsk->sk_sock);
+@@ -490,7 +498,7 @@ svc_sock_names(char *buf, struct svc_ser
+ 
+ 	if (!serv)
+ 		return 0;
+-	spin_lock(&serv->sv_lock);
++	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
+ 		int onelen = one_sock_name(buf+len, svsk);
+ 		if (toclose && strcmp(toclose, buf+len) == 0)
+@@ -498,12 +506,12 @@ svc_sock_names(char *buf, struct svc_ser
+ 		else
+ 			len += onelen;
+ 	}
+-	spin_unlock(&serv->sv_lock);
++	spin_unlock_bh(&serv->sv_lock);
+ 	if (closesk)
+ 		/* Should unregister with portmap, but you cannot
+ 		 * unregister just one protocol...
+ 		 */
+-		svc_delete_socket(closesk);
++		svc_close_socket(closesk);
+ 	else if (toclose)
+ 		return -ENOENT;
+ 	return len;
+@@ -653,6 +661,11 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
+ 	}
+ 
++	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
++		svc_delete_socket(svsk);
++		return 0;
++	}
++
+ 	clear_bit(SK_DATA, &svsk->sk_flags);
+ 	while ((skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
+ 		if (err == -EAGAIN) {
+@@ -1142,7 +1155,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 		       rqstp->rq_sock->sk_server->sv_name,
+ 		       (sent<0)?"got error":"sent only",
+ 		       sent, xbufp->len);
+-		svc_delete_socket(rqstp->rq_sock);
++		set_bit(SK_CLOSE, &rqstp->rq_sock->sk_flags);
++		svc_sock_enqueue(rqstp->rq_sock);
+ 		sent = -EAGAIN;
+ 	}
+ 	return sent;
+@@ -1461,7 +1475,7 @@ svc_setup_socket(struct svc_serv *serv, 
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
+ 	svsk->sk_server = serv;
+-	atomic_set(&svsk->sk_inuse, 0);
++	atomic_set(&svsk->sk_inuse, 1);
+ 	svsk->sk_lastrecv = get_seconds();
+ 	spin_lock_init(&svsk->sk_defer_lock);
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+@@ -1582,7 +1596,7 @@ bummer:
+ /*
+  * Remove a dead socket
+  */
+-void
++static void
+ svc_delete_socket(struct svc_sock *svsk)
+ {
+ 	struct svc_serv	*serv;
+@@ -1608,16 +1622,26 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	 * while still attached to a queue, the queue itself
+ 	 * is about to be destroyed (in svc_destroy).
+ 	 */
+-	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags))
++	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags)) {
++		BUG_ON(atomic_read(&svsk->sk_inuse)<2);
++		atomic_dec(&svsk->sk_inuse);
+ 		if (test_bit(SK_TEMP, &svsk->sk_flags))
+ 			serv->sv_tmpcnt--;
++	}
+ 
+-	/* This atomic_inc should be needed - svc_delete_socket
+-	 * should have the semantic of dropping a reference.
+-	 * But it doesn't yet....
+-	 */
+-	atomic_inc(&svsk->sk_inuse);
+ 	spin_unlock_bh(&serv->sv_lock);
++}
++
++void svc_close_socket(struct svc_sock *svsk)
++{
++	set_bit(SK_CLOSE, &svsk->sk_flags);
++	if (test_and_set_bit(SK_BUSY, &svsk->sk_flags))
++		/* someone else will have to effect the close */
++		return;
++
++	atomic_inc(&svsk->sk_inuse);
++	svc_delete_socket(svsk);
++	clear_bit(SK_BUSY, &svsk->sk_flags);
+ 	svc_sock_put(svsk);
+ }
+ 
 
-SysNux                  Syst=E8mes Linux en Polyn=E9sie fran=E7aise
-http://www.sysnux.pf/   T=E9l: +689 483 527 / GSM: +689 797 527
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--
