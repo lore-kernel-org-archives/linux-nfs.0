@@ -1,23 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: 2.6.13.4 - "lockd: weird return 1 for CANCEL call"
-Date: Wed, 21 Feb 2007 22:24:49 +1100
-Message-ID: <17884.11265.145106.290158@notabene.brown>
-References: <9a8748490702210246j38a1ca4bi8de371ba6829ada9@mail.gmail.com>
+From: wolfgang@noten5.maas-noten.de
+Subject: mount problems - possibly 64bit
+Date: 21 Feb 2007 11:38:27 -0000
+Message-ID: <wolfgang-1070221123827.A0217144@noten5.maas-noten.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: "Jesper Juhl" <jesper.juhl@gmail.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HJpbO-0006J7-Dd
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 03:26:05 -0800
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJpbP-0005fB-2Q
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 03:25:40 -0800
-In-Reply-To: message from Jesper Juhl on Wednesday February 21
+	id 1HJpoO-0007fk-3i
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 03:39:04 -0800
+Received: from maas-noten.de ([213.239.193.103])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HJpoO-0004kq-Kh
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 03:39:06 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,34 +26,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday February 21, jesper.juhl@gmail.com wrote:
-> Greetings,
-> 
-> I just got a unusual message from lockd on a webserver running a
-> custom compiled 2.6.13.4 (yes it is ancient, I know).
-> 
-> # uname -a
-> Linux webserv.somedomain.example 2.6.13.4 #1 SMP Wed Nov 16 10:03:05
-> CET 2005 i686 unknown
-> 
-> # dmesg | tail -n 3
-> do_vfs_lock: VFS is out of sync with lock manager!
-> lockd: weird return 1 for CANCEL call
-> lockd: weird return 1 for CANCEL call
-> 
-> The server seems to be running fine, so I'm not really worried, but I
-> thought maybe someone would like to know. :-)
 
-Thanks.
-Don't be worried.  They are both warning about perfectly acceptable
-(though uncommon) behaviour.  These warnings have since been removed.
 
-A process was interrupted while trying to get a lock, so the NFS
-client didn't know if it actually had the lock or not.
-When the process exited, the tried to cancel the lock just to be on
-the safe side and was told that it didn't own any such lock.
+I am trying to replace servers in an existing network by better ones (kernel 2.6.16 on amd 64bit)
+The server has nfs-server-2.2beta51-225.x86_64.rpm installed
 
-NeilBrown
+Trying to mount from an old (32bit) client ends with
+mount: wrong fs type, bad option, bad superblock on server:/data
+The server reports: /data has been mounted by 192.168.75.31
+Trying to mount from a new system (2.6.16 running on a Pentium D) the result is
+mount: cannot mount server:/data read-only
+Again the server says that the mount was successful
+
+Wolfgang
+
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
