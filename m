@@ -1,229 +1,80 @@
-From: Greg KH <greg@kroah.com>
-Subject: [patch 21/21] knfsd: Fix a race in closing NFSd connections.
-Date: Tue, 20 Feb 2007 17:39:00 -0800
-Message-ID: <20070221013900.GV30227@kroah.com>
-References: <20070221012758.925122216@mini.kroah.org>
+From: "Outsource Think" <bxaykwdo@cormacmccarthy.com>
+Subject: Personal Finance
+Date: Wed, 21 Feb 2007 09:48:57 -0200
+Message-ID: <F9B5CEE91C6A88D.C8B972A43C@cormacmccarthy.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, nfs@lists.sourceforge.net,
-	Neil Brown <neilb@suse.de>
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751076AbXBUBlD@vger.kernel.org>
-In-Reply-To: <20070221013619.GA30227@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1472651240=="
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HJmDW-0000uJ-Bk
+	for nfs@lists.sourceforge.net; Tue, 20 Feb 2007 23:48:46 -0800
+Received: from [85.234.165.125] (helo=[85.234.165.125])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HJmDX-0002e0-2O
+	for nfs@lists.sourceforge.net; Tue, 20 Feb 2007 23:48:48 -0800
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
--stable review patch.  If anyone has any objections, please let us know.
+--===============1472651240==
+Content-Type: multipart/related;
+	boundary="----=_NextPart_000_0004_01C7559D.815DE7F0"
 
-------------------
-If you lose this race, it can iput a socket inode twice and you
-get a BUG in fs/inode.c
+------=_NextPart_000_0004_01C7559D.815DE7F0
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-When I added the option for user-space to close a socket,
-I added some cruft to svc_delete_socket so that I could call
-that function when closing a socket per user-space request.
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.2912" name=3D"GENERATOR">
+</HEAD>
+<BODY>
+<DIV align=3Dleft><FONT face=3DArial size=3D2><B>ATTENTION DAY TRADERS AND INVESTORS. GET ON PHYA!</B></FONT></DIV><BR>
+<DIV align=3Dleft><FONT face=3DArial size=3D2><I>INVESTOR ALERT! DON'T MISS THIS RUN ON PHYA!!! THE ALERT IS ON!! </I></FONT></DIV><BR>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>Watch PHYA Like a Hawk on FEB 21, 2007</FONT></DIV><BR>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>Company: <B>PHYSICIANS ADULT DAY</B> </FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>Sym: <B>PHYA.PK</B> </FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>Currently: <B>$0.29 (+0.04) (+16.00% in a day!!!)</B></FONT></DIV>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>Wednesday Target: <B>$0.76</B></FONT></DIV><BR>
+<DIV align=3Dleft><FONT face=3DArial size=3D2><B>Physicians Adult Daycare Incorporating Cutting-Edge Technology Announced Today</B> </FONT></DIV><BR>
+<DIV align=3Dleft><FONT face=3DArial size=3D2>The Company is in the final negotiation stages with TOTALtrak Global, Inc., a global provider of leading-edge Radio Frequency Identification (RFID)-based and patent-pending Multi-Range (MRID) technology solutions, to implement this versatile and powerful technology intothe Company's innovative adult daycare program. RFID systems are becoming one of the most widely adopted tracking and information storage protocols in the world, due to its capability to provide instantaneous identification as well as tracking in a mobile environment. Currently, RFID is employed in product tracking, animal identification, passport control, electronic toll remittance, and the U.S. Food and Drug Administration recently approved the first RFID chips to be implanted in humans.</FONT></DIV><BR>
+<DIV align=3Dleft><FONT face=3DArial size=3D2><B><U>Keep a look out for additional GREAT weekly news and be sure to watch them trade like crazy on Wednesday Feb 21, 2007<U></B></FONT></DIV></BODY></HTML>
 
-This was the wrong thing to do.  I should have just set SK_CLOSE
-and let normal mechanisms do the work.
-
-Not only wrong, but buggy.  The locking is all wrong and it openned
-up a race where-by a socket could be closed twice.
-
-So this patch:
-  Introduces svc_close_socket which sets SK_CLOSE then either leave
-  the close up to a thread, or calls svc_delete_socket if it can
-  get SK_BUSY.
-
-  Adds a bias to sk_busy which is removed when SK_DEAD is set,
-  This avoid races around shutting down the socket.
-
-  Changes several 'spin_lock' to 'spin_lock_bh' where the _bh 
-  was missing.
-
-Bugzilla-url: http://bugzilla.kernel.org/show_bug.cgi?id=7916
-
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+------=_NextPart_000_0004_01C7559D.815DE7F0--
 
 
----
- include/linux/sunrpc/svcsock.h |    2 -
- net/sunrpc/svc.c               |    4 +--
- net/sunrpc/svcsock.c           |   52 +++++++++++++++++++++++++++++------------
- 3 files changed, 41 insertions(+), 17 deletions(-)
 
---- linux-2.6.19.4.orig/include/linux/sunrpc/svcsock.h
-+++ linux-2.6.19.4/include/linux/sunrpc/svcsock.h
-@@ -63,7 +63,7 @@ struct svc_sock {
-  * Function prototypes.
-  */
- int		svc_makesock(struct svc_serv *, int, unsigned short);
--void		svc_delete_socket(struct svc_sock *);
-+void		svc_close_socket(struct svc_sock *);
- int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
---- linux-2.6.19.4.orig/net/sunrpc/svc.c
-+++ linux-2.6.19.4/net/sunrpc/svc.c
-@@ -387,7 +387,7 @@ svc_destroy(struct svc_serv *serv)
- 		svsk = list_entry(serv->sv_tempsocks.next,
- 				  struct svc_sock,
- 				  sk_list);
--		svc_delete_socket(svsk);
-+		svc_close_socket(svsk);
- 	}
- 	if (serv->sv_shutdown)
- 		serv->sv_shutdown(serv);
-@@ -396,7 +396,7 @@ svc_destroy(struct svc_serv *serv)
- 		svsk = list_entry(serv->sv_permsocks.next,
- 				  struct svc_sock,
- 				  sk_list);
--		svc_delete_socket(svsk);
-+		svc_close_socket(svsk);
- 	}
- 	
- 	cache_clean_deferred(serv);
---- linux-2.6.19.4.orig/net/sunrpc/svcsock.c
-+++ linux-2.6.19.4/net/sunrpc/svcsock.c
-@@ -61,6 +61,12 @@
-  *		after a clear, the socket must be read/accepted
-  *		 if this succeeds, it must be set again.
-  *	SK_CLOSE can set at any time. It is never cleared.
-+ *      sk_inuse contains a bias of '1' until SK_DEAD is set.
-+ *             so when sk_inuse hits zero, we know the socket is dead
-+ *             and no-one is using it.
-+ *      SK_DEAD can only be set while SK_BUSY is held which ensures
-+ *             no other thread will be using the socket or will try to
-+ *	       set SK_DEAD.
-  *
-  */
- 
-@@ -69,6 +75,7 @@
- 
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
- 					 int *errp, int pmap_reg);
-+static void		svc_delete_socket(struct svc_sock *svsk);
- static void		svc_udp_data_ready(struct sock *, int);
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
-@@ -299,8 +306,9 @@ void svc_reserve(struct svc_rqst *rqstp,
- static inline void
- svc_sock_put(struct svc_sock *svsk)
- {
--	if (atomic_dec_and_test(&svsk->sk_inuse) &&
--			test_bit(SK_DEAD, &svsk->sk_flags)) {
-+	if (atomic_dec_and_test(&svsk->sk_inuse)) {
-+		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
-+
- 		dprintk("svc: releasing dead socket\n");
- 		if (svsk->sk_sock->file)
- 			sockfd_put(svsk->sk_sock);
-@@ -490,7 +498,7 @@ svc_sock_names(char *buf, struct svc_ser
- 
- 	if (!serv)
- 		return 0;
--	spin_lock(&serv->sv_lock);
-+	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
- 		int onelen = one_sock_name(buf+len, svsk);
- 		if (toclose && strcmp(toclose, buf+len) == 0)
-@@ -498,12 +506,12 @@ svc_sock_names(char *buf, struct svc_ser
- 		else
- 			len += onelen;
- 	}
--	spin_unlock(&serv->sv_lock);
-+	spin_unlock_bh(&serv->sv_lock);
- 	if (closesk)
- 		/* Should unregister with portmap, but you cannot
- 		 * unregister just one protocol...
- 		 */
--		svc_delete_socket(closesk);
-+		svc_close_socket(closesk);
- 	else if (toclose)
- 		return -ENOENT;
- 	return len;
-@@ -653,6 +661,11 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
- 
-+	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
-+		svc_delete_socket(svsk);
-+		return 0;
-+	}
-+
- 	clear_bit(SK_DATA, &svsk->sk_flags);
- 	while ((skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
- 		if (err == -EAGAIN) {
-@@ -1142,7 +1155,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 		       rqstp->rq_sock->sk_server->sv_name,
- 		       (sent<0)?"got error":"sent only",
- 		       sent, xbufp->len);
--		svc_delete_socket(rqstp->rq_sock);
-+		set_bit(SK_CLOSE, &rqstp->rq_sock->sk_flags);
-+		svc_sock_enqueue(rqstp->rq_sock);
- 		sent = -EAGAIN;
- 	}
- 	return sent;
-@@ -1461,7 +1475,7 @@ svc_setup_socket(struct svc_serv *serv, 
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
- 	svsk->sk_server = serv;
--	atomic_set(&svsk->sk_inuse, 0);
-+	atomic_set(&svsk->sk_inuse, 1);
- 	svsk->sk_lastrecv = get_seconds();
- 	spin_lock_init(&svsk->sk_defer_lock);
- 	INIT_LIST_HEAD(&svsk->sk_deferred);
-@@ -1582,7 +1596,7 @@ bummer:
- /*
-  * Remove a dead socket
-  */
--void
-+static void
- svc_delete_socket(struct svc_sock *svsk)
- {
- 	struct svc_serv	*serv;
-@@ -1608,16 +1622,26 @@ svc_delete_socket(struct svc_sock *svsk)
- 	 * while still attached to a queue, the queue itself
- 	 * is about to be destroyed (in svc_destroy).
- 	 */
--	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags))
-+	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags)) {
-+		BUG_ON(atomic_read(&svsk->sk_inuse)<2);
-+		atomic_dec(&svsk->sk_inuse);
- 		if (test_bit(SK_TEMP, &svsk->sk_flags))
- 			serv->sv_tmpcnt--;
-+	}
- 
--	/* This atomic_inc should be needed - svc_delete_socket
--	 * should have the semantic of dropping a reference.
--	 * But it doesn't yet....
--	 */
--	atomic_inc(&svsk->sk_inuse);
- 	spin_unlock_bh(&serv->sv_lock);
-+}
-+
-+void svc_close_socket(struct svc_sock *svsk)
-+{
-+	set_bit(SK_CLOSE, &svsk->sk_flags);
-+	if (test_and_set_bit(SK_BUSY, &svsk->sk_flags))
-+		/* someone else will have to effect the close */
-+		return;
-+
-+	atomic_inc(&svsk->sk_inuse);
-+	svc_delete_socket(svsk);
-+	clear_bit(SK_BUSY, &svsk->sk_flags);
- 	svc_sock_put(svsk);
- }
- 
+--===============1472651240==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
---
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1472651240==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1472651240==--
