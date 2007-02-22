@@ -1,24 +1,24 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] provide sunrpc pool_mode module option
-Date: Thu, 22 Feb 2007 14:16:30 +1100
-Message-ID: <20070222031630.GD27743@sgi.com>
-References: <20070221145818.GC23394@sgi.com>
-	<17884.65022.790059.307696@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: ANNOUNCE: nfs-utils 1.0.11
+Date: Thu, 22 Feb 2007 16:17:51 +1100
+Message-ID: <17885.10111.791755.714451@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
-To: Neil Brown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HK4Rq-00089m-Cp
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 19:16:46 -0800
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=netops-testserver-4.corp.sgi.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HK4Rr-0005gT-7N
-	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 19:16:48 -0800
-In-Reply-To: <17884.65022.790059.307696@notabene.brown>
+	id 1HK6Lm-0002ut-Bt
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 21:18:40 -0800
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HK6Lm-0002aj-Cu
+	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 21:18:39 -0800
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id 3BF08124E1
+	for <nfs@lists.sourceforge.net>; Thu, 22 Feb 2007 06:18:37 +0100 (CET)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,43 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Feb 22, 2007 at 01:20:46PM +1100, Neil Brown wrote:
-> On Thursday February 22, gnb@sgi.com wrote:
-> > 
-> > Provide a module option "pool_mode" for sunrpc.ko which allows a
-> > sysadmin to choose the mode for mapping svc_pools to CPUs.  Values are:
-> > 
-> > auto	    choose a mapping mode heuristically
-> > global	    (default, same as the pre-2.6.19 code) a single global pool
-> > percpu	    one pool per CPU
-> > pernode	    one pool per NUMA node
-> > 
-> > Note that since 2.6.19 the hardcoded behaviour has been "auto",
-> > this patch makes the default "global".
-> 
-> -ENODOC .... Documentation/kernel-parameters.txt should have this
->    documented as sunrpc.pool_mode
 
-My bad, I'll fix it.
 
-> It bugs me slightly that you can only set this once.  If you want to
-> try a different option you have to reboot unless sunrpc is a module in
-> which case you can rmmod and insmod.
+I have just made a release of  nfs-utils 1.0.11
 
-Indeed.
+It can be downloaded from 
+  http://sourceforge.net/project/showfiles.php?group_id=14
+or
+  cc=country.
+  http://www.{cc}kernel.org/pub/linux/utils/nfs/
+or
+  git://linux-nfs.org/nfs-utils
 
-> What would you think of making 'initialised' a count of active
-> services that gets decremented from svc_destroy?  Then you could just
-> stop all nfsd (and lockd) threads, write a new value to 
->  /sys/module/sunrpc/parameters/pool_mode
-> and restart the threads.
+This should be the last 1.0 release.
+I hope to do a 1.1.0 soonish that flips the default for subtree_check
+to no_subtree_check, and removes "rpc.lockd" which is not needed by
+any but two very old kernel releases.
 
-Sounds useful, I'll look into it.  V2 patch coming soon.
+There are various bugfixes and improvements.  Read through the log at 
 
-Greg.
--- 
-Greg (not Dave) Banks, R&D Software Engineer, SGI Australian Software Group.
-I don't speak for SGI.
+   http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=log
+
+for details.
+
+NeilBrown 22-Feb-2007
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
