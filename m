@@ -1,24 +1,28 @@
 From: Neil Brown <neilb@suse.de>
-Subject: ANNOUNCE: nfs-utils 1.0.11
-Date: Thu, 22 Feb 2007 16:17:51 +1100
-Message-ID: <17885.10111.791755.714451@notabene.brown>
+Subject: Re: [PATCH 03/12] Extend the exportfs interface to
+	pass	fslocations info into the kernel.
+Date: Thu, 22 Feb 2007 16:17:43 +1100
+Message-ID: <17885.10103.449430.747243@notabene.brown>
+References: <20070208222606.23464.71348.stgit@rock.citi.umich.edu>
+	<20070208222704.23464.86120.stgit@rock.citi.umich.edu>
+	<17867.49873.883604.237104@notabene.brown>
+	<4d569c330702090619m1ddb8c2j5068d454f27051d4@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: Fredric Isaman <iisaman@citi.umich.edu>,
+	nfs@lists.sourceforge.net
+To: "Kevin Coffman" <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HK6Lm-0002ut-Bt
+	id 1HK6Ln-0002us-P2
 	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 21:18:40 -0800
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HK6Lm-0002aj-Cu
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HK6Ll-0006kS-T8
 	for nfs@lists.sourceforge.net; Wed, 21 Feb 2007 21:18:39 -0800
-Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 3BF08124E1
-	for <nfs@lists.sourceforge.net>; Thu, 22 Feb 2007 06:18:37 +0100 (CET)
+In-Reply-To: message from Kevin Coffman on Friday February 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,31 +35,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Friday February 9, kwc@citi.umich.edu wrote:
+> 
+> > And I'm a little confused by the replicas_lookup, method_list stuff.
+> > I think it is just parsing the format from /etc/exports so that it can
+> > be written in the different format to the kernel.
+> > It would seem more appropriate to do this when parsing the
+> > /etc/exports (to /etab) file rather than every time we talk to the
+> > kernel.  Is there are reason for the way it is?
+> > (Just trying to make sure I understand).
+> 
+> I'll have to defer to Fred on this.  I think he is going to be out for a week.
 
+I wanted to push out 1.0.11 so I had another look at this patch and
+decided I was happy with it after all, so it is now in, and 1.0.11
+is out there.
 
-I have just made a release of  nfs-utils 1.0.11
-
-It can be downloaded from 
-  http://sourceforge.net/project/showfiles.php?group_id=14
-or
-  cc=country.
-  http://www.{cc}kernel.org/pub/linux/utils/nfs/
-or
-  git://linux-nfs.org/nfs-utils
-
-This should be the last 1.0 release.
-I hope to do a 1.1.0 soonish that flips the default for subtree_check
-to no_subtree_check, and removes "rpc.lockd" which is not needed by
-any but two very old kernel releases.
-
-There are various bugfixes and improvements.  Read through the log at 
-
-   http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=log
-
-for details.
-
-NeilBrown 22-Feb-2007
-
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
