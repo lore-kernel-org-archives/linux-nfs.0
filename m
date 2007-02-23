@@ -1,26 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: poor nfs performance & hangs with latest kernels
-Date: Thu, 22 Feb 2007 15:34:57 -0500
-Message-ID: <1172176497.6382.6.camel@heimdal.trondhjem.org>
-References: <45D9B915.2010305@hq.vsaa.lv>
-	<17882.49990.799201.335846@notabene.brown> <45DC4BB3.7090706@imag.fr>
-	<17884.65504.902843.745554@notabene.brown>
-	<1172173328.18921.13.camel@hoeplx2923>
+From: Joseph Tam <tam@math.ubc.ca>
+Subject: LinuxFC6 NFS client problem: cannot distinguish between
+	sub-volumes
+Date: Thu, 22 Feb 2007 18:35:06 -0800 (PST)
+Message-ID: <Pine.GSO.4.64.0702221830010.4782@mnc.zngu.hop.pn>
+References: <mailman.653.1172186165.14402.nfs@lists.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs <nfs@lists.sourceforge.net>
-To: Norman Weathers <norman.r.weathers@conocophillips.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HKKeo-0007aV-Tg
-	for nfs@lists.sourceforge.net; Thu, 22 Feb 2007 12:35:15 -0800
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18tcGxQowl5L+xLcEEmJRd3sbeIMSra410=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HKKen-00022Q-CD
-	for nfs@lists.sourceforge.net; Thu, 22 Feb 2007 12:35:17 -0800
-In-Reply-To: <1172173328.18921.13.camel@hoeplx2923>
+	id 1HKQH3-0002Nb-Dc
+	for nfs@lists.sourceforge.net; Thu, 22 Feb 2007 18:35:05 -0800
+Received: from viol.math.ubc.ca ([137.82.36.61])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HKQH5-00075O-8H
+	for nfs@lists.sourceforge.net; Thu, 22 Feb 2007 18:35:07 -0800
+Received: from zap (zap.math.ubc.ca [137.82.36.8])
+	by viol.math.ubc.ca (8.13.7/8.13.7) with ESMTP id l1N2Z6ft011164
+	for <nfs@lists.sourceforge.net>; Thu, 22 Feb 2007 18:35:06 -0800 (PST)
+In-Reply-To: <mailman.653.1172186165.14402.nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,55 +32,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-02-22 at 13:42 -0600, Norman Weathers wrote:
-> Neil,
-> 
-> I don't remember if I responded when you guys sent out the patch
-> originally.  It indeed helps the rewrite situation quite a bit with the
-> 2.6.20 kernel.  Hopefully, it will help Jean-Noel's problem as well.
-> Thanks for getting that pushed through.
-> 
-> There is another issue, and I am not for sure where it is related.
-> About 18 months ago, we did some performance testing with our cluster
-> nodes, and noticed very good performance using iozone (good performance
-> meaning we had ~ 170 MB/s writes, even better for the rewrite mode, and
-> off the chart with read, due to caching of course).  Now, after a couple
-> of updates, we have noticed that our writes and reads are about the
-> same, but our rewrites using iozone are sometimes 1/2 of the performance
-> of the writes.  Also, during that time, the load average (10 nodes,
-> gigabit connected, server bonded dual gigabit to our core switch) is
-> anywhere from 15 to 32, and as it gets higher (closer to the 32), it can
-> cause the server to be really slow.  During this time, the disk io wait
-> is high, but processor load is low.  We have <>updated<> our clients
-> from an older 2.6.12.1 to a 2.6.14-ck1 patch, and the servers from a
-> 2.6.11.7 to 2.6.14-ck1 as well.  Has there been some big changes in the
-> way clients or servers are requesting write information during an iozone
-> rewrite possibly.  If I truncate the file and rewrite from scratch, I
-> can almost always get the > 170 MB/s on the wire to my boxes...
-> 
-> So, the patch does now allow the iozones to complete, but there is still
-> a high load on the boxes.
-> 
-> Any testing or other information I can get that will help, please let me
-> know.
-> 
-> Pertinent Information:
-> 64 bit servers and clients
-> FC3 and FC4 on the clients using 2.6.14 and later kernels
-> FC3 and FC6 on the servers using 2.6.14 and later kernels
-> All hosts are gigabit ethernet with the servers connected directly to
-> our core switches, and clients connected to gigabit edge switches that
-> are quad trunked back to the core (~ 64 nodes on the edge switch, but
-> all nodes are idle during the test).
-> 
-> Norman Weathers
 
-I'm confused. Are you seeing this with a stock 2.6.20 kernel, or only
-the older kernels?
+I have two problems that seem to stem from the same cause.
 
-Cheers
-  Trond
+The situation is that I have a NetApp filer (but it also exhibits these
+problems when using a Solaris NFS server) that has a large volume, with individual
+sub-volumes or qtrees (should the term here be "logical volumes") which
+behave like individual filesystems (i.e. they can be mounted individually,
+have theor own quotas, etc.).
 
+The logical volumes are mounted on the LinuxFC6 client (kernel 2.6.19-1.2911.fc6)
+via automount (NFSv3).
+
+However, the Linux FC6 client NFS cannot distinguish between these automounted
+directories (the FSID in /proc/fs/nfsfs/volumes seem to be the same) with the
+following consequences:
+
+ 	- quota reporting is curtailed.  It reports on maybe the first
+ 	mounted filesystem, and ignored the rest since it thinks it
+ 	it has the same quotas.
+
+ 	- the order of mounting becomes important: the first mounted
+ 	filesystem has its mount options override the mount options for
+ 	later mounts.
+
+The first problem has been partially fixed: the author of quota-tools (Jan Kara)
+has quite kindly wrote an -A option to his quota program that will work
+around this (I think it uses a fallback method of doing a stat() call).
+
+However, I cannot seem to cope with the second.  An example of this
+would be having read-only mounts (like /usr/local) and read/write home
+directories (/nfs/user1) both being mounted.
+
+If this happens,
+
+ 	mount -o rw nfs-server:/vol/home/user1 /nfs/user1
+ 	mount -o ro nfs-server:/vol/local/linux /nfs/local
+
+then /nfs/local is actually mounted r/w (according to /proc/mounts) but this
+is workable since the NFS server will enforce the r/o policy.  If the order
+is reversed, this is disastrous as the user will end up with a non-writable
+home directory.
+
+Has any of the recent patches addressed this problem (I see hints like
+
+ 	http://marc.theaimsgroup.com/?l=linux-nfs&m=117041136218203&w=2
+ 	http://marc.theaimsgroup.com/?l=linux-nfs&m=117126072001306&w=2
+
+), but I'm not technically savvy enough about NFS to figure out whether these
+patches help.  I've also tried putting fsid=xxx in the automount maps, but
+this doesn't seem to get passed to the client (fsid= is only a /etc/exports
+option, right?).  There doesn't seem anything on the server side that can
+help me either.
+
+So I'm stuck.  Help, please?
+
+Joseph Tam <tam@math.ubc.ca>
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
