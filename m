@@ -1,22 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: M A Young <m.a.young@durham.ac.uk>
 Subject: Re: NFS client fcntl locks going missing on FC6
-Date: Sat, 24 Feb 2007 12:19:39 -0500
-Message-ID: <45E073AB.2040005@RedHat.com>
+Date: Sat, 24 Feb 2007 18:06:57 +0000 (GMT)
+Message-ID: <Pine.LNX.4.58.0702241754030.21958@vega4.dur.ac.uk>
 References: <Pine.LNX.4.58.0702232223170.24593@vega3.dur.ac.uk>
+	<45E073AB.2040005@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: M A Young <m.a.young@durham.ac.uk>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HL0Yq-0008DY-D0
-	for nfs@lists.sourceforge.net; Sat, 24 Feb 2007 09:19:52 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HL0Ys-00014z-5w
-	for nfs@lists.sourceforge.net; Sat, 24 Feb 2007 09:19:54 -0800
-In-Reply-To: <Pine.LNX.4.58.0702232223170.24593@vega3.dur.ac.uk>
+	id 1HL1Ip-0004ne-Fi
+	for nfs@lists.sourceforge.net; Sat, 24 Feb 2007 10:07:23 -0800
+Received: from hermes1.dur.ac.uk ([129.234.8.20])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HL1Ir-0007Xv-1J
+	for nfs@lists.sourceforge.net; Sat, 24 Feb 2007 10:07:25 -0800
+In-Reply-To: <45E073AB.2040005@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,59 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-M A Young wrote:
-> We have been having problems of files getting mysteriously locked on a
-> linux NFS client to a Netapp NFS server (most recently with the
-> kernel-2.6.19-1.2911.fc6 package, and ONTAP 7.0.5), and after some
-> investigation it seems that the problem is that the linux box is getting a
-> lock but not recording it, with the result that the lock is never removed
-> from the NetApp server. I reported this in RedHat's bugzilla
-> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=229469
-> and haven't heard anything from them, but it is possible that it is more
-> general than just a RedHat issue.
-In the future, when opening bugs like this (bugs against
-the kernel) please make sure you added steved@redhat.com
-to the cc list. Otherwise the bug will end up in bug
-purgatory for a while until gets assigned correctly...
+On Sat, 24 Feb 2007, Steve Dickson wrote:
 
-> I have found a way to reproduce the locks being left on the server which
-> seems to occur when an attempt to lock a file is cancelled and a second
-> attempt to lock the file immediately afterwards succeeds, which results in
-> the server locking the file but not the client, and thus the lock never
-> being removed from the server.
-> My test program to reproduce the bug is attached to the RedHat bug report
-> at https://bugzilla.redhat.com/bugzilla/attachment.cgi?id=148693 which can
-> be done by running the program twice concurrently from an NFS mount.
-> Is this a known bug and is it easy to fix?
-Way back when... we had a customer using our 2.4 kernel that was
-able to "lose" locks by using some goofy java script...
-By lose locks I mean,  the server would grant the lock,
-but the lock was never locally recored due to some obscure
-failure (like a conflicting locks ) . The failure was never
-noted, so an unlock was never sent... thus leaving an lost lock
-on the server.
+> Looking at the 2.6.20 kernel, it appears some precautions were
+> taken for this race since the lock is checked locally for any
+> conflicts (i.e. do_vfs_lock() is called with fl_flags & FL_ACCESS),
+> but there still might be an problem since if the second call to
+> do_vfs_lock() (the one that actually records the lock in the VFS)
+> fails, a unlock is *not* sent back to the server....
+> Although  this error condition will be noted with the
+> following syslog message:
+>      "nlmclnt_lock: VFS is out of sync with lock manager!"
+>
+> So are you seeing this type of message in /var/log/messages?
 
-We thought we fixed this by making the client send an unlock when
-this obscure failure happen, but his goofy java script was still
-able to lose locks but much less infrequently (once every few months)...
-The ultimately the fix was using the above kernel patch and having
-the script to an unlock() (ignoring the return status) and then
-doing the lock... (Can you say hack! :-\ )
+I have not had a chance to try a 2.6.20 kernel, but with the 2.6.19 Fedora
+kernels we do see a lot of errors like
+do_vfs_lock: VFS is out of sync with lock manager!
 
+I have been doing more checking, and I couldn't successfully repeat my
+experiment running my program twice on a single nfs client, but running it
+on two different NFS clients at the same time works every time. The
+type of NFS server doesn't seem to matter, as I have reproduced the
+problem with a linux NFS server.
 
-Looking at the 2.6.20 kernel, it appears some precautions were
-taken for this race since the lock is checked locally for any
-conflicts (i.e. do_vfs_lock() is called with fl_flags & FL_ACCESS),
-but there still might be an problem since if the second call to
-do_vfs_lock() (the one that actually records the lock in the VFS)
-fails, a unlock is *not* sent back to the server....
-Although  this error condition will be noted with the
-following syslog message:
-     "nlmclnt_lock: VFS is out of sync with lock manager!"
-
-So are you seeing this type of message in /var/log/messages?
-
-steved.
+	Michael Young
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
