@@ -1,24 +1,19 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: nfs_update_inode: inode 309229856 mode changed,
-	0100644 to 0040755 - kernel 2.6.13.4
-Date: Mon, 26 Feb 2007 14:31:02 +0100
-Message-ID: <9a8748490702260531h45a91113o611c272c0fe7b39f@mail.gmail.com>
+From: wolfgang@noten5.maas-noten.de
+Subject: access failure
+Date: 26 Feb 2007 13:51:43 -0000
+Message-ID: <wolfgang-1070226145143.A012177@noten5.maas-noten.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLfwZ-0007yu-0L
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 05:31:08 -0800
-Received: from ug-out-1314.google.com ([66.249.92.168])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLfwZ-0007Qw-AJ
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 05:31:08 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so776908ugc
-	for <nfs@lists.sourceforge.net>; Mon, 26 Feb 2007 05:31:03 -0800 (PST)
+	id 1HLgHY-00022U-CT
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 05:52:48 -0800
+Received: from maas-noten.de ([213.239.193.103])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HLgHY-00078a-0Z
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 05:52:50 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +26,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I have a webserver running a rather old 2.6.13.4 kernel that a few
-minutes ago surprised me by logging the following message :
 
- kernel: nfs_update_inode: inode 309229856 mode changed, 0100644 to 0040755
 
-The server exporting the filesystem is running 2.6.18.1 (knfsd) -
-nothing is logged on the server...
+I occasionally get access failures on an nfs volume
+The files are mode 666, owned by a user who has no account on the nfs machine.
+The volume is exported rw, no_root_squash and mounted rw by clients
 
-So a file changed type and permissions out of the blue.  A few
-questions about that:
+When the error occurs, the file has been truncated but cannot be written
 
-Any way I can identify the file (or is it a dir now ;) ?
-Does anyone know if this is a known bug that's been fixed? I couldn't
-find anything via google or git that looked like a fix.
+Changing ownership of the file to someone else helps
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+The server is running kernel nfs on suse 10.1
+
+Wolfgang Hamann
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
