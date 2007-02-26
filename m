@@ -1,21 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: asynchronous locks for cluster exports
-Date: Mon, 26 Feb 2007 14:52:32 -0500
-Message-ID: <20070226195232.GC6412@fieldses.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [PATCH 04/11] nfs-utils: mount: Added nfs.5 man page
+Date: Mon, 26 Feb 2007 16:48:33 -0500
+Message-ID: <4d569c330702261348y6c44d0aifdca2f2af869090d@mail.gmail.com>
+References: <45E2C1E7.8000309@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
-To: linux-fsdevel@vger.kernel.org
+Cc: nfs@lists.sourceforge.net
+To: "Steve Dickson" <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLltU-0004oH-Bq
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 11:52:20 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HLltU-0000gd-4L
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 11:52:22 -0800
+	id 1HLnhy-0000uE-6t
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 13:48:38 -0800
+Received: from an-out-0708.google.com ([209.85.132.251])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLnhz-0002SG-3f
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 13:48:36 -0800
+Received: by an-out-0708.google.com with SMTP id d40so1687053and
+	for <nfs@lists.sourceforge.net>; Mon, 26 Feb 2007 13:48:34 -0800 (PST)
+In-Reply-To: <45E2C1E7.8000309@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,37 +31,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, Feb 03, 2007 at 12:30:55AM -0500, J. Bruce Fields wrote:
-> 
-> This is another attempt at a posix locking interface that allows us to
-> provide NFS clients with cluster-coherent locking without blocking lockd
-> while the filesystem goes off and talks to other nodes.
+Hi Steve,
+This patch adds the Makefile changes, but seems to be missing the
+nfs.man source file?
 
-Marc and I have an updated version of this at:
-
-	git://linux-nfs.org/~bfields/linux.git
-
-(See the server-cluster-locking-api branch.)
-
-Changes include:
-
-	- bugfixes for GFS2; thanks to some setup help from Wendy Chang
-	  and others, Marc has been able to run locking tests against an
-	  nfs-exported GFS2 filesystem
-	- preallocation of storage for conflicting lock in lockd's
-	  testlock implementation, to avoid a race identified by Trond
-	- Cleanup suggested by Christoph and others, including:
-		- creation of posix-to-flock helper functions
-		- rewrite of posix_test_lock interface to agree with
-		  ->lock( ,F_GETLK, )
-		- removal of some unnecessary parentheses, untangling of
-		  some slightly tortured logic
-
-We're hoping to get a detailed review from Trond sometime in the coming
-month, after which we'll probably mailbomb linux-fsdevel again, but
-any comments are welcome in the meantime.
-
---b.
+K.C.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
