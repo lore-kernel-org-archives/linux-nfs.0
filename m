@@ -1,27 +1,21 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: [PATCH] Fix reference error when writing fsloc data to
-	cache
-Date: Mon, 26 Feb 2007 14:17:06 -0500
-Message-ID: <4d569c330702261117l4b5ece0eqcd0a62365a804070@mail.gmail.com>
-References: <20070226183709.4060.68393.stgit@rock.citi.umich.edu>
-	<20070226183747.4060.29293.stgit@rock.citi.umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: asynchronous locks for cluster exports
+Date: Mon, 26 Feb 2007 14:52:32 -0500
+Message-ID: <20070226195232.GC6412@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_Part_98906_7269252.1172517426666"
-Cc: nfs@lists.sourceforge.net
-To: neilb@suse.de
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLlLO-0000yv-RU
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 11:17:06 -0800
-Received: from wr-out-0506.google.com ([64.233.184.229])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLlLQ-0006D5-IQ
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 11:17:08 -0800
-Received: by wr-out-0506.google.com with SMTP id 68so1808165wri
-	for <nfs@lists.sourceforge.net>; Mon, 26 Feb 2007 11:17:08 -0800 (PST)
-In-Reply-To: <20070226183747.4060.29293.stgit@rock.citi.umich.edu>
+	id 1HLltU-0004oH-Bq
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 11:52:20 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HLltU-0000gd-4L
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 11:52:22 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,59 +28,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-------=_Part_98906_7269252.1172517426666
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Sat, Feb 03, 2007 at 12:30:55AM -0500, J. Bruce Fields wrote:
+> 
+> This is another attempt at a posix locking interface that allows us to
+> provide NFS clients with cluster-coherent locking without blocking lockd
+> while the filesystem goes off and talks to other nodes.
 
-The attached patch should fix fslocations in nfs-utils-1.0.11 and
-allow it to work with or without the uuid kernel patches.
+Marc and I have an updated version of this at:
 
-Patch from Steve Dickson still required.
+	git://linux-nfs.org/~bfields/linux.git
 
-------=_Part_98906_7269252.1172517426666
-Content-Type: text/x-patch; name=fix_fslocations.patch; charset=ANSI_X3.4-1968
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_eynaj468
-Content-Disposition: attachment; filename="fix_fslocations.patch"
+(See the server-cluster-locking-api branch.)
 
-Rml4IHJlZmVyZW5jZSBlcnJvciB3aGVuIHdyaXRpbmcgZnNsb2MgZGF0YSB0byBjYWNoZQoKRnJv
-bTogS2V2aW4gQ29mZm1hbiA8a3djQGNpdGkudW1pY2guZWR1PgoKVXNlIHRoZSBjb3JyZWN0IHBv
-aW50ZXIgd2hlbiB3cml0aW5nIGZzbG9jYXRpb25zIGRhdGEgdG8gdGhlIGNhY2hlLgpBbHNvIHdy
-aXRlIHRoZSBmc2xvYyBzdHVmZiBiZWZvcmUgdGhlIHV1aWQgc3R1ZmYgc28gdXNlcmxhbmQgY29k
-ZQp3aWxsIHdvcmsgd2l0aCBvciB3aXRob3V0IHRoZSB1dWlkIGtlcm5lbCBwYXRjaGVzLgotLS0K
-CiB1dGlscy9tb3VudGQvY2FjaGUuYyB8ICAgIDIgKy0KIDEgZmlsZXMgY2hhbmdlZCwgMSBpbnNl
-cnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL3V0aWxzL21vdW50ZC9jYWNo
-ZS5jIGIvdXRpbHMvbW91bnRkL2NhY2hlLmMKaW5kZXggYTE0ZjRmMi4uNWYwZDEyYSAxMDA2NDQK
-LS0tIGEvdXRpbHMvbW91bnRkL2NhY2hlLmMKKysrIGIvdXRpbHMvbW91bnRkL2NhY2hlLmMKQEAg
-LTQ1NSw2ICs0NTUsNyBAQCBzdGF0aWMgaW50IGR1bXBfdG9fY2FjaGUoRklMRSAqZiwgY2hhciAq
-CiAJCXF3b3JkX3ByaW50aW50KGYsIGV4cC0+ZV9hbm9udWlkKTsKIAkJcXdvcmRfcHJpbnRpbnQo
-ZiwgZXhwLT5lX2Fub25naWQpOwogCQlxd29yZF9wcmludGludChmLCBleHAtPmVfZnNpZCk7CisJ
-CXdyaXRlX2ZzbG9jKGYsIGV4cCwgcGF0aCk7CiAgCQlpZiAoZXhwLT5lX3V1aWQgPT0gTlVMTCkg
-ewogIAkJCWNoYXIgdVsxNl07CiAgCQkJaWYgKGdldF91dWlkKGV4cC0+ZV9wYXRoLCBOVUxMLCAx
-NiwgdSkpIHsKQEAgLTQ2NSw3ICs0NjYsNiBAQCBzdGF0aWMgaW50IGR1bXBfdG9fY2FjaGUoRklM
-RSAqZiwgY2hhciAqCiAgCQkJcXdvcmRfcHJpbnQoZiwgInV1aWQiKTsKICAJCQlxd29yZF9wcmlu
-dGhleChmLCBleHAtPmVfdXVpZCwgMTYpOwogIAkJfQotCQl3cml0ZV9mc2xvYyhmLCAmZXhwLCBw
-YXRoKTsKIAl9CiAJcmV0dXJuIHF3b3JkX2VvbChmKTsKIH0K
-------=_Part_98906_7269252.1172517426666
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Changes include:
+
+	- bugfixes for GFS2; thanks to some setup help from Wendy Chang
+	  and others, Marc has been able to run locking tests against an
+	  nfs-exported GFS2 filesystem
+	- preallocation of storage for conflicting lock in lockd's
+	  testlock implementation, to avoid a race identified by Trond
+	- Cleanup suggested by Christoph and others, including:
+		- creation of posix-to-flock helper functions
+		- rewrite of posix_test_lock interface to agree with
+		  ->lock( ,F_GETLK, )
+		- removal of some unnecessary parentheses, untangling of
+		  some slightly tortured logic
+
+We're hoping to get a detailed review from Trond sometime in the coming
+month, after which we'll probably mailbomb linux-fsdevel again, but
+any comments are welcome in the meantime.
+
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-------=_Part_98906_7269252.1172517426666
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-------=_Part_98906_7269252.1172517426666--
