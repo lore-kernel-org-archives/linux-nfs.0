@@ -1,21 +1,31 @@
-From: Neil Brown <neilb@suse.de>
-Subject: NFS directory caching problem - with test case and patch.
-Date: Mon, 26 Feb 2007 12:48:25 +1100
-Message-ID: <17890.15465.343426.519809@notabene.brown>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 00 of 11] nfs-utils: mount comand patches.
+Date: Mon, 26 Feb 2007 06:17:04 -0500
+Message-ID: <45E2C1B0.7030507@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed; boundary="------------060308040904070303070903"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLUzS-0002PU-IA
-	for nfs@lists.sourceforge.net; Sun, 25 Feb 2007 17:49:22 -0800
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HLUzU-0002fE-5V
-	for nfs@lists.sourceforge.net; Sun, 25 Feb 2007 17:49:24 -0800
+	id 1HLdoR-0000BI-Pi
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 03:14:36 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLdoS-000647-Ih
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 03:14:37 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l1QBEUMG000402
+	for <nfs@lists.sourceforge.net>; Mon, 26 Feb 2007 06:14:30 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com
+	[172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l1QBEU7U005347
+	for <nfs@lists.sourceforge.net>; Mon, 26 Feb 2007 06:14:30 -0500
+Received: from [10.13.248.66] (vpn-248-66.boston.redhat.com [10.13.248.66])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id
+	l1QBET50025439
+	for <nfs@lists.sourceforge.net>; Mon, 26 Feb 2007 06:14:29 -0500
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,111 +38,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------060308040904070303070903
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Try running this script in an NFS mounted directory (Client relatively
-recent - 2.6.18 has the problem as does 2.6.20).
+Some time ago, we enabled the mounting code in nfs-utils during
+a couple of our releases. The following patch series contains the
+patch that fix the problems we found during those processes...
 
-------------------------------------------------------
-#!/bin/bash
-#
-# This script will produce the following errormessage from tar:
-#
-#   tar: newdir/innerdir/innerfile: file changed as we read it
+All of these patches have been committed the following git tree:
 
-# create dirs
-rm -rf nfstest
-mkdir -p nfstest/dir/innerdir
+git://git.infradead.org/~steved/nfs-utils.git
 
-# create files (should not be empty)
-echo "Hello World!" >nfstest/dir/file
-echo "Hello World!" >nfstest/dir/innerdir/innerfile
+Attached to this email are all the commit blobs that
+are in this patch series...
 
-# problem only happens if we sleep before chmod
-sleep 1
+steved.
 
-# change file modes
-chmod -R a+r nfstest
-
-# rename dir
-mv nfstest/dir nfstest/newdir
-
-# tar it
-tar -cf nfstest/nfstest.tar -C nfstest newdir
-
-# restore old dir name
-mv nfstest/newdir nfstest/dir
---------------------------------------------------------
-
-What happens:
-
-The 'chmod -R' does a readdir_plus in each directory and the results
-get cached in the page cache.  It then updates the ctime on each file
-by one second.  When this happens, the post-op attributes are used to
-update the ctime stored on the client to match the value in the kernel.
-
-The 'mv' calls shrink_dcache_parent on the directory tree which
-flushes all the dentries (so a new lookup will be required) but
-doesn't flush the inodes or pagecache.
-
-The 'tar' does a readdir on each directory, but (in the case of
-'innerdir' at least) satisfies it from the pagecache and uses the
-READDIRPLUS data to update all the inodes.  In the case of
-'innerdir/innerfile', the ctime is out of date.
-
-'tar' then calls 'lstat' on innerdir/innerfile getting an old ctime.
-It then opens the file (triggering a GETATTR), reads the content, and
-then calls fstat to see if anything has changed.  It finds that ctime
-has changed and so complains.
-
-The problem seems to be that the cache readdirplus info is kept around
-for too long.
-
-My patch below discards pagecache data for directories when
-dentry_iput is called on them.  This effectively removes the symptom
-which convinces me that I correctly understand the problem.  However
-I'm not convinced that is a proper solution, as there could easily be
-other races that trigger the same problem without being affected by
-this 'fix'.
-
-One possibility would be to require that readdirplus pagecache data be
-only used *once* to instantiate an inode.  Somehow it should then be
-invalidated so that if the dentry subsequently disappears, it will
-cause a new request to the server to fill in the stat data.
-
-Another possibility is to compare the cache_change_attribute on the
-inode with something similar for the readdirplus info and reject the
-info from readdirplus if it is too old.
-
-I haven't tried to implement these and would value other opinions
-before I do.
-
-Thanks,
-NeilBrown
+P.S. I will be subjecting my family to send a few days
+with me... x-sking in Vermont... So I will not be able
+to reply to any comments on these patches until later
+this week...
 
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+--------------060308040904070303070903
+Content-Type: text/plain;
+ name="blobs"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="blobs"
 
-diff .prev/fs/nfs/dir.c ./fs/nfs/dir.c
---- .prev/fs/nfs/dir.c	2007-02-26 12:08:29.000000000 +1100
-+++ ./fs/nfs/dir.c	2007-02-26 12:44:33.000000000 +1100
-@@ -843,6 +843,10 @@ static int nfs_dentry_delete(struct dent
- static void nfs_dentry_iput(struct dentry *dentry, struct inode *inode)
- {
- 	nfs_inode_return_delegation(inode);
-+	if (S_ISDIR(inode->i_mode))
-+		/* drop any readdir cache as it could easily be old */
-+		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
-+
- 	if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
- 		lock_kernel();
- 		drop_nlink(inode);
+806b02f63fe6e01946d84a1f14c74e977be76530
+eaa8dade2651ec9df1c9513e63ef2d9ae5c5d980
+72baf6d14f166da0531bfe02273861e1c394c3bd
+999dfb7ece03bee326579b678b9a83a2ad598fef
+200d810e3fa2c7f35932faac87a6409fac5a9d4d
+0ffd74c990aca3761b79316d47e1b1778273681c
+d507c76527acc3415395cd70cc08d02e32dbe181
+84e8186d1ad1f280c2a849349efbddab1f1fe16d
+253c6b866a1ed4678c30131a41ef96821bae9d5f
+7f9cc56de079b1c53f912fc2abe31203e79782f4
+96a3ceb3d35bf5edcb9446aded8375d3b98b4f5b
 
+--------------060308040904070303070903
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------060308040904070303070903
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060308040904070303070903--
