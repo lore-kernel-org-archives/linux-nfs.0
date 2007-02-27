@@ -1,23 +1,24 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 06/11] nfs-utils: mount:  AUTH_NONE mounts
-Date: Tue, 27 Feb 2007 09:13:38 -0500
-Message-ID: <45E43C92.6090805@redhat.com>
-References: <45E2C1FD.7000506@RedHat.com>
-	<17891.52293.103984.465480@notabene.brown>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [PATCH 09/11] nfs-utils: mount: Fixed mounts
+ to	multi-home servers
+Date: Tue, 27 Feb 2007 13:12:00 -0500
+Message-ID: <45E47470.4020002@poochiereds.net>
+References: <45E2C21E.9030501@RedHat.com>
+	<17891.53391.618228.526904@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HM35O-00021p-VS
-	for nfs@lists.sourceforge.net; Tue, 27 Feb 2007 06:13:48 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HM35O-000535-8U
-	for nfs@lists.sourceforge.net; Tue, 27 Feb 2007 06:13:48 -0800
-In-Reply-To: <17891.52293.103984.465480@notabene.brown>
+	id 1HM6o3-0006BX-Sz
+	for nfs@lists.sourceforge.net; Tue, 27 Feb 2007 10:12:15 -0800
+Received: from ms-smtp-03.southeast.rr.com ([24.25.9.102])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HM6o4-00025l-Lw
+	for nfs@lists.sourceforge.net; Tue, 27 Feb 2007 10:12:10 -0800
+In-Reply-To: <17891.53391.618228.526904@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,60 +33,58 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 Neil Brown wrote:
 > On Monday February 26, SteveD@redhat.com wrote:
->   
->> commit 0ffd74c990aca3761b79316d47e1b1778273681c
+>> commit 253c6b866a1ed4678c30131a41ef96821bae9d5f
 >> Author: Steve Dickson <steved@redhat.com>
->> Date:   Sat Feb 24 15:27:46 2007 -0500
+>> Date:   Sat Feb 24 16:08:22 2007 -0500
 >>
->>     Added support to specify the AUTH_NONE security flavor (i.e. -o sec=none)
->>     
->
-> If you specify "-o sec=none" then data.pseudoflavor will == AUTH_NONE,
-> but
->
->   
-
-This support is being added so that the client can mount a file system
-which was exported with sec=none.
-
+>>     Doing a connect on UDP sockets causes the Linux network
+>>     stack to reject UDP patches from multi-home server with
+>>     nic on the same subnet which caused mounts to hang.
 >>     
 >>     Signed-off-by: Steve Dickson <steved@redhat.com>
 >>
->> diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
->> index d437036..7759260 100644
->> --- a/utils/mount/nfsmount.c
->> +++ b/utils/mount/nfsmount.c
->> @@ -1093,12 +1093,14 @@ nfsmount(const char *spec, const char *node, int *flags,
->>  
->>  		flavor = mountres->auth_flavors.auth_flavors_val;
->>  		while (--i >= 0) {
->> -			if (flavor[i] == data.pseudoflavor)
->> -				yum = 1;
->>  #ifdef NFS_MOUNT_DEBUG
->> -			printf("auth flavor %d: %d\n",
->> -				i, flavor[i]);
->> +			printf("auth flavor[%d] %d\n", i, flavor[i]);
->>  #endif
->> +			if (flavor[i] == data.pseudoflavor ||
->> +				flavor[i] == AUTH_NONE) {
->> +				yum = 1;
->> +				break;
->> +			}
->>     
->
-> You are testing if flavor[i] == AUTH_NONE, which doesn't make sense to
-> me....
+>> diff --git a/support/nfs/conn.c b/support/nfs/conn.c
+>> index 89f7676..06afcc4 100644
+>> --- a/support/nfs/conn.c
+>> +++ b/support/nfs/conn.c
+>> @@ -98,7 +98,7 @@ int get_socket(struct sockaddr_in *saddr, u_int p_prot, int resvp)
+>>  			return RPC_ANYSOCK;
+>>  		}
+>>  	}
+>> -	if (type == SOCK_STREAM || type == SOCK_DGRAM) {
+>> +	if (type == SOCK_STREAM) {
+> 
+> You are reverting a change from commit
+>    c2db41e8abb6ddc9d03a0c91c6db043fa0f85a8f
+> 
+> This was needed so we could find our local address to get the
+> call-back address sent to the server right for NFSv4.
+> 
+> I think the correct thing to do here is to fix mountd so that it
+> replies from the correct address.  Careful use of IP_PKTINFO makes
+> this fairly easy to manage.... except that the recvfrom and sendto
+> code is buried inside libc.... but if memory serves, that was fixed to
+> get this right some time ago.
+> 
+> What OS is running on this multi-homed server??
+> 
+> Maybe we have to do something ghastly like disconnect the socket after
+> getting the local address...  I hope not.
+> 
+> NeilBrown
+> 
 
-This loop is looking for AUTH_NONE in the list of authentication
-flavors that the server supports and was returned through the MOUNT
-protocol during mounting.
+I know we saw this with Solaris servers in particular (it's been a 
+while, but I think I was testing against Solaris 8). The fedora BZ is 
+here if you want to see all the gory details:
 
-Basically, if the server file system is exported with AUTH_NONE, then
-it doesn't matter what flavor that the client chooses, the server will
-always map it to AUTH_NONE and all requests will be processed with the
-anonymous uid and gid.
+https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=212471
 
-       ps
+I'm thinking we will have to deal with this situation, unfortunately, so 
+maybe disconnecting the socket after getting the address is the best thing?
+
+-- Jeff
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
