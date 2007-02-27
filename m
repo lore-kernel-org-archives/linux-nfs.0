@@ -1,25 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: ANNOUNCE nfs-utils 1.0.12. Was Re: ANNOUNCE: nfs-utils 1.0.11
-Date: Tue, 27 Feb 2007 16:18:13 +1100
-Message-ID: <17891.48917.536609.319783@notabene.brown>
-References: <17885.10111.791755.714451@notabene.brown>
-	<45E2CDB5.7090900@RedHat.com>
-	<4d569c330702260725g3c69d0e2xbe6206c17439d15d@mail.gmail.com>
+Subject: Re: [PATCH 01/11] nfs-utils: mount: non-nfs mount options
+Date: Tue, 27 Feb 2007 17:04:47 +1100
+Message-ID: <17891.51711.148463.251589@notabene.brown>
+References: <45E2C1C1.9050302@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Kevin Coffman" <kwc@citi.umich.edu>
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+To: Steve Dickson <SteveD@redhat.com>, Amit Gud <agud@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLuk7-000658-Io
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 21:19:15 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HLuk8-0007qM-8D
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 21:19:17 -0800
-In-Reply-To: message from Kevin Coffman on Monday February 26
+	id 1HLvTM-0002Ew-9O
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 22:06:00 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLvTN-0004iB-U9
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 22:06:02 -0800
+In-Reply-To: message from Steve Dickson on Monday February 26
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,17 +29,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday February 26, kwc@citi.umich.edu wrote:
+On Monday February 26, SteveD@redhat.com wrote:
+> commit 806b02f63fe6e01946d84a1f14c74e977be76530
+> Author: Amit Gud <agud@redhat.com>
+> Date:   Sat Feb 24 14:31:13 2007 -0500
 > 
-> Yes, I was waiting to figure out why the fslocations stuff isn't
-> working, even with this patch, before sending it.  I'll keep
-> looking...
+>     Added the following non-nfs mount options as suggested
+>     but upstream code reviews:
+>     
+>         [no]auto, [no]users, [no]user, [no]owner, [no]group
+>     	    _netdev, comment
 
-Thanks Kevin, and thank for the fix you subsequently submitted.
+This patch does a lot more than that brief description suggests.
 
-Well, it looks like 1.0.11 was a brown-paper bag release.  So I have
-just released 1.0.12 with those fixes and a couple of others.
-Now to work on 1.1.0 with Steve's mount.nfs work.
+- The 'users' / 'user' changes are enough to be a patch in itself,
+  particularly as it is a security issue and needs careful review.
+  mount and umount do similar tests here and it would be good to
+  include them in the library (nfs/fstab.c).
+
+- 'const' is removed from nfs_mntent_s, and copy_mntent is introduced
+  .. are those related?
+
+- You copy instead of link the 4 different mount.* programs, which
+  might be a good thing, but deserves a comment in the changelog.
+
+- Some printf change to fprintf, which is good, but seems to be
+  independent of the rest.
+
+and possible some other things that I didn't notice.  As this is a
+setuid program, I really want to be able to review changes in
+isolation please.
 
 Thanks,
 NeilBrown
