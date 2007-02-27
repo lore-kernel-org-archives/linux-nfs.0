@@ -1,23 +1,26 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 04/11] nfs-utils: mount: Added nfs.5 man page
-Date: Mon, 26 Feb 2007 20:35:27 -0500
-Message-ID: <45E38ADF.9030608@RedHat.com>
-References: <45E2C1E7.8000309@RedHat.com>
-	<4d569c330702261348y6c44d0aifdca2f2af869090d@mail.gmail.com>
+From: "Philippe Zajac" <Philippe492@ENSERVE.COM>
+Subject: Nelly Furtado
+Date: Tue, 27 Feb 2007 13:30:39 +0900
+Message-ID: <000801c75a28$08cd6a60$00000000@mycomputer>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------050409020104000503070300"
-Cc: nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
+Content-Type: multipart/mixed; boundary="===============2039184948=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLrD9-0008Pa-L2
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 17:32:59 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLrDA-0003te-QX
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 17:33:01 -0800
-In-Reply-To: <4d569c330702261348y6c44d0aifdca2f2af869090d@mail.gmail.com>
+	id 1HLtzF-0001Gc-H6
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 20:30:49 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLtzG-0003EP-06
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 20:30:51 -0800
+Received: from [221.143.87.147] (helo=[221.143.87.147])
+	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
+	id 1HLtzD-0007Wi-Py
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 20:30:49 -0800
+Received: from  ([129.178.172.109] helo=)
+	by  ( sendmail 8.13.3/8.13.1) with esmtpa id 1zGmSG-000YTH-Ez
+	for nfs@lists.sourceforge.net; Tue, 27 Feb 2007 13:31:12 +0900
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,499 +33,299 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------050409020104000503070300
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+--===============2039184948==
+Content-Type: multipart/related; type="multipart/alternative";
+	boundary="----=_NextPart_000_0004_01C75A73.78B51260"
+
+------=_NextPart_000_0004_01C75A73.78B51260
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_001_0005_01C75A73.78B51260"
+
+
+------=_NextPart_001_0005_01C75A73.78B51260
+Content-Type: text/plain;
+	charset="ks_c_5601-1987"
+Content-Transfer-Encoding: quoted-printable
+
+Dan browns children want trustees late icons estate. Beta sitesend =
+comment questiongo, trsmtv chimtv desimtv tell. Click thumbnail for =
+fullsize.
+Properly when brown passed, away, fullon crowded! State college =
+nowdefunct scottish indie squad. Rather became lists kinds entries =
+template instead.
+Illegal immigrants anyone nugent.
+Feeling denver ends april, atlanta. Beta sitesend comment questiongo =
+trsmtv. Around britain your marks, concert stylish tie.
+
+------=_NextPart_001_0005_01C75A73.78B51260
+Content-Type: text/html;
+	charset="ks_c_5601-1987"
+Content-Transfer-Encoding: quoted-printable
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Dks_c_5601-1987">
+<META content=3D"MSHTML 6.00.2900.2180" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Dan browns children want trustees late =
+icons=20
+estate. Beta sitesend comment questiongo, trsmtv chimtv desimtv tell. =
+Click=20
+thumbnail for fullsize.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Properly when brown passed, away, =
+fullon crowded!=20
+State college nowdefunct scottish indie squad. Rather became lists kinds =
+entries=20
+template instead.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Illegal immigrants anyone =
+nugent.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>Feeling denver ends april, atlanta. =
+Beta sitesend=20
+comment questiongo trsmtv. Around britain your marks, concert stylish=20
+tie.</FONT></DIV>
+<DIV><IMG alt=3D"" hspace=3D0 =
+src=3D"cid:000301c75a28$08cd6a60$00000000@mycomputer"=20
+align=3Dbaseline border=3D0></DIV></BODY></HTML>
+
+------=_NextPart_001_0005_01C75A73.78B51260--
+
+------=_NextPart_000_0004_01C75A73.78B51260
+Content-Type: image/gif;
+	name="allowing.gif"
+Content-Transfer-Encoding: base64
+Content-ID: <000301c75a28$08cd6a60$00000000@mycomputer>
+
+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
+
+------=_NextPart_000_0004_01C75A73.78B51260--
 
 
 
-Kevin Coffman wrote:
-> Hi Steve,
-> This patch adds the Makefile changes, but seems to be missing the
-> nfs.man source file?
-It appears I forgot to "git add" the file into the tree...
-So attached the new commit adding in the file...
-
-steved.
-
---------------050409020104000503070300
-Content-Type: text/x-patch;
- name="patch-12.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="patch-12.patch"
-
-commit a53e3c6f0c9973bfeb7dfeec0e61e14b917984e3
-Author: Steve Dickson <steved@redhat.com>
-Date:   Mon Feb 26 19:23:31 2007 -0500
-
-    Added utils/mount/nfs.man
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-new file mode 100644
-index 0000000..ad44d71
---- /dev/null
-+++ b/utils/mount/nfs.man
-@@ -0,0 +1,456 @@
-+.\" nfs.5 "Rick Sladkey" <jrs@world.std.com>
-+.\" Wed Feb  8 12:52:42 1995, faith@cs.unc.edu: updates for Ross Biro's
-+.\" patches. "
-+.TH NFS 5 "20 November 1993" "Linux 0.99" "Linux Programmer's Manual"
-+.SH NAME
-+nfs \- nfs and nfs4 fstab format and options
-+.SH SYNOPSIS
-+.B /etc/fstab
-+.SH DESCRIPTION
-+The
-+.I fstab
-+file contains information about which filesystems
-+to mount where and with what options.
-+For NFS mounts, it contains the server name and
-+exported server directory to mount from,
-+the local directory that is the mount point,
-+and the NFS specific options that control
-+the way the filesystem is mounted.
-+.P
-+Three different versions of the NFS protocol are
-+supported by the Linux NFS client:
-+NFS version 2, NFS version 3, and NFS version 4.
-+To mount via NFS version 2, use the
-+.BR nfs
-+file system type and specify
-+.BR nfsvers=2 .
-+Version 2 is the default protocol version for the
-+.BR nfs
-+file system type when
-+.BR nfsvers=
-+is not specified on the mount command.
-+To mount via NFS version 3, use the
-+.BR nfs
-+file system type and specify
-+.BR nfsvers=3 .
-+To mount via NFS version 4, use the
-+.BR nfs4
-+file system type.
-+The
-+.BR nfsvers=
-+keyword is not supported for the
-+.BR nfs4
-+file system type.
-+.P
-+These file system types share similar mount options;
-+the differences are listed below.
-+.P
-+Here is an example from an \fI/etc/fstab\fP file for an NFSv2 mount
-+over UDP.
-+.sp
-+.nf
-+.ta 2.5i +0.75i +0.75i +1.0i
-+server:/usr/local/pub	/pub	nfs	rsize=32768,wsize=32768,timeo=14,intr
-+.fi
-+.P
-+Here is an example for an NFSv4 mount over TCP using Kerberos
-+5 mutual authentication.
-+.sp
-+.nf
-+.ta 2.5i +0.75i +0.75i +1.0i
-+server:/usr/local/pub	/pub	nfs4	proto=tcp,sec=krb5,hard,intr
-+.fi
-+.DT
-+.SS Options for the nfs file system type
-+.TP 1.5i
-+.I rsize=n
-+The number of bytes NFS uses when reading files from an NFS server.
-+The rsize is negotiated between the server and client to determine 
-+the largest block size that both can support.
-+The value specified by this option is the maximum size that could 
-+be used; however, the actual size used may be smaller.
-+Note: Setting this size to a value less than the largest supported
-+block size will adversely affect performance.
-+.TP 1.5i
-+.I wsize=n
-+The number of bytes NFS uses when writing files to an NFS server.
-+The wsize is negotiated between the server and client to determine 
-+the largest block size that both can support.
-+The value specified by this option is the maximum size that could 
-+be used; however, the actual size used may be smaller.
-+Note: Setting this size to a value less than the largest supported
-+block size will adversely affect performance.
-+.TP 1.5i
-+.I timeo=n
-+The value in tenths of a second before sending the
-+first retransmission after an RPC timeout.
-+The default value is 7 tenths of a second.  After the first timeout,
-+the timeout is doubled after each successive timeout until a maximum
-+timeout of 60 seconds is reached or the enough retransmissions
-+have occured to cause a major timeout.  Then, if the filesystem
-+is hard mounted, each new timeout cascade restarts at twice the
-+initial value of the previous cascade, again doubling at each
-+retransmission.  The maximum timeout is always 60 seconds.
-+Better overall performance may be achieved by increasing the
-+timeout when mounting on a busy network, to a slow server, or through
-+several routers or gateways.
-+.TP 1.5i
-+.I retrans=n
-+The number of minor timeouts and retransmissions that must occur before
-+a major timeout occurs.  The default is 3 timeouts.  When a major timeout
-+occurs, the file operation is either aborted or a "server not responding"
-+message is printed on the console.
-+.TP 1.5i
-+.I acregmin=n
-+The minimum time in seconds that attributes of a regular file should
-+be cached before requesting fresh information from a server.
-+The default is 3 seconds.
-+.TP 1.5i
-+.I acregmax=n
-+The maximum time in seconds that attributes of a regular file can
-+be cached before requesting fresh information from a server.
-+The default is 60 seconds.
-+.TP 1.5i
-+.I acdirmin=n
-+The minimum time in seconds that attributes of a directory should
-+be cached before requesting fresh information from a server.
-+The default is 30 seconds.
-+.TP 1.5i
-+.I acdirmax=n
-+The maximum time in seconds that attributes of a directory can
-+be cached before requesting fresh information from a server.
-+The default is 60 seconds.
-+.TP 1.5i
-+.I actimeo=n
-+Using actimeo sets all of
-+.I acregmin,
-+.I acregmax,
-+.I acdirmin,
-+and
-+.I acdirmax
-+to the same value.
-+There is no default value.
-+.TP 1.5i
-+.I retry=n
-+The number of minutes to retry an NFS mount operation
-+in the foreground or background before giving up.
-+The default value for forground mounts is 2 minutes.  
-+The default value for background mounts is 10000 minutes, 
-+which is roughly one week.
-+.TP 1.5i
-+.I namlen=n
-+When an NFS server does not support version two of the
-+RPC mount protocol, this option can be used to specify
-+the maximum length of a filename that is supported on
-+the remote filesystem.  This is used to support the
-+POSIX pathconf functions.  The default is 255 characters.
-+.TP 1.5i
-+.I port=n
-+The numeric value of the port to connect to the NFS server on.
-+If the port number is 0 (the default) then query the
-+remote host's portmapper for the port number to use.
-+If the remote host's NFS daemon is not registered with
-+its portmapper, the standard NFS port number 2049 is
-+used instead.
-+.TP 1.5i
-+.I mountport=n
-+The numeric value of the
-+.B mountd
-+port.
-+.TP 1.5i
-+.I mounthost=name
-+The name of the host running
-+.B mountd .
-+.TP 1.5i
-+.I mountprog=n
-+Use an alternate RPC program number to contact the
-+mount daemon on the remote host.  This option is useful
-+for hosts that can run multiple NFS servers.
-+The default value is 100005 which is the standard RPC
-+mount daemon program number.
-+.TP 1.5i
-+.I mountvers=n
-+Use an alternate RPC version number to contact the
-+mount daemon on the remote host.  This option is useful
-+for hosts that can run multiple NFS servers.
-+The default value depends on which kernel you are using.
-+.TP 1.5i
-+.I nfsprog=n
-+Use an alternate RPC program number to contact the
-+NFS daemon on the remote host.  This option is useful
-+for hosts that can run multiple NFS servers.
-+The default value is 100003 which is the standard RPC
-+NFS daemon program number.
-+.TP 1.5i
-+.I nfsvers=n
-+Use an alternate RPC version number to contact the
-+NFS daemon on the remote host.  This option is useful
-+for hosts that can run multiple NFS servers.
-+The default value depends on which kernel you are using.
-+.TP 1.5i
-+.I vers=n
-+vers is an alternative to nfsvers and is compatible with
-+many other operating systems.
-+.TP 1.5i
-+.I nolock
-+Disable NFS locking. Do not start lockd.
-+This has to be used with some old NFS servers
-+that don't support locking.
-+.TP 1.5i
-+.I bg
-+If the first NFS mount attempt times out, retry the mount
-+in the background.
-+After a mount operation is backgrounded, all subsequent mounts
-+on the same NFS server will be backgrounded immediately, without
-+first attempting the mount.
-+A missing mount point is treated as a timeout,
-+to allow for nested NFS mounts.
-+.TP 1.5i
-+.I fg
-+If the first NFS mount attempt times out, retry the mount
-+in the foreground.
-+This is the complement of the
-+.I bg
-+option, and also the default behavior.
-+.TP 1.5i
-+.I soft
-+If an NFS file operation has a major timeout then report an I/O error to
-+the calling program.
-+The default is to continue retrying NFS file operations indefinitely.
-+.TP 1.5i
-+.I hard
-+If an NFS file operation has a major timeout then report
-+"server not responding" on the console and continue retrying indefinitely.
-+This is the default.
-+.TP 1.5i
-+.I intr
-+If an NFS file operation has a major timeout and it is hard mounted,
-+then allow signals to interupt the file operation and cause it to
-+return EINTR to the calling program.  The default is to not
-+allow file operations to be interrupted.
-+.TP 1.5i
-+.I posix
-+Mount the NFS filesystem using POSIX semantics.  This allows
-+an NFS filesystem to properly support the POSIX pathconf
-+command by querying the mount server for the maximum length
-+of a filename.  To do this, the remote host must support version
-+two of the RPC mount protocol.  Many NFS servers support only
-+version one.
-+.TP 1.5i
-+.I nocto
-+Suppress the retrieval of new attributes when creating a file.
-+.TP 1.5i
-+.I noac
-+Disable all forms of attribute caching entirely.  This extracts a
-+significant performance penalty but it allows two different NFS clients
-+to get reasonable results when both clients are actively
-+writing to a common export on the server.
-+.TP 1.5i
-+.I noacl
-+Disables Access Control List (ACL) processing.
-+.TP 1.5i
-+.I sec=mode
-+Set the security flavor for this mount to "mode".
-+The default setting is \f3sec=sys\f1, which uses local
-+unix uids and gids to authenticate NFS operations (AUTH_SYS).
-+Other currently supported settings are:
-+\f3sec=krb5\f1, which uses Kerberos V5 instead of local unix uids
-+and gids to authenticate users;
-+\f3sec=krb5i\f1, which uses Kerberos V5 for user authentication
-+and performs integrity checking of NFS operations using secure
-+checksums to prevent data tampering; and
-+\f3sec=krb5p\f1, which uses Kerberos V5 for user authentication
-+and integrity checking, and encrypts NFS traffic to prevent
-+traffic sniffing (this is the most secure setting).
-+Note that there is a performance penalty when using integrity
-+or privacy.
-+.TP 1.5i
-+.I tcp
-+Mount the NFS filesystem using the TCP protocol instead of the
-+default UDP protocol.  Many NFS servers only support UDP.
-+.TP 1.5i
-+.I udp
-+Mount the NFS filesystem using the UDP protocol.  This
-+is the default.
-+.P
-+All of the non-value options have corresponding nooption forms.
-+For example, nointr means don't allow file operations to be
-+interrupted.
-+.SS Options for the nfs4 file system type
-+.TP 1.5i
-+.I rsize=n
-+The number of bytes nfs4 uses when reading files from the server.
-+The rsize is negotiated between the server and client to determine 
-+the largest block size that both can support.
-+The value specified by this option is the maximum size that could 
-+be used; however, the actual size used may be smaller.
-+Note: Setting this size to a value less than the largest supported
-+block size will adversely affect performance.
-+.TP 1.5i
-+.I wsize=n
-+The number of bytes nfs4 uses when writing files to the server.
-+The wsize is negotiated between the server and client to determine 
-+the largest block size that both can support.
-+The value specified by this option is the maximum size that could 
-+be used; however, the actual size used may be smaller.
-+Note: Setting this size to a value less than the largest supported
-+block size will adversely affect performance.
-+.TP 1.5i
-+.I timeo=n
-+The value in tenths of a second before sending the
-+first retransmission after an RPC timeout.
-+The default value depends on whether
-+.IR proto=udp
-+or
-+.IR proto=tcp
-+is in effect (see below).
-+The default value for UDP is 7 tenths of a second.
-+The default value for TCP is 60 seconds.
-+After the first timeout,
-+the timeout is doubled after each successive timeout until a maximum
-+timeout of 60 seconds is reached or the enough retransmissions
-+have occured to cause a major timeout.  Then, if the filesystem
-+is hard mounted, each new timeout cascade restarts at twice the
-+initial value of the previous cascade, again doubling at each
-+retransmission.  The maximum timeout is always 60 seconds.
-+.TP 1.5i
-+.I retrans=n
-+The number of minor timeouts and retransmissions that must occur before
-+a major timeout occurs.  The default is 5 timeouts for
-+.IR proto=udp
-+and 2 timeouts for
-+.IR proto=tcp .
-+When a major timeout
-+occurs, the file operation is either aborted or a "server not responding"
-+message is printed on the console.
-+.TP 1.5i
-+.I acregmin=n
-+The minimum time in seconds that attributes of a regular file should
-+be cached before requesting fresh information from a server.
-+The default is 3 seconds.
-+.TP 1.5i
-+.I acregmax=n
-+The maximum time in seconds that attributes of a regular file can
-+be cached before requesting fresh information from a server.
-+The default is 60 seconds.
-+.TP 1.5i
-+.I acdirmin=n
-+The minimum time in seconds that attributes of a directory should
-+be cached before requesting fresh information from a server.
-+The default is 30 seconds.
-+.TP 1.5i
-+.I acdirmax=n
-+The maximum time in seconds that attributes of a directory can
-+be cached before requesting fresh information from a server.
-+The default is 60 seconds.
-+.TP 1.5i
-+.I actimeo=n
-+Using actimeo sets all of
-+.I acregmin,
-+.I acregmax,
-+.I acdirmin,
-+and
-+.I acdirmax
-+to the same value.
-+There is no default value.
-+.TP 1.5i
-+.I retry=n
-+The number of minutes to retry an NFS mount operation
-+in the foreground or background before giving up.
-+The default value for forground mounts is 2 minutes.  
-+The default value for background mounts is 10000 minutes, 
-+which is roughly one week.
-+.TP 1.5i
-+.I port=n
-+The numeric value of the port to connect to the NFS server on.
-+If the port number is 0 (the default) then query the
-+remote host's portmapper for the port number to use.
-+If the remote host's NFS daemon is not registered with
-+its portmapper, the standard NFS port number 2049 is
-+used instead.
-+.TP 1.5i
-+.I proto=n
-+Mount the NFS filesystem using a specific network protocol
-+instead of the default UDP protocol.
-+Many NFS version 4 servers only support TCP.
-+Valid protocol types are
-+.IR udp
-+and
-+.IR tcp .
-+.TP 1.5i
-+.I clientaddr=n
-+On a multi-homed client, this
-+causes the client to use a specific callback address when
-+communicating with an NFS version 4 server.
-+This option is currently ignored.
-+.TP 1.5i
-+.I sec=mode
-+Same as \f3sec=mode\f1 for the nfs filesystem type (see above).
-+.TP 1.5i
-+.I bg
-+If an NFS mount attempt times out, retry the mount
-+in the background.
-+After a mount operation is backgrounded, all subsequent mounts
-+on the same NFS server will be backgrounded immediately, without
-+first attempting the mount.
-+A missing mount point is treated as a timeout,
-+to allow for nested NFS mounts.
-+.TP 1.5i
-+.I fg
-+If the first NFS mount attempt times out, retry the mount
-+in the foreground.
-+This is the complement of the
-+.I bg
-+option, and also the default behavior.
-+.TP 1.5i
-+.I soft
-+If an NFS file operation has a major timeout then report an I/O error to
-+the calling program.
-+The default is to continue retrying NFS file operations indefinitely.
-+.TP 1.5i
-+.I hard
-+If an NFS file operation has a major timeout then report
-+"server not responding" on the console and continue retrying indefinitely.
-+This is the default.
-+.TP 1.5i
-+.I intr
-+If an NFS file operation has a major timeout and it is hard mounted,
-+then allow signals to interupt the file operation and cause it to
-+return EINTR to the calling program.  The default is to not
-+allow file operations to be interrupted.
-+.TP 1.5i
-+.I nocto
-+Suppress the retrieval of new attributes when creating a file.
-+.TP 1.5i
-+.I noac
-+Disable attribute caching, and force synchronous writes.
-+This extracts a
-+server performance penalty but it allows two different NFS clients
-+to get reasonable good results when both clients are actively
-+writing to common filesystem on the server.
-+.P
-+All of the non-value options have corresponding nooption forms.
-+For example, nointr means don't allow file operations to be
-+interrupted.
-+.SH FILES
-+.I /etc/fstab
-+.SH "SEE ALSO"
-+.BR fstab "(5), " mount "(8), " umount "(8), " exports (5)
-+.SH AUTHOR
-+"Rick Sladkey" <jrs@world.std.com>
-+.SH BUGS
-+The posix, and nocto options are parsed by mount
-+but currently are silently ignored.
-+.P
-+The tcp and namlen options are implemented but are not currently
-+supported by the Linux kernel.
-+.P
-+The umount command should notify the server
-+when an NFS filesystem is unmounted.
-+.P
-+Checking files on NFS filesystem referenced by file descriptors (i.e. the 
-+.BR fcntl 
-+and 
-+.BR ioctl
-+families of functions) may lead to inconsistent result due to the lack of
-+consistency check in kernel even if noac is used.
-
---------------050409020104000503070300
+--===============2039184948==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -533,7 +336,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------050409020104000503070300
+--===============2039184948==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -543,4 +346,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------050409020104000503070300--
+--===============2039184948==--
