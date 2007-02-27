@@ -1,24 +1,23 @@
-From: Chuck Ebbert <cebbert@redhat.com>
-Subject: Re: Hang when shutting down - seems umount and NFS related -
- kernel version 2.6.18.1
-Date: Mon, 26 Feb 2007 18:19:07 -0500
-Message-ID: <45E36AEB.7030800@redhat.com>
-References: <9a8748490702261504n147aa444y779153c03a2d44a2@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 04/11] nfs-utils: mount: Added nfs.5 man page
+Date: Mon, 26 Feb 2007 20:35:27 -0500
+Message-ID: <45E38ADF.9030608@RedHat.com>
+References: <45E2C1E7.8000309@RedHat.com>
+	<4d569c330702261348y6c44d0aifdca2f2af869090d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Jesper Juhl <jesper.juhl@gmail.com>
+Content-Type: multipart/mixed; boundary="------------050409020104000503070300"
+Cc: nfs@lists.sourceforge.net
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HLp7o-0002Rc-4C
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 15:19:20 -0800
+	id 1HLrD9-0008Pa-L2
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 17:32:59 -0800
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLp7o-00073L-Tz
-	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 15:19:22 -0800
-In-Reply-To: <9a8748490702261504n147aa444y779153c03a2d44a2@mail.gmail.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HLrDA-0003te-QX
+	for nfs@lists.sourceforge.net; Mon, 26 Feb 2007 17:33:01 -0800
+In-Reply-To: <4d569c330702261348y6c44d0aifdca2f2af869090d@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +30,517 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Jesper Juhl wrote:
-> I have a server that has the sole job of serving up a bunch of NFS
-> filesystems to webservers. The server is running kernel 2.6.18.1
-> 
-> A few days ago when attempting to reboot the server, the shutdown
-> process hung with a backtrace on the console. A photo was taken and is
-> available here:
->  http://www.kernel.org/pub/linux/kernel/people/juhl/images/DSC00504.jpg
-> 
-> A quick (incomplete) text transcript of the photo is here:
-> 
-> EIP: [<c01a51a0>] nfs_clear_inode+0x61/0x6b SS:ESP 0068:eb476ee4
-> BUG: warning at kernel/exit.c:855/do_exit()
+This is a multi-part message in MIME format.
+--------------050409020104000503070300
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-The real oops has scrolled off the screen.
 
+
+Kevin Coffman wrote:
+> Hi Steve,
+> This patch adds the Makefile changes, but seems to be missing the
+> nfs.man source file?
+It appears I forgot to "git add" the file into the tree...
+So attached the new commit adding in the file...
+
+steved.
+
+--------------050409020104000503070300
+Content-Type: text/x-patch;
+ name="patch-12.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="patch-12.patch"
+
+commit a53e3c6f0c9973bfeb7dfeec0e61e14b917984e3
+Author: Steve Dickson <steved@redhat.com>
+Date:   Mon Feb 26 19:23:31 2007 -0500
+
+    Added utils/mount/nfs.man
+
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+new file mode 100644
+index 0000000..ad44d71
+--- /dev/null
++++ b/utils/mount/nfs.man
+@@ -0,0 +1,456 @@
++.\" nfs.5 "Rick Sladkey" <jrs@world.std.com>
++.\" Wed Feb  8 12:52:42 1995, faith@cs.unc.edu: updates for Ross Biro's
++.\" patches. "
++.TH NFS 5 "20 November 1993" "Linux 0.99" "Linux Programmer's Manual"
++.SH NAME
++nfs \- nfs and nfs4 fstab format and options
++.SH SYNOPSIS
++.B /etc/fstab
++.SH DESCRIPTION
++The
++.I fstab
++file contains information about which filesystems
++to mount where and with what options.
++For NFS mounts, it contains the server name and
++exported server directory to mount from,
++the local directory that is the mount point,
++and the NFS specific options that control
++the way the filesystem is mounted.
++.P
++Three different versions of the NFS protocol are
++supported by the Linux NFS client:
++NFS version 2, NFS version 3, and NFS version 4.
++To mount via NFS version 2, use the
++.BR nfs
++file system type and specify
++.BR nfsvers=2 .
++Version 2 is the default protocol version for the
++.BR nfs
++file system type when
++.BR nfsvers=
++is not specified on the mount command.
++To mount via NFS version 3, use the
++.BR nfs
++file system type and specify
++.BR nfsvers=3 .
++To mount via NFS version 4, use the
++.BR nfs4
++file system type.
++The
++.BR nfsvers=
++keyword is not supported for the
++.BR nfs4
++file system type.
++.P
++These file system types share similar mount options;
++the differences are listed below.
++.P
++Here is an example from an \fI/etc/fstab\fP file for an NFSv2 mount
++over UDP.
++.sp
++.nf
++.ta 2.5i +0.75i +0.75i +1.0i
++server:/usr/local/pub	/pub	nfs	rsize=32768,wsize=32768,timeo=14,intr
++.fi
++.P
++Here is an example for an NFSv4 mount over TCP using Kerberos
++5 mutual authentication.
++.sp
++.nf
++.ta 2.5i +0.75i +0.75i +1.0i
++server:/usr/local/pub	/pub	nfs4	proto=tcp,sec=krb5,hard,intr
++.fi
++.DT
++.SS Options for the nfs file system type
++.TP 1.5i
++.I rsize=n
++The number of bytes NFS uses when reading files from an NFS server.
++The rsize is negotiated between the server and client to determine 
++the largest block size that both can support.
++The value specified by this option is the maximum size that could 
++be used; however, the actual size used may be smaller.
++Note: Setting this size to a value less than the largest supported
++block size will adversely affect performance.
++.TP 1.5i
++.I wsize=n
++The number of bytes NFS uses when writing files to an NFS server.
++The wsize is negotiated between the server and client to determine 
++the largest block size that both can support.
++The value specified by this option is the maximum size that could 
++be used; however, the actual size used may be smaller.
++Note: Setting this size to a value less than the largest supported
++block size will adversely affect performance.
++.TP 1.5i
++.I timeo=n
++The value in tenths of a second before sending the
++first retransmission after an RPC timeout.
++The default value is 7 tenths of a second.  After the first timeout,
++the timeout is doubled after each successive timeout until a maximum
++timeout of 60 seconds is reached or the enough retransmissions
++have occured to cause a major timeout.  Then, if the filesystem
++is hard mounted, each new timeout cascade restarts at twice the
++initial value of the previous cascade, again doubling at each
++retransmission.  The maximum timeout is always 60 seconds.
++Better overall performance may be achieved by increasing the
++timeout when mounting on a busy network, to a slow server, or through
++several routers or gateways.
++.TP 1.5i
++.I retrans=n
++The number of minor timeouts and retransmissions that must occur before
++a major timeout occurs.  The default is 3 timeouts.  When a major timeout
++occurs, the file operation is either aborted or a "server not responding"
++message is printed on the console.
++.TP 1.5i
++.I acregmin=n
++The minimum time in seconds that attributes of a regular file should
++be cached before requesting fresh information from a server.
++The default is 3 seconds.
++.TP 1.5i
++.I acregmax=n
++The maximum time in seconds that attributes of a regular file can
++be cached before requesting fresh information from a server.
++The default is 60 seconds.
++.TP 1.5i
++.I acdirmin=n
++The minimum time in seconds that attributes of a directory should
++be cached before requesting fresh information from a server.
++The default is 30 seconds.
++.TP 1.5i
++.I acdirmax=n
++The maximum time in seconds that attributes of a directory can
++be cached before requesting fresh information from a server.
++The default is 60 seconds.
++.TP 1.5i
++.I actimeo=n
++Using actimeo sets all of
++.I acregmin,
++.I acregmax,
++.I acdirmin,
++and
++.I acdirmax
++to the same value.
++There is no default value.
++.TP 1.5i
++.I retry=n
++The number of minutes to retry an NFS mount operation
++in the foreground or background before giving up.
++The default value for forground mounts is 2 minutes.  
++The default value for background mounts is 10000 minutes, 
++which is roughly one week.
++.TP 1.5i
++.I namlen=n
++When an NFS server does not support version two of the
++RPC mount protocol, this option can be used to specify
++the maximum length of a filename that is supported on
++the remote filesystem.  This is used to support the
++POSIX pathconf functions.  The default is 255 characters.
++.TP 1.5i
++.I port=n
++The numeric value of the port to connect to the NFS server on.
++If the port number is 0 (the default) then query the
++remote host's portmapper for the port number to use.
++If the remote host's NFS daemon is not registered with
++its portmapper, the standard NFS port number 2049 is
++used instead.
++.TP 1.5i
++.I mountport=n
++The numeric value of the
++.B mountd
++port.
++.TP 1.5i
++.I mounthost=name
++The name of the host running
++.B mountd .
++.TP 1.5i
++.I mountprog=n
++Use an alternate RPC program number to contact the
++mount daemon on the remote host.  This option is useful
++for hosts that can run multiple NFS servers.
++The default value is 100005 which is the standard RPC
++mount daemon program number.
++.TP 1.5i
++.I mountvers=n
++Use an alternate RPC version number to contact the
++mount daemon on the remote host.  This option is useful
++for hosts that can run multiple NFS servers.
++The default value depends on which kernel you are using.
++.TP 1.5i
++.I nfsprog=n
++Use an alternate RPC program number to contact the
++NFS daemon on the remote host.  This option is useful
++for hosts that can run multiple NFS servers.
++The default value is 100003 which is the standard RPC
++NFS daemon program number.
++.TP 1.5i
++.I nfsvers=n
++Use an alternate RPC version number to contact the
++NFS daemon on the remote host.  This option is useful
++for hosts that can run multiple NFS servers.
++The default value depends on which kernel you are using.
++.TP 1.5i
++.I vers=n
++vers is an alternative to nfsvers and is compatible with
++many other operating systems.
++.TP 1.5i
++.I nolock
++Disable NFS locking. Do not start lockd.
++This has to be used with some old NFS servers
++that don't support locking.
++.TP 1.5i
++.I bg
++If the first NFS mount attempt times out, retry the mount
++in the background.
++After a mount operation is backgrounded, all subsequent mounts
++on the same NFS server will be backgrounded immediately, without
++first attempting the mount.
++A missing mount point is treated as a timeout,
++to allow for nested NFS mounts.
++.TP 1.5i
++.I fg
++If the first NFS mount attempt times out, retry the mount
++in the foreground.
++This is the complement of the
++.I bg
++option, and also the default behavior.
++.TP 1.5i
++.I soft
++If an NFS file operation has a major timeout then report an I/O error to
++the calling program.
++The default is to continue retrying NFS file operations indefinitely.
++.TP 1.5i
++.I hard
++If an NFS file operation has a major timeout then report
++"server not responding" on the console and continue retrying indefinitely.
++This is the default.
++.TP 1.5i
++.I intr
++If an NFS file operation has a major timeout and it is hard mounted,
++then allow signals to interupt the file operation and cause it to
++return EINTR to the calling program.  The default is to not
++allow file operations to be interrupted.
++.TP 1.5i
++.I posix
++Mount the NFS filesystem using POSIX semantics.  This allows
++an NFS filesystem to properly support the POSIX pathconf
++command by querying the mount server for the maximum length
++of a filename.  To do this, the remote host must support version
++two of the RPC mount protocol.  Many NFS servers support only
++version one.
++.TP 1.5i
++.I nocto
++Suppress the retrieval of new attributes when creating a file.
++.TP 1.5i
++.I noac
++Disable all forms of attribute caching entirely.  This extracts a
++significant performance penalty but it allows two different NFS clients
++to get reasonable results when both clients are actively
++writing to a common export on the server.
++.TP 1.5i
++.I noacl
++Disables Access Control List (ACL) processing.
++.TP 1.5i
++.I sec=mode
++Set the security flavor for this mount to "mode".
++The default setting is \f3sec=sys\f1, which uses local
++unix uids and gids to authenticate NFS operations (AUTH_SYS).
++Other currently supported settings are:
++\f3sec=krb5\f1, which uses Kerberos V5 instead of local unix uids
++and gids to authenticate users;
++\f3sec=krb5i\f1, which uses Kerberos V5 for user authentication
++and performs integrity checking of NFS operations using secure
++checksums to prevent data tampering; and
++\f3sec=krb5p\f1, which uses Kerberos V5 for user authentication
++and integrity checking, and encrypts NFS traffic to prevent
++traffic sniffing (this is the most secure setting).
++Note that there is a performance penalty when using integrity
++or privacy.
++.TP 1.5i
++.I tcp
++Mount the NFS filesystem using the TCP protocol instead of the
++default UDP protocol.  Many NFS servers only support UDP.
++.TP 1.5i
++.I udp
++Mount the NFS filesystem using the UDP protocol.  This
++is the default.
++.P
++All of the non-value options have corresponding nooption forms.
++For example, nointr means don't allow file operations to be
++interrupted.
++.SS Options for the nfs4 file system type
++.TP 1.5i
++.I rsize=n
++The number of bytes nfs4 uses when reading files from the server.
++The rsize is negotiated between the server and client to determine 
++the largest block size that both can support.
++The value specified by this option is the maximum size that could 
++be used; however, the actual size used may be smaller.
++Note: Setting this size to a value less than the largest supported
++block size will adversely affect performance.
++.TP 1.5i
++.I wsize=n
++The number of bytes nfs4 uses when writing files to the server.
++The wsize is negotiated between the server and client to determine 
++the largest block size that both can support.
++The value specified by this option is the maximum size that could 
++be used; however, the actual size used may be smaller.
++Note: Setting this size to a value less than the largest supported
++block size will adversely affect performance.
++.TP 1.5i
++.I timeo=n
++The value in tenths of a second before sending the
++first retransmission after an RPC timeout.
++The default value depends on whether
++.IR proto=udp
++or
++.IR proto=tcp
++is in effect (see below).
++The default value for UDP is 7 tenths of a second.
++The default value for TCP is 60 seconds.
++After the first timeout,
++the timeout is doubled after each successive timeout until a maximum
++timeout of 60 seconds is reached or the enough retransmissions
++have occured to cause a major timeout.  Then, if the filesystem
++is hard mounted, each new timeout cascade restarts at twice the
++initial value of the previous cascade, again doubling at each
++retransmission.  The maximum timeout is always 60 seconds.
++.TP 1.5i
++.I retrans=n
++The number of minor timeouts and retransmissions that must occur before
++a major timeout occurs.  The default is 5 timeouts for
++.IR proto=udp
++and 2 timeouts for
++.IR proto=tcp .
++When a major timeout
++occurs, the file operation is either aborted or a "server not responding"
++message is printed on the console.
++.TP 1.5i
++.I acregmin=n
++The minimum time in seconds that attributes of a regular file should
++be cached before requesting fresh information from a server.
++The default is 3 seconds.
++.TP 1.5i
++.I acregmax=n
++The maximum time in seconds that attributes of a regular file can
++be cached before requesting fresh information from a server.
++The default is 60 seconds.
++.TP 1.5i
++.I acdirmin=n
++The minimum time in seconds that attributes of a directory should
++be cached before requesting fresh information from a server.
++The default is 30 seconds.
++.TP 1.5i
++.I acdirmax=n
++The maximum time in seconds that attributes of a directory can
++be cached before requesting fresh information from a server.
++The default is 60 seconds.
++.TP 1.5i
++.I actimeo=n
++Using actimeo sets all of
++.I acregmin,
++.I acregmax,
++.I acdirmin,
++and
++.I acdirmax
++to the same value.
++There is no default value.
++.TP 1.5i
++.I retry=n
++The number of minutes to retry an NFS mount operation
++in the foreground or background before giving up.
++The default value for forground mounts is 2 minutes.  
++The default value for background mounts is 10000 minutes, 
++which is roughly one week.
++.TP 1.5i
++.I port=n
++The numeric value of the port to connect to the NFS server on.
++If the port number is 0 (the default) then query the
++remote host's portmapper for the port number to use.
++If the remote host's NFS daemon is not registered with
++its portmapper, the standard NFS port number 2049 is
++used instead.
++.TP 1.5i
++.I proto=n
++Mount the NFS filesystem using a specific network protocol
++instead of the default UDP protocol.
++Many NFS version 4 servers only support TCP.
++Valid protocol types are
++.IR udp
++and
++.IR tcp .
++.TP 1.5i
++.I clientaddr=n
++On a multi-homed client, this
++causes the client to use a specific callback address when
++communicating with an NFS version 4 server.
++This option is currently ignored.
++.TP 1.5i
++.I sec=mode
++Same as \f3sec=mode\f1 for the nfs filesystem type (see above).
++.TP 1.5i
++.I bg
++If an NFS mount attempt times out, retry the mount
++in the background.
++After a mount operation is backgrounded, all subsequent mounts
++on the same NFS server will be backgrounded immediately, without
++first attempting the mount.
++A missing mount point is treated as a timeout,
++to allow for nested NFS mounts.
++.TP 1.5i
++.I fg
++If the first NFS mount attempt times out, retry the mount
++in the foreground.
++This is the complement of the
++.I bg
++option, and also the default behavior.
++.TP 1.5i
++.I soft
++If an NFS file operation has a major timeout then report an I/O error to
++the calling program.
++The default is to continue retrying NFS file operations indefinitely.
++.TP 1.5i
++.I hard
++If an NFS file operation has a major timeout then report
++"server not responding" on the console and continue retrying indefinitely.
++This is the default.
++.TP 1.5i
++.I intr
++If an NFS file operation has a major timeout and it is hard mounted,
++then allow signals to interupt the file operation and cause it to
++return EINTR to the calling program.  The default is to not
++allow file operations to be interrupted.
++.TP 1.5i
++.I nocto
++Suppress the retrieval of new attributes when creating a file.
++.TP 1.5i
++.I noac
++Disable attribute caching, and force synchronous writes.
++This extracts a
++server performance penalty but it allows two different NFS clients
++to get reasonable good results when both clients are actively
++writing to common filesystem on the server.
++.P
++All of the non-value options have corresponding nooption forms.
++For example, nointr means don't allow file operations to be
++interrupted.
++.SH FILES
++.I /etc/fstab
++.SH "SEE ALSO"
++.BR fstab "(5), " mount "(8), " umount "(8), " exports (5)
++.SH AUTHOR
++"Rick Sladkey" <jrs@world.std.com>
++.SH BUGS
++The posix, and nocto options are parsed by mount
++but currently are silently ignored.
++.P
++The tcp and namlen options are implemented but are not currently
++supported by the Linux kernel.
++.P
++The umount command should notify the server
++when an NFS filesystem is unmounted.
++.P
++Checking files on NFS filesystem referenced by file descriptors (i.e. the 
++.BR fcntl 
++and 
++.BR ioctl
++families of functions) may lead to inconsistent result due to the lack of
++consistency check in kernel even if noac is used.
+
+--------------050409020104000503070300
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------050409020104000503070300
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050409020104000503070300--
