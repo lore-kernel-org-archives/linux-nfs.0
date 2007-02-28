@@ -1,25 +1,26 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 06/11] nfs-utils: mount:  AUTH_NONE mounts
-Date: Thu, 1 Mar 2007 10:08:17 +1100
-Message-ID: <17894.2913.850879.838771@notabene.brown>
-References: <45E2C1FD.7000506@RedHat.com>
-	<17891.52293.103984.465480@notabene.brown>
-	<45E43C92.6090805@redhat.com>
+Subject: Re: [PATCH 11/11] nfs-utils: mount: Fixed collision between
+	commas in options
+Date: Thu, 1 Mar 2007 10:33:53 +1100
+Message-ID: <17894.4449.797539.255376@notabene.brown>
+References: <45E2C289.30506@RedHat.com>
+	<17891.53582.325117.716540@notabene.brown>
+	<20070227093424.GE3954@petra.dvoda.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Peter Staubach <staubach@redhat.com>
+Cc: Cory Olmo <colmo@TrustedCS.com>, nfs@lists.sourceforge.net,
+	Steve Dickson <SteveD@redhat.com>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HMXvO-0008Dh-M2
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 15:09:30 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HMXvP-0002rL-E9
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 15:09:32 -0800
-In-Reply-To: message from Peter Staubach on Tuesday February 27
+	id 1HMYKB-0002Zo-Bj
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 15:35:08 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMYKA-0004Rs-Tp
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 15:35:09 -0800
+In-Reply-To: message from Karel Zak on Tuesday February 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +33,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday February 27, staubach@redhat.com wrote:
-> Neil Brown wrote:
+On Tuesday February 27, kzak@redhat.com wrote:
+> On Tue, Feb 27, 2007 at 05:35:58PM +1100, Neil Brown wrote:
 > > On Monday February 26, SteveD@redhat.com wrote:
-> >   
-> >> commit 0ffd74c990aca3761b79316d47e1b1778273681c
-> >> Author: Steve Dickson <steved@redhat.com>
-> >> Date:   Sat Feb 24 15:27:46 2007 -0500
-> >>
-> >>     Added support to specify the AUTH_NONE security flavor (i.e. -o sec=none)
-> >>     
-> >
-> > If you specify "-o sec=none" then data.pseudoflavor will == AUTH_NONE,
-> > but
-> >
-> >   
+> > > commit 96a3ceb3d35bf5edcb9446aded8375d3b98b4f5b
+> > > Author: Cory Olmo <colmo@TrustedCS.com>
+> > > Date:   Sat Feb 24 16:20:40 2007 -0500
+> > > 
+> > >     This patch avoid the collision between commas in security contexts and the
+> > >     delimiter betweeen mount options.
+> > >     
+> > >     Signed-off-by: Karel Zak <kzak@redhat.com>
+> > >     Signed-off-by: Cory Olmo <colmo@TrustedCS.com>
+> > > 
+> > > diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+> > > index b3d3696..f22747b 100644
+> > > --- a/utils/mount/mount.c
+> > > +++ b/utils/mount/mount.c
+> > > @@ -285,18 +285,30 @@ static void parse_opts (const char *options, int *flags, char **extra_opts)
+> > >  {
+> > >  	if (options != NULL) {
+> > >  		char *opts = xstrdup(options);
+> > > -		char *opt;
+> > > -		int len = strlen(opts) + 20;
+> > > -
+> > > +		char *opt, *p;
+> > > +		int len = strlen(opts) + 256;
+> > 
+> > This is a worry.  If 20 isn't big enough, why do you thing 256 will
 > 
-> This support is being added so that the client can mount a file system
-> which was exported with sec=none.
-
-Ok, so the Changelog comment could be improved...
-
+>  The 20 was big enough for conversion from usernames to UIDs, but it's
+>  not enough for selinux context names. I didn't found any definition
+>  for maximal length of selinux context name, so we need to select any
+>  range and assume that it's enough (or completely rewrite this part of
+>  the mount command and allocate all dynamically).
 > 
-> This loop is looking for AUTH_NONE in the list of authentication
-> flavors that the server supports and was returned through the MOUNT
-> protocol during mounting.
+> > be? and where do we check that the buffer doesn't overflow (in this
+> > setuid program).
 > 
-> Basically, if the server file system is exported with AUTH_NONE, then
-> it doesn't matter what flavor that the client chooses, the server will
-> always map it to AUTH_NONE and all requests will be processed with the
-> anonymous uid and gid.
+>  Please, read the code. We check the buffer size everywhere. I don't
+>  see there any place where the buffer can overflow.
 
-I still don't understand (sorry if I am being dense).
-Surely a server could export a filesystem as AUTH_NONE or AUTH_UNIX or
-krbi.  And it could matter a lot what auth the client uses because if
-it uses AUTH_NONE it would have access to many fewer files than
-e.g. AUTH_UNIX.
+OK, so I did read the code a bit more carefully, and now I'm even more
+confused and concerned.
 
-And surely if I mount with "-o sec=krbi", and the server only supports
-AUTH_NONE, then the mount should fail.  But with the patch as given, I
-think it will succeed.  What am I missing?
+Firstly, I didn't notice that 'len' was being passed into parse_opt.
+However the way it is being passed makes it totally useless.
+parse_opt is called in a loop from parse_opts and each time it reduces
+'len' by the amount that is added to 'extra_opts'.
+However 'len' is passed by value, not by reference, so each time
+around it starts at the same value and so is not effective in making
+sure that extra_opts doesn't overflow it's buffer.
 
-What exactly is the situation where the current code does the wrong
-thing, and the new code does the right thing?
+But further, I cannot see how extra_opts ever needs to be large than
+'options'.  All that is ever appended to it are sections that have
+been removed from 'options'.  So why was the +20 there in the first
+place.
+
+You mention "conversion from usernames to UIDs", but I cannot find
+that anywhere.  Could you please help me understand exactly why
+"extra_opts" needs to be larger than "options" ??
 
 Thanks,
 NeilBrown
