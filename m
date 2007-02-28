@@ -1,26 +1,19 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: nfs-utils 1.0.11 still seems broken
-Date: Wed, 28 Feb 2007 11:47:26 +0100
-Message-ID: <20070228104726.GA6866@uio.no>
+From: AK <amithl_prem@yahoo.com>
+Subject: Error inserting sunrpc  Error inserting nfs
+Date: Wed, 28 Feb 2007 06:56:11 -0800 (PST)
+Message-ID: <944755.15499.qm@web56604.mail.re3.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0230721991=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HMMME-0000yB-2N
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 02:48:26 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HMMME-0001Vl-NY
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 02:48:28 -0800
-Received: from trofast.sesse.net ([129.241.93.32])
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HMMM7-0006i7-D5
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 11:48:19 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1HMMLG-0001nK-00
-	for <nfs@lists.sourceforge.net>; Wed, 28 Feb 2007 11:47:26 +0100
+	id 1HMQEA-00034g-Hn
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 06:56:25 -0800
+Received: from web56604.mail.re3.yahoo.com ([66.196.97.48])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HMQE7-0007sB-Oz
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 06:56:21 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,48 +26,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+--===============0230721991==
+Content-Type: multipart/alternative; boundary="0-1873723473-1172674571=:15499"
+Content-Transfer-Encoding: 7bit
 
-It looks like nfs-utils 1.0.11 is still broken, only now in completely
-different ways. My NFS server (kernel 2.6.19.2) upgraded yesterday, and
-tonight my desktop machine with NFS root (2.6.19) seems to have hung. The
-screen said
+--0-1873723473-1172674571=:15499
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-  Looking up port of RPC 100003/2 on 10.0.0.10
-  Looking up port of RPC 100005/1 on 10.0.0.10
+Hi All,
+  =20
+  I get the following errors on bootup, reproduced by modprobe, as shown =
+below.=20
+  Everything was working fine until I changed the rsize and wsize to: 327=
+68 and then rebooted the system.=20
+  Now If I rechange it back to original 8192 value, it still fails.
+  Any idea ???
+  =20
+  ~thanks in advance!!!
+  =20
+  modprobe nfs
+FATAL: Error inserting sunrpc (/lib/modules/2.6.9-22.ELsmp/kernel/net/sun=
+rpc/sunrpc.ko): Unknown symbol in module, or unknown parameter (see dmesg=
+)
+WARNING: Error running install command for sunrpc
+WARNING: Error inserting lockd (/lib/modules/2.6.9-22.ELsmp/kernel/fs/loc=
+kd/lockd.ko): Unknown symbol in module, or unknown parameter (see dmesg)
+FATAL: Error inserting nfs (/lib/modules/2.6.9-22.ELsmp/kernel/fs/nfs/nfs=
+.ko): Unknown symbol in module, or unknown parameter (see dmesg)
 
-And then nothing more until it gave up. (It seemed to send stuff on port 2049
-to the NFS server, though.)
+=20
+---------------------------------
+No need to miss a message. Get email on-the-go=20
+with Yahoo! Mail for Mobile. Get started.
+--0-1873723473-1172674571=:15499
+Content-Type: text/html; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-This was consistent across boots. Downgrading to 1.0.10 fixed the problems
-immediately; the second I go back to 1.0.11 and restart the server the client
-goes "nfs: server 10.0.0.10 not responding, still trying". Downgrading again
-fixes it.
+<div>Hi All,</div>  <div>&nbsp;</div>  <div>I get the following errors on=
+ bootup, reproduced by modprobe, as shown below. </div>  <div>Everything =
+was working fine until I changed the rsize and wsize to: 32768 and then r=
+ebooted the system. </div>  <div>Now If I rechange it back to original 81=
+92 value, it still fails.</div>  <div>Any idea ???</div>  <div>&nbsp;</di=
+v>  <div>~thanks in advance!!!</div>  <div>&nbsp;</div>  <div>modprobe nf=
+s<BR>FATAL: Error inserting sunrpc (/lib/modules/2.6.9-22.ELsmp/kernel/ne=
+t/sunrpc/sunrpc.ko): Unknown symbol in module, or unknown parameter (see =
+dmesg)<BR>WARNING: Error running install command for sunrpc<BR>WARNING: E=
+rror inserting lockd (/lib/modules/2.6.9-22.ELsmp/kernel/fs/lockd/lockd.k=
+o): Unknown symbol in module, or unknown parameter (see dmesg)<BR>FATAL: =
+Error inserting nfs (/lib/modules/2.6.9-22.ELsmp/kernel/fs/nfs/nfs.ko): U=
+nknown symbol in module, or unknown parameter (see dmesg)</div><p>&#32;
 
-With 1.0.11, dmesg seems to show:
+<hr size=3D1>No need to miss a message. <a href=3D"http://us.rd.yahoo.com=
+/evt=3D43910/*http://mobile.yahoo.com/mail
+">Get email on-the-go </a><br>with Yahoo! Mail for Mobile. <a href=3D"htt=
+p://us.rd.yahoo.com/evt=3D43910/*http://mobile.yahoo.com/mail
+">Get started.</a>
+--0-1873723473-1172674571=:15499--
 
-  nfsd: last server has exited
-  nfsd: unexporting all filesystems
-  RPC: failed to contact portmap (errno -5).
-  NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-  NFSD: starting 90-second grace period
 
-so this looks to be portmap related somehow. It should be noted that I also
-see the issue with
-
-  Feb 28 11:46:17 moccamaster nfsd[6273]: nfssvc: writting fds to kernel failed: errno 0 (Success)
-
-but that also shows up with 1.0.10, so it probably isn't that.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+--===============0230721991==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0230721991==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0230721991==--
