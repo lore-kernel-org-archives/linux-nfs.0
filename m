@@ -1,35 +1,23 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 07 Mar 2007 16:07:39 -0500
-Message-ID: <EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
-	<20070307154240.GB26553@fieldses.org>
-	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
-	<20070307205016.GI26553@fieldses.org>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: nfs-utils 1.0.11 still seems broken
+Date: Thu, 1 Mar 2007 00:03:28 +0100
+Message-ID: <20070228230327.GA3518@uio.no>
+References: <20070228104726.GA6866@uio.no>
+	<17894.2057.828174.464967@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP3Mq-0005Qq-Oj
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:08:14 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3Mo-0008Bo-Hd
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:08:11 -0800
-In-Reply-To: <20070307205016.GI26553@fieldses.org>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
-	<20070307154240.GB26553@fieldses.org>
-	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
-	<20070307205016.GI26553@fieldses.org>
+	id 1HMXqU-0007ZJ-Bn
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 15:04:26 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMXqV-0004o9-2L
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 15:04:28 -0800
+In-Reply-To: <17894.2057.828174.464967@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,31 +30,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 03:50 PM 3/7/2007, J. Bruce Fields wrote:
->> You probably don't want to sign up for enhancing the in-kernel export
->> cache. :-) Let's just say it's a bit mysterious, especially its interaction
->> with mountd.
->
->I sympathize, though this is actually one of the few mysteries of our
->nfs implementation that I feel like I understand, at least on alternate
->Thursdays....  What's bugging me a lot these days is I don't understand
->well enough why it's the way it is and what might need to be done to
->make it better.
+On Thu, Mar 01, 2007 at 09:54:01AM +1100, Neil Brown wrote:
+> Can you try 1.0.12?? 1.0.11 had some silly stuff in it, but I'm not
+> sure it would cause the problem you are seeing..
 
-I was actually trying to talk Simon out of trying, in case that wasn't
-obvious.
+1.0.12 seems to solve the issue for me -- I rebooted the nfsroot machine, and
+it comes up perfectly. That's odd, given the diff...
 
-But I'm really glad it bugs you! Keep thinking that way, maybe you can
-untangle it someday. :-)
+Oh well, on to push it into Debian.
 
-While you're thinking about it, what's the actual timeout on a given
-in-kernel export cache entry? There's a 120-second deadline on an
-unresolved cache miss being populated, but when, exactly, does an
-existing (resolved) entry go stale? I admit to having tried to figure it
-out once and wound up going in circles.
-
-Tom.
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
