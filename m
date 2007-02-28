@@ -1,7 +1,7 @@
-From: wolfgang@noten5.maas-noten.de
-Subject: access error - not owner
-Date: 28 Feb 2007 08:42:42 -0000
-Message-ID: <wolfgang-1070228094242.A011160@noten5.maas-noten.de>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: nfs-utils 1.0.11 still seems broken
+Date: Wed, 28 Feb 2007 11:47:26 +0100
+Message-ID: <20070228104726.GA6866@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,11 +9,18 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HMKPN-000456-Bm
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 00:43:33 -0800
-Received: from maas-noten.de ([213.239.193.103])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HMKPN-00060M-Vz
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 00:43:35 -0800
+	id 1HMMME-0000yB-2N
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 02:48:26 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HMMME-0001Vl-NY
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 02:48:28 -0800
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HMMM7-0006i7-D5
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 11:48:19 +0100
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1HMMLG-0001nK-00
+	for <nfs@lists.sourceforge.net>; Wed, 28 Feb 2007 11:47:26 +0100
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,41 +33,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I occasionally get access failures on an nfs volume
-The files are mode 666, owned by a user who has no account on the nfs machine.
-The volume is exported rw, no_root_squash and mounted rw by clients
+Hi,
 
-When the error occurs, the file has been truncated but cannot be written
+It looks like nfs-utils 1.0.11 is still broken, only now in completely
+different ways. My NFS server (kernel 2.6.19.2) upgraded yesterday, and
+tonight my desktop machine with NFS root (2.6.19) seems to have hung. The
+screen said
 
-Changing ownership of the file to someone else helps
+  Looking up port of RPC 100003/2 on 10.0.0.10
+  Looking up port of RPC 100005/1 on 10.0.0.10
 
-The server is running kernel nfs on suse 10.1
+And then nothing more until it gave up. (It seemed to send stuff on port 2049
+to the NFS server, though.)
 
-lsmod
-Module                  Size  Used by
-nfsd                  267368  0 
-exportfs               22272  1 nfsd
-lockd                  87792  1 nfsd
-nfs_acl                20352  1 nfsd
-sunrpc                172616  3 nfsd,lockd,nfs_acl
+This was consistent across boots. Downgrading to 1.0.10 fixed the problems
+immediately; the second I go back to 1.0.11 and restart the server the client
+goes "nfs: server 10.0.0.10 not responding, still trying". Downgrading again
+fixes it.
 
-rpcinfo -p localhost
-   Program Vers Proto   Port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100005    1   udp    828  mountd
-    100005    2   udp    828  mountd
-    100005    1   tcp    829  mountd
-    100005    2   tcp    829  mountd
-    100003    2   udp   2049  nfs
-    100003    2   tcp   2049  nfs
+With 1.0.11, dmesg seems to show:
 
+  nfsd: last server has exited
+  nfsd: unexporting all filesystems
+  RPC: failed to contact portmap (errno -5).
+  NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+  NFSD: starting 90-second grace period
 
-Wolfgang Hamann
+so this looks to be portmap related somehow. It should be noted that I also
+see the issue with
 
+  Feb 28 11:46:17 moccamaster nfsd[6273]: nfssvc: writting fds to kernel failed: errno 0 (Success)
 
+but that also shows up with 1.0.10, so it probably isn't that.
 
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
