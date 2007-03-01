@@ -1,27 +1,26 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH 11/11] nfs-utils: mount: Fixed collision between
-	commas in options
-Date: Thu, 1 Mar 2007 10:02:17 +0100
-Message-ID: <20070301090217.GE4449@petra.dvoda.cz>
-References: <45E2C289.30506@RedHat.com>
-	<17891.53582.325117.716540@notabene.brown>
-	<20070227093424.GE3954@petra.dvoda.cz>
-	<17894.4449.797539.255376@notabene.brown>
+From: "Jesper Juhl" <jesper.juhl@gmail.com>
+Subject: Re: nfs_update_inode: inode 309229856 mode changed,
+	0100644 to 0040755 - kernel 2.6.13.4
+Date: Thu, 1 Mar 2007 10:17:46 +0100
+Message-ID: <9a8748490703010117m552221cfs85ddcf5f29de5305@mail.gmail.com>
+References: <9a8748490702260531h45a91113o611c272c0fe7b39f@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Cory Olmo <colmo@TrustedCS.com>, nfs@lists.sourceforge.net,
-	Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HMhBm-0006jl-QM
-	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 01:03:03 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMhBo-0004dX-Ah
-	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 01:03:04 -0800
-In-Reply-To: <17894.4449.797539.255376@notabene.brown>
+	id 1HMhQK-0008M4-GY
+	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 01:18:04 -0800
+Received: from wr-out-0506.google.com ([64.233.184.226])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMhQL-0003jo-9s
+	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 01:18:06 -0800
+Received: by wr-out-0506.google.com with SMTP id i30so571796wra
+	for <nfs@lists.sourceforge.net>; Thu, 01 Mar 2007 01:18:04 -0800 (PST)
+In-Reply-To: <9a8748490702260531h45a91113o611c272c0fe7b39f@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,85 +33,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Mar 01, 2007 at 10:33:53AM +1100, Neil Brown wrote:
-> On Tuesday February 27, kzak@redhat.com wrote:
-> > On Tue, Feb 27, 2007 at 05:35:58PM +1100, Neil Brown wrote:
-> > > On Monday February 26, SteveD@redhat.com wrote:
-> > > > commit 96a3ceb3d35bf5edcb9446aded8375d3b98b4f5b
-> > > > Author: Cory Olmo <colmo@TrustedCS.com>
-> > > > Date:   Sat Feb 24 16:20:40 2007 -0500
-> > > > 
-> > > >     This patch avoid the collision between commas in security contexts and the
-> > > >     delimiter betweeen mount options.
-> > > >     
-> > > >     Signed-off-by: Karel Zak <kzak@redhat.com>
-> > > >     Signed-off-by: Cory Olmo <colmo@TrustedCS.com>
-> > > > 
-> > > > diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-> > > > index b3d3696..f22747b 100644
-> > > > --- a/utils/mount/mount.c
-> > > > +++ b/utils/mount/mount.c
-> > > > @@ -285,18 +285,30 @@ static void parse_opts (const char *options, int *flags, char **extra_opts)
-> > > >  {
-> > > >  	if (options != NULL) {
-> > > >  		char *opts = xstrdup(options);
-> > > > -		char *opt;
-> > > > -		int len = strlen(opts) + 20;
-> > > > -
-> > > > +		char *opt, *p;
-> > > > +		int len = strlen(opts) + 256;
-> > > 
-> > > This is a worry.  If 20 isn't big enough, why do you thing 256 will
-> > 
-> >  The 20 was big enough for conversion from usernames to UIDs, but it's
-> >  not enough for selinux context names. I didn't found any definition
-> >  for maximal length of selinux context name, so we need to select any
-> >  range and assume that it's enough (or completely rewrite this part of
-> >  the mount command and allocate all dynamically).
-> > 
-> > > be? and where do we check that the buffer doesn't overflow (in this
-> > > setuid program).
-> > 
-> >  Please, read the code. We check the buffer size everywhere. I don't
-> >  see there any place where the buffer can overflow.
-> 
-> OK, so I did read the code a bit more carefully, and now I'm even more
-> confused and concerned.
-> 
-> Firstly, I didn't notice that 'len' was being passed into parse_opt.
-> However the way it is being passed makes it totally useless.
-> parse_opt is called in a loop from parse_opts and each time it reduces
-> 'len' by the amount that is added to 'extra_opts'.
-> However 'len' is passed by value, not by reference, so each time
-> around it starts at the same value and so is not effective in making
-> sure that extra_opts doesn't overflow it's buffer.
+On 26/02/07, Jesper Juhl <jesper.juhl@gmail.com> wrote:
+> I have a webserver running a rather old 2.6.13.4 kernel that a few
+> minutes ago surprised me by logging the following message :
+>
+>  kernel: nfs_update_inode: inode 309229856 mode changed, 0100644 to 0040755
+>
+I just got one more of these (well, slightly different, but same basic
+issue). This time it was one of my mailservers, also running 2.6.13.4.
 
- See parse_opt(), there is:
+  kernel: nfs_update_inode: inode -1073741693 mode changed, 0040700 to 0100644
 
-    len -= strlen(extra_opts);
+> The server exporting the filesystem is running 2.6.18.1 (knfsd) -
+> nothing is logged on the server...
+>
+This time it's a different NFS server (still using knfsd), this one is
+running kernel 2.6.20. Still nothing logged at the server side.
 
- it sets the "len" to correct length.
-
-> But further, I cannot see how extra_opts ever needs to be large than
-> 'options'.  All that is ever appended to it are sections that have
-> been removed from 'options'.  So why was the +20 there in the first
-> place.
-
- Hmm... I think the reason is copy & past from the mount command. The
- mount.nfs is simplificated version of the original mount. In the
- mount command is conversion to UID/GID and selinux contexts
- transformation. The mount.nfs doesn't do these conversions (in my
- previous mail I've read the mount and not mount.nfs. Sorry.).
-
- Someone has copyed the code with +20 and I've enlarged to +256 like
- in original mount.
-
- I'll resubmit the patch next week. Thanks for your review.
-
-    Karel
+> So a file changed type and permissions out of the blue.  A few
+> questions about that:
+>
+> Any way I can identify the file (or is it a dir now ;) ?
+> Does anyone know if this is a known bug that's been fixed? I couldn't
+> find anything via google or git that looked like a fix.
+>
+These questions still apply :-)
 
 -- 
- Karel Zak  <kzak@redhat.com>
+Jesper Juhl <jesper.juhl@gmail.com>
+Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please      http://www.expita.com/nomime.html
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
