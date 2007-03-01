@@ -1,26 +1,25 @@
-From: "Jesper Juhl" <jesper.juhl@gmail.com>
-Subject: Re: nfs_update_inode: inode 309229856 mode changed,
-	0100644 to 0040755 - kernel 2.6.13.4
-Date: Thu, 1 Mar 2007 10:17:46 +0100
-Message-ID: <9a8748490703010117m552221cfs85ddcf5f29de5305@mail.gmail.com>
-References: <9a8748490702260531h45a91113o611c272c0fe7b39f@mail.gmail.com>
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+Subject: nfs-client 2.6.20 bizarre ro-mount
+Date: Thu, 1 Mar 2007 16:25:48 +0100
+Message-ID: <200703011625.51457.ulrich.gemkow@ikr.uni-stuttgart.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed; boundary="===============0548344012=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HMhQK-0008M4-GY
-	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 01:18:04 -0800
-Received: from wr-out-0506.google.com ([64.233.184.226])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMhQL-0003jo-9s
-	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 01:18:06 -0800
-Received: by wr-out-0506.google.com with SMTP id i30so571796wra
-	for <nfs@lists.sourceforge.net>; Thu, 01 Mar 2007 01:18:04 -0800 (PST)
-In-Reply-To: <9a8748490702260531h45a91113o611c272c0fe7b39f@mail.gmail.com>
+	id 1HMnBD-0004Fq-8c
+	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 07:26:51 -0800
+Received: from wall.ikr.uni-stuttgart.de ([129.69.170.1])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMnBA-0000w3-Ll
+	for nfs@lists.sourceforge.net; Thu, 01 Mar 2007 07:26:50 -0800
+Received: from netsrv1.ikr.uni-stuttgart.de (netsrv1-c [10.11.12.12])
+	by wall.ikr.uni-stuttgart.de (Postfix) with ESMTP id 1BA8156CC2
+	for <nfs@lists.sourceforge.net>; Thu,  1 Mar 2007 16:25:52 +0100 (CET)
+Received: from ikr.uni-stuttgart.de (pc150 [10.21.21.150])
+	by netsrv1.ikr.uni-stuttgart.de (Postfix) with SMTP id 8BDBBBC07E
+	for <nfs@lists.sourceforge.net>; Thu,  1 Mar 2007 16:25:51 +0100 (CET)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,42 +32,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 26/02/07, Jesper Juhl <jesper.juhl@gmail.com> wrote:
-> I have a webserver running a rather old 2.6.13.4 kernel that a few
-> minutes ago surprised me by logging the following message :
->
->  kernel: nfs_update_inode: inode 309229856 mode changed, 0100644 to 0040755
->
-I just got one more of these (well, slightly different, but same basic
-issue). This time it was one of my mailservers, also running 2.6.13.4.
+--===============0548344012==
+Content-Type: multipart/signed; boundary="nextPart3502686.maRbv4Y0o3";
+	protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
 
-  kernel: nfs_update_inode: inode -1073741693 mode changed, 0040700 to 0100644
+--nextPart3502686.maRbv4Y0o3
+Content-Type: text/plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-> The server exporting the filesystem is running 2.6.18.1 (knfsd) -
-> nothing is logged on the server...
->
-This time it's a different NFS server (still using knfsd), this one is
-running kernel 2.6.20. Still nothing logged at the server side.
+Hello,
 
-> So a file changed type and permissions out of the blue.  A few
-> questions about that:
->
-> Any way I can identify the file (or is it a dir now ;) ?
-> Does anyone know if this is a known bug that's been fixed? I couldn't
-> find anything via google or git that looked like a fix.
->
-These questions still apply :-)
+I have a rather bizare problems with the nfs-client in
+Linux 2.6.20, the previously used kernel 2.6.17 worked fine:
 
--- 
-Jesper Juhl <jesper.juhl@gmail.com>
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please      http://www.expita.com/nomime.html
+=46or one specific filesystem, which is exported rw, the client
+mounts the filesystem (according to /proc/mounts) as ro=20
+despite the fact that the mount-command asks to mount
+it rw.
+
+When doing a "mount -o remount,rw ..." after the first mount
+the filesystem is writable and all is fine (and /proc/mounts
+shows the mountpoint as "rw").
+
+To make things more interesting, when doing a second mount
+after the rw-remount, the mount is writable. So it seems=20
+that the _first_ mount for the mountpoint fails.
+
+The mountpoint is located in a ramdisc.
+
+The problem does not happen with client kernel 2.6.17. The=20
+configuration besides the kernel is unchanged. It only happens
+with one filesystem, other filesystems from the same server
+are mounted rw as requested. For us it is always reproducible
+for all our clients. I found nothing special for this problematic
+filesystem.
+
+Server kernel is Linux vanilla 2.6.17 (unchanged), distribution
+is Fedora Core 6 for client and server.
+
+I checked really careful that nothing else besides the kernel
+changes in the systems and that there is no obvious "user error".
+
+Has anyone a glue? The workaround is simple (remount) but I=20
+do not understand the changed behaviour.
+
+Thanks in advance
+
+=2DUlrich
+
+=2D-=20
+|-----------------------------------------------------------------------
+| Ulrich Gemkow
+| University of Stuttgart
+| Institute of Communication Networks and Computer Engineering (IKR)
+|-----------------------------------------------------------------------
+
+--nextPart3502686.maRbv4Y0o3
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBF5vB/7bxSwnjsAMgRAgnAAKCW3OWtInYrVV4UzSTZNhBSwm/4KwCgvWLJ
+dcLYLHlbyHYk4l/f6d5p+7c=
+=Q+aK
+-----END PGP SIGNATURE-----
+
+--nextPart3502686.maRbv4Y0o3--
+
+
+--===============0548344012==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============0548344012==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0548344012==--
