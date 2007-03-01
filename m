@@ -1,25 +1,26 @@
-From: M A Young <m.a.young@durham.ac.uk>
-Subject: Re: NFS client fcntl locks going missing on FC6
-Date: Thu, 1 Mar 2007 00:51:27 +0000 (GMT)
-Message-ID: <Pine.LNX.4.58.0703010031330.18281@vega4.dur.ac.uk>
-References: <Pine.LNX.4.58.0702232223170.24593@vega3.dur.ac.uk>
-	<45E073AB.2040005@RedHat.com>
-	<Pine.LNX.4.58.0702241754030.21958@vega4.dur.ac.uk>
-	<Pine.LNX.4.58.0702250017400.18669@vega3.dur.ac.uk>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 09/11] nfs-utils: mount: Fixed mounts to
+	multi-home servers
+Date: Thu, 1 Mar 2007 12:48:34 +1100
+Message-ID: <17894.12530.165078.511522@notabene.brown>
+References: <45E2C21E.9030501@RedHat.com>
+	<17891.53391.618228.526904@notabene.brown>
+	<45E47470.4020002@poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Steve Dickson <SteveD@redhat.com>
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Jeff Layton <jlayton@poochiereds.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HMZWL-0001hz-6m
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 16:51:46 -0800
-Received: from hermes2.dur.ac.uk ([129.234.8.21])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HMZWL-0007wZ-Pz
-	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 16:51:47 -0800
-In-Reply-To: <Pine.LNX.4.58.0702250017400.18669@vega3.dur.ac.uk>
+	id 1HMaQc-0007WJ-N8
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 17:49:55 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HMaQb-00024F-VD
+	for nfs@lists.sourceforge.net; Wed, 28 Feb 2007 17:49:56 -0800
+In-Reply-To: message from Jeff Layton on Tuesday February 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,24 +33,136 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I have found out what was causing the bug I was seeing. The do_setlk
-function of fs/nfs/file.c creates a local lock if the remote lock attempt
-was blocked and then interrupted, supposedly so that the remote lock is
-removed when the process exits. Unfortunately by this stage the lock has
-forgotten how to do this, and if the process tries again for the same
-remote lock and succeeds in getting it, the system reuses the existing
-local only lock rather than creating a new one, which means that there is
-apparently nothing using the owner records storing the (new) svid, and
-this is information is discarded. As a result, when the file is unlocked,
-there is no record of the svid that was used, so the unlock attempt uses a
-new svid which of course fails, and the file is never unlocked.
-I have attached a patch to the RedHat bugzilla bug (229469)
-https://bugzilla.redhat.com/bugzilla/attachment.cgi?id=148974
-which under limited testing fixes the problem I was seeing by not creating
-the local lock if it has no hope of removing any possible remote one,
-though I suspect more thought could yield a better patch.
+On Tuesday February 27, jlayton@poochiereds.net wrote:
+> 
+> I know we saw this with Solaris servers in particular (it's been a 
+> while, but I think I was testing against Solaris 8). The fedora BZ is 
+> here if you want to see all the gory details:
+> 
+> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=212471
+> 
+> I'm thinking we will have to deal with this situation, unfortunately, so 
+> maybe disconnecting the socket after getting the address is the best thing?
+> 
+> -- Jeff
 
-	Michael Young
+Thanks for the link... Looks like we do need to be very careful about
+connecting UDP sockets.
+
+This patch maybe?
+
+NeilBrown
+
+
+diff --git a/support/include/conn.h b/support/include/conn.h
+index 1761dc4..11f16ab 100644
+--- a/support/include/conn.h
++++ b/support/include/conn.h
+@@ -35,7 +35,7 @@ int clnt_ping(struct sockaddr_in *, const u_long, const u_long, const u_int,
+ 	      struct sockaddr_in *);
+ u_long nfsvers_to_mnt(const u_long);
+ u_long mntvers_to_nfs(const u_long);
+-int get_socket(struct sockaddr_in *, u_int, int);
++int get_socket(struct sockaddr_in *, u_int, int, int);
+ CLIENT * mnt_openclnt(clnt_addr_t *, int *);
+ void mnt_closeclnt(CLIENT *, int);
+ 
+diff --git a/support/nfs/conn.c b/support/nfs/conn.c
+index 89f7676..1020b47 100644
+--- a/support/nfs/conn.c
++++ b/support/nfs/conn.c
+@@ -49,7 +49,7 @@ u_long mntvers_to_nfs(const u_long vers)
+  * RPC_ANYSOCK is returned which will cause 
+  * the RPC code to create the socket instead. 
+  */
+-int get_socket(struct sockaddr_in *saddr, u_int p_prot, int resvp)
++int get_socket(struct sockaddr_in *saddr, u_int p_prot, int resvp, int conn)
+ {
+ 	int so, cc, type;
+ 	struct sockaddr_in laddr;
+@@ -98,7 +98,7 @@ int get_socket(struct sockaddr_in *saddr, u_int p_prot, int resvp)
+ 			return RPC_ANYSOCK;
+ 		}
+ 	}
+-	if (type == SOCK_STREAM || type == SOCK_DGRAM) {
++	if (type == SOCK_STREAM || (conn && type == SOCK_DGRAM)) {
+ 		cc = connect(so, (struct sockaddr *)saddr, namelen);
+ 		if (cc < 0) {
+ 			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+@@ -129,9 +129,10 @@ clnt_ping(struct sockaddr_in *saddr, const u_long prog, const u_long vers,
+ 	CLIENT *clnt=NULL;
+ 	int sock, stat;
+ 	static char clnt_res;
++	struct sockaddr dissolve;
+ 
+ 	rpc_createerr.cf_stat = stat = errno = 0;
+-	sock = get_socket(saddr, prot, FALSE);
++	sock = get_socket(saddr, prot, FALSE, TRUE);
+ 	if (sock == RPC_ANYSOCK && errno == ETIMEDOUT) {
+ 		/*
+ 		 * TCP timeout. Bubble up the error to see 
+@@ -141,8 +142,22 @@ clnt_ping(struct sockaddr_in *saddr, const u_long prog, const u_long vers,
+ 		goto out_bad;
+ 	}
+ 
++	if (caddr) {
++		/* Get the address of our end of this connection */
++		socklen_t len = sizeof(*caddr);
++		if (getsockname(sock, caddr, &len) != 0)
++			caddr->sin_family = 0;
++	}
++
+ 	switch(prot) {
+ 	case IPPROTO_UDP:
++		/* The socket is connected (so we could getsockname successfully),
++		 * but some servers on multi-homed hosts reply from
++		 * the wrong address, so if we stay connected, we lose the reply.
++		 */
++		dissolve.sa_family = AF_UNSPEC;
++		connect(sock, &dissolve, sizeof(dissolve));
++
+ 		clnt = clntudp_bufcreate(saddr, prog, vers,
+ 					 RETRY_TIMEOUT, &sock,
+ 					 RPCSMALLMSGSIZE, RPCSMALLMSGSIZE);
+@@ -166,15 +181,7 @@ clnt_ping(struct sockaddr_in *saddr, const u_long prog, const u_long vers,
+ 		rpc_createerr.cf_stat = stat;
+ 	}
+ 	clnt_destroy(clnt);
+-	if (sock != -1) {
+-		if (caddr) {
+-			/* Get the address of our end of this connection */
+-			socklen_t len = sizeof(*caddr);
+-			if (getsockname(sock, caddr, &len) != 0)
+-				caddr->sin_family = 0;
+-		}
+-		close(sock);
+-	}
++	close(sock);
+ 
+ 	if (stat == RPC_SUCCESS)
+ 		return 1;
+@@ -191,7 +198,7 @@ CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+ 
+ 	/* contact the mount daemon via TCP */
+ 	mnt_saddr->sin_port = htons((u_short)mnt_pmap->pm_port);
+-	*msock = get_socket(mnt_saddr, mnt_pmap->pm_prot, TRUE);
++	*msock = get_socket(mnt_saddr, mnt_pmap->pm_prot, TRUE, FALSE);
+ 
+ 	switch (mnt_pmap->pm_prot) {
+ 	case IPPROTO_UDP:
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 507ccdb..0f66bdf 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -306,7 +306,7 @@ getport(
+ 	enum clnt_stat stat;
+ 
+ 	saddr->sin_port = htons (PMAPPORT);
+-	socket = get_socket(saddr, prot, FALSE);
++	socket = get_socket(saddr, prot, FALSE, FALSE);
+ 
+ 	switch (prot) {
+ 	case IPPROTO_UDP:
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
