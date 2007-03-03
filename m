@@ -1,35 +1,24 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: NULL pointer dereference when a process is exited while
-	holding	delegations
-Date: Fri, 02 Mar 2007 15:50:35 -0800
-Message-ID: <1172879435.19257.1.camel@dyn9047022153>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfs-utils mount build fails due to missing fsloc.h
+Date: Sat, 3 Mar 2007 18:23:40 +1100
+Message-ID: <17897.8828.469098.120385@notabene.brown>
+References: <E1HNG8e-0000Y8-Ha@externalmx-1.sourceforge.net>
+	<01AE8AF878612047A442668306EAEB055C3FE2@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: NFS List <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HNHWZ-0007AM-RI
-	for nfs@lists.sourceforge.net; Fri, 02 Mar 2007 15:50:56 -0800
-Received: from e4.ny.us.ibm.com ([32.97.182.144])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HNHWa-0002t2-Iv
-	for nfs@lists.sourceforge.net; Fri, 02 Mar 2007 15:50:57 -0800
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l22NntB5004761
-	for <nfs@lists.sourceforge.net>; Fri, 2 Mar 2007 18:49:55 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
-	l22NmtkL287828
-	for <nfs@lists.sourceforge.net>; Fri, 2 Mar 2007 18:48:55 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l22Nmtl9009913
-	for <nfs@lists.sourceforge.net>; Fri, 2 Mar 2007 18:48:55 -0500
-Received: from [9.47.22.153] (dyn9047022153.beaverton.ibm.com [9.47.22.153])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	l22Nmslj009900
-	for <nfs@lists.sourceforge.net>; Fri, 2 Mar 2007 18:48:55 -0500
+	id 1HNObu-0007ud-F9
+	for nfs@lists.sourceforge.net; Fri, 02 Mar 2007 23:24:54 -0800
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HNObv-0001q0-8n
+	for nfs@lists.sourceforge.net; Fri, 02 Mar 2007 23:24:56 -0800
+In-Reply-To: message from Muntz, Daniel on Friday March 2
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,44 +31,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I am seeing an exception with a NULL pointer with the following stack
-(on a 2.6.9 kernel):
+On Friday March 2, Dan.Muntz@netapp.com wrote:
+> Hi all,
+>  
+> When I pull nfs-utils from the git repository, mountd fails to build due
+> to a missing .h file (fsloc.h).  This has been the case for some time
+> now.  I originally thought I had just pulled at a bad time (in the
+> middle of an update), but when I pulled a 1.0.12+ branch today, I hit
+> the same problem.
+>  
+> I'm just doing:
+>  
+>     git clone git://git.linux-nfs.org/nfs-utils
 
-Stack:
-_spin_lock_irq+0x28/0x8c
-sigprocmask+0x44/0xe8
-rpc_save_sigmask+0x3c/0x50 [sunrpc]
-rpc_call_sync+0x74/0xf0 [sunrpc]
-_nfs4_proc_getattr+0x9c/0xc0 [nfs]
-nfs4_proc_getattr+0x40/0x7c [nfs]
-__nfs_revalidate_inode+0x190/0x354 [nfs]
-nfs_do_return_delegation+0x34/0x74 [nfs]
-__nfs_inode_return_delegation+0x1cc/0x210 [nfs]
-nfs_dentry_iput+0x3c/0x100 [nfs]
-prune_dcache+0x490/0x5c0
-shrink_dcache_parent+0x20/0x44
-proc_pid_flush+0x40/0x68
-release_task+0x160/0x1d4
-exit_notify+0x394/0x3c4
-do_exit+0x6fc/0x748
-next_thread+0x0/0x50
-syscall_exit+0x0/0x18
+The adding a
+      git reset --hard nfs-utils-1-0-12
 
-What seems to be happening is that release_task has done
-__exit_sighand(p), which sets current->sighand to NULL. Then the dcache
-is pruned, and eventually a delegation is to be returned. This makes an
-RPC call which then ends up calling sigprocmask, which calls
-spin_lock_irq(&current->sighand->siglock), resulting in the NULL pointer
-dereference.
+The main branch is a bit broken at the moment, probably get fixed next
+week. (I would have expected to want a 'git checkout' comment, but
+that doesn't seem to do that right thing).
 
-Has this problem been seen before? If not, any ideas on how to make sure
-no RPC calls get made after the sighand is set to NULL?
+NeilBrown
 
-Thanks for any thoughts,
-
-Frank Filz
-
-
+>     sh autogen.sh 
+>     ./configure 
+>     make
+>  
+> The dependencies I currently have listed for building/running nfs-utils
+> are: libevent (1.3a), libnfsidmap (0.19), libgssapi (0.10), librpcsecgss
+> (0.14), and various Kerberos bits (1.6 from MIT).
+>  
+> Is there something else I need to do/undo to get the latest tree to
+> build?
+>  
+>   -Dan
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
