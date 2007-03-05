@@ -1,23 +1,24 @@
-From: Wei Yongjun <yjwei@nanjing-fnst.com>
-Subject: [PATCH] nfs-utils umount command does not use correct
-	TCP/UDP	protocol
-Date: Mon, 05 Mar 2007 07:43:06 -0500
-Message-ID: <1173098587.4825.9.camel@LINE>
+From: Jean-Noel BOUVIER <Jean-Noel.Bouvier@imag.fr>
+Subject: Re: poor nfs performance & hangs with latest kernels
+Date: Mon, 5 Mar 2007 14:30:10 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0703051055470.4947@vercors.imag.fr>
+References: <45D9B915.2010305@hq.vsaa.lv>
+	<17882.49990.799201.335846@notabene.brown>
+	<45DC4BB3.7090706@imag.fr> <17884.65504.902843.745554@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: rich@hq.vsaa.lv, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOAsX-0002EY-PS
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 02:57:18 -0800
-Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOAsX-0005Sg-9f
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 02:57:20 -0800
-Received: from 192.168.100.160 ([192.168.1.58])
-	by proxy.fnst.com.cn (8.12.11/8.12.11) with ESMTP id l25Av2AX001257
-	for <nfs@lists.sourceforge.net>; Mon, 5 Mar 2007 18:57:03 +0800
+	id 1HODID-0001NG-4e
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 05:31:57 -0800
+Received: from imag.imag.fr ([129.88.30.1])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HODIA-00089I-PM
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 05:31:56 -0800
+In-Reply-To: <17884.65504.902843.745554@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,83 +31,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-After I install nfs-utils-1.0.12, the least release, I found that umount
-command can not use the correct TCP/UDP protocol as which it been mount.
+Hello,
 
-You can test this used following commands:
-#mount -t nfs -o proto=udp 127.0.0.1:/nfsroot /mnt
-#umount /mnt
-umount will use TCP protocol to do the umount process.
+On Thu, 22 Feb 2007, Neil Brown wrote:
 
-Following is my patch to fix this BUG.
+> On Wednesday February 21, jean-noel.bouvier@imag.fr wrote:
+>> Hello,
+>>
+>> I encounter the same NFS bad performance for kernels newer than 2.6.16.31
+>>
+>> Tests : tar -xvf linux-2.4.32.tar
+>>
+>> Environment :
+>> - client 2.6.16.31
+>> - client mounts a XFS file system through NFS on a remote machine with
+>> options =3D rw,tcp,intr
+>> - server : exporting file system with options =3D rw,sync,insecure
+>>
+>> Results : (according to server kernel version)
+>> 2.6.15.7 =3D> 1 minute 10 sec
+>> 2.6.16.31 =3D> 1 minute 02 sec
+>> 2.6.17.14 =3D> 15 minutes
+>> 2.6.18.3 =3D> 15 minutes
+>
+> Those look like very strong results....
+>
+> Could you try this patch on one of the later kernels and see if it
+> helps?
 
-Signed-off-by: Wei Yongjun <yjwei@nanjing-fnst.com>
+Unfortunately, this patch did not enable better performance :
 
---- utils/mount/nfsumount.c.orig	2007-03-05 03:11:48.000000000 -0500
-+++ utils/mount/nfsumount.c	2007-03-05 03:06:25.000000000 -0500
-@@ -103,31 +103,35 @@ int nfs_call_umount(clnt_addr_t *mnt_ser
- 	return 0;
- }
- 
-+static int
-+contains(const char *list, const char *s) {
-+	int n = strlen(s);
-+	char *p, *rest = list;
-+
-+	while ((p = strstr(rest, s)) != NULL) {
-+		if ((p == rest || p[-1] == ',' || p[-1] == '=')
-+			&& (p[n] == '\0' || p[n] == ','))
-+			return 1;
-+
-+                while (*rest && *rest++ != ',');
-+		if(rest == NULL) break;
-+        }
-+        return 0;
-+}
-+
- u_int get_mntproto(const char *);
- u_int
- get_mntproto(const char *dirname)
- {
--	FILE *mtab;
--	struct mntent mntbuf;
--	char tmpbuf[BUFSIZ];
-+	struct mntentchn *mc;
- 	u_int proto = IPPROTO_TCP; /* assume tcp */
- 
--	 mtab = setmntent ("/proc/mounts", "r");
--	 if (mtab == NULL)
--	 	mtab = setmntent (_PATH_MOUNTED, "r");
--	if (mtab == NULL)
--		return proto;
--
--	while(getmntent_r(mtab, &mntbuf, tmpbuf, sizeof (tmpbuf))) {
--		if (strcmp(mntbuf.mnt_type, "nfs"))
--			continue;
--		if (strcmp(dirname,  mntbuf.mnt_fsname))
--			continue;
--		if (hasmntopt(&mntbuf, "udp"))
--			proto = IPPROTO_UDP;
--		break;
--	}
--	endmntent (mtab);
-+	mc = getmntdirbackward(dirname, NULL);
-+	if (!mc)
-+		mc = getmntdevbackward(dirname, NULL);
-+
-+	if(mc && contains(mc->m.mnt_opts, "udp"))
-+		proto = IPPROTO_UDP;
- 
- 	return proto;
- }
+Linux 2.6.16.31/XFS+NFS =3D> 1min (4 process with status S+S+R+D)
+Linux 2.6.17.14/XFS+NFS =3D> 15min (2 process with status S+D)
+Linux 2.6.17.14/XFS+NFS + patch =3D> 14min51 (2 process with status S+D)
 
+But, I also tried the same tests on a XFS and EXT3 file systems but =
 
+***without*** NFS, just to be sure :
+
+Linux 2.6.16.31/XFS =3D> 0 min 12s | Linux 2.6.16.31/EXT3 =3D> 0 min 07s
+Linux 2.6.17.14/XFS =3D> 0 min 51s | Linux 2.6.17.14/EXT3 =3D> 0 min 04s
+Linux 2.6.18-4/XFS =3D>  0 min 57s | Linux 2.6.18-4/EXT3 =3D>  0 min 02s
+
+So I am afraid the problem is rather bound to XFS and >2.6.16 kernels =
+
+than NFS.
+Do you agree or do you want me to do other tests to be sure NFS is not =
+
+concerned ?
+
+> Otherwise we might have do to the 'git bisect' thing to find the
+> offending patch.
+>
+> Thanks,
+> NeilBrown
+
+Thanks,
+-- =
+
+Jean-No=EBl BOUVIER
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
