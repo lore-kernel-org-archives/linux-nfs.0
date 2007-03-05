@@ -1,11 +1,12 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: Possible causes for rpc.mountd consuming 100 percent CPU.
-Date: Mon, 5 Mar 2007 14:25:30 +1100
-Message-ID: <17899.36266.588801.465727@notabene.brown>
+Date: Mon, 5 Mar 2007 15:10:18 +1100
+Message-ID: <17899.38954.456792.610849@notabene.brown>
 References: <a6a251db0703041747l6e539890v7496b616aa8d5cc8@mail.gmail.com>
 	<17899.31457.535979.478100@notabene.brown>
 	<a6a251db0703041812h7bd3e771q690e30cc789189e0@mail.gmail.com>
 	<17899.35209.373099.331797@notabene.brown>
+	<17899.36266.588801.465727@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: "Matt Proud" <matt.proud.list@gmail.com>,
@@ -14,12 +15,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HO3qW-00010m-SE
-	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 19:26:45 -0800
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1HO4Xs-0004jz-Mb
+	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 20:11:32 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HO3qX-0007zR-Fi
-	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 19:26:47 -0800
+	(Exim 4.44) id 1HO4Xt-0000sC-8Q
+	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 20:11:34 -0800
 In-Reply-To: message from Neil Brown on Monday March 5
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,26 +35,36 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Monday March 5, neilb@suse.de wrote:
+> On Monday March 5, neilb@suse.de wrote:
+> > 
+> > Ho hum.  Time to set a bug report off to glibc...
 > 
-> Ho hum.  Time to set a bug report off to glibc...
+> Looks like this has already been fixed. 
+> 
+> 2005-11-03  Roland McGrath  <roland@redhat.com>
+> 
+>         [BZ #1548]
+>         * sunrpc/svc.c (svc_getreqset): Use ffsl instead of ffs on fd_mask,
+>         make sure constant is long.
+>         From Jay Lan <jlan@engr.sgi.com>.
+> 
+> So it is fixed in glibc 2.4 and later which SuSE and RH ship, but not
+> in 2.3.6 which Debian and Ubuntu ship.
 
-Looks like this has already been fixed. 
+Filed as bug  413450 with Debian.
 
-2005-11-03  Roland McGrath  <roland@redhat.com>
+> 
+> I wonder how hard it would be to autodetect the libc version and
+> include a fix in nfs-utils if an old glibc were in use.....
 
-        [BZ #1548]
-        * sunrpc/svc.c (svc_getreqset): Use ffsl instead of ffs on fd_mask,
-        make sure constant is long.
-        From Jay Lan <jlan@engr.sgi.com>.
+I don't think I'll bother.  As the bug doesn't stop mountd from
+working, but just causes it to soak up CPU time,  I'm going to decide
+it isn't critical enough to warrant a gross hack, so my "official"
+position is that glibc needs to be fixed.
 
-So it is fixed in glibc 2.4 and later which SuSE and RH ship, but not
-in 2.3.6 which Debian and Ubuntu ship.
-
-I wonder how hard it would be to autodetect the libc version and
-include a fix in nfs-utils if an old glibc were in use.....
+Thanks for the bug report.
 
 NeilBrown
-
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
