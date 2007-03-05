@@ -1,27 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 001 of 3] knfsd: Use recv_msg to get peer address
-	for NFSD instead of code-copying
-Date: Tue, 6 Mar 2007 08:09:12 +1100
-Message-ID: <17900.34552.69250.247125@notabene.brown>
-References: <20070302151748.5226.patches@notabene> <1070302042825.5760@suse.de>
-	<200703051959.56914.olaf.kirch@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
+Date: Mon, 05 Mar 2007 16:37:58 -0500
+Message-ID: <1173130678.6315.7.camel@heimdal.trondhjem.org>
+References: <45EC7F0F.4090600@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: netdev@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Olaf Kirch <olaf.kirch@oracle.com>
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOKSD-0001wK-N6
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 13:10:45 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HOKSE-0003hx-3s
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 13:10:47 -0800
-In-Reply-To: message from Olaf Kirch on Monday March 5
+	id 1HOKsk-0004jM-6K
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 13:38:10 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOKsl-0007fX-48
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 13:38:12 -0800
+In-Reply-To: <45EC7F0F.4090600@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,57 +29,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday March 5, olaf.kirch@oracle.com wrote:
+On Mon, 2007-03-05 at 15:35 -0500, Steve Dickson wrote:
+> Over the last new months, I've been getting beaten up
+> about the fact the Fedora Core clients (FC5 and FC6)
+> no loner works with Tru64 server. The problem is
+> accessing mounted directories would fail with -ENOTDIR.
+> Similar to:
 > 
-> Hi Neil,
+> # ls /mnt/alpha/doc
+> /bin/ls: cannot open directory /mnt/alpha/doc: Not a directory
 > 
-> here's another minor comment:
+> After months of floundering around looking at ethereal
+> traces and such, I actually was able to trace down a
+> Tru64 server to test against (thanks you very much HP!).
 > 
-> On Friday 02 March 2007 05:28, NeilBrown wrote:
-> > +static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
-> > +					    struct cmsghdr *cmh)
-> >  {
-> >  	switch (rqstp->rq_sock->sk_sk->sk_family) {
-> >  	case AF_INET: {
-> > +		struct in_pktinfo *pki = CMSG_DATA(cmh);
-> > +		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-> >  		break;
-> > +		}
-> ...
+> Low and behold... it turns not to be a Linux client
+> bug at all... but only Linux clients failed because
+> they seem to actually care what fsids are being returned.
 > 
-> The daddr that is extracted here will only ever be used to build
-> another PKTINFO cmsg when sending the reply. So it would be
-> much easier to just store the raw control message in the svc_rqst,
-> without looking at its contents, and send it out along with the reply,
-> unchanged.
+> The problem is this: Tru64 server exporting Advfs fileystems
+> return sign extend fsids in most but not all NFS procedures.
+> 
+> Meaning most fattrs returned by the server have a fsid of:
+>      fsid: 0xffffffff8419f8d5
+> 
+> but in some procs (like READDIRPLUS) the fsid is
+>      fsid: 0x000000008419f8d5
+> 
+> Which is _clearly_ wrong and does not happen with UFS
+> exports on the same server.
+> 
+> So its my contention that Tru64 has been broken forever
+> since only Linux clients fail, which started due to the
+> following patch that went into 2.6.12:
 
-Yes, sounds tempting, doesn't it?
-Unfortunately it isn't that simple as I found out when the sunrpc code
-in glibc did exactly that.
+Sorry, but I really do not like the idea of fixing server bugs in the
+Linux client, and particularly not in generic code like this.
 
-You see sendmsg will use the interface-number as well as the source
-address from the PKTINFO structure.
+As far as I understood, this was a direct consequence of using the
+32bitclients export option to work around the old issues with 64-bit
+cookies on readdir. Is there really a need for this option now that
+we've ensured that readdir cookies are no longer exported to userland?
 
-Suppose my server has two interfaces (A and B) on two subnets that
-both are connected to some router which is connected to a third subnet
-that my client is on.  Further, suppose my server has only one default
-route, out interface A.
-The client chooses the IP address of interface B and sends a request.
-It arrives on interface B and is processed.
-If the PKTINFO received is passed unchanged to sendmsg, the pack will
-be sent out interface B.  But interfacve B doesn't have a route to
-that client, so the packet is dropped.
-
-This exactly what was happening for me with mountd a few years ago.
-
-So yes, we could just zero the interface field, but I think it is
-clearer to extract that wanted data, then re-insert it.  They really
-are different structures with different meanings (send verse receive)
-which happen to have the same layout.
-
-Thanks,
-NeilBrown
-
+Cheers
+  Trond
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
