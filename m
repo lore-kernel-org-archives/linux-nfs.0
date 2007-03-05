@@ -1,29 +1,23 @@
-From: "Matt Proud" <matt.proud.list@gmail.com>
-Subject: Re: Possible causes for rpc.mountd consuming 100 percent CPU.
-Date: Sun, 4 Mar 2007 22:32:03 -0600
-Message-ID: <a6a251db0703042032y742198f9oc0be3de5b59ae57@mail.gmail.com>
-References: <a6a251db0703041747l6e539890v7496b616aa8d5cc8@mail.gmail.com>
-	<17899.31457.535979.478100@notabene.brown>
-	<a6a251db0703041812h7bd3e771q690e30cc789189e0@mail.gmail.com>
-	<17899.35209.373099.331797@notabene.brown>
-	<17899.36266.588801.465727@notabene.brown>
-	<a6a251db0703042017l60a872f7ve93038b169a52968@mail.gmail.com>
-	<17899.39862.202935.678726@notabene.brown>
+From: Wei Yongjun <yjwei@nanjing-fnst.com>
+Subject: [PATCH] nfs-utils umount command does not use correct
+	TCP/UDP	protocol
+Date: Mon, 05 Mar 2007 07:43:06 -0500
+Message-ID: <1173098587.4825.9.camel@LINE>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HO4rm-0006gD-KN
-	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 20:32:06 -0800
-Received: from ug-out-1314.google.com ([66.249.92.175])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HO4rm-0006CK-9d
-	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 20:32:08 -0800
-Received: by ug-out-1314.google.com with SMTP id z38so1198021ugc
-	for <nfs@lists.sourceforge.net>; Sun, 04 Mar 2007 20:32:05 -0800 (PST)
-In-Reply-To: <17899.39862.202935.678726@notabene.brown>
+	id 1HOAsX-0002EY-PS
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 02:57:18 -0800
+Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOAsX-0005Sg-9f
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 02:57:20 -0800
+Received: from 192.168.100.160 ([192.168.1.58])
+	by proxy.fnst.com.cn (8.12.11/8.12.11) with ESMTP id l25Av2AX001257
+	for <nfs@lists.sourceforge.net>; Mon, 5 Mar 2007 18:57:03 +0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,72 +30,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil,
+After I install nfs-utils-1.0.12, the least release, I found that umount
+command can not use the correct TCP/UDP protocol as which it been mount.
 
-I filed a report with Ubuntu:
-https://launchpad.net/ubuntu/+source/glibc/+bug/89801.
+You can test this used following commands:
+#mount -t nfs -o proto=udp 127.0.0.1:/nfsroot /mnt
+#umount /mnt
+umount will use TCP protocol to do the umount process.
 
-We'll see who introduces a fix first.
+Following is my patch to fix this BUG.
 
-Thank you for your help.
+Signed-off-by: Wei Yongjun <yjwei@nanjing-fnst.com>
 
-Best,
+--- utils/mount/nfsumount.c.orig	2007-03-05 03:11:48.000000000 -0500
++++ utils/mount/nfsumount.c	2007-03-05 03:06:25.000000000 -0500
+@@ -103,31 +103,35 @@ int nfs_call_umount(clnt_addr_t *mnt_ser
+ 	return 0;
+ }
+ 
++static int
++contains(const char *list, const char *s) {
++	int n = strlen(s);
++	char *p, *rest = list;
++
++	while ((p = strstr(rest, s)) != NULL) {
++		if ((p == rest || p[-1] == ',' || p[-1] == '=')
++			&& (p[n] == '\0' || p[n] == ','))
++			return 1;
++
++                while (*rest && *rest++ != ',');
++		if(rest == NULL) break;
++        }
++        return 0;
++}
++
+ u_int get_mntproto(const char *);
+ u_int
+ get_mntproto(const char *dirname)
+ {
+-	FILE *mtab;
+-	struct mntent mntbuf;
+-	char tmpbuf[BUFSIZ];
++	struct mntentchn *mc;
+ 	u_int proto = IPPROTO_TCP; /* assume tcp */
+ 
+-	 mtab = setmntent ("/proc/mounts", "r");
+-	 if (mtab == NULL)
+-	 	mtab = setmntent (_PATH_MOUNTED, "r");
+-	if (mtab == NULL)
+-		return proto;
+-
+-	while(getmntent_r(mtab, &mntbuf, tmpbuf, sizeof (tmpbuf))) {
+-		if (strcmp(mntbuf.mnt_type, "nfs"))
+-			continue;
+-		if (strcmp(dirname,  mntbuf.mnt_fsname))
+-			continue;
+-		if (hasmntopt(&mntbuf, "udp"))
+-			proto = IPPROTO_UDP;
+-		break;
+-	}
+-	endmntent (mtab);
++	mc = getmntdirbackward(dirname, NULL);
++	if (!mc)
++		mc = getmntdevbackward(dirname, NULL);
++
++	if(mc && contains(mc->m.mnt_opts, "udp"))
++		proto = IPPROTO_UDP;
+ 
+ 	return proto;
+ }
 
-Matt
 
-On 3/4/07, Neil Brown <neilb@suse.de> wrote:
-> On Sunday March 4, matt.proud.list@gmail.com wrote:
-> > Yeah, I just pulled the CVS code and discovered that, too.
-> >
-> > I will contact the Ubuntu and Debian package maintainers about asking
-> > them to backport a fix.
-> >
-> > What would need to be done in nfs-utils to hotfix this, aside from
-> > detecting glibc version?
->
-> Easiest hot-fix is simply the patch below.
->
-> NeilBrown
->
->
-> --- a/utils/mountd/svc_run.c
-> +++ b/utils/mountd/svc_run.c
-> @@ -58,6 +58,24 @@ void cache_set_fds(fd_set *fdset);
->  int cache_process_req(fd_set *readfds);
->
->
-> +static void
-> +my_svc_getreqset (fd_set *readfds)
-> +{
-> +  register fd_mask mask;
-> +  register fd_mask *maskp;
-> +  register int setsize;
-> +  register int sock;
-> +  register int bit;
-> +
-> +  setsize = _rpc_dtablesize ();
-> +  if (setsize > FD_SETSIZE)
-> +    setsize = FD_SETSIZE;
-> +  maskp = readfds->fds_bits;
-> +  for (sock = 0; sock < setsize; sock += NFDBITS)
-> +    for (mask = *maskp++; (bit = ffsl (mask)); mask ^= (1L << (bit - 1)))
-> +       svc_getreq_common (sock + bit - 1);
-> +}
-> +
->  /*
->   * The heart of the server.  A crib from libc for the most part...
->   */
-> @@ -87,7 +105,7 @@ my_svc_run(void)
->                 default:
->                         selret -= cache_process_req(&readfds);
->                         if (selret)
-> -                               svc_getreqset(&readfds);
-> +                               my_svc_getreqset(&readfds);
->                 }
->         }
->  }
->
->
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
