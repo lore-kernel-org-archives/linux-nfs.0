@@ -1,31 +1,23 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
+From: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
 Subject: Re: Oops in lockd (2.6.20.1)
-Date: Mon, 5 Mar 2007 18:49:18 +0100
-Message-ID: <200703051849.18808.olaf.kirch@oracle.com>
+Date: Mon, 5 Mar 2007 18:54:33 +0100
+Message-ID: <20070305175433.GB7892@sith.mimuw.edu.pl>
 References: <20070305134706.GA6072@sith.mimuw.edu.pl>
 	<200703051636.06411.olaf.kirch@oracle.com>
 	<1173111509.6470.29.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Olaf Kirch <olaf.kirch@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOHLj-00072i-He
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 09:51:51 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HOHLj-0005pM-Fw
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 09:51:53 -0800
-Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l25HpBVW004175
-	for <nfs@lists.sourceforge.net>; Mon, 5 Mar 2007 11:51:12 -0600
-Received: from rcsmt250.oracle.com (rcsmt250.oracle.com [148.87.90.195])
-	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l25HH4ZS009999
-	for <nfs@lists.sourceforge.net>; Mon, 5 Mar 2007 10:51:09 -0700
+	id 1HOHOM-0007Kr-Ob
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 09:54:38 -0800
+Received: from sith.mimuw.edu.pl ([193.0.96.4] ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOHON-0003yc-KU
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 09:54:37 -0800
 In-Reply-To: <1173111509.6470.29.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -39,15 +31,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday 05 March 2007 17:18, Trond Myklebust wrote:
-> Already fixed in 2.6.21-rc1 mainline.
+On Mon, 05 Mar 2007, Trond Myklebust wrote:
 
-Nice :)
+> Already fixed in 2.6.21-rc1 mainline. See
+> 
+> http://client.linux-nfs.org/Linux-2.6.x/2.6.20/linux-2.6.20-001-fix_nlm_async_call.dif
 
-Olaf
+Thank you :)
+I'll test it tomorrow and I really hope my problems with
+unresponsive/dying lockd will go away at last.
+
+Jan
 -- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Jan Rekorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
