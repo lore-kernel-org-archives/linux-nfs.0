@@ -1,18 +1,21 @@
-From: "masteryb" <yiehsh@foundationlog.com>
-Subject: =?GB2312?B?ueO2qyDQwrS6ILTzINDNINXQIMa4ILvh?=
-Date: Mon, 5 Mar 2007 09:34:44 +0800
-Message-ID: <E1HO25z-0002Xg-P8@mail.sourceforge.net>
-Content-Type: multipart/mixed; boundary="===============1119846834=="
-To: "nfs" <nfs@lists.sourceforge.net>
+From: "Matt Proud" <matt.proud.list@gmail.com>
+Subject: Possible causes for rpc.mountd consuming 100 percent CPU.
+Date: Sun, 4 Mar 2007 19:47:52 -0600
+Message-ID: <a6a251db0703041747l6e539890v7496b616aa8d5cc8@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HO261-0007cC-II
-	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 17:34:37 -0800
-Received: from [58.63.158.162] (helo=foundationlog.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HO25z-0002Xg-P8
-	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 17:34:39 -0800
+	id 1HO2Ip-0000OB-Mi
+	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 17:47:51 -0800
+Received: from wr-out-0506.google.com ([64.233.184.224])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HO2Ir-0001wT-Hq
+	for nfs@lists.sourceforge.net; Sun, 04 Mar 2007 17:47:53 -0800
+Received: by wr-out-0506.google.com with SMTP id i30so1230954wra
+	for <nfs@lists.sourceforge.net>; Sun, 04 Mar 2007 17:47:52 -0800 (PST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,210 +28,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1119846834==
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+Hello,
 
+I am curious why rpc.mountd would be consuming 100 percent CPU on a
+mail server. I have noticed this periodically, and it does not appear
+to matter how overloaded the server is with respect to mail clients.
 
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
+I have started rpc.mountd with debugging enabled, and so far nothing
+interesting appears in the logs. NFS functions perfectly on the
+client-side.
 
-=A1=A1=A1=A1=A1=A1=A1=A1 2 O O 7 =C4=EA =B9=E3 =B6=AB =D0=C2 =B4=BA =B4=F3=
- =D0=CD =CF=D6 =B3=A1 =D5=D0 =C6=B8 =BB=E1 -- =D1=FB - =C7=EB - =BA=AF
+Here's a brief description of the setup:
 
+Mail resides on the mail server locally, and it is exported to
+clients. The chief way for clients to access the mail is via IMAP, but
+we do export the mail for the convenience of our power-users who care
+to manually grep through mail data. Mail is stored in the maildir
+format. Given this context, the amount of manual access that occurs
+over NFS for this mail is miniscule, so I am surprised to see this
+happening.
 
-=A1=EF=CD=F9=BD=EC=C3=BF=B3=A1=D5=D0=C6=B8=BB=E1=C7=F3=D6=B0=C8=CB=B2=C5=B4=
-=EF40000=C8=CB=D2=D4=C9=CF=A3=AC=BB=E1=B3=A1=CB=F9=CF=DE=A3=AC=D5=B9=CE=BB=
-=BD=F4=D5=C5=A3=A1=C7=EB=CC=E1=C7=B0=C0=B4=B5=E7=B6=A8=CE=BB=A3=A1=A1=EF
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
-=A1=EF=A1=EF=A1=EF=CF=B5 =C1=D0 =D5=D0 =C6=B8 =BB=E1 =B5=C4 =B3=A1 =B4=CE=
- =B0=B2 =C5=C5
+The mail server is running Ubuntu 6.06 with kernel 2.6.15-28-amd64-k8.
+NFS is version 1.0.7-3ubuntu2. The mail data is stored on a RAID1
+array on a tuned ext3 filesystem. We are considering switching to
+RAID10 in the near future, even though we have not experienced many
+I/O bottlenecks.
 
-=BE=D9-=B0=EC-=CA=B1-=BC=E4          =D5=D0-=C6=B8-=D6=F7-=CC=E2	        =
-              =BE=D9-=B0=EC-=B5=D8-=B5=E3
+When rpc.mountd acts funny, an attached strace reveals the a select
+function call occurring very rapidly:
 
-2OO7=C4=EA3=D4=C2lO-ll=C8=D5    >=CD=E2=C9=CC=CD=B6=D7=CA=BC=B0=B9=FA=C4=DA=
-=D6=AA=C3=FB=C6=F3=D2=B5=D7=A8=B3=A1	            =B9=E3-=D6=DD=CC=EC-=BA=D3=
- =CC=E5-=D3=FD =D6=D0-=D0=C4 =20
+select(1024, [3 4 5 6 7 32 33 34 35 36 37 38 39 40], NULL, NULL, NULL)
+= 9 (in [32 33 34 35 36 37 38 39 40])
 
-2OO7=C4=EA3=D4=C2l7-l8=C8=D5    >=BC=BC=CA=F5=A1=A2=B9=DC=C0=ED=A1=A2=D3=AA=
-=CF=FA=B4=F3=D0=CD=D7=A8=B3=A1=D5=D0=C6=B8=BB=E1         =B9=E3-=D6=DD=CC=
-=EC-=BA=D3-=CC=E5-=D3=FD-=D6=D0-=D0=C4 =20
+When rpc.mountd behaves normally a periodic select statement with
+fewer file descriptors is called periodically.
 
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
-=A1=EF=A1=EF=A1=EF=D5=B9-=CE=BB-=B7=D1-=D3=C3
+We currently have the following options set:
 
-=A1=F1 l. =B1=EA-=D7=BC=D5=B9-=CE=BB=B7=D1=A3=BARMB l2OO=D4=AA=A3=BB
-=09
-=A1=F1 2. VIP =D5=B9-=CE=BB-=B7=D1=A3=BARMB 2OOO=D4=AA=A3=BB
+options lockd nlm_udpport=32768 nlm_tcpport=32768
 
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
+/var/maildir    localhost(rw,sync,no_root_squash) \
+                        @mail_clients(rw,sync) @nfs_server(rw,sync) \
+                        xxxx(rw,sync) xxxxxxxx(rw,sync) \
+                        xxxxxx(rw,sync,no_root_squash) xxxx.xxx.xxx.xxx(ro,sync)
 
-=A1=EF=A1=EF=A1=EF=B2=CE=D5=B9=B5=E7=BB=B0=A3=BA
+Our clients have the following set:
 
-=B5=E7=BB=B0=A3=BA=A3=B0=A3=B2=A3=B0=A3=AD=A3=B8=A3=B6=A3=B9=A3=AC=A3=B8=A3=
-=B0=A3=B1=A3=AC=A3=B8=A3=B9=A1=A1 =A1=A1=A3=B8=A3=B8=A3=B1=A3=AC=A3=B3=A3=
-=B9=A3=B8=A3=AC=A3=B6=A3=B9=A1=A1 =B3=C2 =CF=C8 =C9=FA=A1=A2=CE=E2 =D0=A1=
- =BD=E3
+maildir -fstype=nfs,_netdev,tcp,timeo=600,retrans=2,rsize=32768,wsize=32768,hard,intr,nosuid,nodev,noacl,rw
+    mail:/var/maildir
 
-=B4=AB=D5=E6=A3=BA=A3=B0=A3=B2=A3=B0=A3=AD=A3=B8 =A3=B6 =A3=B9 =A3=AC=A3=B8=
- =A3=B0 =A3=B7 =A3=AC=A3=B8 =A3=B6
+If the kernel server is restarted, rpc.mountd behaves normally for a time.
 
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
+The server is multi-core, so the consumption is not a major problem;
+but the fact that it is occurring is troubling.
 
-  =CE=AA=C1=CB=B8=FC=BA=C3=B5=D8=B7=FE=CE=F1=B9=E3=B6=AB=BE=AD=BC=C3=BD=A8=
-=C9=E8=A3=AC=D2=FD=BD=F8=C8=CB=B2=C5=A3=AC=D0=AD=D6=FA=D3=C3=C8=CB=B5=A5=CE=
-=BB=D4=DA2OO7=C4=EA=B5=DA=D2=BB=CA=B1=BC=E4=CE=FC=D2=FD=A1=A2=D5=D0=C4=BC
+Best,
 
-=D3=C5=D0=E3=C8=CB=B2=C5=A3=AC=B7=A2=BB=D3=B3=A3=C9=E8=D0=CD=CA=D0=B3=A1=D4=
-=DA=BB=AA=C4=CF=C7=F8=D3=F2=C4=DA=B5=C4=C8=CB=B2=C5=BD=BB=C1=F7=D6=F7=C7=FE=
-=B5=C0=D7=F7=D3=C3=A3=AC=BE=AD=D5=FE=B8=AE=B2=BF=C3=C5=C5=FA=D7=BC=D7=C8=B6=
-=A8=D3=DA
-
-2OO7=C4=EA3=D4=C23-4=C8=D5=A1=A2lO-ll=C8=D5=A1=A2l7-l8=C8=D5=D4=DA=B9=E3=D6=
-=DD=CC=EC=BA=D3=CC=E5=D3=FD=D6=D0=D0=C4l2OOO=C6=BD=B7=BD=C3=D7=B5=C4=B3=A1=
-=B5=D8=BE=D9=B0=EC=A1=B02OO7=C4=EA
-
-=B4=BA=BC=BE=CF=B5=C1=D0=B4=F3=D0=CD=CF=D6=B3=A1=D5=D0=C6=B8=BB=E1=A1=B1=A1=
-=A3=BB=EE=B6=AF=CD=BB=B3=F6=D2=D4=B9=E6=C4=A3=A1=A2=B4=B4=D0=C2=B7=FE=CE=F1=
-=BA=CD=D7=CA=D4=B4=D5=FB=BA=CF=B7=FE=CE=F1=CE=AA=CC=D8=B5=E3=A3=AC=D2=D4=D7=
-=EE=B4=F3
-
-=CF=DE=B6=C8=C2=FA=D7=E3=BF=CD=BB=A7=B5=C4=CD=FA=BC=BE=D5=D0=C6=B8=D0=E8=C7=
-=F3=A1=A3=CF=D6=CC=D8=CF=F2=B9=F3=B9=AB=CB=BE=B7=A2=B3=F6=D1=FB=C7=EB=A3=A1
-
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
-=A1=EF=A1=EF=A1=EF=D5=D0--=C6=B8--=BB=E1--=B9=E6--=C4=A3--=BC=B0--=B3=A1-=
--=C7=F8--=B2=BC--=D6=C3
-
-    l2OOO=C6=BD=B7=BD=C3=D7=B3=A1=B5=D8=CA=C7=C4=BF=C7=B0=B9=E3=D6=DD=D7=EE=
-=B4=F3=B5=C4=D5=D0=C6=B8=BB=E1=B3=A1=A3=AC=D4=A4=BC=C6=B4=CB=B4=CE=CF=B5=C1=
-=D0=D5=D0=C6=B8=BB=EE=B6=AF=BF=C9=C8=DD=C4=C92OOO=BC=D2=D2=D4
-=C9=CF=B5=C4=D3=C3=C8=CB=B5=A5=CE=BB=A3=AC4-6=CD=F2=C8=CB=B2=C5=D4=F1=D2=B5=
-=A1=A3=CE=AA=CC=E1=B8=DF=CF=D6=B3=A1=D5=D0=C6=B8=D0=A7=B9=FB=A3=AC=BA=CF=C0=
-=ED=CA=E8=B5=BC=C8=CB=C1=F7=A3=AC=CF=D6=B3=A1=B2=C9=D3=C3=C8=AB=D0=C2=B5=C4=
-=B7=D6
-=D0=D0=D2=B5=A1=A2=C7=F8=D3=F2=B2=BC=D6=C3=A3=AC=B9=B2=C9=E8=D2=D4=CF=C2=CA=
-=AE=B4=F3=D5=B9=C7=F8=A3=BA
-
-  A=C7=F8=A3=BAIT=CD=A8=D0=C5=A1=A2=CD=F8=C2=E7=BC=BC=CA=F5=A1=A2=B5=E7=D7=
-=D3=B5=E7=C6=F7=D0=D0=D2=B5=D5=D0=C6=B8=D7=A8=C7=F8
-  B=C7=F8=A3=BA=B9=A4=D2=B5=D6=C6=D4=EC=A1=A2=BB=FA=D0=B5=BB=AF=B9=A4=A1=A2=
-=CE=E5=BD=F0=C4=A3=BE=DF=A1=A2=C4=DC=D4=B4=BB=FA=B5=E7=A1=A2=B0=FC=D7=B0=D3=
-=A1=CB=A2=B5=C8=D0=D0=D2=B5=D5=D0=C6=B8=D7=A8=C7=F8
-  C=C7=F8=A3=BA=B7=BF=B5=D8=B2=FA=A1=A2=BD=A8=D6=FE=A1=A2=BD=A8=B2=C4=A1=A2=
-=BC=D2=BE=E3=B5=C6=CA=CE=A1=A2=CE=EF=B9=DC=D0=D0=D2=B5=D5=D0=C6=B8=D7=A8=C7=
-=F8
-  D=C7=F8=A3=BA=C6=FB=B3=B5=A1=A2=C6=FB=C5=E4=A1=A2=CE=EF=C1=F7=A1=A2=BE=C6=
-=B5=EA=C2=C3=D3=CE=A1=A2=B2=CD=D2=FB=B7=FE=CE=F1=D0=D0=D2=B5=D7=A8=C7=F8
-  E=C7=F8=A3=BA=B7=FE=D7=B0=A1=A2=D0=AC=C3=B1=A1=A2=C6=A4=BE=DF=A1=A2=B7=C4=
-=D6=AF=BC=B0=C6=E4=CB=FB=C7=E1=B9=A4=D2=B5=D5=D0=C6=B8=D7=A8=C7=F8
-  F=C7=F8=A3=BA=C3=C0=C8=DD=A1=A2=BB=AF=D7=B1=A1=A2=D2=BD=D2=A9=A1=A2=D2=BD=
-=C1=C6=A1=A2=C9=FA=CE=EF=BF=C6=BC=BC=D0=D0=D2=B5=D5=D0=C6=B8=D7=A8=C7=F8
-  G=C7=F8=A3=BA=BD=F0=C8=DA=A1=A2=B1=A3=CF=D5=A1=A2=BD=CC=D3=FD=C5=E0=D1=B5=
-=A1=A2=B9=E3=B8=E6=B4=AB=C3=BD=D0=D0=D2=B5=D5=D0=C6=B8=D7=A8=C7=F8
-  H=C7=F8=A3=BA=D6=AA=C3=FB=C6=F3=D2=B5VIP=D5=D0=C6=B8=D7=A8=C7=F8=F4=DF=D0=
-=CE=CF=F3=D5=B9=CA=BE=C7=F8
-  I=C7=F8=A3=BA=D3=A6=BD=EC=B1=CF=D2=B5=C9=FA=C6=F3=D2=B5=D5=D0=C6=B8=D7=A8=
-=C7=F8
-  J=C7=F8=A3=BA=C6=E4=CB=FB=D0=D0=D2=B5=D7=DB=BA=CF=C7=F8
-
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
-=A1=EF=A1=EF=A1=EF=C6=B7--=C5=C6--=B7=FE--=CE=F1
-
-l=A1=A2=B3=A1=B5=D8=A3=BA=CC=E5=D3=FD=D6=D0=D0=C4=CA=C7=C4=BF=C7=B0=B9=E3=
-=B6=AB=D7=EE=B4=F3=C9=CC=D2=B5=A1=A2=CE=C4=BB=AF=A1=A2=C8=CB=B2=C5=BC=AF=D6=
-=D0=C7=F8=D3=F2=A3=AC=C3=BF=D6=DC=C1=F9=A1=A2=C8=D5=C8=CB=C1=F7=C1=BF=B3=AC=
-=B9=FD=B0=D9
-   =CD=F2=A1=A2=C8=CB=B2=C5=C1=F7=B6=AF=C1=BF=B3=AC=B9=FD5=CD=F2=C8=CB=A3=
-=AC=C3=BF=C4=EA=C4=EA=B3=F5=BA=CD=C4=EA=CE=B2=B5=C4=CC=EC=BA=D3=CC=E5=D3=FD=
-=D6=D0=D0=C4=BD=BB=C1=F7=BB=E1=CA=C7=CA=A1=C4=DA=D7=EE=BE=DF=D3=B0=CF=EC=C1=
-=A6=B5=C4
-   =C8=CB=B2=C5=D5=D0=C6=B8=C6=B7=C5=C6=D6=AE=D2=BB=A1=A3
-2=A1=A2=CF=D6=B3=A1=B7=FE=CE=F1=A3=BA=CF=D6=B3=A1=B2=CE=BB=E1=C8=CB=D4=B1=
-=B2=CD=D2=FB=A1=A2=CE=C4=BE=DF=A1=A2=B1=ED=B8=F1=BC=B0llO*l2Ocm=B2=CA=C9=AB=
-=C5=E7=BB=E6=BA=A3=B1=A8=A1=A3
-3=A1=A2=CF=E0=B9=D8=D6=B0=C4=DC=B2=BF=C3=C5=CC=E1=B9=A9=D3=D0=B9=D8=B9=FA=
-=BC=D2=D3=C3=B9=A4=D5=FE=B2=DF=A1=A2=C9=E7=BB=E1=B1=A3=CF=D5=A1=A2=C8=CB=B2=
-=C5=D2=FD=BD=F8=B5=C8=B7=FE=CE=F1=A1=A3
-
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
-=A1=EF=A1=EF=A1=EF=D5=D0-=C6=B8-=B5=A5-=CE=BB-=D0=EB-=D6=AA:
-
-l=A1=A2=CC=E1=B9=A9=A1=B6=D3=AA=D2=B5=D6=B4=D5=D5=A1=B7=B8=B1=B1=BE=B8=B4=
-=D3=A1=BC=FE=B2=A2=BC=D3=B8=C7=B9=AB=D5=C2=A3=BB
-
-2=A1=A2=CC=E1=B9=A9=D5=D0=C6=B8=BA=A3=B1=A8=CE=C4=D7=D6=B8=E5=A3=A8=BA=AC=
-=B9=AB=CB=BE=BC=F2=BD=E9=A1=A2LOGO=A1=A2=D6=B0=CE=BB=D2=AA=C7=F3=B5=C8=A3=
-=A9
-
-3=A1=A2=CF=D6=B3=A1=D5=D0=C6=B8=B5=A5=CE=BB=B2=BB=B5=C3=CA=D5=C8=A1=C7=F3=
-=D6=B0=C8=CB=D4=B1=C8=CE=BA=CE=B7=D1=D3=C3=A3=BB
-
-4=A1=A2=D3=C9=D3=DA=D5=B9=CE=BB=D3=D0=CF=DE=A3=AC=B1=A8=C3=FB=B4=D3=CB=D9=
-=B2=A2=B0=B4=B1=A8=C3=FB=CF=C8=BA=F3=CD=F8=C9=CF=D0=FB=B4=AB=BA=CD=B0=B2=C5=
-=C5=D5=B9=CE=BB=A1=A3
-
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=
-=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=A5=A9=
-=A5=A9=A5
-
-=A1=EF =D5=B9 =CE=BB =B7=D1=A3=BARMB1200=D4=AA        =A1=F1 V I P =D5=B9=
- =CE=BB =B7=D1=A3=BARMB2000=D4=AA
-
-=A1=EF =B1=A8 =C3=FB =D7=C9 =D1=AF =B5=E7 =BB=B0=A3=BA=A3=B0 =A3=B2 =A3=B0=
- =A3=AD =A3=B8 =A3=B6 =A3=B9 =A3=B8 =A3=B0 =A3=B1 =A3=B8 =A3=B9  =B3=C2 =CF=
-=C8 =C9=FA=A1=A2=CE=E2 =D0=A1 =BD=E3
-
-=A1=EF =B5=E7=D7=D3=D3=CA=CF=E4=A3=BAgzzhaoPin@163.com
-
-739592   ///  masteryb   ///   nfs@lists.sourceforge.net
-
-
---===============1119846834==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Matt
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1119846834==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1119846834==--
