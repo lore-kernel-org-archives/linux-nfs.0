@@ -1,28 +1,19 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: mountd memory leaks in 1.0.12
-Date: Tue, 6 Mar 2007 15:59:07 +0100
-Message-ID: <20070306145907.GA31463@uio.no>
-References: <20070306125230.GA30735@uio.no>
+From: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
+Subject: lockd not responding
+Date: Tue, 6 Mar 2007 21:17:54 +0100
+Message-ID: <20070306201754.GB20115@sith.mimuw.edu.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOb8v-00069U-5f
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:57 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HOb8v-00085a-0J
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:59 -0800
-Received: from trofast.sesse.net ([129.241.93.32])
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HOb8Z-0001H0-FY
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 15:59:35 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1HOb87-0008CL-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 Mar 2007 15:59:07 +0100
-In-Reply-To: <20070306125230.GA30735@uio.no>
+	id 1HOg6g-0001n6-92
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 12:18:00 -0800
+Received: from sith.mimuw.edu.pl ([193.0.96.4] ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOg6g-0007Ew-1I
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 12:18:00 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,28 +26,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Mar 06, 2007 at 01:52:30PM +0100, Steinar H. Gunderson wrote:
-> Over time, this amounts to gigabytes of RAM on a busy server. Either the
-> blkid library is generally really leaky (in which case we probably shouldn't
-> be using it until it's fixed), or we're using it wrong somehow. :-)
+Hi,
+After applying Trond's patches the oops problem went away but now I'm
+back to comatose lockd.
 
-I found the leaks in libblkid (see the separate e-mail I sent). This patch
-fixes a minor leak in mountd itself, and with the patch applied and a fixed
-libblkid, it appears that mountd is no longer leaking memory.
+rainbow is a NFS server, sith a random client:
 
---- nfs-utils-1.0.12.orig/support/export/client.c       2007-03-06 15:51:39.000000000 +0100
-+++ nfs-utils-1.0.12/support/export/client.c    2007-03-06 15:51:53.000000000 +0100
-@@ -329,6 +329,7 @@
-                strcat(new, ",");
-                strcat(new, cp);
-        }
-+       free(old);
-        return new;
- }
+[baggins@sith ~]$ rpcinfo -p rainbow | grep lock
+    100021    1   udp  32774  nlockmgr
+    100021    3   udp  32774  nlockmgr
+    100021    4   udp  32774  nlockmgr
+    100021    1   tcp  37150  nlockmgr
+    100021    3   tcp  37150  nlockmgr
+    100021    4   tcp  37150  nlockmgr
 
-/* Steinar */
+[baggins@sith ~]$ rpcinfo -u rainbow 100021
+rpcinfo: RPC: Timed out
+program 100021 version 0 is not available
+
+[baggins@sith ~]$ rpcinfo -t rainbow 100021
+rpcinfo: RPC: Timed out
+program 100021 version 0 is not available
+
+[baggins@sith ~]$ telnet rainbow 37150
+Trying 10.1.1.4.37150...
+Connected to rainbow.mimuw.edu.pl.
+Escape character is '^]'.
+^]
+telnet>
+
+[root@rainbow ~]# ps aux | grep "\[lockd\]"
+root      3786  0.0  0.0      0     0 ?        S    01:55   0:00 [lockd]
+
+So, lockd is up and running, I can connect to it, but it's not responding
+to RPC calls, what's interesting that it works just after the reboot and
+only after some time it stops.
+
+I also see a lot of these in logs on server
+(red13 is another NFS client):
+
+portmap: server red13 not responding, timed out
+lockd: server red13 not responding, timed out
+lockd: couldn't create RPC handle for red13
+
+Looks to me that lockd loops over some dead client and is so wind up in
+doing so that it has no time to answer new calls.
+
+Jan
 -- 
-Homepage: http://www.sesse.net/
+Jan Rekorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
