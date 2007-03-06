@@ -1,28 +1,25 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
-Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
-Date: Tue, 6 Mar 2007 11:11:51 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0703061104240.4177@maggie.lkpg.cendio.se>
-References: <45EC7F0F.4090600@RedHat.com>
-	<1173130678.6315.7.camel@heimdal.trondhjem.org>
-	<45EC8FD3.4010809@redhat.com>
-	<1173132182.6315.27.camel@heimdal.trondhjem.org>
-	<45EC9837.1010504@redhat.com>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: mountd memory leaks in 1.0.12
+Date: Tue, 6 Mar 2007 13:52:30 +0100
+Message-ID: <20070306125230.GA30735@uio.no>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-776233001-1173175465=:4177"
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOWeK-0001i1-PW
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 02:12:05 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOWeK-0005qA-5K
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 02:12:06 -0800
-Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
-	by mail.cendio.se (Postfix) with ESMTP id 1625225DA34
-	for <nfs@lists.sourceforge.net>; Tue,  6 Mar 2007 11:11:51 +0100 (CET)
-In-Reply-To: <45EC9837.1010504@redhat.com>
+	id 1HOZAS-0001Sy-Ik
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 04:53:24 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOZAR-00042r-6t
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 04:53:26 -0800
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HOZA1-0007Dd-3X
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 13:52:57 +0100
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1HOZ9a-00081R-00
+	for <nfs@lists.sourceforge.net>; Tue, 06 Mar 2007 13:52:30 +0100
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,74 +32,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Hi,
 
---789237761-776233001-1173175465=:4177
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <Pine.LNX.4.64.0703061106211.4177@maggie.lkpg.cendio.se>
+A user reported that 1.0.12 is leaking memory like crazy, and I can reproduce
+it here. Running valgrind (with the Omega tool) on mountd reveals that the
+new blkid code is the culprit, but almost every single leak seems to be
+_allocated_ at the same spot, namely at blkid_probe_all_new() time.
 
-On Mon, 5 Mar 2007, Peter Staubach wrote:
+A typical leaks goes like this:
 
-> > Hacking the fsid on behalf of the server is certainly vetoed.
->=20
-> Well, I find it a little hard to imagine that anyone would choose
-> a combination of fsids which would cause this to do the wrong thing,
-> but okay.  It is definitely a heuristic and thus, subject to possible
-> failure, no matter how remote.
+  ==9584== Loss Record 7: Leaked 974848 (0xEE000) bytes in 14 blocks
+  ==9584==    at 0x4030D80: blkid_verify (probe.c:914)
+  ==9584==    by 0x402D981: blkid_get_dev (devname.c:82)
+  ==9584==    by 0x402DBDE: probe_one (devname.c:145)
+  ==9584==    by 0x402E7CB: probe_all (devname.c:510)
+  ==9584==    by 0x402E983: blkid_probe_all_new (devname.c:551)
+  ==9584==    by 0x804D26E: get_uuid (cache.c:173)
+  ==9584==    by 0x804DDA7: dump_to_cache (cache.c:461)
+  ==9584==    by 0x804E31A: cache_export_ent (cache.c:596)
+  ==9584==    by 0x804E454: cache_export (cache.c:625)
+  ==9584==    by 0x804B106: get_rootfh (mountd.c:421)
+  ==9584==    by 0x804AE41: mount_mnt_3_svc (mountd.c:350)
+  ==9584==    by 0x8055A1A: rpc_dispatch (rpcdispatch.c:55)
+  ==9584==  Blocks allocated
+  ==9584==    at 0x401CDA0: malloc (vg_replace_malloc.c:149)
+  ==9584==    by 0x402F28B: get_buffer (probe.c:56)
+  ==9584==    by 0x4030B64: blkid_verify (probe.c:862)
+  ==9584==    by 0x402D981: blkid_get_dev (devname.c:82)
+  ==9584==    by 0x402DBDE: probe_one (devname.c:145)
+  ==9584==    by 0x402E7CB: probe_all (devname.c:510)
+  ==9584==    by 0x402E983: blkid_probe_all_new (devname.c:551)
+  ==9584==    by 0x804D26E: get_uuid (cache.c:173)
+  ==9584==    by 0x804DDA7: dump_to_cache (cache.c:461)
+  ==9584==    by 0x804E31A: cache_export_ent (cache.c:596)
+  ==9584==    by 0x804E454: cache_export (cache.c:625)
+  ==9584==    by 0x804B106: get_rootfh (mountd.c:421)
 
-The different userspace servers, such as unfs3, often uses non-obvious=20
-fsid:s and fileid:s. Modern versions of unfs3 uses "real" fsid:s on UNIX,=
-=20
-but hashed fsid:s on Windows.=20
+Over time, this amounts to gigabytes of RAM on a busy server. Either the
+blkid library is generally really leaky (in which case we probably shouldn't
+be using it until it's fixed), or we're using it wrong somehow. :-)
 
-
-> Perhaps the right thing to do is to revert the NFSv2/NFSv3 support
-> completely and not have them worry about changing fsids?  The common
-> practice is to use an automounting facility or static mounts to
-> construct namespaces for NFSv2/NFSv3 networks.  It is really only
-> with the advent of NFSv4 that the fsids actually become interesting
-> and something that the client needs to be aware of.
-
-I disagree. This new support for mount point crossing is wonderful. It's=20
-very useful with unfs3, since it allows for re-exporting file systems in a=
-=20
-very nice way. It's not just for NFSv4.=20
-
-
-> Or we could just punt and document that READDIRPLUS must be disabled
-> on all Tru64 NFS servers if this problem is seen.
-
-Sounds like a much better solution. I agree with Trond; we shouldn't fix=20
-server bugs in the client, and certainly not if this means less=20
-functionality.
-
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-776233001-1173175465=:4177
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-776233001-1173175465=:4177
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-776233001-1173175465=:4177--
