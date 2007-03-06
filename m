@@ -1,25 +1,27 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: mountd memory leaks in 1.0.12
-Date: Tue, 6 Mar 2007 13:52:30 +0100
-Message-ID: <20070306125230.GA30735@uio.no>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
+Date: Tue, 06 Mar 2007 08:05:08 -0500
+Message-ID: <1173186308.6393.7.camel@heimdal.trondhjem.org>
+References: <45EC7F0F.4090600@RedHat.com>
+	<1173130678.6315.7.camel@heimdal.trondhjem.org>
+	<45EC8FD3.4010809@redhat.com>
+	<1173132182.6315.27.camel@heimdal.trondhjem.org>
+	<45EC9837.1010504@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
+	Steve Dickson <SteveD@redhat.com>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOZAS-0001Sy-Ik
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 04:53:24 -0800
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOZAR-00042r-6t
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 04:53:26 -0800
-Received: from trofast.sesse.net ([129.241.93.32])
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HOZA1-0007Dd-3X
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 13:52:57 +0100
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1HOZ9a-00081R-00
-	for <nfs@lists.sourceforge.net>; Tue, 06 Mar 2007 13:52:30 +0100
+	id 1HOZM8-0002gj-EE
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 05:05:28 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOZM9-0007Ee-8K
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 05:05:30 -0800
+In-Reply-To: <45EC9837.1010504@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Mon, 2007-03-05 at 17:22 -0500, Peter Staubach wrote:
+> Perhaps the right thing to do is to revert the NFSv2/NFSv3 support
+> completely and not have them worry about changing fsids?  The common
+> practice is to use an automounting facility or static mounts to
+> construct namespaces for NFSv2/NFSv3 networks.  It is really only
+> with the advent of NFSv4 that the fsids actually become interesting
+> and something that the client needs to be aware of.
 
-A user reported that 1.0.12 is leaking memory like crazy, and I can reproduce
-it here. Running valgrind (with the Omega tool) on mountd reveals that the
-new blkid code is the culprit, but almost every single leak seems to be
-_allocated_ at the same spot, namely at blkid_probe_all_new() time.
+That is not quite true. It has been a problem on NFSv2/v3 ever since
+IRIX introduced the 'nohide' export option (which was later copied by
+the Linux server). There are only too many programs out there that are
+easily fooled by the combination of hard links and non-unique inode
+numbers.
 
-A typical leaks goes like this:
+> Or we could just punt and document that READDIRPLUS must be disabled
+> on all Tru64 NFS servers if this problem is seen.
 
-  ==9584== Loss Record 7: Leaked 974848 (0xEE000) bytes in 14 blocks
-  ==9584==    at 0x4030D80: blkid_verify (probe.c:914)
-  ==9584==    by 0x402D981: blkid_get_dev (devname.c:82)
-  ==9584==    by 0x402DBDE: probe_one (devname.c:145)
-  ==9584==    by 0x402E7CB: probe_all (devname.c:510)
-  ==9584==    by 0x402E983: blkid_probe_all_new (devname.c:551)
-  ==9584==    by 0x804D26E: get_uuid (cache.c:173)
-  ==9584==    by 0x804DDA7: dump_to_cache (cache.c:461)
-  ==9584==    by 0x804E31A: cache_export_ent (cache.c:596)
-  ==9584==    by 0x804E454: cache_export (cache.c:625)
-  ==9584==    by 0x804B106: get_rootfh (mountd.c:421)
-  ==9584==    by 0x804AE41: mount_mnt_3_svc (mountd.c:350)
-  ==9584==    by 0x8055A1A: rpc_dispatch (rpcdispatch.c:55)
-  ==9584==  Blocks allocated
-  ==9584==    at 0x401CDA0: malloc (vg_replace_malloc.c:149)
-  ==9584==    by 0x402F28B: get_buffer (probe.c:56)
-  ==9584==    by 0x4030B64: blkid_verify (probe.c:862)
-  ==9584==    by 0x402D981: blkid_get_dev (devname.c:82)
-  ==9584==    by 0x402DBDE: probe_one (devname.c:145)
-  ==9584==    by 0x402E7CB: probe_all (devname.c:510)
-  ==9584==    by 0x402E983: blkid_probe_all_new (devname.c:551)
-  ==9584==    by 0x804D26E: get_uuid (cache.c:173)
-  ==9584==    by 0x804DDA7: dump_to_cache (cache.c:461)
-  ==9584==    by 0x804E31A: cache_export_ent (cache.c:596)
-  ==9584==    by 0x804E454: cache_export (cache.c:625)
-  ==9584==    by 0x804B106: get_rootfh (mountd.c:421)
+That would also be an option.
 
-Over time, this amounts to gigabytes of RAM on a busy server. Either the
-blkid library is generally really leaky (in which case we probably shouldn't
-be using it until it's fixed), or we're using it wrong somehow. :-)
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+Cheers
+  Trond
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
