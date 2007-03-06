@@ -1,24 +1,28 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 000 of 2] A couple of possible nfs client patches
-Date: Tue, 06 Mar 2007 09:57:44 -0500
-Message-ID: <45ED8168.4050203@oracle.com>
-References: <20070306163710.8128.patches@notabene>
-Reply-To: chuck.lever@oracle.com
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: mountd memory leaks in 1.0.12
+Date: Tue, 6 Mar 2007 15:59:07 +0100
+Message-ID: <20070306145907.GA31463@uio.no>
+References: <20070306125230.GA30735@uio.no>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060503090900080403050108"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: NeilBrown <neilb@suse.de>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOb8P-00068o-Oi
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:26 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOb8O-0004iw-HX
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:28 -0800
-In-Reply-To: <20070306163710.8128.patches@notabene>
+	id 1HOb8v-00069U-5f
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:57 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HOb8v-00085a-0J
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:59 -0800
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HOb8Z-0001H0-FY
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 15:59:35 +0100
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1HOb87-0008CL-00
+	for <nfs@lists.sourceforge.net>; Tue, 06 Mar 2007 15:59:07 +0100
+In-Reply-To: <20070306125230.GA30735@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,69 +35,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------060503090900080403050108
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Tue, Mar 06, 2007 at 01:52:30PM +0100, Steinar H. Gunderson wrote:
+> Over time, this amounts to gigabytes of RAM on a busy server. Either the
+> blkid library is generally really leaky (in which case we probably shouldn't
+> be using it until it's fixed), or we're using it wrong somehow. :-)
 
-NeilBrown wrote:
-> Hi Trond,
->  I wonder if you would consider the following two patches.
-> 
-> The first fixes a real bug that is trivial to demonstrate: script
-> below.  The problem is that the fattr which is extracted from
-> READDIRPLUS results does not get a ->time_start set.  This can result
-> is incorrect attributes being set on files.
-> 
-> The second is really a work-around for a deeper problem (invalidate_inode_pages2
-> racing with do_no_page) but has value in itself I think.  It extents the combination
->  -o nolock,nocto
-> to avoid flush and invalidate on locking requests.
+I found the leaks in libblkid (see the separate e-mail I sent). This patch
+fixes a minor leak in mountd itself, and with the patch applied and a fixed
+libblkid, it appears that mountd is no longer leaking memory.
 
-This sounds like the behavior enabled by the 'llock' mount option on 
-Solaris.  Is that your intent?
+--- nfs-utils-1.0.12.orig/support/export/client.c       2007-03-06 15:51:39.000000000 +0100
++++ nfs-utils-1.0.12/support/export/client.c    2007-03-06 15:51:53.000000000 +0100
+@@ -329,6 +329,7 @@
+                strcat(new, ",");
+                strcat(new, cp);
+        }
++       free(old);
+        return new;
+ }
 
-IMO it is a clever idea to enable 'llock' behavior on Linux with the 
-combination of already existing mount options.
-
---------------060503090900080403050108
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture Linux Projects Group
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------060503090900080403050108
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------060503090900080403050108
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------060503090900080403050108--
