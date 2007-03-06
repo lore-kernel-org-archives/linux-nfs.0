@@ -1,28 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
-Date: Tue, 06 Mar 2007 09:56:53 -0500
-Message-ID: <45ED8135.2010008@RedHat.com>
-References: <45EC7F0F.4090600@RedHat.com>	
-	<1173130678.6315.7.camel@heimdal.trondhjem.org>	
-	<45EC8FD3.4010809@redhat.com>	
-	<1173132182.6315.27.camel@heimdal.trondhjem.org>	
-	<45EC9837.1010504@redhat.com>
-	<1173186308.6393.7.camel@heimdal.trondhjem.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 000 of 2] A couple of possible nfs client patches
+Date: Tue, 06 Mar 2007 09:57:44 -0500
+Message-ID: <45ED8168.4050203@oracle.com>
+References: <20070306163710.8128.patches@notabene>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Peter Staubach <staubach@redhat.com>,
-	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: multipart/mixed; boundary="------------060503090900080403050108"
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: NeilBrown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOb61-0005pP-Vw
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:56:58 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOb62-0007E4-RB
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:57:00 -0800
-In-Reply-To: <1173186308.6393.7.camel@heimdal.trondhjem.org>
+	id 1HOb8P-00068o-Oi
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:26 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOb8O-0004iw-HX
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 06:59:28 -0800
+In-Reply-To: <20070306163710.8128.patches@notabene>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,27 +31,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------060503090900080403050108
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-
-Trond Myklebust wrote:
-> On Mon, 2007-03-05 at 17:22 -0500, Peter Staubach wrote:
->> Or we could just punt and document that READDIRPLUS must be disabled
->> on all Tru64 NFS servers if this problem is seen.
+NeilBrown wrote:
+> Hi Trond,
+>  I wonder if you would consider the following two patches.
 > 
-> That would also be an option.
-Assuming there is a way to turn off READDIRPLUS  on the
-server side... I'll look into it... Or are you suggesting
-that we have a mount option to turn off READDIRPLUS on the
-client side? (Note: I believe other implementations have
-this mount option if that means anything)....
+> The first fixes a real bug that is trivial to demonstrate: script
+> below.  The problem is that the fattr which is extracted from
+> READDIRPLUS results does not get a ->time_start set.  This can result
+> is incorrect attributes being set on files.
+> 
+> The second is really a work-around for a deeper problem (invalidate_inode_pages2
+> racing with do_no_page) but has value in itself I think.  It extents the combination
+>  -o nolock,nocto
+> to avoid flush and invalidate on locking requests.
 
-steved.
+This sounds like the behavior enabled by the 'llock' mount option on 
+Solaris.  Is that your intent?
+
+IMO it is a clever idea to enable 'llock' behavior on Linux with the 
+combination of already existing mount options.
+
+--------------060503090900080403050108
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture Linux Projects Group
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------060503090900080403050108
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------060503090900080403050108
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060503090900080403050108--
