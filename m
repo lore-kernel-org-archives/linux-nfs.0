@@ -1,26 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 004 of 4] knfsd: Provide sunrpc pool_mode module
-	option
-Date: Tue, 6 Mar 2007 16:11:50 +1100
-Message-ID: <17900.63510.307044.43948@notabene.brown>
-References: <20070306131103.26638.patches@notabene>
-	<1070306021520.26937@suse.de>
-	<20070305205757.2d5db738.akpm@linux-foundation.org>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 2] A couple of possible nfs client patches
+Date: Tue, 6 Mar 2007 16:40:20 +1100
+Message-ID: <20070306163710.8128.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Greg Banks <gnb@melbourne.sgi.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HORz7-0006BZ-Ss
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:13:14 -0800
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HORz7-00084R-4W
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:13:16 -0800
-In-Reply-To: message from Andrew Morton on Monday March 5
+	id 1HOSQg-0000OL-NT
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:41:42 -0800
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOSQh-0005Ui-Hu
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:41:44 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,68 +27,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday March 5, akpm@linux-foundation.org wrote:
-> On Tue, 6 Mar 2007 13:15:20 +1100 NeilBrown <neilb@suse.de> wrote:
-> 
-> > Provide a module param "pool_mode" for sunrpc.ko which allows a
-> > sysadmin to choose the mode for mapping NFS thread service pools
-> > to CPUs.  Values are:
-> > 
-> > auto	    choose a mapping mode heuristically
-> > global	    (default, same as the pre-2.6.19 code) a single global pool
-> > percpu	    one pool per CPU
-> > pernode	    one pool per NUMA node
-> > 
-> > Note that since 2.6.19 the hardcoded behaviour has been "auto",
-> > this patch makes the default "global".
-> > 
-> > The pool mode can be changed after boot/modprobe using /sys, if the
-> > NFS and lockd services have been shut down.  A useful side effect of
-> > this change is to fix a small memory leak when unloading the module.
-> 
-> Mutter.  Is this really suitable and needed for 2.6.21 at this stage in
-> its life?
+Hi Trond,
+ I wonder if you would consider the following two patches.
 
-Something is definitely needed.  Currently on a 4-way SMP machine,
-nfsd might only use 1 CPU (depends a bit on irq routing I think).
+The first fixes a real bug that is trivial to demonstrate: script
+below.  The problem is that the fattr which is extracted from
+READDIRPLUS results does not get a ->time_start set.  This can result
+is incorrect attributes being set on files.
 
-If that patch is too big, maybe this one?
+The second is really a work-around for a deeper problem (invalidate_inode_pages2
+racing with do_no_page) but has value in itself I think.  It extents the combination
+ -o nolock,nocto
+to avoid flush and invalidate on locking requests.
 
+Thanks,
 NeilBrown
 
---------------------------------
-Avoid using nfsd process pools on SMP machines.
 
-From: Neil Brown <neilb@suse.de>
+ [PATCH 001 of 2] Set meaningful value for fattr->time_start in readdirplus results.
+ [PATCH 002 of 2] Avoid flush-when-locking when interclient consistency not needed.
 
-process-pools have real benefits for NUMA, but on SMP
-machines they only work if network interface interrupts
-go to all CPUs (via round-robin or multiple nics).  This is
-not always the case, so disable the pools in this case until
-a better solution is developped.
+#!/bin/bash
+#
+# This script will produce the following errormessage from tar
+# when run in an NFS mounted directory:
+#
+#   tar: newdir/innerdir/innerfile: file changed as we read it
 
-Signed-off-by: Neil Brown <neilb@suse.de>
+# create dirs
+rm -rf nfstest
+mkdir -p nfstest/dir/innerdir
 
-### Diffstat output
- ./net/sunrpc/svc.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+# create files (should not be empty)
+echo "Hello World!" >nfstest/dir/file
+echo "Hello World!" >nfstest/dir/innerdir/innerfile
 
-diff .prev/net/sunrpc/svc.c ./net/sunrpc/svc.c
---- .prev/net/sunrpc/svc.c	2007-03-06 16:07:19.000000000 +1100
-+++ ./net/sunrpc/svc.c	2007-03-06 16:08:53.000000000 +1100
-@@ -79,7 +79,11 @@ svc_pool_map_choose_mode(void)
- 		 * x86_64 kernel on Xeons.  In this case we
- 		 * want to divide the pools on cpu boundaries.
- 		 */
--		return SVC_POOL_PERCPU;
-+		/* actually, unless your IRQs round-robin nicely,
-+		 * this turns out to be really bad, so just
-+		 * go GLOBAL for now until a better fix can be developped
-+		 */
-+		return SVC_POOL_GLOBAL;
- 	}
- 
- 	/* default: one global pool */
+# problem only happens if we sleep before chmod
+sleep 1
+
+# change file modes
+chmod -R a+r nfstest
+
+# rename dir
+mv nfstest/dir nfstest/newdir
+
+# tar it
+tar -cf nfstest/nfstest.tar -C nfstest newdir
+
+# restore old dir name
+mv nfstest/newdir nfstest/dir
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
