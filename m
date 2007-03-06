@@ -1,7 +1,9 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 000 of 2] A couple of possible nfs client patches
-Date: Tue, 6 Mar 2007 16:40:20 +1100
-Message-ID: <20070306163710.8128.patches@notabene>
+Subject: [PATCH 002 of 2] Avoid flush-when-locking when interclient
+	consistency not needed.
+Date: Tue, 6 Mar 2007 16:40:29 +1100
+Message-ID: <1070306054029.8360@suse.de>
+References: <20070306163710.8128.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOSQg-0000OL-NT
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:41:42 -0800
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOSQh-0005Ui-Hu
-	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:41:44 -0800
+	id 1HOSQn-0000OT-Ts
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:41:50 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOSQp-0005V5-Hd
+	for nfs@lists.sourceforge.net; Mon, 05 Mar 2007 21:41:52 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,56 +29,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Trond,
- I wonder if you would consider the following two patches.
 
-The first fixes a real bug that is trivial to demonstrate: script
-below.  The problem is that the fattr which is extracted from
-READDIRPLUS results does not get a ->time_start set.  This can result
-is incorrect attributes being set on files.
+If nolock and nocto mount options are set, then the implication is
+that cache consistency with other clients is not desired.  This is
+likely to be the case when the filesystem is only access by the one
+client - as a nfs-mounted root might be.
 
-The second is really a work-around for a deeper problem (invalidate_inode_pages2
-racing with do_no_page) but has value in itself I think.  It extents the combination
- -o nolock,nocto
-to avoid flush and invalidate on locking requests.
+In that case, there is no benefit in flushing writes and invalidating
+caches around lock/unlock requests.
 
-Thanks,
-NeilBrown
+This patch makes those flushes and invalidates conditional on either
+nolock or nocto being clear.
 
+Signed-off-by: Neil Brown <neilb@suse.de>
 
- [PATCH 001 of 2] Set meaningful value for fattr->time_start in readdirplus results.
- [PATCH 002 of 2] Avoid flush-when-locking when interclient consistency not needed.
+### Diffstat output
+ ./fs/nfs/file.c |   46 +++++++++++++++++++++++++++-------------------
+ 1 file changed, 27 insertions(+), 19 deletions(-)
 
-#!/bin/bash
-#
-# This script will produce the following errormessage from tar
-# when run in an NFS mounted directory:
-#
-#   tar: newdir/innerdir/innerfile: file changed as we read it
-
-# create dirs
-rm -rf nfstest
-mkdir -p nfstest/dir/innerdir
-
-# create files (should not be empty)
-echo "Hello World!" >nfstest/dir/file
-echo "Hello World!" >nfstest/dir/innerdir/innerfile
-
-# problem only happens if we sleep before chmod
-sleep 1
-
-# change file modes
-chmod -R a+r nfstest
-
-# rename dir
-mv nfstest/dir nfstest/newdir
-
-# tar it
-tar -cf nfstest/nfstest.tar -C nfstest newdir
-
-# restore old dir name
-mv nfstest/newdir nfstest/dir
-
+diff .prev/fs/nfs/file.c ./fs/nfs/file.c
+--- .prev/fs/nfs/file.c	2007-03-06 16:13:00.000000000 +1100
++++ ./fs/nfs/file.c	2007-03-06 16:13:06.000000000 +1100
+@@ -445,11 +445,14 @@ static int do_unlk(struct file *filp, in
+ 	struct inode *inode = filp->f_mapping->host;
+ 	int status;
+ 
+-	/*
+-	 * Flush all pending writes before doing anything
+-	 * with locks..
+-	 */
+-	nfs_sync_mapping(filp->f_mapping);
++	if (!((NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) &&
++	      (NFS_SERVER(inode)->flags & NFS_MOUNT_NOCTO))) {
++		/*
++		 * Flush all pending writes before doing anything
++		 * with locks..
++		 */
++		nfs_sync_mapping(filp->f_mapping);
++	}
+ 
+ 	/* NOTE: special case
+ 	 * 	If we're signalled while cleaning up locks on process exit, we
+@@ -470,14 +473,16 @@ static int do_setlk(struct file *filp, i
+ 	struct inode *inode = filp->f_mapping->host;
+ 	int status;
+ 
+-	/*
+-	 * Flush all pending writes before doing anything
+-	 * with locks..
+-	 */
+-	status = nfs_sync_mapping(filp->f_mapping);
+-	if (status != 0)
+-		goto out;
+-
++	if (!((NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) &&
++	      (NFS_SERVER(inode)->flags & NFS_MOUNT_NOCTO))) {
++		/*
++		 * Flush all pending writes before doing anything
++		 * with locks..
++		 */
++		status = nfs_sync_mapping(filp->f_mapping);
++		if (status != 0)
++			goto out;
++	}
+ 	lock_kernel();
+ 	/* Use local locking if mounted with "-onolock" */
+ 	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)) {
+@@ -495,12 +500,15 @@ static int do_setlk(struct file *filp, i
+ 	unlock_kernel();
+ 	if (status < 0)
+ 		goto out;
+-	/*
+-	 * Make sure we clear the cache whenever we try to get the lock.
+-	 * This makes locking act as a cache coherency point.
+-	 */
+-	nfs_sync_mapping(filp->f_mapping);
+-	nfs_zap_caches(inode);
++	if (!((NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) &&
++	      (NFS_SERVER(inode)->flags & NFS_MOUNT_NOCTO))) {
++		/*
++		 * Make sure we clear the cache whenever we try to get the lock.
++		 * This makes locking act as a cache coherency point.
++		 */
++		nfs_sync_mapping(filp->f_mapping);
++		nfs_zap_caches(inode);
++	}
+ out:
+ 	return status;
+ }
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
