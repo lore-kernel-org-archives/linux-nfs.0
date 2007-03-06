@@ -1,27 +1,22 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
-Date: Tue, 06 Mar 2007 08:05:08 -0500
-Message-ID: <1173186308.6393.7.camel@heimdal.trondhjem.org>
-References: <45EC7F0F.4090600@RedHat.com>
-	<1173130678.6315.7.camel@heimdal.trondhjem.org>
-	<45EC8FD3.4010809@redhat.com>
-	<1173132182.6315.27.camel@heimdal.trondhjem.org>
-	<45EC9837.1010504@redhat.com>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Bug#413661: libblkid1: leaks memory like crazy
+Date: Tue, 06 Mar 2007 14:08:43 +0100
+Message-ID: <20070306130843.30940.96498.reportbug__38405.101808212$1173187036$gmane$org@trofast.sesse.net>
+Reply-To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
+	413661@bugs.debian.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
-	Steve Dickson <SteveD@redhat.com>
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: multipart/mixed; boundary="===============3340174789829491032=="
+To: Debian Bug Tracking System <submit@bugs.debian.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOZM8-0002gj-EE
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 05:05:28 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOZM9-0007Ee-8K
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 05:05:30 -0800
-In-Reply-To: <45EC9837.1010504@redhat.com>
+	id 1HOZVM-0003dA-Bn
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 05:15:00 -0800
+Received: from rietz.debian.org ([140.211.166.43])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOZVN-0001NK-K0
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 05:15:02 -0800
+Resent-Message-ID: <handler.413661.B.11731865538278@bugs.debian.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,33 +29,170 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-03-05 at 17:22 -0500, Peter Staubach wrote:
-> Perhaps the right thing to do is to revert the NFSv2/NFSv3 support
-> completely and not have them worry about changing fsids?  The common
-> practice is to use an automounting facility or static mounts to
-> construct namespaces for NFSv2/NFSv3 networks.  It is really only
-> with the advent of NFSv4 that the fsids actually become interesting
-> and something that the client needs to be aware of.
+This is a multi-part MIME message sent by reportbug.
 
-That is not quite true. It has been a problem on NFSv2/v3 ever since
-IRIX introduced the 'nohide' export option (which was later copied by
-the Linux server). There are only too many programs out there that are
-easily fooled by the combination of hard links and non-unique inode
-numbers.
 
-> Or we could just punt and document that READDIRPLUS must be disabled
-> on all Tru64 NFS servers if this problem is seen.
+--===============3340174789829491032==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-That would also be an option.
+Package: libblkid1
+Version: 1.39+1.40-WIP-2006.11.14+dfsg-1
+Severity: grave
+Tags: patch
 
-Cheers
-  Trond
+(RMs: I'm unsure if this should be fixed for etch or not, given that I
+do not know of anything in etch that actually uses this library enough
+for it to leak. Feel free to downgrade or tag etch-ignore, of course.)
+
+nfs-kernel-server 1.0.12 has started using libblkid, and leaks absurd
+amounts of memory (in the order of several megabytes per minute).
+Tracing using Omega (which is not yet in Debian, but nevertheless really
+useful) tracked the leaks down to libblkid. I've attached a diff that
+fixes the issues for me, and allows me to run nfs-kernel-server with
+only minor leaks (which I'll take with nfs-utils upstream, as they are
+not libblkid1 related).
+
+-- System Information:
+Debian Release: 4.0
+  APT prefers unstable
+  APT policy: (500, 'unstable'), (500, 'testing'), (1, 'experimental')
+Architecture: amd64 (x86_64)
+Shell:  /bin/sh linked to /bin/bash
+Kernel: Linux 2.6.19
+Locale: LANG=en_DK.UTF-8, LC_CTYPE=en_DK.UTF-8 (charmap=UTF-8)
+
+Versions of packages libblkid1 depends on:
+ii  libc6                       2.3.6.ds1-13 GNU C Library: Shared libraries
+ii  libdevmapper1.02            2:1.02.12-1  The Linux Kernel Device Mapper use
+ii  libselinux1                 1.32-3       SELinux shared libraries
+ii  libsepol1                   1.14-3       Security Enhanced Linux policy lib
+
+libblkid1 recommends no packages.
+
+-- debconf-show failed
+
+--===============3340174789829491032==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="libblkid-leak-fixes.diff"
+
+Only in e2fsprogs-patched/debian: BUILD-BF
+Only in e2fsprogs-patched/debian: BUILD-STD
+Only in e2fsprogs-patched/debian: comerr-dev
+Only in e2fsprogs-patched/debian: comerr-dev.postinst.debhelper
+Only in e2fsprogs-patched/debian: comerr-dev.prerm.debhelper
+Only in e2fsprogs-patched/debian: e2fsck-static
+Only in e2fsprogs-patched/debian: e2fslibs
+Only in e2fsprogs-patched/debian: e2fslibs-dev
+Only in e2fsprogs-patched/debian: e2fslibs-dev.postinst.debhelper
+Only in e2fsprogs-patched/debian: e2fslibs-dev.prerm.debhelper
+Only in e2fsprogs-patched/debian: e2fslibs.postinst.debhelper
+Only in e2fsprogs-patched/debian: e2fslibs.postrm.debhelper
+Only in e2fsprogs-patched/debian: e2fslibs.substvars
+Only in e2fsprogs-patched/debian: e2fsprogs
+Only in e2fsprogs-patched/debian: e2fsprogs-udeb
+Only in e2fsprogs-patched/debian: e2fsprogs-udeb.substvars
+Only in e2fsprogs-patched/debian: e2fsprogs.substvars
+Only in e2fsprogs-patched/debian: files
+Only in e2fsprogs-patched/debian: files~
+Only in e2fsprogs-patched/debian: libblkid-dev
+Only in e2fsprogs-patched/debian: libblkid1
+Only in e2fsprogs-patched/debian: libblkid1-udeb
+Only in e2fsprogs-patched/debian: libblkid1-udeb.substvars
+Only in e2fsprogs-patched/debian: libblkid1.postinst.debhelper
+Only in e2fsprogs-patched/debian: libblkid1.postrm.debhelper
+Only in e2fsprogs-patched/debian: libblkid1.substvars
+Only in e2fsprogs-patched/debian: libcomerr2
+Only in e2fsprogs-patched/debian: libcomerr2.postinst.debhelper
+Only in e2fsprogs-patched/debian: libcomerr2.postrm.debhelper
+Only in e2fsprogs-patched/debian: libcomerr2.substvars
+Only in e2fsprogs-patched/debian: libss2
+Only in e2fsprogs-patched/debian: libss2.postinst.debhelper
+Only in e2fsprogs-patched/debian: libss2.postrm.debhelper
+Only in e2fsprogs-patched/debian: libss2.substvars
+Only in e2fsprogs-patched/debian: libuuid1
+Only in e2fsprogs-patched/debian: libuuid1-udeb
+Only in e2fsprogs-patched/debian: libuuid1-udeb.substvars
+Only in e2fsprogs-patched/debian: libuuid1.postinst.debhelper
+Only in e2fsprogs-patched/debian: libuuid1.postrm.debhelper
+Only in e2fsprogs-patched/debian: libuuid1.substvars
+diff -ur e2fsprogs-1.39+1.40-WIP-2006.11.14+dfsg/debian/rules e2fsprogs-patched/debian/rules
+--- e2fsprogs-1.39+1.40-WIP-2006.11.14+dfsg/debian/rules	2006-11-13 02:19:40.000000000 +0100
++++ e2fsprogs-patched/debian/rules	2007-03-06 13:41:53.000000000 +0100
+@@ -70,7 +70,7 @@
+ INSTALL_PROGRAM = $(INSTALL) -p -o root -g root -m 0755
+ 
+ ifeq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+-CCOPTS += -O2
++CCOPTS += -O0
+ endif
+ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+ INSTALL_PROGRAM += -s
+@@ -356,9 +356,9 @@
+ 		-pe2fslibs -puuid-dev -pe2fsck-static
+ 
+ ifneq ($(ismips),)
+-	dh_strip -Xlib64ext2fs-nopic.a
++	#dh_strip -Xlib64ext2fs-nopic.a
+ else
+-	dh_strip
++	#dh_strip
+ endif
+ 
+ 	dh_compress
+Only in e2fsprogs-patched/debian: ss-dev
+Only in e2fsprogs-patched/debian: stampdir
+Only in e2fsprogs-patched/debian: tmp
+Only in e2fsprogs-patched/debian: uuid-dev
+diff -ur e2fsprogs-1.39+1.40-WIP-2006.11.14+dfsg/lib/blkid/devname.c e2fsprogs-patched/lib/blkid/devname.c
+--- e2fsprogs-1.39+1.40-WIP-2006.11.14+dfsg/lib/blkid/devname.c	2006-09-12 07:25:40.000000000 +0200
++++ e2fsprogs-patched/lib/blkid/devname.c	2007-03-06 14:00:03.000000000 +0100
+@@ -305,6 +305,7 @@
+ 		probe_one(cache, device, dev, BLKID_PRI_DM, only_if_new);
+ 
+ try_next:
++		free(device);
+ 		next = names->next;
+ 	} while (next);
+ 
+diff -ur e2fsprogs-1.39+1.40-WIP-2006.11.14+dfsg/lib/blkid/probe.c e2fsprogs-patched/lib/blkid/probe.c
+--- e2fsprogs-1.39+1.40-WIP-2006.11.14+dfsg/lib/blkid/probe.c	2006-09-18 03:12:28.000000000 +0200
++++ e2fsprogs-patched/lib/blkid/probe.c	2007-03-06 13:55:19.000000000 +0100
+@@ -888,6 +888,10 @@
+ 	if (!dev->bid_type) {
+ 		if (probe.fd >= 0) close(probe.fd);
+ 		blkid_free_dev(dev);
++		if (probe.sbbuf)
++			free(probe.sbbuf);
++		if (probe.buf)
++			free(probe.buf);
+ 		return NULL;
+ 	}
+ 		
+
+--===============3340174789829491032==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============3340174789829491032==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============3340174789829491032==--
