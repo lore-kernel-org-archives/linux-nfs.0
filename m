@@ -1,29 +1,27 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
-Date: Wed, 07 Mar 2007 09:21:49 -0500
-Message-ID: <45EECA7D.1080505@RedHat.com>
-References: <45EC7F0F.4090600@RedHat.com>
-	<1173130678.6315.7.camel@heimdal.trondhjem.org>
-	<45EC8FD3.4010809@redhat.com>
-	<1173132182.6315.27.camel@heimdal.trondhjem.org>
-	<45EC9837.1010504@redhat.com>
-	<1173186308.6393.7.camel@heimdal.trondhjem.org>
-	<45ED8135.2010008@RedHat.com> <45EDE060.3020501@RedHat.com>
-	<Pine.LNX.4.64.0703070842410.11660@maggie.lkpg.cendio.se>
+Date: Wed, 07 Mar 2007 09:38:44 -0500
+Message-ID: <45EECE74.6070606@oracle.com>
+References: <45EC7F0F.4090600@RedHat.com>		<1173130678.6315.7.camel@heimdal.trondhjem.org>		<45EC8FD3.4010809@redhat.com>		<1173132182.6315.27.camel@heimdal.trondhjem.org>		<45EC9837.1010504@redhat.com>	<1173186308.6393.7.camel@heimdal.trondhjem.org>	<45ED8135.2010008@RedHat.com>
+	<45EDE060.3020501@RedHat.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
-To: =?UTF-8?B?UGV0ZXIgw4VzdHJhbmQ=?= <astrand@cendio.se>
+Content-Type: multipart/mixed; boundary="------------010606060609030701010006"
+Cc: Neil Brown <neilb@suse.de>,
+	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOx1c-000157-G1
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:21:52 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOx1d-0003vR-BE
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:21:54 -0800
-In-Reply-To: <Pine.LNX.4.64.0703070842410.11660@maggie.lkpg.cendio.se>
+	id 1HOxIK-0002tu-PD
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:39:09 -0800
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HOxIH-0005zK-Ie
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:39:11 -0800
+In-Reply-To: <45EDE060.3020501@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,21 +34,203 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-CgpQZXRlciDDhXN0cmFuZCB3cm90ZToKPiBPbiBUdWUsIDYgTWFyIDIwMDcsIFN0ZXZlIERpY2tz
-b24gd3JvdGU6Cj4gCj4+ICsgICAgICAgICAgICAgICB7IE5GU19NT1VOVF9OT1JESVJQTFVTLCAi
-LG5vcmRpcnBsdXMiLCAiIiB9LAo+IAo+IEkgcHJlZmVyIHRoZSBvcHRpb24gbmFtZSAibm9yZWFk
-ZGlycGx1cyIuIEl0J3Mgb25seSAzIGNoYXJzIGxvbmdlciwgYnV0IAo+IHRoYXQncyBhIHNtYWxs
-IHByaWNlIHRvIHBheSBmb3IgYXZvaWRpbmcgY29uZnVzaW9uIGV0Yy4KVGhlIHJlYXNvbiBJIHVz
-ZWQgJ25vcmRpcnBsdXMnIHdhcyBiZWNhdXNlIEFwcGxlIHVzZXMgdGhvc2UgY2hhcmFjdGVycwph
-bmQgSSB0aG91Z2h0IGl0IGJlIGEgZ29vZCBJIGRpZCB0byB0cnkgYW5kIGtlZXAgdGhpbmdzIGNv
-bnNpc3RlbnQuCkJ1dCBpbiB0aGUgZW5kLCBJIGNvdWxkIGNhcmVsZXNzIHdoYXQgd2UgY2FsbCB0
-aGUgb3B0aW9uIGFzIGxvbmcKYXMgdGhlIGZ1bmN0aW9uYWxpdHkgaXMgdGhlcmUuLi4KCnN0ZXZl
-ZC4KCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0KVGFrZSBTdXJ2ZXlzLiBFYXJuIENhc2guIEluZmx1ZW5jZSB0
-aGUgRnV0dXJlIG9mIElUCkpvaW4gU291cmNlRm9yZ2UubmV0J3MgVGVjaHNheSBwYW5lbCBhbmQg
-eW91J2xsIGdldCB0aGUgY2hhbmNlIHRvIHNoYXJlIHlvdXIKb3BpbmlvbnMgb24gSVQgJiBidXNp
-bmVzcyB0b3BpY3MgdGhyb3VnaCBicmllZiBzdXJ2ZXlzLWFuZCBlYXJuIGNhc2gKaHR0cDovL3d3
-dy50ZWNoc2F5LmNvbS9kZWZhdWx0LnBocD9wYWdlPWpvaW4ucGhwJnA9c291cmNlZm9yZ2UmQ0lE
-PURFVkRFVgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpO
-RlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5z
-b3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
+This is a multi-part message in MIME format.
+--------------010606060609030701010006
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+A comment...
+
+You've implemented a "negative" -- the usual convention is to implement 
+the "positive" option.   This is how Apple/*BSD do it for READDIRPLUS, 
+and it might be good to follow existing precedent.
+
+I think you should implement "rddirplus" and make it the default.  That 
+way you get "norddirplus" automatically.
+
+You should also include appropriate man page changes in your patch. ;-D
+
+Steve Dickson wrote:
+> 
+> 
+> Steve Dickson wrote:
+>>
+>> Trond Myklebust wrote:
+>>> On Mon, 2007-03-05 at 17:22 -0500, Peter Staubach wrote:
+>>>> Or we could just punt and document that READDIRPLUS must be disabled
+>>>> on all Tru64 NFS servers if this problem is seen.
+>>> That would also be an option.
+>> Assuming there is a way to turn off READDIRPLUS  on the
+>> server side... I'll look into it... Or are you suggesting
+>> that we have a mount option to turn off READDIRPLUS on the
+>> client side? (Note: I believe other implementations have
+>> this mount option if that means anything)....
+> Not too surprising, there does not seem to be away to
+> disable READDIRPLUS on the server side.... so...
+> Since it was incredibly easy to disable READDIRPLUS
+> from the client side... I went ahead came up and tested
+> the attached patches...
+> 
+> Again, I believe there are other implementations, like Apple,
+> that have this type of knob so in the end, this might be
+> a good thing to have in general... It definitely helps with
+> broken Tru64 servers...  So please consider...
+> 
+> tia,
+> 
+> steved.
+> 
+> 
+> ------------------------------------------------------------------------
+> 
+> Added support to turn off the NFSv3 READDIRPLUS RPC.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> ----------------------------------------------
+> --- linux-2.6.20.i686/fs/nfs/super.c.orig	2007-03-05 11:26:41.130885000 -0500
+> +++ linux-2.6.20.i686/fs/nfs/super.c	2007-03-06 16:10:13.390550000 -0500
+> @@ -291,6 +291,7 @@
+>  		{ NFS_MOUNT_NOAC, ",noac", "" },
+>  		{ NFS_MOUNT_NONLM, ",nolock", "" },
+>  		{ NFS_MOUNT_NOACL, ",noacl", "" },
+> +		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
+>  		{ 0, NULL, NULL }
+>  	};
+>  	const struct proc_nfs_info *nfs_infop;
+> --- linux-2.6.20.i686/fs/nfs/client.c.orig	2007-03-05 11:26:40.995885000 -0500
+> +++ linux-2.6.20.i686/fs/nfs/client.c	2007-03-06 11:07:23.208538000 -0500
+> @@ -618,7 +618,8 @@
+>  	if (clp->cl_nfsversion == 3) {
+>  		if (server->namelen == 0 || server->namelen > NFS3_MAXNAMLEN)
+>  			server->namelen = NFS3_MAXNAMLEN;
+> -		server->caps |= NFS_CAP_READDIRPLUS;
+> +		if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
+> +			server->caps |= NFS_CAP_READDIRPLUS;
+>  	} else {
+>  		if (server->namelen == 0 || server->namelen > NFS2_MAXNAMLEN)
+>  			server->namelen = NFS2_MAXNAMLEN;
+> --- linux-2.6.20.i686/include/linux/nfs_mount.h.orig	2007-02-04 13:44:54.000000000 -0500
+> +++ linux-2.6.20.i686/include/linux/nfs_mount.h	2007-03-06 10:59:06.457362000 -0500
+> @@ -61,6 +61,7 @@
+>  #define NFS_MOUNT_NOACL		0x0800	/* 4 */
+>  #define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
+>  #define NFS_MOUNT_SECFLAVOUR	0x2000	/* 5 */
+> +#define NFS_MOUNT_NORDIRPLUS	0x4000	/* 5 */
+>  #define NFS_MOUNT_FLAGMASK	0xFFFF
+>  
+>  #endif
+> 
+> 
+> ------------------------------------------------------------------------
+> 
+> Adds the -o nordirplus mount option that will disable 
+> NFS clients from using the READDIRPLUS RPC.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> ------------------------------
+> --- nfs-utils-1.0.12/utils/mount/nfs_mount.h.orig	2007-03-06 15:41:19.557090000 -0500
+> +++ nfs-utils-1.0.12/utils/mount/nfs_mount.h	2007-03-06 15:44:22.888922000 -0500
+> @@ -63,6 +63,7 @@
+>  #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
+>  #define NFS_MOUNT_NOACL     0x0800  /* 4 */
+>  #define NFS_MOUNT_SECFLAVOUR	0x2000	/* 5 */
+> +#define NFS_MOUNT_NORDIRPLUS	0x4000	/* 5 */
+>  
+>  /* security pseudoflavors */
+>  
+> --- nfs-utils-1.0.12/utils/mount/nfsmount.c.orig	2007-03-06 15:41:19.582094000 -0500
+> +++ nfs-utils-1.0.12/utils/mount/nfsmount.c	2007-03-06 15:44:53.509748000 -0500
+> @@ -788,6 +788,10 @@
+>  				data->flags &= ~NFS_MOUNT_NOACL;
+>  				if (!val)
+>  					data->flags |= NFS_MOUNT_NOACL;
+> +			} else if (!strcmp(opt, "rdirplus")) {
+> +				data->flags &= ~NFS_MOUNT_NORDIRPLUS;
+> +				if (!val)
+> +					data->flags |= NFS_MOUNT_NORDIRPLUS;
+>  #endif
+>  			} else {
+>  			bad_option:
+> @@ -975,6 +979,7 @@
+>  #endif
+>  #if NFS_MOUNT_VERSION >= 5
+>  	printf("sec = %u ", data.pseudoflavor);
+> +	printf("readdirplus = %d ", (data.flags & NFS_MOUNT_NORDIRPLUS) != 0);
+>  #endif
+>  	printf("\n");
+>  #endif
+> --- nfs-utils-1.0.12/utils/mount/nfs.man.orig	2007-03-06 15:41:19.431090000 -0500
+> +++ nfs-utils-1.0.12/utils/mount/nfs.man	2007-03-06 16:06:29.487656000 -0500
+> @@ -272,6 +272,11 @@
+>  .I udp
+>  Mount the NFS filesystem using the UDP protocol.  This
+>  is the default.
+> +.TP 1.5i
+> +.I nordirplus
+> +Disables NFSv3 READDIRPLUS RPCs. Use this options when
+> +mounting servers that don't support or have broken
+> +READDIRPLUS implementations.
+>  .P
+>  All of the non-value options have corresponding nooption forms.
+>  For example, nointr means don't allow file operations to be
+> 
+> 
+> ------------------------------------------------------------------------
+> 
+> -------------------------------------------------------------------------
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+> opinions on IT & business topics through brief surveys-and earn cash
+> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+> 
+> 
+> ------------------------------------------------------------------------
+> 
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+--------------010606060609030701010006
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture Linux Projects Group
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------010606060609030701010006
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------010606060609030701010006
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------010606060609030701010006--
