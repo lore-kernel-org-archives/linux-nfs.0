@@ -1,7 +1,7 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 09:15:28 +1100
-Message-ID: <17903.14720.458169.409983@notabene.brown>
+Date: Thu, 8 Mar 2007 09:17:52 +1100
+Message-ID: <17903.14864.866148.254685@notabene.brown>
 References: <20070307112347.6a40faff.simon.peter@gmx.de>
 	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
 	<20070307160633.77afb618.simon.peter@gmx.de>
@@ -9,25 +9,24 @@ References: <20070307112347.6a40faff.simon.peter@gmx.de>
 	<20070307194418.97fee0ec.simon.peter@gmx.de>
 	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
 	<20070307205016.GI26553@fieldses.org>
-	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
-	<20070307211729.GO26553@fieldses.org>
-	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
+	<20070307224054.b2cbc294.simon.peter@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+	nfs@lists.sourceforge.net
+To: Simon Peter <simon.peter@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP4Q4-000432-ML
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:15:36 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1HP4SO-0004GT-3P
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:18:00 -0800
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HP4Q5-0005Lx-9w
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:15:38 -0800
-In-Reply-To: message from Talpey, Thomas on Wednesday March 7
+	(Exim 4.44) id 1HP4SP-0005y0-EC
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:18:02 -0800
+In-Reply-To: message from Simon Peter on Wednesday March 7
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,19 +39,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday March 7, Thomas.Talpey@netapp.com wrote:
+On Wednesday March 7, simon.peter@gmx.de wrote:
 > 
-> The "flush" file lives in /proc/net/rpc/nfsd.export, and you write an
-> integer value to it. I *think* it then flushes any entries which are
-> more than that many seconds old.
+> I think what Tom had in mind was to stat all directories once, remember
+> their values, have inotify keep an eye on 'em and whenever they change,
+> update the remembered values. This way, disk access would only have to
+> be done whenever something changes, which is when the disk is spun up
+> anyway.
 
-You write a timestamp in seconds-since-epoch and any entries older
-that time are treated as expired.  We typically write out the
-mtime of the etab file.  Or '1' to force a full flush.
+There is certainly some sense in that approach.  I don't think
+inotify is needed though.  The only part of the stat information we
+are interested in is major/minor/inode numbers, and they don't change.
 
-Arguably that sort of fine control isn't needed, but it seemed like a
-good idea at the time (it cause problems if your system clock goes
-backwards).
+We could possibly stat everything that seems to be interesting once
+and store the details.
+When a request comes in, match against the records to find a path,
+then double-check the path still matches.  If it does, good.  If not,
+take the long way around again.
 
 NeilBrown
 
