@@ -1,7 +1,7 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 10:39:23 +1100
-Message-ID: <17903.19755.146916.321440@notabene.brown>
+Date: Thu, 8 Mar 2007 10:51:04 +1100
+Message-ID: <17903.20457.448449.509272@notabene.brown>
 References: <20070307160633.77afb618.simon.peter@gmx.de>
 	<20070307154240.GB26553@fieldses.org>
 	<20070307194418.97fee0ec.simon.peter@gmx.de>
@@ -12,22 +12,23 @@ References: <20070307160633.77afb618.simon.peter@gmx.de>
 	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
 	<20070307215406.GR26553@fieldses.org>
 	<17903.16030.26119.464793@notabene.brown>
-	<20070307230601.GX26553@fieldses.org>
+	<20070307232414.GZ26553@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>,
 	Simon Peter <simon.peter@gmx.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP5jU-0004b0-UX
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:39:45 -0800
+	id 1HP5uc-0005oq-68
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:51:14 -0800
 Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP5jV-0002Mh-Et
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:39:47 -0800
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HP5ud-00028F-JY
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:51:16 -0800
 In-Reply-To: message from J. Bruce Fields on Wednesday March 7
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -42,52 +43,85 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Wednesday March 7, bfields@fieldses.org wrote:
+> On Thu, Mar 08, 2007 at 09:37:18AM +1100, Neil Brown wrote:
+> > On Wednesday March 7, bfields@fieldses.org wrote:
+> > > 
+> > > Well, non-head-hurty ideas always welcomed.  I've got two export-related
+> > > problems to fix:
+> > > 
+> > > 	- Our current NFSv4 pseudofs fsid=0 hack is a pain to administer
+> > > 	  and results in inconsistent paths across different NFS
+> > > 	  versions.
+> > 
+> > You've got to put that v4 pseudo root somewhere...
+> > It just needs cleverness in nfs-utils to auto-bind-mount things into
+> > the pseudoroot...
 > 
-> So could you remind me what the uses cases are here?  Who is it that
-> requires demand loading, and why?
+> I've got make-mountd-clever patches here; if I can get them working in
+> the next couple days then I'll pass them along so people can see what
+> they're doing.
 
-Partly it is the principle that demand-based configuration is more
-flexible.  Witness the various efforts to replace rc.d scripts with
-something event/demand based.
-
-The IP->clientname table must be demand loaded because you obviously
-cannot know all needed IP addresses in advance. (The rmtab experience
-proves that)
-
-The clientname+path->export-options table must be demand loaded
-because - depending a bit of how you choose client names and how
-complicated /etc/exports is - you either don't know all client names
-in advance, or computing them all is complex and wasteful.
-
-The fsid->path table could possible be made 'static', but I think
-demand-loading is still best.  There are multiple possible fsids for
-some filesystems, and telling the kernel about all of them when only
-one will be used seems wasteful.  And the filesystems may not all be
-available when you try to create the static table.  You could update
-the table at every mount, but with demand-loading, you don't have to.
-
-Imagine having hundreds of filesystems on some sort of library (a CD
-library?) where each can be identified by a UUID which gets stored in
-the fsid in the filehandle.
-Imagine a simple extension to mountd so that a call-out were made when
-an unknown filehandle arrived.  This callout could mount the required
-filesystem and export it.  Maybe the library only allows 3 filesystems
-to be mounted at a time, so it would unmount the lease-recently-used
-one.
-
-How are you going to handle that system except with demand-loading of
-the fsid->path table?
+Cool.
 
 > 
-> I'll promise to write it all down someplace and then hopefully we won't
-> have to re-ask the same questions too many times....
+> > but I guess people cannot magically unmount things then.
+> >
+> > How about this.  We add an export option "follow-symlinks" so that
+> > when nfsd is asked to stat a symlink it does a 'stat' instead of an
+> > 'lstat' (effectively).
+> > Then we get mountd to make a tmpfs in /var/lib/nfs/pseudoroot which
+> > contains directories and symlinks to the various export points names
+> > in etab.  This tmpfs is exported as fsid=0,follow-symlinks.
+> > 
+> > Problem solved?
+> 
+> Maybe.  Getting those symlink/mountpoints right sounds tricky.
 
-Sounds like a fine idea.
-I have often wanted to write a 'Linux commentary' that explains all
-the hows and whys of things.  I even started some bits once (to help
-me understand the VFS layer).  But Linux changes so fast that any
-entry in such a commentary would be out-of-date before it was
-written....
+Is it?
+ mount -t tmpfs tmpfs /var/lib/nfs/pseudoroot
+ grep '^/' /etc/exports | while read a b
+ do
+   d=`dirname $a`
+   mkdir -p /var/lib/nfs/pseudoroot/$d
+   ln -s $a /var/lib/nfs/pseudoroot/$a
+ done
+(untested, and probably has some corner cases but the essence is
+ there).
+
+
+> 
+> How different is this from the in-kernel automounting that the NFS
+> client is using for fsid traversal, for example?
+> 
+> > Ofcourse if different clients get to see different exports, then we
+> > might need multiple tmpfs's in /var/lib/nfs/pseudoroot/$CLIENT/ ....
+> 
+> Ugh.  Is this something a lot of people do?
+
+Well, if you export a different root filesystem to each diskless
+client, or if you export /home to some places and /backup to others,
+then you already have the potential for a different pseudo filesystem
+for each client.  My little hacky shell script above essentially
+merges them all which might be OK, or might not.
+
+Suppose you wanted to allow every diskless client to see it's root as
+'/'?  Is that a dumb thing to do, or just a difficult thing to do?
+
+I was just looking at the RFC again and saw this in section 7.3:
+
+   Based on the construction of the server's name space, it is possible
+   that multiple pseudo filesystems may exist.  For example,
+
+   /a         pseudo filesystem
+   /a/b       real filesystem
+   /a/b/c     pseudo filesystem
+   /a/b/c/d   real filesystem
+
+   Each of the pseudo filesystems are considered separate entities and
+   therefore will have a unique fsid.
+
+That adds a whole new dimension of complexity..... do we really want
+to go there?
 
 NeilBrown
 
