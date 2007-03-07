@@ -1,24 +1,34 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 002 of 2] Avoid flush-when-locking when
-	interclient	consistency not needed.
-Date: Thu, 8 Mar 2007 10:03:25 +1100
-Message-ID: <17903.17597.832563.922428@notabene.brown>
-References: <20070306163710.8128.patches@notabene> <1070306054029.8360@suse.de>
-	<1173192029.6393.52.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Wed, 7 Mar 2007 18:06:01 -0500
+Message-ID: <20070307230601.GX26553@fieldses.org>
+References: <20070307160633.77afb618.simon.peter@gmx.de>
+	<20070307154240.GB26553@fieldses.org>
+	<20070307194418.97fee0ec.simon.peter@gmx.de>
+	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
+	<20070307205016.GI26553@fieldses.org>
+	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
+	<20070307211729.GO26553@fieldses.org>
+	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
+	<20070307215406.GR26553@fieldses.org>
+	<17903.16030.26119.464793@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+	Simon Peter <simon.peter@gmx.de>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP5AU-00012m-27
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:03:34 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP5AV-0002gs-Io
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:03:36 -0800
-In-Reply-To: message from Trond Myklebust on Tuesday March 6
+	id 1HP5CK-0001F4-BZ
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:05:28 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HP5CL-0000ME-1q
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:05:30 -0800
+In-Reply-To: <17903.16030.26119.464793@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,57 +41,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday March 6, trond.myklebust@fys.uio.no wrote:
-> On Tue, 2007-03-06 at 16:40 +1100, NeilBrown wrote:
-> > If nolock and nocto mount options are set, then the implication is
-> > that cache consistency with other clients is not desired.  This is
-> > likely to be the case when the filesystem is only access by the one
-> > client - as a nfs-mounted root might be.
+On Thu, Mar 08, 2007 at 09:37:18AM +1100, Neil Brown wrote:
+> On Wednesday March 7, bfields@fieldses.org wrote:
+> > While I'm at it Trond and Christoph and others seem to be asking whether
+> > we can't make some more fundamental changes, such as:
 > > 
-> > In that case, there is no benefit in flushing writes and invalidating
-> > caches around lock/unlock requests.
+> > 	- Maintaining a static in-kernel exports table instead of
+> > 	  loading it on demand from mountd, and
 > > 
-> > This patch makes those flushes and invalidates conditional on either
-> > nolock or nocto being clear.
-> > 
-> > Signed-off-by: Neil Brown <neilb@suse.de>
 > 
-> NACK.
+> Don't like that idea at all.  Demand-loading is a good thing.
+
+Depending on why you need it, this may be inconsistent with the nfsv4
+pseudofilesystem construction; we need to be able to service readdir on
+the pseudofilesystem root, for example, which means knowing at least the
+list of paths.
+
+So could you remind me what the uses cases are here?  Who is it that
+requires demand loading, and why?
+
+I'll promise to write it all down someplace and then hopefully we won't
+have to re-ask the same questions too many times....
+
+> > 	- divorcing the exports namespace completely from any local
+> > 	  process namespace, to the extent that you could even just say
+> > 	  "I want to export /dev/sda7 as /usr/local/bin" without first 
+> > 	  mounting /dev/sda7 someplace.
 > 
-> Disabling close to open cache consistency using the "nocto" option is
-> not equivalent to disabling _all_ cache consistency. If people are using
-> remote locking, then it is because they are expecting a situation where
-> synchronisation is needed.
-
-"If people are using remote locking..."... but in this case (nolock)
-they aren't.
-
+> I like that even less.  Much much less.  Way way way less.  Yuck.
 > 
-> You can argue for or against the need to invalidate caches when the user
-> has specified "nolock" (it might be nice to add a Solaris-style "llock"
-> alias to this one day, btw: nolock == local locking != no locking at
-> all). We used to do this in early 2.4.x kernels, but that was changed.
-> The reason is that locking is the only way of ensuring that the NFS
-> cache is in sync with the server, and the "nolock" exception was
-> breaking this.
+> Having a private name-space for nfsd and co might be OK, but that is
+> the closest I could come to the above suggestion, and even then I'm not
+> convinced.  I think private name spaces are a very powerful tool that
+> should be used very very carefully.  There is plenty of room for
+> confusion of the poor sysadmin if you start doing too much with
+> private name spaces.
+> 
+> If you built a system where every daemon has a private namespace, then
+> having one for nfsd would be ok, but it really should be a system wide
+> approach to management, not an approach only used by nfsd.
 
-Yes, the name "nolock" does seem to have been unfortunate.  We had one
-customer wondering why it wasn't producing an 'ENOLCK' error status.
-We could create an alias.  "nonlm"?
+This is Christoph's suggestion, so I'm cc:'ing him.
 
-If you have chosen nocto,nolock, I cannot see any justification in
-expecting any way of ensuring  the NFS cache is in sync with the
-server except at unmount.
+I can believe that it would be convenient for sysadmin's to be able to
+export filesystems at paths other than the paths they're locally mounted
+at.  And once you're going to allow that, it seems cleanest just to let
+the exports tree be a purely in-kernel thing.  But this also doesn't
+seem like a hard requirement to me.
 
-However if you don't like it, that's fine.  It was just a "this might
-be useful, what do you think" rather than "this is important".  The
-other patch of the two was the real bugfix.  Did that pass muster?
-
-But I worry about adding an 'llock' option that was different from
-'nolock'.  How would you explain the difference in a way that didn't
-confuse people?
-
-NeilBrown
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
