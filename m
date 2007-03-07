@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 3/8] exportfs: add procedural interface for NFSD
-Date: Wed, 7 Mar 2007 10:39:55 +0000
-Message-ID: <20070307103955.GD22963@infradead.org>
+Subject: [PATCH 4/8] exportfs: remove CALL macro
+Date: Wed, 7 Mar 2007 10:40:02 +0000
+Message-ID: <20070307104002.GE22963@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,15 +9,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOtYr-0003Cj-St
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:00 -0800
+	id 1HOtYx-0003FL-DZ
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:04 -0800
 Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HOtYr-0002bP-I3
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:39:58 -0800
+	(Exim 4.44) id 1HOtYy-0002gl-Kg
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:05 -0800
 Received: from hch by pentafluge.infradead.org with local (Exim 4.63 #1 (Red
-	Hat Linux)) id 1HOtYp-0006Tn-V0
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:39:55 +0000
+	Hat Linux)) id 1HOtYw-0006Va-UL
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:40:02 +0000
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,134 +30,242 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Currently NFSD calls directly into filesystemsthrough the
-export_operations structure.  I plan to change this interface
-in various ways in later patches, and want to avoid the export
-of the default operations to NFSD, so this patch adds two
-simple exportfs_encode_fh/exportfs_decode_fh helpers for NFSD
-to call instead of poking into exportfs guts.
+Currently exportfs uses a way to call methods very differently from
+the rest of the kernel.  This patch changes it to the standard conventions
+for method calls.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
 Index: linux-2.6/fs/exportfs/expfs.c
 ===================================================================
---- linux-2.6.orig/fs/exportfs/expfs.c	2007-02-20 11:46:35.000000000 +0100
-+++ linux-2.6/fs/exportfs/expfs.c	2007-02-20 11:46:42.000000000 +0100
-@@ -3,6 +3,7 @@
- #include <linux/fs.h>
- #include <linux/file.h>
+--- linux-2.6.orig/fs/exportfs/expfs.c	2007-02-13 17:11:55.000000000 +0100
++++ linux-2.6/fs/exportfs/expfs.c	2007-02-13 17:11:58.000000000 +0100
+@@ -5,13 +5,39 @@
  #include <linux/module.h>
-+#include <linux/mount.h>
+ #include <linux/mount.h>
  #include <linux/smp_lock.h>
++#include <linux/mount.h>
  #include <linux/namei.h>
  
-@@ -469,6 +470,26 @@
- 				   acceptable, context);
+-struct export_operations export_op_default;
++#define dprintk(fmt, args...) do{}while(0)
+ 
+-#define	CALL(ops,fun) ((ops->fun)?(ops->fun):export_op_default.fun)
+ 
+-#define dprintk(fmt, args...) do{}while(0)
++static int get_name(struct dentry *dentry, char *name,
++		struct dentry *child);
++
++
++static struct dentry *exportfs_get_dentry(struct super_block *sb, void *obj)
++{
++	struct dentry *result = ERR_PTR(-ESTALE);
++
++	if (sb->s_export_op->get_dentry) {
++		result = sb->s_export_op->get_dentry(sb, obj);
++		if (!result)
++			result = ERR_PTR(-ESTALE);
++	}
++
++	return result;
++}
++
++static int exportfs_get_name(struct dentry *dir, char *name,
++		struct dentry *child)
++{
++	struct export_operations *nop = dir->d_sb->s_export_op;
++
++	if (nop->get_name)
++		return nop->get_name(dir, name, child);
++	else
++		return get_name(dir, name, child);
++}
+ 
+ static struct dentry *
+ find_acceptable_alias(struct dentry *result,
+@@ -79,7 +105,7 @@
+ {
+ 	struct dentry *result = NULL;
+ 	struct dentry *target_dir;
+-	int err;
++	int err = -ESTALE;
+ 	struct export_operations *nops = sb->s_export_op;
+ 	struct dentry *alias;
+ 	int noprogress;
+@@ -88,14 +114,10 @@
+ 	/*
+ 	 * Attempt to find the inode.
+ 	 */
+-	result = CALL(sb->s_export_op,get_dentry)(sb,obj);
+-	err = -ESTALE;
+-	if (result == NULL)
+-		goto err_out;
+-	if (IS_ERR(result)) {
+-		err = PTR_ERR(result);
+-		goto err_out;
+-	}
++	result = exportfs_get_dentry(sb, obj);
++	if (IS_ERR(result))
++		return result;
++
+ 	if (S_ISDIR(result->d_inode->i_mode) &&
+ 	    (result->d_flags & DCACHE_DISCONNECTED)) {
+ 		/* it is an unconnected directory, we must connect it */
+@@ -123,11 +145,11 @@
+ 		if (parent == NULL)
+ 			goto err_result;
+ 
+-		target_dir = CALL(sb->s_export_op,get_dentry)(sb,parent);
+-		if (IS_ERR(target_dir))
++		target_dir = exportfs_get_dentry(sb,parent);
++		if (IS_ERR(target_dir)) {
+ 			err = PTR_ERR(target_dir);
+-		if (target_dir == NULL || IS_ERR(target_dir))
+ 			goto err_result;
++		}
+ 	}
+ 	/*
+ 	 * Now we need to make sure that target_dir is properly connected.
+@@ -178,18 +200,27 @@
+ 			spin_unlock(&pd->d_lock);
+ 			noprogress = 0;
+ 		} else {
+-			/* we have hit the top of a disconnected path.  Try
+-			 * to find parent and connect
+-			 * note: racing with some other process renaming a
+-			 * directory isn't much of a problem here.  If someone
+-			 * renames the directory, it will end up properly
+-			 * connected, which is what we want
++			/*
++			 * We have hit the top of a disconnected path, try to
++			 * find parent and connect.
++			 *
++			 * Racing with some other process renaming a directory
++			 * isn't much of a problem here.  If someone renames
++			 * the directory, it will end up properly connected,
++			 * which is what we want
++			 *
++			 * Getting the parent can't be supported generically,
++			 * the locking is too icky.
++			 *
++			 * Instead we just return EACCES.  If server reboots
++			 * or inodes get flushed, you lose
+ 			 */
+-			struct dentry *ppd;
++			struct dentry *ppd = ERR_PTR(-EACCES);
+ 			struct dentry *npd;
+ 
+ 			mutex_lock(&pd->d_inode->i_mutex);
+-			ppd = CALL(nops,get_parent)(pd);
++			if (nops->get_parent)
++				ppd = nops->get_parent(pd);
+ 			mutex_unlock(&pd->d_inode->i_mutex);
+ 
+ 			if (IS_ERR(ppd)) {
+@@ -200,7 +231,7 @@
+ 				break;
+ 			}
+ 			dprintk("find_exported_dentry: find name of %lu in %lu\n", pd->d_inode->i_ino, ppd->d_inode->i_ino);
+-			err = CALL(nops,get_name)(ppd, nbuf, pd);
++			err = exportfs_get_name(ppd, nbuf, pd);
+ 			if (err) {
+ 				dput(ppd);
+ 				dput(pd);
+@@ -251,7 +282,7 @@
+ 	/* if we weren't after a directory, have one more step to go */
+ 	if (result != target_dir) {
+ 		struct dentry *nresult;
+-		err = CALL(nops,get_name)(target_dir, nbuf, result);
++		err = exportfs_get_name(target_dir, nbuf, result);
+ 		if (!err) {
+ 			mutex_lock(&target_dir->d_inode->i_mutex);
+ 			nresult = lookup_one_len(nbuf, target_dir, strlen(nbuf));
+@@ -287,23 +318,9 @@
+ 	dput(target_dir);
+  err_result:
+ 	dput(result);
+- err_out:
+ 	return ERR_PTR(err);
  }
  
-+int exportfs_encode_fh(struct dentry *dentry, __u32 *fh, int *max_len,
-+		int connectable)
-+{
-+	struct export_operations *nop = dentry->d_sb->s_export_op;
-+
-+	return CALL(nop, encode_fh)(dentry, fh, max_len, connectable);
-+}
-+EXPORT_SYMBOL_GPL(exportfs_encode_fh);
-+
-+struct dentry *exportfs_decode_fh(struct vfsmount *mnt, __u32 *fh, int fh_len,
-+		int fileid_type, int (*acceptable)(void *, struct dentry *),
-+		void *context)
-+{
-+	struct export_operations *nop = mnt->mnt_sb->s_export_op;
-+
-+	return CALL(nop, decode_fh)(mnt->mnt_sb, fh, fh_len, fileid_type,
-+			acceptable, context);
-+}
-+EXPORT_SYMBOL_GPL(exportfs_decode_fh);
-+
- struct export_operations export_op_default = {
- 	.decode_fh	= export_decode_fh,
- 	.encode_fh	= export_encode_fh,
-@@ -478,7 +499,6 @@
- 	.get_dentry	= get_dentry,
- };
+-
+-
+-static struct dentry *get_parent(struct dentry *child)
+-{
+-	/* get_parent cannot be supported generically, the locking
+-	 * is too icky.
+-	 * instead, we just return EACCES.  If server reboots or inodes
+-	 * get flushed, you lose
+-	 */
+-	return ERR_PTR(-EACCES);
+-}
+-
+-
+ struct getdents_callback {
+ 	char *name;		/* name that was found. It already points to a
+ 				   buffer NAME_MAX+1 is size */
+@@ -393,11 +410,6 @@
+ 	return error;
+ }
  
--EXPORT_SYMBOL(export_op_default);
+-static struct dentry *get_dentry(struct super_block *sb, void *vobjp)
+-{
+-	return ERR_PTR(-ESTALE);
+-}
+-
+ /**
+  * export_encode_fh - default export_operations->encode_fh function
+  * @dentry:  the dentry to encode
+@@ -473,9 +485,15 @@
+ int exportfs_encode_fh(struct dentry *dentry, __u32 *fh, int *max_len,
+ 		int connectable)
+ {
+-	struct export_operations *nop = dentry->d_sb->s_export_op;
++ 	struct export_operations *nop = dentry->d_sb->s_export_op;
++	int error;
++
++	if (nop->encode_fh)
++		error = nop->encode_fh(dentry, fh, max_len, connectable);
++	else
++		error = export_encode_fh(dentry, fh, max_len, connectable);
+ 
+-	return CALL(nop, encode_fh)(dentry, fh, max_len, connectable);
++	return error;
+ }
+ EXPORT_SYMBOL_GPL(exportfs_encode_fh);
+ 
+@@ -484,21 +502,20 @@
+ 		void *context)
+ {
+ 	struct export_operations *nop = mnt->mnt_sb->s_export_op;
++	struct dentry *result;
+ 
+-	return CALL(nop, decode_fh)(mnt->mnt_sb, fh, fh_len, fileid_type,
++	if (nop->decode_fh) {
++		result = nop->decode_fh(mnt->mnt_sb, fh, fh_len, fileid_type,
++			acceptable, context);
++	} else {
++		result = export_decode_fh(mnt->mnt_sb, fh, fh_len, fileid_type,
+ 			acceptable, context);
++	}
++
++	return result;
+ }
+ EXPORT_SYMBOL_GPL(exportfs_decode_fh);
+ 
+-struct export_operations export_op_default = {
+-	.decode_fh	= export_decode_fh,
+-	.encode_fh	= export_encode_fh,
+-
+-	.get_name	= get_name,
+-	.get_parent	= get_parent,
+-	.get_dentry	= get_dentry,
+-};
+-
  EXPORT_SYMBOL(find_exported_dentry);
  
  MODULE_LICENSE("GPL");
-Index: linux-2.6/fs/nfsd/nfsfh.c
-===================================================================
---- linux-2.6.orig/fs/nfsd/nfsfh.c	2007-02-20 11:46:30.000000000 +0100
-+++ linux-2.6/fs/nfsd/nfsfh.c	2007-02-20 11:47:34.000000000 +0100
-@@ -30,10 +30,6 @@
- static int nfsd_nr_verified;
- static int nfsd_nr_put;
- 
--extern struct export_operations export_op_default;
--
--#define	CALL(ops,fun) ((ops->fun)?(ops->fun):export_op_default.fun)
--
- /*
-  * our acceptability function.
-  * if NOSUBTREECHECK, accept anything
-@@ -214,11 +210,9 @@
- 		if (fileid_type == 0)
- 			dentry = dget(exp->ex_dentry);
- 		else {
--			struct export_operations *nop = exp->ex_mnt->mnt_sb->s_export_op;
--			dentry = CALL(nop,decode_fh)(exp->ex_mnt->mnt_sb,
--						     datap, data_left,
--						     fileid_type,
--						     nfsd_acceptable, exp);
-+			dentry = exportfs_decode_fh(exp->ex_mnt, datap,
-+					data_left, fileid_type,
-+					nfsd_acceptable, exp);
- 		}
- 		if (dentry == NULL)
- 			goto out;
-@@ -289,15 +283,13 @@
- static inline int _fh_update(struct dentry *dentry, struct svc_export *exp,
- 			     __u32 *datap, int *maxsize)
- {
--	struct export_operations *nop = exp->ex_mnt->mnt_sb->s_export_op;
--
- 	if (dentry == exp->ex_dentry) {
- 		*maxsize = 0;
- 		return 0;
- 	}
- 
--	return CALL(nop,encode_fh)(dentry, datap, maxsize,
--			  !(exp->ex_flags&NFSEXP_NOSUBTREECHECK));
-+	return exportfs_encode_fh(dentry, datap, maxsize,
-+			  !(exp->ex_flags & NFSEXP_NOSUBTREECHECK));
- }
- 
- /*
-Index: linux-2.6/include/linux/exportfs.h
-===================================================================
---- linux-2.6.orig/include/linux/exportfs.h	2007-02-20 11:46:31.000000000 +0100
-+++ linux-2.6/include/linux/exportfs.h	2007-02-20 11:46:42.000000000 +0100
-@@ -5,6 +5,7 @@
- 
- struct dentry;
- struct super_block;
-+struct vfsmount;
- 
- 
- /**
-@@ -116,4 +117,10 @@
- 	void *parent, int (*acceptable)(void *context, struct dentry *de),
- 	void *context);
- 
-+extern int exportfs_encode_fh(struct dentry *dentry, __u32 *fh, int *max_len,
-+	int connectable);
-+extern struct dentry *exportfs_decode_fh(struct vfsmount *mnt, __u32 *fh,
-+	int fh_len, int fileid_type, int (*acceptable)(void *, struct dentry *),
-+	void *context);
-+
- #endif /* LINUX_EXPORTFS_H */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
