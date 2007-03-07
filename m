@@ -1,23 +1,29 @@
-From: Tiziano Zito <t.zito@biologie.hu-berlin.de>
-Subject: NFS server hangs when user hits hard quota
-Date: Wed, 7 Mar 2007 15:01:43 +0100
-Message-ID: <20070307140143.GA20450@lotka.biologie.hu-berlin.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
+Date: Wed, 07 Mar 2007 09:16:15 -0500
+Message-ID: <45EEC92F.6080302@RedHat.com>
+References: <45EC7F0F.4090600@RedHat.com>
+	<1173130678.6315.7.camel@heimdal.trondhjem.org>
+	<45EC8FD3.4010809@redhat.com>
+	<1173132182.6315.27.camel@heimdal.trondhjem.org>
+	<45EC9837.1010504@redhat.com>
+	<1173186308.6393.7.camel@heimdal.trondhjem.org>
+	<45ED8135.2010008@RedHat.com> <45EDE060.3020501@RedHat.com>
+	<EXNANE01WtIIZS2TRqf00000060@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOwia-0007VO-Pz
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:02:12 -0800
-Received: from suncom4.cms.hu-berlin.de ([141.20.1.74])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOwib-00072E-Be
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:02:14 -0800
-Received: from localhost (localhost [127.0.0.1])
-	by suncom4.cms.hu-berlin.de (8.13.8/8.13.7) with ESMTP id
-	l27E1lEX013337
-	for <nfs@lists.sourceforge.net>; Wed, 7 Mar 2007 15:01:47 +0100 (CET)
+	id 1HOwwF-0000X3-Fm
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:16:19 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOwwG-0002Nm-2E
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:16:21 -0800
+In-Reply-To: <EXNANE01WtIIZS2TRqf00000060@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,46 +36,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all! We are experiencing a problem with our nfs3 server
-running a debian stable (sarge) kernel 2.4.32. 
-When a program running on a client hits the user hard quota, the
-server becomes really slow and almost unresponsive. This is easily
-reproducible: on a client as a user with quota enabled do
-cp /dev/zero /path/with/quota/enabled 
-as soon as the user hits her/his hard limit the server chokes.
-The only way to solve the problem is to disconnect the client from
-the network and kill the offending process. 
-I would think that such things should not happen, otherwise any user
-could at anytime issue a DoS attack on the NFS server. I've seen
-other posts relating to the same subject on this list:
-
-http://thread.gmane.org/gmane.linux.nfs/159
-http://thread.gmane.org/gmane.linux.nfs/216
-http://thread.gmane.org/gmane.linux.nfs/2988
-http://thread.gmane.org/gmane.linux.nfs/3938
-
-What I can understand from this posts is that the problem was
-present and that no solution existed, at least 3 years ago.
-Is the situation in the meanwhile changed? Could a kernel upgrade or
-an NFS3 -> NFS4 migration solve the problem?
-
-Thank you very much for any response, at the moment we are really
-stuck.
-
-PS: please include me in the Cc, I'm not a subscriber of this list.
 
 
- Tiziano Zito
- Institute for Theoretical Biology
- Humboldt-Universitaet zu Berlin  
- Invalidenstrasse, 43
- D-10115 Berlin, Germany
- 
- room: 1306
- phone: +49 30 2093-8630
- fax:   +49 30 2093-8801
+Talpey, Thomas wrote:
+> The current code already supports disabling READDIRPLUS to
+> servers that don't support it. It happens after the first bad
+> response. The intentional option is a good idea for other
+> reasons though, huge directories yield huge attributes.
+Yes... I agree this could be useful in other applications...
 
+> 
+> One problem I see with the mount option is that it might be
+> silently ignored by old mount binaries. That will confuse users
+> who install a new kernel and don't update util-linux/nfs-utils.
+The problem is not so much old mount binaries, since they will fail
+with something similar to "Unsupported nfs mount option: nordirplus",
+its using new mount binaries with old kernels. The kernels
+will silently ignore the option. One could tell the option is
+not set by catting /proc/mounts (since the "nordirplus" would
+not exist), but I agree there is potential for confusion...
 
+But on he other hand I didn't want to increase the mount
+version from 5 to 6 since I think that whole mounting version
+stuff is just rats nest.. and Two, I really didn't mounts
+to start failing (due to mis-versioning) for a option that
+will probably never be used... But it is trivial to increase
+the version, but it just causes so many headaches I was
+trying to avoid it... Right or wrong that was the reasoning...
+
+steved.
 
 
 -------------------------------------------------------------------------
