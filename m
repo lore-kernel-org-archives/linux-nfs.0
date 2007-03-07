@@ -1,23 +1,23 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 5/8] exportfs: untangle ISDIR logic in
-	find_exported_dentry
-Date: Wed, 7 Mar 2007 10:40:08 +0000
-Message-ID: <20070307104008.GF22963@infradead.org>
+Subject: [PATCH 7/8] exportfs: add find_disconnected_root helper
+Date: Wed, 7 Mar 2007 10:40:13 +0000
+Message-ID: <20070307104013.GG22963@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOtZ1-0003IW-R9
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:08 -0800
+	id 1HOtZ7-0003Ip-Rn
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:14 -0800
 Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOtZ3-0005nE-IP
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:10 -0800
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HOtZ9-0002kM-Ni
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 02:40:16 -0800
 Received: from hch by pentafluge.infradead.org with local (Exim 4.63 #1 (Red
-	Hat Linux)) id 1HOtZ2-0006bM-6i
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:40:08 +0000
+	Hat Linux)) id 1HOtZ7-0006bb-HX
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:40:13 +0000
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,65 +30,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Rework some logic in find_exported_dentry so that we only have a single
-S_ISDIR check and logic that makes clear to the reader what we're really
-doing here.
+Break the loop that finds the root of a disconnected subtree
+into a helper of it's own to make reading more clearly and
+document the intent.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
 Index: linux-2.6/fs/exportfs/expfs.c
 ===================================================================
---- linux-2.6.orig/fs/exportfs/expfs.c	2007-02-22 00:27:10.000000000 +0100
-+++ linux-2.6/fs/exportfs/expfs.c	2007-02-22 00:39:35.000000000 +0100
-@@ -118,30 +118,23 @@
- 	if (IS_ERR(result))
- 		return result;
+--- linux-2.6.orig/fs/exportfs/expfs.c	2007-02-22 00:39:39.000000000 +0100
++++ linux-2.6/fs/exportfs/expfs.c	2007-02-22 00:39:48.000000000 +0100
+@@ -72,6 +72,27 @@
+ 	return NULL;
+ }
  
--	if (S_ISDIR(result->d_inode->i_mode) &&
--	    (result->d_flags & DCACHE_DISCONNECTED)) {
--		/* it is an unconnected directory, we must connect it */
--		;
--	} else {
--		if (acceptable(context, result))
--			return result;
--		if (S_ISDIR(result->d_inode->i_mode)) {
-+	if (S_ISDIR(result->d_inode->i_mode)) {
-+		if (!(result->d_flags & DCACHE_DISCONNECTED)) {
-+			if (acceptable(context, result))
-+				return result;
- 			err = -EACCES;
- 			goto err_result;
- 		}
- 
-+		target_dir = dget(result);
-+	} else {
-+		if (acceptable(context, result))
-+			return result;
++/*
++ * Find root of a disconnected subtree and return a reference to it.
++ */
++static struct dentry *
++find_disconnected_root(struct dentry *dentry)
++{
++	dget(dentry);
++	spin_lock(&dentry->d_lock);
++	while (!IS_ROOT(dentry) &&
++	       (dentry->d_parent->d_flags & DCACHE_DISCONNECTED)) {
++		struct dentry *parent = dentry->d_parent;
++		dget(parent);
++		spin_unlock(&dentry->d_lock);
++		dput(dentry);
++		dentry = parent;
++		spin_lock(&dentry->d_lock);
++	}
++	spin_unlock(&dentry->d_lock);
++	return dentry;
++}
 +
- 		alias = find_acceptable_alias(result, acceptable, context);
- 		if (alias)
- 			return alias;
--	}			
+ /**
+  * find_exported_dentry - helper routine to implement export_operations->decode_fh
+  * @sb:		The &super_block identifying the filesystem
+@@ -166,23 +187,9 @@
+ 	 * the noprogress counter.  If we go through the loop 10 times (2 is
+ 	 * probably enough) without getting anywhere, we just give up
+ 	 */
+-	noprogress= 0;
++	noprogress = 0;
+ 	while (target_dir->d_flags & DCACHE_DISCONNECTED && noprogress++ < 10) {
+-		struct dentry *pd = target_dir;
+-
+-		dget(pd);
+-		spin_lock(&pd->d_lock);
+-		while (!IS_ROOT(pd) &&
+-				(pd->d_parent->d_flags&DCACHE_DISCONNECTED)) {
+-			struct dentry *parent = pd->d_parent;
+-
+-			dget(parent);
+-			spin_unlock(&pd->d_lock);
+-			dput(pd);
+-			pd = parent;
+-			spin_lock(&pd->d_lock);
+-		}
+-		spin_unlock(&pd->d_lock);
++		struct dentry *pd = find_disconnected_root(target_dir);
  
--	/* It's a directory, or we are required to confirm the file's
--	 * location in the tree based on the parent information
-- 	 */
--	dprintk("find_exported_dentry: need to look harder for %s/%d\n",sb->s_id,*(int*)obj);
--	if (S_ISDIR(result->d_inode->i_mode))
--		target_dir = dget(result);
--	else {
- 		if (parent == NULL)
- 			goto err_result;
- 
-@@ -151,6 +144,7 @@
- 			goto err_result;
- 		}
- 	}
-+
- 	/*
- 	 * Now we need to make sure that target_dir is properly connected.
- 	 * It may already be, as the flag isn't always updated when connection
+ 		if (!IS_ROOT(pd)) {
+ 			/* must have found a connected parent - great */
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
