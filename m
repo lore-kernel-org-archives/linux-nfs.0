@@ -1,26 +1,25 @@
-From: Simon Peter <simon.peter@gmx.de>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 19:44:18 +0100
-Message-ID: <20070307194418.97fee0ec.simon.peter@gmx.de>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
-	<20070307154240.GB26553@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
+Date: Wed, 07 Mar 2007 14:20:47 -0500
+Message-ID: <45EF108F.4050608@RedHat.com>
+References: <45EC7F0F.4090600@RedHat.com>		<1173130678.6315.7.camel@heimdal.trondhjem.org>		<45EC8FD3.4010809@redhat.com>		<1173132182.6315.27.camel@heimdal.trondhjem.org>		<45EC9837.1010504@redhat.com>	<1173186308.6393.7.camel@heimdal.trondhjem.org>	<45ED8135.2010008@RedHat.com>
+	<45EDE060.3020501@RedHat.com> <45EECE74.6070606@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>,
+	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP17m-0006qI-UE
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:44:31 -0800
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP17m-00050b-KP
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:44:33 -0800
-In-Reply-To: <20070307154240.GB26553@fieldses.org>
+	id 1HP26B-0004xW-8F
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 11:47:01 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP269-0000NE-VJ
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 11:46:57 -0800
+In-Reply-To: <45EECE74.6070606@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,41 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> > just verified that the server indeed spins up all disks before
-> > answering the request. I thus suspect it is somehow checking all
-> > exports whenever any one export is accessed. Is this correct
-> > behaviour?
-> Hm.  If you have the nfs-utils source, you can see there's a loop in
-> 	nfs-utils/utils/mountd/cache.c:nfsd_fh()
-> that stats the root of each export, in two places; the first it looks
-> like you shouldn't hit if you don't have the mountpoint export option
-> set:
 
-Correct. This one is never hit in my case.
 
-> The second is to figure out which filesystem the filehandle that you
-> passed in that getattr is for:
->          if (stat(exp->m_export.e_path, &stb) != 0)
->                  continue;
+Chuck Lever wrote:
+> You've implemented a "negative" -- the usual convention is to implement 
+> the "positive" option.   This is how Apple/*BSD do it for READDIRPLUS, 
+> and it might be good to follow existing precedent.
+True... but I pattern it after the our 'noacl' option....
+so I am following the existing precedent (using the same characters as 
+Apple) but only to a point... ;-) How much precedent can one take! :-D
 
-This is where the wait for the respective disk to spin up occurs.
+> 
+> I think you should implement "rddirplus" and make it the default.  That 
+> way you get "norddirplus" automatically.
+Take a closer look... -o rdirplus is the default... and -o nordirplus
+is not...
+> 
+> You should also include appropriate man page changes in your patch. ;-D
+Maybe the man page can be worded better...
 
-> Could we cache the stat information in the export and then
-> double-check it if necessary when there's a match?  Or is there some
-> way we could get the kernel to keep that cached for us?
-
-I could certainly cook up a patch for mountd to cache that information
-on its own. I don't have too much clue about how the kernel does its
-cacheing, though. If it's useful to do that directly in mountd, I could
-get my hands on it.
-
-> It seems reasonable to want to export filesystems from a bunch of
-> disks without necessarily keeping them all spun up all the time.
-
-This is at least what I would like to see...
-
-Thanks,
-Simon
+steved.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
