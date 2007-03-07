@@ -1,7 +1,7 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 16:17:29 -0500
-Message-ID: <20070307211729.GO26553@fieldses.org>
+Date: Wed, 07 Mar 2007 16:23:23 -0500
+Message-ID: <EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
 References: <20070307112347.6a40faff.simon.peter@gmx.de>
 	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
 	<20070307160633.77afb618.simon.peter@gmx.de>
@@ -10,20 +10,30 @@ References: <20070307112347.6a40faff.simon.peter@gmx.de>
 	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
 	<20070307205016.GI26553@fieldses.org>
 	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
+	<20070307211729.GO26553@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP3VH-0006Gq-EO
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:16:56 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3VH-00024a-Ao
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:16:57 -0800
-In-Reply-To: <EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
+	id 1HP3bl-00070r-PG
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:23:38 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3bn-0000uU-Q5
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:23:39 -0800
+In-Reply-To: <20070307211729.GO26553@fieldses.org>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
+	<20070307154240.GB26553@fieldses.org>
+	<20070307194418.97fee0ec.simon.peter@gmx.de>
+	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
+	<20070307205016.GI26553@fieldses.org>
+	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
+	<20070307211729.GO26553@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,27 +46,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Mar 07, 2007 at 04:07:39PM -0500, Talpey, Thomas wrote:
-> I was actually trying to talk Simon out of trying, in case that wasn't
-> obvious.
+At 04:17 PM 3/7/2007, J. Bruce Fields wrote:
+>There's an expiry time that's passed down with each cache entry.  In
+>this particular case it's 30 minutes.  There's also a "flush" file you
+>can write to to ask that the whole cache be flushed.  I don't remember
+>how this works in detail, though.
 
-Probably good advice.
+Aha - so the time comes from mountd. There's some sort of refresh
+timer that the kernel triggers though. So it's not a deadline of this
+time (I think). Or is it.
 
-> But I'm really glad it bugs you! Keep thinking that way, maybe you can
-> untangle it someday. :-)
-> 
-> While you're thinking about it, what's the actual timeout on a given
-> in-kernel export cache entry? There's a 120-second deadline on an
-> unresolved cache miss being populated, but when, exactly, does an
-> existing (resolved) entry go stale? I admit to having tried to figure it
-> out once and wound up going in circles.
+The "flush" file lives in /proc/net/rpc/nfsd.export, and you write an
+integer value to it. I *think* it then flushes any entries which are
+more than that many seconds old.
 
-There's an expiry time that's passed down with each cache entry.  In
-this particular case it's 30 minutes.  There's also a "flush" file you
-can write to to ask that the whole cache be flushed.  I don't remember
-how this works in detail, though.
+The whole thing makes my head hurt and I try not to look at it.
 
---b.
+Tom.
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
