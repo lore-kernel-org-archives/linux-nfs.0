@@ -1,30 +1,32 @@
-From: Simon Peter <simon.peter@gmx.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 00:19:48 +0100
-Message-ID: <20070308001948.7496c629.simon.peter@gmx.de>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
+Date: Wed, 7 Mar 2007 18:24:15 -0500
+Message-ID: <20070307232414.GZ26553@fieldses.org>
+References: <20070307160633.77afb618.simon.peter@gmx.de>
 	<20070307154240.GB26553@fieldses.org>
 	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<20070307202949.GH26553@fieldses.org>
-	<20070307224624.d711f47f.simon.peter@gmx.de>
-	<20070307220541.GS26553@fieldses.org>
+	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
+	<20070307205016.GI26553@fieldses.org>
+	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
+	<20070307211729.GO26553@fieldses.org>
+	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
+	<20070307215406.GR26553@fieldses.org>
+	<17903.16030.26119.464793@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP5QT-0002ky-SE
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:20:07 -0800
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP5QU-0006MC-Bd
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:20:08 -0800
-In-Reply-To: <20070307220541.GS26553@fieldses.org>
+	id 1HP5Tw-00035R-9F
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:23:40 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP5Tx-0007FA-0M
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:23:42 -0800
+In-Reply-To: <17903.16030.26119.464793@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,50 +39,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> > Not all of my exported directories are mountpoints of the underlying
-> > VFS of the server.
-> I'd be curious why.  There's some hard-to-solve security problems
-> there--people can guess filehandles of unexported files and access
-> them directly without lookups.  So some day I'd love to actually
-> forbid (or at least strongly discourage) what you're doing....  But
-> clearly we'd first need to understand why people do that and make
-> sure there are adequate alternatives.
+On Thu, Mar 08, 2007 at 09:37:18AM +1100, Neil Brown wrote:
+> On Wednesday March 7, bfields@fieldses.org wrote:
+> > 
+> > Well, non-head-hurty ideas always welcomed.  I've got two export-related
+> > problems to fix:
+> > 
+> > 	- Our current NFSv4 pseudofs fsid=0 hack is a pain to administer
+> > 	  and results in inconsistent paths across different NFS
+> > 	  versions.
+> 
+> You've got to put that v4 pseudo root somewhere...
+> It just needs cleverness in nfs-utils to auto-bind-mount things into
+> the pseudoroot...
 
-Well, I've actually done it for security (not knowing what you just
-said about it). There are some directories on those disks that I don't
-want people to poke around in, so I don't export the whole filesystem
-of a disk. For some other directories, I have different access
-constraints.
+I've got make-mountd-clever patches here; if I can get them working in
+the next couple days then I'll pass them along so people can see what
+they're doing.
 
-For example, there's one subdirectory that I export to two subnets and
-one that is only exported to one of them. I do that because I have an
-"access granting" security philosophy: At first, any access is denied
-and then I grant access only to those people who can make use of their
-granted resources. Since one of those directories is only useful to
-the users of that one subnet, I only export it for that one.
+> but I guess people cannot magically unmount things then.
+>
+> How about this.  We add an export option "follow-symlinks" so that
+> when nfsd is asked to stat a symlink it does a 'stat' instead of an
+> 'lstat' (effectively).
+> Then we get mountd to make a tmpfs in /var/lib/nfs/pseudoroot which
+> contains directories and symlinks to the various export points names
+> in etab.  This tmpfs is exported as fsid=0,follow-symlinks.
+> 
+> Problem solved?
 
-> > Some are, though.
-> Are the spinning-up delays happening only on those drives that have
-> exported directories that aren't mountpoints?
+Maybe.  Getting those symlink/mountpoints right sounds tricky.
 
-I just notice that I was wrong. No exports are on mountpoints. I'm
-sorry.
+How different is this from the in-kernel automounting that the NFS
+client is using for fsid traversal, for example?
 
-> > Are you sure these are invalidated automatically, especially through
-> > nfs-utils? If the kernel cache never expires, it should consequently
-> > never ask for it, so nfs-utils would not be involved. Am I missing
-> > something?
-> There's also a mechanism by which nfs-utils can ask for the whole
-> cache to be flushed immediately on its own.  So re-running exportfs
-> to change the exports, for example, should result in the cache being
-> flushed.  I haven't checked whether that's done in all the places it
-> should be, but it probably is.
+> Ofcourse if different clients get to see different exports, then we
+> might need multiple tmpfs's in /var/lib/nfs/pseudoroot/$CLIENT/ ....
 
-Okay. So if we really only need major, minor and inode information,
-like Neil said, then that would work. Because otherwise the data on
-disk could change without the kernel noticing.
+Ugh.  Is this something a lot of people do?
 
-Simon
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
