@@ -1,224 +1,79 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 006/101] knfsd: Fix a race in closing NFSd connections.
-Date: Wed, 07 Mar 2007 09:10:41 -0800
-Message-ID: <20070307171136.733769722@mini.kroah.org>
-References: <20070307171035.150802805@mini.kroah.org>
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, nfs@lists.sourceforge.net,
-	Neil Brown <neilb@suse.de>
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Andrew Morton <akpm@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1422755AbXCGR7G@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Simon Peter <simon.peter@gmx.de>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Wed, 7 Mar 2007 19:44:18 +0100
+Message-ID: <20070307194418.97fee0ec.simon.peter@gmx.de>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
+	<20070307154240.GB26553@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HP17m-0006qI-UE
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:44:31 -0800
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP17m-00050b-KP
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 10:44:33 -0800
+In-Reply-To: <20070307154240.GB26553@fieldses.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-If you lose this race, it can iput a socket inode twice and you
-get a BUG in fs/inode.c
+> > just verified that the server indeed spins up all disks before
+> > answering the request. I thus suspect it is somehow checking all
+> > exports whenever any one export is accessed. Is this correct
+> > behaviour?
+> Hm.  If you have the nfs-utils source, you can see there's a loop in
+> 	nfs-utils/utils/mountd/cache.c:nfsd_fh()
+> that stats the root of each export, in two places; the first it looks
+> like you shouldn't hit if you don't have the mountpoint export option
+> set:
 
-When I added the option for user-space to close a socket,
-I added some cruft to svc_delete_socket so that I could call
-that function when closing a socket per user-space request.
+Correct. This one is never hit in my case.
 
-This was the wrong thing to do.  I should have just set SK_CLOSE
-and let normal mechanisms do the work.
+> The second is to figure out which filesystem the filehandle that you
+> passed in that getattr is for:
+>          if (stat(exp->m_export.e_path, &stb) != 0)
+>                  continue;
 
-Not only wrong, but buggy.  The locking is all wrong and it openned
-up a race where-by a socket could be closed twice.
+This is where the wait for the respective disk to spin up occurs.
 
-So this patch:
-  Introduces svc_close_socket which sets SK_CLOSE then either leave
-  the close up to a thread, or calls svc_delete_socket if it can
-  get SK_BUSY.
+> Could we cache the stat information in the export and then
+> double-check it if necessary when there's a match?  Or is there some
+> way we could get the kernel to keep that cached for us?
 
-  Adds a bias to sk_busy which is removed when SK_DEAD is set,
-  This avoid races around shutting down the socket.
+I could certainly cook up a patch for mountd to cache that information
+on its own. I don't have too much clue about how the kernel does its
+cacheing, though. If it's useful to do that directly in mountd, I could
+get my hands on it.
 
-  Changes several 'spin_lock' to 'spin_lock_bh' where the _bh 
-  was missing.
+> It seems reasonable to want to export filesystems from a bunch of
+> disks without necessarily keeping them all spun up all the time.
 
-Bugzilla-url: http://bugzilla.kernel.org/show_bug.cgi?id=7916
+This is at least what I would like to see...
 
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+Thanks,
+Simon
 
-
----
- include/linux/sunrpc/svcsock.h |    2 -
- net/sunrpc/svc.c               |    4 +--
- net/sunrpc/svcsock.c           |   52 +++++++++++++++++++++++++++++------------
- 3 files changed, 41 insertions(+), 17 deletions(-)
-
---- linux-2.6.20.1.orig/include/linux/sunrpc/svcsock.h
-+++ linux-2.6.20.1/include/linux/sunrpc/svcsock.h
-@@ -63,7 +63,7 @@ struct svc_sock {
-  * Function prototypes.
-  */
- int		svc_makesock(struct svc_serv *, int, unsigned short);
--void		svc_delete_socket(struct svc_sock *);
-+void		svc_close_socket(struct svc_sock *);
- int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
---- linux-2.6.20.1.orig/net/sunrpc/svc.c
-+++ linux-2.6.20.1/net/sunrpc/svc.c
-@@ -386,7 +386,7 @@ svc_destroy(struct svc_serv *serv)
- 		svsk = list_entry(serv->sv_tempsocks.next,
- 				  struct svc_sock,
- 				  sk_list);
--		svc_delete_socket(svsk);
-+		svc_close_socket(svsk);
- 	}
- 	if (serv->sv_shutdown)
- 		serv->sv_shutdown(serv);
-@@ -395,7 +395,7 @@ svc_destroy(struct svc_serv *serv)
- 		svsk = list_entry(serv->sv_permsocks.next,
- 				  struct svc_sock,
- 				  sk_list);
--		svc_delete_socket(svsk);
-+		svc_close_socket(svsk);
- 	}
- 	
- 	cache_clean_deferred(serv);
---- linux-2.6.20.1.orig/net/sunrpc/svcsock.c
-+++ linux-2.6.20.1/net/sunrpc/svcsock.c
-@@ -62,6 +62,12 @@
-  *		after a clear, the socket must be read/accepted
-  *		 if this succeeds, it must be set again.
-  *	SK_CLOSE can set at any time. It is never cleared.
-+ *      sk_inuse contains a bias of '1' until SK_DEAD is set.
-+ *             so when sk_inuse hits zero, we know the socket is dead
-+ *             and no-one is using it.
-+ *      SK_DEAD can only be set while SK_BUSY is held which ensures
-+ *             no other thread will be using the socket or will try to
-+ *	       set SK_DEAD.
-  *
-  */
- 
-@@ -70,6 +76,7 @@
- 
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
- 					 int *errp, int pmap_reg);
-+static void		svc_delete_socket(struct svc_sock *svsk);
- static void		svc_udp_data_ready(struct sock *, int);
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
-@@ -329,8 +336,9 @@ void svc_reserve(struct svc_rqst *rqstp,
- static inline void
- svc_sock_put(struct svc_sock *svsk)
- {
--	if (atomic_dec_and_test(&svsk->sk_inuse) &&
--			test_bit(SK_DEAD, &svsk->sk_flags)) {
-+	if (atomic_dec_and_test(&svsk->sk_inuse)) {
-+		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
-+
- 		dprintk("svc: releasing dead socket\n");
- 		if (svsk->sk_sock->file)
- 			sockfd_put(svsk->sk_sock);
-@@ -520,7 +528,7 @@ svc_sock_names(char *buf, struct svc_ser
- 
- 	if (!serv)
- 		return 0;
--	spin_lock(&serv->sv_lock);
-+	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
- 		int onelen = one_sock_name(buf+len, svsk);
- 		if (toclose && strcmp(toclose, buf+len) == 0)
-@@ -528,12 +536,12 @@ svc_sock_names(char *buf, struct svc_ser
- 		else
- 			len += onelen;
- 	}
--	spin_unlock(&serv->sv_lock);
-+	spin_unlock_bh(&serv->sv_lock);
- 	if (closesk)
- 		/* Should unregister with portmap, but you cannot
- 		 * unregister just one protocol...
- 		 */
--		svc_delete_socket(closesk);
-+		svc_close_socket(closesk);
- 	else if (toclose)
- 		return -ENOENT;
- 	return len;
-@@ -683,6 +691,11 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
- 
-+	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
-+		svc_delete_socket(svsk);
-+		return 0;
-+	}
-+
- 	clear_bit(SK_DATA, &svsk->sk_flags);
- 	while ((skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
- 		if (err == -EAGAIN) {
-@@ -1176,7 +1189,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 		       rqstp->rq_sock->sk_server->sv_name,
- 		       (sent<0)?"got error":"sent only",
- 		       sent, xbufp->len);
--		svc_delete_socket(rqstp->rq_sock);
-+		set_bit(SK_CLOSE, &rqstp->rq_sock->sk_flags);
-+		svc_sock_enqueue(rqstp->rq_sock);
- 		sent = -EAGAIN;
- 	}
- 	return sent;
-@@ -1495,7 +1509,7 @@ svc_setup_socket(struct svc_serv *serv, 
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
- 	svsk->sk_server = serv;
--	atomic_set(&svsk->sk_inuse, 0);
-+	atomic_set(&svsk->sk_inuse, 1);
- 	svsk->sk_lastrecv = get_seconds();
- 	spin_lock_init(&svsk->sk_defer_lock);
- 	INIT_LIST_HEAD(&svsk->sk_deferred);
-@@ -1618,7 +1632,7 @@ bummer:
- /*
-  * Remove a dead socket
-  */
--void
-+static void
- svc_delete_socket(struct svc_sock *svsk)
- {
- 	struct svc_serv	*serv;
-@@ -1644,16 +1658,26 @@ svc_delete_socket(struct svc_sock *svsk)
- 	 * while still attached to a queue, the queue itself
- 	 * is about to be destroyed (in svc_destroy).
- 	 */
--	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags))
-+	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags)) {
-+		BUG_ON(atomic_read(&svsk->sk_inuse)<2);
-+		atomic_dec(&svsk->sk_inuse);
- 		if (test_bit(SK_TEMP, &svsk->sk_flags))
- 			serv->sv_tmpcnt--;
-+	}
- 
--	/* This atomic_inc should be needed - svc_delete_socket
--	 * should have the semantic of dropping a reference.
--	 * But it doesn't yet....
--	 */
--	atomic_inc(&svsk->sk_inuse);
- 	spin_unlock_bh(&serv->sv_lock);
-+}
-+
-+void svc_close_socket(struct svc_sock *svsk)
-+{
-+	set_bit(SK_CLOSE, &svsk->sk_flags);
-+	if (test_and_set_bit(SK_BUSY, &svsk->sk_flags))
-+		/* someone else will have to effect the close */
-+		return;
-+
-+	atomic_inc(&svsk->sk_inuse);
-+	svc_delete_socket(svsk);
-+	clear_bit(SK_BUSY, &svsk->sk_flags);
- 	svc_sock_put(svsk);
- }
- 
-
---
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
