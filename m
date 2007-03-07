@@ -1,23 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs-utils, e_maptype
-Date: Wed, 7 Mar 2007 16:28:44 -0500
-Message-ID: <20070307212844.GQ26553@fieldses.org>
-References: <20070307022107.GC27862@fieldses.org>
-	<200703072123.47224.okir@lst.de>
+From: AK <amithl_prem@yahoo.com>
+Subject: Re: Performance: NFS v3  mounting with 'noac' option
+Date: Wed, 7 Mar 2007 13:32:57 -0800 (PST)
+Message-ID: <141076.2067.qm@web56606.mail.re3.yahoo.com>
+References: <45EEFCA4.40000@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Olaf Kirch <okir@lst.de>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP3g9-0007TW-87
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:28:10 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3g9-0005GC-94
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:28:09 -0800
-In-Reply-To: <200703072123.47224.okir@lst.de>
+	id 1HP3kv-000826-A1
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:33:06 -0800
+Received: from web56606.mail.re3.yahoo.com ([66.196.97.50])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP3kt-0006Sy-3m
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:33:07 -0800
+In-Reply-To: <45EEFCA4.40000@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,23 +29,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Mar 07, 2007 at 09:23:45PM +0100, Olaf Kirch wrote:
-> On Wednesday 07 March 2007 03:21, J. Bruce Fields wrote:
-> > Anybody know what the e_maptype export field is for?  It seems to be
-> > unused.
+
+--- Peter Staubach <staubach@redhat.com> wrote:
+
+> > We have multiple file systems begin mounted from
+> the
+> > same NFS server. One of our user's application
+> > requires to mount the file system with 'noac'
+> option. 
+> >
+> >   
 > 
-> IINM it goes back to the unfsd days. You could do different types of uid
-> mapping there - 1:1 mapping, using NIS, or using some funky contraption called
-> rpc.ugidd. Yes, we had uid mapping before NFSv4, and no, it wasnt pretty :-)
+> What about this application requires that the "noac"
+> option be used?
+  application is romio with mpich2 ...
+ 
+> 
+> One of the impacts of using the "noac" option is
+> much more network
+> traffic and it will be composed of small packets. 
+> If the server is
+> busy handling all of the additional GETATTR
+> requests, then it won't
+> be handling other requests.  The client will also be
+> a bit busier
+> with generating the additional requests, instead of
+> just doing what
+> might be considered more useful work.
+> 
+> So, there should be no direct impact to other
+> mounted file systems.
+> However, there may be indirect impacts.
 
-Some things are just timeless.
+indirect impacts: can you please elaborate on this.
 
-So does that someone somewhere could theoretically be using this code
-right now?  On a quick glance I'd convinced myself it was totally dead,
-but I wasn't thinking about unfsd.  I have no clue how it interacts with
-anything else in nfs-utils.
+~ thanks!
 
---b.
+
+ 
+____________________________________________________________________________________
+It's here! Your new message!  
+Get new email alerts with the free Yahoo! Toolbar.
+http://tools.search.yahoo.com/toolbar/features/mail/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
