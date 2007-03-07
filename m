@@ -1,25 +1,23 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
-Date: Wed, 07 Mar 2007 14:20:47 -0500
-Message-ID: <45EF108F.4050608@RedHat.com>
-References: <45EC7F0F.4090600@RedHat.com>		<1173130678.6315.7.camel@heimdal.trondhjem.org>		<45EC8FD3.4010809@redhat.com>		<1173132182.6315.27.camel@heimdal.trondhjem.org>		<45EC9837.1010504@redhat.com>	<1173186308.6393.7.camel@heimdal.trondhjem.org>	<45ED8135.2010008@RedHat.com>
-	<45EDE060.3020501@RedHat.com> <45EECE74.6070606@oracle.com>
+From: Olaf Kirch <okir@lst.de>
+Subject: Re: nfs-utils, e_maptype
+Date: Wed, 7 Mar 2007 21:23:45 +0100
+Message-ID: <200703072123.47224.okir@lst.de>
+References: <20070307022107.GC27862@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: chuck.lever@oracle.com
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP26B-0004xW-8F
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 11:47:01 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP269-0000NE-VJ
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 11:46:57 -0800
-In-Reply-To: <45EECE74.6070606@oracle.com>
+	id 1HP2g9-0000Xf-He
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 12:24:06 -0800
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1HP2g6-0001S2-Jd
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 12:24:04 -0800
+In-Reply-To: <20070307022107.GC27862@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,26 +30,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Wednesday 07 March 2007 03:21, J. Bruce Fields wrote:
+> Anybody know what the e_maptype export field is for?  It seems to be
+> unused.
 
+IINM it goes back to the unfsd days. You could do different types of uid
+mapping there - 1:1 mapping, using NIS, or using some funky contraption called
+rpc.ugidd. Yes, we had uid mapping before NFSv4, and no, it wasnt pretty :-)
 
-Chuck Lever wrote:
-> You've implemented a "negative" -- the usual convention is to implement 
-> the "positive" option.   This is how Apple/*BSD do it for READDIRPLUS, 
-> and it might be good to follow existing precedent.
-True... but I pattern it after the our 'noacl' option....
-so I am following the existing precedent (using the same characters as 
-Apple) but only to a point... ;-) How much precedent can one take! :-D
-
-> 
-> I think you should implement "rddirplus" and make it the default.  That 
-> way you get "norddirplus" automatically.
-Take a closer look... -o rdirplus is the default... and -o nordirplus
-is not...
-> 
-> You should also include appropriate man page changes in your patch. ;-D
-Maybe the man page can be worded better...
-
-steved.
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
