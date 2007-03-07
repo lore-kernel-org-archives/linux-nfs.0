@@ -1,22 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: nfs-utils, e_maptype
-Date: Tue, 6 Mar 2007 21:21:07 -0500
-Message-ID: <20070307022107.GC27862@fieldses.org>
+From: "Suppaaem Sudjai" <Ramone@ekoinf.net>
+Subject: Vista Product Activation Unpicked
+Date: Wed, 07 Mar 2007 04:15:05 +0000
+Message-ID: <047501c7606f$0c6df71c$2d8c97c2@gebruike-deb62c.domain.invalid>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+To: "Cogan Linda" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOllZ-0004Qv-E2
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 18:20:33 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOlla-0001PR-Bv
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 18:20:35 -0800
-Received: from bfields by fieldses.org with local (Exim 4.63)
-	(envelope-from <bfields@fieldses.org>) id 1HOlm7-0007KW-HY
-	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 21:21:07 -0500
+	id 1HOnZY-0007oH-Bs
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 20:16:18 -0800
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HOnZZ-0004Wn-4t
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 20:16:18 -0800
+Received: from [194.151.140.45] (helo=gebruike-deb62c.domain.invalid)
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1HOnZ1-0006eN-To
+	for nfs@lists.sourceforge.net; Tue, 06 Mar 2007 20:15:44 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,10 +31,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Anybody know what the e_maptype export field is for?  It seems to be
-unused.
 
---b.
+#1 Penis Enlargement Solution in the World
+
+You can order it here: http://www.chrisbarberloans.info
+
+100% Guaranteed risk free results or your Money Back!
+
+-- 
+mnhgilhhghiuishlhhhjmlhpikhthtitiqiofugifkfljpfqfigi
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
