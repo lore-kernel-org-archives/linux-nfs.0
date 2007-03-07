@@ -1,29 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 17:05:41 -0500
-Message-ID: <20070307220541.GS26553@fieldses.org>
+Date: Thu, 8 Mar 2007 09:09:07 +1100
+Message-ID: <17903.14339.553627.431965@notabene.brown>
 References: <20070307112347.6a40faff.simon.peter@gmx.de>
 	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
 	<20070307160633.77afb618.simon.peter@gmx.de>
 	<20070307154240.GB26553@fieldses.org>
 	<20070307194418.97fee0ec.simon.peter@gmx.de>
 	<20070307202949.GH26553@fieldses.org>
-	<20070307224624.d711f47f.simon.peter@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: Simon Peter <simon.peter@gmx.de>
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP4Fs-0002xQ-Kf
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:05:04 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP4Fu-0005dW-EF
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:05:06 -0800
-In-Reply-To: <20070307224624.d711f47f.simon.peter@gmx.de>
+	id 1HP4K3-0003Qs-PX
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:09:23 -0800
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HP4K4-0003n3-HZ
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 14:09:25 -0800
+In-Reply-To: message from J. Bruce Fields on Wednesday March 7
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,47 +36,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Mar 07, 2007 at 10:46:24PM +0100, Simon Peter wrote:
-> > 	  Though there's one point I'm unclear on: are the directories
-> > 	  you're exporting mountpoints?  That's the normal
+On Wednesday March 7, bfields@fieldses.org wrote:
 > 
-> Not all of my exported directories are mountpoints of the underlying
-> VFS of the server.
-
-I'd be curious why.  There's some hard-to-solve security problems
-there--people can guess filehandles of unexported files and access them
-directly without lookups.  So some day I'd love to actually forbid (or
-at least strongly discourage) what you're doing....  But clearly we'd
-first need to understand why people do that and make sure there are
-adequate alternatives.
-
-> Some are, though.
-
-Are the spinning-up delays happening only on those drives that have
-exported directories that aren't mountpoints?
-
-> > 	- the filehandle->export mapping that this function tells the
-> > 	  kernel about is cached by nfsd for a half-hour.  That time
-> > is set a little later in nfsd_fh:
-> > 	  I don't think there would be any harm to just changing that
-> > 	  time(0)+30*60 to 0x7FFFFFFF (== never expire)--nfs-utils
-> > 	  should be invalidating that cache explicitly whenever it's
-> > 	  needed.  Maybe that should be the default.
+> 	- the filehandle->export mapping that this function tells the
+> 	  kernel about is cached by nfsd for a half-hour.  That time is
+> 	  set a little later in nfsd_fh:
 > 
-> I could try that for now.
+> 	          qword_printint(f, time(0)+30*60);
 > 
-> Are you sure these are invalidated automatically, especially through
-> nfs-utils? If the kernel cache never expires, it should consequently
-> never ask for it, so nfs-utils would not be involved. Am I missing
-> something?
+> 	  I don't think there would be any harm to just changing that
+> 	  time(0)+30*60 to 0x7FFFFFFF (== never expire)--nfs-utils
+> 	  should be invalidating that cache explicitly whenever it's
+> 	  needed.  Maybe that should be the default.
 
-There's also a mechanism by which nfs-utils can ask for the whole cache
-to be flushed immediately on its own.  So re-running exportfs to change
-the exports, for example, should result in the cache being flushed.  I
-haven't checked whether that's done in all the places it should be, but
-it probably is.
+I picked 30 minutes because it seems like a good number at the time
+and there where plenty of other more important things to think about.
+On reflection, I agree that never-expire is appropriate for the
+fsid->exportpoint cache (which is relevant here) and the
+client+exportpoint -> export options cache.
+The IP->clientname cache should have an expiry time based on the TTL
+from the DNS (assuming that the DNS was used to do part of the
+mapping), but that information is not available at all easily... so
+30minutes is probably as good as anything else.
 
---b.
+Patches welcome.... :-)
+
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
