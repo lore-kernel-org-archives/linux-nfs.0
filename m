@@ -1,34 +1,30 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Simon Peter <simon.peter@gmx.de>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 18:06:01 -0500
-Message-ID: <20070307230601.GX26553@fieldses.org>
-References: <20070307160633.77afb618.simon.peter@gmx.de>
+Date: Thu, 8 Mar 2007 00:19:48 +0100
+Message-ID: <20070308001948.7496c629.simon.peter@gmx.de>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
 	<20070307154240.GB26553@fieldses.org>
 	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
-	<20070307205016.GI26553@fieldses.org>
-	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
-	<20070307211729.GO26553@fieldses.org>
-	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
-	<20070307215406.GR26553@fieldses.org>
-	<17903.16030.26119.464793@notabene.brown>
+	<20070307202949.GH26553@fieldses.org>
+	<20070307224624.d711f47f.simon.peter@gmx.de>
+	<20070307220541.GS26553@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
-	Simon Peter <simon.peter@gmx.de>
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP5CK-0001F4-BZ
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:05:28 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HP5CL-0000ME-1q
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:05:30 -0800
-In-Reply-To: <17903.16030.26119.464793@notabene.brown>
+	id 1HP5QT-0002ky-SE
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:20:07 -0800
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP5QU-0006MC-Bd
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:20:08 -0800
+In-Reply-To: <20070307220541.GS26553@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,55 +37,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Mar 08, 2007 at 09:37:18AM +1100, Neil Brown wrote:
-> On Wednesday March 7, bfields@fieldses.org wrote:
-> > While I'm at it Trond and Christoph and others seem to be asking whether
-> > we can't make some more fundamental changes, such as:
-> > 
-> > 	- Maintaining a static in-kernel exports table instead of
-> > 	  loading it on demand from mountd, and
-> > 
-> 
-> Don't like that idea at all.  Demand-loading is a good thing.
+> > Not all of my exported directories are mountpoints of the underlying
+> > VFS of the server.
+> I'd be curious why.  There's some hard-to-solve security problems
+> there--people can guess filehandles of unexported files and access
+> them directly without lookups.  So some day I'd love to actually
+> forbid (or at least strongly discourage) what you're doing....  But
+> clearly we'd first need to understand why people do that and make
+> sure there are adequate alternatives.
 
-Depending on why you need it, this may be inconsistent with the nfsv4
-pseudofilesystem construction; we need to be able to service readdir on
-the pseudofilesystem root, for example, which means knowing at least the
-list of paths.
+Well, I've actually done it for security (not knowing what you just
+said about it). There are some directories on those disks that I don't
+want people to poke around in, so I don't export the whole filesystem
+of a disk. For some other directories, I have different access
+constraints.
 
-So could you remind me what the uses cases are here?  Who is it that
-requires demand loading, and why?
+For example, there's one subdirectory that I export to two subnets and
+one that is only exported to one of them. I do that because I have an
+"access granting" security philosophy: At first, any access is denied
+and then I grant access only to those people who can make use of their
+granted resources. Since one of those directories is only useful to
+the users of that one subnet, I only export it for that one.
 
-I'll promise to write it all down someplace and then hopefully we won't
-have to re-ask the same questions too many times....
+> > Some are, though.
+> Are the spinning-up delays happening only on those drives that have
+> exported directories that aren't mountpoints?
 
-> > 	- divorcing the exports namespace completely from any local
-> > 	  process namespace, to the extent that you could even just say
-> > 	  "I want to export /dev/sda7 as /usr/local/bin" without first 
-> > 	  mounting /dev/sda7 someplace.
-> 
-> I like that even less.  Much much less.  Way way way less.  Yuck.
-> 
-> Having a private name-space for nfsd and co might be OK, but that is
-> the closest I could come to the above suggestion, and even then I'm not
-> convinced.  I think private name spaces are a very powerful tool that
-> should be used very very carefully.  There is plenty of room for
-> confusion of the poor sysadmin if you start doing too much with
-> private name spaces.
-> 
-> If you built a system where every daemon has a private namespace, then
-> having one for nfsd would be ok, but it really should be a system wide
-> approach to management, not an approach only used by nfsd.
+I just notice that I was wrong. No exports are on mountpoints. I'm
+sorry.
 
-This is Christoph's suggestion, so I'm cc:'ing him.
+> > Are you sure these are invalidated automatically, especially through
+> > nfs-utils? If the kernel cache never expires, it should consequently
+> > never ask for it, so nfs-utils would not be involved. Am I missing
+> > something?
+> There's also a mechanism by which nfs-utils can ask for the whole
+> cache to be flushed immediately on its own.  So re-running exportfs
+> to change the exports, for example, should result in the cache being
+> flushed.  I haven't checked whether that's done in all the places it
+> should be, but it probably is.
 
-I can believe that it would be convenient for sysadmin's to be able to
-export filesystems at paths other than the paths they're locally mounted
-at.  And once you're going to allow that, it seems cleanest just to let
-the exports tree be a purely in-kernel thing.  But this also doesn't
-seem like a hard requirement to me.
+Okay. So if we really only need major, minor and inode information,
+like Neil said, then that would work. Because otherwise the data on
+disk could change without the kernel noticing.
 
---b.
+Simon
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
