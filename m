@@ -1,25 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 10:42:40 -0500
-Message-ID: <20070307154240.GB26553@fieldses.org>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.
+Date: Wed, 07 Mar 2007 11:29:23 -0500
+Message-ID: <45EEE863.4090202@redhat.com>
+References: <45EC7F0F.4090600@RedHat.com>		<1173130678.6315.7.camel@heimdal.trondhjem.org>		<45EC8FD3.4010809@redhat.com>		<1173132182.6315.27.camel@heimdal.trondhjem.org>		<45EC9837.1010504@redhat.com>	<1173186308.6393.7.camel@heimdal.trondhjem.org>	<45ED8135.2010008@RedHat.com>	<45EDE060.3020501@RedHat.com>
+	<45EECE74.6070606@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: Simon Peter <simon.peter@gmx.de>
+Cc: Neil Brown <neilb@suse.de>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
+	Steve Dickson <SteveD@redhat.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOyHJ-0000zU-JT
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 07:42:09 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOyHH-0008CG-GI
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 07:42:11 -0800
-In-Reply-To: <20070307160633.77afb618.simon.peter@gmx.de>
+	id 1HOz1H-0006gW-JU
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 08:29:39 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOz1F-0006wW-9B
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 08:29:38 -0800
+In-Reply-To: <45EECE74.6070606@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,54 +33,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Mar 07, 2007 at 04:06:33PM +0100, Simon Peter wrote:
-> just verified that the server indeed spins up all disks before
-> answering the request. I thus suspect it is somehow checking all exports
-> whenever any one export is mounted. Is this correct behaviour?
+Chuck Lever wrote:
+> A comment...
+>
+> You've implemented a "negative" -- the usual convention is to 
+> implement the "positive" option.   This is how Apple/*BSD do it for 
+> READDIRPLUS, and it might be good to follow existing precedent.
+>
+> I think you should implement "rddirplus" and make it the default.  
+> That way you get "norddirplus" automatically.
+>
+> You should also include appropriate man page changes in your patch. ;-D
+>
 
-Hm.  If you have the nfs-utils source, you can see there's a loop in
+If "rddirplus" is the option and is the default, how do you turn it off?
 
-	nfs-utils/utils/mountd/cache.c:nfsd_fh()
+Actually, I am also curious why any existing precedent is interesting.
+In general, none of the existing precedents have been followed in the
+past...  :-)
 
-that stats the root of each export, in two places; the first it looks
-like you shouldn't hit if you don't have the mountpoint export option
-set:
+    Thanx...
 
-	 if (exp->m_export.e_mountpoint &&
-	     !is_mountpoint(exp->m_export.e_mountpoint[0]?
-	                    exp->m_export.e_mountpoint:
-	                    exp->m_export.e_path))
-		dev_missing ++;
-
-The second is to figure out which filesystem the filehandle that you passed in
-that getattr is for:
-
-         if (stat(exp->m_export.e_path, &stb) != 0)
-                 continue;
-         if (fsidtype == 1 &&
-             ((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
-              exp->m_export.e_fsid != fsidnum))
-                 continue;
-         if (fsidtype != 1) {
-                 if (stb.st_ino != inode)
-                         continue;
-                 if (major != major(stb.st_dev) ||
-                     minor != minor(stb.st_dev))
-                         continue;
-         }
-	/* It's a match !! */
-
-You could stick a printf() in there somewhere or something to check whether
-this is really where it's waiting.
-
-Could we cache the stat information in the export and then double-check it if
-necessary when there's a match?  Or is there some way we could get the kernel
-to keep that cached for us?
-
-It seems reasonable to want to export filesystems from a bunch of disks without
-necessarily keeping them all spun up all the time.
-
---b.
+       ps
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
