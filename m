@@ -1,23 +1,23 @@
-From: Simon Peter <simon.peter@gmx.de>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 14:22:57 +0100
-Message-ID: <20070307142257.b070d887.simon.peter@gmx.de>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+From: Tiziano Zito <t.zito@biologie.hu-berlin.de>
+Subject: NFS server hangs when user hits hard quota
+Date: Wed, 7 Mar 2007 15:01:43 +0100
+Message-ID: <20070307140143.GA20450@lotka.biologie.hu-berlin.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOw6p-0003ZU-KM
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 05:23:11 -0800
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HOw6q-00059M-8o
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 05:23:13 -0800
-In-Reply-To: <EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	id 1HOwia-0007VO-Pz
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:02:12 -0800
+Received: from suncom4.cms.hu-berlin.de ([141.20.1.74])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOwib-00072E-Be
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 06:02:14 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by suncom4.cms.hu-berlin.de (8.13.8/8.13.7) with ESMTP id
+	l27E1lEX013337
+	for <nfs@lists.sourceforge.net>; Wed, 7 Mar 2007 15:01:47 +0100 (CET)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,51 +30,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The server runs Debian unstable:
-Linux server 2.6.18-3-k7 #1 SMP Sun Dec 10 20:17:39 UTC 2006 i686
-GNU/Linux
+Hi all! We are experiencing a problem with our nfs3 server
+running a debian stable (sarge) kernel 2.4.32. 
+When a program running on a client hits the user hard quota, the
+server becomes really slow and almost unresponsive. This is easily
+reproducible: on a client as a user with quota enabled do
+cp /dev/zero /path/with/quota/enabled 
+as soon as the user hits her/his hard limit the server chokes.
+The only way to solve the problem is to disconnect the client from
+the network and kill the offending process. 
+I would think that such things should not happen, otherwise any user
+could at anytime issue a DoS attack on the NFS server. I've seen
+other posts relating to the same subject on this list:
 
-And I use classic NFSv3, exporting only to that subnet with options
-(rw,sync). The client uses solely the intr option.
+http://thread.gmane.org/gmane.linux.nfs/159
+http://thread.gmane.org/gmane.linux.nfs/216
+http://thread.gmane.org/gmane.linux.nfs/2988
+http://thread.gmane.org/gmane.linux.nfs/3938
 
-There shouldn't be any nameservice issues since the server is also
-running the nameserver and is the authority for the subnet that I am
-mounting from. I tried canonical and reverse lookups of the client's
-name/IP from that server, all without delay. How would I check for
-nameservice issues?
+What I can understand from this posts is that the problem was
+present and that no solution existed, at least 3 years ago.
+Is the situation in the meanwhile changed? Could a kernel upgrade or
+an NFS3 -> NFS4 migration solve the problem?
 
-The server has some disks with exported directories that spin down after
-some idle time, but the disk of that particular mount point that I am
-using is always online. Maybe the server somehow checks all exports all
-the time and not just the particular requested one and thus spins up
-all the other disks?
+Thank you very much for any response, at the moment we are really
+stuck.
 
-Simon
+PS: please include me in the Cc, I'm not a subscriber of this list.
 
-> The delay seems to be on the server side. What is the server running?
-> Does it have any nameservice issues? Delays on the first response can
-> often be due to server exports checking, which usually requires
-> reverse name lookups.
-> 
-> Tom.
-> 
-> At 05:23 AM 3/7/2007, Simon Peter wrote:
-> >Hi,
-> >
-> >I get a good 10 second delay anytime I am accessing my NFS mounts
-> >from a client for the first time (or after a long time not accessing
-> >them -- I suppose whenever the cache is cleared or something
-> >similar).
-> >
-> >I usually did not bother, even though it is very annoying, but this
-> >time I collected a network protocol capture, which is attached.
-> >Notice the big delay between packet #6 and #8, while #7 should show
-> >that it is not a network issue.
-> >
-> >I would be very glad if somebody could explain these delays.
-> >
-> >Thanks,
-> >Simon
+
+ Tiziano Zito
+ Institute for Theoretical Biology
+ Humboldt-Universitaet zu Berlin  
+ Invalidenstrasse, 43
+ D-10115 Berlin, Germany
+ 
+ room: 1306
+ phone: +49 30 2093-8630
+ fax:   +49 30 2093-8801
+
+
 
 
 -------------------------------------------------------------------------
