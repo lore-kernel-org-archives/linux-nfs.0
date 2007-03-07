@@ -1,22 +1,29 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: rpc.statd  in /sbin or /usr/sbin ??
-Date: Mon, 19 Mar 2007 09:24:01 +0100
-Message-ID: <200703190924.03153.olaf.kirch@oracle.com>
-References: <17917.58341.502839.29524@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Wed, 7 Mar 2007 16:17:29 -0500
+Message-ID: <20070307211729.GO26553@fieldses.org>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
+	<20070307154240.GB26553@fieldses.org>
+	<20070307194418.97fee0ec.simon.peter@gmx.de>
+	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
+	<20070307205016.GI26553@fieldses.org>
+	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HTDAf-0001IU-Hq
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 01:24:49 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTDAg-0000xR-91
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 01:24:51 -0700
-In-Reply-To: <17917.58341.502839.29524@notabene.brown>
+	id 1HP3VH-0006Gq-EO
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:16:56 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3VH-00024a-Ao
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:16:57 -0800
+In-Reply-To: <EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,17 +36,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday 19 March 2007 02:14, Neil Brown wrote:
->  The only reason I can see for putting statd in /sbin is if it were
->  needed for mounting /usr (in cases where /usr is accessed via NFS).
+On Wed, Mar 07, 2007 at 04:07:39PM -0500, Talpey, Thomas wrote:
+> I was actually trying to talk Simon out of trying, in case that wasn't
+> obvious.
 
-Can't speak for others, but this is the reason why Suse put it into /sbin too,
-as long as they shipped it.
+Probably good advice.
 
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+> But I'm really glad it bugs you! Keep thinking that way, maybe you can
+> untangle it someday. :-)
+> 
+> While you're thinking about it, what's the actual timeout on a given
+> in-kernel export cache entry? There's a 120-second deadline on an
+> unresolved cache miss being populated, but when, exactly, does an
+> existing (resolved) entry go stale? I admit to having tried to figure it
+> out once and wound up going in circles.
+
+There's an expiry time that's passed down with each cache entry.  In
+this particular case it's 30 minutes.  There's also a "flush" file you
+can write to to ask that the whole cache be flushed.  I don't remember
+how this works in detail, though.
+
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
