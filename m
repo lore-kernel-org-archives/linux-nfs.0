@@ -1,22 +1,25 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] nfsd: fix horrible indentation in nfsd_setattr
-Date: Wed, 7 Mar 2007 15:26:25 +0000
-Message-ID: <20070307152625.GA29633@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Wed, 7 Mar 2007 10:42:40 -0500
+Message-ID: <20070307154240.GB26553@fieldses.org>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: Simon Peter <simon.peter@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HOy2B-0007jn-Sk
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 07:26:32 -0800
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOy2C-00046t-IF
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 07:26:34 -0800
-Received: from hch by pentafluge.infradead.org with local (Exim 4.63 #1 (Red
-	Hat Linux)) id 1HOy25-0007iW-AR
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 15:26:25 +0000
+	id 1HOyHJ-0000zU-JT
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 07:42:09 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HOyHH-0008CG-GI
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 07:42:11 -0800
+In-Reply-To: <20070307160633.77afb618.simon.peter@gmx.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,73 +32,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Wed, Mar 07, 2007 at 04:06:33PM +0100, Simon Peter wrote:
+> just verified that the server indeed spins up all disks before
+> answering the request. I thus suspect it is somehow checking all exports
+> whenever any one export is mounted. Is this correct behaviour?
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Hm.  If you have the nfs-utils source, you can see there's a loop in
 
-Index: linux-2.6/fs/nfsd/vfs.c
-===================================================================
---- linux-2.6.orig/fs/nfsd/vfs.c	2007-03-06 17:43:28.000000000 +0100
-+++ linux-2.6/fs/nfsd/vfs.c	2007-03-06 17:45:48.000000000 +0100
-@@ -277,7 +277,8 @@
- 	if (!iap->ia_valid)
- 		goto out;
- 
--	/* NFSv2 does not differentiate between "set-[ac]time-to-now"
-+	/*
-+	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
- 	 * which only requires access, and "set-[ac]time-to-X" which
- 	 * requires ownership.
- 	 * So if it looks like it might be "set both to the same time which
-@@ -290,25 +291,33 @@
- 	 */
- #define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
- #define	MAX_TOUCH_TIME_ERROR (30*60)
--	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET
--	    && iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec
--	    ) {
--	    /* Looks probable.  Now just make sure time is in the right ballpark.
--	     * Solaris, at least, doesn't seem to care what the time request is.
--	     * We require it be within 30 minutes of now.
--	     */
--	    time_t delta = iap->ia_atime.tv_sec - get_seconds();
--	    if (delta<0) delta = -delta;
--	    if (delta < MAX_TOUCH_TIME_ERROR &&
--		inode_change_ok(inode, iap) != 0) {
--		/* turn off ATTR_[AM]TIME_SET but leave ATTR_[AM]TIME
--		 * this will cause notify_change to set these times to "now"
-+	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
-+	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
-+	    	/*
-+		 * Looks probable.
-+		 *
-+		 * Now just make sure time is in the right ballpark.
-+		 * Solaris, at least, doesn't seem to care what the time
-+		 * request is.  We require it be within 30 minutes of now.
- 		 */
--		iap->ia_valid &= ~BOTH_TIME_SET;
--	    }
-+		time_t delta = iap->ia_atime.tv_sec - get_seconds();
-+		if (delta < 0)
-+			delta = -delta;
-+		if (delta < MAX_TOUCH_TIME_ERROR &&
-+		    inode_change_ok(inode, iap) != 0) {
-+		    	/*
-+			 * Turn off ATTR_[AM]TIME_SET but leave ATTR_[AM]TIME.
-+			 * This will cause notify_change to set these times
-+			 * to "now"
-+			 */
-+			iap->ia_valid &= ~BOTH_TIME_SET;
-+		}
- 	}
- 	    
--	/* The size case is special. It changes the file as well as the attributes.  */
-+	/*
-+	 * The size case is special.
-+	 * It changes the file as well as the attributes.
-+	 */
- 	if (iap->ia_valid & ATTR_SIZE) {
- 		if (iap->ia_size < inode->i_size) {
- 			err = nfsd_permission(fhp->fh_export, dentry, MAY_TRUNC|MAY_OWNER_OVERRIDE);
+	nfs-utils/utils/mountd/cache.c:nfsd_fh()
+
+that stats the root of each export, in two places; the first it looks
+like you shouldn't hit if you don't have the mountpoint export option
+set:
+
+	 if (exp->m_export.e_mountpoint &&
+	     !is_mountpoint(exp->m_export.e_mountpoint[0]?
+	                    exp->m_export.e_mountpoint:
+	                    exp->m_export.e_path))
+		dev_missing ++;
+
+The second is to figure out which filesystem the filehandle that you passed in
+that getattr is for:
+
+         if (stat(exp->m_export.e_path, &stb) != 0)
+                 continue;
+         if (fsidtype == 1 &&
+             ((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
+              exp->m_export.e_fsid != fsidnum))
+                 continue;
+         if (fsidtype != 1) {
+                 if (stb.st_ino != inode)
+                         continue;
+                 if (major != major(stb.st_dev) ||
+                     minor != minor(stb.st_dev))
+                         continue;
+         }
+	/* It's a match !! */
+
+You could stick a printf() in there somewhere or something to check whether
+this is really where it's waiting.
+
+Could we cache the stat information in the export and then double-check it if
+necessary when there's a match?  Or is there some way we could get the kernel
+to keep that cached for us?
+
+It seems reasonable to want to export filesystems from a bunch of disks without
+necessarily keeping them all spun up all the time.
+
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
