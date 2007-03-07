@@ -1,39 +1,23 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 07 Mar 2007 16:23:23 -0500
-Message-ID: <EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
-	<20070307154240.GB26553@fieldses.org>
-	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
-	<20070307205016.GI26553@fieldses.org>
-	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
-	<20070307211729.GO26553@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs-utils, e_maptype
+Date: Wed, 7 Mar 2007 16:28:44 -0500
+Message-ID: <20070307212844.GQ26553@fieldses.org>
+References: <20070307022107.GC27862@fieldses.org>
+	<200703072123.47224.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: Olaf Kirch <okir@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP3bl-00070r-PG
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:23:38 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3bn-0000uU-Q5
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:23:39 -0800
-In-Reply-To: <20070307211729.GO26553@fieldses.org>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
-	<20070307154240.GB26553@fieldses.org>
-	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
-	<20070307205016.GI26553@fieldses.org>
-	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
-	<20070307211729.GO26553@fieldses.org>
+	id 1HP3g9-0007TW-87
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:28:10 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HP3g9-0005GC-94
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:28:09 -0800
+In-Reply-To: <200703072123.47224.okir@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -46,24 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 04:17 PM 3/7/2007, J. Bruce Fields wrote:
->There's an expiry time that's passed down with each cache entry.  In
->this particular case it's 30 minutes.  There's also a "flush" file you
->can write to to ask that the whole cache be flushed.  I don't remember
->how this works in detail, though.
+On Wed, Mar 07, 2007 at 09:23:45PM +0100, Olaf Kirch wrote:
+> On Wednesday 07 March 2007 03:21, J. Bruce Fields wrote:
+> > Anybody know what the e_maptype export field is for?  It seems to be
+> > unused.
+> 
+> IINM it goes back to the unfsd days. You could do different types of uid
+> mapping there - 1:1 mapping, using NIS, or using some funky contraption called
+> rpc.ugidd. Yes, we had uid mapping before NFSv4, and no, it wasnt pretty :-)
 
-Aha - so the time comes from mountd. There's some sort of refresh
-timer that the kernel triggers though. So it's not a deadline of this
-time (I think). Or is it.
+Some things are just timeless.
 
-The "flush" file lives in /proc/net/rpc/nfsd.export, and you write an
-integer value to it. I *think* it then flushes any entries which are
-more than that many seconds old.
+So does that someone somewhere could theoretically be using this code
+right now?  On a quick glance I'd convinced myself it was totally dead,
+but I wasn't thinking about unfsd.  I have no clue how it interacts with
+anything else in nfs-utils.
 
-The whole thing makes my head hurt and I try not to look at it.
-
-Tom.
-
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
