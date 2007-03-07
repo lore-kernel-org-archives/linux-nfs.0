@@ -1,22 +1,29 @@
-From: AK <amithl_prem@yahoo.com>
-Subject: Re: Performance: NFS v3  mounting with 'noac' option
-Date: Wed, 7 Mar 2007 13:32:57 -0800 (PST)
-Message-ID: <141076.2067.qm@web56606.mail.re3.yahoo.com>
-References: <45EEFCA4.40000@redhat.com>
+From: Simon Peter <simon.peter@gmx.de>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Wed, 7 Mar 2007 22:40:54 +0100
+Message-ID: <20070307224054.b2cbc294.simon.peter@gmx.de>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
+	<20070307154240.GB26553@fieldses.org>
+	<20070307194418.97fee0ec.simon.peter@gmx.de>
+	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
+	<20070307205016.GI26553@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Peter Staubach <staubach@redhat.com>
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HP3kv-000826-A1
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:33:06 -0800
-Received: from web56606.mail.re3.yahoo.com ([66.196.97.50])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP3kt-0006Sy-3m
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:33:07 -0800
-In-Reply-To: <45EEFCA4.40000@redhat.com>
+	id 1HP3si-0000S9-9l
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:41:08 -0800
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HP3si-0008Jw-R3
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 13:41:10 -0800
+In-Reply-To: <20070307205016.GI26553@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,48 +36,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+> > This sounds like a job for inotify. The mountd could stat the
+> > export root and use inotify_add_watch(2) to keep an eye on it to
+> > see if the stat contents changed.
+> Hm.  Would it be enough just to hold an open file descriptor for the
+> directory?  Is it safe to assume that for any filesystem (uh, any disk
+> filesystem anyway) that if you have something open then stat() on it
+> won't have to go to the disk?
 
---- Peter Staubach <staubach@redhat.com> wrote:
+I think what Tom had in mind was to stat all directories once, remember
+their values, have inotify keep an eye on 'em and whenever they change,
+update the remembered values. This way, disk access would only have to
+be done whenever something changes, which is when the disk is spun up
+anyway.
 
-> > We have multiple file systems begin mounted from
-> the
-> > same NFS server. One of our user's application
-> > requires to mount the file system with 'noac'
-> option. 
-> >
-> >   
-> 
-> What about this application requires that the "noac"
-> option be used?
-  application is romio with mpich2 ...
- 
-> 
-> One of the impacts of using the "noac" option is
-> much more network
-> traffic and it will be composed of small packets. 
-> If the server is
-> busy handling all of the additional GETATTR
-> requests, then it won't
-> be handling other requests.  The client will also be
-> a bit busier
-> with generating the additional requests, instead of
-> just doing what
-> might be considered more useful work.
-> 
-> So, there should be no direct impact to other
-> mounted file systems.
-> However, there may be indirect impacts.
-
-indirect impacts: can you please elaborate on this.
-
-~ thanks!
-
-
- 
-____________________________________________________________________________________
-It's here! Your new message!  
-Get new email alerts with the free Yahoo! Toolbar.
-http://tools.search.yahoo.com/toolbar/features/mail/
+Simon
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
