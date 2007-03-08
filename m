@@ -1,33 +1,27 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: nfs-utils, e_maptype
-Date: Thu, 08 Mar 2007 08:39:19 -0500
-Message-ID: <EXNANE01G5aYY61LEdy00000081@exnane01.hq.netapp.com>
-References: <20070307022107.GC27862@fieldses.org>
-	<200703072123.47224.okir@lst.de>
-	<20070307212844.GQ26553@fieldses.org>
-	<200703080949.54293.okir@lst.de>
-	<EXNANE01Ogl4rhYQYx30000007d@exnane01.hq.netapp.com>
-	<Pine.LNX.4.64.0703081426170.25244@maggie.lkpg.cendio.se>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Thu, 8 Mar 2007 14:43:16 +0100
+Message-ID: <200703081443.18604.olaf.kirch@oracle.com>
+References: <20070307194418.97fee0ec.simon.peter@gmx.de>
+	<17903.19755.146916.321440@notabene.brown>
+	<20070308051401.GC15814@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net
-To: Peter =?iso-8859-1?Q?=C3=81Etrand?= <astrand@cendio.se>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, Simon Peter <simon.peter@gmx.de>,
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+	Christoph Hellwig <hch@infradead.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPIqb-0002jZ-RF
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:39:58 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPIqd-0007gY-T3
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:40:00 -0800
-In-Reply-To: <Pine.LNX.4.64.0703081426170.25244@maggie.lkpg.cendio.se>
-References: <20070307022107.GC27862@fieldses.org>
-	<200703072123.47224.okir@lst.de>
-	<20070307212844.GQ26553@fieldses.org>
-	<200703080949.54293.okir@lst.de>
-	<EXNANE01Ogl4rhYQYx30000007d@exnane01.hq.netapp.com>
-	<Pine.LNX.4.64.0703081426170.25244@maggie.lkpg.cendio.se>
+	id 1HPIuf-0003He-KC
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:44:09 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPIue-0002qE-9c
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:44:11 -0800
+In-Reply-To: <20070308051401.GC15814@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,25 +34,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 08:28 AM 3/8/2007, Peter =C3=85strand wrote:
->Users of the "original" unfsd could then switch to unfs3, which doesn't =
+On Thursday 08 March 2007 06:14, J. Bruce Fields wrote:
+> Maybe.  Is this practical?  Do we know of any cases of users doing this?
+> Do you block forever if you try to access 4 filesystems at once?  I
+> dunno....
 
->depend on e_maptype. =
+IIRC SGI had a storage appliance a while back that included a tape robot,
+but it was hiding the details somewhere deep inside XFS. I remember seeing
+patches involving nfsd and dmapi (I can see you cringe, Christoph :-)
 
+Note that in real-life scenarios, we're sometimes talking about literally
+thousands of exported file systems. My previous employer has a customer with
+such a setup, using NetApp filers. We had some trouble getting the Linux
+client to survive in this environment, as it ran out of privileged ports
+way too quickly. Absurd as it may sound, this kind of setup seems to be
+the trend.
 
-Good point - and unfs3 is there in the main ones already.
+Now think about handling a system with several thousand exported
+file systems on the server side - if you need to look at each file system
+before nfsd is ready to service requests, we're talking of a considerable
+delay in boot time. In the worst case we're talking about several thousand
+*disks* that need to be spun up, and fuses going pop-pop-pop.
 
-Okay, I agree let's ignore unfsd altogether.
+Short summary - if you want to scale beyond small work group servers,
+you need something that scales well. Demand loading the exports
+table does.
 
-Tom.
-
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
-VDEV
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
