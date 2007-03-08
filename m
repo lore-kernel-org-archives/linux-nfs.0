@@ -1,30 +1,12 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: nfs-utils, e_maptype
-Date: Thu, 08 Mar 2007 07:31:32 -0500
-Message-ID: <EXNANE01Ogl4rhYQYx30000007d@exnane01.hq.netapp.com>
-References: <20070307022107.GC27862@fieldses.org>
-	<200703072123.47224.okir@lst.de>
-	<20070307212844.GQ26553@fieldses.org>
-	<200703080949.54293.okir@lst.de>
+From: Bernhard Busch <bbusch@biochem.mpg.de>
+Subject: NFS mount problem (2000 NFS filesystems) of linux clients to
+ a solaris server
+Date: Thu, 08 Mar 2007 13:42:37 +0100
+Message-ID: <45F004BD.1070500@biochem.mpg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net
-To: Olaf Kirch <okir@lst.de>
+Content-Type: text/plain; charset="iso-8859-1"
+To: NFS@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPHnA-00046D-QG
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 04:32:22 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPHnB-000122-Qw
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 04:32:23 -0800
-In-Reply-To: <200703080949.54293.okir@lst.de>
-References: <20070307022107.GC27862@fieldses.org>
-	<200703072123.47224.okir@lst.de>
-	<20070307212844.GQ26553@fieldses.org>
-	<200703080949.54293.okir@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,27 +19,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 03:49 AM 3/8/2007, Olaf Kirch wrote:
->I think it's safe to ignore unfsd.
+Hi
 
-I agree, but I've been surprised to see some of the embedded (ARM) ports
-using it, they have .deb-style package installs and everything. Many of the
-users of these packages don't have a lot of NFS depth. The tiny NAS boxes
-in general don't even enable NFS by default, the users are on their own and
-unfsd means they don't have to muck with the embedded kernel.
 
-That said, I don't think these users even know about userid mapping types.
-Also most of the boxes are now doing what they call knfsd. Just a data point
-that unfsd isn't totally dead.
 
-Tom.
+I tried to mount 2000 filesystems from a
+Sun Solaris Fileserver with the ZFS Filesystem
+via NFS on Linux Clients.
+
+Reason: Sun Solaris ZFS is a hierarchical filesystem
+        with a separate filesystem for a specific user
+        with quota support. We have approximately
+        2000 User and pool-folders.
+
+
+It is possible to export these 2000 filesystems on the server (sun solaris)
+and  to  mount these 2000 nfs filesystem on sgi and solaris
+clients without any problems.
+
+
+On Linux Clients (SLES10, Suse10.2)  i get =
+
+error messages like the following ones:
+
+nfs bindresvport: Address already in use
+nfs bindresvport: Address already in use
+nfs bindresvport: Address already in use
+mount: solaris10-02:/fs/DISK/disk1998: can't read superblock
+mount: solaris10-02:/fs/DISK/disk1999: can't read superblock
+mount: solaris10-02:/fs/DISK/disk2000: can't read superblock
+
+
+
+Any help?
+
+
+Bernhard
+
+-- =
+
+Dr. Bernhard Busch
+Max-Planck-Institut f=FCr Biochemie
+Rechenzentrum
+Am Klopferspitz 18a
+D-82152 Martinsried
+Tel: +49(89)8578-2582
+Fax: +49(89)8578-2479
+Email bbusch@biochem.mpg.de
+
 
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+http://www.techsay.com/default.php?page=3Djoin.php&p=3Dsourceforge&CID=3DDE=
+VDEV
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
