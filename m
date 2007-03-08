@@ -1,22 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/8] exportfs cleanups
-Date: Thu, 8 Mar 2007 17:08:29 +1100
-Message-ID: <17903.43101.407769.914151@notabene.brown>
-References: <20070307103932.GA22963@infradead.org>
+From: Wei Yongjun <yjwei@nanjing-fnst.com>
+Subject: [PATCH] knfsd : Fix the BUG of exp_get_by_name when used to
+ get an export entry which not be exported
+Date: Thu, 08 Mar 2007 15:09:25 +0800
+Message-ID: <45EFB6A5.4080200@nanjing-fnst.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: multipart/mixed; boundary="===============1314901529=="
+Cc: NeilBrown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPBo1-00083S-HC
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 22:08:49 -0800
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPBo2-0001xM-AN
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 22:08:51 -0800
-In-Reply-To: message from Christoph Hellwig on Wednesday March 7
+	id 1HPCpM-00068m-Ra
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 23:14:17 -0800
+Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HPCpN-0005Y9-E3
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 23:14:19 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,37 +29,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday March 7, hch@infradead.org wrote:
-> This patch series has 8 patches to clean up the code flow
-> of fs/exportfs/expfs.c, and it's interface to the NFS server.
+--===============1314901529==
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
 
-Thanks for these.  They look good.  That code certainly need some
-cleaning up.
+If exp_get_by_name() is used to get an export entry which not be
+exported, and if export entry is added by exportfs command but not
+export by kernel because of EINVAL etc., this function will add a bad
+entry to svc_export_cache after call svc_export_lookup(), this let
+request be revisit.
 
-I didn't get 6/8.  Could you resend?
+Normally, if I export /dev/null as root, mount ntf4 command will frozen.
+Test by following command:
+#exportfs -i -o fsid=0,no_root_squash,insecure,rw,async *:/dev/null
+#mount -t nfs4 127.0.0.1:/ /tmp
+mount from other client also frozen, and some client may get kernel panic.
 
-Patch 5/8 removes a number of comments without adding any.
- Do you think it would be valuable to add a comment explaining the
- subtleties for why directories and files are handled differently.
+Flollowing is my patch:
 
-Patch 8/8 I should look through again to make sure all the dentry
-references look right (I found them easy to get wrong).  Splitting up
-find_exported_dentry was definitely a good idea.
-You left in a comment in "If we weren't after a directory" in a place
-were we know we weren't, so at least it should be "Since we
-weren't....".
+Signed-off-by: Wei Yongjun <yjwei@nanjing-fnst.com>
+
+--- fs/nfsd/export.c.orig	2007-02-20 20:59:22.000000000 -0500
++++ fs/nfsd/export.c	2007-03-08 00:53:22.000000000 -0500
+@@ -786,6 +786,13 @@ exp_get_by_name(svc_client *clp, struct 
+ 	key.ex_dentry = dentry;
+ 
+ 	exp = svc_export_lookup(&key);
++
++	/* does not known flags, so do check after lookup */
++	if(exp != NULL && check_export(exp->ex_dentry->d_inode, exp->ex_flags)) {
++		exp_put(exp);
++		exp = NULL;
++	}
++
+ 	if (exp != NULL)  {
+ 		int err;
+ 
 
 
-The rest all look fine.
 
-Thanks,
-NeilBrown
+
+--===============1314901529==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1314901529==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1314901529==--
