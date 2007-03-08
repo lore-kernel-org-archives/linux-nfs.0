@@ -1,32 +1,28 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 14:27:08 +0100
-Message-ID: <200703081427.09871.olaf.kirch@oracle.com>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
-	<20070307215406.GR26553@fieldses.org>
+From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
+Subject: Re: nfs-utils, e_maptype
+Date: Thu, 8 Mar 2007 14:28:17 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0703081426170.25244@maggie.lkpg.cendio.se>
+References: <20070307022107.GC27862@fieldses.org>
+	<200703072123.47224.okir@lst.de>
+	<20070307212844.GQ26553@fieldses.org> <200703080949.54293.okir@lst.de>
+	<EXNANE01Ogl4rhYQYx30000007d@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: MULTIPART/MIXED;
+	BOUNDARY="789237761-1601168487-1173360497=:25244"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPIed-0001SM-2M
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:27:35 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HPIee-0004hr-LI
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:27:37 -0800
-Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
-	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id
-	l28DRSem031257
-	for <nfs@lists.sourceforge.net>; Thu, 8 Mar 2007 06:27:28 -0700
-Received: from rcsmt251.oracle.com (rcsmt251.oracle.com [148.87.90.196])
-	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l28AXdg3002242
-	for <nfs@lists.sourceforge.net>; Thu, 8 Mar 2007 06:27:27 -0700
-In-Reply-To: <20070307215406.GR26553@fieldses.org>
+	id 1HPIfQ-0001Zc-4a
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:28:24 -0800
+Received: from mail.cendio.se ([193.12.253.69])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPIfP-0004xY-UX
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:28:26 -0800
+Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
+	by mail.cendio.se (Postfix) with ESMTP id 44F9125DA34
+	for <nfs@lists.sourceforge.net>; Thu,  8 Mar 2007 14:28:17 +0100 (CET)
+In-Reply-To: <EXNANE01Ogl4rhYQYx30000007d@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,41 +35,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday 07 March 2007 22:54, J. Bruce Fields wrote:
-> 	- Maintaining a static in-kernel exports table instead of
-> 	  loading it on demand from mountd, and
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Well, the original implementation did just that, and people kept
-forgetting to re-run exportfs after changing the exports table,
-and whatnot. Lots of gross inconsistencies. The addition of a
-dynamic exports table was considered a sliced bread kind of
-innovation... so it does feel like time warp when we talk about
-a static export table now.
+--789237761-1601168487-1173360497=:25244
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-> 	- divorcing the exports namespace completely from any local
-> 	  process namespace, to the extent that you could even just say
-> 	  "I want to export /dev/sda7 as /usr/local/bin" without first
-> 	  mounting /dev/sda7 someplace.
+On Thu, 8 Mar 2007, Talpey, Thomas wrote:
 
-Is that really a desirable goal? From an admin's point of view,
-file names are usually more "natural" than using fs uuids or
-retro stuff such as device file names (the udev people would
-actually hit you with their "device numbers are smoke and mirrors"
-bat now).
+> At 03:49 AM 3/8/2007, Olaf Kirch wrote:
+> >I think it's safe to ignore unfsd.
+>=20
+> I agree, but I've been surprised to see some of the embedded (ARM) ports
+> using it, they have .deb-style package installs and everything. Many of t=
+he
+> users of these packages don't have a lot of NFS depth. The tiny NAS boxes
+> in general don't even enable NFS by default, the users are on their own a=
+nd
+> unfsd means they don't have to muck with the embedded kernel.
+>=20
+> That said, I don't think these users even know about userid mapping types=
+=2E
+> Also most of the boxes are now doing what they call knfsd. Just a data po=
+int
+> that unfsd isn't totally dead.
 
-Users actually want things like "I export /mnt and then clients
-can see the contents of the CD mounted on /mnt/cdrom"
+Users of the "original" unfsd could then switch to unfs3, which doesn't=20
+depend on e_maptype.=20
 
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Regards,=20
+---
+Peter =C3=85strand=09=09ThinLinc Chief Developer
+Cendio AB=09=09http://www.cendio.se
+Teknikringen 3
+583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
+--789237761-1601168487-1173360497=:25244
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--789237761-1601168487-1173360497=:25244
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--789237761-1601168487-1173360497=:25244--
