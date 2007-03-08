@@ -1,16 +1,32 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: NFS mount problem (2000 NFS filesystems) of linux clients
- to a solaris server
-Date: Thu, 08 Mar 2007 08:08:10 -0500
-Message-ID: <EXNANE01FRaqbC8wSA10000007f@exnane01.hq.netapp.com>
-References: <45F004BD.1070500@biochem.mpg.de>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Thu, 8 Mar 2007 14:27:08 +0100
+Message-ID: <200703081427.09871.olaf.kirch@oracle.com>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
+	<20070307215406.GR26553@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NFS@lists.sourceforge.net
-To: Bernhard Busch <bbusch@biochem.mpg.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <45F004BD.1070500@biochem.mpg.de>
-References: <45F004BD.1070500@biochem.mpg.de>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HPIed-0001SM-2M
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:27:35 -0800
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HPIee-0004hr-LI
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:27:37 -0800
+Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
+	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id
+	l28DRSem031257
+	for <nfs@lists.sourceforge.net>; Thu, 8 Mar 2007 06:27:28 -0700
+Received: from rcsmt251.oracle.com (rcsmt251.oracle.com [148.87.90.196])
+	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l28AXdg3002242
+	for <nfs@lists.sourceforge.net>; Thu, 8 Mar 2007 06:27:27 -0700
+In-Reply-To: <20070307215406.GR26553@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -23,39 +39,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 07:42 AM 3/8/2007, Bernhard Busch wrote:
->It is possible to export these 2000 filesystems on the server (sun solaris)
->and  to  mount these 2000 nfs filesystem on sgi and solaris
->clients without any problems.
->
->
->On Linux Clients (SLES10, Suse10.2)  i get 
->error messages like the following ones:
->
->nfs bindresvport: Address already in use
->nfs bindresvport: Address already in use
->nfs bindresvport: Address already in use
->mount: solaris10-02:/fs/DISK/disk1998: can't read superblock
->mount: solaris10-02:/fs/DISK/disk1999: can't read superblock
->mount: solaris10-02:/fs/DISK/disk2000: can't read superblock
+On Wednesday 07 March 2007 22:54, J. Bruce Fields wrote:
+> 	- Maintaining a static in-kernel exports table instead of
+> 	  loading it on demand from mountd, and
 
-You need to increase the number of ports available on the Linux NFS
-client.
+Well, the original implementation did just that, and people kept
+forgetting to re-run exportfs after changing the exports table,
+and whatnot. Lots of gross inconsistencies. The addition of a
+dynamic exports table was considered a sliced bread kind of
+innovation... so it does feel like time warp when we talk about
+a static export table now.
 
-echo 65535 >/proc/sys/sunrpc/max_resvport
+> 	- divorcing the exports namespace completely from any local
+> 	  process namespace, to the extent that you could even just say
+> 	  "I want to export /dev/sda7 as /usr/local/bin" without first
+> 	  mounting /dev/sda7 someplace.
 
-This will raise it to the maximum, you could use smaller values but
-because you are creating so many mounts, that would quite possibly
-start to collide with other reserved ports.
+Is that really a desirable goal? From an admin's point of view,
+file names are usually more "natural" than using fs uuids or
+retro stuff such as device file names (the udev people would
+actually hit you with their "device numbers are smoke and mirrors"
+bat now).
 
-In fact, you might want to set /proc/sys/sunrpc/min_resvport to
-something large (32768), also in order to avoid collisions. However
-that in turn might require reconfiguring some of your NFS servers to
-accept "nonprivileged" ports (Linux server export option "insecure",
-others see documentation).
+Users actually want things like "I export /mnt and then clients
+can see the contents of the CD mounted on /mnt/cdrom"
 
-Tom.
-
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
