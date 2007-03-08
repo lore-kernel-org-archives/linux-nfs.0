@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: Delays on "first" access to a NFS mount
-Date: Wed, 7 Mar 2007 23:36:23 -0500
-Message-ID: <20070308043623.GA15814@fieldses.org>
+Date: Thu, 8 Mar 2007 00:14:01 -0500
+Message-ID: <20070308051401.GC15814@fieldses.org>
 References: <20070307194418.97fee0ec.simon.peter@gmx.de>
 	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
 	<20070307205016.GI26553@fieldses.org>
@@ -10,24 +10,25 @@ References: <20070307194418.97fee0ec.simon.peter@gmx.de>
 	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
 	<20070307215406.GR26553@fieldses.org>
 	<17903.16030.26119.464793@notabene.brown>
-	<20070307232414.GZ26553@fieldses.org>
-	<17903.20457.448449.509272@notabene.brown>
+	<20070307230601.GX26553@fieldses.org>
+	<17903.19755.146916.321440@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
 	Simon Peter <simon.peter@gmx.de>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPAM0-0007xr-Dv
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 20:35:48 -0800
+	id 1HPAwQ-00034Y-Ha
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 21:13:26 -0800
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPAM2-0007X1-As
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 20:35:50 -0800
-In-Reply-To: <17903.20457.448449.509272@notabene.brown>
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HPAwR-0003nW-7G
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 21:13:28 -0800
+In-Reply-To: <17903.19755.146916.321440@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,40 +41,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Mar 08, 2007 at 10:51:04AM +1100, Neil Brown wrote:
-> Well, if you export a different root filesystem to each diskless
-> client, or if you export /home to some places and /backup to others,
-> then you already have the potential for a different pseudo filesystem
-> for each client.  My little hacky shell script above essentially
-> merges them all which might be OK, or might not.
+On Thu, Mar 08, 2007 at 10:39:23AM +1100, Neil Brown wrote:
+> Imagine having hundreds of filesystems on some sort of library (a CD
+> library?) where each can be identified by a UUID which gets stored in
+> the fsid in the filehandle.
+> Imagine a simple extension to mountd so that a call-out were made when
+> an unknown filehandle arrived.  This callout could mount the required
+> filesystem and export it.  Maybe the library only allows 3 filesystems
+> to be mounted at a time, so it would unmount the lease-recently-used
+> one.
 
-I think we want a single export tree, parts of which clients may or may
-not have permission to see, rather than try to support per-client
-namespaces.  If nothing else, secinfo becomes a bit weird otherwise (do
-you tell the client that it can use auth_unix security for this
-filesystem, if actually using auth_unix might result in the client
-seeing a *different* filesystem?).
+Maybe.  Is this practical?  Do we know of any cases of users doing this?
+Do you block forever if you try to access 4 filesystems at once?  I
+dunno....
 
-> I was just looking at the RFC again and saw this in section 7.3:
-> 
->    Based on the construction of the server's name space, it is possible
->    that multiple pseudo filesystems may exist.  For example,
-> 
->    /a         pseudo filesystem
->    /a/b       real filesystem
->    /a/b/c     pseudo filesystem
->    /a/b/c/d   real filesystem
-> 
->    Each of the pseudo filesystems are considered separate entities and
->    therefore will have a unique fsid.
+> I have often wanted to write a 'Linux commentary' that explains all
+> the hows and whys of things.  I even started some bits once (to help
+> me understand the VFS layer).  But Linux changes so fast that any
+> entry in such a commentary would be out-of-date before it was
+> written....
 
-Hah.
+And there's a lot to document.  I mean, look:
 
-> That adds a whole new dimension of complexity..... do we really want
-> to go there?
+	http://www.oreilly.com/catalog/understandlni/
 
-We certainly aren't required to support every weird configuration that
-the RFC allows.
+Just over a thousand pages, just covering the kernel networking code
+(and only some of it at that).  Maybe they just lost the forest for the
+trees, but still, yipes.
 
 --b.
 
