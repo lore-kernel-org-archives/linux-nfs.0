@@ -1,27 +1,22 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 14:43:16 +0100
-Message-ID: <200703081443.18604.olaf.kirch@oracle.com>
-References: <20070307194418.97fee0ec.simon.peter@gmx.de>
-	<17903.19755.146916.321440@notabene.brown>
-	<20070308051401.GC15814@fieldses.org>
+From: AK <amithl_prem@yahoo.com>
+Subject: Re: Performance: NFS v3  mounting with 'noac' option
+Date: Thu, 8 Mar 2007 06:55:50 -0800 (PST)
+Message-ID: <121929.1837.qm@web56610.mail.re3.yahoo.com>
+References: <45EF3F20.5060300@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, Simon Peter <simon.peter@gmx.de>,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPIuf-0003He-KC
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:44:09 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPIue-0002qE-9c
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 05:44:11 -0800
-In-Reply-To: <20070308051401.GC15814@fieldses.org>
+	id 1HPK28-0002Su-8N
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 06:55:56 -0800
+Received: from web56610.mail.re3.yahoo.com ([66.196.97.54])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HPK29-0004Td-04
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 06:55:58 -0800
+In-Reply-To: <45EF3F20.5060300@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,36 +29,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday 08 March 2007 06:14, J. Bruce Fields wrote:
-> Maybe.  Is this practical?  Do we know of any cases of users doing this?
-> Do you block forever if you try to access 4 filesystems at once?  I
-> dunno....
 
-IIRC SGI had a storage appliance a while back that included a tape robot,
-but it was hiding the details somewhere deep inside XFS. I remember seeing
-patches involving nfsd and dmapi (I can see you cringe, Christoph :-)
+--- Peter Staubach <staubach@redhat.com> wrote:
 
-Note that in real-life scenarios, we're sometimes talking about literally
-thousands of exported file systems. My previous employer has a customer with
-such a setup, using NetApp filers. We had some trouble getting the Linux
-client to survive in this environment, as it ran out of privileged ports
-way too quickly. Absurd as it may sound, this kind of setup seems to be
-the trend.
+> >>>       
+> >> What about this application requires that the
+> "noac"
+> >> option be used?
+> >>     
+> >   application is romio with mpich2 ...
+> 
+> Sorry, I'm not familiar with those.  What about
+> either one of those
+> require "noac" semantics?
 
-Now think about handling a system with several thousand exported
-file systems on the server side - if you need to look at each file system
-before nfsd is ready to service requests, we're talking of a considerable
-delay in boot time. In the worst case we're talking about several thousand
-*disks* that need to be spun up, and fuses going pop-pop-pop.
+"To use ROMIO on NFS, file locking with fcntl must
+work correctly on the NFS installation. On some
+installations, fcntl locks don't work. To get them to
+work, you need to use Version 3 of NFS, ensure that
+the lockd daemon is running on all the machines, and
+have the system administrator mount the NFS file
+system with the "noac" option (no attribute caching).
+Turning off attribute caching may reduce performance,
+but it is necessary for correct behavior."
 
-Short summary - if you want to scale beyond small work group servers,
-you need something that scales well. Demand loading the exports
-table does.
+> 
+> >> One of the impacts of using the "noac" option is
+> >> much more network
+> >> traffic and it will be composed of small packets.
+> 
+> >> If the server is
+> >> busy handling all of the additional GETATTR
+> >> requests, then it won't
+> >> be handling other requests.  The client will also
+> be
+> >> a bit busier
+> >> with generating the additional requests, instead
+> of
+> >> just doing what
+> >> might be considered more useful work.
+> >>
+> >> So, there should be no direct impact to other
+> >> mounted file systems.
+> >> However, there may be indirect impacts.
+> >>     
+> >
+> > indirect impacts: can you please elaborate on
+> this.
+> 
+> I thought that I did.  :-)
+> 
+> If the system is busy handling the "noac" aspects of
+> one file system,
+> then it isn't doing something else on one of the
+> other file systems.
+> System resources are limited and using up more of
+> them for one thing
+> leaves less for others.
 
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Got it!!! when you mentioned "However, there may be
+indirect impacts." in the last line, i was like there
+could be more, and hence curious :-) 
+
+> 
+>        ps
+> 
+
+
+
+ 
+____________________________________________________________________________________
+The fish are biting. 
+Get more visitors on your site using Yahoo! Search Marketing.
+http://searchmarketing.yahoo.com/arp/sponsoredsearch_v2.php
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
