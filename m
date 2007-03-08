@@ -1,28 +1,22 @@
-From: Simon Peter <simon.peter@gmx.de>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 16:49:31 +0100
-Message-ID: <20070308164931.adeb78e7.simon.peter@gmx.de>
-References: <20070307112347.6a40faff.simon.peter@gmx.de>
-	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
-	<20070307160633.77afb618.simon.peter@gmx.de>
-	<20070307154240.GB26553@fieldses.org>
-	<20070307194418.97fee0ec.simon.peter@gmx.de>
-	<20070307202949.GH26553@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Performance: NFS v3  mounting with 'noac' option
+Date: Thu, 08 Mar 2007 11:13:24 -0500
+Message-ID: <45F03624.1000207@redhat.com>
+References: <121929.1837.qm@web56610.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: AK <amithl_prem@yahoo.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPKsC-0000Ze-8K
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 07:49:52 -0800
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HPKsC-0001jF-Kd
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 07:49:46 -0800
-In-Reply-To: <20070307202949.GH26553@fieldses.org>
+	id 1HPLFD-0003I0-54
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 08:13:31 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPLFC-00018e-N9
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 08:13:32 -0800
+In-Reply-To: <121929.1837.qm@web56610.mail.re3.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,19 +29,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> 	- the filehandle->export mapping that this function tells the
-> 	  kernel about is cached by nfsd for a half-hour.  That time
-> is set a little later in nfsd_fh:
-> 	          qword_printint(f, time(0)+30*60);
-> 	  I don't think there would be any harm to just changing that
-> 	  time(0)+30*60 to 0x7FFFFFFF (== never expire)--nfs-utils
-> 	  should be invalidating that cache explicitly whenever it's
-> 	  needed.  Maybe that should be the default.
+AK wrote:
+> --- Peter Staubach <staubach@redhat.com> wrote:
+>
+>   
+>>>>>       
+>>>>>           
+>>>> What about this application requires that the
+>>>>         
+>> "noac"
+>>     
+>>>> option be used?
+>>>>     
+>>>>         
+>>>   application is romio with mpich2 ...
+>>>       
+>> Sorry, I'm not familiar with those.  What about
+>> either one of those
+>> require "noac" semantics?
+>>     
+>
+> "To use ROMIO on NFS, file locking with fcntl must
+> work correctly on the NFS installation. On some
+> installations, fcntl locks don't work. To get them to
+> work, you need to use Version 3 of NFS, ensure that
+> the lockd daemon is running on all the machines, and
+> have the system administrator mount the NFS file
+> system with the "noac" option (no attribute caching).
+> Turning off attribute caching may reduce performance,
+> but it is necessary for correct behavior."
 
-I've done so and it seems to work! Been using the changed version the
-whole day.
+I think that I would assume that fcntl style locking works on all current
+implementations, that this is not NFS version dependent, and also that
+"noac" is not required in combination with the locking in order to get
+correct behavior.
 
-Simon
+       ps
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
