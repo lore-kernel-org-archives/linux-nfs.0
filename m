@@ -1,35 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Thu, 8 Mar 2007 16:42:15 +1100
-Message-ID: <17903.41527.623137.618107@notabene.brown>
-References: <20070307194418.97fee0ec.simon.peter@gmx.de>
-	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
-	<20070307205016.GI26553@fieldses.org>
-	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
-	<20070307211729.GO26553@fieldses.org>
-	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
-	<20070307215406.GR26553@fieldses.org>
-	<17903.16030.26119.464793@notabene.brown>
-	<20070307230601.GX26553@fieldses.org>
-	<17903.19755.146916.321440@notabene.brown>
-	<20070308051401.GC15814@fieldses.org>
+Subject: Re: [PATCH 0/8] exportfs cleanups
+Date: Thu, 8 Mar 2007 17:08:29 +1100
+Message-ID: <17903.43101.407769.914151@notabene.brown>
+References: <20070307103932.GA22963@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
-	Simon Peter <simon.peter@gmx.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPBOj-0005d8-Fx
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 21:42:41 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HPBOj-00029n-OU
-	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 21:42:43 -0800
-In-Reply-To: message from J. Bruce Fields on Thursday March 8
+	id 1HPBo1-00083S-HC
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 22:08:49 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPBo2-0001xM-AN
+	for nfs@lists.sourceforge.net; Wed, 07 Mar 2007 22:08:51 -0800
+In-Reply-To: message from Christoph Hellwig on Wednesday March 7
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,52 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday March 8, bfields@fieldses.org wrote:
-> On Thu, Mar 08, 2007 at 10:39:23AM +1100, Neil Brown wrote:
-> > Imagine having hundreds of filesystems on some sort of library (a CD
-> > library?) where each can be identified by a UUID which gets stored in
-> > the fsid in the filehandle.
-> > Imagine a simple extension to mountd so that a call-out were made when
-> > an unknown filehandle arrived.  This callout could mount the required
-> > filesystem and export it.  Maybe the library only allows 3 filesystems
-> > to be mounted at a time, so it would unmount the lease-recently-used
-> > one.
-> 
-> Maybe.  Is this practical?  Do we know of any cases of users doing this?
+On Wednesday March 7, hch@infradead.org wrote:
+> This patch series has 8 patches to clean up the code flow
+> of fs/exportfs/expfs.c, and it's interface to the NFS server.
 
-Someone once mentioned doing something vaguely like this... I don't
-know the exact details.  It was mentioned in the context of the fsid
-being too small to do a really good job.
+Thanks for these.  They look good.  That code certainly need some
+cleaning up.
 
-I wonder if you can export autofs to get them mounted in the first
-place..... 
+I didn't get 6/8.  Could you resend?
 
-> Do you block forever if you try to access 4 filesystems at once?  I
-> dunno....
+Patch 5/8 removes a number of comments without adding any.
+ Do you think it would be valuable to add a comment explaining the
+ subtleties for why directories and files are handled differently.
 
-round-robin?  Sending lots of EINPROGRESS for one filesystem while the
-others have a turn.
+Patch 8/8 I should look through again to make sure all the dentry
+references look right (I found them easy to get wrong).  Splitting up
+find_exported_dentry was definitely a good idea.
+You left in a comment in "If we weren't after a directory" in a place
+were we know we weren't, so at least it should be "Since we
+weren't....".
 
 
-> 
-> > I have often wanted to write a 'Linux commentary' that explains all
-> > the hows and whys of things.  I even started some bits once (to help
-> > me understand the VFS layer).  But Linux changes so fast that any
-> > entry in such a commentary would be out-of-date before it was
-> > written....
-> 
-> And there's a lot to document.  I mean, look:
-> 
-> 	http://www.oreilly.com/catalog/understandlni/
-> 
-> Just over a thousand pages, just covering the kernel networking code
-> (and only some of it at that).  Maybe they just lost the forest for the
-> trees, but still, yipes.
+The rest all look fine.
 
-Is there really a market for that sort of book?  Maybe we should write
-"Understanding Linux NFS" in our spare time .... oh wait, we don't
-have any spare time.  Maybe in a couple of decades when I retire:-)
-
+Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
