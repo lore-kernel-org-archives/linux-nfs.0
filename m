@@ -1,32 +1,30 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: NFS mount problem (2000 NFS filesystems) of linux clients
-	to a solaris server
-Date: Fri, 9 Mar 2007 15:46:18 +0100
-Message-ID: <200703091546.19536.olaf.kirch@oracle.com>
-References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
-	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Fri, 9 Mar 2007 09:59:18 -0500
+Message-ID: <20070309145918.GC25751@fieldses.org>
+References: <20070307112347.6a40faff.simon.peter@gmx.de>
+	<EXNANE015HfqR77bieL0000006b@exnane01.hq.netapp.com>
+	<20070307160633.77afb618.simon.peter@gmx.de>
+	<20070307154240.GB26553@fieldses.org>
+	<20070307194418.97fee0ec.simon.peter@gmx.de>
+	<20070307202949.GH26553@fieldses.org>
+	<20070309140237.ce6728bf.simon.peter@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	nfs@lists.sourceforge.net
+To: Simon Peter <simon.peter@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPgO4-0000pq-Pq
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:48:04 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1HPgYL-0001zY-Ko
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:58:41 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HPgO5-0006PX-MC
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:48:07 -0800
-Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l29ElOO4001196
-	for <nfs@lists.sourceforge.net>; Fri, 9 Mar 2007 08:47:24 -0600
-Received: from rcsmt250.oracle.com (rcsmt250.oracle.com [148.87.90.195])
-	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l29E5mYO000586
-	for <nfs@lists.sourceforge.net>; Fri, 9 Mar 2007 07:47:23 -0700
-In-Reply-To: <EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
+	(Exim 4.44) id 1HPgYK-0001Ii-6Z
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:58:42 -0800
+In-Reply-To: <20070309140237.ce6728bf.simon.peter@gmx.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,20 +37,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 09 March 2007 14:09, Talpey, Thomas wrote:
-> The mount command creates and binds a socket in userspace, then
-> passes it to the kernel for connecting to the server. Newer kernels
-> don't use this socket however, and it is closed when the mount
-> completes. However, it's a TCP socket and is bound to a privileged
-> port, the socket isn't destroyed immediately, it sticks around for
-> a short time.
+On Fri, Mar 09, 2007 at 02:02:37PM +0100, Simon Peter wrote:
+> > 	- the filehandle->export mapping that this function tells the
+> > 	  kernel about is cached by nfsd for a half-hour.  That time
+> > is set a little later in nfsd_fh:
+> > 	          qword_printint(f, time(0)+30*60);
+> > 	  I don't think there would be any harm to just changing that
+> > 	  time(0)+30*60 to 0x7FFFFFFF (== never expire)--nfs-utils
+> > 	  should be invalidating that cache explicitly whenever it's
+> > 	  needed.  Maybe that should be the default.
+> 
+> Is there any way that we could see this change incorporated into
+> nfs-utils? I certainly would like to have it.
 
-Why do we keep creating those at all?
+Make a diff showing that change (and nothing else), stick an explanation
+of the change and why it's correct at the top, and mail it to Neil cc'd
+to this list?....
 
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
