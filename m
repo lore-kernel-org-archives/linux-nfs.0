@@ -1,28 +1,26 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: NFS mount problem (2000 NFS filesystems) of linux clients
- to a solaris server
-Date: Fri, 09 Mar 2007 10:04:59 -0500
-Message-ID: <EXNANE01okLQ8aZRhQd00000099@exnane01.hq.netapp.com>
-References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
-	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
-	<200703091546.19536.olaf.kirch@oracle.com>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: RPCGSSD and root on Linux client
+Date: Fri, 9 Mar 2007 10:24:21 -0500
+Message-ID: <4d569c330703090724j2bcad85ayca0a383f9ec712f1@mail.gmail.com>
+References: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
+	<01AE8AF878612047A442668306EAEB055C4516@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Olaf Kirch <olaf.kirch@oracle.com>
+Cc: "Burlyga, Alex" <Alex.Burlyga@netapp.com>,
+	nfs@lists.sourceforge.net
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPgey-0002kp-T4
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:05:33 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPgez-0006tH-SL
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:05:35 -0800
-In-Reply-To: <200703091546.19536.olaf.kirch@oracle.com>
-References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
-	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
-	<200703091546.19536.olaf.kirch@oracle.com>
+	id 1HPgxK-0004vD-Vq
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:24:31 -0800
+Received: from ug-out-1314.google.com ([66.249.92.173])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPgxK-0004Kp-RI
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:24:33 -0800
+Received: by ug-out-1314.google.com with SMTP id z38so1450770ugc
+	for <nfs@lists.sourceforge.net>; Fri, 09 Mar 2007 07:24:23 -0800 (PST)
+In-Reply-To: <01AE8AF878612047A442668306EAEB055C4516@SACEXMV01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,24 +33,146 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 09:46 AM 3/9/2007, Olaf Kirch wrote:
->On Friday 09 March 2007 14:09, Talpey, Thomas wrote:
->> The mount command creates and binds a socket in userspace, then
->> passes it to the kernel for connecting to the server. Newer kernels
->> don't use this socket however, and it is closed when the mount
->> completes. However, it's a TCP socket and is bound to a privileged
->> port, the socket isn't destroyed immediately, it sticks around for
->> a short time.
+Hi Dan,
+Thanks.  I think this sounds reasonable at first glance.  I'll try it out.
+
+There has also been interest in allowing the use of any usable key
+found in the keytab when using the machine credentials.  This would
+allow the use of a "host/<machine.name>@REALM" or
+"root/<machine.name>@REALM" key rather than requiring an
+"nfs/<machine.name>@REALM" key on the client.   I'll look into this as
+well.  (I have to look back at the spec to see if the callback channel
+authentication requires an nfs key on the client.  I don't think it
+does.)
+
+K.C.
+
+On 3/8/07, Muntz, Daniel <Dan.Muntz@netapp.com> wrote:
+> Original message and pseudo code logic are correct, but the patch is
+> broken.  Here's the new, slightly cleaner one (still for illustrative
+> purposes only :)
 >
->Why do we keep creating those at all?
-
-Good question! There's already some checking for kernel version in that
-code to handle ancient-kernel compat, it certainly could be extended
-to this. Or tossed altogether. It certainly makes no sense for IPv6 or
-RDMA or ...
-
-Tom.
-
+> --- gssd_proc.c.orig    2007-03-08 15:22:40.637927000 -0800
+> +++ gssd_proc.c 2007-03-08 16:50:08.104133000 -0800
+> @@ -675,6 +675,7 @@ handle_krb5_upcall(struct clnt_info *clp
+>         gss_buffer_desc         token;
+>         char                    **credlist = NULL;
+>         char                    **ccname;
+> +       int                     create_resp;
+>
+>         printerr(1, "handling krb5 upcall\n");
+>
+> @@ -688,7 +689,19 @@ handle_krb5_upcall(struct clnt_info *clp
+>                 goto out;
+>         }
+>
+> -       if (uid == 0) {
+> +       /* Tell krb5 gss which credentials cache to use */
+> +       gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
+> +
+> +       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+> +                               AUTHTYPE_KRB5);
+> +       if (create_resp != 0 && uid != 0) {
+> +               printerr(0, "WARNING: Failed to create krb5 context "
+> +                   "for user with uid %d for server %s\n",
+> +                        uid, clp->servername);
+> +               goto out_return_error;
+> +       }
+> +
+> +       if (create_resp != 0 && uid == 0) {
+>                 int success = 0;
+>
+>                 /*
+> @@ -723,18 +736,6 @@ handle_krb5_upcall(struct clnt_info *clp
+>                         goto out_return_error;
+>                 }
+>         }
+> -       else {
+> -               /* Tell krb5 gss which credentials cache to use */
+> -               gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
+> -
+> -               if ((create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+> -                                                       AUTHTYPE_KRB5))
+> != 0) {
+> -                       printerr(0, "WARNING: Failed to create krb5
+> context "
+> -                                   "for user with uid %d for server
+> %s\n",
+> -                                uid, clp->servername);
+> -                       goto out_return_error;
+> -               }
+> -       }
+>
+>         if (!authgss_get_private_data(auth, &pd)) {
+>                 printerr(0, "WARNING: Failed to obtain authentication "
+>
+>
+>
+> -----Original Message-----
+> From: Muntz, Daniel
+> Sent: Thursday, March 08, 2007 3:59 PM
+> To: nfs@lists.sourceforge.net
+> Cc: Burlyga, Alex
+> Subject: [NFS] RPCGSSD and root on Linux client
+>
+> We've hit the following issue with root and Kerberos on the linux
+> client:
+>
+> > I run in into interesting problem with recent change to rpcgssd on the
+>
+> > linux client.
+> > The change itself made -m flag mandatory, meaning that for user uid =
+> > 0 , different principal will be used, namely first principal specified
+>
+> > in /etc/krb5.keytab which starts with nfs. From the filer perspective
+> > after that change there is no way root will come in as a principal
+> > over RPCSEC_GSS so, for example, root can't create a file with root as
+>
+> > owner. I'm not sure how Linux nfs server handles this, but behavior
+> > seems broken. Do you know what was the rationale behind this change?
+> > am I missing something?
+>
+> Our guess at what's going on here is that gssd was changed so that
+> initial mounts and the automounter could acquire a cred even when there
+> is no root cred available on the machine.  Unfortunately, the change to
+> gssd maps all uid=0 requests to a non-root principal.  Currently the
+> code does something like this:
+>
+>   if (uid == 0)
+>         map some non-root principal to uid 0
+>   else
+>       do normal uid->principal mapping
+>
+> I'm suggesting chaging this logic to:
+>
+>   do normal uid->principal mapping
+>   if mapping failed && uid == 0
+>         map some non-root principal to uid 0 (as in the original case)
+>
+> So, if we have a root cred hanging around (e.g., in krb5.keytab, via
+> kinit, etc.), we go ahead and use it.  Otherwise, we use the existing
+> code to map uid 0 to some other principal.  In either case, automount,
+> mounts during startup, etc. should be happy, but we're still able to use
+> the root principal.
+>
+> Patch below is **untested** but illustrates the proposed change.
+>
+> We need to know if we've missed something in the reasoning for the
+> original change that impacts the proposed solution.  Or if the proposal
+> is flawed in some other respect :-)
+>
+>   -Dan
+>
+> -------------------------------------------------------------------------
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to share your
+> opinions on IT & business topics through brief surveys-and earn cash
+> http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
+>
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
