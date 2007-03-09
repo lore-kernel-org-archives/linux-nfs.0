@@ -1,26 +1,32 @@
 From: Olaf Kirch <olaf.kirch@oracle.com>
 Subject: Re: NFS mount problem (2000 NFS filesystems) of linux clients
 	to a solaris server
-Date: Fri, 9 Mar 2007 15:25:14 +0100
-Message-ID: <200703091525.15438.olaf.kirch@oracle.com>
-References: <45F004BD.1070500@biochem.mpg.de>
-	<EXNANE01FRaqbC8wSA10000007f@exnane01.hq.netapp.com>
-	<45F15018.1060804@biochem.mpg.de>
+Date: Fri, 9 Mar 2007 15:46:18 +0100
+Message-ID: <200703091546.19536.olaf.kirch@oracle.com>
+References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
+	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	Bernhard Busch <bbusch@biochem.mpg.de>
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPg5I-000795-1T
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:28:40 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPg5G-0004NF-Ix
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:28:41 -0800
-In-Reply-To: <45F15018.1060804@biochem.mpg.de>
+	id 1HPgO4-0000pq-Pq
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:48:04 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HPgO5-0006PX-MC
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 06:48:07 -0800
+Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l29ElOO4001196
+	for <nfs@lists.sourceforge.net>; Fri, 9 Mar 2007 08:47:24 -0600
+Received: from rcsmt250.oracle.com (rcsmt250.oracle.com [148.87.90.195])
+	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l29E5mYO000586
+	for <nfs@lists.sourceforge.net>; Fri, 9 Mar 2007 07:47:23 -0700
+In-Reply-To: <EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +39,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 09 March 2007 13:16, Bernhard Busch wrote:
-> But , if i remove the sleep command the
->
-> nfs bindresvport: Address already in use
+On Friday 09 March 2007 14:09, Talpey, Thomas wrote:
+> The mount command creates and binds a socket in userspace, then
+> passes it to the kernel for connecting to the server. Newer kernels
+> don't use this socket however, and it is closed when the mount
+> completes. However, it's a TCP socket and is bound to a privileged
+> port, the socket isn't destroyed immediately, it sticks around for
+> a short time.
 
-This is a message from the mount command, and it's really
-a problem in the RPC library. At some point, mount would
-use 2 ports per mount (one when doing pmap_getport, the
-other when talking to the server's mountd). I think the getport
-call was fixed a while ago, as it doesn't really need a privport
-at all. But for many NFS servers, a privileged port is a must
-when talking to mountd.
-
-I think one reasonable fix for this would be to make mount
-(or the rpc library) issue a setsockopt(SOL_SOCKET, SO_REUSEADDR)
-*after* it's done with the request, and before closing the socket. That way,
-we can immediately rebind to this port, without risking confusion by having to
-mount commands bind to the same port at the same time.
+Why do we keep creating those at all?
 
 Olaf
 -- 
