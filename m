@@ -1,25 +1,28 @@
 From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: RPCGSSD and root on Linux client
-Date: Thu, 8 Mar 2007 15:58:40 -0800
-Message-ID: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
+Subject: Re: RPCGSSD and root on Linux client
+Date: Thu, 8 Mar 2007 16:56:14 -0800
+Message-ID: <01AE8AF878612047A442668306EAEB055C4516@SACEXMV01.hq.netapp.com>
+References: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "Burlyga, Alex" <Alex.Burlyga@netapp.com>
-To: <nfs@lists.sourceforge.net>
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>,
+	<nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPSVY-0005Tn-CZ
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 15:58:52 -0800
+	id 1HPTPA-0002ri-Nn
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 16:56:20 -0800
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPSVY-0005IA-Cz
-	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 15:58:54 -0800
-Received: from sacexrs02.hq.netapp.com (sacexrs02.corp.netapp.com
-	[10.99.190.106])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPTPC-0002k4-NT
+	for nfs@lists.sourceforge.net; Thu, 08 Mar 2007 16:56:22 -0800
+Received: from svlexc03.hq.netapp.com (svlexc03.corp.netapp.com
+	[10.57.156.149])
 	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l28Nwg6X016490
-	for <nfs@lists.sourceforge.net>; Thu, 8 Mar 2007 15:58:42 -0800 (PST)
+	l290uFAh028228
+	for <nfs@lists.sourceforge.net>; Thu, 8 Mar 2007 16:56:15 -0800 (PST)
+In-Reply-To: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,6 +34,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
+
+Original message and pseudo code logic are correct, but the patch is
+broken.  Here's the new, slightly cleaner one (still for illustrative
+purposes only :)
+
+--- gssd_proc.c.orig	2007-03-08 15:22:40.637927000 -0800
++++ gssd_proc.c	2007-03-08 16:50:08.104133000 -0800
+@@ -675,6 +675,7 @@ handle_krb5_upcall(struct clnt_info *clp
+ 	gss_buffer_desc		token;
+ 	char			**credlist = NULL;
+ 	char			**ccname;
++	int			create_resp;
+ 
+ 	printerr(1, "handling krb5 upcall\n");
+ 
+@@ -688,7 +689,19 @@ handle_krb5_upcall(struct clnt_info *clp
+ 		goto out;
+ 	}
+ 
+-	if (uid == 0) {
++	/* Tell krb5 gss which credentials cache to use */
++	gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
++
++	create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
++				AUTHTYPE_KRB5);
++	if (create_resp != 0 && uid != 0) {
++		printerr(0, "WARNING: Failed to create krb5 context "
++		    "for user with uid %d for server %s\n",
++			 uid, clp->servername);
++		goto out_return_error;
++	}
++
++	if (create_resp != 0 && uid == 0) {
+ 		int success = 0;
+ 
+ 		/*
+@@ -723,18 +736,6 @@ handle_krb5_upcall(struct clnt_info *clp
+ 			goto out_return_error;
+ 		}
+ 	}
+-	else {
+-		/* Tell krb5 gss which credentials cache to use */
+-		gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
+-
+-		if ((create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+-							AUTHTYPE_KRB5))
+!= 0) {
+-			printerr(0, "WARNING: Failed to create krb5
+context "
+-				    "for user with uid %d for server
+%s\n",
+-				 uid, clp->servername);
+-			goto out_return_error;
+-		}
+-	}
+ 
+ 	if (!authgss_get_private_data(auth, &pd)) {
+ 		printerr(0, "WARNING: Failed to obtain authentication "
+
+ 
+
+-----Original Message-----
+From: Muntz, Daniel 
+Sent: Thursday, March 08, 2007 3:59 PM
+To: nfs@lists.sourceforge.net
+Cc: Burlyga, Alex
+Subject: [NFS] RPCGSSD and root on Linux client
 
 We've hit the following issue with root and Kerberos on the linux
 client:
@@ -79,51 +149,6 @@ original change that impacts the proposed solution.  Or if the proposal
 is flawed in some other respect :-)
 
   -Dan
-
- 
---- gssd_proc.c.orig	2007-03-08 15:22:40.637927000 -0800
-+++ gssd_proc.c	2007-03-08 15:28:00.671967000 -0800
-@@ -688,6 +688,18 @@ handle_krb5_upcall(struct clnt_info *clp
- 		goto out;
- 	}
- 
-+	/* Tell krb5 gss which credentials cache to use */
-+	gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
-+
-+	if (create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-+				AUTHTYPE_KRB5) != 0 && 
-+			uid != 0) {
-+		printerr(0, "WARNING: Failed to create krb5 context "
-+		    "for user with uid %d for server %s\n",
-+			 uid, clp->servername);
-+		goto out_return_error;
-+	}
-+
- 	if (uid == 0) {
- 		int success = 0;
- 
-@@ -723,18 +735,6 @@ handle_krb5_upcall(struct clnt_info *clp
- 			goto out_return_error;
- 		}
- 	}
--	else {
--		/* Tell krb5 gss which credentials cache to use */
--		gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
--
--		if ((create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
--							AUTHTYPE_KRB5))
-!= 0) {
--			printerr(0, "WARNING: Failed to create krb5
-context "
--				    "for user with uid %d for server
-%s\n",
--				 uid, clp->servername);
--			goto out_return_error;
--		}
--	}
- 
- 	if (!authgss_get_private_data(auth, &pd)) {
- 		printerr(0, "WARNING: Failed to obtain authentication "
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
