@@ -1,28 +1,28 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: Delays on "first" access to a NFS mount
-Date: Fri, 9 Mar 2007 16:02:40 +0100
-Message-ID: <200703091602.42090.olaf.kirch@oracle.com>
-References: <20070307194418.97fee0ec.simon.peter@gmx.de>
-	<200703081443.18604.olaf.kirch@oracle.com>
-	<20070308212727.GA22713@fieldses.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: NFS mount problem (2000 NFS filesystems) of linux clients
+ to a solaris server
+Date: Fri, 09 Mar 2007 10:04:59 -0500
+Message-ID: <EXNANE01okLQ8aZRhQd00000099@exnane01.hq.netapp.com>
+References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
+	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
+	<200703091546.19536.olaf.kirch@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, Simon Peter <simon.peter@gmx.de>,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Olaf Kirch <olaf.kirch@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HPge1-0002dr-8n
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:04:33 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HPge2-0002tB-3l
-	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:04:35 -0800
-In-Reply-To: <20070308212727.GA22713@fieldses.org>
+	id 1HPgey-0002kp-T4
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:05:33 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HPgez-0006tH-SL
+	for nfs@lists.sourceforge.net; Fri, 09 Mar 2007 07:05:35 -0800
+In-Reply-To: <200703091546.19536.olaf.kirch@oracle.com>
+References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
+	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
+	<200703091546.19536.olaf.kirch@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,30 +35,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday 08 March 2007 22:27, J. Bruce Fields wrote:
-> There's some confusion here--the reason that this was happening was that
-> we're mapping filehandles to exports by stat()ing the root of every
-> exported filesystem.  That may be an obstacle to handling large numbers
-> of exports, but it's not really related to the demand-loading question.
+At 09:46 AM 3/9/2007, Olaf Kirch wrote:
+>On Friday 09 March 2007 14:09, Talpey, Thomas wrote:
+>> The mount command creates and binds a socket in userspace, then
+>> passes it to the kernel for connecting to the server. Newer kernels
+>> don't use this socket however, and it is closed when the mount
+>> completes. However, it's a TCP socket and is bound to a privileged
+>> port, the socket isn't destroyed immediately, it sticks around for
+>> a short time.
+>
+>Why do we keep creating those at all?
 
-Sorry if I was expressing myself poorly. What I was driving at was that
-it makes sense to not mount all file systems prior to starting the
-NFS server.
+Good question! There's already some checking for kernel version in that
+code to handle ancient-kernel compat, it certainly could be extended
+to this. Or tossed altogether. It certainly makes no sense for IPv6 or
+RDMA or ...
 
-> So why does demand-loading scale better?  Is the worry just the kernel
-> memory required to store the export table for thousands of mostly
-> inactive exports?
+Tom.
 
-It means you can start serving files without having to wait for all 
-file systems to be mounted (and having their journals replayed,
-etc). All you need is a way for mountd to figure out whether a file system
-is there already (so we can push the rootfh into the kernel) or whether it's
-not (so nfsd can return EJUKEBOX or defer the request)
-
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
