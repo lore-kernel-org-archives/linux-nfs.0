@@ -1,27 +1,28 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Subject: Re: RPCGSSD and root on Linux client
-Date: Sat, 10 Mar 2007 12:04:12 -0500
-Message-ID: <20070310170412.GB29710@fieldses.org>
+Date: Sat, 10 Mar 2007 16:43:04 -0800
+Message-ID: <01AE8AF878612047A442668306EAEB055C4663@SACEXMV01.hq.netapp.com>
 References: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
 	<01AE8AF878612047A442668306EAEB055C4516@SACEXMV01.hq.netapp.com>
 	<4d569c330703090724j2bcad85ayca0a383f9ec712f1@mail.gmail.com>
 	<4d569c330703090814mae7f6b7hd494e89b5d46b77b@mail.gmail.com>
+	<20070310170412.GB29710@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "Burlyga, Alex" <Alex.Burlyga@netapp.com>,
-	"Muntz,  Daniel" <Dan.Muntz@netapp.com>, nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: nfs@lists.sourceforge.net,
+	"Burlyga, Alex" <Alex.Burlyga@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Kevin Coffman" <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HQ4yj-0002R1-AW
-	for nfs@lists.sourceforge.net; Sat, 10 Mar 2007 09:03:33 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HQ4yj-00013K-UZ
-	for nfs@lists.sourceforge.net; Sat, 10 Mar 2007 09:03:35 -0800
-In-Reply-To: <4d569c330703090814mae7f6b7hd494e89b5d46b77b@mail.gmail.com>
+	id 1HQC9r-0007TY-Av
+	for nfs@lists.sourceforge.net; Sat, 10 Mar 2007 16:43:31 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HQC9s-0005SC-DV
+	for nfs@lists.sourceforge.net; Sat, 10 Mar 2007 16:43:33 -0800
+In-Reply-To: <20070310170412.GB29710@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,16 +35,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Gssd just wants any valid cred.  I'm guessing the '-m' author chose
+nfs[/host]@REALM because they were pretty sure that if you were doing an
+NFS mount that you'd have the nfs service cred :-)  But the current code
+that makes the (once optional) '-m' behavior always on, thus always
+hijacking root, is a problem (imo).
+
+  -Dan
+
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Saturday, March 10, 2007 9:04 AM
+To: Kevin Coffman
+Cc: Muntz, Daniel; Burlyga, Alex; nfs@lists.sourceforge.net
+Subject: Re: [NFS] RPCGSSD and root on Linux client
+
 On Fri, Mar 09, 2007 at 11:14:05AM -0500, Kevin Coffman wrote:
 > After thinking about this a bit more, I have a concern.
 > 
-> Let's say root authenticates as "foo@REALM" and begins accessing NFS
-> files using those credentials.  Some time later, the context expires
-> or must be recreated for some reason and root's credentials cache is
-> now either expired or has been destroyed.  The initial context
-> creation will fail and we will fall back and use the machine
-> credentials to create the new context.  This will cause confusion
-> because all of the sudden root is "nfs/<machine>@REALM" rather than
+> Let's say root authenticates as "foo@REALM" and begins accessing NFS 
+> files using those credentials.  Some time later, the context expires 
+> or must be recreated for some reason and root's credentials cache is 
+> now either expired or has been destroyed.  The initial context 
+> creation will fail and we will fall back and use the machine 
+> credentials to create the new context.  This will cause confusion 
+> because all of the sudden root is "nfs/<machine>@REALM" rather than 
 > "foo@REALM".
 > 
 > Any suggestions on a way around this?
