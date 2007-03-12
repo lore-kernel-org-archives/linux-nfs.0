@@ -1,25 +1,28 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS server hangs when user hits hard quota
-Date: Mon, 12 Mar 2007 12:49:39 -0400
-Message-ID: <1173718179.6436.22.camel@heimdal.trondhjem.org>
-References: <20070307140143.GA20450@lotka.biologie.hu-berlin.de>
-	<20070312091632.GA9603@lotka.biologie.hu-berlin.de>
+Subject: Re: NFS mount problem (2000 NFS filesystems) of linux	clients
+	to a solaris server
+Date: Mon, 12 Mar 2007 12:57:38 -0400
+Message-ID: <1173718658.6436.27.camel@heimdal.trondhjem.org>
+References: <45F004BD.1070500@biochem.mpg.de> <45F15018.1060804@biochem.mpg.de>
+	<EXNANE01VuMhvqgStMV00000097@exnane01.hq.netapp.com>
+	<200703091546.19536.olaf.kirch@oracle.com>
+	<EXNANE01okLQ8aZRhQd00000099@exnane01.hq.netapp.com>
+	<EXNANE0169aZbLAX3cf000000af@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Tiziano Zito <t.zito@biologie.hu-berlin.de>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HQniX-0005pl-1a
-	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:49:51 -0700
+	id 1HQnqB-0006gJ-MX
+	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:57:44 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19j08rLvNE/WLfNSu90quOZYcKX5PrdfbY=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HQniU-0000OB-Oc
-	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:49:49 -0700
-In-Reply-To: <20070312091632.GA9603@lotka.biologie.hu-berlin.de>
+	ident=[U2FsdGVkX18Hiqgxh/PYLtSk+2l0OwPDOasTdqpNPMU=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HQnqC-0002TG-K7
+	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:57:46 -0700
+In-Reply-To: <EXNANE0169aZbLAX3cf000000af@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,27 +35,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-03-12 at 10:16 +0100, Tiziano Zito wrote:
-> Hi all! from the lack of response I have to conclude that this is
-> *our* problem and not nfs'. I've tried installing a new server but
-> the problem remains. Really no one else has experienced such problems?
-> I found a patch against kernel 2.4.4 (May 7, 2001) by the Linux NFS
-> Client Performance Project
-> http://www.citi.umich.edu/projects/nfs-perf/patches/nfs-write-tuning1.diff
-> which removes the checks for hitting hard and soft limits when
-> writing. The patch appears to be integrated in the code base,
-> because grepping through the linux/fs/nfs source for 'hard limit'
-> only yields lines in pagelist.c. I don't know NFS internals enough
-> to say if this may be the cause of our problem. 
-> 
-> No one about this?
-> 
-> Thank you!
-> 
-> tiziano
+On Mon, 2007-03-12 at 08:35 -0400, Talpey, Thomas wrote:
+> For its ten-year anniversary, is the better approach to delete this
+> support from nfs-utils altogether? It means that nfs-utils >1.0.12
+> won't work on early-to-mid 2.1 kernels. Which does not strike me
+> as a likely issue.
 
-The 2.4.x kernels are frozen. Only security fixes will be applied at
-this point.
+The mount command _knows_ which kernel it is working on (and uses that
+information to determine what revision of the mount structure to fill
+in).
+Why not just leave the fd argument blank for all kernels >= 2.2.0?
 
 Cheers,
   Trond
