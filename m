@@ -1,22 +1,25 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: about quota implementation
-Date: Mon, 12 Mar 2007 16:35:17 +0000
-Message-ID: <20070312163517.GA8690@infradead.org>
-References: <1173715909.3889.23.camel@dhcp-107.ibrix.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS server hangs when user hits hard quota
+Date: Mon, 12 Mar 2007 12:49:39 -0400
+Message-ID: <1173718179.6436.22.camel@heimdal.trondhjem.org>
+References: <20070307140143.GA20450@lotka.biologie.hu-berlin.de>
+	<20070312091632.GA9603@lotka.biologie.hu-berlin.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Ming Zhang <blackmagic02881@gmail.com>
+To: Tiziano Zito <t.zito@biologie.hu-berlin.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HQnUb-0004Nx-QG
-	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:35:26 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HQnUc-0004ZH-NY
-	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:35:28 -0700
-In-Reply-To: <1173715909.3889.23.camel@dhcp-107.ibrix.com>
+	id 1HQniX-0005pl-1a
+	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:49:51 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX19j08rLvNE/WLfNSu90quOZYcKX5PrdfbY=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HQniU-0000OB-Oc
+	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 09:49:49 -0700
+In-Reply-To: <20070312091632.GA9603@lotka.biologie.hu-berlin.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,26 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Mar 12, 2007 at 12:11:49PM -0400, Ming Zhang wrote:
-> Hi All
+On Mon, 2007-03-12 at 10:16 +0100, Tiziano Zito wrote:
+> Hi all! from the lack of response I have to conclude that this is
+> *our* problem and not nfs'. I've tried installing a new server but
+> the problem remains. Really no one else has experienced such problems?
+> I found a patch against kernel 2.4.4 (May 7, 2001) by the Linux NFS
+> Client Performance Project
+> http://www.citi.umich.edu/projects/nfs-perf/patches/nfs-write-tuning1.diff
+> which removes the checks for hitting hard and soft limits when
+> writing. The patch appears to be integrated in the code base,
+> because grepping through the linux/fs/nfs source for 'hard limit'
+> only yields lines in pagelist.c. I don't know NFS internals enough
+> to say if this may be the cause of our problem. 
 > 
-> I have a question about current quota implementation. 
+> No one about this?
 > 
-> This is current implementation. There is a rquotad running on same box
-> as nfsd. Then in quota-tools, it check if file system type is nfs, then
-> it invoke a rpc call and get that from rquotad.
+> Thank you!
 > 
-> Another way is to implement the s_qcops in kernel nfs client and thus
-> quota-tools can use a unified way to get quotactl information.
-> 
-> Any special reason why not use 2nd way to make quota-tools simpler? One
-> reason I can think of is to put unnecessary code out of kernel. Is there
-> any other reason?
+> tiziano
 
-I think it's mostly a historical issue.  There was no abstraction
-between the quotactl syscall and the default disk based quota implementation
-at the time the nfs quote code was written.  I'd definitively welcome
-a patch adding a kernel interface for nfs quotas.
+The 2.4.x kernels are frozen. Only security fixes will be applied at
+this point.
+
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
