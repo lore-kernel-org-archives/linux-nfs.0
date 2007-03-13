@@ -1,29 +1,27 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 06/11] nfs-utils: mount:  AUTH_NONE mounts
-Date: Tue, 13 Mar 2007 16:49:16 +1100
-Message-ID: <17910.15196.104675.695016@notabene.brown>
-References: <45E2C1FD.7000506@RedHat.com>
-	<17891.52293.103984.465480@notabene.brown>
-	<45E43C92.6090805@redhat.com>
-	<17894.2913.850879.838771@notabene.brown>
-	<45E6FB0B.7000204@redhat.com>
-	<17895.41362.382320.934994@notabene.brown>
-	<45E8427A.3030806@redhat.com>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: nfs-utils patch for mount-reserved-port
+Date: Tue, 13 Mar 2007 07:37:59 -0400
+Message-ID: <EXNANE01Fsxf4yp8ARf000000ba@exnane01.hq.netapp.com>
+References: <EXNANE01XsNQptgFrYI000000b1@exnane01.hq.netapp.com>
+	<EXNANE01CIqtQvAauNj000000b2@exnane01.hq.netapp.com>
+	<17910.8782.28060.148247@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Peter Staubach <staubach@redhat.com>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HQzsx-0001h8-Cy
-	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 22:49:23 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HQzsy-00070n-Sz
-	for nfs@lists.sourceforge.net; Mon, 12 Mar 2007 22:49:25 -0700
-In-Reply-To: message from Peter Staubach on Friday March 2
+	id 1HR5Kf-0002gH-KS
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 04:38:23 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HR5Kh-000586-KA
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 04:38:23 -0700
+In-Reply-To: <17910.8782.28060.148247@notabene.brown>
+References: <EXNANE01XsNQptgFrYI000000b1@exnane01.hq.netapp.com>
+	<EXNANE01CIqtQvAauNj000000b2@exnane01.hq.netapp.com>
+	<17910.8782.28060.148247@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,78 +34,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday March 2, staubach@redhat.com wrote:
-> Neil Brown wrote:
-> > On Thursday March 1, staubach@redhat.com wrote:
-> >   
-> >> This was used to address RH bz187370.
-> >>     
-> >
-> > Thanks for the link.  It provides good context.
-> >
-> > I would have thought the appropriate response would have been the
-> > following patch, and a suggestion to use
-> >   mount -o sec=none .....
-> > to mount the filesystem.
-> > Do you see a problem with that?
-> 
-> Yes, that's not sufficient.  The client should be able to automatically
-> "do the right thing".  The systems administrator shouldn't have to
-> specify the authentication flavor to match the server flavor.  That
-> systems administrator should only have to specify when there are
-> specific requirements for that client.
+At 12:02 AM 3/13/2007, Neil Brown wrote:
+>On Monday March 12, Thomas.Talpey@netapp.com wrote:
+>> Nobody replied yet, but on a second look, removing the compatibility
+>> for the fd leads directly to removing all sorts of other compatibility stuff
+>> being pitched too. So I think this way is best.
+>
+>I agree.  
+>You patch had spaces instead of tabs, but that wasn't too hard to fix
+>up.
 
-Ok..... so maybe we want "-o sec=" to accept a list of flavours, with
-the default being "-o sec=sys:none".  Would that be suitable?
-We would pick the first one in the server's list that is also in the
-clients list.
-I'm not sure allowing a list to be specified is really needed, so the
-following patch just causes the default to be effectively
-sec=sys:none.
-Would that suit?
+Sorry 'bout that. I blame our corporate Exchange server. :-/ It had tabs
+when I hit send.
 
-I just really don't like the idea of sending NFS requests with
-AUTH_SYS when mountd has said that it only supports AUTH_NONE.
+>> Yes, the second linux version check for <= 66314 technically precludes
+>> the fsock being still -1, but it reads better, and seems a little safer with
+>> the extra fsock check against the uninitialized value.
+>
+>I changes 66314 to 0x1030a  :-)  and made a couple of other little
+>additions.
 
-> 
-> And a question, I thought that I looked, and it did not appear that
-> the kernel supported AUTH_NONE on the client side.  Did I miss it?
+That 66314 was already there of course, I just added the fsock test.
 
-Well....
-fs/nfs/super.c:nfs_pseudoflavour_to_name certainly recognises RPC_AUTH_NULL.
-and net/sunrpc/auth.c:auth_flavors has authnull_ops.
-So I suspect the kernel supports it.  I admit I haven't tried.
+New version looks great. Looking forward to --enable-mount, if any
+work needed for that just holler.
 
-NeilBrown
+Tom.
 
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index f21c81c..eaf70f5 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -902,7 +902,7 @@ nfsmount(const char *spec, const char *node, int *flags,
- #if NFS_MOUNT_VERSION >= 2
- 	data.namlen	= NAME_MAX;
- #endif
--	data.pseudoflavor = AUTH_SYS;
-+	data.pseudoflavor = -1; /* accept AUTH_SYS or AUTH_NONE */
- 
- 	bg = 0;
- 	retry = 10000;		/* 10000 minutes ~ 1 week */
-@@ -1090,6 +1090,14 @@ nfsmount(const char *spec, const char *node, int *flags,
- 
- 		flavor = mountres->auth_flavors.auth_flavors_val;
- 		while (--i >= 0) {
-+			/* If no flavour requests, use any simple
-+			 * flavour that is offered.
-+			 */
-+			if (data.pseudoflavor == -1 &&
-+			    (flavor[i] == AUTH_SYS ||
-+			     flavor[i] == AUTH_NONE))
-+				data.pseudoflavor = flavor[i];
-+
- 			if (flavor[i] == data.pseudoflavor)
- 				yum = 1;
- #ifdef NFS_MOUNT_DEBUG
+>
+>Thanks,  You can find it here
+>  
+>http://neil.brown.name/git?p=nfs-utils;a=commitdiff;h=e6e19816da66cde1cc4fd062c898ce66a9b4e336
+>
+>(the linux-nfs.org git-web interface seems to be malfunctioning...)
+>
+>
+>> 
+>> I am assuming nobody wants to patch util-linux for this kind of thing?
+>> (i.e. that nfs-utils will be shipped configured with --enable-mount in
+>> the future?)
+>
+>I'm hoping to release 1.1.0 with --enable-mount as the default, but
+>there are still some issues pending for which patches exist but need
+>to be improved...
+>
+>I wouldn't bother with fixing it in util-linux at this point.
+>
+>NeilBrown
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
