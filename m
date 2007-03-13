@@ -1,31 +1,23 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] [nfs-utils: mountd] exports too verbose.
-Date: Tue, 13 Mar 2007 12:02:13 -0400
-Message-ID: <45F6CB05.6010604@RedHat.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 06/11] nfs-utils: mount:  AUTH_NONE mounts
+Date: Tue, 13 Mar 2007 12:13:25 -0400
+Message-ID: <45F6CDA5.9020607@redhat.com>
+References: <45E2C1FD.7000506@RedHat.com>	<17891.52293.103984.465480@notabene.brown>	<45E43C92.6090805@redhat.com>	<17894.2913.850879.838771@notabene.brown>	<45E6FB0B.7000204@redhat.com>	<17895.41362.382320.934994@notabene.brown>	<45E8427A.3030806@redhat.com>
+	<17910.15196.104675.695016@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------010003040306080906060309"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HR9S4-0006NM-ED
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:02:18 -0700
+	id 1HR9cz-0007lk-8i
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:13:33 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HR9S5-0001ES-Ap
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:02:18 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l2DG2Eq2010459
-	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 12:02:14 -0400
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com
-	[172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l2DG2EkX008452
-	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 12:02:14 -0400
-Received: from [10.12.32.32] (dickson.boston.devel.redhat.com [10.12.32.32])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id
-	l2DG2D36014806
-	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 12:02:14 -0400
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HR9d1-0005Tf-34
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:13:35 -0700
+In-Reply-To: <17910.15196.104675.695016@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,84 +30,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------010003040306080906060309
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Neil Brown wrote:
+> On Friday March 2, staubach@redhat.com wrote:
+>   
+>> Neil Brown wrote:
+>>     
+>>> On Thursday March 1, staubach@redhat.com wrote:
+>>>   
+>>>       
+>>>> This was used to address RH bz187370.
+>>>>     
+>>>>         
+>>> Thanks for the link.  It provides good context.
+>>>
+>>> I would have thought the appropriate response would have been the
+>>> following patch, and a suggestion to use
+>>>   mount -o sec=none .....
+>>> to mount the filesystem.
+>>> Do you see a problem with that?
+>>>       
+>> Yes, that's not sufficient.  The client should be able to automatically
+>> "do the right thing".  The systems administrator shouldn't have to
+>> specify the authentication flavor to match the server flavor.  That
+>> systems administrator should only have to specify when there are
+>> specific requirements for that client.
+>>     
+>
+> Ok..... so maybe we want "-o sec=" to accept a list of flavours, with
+> the default being "-o sec=sys:none".  Would that be suitable?
+> We would pick the first one in the server's list that is also in the
+> clients list.
+> I'm not sure allowing a list to be specified is really needed, so the
+> following patch just causes the default to be effectively
+> sec=sys:none.
+> Would that suit?
+>
+> I just really don't like the idea of sending NFS requests with
+> AUTH_SYS when mountd has said that it only supports AUTH_NONE.
+>
+>   
 
-This patch is relative to the git tree at:
-git://git.infradead.org/~steved/nfs-utils.git
-which has been updated to the nfs-utils-1.0.12
-release.
+I have to admit that aesthetically, sending AUTH_SYS requests instead
+of AUTH_NONE seems inelegant, but it works and matches the behavior of
+other implementations.
+>> And a question, I thought that I looked, and it did not appear that
+>> the kernel supported AUTH_NONE on the client side.  Did I miss it?
+>>     
+>
+> Well....
+> fs/nfs/super.c:nfs_pseudoflavour_to_name certainly recognises RPC_AUTH_NULL.
+> and net/sunrpc/auth.c:auth_flavors has authnull_ops.
+> So I suspect the kernel supports it.  I admit I haven't tried.
 
-Please consider...
+With a small update to the patch, the kernel seems to _almost_ generate
+AUTH_NONE requests.  Interestingly, the kernel makes the first FSINFO
+call with AUTH_SYS and then makes another FSINFO call with AUTH_NONE.
+Both FSINFO calls suceeded and returned the same information.
 
-steved.
+The small update to the patch is to add the line:
 
+    data.flags |= NFS_MOUNT_SECFLAVOUR;
 
+after setting data.pseudoflavor to flavor[i].
 
---------------010003040306080906060309
-Content-Type: text/x-patch;
- name="exports-nonverbose.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="exports-nonverbose.patch"
+Anyone know why, off hand, the NFS client needs to make two FSINFO calls?
 
-commit daf1b781bf92177ed616e4ced1a3f90353acde25
-Author: Steve Dickson <steved@redhat.com>
-Date:   Tue Mar 13 11:55:00 2007 -0400
+    Thanx...
 
-    This patch tones down the verbosity of exports that export
-    the same directory for both read-only and read-write.
-    Something similar to:
-    
-    /var    10.12.32.32(rw,nohide,fsid=1)
-    /var    *(ro,nohide,fsid=1)
-    
-    Every time the export is access, the following syslog
-    is logged:
-    
-    /var exported to both * and 10.12.32.32 in *,10.12.32.32
-    
-    Since the exports are working as expected, this
-    syslog is really not needed. So this patch changes
-    that syslog from a warning to a debugging message.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index a14f4f2..3e30a76 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -511,7 +511,7 @@ void nfsd_export(FILE *f)
- 			if (!found)
- 				found = exp;
- 			else {
--				xlog(L_WARNING, "%s exported to both %s and %s in %s",
-+				xlog(D_GENERAL, "%s exported to both %s and %s in %s",
- 				     path, exp->m_client->m_hostname, found->m_client->m_hostname,
- 				     dom);
- 			}
-
---------------010003040306080906060309
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+       ps
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------010003040306080906060309
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------010003040306080906060309--
