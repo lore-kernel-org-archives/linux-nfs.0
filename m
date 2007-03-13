@@ -1,21 +1,31 @@
-From: "Martin Guy" <martinwguy@yahoo.it>
-Subject: PROBLEM: kernel nfsd does not log disk reads in system stats
-Date: Tue, 13 Mar 2007 16:01:54 +0000
-Message-ID: <56d259a00703130901v3cf27269sf37c3e352eb6e9d7@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] [nfs-utils: mountd] exports too verbose.
+Date: Tue, 13 Mar 2007 12:02:13 -0400
+Message-ID: <45F6CB05.6010604@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------010003040306080906060309"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HR9Ri-0006Hw-EG
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:01:54 -0700
-Received: from nf-out-0910.google.com ([64.233.182.186])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HR9Rk-0001bW-2c
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:01:56 -0700
-Received: by nf-out-0910.google.com with SMTP id c31so4769080nfb
-	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 09:01:55 -0700 (PDT)
+	id 1HR9S4-0006NM-ED
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:02:18 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HR9S5-0001ES-Ap
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:02:18 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l2DG2Eq2010459
+	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 12:02:14 -0400
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com
+	[172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l2DG2EkX008452
+	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 12:02:14 -0400
+Received: from [10.12.32.32] (dickson.boston.devel.redhat.com [10.12.32.32])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id
+	l2DG2D36014806
+	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 12:02:14 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,51 +38,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-[1.] kernel nfsd does not log disk reads in system stats
-[2.] When intensive reads are happening on an NFS-mounted volume, the
-system activity stats for disk reads remain zero.
-[3.] NFS stat
-[4.] Linux version 2.6.18-3-686 (Debian 2.6.18-7) (waldi@debian.org)
-(gcc version 4.1.2 20061115 (prerelease) (Debian 4.1.1-20)) #1 SMP Mon
-Dec 4 16:41:14 UTC 2006
-[5.] Compiling a source tree in an nfs-mounted volume, the output of
-"vmstat" shows zero disk reads, though a high number of disk writes is
-registered, and gkrellm system monitor shows the same info
-[6.]
-[7.] Debian etch i386 on pentiums over 100MB ethernet
-[7.1.]
-Linux elite 2.6.18-3-686 #1 SMP Mon Dec 4 16:41:14 UTC 2006 i686 GNU/Linux
+This is a multi-part message in MIME format.
+--------------010003040306080906060309
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Gnu C                  4.1.2
-Gnu make               3.81
-binutils               2.17
-util-linux             2.12r
-mount                  2.12r
-module-init-tools      3.3-pre2
-e2fsprogs              1.40-WIP
-reiserfsprogs          3.6.19
-Linux C Library        2.3.6
-Dynamic linker (ldd)   2.3.6
-Procps                 3.2.7
-Net-tools              1.60
-Console-tools          0.2.3
-Sh-utils               5.97
-udev                   105
-Modules Loaded         nls_iso8859_1 nls_cp437 vfat fat sd_mod usb_storage scsi_
-mod radeon drm iptable_nat ip_nat ip_conntrack nfnetlink ip_tables x_tables nfs
-nfsd exportfs lockd nfs_acl sunrpc ipv6 dm_snapshot dm_mirror dm_mod joydev snd_
-intel8x0m snd_intel8x0 pcmcia firmware_class parport_pc parport snd_ac97_codec f
-loppy irda crc_ccitt snd_ac97_bus yenta_socket rsrc_nonstatic pcmcia_core rtc sn
-d_pcm_oss snd_mixer_oss snd_pcm intel_agp agpgart snd_timer snd cdc_ether usbnet
- eth1394 soundcore i2c_i801 i2c_core snd_page_alloc shpchp pci_hotplug pcspkr ps
-mouse serio_raw tsdev evdev reiserfs ide_cd cdrom ide_disk usbhid piix generic o
-hci1394 ieee1394 e100 mii ide_core uhci_hcd usbcore thermal processor fan
+This patch is relative to the git tree at:
+git://git.infradead.org/~steved/nfs-utils.git
+which has been updated to the nfs-utils-1.0.12
+release.
+
+Please consider...
+
+steved.
+
+
+
+--------------010003040306080906060309
+Content-Type: text/x-patch;
+ name="exports-nonverbose.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="exports-nonverbose.patch"
+
+commit daf1b781bf92177ed616e4ced1a3f90353acde25
+Author: Steve Dickson <steved@redhat.com>
+Date:   Tue Mar 13 11:55:00 2007 -0400
+
+    This patch tones down the verbosity of exports that export
+    the same directory for both read-only and read-write.
+    Something similar to:
+    
+    /var    10.12.32.32(rw,nohide,fsid=1)
+    /var    *(ro,nohide,fsid=1)
+    
+    Every time the export is access, the following syslog
+    is logged:
+    
+    /var exported to both * and 10.12.32.32 in *,10.12.32.32
+    
+    Since the exports are working as expected, this
+    syslog is really not needed. So this patch changes
+    that syslog from a warning to a debugging message.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index a14f4f2..3e30a76 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -511,7 +511,7 @@ void nfsd_export(FILE *f)
+ 			if (!found)
+ 				found = exp;
+ 			else {
+-				xlog(L_WARNING, "%s exported to both %s and %s in %s",
++				xlog(D_GENERAL, "%s exported to both %s and %s in %s",
+ 				     path, exp->m_client->m_hostname, found->m_client->m_hostname,
+ 				     dom);
+ 			}
+
+--------------010003040306080906060309
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------010003040306080906060309
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------010003040306080906060309--
