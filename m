@@ -1,23 +1,24 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 06/11] nfs-utils: mount:  AUTH_NONE mounts
-Date: Tue, 13 Mar 2007 12:13:25 -0400
-Message-ID: <45F6CDA5.9020607@redhat.com>
-References: <45E2C1FD.7000506@RedHat.com>	<17891.52293.103984.465480@notabene.brown>	<45E43C92.6090805@redhat.com>	<17894.2913.850879.838771@notabene.brown>	<45E6FB0B.7000204@redhat.com>	<17895.41362.382320.934994@notabene.brown>	<45E8427A.3030806@redhat.com>
-	<17910.15196.104675.695016@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] Remove "maptype" support
+Date: Tue, 13 Mar 2007 13:05:05 -0400
+Message-ID: <20070313170505.GA15964@fieldses.org>
+References: <20070307022107.GC27862@fieldses.org>
+	<17910.13751.310917.35119@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+Cc: nfs@lists.sourceforge.net
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HR9cz-0007lk-8i
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:13:33 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HR9d1-0005Tf-34
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 09:13:35 -0700
-In-Reply-To: <17910.15196.104675.695016@notabene.brown>
+	id 1HRAQu-0005SZ-9I
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:05:08 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HRAQt-0006Lc-Gk
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:05:10 -0700
+In-Reply-To: <17910.13751.310917.35119@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,74 +31,181 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil Brown wrote:
-> On Friday March 2, staubach@redhat.com wrote:
->   
->> Neil Brown wrote:
->>     
->>> On Thursday March 1, staubach@redhat.com wrote:
->>>   
->>>       
->>>> This was used to address RH bz187370.
->>>>     
->>>>         
->>> Thanks for the link.  It provides good context.
->>>
->>> I would have thought the appropriate response would have been the
->>> following patch, and a suggestion to use
->>>   mount -o sec=none .....
->>> to mount the filesystem.
->>> Do you see a problem with that?
->>>       
->> Yes, that's not sufficient.  The client should be able to automatically
->> "do the right thing".  The systems administrator shouldn't have to
->> specify the authentication flavor to match the server flavor.  That
->> systems administrator should only have to specify when there are
->> specific requirements for that client.
->>     
->
-> Ok..... so maybe we want "-o sec=" to accept a list of flavours, with
-> the default being "-o sec=sys:none".  Would that be suitable?
-> We would pick the first one in the server's list that is also in the
-> clients list.
-> I'm not sure allowing a list to be specified is really needed, so the
-> following patch just causes the default to be effectively
-> sec=sys:none.
-> Would that suit?
->
-> I just really don't like the idea of sending NFS requests with
-> AUTH_SYS when mountd has said that it only supports AUTH_NONE.
->
->   
+It appears that this is used only by unfsd, and is obscure enough that
+we should be able to just rip it out with no special precautions.
 
-I have to admit that aesthetically, sending AUTH_SYS requests instead
-of AUTH_NONE seems inelegant, but it works and matches the behavior of
-other implementations.
->> And a question, I thought that I looked, and it did not appear that
->> the kernel supported AUTH_NONE on the client side.  Did I miss it?
->>     
->
-> Well....
-> fs/nfs/super.c:nfs_pseudoflavour_to_name certainly recognises RPC_AUTH_NULL.
-> and net/sunrpc/auth.c:auth_flavors has authnull_ops.
-> So I suspect the kernel supports it.  I admit I haven't tried.
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
 
-With a small update to the patch, the kernel seems to _almost_ generate
-AUTH_NONE requests.  Interestingly, the kernel makes the first FSINFO
-call with AUTH_SYS and then makes another FSINFO call with AUTH_NONE.
-Both FSINFO calls suceeded and returned the same information.
+Also available from git://linux-nfs.org/~bfields/nfs-utils.git.
 
-The small update to the patch is to add the line:
+ support/export/nfsctl.c   |    6 ------
+ support/include/nfslib.h  |    7 -------
+ support/nfs/exports.c     |   37 -------------------------------------
+ utils/exportfs/exportfs.c |    4 ----
+ utils/mountd/cache.c      |    6 ------
+ 5 files changed, 0 insertions(+), 60 deletions(-)
 
-    data.flags |= NFS_MOUNT_SECFLAVOUR;
+diff --git a/support/export/nfsctl.c b/support/export/nfsctl.c
+index b74334c..32d92bd 100644
+--- a/support/export/nfsctl.c
++++ b/support/export/nfsctl.c
+@@ -92,12 +92,6 @@ expsetup(struct nfsctl_export *exparg, nfs_export *exp, int unexport)
+ 	if (stat(exp->m_export.m_path, &stb) < 0)
+ 		return 0;
+ 
+-	if (exp->m_export.e_maptype != CLE_MAP_IDENT) {
+-		xlog(L_ERROR, "%s: unsupported mapping; kernel supports only 'identity' (default)",
+-		     exp->m_export.m_path);
+-		errno = EINVAL;
+-		return 0;
+-	}
+ 	memset(exparg, 0, sizeof(*exparg));
+ 	strncpy(exparg->ex_path, exp->m_export.m_path,
+ 		sizeof (exparg->ex_path) - 1);
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 1372635..d4f4150 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -51,12 +51,6 @@
+ #define	_PATH_PROC_EXPORTS_ALT	"/proc/fs/nfsd/exports"
+ #endif
+ 
+-enum cle_maptypes {
+-	CLE_MAP_IDENT = 0,
+-	CLE_MAP_FILE,
+-	CLE_MAP_UGIDD,
+-};
+-
+ /*
+  * Data related to a single exports entry as returned by getexportent.
+  * FIXME: export options should probably be parsed at a later time to
+@@ -71,7 +65,6 @@ struct exportent {
+ 	   use it for anything else. */
+ 	char		m_path[NFS_MAXPATHLEN+1];
+ 	int		e_flags;
+-	int		e_maptype;
+ 	int		e_anonuid;
+ 	int		e_anongid;
+ 	int *		e_squids;
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 9638015..0baa5d0 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -48,7 +48,6 @@ static int	getpath(char *path, int len);
+ static int	parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr);
+ static int	parsesquash(char *list, int **idp, int *lenp, char **ep);
+ static int	parsenum(char **cpp);
+-static int	parsemaptype(char *type);
+ static void	freesquash(void);
+ static void	syntaxerr(char *msg);
+ 
+@@ -94,7 +93,6 @@ getexportent(int fromkernel, int fromexports)
+ 			def_ee.e_flags &= ~NFSEXP_ASYNC;
+ 			def_ee.e_flags &= ~NFSEXP_GATHERED_WRITES;
+ 		}
+-		def_ee.e_maptype = CLE_MAP_IDENT;
+ 		def_ee.e_anonuid = 65534;
+ 		def_ee.e_anongid = 65534;
+ 		def_ee.e_squids = NULL;
+@@ -245,21 +243,6 @@ putexportent(struct exportent *ep)
+ 		xlog(L_ERROR, "unknown fsloc method for %s:%s",
+ 		     ep->e_hostname, ep->e_path);
+ 	}
+-	fprintf(fp, "mapping=");
+-	switch (ep->e_maptype) {
+-	case CLE_MAP_IDENT:
+-		fprintf(fp, "identity,");
+-		break;
+-	case CLE_MAP_UGIDD:
+-		fprintf(fp, "ugidd,");
+-		break;
+-	case CLE_MAP_FILE:
+-		fprintf(fp, "file,");
+-		break;
+-	default:
+-		xlog(L_ERROR, "unknown mapping type for %s:%s",
+-					ep->e_hostname, ep->e_path);
+-	}
+ 	if ((id = ep->e_squids) != NULL) {
+ 		fprintf(fp, "squash_uids=");
+ 		for (i = 0; i < ep->e_nsquids; i += 2)
+@@ -317,7 +300,6 @@ mkexportent(char *hname, char *path, char *options)
+ 	static struct exportent	ee;
+ 
+ 	ee.e_flags = EXPORT_DEFAULT_FLAGS;
+-	ee.e_maptype = CLE_MAP_IDENT;
+ 	ee.e_anonuid = 65534;
+ 	ee.e_anongid = 65534;
+ 	ee.e_squids = NULL;
+@@ -447,12 +429,6 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
+ 			ep->e_flags &= ~NFSEXP_NOACL;
+ 		else if (strcmp(opt, "no_acl") == 0)
+ 			ep->e_flags |= NFSEXP_NOACL;
+-		else if (strncmp(opt, "mapping=", 8) == 0)
+-			ep->e_maptype = parsemaptype(opt+8);
+-		else if (strcmp(opt, "map_identity") == 0)	/* old style */
+-			ep->e_maptype = CLE_MAP_IDENT;
+-		else if (strcmp(opt, "map_daemon") == 0)	/* old style */
+-			ep->e_maptype = CLE_MAP_UGIDD;
+ 		else if (strncmp(opt, "anonuid=", 8) == 0) {
+ 			char *oe;
+ 			ep->e_anonuid = strtol(opt+8, &oe, 10);
+@@ -625,19 +601,6 @@ parsenum(char **cpp)
+ }
+ 
+ static int
+-parsemaptype(char *type)
+-{
+-	if (!strcmp(type, "identity"))
+-		return CLE_MAP_IDENT;
+-	if (!strcmp(type, "ugidd"))
+-		return CLE_MAP_UGIDD;
+-	if (!strcmp(type, "file"))
+-		return CLE_MAP_FILE;
+-	syntaxerr("invalid map type");
+-	return CLE_MAP_IDENT;	/* default */
+-}
+-
+-static int
+ getpath(char *path, int len)
+ {
+ 	xskip(efp, " \t\n");
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 22e13a3..1eca567 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -410,10 +410,6 @@ dump(int verbose)
+ 				c = dumpopt(c, "mountpoint%s%s", 
+ 					    ep->e_mountpoint[0]?"=":"", 
+ 					    ep->e_mountpoint);
+-			if (ep->e_maptype == CLE_MAP_UGIDD)
+-				c = dumpopt(c, "mapping=ugidd");
+-			else if (ep->e_maptype == CLE_MAP_FILE)
+-				c = dumpopt(c, "mapping=file");
+ 			if (ep->e_anonuid != 65534)
+ 				c = dumpopt(c, "anonuid=%d", ep->e_anonuid);
+ 			if (ep->e_anongid != 65534)
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 4693216..6cf24ce 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -612,12 +612,6 @@ int cache_export(nfs_export *exp)
+ 	int err;
+ 	FILE *f;
+ 
+-	if (exp->m_export.e_maptype != CLE_MAP_IDENT) {
+-		xlog(L_ERROR, "%s: unsupported mapping; kernel supports only 'identity' (default)",
+-		    exp->m_export.m_path);
+-		return -1;
+-	}
+-
+ 	f = fopen("/proc/net/rpc/auth.unix.ip/channel", "w");
+ 	if (!f)
+ 		return -1;
+-- 
+1.5.0.gb75812-dirty
 
-after setting data.pseudoflavor to flavor[i].
-
-Anyone know why, off hand, the NFS client needs to make two FSINFO calls?
-
-    Thanx...
-
-       ps
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
