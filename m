@@ -1,26 +1,30 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
-Subject: Re: [PATCH] Remove "maptype" support
-Date: Tue, 13 Mar 2007 18:24:25 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0703131819560.17686@maggie.lkpg.cendio.se>
-References: <20070307022107.GC27862@fieldses.org>
-	<17910.13751.310917.35119@notabene.brown>
-	<20070313170505.GA15964@fieldses.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: RPCGSSD and root on Linux client
+Date: Tue, 13 Mar 2007 13:53:43 -0400
+Message-ID: <4d569c330703131053u1aab139nf5eb13d682f7e507@mail.gmail.com>
+References: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
+	<01AE8AF878612047A442668306EAEB055C4516@SACEXMV01.hq.netapp.com>
+	<4d569c330703090724j2bcad85ayca0a383f9ec712f1@mail.gmail.com>
+	<4d569c330703090814mae7f6b7hd494e89b5d46b77b@mail.gmail.com>
+	<20070310170412.GB29710@fieldses.org>
+	<01AE8AF878612047A442668306EAEB055C4663@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-227701459-1173806665=:17686"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, "Burlyga, Alex" <Alex.Burlyga@netapp.com>
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRAjh-0007WM-L2
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:24:35 -0700
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRAji-0004QW-CG
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:24:35 -0700
-Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
-	by mail.cendio.se (Postfix) with ESMTP id CB91325DA34
-	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 18:24:25 +0100 (CET)
-In-Reply-To: <20070313170505.GA15964@fieldses.org>
+	id 1HRBC0-00025E-OO
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:53:49 -0700
+Received: from ug-out-1314.google.com ([66.249.92.170])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRBC2-00047V-85
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:53:50 -0700
+Received: by ug-out-1314.google.com with SMTP id z38so379206ugc
+	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 10:53:45 -0700 (PDT)
+In-Reply-To: <01AE8AF878612047A442668306EAEB055C4663@SACEXMV01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,52 +37,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On 3/10/07, Muntz, Daniel <Dan.Muntz@netapp.com> wrote:
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Saturday, March 10, 2007 9:04 AM
+> To: Kevin Coffman
+> Cc: Muntz, Daniel; Burlyga, Alex; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] RPCGSSD and root on Linux client
+>
+> On Fri, Mar 09, 2007 at 11:14:05AM -0500, Kevin Coffman wrote:
+> > After thinking about this a bit more, I have a concern.
+> >
+> > Let's say root authenticates as "foo@REALM" and begins accessing NFS
+> > files using those credentials.  Some time later, the context expires
+> > or must be recreated for some reason and root's credentials cache is
+> > now either expired or has been destroyed.  The initial context
+> > creation will fail and we will fall back and use the machine
+> > credentials to create the new context.  This will cause confusion
+> > because all of the sudden root is "nfs/<machine>@REALM" rather than
+> > "foo@REALM".
+> >
+> > Any suggestions on a way around this?
+>
+> We might want to make sure this behavior is optional somehow--it could
+> be the reason they have an nfs/host@REALM cred is because the host is
+> also an NFS server, not because they want the client using it for root.
+>
+> Given that, if  a user/administrator sets things up to allow gssd to
+> fall back on a different credential, then, well, that's what they asked
+> for....
+>
+> --b.
+> Gssd just wants any valid cred.  I'm guessing the '-m' author chose
+> nfs[/host]@REALM because they were pretty sure that if you were doing an
+> NFS mount that you'd have the nfs service cred :-)  But the current code
+> that makes the (once optional) '-m' behavior always on, thus always
+> hijacking root, is a problem (imo).
+>
+>   -Dan
 
---789237761-227701459-1173806665=:17686
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+I don't like the idea of things changing suddenly for no apparent
+reason (root accesses falling back to using machine creds after other
+credentials expire).  I think the default behavior should remain as it
+is (using machine creds for root access).  [BTW, making "-m" the
+default behavior wasn't a "recent change" and it (the -m option) was
+never in an official nfs-utils release.]
 
-On Tue, 13 Mar 2007, J. Bruce Fields wrote:
+I'm tempted to create a new option (-n ?) that says that root should
+not use machine credentials.  Use of this option will require that
+root authenticates somehow before attempting a mount requiring
+Kerberos.
 
-> It appears that this is used only by unfsd, and is obscure enough that
-> we should be able to just rip it out with no special precautions.
+A seperate patch would allow the use of any keytab entry found in the
+keytab to be used as the machine credentials.
 
-Btw, I checked the source of nfs-server-2.2beta47, which is available from=
-=20
-http://sourceforge.net/project/showfiles.php?group_id=3D5768, and I can't=
-=20
-find any references to "maptype" in this source either.=20
+It seems nfs-utils-1.1.0 might be a good time to introduce this change.
 
-As far as I know, nfs-server-2.2beta47 is the latest version of the old=20
-unfsd code.=20
+Does that sound reasonable?
 
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-227701459-1173806665=:17686
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+K.C.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---789237761-227701459-1173806665=:17686
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-227701459-1173806665=:17686--
