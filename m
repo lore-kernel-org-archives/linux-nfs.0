@@ -1,23 +1,19 @@
 From: Wei Yongjun <yjwei@nanjing-fnst.com>
-Subject: [PATCH 0/4] nfs-utils : fix some bugs of umount.nfs
-Date: Wed, 14 Mar 2007 14:46:08 +0800
-Message-ID: <45F79A30.5080408@nanjing-fnst.com>
-References: <1173098587.4825.9.camel@LINE>
+Subject: [PATCH 1/4] Use correct UMNT version to do umount
+Date: Wed, 14 Mar 2007 14:46:22 +0800
+Message-ID: <45F79A3E.6000504@nanjing-fnst.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRNKK-0002JR-EF
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:12 -0700
+	id 1HRNKS-0002Jn-0n
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:20 -0700
 Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HRNKI-0008PQ-93
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:14 -0700
-In-Reply-To: <1173098587.4825.9.camel@LINE>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRNKS-0005sC-5c
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:22 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,26 +26,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patch series has 4 patches to fix some bugs of umount.nfs command.
+This patch let umount to use correct UMNT version to do umount.
+In latest kernel, the version format is "vers=3" etc., and in old kernel 
+the version format is "v3","v4" etc.
 
-[PATCH 1/4]  Use correct UMNT version to do umount
-[PATCH 2/4]  Fix nfs4 umount to not used umount procedure
-[PATCH 3/4]  Use correct UMNT protocol to do umount
-[PATCH 4/4]  Rename add_mtab2() to del_mtab()
+Signed-off-by: Wei Yongjun <yjwei@nanjing-fnst.com>
 
-These is also some work to do with umount.nfs, such as following:
+--- utils/mount/nfsumount.c.orig	2007-03-05 03:11:48.000000000 -0500
++++ utils/mount/nfsumount.c	2007-03-04 03:13:36.000000000 -0500
+@@ -257,6 +257,7 @@
+ 	char *hostname;
+ 	char *dirname;
+ 	clnt_addr_t mnt_server = { &hostname, };
++	struct mntent mnt = {.mnt_opts = opts};
+ 	struct pmap *pmap = &mnt_server.pmap;
+ 	char *p;
+ 
+@@ -296,7 +297,11 @@
+ 		pmap->pm_prog = atoi(p+10);
+ 	if (opts && (p = strstr(opts, "mountport=")) && isdigit(*(p+10)))
+ 		pmap->pm_port = atoi(p+10);
+-	if (opts && (p = strstr(opts, "nfsvers=")) && isdigit(*(p+8)))
++	if (opts && hasmntopt(&mnt, "v3"))
++		pmap->pm_vers = MOUNTVERS_NFSV3;
++	if (opts && hasmntopt(&mnt, "v4"))
++		pmap->pm_vers = 4;
++	if (opts && (p = strstr(opts, "vers=")) && isdigit(*(p+8)))
+ 		pmap->pm_vers = nfsvers_to_mnt(atoi(p+8));
+ 	if (opts && (p = strstr(opts, "mountvers=")) && isdigit(*(p+10)))
+ 		pmap->pm_vers = atoi(p+10);
 
-1. getmntdirbackward() does not free the memory it malloc, which may 
-cause memory leak, also can be found it my patch.
-
-2. If file /proc/mounts it wasn't found and we can not found mount entry 
-in /etc/mtab(it has been removed from this file), umount will fail with 
-message "umount: %s: not found"
-
-3. If the server is down, we can not umount an nfs filesystem, I can 
-make a patch, but I don't know if the server is down, do we have 
-permission to umount?  Can  umount  fail from  remote  server because 
-of  permission problem?
 
 
 -------------------------------------------------------------------------
