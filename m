@@ -1,30 +1,23 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: RPCGSSD and root on Linux client
-Date: Tue, 13 Mar 2007 13:53:43 -0400
-Message-ID: <4d569c330703131053u1aab139nf5eb13d682f7e507@mail.gmail.com>
-References: <01AE8AF878612047A442668306EAEB055C44F8@SACEXMV01.hq.netapp.com>
-	<01AE8AF878612047A442668306EAEB055C4516@SACEXMV01.hq.netapp.com>
-	<4d569c330703090724j2bcad85ayca0a383f9ec712f1@mail.gmail.com>
-	<4d569c330703090814mae7f6b7hd494e89b5d46b77b@mail.gmail.com>
-	<20070310170412.GB29710@fieldses.org>
-	<01AE8AF878612047A442668306EAEB055C4663@SACEXMV01.hq.netapp.com>
+From: Wei Yongjun <yjwei@nanjing-fnst.com>
+Subject: [PATCH 0/4] nfs-utils : fix some bugs of umount.nfs
+Date: Wed, 14 Mar 2007 14:46:08 +0800
+Message-ID: <45F79A30.5080408@nanjing-fnst.com>
+References: <1173098587.4825.9.camel@LINE>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, "Burlyga, Alex" <Alex.Burlyga@netapp.com>
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRBC0-00025E-OO
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:53:49 -0700
-Received: from ug-out-1314.google.com ([66.249.92.170])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRBC2-00047V-85
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 10:53:50 -0700
-Received: by ug-out-1314.google.com with SMTP id z38so379206ugc
-	for <nfs@lists.sourceforge.net>; Tue, 13 Mar 2007 10:53:45 -0700 (PDT)
-In-Reply-To: <01AE8AF878612047A442668306EAEB055C4663@SACEXMV01.hq.netapp.com>
+	id 1HRNKK-0002JR-EF
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:12 -0700
+Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HRNKI-0008PQ-93
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:14 -0700
+In-Reply-To: <1173098587.4825.9.camel@LINE>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,65 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 3/10/07, Muntz, Daniel <Dan.Muntz@netapp.com> wrote:
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Saturday, March 10, 2007 9:04 AM
-> To: Kevin Coffman
-> Cc: Muntz, Daniel; Burlyga, Alex; nfs@lists.sourceforge.net
-> Subject: Re: [NFS] RPCGSSD and root on Linux client
->
-> On Fri, Mar 09, 2007 at 11:14:05AM -0500, Kevin Coffman wrote:
-> > After thinking about this a bit more, I have a concern.
-> >
-> > Let's say root authenticates as "foo@REALM" and begins accessing NFS
-> > files using those credentials.  Some time later, the context expires
-> > or must be recreated for some reason and root's credentials cache is
-> > now either expired or has been destroyed.  The initial context
-> > creation will fail and we will fall back and use the machine
-> > credentials to create the new context.  This will cause confusion
-> > because all of the sudden root is "nfs/<machine>@REALM" rather than
-> > "foo@REALM".
-> >
-> > Any suggestions on a way around this?
->
-> We might want to make sure this behavior is optional somehow--it could
-> be the reason they have an nfs/host@REALM cred is because the host is
-> also an NFS server, not because they want the client using it for root.
->
-> Given that, if  a user/administrator sets things up to allow gssd to
-> fall back on a different credential, then, well, that's what they asked
-> for....
->
-> --b.
-> Gssd just wants any valid cred.  I'm guessing the '-m' author chose
-> nfs[/host]@REALM because they were pretty sure that if you were doing an
-> NFS mount that you'd have the nfs service cred :-)  But the current code
-> that makes the (once optional) '-m' behavior always on, thus always
-> hijacking root, is a problem (imo).
->
->   -Dan
+This patch series has 4 patches to fix some bugs of umount.nfs command.
 
-I don't like the idea of things changing suddenly for no apparent
-reason (root accesses falling back to using machine creds after other
-credentials expire).  I think the default behavior should remain as it
-is (using machine creds for root access).  [BTW, making "-m" the
-default behavior wasn't a "recent change" and it (the -m option) was
-never in an official nfs-utils release.]
+[PATCH 1/4]  Use correct UMNT version to do umount
+[PATCH 2/4]  Fix nfs4 umount to not used umount procedure
+[PATCH 3/4]  Use correct UMNT protocol to do umount
+[PATCH 4/4]  Rename add_mtab2() to del_mtab()
 
-I'm tempted to create a new option (-n ?) that says that root should
-not use machine credentials.  Use of this option will require that
-root authenticates somehow before attempting a mount requiring
-Kerberos.
+These is also some work to do with umount.nfs, such as following:
 
-A seperate patch would allow the use of any keytab entry found in the
-keytab to be used as the machine credentials.
+1. getmntdirbackward() does not free the memory it malloc, which may 
+cause memory leak, also can be found it my patch.
 
-It seems nfs-utils-1.1.0 might be a good time to introduce this change.
+2. If file /proc/mounts it wasn't found and we can not found mount entry 
+in /etc/mtab(it has been removed from this file), umount will fail with 
+message "umount: %s: not found"
 
-Does that sound reasonable?
+3. If the server is down, we can not umount an nfs filesystem, I can 
+make a patch, but I don't know if the server is down, do we have 
+permission to umount?  Can  umount  fail from  remote  server because 
+of  permission problem?
 
-K.C.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
