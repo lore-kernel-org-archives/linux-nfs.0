@@ -1,20 +1,19 @@
 From: Wei Yongjun <yjwei@nanjing-fnst.com>
-Subject: [PATCH 4/4] Rename add_mtab2() to del_mtab()
-Date: Wed, 14 Mar 2007 14:46:59 +0800
-Message-ID: <45F79A63.7030609@nanjing-fnst.com>
+Subject: [PATCH 2/4] Fix nfs4 umount to not used umount procedure
+Date: Wed, 14 Mar 2007 14:47:08 +0800
+Message-ID: <45F79A6C.1030508@nanjing-fnst.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRNKv-0002Ka-Es
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:49 -0700
+	id 1HRNL3-0002Kl-8g
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:59 -0700
 Received: from [221.6.14.228] (helo=proxy.fnst.com.cn)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HRNKw-0000IW-1l
-	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:51 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRNL4-0006Ed-Pn
+	for nfs@lists.sourceforge.net; Tue, 13 Mar 2007 23:51:59 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,38 +26,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-add_mtab2 is used to remove an entry from mtab, rename it to del_mtab.
+This fix umount.nfs4's BUG, patch cleanup some useless code.
+
+1. Combine nfs3_umount() and nfs2_umount() to nfs_umount()
+2. If it is a nfs4 remote file system or unkown mount version, do not 
+probe remote mount port and not send UMNT request wich is not necessary
 
 Signed-off-by: Wei Yongjun <yjwei@nanjing-fnst.com>
 
 --- utils/mount/nfsumount.c.orig	2007-03-05 03:11:48.000000000 -0500
-+++ utils/mount/nfsumount.c	2007-03-04 03:15:18.000000000 -0500
-@@ -156,7 +156,7 @@
-   }
++++ utils/mount/nfsumount.c	2007-03-04 03:09:31.000000000 -0500
+@@ -55,24 +55,11 @@
+ extern int nfs_gethostbyname(const char *, struct sockaddr_in *);
+ 
+ static inline enum clnt_stat
+-nfs3_umount(dirpath *argp, CLIENT *clnt)
++nfs_umount(dirpath *argp, CLIENT *clnt)
+ {
+-	static char clnt_res;
+-	memset (&clnt_res, 0, sizeof(clnt_res));
+ 	return clnt_call(clnt, MOUNTPROC_UMNT,
+ 			 (xdrproc_t) xdr_dirpath, (caddr_t)argp,
+-			 (xdrproc_t) xdr_void, (caddr_t) &clnt_res,
+-			 TIMEOUT);
+-}
+-
+-static inline enum clnt_stat
+-nfs2_umount(dirpath *argp, CLIENT *clnt)
+-{
+-	static char clnt_res;
+-	memset (&clnt_res, 0, sizeof(clnt_res));
+-	return clnt_call(clnt, MOUNTPROC_UMNT,
+-			 (xdrproc_t) xdr_dirpath, (caddr_t)argp,
+-			 (xdrproc_t) xdr_void, (caddr_t) &clnt_res,
++			 (xdrproc_t) xdr_void, NULL,
+ 			 TIMEOUT);
  }
  
--int add_mtab2(const char *spec, const char *node, const char *type,
-+int del_mtab(const char *spec, const char *node, const char *type,
- 		const char *opts, struct mntentchn *mc)
- {
- 	int umnt_err, umnt_err2, res;
-@@ -378,13 +378,13 @@
- 	if(mc) {
- 		ret = _nfsumount(mc->m.mnt_fsname, mc->m.mnt_opts);
- 		if(ret)
--			ret = add_mtab2(mc->m.mnt_fsname, mc->m.mnt_dir,
-+			ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir,
- 				mc->m.mnt_type, mc->m.mnt_opts, mc);
- 	}
- 	else {
- 		ret = _nfsumount(spec, NULL);
- 		if(ret)
--			ret = add_mtab2(spec, spec, spec, spec, NULL);
-+			ret = del_mtab(spec, spec, spec, spec, NULL);
- 	}
+@@ -82,25 +69,25 @@
+ 	enum clnt_stat res = 0;
+ 	int msock;
  
- 	return(ret);
-
+-	clnt = mnt_openclnt(mnt_server, &msock);
+-	if (!clnt)
+-		goto out_bad;
+ 	switch (mnt_server->pmap.pm_vers) {
+ 	case 3:
+-		res = nfs3_umount(argp, clnt);
+-		break;
+ 	case 2:
+ 	case 1:
+-		res = nfs2_umount(argp, clnt);
++		if (!probe_mntport(mnt_server))
++			goto out_bad;
++		clnt = mnt_openclnt(mnt_server, &msock);
++		if (!clnt)
++			goto out_bad;
++		res = nfs_umount(argp, clnt);
++		mnt_closeclnt(clnt, msock);
++		if (res == RPC_SUCCESS)
++			return 1;
+ 		break;
+ 	default:
+ 		break;
+ 	}
+-	mnt_closeclnt(clnt, msock);
+-	if (res == RPC_SUCCESS)
+-		return 1;
+  out_bad:
+-	return 0;
++	return res;
+ }
+ 
+ u_int get_mntproto(const char *);
+@@ -303,8 +290,6 @@
+ 
+ 	if (!nfs_gethostbyname(hostname, &mnt_server.saddr))
+ 		goto out_bad;
+-	if (!probe_mntport(&mnt_server))
+-		goto out_bad;
+ 	return nfs_call_umount(&mnt_server, &dirname);
+  out_bad:
+ 	printf("%s: %s: not found or not mounted\n", progname, spec);
 
 
 
