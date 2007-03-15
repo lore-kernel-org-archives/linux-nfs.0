@@ -1,19 +1,24 @@
-From: "Udsen Henrik" <Nilsson@ecssystems.nl>
-Subject: The Police reunite for 30th anniversary world tour
-Date: Thu, 15 Mar 2007 11:32:17 +0000
-Message-ID: <760a01c766f5$0deda4a8$40d2063d@[61.6.210.64]>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: nfs4 with kerberos troubles
+Date: Thu, 15 Mar 2007 10:04:34 -0400
+Message-ID: <4d569c330703150704gde21a56id9c43576f40b7877@mail.gmail.com>
+References: <904836.85940.qm@web34407.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: "Ehnes Volker" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: "Jonathan Schreiter" <jonathanschreiter@yahoo.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRoFc-0004r3-3d
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:36:08 -0700
-Received: from [61.6.210.64] (helo=[61.6.210.64])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRoFc-0000vM-SV
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:36:10 -0700
+	id 1HRqZK-0002kY-IS
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 07:04:38 -0700
+Received: from wr-out-0506.google.com ([64.233.184.239])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRqZM-0006D0-Hz
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 07:04:40 -0700
+Received: by wr-out-0506.google.com with SMTP id i21so182069wra
+	for <nfs@lists.sourceforge.net>; Thu, 15 Mar 2007 07:04:40 -0700 (PDT)
+In-Reply-To: <904836.85940.qm@web34407.mail.mud.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,16 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On 3/14/07, Jonathan Schreiter <jonathanschreiter@yahoo.com> wrote:
+> Hi all,
+> I've been strugling to get NFS4 to work with my MIT Kerberos 5 infrastucture.  I have a server and client with Centos 4.4.  I'm using LDAP (Fedora Directory Server 1.4) for my POSIX accounts and KRB5 for the authentication.  I am able to get the NFS mounts to work when kerberos is not enabled.
+>
+>
+> On the server, in /var/log/messages:
+> mountd[2517]: mount request from unknown host myclientipaddress for /home/NFS4 (/home/NFS4)
 
-#1 Penis Enlargement Solution in the World
+I think it may be a dns issue, but I'm not sure why you wouldn't see
+the error w/o Kerberos.  What does your /etc/exports look like on the
+server?  Can you do a reverse dns lookup of the client's IP from the
+server machine?
 
-You can order it here: http://moveissolaris.info
+> I only found one other post referencing this, but it recommended the error be in
+> the /etc/krb5.conf.  I have:
+> .mydomain.com = MYREALM.COM
+> mydomain.com = MYREALM.COM
+> .mydomain.com = myrealm.com
 
-100% Guaranteed risk free results or your Money Back!
+You don't want that last line.  The first two are correct.
 
--- 
-tsqjqspuosqhqloiokogrsomnpoioknqnrnrnjotnpnqrgotojnl
-
+K.C.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
