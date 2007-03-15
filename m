@@ -1,19 +1,19 @@
-From: Mark Fasheh <mark.fasheh@oracle.com>
-Subject: Re: Announce: new-aops-1 for 2.6.21-rc3
-Date: Thu, 15 Mar 2007 14:08:48 -0700
-Message-ID: <20070315210848.GG21942@ca-server1.us.oracle.com>
-References: <20070315161704.GH8321@wotan.suse.de>
-Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
+From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+Subject: Re: nfs4 with kerberos troubles
+Date: Thu, 15 Mar 2007 14:41:19 -0700 (PDT)
+Message-ID: <626126.78657.qm@web34408.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: jfs-discussion@lists.sourceforge.net, xfs@oss.sgi.com,
-	cluster-devel@redhat.com, reiserfs-list@namesys.com,
-	nfs@lists.sourceforge.net,
-	Linux Filesystems <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Nick Piggin <npiggin@suse.de>
+To: Kevin Coffman <kwc@citi.umich.edu>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <20070315161704.GH8321@wotan.suse.de>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HRxhN-0002kz-Kb
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 14:41:30 -0700
+Received: from web34408.mail.mud.yahoo.com ([66.163.178.157])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRxhN-0000at-HJ
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 14:41:27 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,46 +26,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Mar 15, 2007 at 05:17:04PM +0100, Nick Piggin wrote:
-> OK, I've gone through and fixed several bugs until the thing actually
-> survives fsx-linux for both ext2 and ext3 ordered and writeback (both
-> when using the new aops, and the legacy prepare_write path). Actually
-> ext3 sometimes breaks, but it does in unpatched kernels anyway.
+Hi Kevin,
+I am able to forward and reverse lookup the server and client via DNS from both machines.  The only change required from my setup to make this work is to replace the gss/krb with * in the /etc/exports file (and a service nfs restart on the nfsserver).
 
-Attached is a bugfix for a crash folks who use an initrd will hit early on.
-	--Mark
+Any other thoughts?
 
---
-Mark Fasheh
-Senior Software Developer, Oracle
-mark.fasheh@oracle.com
+Thanks!
+Jonathan
+
+----- Original Message ----
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+Cc: nfs@lists.sourceforge.net
+Sent: Thursday, March 15, 2007 10:06:29 AM
+Subject: Re: [NFS] nfs4 with kerberos troubles
 
 
-From: Mark Fasheh <mark.fasheh@oracle.com>
+On 3/15/07, Kevin Coffman <kwc@citi.umich.edu> wrote:
+> On 3/14/07, Jonathan Schreiter <jonathanschreiter@yahoo.com> wrote:
+> > On the server, in /var/log/messages:
+> > mountd[2517]: mount request from unknown host myclientipaddress for /home/NFS4 (/home/NFS4)
+>
+> I think it may be a dns issue, but I'm not sure why you wouldn't see
+> the error w/o Kerberos.  What does your /etc/exports look like on the
+> server?  Can you do a reverse dns lookup of the client's IP from the
+> server machine?
 
-[PATCH] Populate pagep in simple_write_begin()
-
-This wasn't getting passed back to callers.
-
-Signed-off-by: Mark Fasheh <mark.fasheh@oracle.com>
-
-cbf20bf51ddd6434db935ba29f845a85f3b1ec65
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 51f9748..602496a 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -357,6 +357,8 @@ int simple_write_begin(struct file *file
- 	if (!page)
- 		return -ENOMEM;
- 
-+	*pagep = page;
-+
- 	return simple_prepare_write(file, page, from, from+len);
- }
- 
--- 
-1.3.3
-
+Sorry,  I know you had the /etc/exports in the original message.  I
+meant to remove that before sending the message :-/
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
