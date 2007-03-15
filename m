@@ -1,19 +1,19 @@
-From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
-Subject: Re: nfs4 with kerberos troubles
-Date: Thu, 15 Mar 2007 04:05:18 -0700 (PDT)
-Message-ID: <943870.52524.qm@web34415.mail.mud.yahoo.com>
+From: "Udsen Henrik" <Nilsson@ecssystems.nl>
+Subject: The Police reunite for 30th anniversary world tour
+Date: Thu, 15 Mar 2007 11:32:17 +0000
+Message-ID: <760a01c766f5$0deda4a8$40d2063d@[61.6.210.64]>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+To: "Ehnes Volker" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRnls-0001mr-D2
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:05:24 -0700
-Received: from web34415.mail.mud.yahoo.com ([66.163.178.164])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRnlt-0000CD-5h
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:05:26 -0700
+	id 1HRoFc-0004r3-3d
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:36:08 -0700
+Received: from [61.6.210.64] (helo=[61.6.210.64])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRoFc-0000vM-SV
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:36:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,100 +26,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Sorry, I noticed a typo, the client kerberos keyfile has:
-client:
-nfs/myclient.mydomain.com@MYREALM.COM
-host/myclient.mydomain.com@MYREALM.COM
 
-Jonathan
+#1 Penis Enlargement Solution in the World
 
------ Original Message ----
-From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
-To: nfs@lists.sourceforge.net
-Sent: Wednesday, March 14, 2007 11:15:05 PM
-Subject: [NFS] nfs4 with kerberos troubles
+You can order it here: http://moveissolaris.info
 
+100% Guaranteed risk free results or your Money Back!
 
-Hi all,
-I've been strugling to get NFS4 to work with my MIT Kerberos 5 infrastucture.  I have a server and client with Centos 4.4.  I'm using LDAP (Fedora Directory Server 1.4) for my POSIX accounts and KRB5 for the authentication.  I am able to get the NFS mounts to work when kerberos is not enabled.
+-- 
+tsqjqspuosqhqloiokogrsomnpoioknqnrnrnjotnpnqrgotojnl
 
-The error from the mount command # mount -t nfs4 -o sec=krb5 mynfsserver:/ /home/NFS4 is:
-Warning: rpc.gssd appears not to be running.
-mount: block device mynfsserver:/ is write-protected, mounting read-only
-mount: cannot mount block device mynfsserver:/ read-only
-
-When I run rpc.gssd -f vvvvvvv from the client, the error I'm seeing is:
-WARNING: Failed to create krb5 context for user with uid 0 with any credentials cache for server mynfsserver.mydomain.com
-
-On the server, in /var/log/messages:
-mountd[2517]: mount request from unknown host myclientipaddress for /home/NFS4 (/home/NFS4)
-
-I've got portmap, rpcidmapd, nfs, rpcgssd, and rpcsvcgssd services running on both client and server (but I'm not sure all are required on both).
-
-I have created a host and nfs principal and have ktadded them to both the client and server:
-#ktlist -k /etc/krb5.keytab
-server:
-nfs/myserver.mydomain.com@MYREALM.COM
-host/myserver.mydomain.com@MYREALM.COM
-
-client:
-nfs/myclient.mydomain.com@MYREALM.COM
-host/myserver.mydomain.com@MYREALM.COM
-
-note: mydomain.com = MYREALM.COM (but realm is all uppercase)
-
-I only found one other post referencing this, but it recommended the error be in the /etc/krb5.conf.  I have: 
-.mydomain.com = MYREALM.COM
-mydomain.com = MYREALM.COM
-.mydomain.com = myrealm.com
-
-I've also turned off nfslock and iptables services (latter for testing).
-
-nfs server:
------------
-/etc/exports
-/home/NFS4 gss/krb5(rw,fsid=0,insecure,no_subtree_check)
-
-/etc/fstab:
-/dev/VolGroup00/LogVol02 /home ext3 rw,acl 1 2
-
-/etc/sysconfig/nfs
-SECURE_NFS=yes
-RPCNFSDCOUNT=8
-
-/etc/idmapd.conf
-Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-Domain = mydomain.com
-Nobody-User = nfsnobody
-Nobody-Group = nfsnobody
-Method = nsswitch
-
-nfs client:
------------
-/etc/sysconfig/nfs
-SECURE_NFS=yes
-RPCNFSDCOUNT=8
-
-/etc/idmapd.conf
-Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-Domain = mydomain.com
-Nobody-User = nfsnobody
-Nobody-Group = nfsnobody
-Method = nsswitch
-
-Can anyone please point me in the correct direction?
-
-Many thanks!
-Jonathan
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
