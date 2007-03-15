@@ -1,7 +1,7 @@
 From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
-Subject: nfs4 with kerberos troubles
-Date: Wed, 14 Mar 2007 20:15:05 -0700 (PDT)
-Message-ID: <904836.85940.qm@web34407.mail.mud.yahoo.com>
+Subject: Re: nfs4 with kerberos troubles
+Date: Thu, 15 Mar 2007 04:05:18 -0700 (PDT)
+Message-ID: <943870.52524.qm@web34415.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,11 +9,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRgQt-0007iC-TN
-	for nfs@lists.sourceforge.net; Wed, 14 Mar 2007 20:15:25 -0700
-Received: from web34407.mail.mud.yahoo.com ([66.163.178.156])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRgQp-0000Q0-Qx
-	for nfs@lists.sourceforge.net; Wed, 14 Mar 2007 20:15:13 -0700
+	id 1HRnls-0001mr-D2
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:05:24 -0700
+Received: from web34415.mail.mud.yahoo.com ([66.163.178.164])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRnlt-0000CD-5h
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 04:05:26 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,6 +25,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
+
+Sorry, I noticed a typo, the client kerberos keyfile has:
+client:
+nfs/myclient.mydomain.com@MYREALM.COM
+host/myclient.mydomain.com@MYREALM.COM
+
+Jonathan
+
+----- Original Message ----
+From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+To: nfs@lists.sourceforge.net
+Sent: Wednesday, March 14, 2007 11:15:05 PM
+Subject: [NFS] nfs4 with kerberos troubles
+
 
 Hi all,
 I've been strugling to get NFS4 to work with my MIT Kerberos 5 infrastucture.  I have a server and client with Centos 4.4.  I'm using LDAP (Fedora Directory Server 1.4) for my POSIX accounts and KRB5 for the authentication.  I am able to get the NFS mounts to work when kerberos is not enabled.
@@ -97,6 +111,15 @@ Can anyone please point me in the correct direction?
 
 Many thanks!
 Jonathan
+
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
