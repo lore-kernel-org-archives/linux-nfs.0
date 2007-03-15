@@ -1,30 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 06/11] nfs-utils: mount:  AUTH_NONE mounts
-Date: Thu, 15 Mar 2007 09:47:35 +1100
-Message-ID: <17912.31623.829635.980750@notabene.brown>
-References: <45E2C1FD.7000506@RedHat.com>
-	<17891.52293.103984.465480@notabene.brown>
-	<45E43C92.6090805@redhat.com>
-	<17894.2913.850879.838771@notabene.brown>
-	<45E6FB0B.7000204@redhat.com>
-	<17895.41362.382320.934994@notabene.brown>
-	<45E8427A.3030806@redhat.com>
-	<17910.15196.104675.695016@notabene.brown>
-	<45F6CDA5.9020607@redhat.com>
+From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+Subject: nfs4 with kerberos troubles
+Date: Wed, 14 Mar 2007 20:15:05 -0700 (PDT)
+Message-ID: <904836.85940.qm@web34407.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Peter Staubach <staubach@redhat.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HRcG3-0007zW-Ir
-	for nfs@lists.sourceforge.net; Wed, 14 Mar 2007 15:47:49 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HRcG5-0006TG-Ft
-	for nfs@lists.sourceforge.net; Wed, 14 Mar 2007 15:47:49 -0700
-In-Reply-To: message from Peter Staubach on Tuesday March 13
+	id 1HRgQt-0007iC-TN
+	for nfs@lists.sourceforge.net; Wed, 14 Mar 2007 20:15:25 -0700
+Received: from web34407.mail.mud.yahoo.com ([66.163.178.156])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HRgQp-0000Q0-Qx
+	for nfs@lists.sourceforge.net; Wed, 14 Mar 2007 20:15:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,28 +26,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday March 13, staubach@redhat.com wrote:
-> 
-> The small update to the patch is to add the line:
-> 
->     data.flags |= NFS_MOUNT_SECFLAVOUR;
-> 
-> after setting data.pseudoflavor to flavor[i].
+Hi all,
+I've been strugling to get NFS4 to work with my MIT Kerberos 5 infrastucture.  I have a server and client with Centos 4.4.  I'm using LDAP (Fedora Directory Server 1.4) for my POSIX accounts and KRB5 for the authentication.  I am able to get the NFS mounts to work when kerberos is not enabled.
 
-Thanks... That implies that I don't need the (rather ugly) -1 value to
-say "nothing requested".  I can just test this flag and set
-data.pseudoflavor to flavor[i] if it isn't set.
+The error from the mount command # mount -t nfs4 -o sec=krb5 mynfsserver:/ /home/NFS4 is:
+Warning: rpc.gssd appears not to be running.
+mount: block device mynfsserver:/ is write-protected, mounting read-only
+mount: cannot mount block device mynfsserver:/ read-only
 
-Thanks.
+When I run rpc.gssd -f vvvvvvv from the client, the error I'm seeing is:
+WARNING: Failed to create krb5 context for user with uid 0 with any credentials cache for server mynfsserver.mydomain.com
 
+On the server, in /var/log/messages:
+mountd[2517]: mount request from unknown host myclientipaddress for /home/NFS4 (/home/NFS4)
 
-> 
-> Anyone know why, off hand, the NFS client needs to make two FSINFO calls?
-> 
+I've got portmap, rpcidmapd, nfs, rpcgssd, and rpcsvcgssd services running on both client and server (but I'm not sure all are required on both).
 
-Not me, know...
+I have created a host and nfs principal and have ktadded them to both the client and server:
+#ktlist -k /etc/krb5.keytab
+server:
+nfs/myserver.mydomain.com@MYREALM.COM
+host/myserver.mydomain.com@MYREALM.COM
 
-NeilBrown
+client:
+nfs/myclient.mydomain.com@MYREALM.COM
+host/myserver.mydomain.com@MYREALM.COM
+
+note: mydomain.com = MYREALM.COM (but realm is all uppercase)
+
+I only found one other post referencing this, but it recommended the error be in the /etc/krb5.conf.  I have: 
+.mydomain.com = MYREALM.COM
+mydomain.com = MYREALM.COM
+.mydomain.com = myrealm.com
+
+I've also turned off nfslock and iptables services (latter for testing).
+
+nfs server:
+-----------
+/etc/exports
+/home/NFS4 gss/krb5(rw,fsid=0,insecure,no_subtree_check)
+
+/etc/fstab:
+/dev/VolGroup00/LogVol02 /home ext3 rw,acl 1 2
+
+/etc/sysconfig/nfs
+SECURE_NFS=yes
+RPCNFSDCOUNT=8
+
+/etc/idmapd.conf
+Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+Domain = mydomain.com
+Nobody-User = nfsnobody
+Nobody-Group = nfsnobody
+Method = nsswitch
+
+nfs client:
+-----------
+/etc/sysconfig/nfs
+SECURE_NFS=yes
+RPCNFSDCOUNT=8
+
+/etc/idmapd.conf
+Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+Domain = mydomain.com
+Nobody-User = nfsnobody
+Nobody-Group = nfsnobody
+Method = nsswitch
+
+Can anyone please point me in the correct direction?
+
+Many thanks!
+Jonathan
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
