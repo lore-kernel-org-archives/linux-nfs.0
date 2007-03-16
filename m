@@ -1,23 +1,34 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
-Date: Fri, 16 Mar 2007 14:10:47 -0400
-Message-ID: <20070316181047.GD4538@fieldses.org>
-References: <17914.20117.186786.830574@notabene.brown>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Delays on "first" access to a NFS mount
+Date: Fri, 16 Mar 2007 21:47:38 +0000
+Message-ID: <20070316214737.GA3253@infradead.org>
+References: <20070307154240.GB26553@fieldses.org>
+	<20070307194418.97fee0ec.simon.peter@gmx.de>
+	<EXNANE01FRaqbC8wSA100000073@exnane01.hq.netapp.com>
+	<20070307205016.GI26553@fieldses.org>
+	<EXNANE01MWuLn5U9T3T00000074@exnane01.hq.netapp.com>
+	<20070307211729.GO26553@fieldses.org>
+	<EXNANE0169aZbLAX3cf00000075@exnane01.hq.netapp.com>
+	<20070307215406.GR26553@fieldses.org>
+	<17903.16030.26119.464793@notabene.brown>
+	<20070307230601.GX26553@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
-	richterd@citi.umich.edu
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+	nfs@lists.sourceforge.net, Simon Peter <simon.peter@gmx.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HSGt9-0007UH-G0
-	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 11:10:51 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HSGtA-0007Rn-66
-	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 11:10:53 -0700
-In-Reply-To: <17914.20117.186786.830574@notabene.brown>
+	id 1HSKH6-0004Dw-MT
+	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 14:47:48 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HSKH6-0003oV-GO
+	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 14:47:51 -0700
+In-Reply-To: <20070307230601.GX26553@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,27 +41,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Mar 16, 2007 at 07:00:21PM +1100, Neil Brown wrote:
-> Statd currently does several very different things.
-> 1/ It listens for monitor requests from lockd and creates
->    files in /var/lib/nfs/sm/HOST
-> 2/ It listens for notifications from peers and tells lockd
->    that those peers have restarted.
-> 3/ It moves files from sm/ to sm.bak/ and then tries to 
->    notify every host listed in sm.bak/
-> 
-> The first is very similar to what NFSv4 needs for state management,
-> though is somewhat simpler.  I would like to create a better
-> interface for the kernel to ask for state to be stored, and then use
-> if for NFSv4 and NLM, subsuming this function.
+First I'd like to apologize for jumping in a little late, but I have
+been very busy at work the last weeks.
 
-NFSv4 needs something like the third as well--knfsd needs to know on
-startup the list of clients that will be allowed to reclaim state from a
-previous boot instance.  (This is to protect clients that *think*
-they're still holding locks on the server, but (thanks to a network
-partition) don't realize that the server has actually rebooted twice.)
+Then I'll try to put my repsones to most concerns here in one length
+mail because there's a lot of different things talked about here
+that are are all interwinded.
 
---b.
+There's a lot of things about exporting handling that can be static
+vs ondemand, kernel vs userspace etc.
+
+
+ - with NFSv4 there's a clear pseudo-filesystem structure where that
+   really should be represented using the kernel mount tables, or
+   to speak be a namespace reusing the infrastructure we have
+ - for NFSv2/3 that's not as important, but when we have to have
+   this namespace magic for NFSv4 anyway, it would be nice to reuse
+   it for NFSv3 as far as possible, e.g. serving older NFS client
+   from the same namespace as NFSv4 clients, even if only the actually
+   defined mountpoints without the pseudo root instead of the full
+   hiearchy that is visible
+ - once we're talking about mounting filesystems into specific places
+   we really should reuse all the existing excellent kernel code
+   to deal with this.  Given that for NFSv4 we most likely want
+   to represent a different tree that the normal local filesystem views
+   that means a separate namespace.  Note that we should have a way
+   for the administrator to easily see and modify this namespace to
+   not cause all too much trouble.
+ - using namespace and the kernel mount code means we need to have
+   at least enough information on where these mount points are in
+   kernel space.
+ - it does however not mean that we need to set up all these mount
+   points at boot time!  We have a nice scheme to creates mounts
+   when a special follow_link operation that is for example used
+   in the nfs client for submount, or we could have some sort
+   of automounter that does userspace upcalls.
+
+Does this give a better view of where I want to go?
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
