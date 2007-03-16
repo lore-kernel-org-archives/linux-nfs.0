@@ -1,23 +1,24 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] [nfs-utils: mountd] exports too verbose.
-Date: Fri, 16 Mar 2007 11:36:04 +1100
-Message-ID: <17913.58996.50116.344398@notabene.brown>
-References: <45F6CB05.6010604@RedHat.com>
+Subject: Re: PROBLEM: kernel nfsd does not log disk reads in system
+	stats
+Date: Fri, 16 Mar 2007 11:38:49 +1100
+Message-ID: <17913.59161.456303.630877@notabene.brown>
+References: <56d259a00703130901v3cf27269sf37c3e352eb6e9d7@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+To: "Martin Guy" <martinwguy@yahoo.it>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HS0Qa-0003Uj-6T
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 17:36:16 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1HS0T8-0003iK-Rd
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 17:38:54 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HS0Qa-00058T-Mo
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 17:36:18 -0700
-In-Reply-To: message from Steve Dickson on Tuesday March 13
+	(Exim 4.44) id 1HS0T9-00066P-J4
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 17:38:57 -0700
+In-Reply-To: message from Martin Guy on Tuesday March 13
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,49 +31,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday March 13, SteveD@redhat.com wrote:
-> This patch is relative to the git tree at:
-> git://git.infradead.org/~steved/nfs-utils.git
-> which has been updated to the nfs-utils-1.0.12
-> release.
-> 
-> Please consider...
+On Tuesday March 13, martinwguy@yahoo.it wrote:
+> [1.] kernel nfsd does not log disk reads in system stats
+> [2.] When intensive reads are happening on an NFS-mounted volume, the
+> system activity stats for disk reads remain zero.
 
-How about this instead...
-nfs-utils imposes an ordering to some extent.  hostnames first, then 
-subnets, the wildcards, then netgroups.
-If the two names are in different places in that ordering, then there
-really is no need to report anything, as in you case.
+Seems unlikely....
 
-OK?
+> [5.] Compiling a source tree in an nfs-mounted volume, the output of
+> "vmstat" shows zero disk reads, though a high number of disk writes is
+> registered, and gkrellm system monitor shows the same info
+
+Could it be that the clients have the tree in cache so no read is
+needed?
+Or maybe the server has it in cache, and again no read to disk is
+needed.
+
+Try unmounting on the client and the server, then remounting, then run
+the compile.  I'm fairly sure you will see plenty of reads then.
 
 NeilBrown
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 6cf24ce..ed7fe35 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -490,6 +490,7 @@ void nfsd_export(FILE *f)
- 	int i;
- 	char *dom, *path;
- 	nfs_export *exp, *found = NULL;
-+	int found_type = 0;
- 
- 
- 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
-@@ -516,9 +517,10 @@ void nfsd_export(FILE *f)
- 				continue;
- 			if (strcmp(path, exp->m_export.e_path))
- 				continue;
--			if (!found)
-+			if (!found) {
- 				found = exp;
--			else {
-+				found_type = i;
-+			} else if (found_type == i) {
- 				xlog(L_WARNING, "%s exported to both %s and %s in %s",
- 				     path, exp->m_client->m_hostname, found->m_client->m_hostname,
- 				     dom);
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
