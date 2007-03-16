@@ -1,13 +1,23 @@
-From: "Metathronius Galabant" <m.galabant@googlemail.com>
-Subject: NFS: double dentries in directory with 2.6.20
-Date: Fri, 16 Mar 2007 14:00:23 +0100
-Message-ID: <1b270aae0703160600t5a458084p76697d74872f0cb3@mail.gmail.com>
-References: <1b270aae0703160559r794cc36ake0248d71569cb5b8@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] [nfs-utils: mountd] exports too verbose.
+Date: Fri, 16 Mar 2007 09:22:26 -0400
+Message-ID: <45FA9A12.1030602@RedHat.com>
+References: <45F6CB05.6010604@RedHat.com>
+	<17913.58996.50116.344398@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: NFS@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <1b270aae0703160559r794cc36ake0248d71569cb5b8@mail.gmail.com>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HSCOK-0000bn-Ke
+	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 06:22:44 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HSCOK-0001cg-F0
+	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 06:22:44 -0700
+In-Reply-To: <17913.58996.50116.344398@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -20,58 +30,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+Neil Brown wrote:
+> On Tuesday March 13, SteveD@redhat.com wrote:
+>> This patch is relative to the git tree at:
+>> git://git.infradead.org/~steved/nfs-utils.git
+>> which has been updated to the nfs-utils-1.0.12
+>> release.
+>>
+>> Please consider...
+> 
+> How about this instead...
+> nfs-utils imposes an ordering to some extent.  hostnames first, then 
+> subnets, the wildcards, then netgroups.
+> If the two names are in different places in that ordering, then there
+> really is no need to report anything, as in you case.
+> 
+> OK?
+> 
+> NeilBrown
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 6cf24ce..ed7fe35 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -490,6 +490,7 @@ void nfsd_export(FILE *f)
+>  	int i;
+>  	char *dom, *path;
+>  	nfs_export *exp, *found = NULL;
+> +	int found_type = 0;
+>  
+>  
+>  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+> @@ -516,9 +517,10 @@ void nfsd_export(FILE *f)
+>  				continue;
+>  			if (strcmp(path, exp->m_export.e_path))
+>  				continue;
+> -			if (!found)
+> +			if (!found) {
+>  				found = exp;
+> -			else {
+> +				found_type = i;
+> +			} else if (found_type == i) {
+>  				xlog(L_WARNING, "%s exported to both %s and %s in %s",
+>  				     path, exp->m_client->m_hostname, found->m_client->m_hostname,
+>  				     dom);
+hmm... isn't there still a possibility that every time
+the mis-orders exported is accessed, the a message will
+be logged? So it might make sense to only log this
+message once, right?
 
-today I experienced double directory entries from a NFS mounted dir,
-e.g. the file "file1.ext" is listed *twice* in the output.
+Also since this is a reordering problem, shouldn't the
+logged message say its a re-ordering problem, so
+people will know how to fix it? At this point, the
+message is stating the obvious... which is really
+not that helpful as to how to avoid the message... imho..
 
-The following under a 2.6.20 NFS client; Server was 2.6.18.8, NFS over UDP.
-Mountpoint was not superblock-shared because it was a unique mount.
+steved.
 
-ls output:
 
-drwxr-xr-x  3 user grp  296 Mar 15 17:28 ./
-drwxr-xr-x  3 user grp  296 Mar 15 17:28 ./
-drwxr-xr-x  3 user grp   72 Mar 15 17:28 ../
-drwxr-xr-x  3 user grp   72 Mar 15 17:28 ../
-drwxr-xr-x  2 user grp   80 Mar 15 17:28 00001/
-drwxr-xr-x  2 user grp   80 Mar 15 17:28 00001/
--rw-r--r--  1 user grp  357 Mar 15 17:28 00001.patterns.pvset
--rw-r--r--  1 user grp 2057 Mar 15 17:28 00001.proc.pbs
--rw-r--r--  1 user grp   66 Mar 15 17:28 00001.proc.pbs.dep
--rw-r--r--  1 user grp   23 Mar 15 17:28 00001.proc.pbs.id
--rw-r--r--  1 user grp    0 Mar 15 17:28 00001.proc.pbs.queued
--rw-r--r--  1 user grp    0 Mar 15 17:28 00001.proc.pbs.queued
--rw-r--r--  1 user grp  784 Mar 15 17:28 00001.proc.pvset
-
-strace for getdents():
-
-getdents64(3, {{d_ino=14652528, d_off=1, d_type=DT_DIR, d_reclen=24,
-d_name="."} {d_ino=14652526, d_off=2, d_type=DT_DIR, d_reclen=24,
-d_name=".."} {d_ino=14654778, d_off=3, d_type=DT_DIR, d_reclen=32,
-d_name="00001"} {d_ino=14656129, d_off=4, d_type=DT_REG, d_reclen=48,
-d_name="00001.proc.pbs.queued"} {d_ino=14652528, d_off=5,
-d_type=DT_DIR, d_reclen=24, d_name="."} {d_ino=14652526, d_off=6,
-d_type=DT_DIR, d_reclen=24, d_name=".."} {d_ino=14654778, d_off=7,
-d_type=DT_DIR, d_reclen=32, d_name="00001"} {d_ino=14656129, d_off=8,
-d_type=DT_REG, d_reclen=48, d_name="00001.proc.pbs.queued"}
-{d_ino=14656022, d_off=9, d_type=DT_REG, d_reclen=40,
-d_name="00001.proc.pbs.id"} {d_ino=14654835, d_off=10, d_type=DT_REG,
-d_reclen=40, d_name="00001.proc.pbs.dep"} {d_ino=14654838, d_off=11,
-d_type=DT_REG, d_reclen=40, d_name="00001.proc.pvset"}
-{d_ino=14654841, d_off=12, d_type=DT_REG, d_reclen=40,
-d_name="00001.patterns.pvset"} {d_ino=14654832, d_off=13,
-d_type=DT_REG, d_reclen=40, d_name="00001.proc.pbs"}}, 32768) = 456
-
-Only umounting and remounting did cure the problem which hasn't
-reappeared as of now. The problem seemed to be localized into one
-directory.
-
-ATM I don't know how to track that down or supply any more information.
-Please include me on CC.
-
-Cheers,
-M
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
