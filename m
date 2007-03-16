@@ -1,24 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: PROBLEM: kernel nfsd does not log disk reads in system
-	stats
-Date: Fri, 16 Mar 2007 11:38:49 +1100
-Message-ID: <17913.59161.456303.630877@notabene.brown>
-References: <56d259a00703130901v3cf27269sf37c3e352eb6e9d7@mail.gmail.com>
+From: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+Subject: Re: nfs4 with kerberos troubles
+Date: Thu, 15 Mar 2007 18:52:17 -0700 (PDT)
+Message-ID: <600939.16106.qm@web34411.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Martin Guy" <martinwguy@yahoo.it>
+To: Kevin Coffman <kwc@citi.umich.edu>, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HS0T8-0003iK-Rd
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 17:38:54 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HS0T9-00066P-J4
-	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 17:38:57 -0700
-In-Reply-To: message from Martin Guy on Tuesday March 13
+	id 1HS1cE-0002Er-Uv
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 18:52:23 -0700
+Received: from web34411.mail.mud.yahoo.com ([66.163.178.160])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HS1cF-0003b4-TZ
+	for nfs@lists.sourceforge.net; Thu, 15 Mar 2007 18:52:25 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,26 +26,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday March 13, martinwguy@yahoo.it wrote:
-> [1.] kernel nfsd does not log disk reads in system stats
-> [2.] When intensive reads are happening on an NFS-mounted volume, the
-> system activity stats for disk reads remain zero.
+it's centos 4.4 (rhel 4) and
 
-Seems unlikely....
+kernel: 2.6.9-42.0.3.EL
+nfs-utils-lib-1.0.6-3
+nfs-utils-1.0.6-70.EL4
 
-> [5.] Compiling a source tree in an nfs-mounted volume, the output of
-> "vmstat" shows zero disk reads, though a high number of disk writes is
-> registered, and gkrellm system monitor shows the same info
+----- Original Message ----
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+Cc: nfs@lists.sourceforge.net
+Sent: Thursday, March 15, 2007 6:32:52 PM
+Subject: Re: [NFS] nfs4 with kerberos troubles
 
-Could it be that the clients have the tree in cache so no read is
-needed?
-Or maybe the server has it in cache, and again no read to disk is
-needed.
 
-Try unmounting on the client and the server, then remounting, then run
-the compile.  I'm fairly sure you will see plenty of reads then.
+I've not ever seen this error personally.  I'm still stumped on why
+you only see it with Kerberos.
 
-NeilBrown
+What kernel and nfs-utils versions are involved here?
+
+
+On 3/15/07, Jonathan Schreiter <jonathanschreiter@yahoo.com> wrote:
+> Hi Kevin,
+> I am able to forward and reverse lookup the server and client via DNS from both machines.  The only change required from my setup to make this work is to replace the gss/krb with * in the /etc/exports file (and a service nfs restart on the nfsserver).
+>
+> Any other thoughts?
+>
+> Thanks!
+> Jonathan
+>
+> ----- Original Message ----
+> From: Kevin Coffman <kwc@citi.umich.edu>
+> To: Jonathan Schreiter <jonathanschreiter@yahoo.com>
+> Cc: nfs@lists.sourceforge.net
+> Sent: Thursday, March 15, 2007 10:06:29 AM
+> Subject: Re: [NFS] nfs4 with kerberos troubles
+>
+>
+> On 3/15/07, Kevin Coffman <kwc@citi.umich.edu> wrote:
+> > On 3/14/07, Jonathan Schreiter <jonathanschreiter@yahoo.com> wrote:
+> > > On the server, in /var/log/messages:
+> > > mountd[2517]: mount request from unknown host myclientipaddress for /home/NFS4 (/home/NFS4)
+> >
+> > I think it may be a dns issue, but I'm not sure why you wouldn't see
+> > the error w/o Kerberos.  What does your /etc/exports look like on the
+> > server?  Can you do a reverse dns lookup of the client's IP from the
+> > server machine?
+>
+> Sorry,  I know you had the /etc/exports in the original message.  I
+> meant to remove that before sending the message :-/
+>
+>
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
