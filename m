@@ -1,22 +1,22 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
-Date: Fri, 16 Mar 2007 10:03:43 -0400
-Message-ID: <45FAA3BF.3030204@RedHat.com>
-References: <17914.20117.186786.830574@notabene.brown>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 1/4] Don't leak keytab entries
+Date: Fri, 16 Mar 2007 10:27:41 -0400
+Message-ID: <20070316142741.6349.9723.stgit@RoCk.CiTi.UmIcH.EdU>
+References: <20070316141826.6349.9988.stgit@RoCk.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HSD23-0004hY-BB
-	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 07:03:51 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HSD23-0007Hr-7D
-	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 07:03:49 -0700
-In-Reply-To: <17914.20117.186786.830574@notabene.brown>
+	id 1HSDPB-0007E9-UF
+	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 07:27:42 -0700
+Received: from citi.umich.edu ([141.211.133.111])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HSDPC-0006Oy-Va
+	for nfs@lists.sourceforge.net; Fri, 16 Mar 2007 07:27:44 -0700
+In-Reply-To: <20070316141826.6349.9988.stgit@RoCk.CiTi.UmIcH.EdU>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,28 +29,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+From: Kevin Coffman <kwc@citi.umich.edu>
 
+Free keytab entries while processing keytab file.
 
-Neil Brown wrote:
-> A particular exception is fixes for mount.nfs w.r.t. handing of
-> MS_REMOUNT.  I haven't figured out what that is all about yet and it
-> is getting late. :-)
-Well the main purpose of the patch is to stop ment->mnt_opts
-from being re-freed during the remount path:
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+---
 
-+	/*
-+	 * Note: free(ment->mnt_opts) happens in discard_mntentchn()
-+	 * via update_mtab() on remounts
-+	 */
-+	 if (!remount)
-+	 	free(ment->mnt_opts);
-+}
+ utils/gssd/krb5_util.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-The second part the patch is basically cleaning
-up how the default nfs version is set... preparing
-for the day when v4 is the default...
-
-steved.
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 6af2869..cd777e4 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -485,6 +485,7 @@ gssd_process_krb5_keytab(krb5_context co
+ 			printerr(0, "WARNING: Skipping keytab entry because "
+ 				    "we failed to unparse principal name: %s\n",
+ 				 error_message(code));
++			krb5_kt_free_entry(context, &kte);
+ 			continue;
+ 		}
+ 		printerr(2, "Processing keytab entry for principal '%s'\n",
+@@ -510,6 +511,7 @@ #ifdef HAVE_KRB5
+ #else
+ 				free(pname);
+ #endif
++				krb5_kt_free_entry(context, &kte);
+ 				retval = ENOMEM;
+ 				goto out;
+ 			}
+@@ -533,6 +535,7 @@ #ifdef HAVE_KRB5
+ #else
+ 				free(pname);
+ #endif
++				krb5_kt_free_entry(context, &kte);
+ 				retval = ENOMEM;
+ 				goto out;
+ 			}
+@@ -546,6 +549,7 @@ #ifdef HAVE_KRB5
+ #else
+ 				free(pname);
+ #endif
++				krb5_kt_free_entry(context, &kte);
+ 				retval = code;
+ 				goto out;
+ 			}
+@@ -565,6 +569,7 @@ #ifdef HAVE_KRB5
+ #else
+ 		free(pname);
+ #endif
++		krb5_kt_free_entry(context, &kte);
+ 	}
+ 
+ 	if ((code = krb5_kt_end_seq_get(context, kt, &cursor))) {
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
