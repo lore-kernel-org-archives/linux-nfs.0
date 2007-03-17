@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 12/18] isofs: new export ops
-Date: Sat, 17 Mar 2007 01:11:58 +0000
-Message-ID: <20070317011158.GM24947@infradead.org>
+Subject: [PATCH 13/18] shmem: new export ops
+Date: Sat, 17 Mar 2007 01:12:08 +0000
+Message-ID: <20070317011208.GN24947@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
@@ -9,103 +9,70 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Nice little cleanup by consolidating things a little and using
-a structure for the special file handle format.
+I'm not sure what people were thinking when adding support to nfs
+export tmpfs, but here's the conversion anyway:
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6/fs/isofs/export.c
+Index: linux-2.6/mm/shmem.c
 ===================================================================
---- linux-2.6.orig/fs/isofs/export.c	2007-02-11 10:31:19.000000000 +0100
-+++ linux-2.6/fs/isofs/export.c	2007-02-11 10:45:25.000000000 +0100
-@@ -42,16 +42,6 @@
- 	return result;
+--- linux-2.6.orig/mm/shmem.c	2007-02-11 10:46:30.000000000 +0100
++++ linux-2.6/mm/shmem.c	2007-02-11 10:53:12.000000000 +0100
+@@ -1977,33 +1977,25 @@
+ 	return ino->i_ino == inum && fh[0] == ino->i_generation;
  }
  
--static struct dentry *
--isofs_export_get_dentry(struct super_block *sb, void *vobjp)
--{
--	__u32 *objp = vobjp;
--	unsigned long block = objp[0];
--	unsigned long offset = objp[1];
--	__u32 generation = objp[2];
--	return isofs_export_iget(sb, block, offset, generation);
--}
--
- /* This function is surprisingly simple.  The trick is understanding
-  * that "child" is always a directory. So, to find its parent, you
-  * simply need to find its ".." entry, normalize its block and offset,
-@@ -182,43 +172,44 @@
- 	return type;
- }
- 
-+struct isofs_fid {
-+	u32 block;
-+	u16 offset;
-+	u16 parent_offset;
-+	u32 generation;
-+	u32 parent_block;
-+	u32 parent_generation;
-+};
- 
--static struct dentry *
--isofs_export_decode_fh(struct super_block *sb,
--		       __u32 *fh32,
--		       int fh_len,
--		       int fileid_type,
--		       int (*acceptable)(void *context, struct dentry *de),
--		       void *context)
-+static struct dentry *isofs_fh_to_dentry(struct super_block *sb,
-+	struct fid *fid, int fh_len, int fh_type)
- {
--	__u16 *fh16 = (__u16*)fh32;
--	__u32 child[3];   /* The child is what triggered all this. */
--	__u32 parent[3];  /* The parent is just along for the ride. */
-+	struct isofs_fid *ifid = (struct isofs_fid *)fid;
- 
--	if (fh_len < 3 || fileid_type > 2)
-+	if (fh_len < 3 || fh_type > 2)
- 		return NULL;
- 
--	child[0] = fh32[0];
--	child[1] = fh16[2];  /* fh16 [sic] */
--	child[2] = fh32[2];
--
--	parent[0] = 0;
--	parent[1] = 0;
--	parent[2] = 0;
--	if (fileid_type == 2) {
--		if (fh_len > 2) parent[0] = fh32[3];
--		parent[1] = fh16[3];  /* fh16 [sic] */
--		if (fh_len > 4) parent[2] = fh32[4];
--	}
--
--	return sb->s_export_op->find_exported_dentry(sb, child, parent,
--						     acceptable, context);
-+	return isofs_export_iget(sb, ifid->block, ifid->offset,
-+			ifid->generation);
- }
- 
-+static struct dentry *isofs_fh_to_parent(struct super_block *sb,
+-static struct dentry *shmem_get_dentry(struct super_block *sb, void *vfh)
++static struct dentry *shmem_fh_to_dentry(struct super_block *sb,
 +		struct fid *fid, int fh_len, int fh_type)
-+{
-+	struct isofs_fid *ifid = (struct isofs_fid *)fid;
-+
-+	if (fh_type != 2)
+ {
+-	struct dentry *de = NULL;
+ 	struct inode *inode;
+-	__u32 *fh = vfh;
+-	__u64 inum = fh[2];
+-	inum = (inum << 32) | fh[1];
++	struct dentry *dentry = NULL;
++	u64 inum = fid->raw[2];
++	inum = (inum << 32) | fid->raw[1];
+ 
+-	inode = ilookup5(sb, (unsigned long)(inum+fh[0]), shmem_match, vfh);
++	if (fh_len < 3)
 +		return NULL;
 +
-+	return isofs_export_iget(sb,
-+			fh_len > 2 ? ifid->parent_block : 0,
-+			ifid->parent_offset,
-+			fh_len > 4 ? ifid->parent_generation : 0);
-+}
++	inode = ilookup5(sb, (unsigned long)(inum + fid->raw[0]),
++			shmem_match, fid->raw);
+ 	if (inode) {
+-		de = d_find_alias(inode);
++		dentry = d_find_alias(inode);
+ 		iput(inode);
+ 	}
  
- struct export_operations isofs_export_ops = {
--	.decode_fh	= isofs_export_decode_fh,
- 	.encode_fh	= isofs_export_encode_fh,
--	.get_dentry	= isofs_export_get_dentry,
-+	.fh_to_dentry	= isofs_fh_to_dentry,
-+	.fh_to_parent	= isofs_fh_to_parent,
- 	.get_parent     = isofs_export_get_parent,
+-	return de? de: ERR_PTR(-ESTALE);
+-}
+-
+-static struct dentry *shmem_decode_fh(struct super_block *sb, __u32 *fh,
+-		int len, int type,
+-		int (*acceptable)(void *context, struct dentry *de),
+-		void *context)
+-{
+-	if (len < 3)
+-		return ERR_PTR(-ESTALE);
+-
+-	return sb->s_export_op->find_exported_dentry(sb, fh, NULL, acceptable,
+-							context);
++	return dentry;
+ }
+ 
+ static int shmem_encode_fh(struct dentry *dentry, __u32 *fh, int *len,
+@@ -2038,9 +2030,8 @@
+ 
+ static struct export_operations shmem_export_ops = {
+ 	.get_parent     = shmem_get_parent,
+-	.get_dentry     = shmem_get_dentry,
+ 	.encode_fh      = shmem_encode_fh,
+-	.decode_fh      = shmem_decode_fh,
++	.fh_to_dentry	= shmem_fh_to_dentry,
  };
+ 
+ static int shmem_parse_options(char *options, int *mode, uid_t *uid,
