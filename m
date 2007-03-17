@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 17/18] exportfs: remove old methods
-Date: Sat, 17 Mar 2007 01:12:52 +0000
-Message-ID: <20070317011252.GR24947@infradead.org>
+Subject: [PATCH 18/18] exportfs: update documentation
+Date: Sat, 17 Mar 2007 01:12:56 +0000
+Message-ID: <20070317011256.GS24947@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
@@ -9,329 +9,205 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Now that all filesystems are converted remove support for the
-old methods.
+Update deocumentation to the current state of affairs.  Remove duplicated
+method descruptions in exportfs.h and point to Documentation/filesystems/
+Exporting instead.  Add a little file header comment in expfs.c describing
+what's going on and mentioning Neils and my copyright [1].
+
+[1] Neil, in case you want a different/additional attribution just change
+    the patch in your queue to reflect the preferred version.
 
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-
-Index: linux-2.6/fs/exportfs/expfs.c
+Index: linux-2.6/Documentation/filesystems/Exporting
 ===================================================================
---- linux-2.6.orig/fs/exportfs/expfs.c	2007-03-13 20:38:14.000000000 +0100
-+++ linux-2.6/fs/exportfs/expfs.c	2007-03-13 20:38:30.000000000 +0100
-@@ -15,19 +15,6 @@ static int get_name(struct dentry *dentr
- 		struct dentry *child);
+--- linux-2.6.orig/Documentation/filesystems/Exporting	2007-03-16 15:10:54.000000000 +0100
++++ linux-2.6/Documentation/filesystems/Exporting	2007-03-16 17:11:50.000000000 +0100
+@@ -2,7 +2,10 @@
+ Making Filesystems Exportable
+ =============================
  
- 
--static struct dentry *exportfs_get_dentry(struct super_block *sb, void *obj)
--{
--	struct dentry *result = ERR_PTR(-ESTALE);
--
--	if (sb->s_export_op->get_dentry) {
--		result = sb->s_export_op->get_dentry(sb, obj);
--		if (!result)
--			result = ERR_PTR(-ESTALE);
--	}
--
--	return result;
--}
--
- static int exportfs_get_name(struct dentry *dir, char *name,
- 		struct dentry *child)
- {
-@@ -216,125 +203,6 @@ reconnect_path(struct super_block *sb, s
- 	return 0;
- }
- 
--/**
-- * find_exported_dentry - helper routine to implement export_operations->decode_fh
-- * @sb:		The &super_block identifying the filesystem
-- * @obj:	An opaque identifier of the object to be found - passed to
-- *		get_inode
-- * @parent:	An optional opqaue identifier of the parent of the object.
-- * @acceptable:	A function used to test possible &dentries to see if they are
-- *		acceptable
-- * @context:	A parameter to @acceptable so that it knows on what basis to
-- *		judge.
-- *
-- * find_exported_dentry is the central helper routine to enable file systems
-- * to provide the decode_fh() export_operation.  It's main task is to take
-- * an &inode, find or create an appropriate &dentry structure, and possibly
-- * splice this into the dcache in the correct place.
-- *
-- * The decode_fh() operation provided by the filesystem should call
-- * find_exported_dentry() with the same parameters that it received except
-- * that instead of the file handle fragment, pointers to opaque identifiers
-- * for the object and optionally its parent are passed.  The default decode_fh
-- * routine passes one pointer to the start of the filehandle fragment, and
-- * one 8 bytes into the fragment.  It is expected that most filesystems will
-- * take this approach, though the offset to the parent identifier may well be
-- * different.
-- *
-- * find_exported_dentry() will call get_dentry to get an dentry pointer from
-- * the file system.  If any &dentry in the d_alias list is acceptable, it will
-- * be returned.  Otherwise find_exported_dentry() will attempt to splice a new
-- * &dentry into the dcache using get_name() and get_parent() to find the
-- * appropriate place.
-- */
--
--struct dentry *
--find_exported_dentry(struct super_block *sb, void *obj, void *parent,
--		     int (*acceptable)(void *context, struct dentry *de),
--		     void *context)
--{
--	struct dentry *result, *alias;
--	int err = -ESTALE;
--
--	/*
--	 * Attempt to find the inode.
--	 */
--	result = exportfs_get_dentry(sb, obj);
--	if (IS_ERR(result))
--		return result;
--
--	if (S_ISDIR(result->d_inode->i_mode)) {
--		if (!(result->d_flags & DCACHE_DISCONNECTED)) {
--			if (acceptable(context, result))
--				return result;
--			err = -EACCES;
--			goto err_result;
--		}
--
--		err = reconnect_path(sb, result);
--		if (err)
--			goto err_result;
--	} else {
--		struct dentry *target_dir, *nresult;
--		char nbuf[NAME_MAX+1];
--
--		alias = find_acceptable_alias(result, acceptable, context);
--		if (alias)
--			return alias;
--
--		if (parent == NULL)
--			goto err_result;
--
--		target_dir = exportfs_get_dentry(sb,parent);
--		if (IS_ERR(target_dir)) {
--			err = PTR_ERR(target_dir);
--			goto err_result;
--		}
--
--		err = reconnect_path(sb, target_dir);
--		if (err) {
--			dput(target_dir);
--			goto err_result;
--		}
--
--		/*
--		 * If we weren't after a directory, have one more step to go.
--		 */
--		err = exportfs_get_name(target_dir, nbuf, result);
--		if (!err) {
--			mutex_lock(&target_dir->d_inode->i_mutex);
--			nresult = lookup_one_len(nbuf, target_dir,
--						 strlen(nbuf));
--			mutex_unlock(&target_dir->d_inode->i_mutex);
--			if (!IS_ERR(nresult)) {
--				if (nresult->d_inode) {
--					dput(result);
--					result = nresult;
--				} else
--					dput(nresult);
--			}
--		}
--		dput(target_dir);
--	}
--
--	alias = find_acceptable_alias(result, acceptable, context);
--	if (alias)
--		return alias;
--
--	/* drat - I just cannot find anything acceptable */
--	dput(result);
--	/* It might be justifiable to return ESTALE here,
--	 * but the filehandle at-least looks reasonable good
--	 * and it just be a permission problem, so returning
--	 * -EACCESS is safer
--	 */
--	return ERR_PTR(-EACCES);
--
-- err_result:
--	dput(result);
--	return ERR_PTR(err);
--}
--
- struct getdents_callback {
- 	char *name;		/* name that was found. It already points to a
- 				   buffer NAME_MAX+1 is size */
-@@ -464,38 +332,6 @@ static int export_encode_fh(struct dentr
- 	return type;
- }
- 
--
--/**
-- * export_decode_fh - default export_operations->decode_fh function
-- * @sb:  The superblock
-- * @fh:  pointer to the file handle fragment
-- * @fh_len: length of file handle fragment
-- * @acceptable: function for testing acceptability of dentrys
-- * @context:   context for @acceptable
-- *
-- * This is the default decode_fh() function.
-- * a fileid_type of 1 indicates that the filehandlefragment
-- * just contains an object identifier understood by  get_dentry.
-- * a fileid_type of 2 says that there is also a directory
-- * identifier 8 bytes in to the filehandlefragement.
-- */
--static struct dentry *export_decode_fh(struct super_block *sb, __u32 *fh, int fh_len,
--			      int fileid_type,
--			 int (*acceptable)(void *context, struct dentry *de),
--			 void *context)
--{
--	__u32 parent[2];
--	parent[0] = parent[1] = 0;
--	if (fh_len < 2 || fileid_type > 2)
--		return NULL;
--	if (fileid_type == 2) {
--		if (fh_len > 2) parent[0] = fh[2];
--		if (fh_len > 3) parent[1] = fh[3];
--	}
--	return find_exported_dentry(sb, fh, parent,
--				   acceptable, context);
--}
--
- static struct dentry *exportfs_d_alloc(struct inode *inode)
- {
- 	struct dentry *dentry;
-@@ -585,19 +421,6 @@ struct dentry *exportfs_decode_fh(struct
- 	int err;
- 
- 	/*
--	 * Old way of doing things.  Will go away soon.
--	 */
--	if (!nop->fh_to_dentry) {
--		if (nop->decode_fh) {
--			return nop->decode_fh(mnt->mnt_sb, fid->raw, fh_len,
--					fileid_type, acceptable, context);
--		} else {
--			return export_decode_fh(mnt->mnt_sb, fid->raw, fh_len,
--					fileid_type, acceptable, context);
--		}
--	}
--
--	/*
- 	 * Try to get any dentry for the given file handle from the filesystem.
- 	 */
- 	result = nop->fh_to_dentry(mnt->mnt_sb, fid, fh_len, fileid_type);
-@@ -716,6 +539,4 @@ struct dentry *exportfs_decode_fh(struct
- }
- EXPORT_SYMBOL_GPL(exportfs_decode_fh);
- 
--EXPORT_SYMBOL(find_exported_dentry);
--
- MODULE_LICENSE("GPL");
-Index: linux-2.6/fs/nfsd/export.c
-===================================================================
---- linux-2.6.orig/fs/nfsd/export.c	2007-03-13 19:29:21.000000000 +0100
-+++ linux-2.6/fs/nfsd/export.c	2007-03-13 20:38:30.000000000 +0100
-@@ -384,15 +384,13 @@ static int check_export(struct inode *in
- 		dprintk("exp_export: export of non-dev fs without fsid\n");
- 		return -EINVAL;
- 	}
--	if (!inode->i_sb->s_export_op) {
+-Most filesystem operations require a dentry (or two) as a starting
++Overview
++--------
 +
-+	if (!inode->i_sb->s_export_op ||
-+	    !inode->i_sb->s_export_op->fh_to_dentry) {
- 		dprintk("exp_export: export of invalid fs type.\n");
- 		return -EINVAL;
++All filesystem operations require a dentry (or two) as a starting
+ point.  Local applications have a reference-counted hold on suitable
+ dentrys via open file descriptors or cwd/root.  However remote
+ applications that access a filesystem via a remote filesystem protocol
+@@ -89,11 +92,9 @@ For a filesystem to be exportable it mus
+    1/ provide the filehandle fragment routines described below.
+    2/ make sure that d_splice_alias is used rather than d_add
+       when ->lookup finds an inode for a given parent and name.
+-      Typically the ->lookup routine will end:
+-		if (inode)
+-			return d_splice(inode, dentry);
+-		d_add(dentry, inode);
+-		return NULL;
++      Typically the ->lookup routine will end with a:
++
++		return d_splice_alias(inode, dentry);
  	}
  
--	/* Ok, we can export it */;
--	if (!inode->i_sb->s_export_op->find_exported_dentry)
--		inode->i_sb->s_export_op->find_exported_dentry =
--			find_exported_dentry;
- 	return 0;
  
- }
+@@ -101,67 +102,39 @@ For a filesystem to be exportable it mus
+   A file system implementation declares that instances of the filesystem
+ are exportable by setting the s_export_op field in the struct
+ super_block.  This field must point to a "struct export_operations"
+-struct which could potentially be full of NULLs, though normally at
+-least get_parent will be set.
++struct which has the following members:
+ 
+- The primary operations are decode_fh and encode_fh.  
+-decode_fh takes a filehandle fragment and tries to find or create a
+-dentry for the object referred to by the filehandle.
+-encode_fh takes a dentry and creates a filehandle fragment which can
+-later be used to find/create a dentry for the same object.
+-
+-decode_fh will probably make use of "find_exported_dentry".
+-This function lives in the "exportfs" module which a filesystem does
+-not need unless it is being exported.  So rather that calling
+-find_exported_dentry directly, each filesystem should call it through
+-the find_exported_dentry pointer in it's export_operations table.
+-This field is set correctly by the exporting agent (e.g. nfsd) when a
+-filesystem is exported, and before any export operations are called.
+-
+-find_exported_dentry needs three support functions from the
+-filesystem:
+-  get_name.  When given a parent dentry and a child dentry, this
+-    should find a name in the directory identified by the parent
+-    dentry, which leads to the object identified by the child dentry.
+-    If no get_name function is supplied, a default implementation is
+-    provided which uses vfs_readdir to find potential names, and
+-    matches inode numbers to find the correct match.
+-
+-  get_parent.  When given a dentry for a directory, this should return 
+-    a dentry for the parent.  Quite possibly the parent dentry will
+-    have been allocated by d_alloc_anon.  
+-    The default get_parent function just returns an error so any
+-    filehandle lookup that requires finding a parent will fail.
+-    ->lookup("..") is *not* used as a default as it can leave ".."
+-    entries in the dcache which are too messy to work with.
+-
+-  get_dentry.  When given an opaque datum, this should find the
+-    implied object and create a dentry for it (possibly with
+-    d_alloc_anon). 
+-    The opaque datum is whatever is passed down by the decode_fh
+-    function, and is often simply a fragment of the filehandle
+-    fragment.
+-    decode_fh passes two datums through find_exported_dentry.  One that 
+-    should be used to identify the target object, and one that can be
+-    used to identify the object's parent, should that be necessary.
+-    The default get_dentry function assumes that the datum contains an
+-    inode number and a generation number, and it attempts to get the
+-    inode using "iget" and check it's validity by matching the
+-    generation number.  A filesystem should only depend on the default
+-    if iget can safely be used this way.
+-
+-If decode_fh and/or encode_fh are left as NULL, then default
+-implementations are used.  These defaults are suitable for ext2 and 
+-extremely similar filesystems (like ext3).
+-
+-The default encode_fh creates a filehandle fragment from the inode
+-number and generation number of the target together with the inode
+-number and generation number of the parent (if the parent is
+-required).
+-
+-The default decode_fh extract the target and parent datums from the
+-filehandle assuming the format used by the default encode_fh and
+-passed them to find_exported_dentry.
++ encode_fh  (optinonal)
++    Takes a dentry and creates a filehandle fragment which can later be used
++    to find/create a dentry for the same object.  The default implementation
++    creates a filehandle fragment that encodes a 32bit inode and generation
++    number for the inode encoded, and if nessecary the same information for
++    the parent.
++
++  fh_to_dentry (mandatory)
++    Given a filehandle fragment, this should find the implied object and
++    create a dentry for it (possibly with d_alloc_anon).
++
++  fh_to_parent (optional but strongly recommended)
++    Given a filehandle fragment, this should find the parent of the
++    implied object and create a dentry for it (possibly with d_alloc_anon).
++    May simplify fail if the filehandle fragment is too small.
++
++  get_parent (optional but strongly recommended)
++    When given a dentry for a directory, this should return  a dentry for
++    the parent.  Quite possibly the parent dentry will have been allocated
++    by d_alloc_anon.  The default get_parent function just returns an error
++    so any filehandle lookup that requires finding a parent will fail.
++    ->lookup("..") is *not* used as a default as it can leave ".." entries
++    in the dcache which are too messy to work with.
++
++  get_name (optional)
++    When given a parent dentry and a child dentry, this should find a name
++    in the directory identified by the parent dentry, which leads to the
++    object identified by the child dentry.  If no get_name function is
++    supplied, a default implementation is provided which uses vfs_readdir
++    to find potential names, and matches inode numbers to find the correct
++    match.
+ 
+ 
+ A filehandle fragment consists of an array of 1 or more 4byte words,
+@@ -172,5 +145,3 @@ generated by encode_fh, in which case it
+ nuls.  Rather, the encode_fh routine should choose a "type" which
+ indicates the decode_fh how much of the filehandle is valid, and how
+ it should be interpreted.
+-
+- 
 Index: linux-2.6/include/linux/exportfs.h
 ===================================================================
---- linux-2.6.orig/include/linux/exportfs.h	2007-03-13 20:38:26.000000000 +0100
-+++ linux-2.6/include/linux/exportfs.h	2007-03-13 20:38:30.000000000 +0100
-@@ -59,8 +59,6 @@ struct fid {
-  * @get_name:       find the name for a given inode in a given directory
+--- linux-2.6.orig/include/linux/exportfs.h	2007-03-16 17:06:10.000000000 +0100
++++ linux-2.6/include/linux/exportfs.h	2007-03-16 17:06:10.000000000 +0100
+@@ -55,30 +55,8 @@ struct fid {
   * @get_parent:     find the parent of a given directory
   * @get_dentry:     find a dentry for the inode given a file handle sub-fragment
-- * @find_exported_dentry:
-- *	set by the exporting module to a standard helper function.
   *
-  * Description:
-  *    The export_operations structure provides a means for nfsd to communicate
-@@ -87,16 +85,6 @@ struct fid {
-  *    looking for the next.  As soon as an acceptable one is found, it should
-  *    be returned.
-  *
-- * decode_fh:
-- *    @decode_fh is given a &struct super_block (@sb), a file handle fragment
-- *    (@fh, @fh_len) and an acceptability testing function (@acceptable,
-- *    @context).  It should return a &struct dentry which refers to the same
-- *    file that the file handle fragment refers to,  and which passes the
-- *    acceptability test.  If it cannot, it should return a %NULL pointer if
-- *    the file was found but no acceptable &dentries were available, or a
-- *    %ERR_PTR error code indicating why it couldn't be found (e.g. %ENOENT or
-- *    %ENOMEM).
+- * Description:
+- *    The export_operations structure provides a means for nfsd to communicate
+- *    with a particular exported file system  - particularly enabling nfsd and
+- *    the filesystem to co-operate when dealing with file handles.
 - *
+- *    export_operations contains two basic operation for dealing with file
+- *    handles, decode_fh() and encode_fh(), and allows for some other
+- *    operations to be defined which standard helper routines use to get
+- *    specific information from the filesystem.
+- *
+- *    nfsd encodes information use to determine which filesystem a filehandle
+- *    applies to in the initial part of the file handle.  The remainder, termed
+- *    a file handle fragment, is controlled completely by the filesystem.  The
+- *    standard helper routines assume that this fragment will contain one or
+- *    two sub-fragments, one which identifies the file, and one which may be
+- *    used to identify the (a) directory containing the file.
+- *
+- *    In some situations, nfsd needs to get a dentry which is connected into a
+- *    specific part of the file tree.  To allow for this, it passes the
+- *    function acceptable() together with a @context which can be used to see
+- *    if the dentry is acceptable.  As there can be multiple dentrys for a
+- *    given file, the filesystem should check each one for acceptability before
+- *    looking for the next.  As soon as an acceptable one is found, it should
+- *    be returned.
++ * See Documentation/filesystems/Exporting for details on how to use
++ * this interface correctly.
+  *
   * encode_fh:
   *    @encode_fh should store in the file handle fragment @fh (using at most
-  *    @max_len bytes) information that can be used by @decode_fh to recover the
-@@ -134,30 +122,12 @@ struct fid {
-  *    is also a directory.  In the event that it cannot be found, or storage
-  *    space cannot be allocated, a %ERR_PTR should be returned.
-  *
-- * get_dentry:
-- *    Given a &super_block (@sb) and a pointer to a file-system specific inode
-- *    identifier, possibly an inode number, (@inump) get_dentry() should find
-- *    the identified inode and return a dentry for that inode.  Any suitable
-- *    dentry can be returned including, if necessary, a new dentry created with
-- *    d_alloc_root.  The caller can then find any other extant dentrys by
-- *    following the d_alias links.  If a new dentry was created using
-- *    d_alloc_root, DCACHE_NFSD_DISCONNECTED should be set, and the dentry
-- *    should be d_rehash()ed.
-- *
-- *    If the inode cannot be found, either a %NULL pointer or an %ERR_PTR code
-- *    can be returned.  The @inump will be whatever was passed to
-- *    nfsd_find_fh_dentry() in either the @obj or @parent parameters.
-- *
-  * Locking rules:
-  *    get_parent is called with child->d_inode->i_mutex down
-  *    get_name is not (which is possibly inconsistent)
-  */
- 
- struct export_operations {
--	struct dentry *(*decode_fh)(struct super_block *sb, __u32 *fh,
--			int fh_len, int fh_type,
--			int (*acceptable)(void *context, struct dentry *de),
--			void *context);
- 	int (*encode_fh)(struct dentry *de, __u32 *fh, int *max_len,
- 			int connectable);
- 	struct dentry * (*fh_to_dentry)(struct super_block *sb, struct fid *fid,
-@@ -167,19 +137,8 @@ struct export_operations {
- 	int (*get_name)(struct dentry *parent, char *name,
- 			struct dentry *child);
- 	struct dentry * (*get_parent)(struct dentry *child);
--	struct dentry * (*get_dentry)(struct super_block *sb, void *inump);
+Index: linux-2.6/fs/exportfs/expfs.c
+===================================================================
+--- linux-2.6.orig/fs/exportfs/expfs.c	2007-03-16 17:06:10.000000000 +0100
++++ linux-2.6/fs/exportfs/expfs.c	2007-03-16 23:45:14.000000000 +0100
+@@ -1,4 +1,13 @@
 -
--	/* This is set by the exporting module to a standard helper */
--	struct dentry * (*find_exported_dentry)(
--			struct super_block *sb, void *obj, void *parent,
--			int (*acceptable)(void *context, struct dentry *de),
--			void *context);
- };
- 
--extern struct dentry *find_exported_dentry(struct super_block *sb, void *obj,
--	void *parent, int (*acceptable)(void *context, struct dentry *de),
--	void *context);
--
- extern int exportfs_encode_fh(struct dentry *dentry, struct fid *fid,
- 	int *max_len, int connectable);
- extern struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
++/*
++ * Copyright (C) Neil Brown 2002
++ * Copyright (C) Christoph Hellwig 2007
++ *
++ * This file contains the code mapping from inodes to NFS file handles,
++ * and for mapping back from file handles to dentries.
++ *
++ * For details on why we doo all the strange and hairy things in here
++ * take a look at Documentation/filesystems/Exporting.
++ */
+ #include <linux/exportfs.h>
+ #include <linux/fs.h>
+ #include <linux/file.h>
