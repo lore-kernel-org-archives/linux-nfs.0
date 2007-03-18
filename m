@@ -1,26 +1,23 @@
-From: Albert Hopkins <marduk@letterboxes.org>
-Subject: rpc.mountd memory leak?
-Date: Sun, 18 Mar 2007 15:10:57 -0500
-Message-ID: <1174248657.21998.6.camel@blackwidow.nbk>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: rpc.mountd memory leak?
+Date: Mon, 19 Mar 2007 09:25:03 +1100
+Message-ID: <17917.48191.64592.864739@notabene.brown>
+References: <1174248657.21998.6.camel@blackwidow.nbk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Albert Hopkins <marduk@letterboxes.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HT1iV-00014t-Ei
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 13:10:59 -0700
-Received: from out5.smtp.messagingengine.com ([66.111.4.29])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HT1iW-0000uO-Bo
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 13:11:01 -0700
-Received: from out1.internal (unknown [10.202.2.149])
-	by out1.messagingengine.com (Postfix) with ESMTP id B2EE6208099
-	for <nfs@lists.sourceforge.net>; Sun, 18 Mar 2007 16:10:57 -0400 (EDT)
-Received: from [192.168.31.10] (cpe-76-185-203-114.tx.res.rr.com
-	[76.185.203.114])
-	by www.fastmail.fm (Postfix) with ESMTP id 1717E2AA88
-	for <nfs@lists.sourceforge.net>; Sun, 18 Mar 2007 16:10:59 -0400 (EDT)
+	id 1HT3oU-0004Wa-IV
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 15:25:18 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HT3oV-0003iZ-9B
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 15:25:20 -0700
+In-Reply-To: message from Albert Hopkins on Sunday March 18
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,18 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I am using 1.0.12 of nfs-utils (linux/x86).  I have a problem in that
-after a while rpc.mountd starts to eat up gobs of memory (sometimes >
-1GB) and usually I am required to stop/restart NFS services to regain
-memory.  I do not have many exported filesystems and very few clients
-have anything mounted at a given time, so I'm not sure why it would need
-as much memory so I'm guessing it's some kind of leak.  Please let me
-know what I can do to debug this situation.
+On Sunday March 18, marduk@letterboxes.org wrote:
+> I am using 1.0.12 of nfs-utils (linux/x86).  I have a problem in that
+> after a while rpc.mountd starts to eat up gobs of memory (sometimes >
+> 1GB) and usually I am required to stop/restart NFS services to regain
+> memory.  I do not have many exported filesystems and very few clients
+> have anything mounted at a given time, so I'm not sure why it would need
+> as much memory so I'm guessing it's some kind of leak.  Please let me
+> know what I can do to debug this situation.
 
-thanks
---
-Albert W. Hopkins
+Known problem (fixed if you use debian-unstable).
 
+Apparently there is a memory leak in libblkid which mounted now uses.
+
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=413661
+
+There is also a smaller leak in mountd.
+
+http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=commitdiff;h=08964495c2a65f6228426e4565a50dae5b75834d
+
+From: Steinar H. Gunderson <sgunderson@bigfoot.com>
+Date: Fri, 16 Mar 2007 00:26:35 +0000 (+1100)
+Subject: Fix memory leak in mountd.
+X-Git-Url: http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=commitdiff;h=08964495c2a65f6228426e4565a50dae5b75834d
+
+Fix memory leak in mountd.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+---
+
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -329,6 +329,7 @@ add_name(char *old, char *add)
+ 		strcat(new, ",");
+ 		strcat(new, cp);
+ 	}
++	free(old);
+ 	return new;
+ }
+ 
+
+
+Maybe I should do a 1.0.13 which makes libblkid optional...
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
