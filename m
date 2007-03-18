@@ -1,25 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 01/11] nfs-utils: mount: non-nfs mount options
-Date: Mon, 19 Mar 2007 10:41:40 +1100
-Message-ID: <17917.52788.9258.451246@notabene.brown>
-References: <45E2C1C1.9050302@RedHat.com>
-	<17891.51711.148463.251589@notabene.brown>
-	<45FAB6DC.6060706@RedHat.com>
+Subject: Re: [Fwd: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.]
+Date: Mon, 19 Mar 2007 10:43:39 +1100
+Message-ID: <17917.52907.759968.967401@notabene.brown>
+References: <45FAB960.5060002@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
-	Amit Gud <gud@ksu.edu>
+Cc: Trond.Myklebust@netapp.com, nfs@lists.sourceforge.net
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HT50W-0005T4-Uv
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 16:41:49 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1HT52X-0005i9-WE
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 16:43:54 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HT50X-0001CG-Kv
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 16:41:51 -0700
+	(Exim 4.44) id 1HT52Y-0001h4-Ox
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 16:43:56 -0700
 In-Reply-To: message from Steve Dickson on Friday March 16
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,35 +31,11 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Friday March 16, SteveD@redhat.com wrote:
-> 
-> > 
-> > and possible some other things that I didn't notice.  As this is a
-> > setuid program, I really want to be able to review changes in
-> > isolation please.
-> Ok... I broke the original patch up into 3 separate ones.
-> Pleas see attachments...
+> Any status or hope with these patches??
 
-Thanks.  I've applied the last.
-I'd really like to understand the ln/cp issue before applying.  And
-I'm not quite ready to turn on setuid yet.  Maybe when I do that,
-testing will show something.
+I have no problem with the nfs-utils patch though obviously I won't
+commit it until Trond indicates that he will accept the fs/nfs patch. 
 
-The first patch - I have already applied that conceptually.. A lot of
-the code is different as I wasn't very comfortable with what was
-there.
-
-e.g. When checking that a 'user' mount was in fstab, it just checked
-that the mountpoint or filesystem was listed in fstab with the 'user'
-flag. It didn't check that the mountpoint and filesystem and options all
-matched.
-So I think that if you put in fstab that  host:/place was allowed to
-be mounted on /foo by any user, than any user could run mount.nfs
-directly, ask for host:/place to be mounted on /etc and it would work.
-
-My version is at 
-  http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-utils;a=commitdiff;h=ae5ec51e0ddc99dc5552e51bd5c095084dbb61aa
-
-Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
