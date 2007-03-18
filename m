@@ -1,22 +1,23 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/4] gssd updates
-Date: Mon, 19 Mar 2007 09:48:18 +1100
-Message-ID: <17917.49586.711520.490818@notabene.brown>
-References: <20070316141826.6349.9988.stgit@RoCk.CiTi.UmIcH.EdU>
+Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
+Date: Mon, 19 Mar 2007 09:52:07 +1100
+Message-ID: <17917.49815.63101.888846@notabene.brown>
+References: <17914.20117.186786.830574@notabene.brown>
+	<4d569c330703160730y28be4800p858c64f07a3e5e99@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: "Kevin Coffman" <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HT4Av-0007Up-Sb
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 15:48:29 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1HT4Ef-0007xU-Dw
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 15:52:23 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HT4At-00033X-9q
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 15:48:27 -0700
+	(Exim 4.44) id 1HT4Eg-0004Jj-Lp
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 15:52:23 -0700
 In-Reply-To: message from Kevin Coffman on Friday March 16
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,18 +32,13 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Friday March 16, kwc@citi.umich.edu wrote:
-> 1/4 Cleans up a minor memory leak while processing the keytab.
-> 2/4 Adds a new "-n" option to specify that machine credentials
->     should not be used for all root accesses.
-> 3/4 No longer limits machine credentials to only "nfs/<hostname>".
->     Any key in the keytab (i.e. "host/<hostname>") can be used for
->     machine credentials.
-> 4/4 Creates separate paths for the base pipefs directory and the
->     nfs subdirectory.  This is needed by future changes.
+> Hi Neil,
+> Is it still the intention to change the default to build mount.nfs by
+> default for 1.1.0?
 
-Complete with man-page updates - excellent!
-
-Applied - thanks.
+Yes.  Which means the code needs some careful review as it needs to be
+setuid-root.  So between -rc1 and -final I'll be looking at it
+carefully, and I would be great if other did too....
 
 NeilBrown
 
