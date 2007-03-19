@@ -1,24 +1,24 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
-Date: Mon, 19 Mar 2007 10:49:17 +1100
-Message-ID: <17917.53245.697560.272545@notabene.brown>
-References: <17914.20117.186786.830574@notabene.brown>
-	<20070316181047.GD4538@fieldses.org>
+Subject: rpc.statd  in /sbin or /usr/sbin ??
+Date: Mon, 19 Mar 2007 12:14:13 +1100
+Message-ID: <17917.58341.502839.29524@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
-	richterd@citi.umich.edu
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HT57w-0006Ol-Ps
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 16:49:28 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HT57y-0007YO-Ou
-	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 16:49:31 -0700
-In-Reply-To: message from J. Bruce Fields on Friday March 16
+	id 1HT6S4-0007yS-Ec
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 18:14:20 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HT6S5-0004S9-BZ
+	for nfs@lists.sourceforge.net; Sun, 18 Mar 2007 18:14:22 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id E952E215C2
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 02:14:18 +0100 (CET)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday March 16, bfields@fieldses.org wrote:
-> On Fri, Mar 16, 2007 at 07:00:21PM +1100, Neil Brown wrote:
-> > Statd currently does several very different things.
-> > 1/ It listens for monitor requests from lockd and creates
-> >    files in /var/lib/nfs/sm/HOST
-> > 2/ It listens for notifications from peers and tells lockd
-> >    that those peers have restarted.
-> > 3/ It moves files from sm/ to sm.bak/ and then tries to 
-> >    notify every host listed in sm.bak/
-> > 
-> > The first is very similar to what NFSv4 needs for state management,
-> > though is somewhat simpler.  I would like to create a better
-> > interface for the kernel to ask for state to be stored, and then use
-> > if for NFSv4 and NLM, subsuming this function.
-> 
-> NFSv4 needs something like the third as well--knfsd needs to know on
-> startup the list of clients that will be allowed to reclaim state from a
-> previous boot instance.  (This is to protect clients that *think*
-> they're still holding locks on the server, but (thanks to a network
-> partition) don't realize that the server has actually rebooted twice.)
 
-Similar... but different...
+Hi,
+ I have noticed that some distros like to install statd in /sbin
+ rather than /usr/sbin.
+ I would like to know why.
 
-You would want to forget about clients who haven't reclaimed when the
-'grace period' expires.  Yes?
-So when the grace period starts, you move state from "current" to
-"recovering".
-Then when a client tries to recover, we check in 'recovering' and if
-we find something, we recreate the state in 'current'.
-Then when the grace period ends, we remove everything from
-'recovering'.
-So if the server reboots twice without actually completing a grace
-period, the client would still be safe.
+ If it is generally agreed that it needs to be in /sbin, then I'll
+ change nfs-utils to install it there, but as yet I am unconvinced.
 
-Does that fit your understanding?
+ The only reason I can see for putting statd in /sbin is if it were
+ needed for mounting /usr (in cases where /usr is accessed via NFS).
 
-Thanks for reminding me of that.
+ However in that case (as in the case for an NFS root), I think it is
+ appropriate to use the "nolock" flag on the basis that /usr is not
+ expected to be share-writeable (i.e. either readonly or
+ single-client).  In that case there is no need for locking requests
+ to go over the network, and no need for statd to be running before
+ /usr is mounted.
 
+ So: can anyone try to convince me that rpc.statd should go in /sbin??
+
+Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
