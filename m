@@ -1,21 +1,34 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: [2.6.21 patch] net/sunrpc/svcsock.c: fix a check
-Date: Mon, 19 Mar 2007 10:33:42 +0100
-Message-ID: <20070319093341.GS752@stusta.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: rpc.statd  in /sbin or /usr/sbin ??
+Date: Mon, 19 Mar 2007 08:52:18 -0400
+Message-ID: <45FE8782.5020001@RedHat.com>
+References: <17917.58341.502839.29524@notabene.brown>
+	<200703190924.03153.olaf.kirch@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HTEFK-0008F9-Be
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 02:33:43 -0700
-Received: from emailhub.stusta.mhn.de ([141.84.69.5]
-	helo=mailhub.stusta.mhn.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTEFM-0001ce-BZ
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 02:33:44 -0700
+	id 1HTHLi-0003xu-Dw
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 05:52:30 -0700
+Received: from mx2.redhat.com ([66.187.237.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTHLj-0006lb-Hq
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 05:52:32 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx2.redhat.com (8.13.1/8.13.1) with ESMTP id l2JCqJ1s023759
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 08:52:20 -0400
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com
+	[172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l2JCqJIM010256
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 08:52:19 -0400
+Received: from [10.12.32.32] (dickson.boston.devel.redhat.com [10.12.32.32])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id
+	l2JCqJ3f007164
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 08:52:19 -0400
+In-Reply-To: <200703190924.03153.olaf.kirch@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,29 +41,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The return value of kernel_recvmsg() should be assigned to "err", not 
-compared with the random value of a never initialized "err"
-(and the "< 0" check wrongly always returned false since == comparisons 
-never have a result < 0).
 
-Spotted by the Coverity checker.
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
+Olaf Kirch wrote:
+> On Monday 19 March 2007 02:14, Neil Brown wrote:
+>>  The only reason I can see for putting statd in /sbin is if it were
+>>  needed for mounting /usr (in cases where /usr is accessed via NFS).
+> 
+> Can't speak for others, but this is the reason why Suse put it into /sbin too,
+> as long as they shipped it.
+I can only assuming this was the case as well... Red Hat has
+been putting both rpc.lockd and rpc.statd in /sbin
+since at least RH 7.1
 
----
---- linux-2.6.21-rc3-mm2/net/sunrpc/svcsock.c.old	2007-03-19 09:44:40.000000000 +0100
-+++ linux-2.6.21-rc3-mm2/net/sunrpc/svcsock.c	2007-03-19 09:45:18.000000000 +0100
-@@ -779,8 +779,8 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	}
- 
- 	clear_bit(SK_DATA, &svsk->sk_flags);
--	while ((err == kernel_recvmsg(svsk->sk_sock, &msg, NULL,
--				      0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
-+	while ((err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-+				     0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
- 	       (skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
- 		if (err == -EAGAIN) {
- 			svc_sock_received(svsk);
+steved.
 
 
 -------------------------------------------------------------------------
