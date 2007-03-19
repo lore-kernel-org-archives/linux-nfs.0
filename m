@@ -1,25 +1,27 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [Fwd: Re: [PATCH] NFS: Sign Extentions with Tru64 FSIDs.]
-Date: Mon, 19 Mar 2007 11:58:14 -0400
-Message-ID: <45FEB316.6000102@RedHat.com>
-References: <45FAB960.5060002@RedHat.com>	
-	<17917.52907.759968.967401@notabene.brown>
-	<45FE8A86.9050307@RedHat.com>
-	<1174316909.6461.17.camel@heimdal.trondhjem.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
+Date: Mon, 19 Mar 2007 14:40:32 -0400
+Message-ID: <EXNANE016beUzmRf6Ci00000104@exnane01.hq.netapp.com>
+References: <17914.20117.186786.830574@notabene.brown>
+	<EXNANE01pH71yEXUIEA000000e2@exnane01.hq.netapp.com>
+	<17917.50411.770610.290399@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HTKFY-0000pr-O6
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 08:58:20 -0700
-Received: from mx2.redhat.com ([66.187.237.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTKFZ-0005mF-Jm
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 08:58:22 -0700
-In-Reply-To: <1174316909.6461.17.camel@heimdal.trondhjem.org>
+	id 1HTMmq-0001TT-Bh
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 11:40:52 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTMmr-0002xY-8q
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 11:40:54 -0700
+In-Reply-To: <17917.50411.770610.290399@notabene.brown>
+References: <17914.20117.186786.830574@notabene.brown>
+	<EXNANE01pH71yEXUIEA000000e2@exnane01.hq.netapp.com>
+	<17917.50411.770610.290399@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,27 +34,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+At 07:02 PM 3/18/2007, Neil Brown wrote:
+>The part of statd that I particularly want to keep out of the kernel
+>is the creating of files in /var/lib/nfs/sm/.
 
+This sounds good. And of course, if the kernel doesn't do the notify
+then it doesn't need to read (list) them either.
 
-Trond Myklebust wrote:
-> On Mon, 2007-03-19 at 09:05 -0400, Steve Dickson wrote:
->> Neil Brown wrote:
->>> On Friday March 16, SteveD@redhat.com wrote:
->>>> Any status or hope with these patches??
->>> I have no problem with the nfs-utils patch though obviously I won't
->>> commit it until Trond indicates that he will accept the fs/nfs patch. 
->> Sounds reasonable...
->>
->> Trond, any interest in the 4 line patch that would
->> enable turning off readdirplus? The Tru64 folks would
->> definitely appreciate it.. ;-)
-> 
-> Fine by me, but I'm curious as to why you're not doing the same for
-> NFSv4? 
-Cool... In this particular case, Tru64 does not support v4 so I
-didn't think it was needed...
+>SuSE's kstatd seems to cope without resolving mon_name.
 
-steved.
+I'd be interested in the details. It's been our observation that very few
+statd implementations work properly in all cases.
+
+>One option is to just ignore it and use the source IP address.  That
+>would work fine with the default config which uses IP address for all
+>host identification.
+>However this doesn't work well for multi-homes hosts and there is a
+
+Yes, multihomed hosts (clients) are the problem. Without the mon_name
+lookup, they will be required to send their notifies from each interface
+that they originally took nlm locks on. Otherwise, the server won't ever
+know, and the locks won't be released. So unless the world comes back
+in exactly the same state (and don't forget DHCP) with the same
+connectivity, the nlm recovery will fail.
+
+>However if it turns out that name-resolution is really needed in this
+>path, then I'll definitely keep that part of statd out of the kernel.
+
+Let me finish digging up some of our testing scenarios and I think you
+may be convinced. We did some very interesting research last year
+that led to some important changes in the way our Ontap server
+performs recovery. There are implications on the client side too,
+though most of them were in nfs-utils<=1.0.6 and so fixed.
+
+The big huge gigantic problem with SM_NOTIFY is that it is semantically
+void - absolutely nothing can be inferred from its "success". Any peer
+with half an idea what an RPC is, will respond whether it thinks it holds
+a lock or not. In fact, a peer that doesn't reply gives you more information!
+
+Tom.
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
