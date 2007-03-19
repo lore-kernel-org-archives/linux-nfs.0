@@ -1,23 +1,31 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] [nfs-utils: mountd] exports too verbose.
-Date: Mon, 19 Mar 2007 14:47:16 -0400
-Message-ID: <45FEDAB4.5040006@RedHat.com>
-References: <45F6CB05.6010604@RedHat.com>	<17913.58996.50116.344398@notabene.brown>	<45FA9A12.1030602@RedHat.com>
-	<17917.51702.109517.90615@notabene.brown>
+From: Karel Zak <kzak@redhat.com>
+Subject: [PATCH] Correctly handle -f (fake) mount option.
+Date: Mon, 19 Mar 2007 20:33:17 +0100
+Message-ID: <20070319193317.GH18681@petra.dvoda.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HTMt4-0002Dm-Fi
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 11:47:18 -0700
+	id 1HTNbg-0007IA-O6
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 12:33:31 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTMt5-00056C-65
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 11:47:20 -0700
-In-Reply-To: <17917.51702.109517.90615@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTNbh-0003WM-H5
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 12:33:26 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l2JJXJOq002053
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 15:33:19 -0400
+Received: from devserv.devel.redhat.com (devserv.devel.redhat.com
+	[172.16.58.1])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l2JJXJFt021772
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 15:33:19 -0400
+Received: from petra (vpn-4-50.str.redhat.com [10.32.4.50])
+	by devserv.devel.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id
+	l2JJXHkF019489
+	for <nfs@lists.sourceforge.net>; Mon, 19 Mar 2007 14:33:18 -0500
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,17 +38,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+The fake option has to write to mtab like a normal mount. Read mount(8) man
+page for more details.  It's very important for system init scripts that use
+"-f" as a way how write info about mount points to /etc/mtab.
 
+Signed-off-by: Karel Zak <kzak@redhat.com>
+---
+ utils/mount/mount.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
-Neil Brown wrote:
-> Anyway, how about this on top of the previous patch...  any
-> improvement?
-Looks good... The main complaint was the number of times the
-message was being logged so logging it once is good...
-But there was some grumbling about a message being logged
-for an valid export configuration...
-
-steved.
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 45428b0..55d60aa 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -443,18 +443,18 @@ int main(int argc, char *argv[])
+ 			start_statd();
+ 	}
+ 
+-	if (fake)
+-		return 0;
+ 	if (mnt_err)
+ 		exit(EX_FAIL);
+ 
+-	mnt_err = do_mount_syscall(spec, mount_point,
+-				   nfs_mount_vers == 4 ? "nfs4" : "nfs",
+-				   flags, mount_opts);
+-		
+-	if (mnt_err) {
+-		mount_error(mount_point);
+-		exit(EX_FAIL);
++	if (!fake) {
++		mnt_err = do_mount_syscall(spec, mount_point,
++					   nfs_mount_vers == 4 ? "nfs4" : "nfs",
++					   flags, mount_opts);
++
++		if (mnt_err) {
++			mount_error(mount_point);
++			exit(EX_FAIL);
++		}
+ 	}
+ 
+ 	if (!nomtab)
+-- 
+1.4.4.2
 
 
 -------------------------------------------------------------------------
