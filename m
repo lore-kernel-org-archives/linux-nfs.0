@@ -1,26 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
-Date: Mon, 19 Mar 2007 19:02:13 -0400
-Message-ID: <20070319230213.GD29272@fieldses.org>
-References: <17914.20117.186786.830574@notabene.brown>
-	<20070316181047.GD4538@fieldses.org>
-	<17917.53245.697560.272545@notabene.brown>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH] Add support for quoted mount options
+Date: Tue, 20 Mar 2007 01:21:04 +0100
+Message-ID: <20070320002104.GA3288@petra.dvoda.cz>
+References: <20070319200240.GI18681@petra.dvoda.cz>
+	<17919.1986.197057.221467@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>,
-	richterd@citi.umich.edu
+Cc: nfs@lists.sourceforge.net
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HTQro-0004Yt-Kj
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 16:02:17 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HTQrp-0004Iz-GD
-	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 16:02:18 -0700
-In-Reply-To: <17917.53245.697560.272545@notabene.brown>
+	id 1HTS69-0004S3-SL
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 17:21:11 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTS67-0004WC-Ev
+	for nfs@lists.sourceforge.net; Mon, 19 Mar 2007 17:21:12 -0700
+In-Reply-To: <17919.1986.197057.221467@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,46 +30,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Mar 19, 2007 at 10:49:17AM +1100, Neil Brown wrote:
-> On Friday March 16, bfields@fieldses.org wrote:
-> > NFSv4 needs something like the third as well--knfsd needs to know on
-> > startup the list of clients that will be allowed to reclaim state from a
-> > previous boot instance.  (This is to protect clients that *think*
-> > they're still holding locks on the server, but (thanks to a network
-> > partition) don't realize that the server has actually rebooted twice.)
+On Tue, Mar 20, 2007 at 08:59:30AM +1100, Neil Brown wrote:
+> On Monday March 19, kzak@redhat.com wrote:
+> > The patch avoid the collision between commas in security contexts and the
+> > delimiter between mount options.
+
+ The patch has been already sent by Steve Dickson and we already
+ talked about it few weeks ago. There was problem with some extra
+ space allocated for extra_opts. This version of the patch is more
+ clean from nfs-utils point of view.
+
+> > Try:
+> > 	mount.nfs foo://mnt/bar /mnt/bar -o context=\"aaa,bbb,ccc\",ro
 > 
-> Similar... but different...
+> Hmmm..... I'm feeling a bit uncomfortable about this.
+> Lots of code (well, some at least) relies on 'hasmntopt' which does
+> simple parsing of the option string looking for commas.  If we allow
+> commas to be embedded in options, that code can potentially get
+> confused.
+> 
+> Also, this code does not allow a double-quote to appear in the context
+> string.  You can have two (or 4 or any even number) but not one.
+> Could that ever be a problem?
 
-OK, actually more different than similar.  We need to run something at
-about the same time--nfsd startup--but the stuff it has to do is pretty
-different.  (In particular, it just needs to dump some information into
-the kernel--it doesn't need to talk to any other hosts.)
+ I don't think so. The linux kernel supports quotes *only* for SELinux
+ contexts and there is not possible use any nested quotes or anything
+ more creative. It's always something like:
 
-> You would want to forget about clients who haven't reclaimed when the
-> 'grace period' expires.  Yes?  So when the grace period starts, you
-> move state from "current" to "recovering".  Then when a client tries
-> to recover, we check in 'recovering' and if we find something, we
-> recreate the state in 'current'.  Then when the grace period ends, we
-> remove everything from 'recovering'.  So if the server reboots twice
-> without actually completing a grace period, the client would still be
-> safe.
+    context="system_u:object_r:iso9660_t:s0:c1,c3,c4"
 
-Essentially correct--but I'd like one small change to that: when we move
-clients to that "current" list (an action that'll have to be recorded to
-stable storage) I also want to record a timestamp showing when we did
-so.  That means that we no longer need to forget those clients that
-haven't reclaimed at the end of grace--we *can* if we want to, but it's
-not urgent because (as long as we also rememember "boot" times), we can
-notice at the next boot that their last reclaim was too long ago.
+ It's kernel who has care about exact format. We need to push
+ the context string through mount.nfs to kernel only.
 
-This saves us having to do a bunch of synchronous work at the time the
-grace period ends, which is inefficient and complicates the locking.
-And it solves one or two extremely obscure corner cases.
+> What exactly is this context string anyway?  Current kernels don't
+> seem to use it at all.  Presumably the code to use it is still in
+> development?   Is it some sort of security token? 
 
-(And it's what the rfc recommends, actually--I thought I was being
-clever by doing something "simpler".  What a loser.)
+ That's already in Linus's tree, released in 2.6.19. See:
 
---b.
+ http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=3528a95322b5c1ce882ab723f175a1845430cd89
+
+> How often would it have commas?
+
+ Unfortunately often in Multi-Category Security (MCS) SELinux:
+
+ http://www.nsa.gov/selinux/list-archive/0609/17224.cfm
+
+
+> How often would it have double-quote?  Would it be
+> possible to use a different character than ',' - maybe ':' ???
+
+ No, the format is exact.
+
+> But if we can avoid commas altogether, that would be best.
+
+ Probably to late... the format of selinux context string is generic,
+ it's nothing specific for a mount process. There are libs, kernel
+ and many utils that use this format.
+
+> Can the context string even need to have a space in it?  That would be
+> rather awkward to put in /etc/fstab etc I think.
+
+ IMHO it's always without a space (I hope selinux guys aren't on crack ;-)
+
+    Karel
+
+-- 
+ Karel Zak  <kzak@redhat.com>
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
