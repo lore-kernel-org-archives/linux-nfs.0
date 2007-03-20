@@ -1,23 +1,19 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [2.6.21 patch] net/sunrpc/svcsock.c: fix a check
-Date: Mon, 19 Mar 2007 23:38:37 -0800
-Message-ID: <20070319233837.38f1aab7.akpm@linux-foundation.org>
-References: <20070319093341.GS752@stusta.de>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: [PATCH] knfsd : export : Fix bug of svc_export_parse()
+Date: Tue, 20 Mar 2007 17:26:58 +0800
+Message-ID: <45FFA8E2.5000902@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Adrian Bunk <bunk@stusta.de>
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HTYvW-0005ho-TY
-	for nfs@lists.sourceforge.net; Tue, 20 Mar 2007 00:38:39 -0700
-Received: from smtp.osdl.org ([65.172.181.24])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTYvX-0007Sd-UX
-	for nfs@lists.sourceforge.net; Tue, 20 Mar 2007 00:38:41 -0700
-In-Reply-To: <20070319093341.GS752@stusta.de>
+	id 1HTahb-0000LF-1k
+	for nfs@lists.sourceforge.net; Tue, 20 Mar 2007 02:32:24 -0700
+Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HTaha-0005Mt-G4
+	for nfs@lists.sourceforge.net; Tue, 20 Mar 2007 02:32:25 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,38 +26,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 19 Mar 2007 10:33:42 +0100 Adrian Bunk <bunk@stusta.de> wrote:
+When I export /dev/null as root, and mount it from client, mount ntf4 command will frozen.
 
-> The return value of kernel_recvmsg() should be assigned to "err", not 
-> compared with the random value of a never initialized "err"
-> (and the "< 0" check wrongly always returned false since == comparisons 
-> never have a result < 0).
-> 
-> Spotted by the Coverity checker.
-> 
-> Signed-off-by: Adrian Bunk <bunk@stusta.de>
-> 
-> ---
-> --- linux-2.6.21-rc3-mm2/net/sunrpc/svcsock.c.old	2007-03-19 09:44:40.000000000 +0100
-> +++ linux-2.6.21-rc3-mm2/net/sunrpc/svcsock.c	2007-03-19 09:45:18.000000000 +0100
-> @@ -779,8 +779,8 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
->  	}
->  
->  	clear_bit(SK_DATA, &svsk->sk_flags);
-> -	while ((err == kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-> -				      0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
-> +	while ((err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-> +				     0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
->  	       (skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
->  		if (err == -EAGAIN) {
->  			svc_sock_received(svsk);
+You can test it by following command:
+#exportfs -i -o fsid=0,no_root_squash,insecure,rw,async *:/dev/null
+#mount -t nfs4 127.0.0.1:/ /tmp
 
-Cute.  The compiler must have decided to apply the "(a==b) can never be
-less than zero" optimisation before performing uninitialised variable
-analysis.
+This is because in svc_export_parse() function, if check_export return 
+false, after we reject the file handle, we must do cleanup the cache, 
+which is not a format error of file handle.
 
-Neil, this one needs runtime testing before we can apply it to 2.6.21, I
-think.
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+
+--- fs/nfsd/export.c.orig	2007-02-20 20:59:22.000000000 -0500
++++ fs/nfsd/export.c	2007-03-16 01:04:16.000000000 -0400
+@@ -543,12 +543,13 @@ static int svc_export_parse(struct cache
+ 		if (err) goto out;
+ 		exp.ex_fsid = an_int;
+ 
+-		err = check_export(nd.dentry->d_inode, exp.ex_flags);
+-		if (err) goto out;
+-
+ 		err = fsloc_parse(&mesg, buf, &exp.ex_fslocs);
+ 		if (err)
+ 			goto out;
++
++		err = check_export(nd.dentry->d_inode, exp.ex_flags);
++		if (err)
++			set_bit(CACHE_NEGATIVE, &exp.h.flags);
+ 	}
+ 
+ 	expp = svc_export_lookup(&exp);
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
