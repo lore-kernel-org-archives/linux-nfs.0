@@ -1,26 +1,29 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: HEADS-UP: nearing nfs-utils 1.1.0 and statd changes.
-Date: Thu, 22 Mar 2007 15:54:39 +1100
-Message-ID: <17922.3087.206883.910415@notabene.brown>
-References: <17914.20117.186786.830574@notabene.brown>
-	<EXNANE01pH71yEXUIEA000000e2@exnane01.hq.netapp.com>
-	<17917.50411.770610.290399@notabene.brown>
-	<EXNANE016beUzmRf6Ci00000104@exnane01.hq.netapp.com>
+Subject: Re: rpc.statd  in /sbin or /usr/sbin ??
+Date: Thu, 22 Mar 2007 16:12:23 +1100
+Message-ID: <17922.4151.996812.925495@notabene.brown>
+References: <17917.58341.502839.29524@notabene.brown>
+	<200703190924.03153.olaf.kirch@oracle.com>
+	<45FE8782.5020001@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HUFK2-0007wj-Ua
-	for nfs@lists.sourceforge.net; Wed, 21 Mar 2007 21:54:46 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1HUFbB-0001Da-4f
+	for nfs@lists.sourceforge.net; Wed, 21 Mar 2007 22:12:29 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HUFK4-0007Rh-O5
-	for nfs@lists.sourceforge.net; Wed, 21 Mar 2007 21:54:49 -0700
-In-Reply-To: message from Talpey, Thomas on Monday March 19
+	(Exim 4.44) id 1HUFbC-0003cl-SJ
+	for nfs@lists.sourceforge.net; Wed, 21 Mar 2007 22:12:31 -0700
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id BDB9F122EC
+	for <nfs@lists.sourceforge.net>; Thu, 22 Mar 2007 06:12:27 +0100 (CET)
+In-Reply-To: message from Steve Dickson on Monday March 19
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,41 +36,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday March 19, Thomas.Talpey@netapp.com wrote:
-> At 07:02 PM 3/18/2007, Neil Brown wrote:
-> >SuSE's kstatd seems to cope without resolving mon_name.
+On Monday March 19, SteveD@redhat.com wrote:
 > 
-> I'd be interested in the details. It's been our observation that very few
-> statd implementations work properly in all cases.
+> 
+> Olaf Kirch wrote:
+> > On Monday 19 March 2007 02:14, Neil Brown wrote:
+> >>  The only reason I can see for putting statd in /sbin is if it were
+> >>  needed for mounting /usr (in cases where /usr is accessed via NFS).
+> > 
+> > Can't speak for others, but this is the reason why Suse put it into /sbin too,
+> > as long as they shipped it.
+> I can only assuming this was the case as well... Red Hat has
+> been putting both rpc.lockd and rpc.statd in /sbin
+> since at least RH 7.1
+> 
 
-It doesn't do anything particularly clever.
-By default it depends on IP address matching, so as long as you don't
-have multi-homed hosts everything is easy
-If you do have multi-homed hosts you need to enable host-name matching
-(via a sysctl) and ensure that hostnames are used consistently.
-i.e. the hostname used when you mount a filesystem must be the same as
-that which sm-notify on the server will use in mon_name when sending
-notify that it has reboot.
+Ok.... so the only reason for moving to /sbin is a reason that I don't
+think is a good one.  I think I won't move it in 'upstream'.
 
-In the other direction, sm-notify on the NFS client must simply mon_name
-to "uname -n" as that will be the 'caller_name' in the LOCK request.
-Not to hard to set up.  You just need to make sure when you mount that
-you use the name that the server gets from 'uname -a'.  Probably easy
-to get wrong though, and you never know it is wrong until you reboot.
+So people should really mount '/usr' (and '/var') with 'nolock' (which
+should really be spelt 'locallocks' or similar).  But they probably
+don't.
 
-I guess that to be completely safe, a NOTIFY should be sent from every
-IP that the local host has, to every IP that every peer has, with
-mon_name set to the source IP address, and then again with mon_name set
-to the host name, both simple and FQDN.
-
-And when you receive a NOTIFY, you should do an DNS lookup to find the
-FQDN and then all the IP addresses, and then assume a reboot for any
-local state that matches any of that.
-
-Which does seem to suggest that DNS lookup is needed on receipt of
-NOTIFY, so that part cannot really go in the kernel.
-
-I might need to think about this a bit more...
+So how about this: In a similar way that we now try to start statd if
+'nolock' is not set, we could set 'nolock' if we fail to start statd
+(and it isn't already running).  What do people think of that?
+I should probably add an rpc ping to check if statd is running rather
+than just looking in /var/run/rpc.statd.pid, but the principle seems
+sound.... 
 
 NeilBrown
 
