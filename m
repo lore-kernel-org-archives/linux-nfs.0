@@ -1,23 +1,22 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 002 of 4] knfsd: nfsd4: fix inheritance flags on v4
-	ace derived from posix default ace
-Date: Fri, 23 Mar 2007 11:46:54 +1100
-Message-ID: <1070323004654.28958@suse.de>
+Subject: [PATCH 003 of 4] knfsd: nfsd4: demote "clientid in use"
+	printk to a dprintk
+Date: Fri, 23 Mar 2007 11:46:59 +1100
+Message-ID: <1070323004659.28973@suse.de>
 References: <20070323114512.28822.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HUXvn-00014t-GI
-	for nfs@lists.sourceforge.net; Thu, 22 Mar 2007 17:46:59 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HUXvo-0002BT-U6
-	for nfs@lists.sourceforge.net; Thu, 22 Mar 2007 17:47:01 -0700
+	id 1HUXvt-00016n-T2
+	for nfs@lists.sourceforge.net; Thu, 22 Mar 2007 17:47:06 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HUXvu-0005jq-R4
+	for nfs@lists.sourceforge.net; Thu, 22 Mar 2007 17:47:08 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,28 +32,31 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Bruce Fields <bfields@citi.umich.edu>
 
-A regression introduced in the last set of acl patches removed the
-INHERIT_ONLY flag from aces derived from the posix acl.  Fix.
+The reused clientid here is a more of a problem for the client than the
+server, and the client can report the problem itself if it's serious.
 
 Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfs4acl.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ ./fs/nfsd/nfs4state.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff .prev/fs/nfsd/nfs4acl.c ./fs/nfsd/nfs4acl.c
---- .prev/fs/nfsd/nfs4acl.c	2007-03-23 11:18:58.000000000 +1100
-+++ ./fs/nfsd/nfs4acl.c	2007-03-23 11:18:58.000000000 +1100
-@@ -228,7 +228,7 @@ _posix_to_nfsv4_one(struct posix_acl *pa
- 	struct posix_acl_summary pas;
- 	unsigned short deny;
- 	int eflag = ((flags & NFS4_ACL_TYPE_DEFAULT) ?
--					NFS4_INHERITANCE_FLAGS : 0);
-+		NFS4_INHERITANCE_FLAGS | NFS4_ACE_INHERIT_ONLY_ACE : 0);
- 
- 	BUG_ON(pacl->a_count < 3);
- 	summarize_posix_acl(pacl, &pas);
+diff .prev/fs/nfsd/nfs4state.c ./fs/nfsd/nfs4state.c
+--- .prev/fs/nfsd/nfs4state.c	2007-03-23 11:19:14.000000000 +1100
++++ ./fs/nfsd/nfs4state.c	2007-03-23 11:19:14.000000000 +1100
+@@ -750,9 +750,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+ 		status = nfserr_clid_inuse;
+ 		if (!cmp_creds(&conf->cl_cred, &rqstp->rq_cred)
+ 				|| conf->cl_addr != sin->sin_addr.s_addr) {
+-			printk("NFSD: setclientid: string in use by client"
+-			"(clientid %08x/%08x)\n",
+-			conf->cl_clientid.cl_boot, conf->cl_clientid.cl_id);
++			dprintk("NFSD: setclientid: string in use by client"
++				"at %u.%u.%u.%u\n", NIPQUAD(conf->cl_addr));
+ 			goto out;
+ 		}
+ 	}
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
