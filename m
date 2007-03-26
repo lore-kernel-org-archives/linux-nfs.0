@@ -1,29 +1,25 @@
-From: "Phy Prabab" <phyprabab@gmail.com>
-Subject: Re: Opps in 2.6.21-rc4 nfsd
-Date: Mon, 26 Mar 2007 00:07:13 -0700
-Message-ID: <2fe399760703260007u7cea0599y7bcce8f779e02c71@mail.gmail.com>
-References: <2fe399760703221224g40fc44ddof41d1fcd442612d5@mail.gmail.com>
-	<20070323152913.GH752@stusta.de>
-	<2fe399760703230845s4f652df0v9fd57e1aa7943e4e@mail.gmail.com>
-	<17927.6359.721594.133569@notabene.brown>
-	<17927.7414.722426.438730@notabene.brown>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [patch] provide non-standard getgrouplist()
+	in	libnfsidmap when need be
+Date: Mon, 26 Mar 2007 09:22:45 -0400
+Message-ID: <1174915365.6838.6.camel@heimdal.trondhjem.org>
+References: <200703250329.03353.vapier@gentoo.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Adrian Bunk <bunk@stusta.de>
-To: "Neil Brown" <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HVjIP-0001Of-14
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 00:07:13 -0700
-Received: from wx-out-0506.google.com ([66.249.82.226])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HVjIQ-0003Ov-0l
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 00:07:15 -0700
-Received: by wx-out-0506.google.com with SMTP id i30so3022942wxd
-	for <nfs@lists.sourceforge.net>; Mon, 26 Mar 2007 00:07:13 -0700 (PDT)
-In-Reply-To: <17927.7414.722426.438730@notabene.brown>
+	id 1HVpA1-0004Wj-Tk
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 06:22:58 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18YuNMzA1HoOu3QYrE3Ce7kydtBaQ2NZjg=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HVpA2-0007Oe-Je
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 06:23:00 -0700
+In-Reply-To: <200703250329.03353.vapier@gentoo.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,89 +32,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Opps, forgot, this is for 2.6.20.x, guess I'll wait for the updated patch.
+On Sun, 2007-03-25 at 03:29 -0400, Mike Frysinger wrote:
+> libnfsidmap uses the non-standard function getgrouplist() ... the attached 
+> patch takes code from FreeBSD to implement the function based on POSIX 
+> functions when the system libc is not sufficient
+> -mike
 
-Thanks!
-Phy
+Why not just modify libnfsidmap to directly use the posix functions?
 
-On 3/25/07, Neil Brown <neilb@suse.de> wrote:
-> On Monday March 26, neilb@suse.de wrote:
-> >
-> > I'll try to have a patch for you to try on 2.6.21rc4 shortly.
-> >
->
-> This patch should remove the Oops, but I have a suspicion that
-> something else is wrong, so I'd be very interested if you could run
-> with this for a few days and report the results.
->
-> NeilBrown
->
-> Signed-off-by: Neil Brown <neilb@suse.de>
->
-> ### Diffstat output
->  ./fs/nfsd/nfsfh.c |   37 +++++++++++++++++++++++++++++++++++--
->  1 file changed, 35 insertions(+), 2 deletions(-)
->
-> diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
-> --- .prev/fs/nfsd/nfsfh.c       2007-03-26 10:51:01.000000000 +1000
-> +++ ./fs/nfsd/nfsfh.c   2007-03-26 11:04:20.000000000 +1000
-> @@ -324,7 +324,7 @@ fh_compose(struct svc_fh *fhp, struct sv
->          *
->          */
->
-> -       u8 version = 1;
-> +       u8 version;
->         u8 fsid_type = 0;
->         struct inode * inode = dentry->d_inode;
->         struct dentry *parent = dentry->d_parent;
-> @@ -342,12 +342,45 @@ fh_compose(struct svc_fh *fhp, struct sv
->          * the reference filehandle (if it is in the same export)
->          * or the export options.
->          */
-> + retry:
-> +       version = 1;
->         if (ref_fh && ref_fh->fh_export == exp) {
->                 version = ref_fh->fh_handle.fh_version;
->                 if (version == 0xca)
->                         fsid_type = FSID_DEV;
-> -               else
-> +               else {
->                         fsid_type = ref_fh->fh_handle.fh_fsid_type;
-> +                       /* need to check that this type works for this
-> +                        * export point.  As the lookup was done with
-> +                        * help from user-space, there is no guarantee
-> +                        */
-> +                       if (ref_fh == fhp)
-> +                               fh_put(ref_fh);
-> +                       ref_fh = NULL;
-> +                       switch(fsid_type) {
-> +                       case FSID_DEV:
-> +                               if (!old_valid_dev(ex_dev))
-> +                                       goto retry;
-> +                               break;
-> +                       case FSID_NUM:
-> +                               if (! (exp->ex_flags & NFSEXP_FSID))
-> +                                       goto retry;
-> +                               break;
-> +                       case FSID_MAJOR_MINOR:
-> +                       case FSID_ENCODE_DEV:
-> +                               break;
-> +                       case FSID_UUID8:
-> +                       case FSID_UUID16:
-> +                               if (!root_export)
-> +                                       goto retry;
-> +                               /* fall through */
-> +                       case FSID_UUID4_INUM:
-> +                       case FSID_UUID16_INUM:
-> +                               if (exp->ex_uuid == NULL)
-> +                                       goto retry;
-> +                               break;
-> +                       }
-> +               }
->                 /* We know this version/type works for this export
->                  * so there is no need for further checks.
->                  */
->
+Cheers
+  Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
