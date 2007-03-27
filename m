@@ -1,22 +1,23 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: [PATCH] knfsd : export : Fix bug of svc_export_parse()
-Date: Tue, 27 Mar 2007 09:36:47 +0800
-Message-ID: <4608752F.1010205@cn.fujitsu.com>
-References: <45FFA8E2.5000902@cn.fujitsu.com>
+Date: Tue, 27 Mar 2007 12:16:25 +1000
+Message-ID: <17928.32377.572644.770583@notabene.brown>
+References: <45FFA8E2.5000902@cn.fujitsu.com> <4608752F.1010205@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: hch@infradead.org, nfs@lists.sourceforge.net
-To: nfsv4@linux-nfs.org
+Cc: hch@infradead.org, nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+To: Wei Yongjun <yjwei@cn.fujitsu.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HW0hj-0008HC-TT
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 18:42:31 -0700
-Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HW0hk-0004Xk-OS
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 18:42:34 -0700
-In-Reply-To: <45FFA8E2.5000902@cn.fujitsu.com>
+	id 1HW1F5-00031l-DQ
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 19:16:59 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HW1F6-0006Ry-4n
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 19:17:01 -0700
+In-Reply-To: message from Wei Yongjun on Tuesday March 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,46 +30,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Nobody replied yet, but I think this is really a BUG of exportfs.
-exportfs command does not check so strictly, so maybe some unreasonable
-fh.key can be add to /proc/net/rpc/nfsd.fh/channel, but used this key to
-find fh.handle, this always be fail and still retry.
+On Tuesday March 27, yjwei@cn.fujitsu.com wrote:
+> Nobody replied yet, but I think this is really a BUG of exportfs.
+> exportfs command does not check so strictly, so maybe some unreasonable
+> fh.key can be add to /proc/net/rpc/nfsd.fh/channel, but used this key to
+> find fh.handle, this always be fail and still retry.
+> 
+> It's this correct?
 
-It's this correct?
+Sorry for not replying earlier.
 
-> When I export /dev/null as root, and mount it from client, mount ntf4 command will frozen.
->
-> You can test it by following command:
-> #exportfs -i -o fsid=0,no_root_squash,insecure,rw,async *:/dev/null
-> #mount -t nfs4 127.0.0.1:/ /tmp
->
-> This is because in svc_export_parse() function, if check_export return 
-> false, after we reject the file handle, we must do cleanup the cache, 
-> which is not a format error of file handle.
->
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
->
-> --- fs/nfsd/export.c.orig	2007-02-20 20:59:22.000000000 -0500
-> +++ fs/nfsd/export.c	2007-03-16 01:04:16.000000000 -0400
-> @@ -543,12 +543,13 @@ static int svc_export_parse(struct cache
->  		if (err) goto out;
->  		exp.ex_fsid = an_int;
->  
-> -		err = check_export(nd.dentry->d_inode, exp.ex_flags);
-> -		if (err) goto out;
-> -
->  		err = fsloc_parse(&mesg, buf, &exp.ex_fslocs);
->  		if (err)
->  			goto out;
-> +
-> +		err = check_export(nd.dentry->d_inode, exp.ex_flags);
-> +		if (err)
-> +			set_bit(CACHE_NEGATIVE, &exp.h.flags);
->  	}
->  
->  	expp = svc_export_lookup(&exp);
->   
+Yes, you have identified a real problem, but I'm not sure I agree with
+the first.
 
+If someone (mountd) tried to tell the kernel to export "/dev/null", it
+fails with an error (-ENODIR), and I think this is correct.
+
+Mountd should respond properly to this error, which it doesn't at the
+moment.
+When the request comes via the MOUNT protocol from an NFSv2 or NFSv3
+client, mountd will fail the mount as it should.
+However when the request comes from the kernel due to an NFSv4
+request, the error is just ignored.  In that case we really should be
+telling the kernel that the filehandle is not valid by writing out an
+appropriate message.
+
+
+Maybe something like this in nfs-utils.
+What do you think?
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./utils/mountd/cache.c |    9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff .prev/utils/mountd/cache.c ./utils/mountd/cache.c
+--- .prev/utils/mountd/cache.c	2007-03-27 12:11:52.000000000 +1000
++++ ./utils/mountd/cache.c	2007-03-27 12:13:40.000000000 +1000
+@@ -469,7 +469,8 @@ void nfsd_fh(FILE *f)
+ 	}
+ 
+ 	if (found)
+-		cache_export_ent(dom, found, found_path);
++		if (cache_export_ent(dom, found, found_path) < 0)
++			found = 0;
+ 
+ 	qword_print(f, dom);
+ 	qword_printint(f, fsidtype);
+@@ -619,8 +620,10 @@ void nfsd_export(FILE *f)
+ 	}
+ 
+ 	if (found) {
+-		dump_to_cache(f, dom, path, &found->m_export);
+-		mountlist_add(dom, path);
++		if (dump_to_cache(f, dom, path, &found->m_export) < 0)
++			dump_to_cache(f, dom, path, NULL);
++		else
++			mountlist_add(dom, path);
+ 	} else {
+ 		dump_to_cache(f, dom, path, NULL);
+ 	}
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
