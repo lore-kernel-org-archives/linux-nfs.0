@@ -1,27 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: fsid question
-Date: Tue, 27 Mar 2007 11:32:01 -0400
-Message-ID: <1175009521.6153.18.camel@heimdal.trondhjem.org>
-References: <46082D10.1060301@cse.yorku.ca> <46083474.8090906@redhat.com>
-	<46091325.6050403@cse.yorku.ca> <46091498.6030706@moving-picture.com>
-	<46091C41.6070908@cse.yorku.ca> <46092FC2.2080901@redhat.com>
-	<20070327152321.GB7161@fieldses.org>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: [PATCH - try #2] sunrpc: fix typo in svc_udp_recvfrom
+Date: Tue, 27 Mar 2007 17:39:42 +0200
+Message-ID: <200703271739.43675.olaf.kirch@oracle.com>
+References: <200703271651.13181.olaf.kirch@oracle.com>
+	<1175008207.6153.12.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: James Pearson <james-p@moving-picture.com>,
-	nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWDep-0007bq-HT
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:32:23 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/npx9bdnMe+pl2hDqaUzlx9SmKRQRPbto=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWDeo-0007SA-3e
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:32:24 -0700
-In-Reply-To: <20070327152321.GB7161@fieldses.org>
+	id 1HWDnK-0008Tm-4y
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:41:10 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HWDnL-0001hd-28
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:41:12 -0700
+In-Reply-To: <1175008207.6153.12.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,30 +31,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-03-27 at 11:23 -0400, J. Bruce Fields wrote:
-> On Tue, Mar 27, 2007 at 10:52:50AM -0400, Wendy Cheng wrote:
-> > 1. If server for whatever reason gets rebooted and somehow the device 
-> > major-minor number gets altered, the client that keeps the "old" file 
-> > handle will get a "stale file handle" error.
-> 
-> Actually, have you checked this?  From a quick look at
-> 
-> 	linux/fs/nfsd/nfsfh.c:fh_verify()
-> and
-> 
-> 	nfs-utils/utils/mountd/cache.c:nfsd_fh()
-> 
-> it looks to me like nfsd should still allow both the old and new
-> filehandles.
+On Tuesday 27 March 2007 17:10, Trond Myklebust wrote:
+> Could you please rather move those assignments out of the while()? Good
+> coding style dictates that the above should be avoided. One of the
+> benefits is precisely to avoid the above ambiguities.
 
-That is correct. A server kernel upgrade should not normally result in a
-client error. See also Neil's recently posted patches that replace the
-fileid with the disk UUID. Those again attempt to preserve backward
-compatibility for filehandles.
+Okay, here we go:
+----------------------
+Fix a typo in svc_udp_recvfrom
 
-Cheers,
-  Trond
+This patch corrects a small and harmless typo in svc_udp_recvfrom.
 
+Signed-off-by: olaf.kirch@oracle.com
+---
+ net/sunrpc/svcsock.c |   11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+Index: linux-2.6/net/sunrpc/svcsock.c
+===================================================================
+--- linux-2.6.orig/net/sunrpc/svcsock.c
++++ linux-2.6/net/sunrpc/svcsock.c
+@@ -779,9 +779,14 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	}
+ 
+ 	clear_bit(SK_DATA, &svsk->sk_flags);
+-	while ((err == kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+-				      0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
+-	       (skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
++	while (1) {
++		err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
++				      0, 0, MSG_PEEK | MSG_DONTWAIT);
++		if (err >= 0) {
++		       	skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err);
++			if (skb)
++				break;
++		}
+ 		if (err == -EAGAIN) {
+ 			svc_sock_received(svsk);
+ 			return err;
+
+
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
