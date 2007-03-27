@@ -1,25 +1,27 @@
-From: Roger Heflin <rheflin@atipa.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: fsid question
-Date: Tue, 27 Mar 2007 10:31:42 -0500
-Message-ID: <460938DE.302@atipa.com>
-References: <46082D10.1060301@cse.yorku.ca>	<46083474.8090906@redhat.com>	<46091325.6050403@cse.yorku.ca>	<46091498.6030706@moving-picture.com>	<46091C41.6070908@cse.yorku.ca>
-	<46092FC2.2080901@redhat.com>
+Date: Tue, 27 Mar 2007 11:32:01 -0400
+Message-ID: <1175009521.6153.18.camel@heimdal.trondhjem.org>
+References: <46082D10.1060301@cse.yorku.ca> <46083474.8090906@redhat.com>
+	<46091325.6050403@cse.yorku.ca> <46091498.6030706@moving-picture.com>
+	<46091C41.6070908@cse.yorku.ca> <46092FC2.2080901@redhat.com>
+	<20070327152321.GB7161@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: James Pearson <james-p@moving-picture.com>,
 	nfs@lists.sourceforge.net
-To: Wendy Cheng <wcheng@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWDeF-0007VC-JE
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:31:48 -0700
-Received: from 125.14.124.24.cm.sunflower.com ([24.124.14.125]
-	helo=mail.atipa.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HWDeE-0006pm-7V
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:31:47 -0700
-In-Reply-To: <46092FC2.2080901@redhat.com>
+	id 1HWDep-0007bq-HT
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:32:23 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/npx9bdnMe+pl2hDqaUzlx9SmKRQRPbto=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWDeo-0007SA-3e
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:32:24 -0700
+In-Reply-To: <20070327152321.GB7161@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,34 +34,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Wendy Cheng wrote:
+On Tue, 2007-03-27 at 11:23 -0400, J. Bruce Fields wrote:
+> On Tue, Mar 27, 2007 at 10:52:50AM -0400, Wendy Cheng wrote:
+> > 1. If server for whatever reason gets rebooted and somehow the device 
+> > major-minor number gets altered, the client that keeps the "old" file 
+> > handle will get a "stale file handle" error.
+> 
+> Actually, have you checked this?  From a quick look at
+> 
+> 	linux/fs/nfsd/nfsfh.c:fh_verify()
+> and
+> 
+> 	nfs-utils/utils/mountd/cache.c:nfsd_fh()
+> 
+> it looks to me like nfsd should still allow both the old and new
+> filehandles.
 
-> 1. If server for whatever reason gets rebooted and somehow the device 
-> major-minor number gets altered, the client that keeps the "old" file 
-> handle will get a "stale file handle" error. Some of the NFS clients 
-> will re-do lookup to obtain the correct FileHandle(s). Some of them will 
-> simply fail. There is really not much you can do as a system administrator.
+That is correct. A server kernel upgrade should not normally result in a
+client error. See also Neil's recently posted patches that replace the
+fileid with the disk UUID. Those again attempt to preserve backward
+compatibility for filehandles.
 
-I think this can also happen if you are using the major+minor numbers with
-say lvm, and change the order of the underlying LVM's, this might even
-be a risk with the fsid option if the underlying filesystem that it was
-supposed to be exporting fails to get mounted before the export.
+Cheers,
+  Trond
 
-Server reboots, a different device is put at the same major and minor 
-numbers
-than was there before,now  the server now gets hammered with inode numbers
-that don't exist  (valid range for filesystem, but don't exist on the "new"
-filesystem that is at the same major and minor numbers as the old one was).
-
-I have seen this actually completely use up all of the CPU on a NFS server,
-eventually causing it to be completely unusable, and of course the issue 
-survives
-reboots of the server as the requests are coming from the clients, and the
-clients don't appear to ever give up, and if you have enough clients you
-can make the server unusable fairly quickly.   I have seen the machine
-actually hang bringing up NFS from this.
-
-                                           Roger
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
