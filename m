@@ -1,28 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: fsid question
-Date: Tue, 27 Mar 2007 11:05:47 -0400
-Message-ID: <20070327150547.GA7161@fieldses.org>
-References: <46082D10.1060301@cse.yorku.ca> <46083474.8090906@redhat.com>
-	<46091325.6050403@cse.yorku.ca>
-	<46091498.6030706@moving-picture.com>
-	<46091C41.6070908@cse.yorku.ca>
-	<460929BA.9060509@moving-picture.com> <460930DE.50507@cse.yorku.ca>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] sunrpc: fix typo in svc_udp_recvfrom
+Date: Tue, 27 Mar 2007 11:10:07 -0400
+Message-ID: <1175008207.6153.12.camel@heimdal.trondhjem.org>
+References: <200703271651.13181.olaf.kirch@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: James Pearson <james-p@moving-picture.com>,
-	nfs@lists.sourceforge.net
-To: Jason Keltz <jas@cse.yorku.ca>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Olaf Kirch <olaf.kirch@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWDF9-0003uM-T0
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:05:54 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HWDFA-0001RQ-IY
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:05:54 -0700
-In-Reply-To: <460930DE.50507@cse.yorku.ca>
+	id 1HWDJR-0004Rq-C8
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:10:17 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+7kiqFPIPKyGod9QSYuuP6PcCdNIPnKoA=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWDJS-0006y4-52
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:10:19 -0700
+In-Reply-To: <200703271651.13181.olaf.kirch@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,16 +30,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Mar 27, 2007 at 10:57:34AM -0400, Jason Keltz wrote:
-> That makes sense, but what is still not clear to me is why I can't have 
-> the system show me the existing fsid that it is using in the absence of 
-> a user-specified fsid.
+On Tue, 2007-03-27 at 16:51 +0200, Olaf Kirch wrote:
+> I'm not sure whether this has been brought up already - I came
+> across this today when poking around the code...
+> 
+> Olaf
+> 
+> --[ cut here ]--
+> Fix a typo in svc_udp_recvfrom
+> 
+> This patch corrects a small and hamless typo in svc_udp_recvfrom.
+> 
+> Signed-off-by: olaf.kirch@oracle.com
+> ---
+>  net/sunrpc/svcsock.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> Index: linux-2.6/net/sunrpc/svcsock.c
+> ===================================================================
+> --- linux-2.6.orig/net/sunrpc/svcsock.c
+> +++ linux-2.6/net/sunrpc/svcsock.c
+> @@ -779,7 +779,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  	}
+>  
+>  	clear_bit(SK_DATA, &svsk->sk_flags);
+> -	while ((err == kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+> +	while ((err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+>  				      0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
+>  	       (skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
+>  		if (err == -EAGAIN) {
 
-There *is* no "existing fsid".  The fsid that you provide in the "fsid="
-export option is totally different from what's used by default to
-generate filehandles for that filesystem.
+Could you please rather move those assignments out of the while()? Good
+coding style dictates that the above should be avoided. One of the
+benefits is precisely to avoid the above ambiguities.
 
---b.
+Something like
+
+	for (;;) {
+		err = kernel_recvmsg(svsk->sk_sock, &msg, NULL, 0, 0, MSG_PEEK|MSG_DONTWAIT);
+		if (err == 0) {
+			skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err);
+			if (skb != NULL)
+				break;
+		}
+		if (err == -EAGAIN) {
+			svc_sock_received(svsk);
+			return err;
+		}
+		/* possibly an icmp error */
+		dprintk("svc: recvfrom returned error %d\n", -err);
+	}
+
+Cheers,
+  Trond
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
