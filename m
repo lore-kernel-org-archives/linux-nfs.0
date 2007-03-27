@@ -1,25 +1,20 @@
-From: James Pearson <james-p@moving-picture.com>
-Subject: Re: fsid question
-Date: Tue, 27 Mar 2007 15:27:06 +0100
-Message-ID: <460929BA.9060509@moving-picture.com>
-References: <46082D10.1060301@cse.yorku.ca> <46083474.8090906@redhat.com>
-	<46091325.6050403@cse.yorku.ca>
-	<46091498.6030706@moving-picture.com>
-	<46091C41.6070908@cse.yorku.ca>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: [PATCH] sunrpc: fix typo in svc_udp_recvfrom
+Date: Tue, 27 Mar 2007 16:51:11 +0200
+Message-ID: <200703271651.13181.olaf.kirch@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Jason Keltz <jas@cse.yorku.ca>
+Cc: Neil Brown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWCdh-0008Ks-R1
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 07:27:16 -0700
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251] helo=moving-picture.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWCdh-0007We-2g
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 07:27:12 -0700
-In-Reply-To: <46091C41.6070908@cse.yorku.ca>
+	id 1HWD2F-0002Y2-FA
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 07:52:31 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWD2F-0002ep-0l
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 07:52:32 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,25 +27,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Jason Keltz wrote:
+I'm not sure whether this has been brought up already - I came
+across this today when poking around the code...
 
-> Hi James.
-> 
-> Thanks for your message.
-> 
-> I'm not sure that I understand this though.  If the system is generating 
-> an fsid for NFS exports in the absence of a user-specified fsid, then 
-> changing the fsid and re-exporting the filesystem *should* essentially 
-> confuse the client? How does one choose an fsid that is not already in 
-> use on the system? I imagine there must be some way to list the 
-> currently used fsids for exported filesystems.
+Olaf
 
-See the thread starting at:
+--[ cut here ]--
+Fix a typo in svc_udp_recvfrom
 
-<http://marc.info/?l=linux-nfs&m=110295083427898&w=2>
+This patch corrects a small and hamless typo in svc_udp_recvfrom.
 
-James Pearson
+Signed-off-by: olaf.kirch@oracle.com
+---
+ net/sunrpc/svcsock.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+Index: linux-2.6/net/sunrpc/svcsock.c
+===================================================================
+--- linux-2.6.orig/net/sunrpc/svcsock.c
++++ linux-2.6/net/sunrpc/svcsock.c
+@@ -779,7 +779,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	}
+ 
+ 	clear_bit(SK_DATA, &svsk->sk_flags);
+-	while ((err == kernel_recvmsg(svsk->sk_sock, &msg, NULL,
++	while ((err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+ 				      0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
+ 	       (skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
+ 		if (err == -EAGAIN) {
+
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
