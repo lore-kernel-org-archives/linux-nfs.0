@@ -1,59 +1,47 @@
-From: Thorsten Kranzkowski <dl8bcu@dl8bcu.de>
-Subject: Re: Odd log message associated with NFS
-Date: Tue, 27 Mar 2007 19:39:10 +0000
-Message-ID: <20070327193909.GA585@ds20.borg.net>
-References: <2fe399760703271140l703c2791oa84e9e1832487dcb@mail.gmail.com>
-Reply-To: dl8bcu@dl8bcu.de
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 3/4 Revised] NLM failover - statd
+	changes
+Date: Tue, 27 Mar 2007 18:46:20 -0400
+Message-ID: <46099EBC.6020804@redhat.com>
+References: <4508DFA0.2060806@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Phy Prabab <phyprabab@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S965398AbXC0UeS@vger.kernel.org>
-In-Reply-To: <2fe399760703271140l703c2791oa84e9e1832487dcb@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: cluster-devel@redhat.com, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HWKk0-0006z6-GY
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 16:06:12 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWKk1-0000BL-IG
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 16:06:14 -0700
+In-Reply-To: <4508DFA0.2060806@redhat.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Mar 27, 2007 at 11:40:48AM -0700, Phy Prabab wrote:
-> Hello,
-> 
-> I am currently running 2.6.21-rc5 and I am seeing quite a bit of this
-> message in my log files:
-> kernel: rpcsvc: received unknown control message:-2144992132/-1
-> 
-> This machine is an dual dual core opteron with 3Ware 9650 (14 disk
-> RAID10), 4G RAM, 64bit kernel, nfsutils-1.0.12 running knfsd.  This
-> machine is a  file server.
+Just did a browsing on 2.6.21.rc4 statd code (also with few quick test 
+runs to confirm). Look like this patch is no longer needed. I 
+tentatively withdraw this patch. Will continue the test this week. A 
+summary will be sent after all the testings are completed.
 
-Just a 'me, too':
+-- Wendy
 
-Mar 16 16:57:06 Marvin kernel: svc: bad direction 268435456, dropping request
-Mar 16 17:58:19 Marvin kernel: svc: bad direction 268435456, dropping request
-Mar 16 19:55:49 Marvin kernel: svc: bad direction 268435456, dropping request
-...
-Mar 17 04:30:03 Marvin kernel: svc: bad direction 268435456, dropping request
-Mar 17 06:28:52 Marvin kernel: pppd(795): unaligned trap at 0000020000207f90: 000000011fd8d33d 29 1
-Mar 17 06:28:55 Marvin kernel: inet_sk_reselect_saddr(): shifting inet->saddr from 82.149.xxx.xxx to 89.166.xxx.xxx
-Mar 17 09:05:21 Marvin kernel: rpcsvc: received unknown control message:-1024/186028080
-Mar 17 14:17:04 Marvin kernel: rpcsvc: received unknown control message:-1024/186028040
-Mar 17 14:17:31 Marvin kernel: rpcsvc: received unknown control message:-1024/186028040
-Mar 17 14:49:14 Marvin kernel: rpcsvc: received unknown control message:-1024/186028080
-Mar 17 14:49:15 Marvin kernel: rpcsvc: received unknown control message:-1024/186028040
-
-
-
-This is from my little 'server', alpha ev4 'noname', 2.6.21-rc3, compiled 
-with gcc 4.1.2
-
-client is mostly an alpha ev6 2.6.21-rc3, gcc 4.1.2.
-
-Apart from the messages NFS seems to run just fine currently.
-
-Bye,
-Thorsten 
-
-
-
--- 
-| Thorsten Kranzkowski        Internet: dl8bcu@dl8bcu.de                      |
-| Mobile: ++49 170 1876134       Snail: Kiebitzstr. 14, 49324 Melle, Germany  |
-| Ampr: dl8bcu@db0lj.#rpl.deu.eu, dl8bcu@marvin.dl8bcu.ampr.org [44.130.8.19] |
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
