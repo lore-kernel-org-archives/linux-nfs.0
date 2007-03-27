@@ -1,18 +1,22 @@
-From: "Jaimee" <andresoleanp@yusenvn.com>
-Subject: So what
-Date: Tue, 27 Mar 2007 16:52:41 +0500
-Message-ID: <61A47BC7.F1C57FFF@yusenvn.com>
-Reply-To: Jaimee <andresoleanp@yusenvn.com>
+From: Jason Keltz <jas@cse.yorku.ca>
+Subject: Re: fsid question
+Date: Tue, 27 Mar 2007 08:50:45 -0400
+Message-ID: <46091325.6050403@cse.yorku.ca>
+References: <46082D10.1060301@cse.yorku.ca> <46083474.8090906@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Tomiko <listswsusp-devel@lists.sourceforge.net>,
-	William <napster4be-dev@lists.sourceforge.net>,
-	Gay Rodriguez <aide-devel@lists.sourceforge.net>,
-	Ollie <berlin-design@lists.sourceforge.net>,
-	Sunny Morgan <nfs@lists.sourceforge.net>,
-	Isaias <r-imap@lists.sourceforge.net>
-To: "Lakesha Garcia" <plone-cvs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HWB8P-0006gb-Nv
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 05:50:46 -0700
+Received: from bronze.cs.yorku.ca ([130.63.90.34])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWB8Q-0007Ca-Pz
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 05:50:48 -0700
+In-Reply-To: <46083474.8090906@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,29 +29,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Receive a great markdown on your medications
-safe sorts, Outstanding quality.
-Massive selection, including laborious to find drugs
-0 RX considered necessary.
-Confidential with No waiting rooms or engagements required
-attain in bunch and Save! granting in addition
+Hi Wendy,
 
-type www [dot] pillsafe [.] org
-in Your Internet Explore
+Thanks for your response..
 
+A few more comments...
 
-He had no doubt Eureka had eaten his piglet, but he realized that a kitten
-cannot be depended upon at all times to act properly, since its nature is to
-destroy small animals and even birds for food, and the tame cat that we keep
-in our houses today is descended from the wild cat of the jungle--a very
-ferocious creature, indeedCuba! Is that a center of advanced scientific
-thought? Why did you not take your marvels to New York or Chicago; or, if
-you wished to cross the ocean, to Paris or Vienna? I never thought of those
-places, acknowledged Rob, meeklyFatality was not significantly different 
-Failures were significantly more common with combination therapy  Among all
-trials we found no evidence for any potential prevention of infection by
-resistant isolates with combination therapy  
+On 03/26/07 17:00, Wendy Cheng wrote:
+> Jason Keltz wrote:
+>> 1) How do I find out the fsid of an existing export so that I can 
+>> "hard-code" it in the /etc/exports file?
+>>   
+> The admin (root, or whoever has access rights to /etc/exports file) can 
+> pick one number between 0 and 0xffffffff and add it into /etc/exports. 
+> It comes and goes with each "exportfs" command. This id is used to 
+> construct NFS filehandle that will be sent to NFS client upon requests. 
+> NFS client uses file handle to communicate with NFS server on which file 
+> they want to have access. The fsid, if specified, is part of the file 
+> handle that uniquely identifies an export (one entry in /etc/exports file).
+> 
+> So as rule of thumb, you would not want to change fsid as long as there 
+> are NFS clients still out there trying to access the files on the 
+> server. It is, however, not a permanent ID since there is no filesystem 
+> "on-disk" record of it.
 
+The problem is that right now, I have several hundred clients who have 
+mounted the exported filesystems via NFS where I did not specify an 
+explicit fsid in the NFS sever /etc/exports file.   In order to start 
+using the fsid option, I need to know the existing fsids so that I can 
+hard-code those into /etc/exports.  This way, if the server is rebooted, 
+the clients will not be affected.  I could then choose fsids for NEW nfs 
+exported filesystems and hard-code those fsids into /etc/exports.  Is 
+there a Linux command, or an entry in /proc on the file server that will 
+let me know the existing fsids?
+
+>> 3) What is the best way for me to generate my own fsid?
+>>   
+> It is a number picked by admin and must be between 0 and 0xFFFFFFFF.
+> 
+
+Is the fsid specified in hex?
+
+Since the system will allocate its own fsid for NFS exported filesystems 
+that do not have a user-specified fsid, how do I choose fsids for my 
+user-specified fsid exports that will not conflict with those that the 
+system will use?
+
+Thanks,
+
+Jason.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
