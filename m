@@ -1,29 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: cel's patches under development
-Date: Mon, 26 Mar 2007 19:09:47 -0400
-Message-ID: <460852BB.4080503@oracle.com>
-Reply-To: chuck.lever@oracle.com
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: Re: [PATCH] knfsd : export : Fix bug of svc_export_parse()
+Date: Tue, 27 Mar 2007 09:36:47 +0800
+Message-ID: <4608752F.1010205@cn.fujitsu.com>
+References: <45FFA8E2.5000902@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070605030202050809000700"
-Cc: Olaf Kirch <olaf.kirch@oracle.com>
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: hch@infradead.org, nfs@lists.sourceforge.net
+To: nfsv4@linux-nfs.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HVyKt-0002Nm-QL
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 16:10:50 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HVyKu-0008HI-Su
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 16:10:50 -0700
-Received: from rgmgw3.us.oracle.com (rgmgw3.us.oracle.com [138.1.186.112])
-	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id
-	l2QNAeq6030195
-	for <nfs@lists.sourceforge.net>; Mon, 26 Mar 2007 17:10:40 -0600
-Received: from acsmt351.oracle.com (acsmt351.oracle.com [141.146.40.151])
-	by rgmgw3.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l2QML72N010920
-	for <nfs@lists.sourceforge.net>; Mon, 26 Mar 2007 17:10:40 -0600
+	id 1HW0hj-0008HC-TT
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 18:42:31 -0700
+Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HW0hk-0004Xk-OS
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 18:42:34 -0700
+In-Reply-To: <45FFA8E2.5000902@cn.fujitsu.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,64 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070605030202050809000700
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Nobody replied yet, but I think this is really a BUG of exportfs.
+exportfs command does not check so strictly, so maybe some unreasonable
+fh.key can be add to /proc/net/rpc/nfsd.fh/channel, but used this key to
+find fh.handle, this always be fail and still retry.
 
-This week's code drop is now available on linux-nfs.org in my git repo 
-(cel-2.6.git) under the branch called drop-20070326.
+It's this correct?
 
-This branch contains the remaining RPC transport switch patches against 
-2.6.21-rc5, IPv6 patches (such as they are), BKL elimination patches, an 
-immature set of in-kernel mount option parsing patches, and a long 
-series of patches that rework the NFS client XDR routines.
+> When I export /dev/null as root, and mount it from client, mount ntf4 command will frozen.
+>
+> You can test it by following command:
+> #exportfs -i -o fsid=0,no_root_squash,insecure,rw,async *:/dev/null
+> #mount -t nfs4 127.0.0.1:/ /tmp
+>
+> This is because in svc_export_parse() function, if check_export return 
+> false, after we reject the file handle, we must do cleanup the cache, 
+> which is not a format error of file handle.
+>
+> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+>
+> --- fs/nfsd/export.c.orig	2007-02-20 20:59:22.000000000 -0500
+> +++ fs/nfsd/export.c	2007-03-16 01:04:16.000000000 -0400
+> @@ -543,12 +543,13 @@ static int svc_export_parse(struct cache
+>  		if (err) goto out;
+>  		exp.ex_fsid = an_int;
+>  
+> -		err = check_export(nd.dentry->d_inode, exp.ex_flags);
+> -		if (err) goto out;
+> -
+>  		err = fsloc_parse(&mesg, buf, &exp.ex_fslocs);
+>  		if (err)
+>  			goto out;
+> +
+> +		err = check_export(nd.dentry->d_inode, exp.ex_flags);
+> +		if (err)
+> +			set_bit(CACHE_NEGATIVE, &exp.h.flags);
+>  	}
+>  
+>  	expp = svc_export_lookup(&exp);
+>   
 
-The NFS XDR rewrite is partially finished.  The v2 and v3 routines are 
-tested and working.  The NFSv4 encode routines are compile tested only, 
-and the decode routines haven't been changed yet.
-
-Plans include updates for NLM, rpcbind, and NFSROOT MNT.
-
---------------070605030202050809000700
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture -- Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------070605030202050809000700
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------070605030202050809000700
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070605030202050809000700--
