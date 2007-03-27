@@ -1,25 +1,23 @@
-From: kamikirin1@yahoo.co.jp
-Subject: =?iso-2022-jp?B?gUCBmoJngsiPl5Crie+I9YzAkuiBSTEwMIGTkcyW2pNJgsWCt4GZ?=
-Date: Mon, 26 Mar 2007 19:16:22 -0800 (PST)
-Message-ID: <1476.98185542158$1174965393@news.gmane.org>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: Re: [PATCH] knfsd : export : Fix bug of svc_export_parse()
+Date: Tue, 27 Mar 2007 12:36:27 +0800
+Message-ID: <46089F4B.7010100@cn.fujitsu.com>
+References: <45FFA8E2.5000902@cn.fujitsu.com> <4608752F.1010205@cn.fujitsu.com>
+	<17928.32377.572644.770583@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1423083837=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HW2AO-0000f2-OR
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 20:16:13 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HW2AO-0004eX-QX
-	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 20:16:15 -0700
-Received: from p8076-ipad406marunouchi.tokyo.ocn.ne.jp ([222.146.152.76]
-	helo=efgfgs.com)
-	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
-	id 1HVR7M-0002gc-3O
-	for nfs@lists.sourceforge.net; Sun, 25 Mar 2007 03:42:37 -0800
+	id 1HW3VQ-0000Rp-9Z
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 21:42:00 -0700
+Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HW3VQ-0000Dh-Me
+	for nfs@lists.sourceforge.net; Mon, 26 Mar 2007 21:42:02 -0700
+In-Reply-To: <17928.32377.572644.770583@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,94 +30,83 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1423083837==
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
+  I  have test some of the export entry's type: file, dir, symlink, 
+block device, char device, socket , fifo,  and dir which is a mount 
+entry used your patch, this patch can resolve all of this problem.
+  Thanks
 
-──────────────────────────────────
-　　┏━━━┓┏━━━━━━━━━━━━━━━━━━━━━━━━━┓
-　　┃ ━━ ┃┃　最　新　情　報                                　┃
-┏┓┃┏┓━┓┃ ■満足の女性数■詳細な地域情報■　ＳＥＸライフ■ ┃
-┗┛┗┛┗━┛┗━━━━━━━━━━━━━━━━━━━━━━━━━┛
+Neil Brown wrote:
+> On Tuesday March 27, yjwei@cn.fujitsu.com wrote:
+>   
+>> Nobody replied yet, but I think this is really a BUG of exportfs.
+>> exportfs command does not check so strictly, so maybe some unreasonable
+>> fh.key can be add to /proc/net/rpc/nfsd.fh/channel, but used this key to
+>> find fh.handle, this always be fail and still retry.
+>>
+>> It's this correct?
+>>     
+>
+> Sorry for not replying earlier.
+>
+> Yes, you have identified a real problem, but I'm not sure I agree with
+> the first.
+>
+> If someone (mountd) tried to tell the kernel to export "/dev/null", it
+> fails with an error (-ENODIR), and I think this is correct.
+>
+> Mountd should respond properly to this error, which it doesn't at the
+> moment.
+> When the request comes via the MOUNT protocol from an NFSv2 or NFSv3
+> client, mountd will fail the mount as it should.
+> However when the request comes from the kernel due to an NFSv4
+> request, the error is just ignored.  In that case we really should be
+> telling the kernel that the filehandle is not valid by writing out an
+> appropriate message.
+>
+>
+> Maybe something like this in nfs-utils.
+> What do you think?
+>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+>
+> ### Diffstat output
+>  ./utils/mountd/cache.c |    9 ++++++---
+>  1 file changed, 6 insertions(+), 3 deletions(-)
+>
+> diff .prev/utils/mountd/cache.c ./utils/mountd/cache.c
+> --- .prev/utils/mountd/cache.c	2007-03-27 12:11:52.000000000 +1000
+> +++ ./utils/mountd/cache.c	2007-03-27 12:13:40.000000000 +1000
+> @@ -469,7 +469,8 @@ void nfsd_fh(FILE *f)
+>  	}
+>  
+>  	if (found)
+> -		cache_export_ent(dom, found, found_path);
+> +		if (cache_export_ent(dom, found, found_path) < 0)
+> +			found = 0;
+>  
+>  	qword_print(f, dom);
+>  	qword_printint(f, fsidtype);
+> @@ -619,8 +620,10 @@ void nfsd_export(FILE *f)
+>  	}
+>  
+>  	if (found) {
+> -		dump_to_cache(f, dom, path, &found->m_export);
+> -		mountlist_add(dom, path);
+> +		if (dump_to_cache(f, dom, path, &found->m_export) < 0)
+> +			dump_to_cache(f, dom, path, NULL);
+> +		else
+> +			mountlist_add(dom, path);
+>  	} else {
+>  		dump_to_cache(f, dom, path, NULL);
+>  	}
+>   
 
-
-□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□
-
-　★Ｈな女性会員限定！100％体目的です☆
-
-　　　　　　　　　　　　　　　　　　　【完★全☆登★録☆無★料】
-
-□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□〓■〓□
-　　　　　　
-　　　　★彡★　http://sawandan.sakura.ne.jp/r.cgi?gets　★彡★
-
-==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*=*==*==*==*==*=
-
-★女子大生☆ＯＬ★フリーター☆保母★ナース☆モデルのたまご★人妻☆
-
-　　　　　　　　♪様々な素人女性たちが登録中♪
-
-　　　　★彡★　http://sawandan.sakura.ne.jp/r.cgi?gets　★彡★
-　　　
-==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*=*==*==*==*==*=
-
-★─────────[女性登録者一部ご紹介]──────────★ 　　　　　
-
-
-　　~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		【ミナコ】	
-　　　　恥ずかしいですが、今、男の人に飢えてます。
-　　　　会える人希望。私は23歳身長160cm体重47kgバストは
-        Cカップです。性格は明るくて優しいと言われます。
-　　　　楽しい時間が一緒に過ごせる嘘つかなくて優しい方が
-　　　　希望です。
-
-					↓↓メール返信してみる↓↓
-　　　　　★彡★　http://sawandan.sakura.ne.jp/r.cgi?gets　★彡★
-
-==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==
-
-		【さゆり】
-　　　　一緒に温泉とか行ける人を探しています。二人で
-　　　　混浴風呂に入ったり、一緒にお酒を飲んだり、お部屋で
-　　　　まったりしたりしたいです。エッチにも自信はあります。
-　　　　同じ気持ちの方はメール下さいね！！
-
-					↓↓メール返信してみる↓↓
-　　　　　★彡★　http://sawandan.sakura.ne.jp/r.cgi?gets　★彡★
-
-==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==*==
-　　　　　(　  ∧∧(　　   ∧ ∧_(　　 ∧ ∧　　　 |　　　|　
-　　　　～（＿( 　　∧∧＿(　 ∧ ∧＿ (　　  ∧ ∧　は～い♪ 
-　　　　     ～（＿(　,,)～（＿( 　,,)～（＿( 　,,) 
-　　　　　　　　～（＿__ﾉ　　～（＿__ﾉ 　～（＿__ﾉ
-wwwwww
-
-
-
-
-
-
---===============1423083837==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1423083837==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1423083837==--
