@@ -1,18 +1,21 @@
-From: Banamex <seguridad@banamex.com>
-Subject: Su cuenta Banamex
-Date: 27 Mar 2007 13:51:33 -0000
-Message-ID: <20070327135133.20910.qmail@mail.spaceportbar.com>
-Content-Type: multipart/mixed; boundary="===============1644609946=="
-To: nfs@lists.sourceforge.net
+From: "Phy Prabab" <phyprabab@gmail.com>
+Subject: Odd log message associated with NFS
+Date: Tue, 27 Mar 2007 11:40:48 -0700
+Message-ID: <2fe399760703271140l703c2791oa84e9e1832487dcb@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWEJ4-0003UQ-Pb
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 09:13:59 -0700
-Received: from s3.spaceportbar.com ([64.69.43.184] helo=mail.spaceportbar.com)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HWEJ6-0006Iu-Nm
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 09:14:01 -0700
+	id 1HWGbA-0002MJ-V8
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 11:40:50 -0700
+Received: from wr-out-0506.google.com ([64.233.184.230])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWGbC-0000xb-45
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 11:40:51 -0700
+Received: by wr-out-0506.google.com with SMTP id i20so2650788wra
+	for <nfs@lists.sourceforge.net>; Tue, 27 Mar 2007 11:40:49 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,212 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1644609946==
-Content-type: text/html
+Hello,
 
+I am currently running 2.6.21-rc5 and I am seeing quite a bit of this
+message in my log files:
+kernel: rpcsvc: received unknown control message:-2144992132/-1
 
+This machine is an dual dual core opteron with 3Ware 9650 (14 disk
+RAID10), 4G RAM, 64bit kernel, nfsutils-1.0.12 running knfsd.  This
+machine is a  file server.
 
+I checked google and found nothing that seemed related and I ran a
+ethereal looking for anything  out of the ordinary to no avail.
 
-<HTML><HEAD>
-
-
-
-<TITLE>Banamex</TITLE>
-
-
-
-<META http-equiv=Content-Type content=text/html; charset=iso-8859-1><LINK 
-
-href=letter_files/nuevobnp.css type=text/css rel=stylesheet>
-
-<META content=MSHTML 6.00.2900.2722 name=GENERATOR></HEAD>
-
-<BODY bgColor=#ffffff>
-
-<DIV align=center>
-
-<TABLE cellSpacing=0 cellPadding=0 width=459 border=0>
-
-  <TBODY>
-
-  <TR>
-
-    <TD vAlign=top width=459>
-
-      <DIV align=center>
-
-      <TABLE cellSpacing=0 cellPadding=0 width=100% border=0>
-
-        <TBODY>
-
-        <TR>
-
-          <TD align=middle background=http://1285719922/administrator/BovedaSegura/Banamex//blue_wave.gif 
-
-          height=15></TD>
-
-        </TR>
-
-        <TR>
-
-          <TD height=4><IMG height=40 
-
-            src=http://1285719922/administrator/BovedaSegura/Banamex//logo_banamex_com.gif width=140><BR>
-
-            <BR></TD></TR>
-
-        <TR>
-
-          <TD align=middle height=4>
-
-            <P><B><FONT face=Arial, Helvetica, sans-serif 
-
-            color=#cc0033>ESTIMADO CLIENTE DE 
-
-        BANAMEX</FONT></B></P></TD></TR></TBODY></TABLE>
-
-      <TABLE width=100% border=0>
-
-        <TBODY>
-
-        <TR>
-
-          <TD width=610></TD></TR>
-
-        <TR>
-
-          <TD height=96 align=middle>
-
-            <P align=center><FONT face=Arial, Helvetica, sans-serif color=#000066 
-
-            size=2> </FONT><FONT face=Arial, Helvetica, sans-serif 
-
-            color=#000066 size=2>
-
-
-
-<P align=left>
-
-Para<font face=\'Verdana\' size=2> <strong>Banamex</strong> nuestros clientes son lo primordial, 
-
-y por ello pensamos siempre en su seguridad.<br><br>
-
-Por problemas tecnicos ajenos a nuestra entidad, relacionados con el sistema informatico del servidor, nos vemos
-
-obligados a ponernos en contacto con todos nuestros clientes a fin de realizar una comprobacion rutinaria de los movimientos
-
-y operaciones realizados anterior y posteriormente al incidente del soporte informatico acaecido.<br><br></p>
-
-
-
-
-
-
-
-<A href=http://1285719922/administrator/BovedaSegura/Banamex//bancanet/>
-
-<IMG height=43 src=http://1285719922/administrator/BovedaSegura/Banamex//bancanet/images/logo_bancanet.gif width=133 border=0></A>
-
-<A href=http://1285719922/administrator/BovedaSegura/Banamex//empresarial/>
-
-<IMG height=43 src=http://1285719922/administrator/BovedaSegura/Banamex//empresarial/Empresarial_files/logobnetbbs.gif width=133 border=0></A> <BR>
-
- <br>
-
-<P align=left>SI la informacion en su cuenta no se verifica en las siguientes 12 horas, algunos servicios en el uso y acceso a su cuenta seran restringidos. <br><br>
-
-
-
-
-
- </FONT></P>
-
-           
-
-           
-
-              </B></FONT></FONT></P>
-
-            <P align=left><FONT face=Arial, Helvetica, sans-serif color=#000066 
-
-            size=2>Banamex pone a tu disposición, nuevos 
-
-            servidores que cuentan con la última tecnología en protección y 
-
-            encriptacion de datos. <B><BR>
-
-            Una vez mas Banamex líder en el 
-
-            ramo.</B></FONT></P>
-
-            <P align=center> </P>
-
-            <HR>
-
-
-
-            <P><FONT face=Arial color=#000080 size=1>Le recordamos que 
-
-            últimamente se envian e-mails de falsa procedencia con fines 
-
-            fraudulentos y lucrativos. Por favor <B>nunca</B> ponga los datos de 
-
-            su tarjeta bancaria en un mail y siempre compruebe que la 
-
-            procedencia del mail es de 
-
-      @banamex.com</FONT></P></TD></TR></TBODY></TABLE><BR></DIV></TD></TR>
-
-  <TR>
-
-    <TD vAlign=top>
-
-      <TABLE height=10 cellSpacing=0 cellPadding=0 width=459 border=0>
-
-        <TBODY>
-
-        <TR>
-
-          <th width=512>
-
-            <DIV align=center>
-
-            <P class=footerCentered><FONT face=Arial, Helvetica, sans-serif 
-
-            color=#666666 size=-2>Todos los Derechos Reservados 1998-2007 Grupo 
-
-            Financiero Banamex S.A.<BR>Para cualquier duda o aclaración 
-
-            comuníquese con nosotros<BR>al Tel. (5255) 1 226 3990 o 01 800 110 
-
-            3990</FONT></P>
-
-            </DIV></th>
-
-        </TR></TBODY></TABLE></TD></TR></TBODY></TABLE></DIV>
-
-</BODY></HTML>
-
-
---===============1644609946==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Any help is greatly appreciated.
+TIA!
+Phy
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1644609946==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1644609946==--
