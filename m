@@ -1,26 +1,28 @@
-From: Jason Keltz <jas@cse.yorku.ca>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: fsid question
-Date: Tue, 27 Mar 2007 10:57:34 -0400
-Message-ID: <460930DE.50507@cse.yorku.ca>
+Date: Tue, 27 Mar 2007 11:05:47 -0400
+Message-ID: <20070327150547.GA7161@fieldses.org>
 References: <46082D10.1060301@cse.yorku.ca> <46083474.8090906@redhat.com>
 	<46091325.6050403@cse.yorku.ca>
 	<46091498.6030706@moving-picture.com>
 	<46091C41.6070908@cse.yorku.ca>
-	<460929BA.9060509@moving-picture.com>
+	<460929BA.9060509@moving-picture.com> <460930DE.50507@cse.yorku.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: James Pearson <james-p@moving-picture.com>
+Cc: James Pearson <james-p@moving-picture.com>,
+	nfs@lists.sourceforge.net
+To: Jason Keltz <jas@cse.yorku.ca>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWD7B-00032i-Qq
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 07:57:37 -0700
-Received: from bronze.cs.yorku.ca ([130.63.90.34])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWD7C-0000UF-HC
-	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 07:57:40 -0700
-In-Reply-To: <460929BA.9060509@moving-picture.com>
+	id 1HWDF9-0003uM-T0
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:05:54 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HWDFA-0001RQ-IY
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 08:05:54 -0700
+In-Reply-To: <460930DE.50507@cse.yorku.ca>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,29 +35,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 03/27/07 10:27, James Pearson wrote:
-> Jason Keltz wrote:
-> 
->> Hi James.
->>
->> Thanks for your message.
->>
->> I'm not sure that I understand this though.  If the system is 
->> generating an fsid for NFS exports in the absence of a user-specified 
->> fsid, then changing the fsid and re-exporting the filesystem *should* 
->> essentially confuse the client? How does one choose an fsid that is 
->> not already in use on the system? I imagine there must be some way to 
->> list the currently used fsids for exported filesystems.
-> 
-> See the thread starting at:
-> 
-> <http://marc.info/?l=linux-nfs&m=110295083427898&w=2>
+On Tue, Mar 27, 2007 at 10:57:34AM -0400, Jason Keltz wrote:
+> That makes sense, but what is still not clear to me is why I can't have 
+> the system show me the existing fsid that it is using in the absence of 
+> a user-specified fsid.
 
-That makes sense, but what is still not clear to me is why I can't have 
-the system show me the existing fsid that it is using in the absence of 
-a user-specified fsid.
+There *is* no "existing fsid".  The fsid that you provide in the "fsid="
+export option is totally different from what's used by default to
+generate filehandles for that filesystem.
 
-Jason.
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
