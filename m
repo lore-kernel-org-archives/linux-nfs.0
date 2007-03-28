@@ -1,21 +1,28 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [NFS] [PATCH 0/18] export operations rewrite
-Date: Wed, 28 Mar 2007 17:39:34 +0100
-Message-ID: <20070328163934.GA9100@infradead.org>
-References: <20070317010946.GA24947@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Odd log message associated with NFS
+Date: Wed, 28 Mar 2007 12:59:25 -0400
+Message-ID: <20070328165925.GB21221@fieldses.org>
+References: <2fe399760703271140l703c2791oa84e9e1832487dcb@mail.gmail.com> <20070327193909.GA585@ds20.borg.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070317010946.GA24947@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: Thorsten Kranzkowski <dl8bcu@dl8bcu.de>,
+	Phy Prabab <phyprabab@gmail.com>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933148AbXC1Q73@vger.kernel.org>
+In-Reply-To: <20070327193909.GA585@ds20.borg.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Sat, Mar 17, 2007 at 01:09:46AM +0000, Christoph Hellwig wrote:
-> This patchset is a medium scale rewrite of the export operations
-> interface.  The goal is to make the interface less complex, and
-> easier to understand from the filesystem side, aswell as preparing
-> generic support for exporting of 64bit inode numbers.
+On Tue, Mar 27, 2007 at 07:39:10PM +0000, Thorsten Kranzkowski wrote:
+> Mar 16 16:57:06 Marvin kernel: svc: bad direction 268435456, dropping request
+> Mar 16 17:58:19 Marvin kernel: svc: bad direction 268435456, dropping request
+> Mar 16 19:55:49 Marvin kernel: svc: bad direction 268435456, dropping request
 
-Any comments on this?  So far I got two positive responses in private
-but no comment at all in public..
+So that's 2^28, in a field that should always be zero.  It's the very
+first check of any data read from the rpc call, so it'd be consistent
+with the call data being garbage, for one reason or another.
+
+What would cause that to happen, I don't know.  Do you have a reliable
+way to reproduce it?
+
+--b.
