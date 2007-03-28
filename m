@@ -1,92 +1,51 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Odd log message associated with NFS
-Date: Wed, 28 Mar 2007 12:19:52 +1000
-Message-ID: <17929.53448.506302.615732@notabene.brown>
-References: <2fe399760703271140l703c2791oa84e9e1832487dcb@mail.gmail.com>
-	<20070327193909.GA585@ds20.borg.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/4 Revised] NLM failover - nlm_set_igrace
+Date: Tue, 27 Mar 2007 22:45:17 -0400
+Message-ID: <20070328024517.GA15081@fieldses.org>
+References: <4508DF1A.4090907@redhat.com>
+	<17688.30806.252332.646157@cse.unsw.edu.au>
+	<4608474D.4030205@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Phy Prabab <phyprabab@gmail.com>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: dl8bcu@dl8bcu.de
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933112AbXC1CUI@vger.kernel.org>
-In-Reply-To: message from Thorsten Kranzkowski on Tuesday March 27
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, cluster-devel@redhat.com,
+	lhh@redhat.com, nfs@lists.sourceforge.net
+To: Wendy Cheng <wcheng@redhat.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HWOA4-0002DR-QB
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 19:45:22 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HWOA5-0007tF-Ur
+	for nfs@lists.sourceforge.net; Tue, 27 Mar 2007 19:45:23 -0700
+In-Reply-To: <4608474D.4030205@redhat.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday March 27, dl8bcu@dl8bcu.de wrote:
-> On Tue, Mar 27, 2007 at 11:40:48AM -0700, Phy Prabab wrote:
-> > Hello,
-> > 
-> > I am currently running 2.6.21-rc5 and I am seeing quite a bit of this
-> > message in my log files:
-> > kernel: rpcsvc: received unknown control message:-2144992132/-1
-> > 
-> > This machine is an dual dual core opteron with 3Ware 9650 (14 disk
-> > RAID10), 4G RAM, 64bit kernel, nfsutils-1.0.12 running knfsd.  This
-> > machine is a  file server.
-> 
-> Just a 'me, too':
+On Mon, Mar 26, 2007 at 06:21:01PM -0400, Wendy Cheng wrote:
+> Revised patch based on 2.6.21-rc4.
 
-For the 'unknown control message' messages,
-see:   "fix typo in svc_udp_recvfrom"  previously on
-nfs@lists.sourceforge.net.
+Were there supposed to be 4 patches?  If so, where can I find the full
+series?
 
-Fix is in -mm and below.
+--b.
 
-For "svc: bad direction" .... Don't know... garbage on the net maybe?
-Or maybe not.  I have seen something like that before, but haven't
-been able to pin it on anything yet.
-NeilBrown
-
-
---- linux-2.6.orig/net/sunrpc/svcsock.c
-+++ linux-2.6/net/sunrpc/svcsock.c
-@@ -779,7 +779,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	}
- 
- 	clear_bit(SK_DATA, &svsk->sk_flags);
--	while ((err == kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-+	while ((err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
- 				      0, 0, MSG_PEEK | MSG_DONTWAIT)) < 0 ||
- 	       (skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err)) == NULL) {
- 		if (err == -EAGAIN) {
-
-
-> 
-> Mar 16 16:57:06 Marvin kernel: svc: bad direction 268435456, dropping request
-> Mar 16 17:58:19 Marvin kernel: svc: bad direction 268435456, dropping request
-> Mar 16 19:55:49 Marvin kernel: svc: bad direction 268435456, dropping request
-> ...
-> Mar 17 04:30:03 Marvin kernel: svc: bad direction 268435456, dropping request
-> Mar 17 06:28:52 Marvin kernel: pppd(795): unaligned trap at 0000020000207f90: 000000011fd8d33d 29 1
-> Mar 17 06:28:55 Marvin kernel: inet_sk_reselect_saddr(): shifting inet->saddr from 82.149.xxx.xxx to 89.166.xxx.xxx
-> Mar 17 09:05:21 Marvin kernel: rpcsvc: received unknown control message:-1024/186028080
-> Mar 17 14:17:04 Marvin kernel: rpcsvc: received unknown control message:-1024/186028040
-> Mar 17 14:17:31 Marvin kernel: rpcsvc: received unknown control message:-1024/186028040
-> Mar 17 14:49:14 Marvin kernel: rpcsvc: received unknown control message:-1024/186028080
-> Mar 17 14:49:15 Marvin kernel: rpcsvc: received unknown control message:-1024/186028040
-> 
-> 
-> 
-> This is from my little 'server', alpha ev4 'noname', 2.6.21-rc3, compiled 
-> with gcc 4.1.2
-> 
-> client is mostly an alpha ev6 2.6.21-rc3, gcc 4.1.2.
-> 
-> Apart from the messages NFS seems to run just fine currently.
-> 
-> Bye,
-> Thorsten 
-> 
-> 
-> 
-> -- 
-> | Thorsten Kranzkowski        Internet: dl8bcu@dl8bcu.de                      |
-> | Mobile: ++49 170 1876134       Snail: Kiebitzstr. 14, 49324 Melle, Germany  |
-> | Ampr: dl8bcu@db0lj.#rpl.deu.eu, dl8bcu@marvin.dl8bcu.ampr.org [44.130.8.19] |
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+-------------------------------------------------------------------------
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
