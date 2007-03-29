@@ -1,21 +1,24 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
+From: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
 Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
-Date: Thu, 29 Mar 2007 11:51:58 +0200
-Message-ID: <200703291151.59120.bernd-schubert@gmx.de>
+Date: Thu, 29 Mar 2007 14:44:46 +0200
+Message-ID: <20070329124446.GZ23295@sith.mimuw.edu.pl>
 References: <17931.15549.578071.112573@notabene.brown>
+	<20070329084433.GA1627@sith.mimuw.edu.pl>
+	<17931.34669.47062.146703@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWrId-0001eL-CM
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:52:11 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HWrIe-0001mL-7Q
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:52:09 -0700
-In-Reply-To: <17931.15549.578071.112573@notabene.brown>
+	id 1HWtzh-0001vq-5A
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 05:44:45 -0700
+Received: from sith.mimuw.edu.pl ([193.0.96.4] ident=postfix)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWtzg-0006aX-7S
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 05:44:47 -0700
+In-Reply-To: <17931.34669.47062.146703@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,33 +31,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday 29 March 2007 06:12:45 Neil Brown wrote:
-> I've finished fiddling with statd, and am happy with mount.nfs now, so
-> it must be time for the first release candidate for nfs-utils-1.1.0.
->
+On Thu, 29 Mar 2007, Neil Brown wrote:
 
-While you are working on statd, maybe you can look into a problem I recently 
-had? 
-After the update from Debian Sarge to Etch, the update scripts dumped the 
-current portmapper status to read them in after the portmap restart. Well, 
-this was an update of a chroot and the portmapper never got restartet on the 
-server and so also the dump file wasn't deleted.
-The diskless clients using this chroot read in the dump file, but also 
-couldn't delete it, since it was located in a read-only nfs-export (*).
+> On Thursday March 29, baggins@sith.mimuw.edu.pl wrote:
+> > On Thu, 29 Mar 2007, Neil Brown wrote:
+> > 
+> > >  Run "statd" only when starting the NFS server.
+> > >  "statd" should be run before starting the NFS server.
+> > 
+> > While you're at it, can you tell me what should be the order of starting
+> > all NFS/NFS4 daemons? So far I got to this:
+> > 
+> > 1) statd
+> > 2) mountd
+> > 3) nfsd
+> > 4) idmapd
+> > 5) svcgssd
+> > 6) gssd
+> > 7) rquotad
+> > 8) any NFS mounts
+> > 
+> > Is it correct?
+> 
+> Hmm... good question.
+> 
+> I think:
+> 
+>   - idmapd and gssd should be started before any nfs mount
 
-The problem was statd, the dumpfile said that statd is running on a port < 
-1024, but since rpc.statd as user statd is not allowed to use ports <1024, it 
-refused to start up at all.
+That's quite obvious.
 
-Well, while this clearly can and should be solved by removing the stale 
-portmapper dump file, maybe there's also a solution for rpc.statd?
+>   - idmapd and svcgssd should be started before nfsd
 
+Here I must disagree, my experience shows that idmapd must be started (or
+at least restarted) after mountd (or exportfs) is run.
+I had no id mapping when I started idmapd before mountd/nfsd.
 
-Thanks,
-Bernd
+[...]
 
-PS: (*) Somewhere in /var, which will become writable after a union mount, 
-which will be done after the start-up of portmap.
+>  idmapd/svcgssd/gssd:
+>    simply provide service to the kernel modules.   So they should
+>    be running before the kernel wants them.
+
+What's troubling me here is svcgssd - does it behave like idmapd and
+requires mountd? My quick investigation in the source telss me it is so.
+
+Jan
+-- 
+Jan Rekorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
