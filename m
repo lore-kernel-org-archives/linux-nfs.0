@@ -1,22 +1,25 @@
-From: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
-Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
-Date: Thu, 29 Mar 2007 10:44:33 +0200
-Message-ID: <20070329084433.GA1627@sith.mimuw.edu.pl>
-References: <17931.15549.578071.112573@notabene.brown>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 2/18] exportfs: add fid type
+Date: Thu, 29 Mar 2007 10:28:33 +0100
+Message-ID: <20070329092833.GA11271@infradead.org>
+References: <20070317011009.GC24947@infradead.org>
+	<20070328233520.GL21221@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWqFC-0003VS-82
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 01:44:33 -0700
-Received: from sith.mimuw.edu.pl ([193.0.96.4] ident=postfix)
+	id 1HWqvw-0007kb-Ob
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:28:40 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HWqFD-0008Gq-Bt
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 01:44:32 -0700
-In-Reply-To: <17931.15549.578071.112573@notabene.brown>
+	(Exim 4.44) id 1HWqvx-0006BY-SJ
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:28:43 -0700
+In-Reply-To: <20070328233520.GL21221@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,30 +32,12 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 29 Mar 2007, Neil Brown wrote:
+On Wed, Mar 28, 2007 at 07:35:20PM -0400, J. Bruce Fields wrote:
+> A basic question: what do these apply against?
 
->  Run "statd" only when starting the NFS server.
->  "statd" should be run before starting the NFS server.
+They're against current mainline plus my patchset from Match 7th
+(starting with [PATCH 0/8] exportfs cleanups)
 
-While you're at it, can you tell me what should be the order of starting
-all NFS/NFS4 daemons? So far I got to this:
-
-1) statd
-2) mountd
-3) nfsd
-4) idmapd
-5) svcgssd
-6) gssd
-7) rquotad
-8) any NFS mounts
-
-Is it correct?
-
-Jan
--- 
-Jan Rekorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
-baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
-BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
