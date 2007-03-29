@@ -1,23 +1,21 @@
-From: Neil Brown <neilb@suse.de>
+From: Bernd Schubert <bernd-schubert@gmx.de>
 Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
-Date: Thu, 29 Mar 2007 19:31:25 +1000
-Message-ID: <17931.34669.47062.146703@notabene.brown>
+Date: Thu, 29 Mar 2007 11:51:58 +0200
+Message-ID: <200703291151.59120.bernd-schubert@gmx.de>
 References: <17931.15549.578071.112573@notabene.brown>
-	<20070329084433.GA1627@sith.mimuw.edu.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWqyg-00082h-He
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:31:30 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWqyi-0007ZJ-Ck
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:31:32 -0700
-In-Reply-To: message from Jan Rekorajski on Thursday March 29
+	id 1HWrId-0001eL-CM
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:52:11 -0700
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HWrIe-0001mL-7Q
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:52:09 -0700
+In-Reply-To: <17931.15549.578071.112573@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,73 +28,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday March 29, baggins@sith.mimuw.edu.pl wrote:
-> On Thu, 29 Mar 2007, Neil Brown wrote:
-> 
-> >  Run "statd" only when starting the NFS server.
-> >  "statd" should be run before starting the NFS server.
-> 
-> While you're at it, can you tell me what should be the order of starting
-> all NFS/NFS4 daemons? So far I got to this:
-> 
-> 1) statd
-> 2) mountd
-> 3) nfsd
-> 4) idmapd
-> 5) svcgssd
-> 6) gssd
-> 7) rquotad
-> 8) any NFS mounts
-> 
-> Is it correct?
+On Thursday 29 March 2007 06:12:45 Neil Brown wrote:
+> I've finished fiddling with statd, and am happy with mount.nfs now, so
+> it must be time for the first release candidate for nfs-utils-1.1.0.
+>
 
-Hmm... good question.
+While you are working on statd, maybe you can look into a problem I recently 
+had? 
+After the update from Debian Sarge to Etch, the update scripts dumped the 
+current portmapper status to read them in after the portmap restart. Well, 
+this was an update of a chroot and the portmapper never got restartet on the 
+server and so also the dump file wasn't deleted.
+The diskless clients using this chroot read in the dump file, but also 
+couldn't delete it, since it was located in a read-only nfs-export (*).
 
-I think:
+The problem was statd, the dumpfile said that statd is running on a port < 
+1024, but since rpc.statd as user statd is not allowed to use ports <1024, it 
+refused to start up at all.
 
-  - idmapd and gssd should be started before any nfs mount
-  - idmapd and svcgssd should be started before nfsd
-  - mountd should start before nfsd.
-  - sm-notify should start *after* nfsd.
-  - on reflection, statd can probably start slightly after nfsd,
-     and if statd is doing the notify, it should definitely be
-     after, so my above comment is wrong.  I'll fix it in the
-     next RC.
-     Similarly it should start before, or atmost slightly after, any
-     NFS mount.
-  - rquotad should probably start before nfsd, but it probably isn't
-    very important.
+Well, while this clearly can and should be solved by removing the stale 
+portmapper dump file, maybe there's also a solution for rpc.statd?
 
-Rationale:
 
- sm-notify:
-   On an NFS server, this tells the client to reclaim locks.  They
-   will try to do so straight away.  If nfsd hasn't started lockd yet,
-   they will fail and give up.   This is the most important
-   dependency.
-   On an NFS client, it simply tells the server to forget about old
-   locks, so when it starts isn't terribly important.
- statd:
-   This provides service to nfsd/lockd, but also it responds to
-   SM_NOTIFY from peers and then needs to talk to the kernel.
-   So kernel needs to talk to statd, and statd need to talk to kernel.
-   Both sides will retry on failure, so order isn't too important,
-   but there should not be a long gap between startup time.
- mountd:
-   provides "is this exported" service to nfsd.  If it isn't running
-   when the first nfs request arrives, it might be rejected
-   incorrectly.  This is probably the second most important
-   dependency.
- rquotad:
-   provides service to clients completely independently of nfsd
-   so when it starts probably doesn't matter.
- idmapd/svcgssd/gssd:
-   simply provide service to the kernel modules.   So they should
-   be running before the kernel wants them.
+Thanks,
+Bernd
 
-I think that covers everything.
-
-NeilBrown
+PS: (*) Somewhere in /var, which will become writable after a union mount, 
+which will be done after the start-up of portmap.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
