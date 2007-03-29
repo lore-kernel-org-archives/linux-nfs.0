@@ -1,23 +1,23 @@
-From: "Dickson X. Rowland" <sghfb@osterinc.com>
-Subject: irreplaceable moralist
-Date: Thu, 29 Mar 2007 10:27:50 +0100
-Message-ID: <001001c771e4$f8d85dc0$76c66078@mbu>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
+Date: Thu, 29 Mar 2007 19:31:25 +1000
+Message-ID: <17931.34669.47062.146703@notabene.brown>
+References: <17931.15549.578071.112573@notabene.brown>
+	<20070329084433.GA1627@sith.mimuw.edu.pl>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1693092630=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWqyE-0007yh-MU
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:31:02 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWqyF-0007K8-M0
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:31:05 -0700
-Received: from cdq46.neoplus.adsl.tpnet.pl ([83.30.166.46])
-	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
-	id 1HWqyC-00071I-Tx
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 01:31:02 -0800
+	id 1HWqyg-00082h-He
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:31:30 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWqyi-0007ZJ-Ck
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 02:31:32 -0700
+In-Reply-To: message from Jan Rekorajski on Thursday March 29
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,273 +30,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1693092630==
-Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_000C_01C771F5.BC5A7700"
+On Thursday March 29, baggins@sith.mimuw.edu.pl wrote:
+> On Thu, 29 Mar 2007, Neil Brown wrote:
+> 
+> >  Run "statd" only when starting the NFS server.
+> >  "statd" should be run before starting the NFS server.
+> 
+> While you're at it, can you tell me what should be the order of starting
+> all NFS/NFS4 daemons? So far I got to this:
+> 
+> 1) statd
+> 2) mountd
+> 3) nfsd
+> 4) idmapd
+> 5) svcgssd
+> 6) gssd
+> 7) rquotad
+> 8) any NFS mounts
+> 
+> Is it correct?
 
-------=_NextPart_000_000C_01C771F5.BC5A7700
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_000D_01C771F5.BC5C24B0"
+Hmm... good question.
 
-------=_NextPart_001_000D_01C771F5.BC5C24B0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+I think:
 
+  - idmapd and gssd should be started before any nfs mount
+  - idmapd and svcgssd should be started before nfsd
+  - mountd should start before nfsd.
+  - sm-notify should start *after* nfsd.
+  - on reflection, statd can probably start slightly after nfsd,
+     and if statd is doing the notify, it should definitely be
+     after, so my above comment is wrong.  I'll fix it in the
+     next RC.
+     Similarly it should start before, or atmost slightly after, any
+     NFS mount.
+  - rquotad should probably start before nfsd, but it probably isn't
+    very important.
 
--Atrios  23:21 Comment       Fresh Thread   Enjoy.
-Robert Regola in connection with the death of a teenage neighbor who was =
-shot with the senator's gun. Waxman also asked the two to meet with his =
-staff to explain how they handle e-mail accounts for government =
-officials. -Atrios  23:20 Comment       Thread   Enjoy -echidne  22:30 =
-Comment       F. This isn't simply political purism, it's about =
-validating a worldview.
-Gittens reports from New York.
--Atrios  10:22 Comment       Free Trip to Iraq   There is an easier way. =
-Farrell is not related to the victim. Tonight's Joey Scar Panel is Mike =
-Barnicle (fake liberal), Joan Walsh (moderate liberal), and John Nichols =
-(actual liberal).
-------=_NextPart_001_000D_01C771F5.BC5C24B0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Rationale:
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DArial size=3D2><IMG alt=3D"kindling" hspace=3D0=20
-src=3D"cid:000b01c771e4$f8cff950$76c66078@mbu" align=3Dbaseline=20
-border=3D0></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>-Atrios  23:21 Comment       Fresh =
-Thread  =20
-Enjoy.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Robert Regola in connection with the =
-death of a=20
-teenage neighbor who was shot with the senator's gun. Waxman also asked =
-the two to=20
-meet with his staff to explain how they handle e-mail accounts for =
-government=20
-officials. -Atrios  23:20 Comment       Thread   Enjoy -echidne  22:30 =
-Comment      =20
-F. This isn't simply political purism, it's about validating a=20
-worldview.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Gittens reports from New =
-York.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>-Atrios  10:22 Comment       Free Trip =
-to Iraq  =20
-There is an easier way. Farrell is not related to the victim. Tonight's =
-Joey Scar=20
-Panel is Mike Barnicle (fake liberal), Joan Walsh (moderate liberal), =
-and John=20
-Nichols (actual liberal).</FONT></DIV></BODY></HTML>
+ sm-notify:
+   On an NFS server, this tells the client to reclaim locks.  They
+   will try to do so straight away.  If nfsd hasn't started lockd yet,
+   they will fail and give up.   This is the most important
+   dependency.
+   On an NFS client, it simply tells the server to forget about old
+   locks, so when it starts isn't terribly important.
+ statd:
+   This provides service to nfsd/lockd, but also it responds to
+   SM_NOTIFY from peers and then needs to talk to the kernel.
+   So kernel needs to talk to statd, and statd need to talk to kernel.
+   Both sides will retry on failure, so order isn't too important,
+   but there should not be a long gap between startup time.
+ mountd:
+   provides "is this exported" service to nfsd.  If it isn't running
+   when the first nfs request arrives, it might be rejected
+   incorrectly.  This is probably the second most important
+   dependency.
+ rquotad:
+   provides service to clients completely independently of nfsd
+   so when it starts probably doesn't matter.
+ idmapd/svcgssd/gssd:
+   simply provide service to the kernel modules.   So they should
+   be running before the kernel wants them.
 
-------=_NextPart_001_000D_01C771F5.BC5C24B0--
+I think that covers everything.
 
-------=_NextPart_000_000C_01C771F5.BC5A7700
-Content-Type: image/gif;
-	name="southeasterly.gif"
-Content-Transfer-Encoding: base64
-Content-ID: <000b01c771e4$f8cff950$76c66078@mbu>
-
-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
-
-------=_NextPart_000_000C_01C771F5.BC5A7700--
-
-
-
---===============1693092630==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1693092630==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1693092630==--
