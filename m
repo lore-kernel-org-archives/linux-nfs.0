@@ -1,23 +1,27 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: fsid question
-Date: Thu, 29 Mar 2007 10:23:46 -0400
-Message-ID: <460BCBF2.20003@redhat.com>
-References: <46082D10.1060301@cse.yorku.ca>	<46083474.8090906@redhat.com>
-	<20070329155457.458bf8a9@slopi>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
+Date: Thu, 29 Mar 2007 12:35:21 -0400
+Message-ID: <20070329163521.GB6143@fieldses.org>
+References: <17931.15549.578071.112573@notabene.brown>
+	<20070329084433.GA1627@sith.mimuw.edu.pl>
+	<17931.34669.47062.146703@notabene.brown>
+	<20070329124446.GZ23295@sith.mimuw.edu.pl>
+	<1175178043.6182.4.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chris Osicki <osk@admin.swisscom-mobile.ch>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	Jan Rekorajski <baggins@sith.mimuw.edu.pl>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HWvr3-0006Bd-CM
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 07:43:58 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWvr5-0005uA-Gk
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 07:43:59 -0700
-In-Reply-To: <20070329155457.458bf8a9@slopi>
+	id 1HWxb9-0001Y7-6S
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 09:35:39 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HWxb8-0007E1-7H
+	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 09:35:41 -0700
+In-Reply-To: <1175178043.6182.4.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,51 +34,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chris Osicki wrote:
-> On Mon, 26 Mar 2007 17:00:36 -0400
-> Wendy Cheng <wcheng@redhat.com> wrote:
->
-> Hi
->
->   
->> Jason Keltz wrote:
->>     
->>> Hi.
->>>
->>> I'm running a RedHat Enterprise 4 system.
->>>
->>> I have a question about the fsid option in /etc/exports that I was 
->>> hoping someone might be able to help with.
->>>
->>> I am working with LVM under Linux.  If I export LVM volumes via NFS, the 
->>> fsid is based on major/minor number.  
->>>       
->> This statement needs correction. An NFS fsid is not based on major/minor 
->> numbers - it is is a 32 bit number that admin (root) can arbitrary 
->> choose and use to uniquely identify an NFS export. More on this in the 
->> following comment.
->>     
->
-> And this statement needs correction too ;-)
-> fsid _is_ based on major/minor number. I learned it the hard way,
-> seeing two filesystem swapped on NFS clients because of minor
-> number change after switching a cluster package to another node.
->
-> Then I read carefully fsid section in man 5 exports.
->
->   
-Well, I still don't see anywhere there is a documented definition that 
-says "(NFS) fsid _is_ based on major/minor number". The man page 
-describes it as "the filesystem identification portion of the file 
-handle and file attributes used on the wire". My opinion is that an NFS 
-"fsid" is the number you specify in the export file - nothing more.
+On Thu, Mar 29, 2007 at 10:20:43AM -0400, Trond Myklebust wrote:
+> On Thu, 2007-03-29 at 14:44 +0200, Jan Rekorajski wrote:
+> 
+> > >   - idmapd and svcgssd should be started before nfsd
+> > 
+> > Here I must disagree, my experience shows that idmapd must be started (or
+> > at least restarted) after mountd (or exportfs) is run.
+> > I had no id mapping when I started idmapd before mountd/nfsd.
+> 
+> The only reason I can think of why you might have to restart idmapd
+> after mountd is if your idmapd init script is failing to
+> mount /proc/fs/nfsd.
+> 
+> > >  idmapd/svcgssd/gssd:
+> > >    simply provide service to the kernel modules.   So they should
+> > >    be running before the kernel wants them.
+> > 
+> > What's troubling me here is svcgssd - does it behave like idmapd and
+> > requires mountd? My quick investigation in the source telss me it is so.
+> 
+> Ditto. svcgssd also assumes that you have mounted /proc/fs/nfsd. Fix
+> your svcgssd init script if this is not already the case.
 
-On the other hand, arguments like these are kind of silly. The important 
-thing is to advocate and make sure people know how to use "fsid" in a 
-clustered environment.
+That's been a common source of errors in the past.  Maybe svcgssd and
+idmapd should be taught to watch for changes to the /proc/ directories
+it cares about, maybe using dnotify or inotify.
 
--- Wendy
-
+--b.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
