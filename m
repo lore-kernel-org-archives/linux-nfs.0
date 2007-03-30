@@ -1,7 +1,7 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 7/8] Remove the now unused functions
-Date: Fri, 30 Mar 2007 18:32:19 -0400
-Message-ID: <20070330223219.28802.87863.stgit@RoCk.CiTi.UmIcH.EdU>
+Subject: [PATCH 5/8] Use newly added keytab functions
+Date: Fri, 30 Mar 2007 18:32:14 -0400
+Message-ID: <20070330223214.28802.46584.stgit@RoCk.CiTi.UmIcH.EdU>
 References: <20070330222511.28802.38147.stgit@RoCk.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HXPdq-0000LJ-Bh
-	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 15:32:18 -0700
+	id 1HXPdl-0000Kl-UC
+	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 15:32:14 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HXPds-0006Ol-10
-	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 15:32:20 -0700
+	(Exim 4.44) id 1HXPdn-0006KT-L3
+	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 15:32:16 -0700
 In-Reply-To: <20070330222511.28802.38147.stgit@RoCk.CiTi.UmIcH.EdU>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,287 +32,162 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-Remove functions that are no longer used when when obtaining
-machine credentials.
+Use the new functions added in the previous patch.
+
+Obtain machine credentials in a pre-determined order
+
+Look for appropriate machine credentials in the following order:
+     root/<fqdn>@REALM
+     nfs/<fqdn>@REALM
+     host/<fqdn>@REALM
+     root/<any-name>@REALM
+     nfs/<any-name>@REALM
+     host/<any-name>@REALM
+
+The first matching credential will be used.
+
+Also, the machine credentials to be used are now determined
+"on-demand" rather than at gssd startup.  This allows keytab
+additions to be noticed and used without requiring a restart of gssd.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- utils/gssd/krb5_util.c |  234 ------------------------------------------------
- utils/gssd/krb5_util.h |    1 
- 2 files changed, 0 insertions(+), 235 deletions(-)
+ utils/gssd/gssd.c      |    4 ----
+ utils/gssd/gssd.man    |   21 ++++++++++++++++-----
+ utils/gssd/gssd_proc.c |    8 +++++---
+ utils/gssd/krb5_util.c |   15 ++++++++-------
+ utils/gssd/krb5_util.h |    3 ++-
+ 5 files changed, 31 insertions(+), 20 deletions(-)
 
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 747637c..b6c4ee4 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -165,10 +165,6 @@ #endif
+ 	signal(SIGTERM, sig_die);
+ 	signal(SIGHUP, sig_hup);
+ 
+-	/* Process keytab file and get machine credentials */
+-	if (root_uses_machine_creds)
+-		gssd_refresh_krb5_machine_creds();
+-
+ 	gssd_run();
+ 	printerr(0, "gssd_run returned!\n");
+ 	abort();
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index f2ecd69..8da10b2 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -45,14 +45,25 @@ to use the keys found in
+ .I keytab
+ to obtain "machine credentials".
+ The default value is "/etc/krb5.keytab".
++.IP
+ Previous versions of
+ .B rpc.gssd
+ used only "nfs/*" keys found within the keytab.
+-Now, the first keytab entry for each distinct Kerberos realm
+-within the keytab is used.  This means that an NFS client
+-no longer needs an "nfs/hostname" principal and keytab entry,
+-but can instead use a "host/hostname" (or any other) keytab
+-entry that is available.
++To be more consistent with other implementations, we now look for
++specific keytab entries.  The search order for keytabs to be used
++for "machine credentials" is now:
++.br
++  root/<hostname>@<REALM>
++.br
++  nfs/<hostname>@<REALM>
++.br
++  host/<hostname>@<REALM>
++.br
++  root/<anyname>@<REALM>
++.br
++  nfs/<anyname>@<REALM>
++.br
++  host/<anyname>@<REALM>
+ .TP
+ .B -p path
+ Tells
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index eff740c..48880b6 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -700,14 +700,16 @@ handle_krb5_upcall(struct clnt_info *clp
+ 		if (uid == 0 && root_uses_machine_creds == 1) {
+ 			int success = 0;
+ 
++			gssd_refresh_krb5_machine_credential(clp->servername,
++							     NULL);
+ 			/*
+ 			 * Get a list of credential cache names and try each
+ 			 * of them until one works or we've tried them all
+ 			 */
+ 			if (gssd_get_krb5_machine_cred_list(&credlist)) {
+-				printerr(0, "WARNING: Failed to obtain machine "
+-					 "credentials for connection to "
+-					 "server %s\n", clp->servername);
++				printerr(0, "ERROR: No credentials found "
++					 "for connection to server %s\n",
++					 clp->servername);
+ 					goto out_return_error;
+ 			}
+ 			for (ccname = credlist; ccname && *ccname; ccname++) {
 diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 5d433b1..50773b1 100644
+index 20396e0..dee2639 100644
 --- a/utils/gssd/krb5_util.c
 +++ b/utils/gssd/krb5_util.c
-@@ -134,9 +134,6 @@ static int select_krb5_ccache(const stru
- static int gssd_find_existing_krb5_ccache(uid_t uid, struct dirent **d);
- static int gssd_get_single_krb5_cred(krb5_context context,
- 		krb5_keytab kt, struct gssd_k5_kt_princ *ple);
--static int gssd_have_realm_ple(void *realm);
--static int gssd_process_krb5_keytab(krb5_context context, krb5_keytab kt,
--		char *kt_name);
+@@ -358,8 +358,8 @@ #ifdef TEST_SHORT_LIFETIME
+ 	printerr(0, "WARNING: Using (debug) short machine cred lifetime!\n");
+ 	krb5_get_init_creds_opt_set_tkt_life(&options, 5*60);
+ #endif
+-        if ((code = krb5_get_init_creds_keytab(context, &my_creds, ple->princ,
+-	                                  kt, 0, NULL, &options))) {
++	if ((code = krb5_get_init_creds_keytab(context, &my_creds, ple->princ,
++					       kt, 0, NULL, &options))) {
+ 		char *pname;
+ 		if ((krb5_unparse_name(context, ple->princ, &pname))) {
+ 			pname = NULL;
+@@ -1146,18 +1146,19 @@ gssd_get_krb5_machine_cred_list(char ***
+ 	retval = -1;
+ 	*list = (char **) NULL;
  
+-	/* Refresh machine credentials */
+-	if ((retval = gssd_refresh_krb5_machine_creds())) {
+-		goto out;
+-	}
+-
+ 	if ((l = (char **) malloc(listsize * sizeof(char *))) == NULL) {
+ 		retval = ENOMEM;
+ 		goto out;
+ 	}
  
- /*
-@@ -422,147 +419,6 @@ #endif
- }
- 
- /*
-- * Determine if we already have a ple for the given realm
-- *
-- * Returns:
-- *	0 => no ple found for given realm
-- *	1 => found ple for given realm
-- */
--static int
--gssd_have_realm_ple(void *r)
--{
--	struct gssd_k5_kt_princ *ple;
--#ifdef HAVE_KRB5
--	krb5_data *realm = (krb5_data *)r;
--#else
--	char *realm = (char *)r;
--#endif
--
--	for (ple = gssd_k5_kt_princ_list; ple; ple = ple->next) {
--#ifdef HAVE_KRB5
--		if ((realm->length == strlen(ple->realm)) &&
--		    (strncmp(realm->data, ple->realm, realm->length) == 0)) {
--#else
--		if (strcmp(realm, ple->realm) == 0) {
--#endif
--		    return 1;
--		}
--	}
--	return 0;
--}
--
--/*
-- * Process the given keytab file and create a list of principals we
-- * might use as machine credentials.
-- *
-- * Returns:
-- *	0 => Sucess
-- *	nonzero => Error
-- */
--static int
--gssd_process_krb5_keytab(krb5_context context, krb5_keytab kt, char *kt_name)
--{
--	krb5_kt_cursor cursor;
--	krb5_keytab_entry kte;
--	krb5_error_code code;
--	struct gssd_k5_kt_princ *ple;
--	int retval = -1;
--
--	/*
--	 * Look through each entry in the keytab file and determine
--	 * if we might want to use it as machine credentials.  If so,
--	 * save info in the global principal list (gssd_k5_kt_princ_list).
--	 * Note: (ple == principal list entry)
--	 */
--	if ((code = krb5_kt_start_seq_get(context, kt, &cursor))) {
--		printerr(0, "ERROR: %s while beginning keytab scan "
--			    "for keytab '%s'\n",
--			error_message(code), kt_name);
--		retval = code;
--		goto out;
--	}
--
--	while ((code = krb5_kt_next_entry(context, kt, &kte, &cursor)) == 0) {
--		char *pname;
--		if ((code = krb5_unparse_name(context, kte.principal,
--					      &pname))) {
--			printerr(0, "WARNING: Skipping keytab entry because "
--				    "we failed to unparse principal name: %s\n",
--				 error_message(code));
--			krb5_kt_free_entry(context, &kte);
--			continue;
--		}
--		printerr(2, "Processing keytab entry for principal '%s'\n",
--			 pname);
--		/* Just use the first keytab entry found for each realm */
--	        if ((!gssd_have_realm_ple((void *)&kte.principal->realm)) ) {
--			printerr(2, "We WILL use this entry (%s)\n", pname);
--			ple = malloc(sizeof(struct gssd_k5_kt_princ));
--			if (ple == NULL) {
--				printerr(0, "ERROR: could not allocate storage "
--					    "for principal list entry\n");
--				k5_free_unparsed_name(context, pname);
--				krb5_kt_free_entry(context, &kte);
--				retval = ENOMEM;
--				goto out;
--			}
--			/* These will be filled in later */
--			ple->next = NULL;
--			ple->ccname = NULL;
--			ple->endtime = 0;
--			if ((ple->realm =
--#ifdef HAVE_KRB5
--				strndup(kte.principal->realm.data,
--					kte.principal->realm.length))
--#else
--				strdup(kte.principal->realm))
--#endif
--					== NULL) {
--				printerr(0, "ERROR: %s while copying realm to "
--					    "principal list entry\n",
--					 "not enough memory");
--				k5_free_unparsed_name(context, pname);
--				krb5_kt_free_entry(context, &kte);
--				retval = ENOMEM;
--				goto out;
--			}
--			if ((code = krb5_copy_principal(context,
--					kte.principal, &ple->princ))) {
--				printerr(0, "ERROR: %s while copying principal "
--					    "to principal list entry\n",
--					error_message(code));
--				k5_free_unparsed_name(context, pname);
--				krb5_kt_free_entry(context, &kte);
--				retval = code;
--				goto out;
--			}
--			if (gssd_k5_kt_princ_list == NULL)
--				gssd_k5_kt_princ_list = ple;
--			else {
--				ple->next = gssd_k5_kt_princ_list;
--				gssd_k5_kt_princ_list = ple;
--			}
--		}
--		else {
--			printerr(2, "We will NOT use this entry (%s)\n",
--				pname);
--		}
--		k5_free_unparsed_name(context, pname);
--		krb5_kt_free_entry(context, &kte);
--	}
--
--	if ((code = krb5_kt_end_seq_get(context, kt, &cursor))) {
--		printerr(0, "WARNING: %s while ending keytab scan for "
--			    "keytab '%s'\n",
--			 error_message(code), kt_name);
--	}
--
--	retval = 0;
--  out:
--	return retval;
--}
--
--/*
-  * Depending on the version of Kerberos, we either need to use
-  * a private function, or simply set the environment variable.
-  */
-@@ -1039,96 +895,6 @@ gssd_setup_krb5_machine_gss_ccache(char 
- }
- 
- /*
-- * The first time through this routine, go through the keytab and
-- * determine which keys we will try to use as machine credentials.
-- * Every time through this routine, try to obtain credentials using
-- * the keytab entries selected the first time through.
-- *
-- * Returns:
-- *	0 => obtained one or more credentials
-- *	nonzero => error
-- *
-- */
--
--int
--gssd_refresh_krb5_machine_creds(void)
--{
--	krb5_context context = NULL;
--	krb5_keytab kt = NULL;;
--	krb5_error_code code;
--	int retval = -1;
--	struct gssd_k5_kt_princ *ple;
--	int gotone = 0;
--	static int processed_keytab = 0;
--
--
--	code = krb5_init_context(&context);
--	if (code) {
--		printerr(0, "ERROR: %s while initializing krb5 in "
--			    "gssd_refresh_krb5_machine_creds\n",
--			 error_message(code));
--		retval = code;
--		goto out;
--	}
--
--	printerr(1, "Using keytab file '%s'\n", keytabfile);
--
--	if ((code = krb5_kt_resolve(context, keytabfile, &kt))) {
--		printerr(0, "ERROR: %s while resolving keytab '%s'\n",
--			 error_message(code), keytabfile);
--		goto out;
--	}
--
--	/* Only go through the keytab file once.  Only print messages once. */
--	if (gssd_k5_kt_princ_list == NULL && !processed_keytab) {
--		processed_keytab = 1;
--		gssd_process_krb5_keytab(context, kt, keytabfile);
--		if (gssd_k5_kt_princ_list == NULL) {
--			printerr(0, "ERROR: No usable keytab entries found in "
--				    "keytab '%s'\n", keytabfile);
--			printerr(0, "Do you have a valid keytab entry for "
--				    "%s/<your.host>@<YOUR.REALM> in "
--				    "keytab file %s ?\n",
--				    GSSD_SERVICE_NAME, keytabfile);
--			printerr(0, "Continuing without (machine) credentials "
--				    "- nfs4 mounts with Kerberos will fail\n");
--		}
--	}
--
--	/*
--	 * If we don't have any keytab entries we liked, then we have a problem
--	 */
--	if (gssd_k5_kt_princ_list == NULL) {
--		retval = ENOENT;
--		goto out;
--	}
--
--	/*
--	 * Now go through the list of saved entries and get initial
--	 * credentials for them (We can't do this while making the
--	 * list because it messes up the keytab iteration cursor
--	 * when we use the keytab to get credentials.)
--	 */
--	for (ple = gssd_k5_kt_princ_list; ple; ple = ple->next) {
--		if ((gssd_get_single_krb5_cred(context, kt, ple)) == 0) {
--			gotone++;
--		}
--	}
--	if (!gotone) {
--		printerr(0, "ERROR: No usable machine credentials obtained\n");
--		goto out;
--	}
--
--	retval = 0;
--  out:
--  	if (kt) krb5_kt_close(context, kt);
--	krb5_free_context(context);
--
--	return retval;
--}
--
--
--/*
-  * Return an array of pointers to names of credential cache files
-  * which can be used to try to create gss contexts with a server.
-  *
++	/* Need to serialize list if we ever become multi-threaded! */
++
+ 	for (ple = gssd_k5_kt_princ_list; ple; ple = ple->next) {
+ 		if (ple->ccname) {
++			/* Make sure cred is up-to-date before returning it */
++			retval = gssd_refresh_krb5_machine_credential(NULL, ple);
++			if (retval)
++				continue;
+ 			if (i + 1 > listsize) {
+ 				listsize += listinc;
+ 				l = (char **)
 diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index ce7cb57..6041048 100644
+index 625d53c..ce7cb57 100644
 --- a/utils/gssd/krb5_util.h
 +++ b/utils/gssd/krb5_util.h
-@@ -19,7 +19,6 @@ struct gssd_k5_kt_princ {
+@@ -5,7 +5,8 @@ #include <krb5.h>
  
- void gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername);
- int  gssd_get_krb5_machine_cred_list(char ***list);
--int  gssd_refresh_krb5_machine_creds(void);
- void gssd_free_krb5_machine_cred_list(char **list);
- void gssd_setup_krb5_machine_gss_ccache(char *servername);
- void gssd_destroy_krb5_machine_creds(void);
+ /*
+  * List of principals from our keytab that we
+- * may try to get credentials for
++ * will try to use to obtain credentials
++ * (known as a principal list entry (ple))
+  */
+ struct gssd_k5_kt_princ {
+ 	struct gssd_k5_kt_princ *next;
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
