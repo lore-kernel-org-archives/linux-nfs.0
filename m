@@ -1,35 +1,21 @@
-From: Klaus Steinberger <Klaus.Steinberger@physik.uni-muenchen.de>
-Subject: Re: fsid question
-Date: Fri, 30 Mar 2007 08:38:29 +0200
-Message-ID: <200703300838.32685.Klaus.Steinberger@physik.uni-muenchen.de>
-References: <mailman.7028.1175219061.5558.nfs@lists.sourceforge.net>
+From: InsaneToucan <insanetoucan@gmail.com>
+Subject: mounting tmpfs: permission denied
+Date: Fri, 30 Mar 2007 15:16:41 -0600
+Message-ID: <1c9889d10703301416s6c1a8b38h54d653036d9ed1cf@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0160109544=="
+Content-Type: multipart/mixed; boundary="===============1482005882=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HXAlA-0003CX-Aq
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 23:38:52 -0700
-Received: from mail.physik.uni-muenchen.de ([192.54.42.129])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HXAlB-0007Oc-63
-	for nfs@lists.sourceforge.net; Thu, 29 Mar 2007 23:38:54 -0700
-Received: from localhost (unknown [127.0.0.1])
-	by mail.physik.uni-muenchen.de (Postfix) with ESMTP id 280C020065
-	for <nfs@lists.sourceforge.net>; Fri, 30 Mar 2007 08:38:47 +0200 (CEST)
-Received: from mail.physik.uni-muenchen.de ([127.0.0.1])
-	by localhost (mail.physik.uni-muenchen.de [127.0.0.1]) (amavisd-new,
-	port 10023)
-	with LMTP id 6wgqoKvjaaiJ for <nfs@lists.sourceforge.net>;
-	Fri, 30 Mar 2007 08:38:46 +0200 (CEST)
-Received: from [172.23.17.209] (tmo-102-13.customers.d1-online.com
-	[80.187.102.13])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.physik.uni-muenchen.de (Postfix) with ESMTP id 1924A20032
-	for <nfs@lists.sourceforge.net>; Fri, 30 Mar 2007 08:38:46 +0200 (CEST)
-In-Reply-To: <mailman.7028.1175219061.5558.nfs@lists.sourceforge.net>
+	id 1HXOSh-00065c-AC
+	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 14:16:43 -0700
+Received: from wr-out-0506.google.com ([64.233.184.237])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HXOSh-0005op-1V
+	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 14:16:45 -0700
+Received: by wr-out-0506.google.com with SMTP id i20so1407645wra
+	for <nfs@lists.sourceforge.net>; Fri, 30 Mar 2007 14:16:41 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,102 +28,103 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0160109544==
-Content-Type: multipart/signed; boundary="nextPart6999505.zr8cbGAelt";
-	protocol="application/pkcs7-signature"; micalg=sha1
-Content-Transfer-Encoding: 7bit
+--===============1482005882==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_85969_2212863.1175289401181"
 
---nextPart6999505.zr8cbGAelt
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+------=_Part_85969_2212863.1175289401181
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
+Hello,
 
-> Well, I still don't see anywhere there is a documented definition that
-> says "(NFS) fsid _is_ based on major/minor number". The man page
-> describes it as "the filesystem identification portion of the file
+Some environment info [server]:
 
-I could not tell you out of memory where it is defined, too bad it's not in=
-=20
-the man page: Should be enhanced!
+$ uname -a
+Linux joz 2.6.20 #4 SMP Wed Mar 28 22:03:35 CDT 2007 x86_64 Dual Core AMD
+Opteron(tm) Processor 870 AuthenticAMD GNU/Linux
 
-Definitly the default for fsid is based on major/minor number, as long as y=
-ou=20
-don't have a fsid option in you're exports file.
+nfs-utils v1.0.12
 
-> On the other hand, arguments like these are kind of silly. The important
-> thing is to advocate and make sure people know how to use "fsid" in a
-> clustered environment.
+$ zgrep "NFS" /proc/config.gz
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V3_ACL is not set
+# CONFIG_NFS_V4 is not set
+# CONFIG_NFS_DIRECTIO is not set
+CONFIG_NFSD=y
+CONFIG_NFSD_V3=y
+# CONFIG_NFSD_V3_ACL is not set
+# CONFIG_NFSD_V4 is not set
+CONFIG_NFSD_TCP=y
+CONFIG_ROOT_NFS=y
+CONFIG_NFS_COMMON=y
 
-Not only in clustered environment. It is necessary to use fsid in an LVM=20
-environment. I learned this also the hard way, I always wondered about stal=
-e=20
-handles on clients after server reboots and reexports, until I learned that=
-=20
-lvm minor numbers can change, and until I discovered fsid.
+$ cat /etc/exports
+/pu 10.1.2.0/255.255.255.0(async,no_subtree_check,rw,no_root_squash)
+/tmpfs 10.1.2.0/255.255.255.0(ro,no_root_squash,no_subtree_check)
 
-But be careful! There is nothing that prevents you from using same fsid for=
-=20
-different exports.=20
+$ cat /proc/mounts | grep /tmpfs
+none /tmpfs tmpfs rw 0 0
 
-Sincerly,
-Klaus
+For the client:
 
+$ uname -a
+Linux woa 2.6.20.2 #2 SMP Thu Mar 15 10:19:39 PDT 2007 x86_64 AMD
+Opteron(tm) Processor 246 AuthenticAMD GNU/Linux
 
+$ zgrep "NFS" /proc/config.gz
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V3_ACL is not set
+# CONFIG_NFS_V4 is not set
+# CONFIG_NFS_DIRECTIO is not set
+CONFIG_NFSD=y
+CONFIG_NFSD_V3=y
+# CONFIG_NFSD_V3_ACL is not set
+# CONFIG_NFSD_V4 is not set
+CONFIG_NFSD_TCP=y
+CONFIG_ROOT_NFS=y
+CONFIG_NFS_COMMON=y
 
-=2D-=20
-Klaus Steinberger         Beschleunigerlaboratorium
-Phone: (+49 89)289 14287  Am Coulombwall 6, D-85748 Garching, Germany
-=46AX:   (+49 89)289 14280  EMail: Klaus.Steinberger@Physik.Uni-Muenchen.DE
-URL: http://www.physik.uni-muenchen.de/~Klaus.Steinberger/
+nfs-utils v1.0.12
 
---nextPart6999505.zr8cbGAelt
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Transfer-Encoding: base64
+The following fails on the client (after a exportfs -ra on the server):
 
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIFjDCCBYgw
-ggRwoAMCAQICIgIcEfzCWRj84N0ovUz5SjKEgQwQzxFCqIulIz0HiQICHeowDQYJKoZIhvcNAQEF
-BQAwMTEaMBgGA1UECxMRT3JnYW5pemF0aW9uYWwgQ0ExEzARBgNVBAoUClBIWVNJS19MTVUwHhcN
-MDYwNzE4MjExNzUxWhcNMDgwNzE4MjExNzUxWjBRMRowGAYDVQQDExFLbGF1cy5TdGVpbmJlcmdl
-cjEPMA0GA1UECxMGQ2FtcHVzMREwDwYDVQQLEwhQZXJzb25lbjEPMA0GA1UEChMGcGh5c2lrMIIB
-IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoQVr41ywihIxYYm2VkGZfaGY9Tim6Zjr33mt
-rJozo2C7nBzp0LRCnCE1r9A6ChqJQAT9Ue8zFSqolTiggpot3/A8yjO4Vhl6g+iDVowYCPsQ+ZQF
-jEMOvAzx+QO68T24m6a2gXjvMTNxGthZ2a5vwumjXBl+WcFDKMpUawgq1Fi8SLgZkhpQiRqBuV/c
-M+mwDw4VTTrTojMaGnuZ42BfRZgWN4z2HzEpw/jWVgjb3TRI6iPcJCTQkFjJvWFjCVVUhNxY4WcT
-PHk0eknF6XP6OmSJYtcuvh8T8k1dQkbw2gGCvkAquno95oU9IUWTdAefJbqPnlFay8QEfgxw+2tN
-LQIDAQABo4ICaDCCAmQwHQYDVR0OBBYEFEarvDrx/qplN8kFmZEuWKKYIcHmMB8GA1UdIwQYMBaA
-FCd+as72rN8F4f01rGTrSFAPb99YMDMGA1UdEQQsMCqBKEtsYXVzLlN0ZWluYmVyZ2VyQHBoeXNp
-ay51bmktbXVlbmNoZW4uZGUwggHMBgtghkgBhvg3AQkEAQSCAbswggG3BAIBAAEB/xMdTm92ZWxs
-IFNlY3VyaXR5IEF0dHJpYnV0ZSh0bSkWQ2h0dHA6Ly9kZXZlbG9wZXIubm92ZWxsLmNvbS9yZXBv
-c2l0b3J5L2F0dHJpYnV0ZXMvY2VydGF0dHJzX3YxMC5odG0wggFIoBoBAQAwCDAGAgEBAgFGMAgw
-BgIBAQIBCgIBaaEaAQEAMAgwBgIBAQIBRjAIMAYCAQECAQoCAWmiBgIBFAEB/6OCAQSgWAIBAgIC
-AP8CAQADDQCAAAAAAAAAAAAAAAADCQCAAAAAAAAAADAYMBACAQACCH//////////AQEAAgQG8N9I
-MBgwEAIBAAIIf/////////8BAQACBAbw30ihWAIBAgICAP8CAQADDQBAAAAAAAAAAAAAAAADCQBA
-AAAAAAAAADAYMBACAQACCH//////////AQEAAgQR/MJZMBgwEAIBAAIIf/////////8BAQACBBH8
-wlmiTjBMAgECAgEAAgIA/wMNAIAAAAAAAAAAAAAAAAMJAIAAAAAAAAAAMBIwEAIBAAIIf///////
-//8BAQAwEjAQAgEAAgh//////////wEBADAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQw
-DQYJKoZIhvcNAQEFBQADggEBADn6nE8CjYaTPbQvB3St+tJk5MoJRXkAvFZ2JgotA3cB9447W/EY
-HNe37KwbttFpKHZ2hhJ0dacWieodQvyrT+jH1z4/TEhSy5QNKkScuiYI2BcTydFuXC2QYjBfDkny
-JrzEdlt9HxAAcegVDNGN3nrwNFfY5FhdSq64mZWMK7GJzI9rQ80DbMqK6sua2LpXMoOYiDgONsDa
-HWkqVX4P0HmhEqRs/BK+YUDgtI+Do7Uymyz3QlW9WSoyfkYIdTLOS1CkcYwpAh4deDs3ib+5qJsE
-x9/KSRbtDdvgFhAihvOpdWfmRhFPF0E2dxiYZAGuYmhQ8Ur053fg6pQ36G/tJj0xggIIMIICBAIB
-ATBXMDExGjAYBgNVBAsTEU9yZ2FuaXphdGlvbmFsIENBMRMwEQYDVQQKFApQSFlTSUtfTE1VAiIC
-HBH8wlkY/ODdKL1M+UoyhIEMEM8RQqiLpSM9B4kCAh3qMAcGBSsOAwIaoIGLMBgGCSqGSIb3DQEJ
-AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTA3MDMzMDA2MzgyOVowIwYJKoZIhvcNAQkE
-MRYEFDLNEx4fSFVE3IXf8pNxjx9nd4UPMCwGCSqGSIb3DQEJDzEfMB0wDQYJYIZIAWUDBAECBQAw
-DAYIKoZIhvcNAwcFADALBgkqhkiG9w0BAQEEggEAfCd9PjKvcpPjiuBYqDE8k0i/bEdBZe+4CjWN
-qVrYr3uImdLdYe228WW8WhNJgn+EK8OVwXvWfyar6XJJeNZgto2CEeOpM7onpxhRl0EYNiapViR1
-fIpHL1JoAMtipyYHhICpgaoWvA7ZM99Kk+8Kmy02qCgkHNwmMGaOfzOTtdDKlIhNFiXObta+Racm
-GbbzvlmAk3KprsJMNxtFkLFlk3EbsvtOGLqroEk4QuAHOdLqVZ6b1ujz2d8/MKt4EoP9FSGvG4ra
-5Wgvt7eQ7S2V2Y+1YY6CQ61rF93aXr13zod67q+N+ftbTzjjSRJmANvPx5NXUmi9iDm8BpnqMs0k
-jgAAAAAAAA==
+$ mount -o ro 10.1.2.130:/tmpfs /a
+mount: 10.1.2.130:/tmpfs failed, reason given by server: Permission denied
 
---nextPart6999505.zr8cbGAelt--
+Some things I know:
+
+- NFS is working properly, I'm able to mount /pu (the other export) on the
+client without incident.
+- It seems like both the server and client kernels (.20+) are patched with
+the following patch: http://lkml.org/lkml/diff/2006/9/28/465/1
+
+I'm not sure if I've just missed an option to mount or something deeper.
+
+TIA
+
+------=_Part_85969_2212863.1175289401181
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hello,<br><br>Some environment info [server]:<br><br>$ uname -a<br>Linux joz 2.6.20 #4 SMP Wed Mar 28 22:03:35 CDT 2007 x86_64 Dual Core AMD Opteron(tm) Processor 870 AuthenticAMD GNU/Linux<br><br>nfs-utils v1.0.12<br><br>
+$ zgrep &quot;NFS&quot; /proc/config.gz<br>CONFIG_NFS_FS=y<br>CONFIG_NFS_V3=y<br># CONFIG_NFS_V3_ACL is not set<br># CONFIG_NFS_V4 is not set<br># CONFIG_NFS_DIRECTIO is not set<br>CONFIG_NFSD=y<br>CONFIG_NFSD_V3=y<br># CONFIG_NFSD_V3_ACL is not set
+<br># CONFIG_NFSD_V4 is not set<br>CONFIG_NFSD_TCP=y<br>CONFIG_ROOT_NFS=y<br>CONFIG_NFS_COMMON=y<br><br>$ cat /etc/exports<br>/pu <a href="http://10.1.2.0/255.255.255.0(async,no_subtree_check,rw,no_root_squash)">10.1.2.0/255.255.255.0(async,no_subtree_check,rw,no_root_squash)
+</a><br>/tmpfs <a href="http://10.1.2.0/255.255.255.0(ro,no_root_squash,no_subtree_check)">10.1.2.0/255.255.255.0(ro,no_root_squash,no_subtree_check)</a><br><br>$ cat /proc/mounts | grep /tmpfs<br>none /tmpfs tmpfs rw 0 0
+<br><br>For the client:<br><br>$ uname -a<br>Linux woa <a href="http://2.6.20.2">2.6.20.2</a> #2 SMP Thu Mar 15 10:19:39 PDT 2007 x86_64 AMD Opteron(tm) Processor 246 AuthenticAMD GNU/Linux<br><br>$ zgrep &quot;NFS&quot; /proc/config.gz
+<br>CONFIG_NFS_FS=y<br>CONFIG_NFS_V3=y<br># CONFIG_NFS_V3_ACL is not set<br># CONFIG_NFS_V4 is not set<br># CONFIG_NFS_DIRECTIO is not set<br>CONFIG_NFSD=y<br>CONFIG_NFSD_V3=y<br># CONFIG_NFSD_V3_ACL is not set<br># CONFIG_NFSD_V4 is not set
+<br>CONFIG_NFSD_TCP=y<br>CONFIG_ROOT_NFS=y<br>CONFIG_NFS_COMMON=y<br><br>nfs-utils v1.0.12<br><br>The following fails on the client (after a exportfs -ra on the server):<br><br>$ mount -o ro 10.1.2.130:/tmpfs /a<br>mount: 
+10.1.2.130:/tmpfs failed, reason given by server: Permission denied<br><br>Some things I know:<br><br>- NFS is working properly, I&#39;m able to mount /pu (the other export) on the client without incident.<br>- It seems like both the server and client kernels (.20+) are patched with the following patch: 
+<a href="http://lkml.org/lkml/diff/2006/9/28/465/1">http://lkml.org/lkml/diff/2006/9/28/465/1</a><br><br>I&#39;m not sure if I&#39;ve just missed an option to mount or something deeper.<br><br>TIA<br>
+
+------=_Part_85969_2212863.1175289401181--
 
 
---===============0160109544==
+--===============1482005882==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -148,7 +135,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============0160109544==
+--===============1482005882==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -158,4 +145,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0160109544==--
+--===============1482005882==--
