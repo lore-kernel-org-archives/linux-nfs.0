@@ -1,23 +1,21 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
-Date: Fri, 30 Mar 2007 12:44:01 +0200
-Message-ID: <200703301244.01465.bernd-schubert@gmx.de>
-References: <17931.15549.578071.112573@notabene.brown>
-	<200703291151.59120.bernd-schubert@gmx.de>
-	<17932.29637.650203.597630@notabene.brown>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 0/8] gssd cleanup and modified machine cred handling
+Date: Fri, 30 Mar 2007 18:25:11 -0400
+Message-ID: <20070330222511.28802.38147.stgit@RoCk.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HXEaZ-0002vd-EQ
-	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 03:44:11 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HXEaZ-0003dv-2T
-	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 03:44:13 -0700
-In-Reply-To: <17932.29637.650203.597630@notabene.brown>
+	id 1HXPdd-0000Ik-AP
+	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 15:32:05 -0700
+Received: from citi.umich.edu ([141.211.133.111])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HXPde-00066P-4W
+	for nfs@lists.sourceforge.net; Fri, 30 Mar 2007 15:32:07 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,13 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 30 March 2007 04:19:49 Neil Brown wrote:
-> rpc.statd used to drop root privilege before binding the port to
-> listen on.  This is fixed in 1.1.0, so that little part of your
-> problem should go away.
+These patches do some gssd code clean-up and change the way keytabs are
+selected to obtain machine credentials.
 
-Great, thanks a lot!
+1) adds missing newlines to some seldom printed error messages
+2) fixes a memory leak in the error path of limit_krb5_enctypes()
+3) adds some macros to clean up differences between MIT and Heimdal interfaces
+4) adds the new functions that change the way keytabs are selected.
+   the new behavior is to search for particular keytab entries in a
+   specified order:
 
+   root/<fqdn>@<REALM>
+   nfs/<fqdn>@<REALM>
+   host/<fqdn>@<REALM>
+   root/<any-name>@<REALM>
+   nfs/<any-name>@<REALM>
+   host/<any-name>@<REALM>
+
+5) actually use the new functions added in the previous patch
+6) does some cleanup in gssd_get_single_krb5_cred() and improves
+   the debugging messages
+7) removes the now obsolete routines
+8) adds a debug message to indicate processing is beginning
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
