@@ -1,25 +1,23 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
-Date: Sun, 1 Apr 2007 14:16:41 +0200
-Message-ID: <20070401121641.GB26681@janus>
-References: <17931.15549.578071.112573@notabene.brown>
-	<20070329084433.GA1627@sith.mimuw.edu.pl>
-	<17931.34669.47062.146703@notabene.brown>
+From: David Woodhouse <dwmw2@infradead.org>
+Subject: Re: [PATCH 0/18] export operations rewrite
+Date: Sun, 01 Apr 2007 16:03:25 +0100
+Message-ID: <1175439805.3122.332.camel@pmac.infradead.org>
+References: <20070317010946.GA24947@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Jan Rekorajski <baggins@sith.mimuw.edu.pl>
-To: Neil Brown <neilb@suse.de>
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HXyzB-00032V-2c
-	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 05:16:41 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HXyzD-0004hD-0u
-	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 05:16:43 -0700
-In-Reply-To: <17931.34669.47062.146703@notabene.brown>
+	id 1HY1ab-0002o2-Iw
+	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 08:03:29 -0700
+Received: from canuck.infradead.org ([209.217.80.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HY1ac-0005NB-Ok
+	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 08:03:32 -0700
+In-Reply-To: <20070317010946.GA24947@infradead.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,47 +30,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Mar 29, 2007 at 07:31:25PM +1000, Neil Brown wrote:
-> On Thursday March 29, baggins@sith.mimuw.edu.pl wrote:
-> > On Thu, 29 Mar 2007, Neil Brown wrote:
-> > 
-> > >  Run "statd" only when starting the NFS server.
-> > >  "statd" should be run before starting the NFS server.
-> > 
-> > While you're at it, can you tell me what should be the order of starting
-> > all NFS/NFS4 daemons? So far I got to this:
-> > 
-> > 1) statd
-> > 2) mountd
-> > 3) nfsd
-> > 4) idmapd
-> > 5) svcgssd
-> > 6) gssd
-> > 7) rquotad
-> > 8) any NFS mounts
-> > 
-> > Is it correct?
-> 
-> Hmm... good question.
-> 
-> I think:
-> 
->   - idmapd and gssd should be started before any nfs mount
->   - idmapd and svcgssd should be started before nfsd
->   - mountd should start before nfsd.
+On Sat, 2007-03-17 at 01:09 +0000, Christoph Hellwig wrote:
+> This touches all nfs exporting filesystems, and I've done testing
+> on all of the filesystems I have here locally (xfs, ext2, ext3,
+> reiserfs, jfs) 
 
-At first that seems the logically correct order but suppose a client
-succeeds in mounting something but issues NFS requests before nfsd got
-started on the server?
+modprobe mtdram ; mount -tjffs2 mtd0 /mnt
 
-where's the exportfs?
-
-Consider a "sleep 30" at every point in the startup sequence and think
-about what would go wrong. Also consider a dead-again server at every
-point in the startup sequence.
+:)
 
 -- 
-Frank
+dwmw2
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
