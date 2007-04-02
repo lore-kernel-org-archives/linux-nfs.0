@@ -1,27 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: RELEASE CANDIDATE - nfs-utils-1.1.0-rc1
-Date: Mon, 2 Apr 2007 09:35:29 +1000
-Message-ID: <17936.16833.295258.406430@notabene.brown>
-References: <17931.15549.578071.112573@notabene.brown>
-	<20070329084433.GA1627@sith.mimuw.edu.pl>
-	<17931.34669.47062.146703@notabene.brown>
-	<20070401121641.GB26681@janus>
+From: look_at_ladys@yahoo.co.jp
+Subject: =?iso-2022-jp?B?SILIgqiOb4KzgvGC8JX4gqKCxILdgtyCuYLxgqmBSJX4gqKCxILdgtyCuYLxgqmBSA==?=
+Date: Sun,  1 Apr 2007 19:54:48 -0700 (PDT)
+Message-ID: <22985.304988879$1175482493@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Jan Rekorajski <baggins@sith.mimuw.edu.pl>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Content-Type: multipart/mixed; boundary="===============2047571083=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HY9aD-00087s-Dy
-	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 16:35:37 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HY9aE-0001nl-BR
-	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 16:35:39 -0700
-In-Reply-To: message from Frank van Maarseveen on Sunday April 1
+	id 1HYCgt-00022v-Pb
+	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 19:54:43 -0700
+Received: from p1040-ipad605marunouchi.tokyo.ocn.ne.jp ([124.85.138.40]
+	helo=dksjrladskfjsadlkfmadvdsrsaddc.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HYCgv-0003wb-0O
+	for nfs@lists.sourceforge.net; Sun, 01 Apr 2007 19:54:46 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,48 +27,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sunday April 1, frankvm@frankvm.com wrote:
-> On Thu, Mar 29, 2007 at 07:31:25PM +1000, Neil Brown wrote:
-> > 
-> > Hmm... good question.
-> > 
-> > I think:
-> > 
-> >   - idmapd and gssd should be started before any nfs mount
-> >   - idmapd and svcgssd should be started before nfsd
-> >   - mountd should start before nfsd.
-> 
-> At first that seems the logically correct order but suppose a client
-> succeeds in mounting something but issues NFS requests before nfsd got
-> started on the server?
-
-That shouldn't matter.  The NFS server will not respond so the client
-will retry.
-Ofcourse if you have a soft mount it could get messy, but then soft
-mounts are always messy.
-
-> 
-> where's the exportfs?
-
-Good point.  exportfs should be run before mountd is started, and
-after nfsd filesystem is mounted.
-
-NeilBrown
+--===============2047571083==
+Content-Type: text/plain;
+	charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
 
 
-> 
-> Consider a "sleep 30" at every point in the startup sequence and think
-> about what would go wrong. Also consider a dead-again server at every
-> point in the startup sequence.
-> 
-> -- 
-> Frank
+
+Ｈ┃な┃お┃姉┃さ┃ん┃を┃抱┃い┃て┃み┃ま┃せ┃ん┃か┃？┃？┃ 
+━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛━┛
+
+完全登録無料⇒　http://boripon.sakura.ne.jp/one
+
+∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵
+
+出会い系ライターの『masa』です。
+
+今回は完全無料の出会い系サイトに潜入！エッチがしたい！主人には言えない
+
+性癖を貴方と・・・みたいな女性登録者が多く、エッチに体力がある方には
+
+是非オススメです！
+
+☆───┬──────────┐ 
+｜淫乱度｜★★★★★★★★★☆｜ 　　　　 ★完全登録無料★
+｜即Ｈ度｜★★★★★★★★★★｜ 
+｜ＯＬ度｜★★★★★★★★☆☆｜ ⇒　http://boripon.sakura.ne.jp/one
+｜サクラ｜★☆☆☆☆☆☆☆☆☆｜ 
+｜人妻度｜★★★★★★★★★☆｜ 
+└───┴──────────┘
+
+
+
+
+
+--===============2047571083==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============2047571083==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2047571083==--
