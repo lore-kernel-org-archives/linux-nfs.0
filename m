@@ -1,22 +1,19 @@
-From: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
-Subject: Re: RFC - NFS startup order
-Date: Tue, 3 Apr 2007 10:45:23 +0200
-Message-ID: <20070403084523.GA32339@sith.mimuw.edu.pl>
-References: <17937.44243.21793.371809@notabene.brown>
+From: Phillip <phuang@plasmon.cn>
+Subject: can not start NFSv4 with Kerberos 5
+Date: Tue, 03 Apr 2007 18:10:20 +0800
+Message-ID: <1175595021.3798.19.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HYedr-0000ie-74
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 01:45:27 -0700
-Received: from sith.mimuw.edu.pl ([193.0.96.4] ident=postfix)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HYeds-0007aW-Bp
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 01:45:29 -0700
-In-Reply-To: <17937.44243.21793.371809@notabene.brown>
+	id 1HYfyd-0004M0-H0
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 03:11:27 -0700
+Received: from [211.97.48.10] (helo=zh.plasmon.cn)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYfyd-0008HU-2q
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 03:11:01 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,47 +26,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 03 Apr 2007, Neil Brown wrote:
+Hi folks,
 
-> 3.1.  SERVER STARTUP
-> 
-> 
->    A/  mount -t nfsd /proc/fs/nfsd
->       This filesystem needs to be mount before most daemons,
->       particularly exportfs, mountd, svcgssd, idmapd.
->       It could be mounted once, or the script that starts each daemon
->       could test if it is mounted and mount it if not.
+Currently we plan to use NFSV4 with Kerberos:
+KDC: Windows 2K AD
 
-mount -t rpc_pipefs /var/lib/nfs/rpc_pipefs
-This filesystem must be mounted before svcgssd and idmapd daemons.
+NFSv4 server: CentOS 4.4 with 2.6.20 kernel
+# cat /etc/exports
+/XFS/NFS4       gss/krb5
+(rw,fsid=0,insecure,no_root_squash,no_subtree_check,sync)
 
-> 
->    B/ svcgssd ; idmapd
->        These supply services to nfsd and so should be started before
->        rpc.nfsd.  Where they come between mounting the nfsd filesystem
->        and starting the nfsd server is not important.
->        idmapd is only need for NFSv4 support.
+Client: CentOS 4.4
 
-[...]
-> 
-> 3.2.  CLIENT STARTUP
-> 
->    A/ sm-notify
->       This should be run shortly after boot and before any NFS
->       filesystems are mounted with remote-locking support -
->       filesystems can be mounted with "-o nolock" before sm-notify.
->       This is appropriate for '/', '/usr', and '/var'.
+When I use Ktpass to create keytab:
 
-Same here.
+C:> Ktpass princ administrator/PLASMON.SIT@PLASMON.SIT mapuser
+administrator -pass admin out unixmachine.keytab
+C:> Ktpass princ root/PLAMONS.SIT@PLASMON.SIT mapuser root -pass admin
+out unixmachine_1.keytab
 
->    B/ gssd ; idmapd
->       (I need some guidance here).
 
-Jan
--- 
-Jan Rekorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
-baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
-BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
+and copy this output keytabs to NFSv4 server, and then export them with
+kinit well.
+
+However, when I attempt to start NFS service, the rpcsvcgssd failed.
+
+Then I try to execute these below commands
+
+[root@nfsv4 kevin]# rpc.svcgssd -fvvv
+ERROR: GSS-API: error in gss_import_name(): An invalid name was supplied
+- Hostname cannot be canonicalized
+unable to obtain root (machine) credentials
+do you have a keytab entry for nfs/<your.host>@<YOUR.REALM>
+in /etc/krb5.keytab?
+
+[root@nfsv4 kevin]# rpc.gssd -fvvv
+Using keytab file '/etc/krb5.keytab'
+Processing keytab entry for principal
+'administrator/PLASMON.SIT@PLASMON.SIT'
+We will NOT use this entry (administrator/PLASMON.SIT@PLASMON.SIT)
+Processing keytab entry for principal 'root/PLASMON.SIT@PLASMON.SIT'
+We will NOT use this entry (root/PLASMON.SIT@PLASMON.SIT)
+ERROR: No usable keytab entries found in keytab '/etc/krb5.keytab'
+Do you have a valid keytab entry for nfs/<your.host>@<YOUR.REALM> in
+keytab file /etc/krb5.keytab ?
+Continuing without (machine) credentials - nfs4 mounts with Kerberos
+will fail
+processing client list
+
+
+Did I take mistakes in creating keytab? 
+
+
+Please help me fix this issue.
+Thanks in advance.
+
+Regards,
+Phillip
+
+
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
