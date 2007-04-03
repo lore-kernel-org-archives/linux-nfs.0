@@ -1,26 +1,27 @@
 From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: RFC - NFS startup order
-Date: Tue, 3 Apr 2007 09:49:40 -0400
-Message-ID: <4d569c330704030649n14c6d82bw633aafc390a0e09e@mail.gmail.com>
-References: <17937.44243.21793.371809@notabene.brown>
+Subject: Re: can not start NFSv4 with Kerberos 5
+Date: Tue, 3 Apr 2007 10:21:30 -0400
+Message-ID: <4d569c330704030721i1b4c8d52t7a78bbf2e06fd221@mail.gmail.com>
+References: <1175595021.3798.19.camel@localhost.localdomain>
+	<89c397150704030446id0db9b1h30e20cfba0f5182a@mail.gmail.com>
+	<1175602407.4063.51.camel@localhost.localdomain>
+	<89c397150704030618iee707a8v24b1cbeb0dd72502@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Neil Brown" <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: Phillip <phuang@plasmon.cn>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HYjOL-0001sv-EF
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 06:49:45 -0700
-Received: from ug-out-1314.google.com ([66.249.92.175])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYjON-0005c4-9a
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 06:49:47 -0700
-Received: by ug-out-1314.google.com with SMTP id z38so305290ugc
-	for <nfs@lists.sourceforge.net>; Tue, 03 Apr 2007 06:49:42 -0700 (PDT)
-In-Reply-To: <17937.44243.21793.371809@notabene.brown>
+	id 1HYjt4-00068e-PH
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 07:21:31 -0700
+Received: from nz-out-0506.google.com ([64.233.162.237])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYjt5-00077V-T6
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 07:21:33 -0700
+Received: by nz-out-0506.google.com with SMTP id i11so2186991nzi
+	for <nfs@lists.sourceforge.net>; Tue, 03 Apr 2007 07:21:31 -0700 (PDT)
+In-Reply-To: <89c397150704030618iee707a8v24b1cbeb0dd72502@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,131 +34,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 4/2/07, Neil Brown <neilb@suse.de> wrote:
+On 4/3/07, William A. (Andy) Adamson <andros@citi.umich.edu> wrote:
 >
 >
-> 3. DAEMON STARTUP ORDER
+> On 4/3/07, Phillip <phuang@plasmon.cn> wrote:
+> > Andy,
+> >
+> > Thanks for you kindly reply.
+> >
+> > As your comment:
+> > nfs/<your.host>@<YOUR.REALM>
+> > and I google the following:
+> > host/hostname@NT-DNS-REALM-NAME
+> >
+> > hostname is the host DNS name, for example, foobar.microsoft.com.
+> > NT-DNS-REALM-NAME is the uppercase name of the Windows 2000 domain; for
+> > example, RESKIT.COM.
 >
-> This nfs-utils packages does not provide any scripts for starting
-> various daemons as mast distributions replace them with their own, so
+> hostname is the dns name of your host. the realm name is the name of your
+> kerberos domain.
+> > I have two questions:
+> > 1. What does the above term "host" mean? Hostname of NFS server, or
+> > service(nfs)?
+>
+> this is kerberos speak.
+>
+> a kerberos service name has a "service" component (host, root, nfs, ldap,
+> web, or whatever you want) followed by a "/" and then the dns hostname.
+>
+> NFSv4 requires that the NFSv4 server Kerberos service name is of the form
+>
+> nfs/<dnshostname>@<KERBEROS.REALM>
+>
+> the "host" service name is used by many other servers, but not by NFSv4.
+>
+> the NFSv4 client keytab name is unspecified. so, if you want you can place a
+> keytab on the client
+> to be used for NFSv4 - but it is not required.
 
-s/mast/most/
+Actually, the *current* client code requires a
+"nfs/*@<KERBEROS.REALM>" key.  (This changes in (not yet released)
+nfs-utils-1.1.0 so that other keys may be used.)
 
-> any scripts we package would not get much testing.
-> Instead, we explain the dependencies involved in startup so that
-> scripts can be written to work correctly.
->
-> 3.0   PREREQUISITES
->
->    Name service (host name lookup) should be working before any
->    NFS services are started.
->
->    "portmap" must be running before any NFS services (server or
->    client) are started.
->
->    Normally network interfaces should be configured first as well,
->    though this isn't critical for the NFS server (providing name
->    service is handled locally).
->
-> 3.1.  SERVER STARTUP
->
->
->    A/  mount -t nfsd /proc/fs/nfsd
->       This filesystem needs to be mount before most daemons,
->       particularly exportfs, mountd, svcgssd, idmapd.
->       It could be mounted once, or the script that starts each daemon
->       could test if it is mounted and mount it if not.
->
->    B/ svcgssd ; idmapd
->        These supply services to nfsd and so should be started before
->        rpc.nfsd.  Where they come between mounting the nfsd filesystem
->        and starting the nfsd server is not important.
->        idmapd is only need for NFSv4 support.
-
-s/need/needed/
-Note that svcgssd is only needed if exporting NFS filesystems securely
-(with Kerberos or SPKM3).
-
->    C/ exportfs -av ; rpc.mountd
->        If it important that exportfs be run before mountd so that
-
-s/If it/It is/
-
->        mountd is working from current information (in
->        /var/lib/nfs/etab).
->        It is also important that both of these are run before
->        rpc.nfsd.
->        If not, any NFS requests that arrive before mountd is started
->        will get replied to with a 'Stale NFS File handle' error.
->
->    D/ rpc.statd --no-notify
->        It is best if statd is started before nfsd though this isn't
->        critical.  Certainly it should be at most a few seconds after
->        nfsd.
->        When nfsd starts it will start lockd. If lockd then receives a
->        lock request it will communicate with statd.  If statd is not
->        running lockd will retry, but it won't wait forever for a
->        reply.
->        Note that if statd is started before nfsd, the --no-notify
->        option must be used.  If notify requests are sent out before
->        nfsd start, clients may try to reclaim locks and, on finding
->        that lockd isn't running, they will give up and never reclaim
->        the lock.
->        rpc.statd is only needed for NFSv2 and NFSv3 support.
->
->    E/ rpc.nfsd
->        Starting nfsd will automatically start lockd.  The nfs server
->        will now be fully active and respond to any requests from
->        clients.
->
->    F/ sm-notify
->        This will notify any client which might have locks from before
->        a reboot to try to reclaim their locks.  This should start
->        immediately after rpc.nfsd is started so that clients have a
->        chance to reclaim locks within the 90 second grace period.
->        sm-notify is only needed for NFSv2 and NFSv3 support.
->
->
-> 3.2.  CLIENT STARTUP
->
->    A/ sm-notify
->       This should be run shortly after boot and before any NFS
->       filesystems are mounted with remote-locking support -
->       filesystems can be mounted with "-o nolock" before sm-notify.
->       This is appropriate for '/', '/usr', and '/var'.
->
->    B/ gssd ; idmapd
->       (I need some guidance here).
-
-idmapd should be started before mounting any NFSv4 filesystems.
-gssd is only needed when filesystems are mounted securely (with
-Kerberos or SPKM3).  It must be started before mounting any NFS
-filesystems securely.
-
->    C/ statd should be run before any NFSv2 or NFSv3 filesystem is
->       mounted with remote locking (i.e. without -o nolock).
->       'mount' will try to use "/usr/sbin/start-statd" to start statd
->       if it is not already running, so there is no need to explicitly
->       start statd in boot-time scripts.
->
-> 3.3.  SERVER/CLIENT INTERACTIONS
->
->    A/ sm-notify
->       Both the server and the client need sm-notify to be run.
->       It should be run after the NFS server is started, but before
->       and NFS filesystems are mounted with remote locking.
->
->    B/ rpc.statd
->       Both the server and the client need rpc.statd to be running.
->       Each should try to start when they need it.
->
->    C/ idmapd
->       (I need some guidance here).
-
-Both the server and client need idmapd to be running.  If idmapd is
-started (for the client) before starting nfsd (or is it mountd?), then
-idmapd should be sent a HUP signal after starting nfsd (mountd?) to
-signal that the server channels should be opened.
+K.C.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
