@@ -1,24 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Greg Bradner" <greg.bradner@gmail.com>
 Subject: Re: ROOT_NFS 2.6.20.4 kernel crash
-Date: Tue, 03 Apr 2007 12:02:11 -0400
-Message-ID: <1175616131.6838.21.camel@heimdal.trondhjem.org>
+Date: Tue, 3 Apr 2007 09:08:43 -0700
+Message-ID: <57bc13580704030908m3cc899b6hfe169e9ed7176a67@mail.gmail.com>
 References: <57bc13580704030834n615eaf24tc3294e67916debcc@mail.gmail.com>
+	<1175616131.6838.21.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Greg Bradner <greg.bradner@gmail.com>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HYlSj-0004C3-8q
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 09:02:25 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/0sxRhldG8R8lP7kRBcg29FTXUOExObI4=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HYlSk-000766-29
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 09:02:27 -0700
-In-Reply-To: <57bc13580704030834n615eaf24tc3294e67916debcc@mail.gmail.com>
+	id 1HYlYt-00057o-L9
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 09:08:47 -0700
+Received: from wr-out-0506.google.com ([64.233.184.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYlYu-0002YF-Mg
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 09:08:50 -0700
+Received: by wr-out-0506.google.com with SMTP id i20so3261961wra
+	for <nfs@lists.sourceforge.net>; Tue, 03 Apr 2007 09:08:47 -0700 (PDT)
+In-Reply-To: <1175616131.6838.21.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-04-03 at 08:34 -0700, Greg Bradner wrote:
-> I have booted into my NFS-Root and am trying to partition a drive.
-> But kernel is crashing while making dev names.
+On 4/3/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2007-04-03 at 08:34 -0700, Greg Bradner wrote:
+> > I have booted into my NFS-Root and am trying to partition a drive.
+> > But kernel is crashing while making dev names.
+>
+> I believe GregKH has queued up the fix for this for the next stable
+> release. See
+>
+> http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commit;h=634707388baa440d9c9d082cfc4c950500c8952b
+>
 
-I believe GregKH has queued up the fix for this for the next stable
-release. See
-
-http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commit;h=634707388baa440d9c9d082cfc4c950500c8952b
-
-Cheers
-  Trond
-
+I have to ask, but what do I do in the meantime?
+Thanks
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
