@@ -1,26 +1,25 @@
-From: Phillip <phuang@plasmon.cn>
-Subject: Re: can not start NFSv4 with Kerberos 5
-Date: Wed, 04 Apr 2007 10:17:21 +0800
-Message-ID: <1175653041.2998.11.camel@milan>
-References: <1175595021.3798.19.camel@localhost.localdomain>
-	<89c397150704030446id0db9b1h30e20cfba0f5182a@mail.gmail.com>
-	<1175602407.4063.51.camel@localhost.localdomain>
-	<89c397150704030618iee707a8v24b1cbeb0dd72502@mail.gmail.com>
-	<4d569c330704030721i1b4c8d52t7a78bbf2e06fd221@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: RFC - NFS startup order
+Date: Wed, 4 Apr 2007 12:56:47 +1000
+Message-ID: <17939.5103.141632.576498@notabene.brown>
+References: <17937.44243.21793.371809@notabene.brown>
+	<4d569c330704030649n14c6d82bw633aafc390a0e09e@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, mzeng@plasmon.cn
-To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Kevin Coffman" <kwc@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HYv4J-0005Ul-5U
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 19:17:51 -0700
-Received: from [211.97.48.10] (helo=zh.plasmon.cn)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYv4G-0005Hx-QP
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 19:17:53 -0700
-In-Reply-To: <4d569c330704030721i1b4c8d52t7a78bbf2e06fd221@mail.gmail.com>
+	id 1HYvgF-00026P-0b
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 19:57:03 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYvgF-0005Ef-Qj
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 19:57:05 -0700
+In-Reply-To: message from Kevin Coffman on Tuesday April 3
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,76 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello Andy & Kevin,
 
-Thanks for your kindly help.
+Thanks for the fixes.
 
-Yes, I create the keytab by "nfs/nfsv4@PLASMON.SIT" and start rpc.gssd
-and rpc.svcgssd successfully. nfsv4 is the hostname of NFS server, and
-PLASMON.SIT is the AD domain.
-
-When Set Windows2K as KDC for NFSv4, is it necessary to user Ktpass
-tools to create keytab in the KDC server(Windows), and copy the keytabs
-to NFS server and clients?
-
-If so, it seems to be complicated and causes security problems while
-users have to log and access KDC server frequently.
-
-Is there other easy way to do this? We do not want to make the end-users
-confused.
-
-
-Regards,
-Phillip 
-
-
-
-On Tue, 2007-04-03 at 10:21 -0400, Kevin Coffman wrote:
-> On 4/3/07, William A. (Andy) Adamson <andros@citi.umich.edu> wrote:
-> >
-> >
-> > On 4/3/07, Phillip <phuang@plasmon.cn> wrote:
-> > > Andy,
-> > >
-> > > Thanks for you kindly reply.
-> > >
-> > > As your comment:
-> > > nfs/<your.host>@<YOUR.REALM>
-> > > and I google the following:
-> > > host/hostname@NT-DNS-REALM-NAME
-> > >
-> > > hostname is the host DNS name, for example, foobar.microsoft.com.
-> > > NT-DNS-REALM-NAME is the uppercase name of the Windows 2000 domain; for
-> > > example, RESKIT.COM.
-> >
-> > hostname is the dns name of your host. the realm name is the name of your
-> > kerberos domain.
-> > > I have two questions:
-> > > 1. What does the above term "host" mean? Hostname of NFS server, or
-> > > service(nfs)?
-> >
-> > this is kerberos speak.
-> >
-> > a kerberos service name has a "service" component (host, root, nfs, ldap,
-> > web, or whatever you want) followed by a "/" and then the dns hostname.
-> >
-> > NFSv4 requires that the NFSv4 server Kerberos service name is of the form
-> >
-> > nfs/<dnshostname>@<KERBEROS.REALM>
-> >
-> > the "host" service name is used by many other servers, but not by NFSv4.
-> >
-> > the NFSv4 client keytab name is unspecified. so, if you want you can place a
-> > keytab on the client
-> > to be used for NFSv4 - but it is not required.
+On Tuesday April 3, kwc@citi.umich.edu wrote:
 > 
-> Actually, the *current* client code requires a
-> "nfs/*@<KERBEROS.REALM>" key.  (This changes in (not yet released)
-> nfs-utils-1.1.0 so that other keys may be used.)
-> 
-> K.C.
-> 
+> idmapd should be started before mounting any NFSv4 filesystems.
+> gssd is only needed when filesystems are mounted securely (with
+> Kerberos or SPKM3).  It must be started before mounting any NFS
+> filesystems securely.
 
+Would it be practical/valuable to auto-start idmapd and gssd similar
+to the way we now auto-start statd.
+And would it be OK to refuse to mount if the relevant daemon could not
+be started?
+
+I would want code in mount.nfs that could reliably test if the daemon
+were running, and would probably replace 'start-statd' with
+'start-nfs-daemons' and give it a list of daemons required.
+
+Thoughts?
+
+> 
+> Both the server and client need idmapd to be running.  If idmapd is
+> started (for the client) before starting nfsd (or is it mountd?), then
+> idmapd should be sent a HUP signal after starting nfsd (mountd?) to
+> signal that the server channels should be opened.
+
+I've changed that to
+
+      Both the server and client need idmapd to be running.  If idmapd
+      is started (for the client) before starting nfsd the 'nfsd'
+      filesystem is mounted, then idmapd should be sent a HUP signal
+      afterwards to signal that the server channels should be opened.
+
+Let me know if I've got it wrong.
+
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
