@@ -1,25 +1,27 @@
-From: "Greg Bradner" <greg.bradner@gmail.com>
-Subject: Re: lockd and statd
-Date: Wed, 4 Apr 2007 09:09:08 -0700
-Message-ID: <57bc13580704040909o386259f1q84367459ce555671@mail.gmail.com>
-References: <57bc13580704040011u3058e6d9wd0d4fc0de63d4d93@mail.gmail.com>
-	<1175690426.6118.6.camel@heimdal.trondhjem.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: RFC - NFS startup order
+Date: Wed, 4 Apr 2007 12:16:01 -0400
+Message-ID: <4d569c330704040916m4fe927a9g947cfafd7affb319@mail.gmail.com>
+References: <17937.44243.21793.371809@notabene.brown>
+	<20070403084523.GA32339@sith.mimuw.edu.pl>
+	<17939.5332.757746.617356@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net,
+	Jan Rekorajski <baggins@sith.mimuw.edu.pl>
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HZ82l-0005t3-V0
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 09:09:08 -0700
-Received: from wr-out-0506.google.com ([64.233.184.230])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZ82o-0006WL-3W
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 09:09:10 -0700
-Received: by wr-out-0506.google.com with SMTP id i20so350178wra
-	for <nfs@lists.sourceforge.net>; Wed, 04 Apr 2007 09:09:09 -0700 (PDT)
-In-Reply-To: <1175690426.6118.6.camel@heimdal.trondhjem.org>
+	id 1HZ89T-0006Uv-Cz
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 09:16:03 -0700
+Received: from ug-out-1314.google.com ([66.249.92.173])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZ89T-0008Bc-Mg
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 09:16:05 -0700
+Received: by ug-out-1314.google.com with SMTP id z38so777865ugc
+	for <nfs@lists.sourceforge.net>; Wed, 04 Apr 2007 09:16:03 -0700 (PDT)
+In-Reply-To: <17939.5332.757746.617356@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,96 +34,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 4/4/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Wed, 2007-04-04 at 00:11 -0700, Greg Bradner wrote:
-> > I'm getting these errors in the syslog:
-> > Apr  4 00:08:53 fbs2 kernel: statd: server localhost not responding, timed out
-> > Apr  4 00:08:53 fbs2 kernel: lockd: cannot monitor fnas2
-> > Apr  4 00:08:53 fbs2 kernel: lockd: failed to monitor fnas2
+On 4/3/07, Neil Brown <neilb@suse.de> wrote:
+> On Tuesday April 3, baggins@sith.mimuw.edu.pl wrote:
+> > On Tue, 03 Apr 2007, Neil Brown wrote:
 > >
+> > > 3.1.  SERVER STARTUP
+> > >
+> > >
+> > >    A/  mount -t nfsd /proc/fs/nfsd
+> > >       This filesystem needs to be mount before most daemons,
+> > >       particularly exportfs, mountd, svcgssd, idmapd.
+> > >       It could be mounted once, or the script that starts each daemon
+> > >       could test if it is mounted and mount it if not.
 > >
-> > I'm using the 2.6.20.4 kernel.
+> > mount -t rpc_pipefs /var/lib/nfs/rpc_pipefs
+> > This filesystem must be mounted before svcgssd and idmapd daemons.
 > >
-> > I don't see any statd.c in the src tree.
-> >
-> > Did I miss something Ideas?
 >
-> statd lives in userland, and is part of the nfs-utils package. It should
-> be pretty standard in all distributions that claim to support nfs.
->
+> Is rpc_pipefs really needed for svcgssd?  or just for 'gssd' and
+> 'idmapd'.
 
-That's what I thought.  But it doesn't seem to be the case with SUSE 9.3:
+rpc_pipefs is not currently used in svcgssd.
 
-> rpm -ql nfs-utils-1.0.7-3
-/etc/init.d/nfsserver
-/sbin/rpc.lockd
-/usr/sbin/exportfs
-/usr/sbin/nfsstat
-/usr/sbin/nhfsgraph
-/usr/sbin/nhfsnums
-/usr/sbin/nhfsrun
-/usr/sbin/nhfsstone
-/usr/sbin/rcnfsserver
-/usr/sbin/rpc.mountd
-/usr/sbin/rpc.nfsd
-/usr/sbin/showmount
-/usr/share/doc/packages/nfs-utils
-/usr/share/doc/packages/nfs-utils/ChangeLog
-/usr/share/doc/packages/nfs-utils/INSTALL
-/usr/share/doc/packages/nfs-utils/KNOWNBUGS
-/usr/share/doc/packages/nfs-utils/NEW
-/usr/share/doc/packages/nfs-utils/README
-/usr/share/doc/packages/nfs-utils/THANKS
-/usr/share/doc/packages/nfs-utils/TODO
-/usr/share/doc/packages/nfs-utils/index.html
-/usr/share/doc/packages/nfs-utils/nfs.html
-/usr/share/doc/packages/nfs-utils/nfs.ps
-/usr/share/doc/packages/nfs-utils/node1.html
-/usr/share/doc/packages/nfs-utils/node10.html
-/usr/share/doc/packages/nfs-utils/node11.html
-/usr/share/doc/packages/nfs-utils/node12.html
-/usr/share/doc/packages/nfs-utils/node13.html
-/usr/share/doc/packages/nfs-utils/node14.html
-/usr/share/doc/packages/nfs-utils/node15.html
-/usr/share/doc/packages/nfs-utils/node16.html
-/usr/share/doc/packages/nfs-utils/node17.html
-/usr/share/doc/packages/nfs-utils/node18.html
-/usr/share/doc/packages/nfs-utils/node19.html
-/usr/share/doc/packages/nfs-utils/node2.html
-/usr/share/doc/packages/nfs-utils/node20.html
-/usr/share/doc/packages/nfs-utils/node21.html
-/usr/share/doc/packages/nfs-utils/node22.html
-/usr/share/doc/packages/nfs-utils/node23.html
-/usr/share/doc/packages/nfs-utils/node24.html
-/usr/share/doc/packages/nfs-utils/node25.html
-/usr/share/doc/packages/nfs-utils/node26.html
-/usr/share/doc/packages/nfs-utils/node27.html
-/usr/share/doc/packages/nfs-utils/node3.html
-/usr/share/doc/packages/nfs-utils/node4.html
-/usr/share/doc/packages/nfs-utils/node5.html
-/usr/share/doc/packages/nfs-utils/node6.html
-/usr/share/doc/packages/nfs-utils/node7.html
-/usr/share/doc/packages/nfs-utils/node8.html
-/usr/share/doc/packages/nfs-utils/node9.html
-/usr/share/man/man5/exports.5.gz
-/usr/share/man/man7/nfsd.7.gz
-/usr/share/man/man8/exportfs.8.gz
-/usr/share/man/man8/lockd.8.gz
-/usr/share/man/man8/mountd.8.gz
-/usr/share/man/man8/nfsd.8.gz
-/usr/share/man/man8/nfsstat.8.gz
-/usr/share/man/man8/nhfsgraph.8.gz
-/usr/share/man/man8/nhfsnums.8.gz
-/usr/share/man/man8/nhfsrun.8.gz
-/usr/share/man/man8/nhfsstone.8.gz
-/usr/share/man/man8/rpc.mountd.8.gz
-/usr/share/man/man8/rpc.nfsd.8.gz
-/usr/share/man/man8/showmount.8.gz
-/var/adm/fillup-templates/sysconfig.nfs-nfs-utils
-/var/lib/nfs
-/var/lib/nfs/etab
-/var/lib/nfs/rmtab
-/var/lib/nfs/xtab
+> I gather that a SIGHUP to idmapd will cause it to open the serve
+> channels after they have been made available.  It is also sufficient
+> to SIGHUP idmapd after mounting rpc_pipefs if rpc_pipefs is mounted
+> later for some reason?
+
+The short answer is no.  The current sighup processing in idmapd only
+attempts to open/reopen the server channels.  (Probably only because
+the "normal" system starts the NFS client first, and then the NFS
+server.)
+
+It is possible to start two instances of idmapd -- one servicing only
+the client, and one servicing only the server.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
