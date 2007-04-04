@@ -1,25 +1,23 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: RFC - NFS startup order
-Date: Wed, 4 Apr 2007 12:56:47 +1000
-Message-ID: <17939.5103.141632.576498@notabene.brown>
+Date: Wed, 4 Apr 2007 13:00:36 +1000
+Message-ID: <17939.5332.757746.617356@notabene.brown>
 References: <17937.44243.21793.371809@notabene.brown>
-	<4d569c330704030649n14c6d82bw633aafc390a0e09e@mail.gmail.com>
+	<20070403084523.GA32339@sith.mimuw.edu.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Kevin Coffman" <kwc@citi.umich.edu>
+Cc: nfs@lists.sourceforge.net
+To: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HYvgF-00026P-0b
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 19:57:03 -0700
+	id 1HYvjk-0002b6-J7
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 20:00:50 -0700
 Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYvgF-0005Ef-Qj
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 19:57:05 -0700
-In-Reply-To: message from Kevin Coffman on Tuesday April 3
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYvjm-0005uC-JY
+	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 20:00:42 -0700
+In-Reply-To: message from Jan Rekorajski on Tuesday April 3
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,43 +30,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-Thanks for the fixes.
-
-On Tuesday April 3, kwc@citi.umich.edu wrote:
+On Tuesday April 3, baggins@sith.mimuw.edu.pl wrote:
+> On Tue, 03 Apr 2007, Neil Brown wrote:
 > 
-> idmapd should be started before mounting any NFSv4 filesystems.
-> gssd is only needed when filesystems are mounted securely (with
-> Kerberos or SPKM3).  It must be started before mounting any NFS
-> filesystems securely.
-
-Would it be practical/valuable to auto-start idmapd and gssd similar
-to the way we now auto-start statd.
-And would it be OK to refuse to mount if the relevant daemon could not
-be started?
-
-I would want code in mount.nfs that could reliably test if the daemon
-were running, and would probably replace 'start-statd' with
-'start-nfs-daemons' and give it a list of daemons required.
-
-Thoughts?
-
+> > 3.1.  SERVER STARTUP
+> > 
+> > 
+> >    A/  mount -t nfsd /proc/fs/nfsd
+> >       This filesystem needs to be mount before most daemons,
+> >       particularly exportfs, mountd, svcgssd, idmapd.
+> >       It could be mounted once, or the script that starts each daemon
+> >       could test if it is mounted and mount it if not.
 > 
-> Both the server and client need idmapd to be running.  If idmapd is
-> started (for the client) before starting nfsd (or is it mountd?), then
-> idmapd should be sent a HUP signal after starting nfsd (mountd?) to
-> signal that the server channels should be opened.
+> mount -t rpc_pipefs /var/lib/nfs/rpc_pipefs
+> This filesystem must be mounted before svcgssd and idmapd daemons.
+> 
 
-I've changed that to
+Is rpc_pipefs really needed for svcgssd?  or just for 'gssd' and
+'idmapd'.
 
-      Both the server and client need idmapd to be running.  If idmapd
-      is started (for the client) before starting nfsd the 'nfsd'
-      filesystem is mounted, then idmapd should be sent a HUP signal
-      afterwards to signal that the server channels should be opened.
-
-Let me know if I've got it wrong.
+I gather that a SIGHUP to idmapd will cause it to open the serve
+channels after they have been made available.  It is also sufficient
+to SIGHUP idmapd after mounting rpc_pipefs if rpc_pipefs is mounted
+later for some reason?
 
 Thanks,
+
 NeilBrown
 
 -------------------------------------------------------------------------
