@@ -1,23 +1,21 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: RFC - NFS startup order
-Date: Wed, 4 Apr 2007 13:00:36 +1000
-Message-ID: <17939.5332.757746.617356@notabene.brown>
-References: <17937.44243.21793.371809@notabene.brown>
-	<20070403084523.GA32339@sith.mimuw.edu.pl>
+From: "Greg Bradner" <greg.bradner@gmail.com>
+Subject: lockd and statd
+Date: Wed, 4 Apr 2007 00:11:22 -0700
+Message-ID: <57bc13580704040011u3058e6d9wd0d4fc0de63d4d93@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Jan Rekorajski <baggins@sith.mimuw.edu.pl>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HYvjk-0002b6-J7
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 20:00:50 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYvjm-0005uC-JY
-	for nfs@lists.sourceforge.net; Tue, 03 Apr 2007 20:00:42 -0700
-In-Reply-To: message from Jan Rekorajski on Tuesday April 3
+	id 1HYzeO-0001xO-HN
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 00:11:24 -0700
+Received: from ug-out-1314.google.com ([66.249.92.172])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HYzeP-0006iP-2U
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 00:11:26 -0700
+Received: by ug-out-1314.google.com with SMTP id z38so616993ugc
+	for <nfs@lists.sourceforge.net>; Wed, 04 Apr 2007 00:11:24 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +28,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday April 3, baggins@sith.mimuw.edu.pl wrote:
-> On Tue, 03 Apr 2007, Neil Brown wrote:
-> 
-> > 3.1.  SERVER STARTUP
-> > 
-> > 
-> >    A/  mount -t nfsd /proc/fs/nfsd
-> >       This filesystem needs to be mount before most daemons,
-> >       particularly exportfs, mountd, svcgssd, idmapd.
-> >       It could be mounted once, or the script that starts each daemon
-> >       could test if it is mounted and mount it if not.
-> 
-> mount -t rpc_pipefs /var/lib/nfs/rpc_pipefs
-> This filesystem must be mounted before svcgssd and idmapd daemons.
-> 
+I'm getting these errors in the syslog:
+Apr  4 00:08:53 fbs2 kernel: statd: server localhost not responding, timed out
+Apr  4 00:08:53 fbs2 kernel: lockd: cannot monitor fnas2
+Apr  4 00:08:53 fbs2 kernel: lockd: failed to monitor fnas2
 
-Is rpc_pipefs really needed for svcgssd?  or just for 'gssd' and
-'idmapd'.
 
-I gather that a SIGHUP to idmapd will cause it to open the serve
-channels after they have been made available.  It is also sufficient
-to SIGHUP idmapd after mounting rpc_pipefs if rpc_pipefs is mounted
-later for some reason?
+I'm using the 2.6.20.4 kernel.
+
+I don't see any statd.c in the src tree.
+
+Did I miss something Ideas?
 
 Thanks,
-
-NeilBrown
+Greg
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
