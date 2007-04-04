@@ -1,29 +1,26 @@
 From: "Kevin Coffman" <kwc@citi.umich.edu>
 Subject: Re: can not start NFSv4 with Kerberos 5
-Date: Wed, 4 Apr 2007 11:30:28 -0400
-Message-ID: <4d569c330704040830r10e22040hb774769871f198ae@mail.gmail.com>
+Date: Wed, 4 Apr 2007 11:47:25 -0400
+Message-ID: <4d569c330704040847h4f97b7d6gb9a8da78b5016d29@mail.gmail.com>
 References: <1175595021.3798.19.camel@localhost.localdomain>
 	<89c397150704030446id0db9b1h30e20cfba0f5182a@mail.gmail.com>
-	<1175602407.4063.51.camel@localhost.localdomain>
-	<89c397150704030618iee707a8v24b1cbeb0dd72502@mail.gmail.com>
-	<4d569c330704030721i1b4c8d52t7a78bbf2e06fd221@mail.gmail.com>
-	<1175653041.2998.11.camel@milan>
+	<1175676220.3572.21.camel@milan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, mzeng@plasmon.cn
+Cc: nfs@lists.sourceforge.net
 To: Phillip <phuang@plasmon.cn>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HZ7RO-0001qu-Cn
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 08:30:30 -0700
-Received: from ik-out-1112.google.com ([66.249.90.181])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZ7RO-0003A3-Dv
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 08:30:32 -0700
-Received: by ik-out-1112.google.com with SMTP id c30so178939ika
-	for <nfs@lists.sourceforge.net>; Wed, 04 Apr 2007 08:30:29 -0700 (PDT)
-In-Reply-To: <1175653041.2998.11.camel@milan>
+	id 1HZ7hl-0003cx-Pu
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 08:47:25 -0700
+Received: from wr-out-0506.google.com ([64.233.184.233])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZ7hn-0007Wq-2T
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 08:47:28 -0700
+Received: by wr-out-0506.google.com with SMTP id i20so338319wra
+	for <nfs@lists.sourceforge.net>; Wed, 04 Apr 2007 08:47:26 -0700 (PDT)
+In-Reply-To: <1175676220.3572.21.camel@milan>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,35 +33,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 4/3/07, Phillip <phuang@plasmon.cn> wrote:
-> Hello Andy & Kevin,
+On 4/4/07, Phillip <phuang@plasmon.cn> wrote:
 >
-> Thanks for your kindly help.
+> [root@nfsv4 ~]# mount -t nfs4 -o sec=krb5 192.168.123.63:/ /e
+> Warning: rpc.gssd appears not to be running.
+> mount: Broken pipe
 >
-> Yes, I create the keytab by "nfs/nfsv4@PLASMON.SIT" and start rpc.gssd
-> and rpc.svcgssd successfully. nfsv4 is the hostname of NFS server, and
-> PLASMON.SIT is the AD domain.
+> I find that the rpc.gssd is running:
+> [root@nfsv4 ~]# ps -ef | grep rpc.gss
+> root      5053  4854  0 16:31 pts/2    00:00:00 rpc.gssd -fvvv
+> root      5065  4909  0 16:34 pts/3    00:00:00 grep rpc.gss
 
-For your reference - when working with Kerberos, the "instance" part
-of the principal name (the part between the "/" and the "@") should be
-the host's fully-qualified-domain-name (fqdn).  So you *should* have a
-principal, "nfs/nfsv4.plascom.sit@PLASMON.SIT" or something like that.
+The Warning message is because rpc.gssd was not started from the
+script which writes the pid file.  Not a problem here.
 
-> When Set Windows2K as KDC for NFSv4, is it necessary to user Ktpass
-> tools to create keytab in the KDC server(Windows), and copy the keytabs
-> to NFS server and clients?
+> there's the following lines in /var/log/message:
 >
-> If so, it seems to be complicated and causes security problems while
-> users have to log and access KDC server frequently.
->
-> Is there other easy way to do this? We do not want to make the end-users
-> confused.
+> Apr  4 11:11:00 nfsv4 rpc.svcgssd[4742]: WARNING: handle_nullreq: failed
+> parsing request
+> Apr  4 11:11:25 nfsv4 rpc.svcgssd[4742]: WARNING: handle_nullreq: failed
+> parsing request
 
-There are tools that allow you to create the keytab directly from the
-NFS server and client machine, one example is described here:
-http://mailman.mit.edu/pipermail/kerberos/2007-March/011423.html,
-there are probably others.  Otherwise, yes you must create the keytab
-on the Windows machine and transfer it to the Linux machines.
+See if svcgssd with more debugging (-vvv) gives a better clue.
+
+Is this a 64-bit machine?  What versions of nfs-utils and supporting
+libraries (libgssapi, librpcsecgss) is this with?
 
 K.C.
 
