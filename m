@@ -1,28 +1,28 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: lockd and statd
-Date: Wed, 04 Apr 2007 19:22:19 -0400
-Message-ID: <1175728939.6459.9.camel@heimdal.trondhjem.org>
+Date: Thu, 5 Apr 2007 09:25:39 +1000
+Message-ID: <17940.13299.964869.929876@notabene.brown>
 References: <57bc13580704040011u3058e6d9wd0d4fc0de63d4d93@mail.gmail.com>
 	<1175690426.6118.6.camel@heimdal.trondhjem.org>
 	<57bc13580704040909o386259f1q84367459ce555671@mail.gmail.com>
-	<200704041933.27315.okir@lst.de>  <4613F34C.2040709@redhat.com>
+	<200704041933.27315.okir@lst.de> <4613F34C.2040709@redhat.com>
 	<1175722463.7279.16.camel@heimdal.trondhjem.org>
 	<46142B4F.1030507@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HZEoE-0006GR-Lj
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 16:22:40 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/7C51RBofoiwz1ESD5HA8bQCTlJ12gRX4=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZEoE-000093-GE
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 16:22:37 -0700
-In-Reply-To: <46142B4F.1030507@redhat.com>
+	id 1HZErW-0006Yv-8c
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 16:26:08 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZErY-0000tD-5S
+	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 16:26:00 -0700
+In-Reply-To: message from Wendy Cheng on Wednesday April 4
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,7 +35,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-04-04 at 18:48 -0400, Wendy Cheng wrote:
+On Wednesday April 4, wcheng@redhat.com wrote:
 > Trond Myklebust wrote:
 > > On Wed, 2007-04-04 at 14:49 -0400, Wendy Cheng wrote:
 > >   
@@ -76,20 +76,24 @@ On Wed, 2007-04-04 at 18:48 -0400, Wendy Cheng wrote:
 > 
 > Oversight ? My configuration problem ? nfs-util bug ? my bug ? or I 
 > mis-understand the logic ?
-> 
-> --- Wendy
 
-Tom gave a talk on this subject at Connectathon last year. You can find
-his arguments for why statd DNS lookups are a must in his slides:
+nfs-utils bug.  sm_unmon_1_svc should
+	xunlink(SM_DIR, clnt->dns_name, 1);
+rather than
+	xunlink(SM_DIR, mon_name, 1);
 
-     http://www.connectathon.org/talks06/talpey-cthon06-nsm.pdf
+or something like that.
+Thanks for catching that.
 
-Note his point that the server needs to store both the client hostname
-and IP address so that you can fail over from one to the other if the
-notification fails.
 
-Cheers
-  Trond
+Why use dns_name?  To make sure we handle multi-homed hosts most
+effectively.
+
+
+I'm going to be offline for a few days.  I'll comment on the patch
+when I get back.
+
+NeilBrown
 
 
 -------------------------------------------------------------------------
