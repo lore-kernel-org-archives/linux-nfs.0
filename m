@@ -1,24 +1,24 @@
 From: Wendy Cheng <wcheng@redhat.com>
-Subject: [PATCH 2/4 Revised] NLM - set per fsid grace period
-Date: Thu, 05 Apr 2007 17:52:01 -0400
-Message-ID: <46156F81.8010808@redhat.com>
+Subject: [PATCH 3/4 Revised] NLM - kernel lockd-statd changes
+Date: Thu, 05 Apr 2007 17:52:32 -0400
+Message-ID: <46156FA0.4030506@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090201000903030600020100"
+Content-Type: multipart/mixed; boundary="------------060305000808070808030408"
 Cc: Lon Hohberger <lhh@redhat.com>
 To: nfs@lists.sourceforge.net, cluster-devel@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HZaC6-0003k1-IP
-	for nfs@lists.sourceforge.net; Thu, 05 Apr 2007 15:12:38 -0700
+	id 1HZaCb-0003pZ-V1
+	for nfs@lists.sourceforge.net; Thu, 05 Apr 2007 15:13:10 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZaC6-0004pv-Ln
-	for nfs@lists.sourceforge.net; Thu, 05 Apr 2007 15:12:39 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZaCd-00079m-K1
+	for nfs@lists.sourceforge.net; Thu, 05 Apr 2007 15:13:12 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l35MCb7J014498
-	for <nfs@lists.sourceforge.net>; Thu, 5 Apr 2007 18:12:37 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l35MD8SW015034
+	for <nfs@lists.sourceforge.net>; Thu, 5 Apr 2007 18:13:08 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,530 +32,525 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------090201000903030600020100
+--------------060305000808070808030408
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-This change enables per NFS-export entry lockd grace period. The 
-implementation is based on a double linked list fo_fsid_list that 
-contains entries of fsid info. It is expected this would not be a 
-frequent event. The fo_fsid_list is short and the entries expire within 
-a maximum of 50 seconds.  The grace period setting follows the existing 
-NLM grace period handling logic and is triggered via echoing the NFS 
-export filesystem id into nfsd procfs entry as:
+This kernel patch (based on 2.6.21-rc4) should be paired with nfs-utils 
+user mode changes (patch 4-4, based on nfs-utils-1.1.0-rc1) that is 
+optional. If changes made in patch 4-4 is not presented in nfs-utils, 
+the rpc.statd will ignore whatever this kernel patch does.
 
-shell> echo 1234 > nlm_set_grace_for_fsid
+The changes record the ip interface that accepts the lock requests and 
+passes the correct "my_name" (in standard IPV4 dot notation) to user 
+mode statd (instead of system_utsname.nodename). This enables rpc.statd 
+to add the correct taken-over IPv4 address into the 3rd parameter of 
+ha_callout program. Current nfs-utils always resets "my_name" into 
+loopback address (127.0.0.1), regardless the statement made in rpc.statd 
+man page. Check out "man rpc.statd" and "man sm-notify" for details.
 
 -- Wendy
 
---------------090201000903030600020100
+
+--------------060305000808070808030408
 Content-Type: text/x-patch;
- name="002_nlm_grace_p.patch"
+ name="003_nlm_statd.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="002_nlm_grace_p.patch"
+ filename="003_nlm_statd.patch"
 
 Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
 Signed-off-by: Lon Hohberger  <lhh@redhat.com>
 
- fs/lockd/svc.c              |    8 +-
- fs/lockd/svc4proc.c         |   15 ++-
- fs/lockd/svcproc.c          |   12 +--
- fs/lockd/svcsubs.c          |  169 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c            |   27 +++++++
- include/linux/lockd/bind.h  |    2 
- include/linux/lockd/lockd.h |   30 +++++++
- 7 files changed, 248 insertions(+), 15 deletions(-)
+ fs/lockd/clntproc.c            |    2 
+ fs/lockd/host.c                |   61 +++++++++++++++++++-----
+ fs/lockd/mon.c                 |  104 +++++++++++++++++++++++++++++++++++------
+ include/linux/lockd/lockd.h    |   11 +++-
+ include/linux/lockd/sm_inter.h |    3 -
+ net/sunrpc/svcsock.c           |   40 +++++++++++++++
+ 6 files changed, 191 insertions(+), 30 deletions(-)
 
---- linux-nlm-1/include/linux/lockd/lockd.h	2007-03-26 10:29:44.000000000 -0400
-+++ linux/include/linux/lockd/lockd.h	2007-03-26 17:37:39.000000000 -0400
-@@ -114,6 +114,16 @@ struct nlm_file {
- 	struct mutex		f_mutex;	/* avoid concurrent access */
+--- linux-nlm-2/include/linux/lockd/sm_inter.h	2007-03-26 18:25:38.000000000 -0400
++++ linux/include/linux/lockd/sm_inter.h	2007-04-03 21:55:42.000000000 -0400
+@@ -25,6 +25,7 @@
+  */
+ struct nsm_args {
+ 	__be32		addr;		/* remote address */
++	__be32          serv;		/* server ip address */
+ 	u32		prog;		/* RPC callback info */
+ 	u32		vers;
+ 	u32		proc;
+@@ -40,7 +41,7 @@ struct nsm_res {
+ 	u32		state;
  };
  
-+#define NLM_FO_MAX_FSID_GP	127
-+
-+/* Server fsid linked list for NLM lock failover */
-+struct fo_fsid {
-+	struct list_head	g_list;		/* linked list */
-+	unsigned long		g_expire;	/* when this grace period
-+						 * will expire */
-+	int			g_fsid;		/* exported fsid */
+-int		nsm_monitor(struct nlm_host *);
++int		nsm_monitor(struct nlm_host *, __be32 ip);
+ int		nsm_unmonitor(struct nlm_host *);
+ extern int	nsm_local_state;
+ 
+--- linux-nlm-2/include/linux/lockd/lockd.h	2007-03-26 18:25:38.000000000 -0400
++++ linux/include/linux/lockd/lockd.h	2007-04-04 10:45:14.000000000 -0400
+@@ -39,12 +39,12 @@
+ struct nlm_host {
+ 	struct hlist_node	h_hash;		/* doubly linked list */
+ 	struct sockaddr_in	h_addr;		/* peer address */
++	__be32			h_server;	/* server ip for NLM failover */
+ 	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
+ 	char *			h_name;		/* remote hostname */
+ 	u32			h_version;	/* interface version */
+ 	unsigned short		h_proto;	/* transport proto */
+ 	unsigned short		h_reclaiming : 1,
+-				h_server     : 1, /* server side, not client side */
+ 				h_inuse      : 1;
+ 	wait_queue_head_t	h_gracewait;	/* wait while reclaiming */
+ 	struct rw_semaphore	h_rwsem;	/* Reboot recovery lock */
+@@ -62,11 +62,18 @@ struct nlm_host {
+ 	struct nsm_handle *	h_nsmhandle;	/* NSM status handle */
+ };
+ 
++struct nsm_fo_monitored {
++	struct list_head	list;
++	__be32			addr;
 +};
 +
- /*
-  * This is a server block (i.e. a lock requested by some client which
-  * couldn't be granted because of a conflicting lock).
-@@ -193,6 +203,8 @@ void		  nlmsvc_traverse_blocks(struct nl
- 					nlm_host_match_fn_t match);
- void		  nlmsvc_grant_reply(struct nlm_cookie *, __be32);
- 
-+unsigned long set_grace_period(void); /*required by svcsubs.c and svc.c 
-+					to support nlm failover */
- /*
-  * File handling for the server personality
-  */
-@@ -204,6 +216,7 @@ void		  nlmsvc_free_host_resources(struc
- void		  nlmsvc_invalidate_all(void);
- int		  nlmsvc_same_fsid(struct nlm_host *, struct nlm_host *);
- int		  nlmsvc_fo_unlock(int *fsid);
-+int		  nlmsvc_fo_check(struct nfs_fh *fh);
- 
- static __inline__ struct inode *
- nlmsvc_file_inode(struct nlm_file *file)
-@@ -234,6 +247,23 @@ nlm_compare_locks(const struct file_lock
- 	     &&(fl1->fl_type  == fl2->fl_type || fl2->fl_type == F_UNLCK);
- }
- 
-+extern struct list_head fo_fsid_list;
-+
-+/*Check for grace period: return TRUE or FALSE */
-+static inline int
-+nlmsvc_check_grace_period(struct nlm_args *argp)
-+{
-+	/* check for system wide grace period */
-+	if (nlmsvc_grace_period)
-+		return 1;
-+
-+	/* check for per exported fsid grace period */
-+        if (unlikely(!list_empty(&fo_fsid_list)))
-+                return(nlmsvc_fo_check(&argp->lock.fh));
-+
-+        return 0;
-+}
-+
- extern struct lock_manager_operations nlmsvc_lock_operations;
- 
- #endif /* __KERNEL__ */
---- linux-nlm-1/include/linux/lockd/bind.h	2007-03-26 10:29:44.000000000 -0400
-+++ linux/include/linux/lockd/bind.h	2007-03-26 11:11:14.000000000 -0400
-@@ -38,5 +38,7 @@ extern int	nlmclnt_proc(struct inode *, 
- extern int	lockd_up(int proto);
- extern void	lockd_down(void);
- extern int	nlmsvc_fo_unlock(int *fsid);
-+extern int	nlmsvc_fo_setgrace(int fsid);
-+extern void	nlmsvc_fo_reset_servs(void);
- 
- #endif /* LINUX_LOCKD_BIND_H */
---- linux-nlm-1/fs/nfsd/nfsctl.c	2007-03-26 10:23:36.000000000 -0400
-+++ linux/fs/nfsd/nfsctl.c	2007-03-26 15:40:12.000000000 -0400
-@@ -55,6 +55,7 @@ enum {
- 	NFSD_List,
- 	NFSD_Fh,
- 	NFSD_NlmUnlock,
-+	NFSD_NlmGrace,
- 	NFSD_Threads,
- 	NFSD_Pool_Threads,
- 	NFSD_Versions,
-@@ -91,6 +92,8 @@ static ssize_t write_maxblksize(struct f
- static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
- #endif
-+static ssize_t write_fo_unlock(struct file *file, char *buf, size_t size);
-+static ssize_t write_fo_grace(struct file *file, char *buf, size_t size);
- 
- static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Svc] = write_svc,
-@@ -102,6 +105,7 @@ static ssize_t (*write_op[])(struct file
- 	[NFSD_Getfs] = write_getfs,
- 	[NFSD_Fh] = write_filehandle,
- 	[NFSD_NlmUnlock] = write_fo_unlock,
-+	[NFSD_NlmGrace] = write_fo_grace,
- 	[NFSD_Threads] = write_threads,
- 	[NFSD_Pool_Threads] = write_pool_threads,
- 	[NFSD_Versions] = write_versions,
-@@ -372,6 +376,28 @@ static ssize_t write_fo_unlock(struct fi
- 	return strlen(buf);
- }
- 
-+static ssize_t write_fo_grace(struct file *file, char *buf, size_t size)
-+{
-+	char *mesg = buf;
-+	int fsid, rc;
-+ 
-+	if (size <= 0) return -EINVAL;
-+ 
-+	/* convert string into a valid fsid */
-+	rc = get_int(&mesg, &fsid);
-+	if (rc) 
-+		return rc;
-+ 
-+	/* call nlm to set the grace period */
-+	rc = nlmsvc_fo_setgrace(fsid);
-+	if (rc) 
-+		return rc;
-+ 
-+	/* done */
-+	sprintf(buf, "nlm set per fsid=%d grace period\n", fsid);
-+	return strlen(buf);
-+}
-+
- extern int nfsd_nrthreads(void);
- 
- static ssize_t write_threads(struct file *file, char *buf, size_t size)
-@@ -676,6 +702,7 @@ static int nfsd_fill_super(struct super_
- 		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
- 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_NlmUnlock] = {"nlm_unlock", &transaction_ops, S_IWUSR|S_IRUSR},
-+		[NFSD_NlmGrace] = {"nlm_set_grace_for_fsid", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
---- linux-nlm-1/fs/lockd/svcsubs.c	2007-03-26 10:23:22.000000000 -0400
-+++ linux/fs/lockd/svcsubs.c	2007-03-26 16:01:54.000000000 -0400
-@@ -31,6 +31,13 @@
- static struct hlist_head	nlm_files[FILE_NRHASH];
- static DEFINE_MUTEX(nlm_file_mutex);
- 
-+/* 
-+ * Global control structure for lock failover 
-+ */
-+static spinlock_t nlm_fo_lock=SPIN_LOCK_UNLOCKED;
-+static int fo_fsid_cnt=0;
-+LIST_HEAD(fo_fsid_list);
-+
- #ifdef NFSD_DEBUG
- static inline void nlm_debug_print_fh(char *msg, struct nfs_fh *f)
+ struct nsm_handle {
+ 	struct list_head	sm_link;
+ 	atomic_t		sm_count;
+ 	char *			sm_name;
+ 	struct sockaddr_in	sm_addr;
++	struct mutex		sm_mutex;
++	struct nsm_fo_monitored sm_serverip;
+ 	unsigned int		sm_monitored : 1,
+ 				sm_sticky : 1;	/* don't unmonitor */
+ };
+@@ -254,7 +261,7 @@ static inline int
+ nlmsvc_check_grace_period(struct nlm_args *argp)
  {
-@@ -430,3 +437,165 @@ nlmsvc_fo_unlock(int *fsid)
+ 	/* check for system wide grace period */
+-	if (nlmsvc_grace_period)
++	if (nlmsvc_grace_period) 
+ 		return 1;
+ 
+ 	/* check for per exported fsid grace period */
+--- linux-nlm-2/net/sunrpc/svcsock.c	2007-03-26 18:26:06.000000000 -0400
++++ linux/net/sunrpc/svcsock.c	2007-04-04 17:09:15.000000000 -0400
+@@ -1111,6 +1111,44 @@ failed:
+ 	return;
  }
  
++/* Added for NLM-cluster failover implementation */ 
++static inline void svc_tcp_get_server_address(struct svc_rqst *rqstp)
++{
++	struct socket *sock = rqstp->rq_sock->sk_sock;
++	struct sockaddr_in6 sin6;
++	struct sockaddr_in *sin = (struct sockaddr_in *) &sin6;
++	int len, err;
++
++	/* ref: inet_getname, inet6_getname, and sys_getsockname */
++	err = sock->ops->getname(sock, (struct sockaddr *) sin, &len, 0);
++	if (err) {
++		dprintk("svc_tcp_get_server_address: getname err=%d\n", err);
++		return;
++	}
++		
++        switch (rqstp->rq_sock->sk_sk->sk_family) {
++        case AF_INET: 
++		/* sanity check */
++		if (sin->sin_family != AF_INET)
++			printk("sunrpc: inet address family mismatch %d\n",
++				(int) sin->sin_family); 
++                rqstp->rq_daddr.addr = sin->sin_addr;
++                break;
++        case AF_INET6: 
++		/* sanity check */
++		if (sin6.sin6_family != AF_INET6)
++			printk("sunrpc: inet6 address family mismatch %d\n",
++				(int) sin6.sin6_family); 
++                ipv6_addr_copy(&rqstp->rq_daddr.addr6, &sin6.sin6_addr); 
++                break;
++	default:
++		break;
++	}
++
++	/* no error return */
++	return;
++}
++
+ /*
+  * Receive data from a TCP socket.
+  */
+@@ -1260,6 +1298,8 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpcnt++;
  
-+EXPORT_SYMBOL(nlmsvc_fo_setgrace);
++	svc_tcp_get_server_address(rqstp);
++
+ 	return len;
+ 
+  err_delete:
+--- linux-nlm-2/fs/lockd/host.c	2007-03-26 18:19:11.000000000 -0400
++++ linux/fs/lockd/host.c	2007-04-04 12:02:50.000000000 -0400
+@@ -34,16 +34,16 @@ static DEFINE_MUTEX(nlm_host_mutex);
+ 
+ static void			nlm_gc_hosts(void);
+ static struct nsm_handle *	__nsm_find(const struct sockaddr_in *,
+-					const char *, int, int);
++					const char *, int, int, __be32);
+ static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
+ 					 const char *hostname,
+-					 int hostname_len);
++					 int hostname_len, __be32 ip);
+ 
+ /*
+  * Common host lookup routine for server & client
+  */
+ static struct nlm_host *
+-nlm_lookup_host(int server, const struct sockaddr_in *sin,
++nlm_lookup_host(union svc_addr_u *server, const struct sockaddr_in *sin,
+ 					int proto, int version,
+ 					const char *hostname,
+ 					int hostname_len)
+@@ -53,6 +53,7 @@ nlm_lookup_host(int server, const struct
+ 	struct nlm_host	*host;
+ 	struct nsm_handle *nsm = NULL;
+ 	int		hash;
++	__be32		server_ip;
+ 
+ 	dprintk("lockd: nlm_lookup_host(%u.%u.%u.%u, p=%d, v=%d, my role=%s, name=%.*s)\n",
+ 			NIPQUAD(sin->sin_addr.s_addr), proto, version,
+@@ -60,6 +61,13 @@ nlm_lookup_host(int server, const struct
+ 			hostname_len,
+ 			hostname? hostname : "<none>");
+ 
++	/* NLM failover: ipv4 for now */
++	if (server)
++		server_ip = server->addr.s_addr;
++	else
++		server_ip = 0;
++
++	dprintk("lockd: server_ip = %u.%u.%u.%u\n", NIPQUAD(server_ip));
+ 
+ 	hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
+ 
+@@ -89,7 +97,7 @@ nlm_lookup_host(int server, const struct
+ 			continue;
+ 		if (host->h_version != version)
+ 			continue;
+-		if (host->h_server != server)
++		if (host->h_server != server_ip)
+ 			continue;
+ 
+ 		/* Move to head of hash chain. */
+@@ -107,7 +115,7 @@ nlm_lookup_host(int server, const struct
+ 	/* Sadly, the host isn't in our hash table yet. See if
+ 	 * we have an NSM handle for it. If not, create one.
+ 	 */
+-	if (!nsm && !(nsm = nsm_find(sin, hostname, hostname_len)))
++	if (!nsm && !(nsm = nsm_find(sin, hostname, hostname_len, server_ip)))
+ 		goto out;
+ 
+ 	host = kzalloc(sizeof(*host), GFP_KERNEL);
+@@ -130,7 +138,10 @@ nlm_lookup_host(int server, const struct
+ 	host->h_state      = 0;			/* pseudo NSM state */
+ 	host->h_nsmstate   = 0;			/* real NSM state */
+ 	host->h_nsmhandle  = nsm;
+-	host->h_server	   = server;
++
++	/* NLM failover: only ipv4 for now */
++	host->h_server	   = server_ip;
++
+ 	hlist_add_head(&host->h_hash, chain);
+ 	INIT_LIST_HEAD(&host->h_lockowners);
+ 	spin_lock_init(&host->h_lock);
+@@ -180,7 +191,7 @@ struct nlm_host *
+ nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
+ 			const char *hostname, int hostname_len)
+ {
+-	return nlm_lookup_host(0, sin, proto, version,
++	return nlm_lookup_host(NULL, sin, proto, version,
+ 			       hostname, hostname_len);
+ }
+ 
+@@ -191,7 +202,7 @@ struct nlm_host *
+ nlmsvc_lookup_host(struct svc_rqst *rqstp,
+ 			const char *hostname, int hostname_len)
+ {
+-	return nlm_lookup_host(1, svc_addr_in(rqstp),
++	return nlm_lookup_host(&rqstp->rq_daddr, svc_addr_in(rqstp),
+ 			       rqstp->rq_prot, rqstp->rq_vers,
+ 			       hostname, hostname_len);
+ }
+@@ -314,7 +325,7 @@ void nlm_host_rebooted(const struct sock
+ 			hostname, NIPQUAD(sin->sin_addr));
+ 
+ 	/* Find the NSM handle for this peer */
+-	if (!(nsm = __nsm_find(sin, hostname, hostname_len, 0)))
++	if (!(nsm = __nsm_find(sin, hostname, hostname_len, 0, 0)))
+ 		return;
+ 
+ 	/* When reclaiming locks on this peer, make sure that
+@@ -445,7 +456,7 @@ static DEFINE_MUTEX(nsm_mutex);
+ static struct nsm_handle *
+ __nsm_find(const struct sockaddr_in *sin,
+ 		const char *hostname, int hostname_len,
+-		int create)
++		int create, __be32 server_ip)
+ {
+ 	struct nsm_handle *nsm = NULL;
+ 	struct list_head *pos;
+@@ -490,6 +501,11 @@ __nsm_find(const struct sockaddr_in *sin
+ 		atomic_set(&nsm->sm_count, 1);
+ 
+ 		list_add(&nsm->sm_link, &nsm_handles);
++
++		/* NLM failover */
++		mutex_init(&nsm->sm_mutex);
++		INIT_LIST_HEAD(&nsm->sm_serverip.list);
++		nsm->sm_serverip.addr = server_ip;
+ 	}
+ 
+ out:
+@@ -498,9 +514,28 @@ out:
+ }
+ 
+ static struct nsm_handle *
+-nsm_find(const struct sockaddr_in *sin, const char *hostname, int hostname_len)
++nsm_find(const struct sockaddr_in *sin, const char *hostname, int hostname_len,
++		__be32 server_ip)
++{
++	return __nsm_find(sin, hostname, hostname_len, 1, server_ip);
++}
 +
 +/*
-+ * Add fsid into global fo_fsid_list.
-+ *
-+ * If this routine is repeatedly called with the same fsid, instead 
-+ * of searching thru the list to purge old entries (to make the code 
-+ * un-necessarily complicated), we will keep the old entries. Since
-+ * the list is later searched in top-down order (newer entry first), 
-+ * as soon as one is found, the search stops. This implies the older 
-+ * entries will not be used and always expire before new entry.    
-+ *
-+ * As an admin interface, the list is expected to be short and 
-+ * entries are purged (expired) quickly.
++ * NLM failover:
++ *	nsm_mutex should be obtained before entry
++ *	fo_ip not NULL
 + */
-+int
-+nlmsvc_fo_setgrace(int fsid)
++void
++nsm_release_fo_ip(struct nsm_fo_monitored *fo_ip)
+ {
+-	return __nsm_find(sin, hostname, hostname_len, 1);
++	struct list_head *pos, *n, *head=&fo_ip->list;
++	struct nsm_fo_monitored *server_ip;
++
++	list_for_each_safe(pos, n, head) {
++		server_ip = list_entry(pos, struct nsm_fo_monitored, list);
++		kfree(server_ip);
++	}
++	return;
+ }
+ 
+ /*
+@@ -515,6 +550,8 @@ nsm_release(struct nsm_handle *nsm)
+ 		mutex_lock(&nsm_mutex);
+ 		if (atomic_read(&nsm->sm_count) == 0) {
+ 			list_del(&nsm->sm_link);
++			if (!list_empty(&nsm->sm_serverip.list))
++				nsm_release_fo_ip(&nsm->sm_serverip);
+ 			kfree(nsm);
+ 		}
+ 		mutex_unlock(&nsm_mutex);
+--- linux-nlm-2/fs/lockd/mon.c	2007-03-26 18:19:10.000000000 -0400
++++ linux/fs/lockd/mon.c	2007-04-04 16:11:05.000000000 -0400
+@@ -30,7 +30,7 @@ int				nsm_local_state;
+  * Common procedure for SM_MON/SM_UNMON calls
+  */
+ static int
+-nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
++nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res, __be32 server_ip)
+ {
+ 	struct rpc_clnt	*clnt;
+ 	int		status;
+@@ -48,6 +48,12 @@ nsm_mon_unmon(struct nsm_handle *nsm, u3
+ 
+ 	memset(&args, 0, sizeof(args));
+ 	args.mon_name = nsm->sm_name;
++
++	/* NLM failover:
++	 * only IPV4 is supported at this moment 
++	 */
++	args.serv = server_ip;
++
+ 	args.addr = nsm->sm_addr.sin_addr.s_addr;
+ 	args.prog = NLM_PROGRAM;
+ 	args.vers = 3;
+@@ -65,28 +71,71 @@ nsm_mon_unmon(struct nsm_handle *nsm, u3
+ 	return status;
+ }
+ 
++static inline
++int nsm_is_monitored(struct nlm_host *host, __be32 server)
 +{
-+	struct list_head *p, *tlist;
-+	struct fo_fsid *per_fsid, *entry;
-+	int done=0;
++	struct nsm_handle *nsm = host->h_nsmhandle;
++	struct list_head *pos, *head;
++	struct nsm_fo_monitored *fo_entry;
 +
-+	/* allocate the entry */
-+	per_fsid = kmalloc(sizeof(struct fo_fsid), GFP_KERNEL);
-+	if (per_fsid == NULL) {
-+		printk("lockd: nlmsvc_fo_setgrace kmalloc fails\n");
-+		return(-ENOMEM);
-+	}
++	/* client */
++	if (!server)
++		return nsm->sm_monitored;
 +
-+	/* debug printk */
-+	dprintk("lockd: nlmsvc_fo_setgrace fsid=%d jiffies=%lu\n", 
-+		fsid, jiffies);
++	/* server */
++	if (!nsm->sm_monitored)
++		return 0;
 +
-+	/* fill in info */
-+	per_fsid->g_expire = set_grace_period();
-+	per_fsid->g_fsid   = fsid;
-+
-+	spin_lock(&nlm_fo_lock);
-+
-+	if (list_empty(&fo_fsid_list)) {
-+		list_add(&per_fsid->g_list, &fo_fsid_list);
-+		fo_fsid_cnt = 1;
-+		done = 1;
-+		goto nlmsvc_fo_setgrace_out;
-+	} else if (fo_fsid_cnt > NLM_FO_MAX_FSID_GP) {
-+                kfree(per_fsid);
-+                printk("lockd: fo_setgrace max cnt reached fsid=%d not added\n",                        fsid);
-+                goto nlmsvc_fo_setgrace_out;
-+        }
-+
-+	list_for_each_safe(p, tlist, &fo_fsid_list) {
-+		entry = list_entry(p, struct fo_fsid, g_list);
-+		if (!done) {
-+			/* add the new fsid into the list */
-+			if (entry->g_expire <= per_fsid->g_expire) {
-+				list_add(&per_fsid->g_list, &entry->g_list);
-+				fo_fsid_cnt++;
-+				done = 1;
-+			}
++	/* search for monitored list */
++	mutex_lock(&nsm->sm_mutex);
++	head = &nsm->sm_serverip.list;
++	list_for_each(pos, head) {
++		fo_entry = list_entry(pos, struct nsm_fo_monitored, list);
++		if (fo_entry->addr == server) {
++			mutex_unlock(&nsm->sm_mutex);
++			return 1;
 +		}
-+		if (done && (entry->g_fsid == fsid)) {
-+			/* multiple fsid(s) */
-+			BUG_ON(entry->g_expire > per_fsid->g_expire); 
-+			list_del(p); 
-+			fo_fsid_cnt--;
-+			kfree(entry);
-+		} else if (time_before(entry->g_expire, jiffies)) {
-+			/* garbage collection */
-+			dprintk("nlmsvc fo_fsid = %d expires\n", entry->g_fsid);
-+			list_del(p);
-+			fo_fsid_cnt--;
-+			kfree(entry);
-+		} 
 +	}
-+	
-+nlmsvc_fo_setgrace_out:
-+
-+	spin_unlock(&nlm_fo_lock);
-+
-+	/* debug */
-+	if (done)
-+		dprintk("nlmsvc fo setgrace: fsid=%d, jiffies=%lu, expire=%lu\n",
-+			per_fsid->g_fsid, jiffies, per_fsid->g_expire);
-+	else
-+		dprintk("nlmsvc_fo_setgrace: adding fsid=%d fails\n", fsid);
++	mutex_unlock(&nsm->sm_mutex);
 +
 +	return 0;
 +}
 +
-+/* 
-+ * Reset global fo_fsid_list list 
-+ */
-+void 
-+nlmsvc_fo_reset_servs()
-+{
-+	struct fo_fsid *e_purge;
-+	struct list_head *p, *tlist;
-+
-+	spin_lock(&nlm_fo_lock);
-+
-+	/* nothing to do */
-+	if (list_empty(&fo_fsid_list)) {
-+		spin_unlock(&nlm_fo_lock);
-+		return;
-+	}
-+
-+	dprintk("lockd: nlmsvc_fo_reset fo_fsid_list\n");
-+
-+	/* purge the entries */
-+	list_for_each_safe(p, tlist, &fo_fsid_list) {
-+		e_purge = list_entry(p, struct fo_fsid, g_list);
-+		list_del(p);
-+		kfree(e_purge);
-+	}
-+	fo_fsid_cnt = 0;
-+
-+	spin_unlock(&nlm_fo_lock);
-+}
-+
-+/*
-+ * Check whether the fsid is in the failover list: fo_fsid_list.
-+ *	return TRUE (1) if fsid in nlm_serv.
-+ */
-+int
-+nlmsvc_fo_check(struct nfs_fh *fh)
-+{
-+	struct fo_fsid *e_this;
-+	struct list_head *p, *tlist;
-+	int rc=0, this_fsid;
-+
-+	/* see if this fh has fsid */
-+	if (!get_fsid(fh, &this_fsid)) {
-+		return 0;
-+	}
-+
-+	spin_lock(&nlm_fo_lock);
-+
-+	/* no failover entry */
-+	if (list_empty(&fo_fsid_list))  
-+		goto nlmsvc_fo_check_out;
-+
-+	/* check to see whether this_fsid is in fo_fsid_list list */
-+	list_for_each_safe(p, tlist, &fo_fsid_list) {
-+		e_this = list_entry(p, struct fo_fsid, g_list);
-+		if (time_before(e_this->g_expire, jiffies)) {
-+			printk("lockd: fsid=%d grace period expires\n",
-+				e_this->g_fsid);
-+			list_del(p);
-+			fo_fsid_cnt--;
-+			kfree(e_this);
-+		} else if (e_this->g_fsid == this_fsid) {
-+			printk("lockd: fsid=%d in grace period\n",
-+				e_this->g_fsid);
-+			rc = 1;
-+		}
-+	}
-+
-+nlmsvc_fo_check_out:
-+	spin_unlock(&nlm_fo_lock);
-+	return rc;
-+}
-+
---- linux-nlm-1/fs/lockd/svc4proc.c	2007-03-26 10:23:22.000000000 -0400
-+++ linux/fs/lockd/svc4proc.c	2007-03-26 17:34:27.000000000 -0400
-@@ -18,9 +18,10 @@
- #include <linux/lockd/share.h>
- #include <linux/lockd/sm_inter.h>
- 
--
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-+extern struct list_head fo_fsid_list;
-+
  /*
-  * Obtain client and file from arguments
+  * Set up monitoring of a remote host
   */
-@@ -89,7 +90,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept test requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -119,7 +120,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept new lock requests during grace period */
--	if (nlmsvc_grace_period && !argp->reclaim) {
-+	if (nlmsvc_check_grace_period(argp) && !argp->reclaim) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -162,7 +163,7 @@ nlm4svc_proc_cancel(struct svc_rqst *rqs
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -195,7 +196,7 @@ nlm4svc_proc_unlock(struct svc_rqst *rqs
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept new lock requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -332,7 +333,7 @@ nlm4svc_proc_share(struct svc_rqst *rqst
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept new lock requests during grace period */
--	if (nlmsvc_grace_period && !argp->reclaim) {
-+	if (nlmsvc_check_grace_period(argp) && !argp->reclaim) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -365,7 +366,7 @@ nlm4svc_proc_unshare(struct svc_rqst *rq
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
---- linux-nlm-1/fs/lockd/svcproc.c	2007-03-26 10:23:23.000000000 -0400
-+++ linux/fs/lockd/svcproc.c	2007-03-26 17:37:30.000000000 -0400
-@@ -117,7 +117,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp,
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept test requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -148,7 +148,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp,
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept new lock requests during grace period */
--	if (nlmsvc_grace_period && !argp->reclaim) {
-+	if (nlmsvc_check_grace_period(argp) && !argp->reclaim) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -191,7 +191,7 @@ nlmsvc_proc_cancel(struct svc_rqst *rqst
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -224,7 +224,7 @@ nlmsvc_proc_unlock(struct svc_rqst *rqst
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept new lock requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -363,7 +363,7 @@ nlmsvc_proc_share(struct svc_rqst *rqstp
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept new lock requests during grace period */
--	if (nlmsvc_grace_period && !argp->reclaim) {
-+	if (nlmsvc_check_grace_period(argp) && !argp->reclaim) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
-@@ -396,7 +396,7 @@ nlmsvc_proc_unshare(struct svc_rqst *rqs
- 	resp->cookie = argp->cookie;
- 
- 	/* Don't accept requests during grace period */
--	if (nlmsvc_grace_period) {
-+	if (nlmsvc_check_grace_period(argp)) {
- 		resp->status = nlm_lck_denied_grace_period;
- 		return rpc_success;
- 	}
---- linux-nlm-1/fs/lockd/svc.c	2007-03-26 10:23:22.000000000 -0400
-+++ linux/fs/lockd/svc.c	2007-03-26 11:16:27.000000000 -0400
-@@ -75,7 +75,7 @@ static const int		nlm_port_min = 0, nlm_
- 
- static struct ctl_table_header * nlm_sysctl_table;
- 
--static unsigned long set_grace_period(void)
-+unsigned long set_grace_period(void)
+ int
+-nsm_monitor(struct nlm_host *host)
++nsm_monitor(struct nlm_host *host, __be32 server)
  {
- 	unsigned long grace_period;
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+ 	struct nsm_res	res;
+ 	int		status;
++	struct nsm_fo_monitored *fo_entry;
  
-@@ -85,7 +85,6 @@ static unsigned long set_grace_period(vo
- 				/ nlm_timeout) * nlm_timeout * HZ;
- 	else
- 		grace_period = nlm_timeout * 5 * HZ;
--	nlmsvc_grace_period = 1;
- 	return grace_period + jiffies;
+ 	dprintk("lockd: nsm_monitor(%s)\n", host->h_name);
+ 	BUG_ON(nsm == NULL);
+ 
+-	if (nsm->sm_monitored)
++	if (nsm_is_monitored(host, server)) {
++		dprintk("nsm_monitor: sm_monitored is true - returning 0\n");
+ 		return 0;
++	}
+ 
+-	status = nsm_mon_unmon(nsm, SM_MON, &res);
++	status = nsm_mon_unmon(nsm, SM_MON, &res, server);
+ 
+ 	if (status < 0 || res.status != 0)
+ 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", host->h_name);
+-	else
++	else if (nsm->sm_monitored) {
++		fo_entry = kzalloc(sizeof(struct nsm_fo_monitored), GFP_KERNEL);
++		if (!fo_entry) {
++			printk("lockd: out of memory, can't add fo_entry\n");
++			return -ENOMEM;
++		}
++		fo_entry->addr = server;
++		INIT_LIST_HEAD(&fo_entry->list);
++		list_add(&fo_entry->list, &nsm->sm_serverip.list);
++	} else
+ 		nsm->sm_monitored = 1;
++
+ 	return status;
  }
  
-@@ -133,6 +132,8 @@ lockd(struct svc_rqst *rqstp)
- 	nlmsvc_timeout = nlm_timeout * HZ;
+@@ -98,7 +147,9 @@ nsm_unmonitor(struct nlm_host *host)
+ {
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+ 	struct nsm_res	res;
+-	int		status = 0;
++	int		status = 0, error=0;
++	struct list_head *pos, *head=&nsm->sm_serverip.list;
++	struct nsm_fo_monitored *fo_entry;
  
- 	grace_period_expire = set_grace_period();
-+	nlmsvc_grace_period = 1;
-+	(void) nlmsvc_fo_reset_servs();
+ 	if (nsm == NULL)
+ 		return 0;
+@@ -108,11 +159,21 @@ nsm_unmonitor(struct nlm_host *host)
+ 	 && nsm->sm_monitored && !nsm->sm_sticky) {
+ 		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
+ 
+-		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
+-		if (status < 0)
+-			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
++		/* Unmonitor each server IP 
++		 * 	todo: need to re-think error handling
++		 */
++		mutex_lock(&nsm->sm_mutex);
++		list_for_each(pos, head) {
++			fo_entry = list_entry(pos, struct nsm_fo_monitored, list);
++			status = nsm_mon_unmon(nsm, SM_UNMON, &res, fo_entry->addr);
++			if (status < 0) {
++				error++;
++				printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
+ 					host->h_name);
+-		else
++			} 
++		}
++		mutex_unlock(&nsm->sm_mutex);
++		if (!error)
+ 			nsm->sm_monitored = 0;
+ 	}
+ 	nsm_release(nsm);
+@@ -144,6 +205,13 @@ nsm_create(void)
+ 	return rpc_create(&args);
+ }
+ 
++/* We want "buffer" in xdr_encode_common() to hold
++ * either the system_utsname.nodename string (__NEW_UTS_LEN+1)
++ * or IPv4 dot notation (16 bytes+1) for now.
++ */
++
++#define        XDR_ENCODE_BUF_LEN __NEW_UTS_LEN+1
++
+ /*
+  * XDR functions for NSM.
+  */
+@@ -151,7 +219,8 @@ nsm_create(void)
+ static __be32 *
+ xdr_encode_common(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args *argp)
+ {
+-	char	buffer[20], *name;
++	char	*name;
++	char    buffer[XDR_ENCODE_BUF_LEN];
  
  	/*
- 	 * The main request loop. We don't terminate until the last
-@@ -148,6 +149,8 @@ lockd(struct svc_rqst *rqstp)
- 			if (nlmsvc_ops) {
- 				nlmsvc_invalidate_all();
- 				grace_period_expire = set_grace_period();
-+				nlmsvc_grace_period = 1;
-+				(void) nlmsvc_fo_reset_servs();
- 			}
- 		}
+ 	 * Use the dotted-quad IP address of the remote host as
+@@ -161,13 +230,20 @@ xdr_encode_common(struct rpc_rqst *rqstp
+ 	 */
+ 	if (nsm_use_hostnames) {
+ 		name = argp->mon_name;
+-	} else {
++	} else { 
+ 		sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->addr));
+ 		name = buffer;
+ 	}
+-	if (!(p = xdr_encode_string(p, name))
+-	 || !(p = xdr_encode_string(p, utsname()->nodename)))
++	if (!(p = xdr_encode_string(p, name)))
++		return ERR_PTR(-EIO);
++
++	if (argp->serv)
++		sprintf(buffer, "%u.%u.%u.%u", NIPQUAD(argp->serv));
++	else
++		sprintf(buffer, "%s", utsname()->nodename);
++	if (!(p = xdr_encode_string(p, buffer)))
+ 		return ERR_PTR(-EIO);
++
+ 	*p++ = htonl(argp->prog);
+ 	*p++ = htonl(argp->vers);
+ 	*p++ = htonl(argp->proc);
+--- linux-nlm-2/fs/lockd/clntproc.c	2007-03-26 18:19:10.000000000 -0400
++++ linux/fs/lockd/clntproc.c	2007-04-03 21:49:04.000000000 -0400
+@@ -500,7 +500,7 @@ nlmclnt_lock(struct nlm_rqst *req, struc
+ 	unsigned char fl_flags = fl->fl_flags;
+ 	int status = -ENOLCK;
  
-@@ -194,6 +197,7 @@ lockd(struct svc_rqst *rqstp)
- 		nlm_shutdown_hosts();
- 		nlmsvc_pid = 0;
- 		nlmsvc_serv = NULL;
-+		(void) nlmsvc_fo_reset_servs();
- 	} else
- 		printk(KERN_DEBUG
- 			"lockd: new process, skipping host shutdown\n");
+-	if (nsm_monitor(host) < 0) {
++	if (nsm_monitor(host, 0) < 0) {
+ 		printk(KERN_NOTICE "lockd: failed to monitor %s\n",
+ 					host->h_name);
+ 		goto out;
 
 
 
---------------090201000903030600020100
+--------------060305000808070808030408
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -566,7 +561,7 @@ Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---------------090201000903030600020100
+--------------060305000808070808030408
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -576,4 +571,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------090201000903030600020100--
+--------------060305000808070808030408--
