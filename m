@@ -1,28 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: lockd and statd
-Date: Thu, 5 Apr 2007 09:25:39 +1000
-Message-ID: <17940.13299.964869.929876@notabene.brown>
-References: <57bc13580704040011u3058e6d9wd0d4fc0de63d4d93@mail.gmail.com>
-	<1175690426.6118.6.camel@heimdal.trondhjem.org>
-	<57bc13580704040909o386259f1q84367459ce555671@mail.gmail.com>
-	<200704041933.27315.okir@lst.de> <4613F34C.2040709@redhat.com>
-	<1175722463.7279.16.camel@heimdal.trondhjem.org>
-	<46142B4F.1030507@redhat.com>
+From: Lavonne <Israel@telcordia.com>
+Subject: ESPANA VIRUS TERRORISTA EN AGUA POTABLE
+Date: Thu, 5 Apr 2007 18:50:16 +0300
+Message-ID: <48630815.5649677@telcordia.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Wendy Cheng <wcheng@redhat.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HZErW-0006Yv-8c
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 16:26:08 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HZErY-0000tD-5S
-	for nfs@lists.sourceforge.net; Wed, 04 Apr 2007 16:26:00 -0700
-In-Reply-To: message from Wendy Cheng on Wednesday April 4
+	id 1HZUEH-0007KF-Kh
+	for nfs@lists.sourceforge.net; Thu, 05 Apr 2007 08:50:30 -0700
+Received: from [88.251.85.89] (helo=telcordia.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HZUEH-0007fv-RX
+	for nfs@lists.sourceforge.net; Thu, 05 Apr 2007 08:50:32 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,65 +26,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday April 4, wcheng@redhat.com wrote:
-> Trond Myklebust wrote:
-> > On Wed, 2007-04-04 at 14:49 -0400, Wendy Cheng wrote:
-> >   
-> >>   
-> >>     
-> >> I'm wondering what would be the reason(s) that the community version of 
-> >> Linux statd is put in user space ? Any one cares to give either a 
-> >> technical or historical explanation ?
-> >>     
-> >
-> > Off the cuff, I can think of 2 main reasons why it needs to be in user
-> > space:
-> >  1) It creates and maintains a directory hierarchy on permanent storage
-> > (as opposed to in a pseudo filesystem).
-> >  2) It needs to resolve addresses via DNS etc.
-> >   
-> 
-> Ha! #2 happens to be my question.. Is there any reason why it has to be 
-> dnsname ? The following is my issue:
-> 
-> While testing out the NLM failover patches, on Neil's new 
-> nfs-utils-1.1.0-rc1, sm_mon_1_svc() writes to /var/lib/nfs/sm using 
-> dnsname (say, for example, dhcp146.something.com), even the kernel has 
-> passed it a dotted IP address (say 192.168.24.146, since I can't use 
-> "nsm_use_hostnames" as lockd module param). Unfortunately, the 
-> sm_unmon_1_svc() doesn't do similar conversion. So when kernel side 
-> tries to delete the monitored name, I got:
-> 
-> Apr  4 18:12:25 dhcp143 kernel: lockd: delete host dhcp146.perf.redhat.com
-> Apr  4 18:12:25 dhcp143 kernel: lockd: 
-> nsm_unmonitor(dhcp146.perf.redhat.com)
-> Apr  4 18:12:25 dhcp143 rpc.statd[4210]: unlink 
-> (/var/lib/nfs/sm/192.168.24.146): No such file or directory
-> 
-> BTW, don't be fooled by above lockd trace (it printed out hostname but 
-> I'm very sure I passed in IPV4 dotted address as seen by the attached 
-> kernel statd patch).
-> 
-> Oversight ? My configuration problem ? nfs-util bug ? my bug ? or I 
-> mis-understand the logic ?
+Virus Intoxica Agua potable en Espana, informamos a los ciudadanos que
+no consuman agua ya que contiene un virus debido a un acto terrorista.
+Al momento no sabemos la gravedad del Incidente, si sabemos que hay
+infectados por tomar AGUA INFECTADA CON VIRUS !!
+PARA MAS INFORMACION HAGA CLICK EN EL LINK .
 
-nfs-utils bug.  sm_unmon_1_svc should
-	xunlink(SM_DIR, clnt->dns_name, 1);
-rather than
-	xunlink(SM_DIR, mon_name, 1);
-
-or something like that.
-Thanks for catching that.
+http://geocities.com/SmithsonGoth9596
 
 
-Why use dns_name?  To make sure we handle multi-homed hosts most
-effectively.
+Atte.
+Ciudadania del Pueblo
+Grupo Santander
 
+-----------------------------------------------------------------------------------------
 
-I'm going to be offline for a few days.  I'll comment on the patch
-when I get back.
-
-NeilBrown
+Si recibio este mail por equivocacione, por favor desuscribirse desde
+el siguiente link  unsubscribe from our mailing list:
+http://geocities.com/PincasMantle6689
 
 
 -------------------------------------------------------------------------
