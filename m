@@ -1,23 +1,29 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 3/4 Revised] NLM - kernel lockd-statd changes
-Date: Tue, 10 Apr 2007 11:00:06 -0400
-Message-ID: <461BA676.1030305@redhat.com>
-References: <46156FA0.4030506@redhat.com> <200704101109.44333.okir@lst.de>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: Re: cel's patches under development
+Date: Tue, 10 Apr 2007 17:22:12 +0200
+Message-ID: <200704101722.13798.olaf.kirch@oracle.com>
+References: <460852BB.4080503@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net
-To: Olaf Kirch <okir@lst.de>
+To: nfs@lists.sourceforge.net, chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbHnQ-0005iV-B2
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 07:58:12 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbHnS-0008RB-JO
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 07:58:14 -0700
-In-Reply-To: <200704101109.44333.okir@lst.de>
+	id 1HbICX-0000tF-E1
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 08:24:09 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbICY-0000oG-EX
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 08:24:11 -0700
+Received: from rgmgw3.us.oracle.com (rgmgw3.us.oracle.com [138.1.186.112])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l3AFN2pk027953
+	for <nfs@lists.sourceforge.net>; Tue, 10 Apr 2007 10:23:03 -0500
+Received: from acsmt351.oracle.com (acsmt351.oracle.com [141.146.40.151])
+	by rgmgw3.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l3AEsFFM002065
+	for <nfs@lists.sourceforge.net>; Tue, 10 Apr 2007 09:23:01 -0600
+In-Reply-To: <460852BB.4080503@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,51 +36,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Olaf Kirch wrote:
-> On Thursday 05 April 2007 23:52, Wendy Cheng wrote:
->   
->> The changes record the ip interface that accepts the lock requests and 
->> passes the correct "my_name" (in standard IPV4 dot notation) to user 
->> mode statd (instead of system_utsname.nodename). This enables rpc.statd 
->> to add the correct taken-over IPv4 address into the 3rd parameter of 
->> ha_callout program. Current nfs-utils always resets "my_name" into 
->> loopback address (127.0.0.1), regardless the statement made in rpc.statd 
->> man page. Check out "man rpc.statd" and "man sm-notify" for details.
->>     
->
-> I don't think this is the right approach. For one, there's not enough
-> room in the SM_MON request to accomodate an additional IPv6
-> address, so you would have to come up with something entirely
-> different for IPv6 anyway. 
+Hi,
 
-The original plan was to pass fsid instead of floating ip but it 
-required some major restructures on host lookup and file lookup (in 
-nlmsvc_retrieve_args). I have been hoping by the time IPV6 is really 
-required, NFS V4 would be mature enough to get deployed (so this would 
-be a non-issue anyway).
+I've been working a bit on some changes to clean up the xdr_buf
+handling. Patches can be found here:
+http://oss.oracle.com/~okir/xdr-buf-rewrite/
 
-If people doesn't mind to restructure the sequence of host and file 
-lookup, passing fsid can be one of the strong candidates to get this right.
+The patch set aims to
 
-> But more importantly, I think we should
-> move away from associating all sorts of network level addresses
-> with lockd state - addresses are just smoke and mirrors. Despite
-> all of NLM/NSMs shortcomings, there's a vehicle to convey identity,
-> and that's mon_name. IMHO the focus should be on making it work
-> properly if it doesn't do what you do.
->
-> But - why do you need to record the address on which the request was
-> received. at all? Don't you know beforehand on which IP addresses you
-> will be servicing NFS requests, and which will need to be migrated?
->
-> Side note: should we think about replacing SM_MON with some new
-> design altogether (think netlink)?
->
->   
-Totally agree ! More on this later when I'm back to office.
+ -	factor out common send/recv code in the client/server side, and
+	put it into socklib.c
+ -	get rid of some of the messy and duplicated code in xdr.c
+ -	move the data copies out of the data_ready callbacks in xprtsock.c.
+	(In the long run, one may want to think about per-CPU rpciod threads,
+	so that data remains inside the cache of the CPU that processes it,
+	rather than bouncing around)
 
--- Wendy
+The current code tries to guess the correct alignment of the returned data in
+READ, READLINK and READDIR replies, and inlines a vector of pages "just so"
+into the XDR so that the data ends up in the right place. If it doesn't, we jump
+through 15 hoops to realign it.
 
+The approach I'm trying is to leave the data in skb's for as long as it's
+practical, and copy data to the page cache in the XDR decode routines.
+In order to hide the skb mechanics, there's an rpc_data object that
+encapsulates this. It looks a little awkward, but Chuck complained
+about layering violations so I tried this instead.
+
+The patch set is based on Chuck's tree (drop-20070409). It's
+far from complete; in particular, I want to get rid of any code that
+uses xdr_inline_pages, and I want to fully convert svcsock.c to use
+the new generic recv functions as well.
+
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
