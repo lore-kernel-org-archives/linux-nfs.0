@@ -1,25 +1,26 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: cel's patches under development
-Date: Tue, 10 Apr 2007 15:32:19 -0400
-Message-ID: <1176233539.309.27.camel@heimdal.trondhjem.org>
-References: <460852BB.4080503@oracle.com>
-	<200704101722.13798.olaf.kirch@oracle.com>
+Subject: Re: lockd and statd
+Date: Tue, 10 Apr 2007 15:36:19 -0400
+Message-ID: <1176233779.309.32.camel@heimdal.trondhjem.org>
+References: <57bc13580704040011u3058e6d9wd0d4fc0de63d4d93@mail.gmail.com>
+	<46142B4F.1030507@redhat.com>
+	<1175728939.6459.9.camel@heimdal.trondhjem.org>
+	<200704101047.40755.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Olaf Kirch <olaf.kirch@oracle.com>
+To: Olaf Kirch <okir@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbM4s-0003Ty-VV
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 12:32:31 -0700
+	id 1HbM8o-0003va-Ki
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 12:36:34 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18qQ6z8dVObtremjkfNGpjoirTWwPjI+A4=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HbM4v-0003SZ-3V
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 12:32:33 -0700
-In-Reply-To: <200704101722.13798.olaf.kirch@oracle.com>
+	ident=[U2FsdGVkX19VeRP42p5cuLa6G0DeJTbVyGQhEDwFi60=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbM8p-0005qF-Nd
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 12:36:37 -0700
+In-Reply-To: <200704101047.40755.okir@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,24 +33,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-04-10 at 17:22 +0200, Olaf Kirch wrote:
-> Hi,
-> The approach I'm trying is to leave the data in skb's for as long as it's
-> practical, and copy data to the page cache in the XDR decode routines.
-> In order to hide the skb mechanics, there's an rpc_data object that
-> encapsulates this. It looks a little awkward, but Chuck complained
-> about layering violations so I tried this instead.
+On Tue, 2007-04-10 at 10:47 +0200, Olaf Kirch wrote:
+> On Thursday 05 April 2007 01:22, Trond Myklebust wrote:
+> > Tom gave a talk on this subject at Connectathon last year. You can find
+> > his arguments for why statd DNS lookups are a must in his slides:
+> > 
+> >      http://www.connectathon.org/talks06/talpey-cthon06-nsm.pdf
+> > 
+> > Note his point that the server needs to store both the client hostname
+> > and IP address so that you can fail over from one to the other if the
+> > notification fails.
+> 
+> Well, I'm not really convinced. When monitoring a host, I think it is sufficient
+> to just store the mon_name; no IP address or anything. When dealing with an
+> incoming SM_NOTIFY, statd just needs to do a string match of the mon_name.
+> When sending out an SM_NOTIFY, we need a user space helper anyway,
+> which can do a full-blown DNS lookup and send notifications to *all* addresses
+> listed for each peer.
 
-I'm a bit wary of this. skbs are usually allocated from the ATOMIC pool
-which is a very limited resource: their lifetime really wants to be as
-short as possible. Won't this basically end up aggravating an already
-nasty situation w.r.t. our behaviour when under memory pressure?
+What about peers that don't have a DNS entry? I certainly don't expect
+all machines on my private LAN to have DNS entries.
 
-Also, what about stuff like RDMA, which doesn't need this sort of
-mechanism in order to get things right?
+> This is the approach I took with the kernel statd - these patches have been in 
+> Suse kernels for 1.5 years or so, and until I left in January, I hadn't seen a
+> single report that complained about lock reclaim problems.
 
-Finally, will we need to keep writing these very complex handlers for
-every new protocol that we want to add (e.g. IPv6, IPoIB, ...)?
+History shows that a lack of complaints is not necessarily a good
+measure of lack of problems. :-)
+
+> Of course, clients need to send a mon_name that make sense from the
+> server's point of view in DNS - ie it must be a FQDN, or the server must be
+> able to find it via its resolv.conf search list.
+
+> I believe relying on the client's IP address will paper over configuration
+> problems at best, and lead to bad or incomplete notifications at worst.
+
+You missed the point. The IP address was proposed as a _backup_ in case
+the DNS lookup fails.
 
 Cheers
   Trond
