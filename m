@@ -1,24 +1,28 @@
-From: "S. Wendy Cheng" <wcheng@redhat.com>
-Subject: Re: [PATCH 1/4 Revised] NLM - drop per fsid locks
-Date: Mon, 09 Apr 2007 18:56:52 -0400
-Message-ID: <461AC4B4.7060504@redhat.com>
-References: <46156F60.1040400@redhat.com>
-	<20070409184902.GA30444@infradead.org>
+From: Olaf Kirch <okir@lst.de>
+Subject: Re: lockd and statd
+Date: Tue, 10 Apr 2007 10:47:39 +0200
+Message-ID: <200704101047.40755.okir@lst.de>
+References: <57bc13580704040011u3058e6d9wd0d4fc0de63d4d93@mail.gmail.com>
+	<46142B4F.1030507@redhat.com>
+	<1175728939.6459.9.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hb2lR-0007Lu-DY
-	for nfs@lists.sourceforge.net; Mon, 09 Apr 2007 15:55:09 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hb2lT-0000bF-Li
-	for nfs@lists.sourceforge.net; Mon, 09 Apr 2007 15:55:12 -0700
-In-Reply-To: <20070409184902.GA30444@infradead.org>
+	id 1HbC13-0006v5-JE
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 01:47:53 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbC14-0000Bw-JH
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 01:47:56 -0700
+Received: from [192.168.5.32] (p54a7c470.dip.t-dialin.net [84.167.196.112])
+	(authenticated bits=0)
+	by mail.lst.de (8.12.3/8.12.3/Debian-7.1) with ESMTP id l3A8lxLD030152
+	(version=TLSv1/SSLv3 cipher=EXP1024-RC4-SHA bits=56 verify=NO)
+	for <nfs@lists.sourceforge.net>; Tue, 10 Apr 2007 10:48:00 +0200
+In-Reply-To: <1175728939.6459.9.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,51 +35,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Christoph Hellwig wrote:
-> On Thu, Apr 05, 2007 at 05:51:28PM -0400, Wendy Cheng wrote:
->   
->> By writing exported filesytem id into /proc/fs/nfsd/nlm_unlock, this 
->> patch walks thru lockd's global nlm_files list to release all the locks 
->> associated with the particular id. It is used to enable NFS lock 
->> failover with active-active clustered servers.
->>
->> Relevant steps:
->> 1) Exports filesystem with "fsid" option as:
->>  /etc/exports entry> /mnt/shared/exports *(fsid=1234,sync,rw)
->> 2) Drops locks based on fsid by:
->>  shell> echo 1234 > /proc/fs/nfsd/nlm_unlock
->>     
->
-> This is a very awkward API.  Dropping locks should support uuid or
-> dev_t based exports aswell.  Also it would be nice if you we had
-> a more general push api for changes to filesystem state, that works
-> on a similar basis as getting information from /etc/exports.
->   
-These can be added as future enhancements. But be aware that:
-1. The "dev_t" value may be an obvious thing for a kernel developer but 
-not necessarily for admin(s) (human operator) or cluster script (that 
-has to use extra steps to obtain it).
-2. Device major and minor numbers can change between different servers 
-(shared storage case) or between reboots. The "fsid" approach should be 
-encouraged.
-3. UUID is tied to disk partitions - an all-or-nothing approach, 
-comparing to fsid that would allow cluster filesystem doing its load 
-balancing (by
-exporting different directories from different nodes)
+On Thursday 05 April 2007 01:22, Trond Myklebust wrote:
+> Tom gave a talk on this subject at Connectathon last year. You can find
+> his arguments for why statd DNS lookups are a must in his slides:
+> 
+>      http://www.connectathon.org/talks06/talpey-cthon06-nsm.pdf
+> 
+> Note his point that the server needs to store both the client hostname
+> and IP address so that you can fail over from one to the other if the
+> notification fails.
 
-On the other hand, lock dropping based on "uuid" or "dev_t" may be 
-useful in a single server case though.
->
-> And please inline your patches into the mail I send, attaching them
-> makes it really hard to quote it in mail replies or even to simply read
-> it. 
->   
-I normally don't do much development works for community versions of 
-linux kernel. Some of the "convention" is not clear to me. Will do it 
-next time. But these patches tend to be quite large (in terms of line 
-count).
+Well, I'm not really convinced. When monitoring a host, I think it is sufficient
+to just store the mon_name; no IP address or anything. When dealing with an
+incoming SM_NOTIFY, statd just needs to do a string match of the mon_name.
+When sending out an SM_NOTIFY, we need a user space helper anyway,
+which can do a full-blown DNS lookup and send notifications to *all* addresses
+listed for each peer.
 
--- Wendy
+This is the approach I took with the kernel statd - these patches have been in 
+Suse kernels for 1.5 years or so, and until I left in January, I hadn't seen a
+single report that complained about lock reclaim problems.
+
+Of course, clients need to send a mon_name that make sense from the
+server's point of view in DNS - ie it must be a FQDN, or the server must be
+able to find it via its resolv.conf search list.
+
+I believe relying on the client's IP address will paper over configuration
+problems at best, and lead to bad or incomplete notifications at worst.
+
+A user space statd has its uses, eg with lock failover - but I believe the
+majority of users is served by a small kernel statd just as well.
+
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
