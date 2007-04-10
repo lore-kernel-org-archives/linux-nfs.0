@@ -1,23 +1,25 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 3/4 Revised] NLM - kernel lockd-statd changes
-Date: Tue, 10 Apr 2007 14:16:59 -0400
-Message-ID: <461BD49B.7090503@redhat.com>
-References: <46156FA0.4030506@redhat.com> <200704101109.44333.okir@lst.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: cel's patches under development
+Date: Tue, 10 Apr 2007 15:32:19 -0400
+Message-ID: <1176233539.309.27.camel@heimdal.trondhjem.org>
+References: <460852BB.4080503@oracle.com>
+	<200704101722.13798.olaf.kirch@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net
-To: Olaf Kirch <okir@lst.de>
+Cc: nfs@lists.sourceforge.net
+To: Olaf Kirch <olaf.kirch@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbKrx-0003g5-Ub
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 11:15:06 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbKrz-0004uh-Mq
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 11:15:08 -0700
-In-Reply-To: <200704101109.44333.okir@lst.de>
+	id 1HbM4s-0003Ty-VV
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 12:32:31 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18qQ6z8dVObtremjkfNGpjoirTWwPjI+A4=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HbM4v-0003SZ-3V
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 12:32:33 -0700
+In-Reply-To: <200704101722.13798.olaf.kirch@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,34 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Olaf Kirch wrote:
-> But - why do you need to record the address on which the request was
-> received. at all? Don't you know beforehand on which IP addresses you
-> will be servicing NFS requests, and which will need to be migrated?
->
->   
+On Tue, 2007-04-10 at 17:22 +0200, Olaf Kirch wrote:
+> Hi,
+> The approach I'm trying is to leave the data in skb's for as long as it's
+> practical, and copy data to the page cache in the XDR decode routines.
+> In order to hide the skb mechanics, there's an rpc_data object that
+> encapsulates this. It looks a little awkward, but Chuck complained
+> about layering violations so I tried this instead.
 
-Sorry, somehow I missed this question ...
+I'm a bit wary of this. skbs are usually allocated from the ATOMIC pool
+which is a very limited resource: their lifetime really wants to be as
+short as possible. Won't this basically end up aggravating an already
+nasty situation w.r.t. our behaviour when under memory pressure?
 
-The intent is to avoid sending notifications to *all* clients.  The 
-cluster user mode scripts will have to associate the floating IP(s) with 
-fsid(s) and relies heavily on the information passed by rpc.statd's 
-ha-callout program. My test ha-callout user mode program shows the 
-following:
+Also, what about stuff like RDMA, which doesn't need this sort of
+mechanism in order to get things right?
 
-/mnt/lockd/ha-pg/hatest is invoked with 3 arguments.
-    add-client
-    192.168.24.146
-    192.168.24.149
-/mnt/lockd/ha-pg/hatest is invoked with 3 arguments.
-    del-client
-    192.168.24.145
-    192.168.24.149
+Finally, will we need to keep writing these very complex handlers for
+every new protocol that we want to add (e.g. IPv6, IPoIB, ...)?
 
-These info(s) will be used to construct the notification list when 
-notification actually take places.
-
--- Wendy
+Cheers
+  Trond
 
 
 -------------------------------------------------------------------------
