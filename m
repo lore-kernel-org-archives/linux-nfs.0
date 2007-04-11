@@ -1,31 +1,24 @@
-From: Zhang Weiwu <zhangweiwu@realss.com>
-Subject: SFU client cannot connect to Linux NFS server on a network
-	without	reverse DNS
-Date: Wed, 11 Apr 2007 17:30:28 +0800
-Message-ID: <1176283828.24860.27.camel@joe.realss.com>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: Re: cel's patches under development
+Date: Wed, 11 Apr 2007 08:41:20 +0200
+Message-ID: <200704110841.21291.olaf.kirch@oracle.com>
+References: <460852BB.4080503@oracle.com>
+	<200704101722.13798.olaf.kirch@oracle.com>
+	<1176233539.309.27.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbZC2-0004Bq-Ma
-	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 02:32:47 -0700
-Received: from bossdog.realss.com ([211.157.108.128])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbZC1-0003Zd-9Z
-	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 02:32:49 -0700
-Received: from localhost (unknown [127.0.0.1])
-	by bossdog.realss.com (Postfix) with ESMTP id 6D7381C0004
-	for <nfs@lists.sourceforge.net>; Wed, 11 Apr 2007 17:32:55 +0800 (CST)
-Received: from bossdog.realss.com ([127.0.0.1])
-	by localhost (bossdog.realss.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 00362-13 for <nfs@lists.sourceforge.net>;
-	Wed, 11 Apr 2007 17:32:53 +0800 (CST)
-Received: from [218.193.55.195]
-	(129.16.61.59.board.xm.fj.dynamic.163data.com.cn [59.61.16.129])
-	by bossdog.realss.com (Postfix) with ESMTP id 409EF1C0003
-	for <nfs@lists.sourceforge.net>; Wed, 11 Apr 2007 17:32:53 +0800 (CST)
+	id 1HbWY9-0003Tr-Tf
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 23:43:25 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbWYC-00008v-41
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 23:43:28 -0700
+In-Reply-To: <1176233539.309.27.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,59 +31,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I don't know if I should file a bug for Linux's NFS because basically
-(as my understanding) this is a bug of Microsoft's SFU NFS client.
-However we all know complain to Microsoft means nothing, thus the email
-come to nfs list which is the only list might care about Microsoft's
-product's users.
+On Tuesday 10 April 2007 21:32, Trond Myklebust wrote:
+> I'm a bit wary of this. skbs are usually allocated from the ATOMIC pool
+> which is a very limited resource: their lifetime really wants to be as
+> short as possible. Won't this basically end up aggravating an already
+> nasty situation w.r.t. our behaviour when under memory pressure?
 
-I have Linux NFS server set up on FreeBSD for years and I also tried to
-deploy Windows SFU NFS client to access the NFS server, which is okay.
-(only anonymous export and anonymous mount)
+I don't think so. We're talking about an additional delay caused by
+moving the memcpy from the BH to some process (user or rpciod).
+I agree that it would be a bad idea to keep these skbs around longer
+than needed.
 
-When we (for some special reason) need to move the NFS service to Linux
-we got a problem, SFU NFS client complains "Network Path not Found".
+On the server side, the impact of this delay will probably be even
+lower - skbs usually spend some time on the TCP socket's receive
+queue anyway, and nfsd is pulling over the received packet
+using recvmsg.
 
-MS kb article suggest this is because my network lack reverse DNS, or
-better say, because NFS Client is designed to interconnet UNIX but not
-Linux NFS server.
-http://support.microsoft.com/kb/926095
+> Also, what about stuff like RDMA, which doesn't need this sort of
+> mechanism in order to get things right?
 
-My /etc/export is:
+But RDMA may benefit from the proposed interface for transport
+specific receive buffers (rpc_data objects). How that buffer works is
+entirely up to the transport. For TCP and UDP it's skb_lists, but for
+RDMA it would probably be something very different.
 
-/var/export    0.0.0.0/0.0.0.0(ro,insecure,no_subtree_check,sync)
+Here's the mode of operation - XDR functions that expect to receive
+data to a pagevec, such as READ, READLINK etc, call
+xprt_rcvbuf_alloc(xprt, pages, pgbase, pglen) to allocate a
+transport specific buffer object. Transports such as TCP or UDP
+ignore the page vector, but the RDMA transport could use this
+to do set up its buffers. From the implementation point of view,
+it's probably not much different from extracting the pagevec
+information from the xdr_buf receive buffer, but it looks cleaner
+to me.
 
-My situation is:
+Likewise, it is possible to create transport-specific rpc_data
+objects for sending data (and eg have RDMA do a DMA Send
+for these). This would allow to get rid of the pagevec inside the
+xdr_buf altogether.
 
-     I. It's impossible to set up reverse DNS here because the campus
-        has been running for years without it and the network
-        administrator will not make any change because of my office.
-    II. Linux   client to Linux   NFS server works fine without reverse
-        DNS, Linux   client to FreeBSD NFS server works fine without
-        reverse DNS, Windows client to FreeBSD NFS server works fine
-        without reverse DNS, Windows client to Linux NFS server doesn't
-        work without reverse DNS. Why?
+> Finally, will we need to keep writing these very complex handlers for
+> every new protocol that we want to add (e.g. IPv6, IPoIB, ...)?
 
-I hope there is an option in Linux NFS server that can turn off reverse
-DNS for Windows NFS Client though I could not find such an option after
-read a lot of related documents. I also tried to adjust SFU NFS client
-but there are two few options there for me to tweak.
+No. TCP and UDP share the same skb_list handling code,
+regardless of address family and link layer protocol. Adding
+a transport such as DCCP will not need a new handler
+either.
 
-If currently Linux NFS server cannot work with SFU on a etwork without
-reverse DNS, can we file a feature request and hope next version this
-will be okay?
+I believe the net result of this proposed restructuring will be
+less complexity. Right now we have half a dozen or so
+functions that walk through an xdr_buf (head, pagevec, tail)...
+whereas with the proposed changes, you have the complexity
+confined to one place.
 
-P.S. switching NFS client is difficult to me because all other NFS
-client than Microsoft's product are for a fee. If this cannot be made
-working, the only option for us is to switch to samba which means a lot
-of changes in the office.
-
+Olaf
 -- 
-Zhang Weiwu
-Real Softservice
-http://www.realss.com
-+86 592 2091112
-
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
