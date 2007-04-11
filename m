@@ -1,30 +1,26 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+From: Olaf Kirch <olaf.kirch@oracle.com>
 Subject: Re: cel's patches under development
-Date: Wed, 11 Apr 2007 07:39:53 -0400
-Message-ID: <EXNANE01OF9vJZTuG5w00000863@exnane01.hq.netapp.com>
+Date: Wed, 11 Apr 2007 14:02:49 +0200
+Message-ID: <200704111402.50435.olaf.kirch@oracle.com>
 References: <460852BB.4080503@oracle.com>
-	<200704101722.13798.olaf.kirch@oracle.com>
-	<1176233539.309.27.camel@heimdal.trondhjem.org>
 	<200704110841.21291.olaf.kirch@oracle.com>
+	<EXNANE01OF9vJZTuG5w00000863@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net,
 	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Olaf Kirch <olaf.kirch@oracle.com>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbbAr-0000h8-KY
-	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 04:39:41 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbbAt-00041E-JS
-	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 04:39:44 -0700
-In-Reply-To: <200704110841.21291.olaf.kirch@oracle.com>
-References: <460852BB.4080503@oracle.com>
-	<200704101722.13798.olaf.kirch@oracle.com>
-	<1176233539.309.27.camel@heimdal.trondhjem.org>
-	<200704110841.21291.olaf.kirch@oracle.com>
+	id 1HbbY9-0003Kq-Ai
+	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 05:03:45 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HbbYA-0002bH-Hb
+	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 05:03:47 -0700
+In-Reply-To: <EXNANE01OF9vJZTuG5w00000863@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,50 +33,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 02:41 AM 4/11/2007, Olaf Kirch wrote:
->On Tuesday 10 April 2007 21:32, Trond Myklebust wrote:
->> Also, what about stuff like RDMA, which doesn't need this sort of
->> mechanism in order to get things right?
->
->But RDMA may benefit from the proposed interface for transport
->specific receive buffers (rpc_data objects). How that buffer works is
->entirely up to the transport. For TCP and UDP it's skb_lists, but for
->RDMA it would probably be something very different.
+On Wednesday 11 April 2007 13:39, Talpey, Thomas wrote:
+> FWIW, I'm still looking at this from the RDMA perspective. I like the
+> abstraction of the data representation, but I don't like the protocol
+> specific switch statements that are in the data movement. These
 
-FWIW, I'm still looking at this from the RDMA perspective. I like the
-abstraction of the data representation, but I don't like the protocol
-specific switch statements that are in the data movement. These
-are cumbersome and don't lend themselves to dynamic loading. Also,
-RDMA isn't a new protocol family, so it doesn't lend itself to an
-IPv4/IPv6 and UDP/TCP kind of switch.
+Right now, the proposed rpc_data thing has two function pointers,
+so no switch needed.
 
->Here's the mode of operation - XDR functions that expect to receive
->data to a pagevec, such as READ, READLINK etc, call
->xprt_rcvbuf_alloc(xprt, pages, pgbase, pglen) to allocate a
->transport specific buffer object. Transports such as TCP or UDP
->ignore the page vector, but the RDMA transport could use this
->to do set up its buffers. From the implementation point of view,
+> are cumbersome and don't lend themselves to dynamic loading. Also,
+> RDMA isn't a new protocol family, so it doesn't lend itself to an
+> IPv4/IPv6 and UDP/TCP kind of switch.
 
-The RDMA code turns out to not need this, because the xdr iov's
-have a clear encoding for pagelists (head->pages[]->tail). The only
-ambiguity comes from the upper layer - NFS READDIRs for example
-send down a pagelist, but they don't expect to cache the result
-directly like for READ. We use a different RDMA operation for them,
-and there's a guess made at the lower layer. However, moving this
-function to XDR doesn't fix it. So I'm semi-neutral on the proposed
-change from the RDMA perspective.
+How is it integrated on the client side? Wouldn't this be another
+transport in terms of Chuck's transport switch? If so, it would just
+provide a function for creating an RDMA specific rpc_data object
+that does the right thing.
 
->I believe the net result of this proposed restructuring will be
->less complexity. Right now we have half a dozen or so
->functions that walk through an xdr_buf (head, pagevec, tail)...
->whereas with the proposed changes, you have the complexity
->confined to one place.
+> The RDMA code turns out to not need this, because the xdr iov's
+> have a clear encoding for pagelists (head->pages[]->tail).
 
-This is good, but I'd like to see a stronger benefit, personally. More
-comments after I get a better look.
+But that means yet another non-obvious user of xdr_buf that makes
+it even harder to rewrite that whole code :-) Wouldn't it be better
+to make it explicit "here is a bunch of pages that I want you to
+put the bulk data into"?
 
-Tom.
-
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
