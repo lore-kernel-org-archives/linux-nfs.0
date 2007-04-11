@@ -1,9 +1,7 @@
-From: Zhang Weiwu <zhangweiwu@realss.com>
-Subject: [solved] Re: SFU client cannot connect to Linux NFS server on
-	a	network without reverse DNS
-Date: Wed, 11 Apr 2007 22:49:18 +0800
-Message-ID: <1176302958.26034.19.camel@joe.realss.com>
-References: <1176283828.24860.27.camel@joe.realss.com>
+From: Gabriel Barazer <gabriel@barazer.net>
+Subject: mountd randomly crash and panic the server
+Date: Wed, 11 Apr 2007 17:11:58 +0200
+Message-ID: <461CFABE.9050301@barazer.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -11,23 +9,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbeAR-0004om-Tt
-	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 07:51:31 -0700
-Received: from bossdog.realss.com ([211.157.108.128])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbeAS-0002cq-AM
-	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 07:51:30 -0700
-Received: from localhost (unknown [127.0.0.1])
-	by bossdog.realss.com (Postfix) with ESMTP id 635321C0004
-	for <nfs@lists.sourceforge.net>; Wed, 11 Apr 2007 22:51:49 +0800 (CST)
-Received: from bossdog.realss.com ([127.0.0.1])
-	by localhost (bossdog.realss.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 03456-05 for <nfs@lists.sourceforge.net>;
-	Wed, 11 Apr 2007 22:51:45 +0800 (CST)
-Received: from [218.193.55.195]
-	(129.16.61.59.board.xm.fj.dynamic.163data.com.cn [59.61.16.129])
-	by bossdog.realss.com (Postfix) with ESMTP id 1F1911C0003
-	for <nfs@lists.sourceforge.net>; Wed, 11 Apr 2007 22:51:45 +0800 (CST)
-In-Reply-To: <1176283828.24860.27.camel@joe.realss.com>
+	id 1HbeUs-0007Ep-5D
+	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 08:12:34 -0700
+Received: from mail.reagi.com ([195.60.188.80])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbeUt-0002cT-At
+	for nfs@lists.sourceforge.net; Wed, 11 Apr 2007 08:12:36 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,63 +26,139 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-In this afternoon after fought this problem for two days the problem is
-suddenly gone, now SFU can mount NFS exports from Linux. A bit slow some
-times but it works. Don't know why. 
+Hello there,
 
-On Wed, 2007-04-11 at 17:30 +0800, Zhang Weiwu wrote:
-> I don't know if I should file a bug for Linux's NFS because basically
-> (as my understanding) this is a bug of Microsoft's SFU NFS client.
-> However we all know complain to Microsoft means nothing, thus the email
-> come to nfs list which is the only list might care about Microsoft's
-> product's users.
-> 
-> I have Linux NFS server set up on FreeBSD for years and I also tried to
-> deploy Windows SFU NFS client to access the NFS server, which is okay.
-> (only anonymous export and anonymous mount)
-> 
-> When we (for some special reason) need to move the NFS service to Linux
-> we got a problem, SFU NFS client complains "Network Path not Found".
-> 
-> MS kb article suggest this is because my network lack reverse DNS, or
-> better say, because NFS Client is designed to interconnet UNIX but not
-> Linux NFS server.
-> http://support.microsoft.com/kb/926095
-> 
-> My /etc/export is:
-> 
-> /var/export    0.0.0.0/0.0.0.0(ro,insecure,no_subtree_check,sync)
-> 
-> My situation is:
-> 
->      I. It's impossible to set up reverse DNS here because the campus
->         has been running for years without it and the network
->         administrator will not make any change because of my office.
->     II. Linux   client to Linux   NFS server works fine without reverse
->         DNS, Linux   client to FreeBSD NFS server works fine without
->         reverse DNS, Windows client to FreeBSD NFS server works fine
->         without reverse DNS, Windows client to Linux NFS server doesn't
->         work without reverse DNS. Why?
-> 
-> I hope there is an option in Linux NFS server that can turn off reverse
-> DNS for Windows NFS Client though I could not find such an option after
-> read a lot of related documents. I also tried to adjust SFU NFS client
-> but there are two few options there for me to tweak.
-> 
-> If currently Linux NFS server cannot work with SFU on a etwork without
-> reverse DNS, can we file a feature request and hope next version this
-> will be okay?
-> 
-> P.S. switching NFS client is difficult to me because all other NFS
-> client than Microsoft's product are for a fee. If this cannot be made
-> working, the only option for us is to switch to samba which means a lot
-> of changes in the office.
-> 
--- 
-Zhang Weiwu
-Real Softservice
-http://www.realss.com
-+86 592 2091112
+I recently got a problem probably due to rpc.mountd (from nfs-utils 
+1.0.7). I have a file server running linux 2.6.20.3 and it crashed 4 
+times since march, 1st under a quite heavy load with the following 
+kernel errors in the syslog (which I have read after the crash, because 
+kernel probably panic()ed ano network access was possible)
+
+Mar 19 19:52:57 filer1 kernel: general protection fault: 0000 [1] SMP
+Mar 19 19:52:57 filer1 kernel: CPU 3
+Mar 19 19:52:57 filer1 kernel: Modules linked in:
+Mar 19 19:52:57 filer1 kernel: Pid: 2238, comm: rpc.mountd Not tainted 2.6.20.3 #1
+Mar 19 19:52:57 filer1 kernel: RIP: 0010:[<ffffffff8053606f>]  [<ffffffff8053606f>] cache_clean+0x11e/0x22f
+Mar 19 19:52:57 filer1 kernel: RSP: 0018:ffff810068da7b68  EFLAGS: 00010206
+Mar 19 19:52:57 filer1 kernel: RAX: ffffffff806a0e80 RBX: 0001e71926010009 RCX: ffffffff806a0e80
+Mar 19 19:52:57 filer1 kernel: RDX: ffffffff806a0e80 RSI: 0000000000000071 RDI: ffffffff806a0e98
+Mar 19 19:52:57 filer1 kernel: RBP: ffff8100090ad7c0 R08: 0000000000000000 R09: 000000000000006b
+Mar 19 19:52:57 filer1 kernel: R10: 0000000000000000 R11: 0000000000000005 R12: 0000000000000000
+Mar 19 19:52:57 filer1 kernel: R13: ffff810068da7e08 R14: 0000000000000006 R15: ffff81001669c000
+Mar 19 19:52:57 filer1 kernel: FS:  00002ab0119c36e0(0000) GS:ffff81007ff397c0(0000) knlGS:0000000000000000
+Mar 19 19:52:57 filer1 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+Mar 19 19:52:57 filer1 kernel: CR2: 00002ab011474000 CR3: 000000007e228000 CR4: 00000000000006e0
+Mar 19 19:52:57 filer1 kernel: Process rpc.mountd (pid: 2238, threadinfo ffff810068da6000, task ffff81006b5a6400)
+Mar 19 19:52:57 filer1 kernel: Stack:  ffff810050a9ae40 0000000000000000 ffff810068da7da8 ffffffff8053618d
+Mar 19 19:52:57 filer1 kernel:  ffff810050a9ae40 ffffffff803489f8 00000000fffffffa ffff810027312840
+Mar 19 19:52:57 filer1 kernel:  ffff810025bb2400 ffff810025bb2400 ffff810068da7c69 ffff810068da7caa
+Mar 19 19:52:57 filer1 kernel: Call Trace:
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff8053618d>] cache_flush+0xd/0x23
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff803489f8>] svc_export_parse+0x5c2/0x650
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff8020d338>] current_fs_time+0x4d/0x52
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff803dc1a5>] elv_next_request+0x40/0x14f
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff80224ccd>] sync_page+0x0/0x41
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff805367fe>] cache_write+0x90/0xac
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff80213f40>] vfs_write+0xaf/0x151
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff802148d0>] sys_write+0x45/0x6e
+Mar 19 19:52:57 filer1 kernel:  [<ffffffff8025411e>] system_call+0x7e/0x83
+Mar 19 19:52:57 filer1 kernel:
+Mar 19 19:52:57 filer1 kernel:
+Mar 19 19:52:57 filer1 kernel: Code: 48 8b 43 08 48 39 82 80 00 00 00 7e 0a 48 ff c0 48 89 82 80
+Mar 19 19:52:57 filer1 kernel: RIP  [<ffffffff8053606f>] cache_clean+0x11e/0x22f
+Mar 19 19:52:57 filer1 kernel:  RSP <ffff810068da7b68>
+
+The three other times , there was this error :
+
+Apr  2 18:30:00 filer1 kernel: general protection fault: 0000 [1] SMP
+Apr  2 18:30:00 filer1 kernel: CPU 2
+Apr  2 18:30:00 filer1 kernel: Modules linked in:
+Apr  2 18:30:00 filer1 kernel: Pid: 891, comm: rpc.mountd Not tainted 2.6.20.3 #1
+Apr  2 18:30:00 filer1 kernel: RIP: 0010:[<ffffffff8053606f>]  [<ffffffff8053606f>] cache_clean+0x11e/0x22f
+Apr  2 18:30:00 filer1 kernel: RSP: 0018:ffff8100778ffe18  EFLAGS: 00010202
+Apr  2 18:30:00 filer1 kernel: RAX: ffffffff806a0e80 RBX: 2d305f742d315f61 RCX: ffffffff806a0e80
+Apr  2 18:30:00 filer1 kernel: RDX: ffffffff806a0e80 RSI: 0000000000000070 RDI: ffffffff806a0e98
+Apr  2 18:30:00 filer1 kernel: RBP: ffff810008664c40 R08: ffffffff807783a0 R09: 00000000000000fc
+Apr  2 18:30:00 filer1 kernel: R10: 000000000000000b R11: 0000000000000027 R12: 0000000000000000
+Apr  2 18:30:00 filer1 kernel: R13: ffff8100778ffe78 R14: 0000000000000001 R15: 000000000040c62b
+Apr  2 18:30:00 filer1 kernel: FS:  00002abf4f2526e0(0000) GS:ffff81007ff39e40(0000) knlGS:0000000000000000
+Apr  2 18:30:00 filer1 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+Apr  2 18:30:00 filer1 kernel: CR2: 00002b3251f83000 CR3: 000000003266e000 CR4: 00000000000006e0
+Apr  2 18:30:00 filer1 kernel: Process rpc.mountd (pid: 891, threadinfo ffff8100778fe000, task ffff810077fd03c0)
+Apr  2 18:30:00 filer1 kernel: Stack:  ffff810079cca840 0000000000000000 000000004611368f ffffffff8053618d
+Apr  2 18:30:00 filer1 kernel:  0000000000000000 ffffffff80533a01 ffff8100778ffe77 0000000002cd00e3
+Apr  2 18:30:00 filer1 kernel:  ffff8100778ffe92 0000000a000081a4 0000000000000000 000000000000002f
+Apr  2 18:30:00 filer1 kernel: Call Trace:
+Apr  2 18:30:00 filer1 kernel:  [<ffffffff8053618d>] cache_flush+0xd/0x23
+Apr  2 18:30:00 filer1 kernel:  [<ffffffff80533a01>] ip_map_parse+0x17c/0x18e
+Apr  2 18:30:00 filer1 kernel:  [<ffffffff805367fe>] cache_write+0x90/0xac
+Apr  2 18:30:00 filer1 kernel:  [<ffffffff80213f40>] vfs_write+0xaf/0x151
+Apr  2 18:30:00 filer1 kernel:  [<ffffffff802148d0>] sys_write+0x45/0x6e
+Apr  2 18:30:00 filer1 kernel:  [<ffffffff8025411e>] system_call+0x7e/0x83
+Apr  2 18:30:00 filer1 kernel:
+Apr  2 18:30:00 filer1 kernel:
+Apr  2 18:30:00 filer1 kernel: Code: 48 8b 43 08 48 39 82 80 00 00 00 7e 0a 48 ff c0 48 89 82 80
+Apr  2 18:30:00 filer1 kernel: RIP  [<ffffffff8053606f>] cache_clean+0x11e/0x22f
+Apr  2 18:30:00 filer1 kernel:  RSP <ffff8100778ffe18>
+
+And this one (only call trace included):
+
+Mar 17 17:08:34 filer1 kernel: general protection fault: 0000 [1] SMP
+Mar 17 17:08:34 filer1 kernel: CPU 3
+Mar 17 17:08:34 filer1 kernel: Pid: 13, comm: events/3 Not tainted 2.6.20 #5
+Mar 17 17:08:34 filer1 kernel: RIP: 0010:[<ffffffff8051f81b>]  [<ffffffff8051f81b>] cache_clean+0x11e/0x22f
+Mar 17 17:08:34 filer1 kernel: RSP: 0018:ffff81007fe11e40  EFLAGS: 00010202
+Mar 17 17:08:34 filer1 kernel: RAX: ffffffff80660080 RBX: 2d305f742d315f61 RCX: ffffffff80660080
+Mar 17 17:08:34 filer1 kernel: RDX: ffffffff80660080 RSI: 0000000000000077 RDI: ffffffff80660098
+Mar 17 17:08:34 filer1 kernel: RBP: ffff81001e9b5e40 R08: ffff81007fe10000 R09: 0000000000000286
+Mar 17 17:08:34 filer1 kernel: R10: 0000000000000286 R11: ffffffff80240992 R12: 0000000000000000
+Mar 17 17:08:34 filer1 kernel: R13: 0000000000000206 R14: ffffffff8051fab1 R15: 0000000000000000
+Mar 17 17:08:34 filer1 kernel: FS:  0000000000000000(0000) GS:ffff810002f817c0(0000) knlGS:0000000000000000
+Mar 17 17:08:34 filer1 kernel: CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+Mar 17 17:08:34 filer1 kernel: CR2: 00002b6b14d8bbc0 CR3: 000000007b57c000 CR4: 00000000000006e0
+Mar 17 17:08:34 filer1 kernel: Process events/3 (pid: 13, threadinfo ffff81007fe10000, task ffff81007fe3ef00)
+Mar 17 17:08:34 filer1 kernel: Stack:  0000000000000005 ffff810002f815c0 ffffffff806602c0 ffffffff8051fabc
+Mar 17 17:08:34 filer1 kernel:  ffffffff806602c8 ffffffff80244799 ffff810002f815c0 ffffffff802415b3
+Mar 17 17:08:34 filer1 kernel:  ffff81007ff23d60 00000000fffffffc 0000000000000000 ffffffff802416d7
+Mar 17 17:08:34 filer1 kernel: Call Trace:
+Mar 17 17:08:34 filer1 kernel:  [<ffffffff8051fabc>] do_cache_clean+0xb/0x38
+Mar 17 17:08:34 filer1 kernel:  [<ffffffff80244799>] run_workqueue+0x9f/0x13b
+Mar 17 17:08:34 filer1 kernel:  [<ffffffff802415b3>] worker_thread+0x0/0x15a
+Mar 17 17:08:34 filer1 kernel:  [<ffffffff802416d7>] worker_thread+0x124/0x15a
+Mar 17 17:08:34 filer1 kernel:  [<ffffffff802731fd>] default_wake_function+0x0/0xe
+Mar 17 17:08:34 filer1 kernel:  [<ffffffff802731fd>] default_wake_function+0x0/0xe
+Mar 17 17:08:35 filer1 kernel:  [<ffffffff8022d1c6>] kthread+0xc8/0xf1
+Mar 17 17:08:35 filer1 kernel:  [<ffffffff80252ec8>] child_rip+0xa/0x12
+Mar 17 17:08:35 filer1 kernel:  [<ffffffff802838e8>] kthread_create+0x6a/0x147
+Mar 17 17:08:35 filer1 kernel:  [<ffffffff8022d0fe>] kthread+0x0/0xf1
+Mar 17 17:08:35 filer1 kernel:  [<ffffffff80252ebe>] child_rip+0x0/0x12
+Mar 17 17:08:35 filer1 kernel:
+Mar 17 17:08:35 filer1 kernel:
+Mar 17 17:08:35 filer1 kernel: Code: 48 8b 43 08 48 39 82 80 00 00 00 7e 0a 48 ff c0 48 89 82 80
+Mar 17 17:08:35 filer1 kernel: RIP  [<ffffffff8051f81b>] cache_clean+0x11e/0x22f
+Mar 17 17:08:35 filer1 kernel:  RSP <ffff81007fe11e40>
+
+Notice the same end related to the "cache_clean" function, maybe this means something for anyone ?
+
+Additionally, I noticed that today the rpc.mountd process (from nfs-utils 1.1.0-rc1) is 350M big as the "ps" command shows :
+root      2091  0.0 17.2 364164 354664 ?     Ss   Apr03   0:27 rpc.mountd --no-nfs-version 2
+
+And it seems to very slowly grow up in memory. /proc/<pid of rpc.mountd>/smaps shows that 350M are taken by the "heap" :
+00514000-15eea000 rw-p 00514000 00:00 0                                  [heap]
+Size:            354136 kB
+Rss:             353756 kB
+Shared_Clean:         0 kB
+Shared_Dirty:         0 kB
+Private_Clean:        0 kB
+Private_Dirty:   353756 kB
+
+I don't know if these 2 cases are related, but as I got a crash with rpc.mountd (see crash from apr. 2nd), I include it too.
+
+Any thoughts ?
+
+Regards,
+
+Gabriel
 
 
 -------------------------------------------------------------------------
