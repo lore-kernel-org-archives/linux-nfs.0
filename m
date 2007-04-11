@@ -1,24 +1,25 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: cel's patches under development
-Date: Wed, 11 Apr 2007 08:41:20 +0200
-Message-ID: <200704110841.21291.olaf.kirch@oracle.com>
-References: <460852BB.4080503@oracle.com>
-	<200704101722.13798.olaf.kirch@oracle.com>
-	<1176233539.309.27.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 3/4 Revised] NLM - kernel lockd-statd changes
+Date: Wed, 11 Apr 2007 14:50:04 +1000
+Message-ID: <17948.26876.426822.963222@notabene.brown>
+References: <46156FA0.4030506@redhat.com>
+	<200704101109.44333.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
+	nfs@lists.sourceforge.net
+To: Olaf Kirch <okir@lst.de>, Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HbWY9-0003Tr-Tf
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 23:43:25 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HbWYC-00008v-41
-	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 23:43:28 -0700
-In-Reply-To: <1176233539.309.27.camel@heimdal.trondhjem.org>
+	id 1HbUmg-0000zp-7h
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 21:50:18 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HbUmi-0000aE-5b
+	for nfs@lists.sourceforge.net; Tue, 10 Apr 2007 21:50:20 -0700
+In-Reply-To: message from Olaf Kirch on Tuesday April 10
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,63 +32,111 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday 10 April 2007 21:32, Trond Myklebust wrote:
-> I'm a bit wary of this. skbs are usually allocated from the ATOMIC pool
-> which is a very limited resource: their lifetime really wants to be as
-> short as possible. Won't this basically end up aggravating an already
-> nasty situation w.r.t. our behaviour when under memory pressure?
+On Tuesday April 10, okir@lst.de wrote:
+> On Thursday 05 April 2007 23:52, Wendy Cheng wrote:
+> > The changes record the ip interface that accepts the lock requests and 
+> > passes the correct "my_name" (in standard IPV4 dot notation) to user 
+> > mode statd (instead of system_utsname.nodename). This enables rpc.statd 
+> > to add the correct taken-over IPv4 address into the 3rd parameter of 
+> > ha_callout program. Current nfs-utils always resets "my_name" into 
+> > loopback address (127.0.0.1), regardless the statement made in rpc.statd 
+> > man page. Check out "man rpc.statd" and "man sm-notify" for details.
+> 
+> I don't think this is the right approach. For one, there's not enough
+> room in the SM_MON request to accomodate an additional IPv6
+> address, so you would have to come up with something entirely
+> different for IPv6 anyway. But more importantly, I think we should
+> move away from associating all sorts of network level addresses
+> with lockd state - addresses are just smoke and mirrors. Despite
+> all of NLM/NSMs shortcomings, there's a vehicle to convey identity,
+> and that's mon_name. IMHO the focus should be on making it work
+> properly if it doesn't do what you do.
 
-I don't think so. We're talking about an additional delay caused by
-moving the memcpy from the BH to some process (user or rpciod).
-I agree that it would be a bad idea to keep these skbs around longer
-than needed.
+I don't understand your complaint.
+You say there's "not enough room", but the extra information is being
+placed in the 'my_name' string which is up to 1024 bytes long, which
+I think is long enough.
 
-On the server side, the impact of this delay will probably be even
-lower - skbs usually spend some time on the TCP socket's receive
-queue anyway, and nfsd is pulling over the received packet
-using recvmsg.
+You say that "mon_name" is the vehicle to convey identity and while
+that is true, I don't think it is relevant as it is the identity of
+the *server* that is being conveyed, rather than the identity of the
+client (this on an NFS server).
 
-> Also, what about stuff like RDMA, which doesn't need this sort of
-> mechanism in order to get things right?
+Think of it like this.  The goal is (appears to be) to make it
+possible to implement multiple independent NFS servers on the one
+Linux host.
+As a simplification, each server serves precisely one filesystem which
+no other server serves, and each server has precisely one network
+address which no other server shares.
 
-But RDMA may benefit from the proposed interface for transport
-specific receive buffers (rpc_data objects). How that buffer works is
-entirely up to the transport. For TCP and UDP it's skb_lists, but for
-RDMA it would probably be something very different.
+So the 'servers' can be identified either by the filesystem (or FSID)
+or by the network address.
 
-Here's the mode of operation - XDR functions that expect to receive
-data to a pagevec, such as READ, READLINK etc, call
-xprt_rcvbuf_alloc(xprt, pages, pgbase, pglen) to allocate a
-transport specific buffer object. Transports such as TCP or UDP
-ignore the page vector, but the RDMA transport could use this
-to do set up its buffers. From the implementation point of view,
-it's probably not much different from extracting the pagevec
-information from the xdr_buf receive buffer, but it looks cleaner
-to me.
+Most NFS operations are file-local or at most filesystem-local and so
+they don't need to care that there are multiple servers.  But locking
+and peer-restart in particular is not.  It is server-local.  So for
+the peer monitoring/notification operations, we need to enhance to
+model to make the server name explicit rather than implicit ('this
+host').
 
-Likewise, it is possible to create transport-specific rpc_data
-objects for sending data (and eg have RDMA do a DMA Send
-for these). This would allow to get rid of the pagevec inside the
-xdr_buf altogether.
+To allow a 'server' to migrate from one host to another (active-active
+failover) we need to synthesise a reboot which means knowing which
+clients are using which server.
 
-> Finally, will we need to keep writing these very complex handlers for
-> every new protocol that we want to add (e.g. IPv6, IPoIB, ...)?
+lockd knows which is which either based on the destination network
+address of the lock request, or the filesystem on which the lock was
+taken.   Somehow this information needs to get communicated to statd
+so that different 'sm' directories can be used.  my_name seems a
+sensible place to put the information.
 
-No. TCP and UDP share the same skb_list handling code,
-regardless of address family and link layer protocol. Adding
-a transport such as DCCP will not need a new handler
-either.
 
-I believe the net result of this proposed restructuring will be
-less complexity. Right now we have half a dozen or so
-functions that walk through an xdr_buf (head, pagevec, tail)...
-whereas with the proposed changes, you have the complexity
-confined to one place.
+However:  now that I think I actually understand what is happening, I
+wonder if FSID and IPaddress are really the right handles to use.  It
+would seem to make more sense to use the filesystem name (i.e. a
+path).
 
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+So I'm suggesting writing a directory name to
+    /proc/fs/nfsd/nlm_unlock
+and maybe also to
+    /proc/fs/nlm_restart_grace_for_fs
+
+and have 'my_name' in the SM_MON request be the path name of the
+export point rather the network address.
+
+Thinking more,  lockd would need to know whether each filesystem is an
+independent server so that it knows if independent nsm objects are
+needed.
+
+So maybe we want an export flag "active_failover".
+If this is set then the filesystem has an independent grace period
+that starts on first export (except that 'first export' isn't really a
+well defined concept) and lockd treats clients using that filesystem
+as different from the same client using any other filesystem.
+
+I'm not sure we really need the 'nlm_unlock' interface either.  We can
+just synthesis incoming SM_NOTIFYs from all clients of that filesystem
+and the locks will go away.
+
+Not that I'm saying we have to use this approach rather than the
+current one.  I'm just exploring the issue and making sure that I
+understand it.
+
+
+> 
+> But - why do you need to record the address on which the request was
+> received. at all? Don't you know beforehand on which IP addresses you
+> will be servicing NFS requests, and which will need to be migrated?
+> 
+> Side note: should we think about replacing SM_MON with some new
+> design altogether (think netlink)?
+
+Well, I want something new to support the various state that needs to
+be recorded by NFSv4, and what ever gets created could probably be
+used for lockd/statd too.
+But given that we have SM_MON implemented, what is so broken that it
+needs to be replaced?
+
+NeilBrown
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
