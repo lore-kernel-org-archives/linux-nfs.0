@@ -1,100 +1,43 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: POSIX I/O on NFS with noac option
-Date: Thu, 12 Apr 2007 13:10:07 -0400
-Message-ID: <1176397807.6664.9.camel@heimdal.trondhjem.org>
-References: <949021.41130.qm@web56603.mail.re3.yahoo.com>
+Subject: Re: [NFS] Missing handling for NFS4ERR_OLD_STATEID
+	in	nfs4_handle_exception?
+Date: Thu, 12 Apr 2007 13:31:04 -0400
+Message-ID: <1176399064.6664.22.camel@heimdal.trondhjem.org>
+References: <1175616589.3531.8.camel@dyn9047022153>
+	<461E1F2C.7000605@poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: AK <amithl_prem@yahoo.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hc2oY-0007Ox-MO
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 10:10:30 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+Qtufo+n9FV+WBxOJAbn27g28pA3oq4Jo=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hc2oW-0002RQ-I4
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 10:10:31 -0700
-In-Reply-To: <949021.41130.qm@web56603.mail.re3.yahoo.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: NFS List <nfs@lists.sourceforge.net>, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@poochiereds.net>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <461E1F2C.7000605@poochiereds.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, 2007-04-12 at 09:59 -0700, AK wrote:
-> Trying to get this POSIX I/O code to work on our machines.
-> 
-> Running it from a NFS v3 mounted scratch sapce, with 'noac' option: no
-> caching attribute option.
-> It fails to run: gives me err= -1 and errno = 5
-> 
-> Although this works without error on my NFS v3 mounted home
-> directories. Which are mounted from the head node of our cluster(Linux
-> based head node and compute nodes).
-> 
-> Where as the scratch sapce is mounted of our storage server(Solaris).
-> Any thoughts on issues related to Solars hosting NFS server and Linux
-> nfs client ..with noac options ???
-> 
-> Any idea ? Appreciate any feedback
-> ~thanks - ak
-> 
-> #include <fcntl.h>
-> #include <errno.h>
-> #include <unistd.h>
-> 
-> main()
-> {
->    struct flock lock;
->    int fd, err;
-> 
->    lock.l_type = F_WRLCK;
->    lock.l_start = 0;
->    lock.l_whence = SEEK_SET;
->    lock.l_len = 100;
-> 
->    fd = open("test", O_RDWR | O_CREAT, 0644);
-> 
->    err = fcntl(fd, F_SETLKW, &lock);
-> 
->    printf("err = %d, errno = %d\n", err, errno);
->    close(fd);
-> }
+On Thu, 2007-04-12 at 07:59 -0400, Jeff Layton wrote:
 
-1) Why would you need the 'noac' flag if you are using locking?
+> This sounds sort of like addressing the symptom and not the real 
+> problem, however. The real question ought to be why you're getting 
+> OLD_STATEID errors back from the server here. There can be legit 
+> reasons, but these errors ought to be fairly rare. I generally only have 
+> seen them when processes are signalled while RPC requests are in flight.
 
-2) Have you checked that the portmapper, rpc.statd and rpc.lockd are
-accessible from the client? You can probe that using the commands
+OLD_STATEID usually occurs if an OPEN or an OPEN_DOWNGRADE gets sent
+that changes the current stateid while a READ or WRITE to the same file
+is in flight.
 
-        rpcinfo -t <servername> status
-and
-        rpcinfo -t <servername> nlockmgr
+It is generally a rare event, and so it tends to be much easier to deal
+with by simply resending the READ/WRITEs with the updated stateid rather
+than adding an expensive locking scheme for excluding READ/WRITE while
+the OPEN/OPEN_DOWNGRADE is in progress.
 
-if you are using UDP mounts, you might want to use
-
-        rpcinfo -u <servername> status
-and
-        rpcinfo -u <servername> nlockmgr
-
-instead...
-
-Trond
-
-
--------------------------------------------------------------------------
-Take Surveys. Earn Cash. Influence the Future of IT
-Join SourceForge.net's Techsay panel and you'll get the chance to share your
-opinions on IT & business topics through brief surveys-and earn cash
-http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Cheers,
+  Trond
