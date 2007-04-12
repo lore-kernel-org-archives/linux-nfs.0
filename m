@@ -1,22 +1,25 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: /etc/exports continue line
-Date: Fri, 13 Apr 2007 07:38:56 +1000
-Message-ID: <17950.42736.114011.686026@notabene.brown>
-References: <461EA1CC.2050102@cogweb.net>
+Subject: Does mountd/statd really need to listen on a privileged port??
+Date: Fri, 13 Apr 2007 08:05:33 +1000
+Message-ID: <17950.44333.118970.276558@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: David Liontooth <liontooth@cogweb.net>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hc70i-0001lP-5Y
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:39:20 -0700
+	id 1Hc7QD-0004Nj-F7
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 15:05:42 -0700
 Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hc70j-0005Lq-CF
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:39:22 -0700
-In-Reply-To: message from David Liontooth on Thursday April 12
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hc7QE-00058a-Kg
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 15:05:44 -0700
+Received: from Relay1.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id 7D2A01241F
+	for <nfs@lists.sourceforge.net>; Fri, 13 Apr 2007 00:05:38 +0200 (CEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,44 +32,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday April 12, liontooth@cogweb.net wrote:
-> 
-> I've been using \ to continue a line in /etc/exports, and ran into an
-> odd problem -- if you accidentally hit the TAB key after the continue
-> line and save, the entry becomes invalid. Since the TAB key is
-> invisible, it can be difficult to figure out what's going on.
-> 
-> I reported it as Debian bug 418491 to nfs-kernel-server, and the
-> maintainer responded by saying \ isn't a valid continue character.
-> Comments? I routinely do this sort of thing:
-> 
-> /spare \
->         165.97.21.130(rw,no_root_squash,no_subtree_check,async) \
->         165.97.21.132(rw,no_subtree_check,async) \
->         165.97.21.133(rw,no_subtree_check,async) \
->         165.97.21.134(rw,no_subtree_check,async) \
->         165.97.21.135(rw,no_root_squash,no_subtree_check,async) \
->         165.97.21.136(rw,no_subtree_check,async) \
->         165.97.85.112(rw,no_subtree_check,async) \
->         165.97.85.117(rw,no_subtree_check,async)
-> 
-> A lot easier to maintain that a single line. Is there an alternative way
-> to continue the line?
 
-Use and editor that highlights spaces at the end of the line???
+mountd/statd currently bind to privileged ports to listen for
+requests.
 
-But yes, I hate '\' line continuation too, for exactly that reason.
-The only alternative for /etc/exports is something like:
+This is really a bad thing to do as there is no range of privilege
+ports that is guaranteed not to be assigned to some service.
 
-/spare   165.97.21.130(rw,no_root_squash,no_subtree_check,async)
-/spare   165.97.21.132(rw,no_subtree_check,async)
-/spare   165.97.21.133(rw,no_subtree_check,async) 
-/spare   165.97.21.134(rw,no_subtree_check,async) 
-/spare   165.97.21.135(rw,no_root_squash,no_subtree_check,async) 
-/spare   165.97.21.136(rw,no_subtree_check,async) 
-/spare   165.97.85.112(rw,no_subtree_check,async)
-/spare   165.97.85.117(rw,no_subtree_check,async)
+sm-notify probably still needs a privileged port to send out
+notifications on, but that should be relatively short lived so
+hopefully isn't as much of a problem.
 
+statd needs a privileged port to pass NOTIFY requests down to the
+kernel and that is probably the first really good reason I've seen to
+replace the rpc interface between lockd and statd.
+
+But if get mountd and statd to default to choosing a non-reserved port
+for listening, that would at least decrease the chance that port 631
+will be stolen before cupsd gets to bind it.
+
+But is there some reason that mountd/statd need a priv port that I
+haven't thought of?
+
+Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
