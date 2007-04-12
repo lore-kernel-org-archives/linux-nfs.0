@@ -1,27 +1,22 @@
-From: David Liontooth <liontooth@cogweb.net>
-Subject: /etc/exports continue line
-Date: Thu, 12 Apr 2007 14:17:00 -0700
-Message-ID: <461EA1CC.2050102@cogweb.net>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: Re: /etc/exports continue line
+Date: Thu, 12 Apr 2007 17:37:09 -0400
+Message-ID: <200704121737.09818.vapier@gentoo.org>
+References: <461EA1CC.2050102@cogweb.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============1374705778=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hc6f8-0007os-0f
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:17:02 -0700
-Received: from smtp-2.smtp.ucla.edu ([169.232.47.136])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hc6f8-0001lc-6n
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:17:04 -0700
-Received: from mail.ucla.edu (mail.ucla.edu [169.232.47.145])
-	by smtp-2.smtp.ucla.edu (8.13.8/8.13.8) with ESMTP id l3CLH11J003360
-	for <nfs@lists.sourceforge.net>; Thu, 12 Apr 2007 14:17:01 -0700
-Received: from [128.97.221.35] (clitunno.sscnet.ucla.edu [128.97.221.35])
-	(authenticated bits=0)
-	by mail.ucla.edu (8.13.8/8.13.8) with ESMTP id l3CLH0Mx011523
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <nfs@lists.sourceforge.net>; Thu, 12 Apr 2007 14:17:01 -0700
+	id 1Hc6xw-0001RX-Ds
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:36:29 -0700
+Received: from smtp.gentoo.org ([140.211.166.183])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hc6xx-0006Ej-Q5
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:36:30 -0700
+In-Reply-To: <461EA1CC.2050102@cogweb.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,61 +29,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+--===============1374705778==
+Content-Type: multipart/signed; boundary="nextPart2087355.CZUma6vrfK";
+	protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
 
-I've been using \ to continue a line in /etc/exports, and ran into an
-odd problem -- if you accidentally hit the TAB key after the continue
-line and save, the entry becomes invalid. Since the TAB key is
-invisible, it can be difficult to figure out what's going on.
+--nextPart2087355.CZUma6vrfK
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-I reported it as Debian bug 418491 to nfs-kernel-server, and the
-maintainer responded by saying \ isn't a valid continue character.
-Comments? I routinely do this sort of thing:
+On Thursday 12 April 2007, David Liontooth wrote:
+> I've been using \ to continue a line in /etc/exports, and ran into an
+> odd problem -- if you accidentally hit the TAB key after the continue
+> line and save, the entry becomes invalid. Since the TAB key is
+> invisible, it can be difficult to figure out what's going on.
 
-/spare \
-        165.97.21.130(rw,no_root_squash,no_subtree_check,async) \
-        165.97.21.132(rw,no_subtree_check,async) \
-        165.97.21.133(rw,no_subtree_check,async) \
-        165.97.21.134(rw,no_subtree_check,async) \
-        165.97.21.135(rw,no_root_squash,no_subtree_check,async) \
-        165.97.21.136(rw,no_subtree_check,async) \
-        165.97.85.112(rw,no_subtree_check,async) \
-        165.97.85.117(rw,no_subtree_check,async)
+is there any file out there that does not exhibit this same behavior ?  see=
+ms=20
+like the behavior you're seeing is pretty standard and imho expected ...
 
-A lot easier to maintain that a single line. Is there an alternative way
-to continue the line?
+also, many editors have the ability to "show" whitespace ...
+=2Dmike
 
-Cheers,
-Dave
+--nextPart2087355.CZUma6vrfK
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.3 (GNU/Linux)
+
+iQIVAwUARh6mhUFjO5/oN/WBAQIzEA//d8C/HPtwbCEMMi/46QA5Rl/E9H3/c51T
+JsIQV+62zdn+y2y1YzJ8ZhWdylSpjWUq1wjtyq+pUEC3lZMcahJua7/Trc/nqWhI
+O3BcWFYTcXqfRVNmqDDmvdPLEM1UL2UEjE8+r9D6G3+iz6NCnMIrRdu47yCSANMl
+ERDThKt2ZrbKfqXI8dSdX4robh+dT9MmPb1nseykehxwWXOaIUZQ9zXoF7CsMrht
+nkcUExDGulnLtu0UOJtki4ehQitztX80QE/DhdcTygyy5sWQhHPgtCTACFLUIYsP
+0tMmLd2RQBpcR9REzUUJHqfL/+fbdw6YYbxgQNQmfPk08i0AYoTFfiysJxuqMpqo
+o4lBLEkh+Gakw9f/hlSQVrU+tNs+85mzVEu70Ovsid59eQpz4q+eE8kiU0YInkLA
+7aWYdajyxcTMgY7pEQGhld2iN8zwmBfjk1aOK0imCee870ADwQwkhzQiC8nofQ3s
+0Akf0rmc1CIoD5RlTcbaizJ18dAr7zSblQNOInClmoxBGC6f4on434DddM30OJTa
+9jSdj/+7UcN/eQxiV3+cE9L+Pr7tzhfPWTT5pTi4yim8f4iJFDBvLNfQ826WLi9L
+a/V3FEgzkl5+xD5bwOLeihKdOHGv905rhkO8znu25GFuF63OADcy3Ro1nPBqKZO2
+XxRSZforIiA=
+=UoH4
+-----END PGP SIGNATURE-----
+
+--nextPart2087355.CZUma6vrfK--
 
 
--------- Original Message --------
-Subject: 	Re: Bug#418491: nfs-kernel-server: Lots of misleading error
-messages if there's a TAB in /etc/exports
-Date: 	Thu, 12 Apr 2007 16:06:27 +0200
-From: 	Steinar H. Gunderson <sgunderson@bigfoot.com>
-To: 	David Liontooth <liontooth@cogweb.net>, 418491-done@bugs.debian.org
-References:
-<20070410023140.32254.14380.reportbug@localhost.localdomain>
-<20070411002242.GD8811@uio.no>
-
-
-
-On Wed, Apr 11, 2007 at 02:22:42AM +0200, Steinar H. Gunderson wrote:
->> Try this: edit /etc/exports and add a TAB after a \ (continue line). For instance, mine uses
-> \ isn't supported as continue line, TTBOMK.
-
-Thus, closing this one; forgot to do so last time.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
-
+--===============1374705778==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1374705778==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1374705778==--
