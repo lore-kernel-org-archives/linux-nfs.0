@@ -1,22 +1,27 @@
-From: AK <amithl_prem@yahoo.com>
-Subject: Re: POSIX I/O on NFS with noac option
-Date: Thu, 12 Apr 2007 11:19:47 -0700 (PDT)
-Message-ID: <300878.76957.qm@web56603.mail.re3.yahoo.com>
-References: <1176400607.6664.31.camel@heimdal.trondhjem.org>
+From: David Liontooth <liontooth@cogweb.net>
+Subject: /etc/exports continue line
+Date: Thu, 12 Apr 2007 14:17:00 -0700
+Message-ID: <461EA1CC.2050102@cogweb.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1129848477=="
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hc3tg-0006Bx-2U
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 11:19:52 -0700
-Received: from web56603.mail.re3.yahoo.com ([66.196.97.47])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hc3th-0003Tx-1A
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 11:19:54 -0700
-In-Reply-To: <1176400607.6664.31.camel@heimdal.trondhjem.org>
+	id 1Hc6f8-0007os-0f
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:17:02 -0700
+Received: from smtp-2.smtp.ucla.edu ([169.232.47.136])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hc6f8-0001lc-6n
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 14:17:04 -0700
+Received: from mail.ucla.edu (mail.ucla.edu [169.232.47.145])
+	by smtp-2.smtp.ucla.edu (8.13.8/8.13.8) with ESMTP id l3CLH11J003360
+	for <nfs@lists.sourceforge.net>; Thu, 12 Apr 2007 14:17:01 -0700
+Received: from [128.97.221.35] (clitunno.sscnet.ucla.edu [128.97.221.35])
+	(authenticated bits=0)
+	by mail.ucla.edu (8.13.8/8.13.8) with ESMTP id l3CLH0Mx011523
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <nfs@lists.sourceforge.net>; Thu, 12 Apr 2007 14:17:01 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,72 +34,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1129848477==
-Content-Type: multipart/alternative; boundary="0-1182282374-1176401987=:76957"
-Content-Transfer-Encoding: 7bit
 
---0-1182282374-1176401987=:76957
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
+I've been using \ to continue a line in /etc/exports, and ran into an
+odd problem -- if you accidentally hit the TAB key after the continue
+line and save, the entry becomes invalid. Since the TAB key is
+invisible, it can be difficult to figure out what's going on.
 
- =20
-If it has been running for 2 years, then I'd say you clearly haven't
-been using locking over NFS against it.
+I reported it as Debian bug 418491 to nfs-kernel-server, and the
+maintainer responded by saying \ isn't a valid continue character.
+Comments? I routinely do this sort of thing:
 
-Check your Solaris admin manual for details on how to turn on the
-locking manager and lock status daemon.
+/spare \
+        165.97.21.130(rw,no_root_squash,no_subtree_check,async) \
+        165.97.21.132(rw,no_subtree_check,async) \
+        165.97.21.133(rw,no_subtree_check,async) \
+        165.97.21.134(rw,no_subtree_check,async) \
+        165.97.21.135(rw,no_root_squash,no_subtree_check,async) \
+        165.97.21.136(rw,no_subtree_check,async) \
+        165.97.85.112(rw,no_subtree_check,async) \
+        165.97.85.117(rw,no_subtree_check,async)
 
-Cheers
-Trond
-  =20
-  =20
-  ~ thanks Trond, will try that and get back!!! -al
+A lot easier to maintain that a single line. Is there an alternative way
+to continue the line?
 
-
-      =20
----------------------------------
-Food fight? Enjoy some healthy debate
-in the Yahoo! Answers Food & Drink Q&A.
---0-1182282374-1176401987=:76957
-Content-Type: text/html; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-<BLOCKQUOTE class=3Dreplbq style=3D"PADDING-LEFT: 5px; MARGIN-LEFT: 5px; =
-BORDER-LEFT: #1010ff 2px solid">  <div><BR>If it has been running for 2 y=
-ears, then I'd say you clearly haven't<BR>been using locking over NFS aga=
-inst it.<BR><BR>Check your Solaris admin manual for details on how to tur=
-n on the<BR>locking manager and lock status daemon.<BR><BR>Cheers<BR>Tron=
-d</div>  <div>&nbsp;</div>  <div>&nbsp;</div>  <div>~ thanks Trond, will =
-try that and get back!!! -al</div></BLOCKQUOTE><BR><p>&#32;
-      <hr size=3D1><a href=3D"http://answers.yahoo.com/dir/index;_ylc=3DX=
-3oDMTFvbGNhMGE3BF9TAzM5NjU0NTEwOARfcwMzOTY1NDUxMDMEc2VjA21haWxfdGFnbGluZQ=
-RzbGsDbWFpbF90YWcx?link=3Dask&sid=3D396545367">Food fight?</a> Enjoy some=
- healthy debate<br>in the <a href=3D"http://answers.yahoo.com/dir/index;_=
-ylc=3DX3oDMTFvbGNhMGE3BF9TAzM5NjU0NTEwOARfcwMzOTY1NDUxMDMEc2VjA21haWxfdGF=
-nbGluZQRzbGsDbWFpbF90YWcx?link=3Dask&sid=3D396545367">Yahoo! Answers Food=
- & Drink Q&A.</a>
---0-1182282374-1176401987=:76957--
+Cheers,
+Dave
 
 
---===============1129848477==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-------- Original Message --------
+Subject: 	Re: Bug#418491: nfs-kernel-server: Lots of misleading error
+messages if there's a TAB in /etc/exports
+Date: 	Thu, 12 Apr 2007 16:06:27 +0200
+From: 	Steinar H. Gunderson <sgunderson@bigfoot.com>
+To: 	David Liontooth <liontooth@cogweb.net>, 418491-done@bugs.debian.org
+References:
+<20070410023140.32254.14380.reportbug@localhost.localdomain>
+<20070411002242.GD8811@uio.no>
+
+
+
+On Wed, Apr 11, 2007 at 02:22:42AM +0200, Steinar H. Gunderson wrote:
+>> Try this: edit /etc/exports and add a TAB after a \ (continue line). For instance, mine uses
+> \ isn't supported as continue line, TTBOMK.
+
+Thus, closing this one; forgot to do so last time.
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
---===============1129848477==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1129848477==--
