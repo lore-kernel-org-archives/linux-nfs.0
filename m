@@ -1,25 +1,25 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 3/4 Revised] NLM - kernel lockd-statd changes
-Date: Fri, 13 Apr 2007 15:31:03 -0400
-Message-ID: <461FDA77.5080009@redhat.com>
-References: <46156FA0.4030506@redhat.com> <200704101109.44333.okir@lst.de>
-	<17948.26876.426822.963222@notabene.brown>
-	<20070413191615.GU1804@redhat.com>
+From: "Mike Snitzer" <snitzer@gmail.com>
+Subject: Merge plans for RPC/RDMA? (Was: Re: [PATCH 000 of 14] knfsd:
+	Preparation for IPv6 support in NFS server.)
+Date: Fri, 13 Apr 2007 16:47:20 -0400
+Message-ID: <170fa0d20704131347u4a28b5d1h1959227980449fbf@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, cluster-devel@redhat.com,
-	nfs@lists.sourceforge.net
-To: Lon Hohberger <lhh@redhat.com>
+Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
+	Roland Dreier <rdreier@cisco.com>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HcRSM-0003kt-07
-	for nfs@lists.sourceforge.net; Fri, 13 Apr 2007 12:29:14 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HcRSO-00024P-8w
-	for nfs@lists.sourceforge.net; Fri, 13 Apr 2007 12:29:16 -0700
-In-Reply-To: <20070413191615.GU1804@redhat.com>
+	id 1HcSfu-0003WT-PU
+	for nfs@lists.sourceforge.net; Fri, 13 Apr 2007 13:47:18 -0700
+Received: from wx-out-0506.google.com ([66.249.82.225])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HcSfx-0002Rq-5D
+	for nfs@lists.sourceforge.net; Fri, 13 Apr 2007 13:47:21 -0700
+Received: by wx-out-0506.google.com with SMTP id i30so1743976wxd
+	for <nfs@lists.sourceforge.net>; Fri, 13 Apr 2007 13:47:20 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,29 +32,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Lon Hohberger wrote:
-> On Wed, Apr 11, 2007 at 02:50:04PM +1000, Neil Brown wrote:
->   
->> lockd knows which is which either based on the destination network
->> address of the lock request, or the filesystem on which the lock was
->> taken.   Somehow this information needs to get communicated to statd
->> so that different 'sm' directories can be used.  my_name seems a
->> sensible place to put the information.
->>     
+On 2/2/07, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Roland Dreier wrote:
+> >  > They are mostly from Chuck Level and make preparating for IPv6 support
+> >  > in the NFS server.
+> >  > They are *not* for 2.6.20, but should be ok for .21.
+> >
+> > Out of curiousity, does this patch series reduce the delta between the
+> > NFS/RDMA tree and mainline Linux?  In other words does this bring
+> > NFS/RDMA closer to merging?
 >
-> Right.  Using the inbound-destination address instead of fsid or file
-> system will ensure the right address is used for sending the SM_NOTIFY
-> requests.  However, fsid, or export path - on a service with more than
-> one network address will not, I think...
->   
+> Hi Roland-
+>
+> The client side support for an RPC/RDMA module is almost completely
+> integrated into mainline.  There is still a minimal set of patches
+> required to support alternate transports in loadable kernel modules
+> which Trond has indicated he will integrate when the RPC/RDMA transport
+> is ready to be integrated.
 
-So I think we conclude here that inbound-destination address is required 
-for SM_NOTIFY purpose.
+Hi Chuck,
 
-Thanks for all the comments. Will summarize the issues on Monday and see 
-what we should go from there.
+I must be missing something because I don't see _any_ trace of the
+core RPC over RDMA support (xprtrdma et al), your RPC Transport
+Switch, or any of the other supporting changes in mainline.  Could
+you, or others, please clarify the plan for merging RPC/RDMA?
 
--- Wendy
+> At this time I'm not aware of a plan to integrate server-side support
+> for NFS/RDMA.  Perhaps the NetApp RDMA developers could respond.
+
+Do you mean the NFS/RDMA server code from Tom Tucker of Open Grid
+Computing?  Why wouldn't this code be included?
+
+please advise, thanks.
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
