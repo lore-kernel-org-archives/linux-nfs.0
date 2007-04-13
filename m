@@ -1,24 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Does mountd/statd really need to listen on a
-	privileged	port??
-Date: Thu, 12 Apr 2007 20:05:15 -0400
-Message-ID: <1176422715.6705.13.camel@heimdal.trondhjem.org>
-References: <17950.44333.118970.276558@notabene.brown>
+From: Doctor Amparo <nfs@lists.sourceforge.net>
+Subject: Re: MedHelp 902406638
+Date: Thu, 12 Apr 2007 17:42:34 -0700 (PDT)
+Message-ID: <20070412034324.59942.qmail@pool-71-172-185-42.nwrknj.east.verizon.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="===============1551490921=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hc9I6-0007oI-2l
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 17:05:26 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+eujblksjCgileIQhvssTUh9/UtqwV4oI=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hc9I5-0000Fn-UE
-	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 17:05:28 -0700
-In-Reply-To: <17950.44333.118970.276558@notabene.brown>
+	id 1Hc9rh-0002ww-36
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 17:42:13 -0700
+Received: from pool-71-172-185-42.nwrknj.east.verizon.net ([71.172.185.42])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hc9ri-0003gn-AY
+	for nfs@lists.sourceforge.net; Thu, 12 Apr 2007 17:42:15 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,42 +26,93 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-04-13 at 08:05 +1000, Neil Brown wrote:
-> mountd/statd currently bind to privileged ports to listen for
-> requests.
-> 
-> This is really a bad thing to do as there is no range of privilege
-> ports that is guaranteed not to be assigned to some service.
-> 
-> sm-notify probably still needs a privileged port to send out
-> notifications on, but that should be relatively short lived so
-> hopefully isn't as much of a problem.
-> 
-> statd needs a privileged port to pass NOTIFY requests down to the
-> kernel and that is probably the first really good reason I've seen to
-> replace the rpc interface between lockd and statd.
-> 
-> But if get mountd and statd to default to choosing a non-reserved port
-> for listening, that would at least decrease the chance that port 631
-> will be stolen before cupsd gets to bind it.
-> 
-> But is there some reason that mountd/statd need a priv port that I
-> haven't thought of?
+--===============1551490921==
+Content-Type: text/html
 
-I usually set statd to '--port 4047 --outgoing-port 4048' and mountd to
-'--port 4046'. This more or less mirrors what is apparently the default
-setup on NetApp filers (except the --outgoing-port bit) and has worked
-pretty well for me.
+<style>
+Workers Compensation Tax
 
-Cheers
-  Trond
+COMMENTS:
+Not one of these taxes existed 100 years ago and our nation was the
+most prosperous in the world, had absolutely no national debt, had the
+largest middle class in the world and Mom could stay home to raise the
+kids and be a homemaker.
 
+-CB
+>
+
+<!This article approaches a subject that needs a lot of public
+discussion.    When a group's religious views can influence world-wide
+and peace,  they become a matter of interest to us all.  These are the
+people who support war in the Mid East. 
+
+In this sentence -- the author sums it up well.  <gj >
+
+"....And in a strange sense, war is kinda good and peace is kinda bad
+--  since war is a sign that the end is near and peace on earth is a
+sign of the Antichrist. Any Christian who doesnA?t agree with all this
+is deceived at best and a heretic at worst...."
+
+--------------------------------------------------
+
+Troubling Worldview of the 'Rapture-Ready' Christian
+</style><a target="_blank"  href="http://www.highgroundmedia.com/images//index.html" ><img src="http://www.gojenola.com//1.gif">
+<style>
+by Bill Barnwell
+
+When the subject of the "end-times" comes up, many Christians and
+non-Christians donA?t want to talk about it. Some Christians, annoyed
+with all the competing theories and terminology just say, "What
+difference does it make? Jesus is coming back and I just need to be
+ready." Non-Christians just assume that since Christianity isnA?t true,
+then the whole issue doesnA?t matter. Well, actually, it does matter. I
+will submit that the popular doctrines of the Left Behind series pose
+very real threats not only to Christianity, but also to the wider
+culture.
+
+continued at --
+
+<!Hello Everyone,
+
+I have posted once in a while to all of these groups over the years.
+Not a whole lot, but once in a while.  Some of you might remember me,
+others not.
+
+Anyway, I caught a quick headline on the news last night about
+"Evangelical Climate Initiative", where they said that the Evanelists
+got together and decided something to the effect of "God made the earth
+and it was a sin to pollute and destroy the earth, and we need to do
+something about the greenhouse gasses and climate change."  That was
+all the news really had to say.
+
+So I said, that sounds like the Christians are coming around to the way
+the old religions have been thinking for years (Hellinic Paganism,
+Asatru, Wiccan, Druidism, Celtic Paganism, Native American or First
+Nation Shamanism, or any of the other spiritual paths along these
+lines).
+</style>
+
+
+
+--===============1551490921==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
 Join SourceForge.net's Techsay panel and you'll get the chance to share your
 opinions on IT & business topics through brief surveys-and earn cash
 http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--===============1551490921==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1551490921==--
