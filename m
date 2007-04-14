@@ -1,28 +1,28 @@
-From: =?ISO-8859-1?Q?Aur=E9lien_Charbon?= <aurelien.charbon@ext.bull.net>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
- on a privileged port??
-Date: Thu, 26 Apr 2007 09:52:55 +0200
-Message-ID: <46305A57.7080608@ext.bull.net>
-References: <17958.48121.280256.493824@notabene.brown>	<462CB496.6000308@RedHat.com>	<17965.15503.703515.820793@notabene.brown>	<200704240908.39672.olaf.kirch@oracle.com>	<20070424161027.GA30213@infradead.org>	<462E38B9.5020808@RedHat.com>	<20070424171708.GA7936@infradead.org>	<462E43CC.6040806@RedHat.com>	<Pine.LNX.4.64.0704242053510.32688@maggie.lkpg.cendio.se>	<462E6812.6040401@RedHat.com>
-	<462E6A54.1010709@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Merge plans for RPC/RDMA? (Was: Re: [PATCH 000 of 14]
+ knfsd: Preparation for IPv6 support in NFS server.)
+Date: Fri, 13 Apr 2007 21:14:20 -0400
+Message-ID: <46202AEC.9050401@oracle.com>
+References: <170fa0d20704131347u4a28b5d1h1959227980449fbf@mail.gmail.com>	
+	<46200822.5060800@oracle.com>
+	<170fa0d20704131704y13151149n817cd698e22781c8@mail.gmail.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: Cyril Lacabanne <Cyril.Lacabanne@bull.net>,
-	AIME LE-ROUZIC <Aime.Le-Rouzic@bull.net>
-To: Peter Staubach <staubach@redhat.com>,
-	Steve Dickson <SteveD@redhat.com>,
-	=?ISO-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>,
-	nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------080202050009060802050709"
+Cc: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@osdl.org>,
+	Roland Dreier <rdreier@cisco.com>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: Mike Snitzer <snitzer@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hgylg-0002p9-P7
-	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 00:51:56 -0700
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hgyli-0007wS-Fr
-	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 00:51:59 -0700
-In-Reply-To: <462E6A54.1010709@redhat.com>
+	id 1HcWqg-0005Vj-5O
+	for nfs@lists.sourceforge.net; Fri, 13 Apr 2007 18:14:42 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HcWqi-0004gy-Bn
+	for nfs@lists.sourceforge.net; Fri, 13 Apr 2007 18:14:44 -0700
+In-Reply-To: <170fa0d20704131704y13151149n817cd698e22781c8@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,150 +35,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
+This is a multi-part message in MIME format.
+--------------080202050009060802050709
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-For us Bull, TI-RPC is just a mean to supply IPv6 support for RPC.
-We always have considered that it is a raw code with bugs and code =
-
-craps, that has not been tested enough.
-We just use and supply it to test IPv6 support for NFSv4. And the code =
-
-is stable enough to do tests with NFSv4 and IPv6.
-However, we are developping some tests to improve its reliability, =
-
-stability, performance, to make it acceptable in a more general context.
-
-In the past, we discussed with glibc people to extend SunRPC library =
-
-with IPv6 features. Uli Drepper clearly refused and explained that he =
-
-did not want to see new bugs entering in RPC glibc library. He seems to =
-
-consider that RPCs should not be in the glibc, and introduction of new =
-
-features must be done in an external library.
-
-That's why we decided to port an external tirpc library from FreeBSD =
-
-(which is based on the same Sun code than Wietse's )
-
-Aur=E9lien
-
-
-
-Peter Staubach wrote:
-
->Steve Dickson wrote:
->  =
-
->
->>Peter =C5strand wrote:
->>  =
-
->>    =
-
+Mike Snitzer wrote:
+> On 4/13/07, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> Mike Snitzer wrote:
+>> > On 2/2/07, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> >> Roland Dreier wrote:
+>> >> >  > They are mostly from Chuck Level and make preparating for IPv6
+>> >> support
+>> >> >  > in the NFS server.
+>> >> >  > They are *not* for 2.6.20, but should be ok for .21.
+>> >> >
+>> >> > Out of curiousity, does this patch series reduce the delta 
+>> between the
+>> >> > NFS/RDMA tree and mainline Linux?  In other words does this bring
+>> >> > NFS/RDMA closer to merging?
+>> >>
+>> >> Hi Roland-
+>> >>
+>> >> The client side support for an RPC/RDMA module is almost completely
+>> >> integrated into mainline.  There is still a minimal set of patches
+>> >> required to support alternate transports in loadable kernel modules
+>> >> which Trond has indicated he will integrate when the RPC/RDMA 
+>> transport
+>> >> is ready to be integrated.
+>> >
+>> > Hi Chuck,
+>> >
+>> > I must be missing something because I don't see _any_ trace of the
+>> > core RPC over RDMA support (xprtrdma et al), your RPC Transport
+>> > Switch, or any of the other supporting changes in mainline.  Could
+>> > you, or others, please clarify the plan for merging RPC/RDMA?
 >>
->>>One thing that bothers me is that the current libtirpc[*] is different =
+>> The RPC transport switch patches are almost fully integrated into
+>> mainline.  The xprtrdma piece is what is not there yet.
+> 
+> OK, has the xprtrdma piece been reviewed by the community?  What, if
+> anything, is preventing the code from being included in -mm for wider
+> testing?
 
->>>from other TI-RPC versions. The current version (as far as I understand) =
+OK, there is something holding up the client-side piece of NFS/RDMA. 
+There is some hackery required for the NFS client to recognize that the 
+RDMA transport should be used instead of the standard socket transport.
 
->>>is based on a snapshot from FreeBSD, which is turn is based on Suns TIRP=
-C =
+We did discuss this a bit at Connectathon '07 six weeks ago, but my 
+impression is that more discussion is required.
 
->>>2.3. This code is *not* up to date with TI-RPC 2.9 (aka tirpcsrc_99) and =
+I'm working on some changes to NFS mounting that would move NFS mount 
+option parsing into the kernel.  This would make it very simple to add 
+RDMA transport support, but it's rather a while in coming.
 
->>>certainly not with the latest OpenSolaris version.
->>>    =
+--------------080202050009060802050709
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
->>>      =
-
->>>
->>hmm... Were does one go to find out how to be come tirpcsrc_99
->>compliant and why is this important? Does the TI-RPC 2.9
->>use a different over-the-wire protocol? I surely hope not... :-\
->>
->>  =
-
->>    =
-
->>
->
->The chance that Sun actually changed any of the interfaces from one
->version of TIRPC to the next is virtually nil.  Compatibility is a
->huge thing to them.  Any changes would most likely have been made
->in a backwards compatible fashion.
->
->
->And no, there are no differences in the over the wire protocol.
->
->  =
-
->
->>>Getting Linux distributions to ship (the same) version of TI-RPC is a =
-
->>>worthwhile goal, but ideally, we should have an upstream project that =
-
->>>covers not only Linux, but also, *BSD, OpenSolaris etc. I know it's not =
-
->>>going to be easy, but I think it's worth a try.
->>>    =
-
->>>      =
-
->>>
->>Well if we having support thats needed and/or wanted it should not
->>be too difficult to get people to move over...
->>    =
-
->>
->
->Having such a project would be a good thing.  We would need developers
->for each release platform targeted though.  Perhaps it might be sufficient
->to start with platforms that we are interested in and as people with other
->platforms become interested, they can port the support and add their own
->patches to the central source base.
->
->I don't think that I understand why being bug for bug compatible with
->the current glibc code is interesting.  This is a new version of the
->RPC support and applications will explicitly need to be ported to it.
->Perhaps we could even pleasantly surprise some folks by addressing
->some particular pet bug that they might have encountered.
->
->    Thanx...
->
->       ps
->
->-------------------------------------------------------------------------
->This SF.net email is sponsored by DB2 Express
->Download DB2 Express C - the FREE version of DB2 express and take
->control of your XML. No limits. Just data. Click to get it now.
->http://sourceforge.net/powerbar/db2/
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
->
->  =
-
->
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
 
--- =
-
-
-********************************
-       Aurelien Charbon
-       Linux NFSv4 team
-           Bull SAS
-     Echirolles - France
-http://nfsv4.bullopensource.org/
-********************************
-
+--------------080202050009060802050709
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
+Take Surveys. Earn Cash. Influence the Future of IT
+Join SourceForge.net's Techsay panel and you'll get the chance to share your
+opinions on IT & business topics through brief surveys-and earn cash
+http://www.techsay.com/default.php?page=join.php&p=sourceforge&CID=DEVDEV
+--------------080202050009060802050709
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------080202050009060802050709--
