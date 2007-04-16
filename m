@@ -1,24 +1,25 @@
-From: Gabriel Barazer <gabriel@oxeva.fr>
-Subject: Re: mountd randomly crash and panic the server
-Date: Mon, 16 Apr 2007 16:07:09 +0200
-Message-ID: <4623830D.7040108@oxeva.fr>
-References: <461CFABE.9050301@barazer.net>	<46234130.5020502@oxeva.fr>
-	<17955.21572.383131.837268@notabene.brown>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 002 of 2] Avoid flush-when-locking
+ when	interclient consistency not needed.
+Date: Mon, 16 Apr 2007 10:12:09 -0400
+Message-ID: <46238439.4030805@redhat.com>
+References: <20070306163710.8128.patches@notabene>	<1070306054029.8360@suse.de>	<1173192029.6393.52.camel@heimdal.trondhjem.org>	<17903.17597.832563.922428@notabene.brown>	<1176589265.6089.20.camel@heimdal.trondhjem.org>
+	<4622D614.5030500@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HdRs3-00038z-0V
-	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 07:07:57 -0700
-Received: from mail.reagi.com ([195.60.188.80])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HdRs4-0005Fb-1K
-	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 07:07:57 -0700
-In-Reply-To: <17955.21572.383131.837268@notabene.brown>
+	id 1HdRwS-0003hV-49
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 07:12:37 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HdRwQ-0006qz-Ve
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 07:12:30 -0700
+In-Reply-To: <4622D614.5030500@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,36 +32,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 04/16/2007 12:47:32 +0200, Neil Brown <neilb@suse.de> wrote:
-
-> On Monday April 16, gabriel@oxeva.fr wrote:
-
+Chuck Lever wrote:
+> Trond Myklebust wrote:
+>> On Thu, 2007-03-08 at 10:03 +1100, Neil Brown wrote:
+>>>> You can argue for or against the need to invalidate caches when the 
+>>>> user
+>>>> has specified "nolock" (it might be nice to add a Solaris-style 
+>>>> "llock"
+>>>> alias to this one day, btw: nolock == local locking != no locking at
+>>>> all). We used to do this in early 2.4.x kernels, but that was changed.
+>>>> The reason is that locking is the only way of ensuring that the NFS
+>>>> cache is in sync with the server, and the "nolock" exception was
+>>>> breaking this.
+>
+> Why not create a special fcntl for NFS files that invalidates cached 
+> data for that file?  That way, no matter what semantics a lock or 
+> unlock operation has, there is always a well-defined way to flush the 
+> page cache.
+>
+>>> Yes, the name "nolock" does seem to have been unfortunate.  We had one
+>>> customer wondering why it wasn't producing an 'ENOLCK' error status.
+>>> We could create an alias.  "nonlm"?
 >>
->> Is this related to the kernel cache_clean function in net/sunrpc/cache.c ?
-> 
-> Yes.  It is crashing at:
-> 		for (; ch; cp= & ch->next, ch= *cp) {
-> 			if (current_detail->nextcheck > ch->expiry_time)
->                                                         ^^^^^^
-> 				current_detail->nextcheck = ch->expiry_time+1;
-> 			if (ch->expiry_time >= get_seconds()
-> 
-> ch has a garbage value (0001e71926010009), presumable because a
-> previous cp had been corrupted, most likely by being freed while still
-> in use.
-> 
+>> I'd prefer "llock", simply because that mirrors the same option on
+>> Solaris.
+>>
+>>> If you have chosen nocto,nolock, I cannot see any justification in
+>>> expecting any way of ensuring  the NFS cache is in sync with the
+>>> server except at unmount.
+>>>
+>>> However if you don't like it, that's fine.  It was just a "this might
+>>> be useful, what do you think" rather than "this is important".  The
+>>> other patch of the two was the real bugfix.  Did that pass muster?
+>>>
+>>> But I worry about adding an 'llock' option that was different from
+>>> 'nolock'.  How would you explain the difference in a way that didn't
+>>> confuse people?
+>>
+>> Are we sure that 'llock' differs from 'nolock'? If Chuck is right, then
+>> we could simply make 'llock' set both the 'nolock' 'nocto' flags, and
+>> just document that. I'm not sure that he is, though. According to the
+>> manpage, Solaris documents
+>>
+>>         nocto
+>>                         No close-to-open consistency.
+>>                 llock
+>>                         Local locking being used (no lock manager).
+>
+> We should be careful here.  Solaris, IIRC, has different cache 
+> coherency semantics from Linux when a file is locked, so it might be 
+> difficult to compare mount options directly between Linux and Solaris.
+>
+> Locked NFS files on Solaris get uncached I/O limited to 8KB.  I don't 
+> know exactly how llock changes this, but I suspect it probably doesn't 
+> change it at all.  Perhaps someone with Solaris NFS development 
+> experience can shed some light.
+>
 
-Maybe this can helps : I never encountered the problem with kernel 
-2.6.18, maybe this can restrict the scope for where is this corruption 
-happening ?
+"llock" or "local lock" implies that only local locks will be used.
+Thus, only the locks that the kernel is managing are used or kept
+track of.  No over the wire traffic for locking is issued.
 
-> Bother.
-> 
-> I'll see if I can figure out what is happening.
-> 
-> Thanks for the report.
-> 
-> NeilBrown
+With this option, caching is enabled.
+
+Actually, with current versions of Solaris, caching is also enabled
+when the entire file is locked.  There is a flush on unlock and a
+check for consistency on lock, much like the "nocto" handling, but
+otherwise normal page caching applies.
+
+> IMO an llock mount option is sorely missing on Linux... and I think it 
+> should disable the "automatic" cache flushing behaviors as well.  When 
+> local locking is used, clearly cache coherency with other clients 
+> isn't needed, and therefore invalidate-on-lock and flush-on-unlock 
+> semantics are not necessary and serve only to slow things down.
+>
+
+Yes, this last is very true and mirrors the Solaris "llock" implementation
+semantics.
+
+> I don't necessarily disagree with Trond about requiring some mechanism 
+> for cache invalidation to be available.  However, as an aside, if the 
+> NFS cache invalidation logic is working overall, it really shouldn't 
+> ever be necessary for applications to trigger invalidation by hand. 
+
+I would agree with this last.  The kernel should always "do the right 
+thing",
+from a correctness viewpoint and not depend upon applications to do it for
+the kernel.
+
+    Thanx...
+
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
