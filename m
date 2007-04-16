@@ -1,22 +1,35 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: CentOS4.4 support NFSv4 Replication and Migration
-Date: Mon, 16 Apr 2007 14:20:32 -0400
-Message-ID: <4623BE70.50404@RedHat.com>
-References: <003801c77cb1$42e77870$207ba8c0@barcelona>
+From: Terry Spaulding <spauld@us.ibm.com>
+Subject: setting up NFS and autofs to use specific ports for nfs, lockd,
+ mountd, etc .....
+Date: Mon, 16 Apr 2007 16:36:19 -0400
+Message-ID: <OF767BD0CF.B0C0B8B2-ON852572BF.00705A7F-852572BF.00713038@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1637653469=="
-Cc: nfs@lists.sourceforge.net
-To: Phillip Huang <phuang@plasmon.cn>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HdVoI-0006lu-9w
-	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 11:20:36 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HdVoK-0006Nw-Fm
-	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 11:20:20 -0700
-In-Reply-To: <003801c77cb1$42e77870$207ba8c0@barcelona>
+	id 1HdXwA-0004aY-5l
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 13:36:34 -0700
+Received: from e1.ny.us.ibm.com ([32.97.182.141])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HdXwB-0003l6-By
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 13:36:36 -0700
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l3GKaQhX013241
+	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:26 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
+	l3GKaQK4534108
+	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:26 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	l3GKaD1f001044
+	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:13 -0400
+Received: from d01ml251.pok.ibm.com (d01ml251.pok.ibm.com [9.56.227.119])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	l3GKaCTj000413
+	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:12 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,44 +42,85 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1637653469==
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
 
+Can anyone provide me the steps necessary to set the NFS server and NFS
+clients to use specific ports for nfs(nfsd) , lockd, mountd. I am trying to
+setup my server and client to have these ports set at boot time. This is so
+I can request the specific ports to be open thru the Firewalls for the
+servers and the clients.
 
+Any assistance or direction to doc would be greatly appreciated.
 
-Phillip Huang wrote:
-> Hi all,
-> 
-> I have rebuild CentOS4.4 kernel with 2.6.20,
-> and its original nfs-util is 1.0.6.
-> 
-> Does this support NFSv4/replication and migration?
-Grab the latest nfs-utils in FC6 (nfs-utils-1.0.10-7.fc6).
-It has the support that was tested at this years connectathon..
+My servers are both SLES8 and SLES9 SP3. Clients are all SLES9 SP3.
 
-steved.
+My SLES9 Server (kernel 2.6.5-7.276-s390x #1 SMP Mon Jul 24 10:45:31 UTC
+2006 s390x s390x s390x GNU/Linux)  :
+ # rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100227    3   udp   2049  nfs_acl
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100227    3   tcp   2049  nfs_acl
+    100024    1   udp  32773  status
+    100021    1   udp  32773  nlockmgr
+    100021    3   udp  32773  nlockmgr
+    100021    4   udp  32773  nlockmgr
+    100024    1   tcp  32843  status
+    100021    1   tcp  32843  nlockmgr
+    100021    3   tcp  32843  nlockmgr
+    100021    4   tcp  32843  nlockmgr
+    100005    1   udp    630  mountd
+    100005    1   tcp    631  mountd
+    100005    2   udp    630  mountd
+    100005    2   tcp    631  mountd
+    100005    3   udp    630  mountd
+    100005    3   tcp    631  mountd
 
+My SLES8 server (kernel 2.4.21-251-default #1 SMP Sun Sep 26 14:07:15 UTC
+2004 s390 unknown) :
+ # rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100021    1   udp   1024  nlockmgr
+    100021    3   udp   1024  nlockmgr
+    100021    4   udp   1024  nlockmgr
+    100021    1   tcp   1967  nlockmgr
+    100021    3   tcp   1967  nlockmgr
+    100021    4   tcp   1967  nlockmgr
+    100005    1   udp   1027  mountd
+    100005    1   tcp   1968  mountd
+    100005    2   udp   1027  mountd
+    100005    2   tcp   1968  mountd
+    100005    3   udp   1027  mountd
+    100005    3   tcp   1968  mountd
 
---===============1637653469==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+TIA ....................
+
+Regards,
+Terry L. Spaulding
+IBM
+spauld@us.ibm.com
+
+"The third-rate mind is only happy when it is thinking with the majority.
+The second-rate mind is only happy when it is thinking with the minority.
+The first-rate mind is only happy when it is thinking." -- A.A. Milne
+(1882-1956)
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1637653469==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1637653469==--
