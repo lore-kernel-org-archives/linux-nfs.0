@@ -1,55 +1,77 @@
-From: "Mike Snitzer" <snitzer@gmail.com>
-Subject: Re: [NFS] Merge plans for RPC/RDMA? (Was: Re: [PATCH 000 of 14] knfsd: Preparation for IPv6 support in NFS server.)
-Date: Mon, 16 Apr 2007 10:48:49 -0400
-Message-ID: <170fa0d20704160748m60503365q5be2beba591a9f@mail.gmail.com>
-References: <170fa0d20704131347u4a28b5d1h1959227980449fbf@mail.gmail.com>
-	 <1176502465.6394.26.camel@heimdal.trondhjem.org>
-	 <170fa0d20704142040w204a715bgf5ce772e67126bbd@mail.gmail.com>
-	 <Pine.LNX.4.64.0704161002200.7869@jlentini-linux.nane.netapp.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 002 of 2] Avoid
+ flush-when-locking	when	interclient consistency not needed.
+Date: Mon, 16 Apr 2007 10:48:31 -0400
+Message-ID: <46238CBF.4090700@redhat.com>
+References: <20070306163710.8128.patches@notabene>	
+	<1070306054029.8360@suse.de>	
+	<1173192029.6393.52.camel@heimdal.trondhjem.org>	
+	<17903.17597.832563.922428@notabene.brown>	
+	<1176589265.6089.20.camel@heimdal.trondhjem.org>	
+	<4622D614.5030500@oracle.com>
+	<1176734503.6761.37.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	chuck.lever@oracle.com, NeilBrown <neilb@suse.de>,
-	"Andrew Morton" <akpm@osdl.org>,
-	"Roland Dreier" <rdreier@cisco.com>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org,
-	"Tom Tucker" <tom@opengridcomputing.com>, Thomas.Talpey@netapp.com,
-	"Or Gerlitz" <ogerlitz@voltaire.com>
-To: "James Lentini" <jlentini@netapp.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752795AbXDPOsw@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.0704161002200.7869@jlentini-linux.nane.netapp.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HdSXO-0007jH-LF
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 07:50:38 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HdSVd-0001Uk-Ix
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 07:48:49 -0700
+In-Reply-To: <1176734503.6761.37.camel@heimdal.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 4/16/07, James Lentini <jlentini@netapp.com> wrote:
+Trond Myklebust wrote:
 >
 >
-> On Sat, 14 Apr 2007, Mike Snitzer wrote:
+> On Mon, 16 Apr 2007 at 10:12:09 -0400, Peter Staubach wrote:
+>   
+>> "llock" or "local lock" implies that only local locks will be used.
+>> Thus, only the locks that the kernel is managing are used or kept
+>> track of.  No over the wire traffic for locking is issued.
+>>
+>> With this option, caching is enabled.
+>>     
 >
-> > I'm interested in understanding why the reluctance to push for a merge
-> > now (let alone some months ago) given the various successes that have
-> > been seen with the NFS/RDMA effort (Sandia, SC '06, as Chuck noted:
-> > good performance at various test sites).  If the code is holding up
-> > well why the delay in review and merging?  And rather than wait for
-> > the remaining transport switch patches; why not look to merge all of
-> > NFS/RDMA (client) work at the same time?
->
-> There is no reluctance to submit the NFS-RDMA code for review. There
-> have been several upstream changes to the NFS server recently. We
-> (NetApp and Tom Tucker at OGC) are working on a new patchset for
-> NFS-RDMA that is compatible with these changes. We are testing the
-> code now.
->
-> We will post the patches for review when we finish updating them.
+> So are you saying that 'llock' basically mirrors our 'nolock', or does
+> it additionally disable the flushing operations? If the latter, then I
+> suggest that we add a mount flag, NFS_MOUNT_LLOCK which automatically
+> sets NFS_MOUNT_NONLM + a new flag that just disables the cache flush on
+> lock/unlock.
 
-Thanks for the clarification.  It was unfair of me to imply any amount
-of "reluctance" to submit the NFS/RDMA code for review.  I was just
-trying to gauge the "real soon now" type posts we've seen over the
-past few months.  If anything I'd imagine the latest NFS churn has
-given you additional incentive to merge.
+I believe that the use of "llock" also disables the cache flush at
+lock/unlock.  Perhaps someone with access to the OpenSolaris code,
+who isn't worried about CDDL versus GPL issues, could look to verify.
+It has been a bit since I've worked on that code.
 
-Thanks for your continued hard work; NFS/RDMA looks to be a huge
-improvement for modern NFS deployments.
+I do remember that the "llock" code was designed to be used for things
+like root file systems, where there shouldn't be any conflicts between
+different clients, and hence, no need for special page cache handling.
 
-regards,
-Mike
+    Thanx...
+
+       ps
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
