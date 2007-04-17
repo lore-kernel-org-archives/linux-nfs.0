@@ -1,35 +1,25 @@
-From: Terry Spaulding <spauld@us.ibm.com>
-Subject: setting up NFS and autofs to use specific ports for nfs, lockd,
- mountd, etc .....
-Date: Mon, 16 Apr 2007 16:36:19 -0400
-Message-ID: <OF767BD0CF.B0C0B8B2-ON852572BF.00705A7F-852572BF.00713038@us.ibm.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: mountd randomly crash and panic the server
+Date: Tue, 17 Apr 2007 11:23:40 +1000
+Message-ID: <17956.8604.672536.126674@notabene.brown>
+References: <461CFABE.9050301@barazer.net> <46234130.5020502@oxeva.fr>
+	<17955.21572.383131.837268@notabene.brown>
+	<4623830D.7040108@oxeva.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Gabriel Barazer <gabriel@oxeva.fr>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HdXwA-0004aY-5l
-	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 13:36:34 -0700
-Received: from e1.ny.us.ibm.com ([32.97.182.141])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HdXwB-0003l6-By
-	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 13:36:36 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l3GKaQhX013241
-	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:26 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
-	l3GKaQK4534108
-	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:26 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l3GKaD1f001044
-	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:13 -0400
-Received: from d01ml251.pok.ibm.com (d01ml251.pok.ibm.com [9.56.227.119])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
-	l3GKaCTj000413
-	for <nfs@lists.sourceforge.net>; Mon, 16 Apr 2007 16:36:12 -0400
+	id 1HdcQK-0002uS-An
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 18:24:00 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HdcQL-0000CP-9i
+	for nfs@lists.sourceforge.net; Mon, 16 Apr 2007 18:24:02 -0700
+In-Reply-To: message from Gabriel Barazer on Monday April 16
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,79 +32,106 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Monday April 16, gabriel@oxeva.fr wrote:
+> On 04/16/2007 12:47:32 +0200, Neil Brown <neilb@suse.de> wrote:
+> 
+> > On Monday April 16, gabriel@oxeva.fr wrote:
+> 
+> >>
+> >> Is this related to the kernel cache_clean function in net/sunrpc/cache.c ?
+> > 
+> > Yes.  It is crashing at:
+> > 		for (; ch; cp= & ch->next, ch= *cp) {
+> > 			if (current_detail->nextcheck > ch->expiry_time)
+> >                                                         ^^^^^^
+> > 				current_detail->nextcheck = ch->expiry_time+1;
+> > 			if (ch->expiry_time >= get_seconds()
+> > 
+> > ch has a garbage value (0001e71926010009), presumable because a
+> > previous cp had been corrupted, most likely by being freed while still
+> > in use.
+> > 
+> 
+> Maybe this can helps : I never encountered the problem with kernel 
+> 2.6.18, maybe this can restrict the scope for where is this corruption 
+> happening ?
 
-Can anyone provide me the steps necessary to set the NFS server and NFS
-clients to use specific ports for nfs(nfsd) , lockd, mountd. I am trying to
-setup my server and client to have these ports set at boot time. This is so
-I can request the specific ports to be open thru the Firewalls for the
-servers and the clients.
+I did end up just hunting through the patches between 2.6.18 and
+2.6.20 and I think I have found it (I had already looked at the code
+where the bug is, but didn't see it the first time :-().
 
-Any assistance or direction to doc would be greatly appreciated.
+Could you try this patch and report the results please?
+I'm very confident that the patch is correct and required, but I would
+like to also know that it fixes your problem.
 
-My servers are both SLES8 and SLES9 SP3. Clients are all SLES9 SP3.
+Thanks
+NeilBrown
 
-My SLES9 Server (kernel 2.6.5-7.276-s390x #1 SMP Mon Jul 24 10:45:31 UTC
-2006 s390x s390x s390x GNU/Linux)  :
- # rpcinfo -p
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100227    3   udp   2049  nfs_acl
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100227    3   tcp   2049  nfs_acl
-    100024    1   udp  32773  status
-    100021    1   udp  32773  nlockmgr
-    100021    3   udp  32773  nlockmgr
-    100021    4   udp  32773  nlockmgr
-    100024    1   tcp  32843  status
-    100021    1   tcp  32843  nlockmgr
-    100021    3   tcp  32843  nlockmgr
-    100021    4   tcp  32843  nlockmgr
-    100005    1   udp    630  mountd
-    100005    1   tcp    631  mountd
-    100005    2   udp    630  mountd
-    100005    2   tcp    631  mountd
-    100005    3   udp    630  mountd
-    100005    3   tcp    631  mountd
+---------------------------------------------
+Use a spinlock to protect sk_info_authunix
 
-My SLES8 server (kernel 2.4.21-251-default #1 SMP Sun Sep 26 14:07:15 UTC
-2004 s390 unknown) :
- # rpcinfo -p
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100021    1   udp   1024  nlockmgr
-    100021    3   udp   1024  nlockmgr
-    100021    4   udp   1024  nlockmgr
-    100021    1   tcp   1967  nlockmgr
-    100021    3   tcp   1967  nlockmgr
-    100021    4   tcp   1967  nlockmgr
-    100005    1   udp   1027  mountd
-    100005    1   tcp   1968  mountd
-    100005    2   udp   1027  mountd
-    100005    2   tcp   1968  mountd
-    100005    3   udp   1027  mountd
-    100005    3   tcp   1968  mountd
+sk_info_authunix is not being protected properly so the object that
+it points to can be cache_put twice, leading to corruption.
 
-TIA ....................
+We borrow svsk->sk_defer_lock to provide the protection.  We should probably
+rename that lock to have a more generic name.
 
-Regards,
-Terry L. Spaulding
-IBM
-spauld@us.ibm.com
+Signed-off-by: Neil Brown <neilb@suse.de>
 
-"The third-rate mind is only happy when it is thinking with the majority.
-The second-rate mind is only happy when it is thinking with the minority.
-The first-rate mind is only happy when it is thinking." -- A.A. Milne
-(1882-1956)
+### Diffstat output
+ ./net/sunrpc/svcauth_unix.c |   21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
 
+diff .prev/net/sunrpc/svcauth_unix.c ./net/sunrpc/svcauth_unix.c
+--- .prev/net/sunrpc/svcauth_unix.c	2007-04-17 11:18:44.000000000 +1000
++++ ./net/sunrpc/svcauth_unix.c	2007-04-17 11:19:18.000000000 +1000
+@@ -383,7 +383,10 @@ void svcauth_unix_purge(void)
+ static inline struct ip_map *
+ ip_map_cached_get(struct svc_rqst *rqstp)
+ {
+-	struct ip_map *ipm = rqstp->rq_sock->sk_info_authunix;
++	struct ip_map *ipm;
++	struct svc_sock *svsk = rqstp->rq_sock;
++	spin_lock(&svsk->sk_defer_lock);
++	ipm = svsk->sk_info_authunix;
+ 	if (ipm != NULL) {
+ 		if (!cache_valid(&ipm->h)) {
+ 			/*
+@@ -391,12 +394,14 @@ ip_map_cached_get(struct svc_rqst *rqstp
+ 			 * remembered, e.g. by a second mount from the
+ 			 * same IP address.
+ 			 */
+-			rqstp->rq_sock->sk_info_authunix = NULL;
++			svsk->sk_info_authunix = NULL;
++			spin_unlock(&svsk->sk_defer_lock);
+ 			cache_put(&ipm->h, &ip_map_cache);
+ 			return NULL;
+ 		}
+ 		cache_get(&ipm->h);
+ 	}
++	spin_unlock(&svsk->sk_defer_lock);
+ 	return ipm;
+ }
+ 
+@@ -405,9 +410,15 @@ ip_map_cached_put(struct svc_rqst *rqstp
+ {
+ 	struct svc_sock *svsk = rqstp->rq_sock;
+ 
+-	if (svsk->sk_sock->type == SOCK_STREAM && svsk->sk_info_authunix == NULL)
+-		svsk->sk_info_authunix = ipm;	/* newly cached, keep the reference */
+-	else
++	spin_lock(&svsk->sk_defer_lock);
++	if (svsk->sk_sock->type == SOCK_STREAM &&
++	    svsk->sk_info_authunix == NULL) {
++		/* newly cached, keep the reference */
++		svsk->sk_info_authunix = ipm;
++		ipm = NULL;
++	}
++	spin_unlock(&svsk->sk_defer_lock);
++	if (ipm)
+ 		cache_put(&ipm->h, &ip_map_cache);
+ }
+ 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
