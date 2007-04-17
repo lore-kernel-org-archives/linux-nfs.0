@@ -1,25 +1,25 @@
-From: Wendy Cheng <wcheng@redhat.com>
+From: Olaf Kirch <okir@lst.de>
 Subject: Re: [PATCH 3/4 Revised] NLM - kernel lockd-statd changes
-Date: Tue, 17 Apr 2007 09:24:35 -0400
-Message-ID: <4624CA93.4040307@redhat.com>
-References: <46156FA0.4030506@redhat.com>
-	<17948.26876.426822.963222@notabene.brown>
-	<20070413191615.GU1804@redhat.com> <200704171352.27620.okir@lst.de>
+Date: Tue, 17 Apr 2007 16:51:35 +0200
+Message-ID: <200704171651.36497.okir@lst.de>
+References: <46156FA0.4030506@redhat.com> <200704171352.27620.okir@lst.de>
+	<4624CA93.4040307@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, cluster-devel@redhat.com,
 	Lon Hohberger <lhh@redhat.com>, nfs@lists.sourceforge.net
-To: Olaf Kirch <okir@lst.de>
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HdoPN-0007Kv-I8
-	for nfs@lists.sourceforge.net; Tue, 17 Apr 2007 07:11:49 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HdoPP-00074d-Qy
-	for nfs@lists.sourceforge.net; Tue, 17 Apr 2007 07:11:52 -0700
-In-Reply-To: <200704171352.27620.okir@lst.de>
+	id 1Hdp23-0003dE-Pf
+	for nfs@lists.sourceforge.net; Tue, 17 Apr 2007 07:51:47 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1Hdp24-0004Mt-ST
+	for nfs@lists.sourceforge.net; Tue, 17 Apr 2007 07:51:50 -0700
+In-Reply-To: <4624CA93.4040307@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,44 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Olaf Kirch wrote:
-> On Friday 13 April 2007 21:16, Lon Hohberger wrote:
->   
->> The simplification here is a bit incorrect; we need to be able to handle
->> a given *set* of size >= 1 IPs which is paired with a *set* of size >= 1
->> of fsids.  The sets are not broken up (that is, we won't be moving 
->> file systems between IP addresses or vice-vers), but the number of
->> IPs:filesystems need not be 1:1.
->>
->>    * 1 file system, 1 ip address
->>    * 2 fs, 1 ip
->>    * 1 ip, 2 fs
->>    * 18 ip, 42 fs.
->>     
->
-> So you move a bunch of file systems with a bunch of IPs, and that
-> information is recorded somewhere. So if you know you're moving
-> set X, which goes with IPs 1.2.3.4 and 1.2.3.5, you might as well
-> send notifications from both these IPs to all clients having established
-> locks on a file system from that set.
->
-> I think in term of correctness, it's better to send an SM_NOTIFY
-> for each IP associated with such a set, anyway.
->   
+On Tuesday 17 April 2007 15:24, Wendy Cheng wrote:
+> > I think in term of correctness, it's better to send an SM_NOTIFY
+> > for each IP associated with such a set, anyway.
+> >   
+> 
+> That's exactly what we have been proposing... :) .. We'll rely heavily 
+> on HA callout program to tell us which client uses which (server) 
+> floating IP. 
 
-That's exactly what we have been proposing... :) .. We'll rely heavily 
-on HA callout program to tell us which client uses which (server) 
-floating IP. 
-> To me, it seems the crucial point of information here when monitoring
-> a client, is which file system (or set of file systems) the client has
-> accessed.
->
->   
-The summary will be sent out shortly ... sorry - it is a little bit 
-behind schedules due to other issues.
+Correct me if I'm wrong, but it seems your patch records every IP
+used by the client, rather than the *all* the IPs related to the set of
+file systems being moved. So if there are several IPs for this set, you
+will end up sending notifications only from those the client happened
+to have talked to.
 
--- Wendy
+My point was, you move a set of file systems A, B and C, with
+IPs X, Y, Z. You know what the addresses are, so from a
+robustness point of view your best bet is to send SM_NOTIFY
+messages from IPs X, Y, Z, regardless of whether the client has
+been talking to all of them, or just one.
 
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
