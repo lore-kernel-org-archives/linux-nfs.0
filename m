@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] NFS: Add functions to parse nfs4 mount options
-	to	fs/nfs/super.c
-Date: Wed, 18 Apr 2007 13:07:58 -0400
-Message-ID: <20070418170758.11696.26324.stgit@schiele.dsl.sfldmi.ameritech.net>
+Subject: [PATCH 2/3] NFS: More nfs4 in-kernel mount option
+	parsing	infrastructure
+Date: Wed, 18 Apr 2007 13:08:04 -0400
+Message-ID: <20070418170803.11696.35275.stgit@schiele.dsl.sfldmi.ameritech.net>
 Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeDdf-0007U0-Sx
+	id 1HeDdj-0007U1-A0
 	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:19 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeDdi-0001Je-4V
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:18 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeDdj-0001Ji-B4
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:19 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,343 +29,199 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add infrastructure required for parsing nfs4 mount options in the NFS
-client.
+Add function for switching between an nfs4_mount_data structure from user
+space (the current nfs4 mount mechanism) and generating an nfs4_mount_data
+structure from a text string containing nfs4 mount options.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |  304 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 304 insertions(+), 0 deletions(-)
+ fs/nfs/super.c |  166 +++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 145 insertions(+), 21 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 696caa8..d9ad032 100644
+index d9ad032..60b1e45 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -45,6 +45,7 @@
- #include <linux/in6.h>
- #include <linux/nfs_xdr.h>
- #include <linux/magic.h>
-+#include <linux/parser.h>
+@@ -1071,6 +1071,151 @@ out_err:
+ 	return ERR_PTR(-EINVAL);
+ }
  
- #include <asm/system.h>
- #include <asm/uaccess.h>
-@@ -57,6 +58,47 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-+struct nfs4_mount_args {
-+	struct nfs4_mount_data nmd;
-+	struct sockaddr_in addr;
-+	char clientaddr[81];
-+	int authflavor;
-+};
-+
-+enum {
-+	/* Mount options that take no arguments */
-+	Opt_soft, Opt_hard,
-+	Opt_intr, Opt_nointr,
-+	Opt_posix, Opt_noposix,
-+	Opt_cto, Opt_nocto,
-+	Opt_ac, Opt_noac,
-+	Opt_lock, Opt_nolock,
-+	Opt_v2, Opt_v3,
-+	Opt_udp, Opt_tcp,
-+	Opt_acl, Opt_noacl,
-+	Opt_sec_none, Opt_sec_sys,
-+	Opt_sec_krb5, Opt_sec_krb5i, Opt_sec_krb5p,
-+	Opt_sec_lkey, Opt_sec_lkeyi, Opt_sec_lkeyp,
-+	Opt_sec_spkm, Opt_sec_spkmi, Opt_sec_spkmp,
-+
-+	/* Mount options that take integer arguments */
-+	Opt_port,
-+	Opt_rsize, Opt_wsize,
-+	Opt_timeo, Opt_retrans,
-+	Opt_acregmin, Opt_acregmax,
-+	Opt_acdirmin, Opt_acdirmax,
-+	Opt_actimeo,
-+	Opt_namelen,
-+	Opt_mountport,
-+	Opt_mountprog, Opt_mountvers,
-+	Opt_nfsprog, Opt_nfsvers,
-+
-+	/* Mount options that take string arguments */
-+	Opt_addr, Opt_mounthost, Opt_clientaddr, Opt_context,
-+
-+	Opt_ignore, Opt_err,
-+};
-+
- static void nfs_umount_begin(struct vfsmount *, int);
- static int  nfs_statfs(struct dentry *, struct kstatfs *);
- static int  nfs_show_options(struct seq_file *, struct vfsmount *);
-@@ -767,6 +809,268 @@ error_splat_super:
- 
- #ifdef CONFIG_NFS_V4
- 
-+static match_table_t nfs4_tokens = {
-+	{Opt_port, "port=%u"},
-+	{Opt_rsize, "rsize=%u"},
-+	{Opt_wsize, "wsize=%u"},
-+	{Opt_timeo, "timeo=%u"},
-+	{Opt_retrans, "retrans=%u"},
-+	{Opt_acregmin, "acregmin=%u"},
-+	{Opt_acregmax, "acregmax=%u"},
-+	{Opt_acdirmin, "acdirmin=%u"},
-+	{Opt_acdirmax, "acdirmax=%u"},
-+	{Opt_actimeo, "actimeo=%u"},
-+	{Opt_ignore, "retry=%u"},
-+
-+	{Opt_addr, "addr=%s"},
-+	{Opt_clientaddr, "clientaddr=%s"},
-+
-+	{Opt_ignore, "bg"},
-+	{Opt_ignore, "fg"},
-+	{Opt_soft, "soft"},
-+	{Opt_hard, "hard"},
-+	{Opt_intr, "intr"},
-+	{Opt_nointr, "nointr"},
-+	{Opt_cto, "cto"},
-+	{Opt_nocto, "nocto"},
-+	{Opt_ac, "ac"},
-+	{Opt_noac, "noac"},
-+	{Opt_udp, "proto=udp"},
-+	{Opt_tcp, "proto=tcp"},
-+
-+	{Opt_sec_sys, "sec=sys"},
-+	{Opt_sec_krb5, "sec=krb5"},
-+	{Opt_sec_krb5i, "sec=krb5i"},
-+	{Opt_sec_krb5p, "sec=krb5p"},
-+	{Opt_sec_lkey, "sec=lkey"},
-+	{Opt_sec_lkeyi, "sec=lkeyi"},
-+	{Opt_sec_lkeyp, "sec=lkeyp"},
-+	{Opt_sec_spkm, "sec=spkm"},
-+	{Opt_sec_spkmi, "sec=spkmi"},
-+	{Opt_sec_spkmp, "sec=spkmp"},
-+
-+	{Opt_err, NULL},
-+};
-+
-+static int nfs4_parse_options(char *raw, struct nfs4_mount_args *mnt)
++static void *nfs_copy_user_string(char *dst, struct nfs_string *src, int maxlen)
 +{
-+	char *p;
++	void *p = NULL;
 +
-+	if (!raw)
-+		return 1;
-+
-+	while ((p = strsep (&raw, ",")) != NULL) {
-+		substring_t args[MAX_OPT_ARGS];
-+		unsigned int option;
-+		int token;
-+
-+		if (!*p)
-+			continue;
-+		token = match_token(p, nfs4_tokens, args);
-+
-+		dprintk("NFS:   nfs4 mount option '%s': parsing token %d\n",
-+			p, token);
-+
-+		switch (token) {
-+			case Opt_soft:
-+				mnt->nmd.flags |= NFS4_MOUNT_SOFT;
-+				break;
-+			case Opt_hard:
-+				mnt->nmd.flags &= ~NFS4_MOUNT_SOFT;
-+				break;
-+			case Opt_intr:
-+				mnt->nmd.flags |= NFS4_MOUNT_INTR;
-+				break;
-+			case Opt_nointr:
-+				mnt->nmd.flags &= ~NFS4_MOUNT_INTR;
-+				break;
-+			case Opt_cto:
-+				mnt->nmd.flags &= ~NFS4_MOUNT_NOCTO;
-+				break;
-+			case Opt_nocto:
-+				mnt->nmd.flags |= NFS4_MOUNT_NOCTO;
-+				break;
-+			case Opt_ac:
-+				mnt->nmd.flags &= ~NFS4_MOUNT_NOAC;
-+				break;
-+			case Opt_noac:
-+				mnt->nmd.flags |= NFS4_MOUNT_NOAC;
-+				break;
-+			case Opt_udp:
-+				mnt->nmd.proto = IPPROTO_UDP;
-+				break;
-+			case Opt_tcp:
-+				mnt->nmd.proto = IPPROTO_TCP;
-+				break;
-+
-+			case Opt_sec_sys:
-+				mnt->nmd.auth_flavourlen = 0;
-+				break;
-+			case Opt_sec_krb5:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_KRB5;
-+				break;
-+			case Opt_sec_krb5i:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_KRB5I;
-+				break;
-+			case Opt_sec_krb5p:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_KRB5P;
-+				break;
-+			case Opt_sec_lkey:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_LKEY;
-+				break;
-+			case Opt_sec_lkeyi:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_LKEYI;
-+				break;
-+			case Opt_sec_lkeyp:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_LKEYP;
-+				break;
-+			case Opt_sec_spkm:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_SPKM;
-+				break;
-+			case Opt_sec_spkmi:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_SPKMI;
-+				break;
-+			case Opt_sec_spkmp:
-+				mnt->nmd.auth_flavourlen = 1;
-+				*mnt->nmd.auth_flavours = RPC_AUTH_GSS_SPKMP;
-+				break;
-+
-+			case Opt_port:
-+				if (match_int(args, &option))
-+					return 0;
-+				if (option > 65535)
-+					return 0;
-+				mnt->addr.sin_port = htonl(option);
-+				break;
-+			case Opt_rsize:
-+				if (match_int(args, &mnt->nmd.rsize))
-+					return 0;
-+				break;
-+			case Opt_wsize:
-+				if (match_int(args, &mnt->nmd.wsize))
-+					return 0;
-+				break;
-+			case Opt_timeo:
-+				if (match_int(args, &mnt->nmd.timeo))
-+					return 0;
-+				break;
-+			case Opt_retrans:
-+				if (match_int(args, &mnt->nmd.retrans))
-+					return 0;
-+				break;
-+			case Opt_acregmin:
-+				if (match_int(args, &mnt->nmd.acregmin))
-+					return 0;
-+				break;
-+			case Opt_acregmax:
-+				if (match_int(args, &mnt->nmd.acregmax))
-+					return 0;
-+				break;
-+			case Opt_acdirmin:
-+				if (match_int(args, &mnt->nmd.acdirmin))
-+					return 0;
-+				break;
-+			case Opt_acdirmax:
-+				if (match_int(args, &mnt->nmd.acdirmax))
-+					return 0;
-+				break;
-+			case Opt_actimeo:
-+				if (match_int(args, &option))
-+					return 0;
-+				mnt->nmd.acregmin =
-+				mnt->nmd.acregmax =
-+				mnt->nmd.acdirmin =
-+				mnt->nmd.acdirmax = option;
-+				break;
-+
-+			case Opt_addr: {
-+				char *string = match_strdup(args);
-+				if (string == NULL) {
-+					printk(KERN_ERR
-+				"NFS: not enough memory to copy addr\n");
-+					return 0;
-+				}
-+				mnt->addr.sin_family = AF_INET;
-+				mnt->addr.sin_addr.s_addr = in_aton(string);
-+				kfree(string);
-+				break;
-+			}
-+			case Opt_clientaddr: {
-+				unsigned int len = args[0].to - args[0].from;
-+				if (len > 80) {
-+					printk(KERN_ERR
-+						"NFS: clientaddr too long\n");
-+					return 0;
-+				}
-+				match_strcpy(mnt->clientaddr, args);
-+				mnt->nmd.client_addr.data = mnt->clientaddr;
-+				mnt->nmd.client_addr.len = len;
-+				break;
-+			}
-+
-+			case Opt_ignore:	/* options handled by user-space */
-+				break;
-+
-+			default:
-+				printk(KERN_WARNING "NFS4: unrecognized "
-+					"mount option: %s\n", p);
-+				return 0;
-+		}
++	if (!src->len)
++		return ERR_PTR(-EINVAL);
++	if (src->len < maxlen)
++		maxlen = src->len;
++	if (dst == NULL) {
++		p = dst = kmalloc(maxlen + 1, GFP_KERNEL);
++		if (p == NULL)
++			return ERR_PTR(-ENOMEM);
 +	}
-+
-+	return 1;
++	if (copy_from_user(dst, src->data, maxlen)) {
++		kfree(p);
++		return ERR_PTR(-EFAULT);
++	}
++	dst[maxlen] = '\0';
++	return dst;
 +}
 +
-+/*
-+ * Convert a string of nfs4 mount options into an nfs4_mount_data struct.
-+ */
-+static struct nfs4_mount_data *nfs4_convert_mount_opts(const char *options)
++static int nfs4_validate_mount_data(struct nfs4_mount_data **options,
++				    const char *dev_name,
++				    struct sockaddr_in *addr,
++				    rpc_authflavor_t *authflavour,
++				    char **hostname,
++				    char **mntpath,
++				    char *ip_addr)
 +{
-+	struct nfs4_mount_args *args;
++	struct nfs4_mount_data *data = *options;
++	char *c;
++	unsigned len;
 +
-+	dprintk("NFS: nfs4 mount opts='%s'\n", options);
++	if (data == NULL) {
++		dprintk("%s: missing data argument\n", __FUNCTION__);
++		return -EINVAL;
++	}
 +
-+	args = kzalloc(sizeof(*args), GFP_KERNEL);
-+	if (args == NULL)
-+		return ERR_PTR(-ENOMEM);
-+	args->nmd.version = 2;
++	switch (data->version) {
++	case 1:
++		if (data->host_addrlen != sizeof(*addr))
++			return -EINVAL;
++		if (copy_from_user(addr, data->host_addr, sizeof(*addr)))
++			return -EFAULT;
++		if (addr->sin_port == 0)
++			addr->sin_port = htons(NFS_PORT);
++		if (!nfs_verify_server_address((struct sockaddr *) addr,
++					       data->host_addrlen))
++			return -EINVAL;
 +
-+	args->nmd.rsize = NFS_MAX_FILE_IO_SIZE;
-+	args->nmd.wsize = NFS_MAX_FILE_IO_SIZE;
-+	args->nmd.proto = IPPROTO_TCP;
-+	args->nmd.timeo = (60 * HZ) / 10;
-+	args->nmd.retrans = 2;
-+	args->nmd.acregmin = 3;
-+	args->nmd.acregmax = 60;
-+	args->nmd.acdirmin = 30;
-+	args->nmd.acdirmax = 60;
++		switch (data->auth_flavourlen) {
++		case 0:
++			*authflavour = RPC_AUTH_UNIX;
++			break;
++		case 1:
++			if (copy_from_user(authflavour, data->auth_flavours,
++					   sizeof(*authflavour)))
++				return -EFAULT;
++		default:
++			goto out_inval_auth;
++		}
 +
-+	args->nmd.auth_flavourlen = 0;
-+	args->nmd.auth_flavours = &args->authflavor;
++		c = nfs_copy_user_string(ip_addr, &data->client_addr, 80);
++		if (IS_ERR(c))
++			return PTR_ERR(c);
 +
-+	args->nmd.host_addrlen = sizeof(args->addr);
-+	args->nmd.host_addr = (struct sockaddr *) &args->addr;
++		c = nfs_copy_user_string(NULL, &data->hostname, 256);
++		if (IS_ERR(c))
++			return PTR_ERR(c);
++		*hostname = c;
 +
-+	args->addr.sin_port = htonl(NFS_PORT);
++		c = nfs_copy_user_string(NULL, &data->mnt_path, 1024);
++		if (IS_ERR(c)) {
++			kfree(*hostname);
++			return PTR_ERR(c);
++		}
++		*mntpath = c;
++		dprintk("MNTPATH: %s\n", *mntpath);
 +
-+	if (nfs4_parse_options((char *) options, args) == 0)
-+		goto out_err;
++		return 0;
++	default:
++		*options = nfs4_convert_mount_opts((char *) data);
++		if (IS_ERR(*options))
++			return PTR_ERR(*options);
++		data = *options;
 +
-+	return &args->nmd;
++		memcpy(addr, data->host_addr, sizeof(*addr));
++		if (!nfs_verify_server_address((struct sockaddr *) addr,
++						data->host_addrlen))
++			return -EINVAL;
 +
-+out_err:
-+	kfree(args);
-+	return ERR_PTR(-EINVAL);
++		switch (data->auth_flavourlen) {
++		case 0:
++			*authflavour = RPC_AUTH_UNIX;
++			break;
++		case 1:
++			*authflavour = (rpc_authflavor_t) data->auth_flavours;
++			break;
++		default:
++			goto out_inval_auth;
++		}
++
++		memset(ip_addr, '\0', data->client_addr.len + 1);
++		strncpy(ip_addr, data->client_addr.data, data->client_addr.len);
++
++		/*
++		 * Split "dev_name" into "hostname:mntpath".
++		 */
++		len = 0;
++		c = (char *) dev_name;
++		while (*c != ':') {
++			c++;
++			len++;
++		}
++		if (len > 256)
++			return -EINVAL;
++		*hostname = kzalloc(len + 1, GFP_KERNEL);
++		if (*hostname == NULL)
++			return -ENOMEM;
++		strncpy(*hostname, dev_name, len);
++
++		c++;			/* step over the ':' */
++		len = strlen(c);
++		if (len > 1024) {
++			kfree(*hostname);
++			return -EINVAL;
++		}
++		*mntpath = kzalloc(len + 1, GFP_KERNEL);
++		if (*mntpath == NULL) {
++			kfree(*hostname);
++			return -ENOMEM;
++		}
++		strncpy(*mntpath, c, len);
++
++		dprintk("MNTPATH: %s\n", *mntpath);
++
++		return 0;
++	}
++
++out_inval_auth:
++	dprintk("%s: Invalid number of RPC auth flavours %d.\n",
++		__FUNCTION__, data->auth_flavourlen);
++	return -EINVAL;
 +}
 +
  /*
   * Finish setting up a cloned NFS4 superblock
+  */
+@@ -1095,27 +1240,6 @@ static void nfs4_fill_super(struct super_block *sb)
+ 	nfs_initialise_sb(sb);
+ }
+ 
+-static void *nfs_copy_user_string(char *dst, struct nfs_string *src, int maxlen)
+-{
+-	void *p = NULL;
+-
+-	if (!src->len)
+-		return ERR_PTR(-EINVAL);
+-	if (src->len < maxlen)
+-		maxlen = src->len;
+-	if (dst == NULL) {
+-		p = dst = kmalloc(maxlen + 1, GFP_KERNEL);
+-		if (p == NULL)
+-			return ERR_PTR(-ENOMEM);
+-	}
+-	if (copy_from_user(dst, src->data, maxlen)) {
+-		kfree(p);
+-		return ERR_PTR(-EFAULT);
+-	}
+-	dst[maxlen] = '\0';
+-	return dst;
+-}
+-
+ /*
+  * Get the superblock for an NFS4 mountpoint
   */
 
 
