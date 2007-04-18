@@ -1,34 +1,21 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: [PATCH] nfs-utils-1.1.0-rc1 - sm_unmon_1_svc should use
-	dnsname
-Date: Wed, 18 Apr 2007 11:12:45 -0400
-Message-ID: <1176909165.8837.16.camel@wendyc-t.rdu.redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/3] RFC: NFSv4 in-kernel mount option parsing
+Date: Wed, 18 Apr 2007 13:07:52 -0400
+Message-ID: <20070418170631.11696.93281.stgit@schiele.dsl.sfldmi.ameritech.net>
+Reply-To: Chuck Lever <chucklever@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeCEm-0003UG-Mq
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:38:28 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeCEn-0005e7-2X
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:38:31 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by externalmx-1.sourceforge.net with esmtp (Exim 4.41)
-	id 1HeCEb-0005rY-PV
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:38:18 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3IFXC9h027731
-	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 11:33:12 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3IFXCTn004089
-	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 11:33:12 -0400
-Received: from [172.16.59.29] (wendyc-t.rdu.redhat.com [172.16.59.29])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3IFXALK012954
-	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 11:33:11 -0400
+	id 1HeDdZ-0007Tq-Hg
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:10 -0700
+Received: from flpvm23.prodigy.net ([207.115.20.53])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeDda-0001sY-Vl
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:12 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,23 +28,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The sm_unmon_1_svc() should have used dnsname.
+Following is a series of three patches that add support for parsing NFSv4
+mount options in the kernel instead of in user-space.  The mount options are
+passed as a string, similar to other Linux file systems such as ext3.
 
-Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+I've done NFSv4 first because it doesn't require changes to the in-kernel
+mount client.  Plans are to follow up with NFSv2/3 support soon.
 
---- nfs-utils-1.1.0-rc1/utils/statd/monitor.c	2007-03-28 23:55:33.000000000 -0400
-+++ nfs-utils-t/utils/statd/monitor.c	2007-04-18 10:59:34.000000000 -0400
-@@ -357,7 +357,7 @@ sm_unmon_1_svc(struct mon_id *argp, stru
- 			ha_callout("del-client", mon_name, my_name, -1);
- 
- 			nlist_free(&rtnl, clnt);
--			xunlink(SM_DIR, mon_name, 1);
-+			xunlink(SM_DIR, clnt->dns_name, 1);
- 
- 			return (&result);
- 		} else
+Some testing has been done on previous versions of these patches, but the only
+testing done on these three has been compile testing.
 
+Please review and comment.
 
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
