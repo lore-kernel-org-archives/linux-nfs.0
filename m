@@ -1,29 +1,23 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: [PATCH] Fix lockd oops caused by f_count
-Date: Wed, 18 Apr 2007 11:09:53 -0400
-Message-ID: <1176908994.8837.11.camel@wendyc-t.rdu.redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [Fwd: [PATCH 0/4 Revised] NLM - lock failover]
+Date: Wed, 18 Apr 2007 16:35:04 +0100
+Message-ID: <20070418153504.GA3805@infradead.org>
+References: <46257E41.4060606@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeC70-0002Ed-H6
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:30:26 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeC71-0002FJ-Oe
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:30:29 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3IFUK4x026066
-	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 11:30:20 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3IFUKO5002971
-	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 11:30:20 -0400
-Received: from [172.16.59.29] (wendyc-t.rdu.redhat.com [172.16.59.29])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3IFUJjn012120
-	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 11:30:20 -0400
+	id 1HeCBY-0002wf-DF
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:35:13 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HeCBZ-0004Wv-Lu
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 08:35:11 -0700
+In-Reply-To: <46257E41.4060606@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,34 +30,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Code segment breaks out of the original NLM failover patch set since it
-is a bug fix for current lockd (server) code. 
+On Tue, Apr 17, 2007 at 10:11:13PM -0400, Wendy Cheng wrote:
+> However, since this particular NLM patch set is only part of the overall 
+> scaffolding code to allow NFS V3 server fail over before NFS V4 is 
+> widely adopted and stabilized, I'm wondering whether we should drag 
+> ourselves too far for something that will be replaced soon.
 
-When posix locks are still held by NLM clients, lockd server side could
-oops if nlm_traverse_files() is invoked. The code falsely relies on
-f_count to identify whether the file lock is in-use. The f_count can be
-zero as soon as NLM server RPC call is returned while client is having
-the lock.
+I don't think that's a valid argument.  We hack this up because it's
+going to be obsolete mid-term never was a really good argument.  And in
+this case it's a particularly bad one.  People won't rush to NFSv4 just
+because someone declares it stable now.  And if they did we couldn't
+simply rip out existing functionality.
 
-Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
-
- svcsubs.c |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
---- gfs2-nmw/fs/lockd/svcsubs.c	2007-04-10 11:59:09.000000000 -0400
-+++ linux/fs/lockd/svcsubs.c	2007-04-18 10:01:23.000000000 -0400
-@@ -250,8 +250,7 @@ nlm_traverse_files(struct nlm_host *host
- 			mutex_lock(&nlm_file_mutex);
- 			file->f_count--;
- 			/* No more references to this file. Let go of it. */
--			if (list_empty(&file->f_blocks) && !file->f_locks
--			 && !file->f_shares && !file->f_count) {
-+			if (!nlm_file_inuse(file)) {
- 				hlist_del(&file->f_list);
- 				nlmsvc_ops->fclose(file->f_file);
- 				kfree(file);
+So please do it properly.
 
 
+More comments on the rest of the mail later when I have a little more
+time at my hand.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
