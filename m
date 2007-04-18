@@ -1,22 +1,25 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] NFS: Integrate support for processing nfs4 mount
-	options	in fs/nfs/super.c
-Date: Wed, 18 Apr 2007 13:08:09 -0400
-Message-ID: <20070418170809.11696.30028.stgit@schiele.dsl.sfldmi.ameritech.net>
-Reply-To: Chuck Lever <chucklever@gmail.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
+Date: Wed, 18 Apr 2007 14:56:18 -0400
+Message-ID: <462669D2.1070209@redhat.com>
+References: <46156F3F.3070606@redhat.com> <4625204D.1030509@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+To: nfs@lists.sourceforge.net, cluster-devel@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeDdm-0007UK-Ar
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:22 -0700
-Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeDdo-0001xa-Lk
-	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 10:08:24 -0700
+	id 1HeFe1-0001us-Mk
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 12:16:45 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeFe3-0003Ab-V6
+	for nfs@lists.sourceforge.net; Wed, 18 Apr 2007 12:16:48 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3IJGkfC006876
+	for <nfs@lists.sourceforge.net>; Wed, 18 Apr 2007 15:16:46 -0400
+In-Reply-To: <4625204D.1030509@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,111 +32,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Finally, hook in the new mount option parsing logic.
+Arjan, I need an objective opinion and am wondering whether you could 
+give me some advices ...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I'm quite upset about this Christoph guy and really want to "talk back". 
+Will my response be too strong that ends up harm my later on patches ?
 
- fs/nfs/super.c |   69 ++++++--------------------------------------------------
- 1 files changed, 7 insertions(+), 62 deletions(-)
+-- Wendy
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 60b1e45..08011f6 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -13,6 +13,8 @@
-  *
-  *  Split from inode.c by David Howells <dhowells@redhat.com>
-  *
-+ *  In-kernel mount option parsing by Chuck Lever <chuck.lever@oracle.com>
-+ *
-  * - superblocks are indexed on server only - all inodes, dentries, etc. associated with a
-  *   particular server are held in the same superblock
-  * - NFS superblocks can have several effective roots to the dentry tree
-@@ -1254,66 +1256,13 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 	struct nfs_fh mntfh;
- 	struct dentry *mntroot;
- 	char *mntpath = NULL, *hostname = NULL, ip_addr[81];
--	void *p;
- 	int error;
+Christoph Hellwig wrote:
+> On Tue, Apr 17, 2007 at 10:11:13PM -0400, Wendy Cheng wrote:
+> > However, since this particular NLM patch set is only part of the 
+> overall
+> > scaffolding code to allow NFS V3 server fail over before NFS V4 is
+> > widely adopted and stabilized, I'm wondering whether we should drag
+> > ourselves too far for something that will be replaced soon.
+>
+> I don't think that's a valid argument.  We hack this up because it's
+> going to be obsolete mid-term never was a really good argument.  And in
+> this case it's a particularly bad one.  People won't rush to NFSv4 just
+> because someone declares it stable now.  And if they did we couldn't
+> simply rip out existing functionality.
+>
+
+The "hack" and "bad" are very subjective words in this context. 
+Comparing to many other code currently living inside Linux kernel tree, 
+this patch set, gone thru 3 rounds of extensive review and discussions, 
+deserves at least "average" standing in terms of solution, quality and 
+testing efforts.
+
+On the other hand, I certainly welcome further constructive suggestions 
+and ideas though.
+
+-- Wendy
+
  
--	if (data == NULL) {
--		dprintk("%s: missing data argument\n", __FUNCTION__);
--		return -EINVAL;
--	}
--	if (data->version <= 0 || data->version > NFS4_MOUNT_VERSION) {
--		dprintk("%s: bad mount version\n", __FUNCTION__);
--		return -EINVAL;
--	}
--
--	/* We now require that the mount process passes the remote address */
--	if (data->host_addrlen != sizeof(addr))
--		return -EINVAL;
--
--	if (copy_from_user(&addr, data->host_addr, sizeof(addr)))
--		return -EFAULT;
--
--	if (!nfs_verify_server_address((struct sockaddr *) &addr,
--					data->host_addrlen))
--		return -EINVAL;
--
--	/* RFC3530: The default port for NFS is 2049 */
--	if (addr.sin_port == 0)
--		addr.sin_port = htons(NFS_PORT);
--
--	/* Grab the authentication type */
--	authflavour = RPC_AUTH_UNIX;
--	if (data->auth_flavourlen != 0) {
--		if (data->auth_flavourlen != 1) {
--			dprintk("%s: Invalid number of RPC auth flavours %d.\n",
--					__FUNCTION__, data->auth_flavourlen);
--			error = -EINVAL;
--			goto out_err_noserver;
--		}
--
--		if (copy_from_user(&authflavour, data->auth_flavours,
--				   sizeof(authflavour))) {
--			error = -EFAULT;
--			goto out_err_noserver;
--		}
--	}
--
--	p = nfs_copy_user_string(NULL, &data->hostname, 256);
--	if (IS_ERR(p))
--		goto out_err;
--	hostname = p;
--
--	p = nfs_copy_user_string(NULL, &data->mnt_path, 1024);
--	if (IS_ERR(p))
--		goto out_err;
--	mntpath = p;
--
--	dprintk("MNTPATH: %s\n", mntpath);
--
--	p = nfs_copy_user_string(ip_addr, &data->client_addr,
--				 sizeof(ip_addr) - 1);
--	if (IS_ERR(p))
--		goto out_err;
-+	error = nfs4_validate_mount_data(&data, dev_name, &addr,
-+					 &authflavour, &hostname,
-+					 &mntpath, ip_addr);
-+	if (error < 0)
-+		return error;
- 
- 	/* Get a volume representation */
- 	server = nfs4_create_server(data, hostname, (struct sockaddr *) &addr,
-@@ -1355,10 +1304,6 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 	kfree(hostname);
- 	return 0;
- 
--out_err:
--	error = PTR_ERR(p);
--	goto out_err_noserver;
--
- out_free:
- 	nfs_free_server(server);
- out_err_noserver:
-
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
