@@ -1,26 +1,30 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: Does mountd/statd really need to listen on a privileged
- port??
-Date: Thu, 19 Apr 2007 11:15:32 -0400
-Message-ID: <46278794.6050307@RedHat.com>
-References: <17950.44333.118970.276558@notabene.brown>	<4623BCD9.3090501@RedHat.com>	<200704171208.51797.olaf.kirch@oracle.com>	<17957.50539.958277.446719@notabene.brown>
+	port??
+Date: Thu, 19 Apr 2007 11:21:49 -0400
+Message-ID: <20070419152149.GA9101@fieldses.org>
+References: <17950.44333.118970.276558@notabene.brown>
+	<4623BCD9.3090501@RedHat.com>
+	<200704171208.51797.olaf.kirch@oracle.com>
+	<17957.50539.958277.446719@notabene.brown>
 	<17958.48121.280256.493824@notabene.brown>
+	<46278794.6050307@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Olaf Kirch <olaf.kirch@oracle.com>, jfs@computer.org,
-	anibal@debian.org
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>, Matthias Koenig <mkoenig@novell.com>,
+	nfs@lists.sourceforge.net, jfs@computer.org,
+	Olaf Kirch <olaf.kirch@oracle.com>, anibal@debian.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeYMw-00041I-W6
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:16:23 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeYMz-0006G9-0r
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:16:25 -0700
-In-Reply-To: <17958.48121.280256.493824@notabene.brown>
+	id 1HeYSH-0004bz-Cp
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:21:55 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeYSJ-0006OG-Of
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:21:56 -0700
+In-Reply-To: <46278794.6050307@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,39 +37,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-
-Neil Brown wrote:
+On Thu, Apr 19, 2007 at 11:15:32AM -0400, Steve Dickson wrote:
+> Neil Brown wrote:
+> > What would people think if I added it to the nfs-utils release and
+> > made some improvements?  Would that get into distros in parallel with
+> > nfs-utils?
+> Pormap/rpcbind is an RPC thing... not an NFS thing... Meaning
+> there are other service (i.e. NIS) that needed it... so I
+> really don't think it makes sense to include Pormap/rpcbind
+> in nfs-utils...
 > 
-> But that doesn't help with lockd, does it?
-> Lockd registers a non-priv port, and fixing that is not trivial.
-> We really should be fixing portmap.
-I agree...
+> But... that does not mean an "upstream version" of rpcbind
+> can be maintained by a single entity that everyone (including
+> the distros) can pull from... Something I could (and would)
+> support...
 
-> 
-> Portmap appeared to be a 10 year old program that each distro
-> maintains their own copy of...
-Well with Fedora Core 7, the pormapper has been replaced with
-Bull's rpcbind which will help in the migration to to IPv6
-(among other things like warms starts).
+And it that upstream version could still live in the nfs-utils tree,
+couldn't it?  Or it annoying to build multiple binary packages from one
+upstream tree for some reason?
 
-> 
-> What would people think if I added it to the nfs-utils release and
-> made some improvements?  Would that get into distros in parallel with
-> nfs-utils?
-Pormap/rpcbind is an RPC thing... not an NFS thing... Meaning
-there are other service (i.e. NIS) that needed it... so I
-really don't think it makes sense to include Pormap/rpcbind
-in nfs-utils...
-
-But... that does not mean an "upstream version" of rpcbind
-can be maintained by a single entity that everyone (including
-the distros) can pull from... Something I could (and would)
-support...
-
-
-steved.
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
