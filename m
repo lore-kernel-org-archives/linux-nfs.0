@@ -1,7 +1,7 @@
-From: Bryan O'Sullivan <bos@serpentine.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: NFS caching bug is back
-Date: Thu, 19 Apr 2007 09:25:48 -0700
-Message-ID: <4627980C.2090308@serpentine.com>
+Date: Thu, 19 Apr 2007 12:36:11 -0400
+Message-ID: <1177000571.6663.25.camel@heimdal.trondhjem.org>
 References: <46278E27.8050705@atmos.washington.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,11 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeZSA-0004QC-2n
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 09:25:50 -0700
-Received: from hierophant.serpentine.com ([64.81.58.173])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeZSB-0005Bv-A0
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 09:25:52 -0700
+	id 1HeZcG-0005aD-RR
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 09:36:16 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/QD6a5XzTBzZU9Smc01VL/u9A/XKDLmbk=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeZcJ-0008A3-0X
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 09:36:19 -0700
 In-Reply-To: <46278E27.8050705@atmos.washington.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,18 +30,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-David Warren wrote:
-> A bug that we turned in a while ago is back in the 2.6.20 kernels, only 
-> worse. I have found it in 2.6.20.6 and 2.6.20.7.
+On Thu, 2007-04-19 at 08:43 -0700, David Warren wrote:
+> A bug that we turned in a while ago is back in the 2.6.20 kernels,
+> only worse. I have found it in 2.6.20.6 and 2.6.20.7. It happens with
+> both NFS4 and NFS3 mounts. Clients don't see inode changes (delete and
+> recreate file):
 
-These symptoms look similar to this bug:
+Interesting. Do you see an OPEN request being sent to the server when
+you 'cat' the file on enkf2 or enkf3? You can check either using
+ethereal/wireshark, or by comparing the values in the OPEN column
+in /proc/self/mountstats on the client before and after issuing the
+'cat' command.
 
-http://bugzilla.kernel.org/show_bug.cgi?id=8305
+Trond
 
-Which has been around since 2.6.17.  Do you find that the problem 
-magically resolves itself after a little while?
-
-	<b
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
