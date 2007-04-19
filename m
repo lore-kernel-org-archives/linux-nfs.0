@@ -1,26 +1,29 @@
-From: "Gregory Baker" <gregory.baker@amd.com>
-Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Thu, 19 Apr 2007 13:24:29 -0500
-Message-ID: <4627B3DD.5050409@amd.com>
-References: <46269362.5040608@amd.com>
-	<1176948355.6422.72.camel@heimdal.trondhjem.org>
-Reply-To: gregory.baker@amd.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Desynchronized ncommit
+Date: Thu, 19 Apr 2007 14:23:22 -0400
+Message-ID: <4627B39A.9070604@oracle.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: julia bauer <julia.bauer@amd.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: multipart/mixed; boundary="------------040707080500000604000909"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HebJI-0000yZ-E4
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:24:48 -0700
-Received: from outbound-sin.frontbridge.com ([207.46.51.80]
-	helo=outbound3-sin-R.bigfish.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HebJJ-0003oX-UO
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:24:51 -0700
-In-Reply-To: <1176948355.6422.72.camel@heimdal.trondhjem.org>
+	id 1HebJq-00014y-Po
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:25:23 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HebJt-00072J-4C
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:25:25 -0700
+Received: from rgmgw3.us.oracle.com (rgmgw3.us.oracle.com [138.1.186.112])
+	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id
+	l3JIPHM4002827
+	for <nfs@lists.sourceforge.net>; Thu, 19 Apr 2007 12:25:17 -0600
+Received: from acsmt350.oracle.com (acsmt350.oracle.com [141.146.40.150])
+	by rgmgw3.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l3JDpY24006182
+	for <nfs@lists.sourceforge.net>; Thu, 19 Apr 2007 12:25:01 -0600
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,189 +36,83 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------040707080500000604000909
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+I've noticed this message in my system log over the past few days:
+
+Apr 17 10:14:04 schiele kernel: NFS: desynchronized value of nfs_i.ncommit.
+
+It looks like it started appearing when the following patch was applied 
+to 2.6.21-rc.  Any suggestions on what I can do to debug this further?
+
+     NFS: Fix a list corruption problem
+
+     We must remove the request from whatever list it is currently on 
+before we
+     can add it to the dirty list.
+
+     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+     Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e5d7cac..ad2e91b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -280,8 +280,10 @@ static int nfs_page_mark_flush(struct page *page)
+                 spin_lock(req_lock);
+         }
+         spin_unlock(req_lock);
+-       if (nfs_set_page_writeback(page) == 0)
++       if (nfs_set_page_writeback(page) == 0) {
++               nfs_list_remove_request(req);
+                 nfs_mark_request_dirty(req);
++       }
+         ret = test_bit(PG_NEED_FLUSH, &req->wb_flags);
+         nfs_unlock_request(req);
+         return ret;
+
+--------------040707080500000604000909
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
 
-It becomes more interesting (well, to me anyways) when you compare the 
-behavior of RHEL3/4 (ro,rw netgroup export from filer works) with RHEL 5 
-(ro,rw netgroup export from filer no works).
-
----+ System environment
-
-[root@build-el3-64 greg]# uname -a
-Linux build-el3-64 2.4.21-47.ELsmp #1 SMP Wed Jul 5 20:30:30 EDT 2006 
-x86_64 unknown unknown GNU/Linux
-
-[root@build-el3-64 greg]# rpm -qa | grep nfs-utils
-nfs-utils-1.0.6-44EL
-
-[root@build-el3-64 mnt2]#  mount -V
-mount: mount-2.11y
-
----+ NFS server (Netapp) environment
-
-[greg@apathy greg]$ sudo rsh eng version
-NetApp Release 7.2P4: Tue Nov 28 02:55:54 PST 2006
-
----++ NFS export file entry
-
-[greg@apathy greg]$ sudo rsh eng exportfs | grep pandora
-/vol/vol4/pandora
-  -sec=sys,ro,rw=@volexport-pandora,root=@volexport-pandora,anon=4058
-
----++ netgroup member (for export file entry above)
-
-[root@build-el3-64 mnt2]# show_netgroup volexport-pandora | grep 
-build-el3-64
-
-build-el3-64.amd.com
-
----+ Demonstration of ro/rw mount reporting and working
-
-[root@build-el3-64 greg]# mount 
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
-
-[root@build-el3-64 greg]# mount -v | grep mnt2
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
-(rw,addr=163.181.34
-.137)
-
-[root@build-el3-64 greg]# cat /proc/mounts | grep mnt2
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
-rw,v3,rsize=32768,wsize=327
-68,hard,udp,lock,addr=eng 0 0
-
-[root@build-el3-64 greg]# cd /mnt2
-
-[root@build-el3-64 mnt2]# touch asdf
-
-[root@build-el3-64 mnt2]# ls -la asdf
--rw-r--r--    1 root     root            0 Apr 19 13:18 asdf
-
-Ideas?
-
-Thanks,
-
---Greg
-
-Trond Myklebust wrote:
-> On Wed, 2007-04-18 at 16:53 -0500, Gregory Baker wrote:
->> Note I have cases open with Redhat and Netapp, but was curious if other 
->> people have also seen inconsistent mount attributes (ro/rw) when 
->> mounting RHEL5 client vs. Netapp 7.2 Ontap.
->>
->> ---+ System environment
->>
->> [greg@adcgar04 greg]$ uname -a
->> Linux adcgar04 2.6.18-8.el5 #1 SMP Fri Jan 26 14:15:14 EST 2007 x86_64 
->> unknown unknown GNU/Linux
->>
->> [greg@adcgar04 greg]$ rpm -qa | grep nfs-utils
->> nfs-utils-1.0.9-16.el5
->> nfs-utils-lib-1.0.8-7.2
->> nfs-utils-lib-devel-1.0.8-7.2
->> nfs-utils-lib-1.0.8-7.2
->> nfs-utils-lib-devel-1.0.8-7.2
->>
->> [greg@adcgar04 greg]$ mount -V
->> mount (util-linux 2.13-pre7)
->>
->> ---+ NFS server (Netapp) environment
->>
->> [greg@apathy greg]$ sudo rsh eng version
->> NetApp Release 7.2P4: Tue Nov 28 02:55:54 PST 2006
->>
->> ---++ NFS export file entry
->>
->> [greg@apathy greg]$ sudo rsh eng exportfs | grep pandora
->>
->> /vol/vol4/pandora 
->> -sec=sys,ro,rw=@volexport-pandora,root=@volexport-pandora,anon=4058
->>
->> ---++ netgroup member (for export file entry above)
->>
->> [greg@apathy greg]$ show_netgroup volexport-pandora | grep adcgar
->> adcgar04.amd.com
->>
->> ---+ Demonstration of inconsistent ro/rw mount reporting
->>
->> [root@adcgar04 /]# mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
->>
->> [root@adcgar04 /]# mount -v | grep mnt2
->> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
->> (rw,addr=163.181.34.137)
->>
->> [root@adcgar04 /]# cat /proc/mounts | grep mnt2
->> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
->> ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
->> 0 0
->>
->> [root@adcgar04 /]# cd /mnt2/
->>
->> [root@adcgar04 mnt2]# touch asdf
->> touch: cannot touch `asdf': Read-only file system
->>
->> ---+ Discussion
->>
->> ---++Linux (RHEL3/4) NFS servers that have similiar exportfs options
->>
->> /tmp    *(ro,anonuid=4058) @volexport-pandora(rw,no_root_squash)
->>
->> do not cause the inconsistent behavior between mount -v and /proc/mounts 
->> (and it is mounted rw as expected on the client).
->>
->> ---++ A reply from NetApp had this info:
->>
->> Starting with ONTAP 7.2.1 onward, ONTAP will display the "most
->> pessimistic" permissions to NFSv3 and NFSv4 clients. NFSv2 clients will
->> see permissions the same way as in previous releases of ONTAP, i.e. the
->> "most optimistic" permissions.
->>
->> And mounting using NFS v2 (instead of v3) does give us the expected 
->> rw/rw consistency and ability.
->>
->> ---++ So now what?
->>
->> Should the linux mount -v and cat /proc/mounts be consistent with what 
->> is actually happening?
-> 
-> There is no way for the Linux client to find out that this is a
-> read-only volume at mount time. Only when you try an operation that
-> actually attempts to modify the filesystem will the protocol allow the
-> server to return NFSERR_ROFS.
-> Furthermore, there is nothing in the protocol that states that a
-> filesystem that issues NFSERR_ROFS will return the same reply the next
-> time the same modification is attempted. Filesystems may switch from
-> being read only to not being read only at will.
-> 
->> Should netapp exports syntax handle a wildcard ro and a netgroup rw?
-> 
-> That is a very good question, but it deserves to be directed to the
-> appropriate people at netapp and is not really appropriate for
-> nfs@lists.sourceforge.net (which is more about Linux NFS). If you
-> haven't already done so, I'd suggest opening an official escalation of
-> the matter. Your embedded netapp sales representative (sorry, but I'm
-> not entirely up to date on who that is) should be able to help you with
-> this.
-> 
-> Cheers
->   Trond
-> 
-
--- 
-----------------------------------------------------------------------
-Greg Baker                                         512-602-3287 (work)
-gregory.baker@amd.com                              512-602-6970 (fax)
-5204 E. Ben White Blvd MS 625                      512-555-1212 (info)
-Austin, TX 78741
-
-
-
+--------------040707080500000604000909
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--------------040707080500000604000909
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------040707080500000604000909--
