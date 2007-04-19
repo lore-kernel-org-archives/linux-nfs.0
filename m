@@ -1,23 +1,26 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
-Date: Thu, 19 Apr 2007 10:53:30 -0400
-Message-ID: <4627826A.7040206@redhat.com>
-References: <46156F3F.3070606@redhat.com>	<4625204D.1030509@redhat.com>
-	<17959.5245.635902.823441@notabene.brown>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Does mountd/statd really need to listen on a privileged
+ port??
+Date: Thu, 19 Apr 2007 11:15:32 -0400
+Message-ID: <46278794.6050307@RedHat.com>
+References: <17950.44333.118970.276558@notabene.brown>	<4623BCD9.3090501@RedHat.com>	<200704171208.51797.olaf.kirch@oracle.com>	<17957.50539.958277.446719@notabene.brown>
+	<17958.48121.280256.493824@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, nfs@lists.sourceforge.net
+Cc: Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
+	Olaf Kirch <olaf.kirch@oracle.com>, jfs@computer.org,
+	anibal@debian.org
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeYKr-0003YE-Cb
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:14:45 -0700
+	id 1HeYMw-00041I-W6
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:16:23 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeYKj-0002uK-4e
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:14:05 -0700
-In-Reply-To: <17959.5245.635902.823441@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeYMz-0006G9-0r
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 08:16:25 -0700
+In-Reply-To: <17958.48121.280256.493824@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,87 +33,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+
+
 Neil Brown wrote:
-> On Tuesday April 17, wcheng@redhat.com wrote:
->   
->> In short, my vote is taking this (NLM) patch set and let people try it 
->> out while we switch our gear to look into other NFS V3 failover issues 
->> (nfsd in particular). Neil ?
->>     
->
-> I agree with Christoph in that we should do it properly.
-> That doesn't mean that we need a complete solution.  But we do want to
-> make sure to avoid any design decisions that we might not want to be
-> stuck with.  Sometimes that's unavoidable, but let's try a little
-> harder for the moment.
->   
+> 
+> But that doesn't help with lockd, does it?
+> Lockd registers a non-priv port, and fixing that is not trivial.
+> We really should be fixing portmap.
+I agree...
 
-As any code review, set personal feeling aside, at the end of the day, 
-you would start to appreciate some of the look-like-harsh comments. This 
-instance is definitely one of that moments. I agree we should try harder.
+> 
+> Portmap appeared to be a 10 year old program that each distro
+> maintains their own copy of...
+Well with Fedora Core 7, the pormapper has been replaced with
+Bull's rpcbind which will help in the migration to to IPv6
+(among other things like warms starts).
 
-NFS failover has been a difficult subject. There is a three-years-old 
-Red Hat bugzilla asking for this feature, plus few others marked as 
-duplicate. By reading through the comments last night, I do feel 
-strongly that we should put restrictions on the implementation to avoid 
-dragging users into another three more years.
+> 
+> What would people think if I added it to the nfs-utils release and
+> made some improvements?  Would that get into distros in parallel with
+> nfs-utils?
+Pormap/rpcbind is an RPC thing... not an NFS thing... Meaning
+there are other service (i.e. NIS) that needed it... so I
+really don't think it makes sense to include Pormap/rpcbind
+in nfs-utils...
 
-> One thing that has been bothering me is that sometimes the
-> "filesystem" (in the guise of an fsid) is used to talk to the kernel
-> about failover issues (when flushing locks or restarting the grace
-> period) and sometimes the local network address is used (when talking
-> with statd). 
->
-> I would rather use a single identifier.  In my previous email I was
-> leaning towards using the filesystem as the single identifier.  Today
-> I'm leaning the other way - to using the local network address.
->
-> It works like this:
->
->   We have a module parameter for lockd something like
->   "virtual_server".
->   If that is set to 0, none of the following changes are effective.
->   If it is set to 1:
->
->    The destination address for any lockd request becomes part of the
->    key to find the nsm_handle.
->    The my_name field in SM_MON requests and SM_UNMON requests is set
->    to a textual representation of that destination address.
->    The reply to SM_MON (currently completely ignored by all versions
->    of Linux) has an extra value which indicates how many more seconds
->    of grace period there is to go.  This can be stuffed into res_stat
->    maybe.
->    Places where we currently check 'nlmsvc_grace_period', get moved to
->    *after* the nlmsvc_retrieve_args call, and the grace_period value
->    is extracted from host->nsm.
->
->   This is the full extent of the kernel changes.
->
->   To remove old locks, we arrange for the callbacks registered with
->   statd for the relevant clients to be called.
->   To set the grace period, we make sure statd knows about it and it
->   will return the relevant information to lockd.
->   To notify clients of the need to reclaim locks, we simple use the
->   information stored by statd, which contains the local network
->   address.
->
-> The only aspect of this that gives me any cause for concern is
-> overloading the return value for SM_MON.  Possibly it might be cleaner
-> to define an SM_MON2 with different args or whatever.
-> As this interface is entirely local to the one machine, and as it can
-> quite easily be kept back-compatible, I think the concept is fine.
->
-> Statd would need to pass the my_name field to the ha callout rather
-> than replacing it with "127.0.0.1", but other than that I don't think
-> any changes are needed to statd (though I haven't thought through that
-> fully yet).
->
-> Comments?
->
->   
-Need sometime to look into the ramifications ... comment will follow soon.
+But... that does not mean an "upstream version" of rpcbind
+can be maintained by a single entity that everyone (including
+the distros) can pull from... Something I could (and would)
+support...
 
--- Wendy
+
+steved.
 
 
 -------------------------------------------------------------------------
