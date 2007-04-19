@@ -1,23 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Desynchronized ncommit
-Date: Thu, 19 Apr 2007 14:29:02 -0400
-Message-ID: <1177007342.6623.11.camel@heimdal.trondhjem.org>
-References: <4627B39A.9070604@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Thu, 19 Apr 2007 14:31:19 -0400
+Message-ID: <1177007479.6623.14.camel@heimdal.trondhjem.org>
+References: <46269362.5040608@amd.com>
+	<1176948355.6422.72.camel@heimdal.trondhjem.org>
+	<4627B3DD.5050409@amd.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Cc: julia bauer <julia.bauer@amd.com>, nfs@lists.sourceforge.net
+To: gregory.baker@amd.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HebNR-0001SS-OW
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:29:23 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19YwMvFB8TkMSgKf/ZI+9FVwyli83qyQUM=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HebNS-0005Om-VO
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:29:08 -0700
-In-Reply-To: <4627B39A.9070604@oracle.com>
+	id 1HebPl-0001ga-82
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:31:29 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HebPn-0000Ht-N6
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 11:31:31 -0700
+In-Reply-To: <4627B3DD.5050409@amd.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,20 +31,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-04-19 at 14:23 -0400, Chuck Lever wrote:
-> I've noticed this message in my system log over the past few days:
-> 
-> Apr 17 10:14:04 schiele kernel: NFS: desynchronized value of nfs_i.ncommit.
-> 
-> It looks like it started appearing when the following patch was applied 
-> to 2.6.21-rc.  Any suggestions on what I can do to debug this further?
+On Thu, 2007-04-19 at 13:24 -0500, Gregory Baker wrote:
 
-Please apply patches 1 - 5 from
-http://client.linux-nfs.org/Linux-2.6.x/2.6.21-rc7/
-and check that they work for you too.
+> Ideas?
 
-Trond
+Perhaps a limitation on the number of entries in the netgroup on the
+server?
 
+Cheers
+  Trond
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
