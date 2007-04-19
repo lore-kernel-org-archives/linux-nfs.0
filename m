@@ -1,24 +1,24 @@
 From: David Warren <warren@atmos.washington.edu>
 Subject: Re: NFS caching bug is back
-Date: Thu, 19 Apr 2007 12:36:49 -0700
-Message-ID: <4627C4D1.5060405@atmos.washington.edu>
+Date: Thu, 19 Apr 2007 12:52:37 -0700
+Message-ID: <4627C885.6040100@atmos.washington.edu>
 References: <46278E27.8050705@atmos.washington.edu>	
 	<4627980C.2090308@serpentine.com>
 	<4627AFB7.2080602@atmos.washington.edu>
 	<1177006975.6623.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0816079199=="
+Content-Type: multipart/mixed; boundary="===============0029409613=="
 Cc: Bryan O'Sullivan <bos@serpentine.com>, nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HecRF-0008Sc-H3
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:37:09 -0700
+	id 1HecgW-0001dw-O3
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:52:55 -0700
 Received: from dew2.atmos.washington.edu ([128.95.89.42])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HecRH-00089D-RJ
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:37:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HecgZ-0003y9-0l
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:52:55 -0700
 In-Reply-To: <1177006975.6623.8.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,26 +33,50 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---===============0816079199==
+--===============0029409613==
 Content-Type: multipart/alternative;
-	boundary="------------030704000204010506050505"
+	boundary="------------030004080702040802010001"
 
 This is a multi-part message in MIME format.
---------------030704000204010506050505
+--------------030004080702040802010001
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-One more thing.
-If you create a new file on the server (or any system writing to it), 
-the client sees that the directory has changed, it sees the new file, 
-but it still doesn't see that the old file has changed.
+One last really odd one.
+enkf3:~# ls -al /home/enkf
+total 8
+drwxr-xr-x  8 root   root     89 Apr 19 12:02 .
+drwxr-xr-x  8 root   root     77 Apr 19 08:06 ..
+-rw-r--r--  0 root   root      3 Apr 19 12:01 ddd
+drwxr-xr-x 15 enkf   enkf   4096 Apr 19 11:14 enkf
+drwxrwsr-x  6 daemon daemon   38 Apr 13 11:05 job
+drwxr-xr-x  2 root   root      6 Apr 19 11:41 lost+found
+drwxr-xr-x  3 torn   root     28 Apr 18 16:02 torn
+drwxr-xr-x  8 warren root    151 Apr 18 11:08 warren
+drwxrwxr-x  4 enkf   enkf     34 Apr 16 11:15 wrf2
 
-e.g
-rm ddd
-echo 1234 > ddd
-echo 12345 >yyy
+I removed the file from the server here!!!
 
-It sees the directory update, yyy and the old ddd
+enkf3:~# cat /home/enkf/ddd
+45
+
+but it knows it is gone
+enkf3:~# ls -al /home/enkf
+total 4
+drwxr-xr-x  8 root   root     89 Apr 19 12:48 .
+drwxr-xr-x  8 root   root     77 Apr 19 08:06 ..
+-rw-r--r--  1 root   root      0 Apr 19 12:39 dd2
+drwxr-xr-x 15 enkf   enkf   4096 Apr 19 11:14 enkf
+drwxrwsr-x  6 daemon daemon   38 Apr 13 11:05 job
+drwxr-xr-x  2 root   root      6 Apr 19 11:41 lost+found
+drwxr-xr-x  3 torn   root     28 Apr 18 16:02 torn
+drwxr-xr-x  8 warren root    151 Apr 18 11:08 warren
+drwxrwxr-x  4 enkf   enkf     34 Apr 16 11:15 wrf2
+
+however it can still cat it
+enkf3:~# cat /home/enkf/ddd
+45
+
 
 Trond Myklebust wrote:
 > On Thu, 2007-04-19 at 11:06 -0700, David Warren wrote:
@@ -95,7 +119,7 @@ DECUS E-PUBS Library Committee representative
 SeaLUG DECUS Chair
 
 
---------------030704000204010506050505
+--------------030004080702040802010001
 Content-Type: text/html; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 
@@ -105,17 +129,41 @@ Content-Transfer-Encoding: 7bit
   <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
 </head>
 <body bgcolor="#ffffff" text="#000000">
-One more thing.<br>
-If you create a new file on the server (or any system writing to it),
-the client sees that the directory has changed, it sees the new file,
-but it still doesn't see that the old file has changed.<br>
+One last really odd one.<br>
+enkf3:~# ls -al /home/enkf<br>
+total 8<br>
+drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 89 Apr 19 12:02 .<br>
+drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 77 Apr 19 08:06 ..<br>
+-rw-r--r--&nbsp; 0 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3 Apr 19 12:01 ddd<br>
+drwxr-xr-x 15 enkf&nbsp;&nbsp; enkf&nbsp;&nbsp; 4096 Apr 19 11:14 enkf<br>
+drwxrwsr-x&nbsp; 6 daemon daemon&nbsp;&nbsp; 38 Apr 13 11:05 job<br>
+drwxr-xr-x&nbsp; 2 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6 Apr 19 11:41 lost+found<br>
+drwxr-xr-x&nbsp; 3 torn&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 28 Apr 18 16:02 torn<br>
+drwxr-xr-x&nbsp; 8 warren root&nbsp;&nbsp;&nbsp; 151 Apr 18 11:08 warren<br>
+drwxrwxr-x&nbsp; 4 enkf&nbsp;&nbsp; enkf&nbsp;&nbsp;&nbsp;&nbsp; 34 Apr 16 11:15 wrf2<br>
 <br>
-e.g<br>
-rm ddd<br>
-echo 1234 &gt; ddd<br>
-echo 12345 &gt;yyy<br>
+I removed the file from the server here!!!<br>
 <br>
-It sees the directory update, yyy and the old ddd<br>
+enkf3:~# cat /home/enkf/ddd<br>
+45<br>
+<br>
+but it knows it is gone<br>
+enkf3:~# ls -al /home/enkf<br>
+total 4<br>
+drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 89 Apr 19 12:48 .<br>
+drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 77 Apr 19 08:06 ..<br>
+-rw-r--r--&nbsp; 1 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0 Apr 19 12:39 dd2<br>
+drwxr-xr-x 15 enkf&nbsp;&nbsp; enkf&nbsp;&nbsp; 4096 Apr 19 11:14 enkf<br>
+drwxrwsr-x&nbsp; 6 daemon daemon&nbsp;&nbsp; 38 Apr 13 11:05 job<br>
+drwxr-xr-x&nbsp; 2 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6 Apr 19 11:41 lost+found<br>
+drwxr-xr-x&nbsp; 3 torn&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 28 Apr 18 16:02 torn<br>
+drwxr-xr-x&nbsp; 8 warren root&nbsp;&nbsp;&nbsp; 151 Apr 18 11:08 warren<br>
+drwxrwxr-x&nbsp; 4 enkf&nbsp;&nbsp; enkf&nbsp;&nbsp;&nbsp;&nbsp; 34 Apr 16 11:15 wrf2<br>
+<br>
+however it can still cat it<br>
+enkf3:~# cat /home/enkf/ddd<br>
+45<br>
+<br>
 <br>
 Trond Myklebust wrote:
 <blockquote cite="mid1177006975.6623.8.camel@heimdal.trondhjem.org"
@@ -165,10 +213,10 @@ SeaLUG DECUS Chair
 </body>
 </html>
 
---------------030704000204010506050505--
+--------------030004080702040802010001--
 
 
---===============0816079199==
+--===============0029409613==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -179,7 +227,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0816079199==
+--===============0029409613==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -189,4 +237,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0816079199==--
+--===============0029409613==--
