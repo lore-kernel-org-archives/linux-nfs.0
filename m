@@ -1,25 +1,24 @@
 From: David Warren <warren@atmos.washington.edu>
 Subject: Re: NFS caching bug is back
-Date: Thu, 19 Apr 2007 12:31:21 -0700
-Message-ID: <4627C389.20902@atmos.washington.edu>
+Date: Thu, 19 Apr 2007 12:36:49 -0700
+Message-ID: <4627C4D1.5060405@atmos.washington.edu>
 References: <46278E27.8050705@atmos.washington.edu>	
 	<4627980C.2090308@serpentine.com>
 	<4627AFB7.2080602@atmos.washington.edu>
 	<1177006975.6623.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0976690867=="
+Content-Type: multipart/mixed; boundary="===============0816079199=="
 Cc: Bryan O'Sullivan <bos@serpentine.com>, nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HecM2-0007tV-CM
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:31:48 -0700
+	id 1HecRF-0008Sc-H3
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:37:09 -0700
 Received: from dew2.atmos.washington.edu ([128.95.89.42])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HecM3-0000i8-Mk
-	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:31:44 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HecRH-00089D-RJ
+	for nfs@lists.sourceforge.net; Thu, 19 Apr 2007 12:37:08 -0700
 In-Reply-To: <1177006975.6623.8.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,38 +33,26 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---===============0976690867==
+--===============0816079199==
 Content-Type: multipart/alternative;
-	boundary="------------090906050500090109020909"
+	boundary="------------030704000204010506050505"
 
 This is a multi-part message in MIME format.
---------------090906050500090109020909
+--------------030704000204010506050505
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-I did the fsck, which found no problems. However I have found a couple 
-of other interesting things here.
-The directory mtime does not update on the client, but the link count 
-for the file is 0:
-server:
-drwxr-xr-x  8 root   root     89 2007-04-19 12:02 .
-drwxr-xr-x 10 root   root    105 2007-04-19 08:00 ..
--rw-r--r--  1 root   root      3 2007-04-19 12:02 ddd
-client:
-drwxr-xr-x  8 root   root     89 2007-04-19 11:38 .
-drwxr-xr-x  8 root   root     77 2007-04-19 08:06 ..
--rw-r--r--  0 root   root      3 2007-04-19 12:01 ddd
+One more thing.
+If you create a new file on the server (or any system writing to it), 
+the client sees that the directory has changed, it sees the new file, 
+but it still doesn't see that the old file has changed.
 
+e.g
+rm ddd
+echo 1234 > ddd
+echo 12345 >yyy
 
-Note - 11:38 is actually prior to me unexporting, fscking and 
-reexporting the filesystem.
-
-Another discovery -
-on a 32 bit client we are seeing an occasional delay before it picks up 
-the change, but it does eventually pick it up (1 - 5 seconds). The 64 
-bit clients do not. Also, if the server reuses the same inode the 32 bit 
-systems sees it immediately.
-
+It sees the directory update, yyy and the old ddd
 
 Trond Myklebust wrote:
 > On Thu, 2007-04-19 at 11:06 -0700, David Warren wrote:
@@ -108,7 +95,7 @@ DECUS E-PUBS Library Committee representative
 SeaLUG DECUS Chair
 
 
---------------090906050500090109020909
+--------------030704000204010506050505
 Content-Type: text/html; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 
@@ -118,29 +105,17 @@ Content-Transfer-Encoding: 7bit
   <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
 </head>
 <body bgcolor="#ffffff" text="#000000">
-I did the fsck, which found no problems. However I have found a couple
-of other interesting things here.<br>
-The directory mtime does not update on the client, but the link count
-for the file is 0:<br>
-<tt>server:<br>
-drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 89 2007-04-19 12:02 .<br>
-drwxr-xr-x 10 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp; 105 2007-04-19 08:00 ..<br>
--rw-r--r--&nbsp; 1 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3 2007-04-19 12:02 ddd<br>
-client:<br>
-drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 89 2007-04-19 11:38 .<br>
-drwxr-xr-x&nbsp; 8 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp; 77 2007-04-19 08:06 ..</tt><br>
-<tt>-rw-r--r--&nbsp; 0 root&nbsp;&nbsp; root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3 2007-04-19 12:01 ddd</tt><br>
+One more thing.<br>
+If you create a new file on the server (or any system writing to it),
+the client sees that the directory has changed, it sees the new file,
+but it still doesn't see that the old file has changed.<br>
 <br>
+e.g<br>
+rm ddd<br>
+echo 1234 &gt; ddd<br>
+echo 12345 &gt;yyy<br>
 <br>
-Note - 11:38 is actually prior to me unexporting, fscking and
-reexporting the filesystem.<br>
-<br>
-Another discovery -<br>
-on a 32 bit client we are seeing an occasional delay before it picks up
-the change, but it does eventually pick it up (1 - 5 seconds). The 64
-bit clients do not. Also, if the server reuses the same inode the 32
-bit systems sees it immediately.<br>
-<br>
+It sees the directory update, yyy and the old ddd<br>
 <br>
 Trond Myklebust wrote:
 <blockquote cite="mid1177006975.6623.8.camel@heimdal.trondhjem.org"
@@ -190,10 +165,10 @@ SeaLUG DECUS Chair
 </body>
 </html>
 
---------------090906050500090109020909--
+--------------030704000204010506050505--
 
 
---===============0976690867==
+--===============0816079199==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -204,7 +179,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0976690867==
+--===============0816079199==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -214,4 +189,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0976690867==--
+--===============0816079199==--
