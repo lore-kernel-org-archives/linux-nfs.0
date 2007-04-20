@@ -1,30 +1,24 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: svc_process and nfsd_proc_read not taking checksum into
- account when calling svc_reserve
-Date: Fri, 20 Apr 2007 10:43:43 -0400
-Message-ID: <4628D19F.5080805@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Desynchronized ncommit
+Date: Fri, 20 Apr 2007 10:52:40 -0400
+Message-ID: <4628D3B8.6050909@oracle.com>
+References: <4627B39A.9070604@oracle.com>
+	<1177007342.6623.11.camel@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------080904080908020208050300"
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HeuL0-0007dD-5r
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 07:43:50 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeuL1-0000c1-Gp
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 07:43:52 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3KEhiOW024579
-	for <nfs@lists.sourceforge.net>; Fri, 20 Apr 2007 10:43:44 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3KEhinY008526
-	for <nfs@lists.sourceforge.net>; Fri, 20 Apr 2007 10:43:44 -0400
-Received: from [192.168.1.3] (vpn-14-47.rdu.redhat.com [10.11.14.47])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3KEhiJR029850
-	for <nfs@lists.sourceforge.net>; Fri, 20 Apr 2007 10:43:44 -0400
+	id 1HeuU4-0000Dg-4v
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 07:53:15 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeuU6-0003IK-8L
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 07:53:14 -0700
+In-Reply-To: <1177007342.6623.11.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,45 +31,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I think I've finally chased down a bug that I noticed at connectathon 
-this year. When a client mounts a Linux NFS server using NFSv2 or 3 with 
-sec=krb5i, the server gets a ton of messages like this in the logs:
+This is a multi-part message in MIME format.
+--------------080904080908020208050300
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-RPC request reserved 80 but used 124
+Trond Myklebust wrote:
+> On Thu, 2007-04-19 at 14:23 -0400, Chuck Lever wrote:
+>> I've noticed this message in my system log over the past few days:
+>>
+>> Apr 17 10:14:04 schiele kernel: NFS: desynchronized value of nfs_i.ncommit.
+>>
+>> It looks like it started appearing when the following patch was applied 
+>> to 2.6.21-rc.  Any suggestions on what I can do to debug this further?
+> 
+> Please apply patches 1 - 5 from
+> http://client.linux-nfs.org/Linux-2.6.x/2.6.21-rc7/
+> and check that they work for you too.
 
-The sizes vary here, but usually the "used" is 44 bytes off from what 
-was reserved (sometimes a little less). The issue seems to be that after 
-writing out the response header, svc_process() calls this:
+The "Desynchronized ncommit" messages no longer appear, and applications 
+overall seem more stable ("Add/remove software packages" wouldn't start 
+at all, before, and Thunderbird seems a lot happier).
 
-         /* un-reserve some of the out-queue now that we have a
-          * better idea of reply size
-          */
-         if (procp->pc_xdrressize)
-                 svc_reserve(rqstp, procp->pc_xdrressize<<2);
+--------------080904080908020208050300
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-...but, this does not take into account the size of the checksum at the 
-end of the response. This is also a problem in the svc_reserve calls 
-made from nfsd3_proc_read and nfsd_proc_read.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
-While I haven't checked it, my guess is that this is also a problem for 
-krb5p and for spkm3i too. We don't seem to see this issue with NFSv4, 
-but I think that's because the reserved size for a compound packet is 
-likely large enough to paper over this problem.
 
-My thinking is that we need a wrapper of some sort around these calls to 
-svc_reserve that increases the "space" parameter by the amount of the 
-expected checksum. My question is -- is there a simple way to compute 
-the expected length of the checksum, given a svc_rqst?
-
-Thanks,
-Jeff
-
+--------------080904080908020208050300
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--------------080904080908020208050300
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------080904080908020208050300--
