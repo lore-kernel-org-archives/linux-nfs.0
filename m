@@ -1,26 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: svc_process and nfsd_proc_read not taking checksum into
-	account when calling svc_reserve
-Date: Fri, 20 Apr 2007 14:38:38 -0400
-Message-ID: <20070420183838.GJ19285@fieldses.org>
-References: <4628D19F.5080805@redhat.com> <20070420174748.GG19285@fieldses.org>
-	<4d569c330704201057l1ba2a131r39df22db6e917fb3@mail.gmail.com>
-	<20070420181144.GI19285@fieldses.org> <46290789.7080908@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+ on a privileged port??
+Date: Fri, 20 Apr 2007 15:18:36 -0400
+Message-ID: <4629120C.60803@RedHat.com>
+References: <17958.48121.280256.493824@notabene.brown>	<20070419012154.GB19063@javifsp.no-ip.org>
+	<17960.11704.321124.641669@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
-To: Jeff Layton <jlayton@redhat.com>
+Cc: Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
+	Olaf Kirch <olaf.kirch@oracle.com>,
+	=?ISO-8859-1?Q?Javier_Fern=E1ndez-Sanguino_Pe=F1a?= <jfs@computer.org>,
+	anibal@debian.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hey0H-0000pF-Ga
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 11:38:42 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hey0H-0003ER-Bn
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 11:38:43 -0700
-In-Reply-To: <46290789.7080908@redhat.com>
+	id 1Heydz-00054q-Kz
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 12:19:43 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Heye1-00058b-UZ
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 12:19:46 -0700
+In-Reply-To: <17960.11704.321124.641669@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,19 +34,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Apr 20, 2007 at 02:33:45PM -0400, Jeff Layton wrote:
-> Thanks for the info. I'll shoot for just having the wrapper add a 
-> constant value to it for now (though I'll at least get the auth flavor 
-> and set that value to 0 for auth_null and auth_unix).
+
+
+Neil Brown wrote:
+> Well, the consensus seems to be that a new 'upstream' would not be a
+> bad thing, but that including it in nfs-utils might not be the best
+> idea.
 > 
-> I tested krb5p and it seems to be off by 52 bytes, but I was using 
-> des-cbc-crc:normal. Got a suggestion of what kerberos enc type I should 
-> use to try to maximize the length?
+> I can live with that, and would like to nominate myself as the new
+> upstream source for 'portmap'.  Does anyone object?
+> 
+> I have created a git repository that can be accessed via:
+>    git://neil.brown.name/portmap
+> or
+>    http://neil.brown.name/git?p=portmap  (for browsing).
+Is there any particular reason your staying with portmap
+instead of moving on to rpcbind? Rpcbind supports portmap
+functionality as well has IPv6 support and warm starts
+support (meaning it saves state so services don't have to
+re-register if the rpcbind is restarted).
 
-That's all we've got in mainline right now--the others are only in
-experimental code.
+Another nice benny is, rpcbind used the libtirpc library
+which is a stand alone lib... meaning we no longer need
+to depend on the RPC code in glibc... which I think is
+HUGE... is basically the main reason (other than IPv6
+support) I'm pushing Fedora Core in that direction...
+Braveheart said it best: FREEDOM [from the glibc code]!!! :-D
 
---b.
+I (hastily) created two git trees:
+git://git.infradead.org/~steved/libtirpc.git
+git://git.infradead.org/~steved/rpcbind.git
+
+I think if you take a look, you'll see that
+this code may not be as mature as the portmap
+code, but its a much better start... imho..
+
+
+> There are two patches from Fedora that I have not included.
+> 
+> One uses 'getpwnam("rpc")' to find a uid to 'setuid' to.
+> This could be a problem is NIS is in use and 'rpc' isn't in
+> /etc/passwd - portmap would be need to find the NIS server to check
+> for 'rpc' before portmap could start.
+We ensure the rpc uid/gid is created when we install the rpm,
+but yes if nis is tried before /etc/passwd this will hang but
+we've never come across such an occurrence (yet :-\ )
+
+
+steved.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
