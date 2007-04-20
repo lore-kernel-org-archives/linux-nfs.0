@@ -1,25 +1,26 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: svc_process and nfsd_proc_read not taking checksum into
- account when calling svc_reserve
-Date: Fri, 20 Apr 2007 14:33:45 -0400
-Message-ID: <46290789.7080908@redhat.com>
+	account when calling svc_reserve
+Date: Fri, 20 Apr 2007 14:38:38 -0400
+Message-ID: <20070420183838.GJ19285@fieldses.org>
 References: <4628D19F.5080805@redhat.com> <20070420174748.GG19285@fieldses.org>
 	<4d569c330704201057l1ba2a131r39df22db6e917fb3@mail.gmail.com>
-	<20070420181144.GI19285@fieldses.org>
+	<20070420181144.GI19285@fieldses.org> <46290789.7080908@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, Kevin Coffman <kwc@citi.umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HexvX-0000HH-PR
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 11:33:48 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hexva-0001po-2S
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 11:33:50 -0700
-In-Reply-To: <20070420181144.GI19285@fieldses.org>
+	id 1Hey0H-0000pF-Ga
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 11:38:42 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hey0H-0003ER-Bn
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 11:38:43 -0700
+In-Reply-To: <46290789.7080908@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +33,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> On Fri, Apr 20, 2007 at 01:57:55PM -0400, Kevin Coffman wrote:
->> On 4/20/07, J. Bruce Fields <bfields@fieldses.org> wrote:
->>> You don't need to know the exact amount, just an upper bound, right?
->>>
->>> In which case I'd be tempted to just look at some krb5i and krb5p
->>> traffic in wireshark, figure out how much it adds (it should always be
->>> the same, except that krb5p pads the arguments to the nearest 8-byte
->>> boundary, which will add padding that varies between 1 and 8 bytes.)
->> Is the length going to depend on the Kerberos encryption-type as well?
+On Fri, Apr 20, 2007 at 02:33:45PM -0400, Jeff Layton wrote:
+> Thanks for the info. I'll shoot for just having the wrapper add a 
+> constant value to it for now (though I'll at least get the auth flavor 
+> and set that value to 0 for auth_null and auth_unix).
 > 
-> Yep.  But for now we can just hard-code a constant that works for
-> des-cbc-whatever-it-is, with a note that some day we should increase the
-> constant or (if we really need it to be a tight bound on the length),
-> replace it by a call to the gssapi code.
-> 
-> --b.
+> I tested krb5p and it seems to be off by 52 bytes, but I was using 
+> des-cbc-crc:normal. Got a suggestion of what kerberos enc type I should 
+> use to try to maximize the length?
 
-Thanks for the info. I'll shoot for just having the wrapper add a 
-constant value to it for now (though I'll at least get the auth flavor 
-and set that value to 0 for auth_null and auth_unix).
+That's all we've got in mainline right now--the others are only in
+experimental code.
 
-I tested krb5p and it seems to be off by 52 bytes, but I was using 
-des-cbc-crc:normal. Got a suggestion of what kerberos enc type I should 
-use to try to maximize the length?
-
-Thanks,
-Jeff
-
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
