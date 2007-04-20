@@ -1,29 +1,30 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Fri, 20 Apr 2007 15:27:11 +0200
-Message-ID: <200704201527.12634.olaf.kirch@oracle.com>
-References: <17958.48121.280256.493824@notabene.brown>
-	<200704200849.27004.olaf.kirch@oracle.com>
-	<17960.29596.729732.864556@notabene.brown>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: svc_process and nfsd_proc_read not taking checksum into
+ account when calling svc_reserve
+Date: Fri, 20 Apr 2007 10:43:43 -0400
+Message-ID: <4628D19F.5080805@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Steve Dickson <SteveD@redhat.com>,
-	Javier =?iso-8859-1?q?Fern=E1ndez-Sanguino_Pe=F1a?= <jfs@computer.org>,
-	anibal@debian.org
-To: Neil Brown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HetAD-0008QK-Se
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 06:28:37 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HetAG-0002i7-7p
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 06:28:40 -0700
-In-Reply-To: <17960.29596.729732.864556@notabene.brown>
+	id 1HeuL0-0007dD-5r
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 07:43:50 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HeuL1-0000c1-Gp
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 07:43:52 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3KEhiOW024579
+	for <nfs@lists.sourceforge.net>; Fri, 20 Apr 2007 10:43:44 -0400
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3KEhinY008526
+	for <nfs@lists.sourceforge.net>; Fri, 20 Apr 2007 10:43:44 -0400
+Received: from [192.168.1.3] (vpn-14-47.rdu.redhat.com [10.11.14.47])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3KEhiJR029850
+	for <nfs@lists.sourceforge.net>; Fri, 20 Apr 2007 10:43:44 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,46 +37,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 20 April 2007 10:02, Neil Brown wrote:
-> I guess.  It would be really nice if we could delay doing the hostname
-> lookup until we find a hostname present in hosts.{allow,deny}.  That
-> would make it run-time configurable.  I don't think we can do that
-> though.
+I think I've finally chased down a bug that I noticed at connectathon 
+this year. When a client mounts a Linux NFS server using NFSv2 or 3 with 
+sec=krb5i, the server gets a ton of messages like this in the logs:
 
-No, that's not the way tcp_wrappers works. It needs to do the
-reverse lookup first.
+RPC request reserved 80 but used 124
 
-> > That's nice! However, beware you have to patch rpcinfo so that
-> > rpcinfo -u does a bindresvport when run as root. And *that*
-> > change needs to go into all distros, or you need to get it past
-> > Uli "hell will freeze over first" Drepper.
-> 
-> No change needed.  The rpc library already does bindresvport when
-> creating a client.
+The sizes vary here, but usually the "used" is 44 bytes off from what 
+was reserved (sometimes a little less). The issue seems to be that after 
+writing out the response header, svc_process() calls this:
 
-Ah. I was under the impression the automatic bindresvport call
-had been removed at some point in time. But looking at the
-glibc cvs it seems it's still there.
+         /* un-reserve some of the out-queue now that we have a
+          * better idea of reply size
+          */
+         if (procp->pc_xdrressize)
+                 svc_reserve(rqstp, procp->pc_xdrressize<<2);
 
-> My understanding is that /var/run is cleared early at bood.  So the
-> idea was that the choice of path name made all that work
-> automatically.
+...but, this does not take into account the size of the checksum at the 
+end of the response. This is also a problem in the svc_reserve calls 
+made from nfsd3_proc_read and nfsd_proc_read.
 
-Well, if you want portmap to chroot, then it either has to keep
-a file descriptor open for its map file (which would be at odds
-with chrooting, because you do that to completely contain
-the process); or you would have to put the map file somewhere
-under your chroot tree and have to take care of cleaning it
-up on boot in a different way.
+While I haven't checked it, my guess is that this is also a problem for 
+krb5p and for spkm3i too. We don't seem to see this issue with NFSv4, 
+but I think that's because the reserved size for a compound packet is 
+likely large enough to paper over this problem.
 
-> And portmap in initrd?  Just Say No. :-)
+My thinking is that we need a wrapper of some sort around these calls to 
+svc_reserve that increases the "space" parameter by the amount of the 
+expected checksum. My question is -- is there a simple way to compute 
+the expected length of the checksum, given a svc_rqst?
 
-People have tried to do that, unfortunately.
+Thanks,
+Jeff
 
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
