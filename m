@@ -1,8 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 3/5] NFS: Fix the 'desynchronized value of
-	nfs_i.ncommit' error
-Date: Fri, 20 Apr 2007 16:12:45 -0400
-Message-ID: <20070420201245.7897.64946.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 4/5] NFS: Fix race in nfs_set_page_dirty
+Date: Fri, 20 Apr 2007 16:12:50 -0400
+Message-ID: <20070420201250.7897.77055.stgit@heimdal.trondhjem.org>
 References: <20070420200358.7897.75870.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -16,12 +15,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HezTH-0002oD-AZ
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 13:12:43 -0700
+	id 1HezTN-0002oT-9C
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 13:12:49 -0700
 Received: from dh166.citi.umich.edu ([141.211.133.166]
 	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HezTJ-0006n2-I4
-	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 13:12:45 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HezTO-0006oP-LH
+	for nfs@lists.sourceforge.net; Fri, 20 Apr 2007 13:12:51 -0700
 In-Reply-To: <20070420200358.7897.75870.stgit@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -37,138 +36,62 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Redirtying a request that is already marked for commit will screw up the
-accounting for NR_UNSTABLE_NFS as well as nfs_i.ncommit.
-Ensure that all requests on the commit queue are labelled with the
-PG_NEED_COMMIT flag, and avoid moving them onto the dirty list inside
-nfs_page_mark_flush().
-
-Also inline nfs_mark_request_dirty() into nfs_page_mark_flush() for
-atomicity reasons. Avoid dropping the spinlock until we're done marking the
-request in the radix tree and have added it to the ->dirty list.
+Protect nfs_set_page_dirty() against races with nfs_inode_add_request.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/write.c |   47 ++++++++++++++++++++++-------------------------
- 1 files changed, 22 insertions(+), 25 deletions(-)
+ fs/nfs/write.c |   17 ++++++++++++++---
+ 1 files changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 8e94246..ce5b4a9 100644
+index ce5b4a9..7975589 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -38,7 +38,6 @@
- static struct nfs_page * nfs_update_request(struct nfs_open_context*,
- 					    struct page *,
- 					    unsigned int, unsigned int);
--static void nfs_mark_request_dirty(struct nfs_page *req);
- static long nfs_flush_mapping(struct address_space *mapping, struct writeback_control *wbc, int how);
- static const struct rpc_call_ops nfs_write_partial_ops;
- static const struct rpc_call_ops nfs_write_full_ops;
-@@ -255,7 +254,8 @@ static void nfs_end_page_writeback(struct page *page)
- static int nfs_page_mark_flush(struct page *page)
+@@ -388,6 +388,8 @@ static int nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	}
+ 	SetPagePrivate(req->wb_page);
+ 	set_page_private(req->wb_page, (unsigned long)req);
++	if (PageDirty(req->wb_page))
++		set_bit(PG_NEED_FLUSH, &req->wb_flags);
+ 	nfsi->npages++;
+ 	atomic_inc(&req->wb_count);
+ 	return 0;
+@@ -407,6 +409,8 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 	set_page_private(req->wb_page, 0);
+ 	ClearPagePrivate(req->wb_page);
+ 	radix_tree_delete(&nfsi->nfs_page_tree, req->wb_index);
++	if (test_and_clear_bit(PG_NEED_FLUSH, &req->wb_flags))
++		__set_page_dirty_nobuffers(req->wb_page);
+ 	nfsi->npages--;
+ 	if (!nfsi->npages) {
+ 		spin_unlock(&nfsi->req_lock);
+@@ -1527,15 +1531,22 @@ int nfs_wb_page(struct inode *inode, struct page* page)
+ 
+ int nfs_set_page_dirty(struct page *page)
  {
++	spinlock_t *req_lock = &NFS_I(page->mapping->host)->req_lock;
  	struct nfs_page *req;
--	spinlock_t *req_lock = &NFS_I(page->mapping->host)->req_lock;
-+	struct nfs_inode *nfsi = NFS_I(page->mapping->host);
-+	spinlock_t *req_lock = &nfsi->req_lock;
- 	int ret;
++	int ret;
  
- 	spin_lock(req_lock);
-@@ -279,11 +279,23 @@ static int nfs_page_mark_flush(struct page *page)
- 			return ret;
- 		spin_lock(req_lock);
+-	req = nfs_page_find_request(page);
++	spin_lock(req_lock);
++	req = nfs_page_find_request_locked(page);
+ 	if (req != NULL) {
+ 		/* Mark any existing write requests for flushing */
+-		set_bit(PG_NEED_FLUSH, &req->wb_flags);
++		ret = !test_and_set_bit(PG_NEED_FLUSH, &req->wb_flags);
++		spin_unlock(req_lock);
+ 		nfs_release_request(req);
++		return ret;
  	}
--	spin_unlock(req_lock);
-+	if (test_bit(PG_NEED_COMMIT, &req->wb_flags)) {
-+		/* This request is marked for commit */
-+		spin_unlock(req_lock);
-+		nfs_unlock_request(req);
-+		return 1;
-+	}
- 	if (nfs_set_page_writeback(page) == 0) {
- 		nfs_list_remove_request(req);
--		nfs_mark_request_dirty(req);
--	}
-+		/* add the request to the inode's dirty list. */
-+		radix_tree_tag_set(&nfsi->nfs_page_tree,
-+				req->wb_index, NFS_PAGE_TAG_DIRTY);
-+		nfs_list_add_request(req, &nfsi->dirty);
-+		nfsi->ndirty++;
-+		spin_unlock(req_lock);
-+		__mark_inode_dirty(page->mapping->host, I_DIRTY_PAGES);
-+	} else
-+		spin_unlock(req_lock);
- 	ret = test_bit(PG_NEED_FLUSH, &req->wb_flags);
- 	nfs_unlock_request(req);
- 	return ret;
-@@ -406,24 +418,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 	nfs_release_request(req);
+-	return __set_page_dirty_nobuffers(page);
++	ret = __set_page_dirty_nobuffers(page);
++	spin_unlock(req_lock);
++	return ret;
  }
  
--/*
-- * Add a request to the inode's dirty list.
-- */
--static void
--nfs_mark_request_dirty(struct nfs_page *req)
--{
--	struct inode *inode = req->wb_context->dentry->d_inode;
--	struct nfs_inode *nfsi = NFS_I(inode);
--
--	spin_lock(&nfsi->req_lock);
--	radix_tree_tag_set(&nfsi->nfs_page_tree,
--			req->wb_index, NFS_PAGE_TAG_DIRTY);
--	nfs_list_add_request(req, &nfsi->dirty);
--	nfsi->ndirty++;
--	spin_unlock(&nfsi->req_lock);
--	__mark_inode_dirty(inode, I_DIRTY_PAGES);
--}
--
- static void
- nfs_redirty_request(struct nfs_page *req)
- {
-@@ -438,7 +432,7 @@ nfs_dirty_request(struct nfs_page *req)
- {
- 	struct page *page = req->wb_page;
  
--	if (page == NULL)
-+	if (page == NULL || test_bit(PG_NEED_COMMIT, &req->wb_flags))
- 		return 0;
- 	return !PageWriteback(req->wb_page);
- }
-@@ -456,6 +450,7 @@ nfs_mark_request_commit(struct nfs_page *req)
- 	spin_lock(&nfsi->req_lock);
- 	nfs_list_add_request(req, &nfsi->commit);
- 	nfsi->ncommit++;
-+	set_bit(PG_NEED_COMMIT, &(req)->wb_flags);
- 	spin_unlock(&nfsi->req_lock);
- 	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-@@ -470,7 +465,7 @@ int nfs_write_need_commit(struct nfs_write_data *data)
- static inline
- int nfs_reschedule_unstable_write(struct nfs_page *req)
- {
--	if (test_and_clear_bit(PG_NEED_COMMIT, &req->wb_flags)) {
-+	if (test_bit(PG_NEED_COMMIT, &req->wb_flags)) {
- 		nfs_mark_request_commit(req);
- 		return 1;
- 	}
-@@ -557,6 +552,7 @@ static void nfs_cancel_commit_list(struct list_head *head)
- 		req = nfs_list_entry(head->next);
- 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 		nfs_list_remove_request(req);
-+		clear_bit(PG_NEED_COMMIT, &(req)->wb_flags);
- 		nfs_inode_remove_request(req);
- 		nfs_unlock_request(req);
- 	}
-@@ -1295,6 +1291,7 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
- 	while (!list_empty(&data->pages)) {
- 		req = nfs_list_entry(data->pages.next);
- 		nfs_list_remove_request(req);
-+		clear_bit(PG_NEED_COMMIT, &(req)->wb_flags);
- 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 
- 		dprintk("NFS: commit (%s/%Ld %d@%Ld)",
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
