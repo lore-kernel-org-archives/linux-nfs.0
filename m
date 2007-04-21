@@ -1,21 +1,27 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] RPC: add wrapper for svc_reserve to account for
-	checksum
-Date: Sat, 21 Apr 2007 09:15:24 -0400
-Message-ID: <20070421131523.GA18100@dantu.rdu.redhat.com>
+From: florin@iucha.net (Florin Iucha)
+Subject: Re: [PATCH 0/5] 2.6.21-rc7 NFS writes: fix a series of issues
+Date: Sat, 21 Apr 2007 09:43:53 -0500
+Message-ID: <20070421144352.GG24044@iucha.net>
+References: <20070420200358.7897.75870.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-kernel@vger.kernel.org
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0346902922=="
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	linux-kernel@vger.kernel.org, Adrian Bunk <bunk@stusta.de>,
+	nfs@lists.sourceforge.net, Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HfFR2-0001i5-Mn
-	for nfs@lists.sourceforge.net; Sat, 21 Apr 2007 06:15:28 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HfFR4-0002F6-Ut
-	for nfs@lists.sourceforge.net; Sat, 21 Apr 2007 06:15:31 -0700
+	id 1HfGod-0001l7-PJ
+	for nfs@lists.sourceforge.net; Sat, 21 Apr 2007 07:43:56 -0700
+Received: from iucha.net ([209.98.146.184] helo=mail.iucha.net)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HfGoe-0002w0-5x
+	for nfs@lists.sourceforge.net; Sat, 21 Apr 2007 07:43:58 -0700
+In-Reply-To: <20070420200358.7897.75870.stgit@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,110 +34,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-When the kernel calls svc_reserve to downsize the expected size of an RPC
-reply, it fails to account for the possibility of a checksum at the end of
-the packet. If a client mounts a NFSv2/3 with sec=krb5i/p, and does I/O then
-you'll generally see messages similar to this in the server's ring buffer:
 
-RPC request reserved 164 but used 208
+--===============0346902922==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="mMdCh5/a0q2ATNCM"
+Content-Disposition: inline
 
-While I was never able to verify it, I suspect that this problem is also the
-root cause of some oopses I've seen under these conditions:
 
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=227726
+--mMdCh5/a0q2ATNCM
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-This is probably also a problem for other sec= types and for NFSv4. The large
-reserved size for NFSv4 compound packets seems to generally paper over the
-problem, however.
+On Fri, Apr 20, 2007 at 04:03:58PM -0400, Trond Myklebust wrote:
+> I've split the issues introduced by the 2.6.21-rcX write code up into 4
+> subproblems.
+[snip]
+> My thanks to the various patient victim^Wpeople who helped with extensive
+> testing.
 
-This patch adds a wrapper for svc_reserve that accounts for the possibility of
-a checksum. It also fixes up the appropriate callers of svc_reserve to call
-the wrapper. For now, it just uses a hardcoded value that I determined via
-testing. That value may need to be revised upward as things change, or we
-may want to eventually add a new auth_op that attempts to calculate this
-somehow.
+I've pulled the tree this morning
+(0f851021c0f91e5073fa89f26b5ac68e23df8e11) and ran big-copy from a
+gnome session.  All is well.
 
-Unfortunately, there doesn't seem to be a good way to reliably determine the
-expected checksum length prior to actually calculating it, particularly with
-schemes like spkm3.
+Thanks,
+florin
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+--=20
+Bruce Schneier expects the Spanish Inquisition.
+      http://geekz.co.uk/schneierfacts/fact/163
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index f61142a..7d47c16 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -175,7 +175,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
- 	if (NFSSVC_MAXBLKSIZE < resp->count)
- 		resp->count = NFSSVC_MAXBLKSIZE;
- 
--	svc_reserve(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
-+	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
- 
- 	fh_copy(&resp->fh, &argp->fh);
- 	nfserr = nfsd_read(rqstp, &resp->fh, NULL,
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 4e06810..21f2ff7 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -154,7 +154,7 @@ nfsd_proc_read(struct svc_rqst *rqstp, struct nfsd_readargs *argp,
- 				argp->count);
- 		argp->count = NFSSVC_MAXBLKSIZE;
- 	}
--	svc_reserve(rqstp, (19<<2) + argp->count + 4);
-+	svc_reserve_auth(rqstp, (19<<2) + argp->count + 4);
- 
- 	resp->count = argp->count;
- 	nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 94350f5..60f24d6 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -326,4 +326,24 @@ int		   svc_register(struct svc_serv *, int, unsigned short);
- void		   svc_wake_up(struct svc_serv *);
- void		   svc_reserve(struct svc_rqst *rqstp, int space);
- 
-+/*
-+ * When we want to reduce the size of the reserved space in the response
-+ * buffer, we need to take into account the size of any checksum data that
-+ * may be at the end of the packet. For now, just use a hardcoded value
-+ * for each possible authflavor. This will need to be updated when new
-+ * encryption types or algorithms are added, or we'll have to come up with
-+ * a way to reasonably calculate this on the fly (maybe via a new auth_op).
-+ */
-+static inline void 
-+svc_reserve_auth(struct svc_rqst *rqstp, int space)
-+{
-+	int			added_space = 0;
-+
-+	switch(rqstp->rq_authop->flavour) {
-+		case RPC_AUTH_GSS:
-+			added_space = 56; /* determined empirically */
-+	}
-+	return svc_reserve(rqstp, space + added_space);
-+}
-+
- #endif /* SUNRPC_SVC_H */
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 0aab5b5..2d390d1 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -379,7 +379,7 @@ svc_process(struct svc_serv *serv, struct svc_rqst *rqstp)
- 	 * better idea of reply size
- 	 */
- 	if (procp->pc_xdrressize)
--		svc_reserve(rqstp, procp->pc_xdrressize<<2);
-+		svc_reserve_auth(rqstp, procp->pc_xdrressize<<2);
- 
- 	/* Call the function that processes the request. */
- 	if (!versp->vs_dispatch) {
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+--mMdCh5/a0q2ATNCM
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQFGKiMoND0rFCN2b1sRAtyxAKCVphzC1CY6sGXtfBdoEwI4TqAFzQCgldMV
+RyFdyLkarOMMJAPaJ0vtl0s=
+=eUrA
+-----END PGP SIGNATURE-----
+
+--mMdCh5/a0q2ATNCM--
+
+
+--===============0346902922==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0346902922==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0346902922==--
