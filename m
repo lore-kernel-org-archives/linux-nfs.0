@@ -1,29 +1,31 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
  on a privileged port??
-Date: Mon, 23 Apr 2007 14:03:48 +1000
-Message-ID: <17964.12324.307985.65596@notabene.brown>
+Date: Mon, 23 Apr 2007 16:31:50 +1000
+Message-ID: <17964.21206.435402.157895@notabene.brown>
 References: <17958.48121.280256.493824@notabene.brown>
 	<20070419012154.GB19063@javifsp.no-ip.org>
 	<17960.11704.321124.641669@notabene.brown>
 	<4629120C.60803@RedHat.com>
+	<17964.12324.307985.65596@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
+To: Steve Dickson <SteveD@redhat.com>,
+	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
 	Olaf Kirch <olaf.kirch@oracle.com>,
 	=?ISO-8859-1?Q?Javier_Fern=E1ndez-Sanguino_Pe=F1a?= <jfs@computer.org>,
 	anibal@debian.org
-To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hfpma-0004YS-PU
-	for nfs@lists.sourceforge.net; Sun, 22 Apr 2007 21:04:08 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hfpmc-00042y-S5
-	for nfs@lists.sourceforge.net; Sun, 22 Apr 2007 21:04:11 -0700
-In-Reply-To: message from Steve Dickson on Friday April 20
+	id 1Hfs5r-0001Xt-Ap
+	for nfs@lists.sourceforge.net; Sun, 22 Apr 2007 23:32:11 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hfs5r-0001oi-KW
+	for nfs@lists.sourceforge.net; Sun, 22 Apr 2007 23:32:14 -0700
+In-Reply-To: message from Neil Brown on Monday April 23
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,62 +38,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday April 20, SteveD@redhat.com wrote:
-> Is there any particular reason your staying with portmap
-> instead of moving on to rpcbind? 
+On Monday April 23, neilb@suse.de wrote:
+> I think I'll add -u/-g flags
+> I might even include the Redhat code in #ifdef, so if compile with
+>  make RPCUSER=rpc
+> it will do the getpwnam..
 
-I want distros to include the functionality I want (non-priv users
-cannot remove registrations of non-priv ports registered by priv
-users).  Given the two approaches:
-   - please use newer version of portmap
-   - please dump portmap and use rpcbind
-I suspect the former to be more effective.
+I have added both compile-time and run-time setting of the uid and
+gid, and allowed a username to be set at compile time.  I have also
+made it possible to compile in host-name lookups.  The man-page
+auto-adjusts to match the compile options.
 
-I'm not against moving to rpcbind, it is probably a very good idea.
-But I expect there to be more resistance.
-If everyone goes to rpcbind and no-one uses 'my' portmap, that would
-be fine with me.
+  make RPCUSER=rpc DAEMON_UID=4 DAEMON_GID=100 USE_DNS=yes
 
-> 
-> I (hastily) created two git trees:
-> git://git.infradead.org/~steved/libtirpc.git
-> git://git.infradead.org/~steved/rpcbind.git
-> 
-> I think if you take a look, you'll see that
-> this code may not be as mature as the portmap
-> code, but its a much better start... imho..
+I think it is now should do all that I want, and should be a slot-in
+replacement for any distro that wants it (providing they choose
+appropriate Make options).
 
-Yes, very hasty.  Several #temporary# and back~ files :-)
-
-I notice that it has a concept of who 'owns' a registration, but it
-only works if unix-domain sockets are used for the registration.
-Adding 'superuser' ownership for localhost/privport registrations is
-probably a 3 line patch....
-
-So: yes.  Full steam ahead on rpcbind.  But short-term I think it is a
-good idea to give portmap a little more life.
-
-> 
-> 
-> > There are two patches from Fedora that I have not included.
-> > 
-> > One uses 'getpwnam("rpc")' to find a uid to 'setuid' to.
-> > This could be a problem is NIS is in use and 'rpc' isn't in
-> > /etc/passwd - portmap would be need to find the NIS server to check
-> > for 'rpc' before portmap could start.
-> We ensure the rpc uid/gid is created when we install the rpm,
-> but yes if nis is tried before /etc/passwd this will hang but
-> we've never come across such an occurrence (yet :-\ )
-
-I wouldn't expect you to.  But another distro that doesn't create the
-right uid/gid might hit it.
-I think I'll add -u/-g flags
-I might even include the Redhat code in #ifdef, so if compile with
- make RPCUSER=rpc
-it will do the getpwnam..
-
-Thanks,
 NeilBrown
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
