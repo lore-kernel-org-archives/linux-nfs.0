@@ -1,38 +1,21 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: Re: Missing handling for
-	NFS4ERR_OLD_STATEID	in	nfs4_handle_exception?
-Date: Mon, 23 Apr 2007 10:14:30 -0700
-Message-ID: <1177348470.3531.25.camel@dyn9047022153>
-References: <1175616589.3531.8.camel@dyn9047022153>
-	<1176401268.6664.36.camel@heimdal.trondhjem.org>
-	<20070418135754.GA15075@dantu.rdu.redhat.com>
+From: James Bardin <jbardin@bu.edu>
+Subject: autofs and krb5 in CentOS5
+Date: Mon, 23 Apr 2007 13:18:03 -0400
+Message-ID: <462CEA4B.6090103@bu.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NFS List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jeff Layton <jlayton@redhat.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hg23E-0001Ux-7n
-	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 10:10:36 -0700
-Received: from e5.ny.us.ibm.com ([32.97.182.145])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hg23D-0005HT-45
-	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 10:10:10 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l3NH9vR3006828
-	for <nfs@lists.sourceforge.net>; Mon, 23 Apr 2007 13:09:57 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
-	l3NH9vxt475772
-	for <nfs@lists.sourceforge.net>; Mon, 23 Apr 2007 13:09:57 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l3NH9vCY017219
-	for <nfs@lists.sourceforge.net>; Mon, 23 Apr 2007 13:09:57 -0400
-In-Reply-To: <20070418135754.GA15075@dantu.rdu.redhat.com>
+	id 1Hg2Av-0002EE-5Y
+	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 10:18:05 -0700
+Received: from wx-out-0506.google.com ([66.249.82.224])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hg2Aw-0005bx-FK
+	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 10:18:07 -0700
+Received: by wx-out-0506.google.com with SMTP id i30so3058756wxd
+	for <nfs@lists.sourceforge.net>; Mon, 23 Apr 2007 10:18:05 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -45,32 +28,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-04-18 at 09:57 -0400, Jeff Layton wrote:
-> In that case, then what would you think about this patch, based on Frank's
-> suggestion. The other option might be to set "ret = -EIO" to make it avoid
-> the printk, but if all callers are expected to retry in that situation, I
-> don't guess it matters much:
+Hello,
 
-I think this is what we want, returning -EIO doesn't make sense to me
-(realizing that all callers ignore the return code if exception->retry
-is 1).
+I'm testing out my lab setup with CentOS5
+When using autofs to mount sec=krb5 (nfs3) home directories, I get these 
+errors when a user logs in through gdm:
 
-Frank
+kernel: net/sunrpc/rpc_pipe.c: rpc_lookup_parent failed to find path 
+/nfs/clnt3e/krb5
+kernel: net/sunrpc/rpc_pipe.c: rpc_lookup_parent failed to find path 
+/nfs/clnt3f/krb5
+kernel: net/sunrpc/rpc_pipe.c: rpc_lookup_parent failed to find path 
+/nfs/clnt40/krb5
 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f52cf5c..b456783 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2774,6 +2774,7 @@ int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct
->  				break;
->  		case -NFS4ERR_OLD_STATEID:
->  			exception->retry = 1;
-> +			ret = 0;
->  	}
->  	/* We failed to handle the error */
->  	return nfs4_map_errors(ret);
+These continue until the user logs out.
+This is only when logging in through gdm and the home directory is 
+mounted through autofs.
+I have gdm logging debug messages, but nothing looks relevant there. 
+rpc.gssd isn't giving me anything useful either.
+
+kernel 2.6.18-8.1.1.el5
+nfs-utils-1.0.9-16.el5
+
+I'm not sure what to test next.
+
+thanks
+-jim
 
 
 -------------------------------------------------------------------------
