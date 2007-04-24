@@ -1,29 +1,31 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
- on a privileged port??
-Date: Tue, 24 Apr 2007 21:09:21 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0704242053510.32688@maggie.lkpg.cendio.se>
-References: <17958.48121.280256.493824@notabene.brown>
-	<462CB496.6000308@RedHat.com>
-	<17965.15503.703515.820793@notabene.brown>
-	<200704240908.39672.olaf.kirch@oracle.com>
-	<20070424161027.GA30213@infradead.org> <462E38B9.5020808@RedHat.com>
-	<20070424171708.GA7936@infradead.org> <462E43CC.6040806@RedHat.com>
+From: "Gregory Baker" <gregory.baker@amd.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Tue, 24 Apr 2007 14:57:37 -0500
+Message-ID: <462E6131.7050504@amd.com>
+References: <46269362.5040608@amd.com>
+	<1176948355.6422.72.camel@heimdal.trondhjem.org>
+	<4627B3DD.5050409@amd.com>
+	<1177007479.6623.14.camel@heimdal.trondhjem.org>
+	<4627D303.8060009@amd.com>
+	<1177020662.6628.30.camel@heimdal.trondhjem.org>
+	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
+Reply-To: gregory.baker@amd.com
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED;
-	BOUNDARY="789237761-2147413521-1177440872=:32688"
-Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: julia bauer <julia.bauer@amd.com>, nfs@lists.sourceforge.net,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgQOI-0008SC-Qg
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 12:09:31 -0700
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgQOJ-0004fS-Sz
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 12:09:33 -0700
-In-Reply-To: <462E43CC.6040806@RedHat.com>
+	id 1HgR9H-0003t7-U8
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 12:58:04 -0700
+Received: from outbound-blu.frontbridge.com ([65.55.251.16]
+	helo=outbound8-blu-R.bigfish.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HgR9K-0001IW-3g
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 12:58:06 -0700
+In-Reply-To: <462CFC92.2080201@amd.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,71 +38,132 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
 
---789237761-2147413521-1177440872=:32688
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <Pine.LNX.4.64.0704242057501.32688@maggie.lkpg.cendio.se>
 
-On Tue, 24 Apr 2007, Steve Dickson wrote:
+Gregory Baker wrote:
 
-> > Well, even with a separate library it's probably better to
-> > start out with the glibc code to bug to bug compatible.
-> In theory yes...  but unfortunately Transport Independent
-> RPC code is much different than the RPC we have in glibc.
-> The TI-RPC code deals with things like CLTS and COTS and
-> has configuration file that defines how theses CLITS/COTS
-> are handled... notions that are completely foreign to
-> the current RPC code...
->=20
-> Again, I realize this code is very raw, but the only way
-> to bring it up to speed (something I really thing we want
-> to do) is using it and making it available to the community.
+> So the deal is, the mount flags (and NFS options) are set only the first 
+> time that a given combination of server and filesystem are mounted. If 
+> you ever mount the same filesystem from the same server on another 
+> mountpoint, you'll get the flags and options that were passed on to the 
+> first mount. There's no working around that.
+> *****
 
-One thing that bothers me is that the current libtirpc[*] is different=20
-from other TI-RPC versions. The current version (as far as I understand)=20
-is based on a snapshot from FreeBSD, which is turn is based on Suns TIRPC=
-=20
-2.3. This code is *not* up to date with TI-RPC 2.9 (aka tirpcsrc_99) and=20
-certainly not with the latest OpenSolaris version.
+Should these mount flags (and NFS options) expire/be removed from some 
+table somewhere when you unmount/remount the filesystem?  The mount 
+flags (and NFS options) persist between complete unmounting / remounting 
+of said filesystem.
 
-Another problem with TI-RPC is that a Windows port seems to be hard.=20
-That's one reason why I'm not porting unfs3 to TI-RPC.=20
+[greg@apathy 115656]$ cat typescript
 
-Getting Linux distributions to ship (the same) version of TI-RPC is a=20
-worthwhile goal, but ideally, we should have an upstream project that=20
-covers not only Linux, but also, *BSD, OpenSolaris etc. I know it's not=20
-going to be easy, but I think it's worth a try.=20
+* Look at me.  Don't have anything mounted via NFS yet the mount
+* gets stuck as ro when mounted...
 
-[*]: http://sourceforge.net/projects/libtirpc
+[root@adcgar04 tmp]# umount -a -t nfs
+[root@adcgar04 tmp]# mount -v | grep pandora
+[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
+[root@adcgar04 tmp]# mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
+[root@adcgar04 tmp]# mount -v | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+(rw,addr=163.181.34.137)
+[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+0 0
+[root@adcgar04 tmp]# touch /mnt2/asdf
+touch: cannot touch `/mnt2/asdf': Read-only file system
 
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Teknikringen 3
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-2147413521-1177440872=:32688
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+* OK, let's try this fancy mount command..
+
+[root@adcgar04 tmp]# mount -o remount,rw /mnt2
+[root@adcgar04 tmp]#  mount -v | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+(rw,remount,addr=163.181.34.137)
+[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+0 0
+
+* Everybody is happy!
+
+[root@adcgar04 tmp]#  touch /mnt2/asdf
+
+* Let's get rid of NFS mount and see what happens now
+
+[root@adcgar04 tmp]# umount /mnt2
+[root@adcgar04 tmp]#  mount -v | grep pandora
+[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+[root@adcgar04 tmp]#  mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
+[root@adcgar04 tmp]# mount -v | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+(rw,addr=163.181.34.137)
+[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+0 0
+
+* Everybody is happy!
+
+[root@adcgar04 tmp]# touch /mnt2/asdf
+
+* Let's give "something" the notion that this is a ro mount...
+
+[root@adcgar04 tmp]# mount -o remount,ro /mnt2
+[root@adcgar04 tmp]#  mount -v | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+(ro,remount,addr=163.181.34.137)
+[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+0 0
+
+* RO (expected)
+
+[root@adcgar04 tmp]# touch /mnt2/asdf
+touch: cannot touch `/mnt2/asdf': Read-only file system
+
+* OK, unmount NFS mount, try again
+
+[root@adcgar04 tmp]#  umount /mnt2
+[root@adcgar04 tmp]#  mount -v | grep pandora
+[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+[root@adcgar04 tmp]#  mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
+[root@adcgar04 tmp]#  mount -v | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+(rw,addr=163.181.34.137)
+[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+0 0
+
+* Boo-RO/RW (unexpected)
+
+[root@adcgar04 tmp]#  touch /mnt2/asdf
+touch: cannot touch `/mnt2/asdf': Read-only file system
+[root@adcgar04 tmp]# exit
+
+* So it seems that something remembers the last mount permissions, even
+* though mount -v and /proc/mount do not show a filesystem mounted.
+* The permissions persist to be associated with the exported filesystem.
+* What causes this?  Note: it's not the automounter process; this was
+* stopped during testing.
+
+
+-- 
+----------------------------------------------------------------------
+Greg Baker                                         512-602-3287 (work)
+gregory.baker@amd.com                              512-602-6970 (fax)
+5204 E. Ben White Blvd MS 625                      512-555-1212 (info)
+Austin, TX 78741
+
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---789237761-2147413521-1177440872=:32688
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-2147413521-1177440872=:32688--
