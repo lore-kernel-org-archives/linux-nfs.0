@@ -1,8 +1,8 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
+From: Olaf Kirch <olaf.kirch@Oracle.com>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
 	on a privileged port??
-Date: Tue, 24 Apr 2007 08:43:09 +0200
-Message-ID: <200704240843.10681.olaf.kirch@oracle.com>
+Date: Tue, 24 Apr 2007 09:08:38 +0200
+Message-ID: <200704240908.39672.olaf.kirch@oracle.com>
 References: <17958.48121.280256.493824@notabene.brown>
 	<462CB496.6000308@RedHat.com>
 	<17965.15503.703515.820793@notabene.brown>
@@ -17,11 +17,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgElE-0004xi-Bd
-	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 23:44:24 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgElF-0001EY-Pf
-	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 23:44:27 -0700
+	id 1HgF9h-0007iW-SN
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 00:09:42 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgF9j-00082P-6J
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 00:09:44 -0700
 In-Reply-To: <17965.15503.703515.820793@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -36,16 +36,44 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Tuesday 24 April 2007 01:09, Neil Brown wrote:
-> It would be nice if the libritpc version of bindrecvport could be
-> configured to avoid some list of ports, whether from /etc/services or
-> from elsewhere.
+> Is there someone "maintaining" rpcbind?  Should there be?
+> I notice there is an rpcbind at Wietse Venema's site:
+>   ftp://ftp.porcupine.org/pub/security/index.html
+> 
+> Is this rpcbind derived from that?
 
-BTW, I wouldn't use /etc/services as the blacklist for bindresvport.
-The range of available privileged ports is rather tight already. If
-you exclude everything found in /etc/services, you're down to
-249 ports in the 512-1024 range (for TCP and UDP, each). This
-will not please the 10,000 mounts crowd at Prominent CPU Vendor :)
-I really think you want to go with a separate blacklist file.
+Bull maintains a copy of rpcbind alongside their tirpc code.
+I think both Wietse's and Bull's rpcbind implementation derive
+from the TI-RPC code released by Sun some time during the
+last millenium.
+
+Personally, I'm very wary of the tirpc code. I think it needs a haircut
+and a thorough security audit before it can go into distributions.
+I did a very quick comparison of the tirpc code vs glibc, and
+I think there's a potential buffer overflow if a rogue rpcbind server
+replies with a string length of 0xffffffff.
+
+The rpcb_clnt.c functions use xdr_wrapstring, which
+gives a max string size of MAX_UNSIGNED, so a string
+length of 0xffffffff would be acceptable. The subsequent malloc
+would allocate a buffer of length 0 however. Depending on
+how you link your binary, malloc may return NULL in that case
+(simple segfault), or a very small buffer - and the moment you
+start copying to that, you will corrupt the heap. This is fixed
+in glibc, but still exists in tirpc. A security audit may turn up
+more.
+
+Apart from these concerns, the coding style is abominable - K&R
+almost everywhere; there's still a bunch of u_long's in 
+the code which makes it non-64bit-clean, and there's
+crap like
+
+clnt_st = CLNT_CALL(client, (rpcproc_t)RPCBPROC_GETADDR,
+                    (xdrproc_t) xdr_rpcb, (char *)(void *)&parms,
+                    (xdrproc_t) xdr_wrapstring, (char *)(void *) &ua, *tp);
+
+Those casts aren't just plain ugly, they're utterly useless too, since
+the pointer arguments to cl_call are void *.
 
 Olaf
 -- 
