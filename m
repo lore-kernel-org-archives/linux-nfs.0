@@ -1,26 +1,31 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
- on a privileged port??
-Date: Tue, 24 Apr 2007 16:36:36 -0400
-Message-ID: <462E6A54.1010709@redhat.com>
-References: <17958.48121.280256.493824@notabene.brown>	<462CB496.6000308@RedHat.com>	<17965.15503.703515.820793@notabene.brown>	<200704240908.39672.olaf.kirch@oracle.com>	<20070424161027.GA30213@infradead.org>	<462E38B9.5020808@RedHat.com>
-	<20070424171708.GA7936@infradead.org>	<462E43CC.6040806@RedHat.com>	<Pine.LNX.4.64.0704242053510.32688@maggie.lkpg.cendio.se>
-	<462E6812.6040401@RedHat.com>
+From: "Gregory Baker" <gregory.baker@amd.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Tue, 24 Apr 2007 17:01:57 -0500
+Message-ID: <462E7E55.5040202@amd.com>
+References: <46269362.5040608@amd.com>
+	<1176948355.6422.72.camel@heimdal.trondhjem.org>
+	<4627B3DD.5050409@amd.com>
+	<1177007479.6623.14.camel@heimdal.trondhjem.org>
+	<4627D303.8060009@amd.com>
+	<1177020662.6628.30.camel@heimdal.trondhjem.org>
+	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
+	<462E6131.7050504@amd.com>
+Reply-To: gregory.baker@amd.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: =?ISO-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
 	nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgRkn-00072w-Lo
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:38:07 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgRkq-00033T-0q
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:36:52 -0700
-In-Reply-To: <462E6812.6040401@RedHat.com>
+	id 1HgT66-000671-Ua
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 15:02:55 -0700
+Received: from outbound-fra.frontbridge.com ([62.209.45.174]
+	helo=outbound4-fra-R.bigfish.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgT68-0001ZS-Ad
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 15:02:57 -0700
+In-Reply-To: <462E6131.7050504@amd.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,64 +38,145 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Steve Dickson wrote:
-> Peter =C5strand wrote:
->   =
 
->> One thing that bothers me is that the current libtirpc[*] is different =
+Ignore this email; my foolish use of
 
->> from other TI-RPC versions. The current version (as far as I understand) =
+[root@adcgar04 tmp]# mount -v | grep pandora
+[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
 
->> is based on a snapshot from FreeBSD, which is turn is based on Suns TIRP=
-C =
+and
 
->> 2.3. This code is *not* up to date with TI-RPC 2.9 (aka tirpcsrc_99) and =
+[root@adcgar04 tmp]# umount -a -t nfs
 
->> certainly not with the latest OpenSolaris version.
->>     =
+make the captured session useless in debugging (as I cannot reproduce 
+the behavior).
 
-> hmm... Were does one go to find out how to be come tirpcsrc_99
-> compliant and why is this important? Does the TI-RPC 2.9
-> use a different over-the-wire protocol? I surely hope not... :-\
->
->   =
+Sorry everyone!
+
+--Greg
 
 
-The chance that Sun actually changed any of the interfaces from one
-version of TIRPC to the next is virtually nil.  Compatibility is a
-huge thing to them.  Any changes would most likely have been made
-in a backwards compatible fashion.
+Gregory Baker wrote:
+> 
+> Gregory Baker wrote:
+> 
+>> So the deal is, the mount flags (and NFS options) are set only the first 
+>> time that a given combination of server and filesystem are mounted. If 
+>> you ever mount the same filesystem from the same server on another 
+>> mountpoint, you'll get the flags and options that were passed on to the 
+>> first mount. There's no working around that.
+>> *****
+> 
+> Should these mount flags (and NFS options) expire/be removed from some 
+> table somewhere when you unmount/remount the filesystem?  The mount 
+> flags (and NFS options) persist between complete unmounting / remounting 
+> of said filesystem.
+> 
+> [greg@apathy 115656]$ cat typescript
+> 
+> * Look at me.  Don't have anything mounted via NFS yet the mount
+> * gets stuck as ro when mounted...
+> 
+> [root@adcgar04 tmp]# umount -a -t nfs
+> [root@adcgar04 tmp]# mount -v | grep pandora
+> [root@adcgar04 tmp]# cat /proc/mounts | grep pandora
+> [root@adcgar04 tmp]# mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
+> [root@adcgar04 tmp]# mount -v | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+> (rw,addr=163.181.34.137)
+> [root@adcgar04 tmp]# cat /proc/mounts | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+> ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+> 0 0
+> [root@adcgar04 tmp]# touch /mnt2/asdf
+> touch: cannot touch `/mnt2/asdf': Read-only file system
+> 
+> * OK, let's try this fancy mount command..
+> 
+> [root@adcgar04 tmp]# mount -o remount,rw /mnt2
+> [root@adcgar04 tmp]#  mount -v | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+> (rw,remount,addr=163.181.34.137)
+> [root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+> rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+> 0 0
+> 
+> * Everybody is happy!
+> 
+> [root@adcgar04 tmp]#  touch /mnt2/asdf
+> 
+> * Let's get rid of NFS mount and see what happens now
+> 
+> [root@adcgar04 tmp]# umount /mnt2
+> [root@adcgar04 tmp]#  mount -v | grep pandora
+> [root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+> [root@adcgar04 tmp]#  mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
+> [root@adcgar04 tmp]# mount -v | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+> (rw,addr=163.181.34.137)
+> [root@adcgar04 tmp]# cat /proc/mounts | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+> rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+> 0 0
+> 
+> * Everybody is happy!
+> 
+> [root@adcgar04 tmp]# touch /mnt2/asdf
+> 
+> * Let's give "something" the notion that this is a ro mount...
+> 
+> [root@adcgar04 tmp]# mount -o remount,ro /mnt2
+> [root@adcgar04 tmp]#  mount -v | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+> (ro,remount,addr=163.181.34.137)
+> [root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+> ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+> 0 0
+> 
+> * RO (expected)
+> 
+> [root@adcgar04 tmp]# touch /mnt2/asdf
+> touch: cannot touch `/mnt2/asdf': Read-only file system
+> 
+> * OK, unmount NFS mount, try again
+> 
+> [root@adcgar04 tmp]#  umount /mnt2
+> [root@adcgar04 tmp]#  mount -v | grep pandora
+> [root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+> [root@adcgar04 tmp]#  mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
+> [root@adcgar04 tmp]#  mount -v | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
+> (rw,addr=163.181.34.137)
+> [root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
+> eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
+> ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
+> 0 0
+> 
+> * Boo-RO/RW (unexpected)
+> 
+> [root@adcgar04 tmp]#  touch /mnt2/asdf
+> touch: cannot touch `/mnt2/asdf': Read-only file system
+> [root@adcgar04 tmp]# exit
+> 
+> * So it seems that something remembers the last mount permissions, even
+> * though mount -v and /proc/mount do not show a filesystem mounted.
+> * The permissions persist to be associated with the exported filesystem.
+> * What causes this?  Note: it's not the automounter process; this was
+> * stopped during testing.
+> 
+> 
+
+-- 
+----------------------------------------------------------------------
+Greg Baker                                         512-602-3287 (work)
+gregory.baker@amd.com                              512-602-6970 (fax)
+5204 E. Ben White Blvd MS 625                      512-555-1212 (info)
+Austin, TX 78741
 
 
-And no, there are no differences in the over the wire protocol.
 
->> Getting Linux distributions to ship (the same) version of TI-RPC is a =
-
->> worthwhile goal, but ideally, we should have an upstream project that =
-
->> covers not only Linux, but also, *BSD, OpenSolaris etc. I know it's not =
-
->> going to be easy, but I think it's worth a try.
->>     =
-
-> Well if we having support thats needed and/or wanted it should not
-> be too difficult to get people to move over...
-
-Having such a project would be a good thing.  We would need developers
-for each release platform targeted though.  Perhaps it might be sufficient
-to start with platforms that we are interested in and as people with other
-platforms become interested, they can port the support and add their own
-patches to the central source base.
-
-I don't think that I understand why being bug for bug compatible with
-the current glibc code is interesting.  This is a new version of the
-RPC support and applications will explicitly need to be ported to it.
-Perhaps we could even pleasantly surprise some folks by addressing
-some particular pet bug that they might have encountered.
-
-    Thanx...
-
-       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
