@@ -1,33 +1,31 @@
-From: Christoph Hellwig <hch@infradead.org>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Tue, 24 Apr 2007 18:17:08 +0100
-Message-ID: <20070424171708.GA7936@infradead.org>
+ on a privileged port??
+Date: Tue, 24 Apr 2007 13:52:12 -0400
+Message-ID: <462E43CC.6040806@RedHat.com>
 References: <17958.48121.280256.493824@notabene.brown>
 	<462CB496.6000308@RedHat.com>
 	<17965.15503.703515.820793@notabene.brown>
 	<200704240908.39672.olaf.kirch@oracle.com>
 	<20070424161027.GA30213@infradead.org>
-	<462E38B9.5020808@RedHat.com>
+	<462E38B9.5020808@RedHat.com> <20070424171708.GA7936@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
+Cc: Neil Brown <neilb@suse.de>, Matthias Koenig <mkoenig@novell.com>,
+	nfs@lists.sourceforge.net,
 	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>,
-	Olaf Kirch <olaf.kirch@Oracle.com>, anibal@debian.org
-To: Steve Dickson <SteveD@redhat.com>
+	Olaf Kirch <olaf.kirch@oracle.com>, anibal@debian.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgOdl-0006bS-35
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 10:17:21 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HgOdm-0002Sg-E5
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 10:17:23 -0700
-In-Reply-To: <462E38B9.5020808@RedHat.com>
+	id 1HgPW7-0002BX-Eo
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 11:13:31 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgPW9-0003BB-Q2
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 11:13:34 -0700
+In-Reply-To: <20070424171708.GA7936@infradead.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,30 +38,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Apr 24, 2007 at 01:04:57PM -0400, Steve Dickson wrote:
-> >Although not the fastes approach the only long-term viable one
-> >would be to update the glibc rpc code for the new TIRPC APIs and
-> >IPv6 support.  Even if it's unclear whether Uli would actually
-> >include it that gives a better start to avoid all kinds of security
-> >or useability-related regressions.
-> Well I have a strong hunch that the glibc people do not want anything
-> to do with changing *any* of the RPC code.
 
-That's the impression I got, yes.
 
-> I know for a fact that they
-> are very sorry the accepted in the first place... so with
-> that type of motivation I really think it would be very painful
-> to sell them on take any patches... at all...
+Christoph Hellwig wrote:
+>> Secondly, having the to debug and fix a small part of the
+>> RPC code in glibc, I have experienced how truly difficult
+>> it is work with such a large beast... so I pretty confident
+>> that breaking out the RPC into a library we can maintain
+>> ourselves is a good direction to move...
 > 
-> Secondly, having the to debug and fix a small part of the
-> RPC code in glibc, I have experienced how truly difficult
-> it is work with such a large beast... so I pretty confident
-> that breaking out the RPC into a library we can maintain
-> ourselves is a good direction to move...
+> Well, even with a separate library it's probably better to
+> start out with the glibc code to bug to bug compatible.
+In theory yes...  but unfortunately Transport Independent
+RPC code is much different than the RPC we have in glibc.
+The TI-RPC code deals with things like CLTS and COTS and
+has configuration file that defines how theses CLITS/COTS
+are handled... notions that are completely foreign to
+the current RPC code...
 
-Well, even with a separate library it's probably better to
-start out with the glibc code to bug to bug compatible.
+Again, I realize this code is very raw, but the only way
+to bring it up to speed (something I really thing we want
+to do) is using it and making it available to the community.
+
+steved.
 
 
 -------------------------------------------------------------------------
