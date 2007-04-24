@@ -1,28 +1,36 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Tue, 24 Apr 2007 17:10:28 +0100
-Message-ID: <20070424161027.GA30213@infradead.org>
-References: <17958.48121.280256.493824@notabene.brown>
-	<462CB496.6000308@RedHat.com>
-	<17965.15503.703515.820793@notabene.brown>
-	<200704240908.39672.olaf.kirch@oracle.com>
+From: Fabio Olive Leite <fleite@redhat.com>
+Subject: (no subject)
+Date: Tue, 24 Apr 2007 13:25:55 -0300
+Message-ID: <20070424162555.GC10449@sleipnir.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
-To: Olaf Kirch <olaf.kirch@Oracle.com>
+Content-Type: text/plain; charset="iso-8859-1"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgNbY-0001yi-D2
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:11:01 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgNbX-0007sE-Az
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:11:02 -0700
-In-Reply-To: <200704240908.39672.olaf.kirch@oracle.com>
+	id 1HgNq1-0003B9-SX
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:26:00 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgNq2-0004Fq-6J
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:26:00 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3OGPpK1005581
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:25:51 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3OGPphc006565
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:25:51 -0400
+Received: from sleipnir.redhat.com (vpn-14-146.rdu.redhat.com [10.11.14.146])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id
+	l3OGPmRs002009
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:25:49 -0400
+Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l3OGPup5014646
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 13:25:57 -0300
+Received: (from fleite@localhost)
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l3OGPugB014643
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:25:56 -0300
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,52 +43,90 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Apr 24, 2007 at 09:08:38AM +0200, Olaf Kirch wrote:
-> On Tuesday 24 April 2007 01:09, Neil Brown wrote:
-> > Is there someone "maintaining" rpcbind?  Should there be?
-> > I notice there is an rpcbind at Wietse Venema's site:
-> >   ftp://ftp.porcupine.org/pub/security/index.html
-> > 
-> > Is this rpcbind derived from that?
-> 
-> Bull maintains a copy of rpcbind alongside their tirpc code.
-> I think both Wietse's and Bull's rpcbind implementation derive
-> from the TI-RPC code released by Sun some time during the
-> last millenium.
-> 
-> Personally, I'm very wary of the tirpc code. I think it needs a haircut
-> and a thorough security audit before it can go into distributions.
-> I did a very quick comparison of the tirpc code vs glibc, and
-> I think there's a potential buffer overflow if a rogue rpcbind server
-> replies with a string length of 0xffffffff.
-> 
-> The rpcb_clnt.c functions use xdr_wrapstring, which
-> gives a max string size of MAX_UNSIGNED, so a string
-> length of 0xffffffff would be acceptable. The subsequent malloc
-> would allocate a buffer of length 0 however. Depending on
-> how you link your binary, malloc may return NULL in that case
-> (simple segfault), or a very small buffer - and the moment you
-> start copying to that, you will corrupt the heap. This is fixed
-> in glibc, but still exists in tirpc. A security audit may turn up
-> more.
-> 
-> Apart from these concerns, the coding style is abominable - K&R
-> almost everywhere; there's still a bunch of u_long's in 
-> the code which makes it non-64bit-clean, and there's
-> crap like
-> 
-> clnt_st = CLNT_CALL(client, (rpcproc_t)RPCBPROC_GETADDR,
->                     (xdrproc_t) xdr_rpcb, (char *)(void *)&parms,
->                     (xdrproc_t) xdr_wrapstring, (char *)(void *) &ua, *tp);
-> 
-> Those casts aren't just plain ugly, they're utterly useless too, since
-> the pointer arguments to cl_call are void *.
+Hi nfs@,
 
-Although not the fastes approach the only long-term viable one
-would be to update the glibc rpc code for the new TIRPC APIs and
-IPv6 support.  Even if it's unclear whether Uli would actually
-include it that gives a better start to avoid all kinds of security
-or useability-related regressions.
+This patch solves an issue found on 32bit architectures, where jiffies
+wrap every 50 days. Since many NFS structures are very long lived and
+the code uses jiffies everywhere for timestamp comparisons, there are
+many places where old data can be considered newer than something
+fresh from the server. This one deals with negative dentries, and I'd
+like to have it discussed in the list for sanity checking.
+
+    In 32bit architectures the NFS code uses 32bit jiffies for structures
+    that can very easily remain allocated for several u32 jiffy wraps,
+    fooling tests made only with time_after[_eq]. One such case is for
+    negative dentries, that given the correct timing can be considered valid
+    even after changing their parent dir's attributes.
+    =
+
+    This patch addresses that by using another unused struct dentry field to
+    store the higher part of the u64 jiffies. It has more comments than code
+    because the issue is subtle, and is made conditional on long being a
+    32bit quantity (64bit arches won't exhibit this behavior).
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index cd34697..a21fb87 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -644,11 +644,26 @@ static int nfs_check_verifier(struct inode *dir, stru=
+ct dentry *dentry)
+ 	if ((NFS_I(dir)->cache_validity & NFS_INO_INVALID_ATTR) !=3D 0
+ 			|| nfs_attribute_timeout(dir))
+ 		return 0;
++#if (BITS_PER_LONG < 64)
++	/* In 32bit architectures, also check the cached higher bits of
++	 * jiffies64. NFS dentries can sit idle across two sign flips of
++	 * 32bit jiffies and fool time_after[_eq].
++	 */
++	if ((u32)(dentry->d_cookie) !=3D (u32)(get_jiffies_64() >> 32))
++		return 0;
++#endif
+ 	return nfs_verify_change_attribute(dir, (unsigned long)dentry->d_fsdata);
+ }
+ =
+
+ static inline void nfs_set_verifier(struct dentry * dentry, unsigned long =
+verf)
+ {
++#if (BITS_PER_LONG < 64)
++	/* In 32bit architectures we can have problems with dentries that sit
++	 * idle during two flips of the MSB of the u32 jiffies, so we keep
++	 * track of the higher bits in d_cookie.
++	 */
++	(u32)(dentry->d_cookie) =3D (u32)(get_jiffies_64() >> 32);
++#endif
+ 	dentry->d_fsdata =3D (void *)verf;
+ }
+ =
+
+@@ -755,8 +770,17 @@ static int nfs_lookup_revalidate(struct dentry * dentr=
+y, struct nameidata *nd)
+ 	inode =3D dentry->d_inode;
+ =
+
+ 	if (!inode) {
+-		if (nfs_neg_need_reval(dir, dentry, nd))
++		if (nfs_neg_need_reval(dir, dentry, nd)) {
++#if (BITS_PER_LONG < 64)
++			dfprintk(VFS, "nfs_lookup_revalidate: expiring neg dentry for %s\n",
++				dentry->d_name.name);
++			dfprintk(VFS, "  d_cookie %08x high_jiffies %08x\n",
++				dentry->d_cookie, (u32)(get_jiffies_64() >> 32));
++			dfprintk(VFS, "  d_fsdata %08x cache_change_attribute %08x\n",
++				dentry->d_fsdata, NFS_I(dir)->cache_change_attribute);
++#endif
+ 			goto out_bad;
++		}
+ 		goto out_valid;
+ 	}
+ =
+
+
+Cheers,
+F=E1bio
+-- =
+
+ex sed lex awk yacc, e pluribus unix, amem
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
