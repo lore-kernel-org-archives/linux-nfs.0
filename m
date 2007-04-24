@@ -1,31 +1,27 @@
-From: "Gregory Baker" <gregory.baker@amd.com>
-Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Tue, 24 Apr 2007 14:57:37 -0500
-Message-ID: <462E6131.7050504@amd.com>
-References: <46269362.5040608@amd.com>
-	<1176948355.6422.72.camel@heimdal.trondhjem.org>
-	<4627B3DD.5050409@amd.com>
-	<1177007479.6623.14.camel@heimdal.trondhjem.org>
-	<4627D303.8060009@amd.com>
-	<1177020662.6628.30.camel@heimdal.trondhjem.org>
-	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
-Reply-To: gregory.baker@amd.com
+From: "Alexandre DELAY" <alexandre.delay@free.fr>
+Subject: NFS with Dynamic IP clients
+Date: Tue, 24 Apr 2007 22:05:31 +0200
+Message-ID: <002801c786ab$e934cdf0$0202a8c0@artemis>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: julia bauer <julia.bauer@amd.com>, nfs@lists.sourceforge.net,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: multipart/mixed; boundary="===============0447158526=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgR9H-0003t7-U8
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 12:58:04 -0700
-Received: from outbound-blu.frontbridge.com ([65.55.251.16]
-	helo=outbound8-blu-R.bigfish.com)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HgR9K-0001IW-3g
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 12:58:06 -0700
-In-Reply-To: <462CFC92.2080201@amd.com>
+	id 1HgRDT-0004AA-0a
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:02:24 -0700
+Received: from smtp1-g19.free.fr ([212.27.42.27])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgRDU-0002cW-Aj
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:02:25 -0700
+Received: from Cerbere-de-Troyes.cerbere23.com (unknown [62.147.211.204])
+	by smtp1-g19.free.fr (Postfix) with ESMTP id DD85EB93F9
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 22:02:21 +0200 (CEST)
+Received: from artemis ([192.168.2.2])
+	by Cerbere-de-Troyes.cerbere23.com (8.13.8/8.13.3) with ESMTP id
+	l3OK1oCW084913
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 22:01:50 +0200 (CEST)
+	(envelope-from alexandre.delay@free.fr)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,132 +34,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+
+--===============0447158526==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0029_01C786BC.ACBD9DF0"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0029_01C786BC.ACBD9DF0
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+Hi
+
+I am searching for a solution to my problem.
+
+I have a fixed NFS server connected to Internet. Clients (There will be =
+~300
+NFS connected clients) have dynamic public IP addresses.
+
+How can I setup my server and clients?
+
+Thanks
+
+Cheers
+
+Alex
 
 
-Gregory Baker wrote:
+------=_NextPart_000_0029_01C786BC.ACBD9DF0
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-> So the deal is, the mount flags (and NFS options) are set only the first 
-> time that a given combination of server and filesystem are mounted. If 
-> you ever mount the same filesystem from the same server on another 
-> mountpoint, you'll get the flags and options that were passed on to the 
-> first mount. There's no working around that.
-> *****
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<TITLE>Message</TITLE>
 
-Should these mount flags (and NFS options) expire/be removed from some 
-table somewhere when you unmount/remount the filesystem?  The mount 
-flags (and NFS options) persist between complete unmounting / remounting 
-of said filesystem.
+<META content=3D"MSHTML 6.00.2900.2802" name=3DGENERATOR></HEAD>
+<BODY>
+<DIV>
+<P><FONT face=3DArial size=3D2>Hi</FONT></P>
+<P><FONT face=3DArial size=3D2></FONT></P>
+<P><FONT face=3DArial size=3D2>I am searching for a solution to my=20
+problem.</FONT></P>
+<P><FONT face=3DArial size=3D2>I have a fixed NFS server connected to =
+Internet.=20
+Clients<SPAN class=3D437390320-24042007> (There will be ~300 NFS =
+connected=20
+clients)</SPAN>&nbsp;have dynamic&nbsp;<SPAN =
+class=3D437390320-24042007>public=20
+</SPAN>IP addresses.</FONT></P>
+<P><FONT face=3DArial size=3D2>How can I&nbsp;<SPAN =
+class=3D437390320-24042007>setup=20
+my server and clients</SPAN>?</FONT></P>
+<P><FONT face=3DArial size=3D2></FONT></P>
+<P><FONT face=3DArial size=3D2>Thanks</FONT></P>
+<P><FONT face=3DArial size=3D2></FONT></P>
+<P><FONT face=3DArial size=3D2>Cheers</FONT></P>
+<P><FONT face=3DArial size=3D2></FONT></P>
+<P><FONT face=3DArial size=3D2>Alex</FONT></P></DIV></BODY></HTML>
 
-[greg@apathy 115656]$ cat typescript
-
-* Look at me.  Don't have anything mounted via NFS yet the mount
-* gets stuck as ro when mounted...
-
-[root@adcgar04 tmp]# umount -a -t nfs
-[root@adcgar04 tmp]# mount -v | grep pandora
-[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
-[root@adcgar04 tmp]# mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
-[root@adcgar04 tmp]# mount -v | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
-(rw,addr=163.181.34.137)
-[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
-ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
-0 0
-[root@adcgar04 tmp]# touch /mnt2/asdf
-touch: cannot touch `/mnt2/asdf': Read-only file system
-
-* OK, let's try this fancy mount command..
-
-[root@adcgar04 tmp]# mount -o remount,rw /mnt2
-[root@adcgar04 tmp]#  mount -v | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
-(rw,remount,addr=163.181.34.137)
-[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
-rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
-0 0
-
-* Everybody is happy!
-
-[root@adcgar04 tmp]#  touch /mnt2/asdf
-
-* Let's get rid of NFS mount and see what happens now
-
-[root@adcgar04 tmp]# umount /mnt2
-[root@adcgar04 tmp]#  mount -v | grep pandora
-[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
-[root@adcgar04 tmp]#  mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
-[root@adcgar04 tmp]# mount -v | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
-(rw,addr=163.181.34.137)
-[root@adcgar04 tmp]# cat /proc/mounts | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
-rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
-0 0
-
-* Everybody is happy!
-
-[root@adcgar04 tmp]# touch /mnt2/asdf
-
-* Let's give "something" the notion that this is a ro mount...
-
-[root@adcgar04 tmp]# mount -o remount,ro /mnt2
-[root@adcgar04 tmp]#  mount -v | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
-(ro,remount,addr=163.181.34.137)
-[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
-ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
-0 0
-
-* RO (expected)
-
-[root@adcgar04 tmp]# touch /mnt2/asdf
-touch: cannot touch `/mnt2/asdf': Read-only file system
-
-* OK, unmount NFS mount, try again
-
-[root@adcgar04 tmp]#  umount /mnt2
-[root@adcgar04 tmp]#  mount -v | grep pandora
-[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
-[root@adcgar04 tmp]#  mount eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2
-[root@adcgar04 tmp]#  mount -v | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 on /mnt2 type nfs 
-(rw,addr=163.181.34.137)
-[root@adcgar04 tmp]#  cat /proc/mounts | grep pandora
-eng:/vol/vol4/pandora/pandora-k26_g25_64-2 /mnt2 nfs 
-ro,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=eng 
-0 0
-
-* Boo-RO/RW (unexpected)
-
-[root@adcgar04 tmp]#  touch /mnt2/asdf
-touch: cannot touch `/mnt2/asdf': Read-only file system
-[root@adcgar04 tmp]# exit
-
-* So it seems that something remembers the last mount permissions, even
-* though mount -v and /proc/mount do not show a filesystem mounted.
-* The permissions persist to be associated with the exported filesystem.
-* What causes this?  Note: it's not the automounter process; this was
-* stopped during testing.
-
-
--- 
-----------------------------------------------------------------------
-Greg Baker                                         512-602-3287 (work)
-gregory.baker@amd.com                              512-602-6970 (fax)
-5204 E. Ben White Blvd MS 625                      512-555-1212 (info)
-Austin, TX 78741
+------=_NextPart_000_0029_01C786BC.ACBD9DF0--
 
 
 
+--===============0447158526==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0447158526==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0447158526==--
