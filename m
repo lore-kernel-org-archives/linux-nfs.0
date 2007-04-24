@@ -1,7 +1,7 @@
 From: Fabio Olive Leite <fleite@redhat.com>
-Subject: (no subject)
-Date: Tue, 24 Apr 2007 13:25:55 -0300
-Message-ID: <20070424162555.GC10449@sleipnir.redhat.com>
+Subject: [PATCH] Stale NFS negative dentries caused by u32 jiffy wrap
+Date: Tue, 24 Apr 2007 13:26:45 -0300
+Message-ID: <20070424162645.GD10449@sleipnir.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 To: nfs@lists.sourceforge.net
@@ -9,28 +9,28 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgNq1-0003B9-SX
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:26:00 -0700
+	id 1HgNqi-0003CK-Qj
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:26:40 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgNq2-0004Fq-6J
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:26:00 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgNql-0004UU-3e
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 09:26:43 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3OGPpK1005581
-	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:25:51 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3OGQgnW006392
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:26:42 -0400
 Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3OGPphc006565
-	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:25:51 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3OGQgRE006805
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:26:42 -0400
 Received: from sleipnir.redhat.com (vpn-14-146.rdu.redhat.com [10.11.14.146])
 	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id
-	l3OGPmRs002009
-	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:25:49 -0400
+	l3OGQcBS002197
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 12:26:39 -0400
 Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
-	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l3OGPup5014646
-	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 13:25:57 -0300
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l3OGQk3S014672
+	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 13:26:47 -0300
 Received: (from fleite@localhost)
-	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l3OGPugB014643
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:25:56 -0300
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l3OGQkIT014669
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:26:46 -0300
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
