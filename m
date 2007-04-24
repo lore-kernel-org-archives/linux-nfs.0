@@ -1,33 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
- on a privileged port??
-Date: Tue, 24 Apr 2007 10:56:40 +1000
-Message-ID: <17965.21960.121292.462553@notabene.brown>
-References: <17958.48121.280256.493824@notabene.brown>
-	<20070419012154.GB19063@javifsp.no-ip.org>
-	<17960.11704.321124.641669@notabene.brown>
-	<4629120C.60803@RedHat.com>
-	<17964.12324.307985.65596@notabene.brown>
-	<17964.21206.435402.157895@notabene.brown>
-	<462CB7F9.2040800@RedHat.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
+Date: Mon, 23 Apr 2007 23:30:56 -0400
+Message-ID: <462D79F0.4060800@redhat.com>
+References: <46156F3F.3070606@redhat.com>	<4625204D.1030509@redhat.com>
+	<17959.5245.635902.823441@notabene.brown>
+Reply-To: wcheng@redhat.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Olaf Kirch <olaf.kirch@oracle.com>,
-	=?ISO-8859-1?Q?Javier_Fern=E1ndez-Sanguino_Pe=F1a?= <jfs@computer.org>,
-	anibal@debian.org
-To: Steve Dickson <SteveD@redhat.com>
+Cc: cluster-devel@redhat.com, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hg9L0-0002x9-FI
-	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 17:56:59 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hg9L1-0007lL-Nr
-	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 17:57:01 -0700
-In-Reply-To: message from Steve Dickson on Monday April 23
+	id 1HgBa0-0000j4-3W
+	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 20:20:36 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgBa2-0002Mq-Bt
+	for nfs@lists.sourceforge.net; Mon, 23 Apr 2007 20:20:38 -0700
+In-Reply-To: <17959.5245.635902.823441@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,35 +31,141 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday April 23, SteveD@redhat.com wrote:
-> > I have added both compile-time and run-time setting of the uid and
-> > gid, and allowed a username to be set at compile time.  I have also
-> > made it possible to compile in host-name lookups.  The man-page
-> > auto-adjusts to match the compile options.
-> > 
-> >   make RPCUSER=rpc DAEMON_UID=4 DAEMON_GID=100 USE_DNS=yes
-> > 
-> > I think it is now should do all that I want, and should be a slot-in
-> > replacement for any distro that wants it (providing they choose
-> > appropriate Make options).
-> When porting this functionality to rpcbind, I made the setting of
-> the uid a configuration argument (i.e. --with-rpcuser=user)
-> See attached patch... Its basically doing the same thing in a
-> different way...
-> 
-> I guess I've become a fan of letting autoconf (and friends) create
-> the makefiles verses me hacking on them... although working with
-> that autoconf API can drive one to drink (which it has ;-) ) but
-> in the end, I do think it makes things a be more configurable...
+Neil Brown wrote:
 
-Conversely, I find autoconf and friends deeply unsatisfying.  Both the
-configure.in and the generated files are just so .... messy.
+>One thing that has been bothering me is that sometimes the
+>"filesystem" (in the guise of an fsid) is used to talk to the kernel
+>about failover issues (when flushing locks or restarting the grace
+>period) and sometimes the local network address is used (when talking
+>with statd). 
+>  
+>
 
-Yes: if you have autoconf in place, you approach is very sensible.
-But I would like to avoid autoconf where possible.  Hopefully portmap
-is simple enough that it will remain possible.
+This is a perception issue - it depends on how the design is described. 
+More on this later.
 
-NeilBrown
+>I would rather use a single identifier.  In my previous email I was
+>leaning towards using the filesystem as the single identifier.  Today
+>I'm leaning the other way - to using the local network address.
+>  
+>
+Guess you're juggling with too many things so forget why we came down to 
+this route ? We started the discussion using network interface (to drop 
+the locks) but found it wouldn't work well on local filesytems such as 
+ext3. There is really no control on which local (sever side) interface 
+NFS clients will use (shouldn't be hard to implement one though). When 
+the fail-over server starts to remove the locks, it needs a way to find 
+*all* of the locks associated with the will-be-moved partition. This is 
+to allow umount to succeed. The server ip address alone can't guarantee 
+that. That was the reason we switched to fsid. Also remember this is NFS 
+v2/v3 - clients have no knowledge of server migration.
+
+Now, let's move back to first paragraph. An active-active failover can 
+be described as a 5-steps process:
+
+Step 1. Quiesce the floating network address.
+Step 2. Move the exported filesystem directories from Server A to Server B.
+Step 3. Re-enable the network interface.
+Step 4. Inform clients about the changes via NSM (Network Status 
+Monitor) Protocol.
+Step 5. Grace period.
+
+I was told last week that, independent of lockd, some cluster 
+filesystems do have their own implementation of grace period. It is on 
+the wish list that this feature is taken into consideration. IMHO, the 
+overall process should be viewed as a collaboration between filesystem, 
+network interface, and NFS protocol itself. Mixing the filesystem and 
+network operations are unavoidable.
+
+On the other hand, the current proposed interface is expandable .. say, 
+prefix a non-numerical string "DEV" or "UUID" to ask for dropping locks 
+as in:
+shell> echo "DEV12390 > /proc/fs/nfsd/nlm_unlock;
+
+or allow individual grace period of 10 seconds as:
+shell> echo "1234@10" > nlm_set_grace_for_fsid
+
+With above said, some of the following flow confuses me ... comment 
+inlined as below ..
+
+>It works like this:
+>
+>  We have a module parameter for lockd something like
+>  "virtual_server".
+>  If that is set to 0, none of the following changes are effective.
+>  If it is set to 1:
+>  
+>
+ok with me ...
+
+>   The destination address for any lockd request becomes part of the
+>   key to find the nsm_handle.
+>  
+>
+
+As explained above, the address along can't guarantee the associated 
+locks get cleaned up for one particular filesystem.
+
+>   The my_name field in SM_MON requests and SM_UNMON requests is set
+>   to a textual representation of that destination address.
+>  
+>
+
+That's what the current patch does.
+
+>   The reply to SM_MON (currently completely ignored by all versions
+>   of Linux) has an extra value which indicates how many more seconds
+>   of grace period there is to go.  This can be stuffed into res_stat
+>   maybe.
+>   Places where we currently check 'nlmsvc_grace_period', get moved to
+>   *after* the nlmsvc_retrieve_args call, and the grace_period value
+>   is extracted from host->nsm.
+>  
+>
+ok with me but I don't see the advantages though ?
+
+>  This is the full extent of the kernel changes.
+>
+>  To remove old locks, we arrange for the callbacks registered with
+>  statd for the relevant clients to be called.
+>  To set the grace period, we make sure statd knows about it and it
+>  will return the relevant information to lockd.
+>  To notify clients of the need to reclaim locks, we simple use the
+>  information stored by statd, which contains the local network
+>  address.
+>  
+>
+
+I'm lost here... help ?
+
+>The only aspect of this that gives me any cause for concern is
+>overloading the return value for SM_MON.  Possibly it might be cleaner
+>to define an SM_MON2 with different args or whatever.
+>As this interface is entirely local to the one machine, and as it can
+>quite easily be kept back-compatible, I think the concept is fine.
+>  
+>
+Agree !
+
+>Statd would need to pass the my_name field to the ha callout rather
+>than replacing it with "127.0.0.1", but other than that I don't think
+>any changes are needed to statd (though I haven't thought through that
+>fully yet).
+>  
+>
+
+That's the current patch does.
+
+>Comments?
+>
+>
+>  
+>
+I feel we're in the loop again... If there is any way I can shorten this 
+discussion, please do let me know.
+
+-- Wendy
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
