@@ -1,27 +1,30 @@
-From: "Alexandre DELAY" <alexandre.delay@free.fr>
-Subject: NFS with Dynamic IP clients
-Date: Tue, 24 Apr 2007 22:05:31 +0200
-Message-ID: <002801c786ab$e934cdf0$0202a8c0@artemis>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+ on a privileged port??
+Date: Tue, 24 Apr 2007 16:26:58 -0400
+Message-ID: <462E6812.6040401@RedHat.com>
+References: <17958.48121.280256.493824@notabene.brown>
+	<462CB496.6000308@RedHat.com>
+	<17965.15503.703515.820793@notabene.brown>
+	<200704240908.39672.olaf.kirch@oracle.com>
+	<20070424161027.GA30213@infradead.org>
+	<462E38B9.5020808@RedHat.com> <20070424171708.GA7936@infradead.org>
+	<462E43CC.6040806@RedHat.com>
+	<Pine.LNX.4.64.0704242053510.32688@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0447158526=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net
+To: =?UTF-8?B?UGV0ZXIgw4VzdHJhbmQ=?= <astrand@cendio.se>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgRDT-0004AA-0a
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:02:24 -0700
-Received: from smtp1-g19.free.fr ([212.27.42.27])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgRDU-0002cW-Aj
-	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:02:25 -0700
-Received: from Cerbere-de-Troyes.cerbere23.com (unknown [62.147.211.204])
-	by smtp1-g19.free.fr (Postfix) with ESMTP id DD85EB93F9
-	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 22:02:21 +0200 (CEST)
-Received: from artemis ([192.168.2.2])
-	by Cerbere-de-Troyes.cerbere23.com (8.13.8/8.13.3) with ESMTP id
-	l3OK1oCW084913
-	for <nfs@lists.sourceforge.net>; Tue, 24 Apr 2007 22:01:50 +0200 (CEST)
-	(envelope-from alexandre.delay@free.fr)
+	id 1HgRbH-00066g-N2
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:27:00 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgRbJ-0000V0-QA
+	for nfs@lists.sourceforge.net; Tue, 24 Apr 2007 13:27:02 -0700
+In-Reply-To: <Pine.LNX.4.64.0704242053510.32688@maggie.lkpg.cendio.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,94 +37,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
-
---===============0447158526==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0029_01C786BC.ACBD9DF0"
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0029_01C786BC.ACBD9DF0
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-Hi
-
-I am searching for a solution to my problem.
-
-I have a fixed NFS server connected to Internet. Clients (There will be =
-~300
-NFS connected clients) have dynamic public IP addresses.
-
-How can I setup my server and clients?
-
-Thanks
-
-Cheers
-
-Alex
-
-
-------=_NextPart_000_0029_01C786BC.ACBD9DF0
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<TITLE>Message</TITLE>
-
-<META content=3D"MSHTML 6.00.2900.2802" name=3DGENERATOR></HEAD>
-<BODY>
-<DIV>
-<P><FONT face=3DArial size=3D2>Hi</FONT></P>
-<P><FONT face=3DArial size=3D2></FONT></P>
-<P><FONT face=3DArial size=3D2>I am searching for a solution to my=20
-problem.</FONT></P>
-<P><FONT face=3DArial size=3D2>I have a fixed NFS server connected to =
-Internet.=20
-Clients<SPAN class=3D437390320-24042007> (There will be ~300 NFS =
-connected=20
-clients)</SPAN>&nbsp;have dynamic&nbsp;<SPAN =
-class=3D437390320-24042007>public=20
-</SPAN>IP addresses.</FONT></P>
-<P><FONT face=3DArial size=3D2>How can I&nbsp;<SPAN =
-class=3D437390320-24042007>setup=20
-my server and clients</SPAN>?</FONT></P>
-<P><FONT face=3DArial size=3D2></FONT></P>
-<P><FONT face=3DArial size=3D2>Thanks</FONT></P>
-<P><FONT face=3DArial size=3D2></FONT></P>
-<P><FONT face=3DArial size=3D2>Cheers</FONT></P>
-<P><FONT face=3DArial size=3D2></FONT></P>
-<P><FONT face=3DArial size=3D2>Alex</FONT></P></DIV></BODY></HTML>
-
-------=_NextPart_000_0029_01C786BC.ACBD9DF0--
-
-
-
---===============0447158526==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
---===============0447158526==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0447158526==--
+CgpQZXRlciDDhXN0cmFuZCB3cm90ZToKPiBPbmUgdGhpbmcgdGhhdCBib3RoZXJzIG1lIGlzIHRo
+YXQgdGhlIGN1cnJlbnQgbGlidGlycGNbKl0gaXMgZGlmZmVyZW50IAo+IGZyb20gb3RoZXIgVEkt
+UlBDIHZlcnNpb25zLiBUaGUgY3VycmVudCB2ZXJzaW9uIChhcyBmYXIgYXMgSSB1bmRlcnN0YW5k
+KSAKPiBpcyBiYXNlZCBvbiBhIHNuYXBzaG90IGZyb20gRnJlZUJTRCwgd2hpY2ggaXMgdHVybiBp
+cyBiYXNlZCBvbiBTdW5zIFRJUlBDIAo+IDIuMy4gVGhpcyBjb2RlIGlzICpub3QqIHVwIHRvIGRh
+dGUgd2l0aCBUSS1SUEMgMi45IChha2EgdGlycGNzcmNfOTkpIGFuZCAKPiBjZXJ0YWlubHkgbm90
+IHdpdGggdGhlIGxhdGVzdCBPcGVuU29sYXJpcyB2ZXJzaW9uLgpobW0uLi4gV2VyZSBkb2VzIG9u
+ZSBnbyB0byBmaW5kIG91dCBob3cgdG8gYmUgY29tZSB0aXJwY3NyY185OQpjb21wbGlhbnQgYW5k
+IHdoeSBpcyB0aGlzIGltcG9ydGFudD8gRG9lcyB0aGUgVEktUlBDIDIuOQp1c2UgYSBkaWZmZXJl
+bnQgb3Zlci10aGUtd2lyZSBwcm90b2NvbD8gSSBzdXJlbHkgaG9wZSBub3QuLi4gOi1cCgo+IAo+
+IEFub3RoZXIgcHJvYmxlbSB3aXRoIFRJLVJQQyBpcyB0aGF0IGEgV2luZG93cyBwb3J0IHNlZW1z
+IHRvIGJlIGhhcmQuIAo+IFRoYXQncyBvbmUgcmVhc29uIHdoeSBJJ20gbm90IHBvcnRpbmcgdW5m
+czMgdG8gVEktUlBDLiAKV293Li4uIEkgZGlkbid0IGV2ZW4ga25vdyBXaW5kb3dzIGhhZCBSUEMg
+c3VwcG9ydC4uLiBidXQKSSBraW5kYSBkb3VidCB3ZSdsbCBiZSBwb3J0IG5mcy11dGlscyB0byBX
+aW5kb3dzIGFueXRpbWUKc29vbi4uIDotKQoKPiAKPiBHZXR0aW5nIExpbnV4IGRpc3RyaWJ1dGlv
+bnMgdG8gc2hpcCAodGhlIHNhbWUpIHZlcnNpb24gb2YgVEktUlBDIGlzIGEgCj4gd29ydGh3aGls
+ZSBnb2FsLCBidXQgaWRlYWxseSwgd2Ugc2hvdWxkIGhhdmUgYW4gdXBzdHJlYW0gcHJvamVjdCB0
+aGF0IAo+IGNvdmVycyBub3Qgb25seSBMaW51eCwgYnV0IGFsc28sICpCU0QsIE9wZW5Tb2xhcmlz
+IGV0Yy4gSSBrbm93IGl0J3Mgbm90IAo+IGdvaW5nIHRvIGJlIGVhc3ksIGJ1dCBJIHRoaW5rIGl0
+J3Mgd29ydGggYSB0cnkuCldlbGwgaWYgd2UgaGF2aW5nIHN1cHBvcnQgdGhhdHMgbmVlZGVkIGFu
+ZC9vciB3YW50ZWQgaXQgc2hvdWxkIG5vdApiZSB0b28gZGlmZmljdWx0IHRvIGdldCBwZW9wbGUg
+dG8gbW92ZSBvdmVyLi4uCgpzdGV2ZWQuCgoKLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpUaGlzIFNGLm5ldCBl
+bWFpbCBpcyBzcG9uc29yZWQgYnkgREIyIEV4cHJlc3MKRG93bmxvYWQgREIyIEV4cHJlc3MgQyAt
+IHRoZSBGUkVFIHZlcnNpb24gb2YgREIyIGV4cHJlc3MgYW5kIHRha2UKY29udHJvbCBvZiB5b3Vy
+IFhNTC4gTm8gbGltaXRzLiBKdXN0IGRhdGEuIENsaWNrIHRvIGdldCBpdCBub3cuCmh0dHA6Ly9z
+b3VyY2Vmb3JnZS5uZXQvcG93ZXJiYXIvZGIyLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3Jn
+ZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
