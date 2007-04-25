@@ -1,23 +1,31 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
-Date: Wed, 25 Apr 2007 10:10:31 -0400
-Message-ID: <462F6157.7060604@redhat.com>
-References: <46156F3F.3070606@redhat.com> <20070425141818.GA14729@fieldses.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+	on a privileged port??
+Date: Wed, 25 Apr 2007 15:37:42 +0100
+Message-ID: <20070425143742.GA6217@infradead.org>
+References: <17958.48121.280256.493824@notabene.brown>
+	<20070424171708.GA7936@infradead.org> <462E43CC.6040806@RedHat.com>
+	<200704251056.03664.olaf.kirch@oracle.com>
+	<20070425095826.GA25349@infradead.org>
+	<462F55FE.5020502@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Aime.Le-Rouzic@bull.net, Neil Brown <neilb@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
+	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>,
+	Olaf Kirch <olaf.kirch@oracle.com>, anibal@debian.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgiXA-0004LS-SE
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:31:53 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgiXD-00015p-8P
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:31:55 -0700
-In-Reply-To: <20070425141818.GA14729@fieldses.org>
+	id 1HgidO-0005Ib-Q7
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:38:21 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgidQ-0006AI-6x
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:38:21 -0700
+In-Reply-To: <462F55FE.5020502@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,40 +38,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> On Thu, Apr 05, 2007 at 05:50:55PM -0400, Wendy Cheng wrote:
->   
->> 1) Failover server exports filesystem with "fsid" option as:
->>     /etc/exports entry> /mnt/shared/exports *(fsid=1234,sync,rw)
->> 2) Failover server dispatch rpc.statd with "-H" option.
->> 3) Failover server drops locks based on fsid by:
->>     shell> echo 1234 > /proc/fs/nfsd/nlm_unlock
->> 4) Takeover server enters per fsid grace period by:
->>     shell> echo 1234 > /proc/fs/nfsd/nlm_set_igrace
->> 5) Takeover server notifies clients for lock reclaim by:
->>     shell> /usr/sbin/sm-notify -f -v floating_ip_address -P an_sm_directory
->>     
->
-> I don't understand statd and lockd as well as I should.  Where exactly
-> does the takeover server stop serving requests, and the failover server
-> start?  If this isn't done carefully, you can leave a window between
-> steps 3 and 4 where a client could acquire a lock before its rightful
-> owner reclaims it, right?
->
->   
-The detailed overall steps were described in the first email we sent 
-*long* time (> 6 months, I think) ago. The first step of the whole 
-process is tearing down the floating IP from the failover server. The IP 
-is not accessible until filesystem is safely fail-over and SM_NOTIFY 
-ready to be sent.
+On Wed, Apr 25, 2007 at 09:22:06AM -0400, Steve Dickson wrote:
+> and sure it *might* be possible to simply turn IPv6 in the
+> glibc RPC code but its been stated very clearly that will
+> not happen because the glibc people no longer want to
+> support that code... They have and will continue to
+> resit any and all changes...
 
-Last round of discussion gave me an impression that as long as I rebased 
-the code into akpm's mm tree, these patches would get accepted. So I 
-have been quite careless in this submission and just realized people 
-have a very short memory :) .. Will do the write-up and put it somewhere 
-so we don't need to go thru this again.
+I have the feeling we're talking past each other here :-)
 
--- Wendy
+Even if changes to glibc itself are not going to happen you still can
+take the glibc rpc code, make changes to it and turn it into a
+separate library.  Given the indicators that Ulrich doesn't want new
+features in glibcs that seems to be the most useful solution.
 
 
 -------------------------------------------------------------------------
