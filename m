@@ -1,27 +1,30 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
+From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Wed, 25 Apr 2007 10:56:01 +0200
-Message-ID: <200704251056.03664.olaf.kirch@oracle.com>
+ on a privileged port??
+Date: Wed, 25 Apr 2007 10:57:34 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0704251042390.8489@maggie.lkpg.cendio.se>
 References: <17958.48121.280256.493824@notabene.brown>
+	<462CB496.6000308@RedHat.com>
+	<17965.15503.703515.820793@notabene.brown>
+	<200704240908.39672.olaf.kirch@oracle.com>
+	<20070424161027.GA30213@infradead.org> <462E38B9.5020808@RedHat.com>
 	<20070424171708.GA7936@infradead.org> <462E43CC.6040806@RedHat.com>
+	<Pine.LNX.4.64.0704242053510.32688@maggie.lkpg.cendio.se>
+	<462E6812.6040401@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1174483803-1177491454=:8489"
+Cc: nfs@lists.sourceforge.net
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgdJT-0000Db-ID
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 01:57:23 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgdJT-0003Ee-Rr
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 01:57:26 -0700
-In-Reply-To: <462E43CC.6040806@RedHat.com>
+	id 1HgdJm-0000EI-AJ
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 01:57:42 -0700
+Received: from mail.cendio.se ([193.12.253.69])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgdJn-0001hj-Fc
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 01:57:45 -0700
+In-Reply-To: <462E6812.6040401@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,123 +37,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday 24 April 2007 19:52, Steve Dickson wrote:
-> In theory yes...  but unfortunately Transport Independent
-> RPC code is much different than the RPC we have in glibc.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Still, there's a whole load of shared code, and this is where
-I agree with Christoph that it would be foolish to throw away
-the work that went into the glibc code. The buffer overflow fix
-I mentioned is just one such thing - I did a diff of the files
-common in glibc and tirpc, and here are some of the
-things I found.
+--789237761-1174483803-1177491454=:8489
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
- -	glibc authunix_create_default works if the process has
-	more than NGRPS gids. tirpc wil fail
+On Tue, 24 Apr 2007, Steve Dickson wrote:
 
- -	glibc tries to be more multithread friendly, by using
-	things like gethostbyname_r instead of gethostbyname.
-	tirpc doesn't.
+> Peter =C3=85strand wrote:
+> > One thing that bothers me is that the current libtirpc[*] is different =
+from
+> > other TI-RPC versions. The current version (as far as I understand) is =
+based
+> > on a snapshot from FreeBSD, which is turn is based on Suns TIRPC 2.3. T=
+his
+> > code is *not* up to date with TI-RPC 2.9 (aka tirpcsrc_99) and certainl=
+y not
+> > with the latest OpenSolaris version.
+> hmm... Were does one go to find out how to be come tirpcsrc_99
+> compliant and why is this important? Does the TI-RPC 2.9
+> use a different over-the-wire protocol? I surely hope not... :-\
 
- -	it seems that tirpc unconditionally requires rpcbind,
-	even for applications that still use pmap_set and
-	friends. In the interest of a smooth transition, applications
-	using the old interface should be able to expect the
-	old behavior.
+The over-the-wire protocol should be the same. I'm not sure about the API,=
+=20
+but even if it's the same, I'm a bit worried that TI-RPC 2.9 contains=20
+bugfixes or features that 2.3 is missing.=20
 
- -	tirpc does truly bizarre things, eg in clnt_raw.c
-	it declares a local variable, and then acquires
-	a mutex to check this local variable for NULL:
+tirpcsrc_99 used to be available from sun.com, but it isn't anymore. I=20
+have a copy at http://www.cendio.se/~astrand/oncrpc/, though.=20
 
-	       mutex_lock(&clntraw_lock);
-	       if (clp == NULL) {
-	               mutex_unlock(&clntraw_lock);
-	               return (RPC_FAILED);
-	       }
-	       mutex_unlock(&clntraw_lock);
 
- -	tirpc has a mechanism that lets you register
-	server side auth flavors dynamically; libc
-	doesn't.
+> > Another problem with TI-RPC is that a Windows port seems to be hard. Th=
+at's
+> > one reason why I'm not porting unfs3 to TI-RPC.=20
+> Wow... I didn't even know Windows had RPC support... but
+> I kinda doubt we'll be port nfs-utils to Windows anytime
+> soon.. :-)
 
- -	glibc switched to poll(), whereas tirpc still uses
-	select with all its limitations
+Windows has a lot of different RPC mechanism, but Microsoft does not=20
+support the ONC RPC API except that with "Services for UNIX". So if you=20
+want to port an application that uses ONC RPC, without using SFU, you'll=20
+need an external library. Many commercial ones are available. Several free=
+=20
+ones are also available, but as far as I understand, none of these are=20
+maintained, except http://oncrpc-ms.sourceforge.net/ (which I maintain=20
+myself :-).
 
- -	in tirpc, svc.c seems to be thread safe, whereas
-	glibc isn't.
+nfs-utils on Windows doesn't make much sense, but there are other=20
+applications that does. unfs3 is one of those. Besides, wouldn't it be=20
+nice if developers could use ONC RPC a little bit often, instead of=20
+solutions like SOAP ? :-)=20
+(http://wanderingbarque.com/nonintersecting/2006/11/15/the-s-stands-for-sim=
+ple/=20
+is worth reading.)
 
- -	tirpc lets the application control the maximum record
-	size, making DoS attacks just a little harder.
-
- -	in tirpc, xdr_mem.c has different ops for aligned vs
-	unaligned buffers, for what it's worth.
-
- -	in tirpc, clnt_sperror uses snprintf to avoid buffer overflows,
-	but gets it all wrong wrt the return value of snprintf.
-
- -	tirpc is K&R all over the place, while glibc is mostly
-	cleaned up (not everywhere though)
-
- -	tirpc bindresvport is IPv6 aware, but has a bug: if the
-	caller passes a sockaddr with sin_port/sin6_port set,
-	the routine will actually bind to htons(port).
-	the libc bindresvport implementation also has a small
-	optimization in that it will continue searching where the
-	previous call to bindresvport left off, rather than starting
-	all over from 600.
-
- -	the authunix code in tirpc assumes sizeof(gid_t)
-	equals sizeof(int)
-
- -	the glibc RPC client side seems to be thread safe, whereas
-	tirpc seems to be lacking in some areas (see rpc_thread.c)
-
-I stopped reading the code after an hour, but I think this list could
-be extended quite a bit.
-
-So from my POV the decision between tirpc and glibc rpc isn't
-that clear-cut. TIRPC clearly needs some work before distros
-should consider using it.
-
-> Again, I realize this code is very raw, but the only way
-> to bring it up to speed (something I really thing we want
-> to do) is using it and making it available to the community.
-
-Well, there's one thing that makes the transition very tricky.
-I looked into this while I was still with Novell, because we had
-a request from the Bull folks to include tirpc. If you include
-tirpc, you either have to remove all RPC code from glibc
-at the same time, and fix up all applications linking against
-this code. Downside: no binary compatibility, and the customers
-who paid a lot of money for some commercial app will hate
-you if an OS upgrade requires them to buy new licenses.
-
-The other approach is to make sure that you provide *any*
-RPC related symbol glibc provides, in tirpc as well. Even
-if it does nothing, and just errors out. Otherwise you may end
-up with somebody's application linked against tirpc, but it
-calls some forgotten little function in glibc and falls over.
-This is tricky too.
-
-This is why I had very strong reservations about including
-tirpc in SLES.
-
-I'm wondering whether all that hassle is really worth
-it. There should be a way to IPv6 enable the glibc RPC
-implementation without having to go to TIRPC. Yes,
-Solaris requires rpcbind and such in order to do IPv6.
-But that's not the same as replacing glibc's sunrpc code.
-
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+Regards,=20
+---
+Peter =C3=85strand=09=09ThinLinc Chief Developer
+Cendio AB=09=09http://www.cendio.se
+Teknikringen 3
+583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
+--789237761-1174483803-1177491454=:8489
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--789237761-1174483803-1177491454=:8489
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--789237761-1174483803-1177491454=:8489--
