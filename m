@@ -1,30 +1,16 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Wed, 25 Apr 2007 15:42:14 +0100
-Message-ID: <20070425144214.GB6217@infradead.org>
-References: <17958.48121.280256.493824@notabene.brown>
-	<20070425095826.GA25349@infradead.org>
-	<462F55FE.5020502@RedHat.com>
-	<200704251610.39864.olaf.kirch@oracle.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
+Date: Wed, 25 Apr 2007 08:21:57 -0700
+Message-ID: <OFABDC8A62.05BC8A30-ON882572C8.00541812-882572C8.00545C53@us.ibm.com>
+References: <462F6157.7060604@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Aime.Le-Rouzic@bull.net, Neil Brown <neilb@suse.de>,
-	Steve Dickson <SteveD@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
-To: Olaf Kirch <olaf.kirch@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
+	nfs@lists.sourceforge.net, nfs-bounces@lists.sourceforge.net
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgihE-0005r5-6s
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:42:16 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgihE-0007DY-In
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:42:18 -0700
-In-Reply-To: <200704251610.39864.olaf.kirch@oracle.com>
+In-Reply-To: <462F6157.7060604@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,28 +23,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Apr 25, 2007 at 04:10:37PM +0200, Olaf Kirch wrote:
-> Whatever we do, there needs to be some coordination with
-> the glibc folks. If they don't accept any patches to the sunrpc
-> code in their code base, then we need to talk about a way
-> of transitioning that code out of there.
+nfs-bounces@lists.sourceforge.net wrote on 04/25/2007 07:10:31 AM:
 
-Yes.
+> J. Bruce Fields wrote:
+> > On Thu, Apr 05, 2007 at 05:50:55PM -0400, Wendy Cheng wrote:
+> > 
+> >> 1) Failover server exports filesystem with "fsid" option as:
+> >>     /etc/exports entry> /mnt/shared/exports *(fsid=1234,sync,rw)
+> >> 2) Failover server dispatch rpc.statd with "-H" option.
+> >> 3) Failover server drops locks based on fsid by:
+> >>     shell> echo 1234 > /proc/fs/nfsd/nlm_unlock
+> >> 4) Takeover server enters per fsid grace period by:
+> >>     shell> echo 1234 > /proc/fs/nfsd/nlm_set_igrace
+> >> 5) Takeover server notifies clients for lock reclaim by:
+> >>     shell> /usr/sbin/sm-notify -f -v floating_ip_address -P 
+an_sm_directory
+> >> 
+> >
+> > I don't understand statd and lockd as well as I should.  Where exactly
+> > does the takeover server stop serving requests, and the failover 
+server
+> > start?  If this isn't done carefully, you can leave a window between
+> > steps 3 and 4 where a client could acquire a lock before its rightful
+> > owner reclaims it, right?
+> >
+> > 
+> The detailed overall steps were described in the first email we sent 
+> *long* time (> 6 months, I think) ago. The first step of the whole 
+> process is tearing down the floating IP from the failover server. The IP 
 
-> Isn't there a way to frob symbols so that the loader finds them
-> while hiding them from the linker?
+> is not accessible until filesystem is safely fail-over and SM_NOTIFY 
+> ready to be sent.
 
-The only way to hide symbols seems to adding a new version symbol
-of the same name ontop of it.  Which actually might make some sense
-here by making the new versions stubs while preserving ABI compatiblity
-for any old binary around.  But I suspect third parties would still
-get very upset about this compile-time breakage.
+I thought this is a solution for an active active server where a cluster 
+file system can export the same file system from multiple NFS servers.
+Marc.
 
-Another alternative would be to not mess with the symbols in glibc
-at all but use linker magic to emit a warning that people should use
-librpc instead, similar to how linking any application using getc
-against glibc will get you a warning that it's dangerous and should
-not be used.
+> 
+> Last round of discussion gave me an impression that as long as I rebased 
+
+> the code into akpm's mm tree, these patches would get accepted. So I 
+> have been quite careless in this submission and just realized people 
+> have a very short memory :) .. Will do the write-up and put it somewhere 
+
+> so we don't need to go thru this again.
+> 
+> -- Wendy
+> 
+> 
+> 
+-------------------------------------------------------------------------
+> This SF.net email is sponsored by DB2 Express
+> Download DB2 Express C - the FREE version of DB2 express and take
+> control of your XML. No limits. Just data. Click to get it now.
+> http://sourceforge.net/powerbar/db2/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
