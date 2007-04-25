@@ -1,30 +1,23 @@
-From: Olaf Kirch <olaf.kirch@oracle.com>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Wed, 25 Apr 2007 16:10:37 +0200
-Message-ID: <200704251610.39864.olaf.kirch@oracle.com>
-References: <17958.48121.280256.493824@notabene.brown>
-	<20070425095826.GA25349@infradead.org>
-	<462F55FE.5020502@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
+Date: Wed, 25 Apr 2007 10:18:18 -0400
+Message-ID: <20070425141818.GA14729@fieldses.org>
+References: <46156F3F.3070606@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Aime.Le-Rouzic@bull.net, Neil Brown <neilb@suse.de>,
-	Steve Dickson <SteveD@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
-To: nfs@lists.sourceforge.net
+Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
+	nfs@lists.sourceforge.net
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgiE9-0001dQ-61
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:12:16 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HgiE9-0003U5-AP
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:12:15 -0700
-In-Reply-To: <462F55FE.5020502@RedHat.com>
+	id 1HgiK3-0002V7-KL
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:18:19 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgiK5-0000SC-1D
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:18:22 -0700
+In-Reply-To: <46156F3F.3070606@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,32 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday 25 April 2007 15:22, Steve Dickson wrote:
-> Are there any other alternatives out there???
+On Thu, Apr 05, 2007 at 05:50:55PM -0400, Wendy Cheng wrote:
+> 1) Failover server exports filesystem with "fsid" option as:
+>     /etc/exports entry> /mnt/shared/exports *(fsid=1234,sync,rw)
+> 2) Failover server dispatch rpc.statd with "-H" option.
+> 3) Failover server drops locks based on fsid by:
+>     shell> echo 1234 > /proc/fs/nfsd/nlm_unlock
+> 4) Takeover server enters per fsid grace period by:
+>     shell> echo 1234 > /proc/fs/nfsd/nlm_set_igrace
+> 5) Takeover server notifies clients for lock reclaim by:
+>     shell> /usr/sbin/sm-notify -f -v floating_ip_address -P an_sm_directory
 
-Whatever we do, there needs to be some coordination with
-the glibc folks. If they don't accept any patches to the sunrpc
-code in their code base, then we need to talk about a way
-of transitioning that code out of there.
+I don't understand statd and lockd as well as I should.  Where exactly
+does the takeover server stop serving requests, and the failover server
+start?  If this isn't done carefully, you can leave a window between
+steps 3 and 4 where a client could acquire a lock before its rightful
+owner reclaims it, right?
 
-Isn't there a way to frob symbols so that the loader finds them
-while hiding them from the linker? That would allow us to link
-apps against a new librpc without risk of pulling in symbols from
-glibc, and at the same time maintain binary compatibility in glibc
-runtime. I'm not enough of a toolchain person, but I think stuff like
-that is done routinely.
-
-With that in place, you can decide whether it's easier to
-go to libtirpc and pull in any missing pieces from glibc, or
-whether it's better to start with a copy of the glibc code,
-put it into git somewhere and evolve it from there. I think the
-latter approach makes more sense. Gradual transisitons are
-always preferrable.
-
-Olaf
--- 
-Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
-okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
