@@ -1,24 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
- on a privileged port??
-Date: Wed, 25 Apr 2007 11:44:41 -0400
-Message-ID: <462F7769.4080304@redhat.com>
-References: <17958.48121.280256.493824@notabene.brown>	<462E6812.6040401@RedHat.com>
-	<462E6A54.1010709@redhat.com> <200704251356.35926.okir@lst.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
+Date: Wed, 25 Apr 2007 11:59:19 -0400
+Message-ID: <20070425155919.GA22268@fieldses.org>
+References: <46156F3F.3070606@redhat.com> <20070425141818.GA14729@fieldses.org>
+	<462F6157.7060604@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Olaf Kirch <okir@lst.de>
+Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
+	nfs@lists.sourceforge.net
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hgjfo-0006iF-RS
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:44:52 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hgjfq-0005bC-8c
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:44:55 -0700
-In-Reply-To: <200704251356.35926.okir@lst.de>
+	id 1Hgjto-0000Gh-FV
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:59:20 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hgjtq-0006C5-KW
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:59:23 -0700
+In-Reply-To: <462F6157.7060604@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,29 +32,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Olaf Kirch wrote:
-> On Tuesday 24 April 2007 22:36, Peter Staubach wrote:
->   
->> I don't think that I understand why being bug for bug compatible with
->> the current glibc code is interesting.  This is a new version of the
->>     
->
-> Well, you don't want to re-introduce bugs that have been fixed in
-> glibc ages ago, right? Especially when it comes to security issues
-> and thread safety.
+On Wed, Apr 25, 2007 at 10:10:31AM -0400, Wendy Cheng wrote:
+> The detailed overall steps were described in the first email we sent 
+> *long* time (> 6 months, I think) ago. The first step of the whole 
+> process is tearing down the floating IP from the failover server. The IP 
+> is not accessible until filesystem is safely fail-over and SM_NOTIFY 
+> ready to be sent.
 
-No, clearly, I wouldn't want to do that.  However, I don't believe that
-that is what is meant by "bug for bug compatible".
+I understand, thanks.
 
-It is also a distinct possibility that the folks maintaining the TI-RPC
-code which is in common use may have fixed a few bugs since the Linux
-source bases, either the glibc or tirpc versions, were acquired.  I
-think that it would be good to have those, _plus_ any bugs which may
-already been fixed in the glibc version.  Wouldn't you agree?
+> Last round of discussion gave me an impression that as long as I rebased 
+> the code into akpm's mm tree, these patches would get accepted. So I 
+> have been quite careless in this submission and just realized people 
+> have a very short memory :) .. Will do the write-up and put it somewhere 
+> so we don't need to go thru this again.
 
-    Thanx...
+Yeah, apologies for the short memory.  I'll try to follow more closely
+from now on!
 
-       ps
+If practical, it would be helpful to have any such documentation in the
+final version of the patches, though, either as patch comments or (maybe
+better in this case) as comments in the code or in Documentation/.  When
+someone needs to go back and find out how this was all meant to work,
+it'll be easier to find in the source tree or the git history than in
+the mail archives.
+
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
