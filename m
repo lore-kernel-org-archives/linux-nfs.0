@@ -1,25 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
-Date: Wed, 25 Apr 2007 11:59:19 -0400
-Message-ID: <20070425155919.GA22268@fieldses.org>
-References: <46156F3F.3070606@redhat.com> <20070425141818.GA14729@fieldses.org>
-	<462F6157.7060604@redhat.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [Cluster-devel] Re: [PATCH 0/4 Revised] NLM - lock
+	failover
+Date: Wed, 25 Apr 2007 11:39:24 -0400
+Message-ID: <462F762C.6000106@redhat.com>
+References: <OFABDC8A62.05BC8A30-ON882572C8.00541812-882572C8.00545C53@us.ibm.com>
+	<462F718C.9060201@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net
-To: Wendy Cheng <wcheng@redhat.com>
+To: cluster-devel@redhat.com, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hgjto-0000Gh-FV
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:59:20 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hgjtq-0006C5-KW
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:59:23 -0700
-In-Reply-To: <462F6157.7060604@redhat.com>
+	id 1HgjvB-0000R7-Cu
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 09:00:46 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgjvD-0002q5-Nl
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 09:00:48 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3PG0fNc010104
+	for <nfs@lists.sourceforge.net>; Wed, 25 Apr 2007 12:00:41 -0400
+In-Reply-To: <462F718C.9060201@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,32 +34,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Apr 25, 2007 at 10:10:31AM -0400, Wendy Cheng wrote:
-> The detailed overall steps were described in the first email we sent 
-> *long* time (> 6 months, I think) ago. The first step of the whole 
-> process is tearing down the floating IP from the failover server. The IP 
-> is not accessible until filesystem is safely fail-over and SM_NOTIFY 
-> ready to be sent.
+Wendy Cheng wrote:
+> Marc Eshel wrote:
+>>> The detailed overall steps were described in the first email we sent 
+>>> *long* time (> 6 months, I think) ago. The first step of the whole 
+>>> process is tearing down the floating IP from the failover server. 
+>>> The IP is not accessible until filesystem is safely fail-over and 
+>>> SM_NOTIFY ready to be sent.
+>>
+>> I thought this is a solution for an active active server where a 
+>> cluster file system can export the same file system from multiple NFS 
+>> servers.
+>> Marc.
+>>
+>
+> Yes ... but remember we should have two cases here:
+>
+> 1) Local filesystems such as ext3 - both IP and filesystem are not 
+> accessible during the transition.
+> 2) Cluster filesystem such as GFS or GPFS - filesystem may still be 
+> accessible (depending on the configuration, say you have advertised 
+> two exported IP addresses, each serving different subdirectories for 
+> the very same cluster filesystem). The failover IP should be suspended 
+> during the transition until SM_NOTIFY is ready to go out (but the 
+> other IP should be up and services the requests as it should).
+>
+> I assume people understand that the affected export entries should 
+> have been un-exported (as part of the over-all process).
 
-I understand, thanks.
+To remind people, we had described the overall steps in the first round 
+of kernel interface discussions submitted to nfs mailing list (before 
+implemented the code). These steps included un-export the entries, 
+tearing down the IP, filesystem migration, SM_NOTIFY, grace period, etc. 
+I'm in the middle of redoing the write-up. It will be uploaded into 
+somewhere soon.
 
-> Last round of discussion gave me an impression that as long as I rebased 
-> the code into akpm's mm tree, these patches would get accepted. So I 
-> have been quite careless in this submission and just realized people 
-> have a very short memory :) .. Will do the write-up and put it somewhere 
-> so we don't need to go thru this again.
+-- Wendy
 
-Yeah, apologies for the short memory.  I'll try to follow more closely
-from now on!
-
-If practical, it would be helpful to have any such documentation in the
-final version of the patches, though, either as patch comments or (maybe
-better in this case) as comments in the code or in Documentation/.  When
-someone needs to go back and find out how this was all meant to work,
-it'll be easier to find in the source tree or the git history than in
-the mail archives.
-
---b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
