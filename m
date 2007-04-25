@@ -1,16 +1,24 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 0/4 Revised] NLM - lock failover
-Date: Wed, 25 Apr 2007 11:19:40 -0400
-Message-ID: <462F718C.9060201@redhat.com>
-References: <OFABDC8A62.05BC8A30-ON882572C8.00541812-882572C8.00545C53@us.ibm.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+ on a privileged port??
+Date: Wed, 25 Apr 2007 11:44:41 -0400
+Message-ID: <462F7769.4080304@redhat.com>
+References: <17958.48121.280256.493824@notabene.brown>	<462E6812.6040401@RedHat.com>
+	<462E6A54.1010709@redhat.com> <200704251356.35926.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	cluster-devel@redhat.com, Lon Hohberger <lhh@redhat.com>,
-	nfs@lists.sourceforge.net, nfs-bounces@lists.sourceforge.net
-To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: nfs@lists.sourceforge.net
+To: Olaf Kirch <okir@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <OFABDC8A62.05BC8A30-ON882572C8.00541812-882572C8.00545C53@us.ibm.com>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Hgjfo-0006iF-RS
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:44:52 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hgjfq-0005bC-8c
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 08:44:55 -0700
+In-Reply-To: <200704251356.35926.okir@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -23,36 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Marc Eshel wrote:
->> The detailed overall steps were described in the first email we sent 
->> *long* time (> 6 months, I think) ago. The first step of the whole 
->> process is tearing down the floating IP from the failover server. The IP 
->> is not accessible until filesystem is safely fail-over and SM_NOTIFY 
->> ready to be sent.
+Olaf Kirch wrote:
+> On Tuesday 24 April 2007 22:36, Peter Staubach wrote:
+>   
+>> I don't think that I understand why being bug for bug compatible with
+>> the current glibc code is interesting.  This is a new version of the
 >>     
 >
-> I thought this is a solution for an active active server where a cluster 
-> file system can export the same file system from multiple NFS servers.
-> Marc.
->
->   
+> Well, you don't want to re-introduce bugs that have been fixed in
+> glibc ages ago, right? Especially when it comes to security issues
+> and thread safety.
 
-Yes ... but remember we should have two cases here:
+No, clearly, I wouldn't want to do that.  However, I don't believe that
+that is what is meant by "bug for bug compatible".
 
-1) Local filesystems such as ext3 - both IP and filesystem are not 
-accessible during the transition.
-2) Cluster filesystem such as GFS or GPFS - filesystem may still be 
-accessible (depending on the configuration, say you have advertised two 
-exported IP addresses, each serving different subdirectories for the 
-very same cluster filesystem). The failover IP should be suspended 
-during the transition until SM_NOTIFY is ready to go out (but the other 
-IP should be up and services the requests as it should).
+It is also a distinct possibility that the folks maintaining the TI-RPC
+code which is in common use may have fixed a few bugs since the Linux
+source bases, either the glibc or tirpc versions, were acquired.  I
+think that it would be good to have those, _plus_ any bugs which may
+already been fixed in the glibc version.  Wouldn't you agree?
 
-I assume people understand that the affected export entries should have 
-been un-exported (as part of the over-all process).
+    Thanx...
 
--- Wendy
-
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
