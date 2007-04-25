@@ -1,29 +1,28 @@
 From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
  on a privileged port??
-Date: Wed, 25 Apr 2007 09:22:06 -0400
-Message-ID: <462F55FE.5020502@RedHat.com>
+Date: Wed, 25 Apr 2007 09:39:18 -0400
+Message-ID: <462F5A06.4010200@RedHat.com>
 References: <17958.48121.280256.493824@notabene.brown>
 	<20070424171708.GA7936@infradead.org> <462E43CC.6040806@RedHat.com>
 	<200704251056.03664.olaf.kirch@oracle.com>
-	<20070425095826.GA25349@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Aime.Le-Rouzic@bull.net, Neil Brown <neilb@suse.de>,
+	Aurelien.Charbon@ext.Bull.Net, Christoph Hellwig <hch@infradead.org>,
 	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>,
-	Olaf Kirch <olaf.kirch@oracle.com>, anibal@debian.org
-To: Christoph Hellwig <hch@infradead.org>
+	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
+To: Olaf Kirch <olaf.kirch@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HghRr-0003Xv-CM
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 06:22:19 -0700
+	id 1Hghic-0005VL-FX
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 06:39:38 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HghRs-0004nZ-Kn
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 06:22:21 -0700
-In-Reply-To: <20070425095826.GA25349@infradead.org>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hghie-0001tg-LI
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 06:39:41 -0700
+In-Reply-To: <200704251056.03664.olaf.kirch@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,32 +37,53 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 
-Christoph Hellwig wrote:
-> On Wed, Apr 25, 2007 at 10:56:01AM +0200, Olaf Kirch wrote:
->> I'm wondering whether all that hassle is really worth
->> it. There should be a way to IPv6 enable the glibc RPC
->> implementation without having to go to TIRPC. Yes,
->> Solaris requires rpcbind and such in order to do IPv6.
->> But that's not the same as replacing glibc's sunrpc code.
+Olaf Kirch wrote:
+> On Tuesday 24 April 2007 19:52, Steve Dickson wrote:
+>> In theory yes...  but unfortunately Transport Independent
+>> RPC code is much different than the RPC we have in glibc.
 > 
-> Yepp.  One other thing about tirpc is that it pulls in a lot
-> of TLI crap.  Given that we never implemented TLI on Linux
-> and never will this seems like a lot of useless baggae.
+> Still, there's a whole load of shared code, and this is where
+> I agree with Christoph that it would be foolish to throw away
+> the work that went into the glibc code. 
+Again I can't agree with you more... so lets port over that
+"wisdom" into libtirpc...
+
+
+> I stopped reading the code after an hour, but I think this list could
+> be extended quite a bit.
+Thanks for spending the time!!! I'll make sure each an every
+one of these observations turning into a bug report...
+
 > 
-> (Especially as SUN is backing down a lot on TLI aswell)
-I really don't have any idea what SUN is or is not doing,
-and sure it *might* be possible to simply turn IPv6 in the
-glibc RPC code but its been stated very clearly that will
-not happen because the glibc people no longer want to
-support that code... They have and will continue to
-resit any and all changes...
+>> Again, I realize this code is very raw, but the only way
+>> to bring it up to speed (something I really thing we want
+>> to do) is using it and making it available to the community.
+> 
+> Well, there's one thing that makes the transition very tricky.
+> I looked into this while I was still with Novell, because we had
+> a request from the Bull folks to include tirpc. If you include
+> tirpc, you either have to remove all RPC code from glibc
+> at the same time, and fix up all applications linking against
+> this code. Downside: no binary compatibility, and the customers
+> who paid a lot of money for some commercial app will hate
+> you if an OS upgrade requires them to buy new licenses.
+Removing the RPC code from glibc is not an option. The
+glibc people have made this very clear... So I see the
+libtirpc library as an alternative to people that want
+RPC over IPv6 support... and Yes they will have to recompile
+to take advantage of this support... but I really don't think
+that will be that big of a deal..
 
-So all I'm trying to is instead of beating our heads against
-the glibc wall, I simply trying to go around it with an
-alternative solution and the libtirpc library seems like
-it would be a good alternative...
-
-Are there any other alternatives out there???
+> 
+> The other approach is to make sure that you provide *any*
+> RPC related symbol glibc provides, in tirpc as well. Even
+> if it does nothing, and just errors out. Otherwise you may end
+> up with somebody's application linked against tirpc, but it
+> calls some forgotten little function in glibc and falls over.
+> This is tricky too.
+Again... libtirpc is not replacing the glibc code. People
+will have to explicitly link with the tirpc... Will there
+be porting issues... yes... aren't there always?
 
 steved.
 
