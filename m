@@ -1,28 +1,30 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Olaf Kirch <olaf.kirch@oracle.com>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
- on a privileged port??
-Date: Wed, 25 Apr 2007 09:39:18 -0400
-Message-ID: <462F5A06.4010200@RedHat.com>
+	on a privileged port??
+Date: Wed, 25 Apr 2007 16:10:37 +0200
+Message-ID: <200704251610.39864.olaf.kirch@oracle.com>
 References: <17958.48121.280256.493824@notabene.brown>
-	<20070424171708.GA7936@infradead.org> <462E43CC.6040806@RedHat.com>
-	<200704251056.03664.olaf.kirch@oracle.com>
+	<20070425095826.GA25349@infradead.org>
+	<462F55FE.5020502@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Aime.Le-Rouzic@bull.net, Neil Brown <neilb@suse.de>,
-	Aurelien.Charbon@ext.Bull.Net, Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
+	Steve Dickson <SteveD@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthias Koenig <mkoenig@novell.com>,
 	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
-To: Olaf Kirch <olaf.kirch@oracle.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hghic-0005VL-FX
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 06:39:38 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hghie-0001tg-LI
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 06:39:41 -0700
-In-Reply-To: <200704251056.03664.olaf.kirch@oracle.com>
+	id 1HgiE9-0001dQ-61
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:12:16 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HgiE9-0003U5-AP
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 07:12:15 -0700
+In-Reply-To: <462F55FE.5020502@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,57 +37,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Wednesday 25 April 2007 15:22, Steve Dickson wrote:
+> Are there any other alternatives out there???
 
+Whatever we do, there needs to be some coordination with
+the glibc folks. If they don't accept any patches to the sunrpc
+code in their code base, then we need to talk about a way
+of transitioning that code out of there.
 
-Olaf Kirch wrote:
-> On Tuesday 24 April 2007 19:52, Steve Dickson wrote:
->> In theory yes...  but unfortunately Transport Independent
->> RPC code is much different than the RPC we have in glibc.
-> 
-> Still, there's a whole load of shared code, and this is where
-> I agree with Christoph that it would be foolish to throw away
-> the work that went into the glibc code. 
-Again I can't agree with you more... so lets port over that
-"wisdom" into libtirpc...
+Isn't there a way to frob symbols so that the loader finds them
+while hiding them from the linker? That would allow us to link
+apps against a new librpc without risk of pulling in symbols from
+glibc, and at the same time maintain binary compatibility in glibc
+runtime. I'm not enough of a toolchain person, but I think stuff like
+that is done routinely.
 
+With that in place, you can decide whether it's easier to
+go to libtirpc and pull in any missing pieces from glibc, or
+whether it's better to start with a copy of the glibc code,
+put it into git somewhere and evolve it from there. I think the
+latter approach makes more sense. Gradual transisitons are
+always preferrable.
 
-> I stopped reading the code after an hour, but I think this list could
-> be extended quite a bit.
-Thanks for spending the time!!! I'll make sure each an every
-one of these observations turning into a bug report...
-
-> 
->> Again, I realize this code is very raw, but the only way
->> to bring it up to speed (something I really thing we want
->> to do) is using it and making it available to the community.
-> 
-> Well, there's one thing that makes the transition very tricky.
-> I looked into this while I was still with Novell, because we had
-> a request from the Bull folks to include tirpc. If you include
-> tirpc, you either have to remove all RPC code from glibc
-> at the same time, and fix up all applications linking against
-> this code. Downside: no binary compatibility, and the customers
-> who paid a lot of money for some commercial app will hate
-> you if an OS upgrade requires them to buy new licenses.
-Removing the RPC code from glibc is not an option. The
-glibc people have made this very clear... So I see the
-libtirpc library as an alternative to people that want
-RPC over IPv6 support... and Yes they will have to recompile
-to take advantage of this support... but I really don't think
-that will be that big of a deal..
-
-> 
-> The other approach is to make sure that you provide *any*
-> RPC related symbol glibc provides, in tirpc as well. Even
-> if it does nothing, and just errors out. Otherwise you may end
-> up with somebody's application linked against tirpc, but it
-> calls some forgotten little function in glibc and falls over.
-> This is tricky too.
-Again... libtirpc is not replacing the glibc code. People
-will have to explicitly link with the tirpc... Will there
-be porting issues... yes... aren't there always?
-
-steved.
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
