@@ -1,36 +1,24 @@
-From: Fabio Olive Leite <fleite@redhat.com>
-Subject: time_after cannot be used alone by NFS code in 32bit
-	architectures
-Date: Thu, 26 Apr 2007 01:33:44 -0300
-Message-ID: <20070426043344.GO10449@sleipnir.redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfs-utils: make auth_reload respect
+	sub-second	timestamps	on etab
+Date: Thu, 26 Apr 2007 14:50:34 +1000
+Message-ID: <17968.12186.298789.226396@notabene.brown>
+References: <20070425173918.GB6696@salusa.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="GID0FwUMdk1T2AWN"
-To: linux-nfs <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hgvfs-00086x-G6
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:33:44 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hgvfu-000207-Kx
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:33:47 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3Q4Xjfi024953
-	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 00:33:45 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3Q4XjP8012197
-	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 00:33:45 -0400
-Received: from sleipnir.redhat.com (vpn-14-22.rdu.redhat.com [10.11.14.22])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3Q4XgAO006295
-	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 00:33:43 -0400
-Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
-	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l3Q4Xjv3005676
-	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 01:33:46 -0300
-Received: (from fleite@localhost)
-	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l3Q4XifY005675
-	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 01:33:44 -0300
+	id 1HgvwT-0001G7-6A
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:50:53 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HgvwV-0007Wy-8J
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:50:55 -0700
+In-Reply-To: message from Jeff Layton on Wednesday April 25
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,225 +31,189 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Wednesday April 25, jlayton@redhat.com wrote:
 
---GID0FwUMdk1T2AWN
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Hi Jeff,
 
-Hi nfs@,
+> Currently, when auth_reload is called, it only looks at the tv_sec field
+> of the mtime when deciding whether to invalidate the exports cache. It's
+> fairly simple to fool this by doing something like:
+> 
+> # exportfs -rv && rpc.mountd && exportfs -uva && exportfs -iv -o no_root_squash,rw 127.0.0.1:/foo
 
-This is going to be tough, so bear with me for a while. :)
+Yes... real problem.  Not sure I like your solution.
+It obviously helps but it isn't complete (e.g. if filesystem only has
+1-second resolution) and I think we can do better.
 
-While I was trying to understand the effects of wrapping jiffies in
-the various timestamp comparisons the NFS code does among its data
-structures, I was struck by cases where the code flow just did not
-make sense (checking with nfs_debug set to 32767 and additional
-systemtap scripts to extract debug info), considering the jiffy
-timestamps involved. This is the investigation that ensued.
+You can trade performance for accuracy by checking the current time as
+well.
+Something like:
 
-time_after and friends provide a very clever way to compare two jiffy
-counts when those two counts are close together, and indeed does
-provide sign flip resistance, when the two values are close together.
-So it is ideal for short-lived timers and timeouts, since one would be
-usually comparing values a few thousands or even millions apart.
+   now = time(0);
+   stat(_PATH_ETAB, &stb);
 
-But unfortunately for the NFS code, time_after and friends alone are
-not well suited if we're just comparing jiffy counts taken at random
-times in the past instead of at moments close together. Exactly the
-protection against sign flips backfires when comparing timestamps over
-2 billion counts apart.
+   if (stb.st_mtime < last_loaded)
+	return;
+   last_loaded = now;
+   // read file.
 
-The NFS data structures can easily be left idle for over 2 billion
-jiffies, which is about 25 days with an HZ of 1000. So consider a
-file's nfs_fattr data has a timestamp of 0x3fffffff. About 25 days
-later this file is accessed again, and the new attributes from the
-server get tagged with a timestamp of 0xc0000000. Those new attributes
-are clearly newer than what we had before, yet
-time_after(0xc0000000,0x3fffffff) returns 0, and the older attributes
-remain in use. Yes, those values are corner cases, but they are
-actually just the limits of a range of values with similar behavior.
+That way if the file gets changed, we then read the file every time we
+want information until the second changes.  Then we read it once
+more and hold on to that copy.
+This might mean we read it several times in one second when only one
+update was made, but at least it means we never miss an update.
 
-The ascii chart below shows that the sign flip protection of
-time_after extends to a lot more than what we'd like for the NFS
-timestamp comparisons.
+Of course if the filesystem does provide better resolution, we should
+use that, but we can only use it if we know that the resolution is -
+and I don't think it is easy to extract that information.
 
-t      b  0 0 0 3 4 7 7 7 8 8 8 b c f f f
- i        0 0 0 f 0 f f f 0 0 0 f 0 f f f
-  m       0 0 0 f 0 f f f 0 0 0 f 0 f f f
-   e      0 0 0 f 0 f f f 0 0 0 f 0 f f f
-    _     0 0 0 f 0 f f f 0 0 0 f 0 f f f
-     a    0 0 0 f 0 f f f 0 0 0 f 0 f f f
-      f   0 0 0 f 0 f f f 0 0 0 f 0 f f f
-a      t  0 1 2 f 0 d e f 0 1 2 f 0 d e f
+But! We can get some hints from 'atime'.  I think it safe to assume
+that the resolution of atime is the same as that of ctime. so maybe
+something like:
 
-00000000  0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1=20
-00000001  1 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1=20
-00000002  1 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1=20
-3fffffff  1 1 1 0 0 0 0 0 0 0 0 1 1 1 1 1=20
-40000000  1 1 1 1 0 0 0 0 0 0 0 0 1 1 1 1=20
-7ffffffd  1 1 1 1 1 0 0 0 0 0 0 0 0 1 1 1=20
-7ffffffe  1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 1=20
-7fffffff  1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 1=20
-80000000  1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0=20
-80000001  0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0=20
-80000002  0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0=20
-bfffffff  0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0=20
-c0000000  0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0=20
-fffffffd  0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0=20
-fffffffe  0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0=20
-ffffffff  0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0=20
+    stat(_PATH_ETAB, &stb);
+    if (tspec_cmp(last_loaded, stb.st_mtim) < 0)
+		return;
+    last_loaded = stb.st_atim;
 
-This leads to several problematic situations in long-lived NFS mounts.
-We can see old attributes not being updated, negative dentries that do
-not revalidate even after touching their parent dir, etc.
+(excuse the pseudo-code.  Assume tspec_cmp compares struct timespec
+ with return value similar to strcmp).
 
-So something more robust is needed when comparing two timestamps in
-NFS data structures, or we should convert the code to use 64bit
-jiffies everywhere, even on 32bit architectures. This probably affects
-many other things in the rest of the kernel, but I don't think many
-other data structures are as long-lived as the NFS ones.
+Here, 'last_loaded' represents a time period of a size which matches
+the time-resolution of the filesystem.  We know that time period ends
+after the last time the file was modified, and it begins before the
+last time we read the file.
+If it is after the time-period when the file was change, we don't need
+to read the file again, otherwise we do.
 
-Attached are two small programs to help understand the issue, one that
-generates the matrix above, the other being a simple time_after
-calculator for checking specific values. Compile and run on 32bit
-boxes, of course.
+Now if the filesystem as mounted with noatime, this will leave us
+always re-reading the file, so we need to assume a minimum resolution
+of 1 second, and if atime < now, update atime to equal now.
 
-Although this sounds like the perfect push for using autofs, I'm sure
-long-lived (over 100 days, allowing for two rounds of u32 jiffies and
-timestamps all over the place) NFS mounts on 32bit architectures will
-still be very common for a long time. :)
+And if the system clock was pushed back substantially, we would not
+read the file until after it had caught up again, so we better leave the
+"== last_modified" test in there.
 
-Comments? I'd love to be proved wrong, as right now I'm very scared.
 
-Regards,
-F=E1bio
---=20
-ex sed lex awk yacc, e pluribus unix, amem
+Or maybe we could just note that 'exportfs' always replaced the file
+when it updates it, and just check to see if the inode number is
+different... though inode number re-use will defeat that (ext3
+alternated between two) and we don't have access to a generation
+number... better stick with time stamps.
 
---GID0FwUMdk1T2AWN
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="time_after_matrix.c"
+So I would like the propose the following enhancement of your patch.
 
-#include <stdio.h>
+Do you agree?
 
-#define typecheck(type,x) \
-({      type __dummy; \
-        typeof(x) __dummy2; \
-        (void)(&__dummy == &__dummy2); \
-        1; \
-})
+Thanks,
+NeilBrown
 
-#define time_after(a,b)         \
-        (typecheck(unsigned long, a) && \
-         typecheck(unsigned long, b) && \
-         ((long)(b) - (long)(a) < 0))
-#define time_before(a,b)        time_after(b,a)
-
-#define time_after_eq(a,b)      \
-        (typecheck(unsigned long, a) && \
-         typecheck(unsigned long, b) && \
-         ((long)(a) - (long)(b) >= 0))
-#define time_before_eq(a,b)     time_after_eq(b,a)
-
-int main() {
-	unsigned long i, j;
-	unsigned long values[] = {
-		0x00000000,
-		0x00000001,
-		0x00000002,
-		0x3fffffff,
-		0x40000000,
-		0x7ffffffd,
-		0x7ffffffe,
-		0x7fffffff,
-		0x80000000,
-		0x80000001,
-		0x80000002,
-		0xbfffffff,
-		0xc0000000,
-		0xfffffffd,
-		0xfffffffe,
-		0xffffffff
-	};
-
-	/* Lame! =) */
-	printf("t      b  0 0 0 3 4 7 7 7 8 8 8 b c f f f\n");
-	printf(" i        0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
-	printf("  m       0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
-	printf("   e      0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
-	printf("    _     0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
-	printf("     a    0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
-	printf("      f   0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
-	printf("a      t  0 1 2 f 0 d e f 0 1 2 f 0 d e f\n");
-	printf("\n");
-
-	for (i = 0; i < 16; i++) {
-		printf("%08lx  ", values[i]);
-		for (j = 0; j < 16; j++) {
-			printf("%d ", time_after(values[i],values[j]));
-		}
-		printf("\n");
-	}
-
-	return 0;
-}
-
---GID0FwUMdk1T2AWN
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="time_after_calc.c"
-
-#include <stdio.h>
-
-#define typecheck(type,x) \
-({      type __dummy; \
-        typeof(x) __dummy2; \
-        (void)(&__dummy == &__dummy2); \
-        1; \
-})
-
-#define time_after(a,b)         \
-        (typecheck(unsigned long, a) && \
-         typecheck(unsigned long, b) && \
-         ((long)(b) - (long)(a) < 0))
-#define time_before(a,b)        time_after(b,a)
-
-#define time_after_eq(a,b)      \
-        (typecheck(unsigned long, a) && \
-         typecheck(unsigned long, b) && \
-         ((long)(a) - (long)(b) >= 0))
-#define time_before_eq(a,b)     time_after_eq(b,a)
-
-int main() {
-	unsigned long a, b;
-
-	printf("Type in series of two space-separated hex values, ^D to end.\n");
-
-	while (scanf("%lx %lx", &a, &b) == 2)
-		printf("time_after(%lx,%lx) == %d\n", a, b, time_after(a,b));
-
-	return 0;
-}
-
---GID0FwUMdk1T2AWN
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 183c9ea..7c99ee3 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -46,24 +46,44 @@ auth_init(char *exports)
+ 	xtab_mount_write();
+ }
+ 
+-time_t
++struct timespec
+ auth_reload()
+ {
++	/* "load_loaded" is an estimate of the last time we
++	 * read the file, and importantly has the same resolution as
++	 * the filesystem stores timestamps in.  We only avoid reading
++	 * if last_loaded is certain to be after the last time the file
++	 * was modified.
++	 * "last_modified" is used to guard against the system clock being
++	 * set back, which would confuse the last_loaded calculations.
++	 */
+ 	struct stat		stb;
+-	static time_t		last_modified = 0;
++	static struct timespec	last_modified;
++	static struct timespec	last_loaded;
++	time_t			now = time(0);
+ 
+ 	if (stat(_PATH_ETAB, &stb) < 0)
+ 		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+-	if (stb.st_mtime == last_modified)
+-		return last_modified;
+-	last_modified = stb.st_mtime;
++
++	if (timespec_cmp(&stb.st_mtim, &last_loaded) < 0 &&
++	    timespec_cmp(&stb.st_mtim, &last_modified) == 0)
++		return last_loaded;
++
++	last_loaded = stb.st_atim;
++	last_modified = stb.st_mtim;
++
++	/* careful of -o noatime */
++	if (last_loaded.tv_sec < now) {
++		last_loaded.tv_sec = now;
++		last_loaded.tv_nsec = 0;
++	}
+ 
+ 	export_freeall();
+ 	memset(&my_client, 0, sizeof(my_client));
+ 	// export_read(export_file);
+ 	xtab_export_read();
+ 
+-	return last_modified;
++	return last_loaded;
+ }
+ 
+ static nfs_export *
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 04141d1..c16f344 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -465,15 +465,15 @@ static exports
+ get_exportlist(void)
+ {
+ 	static exports		elist = NULL;
+-	static time_t		etime = 0;
+-	time_t			atime;
++	static struct timespec	etime;
++	struct timespec		atime;
+ 	struct exportnode	*e, *ne;
+ 	struct groupnode	*g, *ng, *c, **cp;
+ 	nfs_export		*exp;
+ 	int			i;
+ 
+ 	atime = auth_reload();
+-	if (elist && atime == etime)
++	if (elist && timespec_cmp(&atime, &etime) == 0)
+ 		return elist;
+ 
+ 	etime = atime;
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index b539278..3a780fa 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -40,7 +40,16 @@ bool_t		mount_mnt_3_svc(struct svc_req *, dirpath *, mountres3 *);
+ 
+ void		mount_dispatch(struct svc_req *, SVCXPRT *);
+ void		auth_init(char *export_file);
+-time_t		auth_reload(void);
++
++static inline long int timespec_cmp(struct timespec *t1, struct timespec *t2)
++{
++	if (t1->tv_sec == t2->tv_sec)
++		return t1->tv_nsec - t2->tv_nsec;
++	else
++		return t1->tv_sec - t2->tv_sec;
++}
++
++struct timespec	auth_reload(void);
+ nfs_export *	auth_authenticate(char *what, struct sockaddr_in *sin,
+ 					char *path);
+ void		auth_export(nfs_export *exp);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---GID0FwUMdk1T2AWN
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---GID0FwUMdk1T2AWN--
