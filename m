@@ -1,99 +1,74 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 01/33] knfsd: Use a spinlock to protect sk_info_authunix
-Date: Thu, 26 Apr 2007 09:54:58 -0700
-Message-ID: <20070426165458.GB1898@kroah.com>
-References: <20070426165111.393445007@mini.kroah.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] nfs-utils: make auth_reload respect
+	sub-second	timestamps on etab
+Date: Thu, 26 Apr 2007 13:00:56 -0400
+Message-ID: <20070426170055.GA30402@dantu.rdu.redhat.com>
+References: <20070425173918.GB6696@salusa.poochiereds.net>
+	<20070425180932.GC6696@salusa.poochiereds.net>
+	<20070425201354.GD6696@salusa.poochiereds.net>
+	<462FC850.7040600@oracle.com>
+	<17968.12554.934818.359167@notabene.brown>
+	<20070426120536.GB24800@dantu.rdu.redhat.com>
+	<20070426162300.GA12193@salusa.poochiereds.net>
+	<20070426165800.GC4875@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	torvalds@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	Gabriel Barazer <gabriel@oxeva.fr>, nfs@lists.sourceforge.net,
-	Greg Banks <gnb@melbourne.sgi.com>, Neil Brown <neilb@suse.de>
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754862AbXDZQ6J@vger.kernel.org>
-In-Reply-To: <20070426165445.GA1898@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Hh7LE-00059Q-Ng
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 10:01:12 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hh7LG-0006Tq-6O
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 10:01:15 -0700
+In-Reply-To: <20070426165800.GC4875@fieldses.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
--stable review patch.  If anyone has any objections, please let us know.
+On Thu, Apr 26, 2007 at 12:58:00PM -0400, J. Bruce Fields wrote:
+> On Thu, Apr 26, 2007 at 12:23:04PM -0400, Jeff Layton wrote:
+> > I've had a look at this, and even took a pretty broad swipe at doing it. The
+> > issue here is that a lot of the existing code is not well geared toward having
+> > an already-open filehandle that gets passed around. Changing this is going to
+> > mean a pretty invasive patch that adds quite a few new functions. I don't feel
+> > confident that this method has enough advantages over your earlier patch to
+> > make this worthwhile.
+> > 
+> > Neil, what do you think? Should I continue down this road, or should we just
+> > go with what you've already written?
+> 
+> Wouldn't you get the same benefit just by storing (and comparing) the
+> inode number and mtime of etab, instead of just the mtime?
+> 
+> --b.
 
-------------------
-From: NeilBrown <neilb@suse.de>
+Not if the inode number is reused. That can occur on some filesystems if
+nothing is holding it open. Then again, if we're opening a new file and
+renaming it to the old name, then that might not be an issue here. Let me
+play with that idea and see...
 
-sk_info_authunix is not being protected properly so the object that
-it points to can be cache_put twice, leading to corruption.
+-- Jeff
 
-We borrow svsk->sk_defer_lock to provide the protection.  We should probably
-rename that lock to have a more generic name - later.
 
-Thanks to Gabriel for reporting this.
 
-Cc: Greg Banks <gnb@melbourne.sgi.com>
-Cc: Gabriel Barazer <gabriel@oxeva.fr>
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- net/sunrpc/svcauth_unix.c |   21 ++++++++++++++++-----
- 1 file changed, 16 insertions(+), 5 deletions(-)
-
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -383,7 +383,10 @@ void svcauth_unix_purge(void)
- static inline struct ip_map *
- ip_map_cached_get(struct svc_rqst *rqstp)
- {
--	struct ip_map *ipm = rqstp->rq_sock->sk_info_authunix;
-+	struct ip_map *ipm;
-+	struct svc_sock *svsk = rqstp->rq_sock;
-+	spin_lock_bh(&svsk->sk_defer_lock);
-+	ipm = svsk->sk_info_authunix;
- 	if (ipm != NULL) {
- 		if (!cache_valid(&ipm->h)) {
- 			/*
-@@ -391,12 +394,14 @@ ip_map_cached_get(struct svc_rqst *rqstp
- 			 * remembered, e.g. by a second mount from the
- 			 * same IP address.
- 			 */
--			rqstp->rq_sock->sk_info_authunix = NULL;
-+			svsk->sk_info_authunix = NULL;
-+			spin_unlock_bh(&svsk->sk_defer_lock);
- 			cache_put(&ipm->h, &ip_map_cache);
- 			return NULL;
- 		}
- 		cache_get(&ipm->h);
- 	}
-+	spin_unlock_bh(&svsk->sk_defer_lock);
- 	return ipm;
- }
- 
-@@ -405,9 +410,15 @@ ip_map_cached_put(struct svc_rqst *rqstp
- {
- 	struct svc_sock *svsk = rqstp->rq_sock;
- 
--	if (svsk->sk_sock->type == SOCK_STREAM && svsk->sk_info_authunix == NULL)
--		svsk->sk_info_authunix = ipm;	/* newly cached, keep the reference */
--	else
-+	spin_lock_bh(&svsk->sk_defer_lock);
-+	if (svsk->sk_sock->type == SOCK_STREAM &&
-+	    svsk->sk_info_authunix == NULL) {
-+		/* newly cached, keep the reference */
-+		svsk->sk_info_authunix = ipm;
-+		ipm = NULL;
-+	}
-+	spin_unlock_bh(&svsk->sk_defer_lock);
-+	if (ipm)
- 		cache_put(&ipm->h, &ip_map_cache);
- }
- 
-
--- 
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
