@@ -1,28 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfs-utils: make auth_reload respect	sub-second
-	timestamps on etab
-Date: Thu, 26 Apr 2007 08:35:11 -0400
-Message-ID: <20070426123511.GA453@fieldses.org>
-References: <20070425173918.GB6696@salusa.poochiereds.net>
-	<20070425180932.GC6696@salusa.poochiereds.net>
-	<20070425201354.GD6696@salusa.poochiereds.net>
-	<462FC850.7040600@oracle.com>
-	<17968.12554.934818.359167@notabene.brown>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+ on a privileged port??
+Date: Thu, 26 Apr 2007 09:03:42 -0400
+Message-ID: <4630A32E.6000006@redhat.com>
+References: <17958.48121.280256.493824@notabene.brown>
+	<200704252214.03069.okir@lst.de>
+	<17968.18279.424773.589417@notabene.brown>
+	<200704261059.50688.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Olaf Kirch <okir@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hh3Bq-0006oU-VO
-	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 05:35:15 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hh3Bs-0006Hg-B9
-	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 05:35:17 -0700
-In-Reply-To: <17968.12554.934818.359167@notabene.brown>
+	id 1Hh3dU-0001Jh-Ii
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 06:03:48 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hh3dV-0005JB-Mj
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 06:03:51 -0700
+In-Reply-To: <200704261059.50688.okir@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,25 +33,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Apr 26, 2007 at 02:56:42PM +1000, Neil Brown wrote:
-> Actually, mountd could open etab and hold it open. auth_reload could
-> stat "/var/lib/nfs/etab" and if it is a different file, then the
-> content is presumably different, while if it is the same file, we can
-> be certain the content is unchanged.
-> 
-> Further, we would be certain only to read each version once - zero
-> risk of re-parsing data when there is no change.
-> 
-> That might be an even better option .... anyone want to code it up??
-> 
-> Or is it wrong to depend on current exportfs behaviour?
+Olaf Kirch wrote:
+> On Thursday 26 April 2007 08:32, Neil Brown wrote:
+>   
+>> Following this logic, should we add rpcbind functionality to portmap
+>> rather than throw it out and start with something less known???
+>>     
+>
+> I'm not sure. The rpcbind code isn't exactly pretty, but neither is
+> portmap.
+>
+> Anyway, I guess in order to prove my point about the sunrpc library
+> I should cough up some code to prove it can be done. I'll be uploading
+> some patches later tonight or tomorrow.
+>   
 
-Would it be worth continuing to check the mtime as well, at least for a
-transitional period?  (And if we see the file modified without being
-replaced, we could emit a warning asking the user to notify us how that
-happened.)
+Before we go too far down the road of ignoring all of the work that
+the engineers at Sun have been doing on the RPC library, is there a
+way of getting a newer version of the RPC support to start with?  The
+current stuff is quite old.
 
---b.
+    Thanx...
+
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
