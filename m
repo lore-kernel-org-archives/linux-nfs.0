@@ -1,52 +1,58 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 000 of 3] knfsd: Resolve IPv6 related link error
-Date: Fri, 2 Mar 2007 15:28:19 +1100
-Message-ID: <20070302151748.5226.patches@notabene>
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <netdev-owner@vger.kernel.org>
-Cc: netdev@vger.kernel.org
-Sender: netdev-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Olaf Kirch <okir@lst.de>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+	on a privileged port??
+Date: Thu, 26 Apr 2007 10:59:49 +0200
+Message-ID: <200704261059.50688.okir@lst.de>
+References: <17958.48121.280256.493824@notabene.brown>
+	<200704252214.03069.okir@lst.de>
+	<17968.18279.424773.589417@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Hgzpd-0001cn-GB
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 02:00:05 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hgzpd-0001DC-Mz
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 02:00:08 -0700
+In-Reply-To: <17968.18279.424773.589417@notabene.brown>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Current mainline has a compile linkage problem if both
-  CONFIG_IPV6=m
-  CONFIG_SUNRPC=y
+On Thursday 26 April 2007 08:32, Neil Brown wrote:
+> Following this logic, should we add rpcbind functionality to portmap
+> rather than throw it out and start with something less known???
 
-because net/sunrpc/svcsock.c conditionally used a function defined in the IPv6 module.
+I'm not sure. The rpcbind code isn't exactly pretty, but neither is
+portmap.
 
-These three patches resolve the issue.
+Anyway, I guess in order to prove my point about the sunrpc library
+I should cough up some code to prove it can be done. I'll be uploading
+some patches later tonight or tomorrow.
 
-The problem is caused because svcsock needs to get the source and
-destination address for a udp packet, but doesn't want to just use
-sock_recvmsg like userspace would as it wants to be able to use the
-data directly out of the skbuff rather than copying it (when practical).
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
-Currently it copies code from udp.c (both ipv4/ and ipv6/) and this
-causes the problem.
-
-This patch changes it to use kernel_recvmsg with a length of 0 and
-flags of MSG_PEEK to get the addresses but leave the data untouched.
-
-A small problem here is that kernel_recvmsg always checks the
-checksum, so in the case of a large packet we will check the checksum
-at a different time to when we copy it out into a buffer, which is not ideal.
-
-So the second patch of this series avoids the check when recv_msg is
-called with size==0 and flags==MSG_PEEK.  This change should be acked
-by someone on netdev before going upsteam!!!  The rest of the series
-is still appropriate without the patch, it is just a small
-optimisation.
-
-Finally the last patch removes all the
-  #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-from sunrpc as it really isn't needed and just hides this sort of problem.
-
-Patches 1 and 3 are suitable for 2.6.21.  Patch 2 needs confirmation.
-
-Thanks,
-NeilBrown
-
- [PATCH 001 of 3] knfsd: Use recv_msg to get peer address for NFSD instead of code-copying
- [PATCH 002 of 3] knfsd: Avoid checksum checks when collecting metadata for a UDP packet.
- [PATCH 003 of 3] knfsd: Remove CONFIG_IPV6 ifdefs from sunrpc server code.
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
