@@ -1,23 +1,26 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: time_after cannot be used alone by NFS code in
-	32bit	architectures
-Date: Thu, 26 Apr 2007 16:13:30 +1000
-Message-ID: <17968.17162.171856.702874@notabene.brown>
-References: <20070426043344.GO10449@sleipnir.redhat.com>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to
+	listen	on a privileged port??
+Date: Thu, 26 Apr 2007 16:32:07 +1000
+Message-ID: <17968.18279.424773.589417@notabene.brown>
+References: <17958.48121.280256.493824@notabene.brown>
+	<200704251356.35926.okir@lst.de> <462F7769.4080304@redhat.com>
+	<200704252214.03069.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs <nfs@lists.sourceforge.net>
-To: Fabio Olive Leite <fleite@redhat.com>
+Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
+To: Olaf Kirch <okir@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgxEh-0001E0-Hb
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 23:13:47 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgxEi-00082P-Kv
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 23:13:50 -0700
-In-Reply-To: message from Fabio Olive Leite on Thursday April 26
+	id 1HgxWi-0003FM-4i
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 23:32:24 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HgxWj-0006YK-9w
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 23:32:26 -0700
+In-Reply-To: message from Olaf Kirch on Wednesday April 25
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,59 +33,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday April 26, fleite@redhat.com wrote:
-> Hi nfs@,
+On Wednesday April 25, okir@lst.de wrote:
 > 
-> This is going to be tough, so bear with me for a while. :)
+> I don't say tirpc is bad. What I say is, it's better to handle this the way
+> we deal with changes to the kernel: start with what you have, and
+> which you know works well. Add to it, until you have the functionality
+> you want. On the way, you may find out there's better ways of
+> solving things that you anticipated. If you run into sudden problems,
+> you can bisect.
 > 
-> While I was trying to understand the effects of wrapping jiffies in
-> the various timestamp comparisons the NFS code does among its data
-> structures, I was struck by cases where the code flow just did not
-> make sense (checking with nfs_debug set to 32767 and additional
-> systemtap scripts to extract debug info), considering the jiffy
-> timestamps involved. This is the investigation that ensued.
-> 
-> time_after and friends provide a very clever way to compare two jiffy
-> counts when those two counts are close together, and indeed does
-> provide sign flip resistance, when the two values are close together.
-> So it is ideal for short-lived timers and timeouts, since one would be
-> usually comparing values a few thousands or even millions apart.
-> 
-> But unfortunately for the NFS code, time_after and friends alone are
-> not well suited if we're just comparing jiffy counts taken at random
-> times in the past instead of at moments close together. Exactly the
-> protection against sign flips backfires when comparing timestamps over
-> 2 billion counts apart.
 
-Having found and fixed one issue with jiffie wrap recently (after 24
-days, some web servers using NFS to access static content started
-generating much higher levels of GETATTR requests), I understand the
-possible problems, and agree that there could be issues.
+Following this logic, should we add rpcbind functionality to portmap
+rather than throw it out and start with something less known???
 
-However when I went looking to see if there could be other issues with
-jiffie wrapping, my cursory look suggested not.  Most data structures
-(inodes, dentries) that are completely unused for 24 days are
-extremely likely to get flushed out of cache (there will be something
-else that wants the memory) and anything that is used will get
-timestamps refreshed regularly based on the attribute timeout in nfs
-(which is usually less than one minute).
-
-So I think this is only likely to be a problem for timestamps that do
-not get refreshed in the general running on NFS.
-
-One example is nfsi->cache_change_attribute.  If a file is unmodified
-for 24 days, that can wrap, but there is now a fix for this in place.
-Commit 3e7d950a528454ad749a264feef3c8bad3faa108 in Linus' git tree.
-
-You seem to have found an identical issue with directories.
-Presumably a similar fix can be used there.
-
-Are you aware of any other jiffie-based timestamps that can actually
-overflow before they are purged from memory or refreshed?
-
-It is possible that 'cache_change_attribute' should be switch to a
-64bit jiffie counter, but I don't think the problem is more general
-than that.
+I'd have to read up more on rpcbind before I could have an opinion on
+that.
 
 NeilBrown
 
