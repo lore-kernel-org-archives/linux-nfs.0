@@ -1,24 +1,36 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
-Date: Thu, 26 Apr 2007 00:35:13 -0400
-Message-ID: <46302C01.2060500@redhat.com>
-References: <46156F3F.3070606@redhat.com>	<4625204D.1030509@redhat.com>	<17959.5245.635902.823441@notabene.brown>	<462D79F0.4060800@redhat.com>
-	<17965.39683.396108.623418@notabene.brown>
-Reply-To: wcheng@redhat.com
+From: Fabio Olive Leite <fleite@redhat.com>
+Subject: time_after cannot be used alone by NFS code in 32bit
+	architectures
+Date: Thu, 26 Apr 2007 01:33:44 -0300
+Message-ID: <20070426043344.GO10449@sleipnir.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="GID0FwUMdk1T2AWN"
+To: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HgvXA-0007MR-1u
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:25:03 -0700
+	id 1Hgvfs-00086x-G6
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:33:44 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HgvXC-0001RW-8x
-	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:24:46 -0700
-In-Reply-To: <17965.39683.396108.623418@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hgvfu-000207-Kx
+	for nfs@lists.sourceforge.net; Wed, 25 Apr 2007 21:33:47 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l3Q4Xjfi024953
+	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 00:33:45 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3Q4XjP8012197
+	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 00:33:45 -0400
+Received: from sleipnir.redhat.com (vpn-14-22.rdu.redhat.com [10.11.14.22])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l3Q4XgAO006295
+	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 00:33:43 -0400
+Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l3Q4Xjv3005676
+	for <nfs@lists.sourceforge.net>; Thu, 26 Apr 2007 01:33:46 -0300
+Received: (from fleite@localhost)
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l3Q4XifY005675
+	for nfs@lists.sourceforge.net; Thu, 26 Apr 2007 01:33:44 -0300
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,129 +43,225 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil Brown wrote:
 
->On Monday April 23, wcheng@redhat.com wrote:
->  
->
->>Neil Brown wrote:
->>
->>[snip]
->>
->>             We started the discussion using network interface (to drop 
->>the locks) but found it wouldn't work well on local filesytems such as 
->>ext3. There is really no control on which local (sever side) interface 
->>NFS clients will use (shouldn't be hard to implement one though). When 
->>the fail-over server starts to remove the locks, it needs a way to find 
->>*all* of the locks associated with the will-be-moved partition. This is 
->>to allow umount to succeed. The server ip address alone can't guarantee 
->>that. That was the reason we switched to fsid. Also remember this is NFS 
->>v2/v3 - clients have no knowledge of server migration.
->>    
->>
->[snip]
->
->So it seems to me we do know exactly the list of local-addresses that
->could possibly be associated with locks on a given filesystem.  They
->are exactly the IP addresses that are publicly acknowledged to be
->usable for that filesystem.
->And if any client tries to access the filesystem using a different IP
->address then they are doing the wrong thing and should be reformatted.
->  
->
+--GID0FwUMdk1T2AWN
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-A convincing argument... unfortunately, this happens to be a case where 
-we need to protect server from client's misbehaviors. For a local 
-filesystem (ext3), if any file reference count is not zero (i.e. some 
-clients are still holding the locks), the filesystem can't be 
-un-mounted. We would have to fail the failover to avoid data corruption.
+Hi nfs@,
 
->Maybe the idea of using network addresses was the first suggestion,
->and maybe it was rejected for the reasons you give, but it doesn't
->currently seem like those reasons are valid.  Maybe those who proposed
->those reasons (and maybe that was me) couldn't see the big picture at
->the time...
->  
->
+This is going to be tough, so bear with me for a while. :)
 
-This debate has been (so far) tolerable and helpful - so I'm not going 
-to comment on this paragraph :) ... But I have to remind people my first 
-proposal was adding new flags into export command (say "exportfs -ud" to 
-unexport+drop locks, and "exportfs -g" to re-export and start grace 
-period). Then we moved to "echo network-addr into procfs", later 
-switched to "fsid" approach. A very long journey ...
+While I was trying to understand the effects of wrapping jiffies in
+the various timestamp comparisons the NFS code does among its data
+structures, I was struck by cases where the code flow just did not
+make sense (checking with nfs_debug set to 32767 and additional
+systemtap scripts to extract debug info), considering the jiffy
+timestamps involved. This is the investigation that ensued.
 
->  
->
->>>  The reply to SM_MON (currently completely ignored by all versions
->>>  of Linux) has an extra value which indicates how many more seconds
->>>  of grace period there is to go.  This can be stuffed into res_stat
->>>  maybe.
->>>  Places where we currently check 'nlmsvc_grace_period', get moved to
->>>  *after* the nlmsvc_retrieve_args call, and the grace_period value
->>>  is extracted from host->nsm.
->>> 
->>>
->>>      
->>>
->>ok with me but I don't see the advantages though ?
->>    
->>
->
->So we can have a different grace period for each different 'host'.
->  
->
+time_after and friends provide a very clever way to compare two jiffy
+counts when those two counts are close together, and indeed does
+provide sign flip resistance, when the two values are close together.
+So it is ideal for short-lived timers and timeouts, since one would be
+usually comparing values a few thousands or even millions apart.
 
-IMHO, having grace period for each client (host) is overkilled.
+But unfortunately for the NFS code, time_after and friends alone are
+not well suited if we're just comparing jiffy counts taken at random
+times in the past instead of at moments close together. Exactly the
+protection against sign flips backfires when comparing timestamps over
+2 billion counts apart.
 
-> [snip]
->
->Part of unmounting the filesystem from Server A requires getting
->Server A to drop all the locks on the filesystem.  We know they can
->only be held by client that sent request to a given set of IP
->addresses.   Lockd created an 'nsm' for each client/local-IP pair and
->registered each of those with statd.  The information registered with
->statd includes the details of an RPC call that can be made to lockd to
->tell it to drop all the locks owned by that client/local-IP pair.
->
->The statd in 1.1.0 records all this information in the files created
->in /var/lib/nfs/sm (and could pass it to the ha-callout if required).
->So when it is time to unmount the filesystem, some program can look
->through all the files in nfs/nm, read each of the lines, find those
->which relate to any of the local IP address that we want to move, and
->initialiate the RPC callback described on that line.  This will tell
->lockd to drop those lockd.  When all the RPCs have been sent, lockd
->will not hold any locks on that filesystem any more.
->  
->
+The NFS data structures can easily be left idle for over 2 billion
+jiffies, which is about 25 days with an HZ of 1000. So consider a
+file's nfs_fattr data has a timestamp of 0x3fffffff. About 25 days
+later this file is accessed again, and the new attributes from the
+server get tagged with a timestamp of 0xc0000000. Those new attributes
+are clearly newer than what we had before, yet
+time_after(0xc0000000,0x3fffffff) returns 0, and the older attributes
+remain in use. Yes, those values are corner cases, but they are
+actually just the limits of a range of values with similar behavior.
 
-Bright idea ! But doesn't solve the issue of misbehaved clients who come 
-in from un-wanted (server) interfaces. Does it ?
+The ascii chart below shows that the sign flip protection of
+time_after extends to a lot more than what we'd like for the NFS
+timestamp comparisons.
 
->
->[snip]
->I feel it has taken me quite a while to gain a full understanding of
->what you are trying to achieve.  Maybe it would be useful to have a
->concise/precise description of what the goal is.
->I think a lot of the issues have now become clear, but it seems there
->remains the issue of what system-wide configurations are expected, and
->what configuration we can rule 'out of scope' and decide we don't have
->to deal with.
->  
->
-I'm trying to do the write-up now. But could the following temporarily 
-serve the purpose ? What is not clear from this thread of discussion?
+t      b  0 0 0 3 4 7 7 7 8 8 8 b c f f f
+ i        0 0 0 f 0 f f f 0 0 0 f 0 f f f
+  m       0 0 0 f 0 f f f 0 0 0 f 0 f f f
+   e      0 0 0 f 0 f f f 0 0 0 f 0 f f f
+    _     0 0 0 f 0 f f f 0 0 0 f 0 f f f
+     a    0 0 0 f 0 f f f 0 0 0 f 0 f f f
+      f   0 0 0 f 0 f f f 0 0 0 f 0 f f f
+a      t  0 1 2 f 0 d e f 0 1 2 f 0 d e f
 
-http://www.redhat.com/archives/linux-cluster/2006-June/msg00050.html
+00000000  0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1=20
+00000001  1 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1=20
+00000002  1 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1=20
+3fffffff  1 1 1 0 0 0 0 0 0 0 0 1 1 1 1 1=20
+40000000  1 1 1 1 0 0 0 0 0 0 0 0 1 1 1 1=20
+7ffffffd  1 1 1 1 1 0 0 0 0 0 0 0 0 1 1 1=20
+7ffffffe  1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 1=20
+7fffffff  1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 1=20
+80000000  1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0=20
+80000001  0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0=20
+80000002  0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0=20
+bfffffff  0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0=20
+c0000000  0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0=20
+fffffffd  0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0=20
+fffffffe  0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0=20
+ffffffff  0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0=20
 
+This leads to several problematic situations in long-lived NFS mounts.
+We can see old attributes not being updated, negative dentries that do
+not revalidate even after touching their parent dir, etc.
 
--- Wendy
+So something more robust is needed when comparing two timestamps in
+NFS data structures, or we should convert the code to use 64bit
+jiffies everywhere, even on 32bit architectures. This probably affects
+many other things in the rest of the kernel, but I don't think many
+other data structures are as long-lived as the NFS ones.
+
+Attached are two small programs to help understand the issue, one that
+generates the matrix above, the other being a simple time_after
+calculator for checking specific values. Compile and run on 32bit
+boxes, of course.
+
+Although this sounds like the perfect push for using autofs, I'm sure
+long-lived (over 100 days, allowing for two rounds of u32 jiffies and
+timestamps all over the place) NFS mounts on 32bit architectures will
+still be very common for a long time. :)
+
+Comments? I'd love to be proved wrong, as right now I'm very scared.
+
+Regards,
+F=E1bio
+--=20
+ex sed lex awk yacc, e pluribus unix, amem
+
+--GID0FwUMdk1T2AWN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="time_after_matrix.c"
+
+#include <stdio.h>
+
+#define typecheck(type,x) \
+({      type __dummy; \
+        typeof(x) __dummy2; \
+        (void)(&__dummy == &__dummy2); \
+        1; \
+})
+
+#define time_after(a,b)         \
+        (typecheck(unsigned long, a) && \
+         typecheck(unsigned long, b) && \
+         ((long)(b) - (long)(a) < 0))
+#define time_before(a,b)        time_after(b,a)
+
+#define time_after_eq(a,b)      \
+        (typecheck(unsigned long, a) && \
+         typecheck(unsigned long, b) && \
+         ((long)(a) - (long)(b) >= 0))
+#define time_before_eq(a,b)     time_after_eq(b,a)
+
+int main() {
+	unsigned long i, j;
+	unsigned long values[] = {
+		0x00000000,
+		0x00000001,
+		0x00000002,
+		0x3fffffff,
+		0x40000000,
+		0x7ffffffd,
+		0x7ffffffe,
+		0x7fffffff,
+		0x80000000,
+		0x80000001,
+		0x80000002,
+		0xbfffffff,
+		0xc0000000,
+		0xfffffffd,
+		0xfffffffe,
+		0xffffffff
+	};
+
+	/* Lame! =) */
+	printf("t      b  0 0 0 3 4 7 7 7 8 8 8 b c f f f\n");
+	printf(" i        0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
+	printf("  m       0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
+	printf("   e      0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
+	printf("    _     0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
+	printf("     a    0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
+	printf("      f   0 0 0 f 0 f f f 0 0 0 f 0 f f f\n");
+	printf("a      t  0 1 2 f 0 d e f 0 1 2 f 0 d e f\n");
+	printf("\n");
+
+	for (i = 0; i < 16; i++) {
+		printf("%08lx  ", values[i]);
+		for (j = 0; j < 16; j++) {
+			printf("%d ", time_after(values[i],values[j]));
+		}
+		printf("\n");
+	}
+
+	return 0;
+}
+
+--GID0FwUMdk1T2AWN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="time_after_calc.c"
+
+#include <stdio.h>
+
+#define typecheck(type,x) \
+({      type __dummy; \
+        typeof(x) __dummy2; \
+        (void)(&__dummy == &__dummy2); \
+        1; \
+})
+
+#define time_after(a,b)         \
+        (typecheck(unsigned long, a) && \
+         typecheck(unsigned long, b) && \
+         ((long)(b) - (long)(a) < 0))
+#define time_before(a,b)        time_after(b,a)
+
+#define time_after_eq(a,b)      \
+        (typecheck(unsigned long, a) && \
+         typecheck(unsigned long, b) && \
+         ((long)(a) - (long)(b) >= 0))
+#define time_before_eq(a,b)     time_after_eq(b,a)
+
+int main() {
+	unsigned long a, b;
+
+	printf("Type in series of two space-separated hex values, ^D to end.\n");
+
+	while (scanf("%lx %lx", &a, &b) == 2)
+		printf("time_after(%lx,%lx) == %d\n", a, b, time_after(a,b));
+
+	return 0;
+}
+
+--GID0FwUMdk1T2AWN
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--GID0FwUMdk1T2AWN
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--GID0FwUMdk1T2AWN--
