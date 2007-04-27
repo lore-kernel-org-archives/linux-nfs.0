@@ -1,33 +1,29 @@
-From: Christoph Hellwig <hch@infradead.org>
+From: Olaf Kirch <okir@lst.de>
 Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
 	on a privileged port??
-Date: Fri, 27 Apr 2007 15:37:56 +0100
-Message-ID: <20070427143756.GA15222@infradead.org>
+Date: Fri, 27 Apr 2007 17:07:28 +0200
+Message-ID: <200704271707.29862.okir@lst.de>
 References: <17958.48121.280256.493824@notabene.brown>
-	<200704251056.03664.olaf.kirch@oracle.com>
-	<46312615.2090307@RedHat.com>
-	<200704270820.19718.olaf.kirch@oracle.com>
-	<46320251.8050900@redhat.com> <20070427140931.GA9998@infradead.org>
-	<463206D4.9050504@redhat.com>
+	<17968.18279.424773.589417@notabene.brown>
+	<200704261059.50688.okir@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>,
-	Olaf Kirch <olaf.kirch@oracle.com>, anibal@debian.org
-To: Peter Staubach <staubach@redhat.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HhRaE-0002k5-KP
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 07:38:02 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HhRaG-0003fH-KD
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 07:38:05 -0700
-In-Reply-To: <463206D4.9050504@redhat.com>
+	id 1HhS2x-00068R-FZ
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 08:07:43 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HhS2y-0004IF-IR
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 08:07:46 -0700
+Received: from [192.168.5.32] (p54a7f41f.dip.t-dialin.net [84.167.244.31])
+	(authenticated bits=0)
+	by mail.lst.de (8.12.3/8.12.3/Debian-7.1) with ESMTP id l3RF7dLD004187
+	(version=TLSv1/SSLv3 cipher=EXP1024-RC4-SHA bits=56 verify=NO)
+	for <nfs@lists.sourceforge.net>; Fri, 27 Apr 2007 17:07:40 +0200
+In-Reply-To: <200704261059.50688.okir@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,42 +36,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Apr 27, 2007 at 10:21:08AM -0400, Peter Staubach wrote:
-> However, we are also looking at making fairly major changes to the
-> support already.  I think that the situation will be more complex
-> than we would ideally like, no matter what we do.  The IPv6 support
-> is not trivial stuff and will most likely have an impact on the
-> applications that use RPC no matter what we do.  There are other
-> things that we can and perhaps should do as well to increase the
-> usefulness of the support.  I suspect that there are things that
-> we could do to reduce the number of UDP and TCP ports being used,
-> for example.
+On Thursday 26 April 2007 10:59, Olaf Kirch wrote:
+> Anyway, I guess in order to prove my point about the sunrpc library
+> I should cough up some code to prove it can be done. I'll be uploading
+> some patches later tonight or tomorrow.
 
-All this would hopefully be optional so we can at least switch
-back to the old behaviour for debugging purposed.
+Okay, here we go. Please have a look at
+http://oss.oracle.com/~okir/newrpc/
 
-Anyway, back to the topic of codebases.  I'm not sure a 1993 codedrop
-that went through a few hands since is a good start.   I suspect the
-best that could be done (although it involves a lot of the work) is
-the following:
+This makes the client side IPv6 aware, by introducing some concepts
+and terminology from TIRPC without pulling in that code wholesale.
+(In fact, the only bits I copied from the TIRPC code base were header
+files, but that's just because I like to tinker; I guess some things
+such as the netconfig stuff might as well be used verbatim, at the
+expense of making some code more complicated.)
 
- (1) split out the glibc rpc code into a library of it's own
- (2) reformat the latest sun tirpc code drop and the ex-glibc code
-     the same way so it can actually be properly diffed
- (3) compare it and port important fixes and possibly features over
-     from that codebase
+It hasn't seen much testing; I just confirmed that it still seems to
+work with IPv4. The IPv6 side hasn't seen any testing yet.
 
-Now there's some interesting differences between the two, not just
-in the bug/feature categories Olaf already wrote a lot of notes.
-For example I assume the latest Sun code still uses their own
-threading package with the thr_ prefix functions that are quite
-different from pthreads in many ways, while the glibc code currently
-uses glibc's internal locking macros so both would need a conversion
-to the proper pthreads interfaces first, etc.
+Please consider this as a proof of concept.
 
-(and the 2.3-based, ex-freebsd bull code uses a lot of ugly macros
- to convert freebsd internalish locking and other libc bits back to
- posix, that's not exactly maintainable either)
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
