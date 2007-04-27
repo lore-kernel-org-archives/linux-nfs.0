@@ -1,29 +1,19 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
-Date: Fri, 27 Apr 2007 07:15:15 -0400
-Message-ID: <20070427111513.GA25126@salusa.poochiereds.net>
-References: <46156F3F.3070606@redhat.com> <4625204D.1030509@redhat.com>
-	<17959.5245.635902.823441@notabene.brown>
-	<462D79F0.4060800@redhat.com>
-	<17965.39683.396108.623418@notabene.brown>
-	<46302C01.2060500@redhat.com>
-	<17968.15370.88587.653447@notabene.brown>
-	<46315EED.9020103@redhat.com>
-	<17969.37229.250000.895316@notabene.brown>
+From: Investor Deirdre <nfs@lists.sourceforge.net>
+Subject: Daily News 0161885
+Date: Fri, 27 Apr 2007 04:45:05 -0700 (PDT)
+Message-ID: <20070427024508.3461.qmail@mnch-4d042b18.pool.mediaWays.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="===============1932313643=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HhOQ2-0006gG-8Z
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 04:15:18 -0700
-Received: from ms-smtp-03.southeast.rr.com ([24.25.9.102])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HhOQ2-0006C7-Fy
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 04:15:20 -0700
-In-Reply-To: <17969.37229.250000.895316@notabene.brown>
+	id 1HhOsl-00019x-Sq
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 04:44:59 -0700
+Received: from mnch-4d042b18.pool.mediaways.net ([77.4.43.24])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HhOsm-0005KM-L2
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 04:45:02 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,135 +26,167 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Apr 27, 2007 at 04:00:13PM +1000, Neil Brown wrote:
-> On Thursday April 26, wcheng@redhat.com wrote:
-> > Neil Brown wrote:
-> > 
-> > >On Thursday April 26, wcheng@redhat.com wrote:
-> > >  
-> > >
-> > >>A convincing argument... unfortunately, this happens to be a case where 
-> > >>we need to protect server from client's misbehaviors. For a local 
-> > >>filesystem (ext3), if any file reference count is not zero (i.e. some 
-> > >>clients are still holding the locks), the filesystem can't be 
-> > >>un-mounted. We would have to fail the failover to avoid data corruption.
-> > >>    
-> > >>
-> > >
-> > >I think this is a tangential problem.
-> > >"removing locks held by troublesome clients so that I can unmount my
-> > >filesystem" is quite different from "remove locks held by client
-> > >clients using virtual-NAS-foo so they can be migrated".
-> > >  
-> > >
-> > The reason to unmount is because we want to migrate the virtual IP.
-> 
-> The reason to unmount is because we want to migrate the filesystem. In
-> your application that happens at the same time as migrating the
-> virtual IP, but they are still distinct operations.
->  
-> >                                                                     IMO 
-> > they are the same issue but it is silly to keep fighting about this. In 
-> > any case, one interface is better than two, if you allow me to insist on 
-> > this.
-> 
-> How many interfaces depends somewhat on how many jobs to do.
-> You want to destroy state that will be rebuilt on a different server,
-> and you want to force-unmount a filesystem.  Two different jobs. Two
-> interfaces seems OK.
-> If they could both be done with one simple interface that would be
-> ideal, but I'm not sure they can.
-> 
-> And no-one gets to insist on anything.
-> You are writing the code.  I am accepting/rejecting it.  We both need
-> to agree or we won't move forward.  (Well... I could just write code
-> myself, but I don't plan to do that).
-> 
-> > 
-> > So how about we do RPC call to lockd to tell it to drop the locks owned 
-> > by the client/local-IP pair as you proposed, *but* add an "OR" with fsid 
-> > to fool proof the process ? Say something like this:
-> > 
-> > RPC_to_lockd_with (client_host, client_ip, fsid);
-> > if ((host == client_host && vip == client_ip) ||
-> > (get_fsid(file) == client_fsid))
-> > drop_the_locks();
-> > 
-> > This logic (RPC to lockd) will be triggered by a new command added to 
-> > nfs-util package.
-> > 
-> > If we can agree on this, the rest would be easy. Done ?
-> 
-> Sorry, but we cannot agree with this, and I think the rest is still
-> easy.
-> 
-> The more I think about it, the less I like the idea of using an fsid.
-> The fsid concept was created simply because we needed something that
-> would fit inside a filehandle.  I think that is the only place it
-> should be used.
-> Outside of filehandles, we have a perfectly good and well-understood
-> mechanism for identifying files and filesystems.  It is a "path name".
-> The functionality "drop all locks held by lockd on a particular
-> filesystem" is potentially useful outside of any fail-over
-> configuration, and should work on any filesystem, not just one that
-> was exported with 'fsid='.
-> 
-> So if you need that, then I think it really must be implemented by
-> something a lot like
->    echo -n /path/name > /proc/fs/nfs/nlm_unlock_filesystem
-> 
-> This is something that we could possible teach "fuser -k" about - so
-> it can effectively 'kill' that part of lockd that is accessing a given
-> filesystem.  It is useful to failover, but definitely useful beyond
-> failover.
+--===============1932313643==
+Content-Type: text/html
 
-Just a note that I posted a patch ~ a year ago that did precisely that. The
-interface was a little bit different. I had userspace echoing in a dev_t
-number, but it wouldn't be too hard to change it to use a pathname instead.
+<style>
 
-Subject was:
+<!I have been lowcarbing for about 3months (had a week off over xmas) however,
+back on induction....
 
-    [PATCH] lockd: add procfs control to cue lockd to release all locks on a device   
+If i do a small amount of cardio e.g 30 - 40 mins Bike; after - the endorphins
+seem to flow and i don't feel too bad.  However, if i do resistance training i
+seem to feel really drained of energy and i am overcome by a generall feeling
+of unwellness.
 
-...if anyone is interested in having me resurrect it.
+After resistance training today (feeling drained)i went and ate a low carb
+breakfast, which seemed to pick me up but throughout the day i have still felt
+pretty shitty...
 
--- Jeff
+Help anyone?  I know this post is prob a bit vague but im hoping its just a
+common hurdle that people know about...........
+
+Wayne
+
+><!HAHAHAHAHA. This cross-dressing loony is turning out to be a godsend
+for the liberals.
 
 
-> 
-> 
-> Everything else can be done in the RPC interface between lockd and
-> statd, leveraging the "my_name" field to identify state based on which
-> local network address was used.  All this other functionality is
-> completely agnostic about the particular filesystem and just looks at
-> the virtual IP that was used.
-> All this other functionality is all that you need unless you have a
-> misbehaving client.
-> You would do all the lockd/statd/rpc stuff.  Then try to unmount the
-> filesystem.  If that fails, try "fuser -k -m /whatever" and try the
-> unmount again.
-> 
-> Another interface alternative might be to hook in to
-> umount(MNT_FORCE), but that would require even broader review, and
-> probably isn't worth it....
-> 
-> NeilBrown
-> 
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by DB2 Express
-> Download DB2 Express C - the FREE version of DB2 express and take
-> control of your XML. No limits. Just data. Click to get it now.
-> http://sourceforge.net/powerbar/db2/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+(snip)
+
+After we bomb North Korea, what's the next country we should invade?
+
+"Iran. Though that's the beauty part of Iraq: It may well not be
+necessary. Because precisely what I'm saying with nuking North
+Korea-despite that wonderful peace deal Madeline Albright negotiated
+with the North Koreans, six seconds before they feverishly began
+developing nuclear weapons. They're a major threat. I just think it
+would be fun to nuke them and have it be a warning to the rest of the
+world."
+
+(snip)
+><
+I'm gonna say I could take Ray Romano. Just 'cause I really want to. Here 
+are my faves from the above page:
+
+The Onion: Who could you take in a fight?
+
+Conan O'Brien: Let's see, who could I take in a fight? Definitely Ruth 
+Bader Ginsburg. Have you seen her? Her upper body is very frail. I think I 
+could take her if she was sleepy and I had a two-by-four. She'd go down 
+quickly.
+
+
+
+The Onion: Who could you take in a fight?
+
+Emo Philips: Hawking, Reeve. Not at the same time.
+
+-- 
+ironcladlou, keeper of faq, bringer of poop humor
+
+"You are a pitiful excuses for a human beings."  - tzakol
+><!Hi,
+
+I was wondering what is the best way to find out the person to whom a coat 
+of arms was granted. I have a list from Burke's Armory of Perry/Pery Arms 
+that were granted (about 15 in total) but most of them don't say which 
+particular person the Arms were granted to, although I know one or two of 
+them. I have found one of the families in the Herald's visitations, but it 
+doesn't say to whom the arms were granted, is the earliest person in the 
+pedigree the original bearer of the arms? I realise I can apply to the 
+College of Arms, but I was hoping there would be a slightly more inexpensive 
+option!
+
+Thanks
+
+Vicki
+
+_________________________________________________________________
+Match.com - Click Here To Find Singles In Your Area Today!  
+
+>
+
+<!For those AFers contemplating a walking program this Spring, you may want to
+pick up the April issue of Prevention.  A special issue devoted to Walking
+Smart.
+Included is a 4 week pull-out plan specified for either the Walking Rookie or
+the Walking Whiz.  Lots of great tips.  Also included is their test of Walking
+Shoes including an excerpt on whether your foot is neutral, rigid or flexible
+which should enter into your choice of shoes.  Shoes tested were Adida, Asics,
+New Balance, Nike, Reebox and Saucony.   I have decided I must have the New
+Balance 788WB as the testers commented on lots of space in the toe area.  Also
+lists the 12 best Walking Cities.
+</style><img src="http://img46.imageshack.us/img46/4869/25544138ll7.gif">
+<style>
+Remember Friday, April 2 is Prevention's National Walk to Work Day.
+
+Plus a lot of other good articles.
+Jo Ann
+
+>
+
+<!There used to be this show on Channel 7 (WXYZ in Detroit)  Friday nights at 
+11:30 pm called "In Concert". I was an impressionable 13-yr-old just gettin' 
+in to rock music in the summer of 1974 when they showed parts of the 
+California Jam in sucessive weeks on TV. I was a Deep Purple freak (still 
+am) and sat glued to the set, enthralled with Ritchie Blackmore's stage 
+antics (trashing a television camera while it was filming him and 'blowing 
+up' his amps).
+
+Well, "Deep Purple - Live In California '74" was released on DVD yesterday, 
+and it's just as enthralling (warts and all) as it was 26+ yeard ago. It may 
+not have been their best show, but it reminded me of the thrill I got when I 
+was a kid. I hope that thrill never goes away.
+
+-- 
+Steve >
+
+<!Hi there, when I first turn on my computer for the day, it will run fine for
+up to 3 minutes or so until I get a complete blue screen with an error
+message which reads:
+____________________________________________
+*** HARDWARE MALFUNCTION
+PLEASE CONTACT YOUR HARDWARE VENDOR         (something like this)
+
+*** The sv
+____________________________________________
+
+I can not do a CRTL-ALT-DEL reboot or anything....no response to anything
+except for a complete hard reboot.  After a reboot my computer will run
+perfectly fine and won't see this message again.
+I only get the error message when my computer is cold it seems.  But after
+running a while, it runs perfectly.
+
+Has anyone had this problem, or can anyone shed some light into this issue
+please?
+
+Thank you very much for your help people.
+Please respond to group.  Thank you.
+
+</style>
+
+
+
+--===============1932313643==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============1932313643==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1932313643==--
