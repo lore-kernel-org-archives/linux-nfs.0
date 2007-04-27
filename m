@@ -1,19 +1,30 @@
-From: Investor Deirdre <nfs@lists.sourceforge.net>
-Subject: Daily News 0161885
-Date: Fri, 27 Apr 2007 04:45:05 -0700 (PDT)
-Message-ID: <20070427024508.3461.qmail@mnch-4d042b18.pool.mediaWays.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
+Date: Fri, 27 Apr 2007 22:40:16 +1000
+Message-ID: <17969.61232.323762.29003@notabene.brown>
+References: <46156F3F.3070606@redhat.com> <4625204D.1030509@redhat.com>
+	<17959.5245.635902.823441@notabene.brown>
+	<462D79F0.4060800@redhat.com>
+	<17965.39683.396108.623418@notabene.brown>
+	<46302C01.2060500@redhat.com>
+	<17968.15370.88587.653447@notabene.brown>
+	<46315EED.9020103@redhat.com>
+	<17969.37229.250000.895316@notabene.brown>
+	<20070427111513.GA25126@salusa.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1932313643=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: cluster-devel@redhat.com, nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@poochiereds.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HhOsl-00019x-Sq
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 04:44:59 -0700
-Received: from mnch-4d042b18.pool.mediaways.net ([77.4.43.24])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HhOsm-0005KM-L2
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 04:45:02 -0700
+	id 1HhPkg-00079J-Ri
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 05:40:47 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HhPkf-0003pn-1R
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 05:40:45 -0700
+In-Reply-To: message from Jeff Layton on Friday April 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,167 +37,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1932313643==
-Content-Type: text/html
+On Friday April 27, jlayton@poochiereds.net wrote:
+> On Fri, Apr 27, 2007 at 04:00:13PM +1000, Neil Brown wrote:
+> > 
+> > So if you need that, then I think it really must be implemented by
+> > something a lot like
+> >    echo -n /path/name > /proc/fs/nfs/nlm_unlock_filesystem
+> > 
+> > This is something that we could possible teach "fuser -k" about - so
+> > it can effectively 'kill' that part of lockd that is accessing a given
+> > filesystem.  It is useful to failover, but definitely useful beyond
+> > failover.
+> 
+> Just a note that I posted a patch ~ a year ago that did precisely that. The
+> interface was a little bit different. I had userspace echoing in a dev_t
+> number, but it wouldn't be too hard to change it to use a pathname instead.
+> 
+> Subject was:
+> 
+>     [PATCH] lockd: add procfs control to cue lockd to release all locks on a device   
+> 
+> ...if anyone is interested in having me resurrect it.
+> 
+> -- Jeff
 
-<style>
+http://lkml.org/lkml/2006/4/10/240
 
-<!I have been lowcarbing for about 3months (had a week off over xmas) however,
-back on induction....
+Looks like no-one ever replied.
+I probably didn't see it:  things on linux-kernel that don't have
+'nfs' or 'raid' (or a few related strings) in the subject have at best
+an even chance of me seeing them.  I've just added 'lockd' to the list
+of important strings :-)
 
-If i do a small amount of cardio e.g 30 - 40 mins Bike; after - the endorphins
-seem to flow and i don't feel too bad.  However, if i do resistance training i
-seem to feel really drained of energy and i am overcome by a generall feeling
-of unwellness.
+I would rather a path name, and would rather it came through the
+'nfsd' filesystem, but those are fairly trivial changes.
 
-After resistance training today (feeling drained)i went and ate a low carb
-breakfast, which seemed to pick me up but throughout the day i have still felt
-pretty shitty...
+nlm_traverse_files has changed a bit since then, but it should be
+easier to unlock based on filesystem with the current code
+(especially if we made the first arg a void*..).
 
-Help anyone?  I know this post is prob a bit vague but im hoping its just a
-common hurdle that people know about...........
-
-Wayne
-
-><!HAHAHAHAHA. This cross-dressing loony is turning out to be a godsend
-for the liberals.
-
-
-(snip)
-
-After we bomb North Korea, what's the next country we should invade?
-
-"Iran. Though that's the beauty part of Iraq: It may well not be
-necessary. Because precisely what I'm saying with nuking North
-Korea-despite that wonderful peace deal Madeline Albright negotiated
-with the North Koreans, six seconds before they feverishly began
-developing nuclear weapons. They're a major threat. I just think it
-would be fun to nuke them and have it be a warning to the rest of the
-world."
-
-(snip)
-><
-I'm gonna say I could take Ray Romano. Just 'cause I really want to. Here 
-are my faves from the above page:
-
-The Onion: Who could you take in a fight?
-
-Conan O'Brien: Let's see, who could I take in a fight? Definitely Ruth 
-Bader Ginsburg. Have you seen her? Her upper body is very frail. I think I 
-could take her if she was sleepy and I had a two-by-four. She'd go down 
-quickly.
-
-
-
-The Onion: Who could you take in a fight?
-
-Emo Philips: Hawking, Reeve. Not at the same time.
-
--- 
-ironcladlou, keeper of faq, bringer of poop humor
-
-"You are a pitiful excuses for a human beings."  - tzakol
-><!Hi,
-
-I was wondering what is the best way to find out the person to whom a coat 
-of arms was granted. I have a list from Burke's Armory of Perry/Pery Arms 
-that were granted (about 15 in total) but most of them don't say which 
-particular person the Arms were granted to, although I know one or two of 
-them. I have found one of the families in the Herald's visitations, but it 
-doesn't say to whom the arms were granted, is the earliest person in the 
-pedigree the original bearer of the arms? I realise I can apply to the 
-College of Arms, but I was hoping there would be a slightly more inexpensive 
-option!
-
-Thanks
-
-Vicki
-
-_________________________________________________________________
-Match.com - Click Here To Find Singles In Your Area Today!  
-
->
-
-<!For those AFers contemplating a walking program this Spring, you may want to
-pick up the April issue of Prevention.  A special issue devoted to Walking
-Smart.
-Included is a 4 week pull-out plan specified for either the Walking Rookie or
-the Walking Whiz.  Lots of great tips.  Also included is their test of Walking
-Shoes including an excerpt on whether your foot is neutral, rigid or flexible
-which should enter into your choice of shoes.  Shoes tested were Adida, Asics,
-New Balance, Nike, Reebox and Saucony.   I have decided I must have the New
-Balance 788WB as the testers commented on lots of space in the toe area.  Also
-lists the 12 best Walking Cities.
-</style><img src="http://img46.imageshack.us/img46/4869/25544138ll7.gif">
-<style>
-Remember Friday, April 2 is Prevention's National Walk to Work Day.
-
-Plus a lot of other good articles.
-Jo Ann
-
->
-
-<!There used to be this show on Channel 7 (WXYZ in Detroit)  Friday nights at 
-11:30 pm called "In Concert". I was an impressionable 13-yr-old just gettin' 
-in to rock music in the summer of 1974 when they showed parts of the 
-California Jam in sucessive weeks on TV. I was a Deep Purple freak (still 
-am) and sat glued to the set, enthralled with Ritchie Blackmore's stage 
-antics (trashing a television camera while it was filming him and 'blowing 
-up' his amps).
-
-Well, "Deep Purple - Live In California '74" was released on DVD yesterday, 
-and it's just as enthralling (warts and all) as it was 26+ yeard ago. It may 
-not have been their best show, but it reminded me of the thrill I got when I 
-was a kid. I hope that thrill never goes away.
-
--- 
-Steve >
-
-<!Hi there, when I first turn on my computer for the day, it will run fine for
-up to 3 minutes or so until I get a complete blue screen with an error
-message which reads:
-____________________________________________
-*** HARDWARE MALFUNCTION
-PLEASE CONTACT YOUR HARDWARE VENDOR         (something like this)
-
-*** The sv
-____________________________________________
-
-I can not do a CRTL-ALT-DEL reboot or anything....no response to anything
-except for a complete hard reboot.  After a reboot my computer will run
-perfectly fine and won't see this message again.
-I only get the error message when my computer is cold it seems.  But after
-running a while, it runs perfectly.
-
-Has anyone had this problem, or can anyone shed some light into this issue
-please?
-
-Thank you very much for your help people.
-Please respond to group.  Thank you.
-
-</style>
-
-
-
---===============1932313643==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1932313643==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1932313643==--
