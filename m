@@ -1,31 +1,33 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
-	on a privileged port??
-Date: Fri, 27 Apr 2007 15:09:31 +0100
-Message-ID: <20070427140931.GA9998@infradead.org>
-References: <17958.48121.280256.493824@notabene.brown>
-	<200704251056.03664.olaf.kirch@oracle.com>
-	<46312615.2090307@RedHat.com>
-	<200704270820.19718.olaf.kirch@oracle.com>
-	<46320251.8050900@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
+Date: Fri, 27 Apr 2007 15:17:10 +0100
+Message-ID: <20070427141710.GA11484@infradead.org>
+References: <17959.5245.635902.823441@notabene.brown>
+	<462D79F0.4060800@redhat.com>
+	<17965.39683.396108.623418@notabene.brown>
+	<46302C01.2060500@redhat.com>
+	<17968.15370.88587.653447@notabene.brown>
+	<46315EED.9020103@redhat.com>
+	<17969.37229.250000.895316@notabene.brown>
+	<20070427111513.GA25126@salusa.poochiereds.net>
+	<17969.61232.323762.29003@notabene.brown>
+	<20070427134248.GB25126@salusa.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@novell.com>, nfs@lists.sourceforge.net,
-	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>,
-	Olaf Kirch <olaf.kirch@oracle.com>, anibal@debian.org
-To: Peter Staubach <staubach@redhat.com>
+Cc: Neil Brown <neilb@suse.de>, cluster-devel@redhat.com,
+	nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HhR9L-0008Br-DH
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 07:10:15 -0700
+	id 1HhRG4-0000Si-ES
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 07:17:12 -0700
 Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HhR9M-0003dS-N1
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 07:10:18 -0700
-In-Reply-To: <46320251.8050900@redhat.com>
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HhRG5-0005b8-Ph
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 07:17:15 -0700
+In-Reply-To: <20070427134248.GB25126@salusa.poochiereds.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,39 +40,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Apr 27, 2007 at 10:01:53AM -0400, Peter Staubach wrote:
-> This version of the library may or may not be MT-safe, but newer
-> versions are definitely safe.  Perhaps the Bull people could tell
-> us how old the library is?
-
-The README file claims it's a Sun codedrop from 1993 (!)
-
-> >That's where we disagree :-) I think ripping out the glibc
-> >code and replacing it will cause a lot of maintenance for
-> >the distros.
-> >  
+On Fri, Apr 27, 2007 at 09:42:48AM -0400, Jeff Layton wrote:
+> Ok, I'll toss cleaning that patch up and reposting it on to my to-do list...
 > 
-> I am curious what basis that you are using for this?  Why will this
-> cause either more or less maintenance for distros?
+> Wendy, it seems like you had some objection to this patch at the time, but
+> the nature of it escapes me. Do you recall what your concern with it was?
 
-It's the same reason why we tell people to send us incremental
-kernel patches.  Replacing a codebase completely is a not calculateable
-risk.  It might work out just fine, but usually it doesn't because
-something silently breaks.  Updating the existing codebases with
-small bugfixes or new features means you have to think about and justify
-every little understandable change and there's a much higher chance that
-it won't cause problems.  In the end some of them will cause problems
-anyway, but at least you can easily track the problem down to a single
-change now.
+I like the idea of the patch.  Intead of writing a dev_t into procfs
+it should probably be changed to write a path to a new file in the
+nfsctl filesystem.   In fact couldn't this be treated as a reexport
+with a NFSEXP_ flag meaning drop all locks to avoid creating new
+interfaces?
 
-> It seems to me that this would give us some RPC code, which we could
-> support, which was newer than the current glibc code, and would have
-> more people working on and supporting it.  That all seems like goodness
-> to me.  The current situation is that we can't maintain the RPC code
-> at all, which is not goodness at all.
-
-I don't think the problem is that we can't maintain it, but rather
-that no one stepped up to maintain it so far.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
