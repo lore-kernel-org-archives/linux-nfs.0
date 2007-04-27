@@ -1,33 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
-Date: Fri, 27 Apr 2007 12:31:29 -0400
-Message-ID: <20070427163129.GI32278@fieldses.org>
-References: <46302C01.2060500@redhat.com>
-	<17968.15370.88587.653447@notabene.brown>
-	<46315EED.9020103@redhat.com>
-	<17969.37229.250000.895316@notabene.brown>
-	<20070427111513.GA25126@salusa.poochiereds.net>
-	<17969.61232.323762.29003@notabene.brown>
-	<20070427134248.GB25126@salusa.poochiereds.net>
-	<20070427141710.GA11484@infradead.org>
-	<20070427154259.GF32278@fieldses.org> <46321870.7000607@redhat.com>
+From: Olaf Kirch <olaf.kirch@oracle.com>
+Subject: Re: Portmap - was Re: Does mountd/statd really need to listen
+	on a privileged port??
+Date: Fri, 27 Apr 2007 18:49:55 +0200
+Message-ID: <200704271849.57729.olaf.kirch@oracle.com>
+References: <17958.48121.280256.493824@notabene.brown>
+	<200704270820.19718.olaf.kirch@oracle.com>
+	<46320251.8050900@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Neil Brown <neilb@suse.de>, cluster-devel@redhat.com,
-	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
-To: Wendy Cheng <wcheng@redhat.com>
+Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
+	Steve Dickson <SteveD@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthias Koenig <mkoenig@novell.com>,
+	Javier Fern?ndez-Sanguino Pe?a <jfs@computer.org>, anibal@debian.org
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HhTM7-0006qj-KG
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 09:31:35 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HhTM8-00011C-Qz
-	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 09:31:38 -0700
-In-Reply-To: <46321870.7000607@redhat.com>
+	id 1HhTfW-0000QJ-4D
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 09:51:38 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HhTfW-0005rY-IU
+	for nfs@lists.sourceforge.net; Fri, 27 Apr 2007 09:51:40 -0700
+In-Reply-To: <46320251.8050900@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,49 +36,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Apr 27, 2007 at 11:36:16AM -0400, Wendy Cheng wrote:
-> J. Bruce Fields wrote:
-> >On Fri, Apr 27, 2007 at 03:17:10PM +0100, Christoph Hellwig wrote:
-> >  
-> >>In fact couldn't this be treated as a reexport with a NFSEXP_ flag
-> >>meaning drop all locks to avoid creating new interfaces?
-> >>    
-> >
-> >Off hand, I can't see any reason why that wouldn't work.  The code to
-> >handle it would probably go in fs/nfsd/export.c:svc_export_parse().
-> >
-> >  
-> Sign :( ... folks, we go back to the loop again. That *was* my first 
-> proposal ...
+On Friday 27 April 2007 16:01, Peter Staubach wrote:
+> It seems to me that you are still missing the point of the lock.
+> 
+> The lock is not being used to protect the assignment of the address
+> of clnt_raw_private to clp, it is being used to ensure that clp is not
+> being used before clnt_raw_private is completely initialized.
+> 
+> The lock is also used to ensure that multiple copies of clnt_raw_private
+> are not allocated.
 
-So you're talking about this and followups?:
+Are we talking of the same piece of code? Can you explain to me how
+the following, which is  a copy of Bull's TIRPC library, ensures this?
 
-	http://marc.info/?l=linux-nfs&m=115009204513790&w=2
+clntraw_create:
 
-I just took a look and couldn't find any complaints about that
-approach.  Were they elsewhere?
+        struct clntraw_private *clp = clntraw_private;
+[...]
 
-I understand the frustration.  There's a balance betweeen on the one
-hand, being willing to throw out some hard work and start over if
-someone comes up with a real objection, and, on the other hand, sticking
-to a design when you're convinced it's right.
+        mutex_lock(&clntraw_lock);
+        if (clp == NULL) {
+                clp = (struct clntraw_private *)calloc(1, sizeof (*clp));
+                if (clp == NULL) {
+                        mutex_unlock(&clntraw_lock);
+                        return NULL;
+                }
+[...]
+                clntraw_private = clp;
+        }
 
-I *really* appreciate good review, but I also try to avoid doing
-something I don't like just because it seems to be the only way to make
-somebody else happy....  If they've got a real point then I should be
-able to understand it.  If not, then I risk doing all the work to make
-them happy just to throw it away because I can't defend the approach in
-the end, or because I find out I misunderstood their original point.
+Assume 2 threads enter clntraw_create simultaneously,
+and clntraw_private is NULL.
+Both execute clp = clntraw_private, and both see a
+value of  NULL. Thread A grabs the mutex, thread B blocks.
 
-(Then again, sometimes I do just have to trust somebody.  And sometimes
-I guess learning who can be trusted about what is part of the process.)
+Thread A finds clp == NULL, allocates memory, puts the
+pointer into clntraw_private, does clever stuff and releases the
+mutex.
 
-In this case I think the complaint about requiring fsid's on everything
-is legimate, and the original approach of using the export was sensible.
-But I haven't been paying as much attention as I should have, and I
-probably missed something.
+Thread B wakes up, acquires the mutex. It checks
+clp, which is still NULL, and allocates another
+private object.
 
---b.
+I really do think I understand the code, and there is
+a problem. The mutex protects the clntraw_private
+pointer, so the only safe thing to do is access that
+variable while holding the lock, *not* before.
+
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
