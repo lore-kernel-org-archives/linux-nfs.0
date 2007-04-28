@@ -1,23 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: setting specific lockd port for NFS .....................
-Date: Sun, 29 Apr 2007 07:35:23 +1000
-Message-ID: <17971.48667.945682.358155@notabene.brown>
-References: <OFEC0E3912.B7B7120F-ON852572C9.003D6E9D-852572C9.003E3796@us.ibm.com>
+From: "Hetty" <ukx@silver.ocn.ne.jp>
+Subject: 24 - A long time ago (30 years to be exact).
+Date: Sat, 28 Apr 2007 12:24:57 +0200
+Message-ID: <000a01c7897f$786a6900$81e9a682@hxw>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Terry Spaulding <spauld@us.ibm.com>
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hhua6-0004mD-6x
-	for nfs@lists.sourceforge.net; Sat, 28 Apr 2007 14:35:50 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hhua7-0002Gr-8W
-	for nfs@lists.sourceforge.net; Sat, 28 Apr 2007 14:35:52 -0700
-In-Reply-To: message from Terry Spaulding on Thursday April 26
+	id 1Hi5fJ-0002uq-8c
+	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 02:26:00 -0700
+Received: from bzq-88-153-35-220.red.bezeqint.net ([88.153.35.220])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hi5fK-0003fq-RX
+	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 02:25:59 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +26,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday April 26, spauld@us.ibm.com wrote:
-> 
-> List....
-> 
-> Has anyone been successful in setting a specific port for lockd to use with
-> NFS ?
+CDPN Moves To Corners GPS Market In China!
 
-I've never tried it myself, but...
+China Datacom Corp.
+Sym: CDPN
+Close: $0.065
 
-> 
-> ramdisk = /boot/initrd
->     parameters = "root=/dev/mapper/lun01r1 selinux=0 TERM=dumb elevator=cfq
-> nlm_tcpport=52670 nlm_udpport=52670"
-> 
-> 
-> example:
-> 
-> ramdisk = /boot/initrd
->     parameters = "root=/dev/mapper/lun01r1 selinux=0 TERM=dumb elevator=cfq
-> lockd.udpport=52670 lockd.tcpport=52670"
+CDPN announced Friday that is has acquired all outstanding shares of
+General Link Information Systems, Chinas only GPS vehicle monitoring and
+management system. GPS systems are huge; controlling that market is even
+bigger. Read the news and get on CDPN first thing Monday!
 
-I think you want to combine those two:
+23 - Talk of the Town brings you the latest in movie, music and
+celebrity news.
+Daragh Burke reports. But critics warn that people are forgetting why
+the limited edition bags were created in the first place - to bring
+attention to the environment.
+China's new rich sit in a classroom as pupils to learn their first
+lesson on wine tasting in Beijing.
+END baseFooterHTML  BEGIN baseFooter  START OF SmartSource Data
+Collector TAG  Copyright (c) 1996-2006 WebTrends Inc.
+WHAT'S HOT NOWWhat Is Organic Gardening?
+The answer may surprise you.
+25 - "Juli" is the first German band to enter the virtual world of
+Second Life.
+Next Video: Madonna leaves Malawi   . Next Video: Talk of the Town:
+Spider Man 3   . Rai, 33, is a former Miss World and Bachchan, 31,
+belongs to Indian film royalty, being the son of Amitabh Bachchan, the
+country's best-known actor who has a huge fan following around the
+world.
+Cindy Martin reports.
+23 - Seville celebrates a seven days of fiesta with over a thousand
+marquee tents set up, ready to receive both locals and tourists for a
+loud week of drinking and dancing.
+Get your copy now   WELCOME TO ABOUT. The clothes range of tops,
+trousers and dresses will cost anywhere from 12 to 150 pounds (25 to 300
+U.
+27 - Oscar winner-turned-producer, Leonardo DiCaprio unveils his latest
+film, "Gardener of Eden," directed by long-time friend Kevin Connolly
+and staring Lukas Haas. See More Newsletters Get your daily dose of
+About.
 
-    lockd.nlm_tcpport=52670 lockd.nlm_udpport=52670
-
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
