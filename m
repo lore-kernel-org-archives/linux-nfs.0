@@ -1,18 +1,23 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
-Date: Fri, 27 Apr 2007 22:26:57 -0700
-Message-ID: <OF18F79283.D2B8D52F-ON882572CB.001C23A2-882572CB.001DE21A@us.ibm.com>
-References: <17970.53957.677739.642780@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: 2.6.21 strange optimization in svcauth_unix.c
+Date: Sat, 28 Apr 2007 19:27:25 +1000
+Message-ID: <17971.4989.320259.441338@notabene.brown>
+References: <20070427171941.GA27920@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, Jeff Layton <jlayton@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	nfs-bounces@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <17970.53957.677739.642780@notabene.brown>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HhjDU-00060z-Bz
+	for nfs@lists.sourceforge.net; Sat, 28 Apr 2007 02:27:44 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HhjDW-0008Bt-IU
+	for nfs@lists.sourceforge.net; Sat, 28 Apr 2007 02:27:47 -0700
+In-Reply-To: message from Frank van Maarseveen on Friday April 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,114 +30,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-nfs-bounces@lists.sourceforge.net wrote on 04/27/2007 09:51:17 PM:
+On Friday April 27, frankvm@frankvm.com wrote:
+> While reading the 2.6.21 version of net/sunrpc/svcauth_unix.c it looks
+> to me that it tries to cache the AUTH_UNIX/AUTH_SYS group list on uid
+> basis and thus deliberately ignore the group ids supplied by the NFS
+> client.
 
-> On Friday April 27, wcheng@redhat.com wrote:
-> > Frank van Maarseveen wrote:
-> > >
-> > >I'd prefer (2) "echo /some/path > /proc/fs/nfsd/nlm_drop_lock" 
-because:
-> > > 
-> > >
-> > To convert the first patch of this submitted series from "fsid" to 
-> > "/some/path" is a no-brainer, since we had gone thru several rounds of 
+It is configurable by a switch to mountd, and defaults to 'off'.
 
-> > similar changes. However, my questions (it is more of a Neil's 
-question) 
-> > are, if I convert the first patch to do this,
-> > 
-> > 1) then why do we still need the RPC drop-lock call in nfs-util ?
-> 
-> Maybe we don't.
-> I can imagine a (probably hypothetical) situation where you want to
-> drop some but not all of the locks on a filesystem - if it is a
-> cluster-aware filesystem that several virtual-NAS's export, and you
-> want to move just one virtual-NAS.  But if you don't want to be able
-> to do that, you obviously don't have to.
+When a request arrives, the kernel tries to ask mountd to map the uid
+to a list of gids.  If mountd says "no", the kernel uses whatever was
+in the RPC request.  If mountd says "yes", the kernel uses the group
+list that mountd provided.  mountd can provide a full list of gids,
+not just the first 16.
 
-It would be very useful for cluster filesystems, that can export the same 
-filesystem from few servers using multiple IP addresses from each server, 
-to be able to move IP address among server for load balancing. 
-Marc.
- 
-> > 2) what should we do for the 2nd patch ? i.e., how do we communicate 
-> > with the take-over server it is time for its action, by RPC call or by 
+So it is really an alternate to hacking the NFS client.  If you have a
+new kernel and new nfs-utils and run mountd with "-g", you don't need
+your changes to the NFS client.
 
-> > "echo /some/path > /proc/fs/nfsd/nlm_set_grace_or_whatever" ?
-> 
-> I'm happy with using a path name like this to restart the grace
-> period.  Where would you store the per-filesystem grace-period-end??
-> I guess you would need a new little data structure indexed by
-> ... 'struct super_block *' I guess.  It would need to hold a reference
-> on the superblock until the grace period expired would it?
-> 
-> It might seem 'obvious' to store it in 'struct svc_export', but there
-> can be several of these per filesystem, and more could be added after
-> you set the grace period.  So it would be messy to get that right.
-> 
-> 
-> > 
-> > In general, I feel if we do this "/some/path" approach, we may as well 
+I think that it is extremely uncommon to have a different group list
+on the client than on the server, so doing the uid -> grouplist
+mapping on the server shouldn't cause any surprises.
+Note that this scheme leaves the primary groupid unchanged, so a
+"newgrp" on the client will still work as expected.
 
-> > simply convert the 2nd patch from "fsid" to "/some/path". Then we 
-would 
-> > finish this long journey.
-> 
-> Certainly a lot closer.
-> If we are creating "nlm_drop_locks" and "nlm_set_grace" interfaces, we
-> should spend a few moments considering exactly what semantics they
-> should have.
-> 
-> In both cases we write a filename.  Presumably it must start with a
-> '/' and be null terminated, so you use "echo -n" rather than "echo".
-> After all, a filename can contain a newline.
-> 
-> Is there any extra info we might want to pass in or out at the same
-> time?
-> 
-> For nlm_drop_locks, we might also want to be able to query locked -
-> "Do you hold any locks on this filesystem".  Even "how many?".
-> For set_grace, we might want to ask how many seconds are left in the
-> grace period (I'm not sure how this info would be used, but it is
-> always nice to be able to read any value that you can write).
-> 
-> Does it make sense to have a single file with composite semantics?
-> 
-> We write
->     XX/path/name
-> where XX can be:
->     a number, to set second remaining in grace period
->     a '?' (or empty string) to query state
->     a '-' to remove all locks (and cancels any grace period)
-> We then read back two numbers, the seconds remaining in the grace
-> period, and the number of locked files.
-> 
-> Then we need to make sure we choose appropriate names.  I think that
-> the string 'lockd' make more sense than 'nlm', as we are interacting
-> with the daemon, not configuring the protocol.  We might not either
-> need either as the file is inside /proc/fs/nfsd, it is obviously
-> related to nfsd.
-> And if we can use the interface to query, then names like 'set' and
-> 'drop' and probably mis-placed.  Maybe "grace" and "locks".
-> If no path is given, the requests have system-wide effect.  If there
-> is a non-empty path, just that filesystem if queried/modified.
-> 
-> These are just possibilities.  I'm quite happy with either 1 or 2
-> files.  I just want to be sure a number of options have been
-> considered, and that a reasoned choice as been made.
-> 
-> NeilBrown
-> 
-> 
--------------------------------------------------------------------------
-> This SF.net email is sponsored by DB2 Express
-> Download DB2 Express C - the FREE version of DB2 express and take
-> control of your XML. No limits. Just data. Click to get it now.
-> http://sourceforge.net/powerbar/db2/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
