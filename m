@@ -1,26 +1,26 @@
 From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: flock and lockf over NFS and the 'pid' in lockd requests.
-Date: Mon, 30 Apr 2007 00:16:40 -0400
-Message-ID: <46356DA8.4000902@redhat.com>
-References: <17973.19011.690165.95878@notabene.brown>	<1177899233.6400.58.camel@heimdal.trondhjem.org>
-	<17973.26166.844328.279844@notabene.brown>
-	<46356C57.1040601@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
+Date: Mon, 30 Apr 2007 01:19:38 -0400
+Message-ID: <46357C6A.7080007@redhat.com>
+References: <46315EED.9020103@redhat.com>	<17969.37229.250000.895316@notabene.brown>	<20070427111513.GA25126@salusa.poochiereds.net>	<17969.61232.323762.29003@notabene.brown>	<20070427134248.GB25126@salusa.poochiereds.net>	<20070427141710.GA11484@infradead.org>	<20070427154259.GF32278@fieldses.org>	<46321870.7000607@redhat.com>	<20070427163129.GI32278@fieldses.org>	<17970.30655.854497.849900@notabene.brown>	<20070429201353.GA23531@fieldses.org>
+	<17973.9710.650004.160243@notabene.brown>
 Reply-To: wcheng@redhat.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Christoph Hellwig <hch@infradead.org>, cluster-devel@redhat.com,
+	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HiN9R-0007If-9M
-	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 21:06:13 -0700
+	id 1HiO8N-0004mG-HK
+	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 22:09:11 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HiN9T-0003zs-LS
-	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 21:06:16 -0700
-In-Reply-To: <46356C57.1040601@redhat.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HiO8O-0003Fm-LK
+	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 22:09:14 -0700
+In-Reply-To: <17973.9710.650004.160243@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,16 +33,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Wendy Cheng wrote:
+Neil Brown wrote:
 
-> Neil Brown wrote:
+>But we probably don't need to go over-board straight away.
+>I like the interface:
+>   echo -n "flag flag .. /path/name" >  /proc/fs/nfsd/filesystem_settings
 >
->>
->> What would you think of an "noflock" option to allow people to choose
->> the old practice of not supporting flock???
->>
-Sorry, shouldn't make a joke as previous post - I should have said this 
-is a sensible solution for now.
+>where if flags is "?flag", then the value is returned by a subsequent
+>read on the same file-descriptor.
+>
+>  
+>
+Will do a quick prototype to see whether this would work as good as it 
+appears. I haven't given up RPC call (into lockd) either since it seems 
+to be a bright idea.
 
 -- Wendy
 
