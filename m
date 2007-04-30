@@ -1,24 +1,23 @@
 From: Gabriel Barazer <gabriel@oxeva.fr>
-Subject: Re: Rpc.mountd growing 6 MB/day
-Date: Tue, 01 May 2007 00:49:12 +0200
-Message-ID: <46367268.5030600@oxeva.fr>
-References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>	<46362BC8.9040305@oxeva.fr>
-	<17974.24183.309814.609652@notabene.brown>
+Subject: Re: mountd randomly crash and panic the server
+Date: Tue, 01 May 2007 01:46:04 +0200
+Message-ID: <46367FBC.6000007@oxeva.fr>
+References: <461CFABE.9050301@barazer.net>	<46234130.5020502@oxeva.fr>	<17955.21572.383131.837268@notabene.brown>	<4623830D.7040108@oxeva.fr>
+	<17956.8604.672536.126674@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Kottaridis,  Chris" <chris.kottaridis@windriver.com>
+Cc: nfs@lists.sourceforge.net
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hiegg-0003rQ-UF
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:49:43 -0700
+	id 1HifZh-0000rz-JI
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 16:46:34 -0700
 Received: from mail.reagi.com ([195.60.188.80])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hiegg-0001Z1-Hr
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:49:45 -0700
-In-Reply-To: <17974.24183.309814.609652@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HifZj-00074i-LX
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 16:46:36 -0700
+In-Reply-To: <17956.8604.672536.126674@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +30,96 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-BTW, there is a bug in the configure script provided in the 
-nfs-utils-1.1.0-rc2 package : --without-uuid does't work, but 
---disable-uuid does for excluding libblkid linking.
+On 04/17/2007 3:23:40 +0200, Neil Brown <neilb@suse.de> wrote:
 
-Gabriel
-
-On 04/30/2007 23:24:07 +0200, Neil Brown <neilb@suse.de> wrote:
-
-> On Monday April 30, gabriel@oxeva.fr wrote:
->> I have this problem too for a long time and already reported it, but 
->> propably forgotten. My rpc.mountd is actually 350MB and continue 
->> growing, with nfs-utils 1.1.0-rc2:
->>
->> # rpc.mountd --version
->> kmountd 1.1.0-rc2
 > 
-> Is this compiled with libblkid (the default)?
-> There is a memory leak in libblkid that was only fixed quite recently
-> so unless your libblkid is very new, you should use
->     ./configure --without-uuid
+> I did end up just hunting through the patches between 2.6.18 and
+> 2.6.20 and I think I have found it (I had already looked at the code
+> where the bug is, but didn't see it the first time :-().
 > 
+> Could you try this patch and report the results please?
+> I'm very confident that the patch is correct and required, but I would
+> like to also know that it fixes your problem.
+> 
+
+By the way, I patched the 2.6.20.7 kernel since you provided the patch, 
+and haven't encountered any stability problem, except some CFQ scheduler 
+  related kernel panics, which are, I suppose, not linked to the NFS 
+problem (I still mention it because unrelated but linked problems like 
+this sometimes happens)
+
+Thanks for the patch !
+
+Gabriel Barazer
+
+> Thanks
 > NeilBrown
+> 
+> ---------------------------------------------
+> Use a spinlock to protect sk_info_authunix
+> 
+> sk_info_authunix is not being protected properly so the object that
+> it points to can be cache_put twice, leading to corruption.
+> 
+> We borrow svsk->sk_defer_lock to provide the protection.  We should probably
+> rename that lock to have a more generic name.
+> 
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./net/sunrpc/svcauth_unix.c |   21 ++++++++++++++++-----
+>  1 file changed, 16 insertions(+), 5 deletions(-)
+> 
+> diff .prev/net/sunrpc/svcauth_unix.c ./net/sunrpc/svcauth_unix.c
+> --- .prev/net/sunrpc/svcauth_unix.c	2007-04-17 11:18:44.000000000 +1000
+> +++ ./net/sunrpc/svcauth_unix.c	2007-04-17 11:19:18.000000000 +1000
+> @@ -383,7 +383,10 @@ void svcauth_unix_purge(void)
+>  static inline struct ip_map *
+>  ip_map_cached_get(struct svc_rqst *rqstp)
+>  {
+> -	struct ip_map *ipm = rqstp->rq_sock->sk_info_authunix;
+> +	struct ip_map *ipm;
+> +	struct svc_sock *svsk = rqstp->rq_sock;
+> +	spin_lock(&svsk->sk_defer_lock);
+> +	ipm = svsk->sk_info_authunix;
+>  	if (ipm != NULL) {
+>  		if (!cache_valid(&ipm->h)) {
+>  			/*
+> @@ -391,12 +394,14 @@ ip_map_cached_get(struct svc_rqst *rqstp
+>  			 * remembered, e.g. by a second mount from the
+>  			 * same IP address.
+>  			 */
+> -			rqstp->rq_sock->sk_info_authunix = NULL;
+> +			svsk->sk_info_authunix = NULL;
+> +			spin_unlock(&svsk->sk_defer_lock);
+>  			cache_put(&ipm->h, &ip_map_cache);
+>  			return NULL;
+>  		}
+>  		cache_get(&ipm->h);
+>  	}
+> +	spin_unlock(&svsk->sk_defer_lock);
+>  	return ipm;
+>  }
+>  
+> @@ -405,9 +410,15 @@ ip_map_cached_put(struct svc_rqst *rqstp
+>  {
+>  	struct svc_sock *svsk = rqstp->rq_sock;
+>  
+> -	if (svsk->sk_sock->type == SOCK_STREAM && svsk->sk_info_authunix == NULL)
+> -		svsk->sk_info_authunix = ipm;	/* newly cached, keep the reference */
+> -	else
+> +	spin_lock(&svsk->sk_defer_lock);
+> +	if (svsk->sk_sock->type == SOCK_STREAM &&
+> +	    svsk->sk_info_authunix == NULL) {
+> +		/* newly cached, keep the reference */
+> +		svsk->sk_info_authunix = ipm;
+> +		ipm = NULL;
+> +	}
+> +	spin_unlock(&svsk->sk_defer_lock);
+> +	if (ipm)
+>  		cache_put(&ipm->h, &ip_map_cache);
+>  }
+>  
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
