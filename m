@@ -1,7 +1,7 @@
 From: Gabriel Barazer <gabriel@oxeva.fr>
 Subject: Re: Rpc.mountd growing 6 MB/day
-Date: Tue, 01 May 2007 00:19:46 +0200
-Message-ID: <46366B82.105@oxeva.fr>
+Date: Tue, 01 May 2007 00:49:12 +0200
+Message-ID: <46367268.5030600@oxeva.fr>
 References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>	<46362BC8.9040305@oxeva.fr>
 	<17974.24183.309814.609652@notabene.brown>
 Mime-Version: 1.0
@@ -13,11 +13,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HieEE-0000yN-VU
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:20:19 -0700
+	id 1Hiegg-0003rQ-UF
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:49:43 -0700
 Received: from mail.reagi.com ([195.60.188.80])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HieEG-0002VL-2T
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:20:21 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hiegg-0001Z1-Hr
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:49:45 -0700
 In-Reply-To: <17974.24183.309814.609652@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,10 +31,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I will try with mountd compiled without libblkid, although my version is 
-the most up to date release : 1.39 from e2fsprogs.
-
-Do I have to apply the previously posted patch as well ?
+BTW, there is a bug in the configure script provided in the 
+nfs-utils-1.1.0-rc2 package : --without-uuid does't work, but 
+--disable-uuid does for excluding libblkid linking.
 
 Gabriel
 
