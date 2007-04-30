@@ -1,34 +1,29 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: time_after cannot be used alone by NFS code	in
-	32bit	architectures
-Date: Tue, 8 May 2007 23:18:05 +1000
-Message-ID: <17984.30861.472106.751930@notabene.brown>
-References: <20070426043344.GO10449@sleipnir.redhat.com>
-	<1178106770.5960.28.camel@raven.themaw.net>
-	<1178591824.3918.10.camel@raven.themaw.net>
-	<17984.5736.617053.65429@notabene.brown>
-	<1178627674.25317.2.camel@heimdal.trondhjem.org>
+From: Gabriel Barazer <gabriel@oxeva.fr>
+Subject: Re: Rpc.mountd growing 6 MB/day
+Date: Tue, 01 May 2007 00:19:46 +0200
+Message-ID: <46366B82.105@oxeva.fr>
+References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>	<46362BC8.9040305@oxeva.fr>
+	<17974.24183.309814.609652@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs <nfs@lists.sourceforge.net>,
-	Ian Kent <raven@themaw.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net,
+	"Kottaridis,  Chris" <chris.kottaridis@windriver.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HlPaJ-0005zI-Ug
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 06:18:32 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HlPaM-00068T-Bw
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 06:18:34 -0700
-In-Reply-To: message from Trond Myklebust on Tuesday May 8
+	id 1HieEE-0000yN-VU
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:20:19 -0700
+Received: from mail.reagi.com ([195.60.188.80])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HieEG-0002VL-2T
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 15:20:21 -0700
+In-Reply-To: <17974.24183.309814.609652@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
 List-Post: <mailto:nfs@lists.sourceforge.net>
 List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
 List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,33 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 8, trond.myklebust@fys.uio.no wrote:
-> 
-> We can pretty trivially fix that scenario. See below.
-> 
-> Trond
-> 
-> ------------------------------------------
-> commit 6d9b786c6c9b5daf8b20927c7495e42e1c7fde6a
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Mon May 7 22:41:18 2007 -0400
-> 
->     NFS: Fix a jiffie wraparound issue
->     
->     dentry verifiers are always set to the parent directory's
->     cache_change_attribute. There is no reason to be testing for anything other
->     than equality when we're trying to find out if the dentry has been checked
->     since the last time the directory was modified.
->     
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+I will try with mountd compiled without libblkid, although my version is 
+the most up to date release : 1.39 from e2fsprogs.
 
-Neat-o!!
-It pays to have someone around who really knows the code well, doesn't
-it :-)
+Do I have to apply the previously posted patch as well ?
 
-Looks good to me!
+Gabriel
 
-NeilBrown
+On 04/30/2007 23:24:07 +0200, Neil Brown <neilb@suse.de> wrote:
+
+> On Monday April 30, gabriel@oxeva.fr wrote:
+>> I have this problem too for a long time and already reported it, but 
+>> propably forgotten. My rpc.mountd is actually 350MB and continue 
+>> growing, with nfs-utils 1.1.0-rc2:
+>>
+>> # rpc.mountd --version
+>> kmountd 1.1.0-rc2
+> 
+> Is this compiled with libblkid (the default)?
+> There is a memory leak in libblkid that was only fixed quite recently
+> so unless your libblkid is very new, you should use
+>     ./configure --without-uuid
+> 
+> NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
