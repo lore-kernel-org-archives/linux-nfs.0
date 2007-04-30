@@ -1,26 +1,25 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [Cluster-devel] [PATCH 0/4 Revised] NLM - lock failover
-Date: Mon, 30 Apr 2007 01:19:38 -0400
-Message-ID: <46357C6A.7080007@redhat.com>
-References: <46315EED.9020103@redhat.com>	<17969.37229.250000.895316@notabene.brown>	<20070427111513.GA25126@salusa.poochiereds.net>	<17969.61232.323762.29003@notabene.brown>	<20070427134248.GB25126@salusa.poochiereds.net>	<20070427141710.GA11484@infradead.org>	<20070427154259.GF32278@fieldses.org>	<46321870.7000607@redhat.com>	<20070427163129.GI32278@fieldses.org>	<17970.30655.854497.849900@notabene.brown>	<20070429201353.GA23531@fieldses.org>
-	<17973.9710.650004.160243@notabene.brown>
-Reply-To: wcheng@redhat.com
+From: Olaf Kirch <okir@lst.de>
+Subject: Re: flock and lockf over NFS and the 'pid' in lockd requests.
+Date: Mon, 30 Apr 2007 08:08:11 +0200
+Message-ID: <200704300808.12914.okir@lst.de>
+References: <17973.19011.690165.95878@notabene.brown>
+	<1177899233.6400.58.camel@heimdal.trondhjem.org>
+	<17973.26166.844328.279844@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Christoph Hellwig <hch@infradead.org>, cluster-devel@redhat.com,
-	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HiO8N-0004mG-HK
-	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 22:09:11 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HiO8O-0003Fm-LK
-	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 22:09:14 -0700
-In-Reply-To: <17973.9710.650004.160243@notabene.brown>
+	id 1HiP3k-0001u3-MF
+	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 23:08:28 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HiP3l-0002cm-QV
+	for nfs@lists.sourceforge.net; Sun, 29 Apr 2007 23:08:31 -0700
+In-Reply-To: <17973.26166.844328.279844@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,22 +32,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil Brown wrote:
+On Monday 30 April 2007 05:44, Neil Brown wrote:
+>  - you cannot hold both an fcntl lock and a flock for the same file at
+>    the same time (thus NFS breaks local file semantics again) or
 
->But we probably don't need to go over-board straight away.
->I like the interface:
->   echo -n "flag flag .. /path/name" >  /proc/fs/nfsd/filesystem_settings
->
->where if flags is "?flag", then the value is returned by a subsequent
->read on the same file-descriptor.
->
->  
->
-Will do a quick prototype to see whether this would work as good as it 
-appears. I haven't given up RPC call (into lockd) either since it seems 
-to be a bright idea.
+It would be nice if we could at least return EDEADLOCK
+and do a printk("%s tried to take flock+posix lock\n", current->comm);
+I think in general the current behavior isn't that bad, and I wouldn't
+expect many apps to be affected. In general, MUAs will usually
+implement either flock or fcntl locks, but not both at the same time.
+Except for procmail, which has always been a bit... special.
 
--- Wendy
+>  - we return to the unfortunate but well-understood situation that
+>    flock locks don't work over NFS.
+
+I don't think we want that.
+
+>  - massive rewrite of the lockd code so that the client doesn't depend
+>    on the server for local arbitration, and the client needs to
+>    potentially send lots of subrange unlocks for a single unlock
+>    call.
+
+Don't go there. You basically need to copy fs/locks.c and butcher it
+badly. On a per-file and per-owner basis, you need to maintain a
+list of ranges and their lock status. They would be overlapping
+(shared locks), and the semantics on unlock would be a mess
+because of the different inheritance rules for posix vs flock locks.
+
+> What would you think of an "noflock" option to allow people to choose
+> the old practice of not supporting flock???
+
+I'd suggest, fix procmail and be done with it :-)
+
+Olaf
+-- 
+Olaf Kirch  |  --- o --- Nous sommes du soleil we love when we play
+okir@lst.de |    / | \   sol.dhoop.naytheet.ah kin.ir.samse.qurax
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
