@@ -1,22 +1,23 @@
-From: "Kottaridis, Chris" <chris.kottaridis@windriver.com>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: Rpc.mountd growing 6 MB/day
-Date: Mon, 30 Apr 2007 13:06:03 -0700
-Message-ID: <37B62E0F71C9E14B9859FADB1FC3E3E133E55C@ala-mail02.corp.ad.wrs.com>
-References: <46362BC8.9040305@oxeva.fr>
+Date: Tue, 1 May 2007 07:19:44 +1000
+Message-ID: <17974.23920.40070.101936@notabene.brown>
+References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "Gabriel Barazer" <gabriel@oxeva.fr>
+To: "Kottaridis, Chris" <chris.kottaridis@windriver.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hic8O-0006Cx-HH
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 13:06:08 -0700
-Received: from mail.windriver.com ([147.11.1.11] helo=mail.wrs.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hic8Q-0008WE-0O
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 13:06:11 -0700
-In-Reply-To: <46362BC8.9040305@oxeva.fr>
+	id 1HidI2-0003sR-R4
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 14:20:10 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HidI3-00040V-Da
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 14:20:13 -0700
+In-Reply-To: message from Kottaridis, Chris on Monday April 30
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,44 +30,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-There's a comment in the support/rpc/svc.c file for the svc_getreq()
-routine that makes the following statement:
+On Monday April 30, chris.kottaridis@windriver.com wrote:
+> I have a situation where rpc.mountd is growing continuously and I am not
+> sure if it's a memory leak or expected behavior that can be controlled
+> with some configuration option.
+>  
+...
+>  
+> I am using the kernel NFSD, the kernel version is 2.6.10, the nfs-utils
+> version is nfs-utils-1.0.7
 
-/* ********************* SERVER INPUT STUFF ********************** */
+Can you try this patch - unless you are using rpcsec/gss, it is the
+only known leak likely to affect that version.
 
-/*
- * Get server side input from some transport.
- *
- * Statement of authentication parameters management:
- * This function owns and manages all authentication parameters,
-specifically
- * the "raw" parameters (msg.rm_call.cb_cred and msg.rm_call.cb_verf)
-and
- * the "cooked" credentials (rqst->rq_clntcred).
- * However, this function does not know the structure of the cokked
- * credentials, so it make the following assumptions:
- *  a) the structure is contiguous (no pointers), and
- *  b) the cred structure size does not exceed RQCRED_SIZE bytes.
- * In all events, all three parameters are freed upon exit from this
-routine.
- * The storage is trivially management on the call stack in user land,
-but
- * is mallocated in kernel land.
- */ 
+If that doesn't help you might need to try valgrind or similar.
 
-I don't really know what's going on here, so I am not too sure about the
-reference in the last two lines about memory management. This wouldn't
-be some way in which the kernel is allocating space to the rpc.mountd
-process, so if there's a leak it's in the kernel and not in the
-rpc.mountd userland code would it ?
+NeilBrown
 
-Thanks
 
-Chris Kottaridis
-Senior Engineer
-Wind River Systems
-719-522-9786
+commit 08964495c2a65f6228426e4565a50dae5b75834d
+Author: Steinar H. Gunderson <sgunderson@bigfoot.com>
+Date:   Fri Mar 16 11:26:35 2007 +1100
 
+    Fix memory leak in mountd.
+    
+    Signed-off-by: Neil Brown <neilb@suse.de>
+
+diff --git a/support/export/client.c b/support/export/client.c
+index 33dfdb0..686c744 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -329,6 +329,7 @@ add_name(char *old, char *add)
+ 		strcat(new, ",");
+ 		strcat(new, cp);
+ 	}
++	free(old);
+ 	return new;
+ }
+ 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
