@@ -1,57 +1,92 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [NFS] [PATCH 0/18] export operations rewrite
-Date: Tue, 1 May 2007 11:39:05 +0100
-Message-ID: <20070501103905.GA30906@infradead.org>
-References: <20070317010946.GA24947@infradead.org> <17932.34141.590792.120454@notabene.brown>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: supress warnings about
+	NFS4ERR_OLD_STATEID	in	nfs4_handle_exception
+Date: Tue, 01 May 2007 07:42:29 -0700
+Message-ID: <1178030549.5444.11.camel@heimdal.trondhjem.org>
+References: <20070426191336.GB31081@dantu.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <17932.34141.590792.120454@notabene.brown>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: ffilz@us.ibm.com, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HitTp-0003CP-LG
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 07:37:25 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+m5kKrnVUC/krbptmOjyk2onxGcOwM/6U=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HitTr-0000jh-R9
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 07:37:28 -0700
+In-Reply-To: <20070426191336.GB31081@dantu.rdu.redhat.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Mar 30, 2007 at 01:34:53PM +1000, Neil Brown wrote:
-> On Saturday March 17, hch@infradead.org wrote:
+On Thu, 2007-04-26 at 15:13 -0400, Jeff Layton wrote:
+> I recently posted this patch to the nfs mailing list, but got no comment.
+> Reposting with an actual "[PATCH]" subject...
 > 
-> less that 2 weeks later....
-
-more than one month later.... :)
-
-> My only question involves motivation.
+> In certain situations, a NFSv4 client can end up with a set of racing calls
+> that cause the server to return a NFS4ERR_OLD_STATEID error. When this occurs,
+> the only real recourse that the client has is to retry the call. In the
+> current code, when this occurs, it triggers a useless printk (in
+> nfs4_map_errors):
 > 
->   You say "less complex", but to me it just looks "different" - though
->   being very familiar with the original, that might be a biased view.
->   Can you say more about how it is less complex?
->   Maybe the extension to generic 64bit support will make that clear...
+>     nfs4_map_errors could not handle NFSv4 error 10024
 > 
->   But then generic 64bit support should just be an independent set of
->   helper functions that can be plugged in to the export_operations
->   structure.
+> Trond recently mentioned that we really don't need to worry users with that
+> info. The following patch is based on a suggestion by Frank Filz and supresses
+> this error. Changing the return code here to 0 should be safe since all callers
+> of nfs4_handle_exception are expected to retry the call in this situation
+> anyway.
 > 
-> For what it does, the code looks fine, and I can see some definite
-> improvements here and there, but I'm not clear on the over-all
-> motivation.
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Frank Filz <ffilz@us.ibm.com>
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f52cf5c..b456783 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2774,6 +2774,7 @@ int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct
+>  				break;
+>  		case -NFS4ERR_OLD_STATEID:
+>  			exception->retry = 1;
+> +			ret = 0;
+>  	}
+>  	/* We failed to handle the error */
+>  	return nfs4_map_errors(ret);
 
-When looking at suppor for 64bit inodes I stumbled over a few things
-I really dislike in the current code:
+Surely "return 0;" is more efficient.
 
- - I really hate the current function pointer indirection for
-   find_exported_dentry.  Using the same method table for communication
-   in two different ways just feels very bad to me.
- - passing the fid completely untyped to filesystem seem too error
-   prone to me, and is rather contrary to how we do things elsewhere
-   in the kernel.
- - the calling conversion on the decode side where we first call
-   ->decode_fh to split the filehandle into two blobs only to
-   recurse back into exportfs and then recurse back into the filesystem
-   seems rather odd.  By having two methods to get the dentry and
-   parent directly from the on the wire file handle this big callstack
-   collapses to a very simple one.
+...and a minor nit about the comment: it doesn't trigger a printk(). It
+rather triggers a dprintk(), (which should be turned off by default
+unless you happen to be debugging the code).
 
-So yes, we probably could do 64bit inode filehandles with the old scheme
-(and in fact xfs, ocfs2 and gfs2 already have support for it), but revamping
-the layering will make it quite a bit cleaner.  I'll doug up those patches
-again, but on the decode side 64bit inode support is really trivial
-after these, it's just another case statement in the generic routines.
+The other nit is that I'm not sure the dprintk() is totally useless. It
+is always nice to know _why_ the thing looped when you are debugging.
+That said, we should perhaps rather put the dprintk() for that in
+nfs4_handle_exception instead...
+
+Trond
+
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
