@@ -1,27 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Rpc.mountd growing 6 MB/day
-Date: Tue, 1 May 2007 13:49:09 +1000
-Message-ID: <17974.47285.493500.362757@notabene.brown>
-References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>
-	<46362BC8.9040305@oxeva.fr>
-	<17974.24183.309814.609652@notabene.brown>
-	<46367268.5030600@oxeva.fr>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: time_after cannot be used alone by NFS code
+	in	32bit	architectures
+Date: Tue, 01 May 2007 12:04:12 +0800
+Message-ID: <1177992252.3380.20.camel@raven.themaw.net>
+References: <20070426043344.GO10449@sleipnir.redhat.com>
+	<17968.17162.171856.702874@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Kottaridis,  Chris" <chris.kottaridis@windriver.com>
-To: Gabriel Barazer <gabriel@oxeva.fr>
+Cc: linux-nfs <nfs@lists.sourceforge.net>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HijMn-0006dC-M5
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:49:30 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HijMq-0006fk-5c
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:49:32 -0700
-In-Reply-To: message from Gabriel Barazer on Tuesday May 1
+	id 1Hijic-00008C-2h
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 21:13:12 -0700
+Received: from out1.smtp.messagingengine.com ([66.111.4.25])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hijid-0005Bg-0S
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 21:12:04 -0700
+In-Reply-To: <17968.17162.171856.702874@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,15 +31,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 1, gabriel@oxeva.fr wrote:
-> BTW, there is a bug in the configure script provided in the 
-> nfs-utils-1.1.0-rc2 package : --without-uuid does't work, but 
-> --disable-uuid does for excluding libblkid linking.
+On Thu, 2007-04-26 at 16:13 +1000, Neil Brown wrote:
+> On Thursday April 26, fleite@redhat.com wrote:
+> > Hi nfs@,
+> > 
+> > This is going to be tough, so bear with me for a while. :)
+> > 
+> > While I was trying to understand the effects of wrapping jiffies in
+> > the various timestamp comparisons the NFS code does among its data
+> > structures, I was struck by cases where the code flow just did not
+> > make sense (checking with nfs_debug set to 32767 and additional
+> > systemtap scripts to extract debug info), considering the jiffy
+> > timestamps involved. This is the investigation that ensued.
+> > 
+> > time_after and friends provide a very clever way to compare two jiffy
+> > counts when those two counts are close together, and indeed does
+> > provide sign flip resistance, when the two values are close together.
+> > So it is ideal for short-lived timers and timeouts, since one would be
+> > usually comparing values a few thousands or even millions apart.
+> > 
+> > But unfortunately for the NFS code, time_after and friends alone are
+> > not well suited if we're just comparing jiffy counts taken at random
+> > times in the past instead of at moments close together. Exactly the
+> > protection against sign flips backfires when comparing timestamps over
+> > 2 billion counts apart.
+> 
+> Having found and fixed one issue with jiffie wrap recently (after 24
+> days, some web servers using NFS to access static content started
+> generating much higher levels of GETATTR requests), I understand the
+> possible problems, and agree that there could be issues.
+> 
+> However when I went looking to see if there could be other issues with
+> jiffie wrapping, my cursory look suggested not.  Most data structures
+> (inodes, dentries) that are completely unused for 24 days are
+> extremely likely to get flushed out of cache (there will be something
+> else that wants the memory) and anything that is used will get
+> timestamps refreshed regularly based on the attribute timeout in nfs
+> (which is usually less than one minute).
 
-Yes, --disable-uuid is the correct flag.  I will fix the help message.
-Thanks.
+Yes, but I think Fabio is talking about negative "hashed" dentrys here.
+They won't be going away will they?
 
-NeilBrown
+> 
+> So I think this is only likely to be a problem for timestamps that do
+> not get refreshed in the general running on NFS.
+> 
+> One example is nfsi->cache_change_attribute.  If a file is unmodified
+> for 24 days, that can wrap, but there is now a fix for this in place.
+> Commit 3e7d950a528454ad749a264feef3c8bad3faa108 in Linus' git tree.
+
+Yes, I saw that when I was poking around.
+I got the impression there was another problem field but I haven't
+looked further, I'm probably wrong about that.
+
+This patch relies on the revalidation of the directory of a negative
+hashed dentry during lookup which will happen during the path walk.
+
+Fabio, can you offer a case where this won't work?
+
+Ian
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
