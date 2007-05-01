@@ -1,26 +1,24 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: mountd randomly crash and panic the server
-Date: Tue, 1 May 2007 09:59:46 +1000
-Message-ID: <17974.33522.70308.585198@notabene.brown>
-References: <461CFABE.9050301@barazer.net> <46234130.5020502@oxeva.fr>
-	<17955.21572.383131.837268@notabene.brown>
-	<4623830D.7040108@oxeva.fr>
-	<17956.8604.672536.126674@notabene.brown>
-	<46367FBC.6000007@oxeva.fr>
+Subject: Re: [PATCH] RPC: add wrapper for svc_reserve to account
+	for	checksum
+Date: Tue, 1 May 2007 12:14:11 +1000
+Message-ID: <17974.41587.666167.650575@notabene.brown>
+References: <20070421131523.GA18100@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Gabriel Barazer <gabriel@oxeva.fr>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hifmq-0002AQ-QI
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 17:00:09 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hifmr-0001Ta-Qf
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 17:00:11 -0700
-In-Reply-To: message from Gabriel Barazer on Tuesday May 1
+	id 1Hiht0-0006G0-Iw
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 19:14:38 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hiht2-0007Nr-Lo
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 19:14:41 -0700
+In-Reply-To: message from Jeff Layton on Saturday April 21
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,64 +31,104 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 1, gabriel@oxeva.fr wrote:
-> On 04/17/2007 3:23:40 +0200, Neil Brown <neilb@suse.de> wrote:
+On Saturday April 21, jlayton@redhat.com wrote:
+> When the kernel calls svc_reserve to downsize the expected size of an RPC
+> reply, it fails to account for the possibility of a checksum at the end of
+> the packet. If a client mounts a NFSv2/3 with sec=krb5i/p, and does I/O then
+> you'll generally see messages similar to this in the server's ring buffer:
 > 
-> > 
-> > I did end up just hunting through the patches between 2.6.18 and
-> > 2.6.20 and I think I have found it (I had already looked at the code
-> > where the bug is, but didn't see it the first time :-().
-> > 
-> > Could you try this patch and report the results please?
-> > I'm very confident that the patch is correct and required, but I would
-> > like to also know that it fixes your problem.
-> > 
+> RPC request reserved 164 but used 208
 > 
-> By the way, I patched the 2.6.20.7 kernel since you provided the patch, 
-> and haven't encountered any stability problem, except some CFQ scheduler 
+> While I was never able to verify it, I suspect that this problem is also the
+> root cause of some oopses I've seen under these conditions:
+> 
+> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=227726
 
-Cool, thanks for the report.
+I don't think to two are that closely related.
+The space reservation mentioned in the "RPC request reserved ..."
+messages is a fairly soft reservation.  We try to make sure the
+network stack reserves a certain amount of space, then try never to
+start processing a request unless we will be able to reply without
+exceeding that allocation.
+If we get it wrong and do exceed the allocation, the worst that might
+happen is that we might block while writing the reply and maybe have
+to close a connection, or send out an incomplete packet, or something
+like that.  Certainly not an oops.
 
->   related kernel panics, which are, I suppose, not linked to the NFS 
-> problem (I still mention it because unrelated but linked problems like 
-> this sometimes happens)
+The extra space needed at the end of the message of integrity
+information which we weren't accounting for properly does seemed to be
+accounted correctly in svcauth_gss_wrap_resp_integ (I'm less sure of
+_wrp_resp_priv, but it is probably right).
 
-CFQ panics ?  In cfq_dispatch_insert by any chance?
+Of the two Oops in that BUG, the first seems to be the
+		BUG_ON(resbuf->tail[0].iov_len);
+in svcauth_gss_wrap_resp_integ (assuming code in 2.6.9-44.ELxenU is at
+least vaguely similar to current -mm).
 
-This patch from Jens Axboe might be what you need.
+I don't think this BUG_ON is correct.  If a readdir finds zero entries,
+then will be some trailer information in the 'tail', but page_len will
+be 0.  I think the following patch is correct and could fix that.
+Bruce:  does it look OK to you?
 
+
+The second oops is harder to interpret.
+I looks like tcp_send_page is getting a NULL page, though it could be
+getting a length > PAGE_SIZE which might have the same effect.
+
+It reminds me of
+  http://bugzilla.kernel.org/show_bug.cgi?id=7795
+but I'm not convinced it is the same.
+
+> 
+> Unfortunately, there doesn't seem to be a good way to reliably determine the
+> expected checksum length prior to actually calculating it, particularly with
+> schemes like spkm3.
+
+Yes, that asn1 encoding does seem rather awkward.
+
+Maybe we should just use RPC_MAX_AUTH_SIZE like other bits of GSS code
+does.  There is no great cost in reserving too much space - it just
+might slow things down a little when tight on memory.
+What would you think of submitting an incremental patch which replaces
+the "56" with "RPC_MAX_AUTH_SIZE" ?
+
+Thanks (and sorry for the delay).
 NeilBrown
 
-diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-index 9e37971..f965be7 100644
---- a/block/cfq-iosched.c
-+++ b/block/cfq-iosched.c
-@@ -532,6 +532,11 @@ static void cfq_add_rq_rb(struct request *rq)
- 
- 	if (!cfq_cfqq_on_rr(cfqq))
- 		cfq_add_cfqq_rr(cfqd, cfqq);
-+
-+	/*
-+	 * check if this request is a better next-serve candidate
-+	 */
-+	cfqq->next_rq = cfq_choose_req(cfqd, cfqq->next_rq, rq);
- }
- 
- static inline void
-@@ -1639,12 +1644,6 @@ cfq_rq_enqueued(struct cfq_data *cfqd, struct cfq_queue *cfqq,
- 		cfqq->meta_pending++;
- 
- 	/*
--	 * check if this request is a better next-serve candidate)) {
--	 */
--	cfqq->next_rq = cfq_choose_req(cfqd, cfqq->next_rq, rq);
--	BUG_ON(!cfqq->next_rq);
--
--	/*
- 	 * we never wait for an async request and we don't allow preemption
- 	 * of an async request. so just return early
- 	 */
+--
+Simplify (and fix) adding of integrity data to end of rpc message
 
+There is no value in a special case for adding integ data to the
+'head' part of the reply in the case where there is no body.
+Always put it in the 'tail', placing that after the current head if it
+doesn't have a place yet.
+As readdir can potentially return an empty body and a non-empty tail,
+the BUG_ON can fire.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./net/sunrpc/auth_gss/svcauth_gss.c |    8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff .prev/net/sunrpc/auth_gss/svcauth_gss.c ./net/sunrpc/auth_gss/svcauth_gss.c
+--- .prev/net/sunrpc/auth_gss/svcauth_gss.c	2007-05-01 11:42:31.000000000 +1000
++++ ./net/sunrpc/auth_gss/svcauth_gss.c	2007-05-01 11:42:55.000000000 +1000
+@@ -1210,13 +1210,7 @@ svcauth_gss_wrap_resp_integ(struct svc_r
+ 	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset,
+ 				integ_len))
+ 		BUG();
+-	if (resbuf->page_len == 0
+-			&& resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE
+-			< PAGE_SIZE) {
+-		BUG_ON(resbuf->tail[0].iov_len);
+-		/* Use head for everything */
+-		resv = &resbuf->head[0];
+-	} else if (resbuf->tail[0].iov_base == NULL) {
++	if (resbuf->tail[0].iov_base == NULL) {
+ 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+ 			goto out_err;
+ 		resbuf->tail[0].iov_base = resbuf->head[0].iov_base
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
