@@ -1,26 +1,25 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] RPC: add wrapper for svc_reserve to account
-	for	checksum
-Date: Mon, 30 Apr 2007 23:33:10 -0400
-Message-ID: <20070501033310.GB21774@fieldses.org>
-References: <20070421131523.GA18100@dantu.rdu.redhat.com>
-	<17974.41587.666167.650575@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Rpc.mountd growing 6 MB/day
+Date: Tue, 1 May 2007 13:47:19 +1000
+Message-ID: <17974.47175.736725.527504@notabene.brown>
+References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>
+	<46362BC8.9040305@oxeva.fr>
+	<17974.24183.309814.609652@notabene.brown> <46366B82.105@oxeva.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net,
+	"Kottaridis,  Chris" <chris.kottaridis@windriver.com>
+To: Gabriel Barazer <gabriel@oxeva.fr>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hij74-00058I-36
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:33:14 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hij75-0003R0-Fm
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:33:16 -0700
-In-Reply-To: <17974.41587.666167.650575@notabene.brown>
+	id 1HijL7-0006Ri-QW
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:47:46 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HijL9-0000Kf-9S
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:47:48 -0700
+In-Reply-To: message from Gabriel Barazer on Tuesday May 1
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,19 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, May 01, 2007 at 12:14:11PM +1000, Neil Brown wrote:
-> I don't think this BUG_ON is correct.  If a readdir finds zero entries,
-> then will be some trailer information in the 'tail', but page_len will
-> be 0.  I think the following patch is correct and could fix that.
+On Tuesday May 1, gabriel@oxeva.fr wrote:
+> I will try with mountd compiled without libblkid, although my version is 
+> the most up to date release : 1.39 from e2fsprogs.
 
-Yep.
+Bug is in 1.39, will be fix in 1.40.  More info at
+   http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=413661
 
-> Bruce:  does it look OK to you?
+> 
+> Do I have to apply the previously posted patch as well ?
+> 
 
-It looks sensible, but it's a little late for me--I'll take another look
-at it and run some tests tommorow.
+No, that fix in already in 1.1.0-rc2
 
---b.
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
