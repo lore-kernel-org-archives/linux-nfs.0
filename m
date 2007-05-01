@@ -1,12 +1,7 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: Portmap - was Re: Does mountd/statd really need to	listen
-	on a privileged port??
-Date: Wed, 02 May 2007 12:22:12 +0800
-Message-ID: <1178079732.3393.8.camel@raven.themaw.net>
-References: <17958.48121.280256.493824@notabene.brown>
-	<200704252214.03069.okir@lst.de>
-	<17968.18279.424773.589417@notabene.brown>
-	<200704261059.50688.okir@lst.de>  <4630A32E.6000006@redhat.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: [PATCH] nfsd: trivial makefile cleanup
+Date: Tue, 1 May 2007 12:45:12 +0200
+Message-ID: <20070501104512.GA23320@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -14,18 +9,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hj6Nh-0004NH-WC
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 21:23:58 -0700
-Received: from out1.smtp.messagingengine.com ([66.111.4.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hj6Nh-0000GW-6l
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 21:24:00 -0700
-Received: from compute1.internal (compute1.internal [10.202.2.41])
-	by out1.messagingengine.com (Postfix) with ESMTP id 92E2F21A8AF
-	for <nfs@lists.sourceforge.net>; Wed,  2 May 2007 00:23:55 -0400 (EDT)
-Received: from [10.49.97.36] (unknown [203.59.241.52])
-	by mail.messagingengine.com (Postfix) with ESMTP id 7B673BC75
-	for <nfs@lists.sourceforge.net>; Wed,  2 May 2007 00:23:55 -0400 (EDT)
-In-Reply-To: <4630A32E.6000006@redhat.com>
+	id 1Hj6bR-0005pu-03
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 21:38:09 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1Hj6bQ-0002pZ-4x
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 21:38:11 -0700
+Received: from verein.lst.de (localhost [127.0.0.1])
+	by mail.lst.de (8.12.3/8.12.3/Debian-7.1) with ESMTP id l424bdmK017725
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 06:37:41 +0200
+Received: (from hch@localhost)
+	by verein.lst.de (8.12.3/8.12.3/Debian-6.6) id l41AjC70023340
+	for nfs@lists.sourceforge.net; Tue, 1 May 2007 12:45:12 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,35 +34,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-04-26 at 09:03 -0400, Peter Staubach wrote:
-> Olaf Kirch wrote:
-> > On Thursday 26 April 2007 08:32, Neil Brown wrote:
-> >   
-> >> Following this logic, should we add rpcbind functionality to portmap
-> >> rather than throw it out and start with something less known???
-> >>     
-> >
-> > I'm not sure. The rpcbind code isn't exactly pretty, but neither is
-> > portmap.
-> >
-> > Anyway, I guess in order to prove my point about the sunrpc library
-> > I should cough up some code to prove it can be done. I'll be uploading
-> > some patches later tonight or tomorrow.
-> >   
-> 
-> Before we go too far down the road of ignoring all of the work that
-> the engineers at Sun have been doing on the RPC library, is there a
-> way of getting a newer version of the RPC support to start with?  The
-> current stuff is quite old.
+kbuild directly interprets <modulename>-y as objects to build into
+a module, no need to assign it to the old foo-objs variable.
 
-I managed to find a copy of tirpc99 and the code layout looks very
-different. Get it from http://members.plug.org.au/~raven/tirpc99/.
 
-We would need to review the license as I think there's a reason we see
-the tirpc 2.3 version everywhere.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Ian
-
+Index: linux-2.6/fs/nfsd/Makefile
+===================================================================
+--- linux-2.6.orig/fs/nfsd/Makefile	2007-05-01 11:42:57.000000000 +0200
++++ linux-2.6/fs/nfsd/Makefile	2007-05-01 11:43:00.000000000 +0200
+@@ -11,4 +11,3 @@ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs
+ nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
+ 			   nfs4acl.o nfs4callback.o nfs4recover.o
+-nfsd-objs		:= $(nfsd-y)
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
