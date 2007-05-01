@@ -1,24 +1,26 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: Rpc.mountd growing 6 MB/day
-Date: Tue, 1 May 2007 13:47:19 +1000
-Message-ID: <17974.47175.736725.527504@notabene.brown>
+Date: Tue, 1 May 2007 13:49:09 +1000
+Message-ID: <17974.47285.493500.362757@notabene.brown>
 References: <37B62E0F71C9E14B9859FADB1FC3E3E133E51B@ala-mail02.corp.ad.wrs.com>
 	<46362BC8.9040305@oxeva.fr>
-	<17974.24183.309814.609652@notabene.brown> <46366B82.105@oxeva.fr>
+	<17974.24183.309814.609652@notabene.brown>
+	<46367268.5030600@oxeva.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net,
 	"Kottaridis,  Chris" <chris.kottaridis@windriver.com>
 To: Gabriel Barazer <gabriel@oxeva.fr>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HijL7-0006Ri-QW
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:47:46 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HijL9-0000Kf-9S
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:47:48 -0700
+	id 1HijMn-0006dC-M5
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:49:30 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HijMq-0006fk-5c
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 20:49:32 -0700
 In-Reply-To: message from Gabriel Barazer on Tuesday May 1
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,17 +35,12 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Tuesday May 1, gabriel@oxeva.fr wrote:
-> I will try with mountd compiled without libblkid, although my version is 
-> the most up to date release : 1.39 from e2fsprogs.
+> BTW, there is a bug in the configure script provided in the 
+> nfs-utils-1.1.0-rc2 package : --without-uuid does't work, but 
+> --disable-uuid does for excluding libblkid linking.
 
-Bug is in 1.39, will be fix in 1.40.  More info at
-   http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=413661
-
-> 
-> Do I have to apply the previously posted patch as well ?
-> 
-
-No, that fix in already in 1.1.0-rc2
+Yes, --disable-uuid is the correct flag.  I will fix the help message.
+Thanks.
 
 NeilBrown
 
