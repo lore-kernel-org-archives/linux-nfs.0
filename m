@@ -1,24 +1,23 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: time_after cannot be used alone by NFS code
-	in	32bit	architectures
-Date: Tue, 01 May 2007 12:04:12 +0800
-Message-ID: <1177992252.3380.20.camel@raven.themaw.net>
-References: <20070426043344.GO10449@sleipnir.redhat.com>
-	<17968.17162.171856.702874@notabene.brown>
+From: Tomasz Chmielewski <mangoo@wpkg.org>
+Subject: Re: how to check if file locking is working?
+Date: Tue, 01 May 2007 08:24:35 +0200
+Message-ID: <4636DD23.2000509@wpkg.org>
+References: <46308D00.5040109@wpkg.org> <463098C8.8010900@wpkg.org>
+	<1177882063.6400.39.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs <nfs@lists.sourceforge.net>
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hijic-00008C-2h
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 21:13:12 -0700
-Received: from out1.smtp.messagingengine.com ([66.111.4.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hijid-0005Bg-0S
-	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 21:12:04 -0700
-In-Reply-To: <17968.17162.171856.702874@notabene.brown>
+	id 1HiloN-0003Se-7G
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 23:26:07 -0700
+Received: from mail.syneticon.net ([213.239.212.131] helo=mail2.syneticon.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HiloO-0005XR-89
+	for nfs@lists.sourceforge.net; Mon, 30 Apr 2007 23:26:09 -0700
+In-Reply-To: <1177882063.6400.39.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,67 +30,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-04-26 at 16:13 +1000, Neil Brown wrote:
-> On Thursday April 26, fleite@redhat.com wrote:
-> > Hi nfs@,
-> > 
-> > This is going to be tough, so bear with me for a while. :)
-> > 
-> > While I was trying to understand the effects of wrapping jiffies in
-> > the various timestamp comparisons the NFS code does among its data
-> > structures, I was struck by cases where the code flow just did not
-> > make sense (checking with nfs_debug set to 32767 and additional
-> > systemtap scripts to extract debug info), considering the jiffy
-> > timestamps involved. This is the investigation that ensued.
-> > 
-> > time_after and friends provide a very clever way to compare two jiffy
-> > counts when those two counts are close together, and indeed does
-> > provide sign flip resistance, when the two values are close together.
-> > So it is ideal for short-lived timers and timeouts, since one would be
-> > usually comparing values a few thousands or even millions apart.
-> > 
-> > But unfortunately for the NFS code, time_after and friends alone are
-> > not well suited if we're just comparing jiffy counts taken at random
-> > times in the past instead of at moments close together. Exactly the
-> > protection against sign flips backfires when comparing timestamps over
-> > 2 billion counts apart.
+Trond Myklebust schrieb:
+> On Thu, 2007-04-26 at 14:19 +0200, Tomasz Chmielewski wrote:
+>> Tomasz Chmielewski wrote:
+>>> How can I check if file locking is working?
+>>>
+>>> I have a NFS4 server (Linux x86) and a NFS4 client (Linux ARM).
+>>>
+>>>
+>>> NFS4 server exports a Debian-ARM root filesystem (/bin, /etc, /usr... a 
+>>> complete OS).
+>>>
+>>> I want to "upgrade" the Debian-ARM root filesystem in a NFS4 chroot, but 
+>>> it fails - dpkg claims that:
+>>>
+>>> debconf: DbDriver "config": /var/cache/debconf/config.dat is locked by 
+>>> another process
+>>>
+>>> It's not true, as that export is only used by that one client.
+>>>
+>>> So what comes to my mind, is that file locking is somehow broken.
+>>>
+>>> How can I check if NFS4 file locking works properly, or is broken?
+>> I changed the client to use NFSv3 instead of NFSv4, and suddenly, the 
+>> things started to work...
+>>
+>> Ideas what I might be missing? Why locking works if I use NFSv3 on the 
+>> client, but doesn't when I use NFSv4 on the client (other than NFS 
+>> version, nothing else changed).
+>>
+>> Kernel option on a client or server, export options on the server, mount 
+>> options on the client etc.?
 > 
-> Having found and fixed one issue with jiffie wrap recently (after 24
-> days, some web servers using NFS to access static content started
-> generating much higher levels of GETATTR requests), I understand the
-> possible problems, and agree that there could be issues.
-> 
-> However when I went looking to see if there could be other issues with
-> jiffie wrapping, my cursory look suggested not.  Most data structures
-> (inodes, dentries) that are completely unused for 24 days are
-> extremely likely to get flushed out of cache (there will be something
-> else that wants the memory) and anything that is used will get
-> timestamps refreshed regularly based on the attribute timeout in nfs
-> (which is usually less than one minute).
+> nfsroot does not support NFSv4 at this time.
 
-Yes, but I think Fabio is talking about negative "hashed" dentrys here.
-They won't be going away will they?
+Hmm, I didn't say anything about nfsroot, did I?
 
-> 
-> So I think this is only likely to be a problem for timestamps that do
-> not get refreshed in the general running on NFS.
-> 
-> One example is nfsi->cache_change_attribute.  If a file is unmodified
-> for 24 days, that can wrap, but there is now a fix for this in place.
-> Commit 3e7d950a528454ad749a264feef3c8bad3faa108 in Linus' git tree.
-
-Yes, I saw that when I was poking around.
-I got the impression there was another problem field but I haven't
-looked further, I'm probably wrong about that.
-
-This patch relies on the revalidation of the directory of a negative
-hashed dentry during lookup which will happen during the path walk.
-
-Fabio, can you offer a case where this won't work?
-
-Ian
+I merely did a chroot over NFSv4, and some apps don't work well then.
 
 
+-- 
+Tomasz Chmielewski
+http://wpkg.org
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
