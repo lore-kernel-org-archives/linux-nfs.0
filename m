@@ -1,27 +1,19 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] RPC: add wrapper for svc_reserve to account
-	for	checksum
-Date: Tue, 1 May 2007 13:11:22 -0400
-Message-ID: <20070501171121.GC15222@salusa.poochiereds.net>
-References: <20070421131523.GA18100@dantu.rdu.redhat.com>
-	<17974.41587.666167.650575@notabene.brown>
-	<20070501170123.GB15222@salusa.poochiereds.net>
+From: Marc Kalberer <Marc.Kalberer@programmers.ch>
+Subject: mount --bind empty
+Date: Tue, 01 May 2007 22:01:58 +0200
+Message-ID: <46379CB6.8050201@programmers.ch>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: akpm@linux-foundation.org
-To: Neil Brown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hivsv-0002bQ-Qs
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 10:11:31 -0700
-Received: from ms-smtp-05.southeast.rr.com ([24.25.9.104])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hivsw-0003DB-Fo
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 10:11:32 -0700
-In-Reply-To: <20070501170123.GB15222@salusa.poochiereds.net>
+	id 1HiyXc-0006Kk-Ps
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 13:01:40 -0700
+Received: from smtp1.infomaniak.ch ([84.16.68.89])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HiyXb-0006xG-GM
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 13:01:43 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,61 +26,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, May 01, 2007 at 01:01:27PM -0400, Jeff Layton wrote:
-> On Tue, May 01, 2007 at 12:14:11PM +1000, Neil Brown wrote:
-> > 
-> > Yes, that asn1 encoding does seem rather awkward.
-> > 
-> > Maybe we should just use RPC_MAX_AUTH_SIZE like other bits of GSS code
-> > does.  There is no great cost in reserving too much space - it just
-> > might slow things down a little when tight on memory.
-> > What would you think of submitting an incremental patch which replaces
-> > the "56" with "RPC_MAX_AUTH_SIZE" ?
-> > 
-> > Thanks (and sorry for the delay).
-> > NeilBrown
-> > 
-> 
-> Thanks for looking into this, Neil. I wasn't sure how hard a reservation that
-> was (still working on wrapping my brain around the RPC code). I'll have a look
-> at the patch you posted. Hopefully that is the problem...
-> 
-> As far as your suggestion to use RPC_MAX_AUTH_SIZE, that sounds like a good
-> idea to me. I'm all for avoiding "magic" numbers. How does this look? I also
-> cleaned up the comments as well.
-> 
+Hi,
+My nfs drive is getting full, so I mount --bind a folder located in a 
+partition with a lot of space.
 
-Resending patch with a proper signed-off-by line. Also cc'ing Andrew:
+Env: 2.6.4-54.5-smp, nfs3
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+lets say
+(server) nfs  data dir  is /home/data
+(server) I mount --bind /var/dir_new_part    /home/data/newpart_space
+(client) cannot read any content inside /home/data/newpart_space. (Read 
+is empty, write is denied for any user, with all /etc/exports different 
+combination - no_hide no_sub_tree
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 9114f11..ed7cbf1 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -399,10 +399,9 @@ char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
- /*
-  * When we want to reduce the size of the reserved space in the response
-  * buffer, we need to take into account the size of any checksum data that
-- * may be at the end of the packet. For now, just use a hardcoded value
-- * for each possible authflavor. This will need to be updated when new
-- * encryption types or algorithms are added, or we'll have to come up with
-- * a way to reasonably calculate this on the fly (maybe via a new auth_op).
-+ * may be at the end of the packet. This is difficult to determine exactly
-+ * for all cases without actually generating the checksum, so we just use a
-+ * static value.
-  */
- static inline void 
- svc_reserve_auth(struct svc_rqst *rqstp, int space)
-@@ -411,7 +410,7 @@ svc_reserve_auth(struct svc_rqst *rqstp, int space)
- 
- 	switch(rqstp->rq_authop->flavour) {
- 		case RPC_AUTH_GSS:
--			added_space = 56; /* determined empirically */
-+			added_space = RPC_MAX_AUTH_SIZE;
- 	}
- 	return svc_reserve(rqstp, space + added_space);
- }
+is there any way to acheive this ? any hints is welcome ... ;-)
+
+Rem: I had to mount --bind because the partition added is not empty, so 
+I could not mount it directly to /home/data/newpart_space
+
+++
+Marc
+
+
+
+
+-- 
+Programmers.ch
+Solutions libres et Opensources
+Tel: ++41 76 44 888 72
+Site: http://www.programmers.ch
+Site: http://openprojects.ch
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
