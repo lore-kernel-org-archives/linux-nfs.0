@@ -1,23 +1,34 @@
-From: Neil Brown <neilb@suse.de>
+From: Terry Spaulding <spauld@us.ibm.com>
 Subject: Re: setting specific lockd port for NFS .....................
-Date: Wed, 2 May 2007 22:47:23 +1000
-Message-ID: <17976.34907.530222.646539@notabene.brown>
-References: <OF64408285.26F63D4C-ON852572CF.00419070-852572CF.00426FDC@us.ibm.com>
+Date: Wed, 2 May 2007 09:33:07 -0400
+Message-ID: <OFE3F7DAE4.8FFD5934-ON852572CF.0049AC08-852572CF.004A71CA@us.ibm.com>
+References: <17976.34907.530222.646539@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Terry Spaulding <spauld@us.ibm.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjEFH-0005ak-Tl
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 05:47:47 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1HjExG-0000B4-1E
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 06:33:14 -0700
+Received: from e1.ny.us.ibm.com ([32.97.182.141])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HjEFJ-0005sV-B5
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 05:47:50 -0700
-In-Reply-To: message from Terry Spaulding on Wednesday May 2
+	(Exim 4.44) id 1HjExI-0002Hy-9j
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 06:33:16 -0700
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l42DX3jC003066
+	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 09:33:03 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
+	l42DX3UT518000
+	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 09:33:03 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	l42DX35j004581
+	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 09:33:03 -0400
+In-Reply-To: <17976.34907.530222.646539@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +41,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday May 2, spauld@us.ibm.com wrote:
-> 
-> Neil,
-> 
-> I tried the same settings for lockd on the SLES8 system and the lockd
-> settings do not work in /etc/zipl.conf
-> 
-> I did some research on SLES8 and setting the lockd ports and found some
-> info that shows the zipl.conf noted
-> below works for SLES8 but there maybe some additional settings required to
-> support lockd port setting as a kernel parameter.
-> 
-> I found some references to using sysctl and another to use one of the /etc
-> conf files but no details on what was entered in these files.
-> 
-> We are planning on replacing all of the SLES8's but later in the year. Can
+Neil,
+
+I changed the zipl.conf. The lockd is still setting the port randomly.
+
+parameters="dasd=200-209 root=/dev/dasda1 lockd_tcpport=52670
+lockd_udpport=52670"
+
+ran zipl and rebooted.
+
+Started nfs server on this Linux and issued rpcinfo -p:
+
+    100021    1   udp   1024  nlockmgr
+    100021    3   udp   1024  nlockmgr
+    100021    4   udp   1024  nlockmgr
+    100021    1   tcp   1078  nlockmgr
+    100021    3   tcp   1078  nlockmgr
+    100021    4   tcp   1078  nlockmgr
+
+rpm -qa | grep nfs:
+
+nfs-utils-1.0.1-79
+yast2-nfs-client-2.6.11-51
+yast2-nfs-server-2.6.13-41
+
+kernel: Linux linux01 2.4.21-251-default #1 SMP Sun Sep 26 14:07:15 UTC
+2004 s390 unknown
+
+Any suggestions would be appreciated.
+
+Thanks .............
+
+>Terry wrote:
+> We are planning on replacing all of the SLES8's but later in the year.
+Can
 > anyone shed some light on setting the nlm.lockd port on SLES8 ?
+>Neil wrote:
+>SLES8 is 2.4 based which does this a bit differently to 2.6.
+>
+>Kernel parameters are lockd.udpport and lockd.tcpport
+>module parameters are nlm_udpport and nlm_tcpport.
+>
+?I suspect the former is what you want to put in zipl.conf
 
-SLES8 is 2.4 based which does this a bit differently to 2.6.
+Regards,
+Terry L. Spaulding
+IBM
+spauld@us.ibm.com
 
-Kernel parameters are lockd.udpport and lockd.tcpport
-module parameters are nlm_udpport and nlm_tcpport.
-
-I suspect the former is what you want to put in zipl.conf
-
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
