@@ -1,29 +1,27 @@
-From: Neil Brown <neilb@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH] RPC: add wrapper for svc_reserve to account
 	for	checksum
-Date: Wed, 2 May 2007 07:54:57 +1000
-Message-ID: <17975.46897.298001.690089@notabene.brown>
+Date: Tue, 1 May 2007 20:34:31 -0400
+Message-ID: <20070502003431.GK3588@fieldses.org>
 References: <20070421131523.GA18100@dantu.rdu.redhat.com>
 	<17974.41587.666167.650575@notabene.brown>
-	<20070501170123.GB15222@salusa.poochiereds.net>
-	<20070501171121.GC15222@salusa.poochiereds.net>
+	<20070501033310.GB21774@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	akpm@linux-foundation.org, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hj0Jo-0006XC-PQ
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 14:55:34 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1Hj2ni-0001bg-Fr
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 17:34:34 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hj0Jq-0000Z0-9v
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 14:55:34 -0700
-In-Reply-To: message from Jeff Layton on Tuesday May 1
+	(Exim 4.44) id 1Hj2nj-0002pz-RO
+	for nfs@lists.sourceforge.net; Tue, 01 May 2007 17:34:37 -0700
+In-Reply-To: <20070501033310.GB21774@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,51 +34,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 1, jlayton@redhat.com wrote:
+On Mon, Apr 30, 2007 at 11:33:10PM -0400, bfields wrote:
+> On Tue, May 01, 2007 at 12:14:11PM +1000, Neil Brown wrote:
+> > Bruce:  does it look OK to you?
 > 
-> Resending patch with a proper signed-off-by line. Also cc'ing Andrew:
+> It looks sensible, but it's a little late for me--I'll take another look
+> at it and run some tests tommorow.
 
-Thanks, but it isn't much good to Andrew without a changelog entry,
-though probably it should just go in as
-  rpc--add-wrapper-for-svc_reserve-to-account-for-checksum-fix
+Just to confirm--yep, loks fine.  And I did a quick connectathon run
+over krb5i just to make sure.  If someone wants it:
 
-Acked-by: NeilBrown <neilb@suse.de>
+Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-(If it doesn't appear in the next -mm, I'll send it all nicely
-formated and changeloged).
-
-NeilBrown
-
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 9114f11..ed7cbf1 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -399,10 +399,9 @@ char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
->  /*
->   * When we want to reduce the size of the reserved space in the response
->   * buffer, we need to take into account the size of any checksum data that
-> - * may be at the end of the packet. For now, just use a hardcoded value
-> - * for each possible authflavor. This will need to be updated when new
-> - * encryption types or algorithms are added, or we'll have to come up with
-> - * a way to reasonably calculate this on the fly (maybe via a new auth_op).
-> + * may be at the end of the packet. This is difficult to determine exactly
-> + * for all cases without actually generating the checksum, so we just use a
-> + * static value.
->   */
->  static inline void 
->  svc_reserve_auth(struct svc_rqst *rqstp, int space)
-> @@ -411,7 +410,7 @@ svc_reserve_auth(struct svc_rqst *rqstp, int space)
->  
->  	switch(rqstp->rq_authop->flavour) {
->  		case RPC_AUTH_GSS:
-> -			added_space = 56; /* determined empirically */
-> +			added_space = RPC_MAX_AUTH_SIZE;
->  	}
->  	return svc_reserve(rqstp, space + added_space);
->  }
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
