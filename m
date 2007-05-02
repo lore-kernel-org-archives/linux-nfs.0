@@ -1,22 +1,24 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Understanding nfsstat output
-Date: Wed, 02 May 2007 16:30:32 -0400
-Message-ID: <4638F4E8.6030904@redhat.com>
-References: <953249.36987.qm@web56613.mail.re3.yahoo.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfs-utils-1.1.0-rc1 - sm_unmon_1_svc should
+	use	dnsname
+Date: Thu, 3 May 2007 09:34:59 +1000
+Message-ID: <17977.8227.860506.958457@notabene.brown>
+References: <1176909165.8837.16.camel@wendyc-t.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: AK <amithl_prem@yahoo.com>
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjLTB-0006wR-6M
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 13:30:39 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HjLTD-000145-5M
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 13:30:39 -0700
-In-Reply-To: <953249.36987.qm@web56613.mail.re3.yahoo.com>
+	id 1HjOM4-0004Zp-Th
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 16:35:29 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HjOM6-0007Ez-24
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 16:35:31 -0700
+In-Reply-To: message from Wendy Cheng on Wednesday April 18
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,75 +31,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-AK wrote:
-> Hello everyone!
+On Wednesday April 18, wcheng@redhat.com wrote:
+> The sm_unmon_1_svc() should have used dnsname.
+> 
+> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+> 
+> --- nfs-utils-1.1.0-rc1/utils/statd/monitor.c	2007-03-28 23:55:33.000000000 -0400
+> +++ nfs-utils-t/utils/statd/monitor.c	2007-04-18 10:59:34.000000000 -0400
+> @@ -357,7 +357,7 @@ sm_unmon_1_svc(struct mon_id *argp, stru
+>  			ha_callout("del-client", mon_name, my_name, -1);
 >  
-> I am trying to understand the output of nfsstat to better understand 
-> and tweak NFS performance for our machines.
+>  			nlist_free(&rtnl, clnt);
+> -			xunlink(SM_DIR, mon_name, 1);
+> +			xunlink(SM_DIR, clnt->dns_name, 1);
 >  
-> Following is the output from our Solaris 9, NFSv3 running server:
->  
-> I am concerned about the "badcalls" for "Server nfs" output, is this 
-> normal or something is wrong. We have some of our clients mounting the 
-> exported File system with rsize & wsize = 32K,  Could this be the 
-> problem, is there a way to narrow it down?
->  
-> Any feedback is greatly appreciated!
->  
-> ~thanks ~al
->  
-> # nfsstat -s
->  
-> Server rpc:
-> Connection oriented:
-> calls        badcalls     nullrecv     badlen       xdrcall      dupchecks
-> 101090599    0            0            0            0            62704096
-> dupreqs
-> 7038
-> Connectionless:
-> calls        badcalls     nullrecv     badlen       xdrcall      dupchecks
-> 17121084     0            0            0            0            7028935
-> dupreqs
-> 69076
->  
-> Server nfs:
-> calls        badcalls
-> 118266383    57138
-> Version 2: (0 calls)
-> null         getattr      setattr      root         lookup       readlink
-> 0 0%         0 0%         0 0%         0 0%         0 0%         0 0%
-> read         wrcache      write        create       remove       rename
-> 0 0%         0 0%         0 0%         0 0%         0 0%         0 0%
-> link         symlink      mkdir        rmdir        readdir      statfs
-> 0 0%         0 0%         0 0%         0 0%         0 0%         0 0%
-> Version 3: (117965148 calls)
-> null         getattr      setattr      lookup       access       readlink
-> 1 0%         185486 0%    1906 0%      41482 0%     24091 0%     487 0%
-> read         write        create       mkdir        symlink      mknod
-> 47680376 40% 69594128 58% 2516 0%      2 0%         80 0%        0 0%
-> remove       rmdir        rename       link         readdir      
-> readdirplus
-> 1658 0%      4 0%         126 0%       7 0%         1890 0%      2726 0%
-> fsstat       fsinfo       pathconf     commit
-> 222331 0%    9 0%         2 0%         205840 0%
->  
-> Server nfs_acl:
-> Version 2: (0 calls)
-> null         getacl       setacl       getattr      access
-> 0 0%         0 0%         0 0%         0 0%         0 0%
-> Version 3: (111 calls)
-> null         getacl       setacl
-> 0 0%         73 65%       38 34%
->
-> ------------------------------------------------------------------------
+>  			return (&result);
+>  		} else
+> 
 
-I would suggest asking the Solaris folks for the interpretation for the
-output fields in the Solaris version of nfsstat.
+Thanks.  I've finally applied this with a few related fixes.
 
-That said, the number appears to be a small percentage of the total
-number of calls as to not worry very much about.
+NeilBrown
 
-       ps
+--
+
+Subject: [PATCH] statd - the files created are named for dns_name, so use that when unlinking.
+
+Also free dns_name when freeing an 'nlist', so do the unlink before the free.
+---
+ utils/statd/monitor.c |    4 ++--
+ utils/statd/notlist.c |    1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
+index c447a26..e40ff7d 100644
+--- a/utils/statd/monitor.c
++++ b/utils/statd/monitor.c
+@@ -380,8 +380,8 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
+ 			/* PRC: do the HA callout: */
+ 			ha_callout("del-client", mon_name, my_name, -1);
+ 
++			xunlink(SM_DIR, clnt->dns_name, 1);
+ 			nlist_free(&rtnl, clnt);
+-			xunlink(SM_DIR, mon_name, 1);
+ 
+ 			return (&result);
+ 		} else
+@@ -445,8 +445,8 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
+ 			temp = NL_NEXT(clnt);
+ 			/* PRC: do the HA callout: */
+ 			ha_callout("del-client", mon_name, my_name, -1);
++			xunlink(SM_DIR, clnt->dns_name, 1);
+ 			nlist_free(&rtnl, clnt);
+-			xunlink(SM_DIR, mon_name, 1);
+ 			++count;
+ 			clnt = temp;
+ 		} else
+diff --git a/utils/statd/notlist.c b/utils/statd/notlist.c
+index b74d9df..1698c26 100644
+--- a/utils/statd/notlist.c
++++ b/utils/statd/notlist.c
+@@ -211,6 +211,7 @@ nlist_free(notify_list **head, notify_list *entry)
+ 		free(NL_MY_NAME(entry));
+ 	if (NL_MON_NAME(entry))
+ 		free(NL_MON_NAME(entry));
++	free(entry->dns_name);
+ 	free(entry);
+ }
+ 
+-- 
+1.5.1.2
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
