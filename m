@@ -1,34 +1,23 @@
-From: Omri Schwarz <ocschwar@MIT.EDU>
-Subject: Linux & RPC_GSS with NFS version 3
-Date: Wed, 2 May 2007 15:40:16 -0400 (EDT)
-Message-ID: <Pine.GSO.4.64L.0705021534300.16975@biohazard-cafe.mit.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Linux & RPC_GSS with NFS version 3
+Date: Wed, 2 May 2007 15:43:10 -0400
+Message-ID: <20070502194310.GG23284@fieldses.org>
+References: <Pine.GSO.4.64L.0705021534300.16975@biohazard-cafe.mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Omri Schwarz <ocschwar@MIT.EDU>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjKh1-0002lI-4g
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:40:52 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	id 1HjKjH-0002t6-Vf
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:43:12 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HjKh2-0007bR-FM
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:40:53 -0700
-Received: from biscayne-one-station.mit.edu ([18.7.7.80])
-	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41) id 1HjKgp-0008S9-Dx
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:40:41 -0700
-Received: from outgoing.mit.edu (OUTGOING-AUTH.MIT.EDU [18.7.22.103])
-	by biscayne-one-station.mit.edu (8.13.6/8.9.2) with ESMTP id
-	l42JeH7J026066
-	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 15:40:17 -0400 (EDT)
-Received: from biohazard-cafe.mit.edu (BIOHAZARD-CAFE.MIT.EDU [18.7.18.67])
-	(authenticated bits=56)
-	(User authenticated as ocschwar@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.13.6/8.12.4) with ESMTP id l42JeHEB028145
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 15:40:17 -0400 (EDT)
+	(Exim 4.44) id 1HjKjJ-00008x-5A
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:43:14 -0700
+In-Reply-To: <Pine.GSO.4.64L.0705021534300.16975@biohazard-cafe.mit.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,28 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi, all. I am trying to get Fedora Coure 6 machines to talk
-NFS 3 to each other with sec=krb5, and for the moment,
-though I have gotten them to talk over other GSSAPI-enabled
-services (ssh, imap, ftp, smtp and NFS 4), NFS 3 fails.
-The server says
-"""
-mountd: MNT3(/export) called
-mountd: mount request from unknown host 18.75.0.50 for /export (/export) 
-""".
+On Wed, May 02, 2007 at 03:40:16PM -0400, Omri Schwarz wrote:
+> Hi, all. I am trying to get Fedora Coure 6 machines to talk
+> NFS 3 to each other with sec=krb5, and for the moment,
+> though I have gotten them to talk over other GSSAPI-enabled
+> services (ssh, imap, ftp, smtp and NFS 4), NFS 3 fails.
+> The server says
+> """
+> mountd: MNT3(/export) called
+> mountd: mount request from unknown host 18.75.0.50 for /export (/export) 
+> """.
+> 
+> Going deeply enough I can see that mountd (1.0.10-7.fc6)
+> continues to check IP addresses against the string "gss/krb5" instead of
+> doing the right thing and having a chat with svcgssd.
+> I'll be gratefull for any help in getting mountd to DTRT here.
 
-Going deeply enough I can see that mountd (1.0.10-7.fc6)
-continues to check IP addresses against the string "gss/krb5" instead of
-doing the right thing and having a chat with svcgssd.
-I'll be gratefull for any help in getting mountd to DTRT here.
+It's a known problem; it'll only work if you also export to the ip
+address (read-only if you want, though note that may cause problems with
+locking, since nlm also uses auth_unix).
 
-Regards,
-
-
-Omri Schwarz --- ocschwar@mit.edu
-Timeless wisdom of biomedical engineering: "Noise is principally
-due to the presence of the patient." -- R.F. Farr
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
