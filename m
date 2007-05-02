@@ -1,27 +1,24 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH] nfsd: trivial makefile cleanup
-Date: Tue, 1 May 2007 12:45:12 +0200
-Message-ID: <20070501104512.GA23320@lst.de>
+From: Gabriel Barazer <gabriel@oxeva.fr>
+Subject: Re: mountd randomly crash and panic the server
+Date: Wed, 02 May 2007 11:03:17 +0200
+Message-ID: <463853D5.1020106@oxeva.fr>
+References: <461CFABE.9050301@barazer.net>	<46234130.5020502@oxeva.fr>	<17955.21572.383131.837268@notabene.brown>	<4623830D.7040108@oxeva.fr>	<17956.8604.672536.126674@notabene.brown>	<46367FBC.6000007@oxeva.fr>
+	<17974.33522.70308.585198@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hj6bR-0005pu-03
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 21:38:09 -0700
-Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1Hj6bQ-0002pZ-4x
-	for nfs@lists.sourceforge.net; Tue, 01 May 2007 21:38:11 -0700
-Received: from verein.lst.de (localhost [127.0.0.1])
-	by mail.lst.de (8.12.3/8.12.3/Debian-7.1) with ESMTP id l424bdmK017725
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <nfs@lists.sourceforge.net>; Wed, 2 May 2007 06:37:41 +0200
-Received: (from hch@localhost)
-	by verein.lst.de (8.12.3/8.12.3/Debian-6.6) id l41AjC70023340
-	for nfs@lists.sourceforge.net; Tue, 1 May 2007 12:45:12 +0200
+	id 1HjAkf-00073H-DU
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 02:03:58 -0700
+Received: from mail.reagi.com ([195.60.188.80])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HjAkb-0007Eb-Jb
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 02:04:00 -0700
+In-Reply-To: <17974.33522.70308.585198@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,21 +31,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-kbuild directly interprets <modulename>-y as objects to build into
-a module, no need to assign it to the old foo-objs variable.
+On 05/01/2007 1:59:46 +0200, Neil Brown <neilb@suse.de> wrote:
+> 
+>>   related kernel panics, which are, I suppose, not linked to the NFS 
+>> problem (I still mention it because unrelated but linked problems like 
+>> this sometimes happens)
+> 
+> CFQ panics ?  In cfq_dispatch_insert by any chance?
+> 
+> This patch from Jens Axboe might be what you need.
+> 
 
+The problem is exactly related to this function : Is this bug related to 
+the NFS subsystem, or am I lucky and it appears you work on the CFQ 
+scheduler as well ? :) I can test this patch, but since this bug panic() 
+the kernel, I can't afford to hang the file server very often.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+For now I have changed the scheduler to deadline with the 
+/sys/block/<device>/queue/scheduler file. Is this patch already sent to 
+the upstream kernel sources ?
 
-Index: linux-2.6/fs/nfsd/Makefile
-===================================================================
---- linux-2.6.orig/fs/nfsd/Makefile	2007-05-01 11:42:57.000000000 +0200
-+++ linux-2.6/fs/nfsd/Makefile	2007-05-01 11:43:00.000000000 +0200
-@@ -11,4 +11,3 @@ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
- nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
- 			   nfs4acl.o nfs4callback.o nfs4recover.o
--nfsd-objs		:= $(nfsd-y)
+Thanks,
+
+Gabriel
+
+> NeilBrown
+> 
+> diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+> index 9e37971..f965be7 100644
+> --- a/block/cfq-iosched.c
+> +++ b/block/cfq-iosched.c
+> @@ -532,6 +532,11 @@ static void cfq_add_rq_rb(struct request *rq)
+>  
+>  	if (!cfq_cfqq_on_rr(cfqq))
+>  		cfq_add_cfqq_rr(cfqd, cfqq);
+> +
+> +	/*
+> +	 * check if this request is a better next-serve candidate
+> +	 */
+> +	cfqq->next_rq = cfq_choose_req(cfqd, cfqq->next_rq, rq);
+>  }
+>  
+>  static inline void
+> @@ -1639,12 +1644,6 @@ cfq_rq_enqueued(struct cfq_data *cfqd, struct cfq_queue *cfqq,
+>  		cfqq->meta_pending++;
+>  
+>  	/*
+> -	 * check if this request is a better next-serve candidate)) {
+> -	 */
+> -	cfqq->next_rq = cfq_choose_req(cfqd, cfqq->next_rq, rq);
+> -	BUG_ON(!cfqq->next_rq);
+> -
+> -	/*
+>  	 * we never wait for an async request and we don't allow preemption
+>  	 * of an async request. so just return early
+>  	 */
+> 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
