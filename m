@@ -1,24 +1,22 @@
-From: Omri Schwarz <ocschwar@MIT.EDU>
-Subject: Re: Linux & RPC_GSS with NFS version 3
-Date: Wed, 2 May 2007 15:51:02 -0400 (EDT)
-Message-ID: <Pine.GSO.4.64L.0705021546190.18104@biohazard-cafe.mit.edu>
-References: <Pine.GSO.4.64L.0705021534300.16975@biohazard-cafe.mit.edu>
-	<20070502194310.GG23284@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Understanding nfsstat output
+Date: Wed, 02 May 2007 16:30:32 -0400
+Message-ID: <4638F4E8.6030904@redhat.com>
+References: <953249.36987.qm@web56613.mail.re3.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: AK <amithl_prem@yahoo.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjKr6-0003RH-QD
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:51:16 -0700
-Received: from biscayne-one-station.mit.edu ([18.7.7.80])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HjKr8-0007RE-7b
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 12:51:19 -0700
-In-Reply-To: <20070502194310.GG23284@fieldses.org>
+	id 1HjLTB-0006wR-6M
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 13:30:39 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HjLTD-000145-5M
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 13:30:39 -0700
+In-Reply-To: <953249.36987.qm@web56613.mail.re3.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,31 +29,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-
-On Wed, 2 May 2007, J. Bruce Fields wrote:
-
-> On Wed, May 02, 2007 at 03:40:16PM -0400, Omri Schwarz wrote:
->> Hi, all. I am trying to get Fedora Coure 6 machines to talk
->> NFS 3 to each other with sec=krb5, and for the moment,
->> though I have gotten them to talk over other GSSAPI-enabled
->> services (ssh, imap, ftp, smtp and NFS 4), NFS 3 fails.
->> The server says
->> """
->> mountd: MNT3(/export) called
->> mountd: mount request from unknown host 18.75.0.50 for /export (/export)
->> """.
->>
->> Going deeply enough I can see that mountd (1.0.10-7.fc6)
->> continues to check IP addresses against the string "gss/krb5" instead of
->> doing the right thing and having a chat with svcgssd.
->> I'll be gratefull for any help in getting mountd to DTRT here.
+AK wrote:
+> Hello everyone!
+>  
+> I am trying to understand the output of nfsstat to better understand 
+> and tweak NFS performance for our machines.
+>  
+> Following is the output from our Solaris 9, NFSv3 running server:
+>  
+> I am concerned about the "badcalls" for "Server nfs" output, is this 
+> normal or something is wrong. We have some of our clients mounting the 
+> exported File system with rsize & wsize = 32K,  Could this be the 
+> problem, is there a way to narrow it down?
+>  
+> Any feedback is greatly appreciated!
+>  
+> ~thanks ~al
+>  
+> # nfsstat -s
+>  
+> Server rpc:
+> Connection oriented:
+> calls        badcalls     nullrecv     badlen       xdrcall      dupchecks
+> 101090599    0            0            0            0            62704096
+> dupreqs
+> 7038
+> Connectionless:
+> calls        badcalls     nullrecv     badlen       xdrcall      dupchecks
+> 17121084     0            0            0            0            7028935
+> dupreqs
+> 69076
+>  
+> Server nfs:
+> calls        badcalls
+> 118266383    57138
+> Version 2: (0 calls)
+> null         getattr      setattr      root         lookup       readlink
+> 0 0%         0 0%         0 0%         0 0%         0 0%         0 0%
+> read         wrcache      write        create       remove       rename
+> 0 0%         0 0%         0 0%         0 0%         0 0%         0 0%
+> link         symlink      mkdir        rmdir        readdir      statfs
+> 0 0%         0 0%         0 0%         0 0%         0 0%         0 0%
+> Version 3: (117965148 calls)
+> null         getattr      setattr      lookup       access       readlink
+> 1 0%         185486 0%    1906 0%      41482 0%     24091 0%     487 0%
+> read         write        create       mkdir        symlink      mknod
+> 47680376 40% 69594128 58% 2516 0%      2 0%         80 0%        0 0%
+> remove       rmdir        rename       link         readdir      
+> readdirplus
+> 1658 0%      4 0%         126 0%       7 0%         1890 0%      2726 0%
+> fsstat       fsinfo       pathconf     commit
+> 222331 0%    9 0%         2 0%         205840 0%
+>  
+> Server nfs_acl:
+> Version 2: (0 calls)
+> null         getacl       setacl       getattr      access
+> 0 0%         0 0%         0 0%         0 0%         0 0%
+> Version 3: (111 calls)
+> null         getacl       setacl
+> 0 0%         73 65%       38 34%
 >
-> It's a known problem; it'll only work if you also export to the ip
-> address (read-only if you want, though note that may cause problems with
-> locking, since nlm also uses auth_unix).
+> ------------------------------------------------------------------------
 
-Yup, that fixed the problem. Thanks!
+I would suggest asking the Solaris folks for the interpretation for the
+output fields in the Solaris version of nfsstat.
+
+That said, the number appears to be a small percentage of the total
+number of calls as to not worry very much about.
+
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
