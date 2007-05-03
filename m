@@ -1,35 +1,21 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfs-utils: make auth_reload respect
-	sub-second	timestamps on etab
-Date: Thu, 3 May 2007 10:55:37 +1000
-Message-ID: <17977.13065.307535.484372@notabene.brown>
-References: <20070425173918.GB6696@salusa.poochiereds.net>
-	<20070425180932.GC6696@salusa.poochiereds.net>
-	<20070425201354.GD6696@salusa.poochiereds.net>
-	<462FC850.7040600@oracle.com>
-	<17968.12554.934818.359167@notabene.brown>
-	<20070426120536.GB24800@dantu.rdu.redhat.com>
-	<20070426162300.GA12193@salusa.poochiereds.net>
-	<20070426165800.GC4875@fieldses.org>
-	<20070426170055.GA30402@dantu.rdu.redhat.com>
-	<20070426172444.GE4875@fieldses.org>
-	<20070426182901.GA31081@dantu.rdu.redhat.com>
+From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
+Subject: Clients not displaying NFS quotas
+Date: Thu, 3 May 2007 11:43:15 +0930 (CST)
+Message-ID: <200705030213.l432DFce017563@turbo.physics.adelaide.edu.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net
-To: Jeff Layton <jlayton@redhat.com>
+Cc: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjPcA-0003SF-87
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 17:56:10 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1HjQoy-00029G-Gg
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 19:13:28 -0700
+Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HjPcA-0006Cg-M7
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 17:56:13 -0700
-In-Reply-To: message from Jeff Layton on Thursday April 26
+	(Exim 4.44) id 1HjQp0-0008Ac-IT
+	for nfs@lists.sourceforge.net; Wed, 02 May 2007 19:13:31 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,33 +28,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday April 26, jlayton@redhat.com wrote:
-> 
-> This patch seems to fix the problem as well. mountd holds the etab open, but
-> doesn't actually do any I/O on that fd. This makes sure that the inode number
-> of the new etab file won't be the same as the current version that mountd is
-> aware of. I also added a comment to xtab_write to warn people who might
-> consider changing how the files are written.
-> 
-> We might also consider adding back in some of the mtime logic to try and
-> catch programs that edit the file in place, but I'm not sure if that's
-> worthwhile.
+We have a Slackware 9.1 box (with numerous software upgrades) exporting a
+directory to various NFS clients.  While running a 2.4.x kernel this all
+worked fine - users on clients could use "quota" to display their quota
+information.  When the system was moved to a 2.6.19.2 kernel a few months
+ago the clients could no longer display quota information.  The server
+still knew and enforced the quotas, it's just that from the client's
+point of view there were no quotas.
 
-I agree.
+The system is running the following software versions:
 
-> 
-> Neil, what do you think?
+  * kernel 2.6.19.2
+  * nfs-utils 1.0.10
+  * util-linux 2.12
+  * portmap 5.0
 
-I was about to say "fine", but then saw the problem.
-Because of the way get_exportlist uses the return value, that value
-needs to unique over all time (or close to it).  So returning the
-inode number won't work (as we have seen that ext3 cycles between
-two).
+The filesystem concerned is reiserfs3.  The kernel has reiserfs quota
+support enabled.
 
-A simple event counter could be returned though, which would give
-something unique to get_exportlist.
+The relevant partition is mounted on the server using an fstab entry of
 
-NeilBrown
+  /dev/...  /home/foobar  reiserfs  usrquota
+
+All clients mount the volume via the automounter with the "hard,intr,bg"
+mount options.
+
+Users cannot log into the NFS server.
+
+We have clients running various versions of redhat, fedora and slackware
+with different kernels.  In all cases things worked with the 2.4.x
+kernel and don't now.  It therefore seems to be a server-related issue.
+
+Does anyone have any idea as to why client access to quota information
+isn't working in this scenario?
+
+Regards
+  jonathan
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
