@@ -1,10 +1,9 @@
 From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: [PATCH] nfs-utils: make auth_reload respect
 	sub-second	timestamps on etab
-Date: Thu, 3 May 2007 07:58:15 -0400
-Message-ID: <20070503115814.GA4641@dantu.rdu.redhat.com>
-References: <20070425201354.GD6696@salusa.poochiereds.net>
-	<462FC850.7040600@oracle.com>
+Date: Thu, 3 May 2007 08:11:09 -0400
+Message-ID: <20070503121108.GB4641@dantu.rdu.redhat.com>
+References: <462FC850.7040600@oracle.com>
 	<17968.12554.934818.359167@notabene.brown>
 	<20070426120536.GB24800@dantu.rdu.redhat.com>
 	<20070426162300.GA12193@salusa.poochiereds.net>
@@ -13,21 +12,22 @@ References: <20070425201354.GD6696@salusa.poochiereds.net>
 	<20070426172444.GE4875@fieldses.org>
 	<20070426182901.GA31081@dantu.rdu.redhat.com>
 	<17977.13065.307535.484372@notabene.brown>
+	<20070503115814.GA4641@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
-To: Neil Brown <neilb@suse.de>
+	nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjZx4-0007l9-UW
-	for nfs@lists.sourceforge.net; Thu, 03 May 2007 04:58:28 -0700
+	id 1Hja9N-0008Up-UK
+	for nfs@lists.sourceforge.net; Thu, 03 May 2007 05:11:38 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HjZx7-0005dk-BY
-	for nfs@lists.sourceforge.net; Thu, 03 May 2007 04:58:29 -0700
-In-Reply-To: <17977.13065.307535.484372@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hja9Q-0000mA-17
+	for nfs@lists.sourceforge.net; Thu, 03 May 2007 05:11:12 -0700
+In-Reply-To: <20070503115814.GA4641@dantu.rdu.redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,42 +40,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, May 03, 2007 at 10:55:37AM +1000, Neil Brown wrote:
-> On Thursday April 26, jlayton@redhat.com wrote:
+On Thu, May 03, 2007 at 07:58:15AM -0400, Jeff Layton wrote:
+> On Thu, May 03, 2007 at 10:55:37AM +1000, Neil Brown wrote:
+> > On Thursday April 26, jlayton@redhat.com wrote:
+> > > 
+> > > This patch seems to fix the problem as well. mountd holds the etab open, but
+> > > doesn't actually do any I/O on that fd. This makes sure that the inode number
+> > > of the new etab file won't be the same as the current version that mountd is
+> > > aware of. I also added a comment to xtab_write to warn people who might
+> > > consider changing how the files are written.
+> > > 
+> > > We might also consider adding back in some of the mtime logic to try and
+> > > catch programs that edit the file in place, but I'm not sure if that's
+> > > worthwhile.
 > > 
-> > This patch seems to fix the problem as well. mountd holds the etab open, but
-> > doesn't actually do any I/O on that fd. This makes sure that the inode number
-> > of the new etab file won't be the same as the current version that mountd is
-> > aware of. I also added a comment to xtab_write to warn people who might
-> > consider changing how the files are written.
+> > I agree.
 > > 
-> > We might also consider adding back in some of the mtime logic to try and
-> > catch programs that edit the file in place, but I'm not sure if that's
-> > worthwhile.
-> 
-> I agree.
-> 
+> > > 
+> > > Neil, what do you think?
 > > 
-> > Neil, what do you think?
+> > I was about to say "fine", but then saw the problem.
+> > Because of the way get_exportlist uses the return value, that value
+> > needs to unique over all time (or close to it).  So returning the
+> > inode number won't work (as we have seen that ext3 cycles between
+> > two).
+> > 
+> > A simple event counter could be returned though, which would give
+> > something unique to get_exportlist.
+> > 
+> > NeilBrown
 > 
-> I was about to say "fine", but then saw the problem.
-> Because of the way get_exportlist uses the return value, that value
-> needs to unique over all time (or close to it).  So returning the
-> inode number won't work (as we have seen that ext3 cycles between
-> two).
+> Ahh, good catch. I wasn't considering that mountd might call into auth_reload
+> from other functions between get_exportlist calls. I'm not sure we even really
+> need a static counter here though. How about just having auth_reload return
+> true if the reload occurred?
 > 
-> A simple event counter could be returned though, which would give
-> something unique to get_exportlist.
-> 
-> NeilBrown
 
-Ahh, good catch. I wasn't considering that mountd might call into auth_reload
-from other functions between get_exportlist calls. I'm not sure we even really
-need a static counter here though. How about just having auth_reload return
-true if the reload occurred?
+Doh! That won't work for the same reason. Static counter it is...
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
 
 diff --git a/support/export/xtab.c b/support/export/xtab.c
 index 0ddb251..292087b 100644
@@ -95,7 +98,7 @@ index 0ddb251..292087b 100644
  xtab_write(char *xtab, char *xtabtmp, int is_export)
  {
 diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 183c9ea..5638a05 100644
+index 183c9ea..f7fe23d 100644
 --- a/utils/mountd/auth.c
 +++ b/utils/mountd/auth.c
 @@ -14,6 +14,7 @@
@@ -106,22 +109,23 @@ index 183c9ea..5638a05 100644
  #include "misc.h"
  #include "nfslib.h"
  #include "exportfs.h"
-@@ -46,24 +47,33 @@ auth_init(char *exports)
+@@ -46,24 +47,34 @@ auth_init(char *exports)
  	xtab_mount_write();
  }
  
 -time_t
-+/* Check the etab file. Reload it and return true if it changed */
-+int
++unsigned int
  auth_reload()
  {
  	struct stat		stb;
 -	static time_t		last_modified = 0;
+-
+-	if (stat(_PATH_ETAB, &stb) < 0)
 +	static ino_t		last_inode;
 +	static int		last_fd;
++	static unsigned int	counter;
 +	int			fd;
- 
--	if (stat(_PATH_ETAB, &stb) < 0)
++
 +	if ((fd = open(_PATH_ETAB, O_RDONLY)) < 0) {
 +		xlog(L_FATAL, "couldn't open %s", _PATH_ETAB);
 +	} else if (fstat(fd, &stb) < 0) {
@@ -131,7 +135,7 @@ index 183c9ea..5638a05 100644
 -	last_modified = stb.st_mtime;
 +	} else if (stb.st_ino == last_inode) {
 +		close(fd);
-+		return 0;
++		return counter;
 +	} else {
 +		close(last_fd);
 +		last_fd = fd;
@@ -142,17 +146,18 @@ index 183c9ea..5638a05 100644
  	memset(&my_client, 0, sizeof(my_client));
 -	// export_read(export_file);
  	xtab_export_read();
++	++counter;
  
 -	return last_modified;
-+	return 1;
++	return counter;
  }
  
  static nfs_export *
 diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 04141d1..c3324cf 100644
+index 04141d1..999f035 100644
 --- a/utils/mountd/mountd.c
 +++ b/utils/mountd/mountd.c
-@@ -465,19 +465,14 @@ static exports
+@@ -465,18 +465,18 @@ static exports
  get_exportlist(void)
  {
  	static exports		elist = NULL;
@@ -162,19 +167,22 @@ index 04141d1..c3324cf 100644
  	struct groupnode	*g, *ng, *c, **cp;
  	nfs_export		*exp;
  	int			i;
++	static unsigned int	ecounter;
++	unsigned int		acounter;
  
 -	atime = auth_reload();
 -	if (elist && atime == etime)
-+	if (auth_reload() == 0)
++	acounter = auth_reload();
++	if (elist && acounter == ecounter)
  		return elist;
  
 -	etime = atime;
--
++	ecounter = acounter;
+ 
  	for (e = elist; e != NULL; e = ne) {
  		ne = e->ex_next;
- 		for (g = e->ex_groups; g != NULL; g = ng) {
 diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index b539278..d64c171 100644
+index b539278..31bacb5 100644
 --- a/utils/mountd/mountd.h
 +++ b/utils/mountd/mountd.h
 @@ -40,7 +40,7 @@ bool_t		mount_mnt_3_svc(struct svc_req *, dirpath *, mountres3 *);
@@ -182,7 +190,7 @@ index b539278..d64c171 100644
  void		mount_dispatch(struct svc_req *, SVCXPRT *);
  void		auth_init(char *export_file);
 -time_t		auth_reload(void);
-+int		auth_reload(void);
++unsigned int	auth_reload(void);
  nfs_export *	auth_authenticate(char *what, struct sockaddr_in *sin,
  					char *path);
  void		auth_export(nfs_export *exp);
