@@ -1,21 +1,33 @@
-From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-Subject: Clients not displaying NFS quotas
-Date: Thu, 3 May 2007 11:43:15 +0930 (CST)
-Message-ID: <200705030213.l432DFce017563@turbo.physics.adelaide.edu.au>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] nfs-utils: make auth_reload respect
+	sub-second	timestamps on etab
+Date: Thu, 3 May 2007 07:58:15 -0400
+Message-ID: <20070503115814.GA4641@dantu.rdu.redhat.com>
+References: <20070425201354.GD6696@salusa.poochiereds.net>
+	<462FC850.7040600@oracle.com>
+	<17968.12554.934818.359167@notabene.brown>
+	<20070426120536.GB24800@dantu.rdu.redhat.com>
+	<20070426162300.GA12193@salusa.poochiereds.net>
+	<20070426165800.GC4875@fieldses.org>
+	<20070426170055.GA30402@dantu.rdu.redhat.com>
+	<20070426172444.GE4875@fieldses.org>
+	<20070426182901.GA31081@dantu.rdu.redhat.com>
+	<17977.13065.307535.484372@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-To: nfs@lists.sourceforge.net
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjQoy-00029G-Gg
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 19:13:28 -0700
-Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HjQp0-0008Ac-IT
-	for nfs@lists.sourceforge.net; Wed, 02 May 2007 19:13:31 -0700
+	id 1HjZx4-0007l9-UW
+	for nfs@lists.sourceforge.net; Thu, 03 May 2007 04:58:28 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HjZx7-0005dk-BY
+	for nfs@lists.sourceforge.net; Thu, 03 May 2007 04:58:29 -0700
+In-Reply-To: <17977.13065.307535.484372@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,42 +40,152 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We have a Slackware 9.1 box (with numerous software upgrades) exporting a
-directory to various NFS clients.  While running a 2.4.x kernel this all
-worked fine - users on clients could use "quota" to display their quota
-information.  When the system was moved to a 2.6.19.2 kernel a few months
-ago the clients could no longer display quota information.  The server
-still knew and enforced the quotas, it's just that from the client's
-point of view there were no quotas.
+On Thu, May 03, 2007 at 10:55:37AM +1000, Neil Brown wrote:
+> On Thursday April 26, jlayton@redhat.com wrote:
+> > 
+> > This patch seems to fix the problem as well. mountd holds the etab open, but
+> > doesn't actually do any I/O on that fd. This makes sure that the inode number
+> > of the new etab file won't be the same as the current version that mountd is
+> > aware of. I also added a comment to xtab_write to warn people who might
+> > consider changing how the files are written.
+> > 
+> > We might also consider adding back in some of the mtime logic to try and
+> > catch programs that edit the file in place, but I'm not sure if that's
+> > worthwhile.
+> 
+> I agree.
+> 
+> > 
+> > Neil, what do you think?
+> 
+> I was about to say "fine", but then saw the problem.
+> Because of the way get_exportlist uses the return value, that value
+> needs to unique over all time (or close to it).  So returning the
+> inode number won't work (as we have seen that ext3 cycles between
+> two).
+> 
+> A simple event counter could be returned though, which would give
+> something unique to get_exportlist.
+> 
+> NeilBrown
 
-The system is running the following software versions:
+Ahh, good catch. I wasn't considering that mountd might call into auth_reload
+from other functions between get_exportlist calls. I'm not sure we even really
+need a static counter here though. How about just having auth_reload return
+true if the reload occurred?
 
-  * kernel 2.6.19.2
-  * nfs-utils 1.0.10
-  * util-linux 2.12
-  * portmap 5.0
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-The filesystem concerned is reiserfs3.  The kernel has reiserfs quota
-support enabled.
 
-The relevant partition is mounted on the server using an fstab entry of
-
-  /dev/...  /home/foobar  reiserfs  usrquota
-
-All clients mount the volume via the automounter with the "hard,intr,bg"
-mount options.
-
-Users cannot log into the NFS server.
-
-We have clients running various versions of redhat, fedora and slackware
-with different kernels.  In all cases things worked with the 2.4.x
-kernel and don't now.  It therefore seems to be a server-related issue.
-
-Does anyone have any idea as to why client access to quota information
-isn't working in this scenario?
-
-Regards
-  jonathan
+diff --git a/support/export/xtab.c b/support/export/xtab.c
+index 0ddb251..292087b 100644
+--- a/support/export/xtab.c
++++ b/support/export/xtab.c
+@@ -80,6 +80,12 @@ xtab_export_read(void)
+ 	return xtab_read(_PATH_ETAB, 1);
+ }
+ 
++/*
++ * mountd now keeps an open fd for the etab at all times to make sure that the
++ * inode number changes when the xtab_export_write is done. If you change the
++ * routine below such that the files are edited in place, then you'll need to
++ * fix the auth_reload logic as well...
++ */
+ static int
+ xtab_write(char *xtab, char *xtabtmp, int is_export)
+ {
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 183c9ea..5638a05 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -14,6 +14,7 @@
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <errno.h>
++#include <unistd.h>
+ #include "misc.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+@@ -46,24 +47,33 @@ auth_init(char *exports)
+ 	xtab_mount_write();
+ }
+ 
+-time_t
++/* Check the etab file. Reload it and return true if it changed */
++int
+ auth_reload()
+ {
+ 	struct stat		stb;
+-	static time_t		last_modified = 0;
++	static ino_t		last_inode;
++	static int		last_fd;
++	int			fd;
+ 
+-	if (stat(_PATH_ETAB, &stb) < 0)
++	if ((fd = open(_PATH_ETAB, O_RDONLY)) < 0) {
++		xlog(L_FATAL, "couldn't open %s", _PATH_ETAB);
++	} else if (fstat(fd, &stb) < 0) {
+ 		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+-	if (stb.st_mtime == last_modified)
+-		return last_modified;
+-	last_modified = stb.st_mtime;
++	} else if (stb.st_ino == last_inode) {
++		close(fd);
++		return 0;
++	} else {
++		close(last_fd);
++		last_fd = fd;
++		last_inode = stb.st_ino;
++	}
+ 
+ 	export_freeall();
+ 	memset(&my_client, 0, sizeof(my_client));
+-	// export_read(export_file);
+ 	xtab_export_read();
+ 
+-	return last_modified;
++	return 1;
+ }
+ 
+ static nfs_export *
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 04141d1..c3324cf 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -465,19 +465,14 @@ static exports
+ get_exportlist(void)
+ {
+ 	static exports		elist = NULL;
+-	static time_t		etime = 0;
+-	time_t			atime;
+ 	struct exportnode	*e, *ne;
+ 	struct groupnode	*g, *ng, *c, **cp;
+ 	nfs_export		*exp;
+ 	int			i;
+ 
+-	atime = auth_reload();
+-	if (elist && atime == etime)
++	if (auth_reload() == 0)
+ 		return elist;
+ 
+-	etime = atime;
+-
+ 	for (e = elist; e != NULL; e = ne) {
+ 		ne = e->ex_next;
+ 		for (g = e->ex_groups; g != NULL; g = ng) {
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index b539278..d64c171 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -40,7 +40,7 @@ bool_t		mount_mnt_3_svc(struct svc_req *, dirpath *, mountres3 *);
+ 
+ void		mount_dispatch(struct svc_req *, SVCXPRT *);
+ void		auth_init(char *export_file);
+-time_t		auth_reload(void);
++int		auth_reload(void);
+ nfs_export *	auth_authenticate(char *what, struct sockaddr_in *sin,
+ 					char *path);
+ void		auth_export(nfs_export *exp);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
