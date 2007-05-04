@@ -1,25 +1,25 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/18] export operations rewrite
-Date: Fri, 4 May 2007 16:49:50 +1000
-Message-ID: <17978.55182.198497.902215@notabene.brown>
-References: <20070317010946.GA24947@infradead.org>
-	<17932.34141.590792.120454@notabene.brown>
-	<20070501103905.GA30906@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [GIT] NFS client updates for 2.6.22...
+Date: Fri, 04 May 2007 05:39:38 -0700
+Message-ID: <1178282378.6346.14.camel@heimdal.trondhjem.org>
+References: <1178117571.5435.10.camel@heimdal.trondhjem.org>
+	<Pine.BSO.4.63.0705021705110.11088@rudy.mif.pg.gda.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Tomasz =?UTF-8?Q?K=C5=82oczko?= <kloczek@rudy.mif.pg.gda.pl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjrcV-0003Qv-5J
-	for nfs@lists.sourceforge.net; Thu, 03 May 2007 23:50:23 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1Hjx4c-0007xd-8Z
+	for nfs@lists.sourceforge.net; Fri, 04 May 2007 05:39:46 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/BD7HyMwUIHkSZX4VquxZOrygCsZds74w=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HjrcX-0000sW-Jm
-	for nfs@lists.sourceforge.net; Thu, 03 May 2007 23:50:25 -0700
-In-Reply-To: message from Christoph Hellwig on Tuesday May 1
+	(Exim 4.44) id 1Hjx4d-0002NE-JP
+	for nfs@lists.sourceforge.net; Fri, 04 May 2007 05:39:48 -0700
+In-Reply-To: <Pine.BSO.4.63.0705021705110.11088@rudy.mif.pg.gda.pl>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +32,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 1, hch@infradead.org wrote:
-> On Fri, Mar 30, 2007 at 01:34:53PM +1000, Neil Brown wrote:
-> > On Saturday March 17, hch@infradead.org wrote:
-> > 
-> > less that 2 weeks later....
-> 
-> more than one month later.... :)
-> 
-
-Thanks for your explanations.
-
->  - the calling conversion on the decode side where we first call
->    ->decode_fh to split the filehandle into two blobs only to
->    recurse back into exportfs and then recurse back into the filesystem
->    seems rather odd.  By having two methods to get the dentry and
->    parent directly from the on the wire file handle this big callstack
->    collapses to a very simple one.
-
-This is the bit I was particularly missing.  I see now how this aspect
-was awkward before, and how your changes make the flow clearer.
-
-Getting rid of s_export_op->find_exported_dentry is something I'm very
-happy about.  There was actually bug lurking there that I never got
-around to fixing.  The code:
--	/* Ok, we can export it */;
--	if (!inode->i_sb->s_export_op->find_exported_dentry)
--		inode->i_sb->s_export_op->find_exported_dentry =
--			find_exported_dentry;
-
-assumes that the address of find_exported_dentry will never change.
-But if you unload nfsd.ko, then re-load it. it could be different, yet a
-filesystem could still have to old value in it's s_export_op.  That
-would be bad.
-I'm glad it is gone.
-
-Thanks,
-NeilBrown
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+T24gV2VkLCAyMDA3LTA1LTAyIGF0IDE3OjEyICswMjAwLCBUb21hc3ogS8WCb2N6a28gd3JvdGU6
+Cj4gT24gV2VkLCAyIE1heSAyMDA3LCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6Cj4gWy4uXQo+IAo+
+IFRyb25kIC4uIGFueSBjaGFuY2UgZm9yIGltcGxlbWVudCBjbGVhciBORlMgc3RhdGlzdGljcyBw
+YXJ0IG9mIGtlcm5lbCAKPiBjb2RlIGZvciAibmZzc3RhdCAteiIgPwo+IAo+IGtsb2N6ZWsKClRo
+YXQgY2FuIGJlIGRvbmUgaW4gdXNlcmxhbmQ6IG1ha2UgJ25mc3N0YXQgLXonIHNhdmUgYSBjb3B5
+IG9mIHRoZQpjdXJyZW50IC9wcm9jL25ldC9ycGMvbmZzIHNvIHRoYXQgaXQgY2FuIHN1YnRyYWN0
+IHRob3NlIHZhbHVlcyBpbiBsYXRlcgpjYWxscyB0byBuZnNzdGF0LgoKQ2hlZXJzCiAgVHJvbmQK
+CgotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieSBEQjIg
+RXhwcmVzcwpEb3dubG9hZCBEQjIgRXhwcmVzcyBDIC0gdGhlIEZSRUUgdmVyc2lvbiBvZiBEQjIg
+ZXhwcmVzcyBhbmQgdGFrZQpjb250cm9sIG9mIHlvdXIgWE1MLiBObyBsaW1pdHMuIEp1c3QgZGF0
+YS4gQ2xpY2sgdG8gZ2V0IGl0IG5vdy4KaHR0cDovL3NvdXJjZWZvcmdlLm5ldC9wb3dlcmJhci9k
+YjIvCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBt
+YWlsbGlzdCAgLSAgTkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJj
+ZWZvcmdlLm5ldC9saXN0cy9saXN0aW5mby9uZnMK
