@@ -1,24 +1,25 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [GIT] NFS client updates for 2.6.22...
-Date: Thu, 03 May 2007 21:14:51 +0200
-Message-ID: <1178219691.24217.20.camel@twins>
-References: <1178117571.5435.10.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 0/18] export operations rewrite
+Date: Fri, 4 May 2007 16:49:50 +1000
+Message-ID: <17978.55182.198497.902215@notabene.brown>
+References: <20070317010946.GA24947@infradead.org>
+	<17932.34141.590792.120454@notabene.brown>
+	<20070501103905.GA30906@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HjglX-00056o-5V
-	for nfs@lists.sourceforge.net; Thu, 03 May 2007 12:14:59 -0700
-Received: from amsfep19-int.chello.nl ([62.179.120.14])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HjglZ-0006As-4Z
-	for nfs@lists.sourceforge.net; Thu, 03 May 2007 12:15:01 -0700
-In-Reply-To: <1178117571.5435.10.camel@heimdal.trondhjem.org>
+	id 1HjrcV-0003Qv-5J
+	for nfs@lists.sourceforge.net; Thu, 03 May 2007 23:50:23 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HjrcX-0000sW-Jm
+	for nfs@lists.sourceforge.net; Thu, 03 May 2007 23:50:25 -0700
+In-Reply-To: message from Christoph Hellwig on Tuesday May 1
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,20 +32,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-05-02 at 07:52 -0700, Trond Myklebust wrote:
-> Hi Linus,
+On Tuesday May 1, hch@infradead.org wrote:
+> On Fri, Mar 30, 2007 at 01:34:53PM +1000, Neil Brown wrote:
+> > On Saturday March 17, hch@infradead.org wrote:
+> > 
+> > less that 2 weeks later....
 > 
-> Please pull from the repository at
+> more than one month later.... :)
 > 
->    git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
 
-I can confirm that this solves my missing IO completions problem; or at
-least, my test has been running for 8h+ and still going strong, whereas
-previous I would be lucky to get 1h.
+Thanks for your explanations.
 
-Would it be reasonable to include the relevant patches in a
-later .21-stable release?
+>  - the calling conversion on the decode side where we first call
+>    ->decode_fh to split the filehandle into two blobs only to
+>    recurse back into exportfs and then recurse back into the filesystem
+>    seems rather odd.  By having two methods to get the dentry and
+>    parent directly from the on the wire file handle this big callstack
+>    collapses to a very simple one.
 
+This is the bit I was particularly missing.  I see now how this aspect
+was awkward before, and how your changes make the flow clearer.
+
+Getting rid of s_export_op->find_exported_dentry is something I'm very
+happy about.  There was actually bug lurking there that I never got
+around to fixing.  The code:
+-	/* Ok, we can export it */;
+-	if (!inode->i_sb->s_export_op->find_exported_dentry)
+-		inode->i_sb->s_export_op->find_exported_dentry =
+-			find_exported_dentry;
+
+assumes that the address of find_exported_dentry will never change.
+But if you unload nfsd.ko, then re-load it. it could be different, yet a
+filesystem could still have to old value in it's s_export_op.  That
+would be bad.
+I'm glad it is gone.
+
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
