@@ -1,36 +1,26 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: [PATCH] Fix resource leak resulting in module refcount leak
-	for	rpcsec_gss_krb5.ko
-Date: Fri, 04 May 2007 08:59:32 -0700
-Message-ID: <1178294372.3621.13.camel@dyn9047022153>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Fix resource leak resulting in module refcount
+	leak for rpcsec_gss_krb5.ko
+Date: Fri, 4 May 2007 13:25:10 -0400
+Message-ID: <20070504172510.GF10434@fieldses.org>
 References: <1178230502.2977.7.camel@dyn9047022153>
 	<20070503224012.GK22069@fieldses.org>
+	<1178294372.3621.13.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, NFS List <nfs@lists.sourceforge.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Frank Filz <ffilzlnx@us.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hk0Bw-00068G-Ky
-	for nfs@lists.sourceforge.net; Fri, 04 May 2007 08:59:32 -0700
-Received: from e1.ny.us.ibm.com ([32.97.182.141])
+	id 1Hk1Ws-0003Xc-Mj
+	for nfs@lists.sourceforge.net; Fri, 04 May 2007 10:25:14 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hk0Bz-0007aW-1G
-	for nfs@lists.sourceforge.net; Fri, 04 May 2007 08:59:35 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l44FxRfE007858
-	for <nfs@lists.sourceforge.net>; Fri, 4 May 2007 11:59:27 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
-	l44FxRXc529168
-	for <nfs@lists.sourceforge.net>; Fri, 4 May 2007 11:59:27 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l44FxRko001580
-	for <nfs@lists.sourceforge.net>; Fri, 4 May 2007 11:59:27 -0400
-In-Reply-To: <20070503224012.GK22069@fieldses.org>
+	(Exim 4.44) id 1Hk1Wu-0007n8-2r
+	for nfs@lists.sourceforge.net; Fri, 04 May 2007 10:25:17 -0700
+In-Reply-To: <1178294372.3621.13.camel@dyn9047022153>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,55 +33,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I have been investigating a module reference count leak on the server
-for rpcsec_gss_krb5.ko. It turns out the problem is a reference count
-leak for the security context in net/sunrpc/auth_gss/svcauth_gss.c.
+On Fri, May 04, 2007 at 08:59:32AM -0700, Frank Filz wrote:
+> I have been investigating a module reference count leak on the server
+> for rpcsec_gss_krb5.ko. It turns out the problem is a reference count
+> leak for the security context in net/sunrpc/auth_gss/svcauth_gss.c.
+> 
+> The problem is that gss_write_init_verf() calls gss_svc_searchbyctx()
+> which does a rsc_lookup() but never releases the reference to the
+> context. There is another issue that rpc.svcgssd sets an "end of time"
+> expiration for the context
+> 
+> By adding a cache_put() call in gss_svc_searchbyctx(), and setting an
+> expiration timeout in the downcall, cache_clean() does clean up the
+> context and the module reference count now goes to zero after unmount.
+> 
+> I also verified that if the context expires and then the client makes a
+> new request, a new context is established.
+> 
+> Here is the patch to fix the kernel, I will start a separate thread to
+> discuss what expiration time should be set by rpc.svcgssd.
+> 
+> Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
 
-The problem is that gss_write_init_verf() calls gss_svc_searchbyctx()
-which does a rsc_lookup() but never releases the reference to the
-context. There is another issue that rpc.svcgssd sets an "end of time"
-expiration for the context
+Thanks!
 
-By adding a cache_put() call in gss_svc_searchbyctx(), and setting an
-expiration timeout in the downcall, cache_clean() does clean up the
-context and the module reference count now goes to zero after unmount.
+Acked-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 
-I also verified that if the context expires and then the client makes a
-new request, a new context is established.
+(And applied to my tree.)  A nit:
 
-Here is the patch to fix the kernel, I will start a separate thread to
-discuss what expiration time should be set by rpc.svcgssd.
+> @@ -932,7 +933,9 @@ gss_write_init_verf(struct svc_rqst *rqstp, struct
+> rsi *rsip)
 
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+That line got wrapped, so has to be fixed up by hand before the patch
+will apply.  Probably there's some setting in your mail client to fix
+that for next time....
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c
-b/net/sunrpc/auth_gss/svcauth_gss.c
-index db298b5..eb16e30 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -924,6 +924,7 @@ static inline int
- gss_write_init_verf(struct svc_rqst *rqstp, struct rsi *rsip)
- {
- 	struct rsc *rsci;
-+	int        rc;
- 
- 	if (rsip->major_status != GSS_S_COMPLETE)
- 		return gss_write_null_verf(rqstp);
-@@ -932,7 +933,9 @@ gss_write_init_verf(struct svc_rqst *rqstp, struct
-rsi *rsip)
- 		rsip->major_status = GSS_S_NO_CONTEXT;
- 		return gss_write_null_verf(rqstp);
- 	}
--	return gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
-+	rc = gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
-+	cache_put(&rsci->h, &rsc_cache);
-+	return rc;
- }
- 
- /*
-
-
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
