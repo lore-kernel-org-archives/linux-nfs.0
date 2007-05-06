@@ -1,130 +1,64 @@
-From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-Subject: Re: Clients not displaying NFS quotas
-Date: Mon, 7 May 2007 08:57:06 +0930 (CST)
-Message-ID: <200705062327.l46NR6Ae002080@turbo.physics.adelaide.edu.au>
-References: <1178284880.6346.31.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [NFS] [PATCH 0/18] export operations rewrite
+Date: Mon, 7 May 2007 09:52:35 +1000
+Message-ID: <17982.27203.841272.221428@notabene.brown>
+References: <20070317010946.GA24947@infradead.org>
+	<17932.34141.590792.120454@notabene.brown>
+	<20070501103905.GA30906@infradead.org>
+	<17978.55182.198497.902215@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-To: trond.myklebust@fys.uio.no (Trond Myklebust)
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hkq8c-00078M-5p
-	for nfs@lists.sourceforge.net; Sun, 06 May 2007 16:27:34 -0700
-Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hkq8e-0005jS-72
-	for nfs@lists.sourceforge.net; Sun, 06 May 2007 16:27:36 -0700
-In-Reply-To: <1178284880.6346.31.camel@heimdal.trondhjem.org> from "Trond
-	Myklebust" at May 04, 2007 06:21:20 AM
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+To: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: message from Neil Brown on Friday May 4
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-> On Thu, 2007-05-03 at 11:43 +0930, Jonathan Woithe wrote:
-> > We have a Slackware 9.1 box (with numerous software upgrades) exporting a
-> > directory to various NFS clients.  While running a 2.4.x kernel this all
-> > worked fine - users on clients could use "quota" to display their quota
-> > information.  When the system was moved to a 2.6.19.2 kernel a few months
-> > ago the clients could no longer display quota information.  The server
-> > still knew and enforced the quotas, it's just that from the client's
-> > point of view there were no quotas.
-> > 
-> > The system is running the following software versions:
-> > 
-> >   * kernel 2.6.19.2
-> >   * nfs-utils 1.0.10
-> >   * util-linux 2.12
-> >   * portmap 5.0
-> > 
-> > The filesystem concerned is reiserfs3.  The kernel has reiserfs quota
-> > support enabled.
-> > 
-> > The relevant partition is mounted on the server using an fstab entry of
-> > 
-> >   /dev/...  /home/foobar  reiserfs  usrquota
-> > 
-> > All clients mount the volume via the automounter with the "hard,intr,bg"
-> > mount options.
-> > 
-> > Users cannot log into the NFS server.
-> > 
-> > We have clients running various versions of redhat, fedora and slackware
-> > with different kernels.  In all cases things worked with the 2.4.x
-> > kernel and don't now.  It therefore seems to be a server-related issue.
-> > 
-> > Does anyone have any idea as to why client access to quota information
-> > isn't working in this scenario?
+On Friday May 4, neilb@suse.de wrote:
+> On Tuesday May 1, hch@infradead.org wrote:
+> >  - the calling conversion on the decode side where we first call
+> >    ->decode_fh to split the filehandle into two blobs only to
+> >    recurse back into exportfs and then recurse back into the filesystem
+> >    seems rather odd.  By having two methods to get the dentry and
+> >    parent directly from the on the wire file handle this big callstack
+> >    collapses to a very simple one.
 > 
-> The NFS protocol doesn't support quotas, so those have to be transmitted
-> using a sideband protocol. Check that you have the 'quotad' daemon
-> running on your server, and that it is accessible from the clients.
+> This is the bit I was particularly missing.  I see now how this aspect
+> was awkward before, and how your changes make the flow clearer.
+> 
+> Getting rid of s_export_op->find_exported_dentry is something I'm very
+> happy about.  There was actually bug lurking there that I never got
+> around to fixing.  The code:
+> -	/* Ok, we can export it */;
+> -	if (!inode->i_sb->s_export_op->find_exported_dentry)
+> -		inode->i_sb->s_export_op->find_exported_dentry =
+> -			find_exported_dentry;
+> 
+> assumes that the address of find_exported_dentry will never change.
+> But if you unload nfsd.ko, then re-load it. it could be different, yet a
+> filesystem could still have to old value in it's s_export_op.  That
+> would be bad.
+> I'm glad it is gone.
 
-Yes, quotad is running on the server:
+...but now I remember why it was there...
 
-  > rpcinfo -p
-  :
-  100011    1   udp    998  rquotad
-  100011    2   udp    998  rquotad
+I didn't want filesystems to depend on exportfs.ko.
+nfsd, depends on exportfs, but currently filesystems don't.  They
+can be compiled into the kernel without including exportfs.
 
-As I mentioned, everything works just fine if a 2.4.x kernel is running,
-which presumedly clears any access issues (unless of course the 2.6.x kernel
-is doing something odd).  The moment 2.6.x is booted (where x = 19.2
-currently) the clients can no longer see quota information.
+With your patches in place, I got a compile error with a config in
+which nfsd is a module (and so exportfs is) but ext2 and ext3 are
+compiled in.
+The error was that generic_fh_to_dentry and generic_fh_to_parent were
+not defined.
 
-Is there a way to explicitly test whether clients can in fact connect to
-rquotad?
+Now those two functions together with exportfs_d_alloc are fairly
+small and could go directly in fs/something.c.  They could almost be
+inlined in linux/exportfs.h.
 
-I have noticed that rquotad is only listening on UDP, rather than on both
-TCP and UDP as I think it did under 2.4.x.  Is this likely to be the
-problem?  If so, what would cause rquotad to do this under 2.6.x given an
-unchanged configuration from 2.4.x?
+Would you be able to respin that second patch series with one of those
+changes?
 
-Here are the relevant kernel configuration options for the kernel currently
-running:
-
-  CONFIG_QUOTA=y
-  # CONFIG_QFMT_V1 is not set
-  CONFIG_QFMT_V2=m
-  CONFIG_QUOTACTL=y
-
-  CONFIG_NFS_FS=y
-  CONFIG_NFS_V3=y
-  CONFIG_NFS_V3_ACL=y
-  # CONFIG_NFS_V4 is not set
-  # CONFIG_NFS_DIRECTIO is not set
-  CONFIG_NFSD=y
-  CONFIG_NFSD_V2_ACL=y
-  CONFIG_NFSD_V3=y
-  CONFIG_NFSD_V3_ACL=y
-  # CONFIG_NFSD_V4 is not set
-  CONFIG_NFSD_TCP=y
-  CONFIG_LOCKD=y
-  CONFIG_LOCKD_V4=y
-  CONFIG_EXPORTFS=y
-  CONFIG_NFS_ACL_SUPPORT=y
-  CONFIG_NFS_COMMON=y
-  CONFIG_SUNRPC=y
-
-Regards
-  jonathan
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Thanks,
+NeilBrown
