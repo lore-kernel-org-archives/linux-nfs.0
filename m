@@ -1,25 +1,22 @@
-From: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-Subject: Re: Clients not displaying NFS quotas
-Date: Mon, 7 May 2007 09:50:23 +0930 (CST)
-Message-ID: <200705070020.l470KNxD004058@turbo.physics.adelaide.edu.au>
-References: <1178496403.6493.18.camel@heimdal.trondhjem.org>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 8] knfsd: Assorted bugfixes for 2.6.22
+Date: Mon, 7 May 2007 10:35:09 +1000
+Message-ID: <20070507103211.23855.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
-To: trond.myklebust@fys.uio.no (Trond Myklebust)
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	stable@kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hkqy0-0003dl-HY
-	for nfs@lists.sourceforge.net; Sun, 06 May 2007 17:20:40 -0700
-Received: from adelphi.physics.adelaide.edu.au ([129.127.102.1])
+	id 1HkrCO-00050U-ET
+	for nfs@lists.sourceforge.net; Sun, 06 May 2007 17:35:32 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hkqy1-0008Eg-Jk
-	for nfs@lists.sourceforge.net; Sun, 06 May 2007 17:20:43 -0700
-In-Reply-To: <1178496403.6493.18.camel@heimdal.trondhjem.org> from "Trond
-	Myklebust" at May 06, 2007 08:06:43 PM
+	(Exim 4.44) id 1HkrCP-0002bM-MT
+	for nfs@lists.sourceforge.net; Sun, 06 May 2007 17:35:35 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,93 +29,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> On Mon, 2007-05-07 at 08:57 +0930, Jonathan Woithe wrote:
-> > > On Thu, 2007-05-03 at 11:43 +0930, Jonathan Woithe wrote:
-> > > > We have a Slackware 9.1 box (with numerous software upgrades) exporting a
-> > > > directory to various NFS clients.  While running a 2.4.x kernel this all
-> > > > worked fine - users on clients could use "quota" to display their quota
-> > > > information.  When the system was moved to a 2.6.19.2 kernel a few months
-> > > > ago the clients could no longer display quota information.  The server
-> > > > still knew and enforced the quotas, it's just that from the client's
-> > > > point of view there were no quotas.
-> > > > 
-> > > > The system is running the following software versions:
-> > > > 
-> > > >   * kernel 2.6.19.2
-> > > >   * nfs-utils 1.0.10
-> > > >   * util-linux 2.12
-> > > >   * portmap 5.0
-> > > > 
-> > > > The filesystem concerned is reiserfs3.  The kernel has reiserfs quota
-> > > > support enabled.
-> > > > 
-> > > > The relevant partition is mounted on the server using an fstab entry of
-> > > > 
-> > > >   /dev/...  /home/foobar  reiserfs  usrquota
-> > > > 
-> > > > All clients mount the volume via the automounter with the "hard,intr,bg"
-> > > > mount options.
-> > > > 
-> > > > Users cannot log into the NFS server.
-> > > > 
-> > > > We have clients running various versions of redhat, fedora and slackware
-> > > > with different kernels.  In all cases things worked with the 2.4.x
-> > > > kernel and don't now.  It therefore seems to be a server-related issue.
-> > > > 
-> > > > Does anyone have any idea as to why client access to quota information
-> > > > isn't working in this scenario?
-> > > 
-> > > The NFS protocol doesn't support quotas, so those have to be transmitted
-> > > using a sideband protocol. Check that you have the 'quotad' daemon
-> > > running on your server, and that it is accessible from the clients.
-> > 
-> > Yes, quotad is running on the server:
-> > 
-> >   > rpcinfo -p
-> >   :
-> >   100011    1   udp    998  rquotad
-> >   100011    2   udp    998  rquotad
-> > 
-> > As I mentioned, everything works just fine if a 2.4.x kernel is running,
-> > which presumedly clears any access issues (unless of course the 2.6.x kernel
-> > is doing something odd).  The moment 2.6.x is booted (where x = 19.2
-> > currently) the clients can no longer see quota information.
-> > 
-> > Is there a way to explicitly test whether clients can in fact connect to
-> > rquotad?
-> > 
-> > I have noticed that rquotad is only listening on UDP, rather than on both
-> > TCP and UDP as I think it did under 2.4.x.  Is this likely to be the
-> > problem?  If so, what would cause rquotad to do this under 2.6.x given an
-> > unchanged configuration from 2.4.x?
-> > 
-> > Here are the relevant kernel configuration options for the kernel currently
-> > running:
-> 
-> On the client, the kernel isn't at all involved in NFS quotas other than
-> for the usual sendmsg()/recvmsg() syscalls as used by the userspace RPC
-> library. IOW: all the clever stuff happens in userspace.
-> 
-> I'd therefore try running 'strace' on the 'quota' command in order to
-> figure out what is going wrong.
+Following are 8 patches for knfsd and related code that are suitable for
+2.6.22.
 
-I tried that earlier but nothing really jumped out at me - it seemed that
-the server was being contacted without error.
+First two are suitable for -stable: they can cause an oops.
+(8 can also cause an oops, but you really need buggy userspace code 
+running as root, and it is a larger patch than I like to send to -stable).
 
-If you're interested you can download a copy of the strace output from
-a representative client from
+Other 6 are less significant bug fixes and cleanups.
 
-  http://www.physics.adelaide.edu.au/~jwoithe/q-mercury.strace.bz2
+Thanks,
+NeilBrown
 
-I would have attached it but I suspect it might make the message too big
-for the list.
 
-In the meantime I might try comparing the strace from the client (where it
-doesn't work) and the server (where it does) and see if anything obvious
-jumps out.
-
-Regards
-  jonathan
+ [PATCH 001 of 8] knfsd: Avoid use of unitialised variables on error path when nfs exports.
+ [PATCH 002 of 8] knfsd: rpc: fix server-side wrapping of krb5i replies
+ [PATCH 003 of 8] knfsd: Fix resource leak resulting in module refcount leak for	rpcsec_gss_krb5.ko
+ [PATCH 004 of 8] knfsd: rpcgss : RPC_GSS_PROC_ DESTROY request will get a bad rpc
+ [PATCH 005 of 8] knfsd: Simplify a 'while' condition in svcsock.c
+ [PATCH 006 of 8] knfsd: Trivial makefile cleanup
+ [PATCH 007 of 8] knfsd: Various nfsd xdr cleanups.
+ [PATCH 008 of 8] knfsd: Avoid Oops if buggy userspace performs confusing filehandle->dentry mapping.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
