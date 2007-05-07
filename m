@@ -1,23 +1,25 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: Clients not displaying NFS quotas
-Date: Mon, 7 May 2007 11:19:38 +1000
-Message-ID: <17982.32426.148387.521946@notabene.brown>
-References: <200705030213.l432DFce017563@turbo.physics.adelaide.edu.au>
+Subject: RFC - remove rquotad from nfs-utils for 1.1.0.
+Date: Mon, 7 May 2007 11:26:03 +1000
+Message-ID: <17982.32811.860687.644860@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Jonathan Woithe <jwoithe@physics.adelaide.edu.au>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HkrtR-0000ez-Pf
-	for nfs@lists.sourceforge.net; Sun, 06 May 2007 18:20:01 -0700
+	id 1Hkrzd-0001FG-U9
+	for nfs@lists.sourceforge.net; Sun, 06 May 2007 18:26:25 -0700
 Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HkrtT-0003Cl-TC
-	for nfs@lists.sourceforge.net; Sun, 06 May 2007 18:20:04 -0700
-In-Reply-To: message from Jonathan Woithe on Thursday May 3
+	(Exim 4.44) id 1Hkrzg-0003rd-6K
+	for nfs@lists.sourceforge.net; Sun, 06 May 2007 18:26:28 -0700
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id C411D121FE
+	for <nfs@lists.sourceforge.net>; Mon,  7 May 2007 03:26:25 +0200 (CEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,38 +32,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday May 3, jwoithe@physics.adelaide.edu.au wrote:
-> We have a Slackware 9.1 box (with numerous software upgrades) exporting a
-> directory to various NFS clients.  While running a 2.4.x kernel this all
-> worked fine - users on clients could use "quota" to display their quota
-> information.  When the system was moved to a 2.6.19.2 kernel a few months
-> ago the clients could no longer display quota information.  The server
-> still knew and enforced the quotas, it's just that from the client's
-> point of view there were no quotas.
-> 
-> The system is running the following software versions:
-> 
->   * kernel 2.6.19.2
->   * nfs-utils 1.0.10
->   * util-linux 2.12
->   * portmap 5.0
-> 
-> The filesystem concerned is reiserfs3.  The kernel has reiserfs quota
-> support enabled.
 
-Hmm... what "rquotad" is running?  It appears that both the "quota"
-package and the "nfs-utils" package contains "rquotad".   And the one
-in nfs-utils is fairly thoroughly broken (only recognises ext2 and
-ext3 for a start).
+It appears that both "nfs-utils" and "quota" have an implementation of
+rquotad.
 
-You can tell which you are using by running it with "-v".
-e.g.
-   /usr/sbin/rpc.rquotad -v
+This is not a good thing as inevitably one will get maintained and the
+other not.
 
-The "nfs-utils" one will say 
-   rquotad 1.0.10
-The "quota" one will give a "Usage" message because it doesn't
-understand -v.
+It appears that the one in nfs-utils is not being maintained.  A quick
+look shows that it ignores anything other than ext2 or ext3.  This
+suggests that no one has seriously used it for quite a long time.
+
+I am in favour of removing it from nfs-utils for 1.1.0.  I note that
+neither SuSE or Debian use it (they both use the version from the
+quota package) I suspect other distros do that same.
+
+Can I get someone to second my nomination?
+
+Thanks,
 
 NeilBrown
 
