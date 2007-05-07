@@ -1,64 +1,55 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [NFS] [PATCH 0/18] export operations rewrite
-Date: Mon, 7 May 2007 09:52:35 +1000
-Message-ID: <17982.27203.841272.221428@notabene.brown>
+Subject: Re: [PATCH 0/18] export operations rewrite
+Date: Mon, 7 May 2007 10:06:10 +1000
+Message-ID: <17982.28018.403942.663539@notabene.brown>
 References: <20070317010946.GA24947@infradead.org>
 	<17932.34141.590792.120454@notabene.brown>
 	<20070501103905.GA30906@infradead.org>
 	<17978.55182.198497.902215@notabene.brown>
+	<17982.27203.841272.221428@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 To: Christoph Hellwig <hch@infradead.org>,
 	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: message from Neil Brown on Friday May 4
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HkqkM-0002MM-W8
+	for nfs@lists.sourceforge.net; Sun, 06 May 2007 17:06:38 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HkqkP-0005Jn-76
+	for nfs@lists.sourceforge.net; Sun, 06 May 2007 17:06:37 -0700
+In-Reply-To: message from Neil Brown on Monday May 7
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday May 4, neilb@suse.de wrote:
-> On Tuesday May 1, hch@infradead.org wrote:
-> >  - the calling conversion on the decode side where we first call
-> >    ->decode_fh to split the filehandle into two blobs only to
-> >    recurse back into exportfs and then recurse back into the filesystem
-> >    seems rather odd.  By having two methods to get the dentry and
-> >    parent directly from the on the wire file handle this big callstack
-> >    collapses to a very simple one.
+On Monday May 7, neilb@suse.de wrote:
 > 
-> This is the bit I was particularly missing.  I see now how this aspect
-> was awkward before, and how your changes make the flow clearer.
-> 
-> Getting rid of s_export_op->find_exported_dentry is something I'm very
-> happy about.  There was actually bug lurking there that I never got
-> around to fixing.  The code:
-> -	/* Ok, we can export it */;
-> -	if (!inode->i_sb->s_export_op->find_exported_dentry)
-> -		inode->i_sb->s_export_op->find_exported_dentry =
-> -			find_exported_dentry;
-> 
-> assumes that the address of find_exported_dentry will never change.
-> But if you unload nfsd.ko, then re-load it. it could be different, yet a
-> filesystem could still have to old value in it's s_export_op.  That
-> would be bad.
-> I'm glad it is gone.
+> Would you be able to respin that second patch series with one of those
+> changes?
 
-...but now I remember why it was there...
-
-I didn't want filesystems to depend on exportfs.ko.
-nfsd, depends on exportfs, but currently filesystems don't.  They
-can be compiled into the kernel without including exportfs.
-
-With your patches in place, I got a compile error with a config in
-which nfsd is a module (and so exportfs is) but ext2 and ext3 are
-compiled in.
-The error was that generic_fh_to_dentry and generic_fh_to_parent were
-not defined.
-
-Now those two functions together with exportfs_d_alloc are fairly
-small and could go directly in fs/something.c.  They could almost be
-inlined in linux/exportfs.h.
-
-Would you be able to respin that second patch series with one of those
-changes?
+Of course it is actually the first series of patches that introduces
+this problem.  So maybe just a full respin??
 
 Thanks,
 NeilBrown
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
