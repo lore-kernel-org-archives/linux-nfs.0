@@ -1,27 +1,24 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: time_after cannot be used alone by NFS code
-	in	32bit	architectures
-Date: Tue, 08 May 2007 17:43:55 +0800
-Message-ID: <1178617435.3918.72.camel@raven.themaw.net>
-References: <20070426043344.GO10449@sleipnir.redhat.com>
-	<1178106770.5960.28.camel@raven.themaw.net>
-	<1178591824.3918.10.camel@raven.themaw.net>
-	<17984.5736.617053.65429@notabene.brown>
-	<1178614201.3918.65.camel@raven.themaw.net>
+From: Stephen Smalley <sds@tycho.nsa.gov>
+Subject: Re: [PATCH] introduce version field to struct nfs_clone_mount
+Date: Tue, 08 May 2007 08:10:29 -0400
+Message-ID: <1178626229.10325.155.camel@moss-spartans.epoch.ncsc.mil>
+References: <1178560513.3898.32.camel@dhcp59-235.rdu.redhat.com>
+	<20070508094120.GA11417@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs <nfs@lists.sourceforge.net>
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net, selinux@tycho.nsa.gov,
+	Eric Paris <eparis@redhat.com>, James Morris <jmorris@namei.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HlMEi-0007YR-6M
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 02:44:00 -0700
-Received: from out1.smtp.messagingengine.com ([66.111.4.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HlMEj-0003uO-IB
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 02:44:02 -0700
-In-Reply-To: <1178614201.3918.65.camel@raven.themaw.net>
+	id 1HlOWf-0006gm-8P
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 05:10:41 -0700
+Received: from zombie.ncsc.mil ([144.51.88.131] helo=jazzdrum.ncsc.mil)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HlOWh-0002ix-Ku
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 05:10:44 -0700
+In-Reply-To: <20070508094120.GA11417@infradead.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,25 +31,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-08 at 16:50 +0800, Ian Kent wrote:
-> > 
-> > If this is the problem situation, then just updating the jiffie stamp
-> > on the negative dentry whenever it is seem to be in the future
-> > wouldn't work because we hardly ever look at it.  I think the best
-> > solution would be to somehow to force dcache entries out before the
-> > jiffie stamp had a chance to wrap.  But I not convinced that doesn't
-> > happen already simply because 24days is a LONG time.
+On Tue, 2007-05-08 at 10:41 +0100, Christoph Hellwig wrote:
+> On Mon, May 07, 2007 at 01:55:13PM -0400, Eric Paris wrote:
+> > When selinux attempts to do its part of mounting a new FS it checks the
+> > mount data for selinux context information.  For most FS's this is a
+> > text string but for NFS this is a data blob (struct nfs_mount_data)
+> > Version 6 and later of this struct have a context field which selinux
+> > can use to pass context information from userspace to where it is used
+> > by selinux (security/selinux/hooks.c:try_context_mount())
+> 
+> selinux has no business sniffing mount data at all, so the proper fix
+> is to remove this code entirely.  If selinux wants to have it's own
+> mount options it needs either:
+> 
+>  - get a mount option at the vfs level.  These are only bit flags, so
+>    it's probably not useful for what selinux is currently doing
+>  - hook into every filesystem, which is the part of the kernel controlling
+>    the text (or in a few cases binary) options.
+> 
+> > The code in try_context_mount then casts the data to a struct
+> > nfs_mount_data.
+> 
+> Note that this will soon stop to work completely because nfs is moving
+> towards proper ascii mount options.
 
-Sure would be best to have some way of identifying these dentrys once
-they were older than some fairly short time following creation but I
-can't think of how to do it.
+The context= mount support in selinux already deals with ascii mount
+options; it is only the binary ones that need special handling.  And
+this isn't new functionality in selinux - it went upstream in 2004.
+Eric's patch is just fixing this corner case, not introducing new
+functionality.
 
-It's of particular interest to me because I plan on using something
-similar for caching failed mount attempts in the autofs4 module when I
-re-implement it.
+http://marc.info/?l=git-commits-head&m=107695907809907&w=2
+http://marc.info/?l=git-commits-head&m=107695907911284&w=2
+http://marc.info/?l=git-commits-head&m=107695950928758&w=2
 
-Ian
-
+-- 
+Stephen Smalley
+National Security Agency
 
 
 -------------------------------------------------------------------------
