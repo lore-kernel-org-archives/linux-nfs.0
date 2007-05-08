@@ -1,26 +1,27 @@
-From: Stephen Smalley <sds@tycho.nsa.gov>
-Subject: Re: [PATCH] introduce version field to struct nfs_clone_mount
-Date: Tue, 08 May 2007 09:01:06 -0400
-Message-ID: <1178629266.6056.35.camel@moss-spartans.epoch.ncsc.mil>
-References: <1178560513.3898.32.camel@dhcp59-235.rdu.redhat.com>
-	<20070508094120.GA11417@infradead.org>
-	<1178626229.10325.155.camel@moss-spartans.epoch.ncsc.mil>
-	<20070508121406.GA16701@infradead.org>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: time_after cannot be used alone by NFS code	in
+	32bit	architectures
+Date: Tue, 08 May 2007 21:07:05 +0800
+Message-ID: <1178629625.3918.75.camel@raven.themaw.net>
+References: <20070426043344.GO10449@sleipnir.redhat.com>
+	<1178106770.5960.28.camel@raven.themaw.net>
+	<1178591824.3918.10.camel@raven.themaw.net>
+	<17984.5736.617053.65429@notabene.brown>
+	<1178627674.25317.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, selinux@tycho.nsa.gov,
-	Eric Paris <eparis@redhat.com>, James Morris <jmorris@namei.org>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs <nfs@lists.sourceforge.net>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HlPJb-00044B-CT
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 06:01:15 -0700
-Received: from zombie.ncsc.mil ([144.51.88.131] helo=jazzdrum.ncsc.mil)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HlPJb-00017H-Pb
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 06:01:18 -0700
-In-Reply-To: <20070508121406.GA16701@infradead.org>
+	id 1HlPPL-0004hF-2Y
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 06:07:13 -0700
+Received: from out1.smtp.messagingengine.com ([66.111.4.25])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HlPPM-0002Tf-Iy
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 06:07:13 -0700
+In-Reply-To: <1178627674.25317.2.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,32 +34,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-08 at 13:14 +0100, Christoph Hellwig wrote:
-> On Tue, May 08, 2007 at 08:10:29AM -0400, Stephen Smalley wrote:
-> > The context= mount support in selinux already deals with ascii mount
-> > options; it is only the binary ones that need special handling.  And
-> > this isn't new functionality in selinux - it went upstream in 2004.
-> > Eric's patch is just fixing this corner case, not introducing new
-> > functionality.
+On Tue, 2007-05-08 at 08:34 -0400, Trond Myklebust wrote:
+> ------------------------------------------
+> commit 6d9b786c6c9b5daf8b20927c7495e42e1c7fde6a
+> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date:   Mon May 7 22:41:18 2007 -0400
 > 
-> It's still conceptually broken.  Names for ascii mount options are
-> the filesystems business, and context= is a perfectly fine name for
-> the file systems to use.  This kind of half-assed aspect oriented
-> programming using the LSM hooks is a completely nightmare because
-> it breaks this concept of a central registry of mount options valid
-> for a filesystem.
+>     NFS: Fix a jiffie wraparound issue
+>     
+>     dentry verifiers are always set to the parent directory's
+>     cache_change_attribute. There is no reason to be testing for anything other
+>     than equality when we're trying to find out if the dentry has been checked
+>     since the last time the directory was modified.
 
-Is it really better to modify all the filesystems to support a context=
-mount option, particularly when they in turn just have to call into the
-security module to do anything with that option?  It is somewhat similar
-to the vfs fallbacks for *xattr for security attributes, which likewise
-isn't entirely nice to look at, but seems better than patching all the
-filesystems when the goal is to provide uniform interface across them
-all and the security module has to do all of the real work anyway.
+Of course.
+Ha .. why is it so hard to see something so simple!
+Thanks Trond
 
--- 
-Stephen Smalley
-National Security Agency
+Ian
+
 
 
 -------------------------------------------------------------------------
