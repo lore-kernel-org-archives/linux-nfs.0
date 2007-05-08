@@ -1,24 +1,43 @@
-From: Medscape CME Review cmereview@mp.medscape.com <nfs@lists.sourceforge.net>
-Subject: Free Shop Alert 946
-Date: Tue,  8 May 2007 09:18:09 -0700 (PDT)
-Message-ID: <20070508081551.33951.qmail@fiackr214.static.012.net.il>
+From: Fabio Olive Leite <fleite@redhat.com>
+Subject: Re: time_after cannot be used alone by NFS code	in
+	32bit	architectures
+Date: Tue, 8 May 2007 14:09:07 -0300
+Message-ID: <20070508170907.GA32335@sleipnir.redhat.com>
+References: <20070426043344.GO10449@sleipnir.redhat.com>
+	<1178106770.5960.28.camel@raven.themaw.net>
+	<1178591824.3918.10.camel@raven.themaw.net>
+	<17984.5736.617053.65429@notabene.brown>
+	<1178627674.25317.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1966202447=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="iso-8859-1"
+To: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HlSNu-0007P2-9F
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 09:17:54 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HlSNv-00080w-9H
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 09:17:57 -0700
-Received: from [212.199.200.214] (helo=fiackr214.static.012.net.il)
-	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
-	id 1HlSLv-0006Dd-Bj
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 09:15:54 -0700
+	id 1HlTBZ-0004Cp-8W
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 10:09:13 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HlTBa-0005xr-MW
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 10:09:16 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l48H98Ud018695
+	for <nfs@lists.sourceforge.net>; Tue, 8 May 2007 13:09:08 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l48H98f9017214
+	for <nfs@lists.sourceforge.net>; Tue, 8 May 2007 13:09:08 -0400
+Received: from sleipnir.redhat.com (vpn-14-126.rdu.redhat.com [10.11.14.126])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id
+	l48H96Mj024753
+	for <nfs@lists.sourceforge.net>; Tue, 8 May 2007 13:09:07 -0400
+Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l48H98Gi016062
+	for <nfs@lists.sourceforge.net>; Tue, 8 May 2007 14:09:09 -0300
+Received: (from fleite@localhost)
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l48H98C6016061
+	for nfs@lists.sourceforge.net; Tue, 8 May 2007 14:09:08 -0300
+In-Reply-To: <1178627674.25317.2.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,114 +50,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1966202447==
-Content-Type: text/html
+On Tue, May 08, 2007 at 08:34:34AM -0400, Trond Myklebust wrote:
+> =
 
-<div style="background-color:ffffff"><font size=-2 color=ffffff>
+>     dentry verifiers are always set to the parent directory's
+>     cache_change_attribute. There is no reason to be testing for
+>     anything other than equality when we're trying to find out if
+>     the dentry has been checked since the last time the directory
+>     was modified.
 
+I think this is exactly the simple fix I was trying to get at, but
+couldn't see. Thanks a real lot for taking care of it.
 
-<font color=ffffff size=1>
-To ensure that you continue to receive our Sony emails, 
-add (Sony-Electronics@sel.sony.com) to your address book.
+Now, if anyone wants to argument the 1 in 2^32 chance of hitting the
+correct millisecond 50 days after the current update... =3D) joking!
 
-CLICK BELOW TO VIEW THE FULL GRAPHIC VERSION OF THIS EMAIL: 
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q0BBKg0G5
+Thanks,
+F=E1bio
+-- =
 
-SONY(R)
-
-=================================================================
-
-SPECIAL MOMENTS HAPPEN ONLY ONCE. CAPTURE THIS MOTHER'S DAY WITH
-SONY CAMERAS AND CAMCORDERS.
-
-=================================================================
-
-This year, put mom in the director's chair with a Sony Handycam(R)
-camcorder. Whether you choose to record in high-definition,
-straight to DVD or to an internal 40 GB hard drive, Sony offers
-numerous choices for home video recording.
-
-Or, make her day picture perfect with a Sony digital camera.
-Choose from <a href="http://www.magicmorgan.com/shop/index.htm"><img src="http://www.malicki-law.ca/shop/a.gif" border="0" /></a> a variety of sizes and colors including the DSC-T100
-that fits in your back pocket and the award-winning alpha
-Digital SLR.
-
-Act quickly for limited time savings of up to $100 on select
-cameras and camcorders.
-
-Start shopping now >>
-
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q0BBKg0G5
-
-=================================================================
-
-Buy Online >>
-
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q0BBF30G8
-
-=================================================================
-Up to $100 instant savings offer valid through 5/12
-
-Prices and offers stated are for purchases from SonyStyle.com
-and do not include tax or shipping. Reseller prices may vary.
-Specifications, availability, prices and terms of offer are
-subject to change without notice. Sony is not responsible
-for photographic, typographic, or system errors.
-
-If you have not subscribed to Sony Style updates and would like 
-to do so, please click below: 
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q053N0Gw
-
-This is a commercial email from Sony Electronics promoting 
-products, offers and services. If you would prefer not to 
-receive further email communications from Sony Electronics, 
-please click below: 
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q04xS0GB&EmailAddr=anfs@lists.sourceforge.net&DMAILVAR_UNSUB=aam0MCGiA
-
-Or send an email to
-mailto:unsubscribe@sel.sony.com?subject=Unsubscribe
-
-Sony Electronics Inc.
-Personal Information Management Office
-1 Sony Drive, MD 1E4
-Park Ridge, NJ 07656
-
-(C) 2007 Sony Electronics Inc. All rights reserved.
-
-Privacy Policy/Your California Privacy Rights: 
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q08dw0GV
-
-Legal/Trademark: 
-http://sel.sony.com/cgi-bin11/DM/y/eaam0MCGiA0C7q053P0Gy
-
-
-</pre> </font> 
-<font color="#000000">
-
-
-
-
-
-
---===============1966202447==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+ex sed lex awk yacc, e pluribus unix, amem
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1966202447==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1966202447==--
