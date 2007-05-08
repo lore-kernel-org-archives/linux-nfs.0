@@ -1,24 +1,27 @@
-From: Stephen Smalley <sds@tycho.nsa.gov>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH] introduce version field to struct nfs_clone_mount
-Date: Tue, 08 May 2007 08:10:29 -0400
-Message-ID: <1178626229.10325.155.camel@moss-spartans.epoch.ncsc.mil>
+Date: Tue, 8 May 2007 13:14:06 +0100
+Message-ID: <20070508121406.GA16701@infradead.org>
 References: <1178560513.3898.32.camel@dhcp59-235.rdu.redhat.com>
 	<20070508094120.GA11417@infradead.org>
+	<1178626229.10325.155.camel@moss-spartans.epoch.ncsc.mil>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, selinux@tycho.nsa.gov,
-	Eric Paris <eparis@redhat.com>, James Morris <jmorris@namei.org>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	selinux@tycho.nsa.gov, Eric Paris <eparis@redhat.com>,
+	James Morris <jmorris@namei.org>
+To: Stephen Smalley <sds@tycho.nsa.gov>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HlOWf-0006gm-8P
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 05:10:41 -0700
-Received: from zombie.ncsc.mil ([144.51.88.131] helo=jazzdrum.ncsc.mil)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HlOWh-0002ix-Ku
-	for nfs@lists.sourceforge.net; Tue, 08 May 2007 05:10:44 -0700
-In-Reply-To: <20070508094120.GA11417@infradead.org>
+	id 1HlOa0-00074m-0O
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 05:14:15 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HlOa2-0004Li-8J
+	for nfs@lists.sourceforge.net; Tue, 08 May 2007 05:14:10 -0700
+In-Reply-To: <1178626229.10325.155.camel@moss-spartans.epoch.ncsc.mil>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,43 +34,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-08 at 10:41 +0100, Christoph Hellwig wrote:
-> On Mon, May 07, 2007 at 01:55:13PM -0400, Eric Paris wrote:
-> > When selinux attempts to do its part of mounting a new FS it checks the
-> > mount data for selinux context information.  For most FS's this is a
-> > text string but for NFS this is a data blob (struct nfs_mount_data)
-> > Version 6 and later of this struct have a context field which selinux
-> > can use to pass context information from userspace to where it is used
-> > by selinux (security/selinux/hooks.c:try_context_mount())
-> 
-> selinux has no business sniffing mount data at all, so the proper fix
-> is to remove this code entirely.  If selinux wants to have it's own
-> mount options it needs either:
-> 
->  - get a mount option at the vfs level.  These are only bit flags, so
->    it's probably not useful for what selinux is currently doing
->  - hook into every filesystem, which is the part of the kernel controlling
->    the text (or in a few cases binary) options.
-> 
-> > The code in try_context_mount then casts the data to a struct
-> > nfs_mount_data.
-> 
-> Note that this will soon stop to work completely because nfs is moving
-> towards proper ascii mount options.
+On Tue, May 08, 2007 at 08:10:29AM -0400, Stephen Smalley wrote:
+> The context= mount support in selinux already deals with ascii mount
+> options; it is only the binary ones that need special handling.  And
+> this isn't new functionality in selinux - it went upstream in 2004.
+> Eric's patch is just fixing this corner case, not introducing new
+> functionality.
 
-The context= mount support in selinux already deals with ascii mount
-options; it is only the binary ones that need special handling.  And
-this isn't new functionality in selinux - it went upstream in 2004.
-Eric's patch is just fixing this corner case, not introducing new
-functionality.
-
-http://marc.info/?l=git-commits-head&m=107695907809907&w=2
-http://marc.info/?l=git-commits-head&m=107695907911284&w=2
-http://marc.info/?l=git-commits-head&m=107695950928758&w=2
-
--- 
-Stephen Smalley
-National Security Agency
+It's still conceptually broken.  Names for ascii mount options are
+the filesystems business, and context= is a perfectly fine name for
+the file systems to use.  This kind of half-assed aspect oriented
+programming using the LSM hooks is a completely nightmare because
+it breaks this concept of a central registry of mount options valid
+for a filesystem.
 
 
 -------------------------------------------------------------------------
