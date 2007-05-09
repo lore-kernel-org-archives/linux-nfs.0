@@ -1,22 +1,22 @@
-From: Frank Thommen <fthommen@embl.de>
-Subject: Copying files to mounted NFS shares blocks file access and
- desktop actions
-Date: Wed, 09 May 2007 14:01:51 +0200
-Message-ID: <4641B82F.9050107@embl.de>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] nfs-utils: have mountd hold open etab file
+	to	force inode number to change
+Date: Wed, 9 May 2007 10:19:33 -0400
+Message-ID: <20070509141931.GC26568@salusa.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Linux NFS Maillist <nfs@lists.sourceforge.net>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HlksI-0005Gg-6L
-	for nfs@lists.sourceforge.net; Wed, 09 May 2007 05:02:30 -0700
-Received: from newmail.embl-heidelberg.de ([194.94.44.200]
-	helo=lxmail.EMBL-Heidelberg.DE)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HlksK-0001Tp-D3
-	for nfs@lists.sourceforge.net; Wed, 09 May 2007 05:02:32 -0700
+	id 1Hln0x-0003Jb-Sc
+	for nfs@lists.sourceforge.net; Wed, 09 May 2007 07:19:36 -0700
+Received: from ms-smtp-03.southeast.rr.com ([24.25.9.102])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hln10-00034j-7l
+	for nfs@lists.sourceforge.net; Wed, 09 May 2007 07:19:38 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,79 +29,132 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+Hadn't heard anything on this patch in a week or so, so resending it...
 
-on some of our hosts we have the problem, that copying a file onto an 
-NFS share completely blocks the access to this file and even desktop 
-actions (opening new terminal, moving windows etc.) with Gnome and KDE 
-become merely impossible:
+This patch was suggested by Neil. It changes mountd to hold the etab file open
+so that when it's changed by exportfs, the inode number should change. We then
+change auth_reload to reload the file based on whether st_ino is different from
+the last time it was checked. It also changes auth_reload to maintain a static
+counter value and return it instead of a timestamp and fixes up get_exportlist
+accordingly. Finally, it adds some comments to xtab_write to warn people about
+editing the etab in place.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-# cp file /mnt/file
-
-a simultaneous `ls -l /mnt` is blocked and finishes only after the copy 
-process has finished.  A `strace ls -l /mnt` shows:
-
-# strace ls -l /mnt
-[...]
-lstat("file",
-
-
-/mnt is mounted without special options.
-
-
-We see this behaviour on these systems
-
-  FC5, x86_64, kernel 2.6.19-1.2288.fc5 SMP,
-       mount version 'util-linux 2.13-pre7',
-       NIC: Broadcom NetXtreme BCM5752 PCI Express (rev 02),
-       Speed: 1000Mb/s
-
-  FC5, i686, kernel 2.6.15-1.2054_FC5,
-       mount version 'util-linux 2.13-pre6',
-       NIC: 3Com Corporation 3c905C-TX/TX-M [Tornado] (rev 74),
-       Speed: 100Mb/s
-
-  FC6, x86_64, kernel 2.6.20-1.2944.fc6 SMP,
-       mount version 'util-linux 2.13-pre7',
-       NIC: Broadcom NetXtreme BCM5752 PCI Express (rev 02),
-       Speed: 1000Mb/s
-
-
-The problem is less pronounced on
-
-  FC5, x86_64, kernel 2.6.18-1.2239.fc5 SMP,
-       mount version 'util-linux 2.13-pre7',
-       NIC: Broadcom NetXtreme BCM5752 PCI Express (rev 02)
-       Speed: 1000Mb/s
-
-
-No such problems are experienced on:
-
-  FC5, x86_64, kernel 2.6.20-1.2307.fc5 SMP,
-       mount version 'util-linux 2.13-pre7',
-       NIC: Broadcom Corporation Unknown device 167a (rev 02),
-       Speed: 1000Mb/s
-
-
-It's not a problem of mount options.  Whatever options I use, the 
-problem is the same.  Upgrading kernels is not an option, as the x86_64 
-systems in questions do not run with 2.6.20 kernels at all. Googling 
-around didn't provide any helpful answers.
-
-What can I do to track down the problem in more detail or is there 
-perhaps a solution or workaround somewhere in the wild?  I've no 
-experiences with making custom kernels, so all other solutions are 
-preferred ;-)
-
-
-Cheers and thanks
-
-    frank
-
--- 
-Frank Thommen - IT Support Structures - EMBL Heidelberg
-fthommen@embl.de - +49 6221 387 8353
+diff --git a/support/export/xtab.c b/support/export/xtab.c
+index 0ddb251..292087b 100644
+--- a/support/export/xtab.c
++++ b/support/export/xtab.c
+@@ -80,6 +80,12 @@ xtab_export_read(void)
+ 	return xtab_read(_PATH_ETAB, 1);
+ }
+ 
++/*
++ * mountd now keeps an open fd for the etab at all times to make sure that the
++ * inode number changes when the xtab_export_write is done. If you change the
++ * routine below such that the files are edited in place, then you'll need to
++ * fix the auth_reload logic as well...
++ */
+ static int
+ xtab_write(char *xtab, char *xtabtmp, int is_export)
+ {
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 183c9ea..f7fe23d 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -14,6 +14,7 @@
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <errno.h>
++#include <unistd.h>
+ #include "misc.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+@@ -46,24 +47,34 @@ auth_init(char *exports)
+ 	xtab_mount_write();
+ }
+ 
+-time_t
++unsigned int
+ auth_reload()
+ {
+ 	struct stat		stb;
+-	static time_t		last_modified = 0;
+-
+-	if (stat(_PATH_ETAB, &stb) < 0)
++	static ino_t		last_inode;
++	static int		last_fd;
++	static unsigned int	counter;
++	int			fd;
++
++	if ((fd = open(_PATH_ETAB, O_RDONLY)) < 0) {
++		xlog(L_FATAL, "couldn't open %s", _PATH_ETAB);
++	} else if (fstat(fd, &stb) < 0) {
+ 		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+-	if (stb.st_mtime == last_modified)
+-		return last_modified;
+-	last_modified = stb.st_mtime;
++	} else if (stb.st_ino == last_inode) {
++		close(fd);
++		return counter;
++	} else {
++		close(last_fd);
++		last_fd = fd;
++		last_inode = stb.st_ino;
++	}
+ 
+ 	export_freeall();
+ 	memset(&my_client, 0, sizeof(my_client));
+-	// export_read(export_file);
+ 	xtab_export_read();
++	++counter;
+ 
+-	return last_modified;
++	return counter;
+ }
+ 
+ static nfs_export *
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 04141d1..999f035 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -465,18 +465,18 @@ static exports
+ get_exportlist(void)
+ {
+ 	static exports		elist = NULL;
+-	static time_t		etime = 0;
+-	time_t			atime;
+ 	struct exportnode	*e, *ne;
+ 	struct groupnode	*g, *ng, *c, **cp;
+ 	nfs_export		*exp;
+ 	int			i;
++	static unsigned int	ecounter;
++	unsigned int		acounter;
+ 
+-	atime = auth_reload();
+-	if (elist && atime == etime)
++	acounter = auth_reload();
++	if (elist && acounter == ecounter)
+ 		return elist;
+ 
+-	etime = atime;
++	ecounter = acounter;
+ 
+ 	for (e = elist; e != NULL; e = ne) {
+ 		ne = e->ex_next;
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index b539278..31bacb5 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -40,7 +40,7 @@ bool_t		mount_mnt_3_svc(struct svc_req *, dirpath *, mountres3 *);
+ 
+ void		mount_dispatch(struct svc_req *, SVCXPRT *);
+ void		auth_init(char *export_file);
+-time_t		auth_reload(void);
++unsigned int	auth_reload(void);
+ nfs_export *	auth_authenticate(char *what, struct sockaddr_in *sin,
+ 					char *path);
+ void		auth_export(nfs_export *exp);
 
 
 -------------------------------------------------------------------------
