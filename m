@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@poochiereds.net>
 Subject: Re: nfs locking up system: rpc-srv/tcp: nfsd: got error -104
-Date: Thu, 10 May 2007 11:43:50 -0400
-Message-ID: <20070510154346.GA26131@salusa.poochiereds.net>
+Date: Thu, 10 May 2007 11:46:19 -0400
+Message-ID: <20070510154619.GB26131@salusa.poochiereds.net>
 References: <46433A0E.6080200@panix.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,11 +12,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HmAo3-0005jU-LJ
-	for nfs@lists.sourceforge.net; Thu, 10 May 2007 08:43:52 -0700
-Received: from ms-smtp-05.southeast.rr.com ([24.25.9.104])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HmAo6-0005vq-2x
-	for nfs@lists.sourceforge.net; Thu, 10 May 2007 08:43:54 -0700
+	id 1HmAqS-0006CK-9u
+	for nfs@lists.sourceforge.net; Thu, 10 May 2007 08:46:20 -0700
+Received: from ms-smtp-02.southeast.rr.com ([24.25.9.101])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HmAqU-0006qp-6Q
+	for nfs@lists.sourceforge.net; Thu, 10 May 2007 08:46:22 -0700
 In-Reply-To: <46433A0E.6080200@panix.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -44,17 +44,13 @@ On Thu, May 10, 2007 at 11:28:14AM -0400, Bob Kryger wrote:
 > 
 > The system is not stable - it locks up after the following message 
 > occurs (here are two occurances).
+
+Also, that kernel is pretty old. You might consider patching to something more
+recent and seeing if that alleviates the problem...
+
 > 
 > May  8 10:31:48 nfs3 kernel: rpc-srv/tcp: nfsd: got error -104 when sending 140 bytes - shutting down socket
 > May  9 18:20:32 nfs3 kernel: rpc-srv/tcp: nfsd: got error -104 when sending 132 bytes - shutting down socket
-
-$ grep 104 /usr/include/asm-generic/errno*
-/usr/include/asm-generic/errno.h:#define        ECONNRESET      104     /* Connection reset by peer */
-
-I'd suspect some sort of network issue or a problem on the other end of the
-connection. Sniffing traffic on the wire while reproducing this might help to
-confirm it and determine where RST packets are coming from.
-
 > 
 > It seems to happen every day or so, but the system is not yet in 
 > production, so there is very little if and any traffic on it.  I had 
