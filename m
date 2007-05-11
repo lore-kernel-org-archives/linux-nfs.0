@@ -1,27 +1,23 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: [PATCH] Memory leak in mountd
-Date: Fri, 11 May 2007 12:49:06 +0200
-Message-ID: <20070511104906.GA21288@uio.no>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] Memory leak in mountd
+Date: Fri, 11 May 2007 21:09:39 +1000
+Message-ID: <17988.20211.594570.156375@notabene.brown>
+References: <20070511104906.GA21288@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: "Steinar H. Gunderson" <sesse@debian.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HmSgQ-0007H1-GO
-	for nfs@lists.sourceforge.net; Fri, 11 May 2007 03:49:10 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1HmT0l-0001MD-Gu
+	for nfs@lists.sourceforge.net; Fri, 11 May 2007 04:10:11 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HmSgS-0001to-1A
-	for nfs@lists.sourceforge.net; Fri, 11 May 2007 03:49:13 -0700
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1HmSgL-0001Bu-9p
-	for nfs@lists.sourceforge.net; Fri, 11 May 2007 12:49:05 +0200
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1HmSgM-0005Xn-00
-	for <nfs@lists.sourceforge.net>; Fri, 11 May 2007 12:49:06 +0200
+	(Exim 4.44) id 1HmT0n-0006Ma-Rh
+	for nfs@lists.sourceforge.net; Fri, 11 May 2007 04:10:14 -0700
+In-Reply-To: message from Steinar H. Gunderson on Friday May 11
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,39 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Friday May 11, sesse@debian.org wrote:
+> Hi,
+> 
+> A user complained that mountd was slowly eating up all available memory with
+> about a mount per second. We tracked it down, and ended up with the following
+> patch:
 
-A user complained that mountd was slowly eating up all available memory with
-about a mount per second. We tracked it down, and ended up with the following
-patch:
+Bother - I should have delayed 1.1.0 one more day.... but such is
+life.
 
-  In client_compose(), free() the hostent structure returned before
-  exiting. Normally, gethostbyaddr() returns a pointer to a static
-  struct, but this hostent comes from either get_reliable_hostbyaddr() or
-  get_hostent(), both which return a pointer they privately xmalloc()ed,
-  which thus can and should be free()d.
+Thanks.  I've applied the patch.
 
-  Signed-Off-By: Steinar H. Gunderson <sesse@debian.org>
+> The patch was against 1.0.10 (Debian stable), but should be equivalently
+> applied for 1.1.0. (Also, we backported the add_name() leak fix.) In
+> addition, there's a leak in innetgr() (in glibc) that hits mountd quite hard
+> when using netgroups, but it appears to already be fixed in at least Red Hat,
+> and I guess this is the wrong place to complain about glibc issues :-)
 
-  --- nfs-utils-1.1.0.orig/support/export/client.c
-  +++ nfs-utils-1.1.0/support/export/client.c
-  @@ -262,6 +262,7 @@ client_compose(struct in_addr addr)
-                          name = add_name(name, clp->m_hostname);
-                  }
-          }
-  +       free(he);
-          return name;
-   }
+I guess, but it is good to know it nonetheless.
 
-The patch was against 1.0.10 (Debian stable), but should be equivalently
-applied for 1.1.0. (Also, we backported the add_name() leak fix.) In
-addition, there's a leak in innetgr() (in glibc) that hits mountd quite hard
-when using netgroups, but it appears to already be fixed in at least Red Hat,
-and I guess this is the wrong place to complain about glibc issues :-)
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
