@@ -1,25 +1,25 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: nfs issue with 2.6 kernel and busybox on arm
-Date: Thu, 10 May 2007 12:15:40 -0400
-Message-ID: <EXNANE01FRaqbC8wSA1000009b5@exnane01.hq.netapp.com>
-References: <438397970705081016l5f25232ake8f37514395581fc@mail.gmail.com> <438397970705081016l5f25232ake8f37514395581fc@mail.gmail.co
- m>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfs-utils: have mountd hold open etab
+	file	to	force inode number to change
+Date: Fri, 11 May 2007 13:34:25 +1000
+Message-ID: <17987.58433.702253.343439@notabene.brown>
+References: <20070509141931.GC26568@salusa.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Kallol Biswas" <nucleodyne@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HmBJS-0001wd-VX
-	for nfs@lists.sourceforge.net; Thu, 10 May 2007 09:16:19 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HmBJV-0007nw-KP
-	for nfs@lists.sourceforge.net; Thu, 10 May 2007 09:16:21 -0700
-In-Reply-To: <438397970705081016l5f25232ake8f37514395581fc@mail.gmail.co
- m>
-References: <438397970705081016l5f25232ake8f37514395581fc@mail.gmail.com>
+	id 1HmLuQ-00078l-CB
+	for nfs@lists.sourceforge.net; Thu, 10 May 2007 20:35:10 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HmLuR-0000Us-S8
+	for nfs@lists.sourceforge.net; Thu, 10 May 2007 20:35:13 -0700
+In-Reply-To: message from Jeff Layton on Wednesday May 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,26 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 01:16 PM 5/8/2007, Kallol Biswas wrote:
->Hi,
->   I have been having  problem with NFS on an embedded board.
->
->The board is a arm 920t based Centaur board, with 4MB flash and 32MB ram, running 2.6.9 kernel.
+On Wednesday May 9, jlayton@redhat.com wrote:
+> Hadn't heard anything on this patch in a week or so, so resending it...
+> 
 
-What toolset are you using to compile the kernel, and are you
-using any eabi, thumb or other flags? I have had a number of
-issues building 2.6.x for embedded ARMs that I could sometimes
-work around, sometimes not. For instance there was a construct
-in XFS that just plain wouldn't yield good code, I had to mangle a
-few ?: operators before it stopped corrupting directories. I used
-both the Codesourcery binaries and I also built gcc from the
-OpenEmbedded patches.
+I really thought I had applied that.
 
-Still, I don't recall having any issues with the NFS client. This
-was mostly building .18, .19 and .20 though.
+I have now.
 
-Tom. 
+Thanks.
 
+NeilBrown
+
+> This patch was suggested by Neil. It changes mountd to hold the etab file open
+> so that when it's changed by exportfs, the inode number should change. We then
+> change auth_reload to reload the file based on whether st_ino is different from
+> the last time it was checked. It also changes auth_reload to maintain a static
+> counter value and return it instead of a timestamp and fixes up get_exportlist
+> accordingly. Finally, it adds some comments to xtab_write to warn people about
+> editing the etab in place.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
