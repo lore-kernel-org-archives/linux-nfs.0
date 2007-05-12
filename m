@@ -1,23 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] Memory leak in mountd
-Date: Fri, 11 May 2007 21:09:39 +1000
-Message-ID: <17988.20211.594570.156375@notabene.brown>
-References: <20070511104906.GA21288@uio.no>
+From: "Deidre Montgomery" <rhlangford@intertex.net>
+Subject: in fonddulac on glassboro
+Date: Sat, 12 May 2007 13:53:24 -0500
+Message-ID: <001701c7949d$6e3a0160$064303b4@user>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Steinar H. Gunderson" <sesse@debian.org>
+Content-Type: multipart/mixed; boundary="===============0378156898=="
+To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HmT0l-0001MD-Gu
-	for nfs@lists.sourceforge.net; Fri, 11 May 2007 04:10:11 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HmT0n-0006Ma-Rh
-	for nfs@lists.sourceforge.net; Fri, 11 May 2007 04:10:14 -0700
-In-Reply-To: message from Steinar H. Gunderson on Friday May 11
+	id 1HmwmF-0001HA-76
+	for nfs@lists.sourceforge.net; Sat, 12 May 2007 11:59:04 -0700
+Received: from 201.160.24.216.cable.dyn.cableonline.com.mx ([201.160.24.216]
+	helo=user.cpe.cva.cablemas.com.mx)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HmwmD-00039L-VZ
+	for nfs@lists.sourceforge.net; Sat, 12 May 2007 11:57:14 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,33 +27,83 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday May 11, sesse@debian.org wrote:
-> Hi,
-> 
-> A user complained that mountd was slowly eating up all available memory with
-> about a mount per second. We tracked it down, and ended up with the following
-> patch:
+--===============0378156898==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0014_01C7949D.6E3A0160"
 
-Bother - I should have delayed 1.1.0 one more day.... but such is
-life.
+------=_NextPart_000_0014_01C7949D.6E3A0160
+Content-Type: text/plain;
+        charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Thanks.  I've applied the patch.
 
-> The patch was against 1.0.10 (Debian stable), but should be equivalently
-> applied for 1.1.0. (Also, we backported the add_name() leak fix.) In
-> addition, there's a leak in innetgr() (in glibc) that hits mountd quite hard
-> when using netgroups, but it appears to already be fixed in at least Red Hat,
-> and I guess this is the wrong place to complain about glibc issues :-)
+Are you having trouble getting up
 
-I guess, but it is good to know it nonetheless.
+http://www.alcovaebeta.com
 
-NeilBrown
+
+
+
+________________________________________
+Home is where you hang your hat.
+------=_NextPart_000_0014_01C7949D.6E3A0160
+Content-Type: text/html;
+        charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3D=
+iso-8859-1">
+<META content=3D"MSHTML 6.00.3790.2963" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3D=
+iso-8859-1">
+<META content=3D"MSHTML 6.00.2800.1589" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DArial size=3D2>Are you having trouble getting =
+up</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2><A href=3D=
+"http://www.alcovaebeta.com">http://www.alcovaebeta.com</A></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+<DIV><FONT face=3DArial=20
+size=3D2>________________________________________</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>"Nought loves another as =
+itself,</FONT></DIV></BODY></HTML>
+</BODY></HTML>
+
+------=_NextPart_000_0014_01C7949D.6E3A0160--
+
+
+--===============0378156898==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0378156898==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0378156898==--
