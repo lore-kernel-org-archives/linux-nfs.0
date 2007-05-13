@@ -1,29 +1,28 @@
 From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [NFS] [PATCH 0/18] export operations rewrite
-Date: Sun, 13 May 2007 21:41:10 +0100
-Message-ID: <20070513204110.GA13563@infradead.org>
-References: <20070317010946.GA24947@infradead.org> <17932.34141.590792.120454@notabene.brown> <20070501103905.GA30906@infradead.org> <17978.55182.198497.902215@notabene.brown> <17982.27203.841272.221428@notabene.brown> <17982.28018.403942.663539@notabene.brown> <20070507075100.GA28376@infradead.org>
+Date: Sun, 13 May 2007 21:43:32 +0100
+Message-ID: <20070513204332.GB13563@infradead.org>
+References: <20070317010946.GA24947@infradead.org> <1175439805.3122.332.camel@pmac.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Christoph Hellwig <hch@infradead.org>,
 	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: David Woodhouse <dwmw2@infradead.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070507075100.GA28376@infradead.org>
+In-Reply-To: <1175439805.3122.332.camel@pmac.infradead.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, May 07, 2007 at 08:51:00AM +0100, Christoph Hellwig wrote:
-> On Mon, May 07, 2007 at 10:06:10AM +1000, Neil Brown wrote:
-> > On Monday May 7, neilb@suse.de wrote:
-> > > 
-> > > Would you be able to respin that second patch series with one of those
-> > > changes?
-> > 
-> > Of course it is actually the first series of patches that introduces
-> > this problem.  So maybe just a full respin??
+On Sun, Apr 01, 2007 at 04:03:25PM +0100, David Woodhouse wrote:
+> On Sat, 2007-03-17 at 01:09 +0000, Christoph Hellwig wrote:
+> > This touches all nfs exporting filesystems, and I've done testing
+> > on all of the filesystems I have here locally (xfs, ext2, ext3,
+> > reiserfs, jfs) 
 > 
-> I'll take a look at how to solve this issues.
+> modprobe mtdram ; mount -tjffs2 mtd0 /mnt
 
-I'll take some more time until I can look at this.  Can you send of the
-first patch series to Linus in the meantime?
+There's no nfs exporting support in mainline for jffs2.  And yes, I didn't
+forget my promise to help you sorting out how to do it properly, but I'm
+a it too busy right now - I'll do it after I've fixed up the issues with
+this patch series.
+
