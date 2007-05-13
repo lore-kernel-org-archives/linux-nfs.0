@@ -1,23 +1,21 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] sunrpc: remove dead variable 'rpciod_running'
-Date: Sun, 13 May 2007 16:10:07 +0100
-Message-ID: <20070513151007.GA6059@infradead.org>
-References: <20070209200649.GA9686@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+From: "useful2422" <useful2422@indiatimes.com>
+Subject: Re: Lower your mortgage payments ( Was gestern)
+Date: Sun, 13 May 2007 21:46:27 +0530
+Message-ID: <58lqgb$548s3@ipc603.indiatimes.com>
+Reply-To: useful2422 <useful2422@indiatimes.com>
+Content-Type: multipart/mixed; boundary="===============0544757808=="
+Cc: pam@nidaho.net
+To: <nfs@lists.sf.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnFi5-0002ET-FM
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 08:10:09 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HnFi8-0007aH-1K
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 08:10:12 -0700
-In-Reply-To: <20070209200649.GA9686@infradead.org>
+	id 1HnGkK-0001Dc-AP
+	for nfs@lists.sourceforge.net; Sun, 13 May 2007 09:16:32 -0700
+Received: from ipc603.indiatimes.com ([203.199.93.226])
+	by mail.sourceforge.net with esmtps (TLSv1:RC4-SHA:128) (Exim 4.44)
+	id 1HnGkM-0000hI-E5
+	for nfs@lists.sourceforge.net; Sun, 13 May 2007 09:16:35 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +28,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Feb 09, 2007 at 08:06:49PM +0000, Christoph Hellwig wrote:
-> rpciod_running is not used at all, but due to the way DECLARE_MUTEX_LOCKED
-> works we don't get a warning for it.
+--===============0544757808==
+Content-Type: text/plain; charset=us-ascii
 
-Looks like this one is still not in.  Any chance to send it to Linus
-in this merge cycle?
+ATTENTION: MORTGAGE RATES ARE AT A 32 YEAR LOW
 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> Index: linux-2.6/net/sunrpc/sched.c
-> ===================================================================
-> --- linux-2.6.orig/net/sunrpc/sched.c	2007-02-06 15:55:43.000000000 +0100
-> +++ linux-2.6/net/sunrpc/sched.c	2007-02-06 15:55:45.000000000 +0100
-> @@ -973,8 +973,6 @@
->  	spin_unlock(&rpc_sched_lock);
->  }
->  
-> -static DECLARE_MUTEX_LOCKED(rpciod_running);
-> -
->  static void rpciod_killall(void)
->  {
->  	unsigned long flags;
----end quoted text---
+Are you currently paying over too much for your mortgage? STOP! We can help you lower that today!
+
+Answer only a few questions and we can give you an approval in under 30 seconds 
+It's that simple!
+
+http://liahuanbi.com/1/e
+
+Save money now on your current loan or apply for a new loan
+
+
+
+
+
+
+
+
+
+
+
+( Tod Ausland zum sofort
+ hin Bau wollten lange Das finden gar anders Streit Teil alles
+ Welt Da französischen Jahres geworden seine z.B. guten Hauptstadt ist Form die
+ nehmen mich Ausland Angaben
+ bietet kein Raum statt
+ bezeichnet hin sondern gar wären russischen laut Millionen Aufgabe Chef Gespräch
+ Titel man Bericht Wort obwohl
+ Mittwoch früher überhaupt Dienstag Bremen geplant bereit Verhandlungen neue in Mitarbeiter darüber gegenüber
+ Mannschaft was kamen immer bisher entscheiden verwendet sollen genau)
+
+
+--===============0544757808==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0544757808==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0544757808==--
