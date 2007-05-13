@@ -1,21 +1,25 @@
-From: "useful2422" <useful2422@indiatimes.com>
-Subject: Re: Lower your mortgage payments ( Was gestern)
-Date: Sun, 13 May 2007 21:46:27 +0530
-Message-ID: <58lqgb$548s3@ipc603.indiatimes.com>
-Reply-To: useful2422 <useful2422@indiatimes.com>
-Content-Type: multipart/mixed; boundary="===============0544757808=="
-Cc: pam@nidaho.net
-To: <nfs@lists.sf.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] sunrpc: remove dead variable 'rpciod_running'
+Date: Sun, 13 May 2007 15:51:29 -0400
+Message-ID: <1179085889.6805.25.camel@heimdal.trondhjem.org>
+References: <20070209200649.GA9686@infradead.org>
+	<20070513151007.GA6059@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnGkK-0001Dc-AP
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 09:16:32 -0700
-Received: from ipc603.indiatimes.com ([203.199.93.226])
-	by mail.sourceforge.net with esmtps (TLSv1:RC4-SHA:128) (Exim 4.44)
-	id 1HnGkM-0000hI-E5
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 09:16:35 -0700
+	id 1HnK6f-0006rc-3B
+	for nfs@lists.sourceforge.net; Sun, 13 May 2007 12:51:49 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18f0Tcj48pU9b/GQRwh5OZ9+smZ77Zk2/w=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HnK6Z-0008Rj-NO
+	for nfs@lists.sourceforge.net; Sun, 13 May 2007 12:51:44 -0700
+In-Reply-To: <20070513151007.GA6059@infradead.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,60 +32,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0544757808==
-Content-Type: text/plain; charset=us-ascii
+On Sun, 2007-05-13 at 16:10 +0100, Christoph Hellwig wrote:
+> On Fri, Feb 09, 2007 at 08:06:49PM +0000, Christoph Hellwig wrote:
+> > rpciod_running is not used at all, but due to the way DECLARE_MUTEX_LOCKED
+> > works we don't get a warning for it.
+> 
+> Looks like this one is still not in.  Any chance to send it to Linus
+> in this merge cycle?
 
-ATTENTION: MORTGAGE RATES ARE AT A 32 YEAR LOW
+Oops. My bad. I must have dropped it by accident... I'll send it in.
 
-Are you currently paying over too much for your mortgage? STOP! We can help you lower that today!
+Cheers
+  Trond
 
-Answer only a few questions and we can give you an approval in under 30 seconds 
-It's that simple!
+> 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > 
+> > Index: linux-2.6/net/sunrpc/sched.c
+> > ===================================================================
+> > --- linux-2.6.orig/net/sunrpc/sched.c	2007-02-06 15:55:43.000000000 +0100
+> > +++ linux-2.6/net/sunrpc/sched.c	2007-02-06 15:55:45.000000000 +0100
+> > @@ -973,8 +973,6 @@
+> >  	spin_unlock(&rpc_sched_lock);
+> >  }
+> >  
+> > -static DECLARE_MUTEX_LOCKED(rpciod_running);
+> > -
+> >  static void rpciod_killall(void)
+> >  {
+> >  	unsigned long flags;
+> ---end quoted text---
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by DB2 Express
+> Download DB2 Express C - the FREE version of DB2 express and take
+> control of your XML. No limits. Just data. Click to get it now.
+> http://sourceforge.net/powerbar/db2/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-http://liahuanbi.com/1/e
-
-Save money now on your current loan or apply for a new loan
-
-
-
-
-
-
-
-
-
-
-
-( Tod Ausland zum sofort
- hin Bau wollten lange Das finden gar anders Streit Teil alles
- Welt Da französischen Jahres geworden seine z.B. guten Hauptstadt ist Form die
- nehmen mich Ausland Angaben
- bietet kein Raum statt
- bezeichnet hin sondern gar wären russischen laut Millionen Aufgabe Chef Gespräch
- Titel man Bericht Wort obwohl
- Mittwoch früher überhaupt Dienstag Bremen geplant bereit Verhandlungen neue in Mitarbeiter darüber gegenüber
- Mannschaft was kamen immer bisher entscheiden verwendet sollen genau)
-
-
---===============0544757808==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0544757808==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0544757808==--
