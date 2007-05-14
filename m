@@ -1,23 +1,21 @@
-From: Martin Knoblauch <spamtrap@knobisoft.de>
-Subject: Re: Strange performance problems between Linux client and
-	Sun/Solaris-10 Server with SAM-FS
-Date: Mon, 14 May 2007 09:45:51 -0700 (PDT)
-Message-ID: <26191.17882.qm@web32610.mail.mud.yahoo.com>
-References: <758936.68723.qm@web32601.mail.mud.yahoo.com>
-Reply-To: spamtrap@knobisoft.de
+From: "howard chen" <howachen@gmail.com>
+Subject: High loading with NFS (Performance issue?)
+Date: Tue, 15 May 2007 00:55:03 +0800
+Message-ID: <b66ddc900705140955w16de822cjc04d05e12f63fd7c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HndgL-0002ku-3n
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:45:57 -0700
-Received: from web32610.mail.mud.yahoo.com ([68.142.207.237])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HndgM-0003Lm-7u
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:46:00 -0700
-In-Reply-To: <758936.68723.qm@web32601.mail.mud.yahoo.com>
+	id 1Hndp8-0003eC-QX
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:55:02 -0700
+Received: from nz-out-0506.google.com ([64.233.162.224])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HndpA-00018E-Eo
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:55:05 -0700
+Received: by nz-out-0506.google.com with SMTP id i11so625493nzi
+	for <nfs@lists.sourceforge.net>; Mon, 14 May 2007 09:55:03 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,42 +28,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
->At 10:20 AM 5/14/2007, Martin Knoblauch wrote:
->> not sure whether I should feel stupid. Inspecting the tcpdump log
->>(snippet attached), I see a lot of "reply ERR 1448" packets coming 
-from
->>the Sun. Which of course could explain a few things.
->
->Can you turn up the tcpdump reporting to show more NFS layer decoding?
->The "1448" is just the packet length at this level (which is a bit odd
-
->in
->itself - why such a large reply?), not the error code.
-Hi Tom,
-
- How to turn NFS reporting up? "-vvv" does not give any more info?
-
- I looked at the source to tcpdump/print-nfs.c. The "1448" is just the
-length. The difference between "ok" and "ERR" is the value of the
-SUNRPC_MSG_ACCEPTED bit in "rp->rm_reply.rp_stat".
-
->>12:11:03.201366 IP (tos 0x0, ttl  61, id 42986, offset 0, flags [DF],
-
->>proto: TCP (6), length: 1500) 160.50.118.37.2049 > 
->>160.50.204.58.1090741696: reply ok 1448
->>12:11:03.201442 IP (tos 0x0, ttl  61, id 42987, offset 0, flags [DF],
-
->>proto: TCP (6), length: 1500) 160.50.118.37.2049 > 
->>160.50.204.58.1076887552: reply ERR 1448
->>...
->
->Tom.
+Hello!
 
 
-------------------------------------------------------
-Martin Knoblauch
-email: k n o b i AT knobisoft DOT de
-www:   http://www.knobisoft.de
+My NFS server has the following stats:
+
+
+top -d 5
+============================================
+
+ 00:38:21  up 449 days, 31 min,  2 users,  load average: 3.89, 3.94, 4.04
+143 processes: 142 sleeping, 1 running, 0 zombie, 0 stopped
+CPU0 states:  19.2% user   4.3% system    0.0% nice   0.0% iowait  75.4% idle
+CPU1 states:  15.0% user   2.3% system    0.0% nice   0.0% iowait  82.0% idle
+CPU2 states:  23.2% user   4.3% system    0.0% nice   0.0% iowait  71.4% idle
+CPU3 states:  12.0% user   2.2% system    0.0% nice   0.0% iowait  85.2% idle
+Mem:  3355136k av, 3210212k used,  144924k free,       0k shrd,  141920k buff
+      1011360k active,             926060k inactive
+Swap: 8184188k av,  230756k used, 7953432k free                 1652008k cached
+
+
+iostat
+============================================
+
+Linux 2.4.31
+
+avg-cpu:  %user   %nice    %sys   %idle
+          66.75    0.03   20.18   13.05
+
+Device:            tps   Blk_read/s   Blk_wrtn/s   Blk_read   Blk_wrtn
+dev8-0          607.43        95.16       114.58  626487552  754282354
+dev8-1           28.92       230.62       182.00 1518207266 1198153062
+
+
+cat /proc/net/rpc/nfsd
+============================================
+
+rc 2126161 488150588 1889246958
+fh 288957 2463330121 0 135034 364483
+io 2185592286 1281658699
+th 8 152389353 957530.010 223376.040 843529.850 0.000 671914.750
+520625.610 399462.450 304515.480 0.000 830962.390
+ra 16 132542108 407104 72151 88010 34713 54685 46379 22455 47001 24140 89627147
+net -1915443474 852923647 1526600175 27092
+rpc -1915443589 115 115 0 0
+proc2 18 139 866802296 74334343 0 799082289 1 222966486 0 243460468
+58134635 56119993 53173221 0 0 119968 3 4934118 395747
+[
+
+
+cat /etc/fstab (SERVER)
+============================================
+/dev/sda2               /home                   ext3    defaults        1 2
+
+
+cat /etc/fstab (CLIENT)
+============================================
+xxxx    nfs     rsize=32768,wsize=32768,bg,intr        0 0
+
+The box is a dual Intel Xeon (HT enabled) 3.0Ghz, 4GB RAM server,
+traffic is considered quite heavy at busy
+hours (in general, around 7-10GB traffic per day), but...is the above
+stats look normal?
+
+
+Finally thought: Is it important to mount the partition using noatime?
+If yes, how many % gain?
+
+Thanks....
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
