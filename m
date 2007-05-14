@@ -1,21 +1,31 @@
-From: Martin Knoblauch <knobi@knobisoft.de>
-Subject: Strange performance problems between Linux client and
-	Sun/Solaris-10 Server with SAM-FS
-Date: Mon, 14 May 2007 04:14:10 -0700 (PDT)
-Message-ID: <758936.68723.qm@web32601.mail.mud.yahoo.com>
-Reply-To: knobi@knobisoft.de
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Mon, 14 May 2007 15:03:28 +0200
+Message-ID: <20070514130328.GF31764@petra.dvoda.cz>
+References: <1176948355.6422.72.camel@heimdal.trondhjem.org>
+	<4627B3DD.5050409@amd.com>
+	<1177007479.6623.14.camel@heimdal.trondhjem.org>
+	<4627D303.8060009@amd.com>
+	<1177020662.6628.30.camel@heimdal.trondhjem.org>
+	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
+	<463B97E6.4030009@amd.com>
+	<1178314889.6533.19.camel@heimdal.trondhjem.org>
+	<1178379473.4559.24.camel@raven.themaw.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net, Paul Krizak <paul.krizak@amd.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ian Kent <raven@themaw.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnYVN-0001KF-9r
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 04:14:17 -0700
-Received: from web32601.mail.mud.yahoo.com ([68.142.207.228])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HnYVO-0002mX-Co
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 04:14:20 -0700
+	id 1HnaDC-00042Y-Vm
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:03:39 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnaDD-0005qh-Dn
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:03:41 -0700
+In-Reply-To: <1178379473.4559.24.camel@raven.themaw.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,63 +38,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
-
- we are fighting with a strange performance problem when accessing a
-Sun/Solaris-10 server from a Linux NFS client (HP DL380G4, x86_64,
-RHEL4U3 user-space, various kernels from  2.6.9-34.ELsmp up to
-2.9.21.1).
-
- The underlying FS on the Sun is SAM-FS (4.5.33) which provides HSM
-capabilities. The basic layout is that the "online cache" is relatively
-small on "high-speed" FC disks, while the offline data are stored on
-cheapish SATA disks and high-speed tapes.
-
- The problem arises when accessing (reading) a file that is offline on
-the Sun. In this case the so-called "stager" brings it back to the
-online-cache first, while the client waits for the data to be
-available.
-
- This works fine (staging speed up-to or larger  50 MB/sec) on:
-
-- administrative "stage" request
-- accessing the offline file on the Sun-Server itself
-- accessing the offline file from a Solaris-10 NFS client
-
- When doing the same from the Linux Client performance drops below 10
-MB/sec. Network performance itself looks good when accessing the file
-"online".
-
- One thing that looks different when doing tcpdump/snoop traces between
-the systems is that in the Linux/Solaris case the client seems to send
-more READ3 requests (factor > 3) that the Server acknowledges (both in
-the online and offline case). In the Solaris/Solaris case the number of
-requests and acknowledgements is about the same.
-
- The remote filesystem is mounted NFS3/TCP with the following
-parameters:
-
-xxxx:/net/xxxx/fs03 on /net/xxxx/fs03 type nfs
-(rw,hard,intr,bg,nfsvers=3,proto=tcp,timeo=600,rsize=32768,wsize=32768,addr=yy.yy.yy.yy)
-
- We are already talking to the Sun people, but they cannot reproduce.
-So I put my hope for some insight on this list.
-
-Cheers
-Martin
-PS: Please CC me on replies, as I am only getting the digest
-
-
-------------------------------------------------------
-Martin Knoblauch
-email: k n o b i AT knobisoft DOT de
-www:   http://www.knobisoft.de
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+T24gU2F0LCBNYXkgMDUsIDIwMDcgYXQgMTE6Mzc6NTNQTSArMDgwMCwgSWFuIEtlbnQgd3JvdGU6
+Cj4gT24gRnJpLCAyMDA3LTA1LTA0IGF0IDE3OjQxIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3Jv
+dGU6Cj4gPiBPbiBGcmksIDIwMDctMDUtMDQgYXQgMTU6MzAgLTA1MDAsIEdyZWdvcnkgQmFrZXIg
+d3JvdGU6Cj4gPiA+IEFyZSBhbGwgTkZTIG9wdGlvbnMgZnJvbSBhbiBleHBvcnQgaW5oZXJpdGVk
+IGJ5IHN1YnNlcXVlbnQgbW91bnRzIHNpbmNlIAo+ID4gPiB0aGUgdXBzdHJlYW0gY29tbWl0IDU0
+Y2VhYzQ1MTU5ODYwMzBjMjUwMjk2MGJlNjIwMTk4ZGQ4ZmUyNWI/Cj4gCj4gSSB3aXNoIEknZCBw
+YXllZCBtb3JlIGF0dGVudGlvbiB0byB0aGUgc2hhcmVkIHN1cGVyYmxvY2sgcGF0Y2hlcyBidXQg
+SQo+IHdhcyBjb25zdW1lZCBieSBhdXRvZnMgYXQgdGhlIHRpbWUuIEV2ZW4gc28gSSBsaWtlbHkg
+d291bGRuJ3QgaGF2ZQo+IHJlYWxpemVkIHRoZSBpbXBsaWNhdGlvbnMuCj4gCj4gPiA+IAo+ID4g
+PiBJJ20gcGFzdGluZyBhbiBlbWFpbCBmcm9tIGEgY29sbGVhZ3VlIGF0IEFNRCB0aGF0J3MgYWxz
+byB0cnlpbmcgdG8gZ2FpbiAKPiA+ID4gYW4gdW5kZXJzdGFuZGluZyBvZiB0aGUgbmV3IG1vdW50
+IGJlaGF2aW9yIChQYXVsIEtyaXphaykuLi4KPiA+ID4gCj4gPiA+IFRoYW5rcywKPiA+ID4gCj4g
+PiA+IC0tR3JlZwo+ID4gCj4gPiBJZiB0d28gbW91bnRzIHJlZmVyIHRvIHRoZSBzYW1lIF9maWxl
+c3lzdGVtXyAoaS5lLiB0aGUgTkZTIHNlcnZlcgo+ID4gZXhwb3J0cyB0aGVtIHdpdGggdGhlIHNh
+bWUgdmFsdWUgZm9yIHRoZSAnZnNpZCcgYXR0cmlidXRlKSwgdGhlbiB0aGV5Cj4gPiB3aWxsIHNo
+YXJlIHRoZSBzYW1lIG9wdGlvbnMuCj4gPiAKPiA+IElmIHlvdSBhcmUgdHJ5aW5nIHRvIHVzZSBk
+aWZmZXJlbnQgc2VjdXJpdHkgbW9kZWxzIGZvciBkaWZmZXJlbnQKPiA+IG1vdW50cG9pbnQsIHlv
+dSBzaG91bGQgaW4gYW55IGNhc2UgYmUgY29uc2lkZXJpbmcgdXNpbmcgZGlmZmVyZW50Cj4gPiBm
+aWxlc3lzdGVtcyBvbiB0aGUgc2VydmVyOiBORlMgZmlsZWhhbmRsZXMgYXJlIG5vcm1hbGx5IG5v
+dCB0aWVkIHRvIGEKPiA+IHBhdGhuYW1lIHNpbmNlIHRoZXkgYXJlIHJlcXVpcmVkIHRvIHJlbWFp
+biB0aGUgc2FtZSBhZnRlciBhCj4gPiBjcm9zcy1kaXJlY3RvcnkgcmVuYW1lKCkuCj4gPiBUaGUg
+ZXhjZXB0aW9uIGlzIGlmIHRoZSBmaWxlIGFuZCB0aGUgZGlyZWN0b3J5IGxpdmUgb24gZGlmZmVy
+ZW50Cj4gPiBmaWxlc3lzdGVtcyAoc2luY2UgdGhlbiBhIGNyb3NzLWRpcmVjdG9yeSByZW5hbWUo
+KSBpcyBub3QgcGVybWl0dGVkCj4gPiBhbnl3YXkpIGFuZCBzbyB0aGUgZmlsZWhhbmRsZXMgd2ls
+bCB1c3VhbGx5IGVuY29kZSB0aGUgZnNpZCBpbiBzb21lIHdheQo+ID4gb3IgZm9ybS4KPiA+IAo+
+ID4gSU9XOiBpZiAvZm9vIGFuZCAvYmFyIHJlZmVyIHRvIGRpcmVjdG9yaWVzIHRoZSBzYW1lIGZp
+bGVzeXN0ZW0sIHRoZW4gdGhlCj4gPiBzZXJ2ZXIgY2Fubm90IGZpZ3VyZSBvdXQgaWYgdGhlIGZp
+bGUgYmF6LnR4dCBsaXZlcyBpbiBvbmUgb3IgdGhlIG90aGVyCj4gPiBkaXJlY3RvcnkuIEdpdmlu
+ZyAvZm9vIGFuZCAvYmFyIGRpZmZlcmVudCBzZWN1cml0eSBwZXJtaXNzaW9ucyBpcyByZWFsbHkK
+PiA+IHRoZSBzYW1lIGFzIGdpdmluZyBfYm90aF8gc2V0cyBvZiBwZXJtaXNzaW9ucy4gRXZlbiBp
+ZiB0aGUgc2VydmVyCj4gPiBlbmNvZGVzIHRoZSBwZXJtaXNzaW9ucyBpbiB0aGUgZmlsZWhhbmRs
+ZSAodXN1YWxseSBieSByZWNvcmRpbmcgdGhlCj4gPiBleHBvcnQgcG9pbnQpIHRoZW4gdGhlIGNs
+aWVudCBpcyBmcmVlIHRvIHNwb29mIGEgZmlsZWhhbmRsZSBmb3IgdGhlIHNhbWUKPiA+IGZpbGUg
+d2l0aCB0aGUgb3RoZXIgc2V0IG9mIHBlcm1pc3Npb25zLgo+IAo+IEkgZG9uJ3Qgc2VlIGhvdyBk
+b2luZyB0aGlzIG9uIHRoZSBjbGllbnQgYWRkcyBhbnkgc2VjdXJpdHkgYXQgYWxsIGFzIHRoZQo+
+IHNwb29maW5nIGlzc3VlIGlzIHN0aWxsIHByZXNlbnQuIEl0IGRvZXMgcHJldmVudCBwZW9wbGUg
+ZnJvbSBiZWluZyBhYmxlCj4gdG8gZG8gcmVhZC1vbmx5IG1vdW50cyBmb3IgYWRtaW5pc3RyYXRp
+dmUgcHVycG9zZXMuIExpa2Ugd2hlbiB1c2VkIHRvCj4gZ3VhcmQgYWdhaW5zdCBhY2NpZGVudHMg
+cmF0aGVyIHRoYW4gcHJvdmlkZSByZWFsIHNlY3VyaXR5LiBCdXQgdGhlbiBJCj4gc2VlIHRoaXMg
+aXNuJ3QgdGhlIG9ubHkgcmVhc29uIHRoZXNlIHBhdGNoZXMgd2VyZSBzbyBpbXBvcnRhbnQuCj4g
+Cj4gU28gaXMgdGhlcmUgImFueXRoaW5nIGF0IGFsbCIgd2UgY2FuIGRvIHRvIGNoYW5nZSB0aGlz
+IGJlaGF2aW9yIG5vdywKPiBhcGFydCBmcm9tIHRlYWNoaW5nIG1vdW50IHRvIGFib3V0IGl0LiBI
+YXZpbmcgdGhlIC9ldGMvbXRhYgo+IGFuZCAvcHJvYy9tb3VudHMgcmVjb3JkaW5nIGRpZmZlcmVu
+dCBtb3VudCBvcHRpb25zIGZvciBhIG1vdW50IGlzIHdyb25nLgo+IAo+IEhvdyBzaG91bGQgbW91
+bnQoOCkgaGFuZGxlIHRoZSBzaXR1YXRpb24/CgogSSdkIGxpa2UgdG8gaW5jbHVkZSB0aGUgZm9s
+bG93aW5nIG5vdGUgdG8gdGhlIG5leHQgdXRpbC1saW51eAogcmVsZWFzZSwgdG8gdGhlIG1vdW50
+LjgsIHNlY3Rpb24gQlVHUzoKCiAgSXQgIGlzICBwb3NzaWJsZSAgdGhhdCAgZmlsZXMgL2V0Yy9t
+dGFiIGFuZCAvcHJvYy9tb3VudHMgZG9u4oCZdCBtYXRjaC4KICBUaGUgZmlyc3QgZmlsZSBpcyBi
+YXNlZCBvbmx5IG9uIHRoZSBtb3VudCBjb21tYW5kIG9wdGlvbnMsIGJ1dCB0aGUKICBjb250ZW50
+IG9mIHRoZSBzZWNvbmQgZmlsZSBhbHNvIGRlcGVuZHMgb24gdGhlIGtlcm5lbCBhbmQgb3RoZXJz
+CiAgc2V0dGluZ3MgKGUuZy4gIHJlbW90ZSBORlMgc2VydmVyLiBJbiBwYXJ0aWN1bGFyIGNhc2Ug
+dGhlIG1vdW50CiAgY29tbWFuZCBtYXkgcmVwb3J0cyB1bnJlbGlhYmxlIGluZm9ybWF0aW9uIGFi
+b3V0IGEgTkZTIG1vdW50IHBvaW50CiAgYW5kIHRoZSAvcHJvYy9tb3VudHMgZmlsZSB1c3VhbGx5
+IGNvbnRhaW5zIG1vcmUgcmVsaWFibGUKICBpbmZvcm1hdGlvbi4pCgoKICAgIEthcmVsICJtdGFi
+IGhhdGVyIgoKLS0gCiBLYXJlbCBaYWsgIDxremFrQHJlZGhhdC5jb20+CgotLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieSBEQjIgRXhwcmVzcwpEb3dubG9h
+ZCBEQjIgRXhwcmVzcyBDIC0gdGhlIEZSRUUgdmVyc2lvbiBvZiBEQjIgZXhwcmVzcyBhbmQgdGFr
+ZQpjb250cm9sIG9mIHlvdXIgWE1MLiBObyBsaW1pdHMuIEp1c3QgZGF0YS4gQ2xpY2sgdG8gZ2V0
+IGl0IG5vdy4KaHR0cDovL3NvdXJjZWZvcmdlLm5ldC9wb3dlcmJhci9kYjIvCl9fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZT
+QGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0
+cy9saXN0aW5mby9uZnMK
