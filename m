@@ -1,9 +1,8 @@
 From: Karel Zak <kzak@redhat.com>
 Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Mon, 14 May 2007 15:03:28 +0200
-Message-ID: <20070514130328.GF31764@petra.dvoda.cz>
-References: <1176948355.6422.72.camel@heimdal.trondhjem.org>
-	<4627B3DD.5050409@amd.com>
+Date: Mon, 14 May 2007 15:17:43 +0200
+Message-ID: <20070514131743.GG31764@petra.dvoda.cz>
+References: <4627B3DD.5050409@amd.com>
 	<1177007479.6623.14.camel@heimdal.trondhjem.org>
 	<4627D303.8060009@amd.com>
 	<1177020662.6628.30.camel@heimdal.trondhjem.org>
@@ -11,21 +10,22 @@ References: <1176948355.6422.72.camel@heimdal.trondhjem.org>
 	<463B97E6.4030009@amd.com>
 	<1178314889.6533.19.camel@heimdal.trondhjem.org>
 	<1178379473.4559.24.camel@raven.themaw.net>
+	<1178385472.6561.43.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net, Paul Krizak <paul.krizak@amd.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ian Kent <raven@themaw.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
+	Ian Kent <raven@themaw.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnaDC-00042Y-Vm
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:03:39 -0700
+	id 1HnaQw-0005Pq-DR
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:17:50 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnaDD-0005qh-Dn
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:03:41 -0700
-In-Reply-To: <1178379473.4559.24.camel@raven.themaw.net>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnaQy-00060i-VO
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:17:53 -0700
+In-Reply-To: <1178385472.6561.43.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,66 +38,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-T24gU2F0LCBNYXkgMDUsIDIwMDcgYXQgMTE6Mzc6NTNQTSArMDgwMCwgSWFuIEtlbnQgd3JvdGU6
-Cj4gT24gRnJpLCAyMDA3LTA1LTA0IGF0IDE3OjQxIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3Jv
-dGU6Cj4gPiBPbiBGcmksIDIwMDctMDUtMDQgYXQgMTU6MzAgLTA1MDAsIEdyZWdvcnkgQmFrZXIg
-d3JvdGU6Cj4gPiA+IEFyZSBhbGwgTkZTIG9wdGlvbnMgZnJvbSBhbiBleHBvcnQgaW5oZXJpdGVk
-IGJ5IHN1YnNlcXVlbnQgbW91bnRzIHNpbmNlIAo+ID4gPiB0aGUgdXBzdHJlYW0gY29tbWl0IDU0
-Y2VhYzQ1MTU5ODYwMzBjMjUwMjk2MGJlNjIwMTk4ZGQ4ZmUyNWI/Cj4gCj4gSSB3aXNoIEknZCBw
-YXllZCBtb3JlIGF0dGVudGlvbiB0byB0aGUgc2hhcmVkIHN1cGVyYmxvY2sgcGF0Y2hlcyBidXQg
-SQo+IHdhcyBjb25zdW1lZCBieSBhdXRvZnMgYXQgdGhlIHRpbWUuIEV2ZW4gc28gSSBsaWtlbHkg
-d291bGRuJ3QgaGF2ZQo+IHJlYWxpemVkIHRoZSBpbXBsaWNhdGlvbnMuCj4gCj4gPiA+IAo+ID4g
-PiBJJ20gcGFzdGluZyBhbiBlbWFpbCBmcm9tIGEgY29sbGVhZ3VlIGF0IEFNRCB0aGF0J3MgYWxz
-byB0cnlpbmcgdG8gZ2FpbiAKPiA+ID4gYW4gdW5kZXJzdGFuZGluZyBvZiB0aGUgbmV3IG1vdW50
-IGJlaGF2aW9yIChQYXVsIEtyaXphaykuLi4KPiA+ID4gCj4gPiA+IFRoYW5rcywKPiA+ID4gCj4g
-PiA+IC0tR3JlZwo+ID4gCj4gPiBJZiB0d28gbW91bnRzIHJlZmVyIHRvIHRoZSBzYW1lIF9maWxl
-c3lzdGVtXyAoaS5lLiB0aGUgTkZTIHNlcnZlcgo+ID4gZXhwb3J0cyB0aGVtIHdpdGggdGhlIHNh
-bWUgdmFsdWUgZm9yIHRoZSAnZnNpZCcgYXR0cmlidXRlKSwgdGhlbiB0aGV5Cj4gPiB3aWxsIHNo
-YXJlIHRoZSBzYW1lIG9wdGlvbnMuCj4gPiAKPiA+IElmIHlvdSBhcmUgdHJ5aW5nIHRvIHVzZSBk
-aWZmZXJlbnQgc2VjdXJpdHkgbW9kZWxzIGZvciBkaWZmZXJlbnQKPiA+IG1vdW50cG9pbnQsIHlv
-dSBzaG91bGQgaW4gYW55IGNhc2UgYmUgY29uc2lkZXJpbmcgdXNpbmcgZGlmZmVyZW50Cj4gPiBm
-aWxlc3lzdGVtcyBvbiB0aGUgc2VydmVyOiBORlMgZmlsZWhhbmRsZXMgYXJlIG5vcm1hbGx5IG5v
-dCB0aWVkIHRvIGEKPiA+IHBhdGhuYW1lIHNpbmNlIHRoZXkgYXJlIHJlcXVpcmVkIHRvIHJlbWFp
-biB0aGUgc2FtZSBhZnRlciBhCj4gPiBjcm9zcy1kaXJlY3RvcnkgcmVuYW1lKCkuCj4gPiBUaGUg
-ZXhjZXB0aW9uIGlzIGlmIHRoZSBmaWxlIGFuZCB0aGUgZGlyZWN0b3J5IGxpdmUgb24gZGlmZmVy
-ZW50Cj4gPiBmaWxlc3lzdGVtcyAoc2luY2UgdGhlbiBhIGNyb3NzLWRpcmVjdG9yeSByZW5hbWUo
-KSBpcyBub3QgcGVybWl0dGVkCj4gPiBhbnl3YXkpIGFuZCBzbyB0aGUgZmlsZWhhbmRsZXMgd2ls
-bCB1c3VhbGx5IGVuY29kZSB0aGUgZnNpZCBpbiBzb21lIHdheQo+ID4gb3IgZm9ybS4KPiA+IAo+
-ID4gSU9XOiBpZiAvZm9vIGFuZCAvYmFyIHJlZmVyIHRvIGRpcmVjdG9yaWVzIHRoZSBzYW1lIGZp
-bGVzeXN0ZW0sIHRoZW4gdGhlCj4gPiBzZXJ2ZXIgY2Fubm90IGZpZ3VyZSBvdXQgaWYgdGhlIGZp
-bGUgYmF6LnR4dCBsaXZlcyBpbiBvbmUgb3IgdGhlIG90aGVyCj4gPiBkaXJlY3RvcnkuIEdpdmlu
-ZyAvZm9vIGFuZCAvYmFyIGRpZmZlcmVudCBzZWN1cml0eSBwZXJtaXNzaW9ucyBpcyByZWFsbHkK
-PiA+IHRoZSBzYW1lIGFzIGdpdmluZyBfYm90aF8gc2V0cyBvZiBwZXJtaXNzaW9ucy4gRXZlbiBp
-ZiB0aGUgc2VydmVyCj4gPiBlbmNvZGVzIHRoZSBwZXJtaXNzaW9ucyBpbiB0aGUgZmlsZWhhbmRs
-ZSAodXN1YWxseSBieSByZWNvcmRpbmcgdGhlCj4gPiBleHBvcnQgcG9pbnQpIHRoZW4gdGhlIGNs
-aWVudCBpcyBmcmVlIHRvIHNwb29mIGEgZmlsZWhhbmRsZSBmb3IgdGhlIHNhbWUKPiA+IGZpbGUg
-d2l0aCB0aGUgb3RoZXIgc2V0IG9mIHBlcm1pc3Npb25zLgo+IAo+IEkgZG9uJ3Qgc2VlIGhvdyBk
-b2luZyB0aGlzIG9uIHRoZSBjbGllbnQgYWRkcyBhbnkgc2VjdXJpdHkgYXQgYWxsIGFzIHRoZQo+
-IHNwb29maW5nIGlzc3VlIGlzIHN0aWxsIHByZXNlbnQuIEl0IGRvZXMgcHJldmVudCBwZW9wbGUg
-ZnJvbSBiZWluZyBhYmxlCj4gdG8gZG8gcmVhZC1vbmx5IG1vdW50cyBmb3IgYWRtaW5pc3RyYXRp
-dmUgcHVycG9zZXMuIExpa2Ugd2hlbiB1c2VkIHRvCj4gZ3VhcmQgYWdhaW5zdCBhY2NpZGVudHMg
-cmF0aGVyIHRoYW4gcHJvdmlkZSByZWFsIHNlY3VyaXR5LiBCdXQgdGhlbiBJCj4gc2VlIHRoaXMg
-aXNuJ3QgdGhlIG9ubHkgcmVhc29uIHRoZXNlIHBhdGNoZXMgd2VyZSBzbyBpbXBvcnRhbnQuCj4g
-Cj4gU28gaXMgdGhlcmUgImFueXRoaW5nIGF0IGFsbCIgd2UgY2FuIGRvIHRvIGNoYW5nZSB0aGlz
-IGJlaGF2aW9yIG5vdywKPiBhcGFydCBmcm9tIHRlYWNoaW5nIG1vdW50IHRvIGFib3V0IGl0LiBI
-YXZpbmcgdGhlIC9ldGMvbXRhYgo+IGFuZCAvcHJvYy9tb3VudHMgcmVjb3JkaW5nIGRpZmZlcmVu
-dCBtb3VudCBvcHRpb25zIGZvciBhIG1vdW50IGlzIHdyb25nLgo+IAo+IEhvdyBzaG91bGQgbW91
-bnQoOCkgaGFuZGxlIHRoZSBzaXR1YXRpb24/CgogSSdkIGxpa2UgdG8gaW5jbHVkZSB0aGUgZm9s
-bG93aW5nIG5vdGUgdG8gdGhlIG5leHQgdXRpbC1saW51eAogcmVsZWFzZSwgdG8gdGhlIG1vdW50
-LjgsIHNlY3Rpb24gQlVHUzoKCiAgSXQgIGlzICBwb3NzaWJsZSAgdGhhdCAgZmlsZXMgL2V0Yy9t
-dGFiIGFuZCAvcHJvYy9tb3VudHMgZG9u4oCZdCBtYXRjaC4KICBUaGUgZmlyc3QgZmlsZSBpcyBi
-YXNlZCBvbmx5IG9uIHRoZSBtb3VudCBjb21tYW5kIG9wdGlvbnMsIGJ1dCB0aGUKICBjb250ZW50
-IG9mIHRoZSBzZWNvbmQgZmlsZSBhbHNvIGRlcGVuZHMgb24gdGhlIGtlcm5lbCBhbmQgb3RoZXJz
-CiAgc2V0dGluZ3MgKGUuZy4gIHJlbW90ZSBORlMgc2VydmVyLiBJbiBwYXJ0aWN1bGFyIGNhc2Ug
-dGhlIG1vdW50CiAgY29tbWFuZCBtYXkgcmVwb3J0cyB1bnJlbGlhYmxlIGluZm9ybWF0aW9uIGFi
-b3V0IGEgTkZTIG1vdW50IHBvaW50CiAgYW5kIHRoZSAvcHJvYy9tb3VudHMgZmlsZSB1c3VhbGx5
-IGNvbnRhaW5zIG1vcmUgcmVsaWFibGUKICBpbmZvcm1hdGlvbi4pCgoKICAgIEthcmVsICJtdGFi
-IGhhdGVyIgoKLS0gCiBLYXJlbCBaYWsgIDxremFrQHJlZGhhdC5jb20+CgotLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieSBEQjIgRXhwcmVzcwpEb3dubG9h
-ZCBEQjIgRXhwcmVzcyBDIC0gdGhlIEZSRUUgdmVyc2lvbiBvZiBEQjIgZXhwcmVzcyBhbmQgdGFr
-ZQpjb250cm9sIG9mIHlvdXIgWE1MLiBObyBsaW1pdHMuIEp1c3QgZGF0YS4gQ2xpY2sgdG8gZ2V0
-IGl0IG5vdy4KaHR0cDovL3NvdXJjZWZvcmdlLm5ldC9wb3dlcmJhci9kYjIvCl9fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZT
-QGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0
-cy9saXN0aW5mby9uZnMK
+On Sat, May 05, 2007 at 01:17:52PM -0400, Trond Myklebust wrote:
+> On Sat, 2007-05-05 at 23:37 +0800, Ian Kent wrote:
+> > On Fri, 2007-05-04 at 17:41 -0400, Trond Myklebust wrote:
+> > So is there "anything at all" we can do to change this behavior now,
+> > apart from teaching mount to about it. Having the /etc/mtab
+> > and /proc/mounts recording different mount options for a mount is wrong.
+> > 
+> > How should mount(8) handle the situation?
+> 
+> I'd rather like to have mount(2) handle the situation by returning an
+> error if the mount options cannot be satisfied.
+
+ Agree, that makes sense. Unfortuantely this change is probably not
+ backwardly compatible. Maybe add a new mount(2) flag MS_STRICT which
+ disable a mount when the mount options cannot be satisfied.
+
+    Karel
+
+-- 
+ Karel Zak  <kzak@redhat.com>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
