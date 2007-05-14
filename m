@@ -1,28 +1,23 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: nfsv3 client process stuck in rwsem_down_failed_common()
-Date: Mon, 14 May 2007 18:39:19 +0200
-Message-ID: <20070514163919.GA6063@janus>
-References: <20070514155449.GA5169@janus>
-	<1179158385.6474.11.camel@heimdal.trondhjem.org>
-	<20070514160547.GB5169@janus>
-	<1179159094.6474.21.camel@heimdal.trondhjem.org>
-	<20070514161512.GC5169@janus>
-	<1179160379.6474.25.camel@heimdal.trondhjem.org>
+From: Martin Knoblauch <spamtrap@knobisoft.de>
+Subject: Re: Strange performance problems between Linux client and
+	Sun/Solaris-10 Server with SAM-FS
+Date: Mon, 14 May 2007 09:45:51 -0700 (PDT)
+Message-ID: <26191.17882.qm@web32610.mail.mud.yahoo.com>
+References: <758936.68723.qm@web32601.mail.mud.yahoo.com>
+Reply-To: spamtrap@knobisoft.de
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>,
-	Frank van Maarseveen <frankvm@frankvm.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HndZv-000275-Kt
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:39:28 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HndZx-0005io-6k
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:39:22 -0700
-In-Reply-To: <1179160379.6474.25.camel@heimdal.trondhjem.org>
+	id 1HndgL-0002ku-3n
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:45:57 -0700
+Received: from web32610.mail.mud.yahoo.com ([68.142.207.237])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HndgM-0003Lm-7u
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:46:00 -0700
+In-Reply-To: <758936.68723.qm@web32601.mail.mud.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,23 +30,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, May 14, 2007 at 12:32:59PM -0400, Trond Myklebust wrote:
-> On Mon, 2007-05-14 at 18:15 +0200, Frank van Maarseveen wrote:
-> > > Could you please use 'echo 0 >/proc/sys/sunrpc/rpc_debug' in order to
-> > > find out on which rpc queue these tasks are sleeping?
-> > 
-> > -pid- proc flgs status -client- -prog- --rqstp- -timeout -rpcwait -action- ---ops--
-> > 30871 0002 0480      0 c7708614 100021 f43f4000 10000000 xprt_pending c050e4d0 c057f3f4
-> > 30873 0002 0480      0 f00b4eb4 100021 cc809000 10000000 xprt_pending c050e4d0 c057f3f4
->                                                   ^^^^^^^^ Ouch!
-> 
-> That is a pretty massive timeout. What is your value
-> of /proc/sys/fs/nfs/nlm_timeout ?
+>At 10:20 AM 5/14/2007, Martin Knoblauch wrote:
+>> not sure whether I should feel stupid. Inspecting the tcpdump log
+>>(snippet attached), I see a lot of "reply ERR 1448" packets coming 
+from
+>>the Sun. Which of course could explain a few things.
+>
+>Can you turn up the tcpdump reporting to show more NFS layer decoding?
+>The "1448" is just the packet length at this level (which is a bit odd
 
-Unfortunately it became necessary to reboot the machine :-(. Right now it says 10.
+>in
+>itself - why such a large reply?), not the error code.
+Hi Tom,
 
--- 
-Frank
+ How to turn NFS reporting up? "-vvv" does not give any more info?
+
+ I looked at the source to tcpdump/print-nfs.c. The "1448" is just the
+length. The difference between "ok" and "ERR" is the value of the
+SUNRPC_MSG_ACCEPTED bit in "rp->rm_reply.rp_stat".
+
+>>12:11:03.201366 IP (tos 0x0, ttl  61, id 42986, offset 0, flags [DF],
+
+>>proto: TCP (6), length: 1500) 160.50.118.37.2049 > 
+>>160.50.204.58.1090741696: reply ok 1448
+>>12:11:03.201442 IP (tos 0x0, ttl  61, id 42987, offset 0, flags [DF],
+
+>>proto: TCP (6), length: 1500) 160.50.118.37.2049 > 
+>>160.50.204.58.1076887552: reply ERR 1448
+>>...
+>
+>Tom.
+
+
+------------------------------------------------------
+Martin Knoblauch
+email: k n o b i AT knobisoft DOT de
+www:   http://www.knobisoft.de
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
