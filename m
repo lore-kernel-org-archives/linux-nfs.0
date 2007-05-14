@@ -1,7 +1,7 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Ian Kent <raven@themaw.net>
 Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Mon, 14 May 2007 12:06:14 -0400
-Message-ID: <1179158774.6474.18.camel@heimdal.trondhjem.org>
+Date: Tue, 15 May 2007 00:06:52 +0800
+Message-ID: <1179158812.3811.68.camel@raven.themaw.net>
 References: <4627B3DD.5050409@amd.com>
 	<1177007479.6623.14.camel@heimdal.trondhjem.org>
 	<4627D303.8060009@amd.com>
@@ -15,21 +15,20 @@ References: <4627B3DD.5050409@amd.com>
 	<1179149048.6858.5.camel@heimdal.trondhjem.org>
 	<1179153555.3811.57.camel@raven.themaw.net>
 	<1179157631.6474.8.camel@heimdal.trondhjem.org>
-	<46488696.9080009@amd.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Ian Kent <raven@themaw.net>
-To: Paul Krizak <paul.krizak@amd.com>
+Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hnd3z-0007CQ-Vw
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:06:20 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hnd42-0001LA-JM
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:06:22 -0700
-In-Reply-To: <46488696.9080009@amd.com>
+	id 1Hnd4c-0007DE-DW
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:07:00 -0700
+Received: from out1.smtp.messagingengine.com ([66.111.4.25])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hnd4e-0005nB-9F
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 09:07:00 -0700
+In-Reply-To: <1179157631.6474.8.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,38 +41,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-05-14 at 10:56 -0500, Paul Krizak wrote:
-> > We might then be able to add an '--unshared-cache' option (any
->  > suggestions for a better name?) to mount in order to allow those people
->  > who fully understand the consequences to override, and hence to mount
->  > the same filesystem with different mount options, but no sharing of the
->  > page cache with the original filesystem.
+On Mon, 2007-05-14 at 11:47 -0400, Trond Myklebust wrote:
+> On Mon, 2007-05-14 at 22:39 +0800, Ian Kent wrote:
+> > On Mon, 2007-05-14 at 09:24 -0400, Trond Myklebust wrote:
+> > > On Mon, 2007-05-14 at 15:17 +0200, Karel Zak wrote:
+> > > > On Sat, May 05, 2007 at 01:17:52PM -0400, Trond Myklebust wrote:
+> > > > > On Sat, 2007-05-05 at 23:37 +0800, Ian Kent wrote:
+> > > > > > On Fri, 2007-05-04 at 17:41 -0400, Trond Myklebust wrote:
+> > > > > > So is there "anything at all" we can do to change this behavior now,
+> > > > > > apart from teaching mount to about it. Having the /etc/mtab
+> > > > > > and /proc/mounts recording different mount options for a mount is wrong.
+> > > > > > 
+> > > > > > How should mount(8) handle the situation?
+> > > > > 
+> > > > > I'd rather like to have mount(2) handle the situation by returning an
+> > > > > error if the mount options cannot be satisfied.
+> > > > 
+> > > >  Agree, that makes sense. Unfortuantely this change is probably not
+> > > >  backwardly compatible. Maybe add a new mount(2) flag MS_STRICT which
+> > > >  disable a mount when the mount options cannot be satisfied.
+> > > 
+> > > The kernel would be sending the error to the mount program when it
+> > > cannot satisfy the request. There is no backwards compatibilty issue.
+> > 
+> > I guess that depends on how you interpret backwardly compatible.
+> > 
+> > Deciding to now fail mounts in this case would turn an unfortunate side
+> > effect of an urgently needed change into a disaster for some users. I
+> > think it's best to leave it as it is and push on with the needed VFS
+> > changes.
 > 
-> I can assure you that AMD systems engineering would *much* prefer having 
-> the VFS stack fixed such that we don't need to do something like this.
+> No. It would alert people who think they are mounting with different
+> mount options to the reality that they are not.
 > 
-> It would be much better to make the kernel understand that it *can* 
-> mount the same NFS filesystem twice, once read-only and again 
-> read-write, with the appropriate cache coherency, rather than force us 
-> to run in a potentially dangerous configuration that might lead to data 
-> corruption.
-> 
-> I agree with Ian that the VFS changes need to take priority.  The only 
-> change I see that needs to be made to mount is that it needs to spit out 
-> a warning (or fail completely) if the requested options cannot be satisfied.
+> We might then be able to add an '--unshared-cache' option (any
+> suggestions for a better name?) to mount in order to allow those people
+> who fully understand the consequences to override, and hence to mount
+> the same filesystem with different mount options, but no sharing of the
+> page cache with the original filesystem.
 
-I agree that the read-only flag need to be fixed at the VFS level. I
-wasn't talking about that.
+Not sure, perhaps "--force-options" or "--force-samefs-options".
 
-I'm talking about people who want to force different security flavours
-on different paths for the same filesystem, or who want to set different
-rsize/wsize, attribute timeouts etc. There are applications that might
-benefit from that, and that do not care about sharing caches (either
-because they know that there are no cross-linked files, or because they
-are using a locking system that can deal with the cache consistency
-issue).
+I've heard back from Dave Hansen and he is planning on posting the VFS
+patches in the relatively near future. As you said, it would be best to
+resolve this in the VFS so I'm not sure how much effort should be put
+into this here.
 
-Trond
+>From what I can see Dave has put quite a bit of effort into his patches
+already so they should be close to ready for submission. Hopefully they
+are what's needed.
+
+Ian
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
