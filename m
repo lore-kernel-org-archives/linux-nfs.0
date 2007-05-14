@@ -1,7 +1,7 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: nfsv3 client process stuck in rwsem_down_failed_common()
-Date: Mon, 14 May 2007 13:15:20 -0400
-Message-ID: <1179162920.6474.38.camel@heimdal.trondhjem.org>
+Date: Mon, 14 May 2007 13:17:57 -0400
+Message-ID: <1179163077.6474.40.camel@heimdal.trondhjem.org>
 References: <20070514155449.GA5169@janus>
 	<1179158385.6474.11.camel@heimdal.trondhjem.org>
 	<20070514160547.GB5169@janus>
@@ -11,6 +11,7 @@ References: <20070514155449.GA5169@janus>
 	<20070514163919.GA6063@janus>
 	<1179161763.6474.31.camel@heimdal.trondhjem.org>
 	<20070514170216.GA6475@janus>  <20070514170557.GA6551@janus>
+	<1179162920.6474.38.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
@@ -19,14 +20,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hne8s-0005op-0G
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 10:15:38 -0700
+	id 1HneBO-00061e-2z
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 10:18:07 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+IsQrqtlYpwl/QQXSuNxtIL/XmnExXTcc=])
+	ident=[U2FsdGVkX19FihsMWTXsidoWpvMUF5vsX9zfBLIJjT4=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hne8s-0002rJ-1k
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 10:15:28 -0700
-In-Reply-To: <20070514170557.GA6551@janus>
+	(Exim 4.44) id 1HneBP-0003NI-5q
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 10:18:04 -0700
+In-Reply-To: <1179162920.6474.38.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,42 +40,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-05-14 at 19:05 +0200, Frank van Maarseveen wrote:
-> On Mon, May 14, 2007 at 07:02:16PM +0200, Frank van Maarseveen wrote:
-> > On Mon, May 14, 2007 at 12:56:03PM -0400, Trond Myklebust wrote:
-> > > On Mon, 2007-05-14 at 18:39 +0200, Frank van Maarseveen wrote:
-> > > > On Mon, May 14, 2007 at 12:32:59PM -0400, Trond Myklebust wrote:
-> > > > > On Mon, 2007-05-14 at 18:15 +0200, Frank van Maarseveen wrote:
-> > > > > > > Could you please use 'echo 0 >/proc/sys/sunrpc/rpc_debug' in order to
-> > > > > > > find out on which rpc queue these tasks are sleeping?
-> > > > > > 
-> > > > > > -pid- proc flgs status -client- -prog- --rqstp- -timeout -rpcwait -action- ---ops--
-> > > > > > 30871 0002 0480      0 c7708614 100021 f43f4000 10000000 xprt_pending c050e4d0 c057f3f4
-> > > > > > 30873 0002 0480      0 f00b4eb4 100021 cc809000 10000000 xprt_pending c050e4d0 c057f3f4
-> > > > >                                                   ^^^^^^^^ Ouch!
-> > > > > 
-> > > > > That is a pretty massive timeout. What is your value
-> > > > > of /proc/sys/fs/nfs/nlm_timeout ?
+On Mon, 2007-05-14 at 13:15 -0400, Trond Myklebust wrote:
 > > > > 
-> > > > Unfortunately it became necessary to reboot the machine :-(. Right now it says 10.
+> > > > One last question, just in case: what value are you using for CONFIG_HZ?
 > > > 
-> > > 10 seconds looks like the correct default. I assume that you hadn't
-> > > changed that value prior to the reboot...
+> > > 1000
 > > 
-> > right, I didn't knew it existed and I'm not aware of any command which
-> > can change it. Did some grepping around and it didn't turn up anything.
-> > 
-> > > 
-> > > One last question, just in case: what value are you using for CONFIG_HZ?
-> > 
-> > 1000
+> > hmm, so the timeout has become 10 * HZ * HZ?
 > 
-> hmm, so the timeout has become 10 * HZ * HZ?
+> Yeah... nlmsvc_timeout is already in HZ, so the line in fs/lockd/host.c
+> is wrong...
 
-Yeah... nlmsvc_timeout is already in HZ, so the line in fs/lockd/host.c
-is wrong...
+The following patch should fix it.
 
 Trond
+
+---------------------------------------------
+commit 471c10cf35e2743746d9a5f671d9cceeb61393c7
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon May 14 13:16:36 2007 -0400
+
+    NLM: Fix locking client timeouts...
+    
+    nlmsvc_timeout is already in units of HZ...
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index ad21c07..96070bf 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -221,7 +221,7 @@ nlm_bind_host(struct nlm_host *host)
+ 					host->h_nextrebind - jiffies);
+ 		}
+ 	} else {
+-		unsigned long increment = nlmsvc_timeout * HZ;
++		unsigned long increment = nlmsvc_timeout;
+ 		struct rpc_timeout timeparms = {
+ 			.to_initval	= increment,
+ 			.to_increment	= increment,
+
 
 
 -------------------------------------------------------------------------
