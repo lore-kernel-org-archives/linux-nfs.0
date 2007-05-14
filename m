@@ -1,13 +1,13 @@
-From: Neil Brown <neilb@suse.de>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Tue, 15 May 2007 08:41:35 +1000
-Message-ID: <17992.58783.827023.697258@notabene.brown>
+Date: Mon, 14 May 2007 19:11:59 -0400
+Message-ID: <1179184319.6467.7.camel@heimdal.trondhjem.org>
 References: <4627B3DD.5050409@amd.com>
 	<1177007479.6623.14.camel@heimdal.trondhjem.org>
 	<4627D303.8060009@amd.com>
 	<1177020662.6628.30.camel@heimdal.trondhjem.org>
-	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
-	<463B97E6.4030009@amd.com>
+	<4627EBFC.2090704@amd.com>
+	<462CFC92.2080201@amd.com> <463B97E6.4030009@amd.com>
 	<1178314889.6533.19.camel@heimdal.trondhjem.org>
 	<1178379473.4559.24.camel@raven.themaw.net>
 	<1178385472.6561.43.camel@heimdal.trondhjem.org>
@@ -16,22 +16,22 @@ References: <4627B3DD.5050409@amd.com>
 	<1179153555.3811.57.camel@raven.themaw.net>
 	<1179157631.6474.8.camel@heimdal.trondhjem.org>
 	<1179158812.3811.68.camel@raven.themaw.net>
+	<17992.58783.827023.697258@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Paul Krizak <paul.krizak@amd.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ian Kent <raven@themaw.net>
+Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
+	Ian Kent <raven@themaw.net>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnjEo-0006bR-6f
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 15:41:56 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HnjEq-0007A8-Jl
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 15:41:57 -0700
-In-Reply-To: message from Ian Kent on Tuesday May 15
+	id 1Hnji4-00015Y-E5
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 16:12:08 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hnji7-0002Dl-3i
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 16:12:11 -0700
+In-Reply-To: <17992.58783.827023.697258@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,44 +44,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 15, raven@themaw.net wrote:
-> On Mon, 2007-05-14 at 11:47 -0400, Trond Myklebust wrote:
-> > 
-> > We might then be able to add an '--unshared-cache' option (any
-> > suggestions for a better name?) to mount in order to allow those people
-> > who fully understand the consequences to override, and hence to mount
-> > the same filesystem with different mount options, but no sharing of the
-> > page cache with the original filesystem.
+On Tue, 2007-05-15 at 08:41 +1000, Neil Brown wrote:
+> I think "shared" is an important concept to have in there as it is
+> sharing the cache, the connection and the options.  For consistency
+> with other options, I would have an optional "no" at the front to
+> invert the flag.  Current nfs options don't have punctuation, so I
+> would probably go for something like:
+>        -o  [no]sharedcache
+>        -o  [no]shareconnection 
 > 
-> Not sure, perhaps "--force-options" or "--force-samefs-options".
+> Then comes the question of what the default should be.
+> The original default was nosharedcache, but the more recent default
+> has been sharedcache.   In hindsight it would have been better not to
+> change the default, but things are always much clearer in hindsight.
+> 
+> I would lean towards restoring the default to nosharedcache, and
+> having to explicitly request sharedcache if you want that, and are
+> happy to have the same mount option enforced on all sharing mounts.
 
-Presumably this would be a mount option (-o xxx) rather than a new
-flag to mount?  It would cause nfs_compare_super to return 0 if either
-'data' or 'sb' contained the "no_share" flag.
+I disagree with that. The default was changed for a very good reason,
+namely that people were making assumptions that were wrong: i.e. that
+the cache remains consistent when you change the ro/rw flag or try to
+mount a subdirectory.
+In fact, if you mounted the _same_ directory twice, then the default was
+always 'sharedcache'.
 
-I think "shared" is an important concept to have in there as it is
-sharing the cache, the connection and the options.  For consistency
-with other options, I would have an optional "no" at the front to
-invert the flag.  Current nfs options don't have punctuation, so I
-would probably go for something like:
-       -o  [no]sharedcache
-       -o  [no]shareconnection 
+So all we did in 2.6.18, was to make a consistent set of rules for how
+this works.
 
-Then comes the question of what the default should be.
-The original default was nosharedcache, but the more recent default
-has been sharedcache.   In hindsight it would have been better not to
-change the default, but things are always much clearer in hindsight.
+The default should therefore remain 'sharedcache', preferably returning
+an error if the user tries to mix metaphors.
 
-I would lean towards restoring the default to nosharedcache, and
-having to explicitly request sharedcache if you want that, and are
-happy to have the same mount option enforced on all sharing mounts.
-
-Having nosharedcache be the default would mean that sharedcache could
-fail if other mount options are not an exact match, and there would be
-no backward compatibility problem with that.
-
-
-NeilBrown
+Cheers
+  Trond
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
