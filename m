@@ -1,19 +1,36 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: nfsv3 client process stuck in rwsem_down_failed_common()
-Date: Mon, 14 May 2007 17:54:49 +0200
-Message-ID: <20070514155449.GA5169@janus>
+From: "Paul Krizak" <paul.krizak@amd.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Mon, 14 May 2007 10:56:06 -0500
+Message-ID: <46488696.9080009@amd.com>
+References: <4627B3DD.5050409@amd.com>
+	<1177007479.6623.14.camel@heimdal.trondhjem.org>
+	<4627D303.8060009@amd.com>
+	<1177020662.6628.30.camel@heimdal.trondhjem.org>
+	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
+	<463B97E6.4030009@amd.com>
+	<1178314889.6533.19.camel@heimdal.trondhjem.org>
+	<1178379473.4559.24.camel@raven.themaw.net>
+	<1178385472.6561.43.camel@heimdal.trondhjem.org>
+	<20070514131743.GG31764@petra.dvoda.cz>
+	<1179149048.6858.5.camel@heimdal.trondhjem.org>
+	<1179153555.3811.57.camel@raven.themaw.net>
+	<1179157631.6474.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, Ian Kent <raven@themaw.net>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hncss-0005wB-Tl
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 08:54:51 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hncsu-0002MX-HC
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 08:54:53 -0700
+	id 1Hncug-00069J-Pk
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 08:56:45 -0700
+Received: from outbound-cpk.frontbridge.com ([207.46.163.16]
+	helo=outbound1-cpk-R.bigfish.com)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hncui-00073Q-9g
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 08:56:45 -0700
+In-Reply-To: <1179157631.6474.8.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,35 +43,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On a 2.6.21.1 NFSv3 client box multiple processes got stuck with
-this trace:
 
-[<c02926e5>] rwsem_down_failed_common+0x85/0x180
-[<c052a36d>] rwsem_down_read_failed+0x1d/0x30
-[<c052a437>] call_rwsem_down_read_failed+0x7/0x10
-[<c022622e>] nlmclnt_unlock+0x2e/0xc0
-[<c02258da>] nlmclnt_proc+0x29a/0x2d0
-[<c01f088e>] nfs3_proc_lock+0xe/0x10
-[<c01e3904>] do_unlk+0x44/0x70
-[<c01e3a9d>] nfs_lock+0xbd/0x120
-[<c017dfd1>] locks_remove_posix+0xb1/0xc0
-[<c016dc8d>] filp_close+0x2d/0x70
-[<c01248a6>] close_files+0x56/0x70
-[<c012490c>] put_files_struct+0x1c/0x50
-[<c012533a>] do_exit+0x13a/0x3f0
-[<c0125649>] do_group_exit+0x29/0x70
-[<c012e73f>] get_signal_to_deliver+0x21f/0x2b0
-[<c0103e96>] do_signal+0x56/0x160
-[<c0103fde>] do_notify_resume+0x3e/0x40
-[<c01041ae>] work_notifysig+0x13/0x25
+ > We might then be able to add an '--unshared-cache' option (any
+ > suggestions for a better name?) to mount in order to allow those people
+ > who fully understand the consequences to override, and hence to mount
+ > the same filesystem with different mount options, but no sharing of the
+ > page cache with the original filesystem.
 
-Two processes had an independent shared read lock on different files
-and when killing them with ^C they got stuck in state 'D' with above
-stack trace. I'm not sure what brought then there other than that the
-server went through a number of unusual reboots for testing purposes.
+I can assure you that AMD systems engineering would *much* prefer having 
+the VFS stack fixed such that we don't need to do something like this.
 
--- 
-Frank
+It would be much better to make the kernel understand that it *can* 
+mount the same NFS filesystem twice, once read-only and again 
+read-write, with the appropriate cache coherency, rather than force us 
+to run in a potentially dangerous configuration that might lead to data 
+corruption.
+
+I agree with Ian that the VFS changes need to take priority.  The only 
+change I see that needs to be made to mount is that it needs to spit out 
+a warning (or fail completely) if the requested options cannot be satisfied.
+
+Paul Krizak                         5900 E. Ben White Blvd. MS 625
+Advanced Micro Devices              Austin, TX  78741
+Linux/Unix Systems Engineering      Phone: (512) 602-8775
+Silicon Design Division             Cell:  (512) 791-0686
+
+
+
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
