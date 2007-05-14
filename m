@@ -1,31 +1,32 @@
-From: Karel Zak <kzak@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Mon, 14 May 2007 15:17:43 +0200
-Message-ID: <20070514131743.GG31764@petra.dvoda.cz>
+Date: Mon, 14 May 2007 09:24:08 -0400
+Message-ID: <1179149048.6858.5.camel@heimdal.trondhjem.org>
 References: <4627B3DD.5050409@amd.com>
 	<1177007479.6623.14.camel@heimdal.trondhjem.org>
 	<4627D303.8060009@amd.com>
 	<1177020662.6628.30.camel@heimdal.trondhjem.org>
-	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
-	<463B97E6.4030009@amd.com>
+	<4627EBFC.2090704@amd.com>
+	<462CFC92.2080201@amd.com> <463B97E6.4030009@amd.com>
 	<1178314889.6533.19.camel@heimdal.trondhjem.org>
 	<1178379473.4559.24.camel@raven.themaw.net>
 	<1178385472.6561.43.camel@heimdal.trondhjem.org>
+	<20070514131743.GG31764@petra.dvoda.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
 	Ian Kent <raven@themaw.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnaQw-0005Pq-DR
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:17:50 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnaQy-00060i-VO
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:17:53 -0700
-In-Reply-To: <1178385472.6561.43.camel@heimdal.trondhjem.org>
+	id 1HnaX8-00066k-EE
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:24:14 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnaXA-0007dx-5V
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 06:24:17 -0700
+In-Reply-To: <20070514131743.GG31764@petra.dvoda.cz>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,26 +39,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, May 05, 2007 at 01:17:52PM -0400, Trond Myklebust wrote:
-> On Sat, 2007-05-05 at 23:37 +0800, Ian Kent wrote:
-> > On Fri, 2007-05-04 at 17:41 -0400, Trond Myklebust wrote:
-> > So is there "anything at all" we can do to change this behavior now,
-> > apart from teaching mount to about it. Having the /etc/mtab
-> > and /proc/mounts recording different mount options for a mount is wrong.
+On Mon, 2007-05-14 at 15:17 +0200, Karel Zak wrote:
+> On Sat, May 05, 2007 at 01:17:52PM -0400, Trond Myklebust wrote:
+> > On Sat, 2007-05-05 at 23:37 +0800, Ian Kent wrote:
+> > > On Fri, 2007-05-04 at 17:41 -0400, Trond Myklebust wrote:
+> > > So is there "anything at all" we can do to change this behavior now,
+> > > apart from teaching mount to about it. Having the /etc/mtab
+> > > and /proc/mounts recording different mount options for a mount is wrong.
+> > > 
+> > > How should mount(8) handle the situation?
 > > 
-> > How should mount(8) handle the situation?
+> > I'd rather like to have mount(2) handle the situation by returning an
+> > error if the mount options cannot be satisfied.
 > 
-> I'd rather like to have mount(2) handle the situation by returning an
-> error if the mount options cannot be satisfied.
+>  Agree, that makes sense. Unfortuantely this change is probably not
+>  backwardly compatible. Maybe add a new mount(2) flag MS_STRICT which
+>  disable a mount when the mount options cannot be satisfied.
 
- Agree, that makes sense. Unfortuantely this change is probably not
- backwardly compatible. Maybe add a new mount(2) flag MS_STRICT which
- disable a mount when the mount options cannot be satisfied.
+The kernel would be sending the error to the mount program when it
+cannot satisfy the request. There is no backwards compatibilty issue.
 
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
+Trond
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
