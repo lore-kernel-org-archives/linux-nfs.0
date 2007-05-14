@@ -1,24 +1,21 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: fix horrible indentation in nfsd_setattr
-Date: Mon, 14 May 2007 10:21:57 +1000
-Message-ID: <17991.43941.702458.638020@notabene.brown>
-References: <20070307152625.GA29633@infradead.org>
-	<20070513204407.GC13563@infradead.org>
+From: "shiva ramakrishna" <shivaramakris@gmail.com>
+Subject: Need Help to modify source code for RPC Layer
+Date: Mon, 14 May 2007 09:14:50 +0530
+Message-ID: <69eeb8e40705132044w149a7a5aj5494e4c13b5a82cf@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: multipart/mixed; boundary="===============2014356948=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnOKG-0006tI-RI
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 17:22:08 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HnOKI-0002SA-67
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 17:22:11 -0700
-In-Reply-To: message from Christoph Hellwig on Sunday May 13
+	id 1HnRUP-0008AS-LC
+	for nfs@lists.sourceforge.net; Sun, 13 May 2007 20:44:53 -0700
+Received: from py-out-1112.google.com ([64.233.166.183])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnRUR-0003WQ-5r
+	for nfs@lists.sourceforge.net; Sun, 13 May 2007 20:44:52 -0700
+Received: by py-out-1112.google.com with SMTP id a29so1382656pyi
+	for <nfs@lists.sourceforge.net>; Sun, 13 May 2007 20:44:50 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,44 +28,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sunday May 13, hch@infradead.org wrote:
-> On Wed, Mar 07, 2007 at 03:26:25PM +0000, Christoph Hellwig wrote:
-> > 
-> > Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> ping?
-> 
+--===============2014356948==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_93313_5953853.1179114290317"
 
-I don't remember seeing this, and I don't see to still have it sitting
-unread in my INBOX...
+------=_Part_93313_5953853.1179114290317
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Except for spending a whole line on "/*" which I would rather avoid
-(inside functions) it's all very sensible.  I will apply it.
+Hi all,
+  I am doing thesis work on NFS. Can anybody guide me to know details
+regarding how to make changes to source code of NFS. Actually I want to
+modify RPC layer of NFS. I had posted this question to authors but I didn't
+got reply. Plz give reply to my problem as it would b useful in my thesis
+work. Thanks in advance.
 
-Thanks,
-NeilBrown
+------=_Part_93313_5953853.1179114290317
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-> > 
-> > Index: linux-2.6/fs/nfsd/vfs.c
-> > ===================================================================
-> > --- linux-2.6.orig/fs/nfsd/vfs.c	2007-03-06 17:43:28.000000000 +0100
-> > +++ linux-2.6/fs/nfsd/vfs.c	2007-03-06 17:45:48.000000000 +0100
-> > @@ -277,7 +277,8 @@
-> >  	if (!iap->ia_valid)
-> >  		goto out;
-> >  
-> > -	/* NFSv2 does not differentiate between "set-[ac]time-to-now"
-> > +	/*
-> > +	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
-> >  	 * which only requires access, and "set-[ac]time-to-X" which
-> >  	 * requires ownership.
-> >  	 * So if it looks like it might be "set both to the same time which
+Hi all,<br>&nbsp; I am doing thesis work on NFS. Can anybody guide me to know details regarding how to make changes to source code of NFS. Actually I want to modify RPC layer of NFS. I had posted this question to authors but I didn&#39;t got reply. Plz give reply to my problem as it would b useful in my thesis work. Thanks in advance.
+<br>
+
+------=_Part_93313_5953853.1179114290317--
+
+
+--===============2014356948==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============2014356948==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2014356948==--
