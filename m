@@ -1,23 +1,21 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Need Help to modify source code for RPC Layer
-Date: Mon, 14 May 2007 13:57:12 +1000
-Message-ID: <17991.56856.204814.143132@notabene.brown>
-References: <69eeb8e40705132044w149a7a5aj5494e4c13b5a82cf@mail.gmail.com>
+From: Martin Knoblauch <knobi@knobisoft.de>
+Subject: Strange performance problems between Linux client and
+	Sun/Solaris-10 Server with SAM-FS
+Date: Mon, 14 May 2007 04:14:10 -0700 (PDT)
+Message-ID: <758936.68723.qm@web32601.mail.mud.yahoo.com>
+Reply-To: knobi@knobisoft.de
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "shiva ramakrishna" <shivaramakris@gmail.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnRgX-0000rG-0d
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 20:57:22 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HnRgZ-00070X-EI
-	for nfs@lists.sourceforge.net; Sun, 13 May 2007 20:57:23 -0700
-In-Reply-To: message from shiva ramakrishna on Monday May 14
+	id 1HnYVN-0001KF-9r
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 04:14:17 -0700
+Received: from web32601.mail.mud.yahoo.com ([68.142.207.228])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HnYVO-0002mX-Co
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 04:14:20 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,24 +28,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday May 14, shivaramakris@gmail.com wrote:
-> Hi all,
->   I am doing thesis work on NFS. Can anybody guide me to know details
-> regarding how to make changes to source code of NFS. Actually I want to
-> modify RPC layer of NFS. I had posted this question to authors but I didn't
-> got reply. Plz give reply to my problem as it would b useful in my thesis
-> work. Thanks in advance.
+Hi,
 
-This is a very vague question, so I'm not surprised that no-one has
-replied.
-Apart from "Use an editor to change files in net/sunrpc/" I don't know
-how helpful any one could be.
+ we are fighting with a strange performance problem when accessing a
+Sun/Solaris-10 server from a Linux NFS client (HP DL380G4, x86_64,
+RHEL4U3 user-space, various kernels from  2.6.9-34.ELsmp up to
+2.9.21.1).
 
-Maybe if you give some more specific details about what you want to
-do, and why you cannot make progress, someone might be able to give a
-more specific answer.
+ The underlying FS on the Sun is SAM-FS (4.5.33) which provides HSM
+capabilities. The basic layout is that the "online cache" is relatively
+small on "high-speed" FC disks, while the offline data are stored on
+cheapish SATA disks and high-speed tapes.
 
-NeilBrown
+ The problem arises when accessing (reading) a file that is offline on
+the Sun. In this case the so-called "stager" brings it back to the
+online-cache first, while the client waits for the data to be
+available.
+
+ This works fine (staging speed up-to or larger  50 MB/sec) on:
+
+- administrative "stage" request
+- accessing the offline file on the Sun-Server itself
+- accessing the offline file from a Solaris-10 NFS client
+
+ When doing the same from the Linux Client performance drops below 10
+MB/sec. Network performance itself looks good when accessing the file
+"online".
+
+ One thing that looks different when doing tcpdump/snoop traces between
+the systems is that in the Linux/Solaris case the client seems to send
+more READ3 requests (factor > 3) that the Server acknowledges (both in
+the online and offline case). In the Solaris/Solaris case the number of
+requests and acknowledgements is about the same.
+
+ The remote filesystem is mounted NFS3/TCP with the following
+parameters:
+
+xxxx:/net/xxxx/fs03 on /net/xxxx/fs03 type nfs
+(rw,hard,intr,bg,nfsvers=3,proto=tcp,timeo=600,rsize=32768,wsize=32768,addr=yy.yy.yy.yy)
+
+ We are already talking to the Sun people, but they cannot reproduce.
+So I put my hope for some insight on this list.
+
+Cheers
+Martin
+PS: Please CC me on replies, as I am only getting the digest
+
+
+------------------------------------------------------
+Martin Knoblauch
+email: k n o b i AT knobisoft DOT de
+www:   http://www.knobisoft.de
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
