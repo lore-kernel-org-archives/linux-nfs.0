@@ -1,7 +1,7 @@
 From: Ian Kent <raven@themaw.net>
 Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Mon, 14 May 2007 22:30:13 +0800
-Message-ID: <1179153013.3811.51.camel@raven.themaw.net>
+Date: Mon, 14 May 2007 22:39:15 +0800
+Message-ID: <1179153555.3811.57.camel@raven.themaw.net>
 References: <4627B3DD.5050409@amd.com>
 	<1177007479.6623.14.camel@heimdal.trondhjem.org>
 	<4627D303.8060009@amd.com>
@@ -12,21 +12,21 @@ References: <4627B3DD.5050409@amd.com>
 	<1178379473.4559.24.camel@raven.themaw.net>
 	<1178385472.6561.43.camel@heimdal.trondhjem.org>
 	<20070514131743.GG31764@petra.dvoda.cz>
+	<1179149048.6858.5.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Paul Krizak <paul.krizak@amd.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Karel Zak <kzak@redhat.com>
+Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnbZ6-0004Wf-12
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 07:30:20 -0700
+	id 1Hnbhp-0005Uf-7L
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 07:39:21 -0700
 Received: from out1.smtp.messagingengine.com ([66.111.4.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HnbZ8-0007tX-J1
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 07:30:22 -0700
-In-Reply-To: <20070514131743.GG31764@petra.dvoda.cz>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hnbhq-0001g9-PN
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 07:39:24 -0700
+In-Reply-To: <1179149048.6858.5.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,35 +39,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-05-14 at 15:17 +0200, Karel Zak wrote:
-> On Sat, May 05, 2007 at 01:17:52PM -0400, Trond Myklebust wrote:
-> > On Sat, 2007-05-05 at 23:37 +0800, Ian Kent wrote:
-> > > On Fri, 2007-05-04 at 17:41 -0400, Trond Myklebust wrote:
-> > > So is there "anything at all" we can do to change this behavior now,
-> > > apart from teaching mount to about it. Having the /etc/mtab
-> > > and /proc/mounts recording different mount options for a mount is wrong.
+On Mon, 2007-05-14 at 09:24 -0400, Trond Myklebust wrote:
+> On Mon, 2007-05-14 at 15:17 +0200, Karel Zak wrote:
+> > On Sat, May 05, 2007 at 01:17:52PM -0400, Trond Myklebust wrote:
+> > > On Sat, 2007-05-05 at 23:37 +0800, Ian Kent wrote:
+> > > > On Fri, 2007-05-04 at 17:41 -0400, Trond Myklebust wrote:
+> > > > So is there "anything at all" we can do to change this behavior now,
+> > > > apart from teaching mount to about it. Having the /etc/mtab
+> > > > and /proc/mounts recording different mount options for a mount is wrong.
+> > > > 
+> > > > How should mount(8) handle the situation?
 > > > 
-> > > How should mount(8) handle the situation?
+> > > I'd rather like to have mount(2) handle the situation by returning an
+> > > error if the mount options cannot be satisfied.
 > > 
-> > I'd rather like to have mount(2) handle the situation by returning an
-> > error if the mount options cannot be satisfied.
+> >  Agree, that makes sense. Unfortuantely this change is probably not
+> >  backwardly compatible. Maybe add a new mount(2) flag MS_STRICT which
+> >  disable a mount when the mount options cannot be satisfied.
 > 
->  Agree, that makes sense. Unfortuantely this change is probably not
->  backwardly compatible. Maybe add a new mount(2) flag MS_STRICT which
->  disable a mount when the mount options cannot be satisfied.
+> The kernel would be sending the error to the mount program when it
+> cannot satisfy the request. There is no backwards compatibilty issue.
 
-I really don't think that failing mounts in this case will get us any
-relief from people that need to be able to remotely mount an exported
-filesystem with different options. We already have several that will
-incur significant ongoing maintenance overhead due to this.
+I guess that depends on how you interpret backwardly compatible.
 
-The VFS read-only bind mount patches need to be completed as a matter of
-urgency and we can consider what we need to do to mount in parallel as a
-secondary priority.
-
-If anyone can provide input regarding the status of those patches that
-would be great. I haven't got any word back from Dave Hansen (the
-author) at this stage.
+Deciding to now fail mounts in this case would turn an unfortunate side
+effect of an urgently needed change into a disaster for some users. I
+think it's best to leave it as it is and push on with the needed VFS
+changes.
 
 Ian
 
