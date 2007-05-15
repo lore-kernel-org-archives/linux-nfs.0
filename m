@@ -1,26 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: What's up with those fractional-second mtimes?
-Date: Tue, 15 May 2007 13:50:55 -0400
-Message-ID: <1179251455.6464.48.camel@heimdal.trondhjem.org>
-References: <loom.20070515T045905-915@post.gmane.org>
-	<1179239524.6464.26.camel@heimdal.trondhjem.org>
-	<loom.20070515T184657-859@post.gmane.org>
+Subject: Re: burst mount of NFS over tcp
+Date: Tue, 15 May 2007 15:23:44 -0400
+Message-ID: <1179257024.6464.66.camel@heimdal.trondhjem.org>
+References: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: David Wuertele <dave-gmane@bfnet.com>
+To: Flavio Leitner <flavio.leitner@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ho1As-000305-FF
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 10:51:02 -0700
+	id 1Ho2co-000476-7I
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 12:23:58 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1813nMpiLxOqhv2qMjP7E3GzquHyXaBySk=])
+	ident=[U2FsdGVkX1+JOaemJRi5tF2XR0FnfBNamTiVO/Wa470=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ho1As-0007Lq-3u
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 10:51:05 -0700
-In-Reply-To: <loom.20070515T184657-859@post.gmane.org>
+	(Exim 4.44) id 1Ho2co-0000RZ-9I
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 12:24:01 -0700
+In-Reply-To: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,28 +31,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-15 at 16:49 +0000, David Wuertele wrote:
-> Dave> Can I disable fractional timestamps?  Can I enable proper
-> Dave> processing of them?
+On Tue, 2007-05-15 at 12:17 -0300, Flavio Leitner wrote:
+> (please, keep myself on CC because I'm not subscribed)
 > 
-> Trond> Sounds like a bug in 'cp'. Could you try using 'strace' to sniff if they
-> Trond> are really using the 'utimes()' call (rather than the 'utime()' call,
-> Trond> which only has a 1 second resolution) then sniff what they are sending
-> Trond> as arguments?
+> Hi,
 > 
-> It is not just cp, it is gzip and several other commands (I doubt I could find
-> them all) which use utime() instead of utimes().
+> In the case of several (>500) mounts running at the same time with -o tcp,
+> the number of attempts that succeed is about 300-400 because it run out
+> of priviledged port (they are busy in TIME_WAIT state).
 > 
-> Since I don't have control over the tools available on the target, I would like
-> to just disable the fractional part of the timestamps altoghether, so that
-> utime() returns the same as utimes().
+> The priviledged port range available (~512 ports) for this can't be changed to
+> avoid more port conflicts.
 > 
-> Is that possible?
+> An option could be reuse these ports in TIME_WAIT state openning the socket
+> with SO_REUSEADDR socket option, but the socket is a tuple:
+> (local addr, local port, remote addr, remote port, proto) and it must be
+> different from the previous one. Well, they always are equal when you
+> mount the same NFS server, so it can't be.
+> 
+> I think reducing TIME_WAIT state in kernel enabling fast recycle
+> affects other tcp
+> connections and have some extra undesireble effects.
+> 
+> The solution I'm proposing is to add two new nfs parameters to specify
+> a timeout and a number of retries to mount before fails. i.e.
+> 
+> # mount -o tcp,rsvretry=10,rsvtimeout=5 server:/export /mnt
+> 
+> This will affect mount.nfs to try bind a reserved port 10 times with a timeout
+> of 5 seconds before give up. If not used, the default behavious is unchanged
+> (i.e. try only one time and fails).
+> 
+> The code should looks like:
+> +             int bind_retry=0
+> ...
+> -               if (bindresvport(so, &laddr) < 0) {
+> +              while (bindresvport(so, &laddr) < 0) {
+> +                       if (errno == EADDRINUSE && --bind_retry > 0) {
+> +                               sleep(bind_timeout);
+> +                               continue;
+> +                       }
+> 
+> The real scenario could be a huge fstab or a MDA delivering e-mails for 500
+> users with home automounted.
+> 
+> I was able to mount more than 1000 NFS with success in the second scenario
+> where normally I only manage to have 200-400.
+> 
+> What you think?
 
-No. The you would have to do that on the server, not the client.
-Basically you'd have to have a mount option to the XFS/JFS/...
-filesystem that limits its time resolution. I'm not aware of any such
-mount options at this time.
+Why not fix the 'retry' mount option to deal properly with this case? I
+can't see why running out of reserved ports really needs its own mount
+options.
 
 Trond
 
