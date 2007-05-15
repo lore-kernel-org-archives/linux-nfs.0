@@ -1,39 +1,30 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Tue, 15 May 2007 09:58:04 +1000
-Message-ID: <17992.63372.522494.519874@notabene.brown>
-References: <4627B3DD.5050409@amd.com>
-	<1177007479.6623.14.camel@heimdal.trondhjem.org>
-	<4627D303.8060009@amd.com>
-	<1177020662.6628.30.camel@heimdal.trondhjem.org>
-	<4627EBFC.2090704@amd.com> <462CFC92.2080201@amd.com>
-	<463B97E6.4030009@amd.com>
-	<1178314889.6533.19.camel@heimdal.trondhjem.org>
-	<1178379473.4559.24.camel@raven.themaw.net>
-	<1178385472.6561.43.camel@heimdal.trondhjem.org>
-	<20070514131743.GG31764@petra.dvoda.cz>
-	<1179149048.6858.5.camel@heimdal.trondhjem.org>
-	<1179153555.3811.57.camel@raven.themaw.net>
-	<1179157631.6474.8.camel@heimdal.trondhjem.org>
-	<1179158812.3811.68.camel@raven.themaw.net>
-	<17992.58783.827023.697258@notabene.brown>
-	<1179184319.6467.7.camel@heimdal.trondhjem.org>
+From: David Wuertele <dave-gmane@bfnet.com>
+Subject: What's up with those fractional-second mtimes?
+Date: Tue, 15 May 2007 03:04:33 +0000 (UTC)
+Message-ID: <loom.20070515T045905-915@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
-	Ian Kent <raven@themaw.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnkQh-0005OK-NK
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 16:58:15 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1HnnQQ-0006WQ-DV
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 20:10:10 -0700
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HnkQk-0005My-4H
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 16:58:18 -0700
-In-Reply-To: message from Trond Myklebust on Monday May 14
+	(Exim 4.44) id 1HnnQR-0001iR-P7
+	for nfs@lists.sourceforge.net; Mon, 14 May 2007 20:10:13 -0700
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1HnnQI-00015u-1B
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 05:10:02 +0200
+Received: from wwwgate5.motorola.com ([129.188.69.145])
+	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 May 2007 05:10:02 +0200
+Received: from dave-gmane by wwwgate5.motorola.com with local (Gmexim 0.1
+	(Debian)) id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Tue, 15 May 2007 05:10:02 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -46,53 +37,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday May 14, Trond.Myklebust@netapp.com wrote:
-> On Tue, 2007-05-15 at 08:41 +1000, Neil Brown wrote:
-> > 
-> > I would lean towards restoring the default to nosharedcache, and
-> > having to explicitly request sharedcache if you want that, and are
-> > happy to have the same mount option enforced on all sharing mounts.
-> 
-> I disagree with that. The default was changed for a very good reason,
-> namely that people were making assumptions that were wrong: i.e. that
-> the cache remains consistent when you change the ro/rw flag or try to
-> mount a subdirectory.
+I'm trying to deploy a make-based build system to some x86_64 RHEL-4 ES boxes
+that mount their build directories NFS.  I'm having problems because timestamps
+seem to be recorded in fractions of a second, but the timestamps aren't always
+copied that way with cp -a or gzip.  Here is an example with gzip:
 
-And fixing the assumptions made by some people broken different
-assumptions made by other people - a bit of a no-win situation I
-guess.
+$ dd if=/dev/zero of=test bs=1024 count=1024
+1024+0 records in
+1024+0 records out
+$ stat test
+  File: `test'
+  Size: 1048576   	Blocks: 2056       IO Block: 32768  regular file
+Device: 26h/38d	Inode: 15119606    Links: 1
+Access: (0644/-rw-r--r--)  Uid: (10059/  qwv684)   Gid: (10001/ma29cu01)
+Access: 2007-05-14 22:48:01.058211000 -0400
+Modify: 2007-05-14 22:57:28.468235000 -0400
+Change: 2007-05-14 22:57:28.468235000 -0400
+$ gzip test
+$ stat test.gz
+  File: `test.gz'
+  Size: 1056      	Blocks: 8          IO Block: 32768  regular file
+Device: 26h/38d	Inode: 6176375     Links: 1
+Access: (0644/-rw-r--r--)  Uid: (10059/  qwv684)   Gid: (10001/ma29cu01)
+Access: 2007-05-14 22:48:01.000000000 -0400
+Modify: 2007-05-14 22:57:28.000000000 -0400
+Change: 2007-05-14 22:57:49.431252000 -0400
 
-> In fact, if you mounted the _same_ directory twice, then the default was
-> always 'sharedcache'.
+See how the mtime didn't get propogated perfectly?  The fraction after the
+decimal was truncated to zero!  This seems to happen only on the x86_64 boxes.
 
-Ahh.. I didn't realise that.
+What is up with that?  Can I disable fractional timestamps?  Can I enable proper
+processing of them?
 
-> 
-> So all we did in 2.6.18, was to make a consistent set of rules for how
-> this works.
-> 
-> The default should therefore remain 'sharedcache', preferably returning
-> an error if the user tries to mix metaphors.
+Thanks,
+Dave
 
-Would we need to rev the mount_data version to add such a flag, or are
-we sure that unused flags are 0, and so simply add
 
-#define NFS_MOUNT_UNSHARED	0x8000 /* 5 */
-
-(I don't understand the NFS_MOUNT_FLAGMASK.  Can the top 16 bits of
-flags be used?)
-
-If the "you have mixed metaphors" error was unique, the mount.nfs
-program could conceivable respond to it by setting the UNSHARED flag,
-trying again, and printing a big loud warning.... I wonder if that
-would be a good idea...
-
-But then what if you wanted sharedcache and weren't fussed about exact
-options, how would mount.nfs handle that?   Finding a matching entry
-in /etc/mtab would be hard because fsid matching would be non-trivial.
-Maybe we want two flags "UNSHARED" and "SHARE_AND_IGNORE_MY_SETTINGS"??
-
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
