@@ -1,37 +1,22 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
-Date: Tue, 15 May 2007 10:33:42 -0400
-Message-ID: <1179239622.6464.28.camel@heimdal.trondhjem.org>
-References: <4627B3DD.5050409@amd.com>
-	<1177007479.6623.14.camel@heimdal.trondhjem.org>	<4627D303.8060009@amd.com>
-	<1177020662.6628.30.camel@heimdal.trondhjem.org>	<4627EBFC.2090704@amd.com>
-	<462CFC92.2080201@amd.com> <463B97E6.4030009@amd.com>
-	<1178314889.6533.19.camel@heimdal.trondhjem.org>
-	<1178379473.4559.24.camel@raven.themaw.net>
-	<1178385472.6561.43.camel@heimdal.trondhjem.org>
-	<20070514131743.GG31764@petra.dvoda.cz>
-	<1179149048.6858.5.camel@heimdal.trondhjem.org>
-	<1179153555.3811.57.camel@raven.themaw.net>
-	<1179157631.6474.8.camel@heimdal.trondhjem.org>
-	<1179158812.3811.68.camel@raven.themaw.net>
-	<17992.58783.827023.697258@notabene.brown>
-	<1179184319.6467.7.camel@heimdal.trondhjem.org>
-	<4649BC6F.2010906@oracle.com>
+From: "Flavio Leitner" <flavio.leitner@gmail.com>
+Subject: burst mount of NFS over tcp
+Date: Tue, 15 May 2007 12:17:10 -0300
+Message-ID: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
-	nfs@lists.sourceforge.net, Ian Kent <raven@themaw.net>
-To: chuck.lever@oracle.com
+Cc: flavio.leitner@gmail.com
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hny68-0005hL-IJ
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 07:33:56 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hny6A-0003ki-At
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 07:33:59 -0700
-In-Reply-To: <4649BC6F.2010906@oracle.com>
+	id 1Hnylx-0001AN-05
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 08:17:11 -0700
+Received: from nz-out-0506.google.com ([64.233.162.232])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hnylz-0000uE-JL
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 08:17:11 -0700
+Received: by nz-out-0506.google.com with SMTP id i11so373064nzi
+	for <nfs@lists.sourceforge.net>; Tue, 15 May 2007 08:17:11 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,18 +29,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-15 at 09:58 -0400, Chuck Lever wrote:
+(please, keep myself on CC because I'm not subscribed)
 
-> Just kicking it out there: why not revert the kernel back to the 
-> previous state of affairs where "nosharedcache" was the default, and 
-> then let user space handle sharing or not sharing, documenting clearly 
-> what the implications are in the mount(8) or nfs(5) man pages?  User 
-> space is smart enough to emit a warning about mixing security flavors, 
-> for instance, as suggested above.
+Hi,
 
-Read the thread. See my previous answers.
+In the case of several (>500) mounts running at the same time with -o tcp,
+the number of attempts that succeed is about 300-400 because it run out
+of priviledged port (they are busy in TIME_WAIT state).
 
-Trond
+The priviledged port range available (~512 ports) for this can't be changed to
+avoid more port conflicts.
+
+An option could be reuse these ports in TIME_WAIT state openning the socket
+with SO_REUSEADDR socket option, but the socket is a tuple:
+(local addr, local port, remote addr, remote port, proto) and it must be
+different from the previous one. Well, they always are equal when you
+mount the same NFS server, so it can't be.
+
+I think reducing TIME_WAIT state in kernel enabling fast recycle
+affects other tcp
+connections and have some extra undesireble effects.
+
+The solution I'm proposing is to add two new nfs parameters to specify
+a timeout and a number of retries to mount before fails. i.e.
+
+# mount -o tcp,rsvretry=10,rsvtimeout=5 server:/export /mnt
+
+This will affect mount.nfs to try bind a reserved port 10 times with a timeout
+of 5 seconds before give up. If not used, the default behavious is unchanged
+(i.e. try only one time and fails).
+
+The code should looks like:
++             int bind_retry=0
+...
+-               if (bindresvport(so, &laddr) < 0) {
++              while (bindresvport(so, &laddr) < 0) {
++                       if (errno == EADDRINUSE && --bind_retry > 0) {
++                               sleep(bind_timeout);
++                               continue;
++                       }
+
+The real scenario could be a huge fstab or a MDA delivering e-mails for 500
+users with home automounted.
+
+I was able to mount more than 1000 NFS with success in the second scenario
+where normally I only manage to have 200-400.
+
+What you think?
+
+-- 
+Flavio Leitner
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
