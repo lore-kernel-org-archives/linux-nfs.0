@@ -1,24 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: burst mount of NFS over tcp
-Date: Tue, 15 May 2007 15:23:44 -0400
-Message-ID: <1179257024.6464.66.camel@heimdal.trondhjem.org>
-References: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
+From: Roger Heflin <rheflin@atipa.com>
+Subject: Re: Apparent Deadlock with nfsd/jfs on 2.6.21.1 under bonnie.
+Date: Tue, 15 May 2007 17:06:38 -0500
+Message-ID: <464A2EEE.7070509@atipa.com>
+References: <4649BED9.6090207@atipa.com>
+	<pan.2007.05.15.22.03.07.359081@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Flavio Leitner <flavio.leitner@gmail.com>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ho2co-000476-7I
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 12:23:58 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+JOaemJRi5tF2XR0FnfBNamTiVO/Wa470=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ho2co-0000RZ-9I
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 12:24:01 -0700
-In-Reply-To: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
+	id 1Ho5AF-0003AM-HE
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 15:06:40 -0700
+Received: from 125.14.124.24.cm.sunflower.com ([24.124.14.125]
+	helo=mail.atipa.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Ho5AF-00063e-VK
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 15:06:42 -0700
+In-Reply-To: <pan.2007.05.15.22.03.07.359081@linux.vnet.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,61 +31,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-15 at 12:17 -0300, Flavio Leitner wrote:
-> (please, keep myself on CC because I'm not subscribed)
+Dave Kleikamp wrote:
+> Sorry if I'm missing anyone on the reply, but my mail feed is messed up
+> and I'm replying from the gmane archive.
 > 
-> Hi,
+> On Tue, 15 May 2007 09:08:25 -0500, Roger Heflin wrote:
 > 
-> In the case of several (>500) mounts running at the same time with -o tcp,
-> the number of attempts that succeed is about 300-400 because it run out
-> of priviledged port (they are busy in TIME_WAIT state).
+>> Hello,
+>>
+>> Running 2.6.21.1 (FC6 Dist), with a RHEL client (client
+>> appears to not be having issues) I am getting what I believe
+>> is a deadlock on the server end.    This is with JFS and
+>> NFSD, I have not tested yet with a non-JFS filesystem,
+>> though our customer indicated that they have duplicated it with
+>> the ext3 filesystem.
 > 
-> The priviledged port range available (~512 ports) for this can't be changed to
-> avoid more port conflicts.
+> I don't have an answer to an ext3 deadlock, but this looks like a jfs
+> problem that was recently fixed in linux-2.6.22-rc1.  I had intended to
+> send it to the stable kernel after it was picked up in mainline, but
+> hadn't gotten to it yet.
 > 
-> An option could be reuse these ports in TIME_WAIT state openning the socket
-> with SO_REUSEADDR socket option, but the socket is a tuple:
-> (local addr, local port, remote addr, remote port, proto) and it must be
-> different from the previous one. Well, they always are equal when you
-> mount the same NFS server, so it can't be.
+> The patch is here:
+> http://git.kernel.org/gitweb.cgi?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=05ec9e26be1f668ccba4ca54d9a4966c6208c611
 > 
-> I think reducing TIME_WAIT state in kernel enabling fast recycle
-> affects other tcp
-> connections and have some extra undesireble effects.
-> 
-> The solution I'm proposing is to add two new nfs parameters to specify
-> a timeout and a number of retries to mount before fails. i.e.
-> 
-> # mount -o tcp,rsvretry=10,rsvtimeout=5 server:/export /mnt
-> 
-> This will affect mount.nfs to try bind a reserved port 10 times with a timeout
-> of 5 seconds before give up. If not used, the default behavious is unchanged
-> (i.e. try only one time and fails).
-> 
-> The code should looks like:
-> +             int bind_retry=0
-> ...
-> -               if (bindresvport(so, &laddr) < 0) {
-> +              while (bindresvport(so, &laddr) < 0) {
-> +                       if (errno == EADDRINUSE && --bind_retry > 0) {
-> +                               sleep(bind_timeout);
-> +                               continue;
-> +                       }
-> 
-> The real scenario could be a huge fstab or a MDA delivering e-mails for 500
-> users with home automounted.
-> 
-> I was able to mount more than 1000 NFS with success in the second scenario
-> where normally I only manage to have 200-400.
-> 
-> What you think?
 
-Why not fix the 'retry' mount option to deal properly with this case? I
-can't see why running out of reserved ports really needs its own mount
-options.
+Ok.
 
-Trond
+My customer reported that he though he had a ext3, so far I have
+not been able to duplicate the ext3 hang.
 
+If ext3 survives until tomorrow, I will retest unpatched jfs, and then
+patch it and test again.
+
+
+>> The basic setup is:
+>> fiber channel array -> qlogic fiber card -> /dev/sdx -> LVM stripe ->
+>> jfs -> nfs.
+>>
+>> Running bonnie on a NFS share has apparently produced a deadlock.   I
+>> have ran bonnie several times without having any issues, I don't believe
+>> this is a HW issue, we have a couple of other machines configured with
+>> slightly different HW and are also able to duplicate this problem on
+>> those machines.  There are no abnormal messages in dmesg or in the
+>> messages file.
+>>
+>> After having the apparent deadlock I started a dd of a on the deadlocked
+>> filesystem and according to vmstat 1 that was actually working, I then
+>> did a "mkdir junk" on the deadlocked filesystem and that apparently put
+>> the cat into a permanent "D" state.   I will include the sysrq -t from
+>> before the cat/mkdir and after the cat/mkdir.
+>>
+>> I believe I can duplicate this again, and other than the processes going
+>> into the "D" state everything else seems to work.   Other filesytems
+>> appear to be functional, I can still login to the machine.
+>>
+>> Right now the machine is in the deadlocked state, and I will wait for
+>> any suggestions of more data to collect or other tests to try.
+> 
+> I haven't tried it on a locked-up system, but you may try waking up the
+> [jfsIO] kernel thread with a signal.  I'm not sure what signals may get
+> through, since the thread doesn't specifically act on a signal.
+> 
+
+I will try on the next lockup.
+
+                    Roger
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
