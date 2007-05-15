@@ -1,96 +1,137 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH 002 of 8] knfsd: exportfs: remove iget abuse
-Date: Tue, 15 May 2007 07:30:20 -0500
-Message-ID: <1179232221.9256.4.camel@kleikamp.austin.ibm.com>
-References: <20070515170405.15621.patches@notabene>
-	 <1070515071614.16259@suse.de>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Tue, 15 May 2007 09:58:07 -0400
+Message-ID: <4649BC6F.2010906@oracle.com>
+References: <4627B3DD.5050409@amd.com>	<1177007479.6623.14.camel@heimdal.trondhjem.org>	<4627D303.8060009@amd.com>	<1177020662.6628.30.camel@heimdal.trondhjem.org>	<4627EBFC.2090704@amd.com>	<462CFC92.2080201@amd.com>
+	<463B97E6.4030009@amd.com>	<1178314889.6533.19.camel@heimdal.trondhjem.org>	<1178379473.4559.24.camel@raven.themaw.net>	<1178385472.6561.43.camel@heimdal.trondhjem.org>	<20070514131743.GG31764@petra.dvoda.cz>	<1179149048.6858.5.camel@heimdal.trondhjem.org>	<1179153555.3811.57.camel@raven.themaw.net>	<1179157631.6474.8.camel@heimdal.trondhjem.org>	<1179158812.3811.68.camel@raven.themaw.net>	<17992.58783.827023.697258@notabene.brown>
+	<1179184319.6467.7.camel@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	Christoph Hellwig <hch@lst.de>
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1762046AbXEOMac@vger.kernel.org>
-In-Reply-To: <1070515071614.16259@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------090300020709060902030002"
+Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Ian Kent <raven@themaw.net>
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HnxZc-0002EN-I9
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 07:00:24 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HnxZd-0005UK-SK
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 07:00:23 -0700
+In-Reply-To: <1179184319.6467.7.camel@heimdal.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-15 at 17:16 +1000, NeilBrown wrote:
+This is a multi-part message in MIME format.
+--------------090300020709060902030002
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> diff .prev/fs/jfs/jfs_inode.h ./fs/jfs/jfs_inode.h
-> --- .prev/fs/jfs/jfs_inode.h	2007-05-14 11:14:52.000000000 +1000
-> +++ ./fs/jfs/jfs_inode.h	2007-05-14 11:15:29.000000000 +1000
-> @@ -31,7 +31,7 @@ extern void jfs_truncate(struct inode *)
->  extern void jfs_truncate_nolock(struct inode *, loff_t);
->  extern void jfs_free_zero_link(struct inode *);
->  extern struct dentry *jfs_get_parent(struct dentry *dentry);
-> -extern void jfs_get_inode_flags(struct jfs_inode_info *);
+Disclaimer:
 
-You don't want to remove the declaration of jfs_get_inode_flags().
+As Trond knows, I don't like the current "shared cache" implementation, 
+even given the security issue of mounting the same file system with 
+AUTH_SYS and AUTH_GSS.
 
-> +extern struct dentry *jfs_get_dentry(struct super_block *sb, void *vobjp);
->  extern void jfs_set_inode_flags(struct inode *);
->  extern int jfs_get_block(struct inode *, sector_t, struct buffer_head *, int);
->  
+See response below.
+
+Trond Myklebust wrote:
+> On Tue, 2007-05-15 at 08:41 +1000, Neil Brown wrote:
+>> I think "shared" is an important concept to have in there as it is
+>> sharing the cache, the connection and the options.  For consistency
+>> with other options, I would have an optional "no" at the front to
+>> invert the flag.  Current nfs options don't have punctuation, so I
+>> would probably go for something like:
+>>        -o  [no]sharedcache
+>>        -o  [no]shareconnection 
+>>
+>> Then comes the question of what the default should be.
+>> The original default was nosharedcache, but the more recent default
+>> has been sharedcache.   In hindsight it would have been better not to
+>> change the default, but things are always much clearer in hindsight.
+>>
+>> I would lean towards restoring the default to nosharedcache, and
+>> having to explicitly request sharedcache if you want that, and are
+>> happy to have the same mount option enforced on all sharing mounts.
 > 
-> diff .prev/fs/jfs/namei.c ./fs/jfs/namei.c
-> --- .prev/fs/jfs/namei.c	2007-05-14 11:14:52.000000000 +1000
-> +++ ./fs/jfs/namei.c	2007-05-14 11:15:29.000000000 +1000
-> @@ -1477,6 +1477,38 @@ static struct dentry *jfs_lookup(struct 
->  	return dentry;
->  }
->  
-> +struct dentry *jfs_get_dentry(struct super_block *sb, void *vobjp)
-> +{
-> +	__u32 *objp = vobjp;
-> +	unsigned long ino = objp[0];
-> +	__u32 generation = objp[1];
-> +	struct inode *inode;
-> +	struct dentry *result;
-> +
-> +	if (ino == 0)
-> +		return ERR_PTR(-ESTALE);
-> +	inode = iget(sb, ino);
-> +	if (inode == NULL)
-> +		return ERR_PTR(-ENOMEM);
-> +
-> +	if (is_bad_inode(inode) ||
-> +	    (generation && inode->i_generation != generation)) {
-> +	    	result = ERR_PTR(-ESTALE);
-> +		goto out_iput;
-> +	}
-> +
-> +	result = d_alloc_anon(inode);
-> +	if (!result) {
-> +		result = ERR_PTR(-ENOMEM);
-> +		goto out_iput;
-> +	}
-> +	return result;
-> +
-> + out_iput:
-> +	iput(inode);
-> +	return result;
-> +}
-> +
->  struct dentry *jfs_get_parent(struct dentry *dentry)
->  {
->  	struct super_block *sb = dentry->d_inode->i_sb;
+> I disagree with that. The default was changed for a very good reason,
+> namely that people were making assumptions that were wrong: i.e. that
+> the cache remains consistent when you change the ro/rw flag or try to
+> mount a subdirectory.
+> In fact, if you mounted the _same_ directory twice, then the default was
+> always 'sharedcache'.
 > 
-> diff .prev/fs/jfs/super.c ./fs/jfs/super.c
-> --- .prev/fs/jfs/super.c	2007-05-14 11:15:23.000000000 +1000
-> +++ ./fs/jfs/super.c	2007-05-14 11:15:29.000000000 +1000
-> @@ -738,6 +738,7 @@ static const struct super_operations jfs
->  };
->  
->  static struct export_operations jfs_export_operations = {
-> +	.get_dentry	= jfs_get_dentry,
->  	.get_parent	= jfs_get_parent,
->  };
+> So all we did in 2.6.18, was to make a consistent set of rules for how
+> this works.
+> 
+> The default should therefore remain 'sharedcache', preferably returning
+> an error if the user tries to mix metaphors.
 
-Looks sane.  You can add:
-Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+There have always been reasonable use cases (OK, well, reasonable to me 
+anyway) for having completely separate options and caches for each NFS 
+mount.  Another way to look at this is that "sharedcache" is really 
+giving you "mount --bind" and not just a "mount".  Therefore all this 
+can be mimicked in user space.
 
--- 
-David Kleikamp
-IBM Linux Technology Center
+Just kicking it out there: why not revert the kernel back to the 
+previous state of affairs where "nosharedcache" was the default, and 
+then let user space handle sharing or not sharing, documenting clearly 
+what the implications are in the mount(8) or nfs(5) man pages?  User 
+space is smart enough to emit a warning about mixing security flavors, 
+for instance, as suggested above.
+
+--------------090300020709060902030002
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel/
+version:2.1
+end:vcard
+
+
+--------------090300020709060902030002
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+--------------090300020709060902030002
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------090300020709060902030002--
