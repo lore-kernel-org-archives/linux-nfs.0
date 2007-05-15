@@ -1,84 +1,35 @@
-From: David Wuertele <dave-gmane@bfnet.com>
-Subject: What's up with those fractional-second mtimes?
-Date: Tue, 15 May 2007 03:04:33 +0000 (UTC)
-Message-ID: <loom.20070515T045905-915@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HnnQQ-0006WQ-DV
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 20:10:10 -0700
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HnnQR-0001iR-P7
-	for nfs@lists.sourceforge.net; Mon, 14 May 2007 20:10:13 -0700
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1HnnQI-00015u-1B
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 05:10:02 +0200
-Received: from wwwgate5.motorola.com ([129.188.69.145])
-	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 May 2007 05:10:02 +0200
-Received: from dave-gmane by wwwgate5.motorola.com with local (Gmexim 0.1
-	(Debian)) id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Tue, 15 May 2007 05:10:02 +0200
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 000 of 8] knfsd: cleanups for exportfs code.
+Date: Tue, 15 May 2007 17:15:57 +1000
+Message-ID: <20070515170405.15621.patches@notabene>
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759454AbXEOHQi@vger.kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Neil Brown <neilb@suse.de>
+Cc: shaggy@austin.ibm.com
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-I'm trying to deploy a make-based build system to some x86_64 RHEL-4 ES boxes
-that mount their build directories NFS.  I'm having problems because timestamps
-seem to be recorded in fractions of a second, but the timestamps aren't always
-copied that way with cp -a or gzip.  Here is an example with gzip:
+Following are 8 patches from Christoph Hellwig which tidy up the
+"exportfs" code used by nfsd for communicating with filesystems about
+the handling of filehandles.
 
-$ dd if=/dev/zero of=test bs=1024 count=1024
-1024+0 records in
-1024+0 records out
-$ stat test
-  File: `test'
-  Size: 1048576   	Blocks: 2056       IO Block: 32768  regular file
-Device: 26h/38d	Inode: 15119606    Links: 1
-Access: (0644/-rw-r--r--)  Uid: (10059/  qwv684)   Gid: (10001/ma29cu01)
-Access: 2007-05-14 22:48:01.058211000 -0400
-Modify: 2007-05-14 22:57:28.468235000 -0400
-Change: 2007-05-14 22:57:28.468235000 -0400
-$ gzip test
-$ stat test.gz
-  File: `test.gz'
-  Size: 1056      	Blocks: 8          IO Block: 32768  regular file
-Device: 26h/38d	Inode: 6176375     Links: 1
-Access: (0644/-rw-r--r--)  Uid: (10059/  qwv684)   Gid: (10001/ma29cu01)
-Access: 2007-05-14 22:48:01.000000000 -0400
-Modify: 2007-05-14 22:57:28.000000000 -0400
-Change: 2007-05-14 22:57:49.431252000 -0400
+One change of note is that the old "iget" approach to filehandle
+lookup is moved out of generic code and into the two filesystems that
+still use it (including jfs: hence the Cc to shaggy@austin.ibm.com).
 
-See how the mtime didn't get propogated perfectly?  The fraction after the
-decimal was truncated to zero!  This seems to happen only on the x86_64 boxes.
-
-What is up with that?  Can I disable fractional timestamps?  Can I enable proper
-processing of them?
-
-Thanks,
-Dave
+These are for -mm until 2.6.23 opens.
+NeilBrown
 
 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ [PATCH 001 of 8] knfsd: exportfs: add exportfs.h header
+ [PATCH 002 of 8] knfsd: exportfs: remove iget abuse
+ [PATCH 003 of 8] knfsd: exportfs: add procedural interface for NFSD
+ [PATCH 004 of 8] knfsd: exportfs: remove CALL macro
+ [PATCH 005 of 8] knfsd: exportfs: untangle ISDIR logic in find_exported_dentry
+ [PATCH 006 of 8] knfsd: exportfs: move acceptable check into find_acceptable_alias
+ [PATCH 007 of 8] knfsd: exportfs: add find_disconnected_root helper
+ [PATCH 008 of 8] knfsd: exportfs: split out reconnecting a dentry from find_exported_dentry.
