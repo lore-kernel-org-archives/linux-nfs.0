@@ -1,8 +1,8 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 0/14] A transport switch for knfsd
-Date: Wed, 16 May 2007 16:53:17 -0400
-Message-ID: <20070516205316.GC18927@fieldses.org>
-References: <20070516191821.GF9626@sgi.com>
+Subject: Re: [RFC,PATCH 3/14] knfsd: prepare reply per transport
+Date: Wed, 16 May 2007 16:53:46 -0400
+Message-ID: <20070516205346.GD18927@fieldses.org>
+References: <20070516192047.GI9626@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
@@ -10,16 +10,16 @@ Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
 To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoQUo-0000mz-25
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:53:18 -0700
+	id 1HoQVK-0000ne-At
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:53:51 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HoQUp-000368-Mb
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:53:21 -0700
-In-Reply-To: <20070516191821.GF9626@sgi.com>
+	(Exim 4.44) id 1HoQVL-00017m-Pz
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:53:53 -0700
+In-Reply-To: <20070516192047.GI9626@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,19 +32,12 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, May 17, 2007 at 05:18:21AM +1000, Greg Banks wrote:
-> These 14 patches are an experimental transport switch for knfsd.
-> They're based on Tom Tucker's 01-svc-xprt-switch.patch from the
-> nfsrdma project November release, but redesigned to provide as simple
-> and clean an abstraction as possible to new transport-specific code.
-> Various messy details of flags, reference counts and other behaviour
-> which are currently redundantly handled in both TCP and UDP code,
-> will be handled in generic code now.  This makes the task of writing
-> new transport code easier and less prone to breakage.
+On Thu, May 17, 2007 at 05:20:47AM +1000, Greg Banks wrote:
+> 
+> Move the code at the beginning of svc_process() that sets up
+> page buffers for the reply, into a new sko_prepape_reply
 
-Are there other conjectured future users besides rdma?
-
-What's happened to server-side ipv6, by the way?
+s/prepape/prepare/.
 
 --b.
 
