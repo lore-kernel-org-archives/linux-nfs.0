@@ -1,7 +1,8 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [RFC,PATCH 6/14] knfsd: add svc_sock_is_connection
-Date: Thu, 17 May 2007 05:23:40 +1000
-Message-ID: <20070516192340.GL9626@sgi.com>
+Subject: [RFC, PATCH 7/14] knfsd: export svc_sock_enqueue,
+	svc_sock_received
+Date: Thu, 17 May 2007 05:24:25 +1000
+Message-ID: <20070516192425.GM9626@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
@@ -12,12 +13,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoP66-0000TL-Im
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:23:42 -0700
+	id 1HoP6p-0000be-9C
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:24:27 -0700
 Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
 	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HoP69-0003a2-6Q
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:23:45 -0700
+	id 1HoP6r-0003qQ-SB
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:24:30 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,49 +32,67 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Add a svc_sock_is_connection() predicate to test whether a struct
-svc_sock is a connected socket (currently this means TCP).  Also, fix
-ip_map_cached_put() to detect whether the svc_sock is a connection
-using the new predicate, instead of reaching into the svc_sock's
-socket, because later the NFS/RDMA transport will not have a socket.
+Export svc_sock_enqueue() and svc_sock_received() so they
+can be used by sunrpc server transport implementations
+(even future modular ones).
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    5 +++++
- net/sunrpc/svcauth_unix.c      |    2 +-
- 2 files changed, 6 insertions(+), 1 deletion(-)
+ include/linux/sunrpc/svcsock.h |    2 ++
+ net/sunrpc/sunrpc_syms.c       |    2 ++
+ net/sunrpc/svcsock.c           |    4 ++--
+ 3 files changed, 6 insertions(+), 2 deletions(-)
 
 Index: linux/include/linux/sunrpc/svcsock.h
 ===================================================================
---- linux.orig/include/linux/sunrpc/svcsock.h	2007-05-17 01:28:41.131377156 +1000
-+++ linux/include/linux/sunrpc/svcsock.h	2007-05-17 01:58:40.829117616 +1000
-@@ -95,6 +95,11 @@ struct svc_sock {
- 	int			sk_remotelen;	/* length of address */
- };
+--- linux.orig/include/linux/sunrpc/svcsock.h	2007-05-17 02:04:02.007208187 +1000
++++ linux/include/linux/sunrpc/svcsock.h	2007-05-17 02:39:51.367033242 +1000
+@@ -114,6 +114,8 @@ int		svc_addsock(struct svc_serv *serv,
+ 			    int fd,
+ 			    char *name_return,
+ 			    int *proto);
++void		svc_sock_enqueue(struct svc_sock *svsk);
++void		svc_sock_received(struct svc_sock *svsk);
  
-+static inline int svc_sock_is_connection(struct svc_sock *svsk)
-+{
-+	return (test_bit(SK_TEMP, &svsk->sk_flags));
-+}
-+
  /*
-  * Function prototypes.
-  */
-Index: linux/net/sunrpc/svcauth_unix.c
+  * svc_makesock socket characteristics
+Index: linux/net/sunrpc/sunrpc_syms.c
 ===================================================================
---- linux.orig/net/sunrpc/svcauth_unix.c	2007-04-26 13:08:32.000000000 +1000
-+++ linux/net/sunrpc/svcauth_unix.c	2007-05-17 01:58:40.865112934 +1000
-@@ -411,7 +411,7 @@ ip_map_cached_put(struct svc_rqst *rqstp
- 	struct svc_sock *svsk = rqstp->rq_sock;
- 
- 	spin_lock_bh(&svsk->sk_defer_lock);
--	if (svsk->sk_sock->type == SOCK_STREAM &&
-+	if (svc_sock_is_connection(svsk) &&
- 	    svsk->sk_info_authunix == NULL) {
- 		/* newly cached, keep the reference */
- 		svsk->sk_info_authunix = ipm;
+--- linux.orig/net/sunrpc/sunrpc_syms.c	2007-04-26 13:08:32.000000000 +1000
++++ linux/net/sunrpc/sunrpc_syms.c	2007-05-17 02:09:47.762054713 +1000
+@@ -77,6 +77,8 @@ EXPORT_SYMBOL(svc_process);
+ EXPORT_SYMBOL(svc_recv);
+ EXPORT_SYMBOL(svc_wake_up);
+ EXPORT_SYMBOL(svc_makesock);
++EXPORT_SYMBOL_GPL(svc_sock_enqueue);
++EXPORT_SYMBOL_GPL(svc_sock_received);
+ EXPORT_SYMBOL(svc_reserve);
+ EXPORT_SYMBOL(svc_auth_register);
+ EXPORT_SYMBOL(auth_domain_lookup);
+Index: linux/net/sunrpc/svcsock.c
+===================================================================
+--- linux.orig/net/sunrpc/svcsock.c	2007-05-17 01:28:25.221366963 +1000
++++ linux/net/sunrpc/svcsock.c	2007-05-17 02:40:30.597956980 +1000
+@@ -208,7 +208,7 @@ svc_release_skb(struct svc_rqst *rqstp)
+  * processes, wake 'em up.
+  *
+  */
+-static void
++void
+ svc_sock_enqueue(struct svc_sock *svsk)
+ {
+ 	struct svc_serv	*serv = svsk->sk_server;
+@@ -316,7 +316,7 @@ svc_sock_dequeue(struct svc_pool *pool)
+  * Note: SK_DATA only gets cleared when a read-attempt finds
+  * no (or insufficient) data.
+  */
+-static inline void
++void
+ svc_sock_received(struct svc_sock *svsk)
+ {
+ 	svsk->sk_pool = NULL;
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 Apparently, I'm Bedevere.  Which MPHG character are you?
