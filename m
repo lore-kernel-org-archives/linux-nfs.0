@@ -1,20 +1,20 @@
 From: "Shaquana Bryant" <casadoonz@gem.org.au>
 Subject: Did it happen
-Date: Wed, 16 May 2007 14:34:50 +0100
-Message-ID: <000b01c797b6$98a8cd70$120ba8c0@p50838322.dip0.t-ipconnect.de>
+Date: Wed, 16 May 2007 14:34:58 +0100
+Message-ID: <000b01c797b6$9d970270$120ba8c0@p50838322.dip0.t-ipconnect.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1039751799=="
+Content-Type: multipart/mixed; boundary="===============0788878113=="
 To: "Milagro Green" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoIhc-0004ZT-0I
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 05:34:00 -0700
+	id 1HoIhi-0004cz-6R
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 05:34:06 -0700
 Received: from p5083c345.dip0.t-ipconnect.de ([80.131.195.69]
 	helo=tno151.sdzlj.eb) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HoIha-00056H-3L
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 05:34:02 -0700
+	id 1HoIhg-00056H-B4
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 05:34:09 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,17 +29,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============1039751799==
+--===============0788878113==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C797B6.98A8CD70"
+	boundary="----=_NextPart_000_0007_01C797B6.9D970270"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C797B6.98A8CD70
+------=_NextPart_000_0007_01C797B6.9D970270
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C797B6.98A8CD70"
+	boundary="----=_NextPart_001_0008_01C797B6.9D970270"
 
-------=_NextPart_001_0008_01C797B6.98A8CD70
+------=_NextPart_001_0008_01C797B6.9D970270
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -91,7 +91,7 @@ is meg, and the curly-haired one is amy, i believe=3F" killed and eaten, =
 you seize the basket and run for the boat; there are=A1=A1searched merely =
 to satisfy her. the mystery of sir richard's death still
 
-------=_NextPart_001_0008_01C797B6.98A8CD70
+------=_NextPart_001_0008_01C797B6.9D970270
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -160,9 +160,9 @@ boat; there are=A1=A1searched merely to satisfy her. the mystery of sir =
 richard's death still</FONT></DIV>
 </DIV></BODY></HTML>
 
-------=_NextPart_001_0008_01C797B6.98A8CD70--
+------=_NextPart_001_0008_01C797B6.9D970270--
 
-------=_NextPart_000_0007_01C797B6.98A8CD70
+------=_NextPart_000_0007_01C797B6.9D970270
 Content-Type: image/gif;
 	name="I5LB5N9SNn.gif"
 Content-Transfer-Encoding: base64
@@ -442,11 +442,11 @@ OZJLKC64Dh+LCVVZNfhYuYXQO9LABZ47uuMAugCQVMEgus+CuqSLOx/UurBbCFQUu7Q7OrNLCjdY
 u7qLCfp3gtCzu8Tzu+SnCVK4OTagJbVDiLVjRbhAt6BQvKigusDrCb/aCGg6vbsgvdibCdWLC/oR
 H6b5Ol2gCts7DN/rEl7APeSLCTtYPqZTvtYQCAA7
 
-------=_NextPart_000_0007_01C797B6.98A8CD70--
+------=_NextPart_000_0007_01C797B6.9D970270--
 
 
 
---===============1039751799==
+--===============0788878113==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -457,7 +457,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1039751799==
+--===============0788878113==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -467,4 +467,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1039751799==--
+--===============0788878113==--
