@@ -1,7 +1,7 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [RFC,PATCH 1/14] knfsd: add transport ops
-Date: Thu, 17 May 2007 05:19:06 +1000
-Message-ID: <20070516191906.GG9626@sgi.com>
+Subject: [RFC,PATCH 2/14] knfsd: delete per transport
+Date: Thu, 17 May 2007 05:19:51 +1000
+Message-ID: <20070516191951.GH9626@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
@@ -9,16 +9,15 @@ Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoP1n-0008T9-Ry
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:19:15 -0700
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX1/xLHnkJkmlWb+JRYRDRAFDvyL/RhrAF9I=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoP1k-0002LT-BI
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:19:13 -0700
+	id 1HoP2S-0008U3-5N
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:19:56 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1HoP2T-0000m3-K6
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:19:59 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,112 +31,142 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Start moving to a transport switch for knfsd.  Add a svc_sock_ops
-operations vector and move the sk_sendto and sk_recvfrom function
-pointers into it.
+Add sko_detach and sko_free methods to svc_sock_ops and
+change svc_delete_socket() and svc_sock_put() to use them.
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    9 +++++++--
- net/sunrpc/svcsock.c           |   22 ++++++++++++++++------
- 2 files changed, 23 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/svcsock.h |   12 ++++++
+ net/sunrpc/svcsock.c           |   54 +++++++++++++++++++++++-------
+ 2 files changed, 55 insertions(+), 11 deletions(-)
 
-Index: linux/include/linux/sunrpc/svcsock.h
-===================================================================
---- linux.orig/include/linux/sunrpc/svcsock.h	2007-04-26 13:08:32.000000000 +1000
-+++ linux/include/linux/sunrpc/svcsock.h	2007-05-16 23:29:24.797243245 +1000
-@@ -11,6 +11,12 @@
- 
- #include <linux/sunrpc/svc.h>
- 
-+struct svc_sock_ops {
-+	const char		*sko_name;
-+	int			(*sko_recvfrom)(struct svc_rqst *rqstp);
-+	int			(*sko_sendto)(struct svc_rqst *rqstp);
-+};
-+
- /*
-  * RPC server socket.
-  */
-@@ -42,8 +48,7 @@ struct svc_sock {
- 						 * be revisted */
- 	struct mutex		sk_mutex;	/* to serialize sending data */
- 
--	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
--	int			(*sk_sendto)(struct svc_rqst *rqstp);
-+	const struct svc_sock_ops *sk_ops;
- 
- 	/* We keep the old state_change and data_ready CB's here */
- 	void			(*sk_ostate)(struct sock *);
 Index: linux/net/sunrpc/svcsock.c
 ===================================================================
---- linux.orig/net/sunrpc/svcsock.c	2007-04-26 13:08:32.000000000 +1000
-+++ linux/net/sunrpc/svcsock.c	2007-05-16 23:29:24.961221880 +1000
-@@ -883,6 +883,12 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- 	return error;
+--- linux.orig/net/sunrpc/svcsock.c	2007-05-16 23:50:21.721414451 +1000
++++ linux/net/sunrpc/svcsock.c	2007-05-17 00:16:39.911496313 +1000
+@@ -83,6 +83,8 @@ static void		svc_udp_data_ready(struct s
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+ static void		svc_close_socket(struct svc_sock *svsk);
++static void		svc_tcpip_detach(struct svc_sock *);
++static void		svc_tcpip_free(struct svc_sock *);
+ 
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+ static int svc_deferred_recv(struct svc_rqst *rqstp);
+@@ -377,14 +379,9 @@ svc_sock_put(struct svc_sock *svsk)
+ 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
+ 		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
+ 
+-		dprintk("svc: releasing dead socket\n");
+-		if (svsk->sk_sock->file)
+-			sockfd_put(svsk->sk_sock);
+-		else
+-			sock_release(svsk->sk_sock);
+ 		if (svsk->sk_info_authunix != NULL)
+ 			svcauth_unix_info_release(svsk->sk_info_authunix);
+-		kfree(svsk);
++    	    	svsk->sk_ops->sko_free(svsk);
+ 	}
  }
  
-+static const struct svc_sock_ops svc_udp_ops = {
-+	.sko_name = "udp",
-+	.sko_recvfrom = svc_udp_recvfrom,
-+	.sko_sendto = svc_udp_sendto
-+};
-+
+@@ -886,7 +883,9 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ static const struct svc_sock_ops svc_udp_ops = {
+ 	.sko_name = "udp",
+ 	.sko_recvfrom = svc_udp_recvfrom,
+-	.sko_sendto = svc_udp_sendto
++	.sko_sendto = svc_udp_sendto,
++	.sko_detach = svc_tcpip_detach,
++	.sko_free = svc_tcpip_free
+ };
+ 
  static void
- svc_udp_init(struct svc_sock *svsk)
- {
-@@ -891,8 +897,7 @@ svc_udp_init(struct svc_sock *svsk)
+@@ -1328,7 +1327,9 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ static const struct svc_sock_ops svc_tcp_ops = {
+ 	.sko_name = "tcp",
+ 	.sko_recvfrom = svc_tcp_recvfrom,
+-	.sko_sendto = svc_tcp_sendto
++	.sko_sendto = svc_tcp_sendto,
++	.sko_detach = svc_tcpip_detach,
++	.sko_free = svc_tcpip_free
+ };
  
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
--	svsk->sk_recvfrom = svc_udp_recvfrom;
--	svsk->sk_sendto = svc_udp_sendto;
-+	svsk->sk_ops = &svc_udp_ops;
- 
- 	/* initialise setting must have enough space to
- 	 * receive and respond to one request.
-@@ -1320,14 +1325,19 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	return sent;
+ static void
+@@ -1768,6 +1769,38 @@ bummer:
  }
  
-+static const struct svc_sock_ops svc_tcp_ops = {
-+	.sko_name = "tcp",
-+	.sko_recvfrom = svc_tcp_recvfrom,
-+	.sko_sendto = svc_tcp_sendto
-+};
+ /*
++ * Detach the svc_sock from the socket so that no
++ * more callbacks occur.
++ */
++static void
++svc_tcpip_detach(struct svc_sock *svsk)
++{
++	struct sock *sk = svsk->sk_sk;
 +
++	dprintk("svc: svc_sock_detach(%p)\n", svsk);
++
++	/* put back the old socket callbacks */
++	sk->sk_state_change = svsk->sk_ostate;
++	sk->sk_data_ready = svsk->sk_odata;
++	sk->sk_write_space = svsk->sk_owspace;
++}
++
++/*
++ * Free the svc_sock's socket resources and the svc_sock itself.
++ */
++static void
++svc_tcpip_free(struct svc_sock *svsk)
++{
++	dprintk("svc: svc_sock_free(%p)\n", svsk);
++
++	if (svsk->sk_sock->file)
++		sockfd_put(svsk->sk_sock);
++	else
++		sock_release(svsk->sk_sock);
++	kfree(svsk);
++}
++
++/*
+  * Remove a dead socket
+  */
  static void
- svc_tcp_init(struct svc_sock *svsk)
- {
- 	struct sock	*sk = svsk->sk_sk;
- 	struct tcp_sock *tp = tcp_sk(sk);
+@@ -1781,9 +1814,8 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	serv = svsk->sk_server;
+ 	sk = svsk->sk_sk;
  
--	svsk->sk_recvfrom = svc_tcp_recvfrom;
--	svsk->sk_sendto = svc_tcp_sendto;
-+	svsk->sk_ops = &svc_tcp_ops;
+-	sk->sk_state_change = svsk->sk_ostate;
+-	sk->sk_data_ready = svsk->sk_odata;
+-	sk->sk_write_space = svsk->sk_owspace;
++	if (svsk->sk_ops->sko_detach)
++		svsk->sk_ops->sko_detach(svsk);
  
- 	if (sk->sk_state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
-@@ -1475,7 +1485,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	spin_lock_bh(&serv->sv_lock);
  
- 	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
- 		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_recvfrom(rqstp);
-+	len = svsk->sk_ops->sko_recvfrom(rqstp);
- 	dprintk("svc: got len=%d\n", len);
+Index: linux/include/linux/sunrpc/svcsock.h
+===================================================================
+--- linux.orig/include/linux/sunrpc/svcsock.h	2007-05-16 23:50:21.637425405 +1000
++++ linux/include/linux/sunrpc/svcsock.h	2007-05-17 00:12:50.074342601 +1000
+@@ -15,6 +15,18 @@ struct svc_sock_ops {
+ 	const char		*sko_name;
+ 	int			(*sko_recvfrom)(struct svc_rqst *rqstp);
+ 	int			(*sko_sendto)(struct svc_rqst *rqstp);
++	/*
++	 * Detach the svc_sock from it's socket, so that the
++	 * svc_sock will not be enqueued any more.  This is
++	 * the first stage in the destruction of a svc_sock.
++	 */
++	void			(*sko_detach)(struct svc_sock *);
++	/*
++	 * Release all network-level resources held by the svc_sock,
++	 * and the svc_sock itself.  This is the final stage in the
++	 * destruction of a svc_sock.
++	 */
++	void			(*sko_free)(struct svc_sock *);
+ };
  
- 	/* No data, incomplete (TCP) read, or accept() */
-@@ -1535,7 +1545,7 @@ svc_send(struct svc_rqst *rqstp)
- 	if (test_bit(SK_DEAD, &svsk->sk_flags))
- 		len = -ENOTCONN;
- 	else
--		len = svsk->sk_sendto(rqstp);
-+		len = svsk->sk_ops->sko_sendto(rqstp);
- 	mutex_unlock(&svsk->sk_mutex);
- 	svc_sock_release(rqstp);
- 
+ /*
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 Apparently, I'm Bedevere.  Which MPHG character are you?
