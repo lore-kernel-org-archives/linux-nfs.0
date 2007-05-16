@@ -1,22 +1,25 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: burst mount of NFS over tcp
-Date: Wed, 16 May 2007 10:32:50 +0800
-Message-ID: <1179282770.3662.8.camel@raven.themaw.net>
-References: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/2] NFS: Add the mount option nosharedcache
+Date: Wed, 16 May 2007 13:46:36 +1000
+Message-ID: <17994.32412.173039.15055@notabene.brown>
+References: <17992.63372.522494.519874@notabene.brown>
+	<20070516013656.26323.55568.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Flavio Leitner <flavio.leitner@gmail.com>
+Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
+	Ian Kent <raven@themaw.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ho9Jw-0002bZ-2v
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 19:32:58 -0700
-Received: from out1.smtp.messagingengine.com ([66.111.4.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ho9Jy-0001Tc-L0
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 19:32:59 -0700
-In-Reply-To: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
+	id 1HoATU-0000vX-PN
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 20:46:52 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HoATW-00009G-CF
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 20:46:55 -0700
+In-Reply-To: message from Trond Myklebust on Tuesday May 15
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,45 +32,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-15 at 12:17 -0300, Flavio Leitner wrote:
-> (please, keep myself on CC because I'm not subscribed)
+On Tuesday May 15, Trond.Myklebust@netapp.com wrote:
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
 > 
-> Hi,
-> 
-> In the case of several (>500) mounts running at the same time with -o tcp,
-> the number of attempts that succeed is about 300-400 because it run out
-> of priviledged port (they are busy in TIME_WAIT state).
-> 
-> The priviledged port range available (~512 ports) for this can't be changed to
-> avoid more port conflicts.
-> 
-> An option could be reuse these ports in TIME_WAIT state openning the socket
-> with SO_REUSEADDR socket option, but the socket is a tuple:
-> (local addr, local port, remote addr, remote port, proto) and it must be
-> different from the previous one. Well, they always are equal when you
-> mount the same NFS server, so it can't be.
+> Add a flag to allow users to elect not to share the NFS super block with
+> another mount point, even if the fsids are the same. This will allow
+> users to set different mount options for the two different super blocks,
+> and is safe as long as they do not have inodes in common.
 
-This has been discussed before.
-The SO_REUSEADDR is used on server side listening sockets and, as far as
-I can tell, can't be used on the client side.
-
-But I'm open to be educated.
+Thanks.
+Just to clarify:  By "is safe" you mean won't cause cache-coherence
+strangeness", or is there some other safety issue that I'm missing.
 
 > 
-> I think reducing TIME_WAIT state in kernel enabling fast recycle
-> affects other tcp
-> connections and have some extra undesireble effects.
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/super.c             |   34 +++++++++++++++++++++++++++++-----
+>  include/linux/nfs4_mount.h |    1 +
+>  include/linux/nfs_mount.h  |    1 +
+>  3 files changed, 31 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index ca20d3c..c03120a 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -291,6 +291,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+>  		{ NFS_MOUNT_NONLM, ",nolock", "" },
+>  		{ NFS_MOUNT_NOACL, ",noacl", "" },
+>  		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
+> +		{ NFS_MOUNT_UNSHARED, ",nosharecache", ""},
+                                        ^^^^^^^^^^^^
 
-Exactly. Ideally there would be a socket pooling mechanism under glibc
-RPC which would allow for reuse of connected sockets but I can't think
-of a way to do this since file handles are per process. And adding
-non-standard syscalls is likely to not be well accepted.
+This is different to the spelling used in the subject line.  Was that
+intentional, or a typo?
 
-Any ideas?
-
-Ian
-
-
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
