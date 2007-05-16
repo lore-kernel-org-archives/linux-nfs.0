@@ -1,24 +1,39 @@
-From: Roger Heflin <rheflin@atipa.com>
-Subject: Re: Apparent Deadlock with nfsd/jfs on 2.6.21.1 under bonnie.
-Date: Tue, 15 May 2007 17:06:38 -0500
-Message-ID: <464A2EEE.7070509@atipa.com>
-References: <4649BED9.6090207@atipa.com>
-	<pan.2007.05.15.22.03.07.359081@linux.vnet.ibm.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: inconsistent mount attributes (ro/rw), RHEL5 / Netapp
+Date: Tue, 15 May 2007 20:27:34 -0400
+Message-ID: <1179275254.6464.88.camel@heimdal.trondhjem.org>
+References: <4627B3DD.5050409@amd.com>
+	<1177007479.6623.14.camel@heimdal.trondhjem.org>
+	<4627D303.8060009@amd.com>
+	<1177020662.6628.30.camel@heimdal.trondhjem.org>
+	<4627EBFC.2090704@amd.com>
+	<462CFC92.2080201@amd.com> <463B97E6.4030009@amd.com>
+	<1178314889.6533.19.camel@heimdal.trondhjem.org>
+	<1178379473.4559.24.camel@raven.themaw.net>
+	<1178385472.6561.43.camel@heimdal.trondhjem.org>
+	<20070514131743.GG31764@petra.dvoda.cz>
+	<1179149048.6858.5.camel@heimdal.trondhjem.org>
+	<1179153555.3811.57.camel@raven.themaw.net>
+	<1179157631.6474.8.camel@heimdal.trondhjem.org>
+	<1179158812.3811.68.camel@raven.themaw.net>
+	<17992.58783.827023.697258@notabene.brown>
+	<1179184319.6467.7.camel@heimdal.trondhjem.org>
+	<17992.63372.522494.519874@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
+	Ian Kent <raven@themaw.net>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ho5AF-0003AM-HE
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 15:06:40 -0700
-Received: from 125.14.124.24.cm.sunflower.com ([24.124.14.125]
-	helo=mail.atipa.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ho5AF-00063e-VK
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 15:06:42 -0700
-In-Reply-To: <pan.2007.05.15.22.03.07.359081@linux.vnet.ibm.com>
+	id 1Ho7Mm-000848-N0
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 17:27:44 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ho7Mo-0008NT-1k
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 17:27:47 -0700
+In-Reply-To: <17992.63372.522494.519874@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,71 +46,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Dave Kleikamp wrote:
-> Sorry if I'm missing anyone on the reply, but my mail feed is messed up
-> and I'm replying from the gmane archive.
-> 
-> On Tue, 15 May 2007 09:08:25 -0500, Roger Heflin wrote:
-> 
->> Hello,
->>
->> Running 2.6.21.1 (FC6 Dist), with a RHEL client (client
->> appears to not be having issues) I am getting what I believe
->> is a deadlock on the server end.    This is with JFS and
->> NFSD, I have not tested yet with a non-JFS filesystem,
->> though our customer indicated that they have duplicated it with
->> the ext3 filesystem.
-> 
-> I don't have an answer to an ext3 deadlock, but this looks like a jfs
-> problem that was recently fixed in linux-2.6.22-rc1.  I had intended to
-> send it to the stable kernel after it was picked up in mainline, but
-> hadn't gotten to it yet.
-> 
-> The patch is here:
-> http://git.kernel.org/gitweb.cgi?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=05ec9e26be1f668ccba4ca54d9a4966c6208c611
-> 
+On Tue, 2007-05-15 at 09:58 +1000, Neil Brown wrote:
 
-Ok.
-
-My customer reported that he though he had a ext3, so far I have
-not been able to duplicate the ext3 hang.
-
-If ext3 survives until tomorrow, I will retest unpatched jfs, and then
-patch it and test again.
-
-
->> The basic setup is:
->> fiber channel array -> qlogic fiber card -> /dev/sdx -> LVM stripe ->
->> jfs -> nfs.
->>
->> Running bonnie on a NFS share has apparently produced a deadlock.   I
->> have ran bonnie several times without having any issues, I don't believe
->> this is a HW issue, we have a couple of other machines configured with
->> slightly different HW and are also able to duplicate this problem on
->> those machines.  There are no abnormal messages in dmesg or in the
->> messages file.
->>
->> After having the apparent deadlock I started a dd of a on the deadlocked
->> filesystem and according to vmstat 1 that was actually working, I then
->> did a "mkdir junk" on the deadlocked filesystem and that apparently put
->> the cat into a permanent "D" state.   I will include the sysrq -t from
->> before the cat/mkdir and after the cat/mkdir.
->>
->> I believe I can duplicate this again, and other than the processes going
->> into the "D" state everything else seems to work.   Other filesytems
->> appear to be functional, I can still login to the machine.
->>
->> Right now the machine is in the deadlocked state, and I will wait for
->> any suggestions of more data to collect or other tests to try.
+> Would we need to rev the mount_data version to add such a flag, or are
+> we sure that unused flags are 0, and so simply add
 > 
-> I haven't tried it on a locked-up system, but you may try waking up the
-> [jfsIO] kernel thread with a signal.  I'm not sure what signals may get
-> through, since the thread doesn't specifically act on a signal.
+> #define NFS_MOUNT_UNSHARED	0x8000 /* 5 */
 > 
+> (I don't understand the NFS_MOUNT_FLAGMASK.  Can the top 16 bits of
+> flags be used?)
 
-I will try on the next lockup.
+I don't see why not. It is a private field in a private data structure.
+I've really never understood the point of that mask in the first place.
 
-                    Roger
+> If the "you have mixed metaphors" error was unique, the mount.nfs
+> program could conceivable respond to it by setting the UNSHARED flag,
+> trying again, and printing a big loud warning.... I wonder if that
+> would be a good idea...
+>
+> But then what if you wanted sharedcache and weren't fussed about exact
+> options, how would mount.nfs handle that?   Finding a matching entry
+> in /etc/mtab would be hard because fsid matching would be non-trivial.
+> Maybe we want two flags "UNSHARED" and "SHARE_AND_IGNORE_MY_SETTINGS"??
+
+None of the other filesystems allow you to do this. They will simply
+return EBUSY, and leave up to you to figure out what is wrong.
+
+Trond
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
