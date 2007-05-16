@@ -1,85 +1,44 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] NFS: Add the mount option nosharedcache
-Date: Wed, 16 May 2007 09:22:37 -0400
-Message-ID: <1179321757.6521.26.camel@heimdal.trondhjem.org>
-References: <17992.63372.522494.519874@notabene.brown>
-	<20070516013656.26323.55568.stgit@heimdal.trondhjem.org>
-	<17994.32412.173039.15055@notabene.brown>
+From: Roger Heflin <rheflin@atipa.com>
+Subject: Kernel BUG at mm/slab.c:2380 on NFS server in nfsd (2.6.21.1)
+Date: Wed, 16 May 2007 08:55:19 -0500
+Message-ID: <464B0D47.6070509@atipa.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Paul Krizak <paul.krizak@amd.com>, nfs@lists.sourceforge.net,
-	Ian Kent <raven@themaw.net>
-To: Neil Brown <neilb@suse.de>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoJSl-0000c9-EA
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 06:22:43 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoJSo-0000Jf-5o
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 06:22:46 -0700
-In-Reply-To: <17994.32412.173039.15055@notabene.brown>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: NFS <nfs@lists.sourceforge.net>,
+	Linux-Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758591AbXEPNza@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, 2007-05-16 at 13:46 +1000, Neil Brown wrote:
-> On Tuesday May 15, Trond.Myklebust@netapp.com wrote:
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > Add a flag to allow users to elect not to share the NFS super block with
-> > another mount point, even if the fsids are the same. This will allow
-> > users to set different mount options for the two different super blocks,
-> > and is safe as long as they do not have inodes in common.
-> 
-> Thanks.
-> Just to clarify:  By "is safe" you mean won't cause cache-coherence
-> strangeness", or is there some other safety issue that I'm missing.
+Running bonnie over nfs on a RHEL4.4 client against a 2.6.21.1 server
+got me this crash after about 4 hours of running on the server:
 
-cache coherency is what I'm referring to. I'll attempt to clarify that.
+This was running lvm -> ext3 -> nfs ---- nfsclient (RHEL4.4).
 
-> > 
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> > 
-> >  fs/nfs/super.c             |   34 +++++++++++++++++++++++++++++-----
-> >  include/linux/nfs4_mount.h |    1 +
-> >  include/linux/nfs_mount.h  |    1 +
-> >  3 files changed, 31 insertions(+), 5 deletions(-)
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index ca20d3c..c03120a 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -291,6 +291,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
-> >  		{ NFS_MOUNT_NONLM, ",nolock", "" },
-> >  		{ NFS_MOUNT_NOACL, ",noacl", "" },
-> >  		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
-> > +		{ NFS_MOUNT_UNSHARED, ",nosharecache", ""},
->                                         ^^^^^^^^^^^^
-> 
-> This is different to the spelling used in the subject line.  Was that
-> intentional, or a typo?
+	Ideas?
 
-No. This was the correct spelling, and the title line is wrong. I'll fix
-it up...
+                       Roger
 
-Trond
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+May 15 21:10:31 vault1 kernel: ------------[ cut here ]------------
+May 15 21:10:31 vault1 kernel: kernel BUG at mm/slab.c:2380!
+May 15 21:10:31 vault1 kernel: invalid opcode: 0000 [1] SMP
+May 15 21:10:31 vault1 kernel: CPU 0
+May 15 21:10:31 vault1 kernel: Modules linked in: qla2xxx nfsd exportfs 
+lockd nfs_acl sunrpc hidp l2cap bluetooth ipv6 cpufreq_ondemand jfs 
+dm_mirror dm_multipath dm_mod video sbs i2c_ec dock button battery 
+asus_acpi ac lp snd_intel8x0 snd_ac97_codec ac97_bus snd_seq_dummy 
+snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device sg snd_pcm_oss 
+floppy snd_mixer_oss snd_pcm cfi_cmdset_0002 cfi_util mtdpart snd_timer 
+jedec_probe cfi_probe gen_probe snd ck804xrom sata_nv mtdcore chipreg 
+i2c_nforce2 soundcore map_funcs libata snd_page_alloc pcspkr i2c_core 
+k8temp hwmon forcedeth ohci1394 ieee1394 parport_pc ide_cd parport cdrom 
+serio_raw scsi_transport_fc shpchp megaraid_mbox sd_mod scsi_mod 
+megaraid_mm ext3 jbd ehci_hcd ohci_hcd uhci_hcd
+May 15 21:10:31 vault1 kernel: Pid: 4256, comm: nfsd Not tainted 2.6.21.1 #1
+May 15 21:10:31 vault1 kernel: RIP: 0010:[<ffffffff8025a710>] 
+[<ffffffff8025a710>] cache_alloc_refill+0xe6/0x1f3
+May 15 21:10:31 vault1 kernel: RSP: 0018:ffff81021dead6d0  EFLAGS: 00010002
+May 15 21:10:31 vault1 kernel: RAX: 0000000000000001 RBX: 
+ffff81012211d960 RCX: ffff810120013040
+May 15 21:10:31 vault1 kernel: RDX: 000000000000000e RSI: 
+ffff810139020000 RDI: ffff810120013040
