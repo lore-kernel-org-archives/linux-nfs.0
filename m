@@ -1,8 +1,8 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 2/14] knfsd: delete per transport
-Date: Wed, 16 May 2007 16:51:23 -0400
-Message-ID: <20070516205123.GB18927@fieldses.org>
-References: <20070516191951.GH9626@sgi.com>
+Subject: Re: [RFC,PATCH 0/14] A transport switch for knfsd
+Date: Wed, 16 May 2007 16:53:17 -0400
+Message-ID: <20070516205316.GC18927@fieldses.org>
+References: <20070516191821.GF9626@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
@@ -13,13 +13,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoQT4-0000b3-HU
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:51:44 -0700
+	id 1HoQUo-0000mz-25
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:53:18 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HoQT5-0002UW-Sp
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:51:33 -0700
-In-Reply-To: <20070516191951.GH9626@sgi.com>
+	(Exim 4.44) id 1HoQUp-000368-Mb
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 13:53:21 -0700
+In-Reply-To: <20070516191821.GF9626@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +32,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trivial comments, since I couldn't find any real problems:
+On Thu, May 17, 2007 at 05:18:21AM +1000, Greg Banks wrote:
+> These 14 patches are an experimental transport switch for knfsd.
+> They're based on Tom Tucker's 01-svc-xprt-switch.patch from the
+> nfsrdma project November release, but redesigned to provide as simple
+> and clean an abstraction as possible to new transport-specific code.
+> Various messy details of flags, reference counts and other behaviour
+> which are currently redundantly handled in both TCP and UDP code,
+> will be handled in generic code now.  This makes the task of writing
+> new transport code easier and less prone to breakage.
 
-On Thu, May 17, 2007 at 05:19:51AM +1000, Greg Banks wrote:
-> @@ -886,7 +883,9 @@ svc_udp_sendto(struct svc_rqst *rqstp)
->  static const struct svc_sock_ops svc_udp_ops = {
->  	.sko_name = "udp",
->  	.sko_recvfrom = svc_udp_recvfrom,
-> -	.sko_sendto = svc_udp_sendto
-> +	.sko_sendto = svc_udp_sendto,
+Are there other conjectured future users besides rdma?
 
-Any objection to always just including a trailing comma and saving a
-little noise in each diff?  That seems to be common practice elsewhere.
-
-> +static void
-> +svc_tcpip_free(struct svc_sock *svsk)
-> +{
-> +	dprintk("svc: svc_sock_free(%p)\n", svsk);
-
-We lived without these dprintk's before; do we need them now?
-
-> --- linux.orig/include/linux/sunrpc/svcsock.h	2007-05-16 23:50:21.637425405 +1000
-> +++ linux/include/linux/sunrpc/svcsock.h	2007-05-17 00:12:50.074342601 +1000
-> @@ -15,6 +15,18 @@ struct svc_sock_ops {
->  	const char		*sko_name;
->  	int			(*sko_recvfrom)(struct svc_rqst *rqstp);
->  	int			(*sko_sendto)(struct svc_rqst *rqstp);
-> +	/*
-> +	 * Detach the svc_sock from it's socket, so that the
-
-s/it's/its/
+What's happened to server-side ipv6, by the way?
 
 --b.
 
