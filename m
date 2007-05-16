@@ -1,26 +1,22 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/2] NFS: Error when mounting the same filesystem with
-	different options
-Date: Tue, 15 May 2007 21:37:01 -0400
-Message-ID: <20070516013701.26323.73324.stgit@heimdal.trondhjem.org>
-References: <17992.63372.522494.519874@notabene.brown>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: burst mount of NFS over tcp
+Date: Wed, 16 May 2007 10:32:50 +0800
+Message-ID: <1179282770.3662.8.camel@raven.themaw.net>
+References: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Ian Kent <raven@themaw.net>
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Flavio Leitner <flavio.leitner@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ho8Rt-0005zW-Vf
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 18:37:06 -0700
-Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
-	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ho8Rv-0007xf-Dd
-	for nfs@lists.sourceforge.net; Tue, 15 May 2007 18:37:08 -0700
-In-Reply-To: <17992.63372.522494.519874@notabene.brown>
+	id 1Ho9Jw-0002bZ-2v
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 19:32:58 -0700
+Received: from out1.smtp.messagingengine.com ([66.111.4.25])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ho9Jy-0001Tc-L0
+	for nfs@lists.sourceforge.net; Tue, 15 May 2007 19:32:59 -0700
+In-Reply-To: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,87 +29,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Tue, 2007-05-15 at 12:17 -0300, Flavio Leitner wrote:
+> (please, keep myself on CC because I'm not subscribed)
+> 
+> Hi,
+> 
+> In the case of several (>500) mounts running at the same time with -o tcp,
+> the number of attempts that succeed is about 300-400 because it run out
+> of priviledged port (they are busy in TIME_WAIT state).
+> 
+> The priviledged port range available (~512 ports) for this can't be changed to
+> avoid more port conflicts.
+> 
+> An option could be reuse these ports in TIME_WAIT state openning the socket
+> with SO_REUSEADDR socket option, but the socket is a tuple:
+> (local addr, local port, remote addr, remote port, proto) and it must be
+> different from the previous one. Well, they always are equal when you
+> mount the same NFS server, so it can't be.
 
-Unless the user sets the NFS_MOUNT_NOSHAREDCACHE mount flag, we should
-return EBUSY if the filesystem is already mounted on a superblock that
-has set conflicting mount options.
+This has been discussed before.
+The SO_REUSEADDR is used on server side listening sockets and, as far as
+I can tell, can't be used on the client side.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+But I'm open to be educated.
 
- fs/nfs/super.c |   33 ++++++++++++++++++++++++++++++++-
- 1 files changed, 32 insertions(+), 1 deletions(-)
+> 
+> I think reducing TIME_WAIT state in kernel enabling fast recycle
+> affects other tcp
+> connections and have some extra undesireble effects.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c03120a..fd6e330 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -601,7 +601,9 @@ static int nfs_compare_super(struct super_block *sb, void *data)
- {
- 	struct nfs_server *server = data, *old = NFS_SB(sb);
- 
--	if (old->nfs_client != server->nfs_client)
-+	if (memcmp(&old->nfs_client->cl_addr,
-+				&server->nfs_client->cl_addr,
-+				sizeof(old->nfs_client->cl_addr)) != 0)
- 		return 0;
- 	/* Note: NFS_MOUNT_UNSHARED == NFS4_MOUNT_UNSHARED */
- 	if (old->flags & NFS_MOUNT_UNSHARED)
-@@ -611,6 +613,29 @@ static int nfs_compare_super(struct super_block *sb, void *data)
- 	return 1;
- }
- 
-+static int nfs_compare_mount_options(const struct nfs_server *a, const struct nfs_server *b)
-+{
-+	if (a->nfs_client != b->nfs_client)
-+		goto Ebusy;
-+	if (a->flags != b->flags)
-+		goto Ebusy;
-+	if (a->wsize != b->wsize)
-+		goto Ebusy;
-+	if (a->rsize != b->rsize)
-+		goto Ebusy;
-+	if (a->acregmin != b->acregmin)
-+		goto Ebusy;
-+	if (a->acregmax != b->acregmax)
-+		goto Ebusy;
-+	if (a->acdirmin != b->acdirmin)
-+		goto Ebusy;
-+	if (a->acdirmax != b->acdirmax)
-+		goto Ebusy;
-+	return 0;
-+Ebusy:
-+	return -EBUSY;
-+}
-+
- static int nfs_get_sb(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt)
- {
-@@ -645,8 +670,11 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 	}
- 
- 	if (s->s_fs_info != server) {
-+		error = nfs_compare_mount_options(server, NFS_SB(s));
- 		nfs_free_server(server);
- 		server = NULL;
-+		if (error < 0)
-+			goto error_splat_super;
- 	}
- 
- 	if (!s->s_root) {
-@@ -903,8 +931,11 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 	}
- 
- 	if (s->s_fs_info != server) {
-+		error = nfs_compare_mount_options(server, NFS_SB(s));
- 		nfs_free_server(server);
- 		server = NULL;
-+		if (error < 0)
-+			goto error_splat_super;
- 	}
- 
- 	if (!s->s_root) {
+Exactly. Ideally there would be a socket pooling mechanism under glibc
+RPC which would allow for reuse of connected sockets but I can't think
+of a way to do this since file handles are per process. And adding
+non-standard syscalls is likely to not be well accepted.
+
+Any ideas?
+
+Ian
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
