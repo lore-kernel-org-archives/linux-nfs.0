@@ -1,7 +1,7 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [RFC,PATCH 0/14] A transport switch for knfsd
-Date: Thu, 17 May 2007 05:18:21 +1000
-Message-ID: <20070516191821.GF9626@sgi.com>
+Subject: [RFC,PATCH 1/14] knfsd: add transport ops
+Date: Thu, 17 May 2007 05:19:06 +1000
+Message-ID: <20070516191906.GG9626@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
@@ -9,16 +9,16 @@ Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoP11-0008NM-Dm
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:18:27 -0700
+	id 1HoP1n-0008T9-Ry
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:19:15 -0700
 Received: from netops-testserver-3-out.sgi.com
 	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX18h71VKobhChIIuQrKIPu4+fNumnJatvoc=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoP14-0000O6-4N
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:18:30 -0700
+	ident=[U2FsdGVkX1/xLHnkJkmlWb+JRYRDRAFDvyL/RhrAF9I=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoP1k-0002LT-BI
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 12:19:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,38 +31,113 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-G'day,
 
-These 14 patches are an experimental transport switch for knfsd.
-They're based on Tom Tucker's 01-svc-xprt-switch.patch from the
-nfsrdma project November release, but redesigned to provide as simple
-and clean an abstraction as possible to new transport-specific code.
-Various messy details of flags, reference counts and other behaviour
-which are currently redundantly handled in both TCP and UDP code,
-will be handled in generic code now.  This makes the task of writing
-new transport code easier and less prone to breakage.
+Start moving to a transport switch for knfsd.  Add a svc_sock_ops
+operations vector and move the sk_sendto and sk_recvfrom function
+pointers into it.
 
-These patches have received light testing in a tree similar to 2.6.19
-on ia64, and been forward ported without further testing to 2.6.21.
-They're intended for testing in Tom's development tree, but are cc'ed
-to the Linux mailing list for initial review.
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+---
 
-[RFC,PATCH 1/14] knfsd: add transport ops
-[RFC,PATCH 2/14] knfsd: delete per transport
-[RFC,PATCH 3/14] knfsd: prepare reply per transport
-[RFC,PATCH 4/14] knfsd: has_wspace per transport
-[RFC,PATCH 5/14] knfsd: max_payload per transport
-[RFC,PATCH 6/14] knfsd: add svc_sock_is_connection
-[RFC,PATCH 7/14] knfsd: export svc_sock_enqueue, svc_sock_received
-[RFC,PATCH 8/14] knfsd: centralise SK_CLOSE handling
-[RFC,PATCH 9/14] knfsd: centralise SK_CONN handling
-[RFC,PATCH 10/14] knfsd: add SK_LISTENER
-[RFC,PATCH 11/14] knfsd: centralise SK_DATA handling
-[RFC,PATCH 12/14] knfsd: add svc_sock_get
-[RFC,PATCH 13/14] knfsd: add svc_sock_init
-[RFC,PATCH 14/14] knfsd: centralise SK_ bits some more
+ include/linux/sunrpc/svcsock.h |    9 +++++++--
+ net/sunrpc/svcsock.c           |   22 ++++++++++++++++------
+ 2 files changed, 23 insertions(+), 8 deletions(-)
 
-Greg.
+Index: linux/include/linux/sunrpc/svcsock.h
+===================================================================
+--- linux.orig/include/linux/sunrpc/svcsock.h	2007-04-26 13:08:32.000000000 +1000
++++ linux/include/linux/sunrpc/svcsock.h	2007-05-16 23:29:24.797243245 +1000
+@@ -11,6 +11,12 @@
+ 
+ #include <linux/sunrpc/svc.h>
+ 
++struct svc_sock_ops {
++	const char		*sko_name;
++	int			(*sko_recvfrom)(struct svc_rqst *rqstp);
++	int			(*sko_sendto)(struct svc_rqst *rqstp);
++};
++
+ /*
+  * RPC server socket.
+  */
+@@ -42,8 +48,7 @@ struct svc_sock {
+ 						 * be revisted */
+ 	struct mutex		sk_mutex;	/* to serialize sending data */
+ 
+-	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
+-	int			(*sk_sendto)(struct svc_rqst *rqstp);
++	const struct svc_sock_ops *sk_ops;
+ 
+ 	/* We keep the old state_change and data_ready CB's here */
+ 	void			(*sk_ostate)(struct sock *);
+Index: linux/net/sunrpc/svcsock.c
+===================================================================
+--- linux.orig/net/sunrpc/svcsock.c	2007-04-26 13:08:32.000000000 +1000
++++ linux/net/sunrpc/svcsock.c	2007-05-16 23:29:24.961221880 +1000
+@@ -883,6 +883,12 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
+ }
+ 
++static const struct svc_sock_ops svc_udp_ops = {
++	.sko_name = "udp",
++	.sko_recvfrom = svc_udp_recvfrom,
++	.sko_sendto = svc_udp_sendto
++};
++
+ static void
+ svc_udp_init(struct svc_sock *svsk)
+ {
+@@ -891,8 +897,7 @@ svc_udp_init(struct svc_sock *svsk)
+ 
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
+-	svsk->sk_recvfrom = svc_udp_recvfrom;
+-	svsk->sk_sendto = svc_udp_sendto;
++	svsk->sk_ops = &svc_udp_ops;
+ 
+ 	/* initialise setting must have enough space to
+ 	 * receive and respond to one request.
+@@ -1320,14 +1325,19 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
+ }
+ 
++static const struct svc_sock_ops svc_tcp_ops = {
++	.sko_name = "tcp",
++	.sko_recvfrom = svc_tcp_recvfrom,
++	.sko_sendto = svc_tcp_sendto
++};
++
+ static void
+ svc_tcp_init(struct svc_sock *svsk)
+ {
+ 	struct sock	*sk = svsk->sk_sk;
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
+-	svsk->sk_recvfrom = svc_tcp_recvfrom;
+-	svsk->sk_sendto = svc_tcp_sendto;
++	svsk->sk_ops = &svc_tcp_ops;
+ 
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+@@ -1475,7 +1485,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 
+ 	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+ 		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
+-	len = svsk->sk_recvfrom(rqstp);
++	len = svsk->sk_ops->sko_recvfrom(rqstp);
+ 	dprintk("svc: got len=%d\n", len);
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
+@@ -1535,7 +1545,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	if (test_bit(SK_DEAD, &svsk->sk_flags))
+ 		len = -ENOTCONN;
+ 	else
+-		len = svsk->sk_sendto(rqstp);
++		len = svsk->sk_ops->sko_sendto(rqstp);
+ 	mutex_unlock(&svsk->sk_mutex);
+ 	svc_sock_release(rqstp);
+ 
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 Apparently, I'm Bedevere.  Which MPHG character are you?
