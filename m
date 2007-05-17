@@ -1,64 +1,34 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
-Date: Thu, 17 May 2007 08:39:25 -0400
-Message-ID: <EXNANE01SlSt7IZfSp100000a27@exnane01.hq.netapp.com>
-References: <20070516192211.GJ9626@sgi.com>
-	<20070516211053.GE18927@fieldses.org>
-	<20070517071202.GE27247@sgi.com>
-	<17996.11983.278205.708747@notabene.brown>
+From: Roger Heflin <rheflin@atipa.com>
+Subject: Re: Apparent Deadlock with nfsd/jfs on 2.6.21.1 under bonnie.
+Date: Thu, 17 May 2007 09:37:20 -0500
+Message-ID: <464C68A0.2050003@atipa.com>
+References: <4649BED9.6090207@atipa.com> <pan.2007.05.15.22.03.07.359081@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HofGd-0008Q3-IU
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:39:39 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HofGf-0004P8-Ba
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:39:42 -0700
-In-Reply-To: <17996.11983.278205.708747@notabene.brown>
-References: <20070516192211.GJ9626@sgi.com>
-	<20070516211053.GE18927@fieldses.org>
-	<20070517071202.GE27247@sgi.com>
-	<17996.11983.278205.708747@notabene.brown>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757924AbXEQOhc@vger.kernel.org>
+In-Reply-To: <pan.2007.05.15.22.03.07.359081@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-At 06:30 AM 5/17/2007, Neil Brown wrote:
->And I gather by the fact that you test "->sko_has_wspace" that RDMA
->doesn't have such a function?  Do that mean that RDMA will never
->reject a write due to lack of space?  That seems unlikely.
+Dave Kleikamp wrote:
 
-RDMA uses credits, which are preallocated per-connection resources in
-the hardware. RDMA transports don't generally support flow control, that
-is left to the upper layer. As such, if the client is obeying the protocol, the
-send will succeed. And if it's not, then the client only loses since the failure
-will cause the connection to be lost.
+> 
+> I don't have an answer to an ext3 deadlock, but this looks like a jfs
+> problem that was recently fixed in linux-2.6.22-rc1.  I had intended to
+> send it to the stable kernel after it was picked up in mainline, but
+> hadn't gotten to it yet.
+> 
+> The patch is here:
+> http://git.kernel.org/gitweb.cgi?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=05ec9e26be1f668ccba4ca54d9a4966c6208c611
+> 
 
-Someday we might want to support this kind of test. There are shared
-resource schemes in RDMA, more for the receive side, but it's not out of the
-question for sends. As a default though, a NULL has_wspace makes sense. 
+Dave,
 
-Tom.
+That appears to have fixed the JFS hangup.
 
+MTBF before was about 1 hour, under the same test I am over 20 hours
+and things appear to still be holding together.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+                             Roger
