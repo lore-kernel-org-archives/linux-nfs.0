@@ -1,27 +1,28 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC,PATCH 0/14] A transport switch for knfsd
-Date: Thu, 17 May 2007 08:11:49 -0400
-Message-ID: <EXNANE01mWzAKbn0wkU00000a24@exnane01.hq.netapp.com>
-References: <20070516191821.GF9626@sgi.com>
-	<20070516205316.GC18927@fieldses.org>
-	<20070517070004.GC27247@sgi.com>
+Subject: Re: [RFC, PATCH 7/14] knfsd: export svc_sock_enqueue,
+ svc_sock_received
+Date: Thu, 17 May 2007 08:23:58 -0400
+Message-ID: <EXNANE01WXopokhQLVp00000a25@exnane01.hq.netapp.com>
+References: <20070516192425.GM9626@sgi.com>
+	<20070516211703.GF18927@fieldses.org>
+	<20070517074518.GF27247@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hoept-0005gL-Ia
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:12:01 -0700
+	id 1Hof1Z-0006vt-Gp
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:24:05 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hoept-0004mn-BB
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:12:04 -0700
-In-Reply-To: <20070517070004.GC27247@sgi.com>
-References: <20070516191821.GF9626@sgi.com>
-	<20070516205316.GC18927@fieldses.org>
-	<20070517070004.GC27247@sgi.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hof1b-0000Co-6u
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:24:08 -0700
+In-Reply-To: <20070517074518.GF27247@sgi.com>
+References: <20070516192425.GM9626@sgi.com>
+	<20070516211703.GF18927@fieldses.org>
+	<20070517074518.GF27247@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,24 +35,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 03:00 AM 5/17/2007, Greg Banks wrote:
->It's intertesting to note that ipv6 support was added without a
->serverside transport switch; on Irix the addition of ipv6 was what
->justified a transport switch.
+At 03:45 AM 5/17/2007, Greg Banks wrote:
+> I was planning
+>to add a new file to /proc/fs/nfsd roughly analagous to the ports and
+>versions files, where the init script could write a string to indicate
+>which transports are enabled or disabled.  Transports would be managed
+>in a global list of structures analagous to struct xprt_type in Chuck's
+>client patches.
 
-At the moment, the client-side support doesn't use it either, though it
-did in earlier experiments. Right now it seems that simply passing in a
-AF_INET6 address is sufficient to trigger its use.
+I like this, it seems nearly the same as the /proc/fs/nfsd/thread node
+that's in there now. A new /proc/fs/nfsd/protocols node makes sense
+to me.
 
-I think the key thing about a "transport" in the NFS context is that it's
-really a "transport API", i.e. it uses sockets, or RDMA, or has some special
-property that requires special interface handling.
-
-For example, while SCTP in its basic single-stream mode uses sockets and
-might be a relatively close match to TCP, there are a lot of other aspects
-to the protocol which are nothing like it and won't be visible pretending it's
-just TCP (e.g. associations, integrity, etc). Having a bottom-edge transport
-abstraction helps a lot in taking advantage of them.
+Another option might be to support switches to the nfsd command,
+like other os's do (nfsd -u). This makes a lot of sense if the current
+#ifdef's to enable nfsd's protocols is retained. If module loading is
+supported, I like the dynamic /proc aproach better.
 
 Tom.
 
