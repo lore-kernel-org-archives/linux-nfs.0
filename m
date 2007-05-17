@@ -1,8 +1,8 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC,PATCH 8/14] knfsd: centralise SK_CLOSE handling
-Date: Thu, 17 May 2007 20:59:18 +1000
-Message-ID: <17996.13702.484468.777723@notabene.brown>
-References: <20070516192509.GN9626@sgi.com>
+Subject: Re: [RFC,PATCH 9/14] knfsd: centralise SK_CONN handling
+Date: Thu, 17 May 2007 21:03:09 +1000
+Message-ID: <17996.13933.338662.129612@notabene.brown>
+References: <20070516192554.GO9626@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
@@ -10,15 +10,15 @@ Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
 To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hodhe-00064V-1I
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 03:59:26 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1HodlS-0006bw-GZ
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 04:03:22 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hodhg-0001rT-Mk
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 03:59:29 -0700
+	(Exim 4.44) id 1HodlT-0003OU-CX
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 04:03:25 -0700
 In-Reply-To: message from Greg Banks on Thursday May 17
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,37 +34,12 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Thursday May 17, gnb@sgi.com wrote:
 > 
-> Centralise the handling of the SK_CLOSE bit to that future
-> sunrpc server transport implementations will be easier to
-> write correctly.  The bit should now not be manipulated
-> directly, inline exist to wrap that.  Also, the sko_recvfrom
-> method does not need to check for SK_CLOSE anymore, that's
-> handled in core code.
-...
->  
->  		if (svsk) {
-> -			svc_sock_enqueue(svsk);
-> +			/*
-> +			 * We're always called in nfsd context so we
-> +			 * don't have to muck around with SK_CLOSE.
-> +			 */
-> +			svc_delete_socket(svsk);
->  			svc_sock_put(svsk);
->  		}
-
-I'm not convinced that this is right.  
-svc_delete_socket has a comment:
-	/*
-	 * We used to delete the svc_sock from whichever list
-	 * it's sk_ready node was on, but we don't actually
-	 * need to.  This is because the only time we're called
-	 * while still attached to a queue, the queue itself
-	 * is about to be destroyed (in svc_destroy).
-	 */
-and I think this change invalidate the premise of that comment.
-I would much rather this was svc_sock_delete_bh.
+> Centralise the handling of the SK_CONN bit to that future
+                                             ^^ so
+:-)
 
 NeilBrown
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
