@@ -1,25 +1,26 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/2] NFS: Add the mount option "nosharecache"
-Date: Wed, 16 May 2007 22:13:18 -0400
-Message-ID: <20070517021318.32447.94991.stgit@heimdal.trondhjem.org>
-References: <17994.32412.173039.15055@notabene.brown>
+From: "Flavio Leitner" <flavio.leitner@gmail.com>
+Subject: Re: burst mount of NFS over tcp
+Date: Wed, 16 May 2007 23:25:17 -0300
+Message-ID: <c355d91b0705161925j5324ba47j52e284fec4c9d61d@mail.gmail.com>
+References: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
+	<1179257024.6464.66.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Ian Kent <raven@themaw.net>
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+	boundary="----=_Part_41789_2333459.1179368717835"
+Cc: nfs@lists.sourceforge.net
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoVUa-000536-Gj
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 19:13:30 -0700
-Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
-	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoVUb-00071V-Fx
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 19:13:26 -0700
-In-Reply-To: <17994.32412.173039.15055@notabene.brown>
+	id 1HoVg5-0006Ab-TY
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 19:25:18 -0700
+Received: from nz-out-0506.google.com ([64.233.162.225])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoVg7-0001Hq-DL
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 19:25:20 -0700
+Received: by nz-out-0506.google.com with SMTP id i11so620876nzi
+	for <nfs@lists.sourceforge.net>; Wed, 16 May 2007 19:25:18 -0700 (PDT)
+In-Reply-To: <1179257024.6464.66.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,190 +33,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+------=_Part_41789_2333459.1179368717835
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Prior to David Howell's mount changes in 2.6.18, users who mounted
-different directories which happened to be from the same filesystem on the
-server would get different super blocks, and hence could choose different
-mount options. As long as there were no hard linked files that crossed from
-one subtree to another, this was quite safe.
-Post the changes, if the two directories are on the same filesystem (have
-the same 'fsid'), they will share the same super block, and hence the same
-mount options.
+On 5/15/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2007-05-15 at 12:17 -0300, Flavio Leitner wrote:
+> > (please, keep myself on CC because I'm not subscribed)
+> >
+> > Hi,
+> >
+> > In the case of several (>500) mounts running at the same time with -o tcp,
+> > the number of attempts that succeed is about 300-400 because it run out
+> > of priviledged port (they are busy in TIME_WAIT state).
+> >
+> > The priviledged port range available (~512 ports) for this can't be changed to
+> > avoid more port conflicts.
+> >
+> > An option could be reuse these ports in TIME_WAIT state openning the socket
+> > with SO_REUSEADDR socket option, but the socket is a tuple:
+> > (local addr, local port, remote addr, remote port, proto) and it must be
+> > different from the previous one. Well, they always are equal when you
+> > mount the same NFS server, so it can't be.
+> >
+> > I think reducing TIME_WAIT state in kernel enabling fast recycle
+> > affects other tcp
+> > connections and have some extra undesireble effects.
+> >
+> > The solution I'm proposing is to add two new nfs parameters to specify
+> > a timeout and a number of retries to mount before fails. i.e.
+> >
+> > # mount -o tcp,rsvretry=10,rsvtimeout=5 server:/export /mnt
+> >
+> > This will affect mount.nfs to try bind a reserved port 10 times with a timeout
+> > of 5 seconds before give up. If not used, the default behavious is unchanged
+> > (i.e. try only one time and fails).
+> >
+> > The code should looks like:
+> > +             int bind_retry=0
+> > ...
+> > -               if (bindresvport(so, &laddr) < 0) {
+> > +              while (bindresvport(so, &laddr) < 0) {
+> > +                       if (errno == EADDRINUSE && --bind_retry > 0) {
+> > +                               sleep(bind_timeout);
+> > +                               continue;
+> > +                       }
+> >
+> > The real scenario could be a huge fstab or a MDA delivering e-mails for 500
+> > users with home automounted.
+> >
+> > I was able to mount more than 1000 NFS with success in the second scenario
+> > where normally I only manage to have 200-400.
+> >
+> > What you think?
+>
+> Why not fix the 'retry' mount option to deal properly with this case? I
+> can't see why running out of reserved ports really needs its own mount
+> options.
 
-Add a flag to allow users to elect not to share the NFS super block with
-another mount point, even if the fsids are the same. This will allow
-users to set different mount options for the two different super blocks, as
-was previously possible. It is still up to the user to ensure that there
-are no cache coherency issues when doing this, however the default
-behaviour will be to share super blocks whenever two paths result in
-the same fsid.
+Sure, you are right. What about the attached one?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+Thanks!
 
- fs/nfs/super.c             |   34 +++++++++++++++++++++++++++++-----
- include/linux/nfs4_mount.h |    1 +
- include/linux/nfs_mount.h  |    1 +
- 3 files changed, 31 insertions(+), 5 deletions(-)
+( in case of my mailer mess with patch, I leave a copy at
+http://sysclose.org/nfs-utils/nfs-utils-1.0.12-bindrsvp-retry.patch )
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ca20d3c..c03120a 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -291,6 +291,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 		{ NFS_MOUNT_NONLM, ",nolock", "" },
- 		{ NFS_MOUNT_NOACL, ",noacl", "" },
- 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
-+		{ NFS_MOUNT_UNSHARED, ",nosharecache", ""},
- 		{ 0, NULL, NULL }
- 	};
- 	const struct proc_nfs_info *nfs_infop;
-@@ -602,6 +603,9 @@ static int nfs_compare_super(struct super_block *sb, void *data)
- 
- 	if (old->nfs_client != server->nfs_client)
- 		return 0;
-+	/* Note: NFS_MOUNT_UNSHARED == NFS4_MOUNT_UNSHARED */
-+	if (old->flags & NFS_MOUNT_UNSHARED)
-+		return 0;
- 	if (memcmp(&old->fsid, &server->fsid, sizeof(old->fsid)) != 0)
- 		return 0;
- 	return 1;
-@@ -615,6 +619,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 	struct nfs_fh mntfh;
- 	struct nfs_mount_data *data = raw_data;
- 	struct dentry *mntroot;
-+	int (*compare_super)(struct super_block *,void *) = nfs_compare_super;
- 	int error;
- 
- 	/* Validate the mount data */
-@@ -629,8 +634,11 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 		goto out_err_noserver;
- 	}
- 
-+	if (server->flags & NFS_MOUNT_UNSHARED)
-+		compare_super = NULL;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(fs_type, nfs_compare_super, nfs_set_super, server);
-+	s = sget(fs_type, compare_super, nfs_set_super, server);
- 	if (IS_ERR(s)) {
- 		error = PTR_ERR(s);
- 		goto out_err_nosb;
-@@ -691,6 +699,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 	struct super_block *s;
- 	struct nfs_server *server;
- 	struct dentry *mntroot;
-+	int (*compare_super)(struct super_block *,void *) = nfs_compare_super;
- 	int error;
- 
- 	dprintk("--> nfs_xdev_get_sb()\n");
-@@ -702,8 +711,11 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 		goto out_err_noserver;
- 	}
- 
-+	if (server->flags & NFS_MOUNT_UNSHARED)
-+		compare_super = NULL;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs_fs_type, nfs_compare_super, nfs_set_super, server);
-+	s = sget(&nfs_fs_type, compare_super, nfs_set_super, server);
- 	if (IS_ERR(s)) {
- 		error = PTR_ERR(s);
- 		goto out_err_nosb;
-@@ -808,6 +820,7 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 	struct dentry *mntroot;
- 	char *mntpath = NULL, *hostname = NULL, ip_addr[16];
- 	void *p;
-+	int (*compare_super)(struct super_block *,void *) = nfs_compare_super;
- 	int error;
- 
- 	if (data == NULL) {
-@@ -879,8 +892,11 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 		goto out_err_noserver;
- 	}
- 
-+	if (server->flags & NFS4_MOUNT_UNSHARED)
-+		compare_super = NULL;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(fs_type, nfs_compare_super, nfs_set_super, server);
-+	s = sget(fs_type, compare_super, nfs_set_super, server);
- 	if (IS_ERR(s)) {
- 		error = PTR_ERR(s);
- 		goto out_free;
-@@ -949,6 +965,7 @@ static int nfs4_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 	struct super_block *s;
- 	struct nfs_server *server;
- 	struct dentry *mntroot;
-+	int (*compare_super)(struct super_block *,void *) = nfs_compare_super;
- 	int error;
- 
- 	dprintk("--> nfs4_xdev_get_sb()\n");
-@@ -960,8 +977,11 @@ static int nfs4_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 		goto out_err_noserver;
- 	}
- 
-+	if (server->flags & NFS4_MOUNT_UNSHARED)
-+		compare_super = NULL;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs_fs_type, nfs_compare_super, nfs_set_super, server);
-+	s = sget(&nfs_fs_type, compare_super, nfs_set_super, server);
- 	if (IS_ERR(s)) {
- 		error = PTR_ERR(s);
- 		goto out_err_nosb;
-@@ -1016,6 +1036,7 @@ static int nfs4_referral_get_sb(struct file_system_type *fs_type, int flags,
- 	struct nfs_server *server;
- 	struct dentry *mntroot;
- 	struct nfs_fh mntfh;
-+	int (*compare_super)(struct super_block *,void *) = nfs_compare_super;
- 	int error;
- 
- 	dprintk("--> nfs4_referral_get_sb()\n");
-@@ -1027,8 +1048,11 @@ static int nfs4_referral_get_sb(struct file_system_type *fs_type, int flags,
- 		goto out_err_noserver;
- 	}
- 
-+	if (server->flags & NFS4_MOUNT_UNSHARED)
-+		compare_super = NULL;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs_fs_type, nfs_compare_super, nfs_set_super, server);
-+	s = sget(&nfs_fs_type, compare_super, nfs_set_super, server);
- 	if (IS_ERR(s)) {
- 		error = PTR_ERR(s);
- 		goto out_err_nosb;
-diff --git a/include/linux/nfs4_mount.h b/include/linux/nfs4_mount.h
-index 26b4c83..ad1bd4a 100644
---- a/include/linux/nfs4_mount.h
-+++ b/include/linux/nfs4_mount.h
-@@ -65,6 +65,7 @@ struct nfs4_mount_data {
- #define NFS4_MOUNT_NOCTO	0x0010	/* 1 */
- #define NFS4_MOUNT_NOAC		0x0020	/* 1 */
- #define NFS4_MOUNT_STRICTLOCK	0x1000	/* 1 */
-+#define NFS4_MOUNT_UNSHARED	0x8000	/* 1 */
- #define NFS4_MOUNT_FLAGMASK	0xFFFF
- 
- #endif
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index cc8b9c5..3e3b521 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -62,6 +62,7 @@ struct nfs_mount_data {
- #define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
- #define NFS_MOUNT_SECFLAVOUR	0x2000	/* 5 */
- #define NFS_MOUNT_NORDIRPLUS	0x4000	/* 5 */
-+#define NFS_MOUNT_UNSHARED	0x8000	/* 5 */
- #define NFS_MOUNT_FLAGMASK	0xFFFF
- 
- #endif
+-- 
+Flavio Leitner
+
+------=_Part_41789_2333459.1179368717835
+Content-Type: application/octet-stream;
+	name=nfs-utils-1.0.12-bindrsvp-retry.patch
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_f1slhx70
+Content-Disposition: attachment;
+	filename="nfs-utils-1.0.12-bindrsvp-retry.patch"
+
+Clttb3VudF0gZml4IHJldHJ5PSB0byBoYW5kbGUgbGFjayBvZiByZXNlcnZlZCBwb3J0IHNpdHVh
+dGlvbgoKSW4gdGhlIGNhc2Ugb2Ygc2V2ZXJhbCAoPjUwMCkgbW91bnRzIHJ1bm5pbmcgYXQgdGhl
+IHNhbWUgdGltZSAKd2l0aCAtbyB0Y3AsIHRoZSBudW1iZXIgb2YgYXR0ZW1wdHMgdGhhdCBzdWNj
+ZWVkIGlzIGFib3V0IDMwMC01MDAgCmJlY2F1c2UgaXQgcnVuIG91dCBvZiBwcml2aWxlZGdlZCBw
+b3J0ICh0aGV5IGFyZSBidXN5IGluIFRJTUVfV0FJVCAKc3RhdGUpLgoKVGhpcyBwYXRjaCBmaXgg
+cmV0cnk9IG1vdW50IG9wdGlvbiB0byBoYW5kbGUgdGhpcyBzaXR1YXRpb24uCgpTaWduZWQtb2Zm
+LWJ5OiBGbGF2aW8gTGVpdG5lciA8ZmxhdmlvLmxlaXRuZXJAZ21haWwuY29tPgoKSW5kZXg6IG5m
+cy11dGlscy0xLjAuMTIvdXRpbHMvbW91bnQvbmZzbW91bnQuYwo9PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09Ci0tLSBuZnMt
+dXRpbHMtMS4wLjEyLm9yaWcvdXRpbHMvbW91bnQvbmZzbW91bnQuYworKysgbmZzLXV0aWxzLTEu
+MC4xMi91dGlscy9tb3VudC9uZnNtb3VudC5jCkBAIC0xMTMwLDkgKzExMzAsMTMgQEAgbm9hdXRo
+X2ZsYXZvcnM6CiAJCXBlcnJvcihfKCJuZnMgc29ja2V0IikpOwogCQlnb3RvIGZhaWw7CiAJfQot
+CWlmIChiaW5kcmVzdnBvcnQoZnNvY2ssIDApIDwgMCkgewotCQlwZXJyb3IoXygibmZzIGJpbmRy
+ZXN2cG9ydCIpKTsKLQkJZ290byBmYWlsOworCXdoaWxlIChiaW5kcmVzdnBvcnQoZnNvY2ssIDAp
+IDwgMCkgeworCQl0ID0gdGltZShOVUxMKTsKKwkJaWYgKHQgPiB0aW1lb3V0IHx8IGVycm5vICE9
+IEVBRERSSU5VU0UpIHsKKwkJCXBlcnJvcihfKCJuZnMgYmluZHJlc3Zwb3J0IikpOworCQkJZ290
+byBmYWlsOworCQl9CisJCXNsZWVwKDEwKTsKIAl9CiAjaWZkZWYgTkZTX01PVU5UX0RFQlVHCiAJ
+cHJpbnRmKF8oInVzaW5nIHBvcnQgJWQgZm9yIG5mcyBkZWFtb25cbiIpLCBuZnNfcG1hcC0+cG1f
+cG9ydCk7CkluZGV4OiBuZnMtdXRpbHMtMS4wLjEyL3N1cHBvcnQvbmZzL2Nvbm4uYwo9PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09Ci0tLSBuZnMtdXRpbHMtMS4wLjEyLm9yaWcvc3VwcG9ydC9uZnMvY29ubi5jCisrKyBuZnMt
+dXRpbHMtMS4wLjEyL3N1cHBvcnQvbmZzL2Nvbm4uYwpAQCAtMTkyLDYgKzE5MiwxMiBAQCBDTElF
+TlQgKm1udF9vcGVuY2xudChjbG50X2FkZHJfdCAqbW50X3NlCiAJLyogY29udGFjdCB0aGUgbW91
+bnQgZGFlbW9uIHZpYSBUQ1AgKi8KIAltbnRfc2FkZHItPnNpbl9wb3J0ID0gaHRvbnMoKHVfc2hv
+cnQpbW50X3BtYXAtPnBtX3BvcnQpOwogCSptc29jayA9IGdldF9zb2NrZXQobW50X3NhZGRyLCBt
+bnRfcG1hcC0+cG1fcHJvdCwgVFJVRSk7CisJaWYgKCptc29jayA9PSBSUENfQU5ZU09DSyAmJgor
+CQlycGNfY3JlYXRlZXJyLmNmX2Vycm9yLnJlX2Vycm5vID09IEVBRERSSU5VU0UpIHsKKwkJLyog
+QnViYmxlIHVwIHRoZSBlcnJvciB0byBzZWUgaG93IGl0IHNob3VsZCBiZSBoYW5kbGVkLiAqLwor
+CQlycGNfY3JlYXRlZXJyLmNmX3N0YXQgPSBSUENfVElNRURPVVQ7CisJCXJldHVybiBOVUxMOwor
+CX0KIAogCXN3aXRjaCAobW50X3BtYXAtPnBtX3Byb3QpIHsKIAljYXNlIElQUFJPVE9fVURQOgo=
+
+------=_Part_41789_2333459.1179368717835
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+------=_Part_41789_2333459.1179368717835
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+------=_Part_41789_2333459.1179368717835--
