@@ -1,28 +1,29 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC, PATCH 7/14] knfsd: export svc_sock_enqueue,
- svc_sock_received
-Date: Thu, 17 May 2007 08:23:58 -0400
-Message-ID: <EXNANE01WXopokhQLVp00000a25@exnane01.hq.netapp.com>
-References: <20070516192425.GM9626@sgi.com>
-	<20070516211703.GF18927@fieldses.org>
-	<20070517074518.GF27247@sgi.com>
+Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
+Date: Thu, 17 May 2007 08:39:25 -0400
+Message-ID: <EXNANE01SlSt7IZfSp100000a27@exnane01.hq.netapp.com>
+References: <20070516192211.GJ9626@sgi.com>
+	<20070516211053.GE18927@fieldses.org>
+	<20070517071202.GE27247@sgi.com>
+	<17996.11983.278205.708747@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Greg Banks <gnb@sgi.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hof1Z-0006vt-Gp
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:24:05 -0700
+	id 1HofGd-0008Q3-IU
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:39:39 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hof1b-0000Co-6u
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:24:08 -0700
-In-Reply-To: <20070517074518.GF27247@sgi.com>
-References: <20070516192425.GM9626@sgi.com>
-	<20070516211703.GF18927@fieldses.org>
-	<20070517074518.GF27247@sgi.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HofGf-0004P8-Ba
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 05:39:42 -0700
+In-Reply-To: <17996.11983.278205.708747@notabene.brown>
+References: <20070516192211.GJ9626@sgi.com>
+	<20070516211053.GE18927@fieldses.org>
+	<20070517071202.GE27247@sgi.com>
+	<17996.11983.278205.708747@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,22 +36,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 03:45 AM 5/17/2007, Greg Banks wrote:
-> I was planning
->to add a new file to /proc/fs/nfsd roughly analagous to the ports and
->versions files, where the init script could write a string to indicate
->which transports are enabled or disabled.  Transports would be managed
->in a global list of structures analagous to struct xprt_type in Chuck's
->client patches.
+At 06:30 AM 5/17/2007, Neil Brown wrote:
+>And I gather by the fact that you test "->sko_has_wspace" that RDMA
+>doesn't have such a function?  Do that mean that RDMA will never
+>reject a write due to lack of space?  That seems unlikely.
 
-I like this, it seems nearly the same as the /proc/fs/nfsd/thread node
-that's in there now. A new /proc/fs/nfsd/protocols node makes sense
-to me.
+RDMA uses credits, which are preallocated per-connection resources in
+the hardware. RDMA transports don't generally support flow control, that
+is left to the upper layer. As such, if the client is obeying the protocol, the
+send will succeed. And if it's not, then the client only loses since the failure
+will cause the connection to be lost.
 
-Another option might be to support switches to the nfsd command,
-like other os's do (nfsd -u). This makes a lot of sense if the current
-#ifdef's to enable nfsd's protocols is retained. If module loading is
-supported, I like the dynamic /proc aproach better.
+Someday we might want to support this kind of test. There are shared
+resource schemes in RDMA, more for the receive side, but it's not out of the
+question for sends. As a default though, a NULL has_wspace makes sense. 
 
 Tom.
 
