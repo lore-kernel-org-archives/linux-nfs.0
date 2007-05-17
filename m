@@ -1,26 +1,28 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 5/14] knfsd: max_payload per transport
-Date: Thu, 17 May 2007 10:23:06 -0500
-Message-ID: <1179415386.23385.5.camel@trinity.ogc.int>
-References: <20070516192306.GK9626@sgi.com>
-	<17996.12194.801580.925774@notabene.brown>
+Subject: Re: [RFC,PATCH 3/14] knfsd: prepare reply per transport
+Date: Thu, 17 May 2007 10:26:27 -0500
+Message-ID: <1179415587.23385.9.camel@trinity.ogc.int>
+References: <20070516192047.GI9626@sgi.com>
+	<C270E33B.3042D%tom@opengridcomputing.com>
+	<20070517075342.GG27247@sgi.com>
+	<7619F3097FAB384287CF636FF92D0CA10976B38B@exsvl01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
-To: Neil Brown <neilb@suse.de>
+To: "Iyer, Rahul" <Rahul.Iyer@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hohow-00013K-3V
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 08:23:14 -0700
+	id 1Hohs8-0001P5-Ql
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 08:26:33 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hohoy-0004cM-Lv
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 08:23:17 -0700
-In-Reply-To: <17996.12194.801580.925774@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HohsB-0005i5-C9
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 08:26:35 -0700
+In-Reply-To: <7619F3097FAB384287CF636FF92D0CA10976B38B@exsvl01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,35 +35,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-05-17 at 20:34 +1000, Neil Brown wrote:
-> On Thursday May 17, gnb@sgi.com wrote:
-> > 
-> > Make svc_max_payload() delegate to a new method in svc_sock_ops
-> > instead of reaching into the socket (beause later the NFS/RDMA
-> > transport will not even have a socket).
-> > 
-> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
-> ..
-> >  
-> > +static u32 svc_tcp_max_payload(struct svc_sock *svsk)
-> > +{
-> > +	return RPCSVC_MAXPAYLOAD_TCP;
-> > +}
-> > +
+
+I think this is worth considering. Since the client can receive requests
+in 4.1, the distinction becomes arbitrary.
+
+On Thu, 2007-05-17 at 02:16 -0700, Iyer, Rahul wrote:
+> Hi Greg,
+> I like the idea of a transport switch for the server side. The way I see
+> it, it's not just the server, it's also the "callback server" on the
+> client that can benefit. 
 > 
-> Seeing these are implementation (or protocol) defined constants, do we
-> really need a function call?  How about a
-> 	int max_payload;
-> in struct svc_sock_ops??  Or is it tacky to put an integer in a *_ops
-> structure? 
-
-I think if we called it a "svc_transport" structure instead of a
-"svc_sock_ops" structure, it removes the tackiness. It's also more
-accurate since "svc_sock_ops" implies these are socket ops which they
-are not.
-
-
+> I had a question. Maybe it's a dumb question, and I may be way off base,
+> but I don't see why we need 2 transport switches - one for the client,
+> one for the server? Why not have one? 
+> I've written some code to do NFSv4.1 callbacks and wound up implementing
+> another "transport". Since in v4.1 it's actually possible for clients to
+> send requests (fore-channel) and receive callbacks (back channel) over
+> the same connection, I had to "make" another transport that essentially
+> did TCP, but used server side conventions for the rpc_xprt_ops send
+> routines so that the server could use the existing rpc_call_(a)sync()
+> mechanisms. Similarly, on the client side, I had to implement the
+> equivalent of the svc_send() routines using the client side xs_tcp_*
+> routines. The resultant code is reasonably clean, but screams out
+> "inefficiency" because of the small amount of code sharing that was
+> actually possible.
+> 
+> Given this, a unified transport switch would really rock. Both the
+> client and the server treat the connection as a "full duplex" (I mean
+> can send calls and receive replies on the same connection). One set of
+> tcp/udp read/write methods for both the client and server. No more
+> svc_send for the server and xs_*_send_request on the client. The one
+> true networking way to rule them both! Everything would be much cleaner,
+> and since we're going down this path, I assumed it's a feasibility study
+> worth doing. Maybe I'm oversimplifying, but this seems doable. After
+> all, what we're doing in both cases (client and server) is shoving bits
+> down a socket. Is my question justified or am I *way* off base and
+> ignorant of some fundamental issues(s)?
+> Thanks
+> Regards
+> Rahul
+> 
+> 
+> > -----Original Message-----
+> > From: Greg Banks [mailto:gnb@sgi.com] 
+> > Sent: Thursday, May 17, 2007 12:54 AM
+> > To: Tom Tucker
+> > Cc: Linux NFS Mailing List; Talpey, Thomas; Peter Leckie; Greg Banks
+> > Subject: Re: [NFS] [RFC,PATCH 3/14] knfsd: prepare reply per transport
+> > 
+> > On Wed, May 16, 2007 at 04:35:07PM -0500, Tom Tucker wrote:
+> > > 
+> > > Greg:
+> > > 
+> > > I like this patch organization. I'll replicate this in the 
+> > integrated 
+> > > tree...
+> > 
+> > Great.
+> > 
+> > > > + /* Will be turned off only in gss privacy case: */
+> > > > + rqstp->rq_sendfile_ok = 1;
+> > > 
+> > > I think this belongs in the svc_process logic. It doesn't have 
+> > > anything to do with the buffer, but rather whether or not 
+> > GSS is turned on.
+> > 
+> > Fixed.
+> > 
+> > I'll push a revised patchset including feedback from yourself 
+> > and Bruce, to you only, in a few minutes.
+> > 
+> > Greg.
+> > --
+> > Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+> > Apparently, I'm Bedevere.  Which MPHG character are you?
+> > I don't speak for SGI.
+> > 
+> > --------------------------------------------------------------
+> > -----------
+> > This SF.net email is sponsored by DB2 Express Download DB2 
+> > Express C - the FREE version of DB2 express and take control 
+> > of your XML. No limits. Just data. Click to get it now.
+> > http://sourceforge.net/powerbar/db2/
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net 
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > 
 
 
 -------------------------------------------------------------------------
