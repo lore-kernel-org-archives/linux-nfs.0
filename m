@@ -1,9 +1,9 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 2/14] knfsd: delete per transport
-Date: Thu, 17 May 2007 16:38:38 +1000
-Message-ID: <20070517063838.GB27247@sgi.com>
-References: <20070516191951.GH9626@sgi.com>
-	<20070516205123.GB18927@fieldses.org>
+Subject: Re: [RFC,PATCH 0/14] A transport switch for knfsd
+Date: Thu, 17 May 2007 17:00:04 +1000
+Message-ID: <20070517070004.GC27247@sgi.com>
+References: <20070516191821.GF9626@sgi.com>
+	<20070516205316.GC18927@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
@@ -11,16 +11,17 @@ Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoZdP-0005JB-4O
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 23:38:47 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HoZdR-0005Pl-TX
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 23:38:50 -0700
-In-Reply-To: <20070516205123.GB18927@fieldses.org>
+	id 1HoZy8-0007M6-7r
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 00:00:12 -0700
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX1/2Zy59QSfEs/6yvrT+zz7+3oQLbrUPSiE=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoZy9-0002cV-VQ
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 00:00:15 -0700
+In-Reply-To: <20070516205316.GC18927@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,43 +34,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, May 16, 2007 at 04:51:23PM -0400, J. Bruce Fields wrote:
-> Trivial comments, since I couldn't find any real problems:
-
-Well, that's hopeful ;-)
-
-> On Thu, May 17, 2007 at 05:19:51AM +1000, Greg Banks wrote:
-> > @@ -886,7 +883,9 @@ svc_udp_sendto(struct svc_rqst *rqstp)
-> >  static const struct svc_sock_ops svc_udp_ops = {
-> >  	.sko_name = "udp",
-> >  	.sko_recvfrom = svc_udp_recvfrom,
-> > -	.sko_sendto = svc_udp_sendto
-> > +	.sko_sendto = svc_udp_sendto,
+On Wed, May 16, 2007 at 04:53:17PM -0400, J. Bruce Fields wrote:
+> On Thu, May 17, 2007 at 05:18:21AM +1000, Greg Banks wrote:
+> > These 14 patches are an experimental transport switch for knfsd.
+> > They're based on Tom Tucker's 01-svc-xprt-switch.patch from the
+> > nfsrdma project November release, but redesigned to provide as simple
+> > and clean an abstraction as possible to new transport-specific code.
+> > Various messy details of flags, reference counts and other behaviour
+> > which are currently redundantly handled in both TCP and UDP code,
+> > will be handled in generic code now.  This makes the task of writing
+> > new transport code easier and less prone to breakage.
 > 
-> Any objection to always just including a trailing comma and saving a
-> little noise in each diff?  That seems to be common practice elsewhere.
+> Are there other conjectured future users besides rdma?
 
-Fixed.
+I don't know of any being planned, but you could imagine support for
+DCCP or SCTP (although to be frank those would probably be simple
+extensions of existing UDP and TCP code respectively).
 
-> > +static void
-> > +svc_tcpip_free(struct svc_sock *svsk)
-> > +{
-> > +	dprintk("svc: svc_sock_free(%p)\n", svsk);
-> 
-> We lived without these dprintk's before; do we need them now?
+You could also imagine transport code that made NFS work fast on
+various cluster interconnects that aren't IB or deliberately designed
+to pretend to be IB.  One example is xpmem, which uses the block
+copy offload in Altix hardware to communicate between partitions.
+It's a very fast transport but the way IP is encoded on it limits
+NFS transfer rates to a small fraction of what the hardware can do.
 
-Not really.  Removed.
+But basically RDMA is the one that's driving the need for a transport
+switch because it's really very different, e.g. it doesn't use sockets.
 
-> >  	int			(*sko_sendto)(struct svc_rqst *rqstp);
-> > +	/*
-> > +	 * Detach the svc_sock from it's socket, so that the
-> 
-> s/it's/its/
-> 
+> What's happened to server-side ipv6, by the way?
 
-Doh!  Fixed.
+Unsure.  There's certainly a lot of code support for it, I kept
+tripping over it when forward porting these patches.  It looks like
+you'd need to have rpc.nfsd create it's own socket in userspace and
+pass it down via /proc/fs/nfsd/ports.
 
-Thanks Bruce.
+It's intertesting to note that ipv6 support was added without a
+serverside transport switch; on Irix the addition of ipv6 was what
+justified a transport switch.
 
 Greg.
 -- 
