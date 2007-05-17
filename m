@@ -1,26 +1,23 @@
-From: "Flavio Leitner" <flavio.leitner@gmail.com>
-Subject: Re: burst mount of NFS over tcp
-Date: Wed, 16 May 2007 23:25:17 -0300
-Message-ID: <c355d91b0705161925j5324ba47j52e284fec4c9d61d@mail.gmail.com>
-References: <c355d91b0705150817le4e067eq35802a8d94af82a7@mail.gmail.com>
-	<1179257024.6464.66.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_Part_41789_2333459.1179368717835"
-Cc: nfs@lists.sourceforge.net
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+From: infonow@icenterdirect.com
+Subject: Get more traffic, leads or sales in 24 hours!
+Date: Wed, 16 May 2007 22:14:32 -0800
+Message-ID: <ddyx1prhe8.570f2h0l@icenterdirect.com>
+Content-Type: multipart/mixed; boundary="===============1482322622=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HoVg5-0006Ab-TY
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 19:25:18 -0700
-Received: from nz-out-0506.google.com ([64.233.162.225])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HoVg7-0001Hq-DL
-	for nfs@lists.sourceforge.net; Wed, 16 May 2007 19:25:20 -0700
-Received: by nz-out-0506.google.com with SMTP id i11so620876nzi
-	for <nfs@lists.sourceforge.net>; Wed, 16 May 2007 19:25:18 -0700 (PDT)
-In-Reply-To: <1179257024.6464.66.camel@heimdal.trondhjem.org>
+	id 1HoYJp-0006AR-Hp
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 22:14:31 -0700
+Received: from externalmx-1.sourceforge.net ([12.152.184.25])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HoYJs-0005dz-6i
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 22:14:32 -0700
+Received: from mail.icenterdirect.com ([71.6.199.202] helo=icenterdirect.com)
+	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
+	id 1HoYJq-0007Ju-3E
+	for nfs@lists.sourceforge.net; Wed, 16 May 2007 22:14:31 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,115 +30,141 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-------=_Part_41789_2333459.1179368717835
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+--===============1482322622==
+Content-Type: text/html;
+	 charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
-On 5/15/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Tue, 2007-05-15 at 12:17 -0300, Flavio Leitner wrote:
-> > (please, keep myself on CC because I'm not subscribed)
-> >
-> > Hi,
-> >
-> > In the case of several (>500) mounts running at the same time with -o tcp,
-> > the number of attempts that succeed is about 300-400 because it run out
-> > of priviledged port (they are busy in TIME_WAIT state).
-> >
-> > The priviledged port range available (~512 ports) for this can't be changed to
-> > avoid more port conflicts.
-> >
-> > An option could be reuse these ports in TIME_WAIT state openning the socket
-> > with SO_REUSEADDR socket option, but the socket is a tuple:
-> > (local addr, local port, remote addr, remote port, proto) and it must be
-> > different from the previous one. Well, they always are equal when you
-> > mount the same NFS server, so it can't be.
-> >
-> > I think reducing TIME_WAIT state in kernel enabling fast recycle
-> > affects other tcp
-> > connections and have some extra undesireble effects.
-> >
-> > The solution I'm proposing is to add two new nfs parameters to specify
-> > a timeout and a number of retries to mount before fails. i.e.
-> >
-> > # mount -o tcp,rsvretry=10,rsvtimeout=5 server:/export /mnt
-> >
-> > This will affect mount.nfs to try bind a reserved port 10 times with a timeout
-> > of 5 seconds before give up. If not used, the default behavious is unchanged
-> > (i.e. try only one time and fails).
-> >
-> > The code should looks like:
-> > +             int bind_retry=0
-> > ...
-> > -               if (bindresvport(so, &laddr) < 0) {
-> > +              while (bindresvport(so, &laddr) < 0) {
-> > +                       if (errno == EADDRINUSE && --bind_retry > 0) {
-> > +                               sleep(bind_timeout);
-> > +                               continue;
-> > +                       }
-> >
-> > The real scenario could be a huge fstab or a MDA delivering e-mails for 500
-> > users with home automounted.
-> >
-> > I was able to mount more than 1000 NFS with success in the second scenario
-> > where normally I only manage to have 200-400.
-> >
-> > What you think?
->
-> Why not fix the 'retry' mount option to deal properly with this case? I
-> can't see why running out of reserved ports really needs its own mount
-> options.
+<html>
 
-Sure, you are right. What about the attached one?
+<head>
 
-Thanks!
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 
-( in case of my mailer mess with patch, I leave a copy at
-http://sysclose.org/nfs-utils/nfs-utils-1.0.12-bindrsvp-retry.patch )
+</head>
 
--- 
-Flavio Leitner
+<body>
 
-------=_Part_41789_2333459.1179368717835
-Content-Type: application/octet-stream;
-	name=nfs-utils-1.0.12-bindrsvp-retry.patch
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_f1slhx70
-Content-Disposition: attachment;
-	filename="nfs-utils-1.0.12-bindrsvp-retry.patch"
+<p align="left">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="4" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff; " face="Arial" color="#0000FF" BACK="#ffffff" PTSIZE="4" FAMILY="SANSSERIF">
+<strong>GET MORE ORDERS FOR ANYTHING YOU SELL!</strong></font></p>
+</font>
 
-Clttb3VudF0gZml4IHJldHJ5PSB0byBoYW5kbGUgbGFjayBvZiByZXNlcnZlZCBwb3J0IHNpdHVh
-dGlvbgoKSW4gdGhlIGNhc2Ugb2Ygc2V2ZXJhbCAoPjUwMCkgbW91bnRzIHJ1bm5pbmcgYXQgdGhl
-IHNhbWUgdGltZSAKd2l0aCAtbyB0Y3AsIHRoZSBudW1iZXIgb2YgYXR0ZW1wdHMgdGhhdCBzdWNj
-ZWVkIGlzIGFib3V0IDMwMC01MDAgCmJlY2F1c2UgaXQgcnVuIG91dCBvZiBwcml2aWxlZGdlZCBw
-b3J0ICh0aGV5IGFyZSBidXN5IGluIFRJTUVfV0FJVCAKc3RhdGUpLgoKVGhpcyBwYXRjaCBmaXgg
-cmV0cnk9IG1vdW50IG9wdGlvbiB0byBoYW5kbGUgdGhpcyBzaXR1YXRpb24uCgpTaWduZWQtb2Zm
-LWJ5OiBGbGF2aW8gTGVpdG5lciA8ZmxhdmlvLmxlaXRuZXJAZ21haWwuY29tPgoKSW5kZXg6IG5m
-cy11dGlscy0xLjAuMTIvdXRpbHMvbW91bnQvbmZzbW91bnQuYwo9PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09Ci0tLSBuZnMt
-dXRpbHMtMS4wLjEyLm9yaWcvdXRpbHMvbW91bnQvbmZzbW91bnQuYworKysgbmZzLXV0aWxzLTEu
-MC4xMi91dGlscy9tb3VudC9uZnNtb3VudC5jCkBAIC0xMTMwLDkgKzExMzAsMTMgQEAgbm9hdXRo
-X2ZsYXZvcnM6CiAJCXBlcnJvcihfKCJuZnMgc29ja2V0IikpOwogCQlnb3RvIGZhaWw7CiAJfQot
-CWlmIChiaW5kcmVzdnBvcnQoZnNvY2ssIDApIDwgMCkgewotCQlwZXJyb3IoXygibmZzIGJpbmRy
-ZXN2cG9ydCIpKTsKLQkJZ290byBmYWlsOworCXdoaWxlIChiaW5kcmVzdnBvcnQoZnNvY2ssIDAp
-IDwgMCkgeworCQl0ID0gdGltZShOVUxMKTsKKwkJaWYgKHQgPiB0aW1lb3V0IHx8IGVycm5vICE9
-IEVBRERSSU5VU0UpIHsKKwkJCXBlcnJvcihfKCJuZnMgYmluZHJlc3Zwb3J0IikpOworCQkJZ290
-byBmYWlsOworCQl9CisJCXNsZWVwKDEwKTsKIAl9CiAjaWZkZWYgTkZTX01PVU5UX0RFQlVHCiAJ
-cHJpbnRmKF8oInVzaW5nIHBvcnQgJWQgZm9yIG5mcyBkZWFtb25cbiIpLCBuZnNfcG1hcC0+cG1f
-cG9ydCk7CkluZGV4OiBuZnMtdXRpbHMtMS4wLjEyL3N1cHBvcnQvbmZzL2Nvbm4uYwo9PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09Ci0tLSBuZnMtdXRpbHMtMS4wLjEyLm9yaWcvc3VwcG9ydC9uZnMvY29ubi5jCisrKyBuZnMt
-dXRpbHMtMS4wLjEyL3N1cHBvcnQvbmZzL2Nvbm4uYwpAQCAtMTkyLDYgKzE5MiwxMiBAQCBDTElF
-TlQgKm1udF9vcGVuY2xudChjbG50X2FkZHJfdCAqbW50X3NlCiAJLyogY29udGFjdCB0aGUgbW91
-bnQgZGFlbW9uIHZpYSBUQ1AgKi8KIAltbnRfc2FkZHItPnNpbl9wb3J0ID0gaHRvbnMoKHVfc2hv
-cnQpbW50X3BtYXAtPnBtX3BvcnQpOwogCSptc29jayA9IGdldF9zb2NrZXQobW50X3NhZGRyLCBt
-bnRfcG1hcC0+cG1fcHJvdCwgVFJVRSk7CisJaWYgKCptc29jayA9PSBSUENfQU5ZU09DSyAmJgor
-CQlycGNfY3JlYXRlZXJyLmNmX2Vycm9yLnJlX2Vycm5vID09IEVBRERSSU5VU0UpIHsKKwkJLyog
-QnViYmxlIHVwIHRoZSBlcnJvciB0byBzZWUgaG93IGl0IHNob3VsZCBiZSBoYW5kbGVkLiAqLwor
-CQlycGNfY3JlYXRlZXJyLmNmX3N0YXQgPSBSUENfVElNRURPVVQ7CisJCXJldHVybiBOVUxMOwor
-CX0KIAogCXN3aXRjaCAobW50X3BtYXAtPnBtX3Byb3QpIHsKIAljYXNlIElQUFJPVE9fVURQOgo=
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font id="role_document0" face="Arial" color="#0000FF" style="font-weight: 700" size="4">
+<p style="margin-bottom: 0in" align="left">PROMOTE YOUR BUSINESS TODAY WITH<br>
+COST EFFECTIVE DIRECT E-MAIL ADVERTISING</p>
+</font>
+<font id="role_document0" face="Arial" color="#0000FF" style="font-weight: 700">
+<p style="margin-bottom: 0in" align="left">
+</font>
+<b>
+<font color="#000080">
+<font lang="0" style="background-color: #ffffff; font-size:14pt; font-weight:700" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" id="role_document0">
+*&nbsp;Get Instant Traffic to Your Website</font></font><font lang="0" style="background-color: #ffffff; font-size:14pt; font-weight:700" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" id="role_document0"> 
+Today</font><font lang="0" style="background-color: #ffffff" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><font lang="0" style="background-color: #ffffff; font-size:14pt; font-weight:700" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" id="role_document0"><br>
+*&nbsp;</font></font><font lang="0" style="background-color: #ffffff; font-size:14pt; font-weight:700" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0">Generates Sales or Leads for Any Business</font></b><font id="role_document0" face="Arial" color="#0000FF" style="font-size: 16pt; font-weight: 700"></p>
+</font>
+</font>
 
-------=_Part_41789_2333459.1179368717835
+<p align="left">
+<b><font face="Arial" style="font-size: 11pt" color="#000080">We can send Your 
+ad out to MILLIONS Of Our Double OPT IN List of Subscribers<br>
+and get you great results by providing the most effective way to reach your<br>
+target market, and get instant traffic to your web site.. </font></b></p>
+
+<p align="left">
+<b><font face="Arial" style="font-size: 11pt" color="#000080">Email advertising 
+broadcast is sent to our 100% Double Opt-In 
+customers.<br>
+These are people who have specifically requested to receive your email<br>
+advertising offer on your unique products and services.</font></b></p>
+
+<p align="left">
+<b><font color="#000080" face="Arial"><span style="font-size: 11pt">Our job is 
+to make your email campaigns a big success. <br>
+Includes free phone and email support, and a wealth of online<br>
+resources for every customer</span></font></b><font color="#000080"><span style="font-size: 11pt">.
+</span></font></p>
+
+<p align="left">
+<font color="#000080"><b>
+<font style="font-size: 11pt; background-color:#ffffff" lang="0" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">Includes
+free phone and email support, a wealth of online resources for every<br>
+customer.  </font></b></font>
+<font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+</p>
+
+</font>
+<p align="left"><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<b><u>Services include:</u><br>
+</b></font><b><font face="Arial" style="font-size: 11pt" color="#000080">
+<span style="background-color: #FFFFFF">Free assistance is setting up your ad 
+for great results<br>
+Professional graphic ad design<br>
+E-Mail Broadcasting to our list of double opt in targeted emails</span></font></b></p>
+<p align="left"><span style="background-color: #FFFFFF"><b>
+<font face="Arial" style="font-size: 11pt" color="#000080">O</font></b></span><b><font color="#000080"><font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" size="3">pt in email advertising can convert your website visitors to customers and 
+boost your revenue.<br>
+<i>We can show you how.</i><br>
+</font>
+<font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" size="3">
+<br>
+</font>
+</font><span style="background-color: #FFFFFF">
+<font face="Arial" style="font-size: 11pt" color="#FF0000">For More Info, Please 
+call (213) 291-1177&nbsp;<br>
+</font><font face="Arial" color="#FF0000" size="2"><i>After hours, please leave 
+a message. One of our professional and courteous<br>
+representatives will get back to you by the end of the next business day.</i></font></span></b></p>
+<p align="left">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" FAMILY="SANSSERIF" PTSIZE="12" BACK="#ffffff">
+<b>
+<font color="#060296" lang="0" style="background-color: #ffffff" face="Arial" FAMILY="SANSSERIF" PTSIZE="10" BACK="#ffffff">
+<strong><font face="Times New Roman">
+<a href="mailto:info@icenterdirect.com?subject=Please leave your name and number with best time to call.">Or Click Here And Leave 
+Your Name and Telephone Number With Best Time To Call</a></font></strong>&nbsp;</font></b></font></p>
+<b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+
+<font lang="0" style="background-color: #ffffff" face="Comic Sans MS" color="#1003bd" size="2" BACK="#ffffff" PTSIZE="12" FAMILY="SCRIPT">
+<p align="left"><font color="#060296"><font color="#000080" size="2"><em>Driving Traffic to 
+All Types of Businesses&nbsp;Since 1997</em></font><font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF"><br>
+</font></font>
+</font>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<br>
+</font>
+
+</font>
+
+</b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+_________________________________________________________________</font></p>
+<font face="Arial" size="2"><p align="left"><font face="Arial" color="#000080" size="1">You are receiving 
+this message as an opt-in subscriber to Ins Path or one of our marketing 
+partners. <br>
+If you no longer wish to receive further offers, please send an email with 
+discontinue to: <a href="mailto:support@icenterdirect.com?subject=Discontinue">
+support@icenterdirect.com</a><br>
+Your email address will be removed within 24 hours.</font></p>
+<p align="left"><font face="Arial" color="#000080" size="1"><br>
+Icenterdirect.com<br>
+27th Ave at Port Imperial<br>
+West New York, NJ <br>
+07047</font></p></html>
+</font>
+</font>
+
+</body>
+
+</html>
+
+
+
+--===============1482322622==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -152,7 +175,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
-------=_Part_41789_2333459.1179368717835
+--===============1482322622==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -162,4 +185,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
-------=_Part_41789_2333459.1179368717835--
+--===============1482322622==--
