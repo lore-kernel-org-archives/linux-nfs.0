@@ -1,7 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
-Date: Fri, 18 May 2007 12:45:31 -0500
-Message-ID: <1179510331.23385.120.camel@trinity.ogc.int>
+Subject: [RFC,
+	PATCH 8/15] knfds: map null socket to SOCK_STREAM in	svcauth_unix
+Date: Fri, 18 May 2007 12:45:37 -0500
+Message-ID: <1179510337.23385.121.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -9,15 +10,15 @@ Cc: Neil Brown <neilb@suse.de>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
 To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp6WE-0000tw-0N
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:34 -0700
+	id 1Hp6WL-0000uP-Nh
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:41 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6WG-0006m6-Lp
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:36 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6WN-0008EQ-HQ
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:44 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,38 +31,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Adds a call to the svc_makesock routine to create the RDMA transport. 
-I think this should somehow be linked to the transport switch and the 
-port mapper. 
+
+The ip_map_cached_put routine looks in the sk_sock structure to determine
+the connection type. This change maps a null socket (RMDA transport) to 
+SOCK_STREAM.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/nfsd/nfssvc.c |   11 +++++++++++
- 1 files changed, 11 insertions(+), 0 deletions(-)
+ net/sunrpc/svcauth_unix.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index d7759ce..4a7982e 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -254,6 +254,17 @@ #ifdef CONFIG_NFSD_TCP
- 	if (error < 0)
- 		return error;
- #endif
-+#ifdef CONFIG_NFSD_RDMA
-+	/* KLUDGE: The rpc.nfsd utility passes down the
-+	 * port number when it opens the nfsd file. We are
-+	 * going to ignore it here and force the RDMA port number
-+	 * to 2050. This will allow the TCP transport to coexist
-+	 * with the RDMA transport.
-+	 */
-+	error = svc_makesock(nfsd_serv, IPPROTO_MAX, 2050 /* port */, 0);
-+	if (error < 0)
-+		return error;
-+#endif
- 	return 0;
- }
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 2bd23ea..4d6bba0 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -411,7 +411,7 @@ ip_map_cached_put(struct svc_rqst *rqstp
+ 	struct svc_sock *svsk = rqstp->rq_sock;
  
+ 	spin_lock_bh(&svsk->sk_defer_lock);
+-	if (svsk->sk_sock->type == SOCK_STREAM &&
++	if ((svsk->sk_sock==NULL || svsk->sk_sock->type == SOCK_STREAM) &&
+ 	    svsk->sk_info_authunix == NULL) {
+ 		/* newly cached, keep the reference */
+ 		svsk->sk_info_authunix = ipm;
 
 
 -------------------------------------------------------------------------
