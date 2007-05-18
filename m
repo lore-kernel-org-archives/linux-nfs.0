@@ -1,31 +1,29 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
-Date: Fri, 18 May 2007 09:44:15 -0400
-Message-ID: <EXNANE01tUvh18cbKTr00000a35@exnane01.hq.netapp.com>
-References: <20070516192211.GJ9626@sgi.com>
-	<20070516211053.GE18927@fieldses.org>
-	<20070517071202.GE27247@sgi.com>
-	<17996.11983.278205.708747@notabene.brown>
-	<20070518040509.GC5104@sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC,PATCH 3/14] knfsd: prepare reply per transport
+Date: Fri, 18 May 2007 10:42:38 -0400
+Message-ID: <1179499358.6488.66.camel@heimdal.trondhjem.org>
+References: <20070517075342.GG27247@sgi.com>
+	<7619F3097FAB384287CF636FF92D0CA10976B38B@exsvl01.hq.netapp.com>
+	<20070518031630.GB5104@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	"Iyer,  Rahul" <Rahul.Iyer@netapp.com>,
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+	Peter Leckie <pleckie@melbourne.sgi.com>
 To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp2kn-0008SO-6V
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 06:44:21 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp2kq-0005G6-0z
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 06:44:24 -0700
-In-Reply-To: <20070518040509.GC5104@sgi.com>
-References: <20070516192211.GJ9626@sgi.com>
-	<20070516211053.GE18927@fieldses.org>
-	<20070517071202.GE27247@sgi.com>
-	<17996.11983.278205.708747@notabene.brown>
-	<20070518040509.GC5104@sgi.com>
+	id 1Hp3fR-0005rr-SG
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 07:42:53 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/ZdKv5N6j9qYVqKwuDDB1BvnATKrqJG+M=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hp3fS-0005hB-2G
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 07:42:56 -0700
+In-Reply-To: <20070518031630.GB5104@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,20 +36,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 12:05 AM 5/18/2007, Greg Banks wrote:
->>  Do that mean that RDMA will never
->> reject a write due to lack of space? 
->
->No, it means that the current RDMA send code will block waiting
->for space to become available.  That's right, nfsd threads block on
->the network.  Steel yourself, there's worse to come.
+On Fri, 2007-05-18 at 13:16 +1000, Greg Banks wrote:
+> A very sensible thing to do, but hard to retrofit to the existing Linux
+> code without significant surgery.  As you've discovered, the server and
+> client code are two mostly-separate code bases (with mostly-separate
+> authors and maintainers) that happen to link into the same module.
+> Unifying these would be a major job.  I'd love to see it happen, for
+> example to unify the XDR buffering code, but it would be an uphill
+> battle technically and possibly politically also.  For some reason,
+> code (like lockd) that lives in both the server and client side tends
+> to be neglected by both camps.
+> 
+> > Given this, a unified transport switch would really rock. 
+> > [...] Maybe I'm oversimplifying, but this seems doable.
+> 
+> Yes...eventually.
 
-Huh? RDMA Sends never block, except to wait for the handshake as the
-hardware picks up the work request.
+I'm not sure that politics is really the problem here. I think the
+biggest issue is that the client and server have very different
+workloads.
 
-What's the "worse" part you refer to?
+The job of the client is to pump as much data as fast as possible
+through a single socket, to place incoming data into the correct reply
+buffers as quickly and efficiently as possible, and to handle exceptions
+such as dropped connections, or socket buffer starvation by resending
+the request after reconnecting/waiting for the socket buffer to empty.
+It uses a single workqueue, and non-blocking I/O in order to achieve
+this goal.
 
-Tom.
+The job of the server is to listen for new connections, to round-robin
+through several sockets, to read incoming data into pre-allocated
+anonymous buffers, to process the RPC call, then to pump out the result
+as quickly as possible. It handles exceptions like dropped connections
+by dropping the request and moving on. Resource starvation is handled by
+deferring handling the request and/or possibly dropping it altogether.
+
+Apart from the tasks of 'reading data' and 'writing data', it is hard to
+see much that could be shared. Even for the case of reading/writing, the
+code differs due to the client's need to identify the incoming request
+or the server's need to provision socket write resources.
+So if anyone is serious about wanting to share transport switches
+between client and server, then what is first needed is a detailed
+analysis of what actually _can_ be shared. After that we can discuss
+what it actually makes sense to share.
+
+Trond
 
 
 -------------------------------------------------------------------------
