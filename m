@@ -1,9 +1,9 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC,
-	PATCH 5/15] knfsd: support RDMA transport	in	svc_create_socket.
-Date: Fri, 18 May 2007 14:25:02 -0400
-Message-ID: <1179512702.6488.121.camel@heimdal.trondhjem.org>
-References: <1179510317.23385.118.camel@trinity.ogc.int>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC, PATCH 4/15] knfsd: map null socket to SOCK_STREAM
+	in	svc_max_payload
+Date: Fri, 18 May 2007 14:28:50 -0400
+Message-ID: <20070518182850.GA4843@fieldses.org>
+References: <1179510307.23385.117.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -15,14 +15,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp78U-0005dx-Ty
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:25:07 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19guHWEWx9CntAk6qTnAX7Sw2Tkb6PKNIE=])
+	id 1Hp7CG-0005xj-PW
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:29:01 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hp78X-0001zG-2x
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:25:09 -0700
-In-Reply-To: <1179510317.23385.118.camel@trinity.ogc.int>
+	(Exim 4.44) id 1Hp7CA-0002ui-CY
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:28:56 -0700
+In-Reply-To: <1179510307.23385.117.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,48 +34,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-05-18 at 12:45 -0500, Tom Tucker wrote:
-> Adds a call to create RDMA transports to svc_create_socket.
-> Currently, we use IPPROTO_MAX, which is a work-around. The transport 
-> switch should ultimately provide transport types that are advertised 
-> by the transport drivers.
+On Fri, May 18, 2007 at 12:45:07PM -0500, Tom Tucker wrote:
+> 
+> The svc_max_payload function looks into the sk_sock structure to determine
+> what the reported max payload should be. For RDMA, there is no socket. This 
+> change effectively maps a NULL sk_sock to SOCK_STREAM.
 > 
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 > 
->  net/sunrpc/svcsock.c |    8 ++++++++
->  1 files changed, 8 insertions(+), 0 deletions(-)
+>  net/sunrpc/svc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index b78e84b..9c2f8ee 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -46,6 +46,9 @@ #include <linux/sunrpc/clnt.h>
->  #include <linux/sunrpc/xdr.h>
->  #include <linux/sunrpc/svcsock.h>
->  #include <linux/sunrpc/stats.h>
-> +#ifdef CONFIG_NFSD_RDMA
-> +#include <linux/sunrpc/svc_rdma.h>
-> +#endif
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 9fec17d..b343db8 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1024,7 +1024,7 @@ u32 svc_max_payload(const struct svc_rqs
+>  {
+>  	int max = RPCSVC_MAXPAYLOAD_TCP;
 >  
->  /* SMP locking strategy:
->   *
-> @@ -1805,6 +1808,11 @@ static int svc_create_socket(struct svc_
->  			serv->sv_program->pg_name, protocol,
->  			__svc_print_addr(sin, buf, sizeof(buf)));
->  
-> +#ifdef CONFIG_NFSD_RDMA
-> +	if (protocol == IPPROTO_MAX)
-> +		return svc_rdma_create_listen(serv, protocol, 
-> +					      (struct sockaddr*)sin);
-> +#endif
->  	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
->  		printk(KERN_WARNING "svc: only UDP and TCP "
->  				"sockets supported\n");
+> -	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+> +	if (rqstp->rq_sock->sk_sock && rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+>  		max = RPCSVC_MAXPAYLOAD_UDP;
+>  	if (rqstp->rq_server->sv_max_payload < max)
+>  		max = rqstp->rq_server->sv_max_payload;
 
-Ditto... Please avoid inlined #ifdefs....
+Don't you want to use Greg's sko_max_payload() (or whatever it ends up
+being) for this?
 
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
