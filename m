@@ -1,8 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 8/15] knfds: map null socket to SOCK_STREAM in	svcauth_unix
-Date: Fri, 18 May 2007 12:45:37 -0500
-Message-ID: <1179510337.23385.121.camel@trinity.ogc.int>
+	PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
+Date: Fri, 18 May 2007 12:45:45 -0500
+Message-ID: <1179510345.23385.122.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -10,15 +10,15 @@ Cc: Neil Brown <neilb@suse.de>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
 To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp6WL-0000uP-Nh
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:41 -0700
+	id 1Hp6WS-0000ul-70
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:58 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6WN-0008EQ-HQ
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:44 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6WU-0006pn-Uw
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:51 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,29 +32,49 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The ip_map_cached_put routine looks in the sk_sock structure to determine
-the connection type. This change maps a null socket (RMDA transport) to 
-SOCK_STREAM.
+Add a bit to the rpc_debug bit field for RDMA transport
+debug messages and sysctl definitions for configuration
+and statistics files in /proc/sys/sunrpc/svc_rdma.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcauth_unix.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/debug.h |   15 +++++++++++++++
+ 1 files changed, 15 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 2bd23ea..4d6bba0 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -411,7 +411,7 @@ ip_map_cached_put(struct svc_rqst *rqstp
- 	struct svc_sock *svsk = rqstp->rq_sock;
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index fc3a5dd..9bf7381 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -24,6 +24,7 @@ #define RPCDBG_SVCSOCK		0x0100
+ #define RPCDBG_SVCDSP		0x0200
+ #define RPCDBG_MISC		0x0400
+ #define RPCDBG_CACHE		0x0800
++#define RPCDBG_RDMA		0x1000
+ #define RPCDBG_ALL		0x7fff
  
- 	spin_lock_bh(&svsk->sk_defer_lock);
--	if (svsk->sk_sock->type == SOCK_STREAM &&
-+	if ((svsk->sk_sock==NULL || svsk->sk_sock->type == SOCK_STREAM) &&
- 	    svsk->sk_info_authunix == NULL) {
- 		/* newly cached, keep the reference */
- 		svsk->sk_info_authunix = ipm;
+ #ifdef __KERNEL__
+@@ -93,6 +94,20 @@ enum {
+ 	CTL_RDMA_MAXINLINEWRITE,
+ 	CTL_RDMA_WRITEPADDING,
+ 	CTL_RDMA_MEMREG,
++	CTL_SVCRDMA,
++	CTL_RDMA_MAX_REQUESTS,
++	CTL_RDMA_MAX_REQ_SIZE,
++	CTL_RDMA_ORD,
++	CTL_RDMA_READ_THROTTLE,
++	CTL_RDMA_STAT_RECV,
++	CTL_RDMA_STAT_READ,
++	CTL_RDMA_STAT_WRITE,
++	CTL_RDMA_STAT_SQ_STARVE,
++	CTL_RDMA_STAT_RQ_STARVE,
++	CTL_RDMA_STAT_RQ_POLL,
++	CTL_RDMA_STAT_RQ_PROD,
++	CTL_RDMA_STAT_SQ_POLL,
++	CTL_RDMA_STAT_SQ_PROD
+ };
+ 
+ #endif /* _LINUX_SUNRPC_DEBUG_H_ */
 
 
 -------------------------------------------------------------------------
