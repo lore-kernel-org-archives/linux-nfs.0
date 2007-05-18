@@ -1,29 +1,29 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
-Date: Fri, 18 May 2007 14:05:09 +1000
-Message-ID: <20070518040509.GC5104@sgi.com>
-References: <20070516192211.GJ9626@sgi.com>
-	<20070516211053.GE18927@fieldses.org>
-	<20070517071202.GE27247@sgi.com>
-	<17996.11983.278205.708747@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC,PATCH 3/14] knfsd: prepare reply per transport
+Date: Fri, 18 May 2007 00:08:05 -0400
+Message-ID: <20070518040805.GE30144@fieldses.org>
+References: <20070517075342.GG27247@sgi.com>
+	<7619F3097FAB384287CF636FF92D0CA10976B38B@exsvl01.hq.netapp.com>
+	<20070518031630.GB5104@sgi.com>
+	<20070518040137.GD30144@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Thomas Talpey <Thomas.Talpey@netapp.com>,
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	"Iyer,  Rahul" <Rahul.Iyer@netapp.com>,
+	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Neil Brown <neilb@suse.de>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HotiM-0000BA-I7
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:05:14 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HotiP-0003tm-6Y
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:05:17 -0700
-In-Reply-To: <17996.11983.278205.708747@notabene.brown>
+	id 1Hotl9-0000Tb-L0
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:08:07 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HotlB-0003Or-UI
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:08:10 -0700
+In-Reply-To: <20070518040137.GD30144@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,75 +36,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, May 17, 2007 at 08:30:39PM +1000, Neil Brown wrote:
-> On Thursday May 17, gnb@sgi.com wrote:
-> > On Wed, May 16, 2007 at 05:10:53PM -0400, J. Bruce Fields wrote:
-> > > On Thu, May 17, 2007 at 05:22:11AM +1000, Greg Banks wrote:
-> > > > +	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> > > > +	if (required*2 > wspace) {
-> > > > +		/* Don't enqueue while not enough space for reply */
-> > > > +		dprintk("svc: socket %p  no space, %d*2 > %d, not enqueued\n",
-> > > > +			svsk->sk_sk, required, wspace);
-> > > > +		return 0;
-> > > > +	}
-> > > > +	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> > > > +	return 1;
-> > > > +}
-> > > 
-> > > So, this is just my ignorance--why do the set and clear of SOCK_NOSPACE
-> > > need to be ordered in the way they are?  (Why not just set once inside
-> > > the if clause?)
+On Fri, May 18, 2007 at 12:01:37AM -0400, bfields wrote:
+> On Fri, May 18, 2007 at 01:16:30PM +1000, Greg Banks wrote:
+> > On Thu, May 17, 2007 at 02:16:46AM -0700, Iyer, Rahul wrote:
+> > > I've written some code to do NFSv4.1 callbacks and wound up implementing
+> > > another "transport". Since in v4.1 it's actually possible for clients to
+> > > send requests (fore-channel) and receive callbacks (back channel) over
+> > > the same connection,
 > > 
-> > I can't see a good reason for it, but I'm trying to minimise
-> > perturbations to the logic.
+> > A very sensible thing to do, but hard to retrofit to the existing Linux
+> > code without significant surgery.  As you've discovered, the server and
+> > client code are two mostly-separate code bases (with mostly-separate
+> > authors and maintainers) that happen to link into the same module.
+> > Unifying these would be a major job.  I'd love to see it happen, for
+> > example to unify the XDR buffering code, but it would be an uphill
+> > battle technically and possibly politically also.  For some reason,
+> > code (like lockd) that lives in both the server and client side tends
+> > to be neglected by both camps.
+> > 
+> > > Given this, a unified transport switch would really rock. 
+> > > [...] Maybe I'm oversimplifying, but this seems doable.
+> > 
+> > Yes...eventually.
 > 
-> Unfortunately, you actually perturbed the important bit... Or at
-> least, the bit that I thought was important when I wrote it.
-> 
-> Previously, sk_stream_wspace(), or sock_wspace() would be called *after*
-> SOCK_NOSPACE was set.  With your patch it is called *before*.
-> 
-> It is a fairly improbably race, but if the output queue flushed
-> completely between calling XX_wspace and setting SOCK_NOSPACE, the
-> sk_write_space callback might never get called.
+> And the easiest approach may be to go ahead and introduce the completely
+> separate server-side transport switch and then later find ways increase
+> code sharing between the two in incremental steps....
 
-Woops.  I'll fix that.
+(But I don't think people who are interested in doing this should be
+scared off by "politics".  I'm sure careful patches would be welcomed by
+everyone.  Care is required, though--small differences between the
+assumptions made in the two code bases can tricky.  Anyway, that's my
+lame excuse for why I ended up with such messy rpcsec_gss privacy code.)
 
-> And I gather by the fact that you test "->sko_has_wspace" that RDMA
-> doesn't have such a function?
-
-You gather correctly.
-
->  Do that mean that RDMA will never
-> reject a write due to lack of space? 
-
-No, it means that the current RDMA send code will block waiting
-for space to become available.  That's right, nfsd threads block on
-the network.  Steel yourself, there's worse to come.
-
-> That seems unlikely.
-> I would rather assume that every transport has a sko_has_wspace
-> function... 
-
-Ok, but for today the RDMA one will be
-
-static int svc_rdma_has_wspace(struct svc_sock *svsk)
-{
-	return 1;
-}
-
-We might be able to pull the condition in the blocking logic out
-of svc_rdma_send() out to implement an sko_has_wspace, but there's
-something of an impedance mismatch.  The RDMA queue limit is expressed
-in Work Requests not bytes, and the mapping between the two is not
-precisely visible at the point when has_wspace is called.  I guess
-we'd have to use an upper bound.
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
