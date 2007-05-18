@@ -1,9 +1,9 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [RFC,
-	PATCH 3/15] knfsd: initialize RDMA transport in	sunrpc
-Date: Fri, 18 May 2007 14:23:07 -0400
-Message-ID: <1179512587.6488.119.camel@heimdal.trondhjem.org>
-References: <1179510296.23385.116.camel@trinity.ogc.int>
+	PATCH 5/15] knfsd: support RDMA transport	in	svc_create_socket.
+Date: Fri, 18 May 2007 14:25:02 -0400
+Message-ID: <1179512702.6488.121.camel@heimdal.trondhjem.org>
+References: <1179510317.23385.118.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -15,14 +15,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp76e-0005S9-UE
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:23:13 -0700
+	id 1Hp78U-0005dx-Ty
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:25:07 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/z5OjFbo4ixGnW3ShJMhSQvyhPkxSLVMw=])
+	ident=[U2FsdGVkX19guHWEWx9CntAk6qTnAX7Sw2Tkb6PKNIE=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hp76h-0001Rx-9J
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:23:15 -0700
-In-Reply-To: <1179510296.23385.116.camel@trinity.ogc.int>
+	(Exim 4.44) id 1Hp78X-0001zG-2x
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:25:09 -0700
+In-Reply-To: <1179510317.23385.118.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,67 +35,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-05-18 at 12:44 -0500, Tom Tucker wrote:
-> Add calls to the svc_rdma initialization and cleanup routines to the
-> sunrpc module init logic.
+On Fri, 2007-05-18 at 12:45 -0500, Tom Tucker wrote:
+> Adds a call to create RDMA transports to svc_create_socket.
+> Currently, we use IPPROTO_MAX, which is a work-around. The transport 
+> switch should ultimately provide transport types that are advertised 
+> by the transport drivers.
 > 
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 > 
->  net/sunrpc/sunrpc_syms.c |   10 +++++++++-
->  1 files changed, 9 insertions(+), 1 deletions(-)
+>  net/sunrpc/svcsock.c |    8 ++++++++
+>  1 files changed, 8 insertions(+), 0 deletions(-)
 > 
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index 43ecf62..16a50c9 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -20,7 +20,9 @@ #include <linux/sunrpc/svcsock.h>
->  #include <linux/sunrpc/auth.h>
->  #include <linux/workqueue.h>
->  #include <linux/sunrpc/rpc_pipe_fs.h>
-> -
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index b78e84b..9c2f8ee 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -46,6 +46,9 @@ #include <linux/sunrpc/clnt.h>
+>  #include <linux/sunrpc/xdr.h>
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/stats.h>
 > +#ifdef CONFIG_NFSD_RDMA
 > +#include <linux/sunrpc/svc_rdma.h>
 > +#endif
 >  
->  /* RPC scheduler */
->  EXPORT_SYMBOL(rpc_execute);
-> @@ -158,6 +160,9 @@ #endif
->  	cache_register(&ip_map_cache);
->  	cache_register(&unix_gid_cache);
->  	init_socket_xprt();
+>  /* SMP locking strategy:
+>   *
+> @@ -1805,6 +1808,11 @@ static int svc_create_socket(struct svc_
+>  			serv->sv_program->pg_name, protocol,
+>  			__svc_print_addr(sin, buf, sizeof(buf)));
+>  
 > +#ifdef CONFIG_NFSD_RDMA
-> +	err = svc_rdma_init();
+> +	if (protocol == IPPROTO_MAX)
+> +		return svc_rdma_create_listen(serv, protocol, 
+> +					      (struct sockaddr*)sin);
 > +#endif
->  out:
->  	return err;
->  }
-> @@ -175,6 +180,9 @@ cleanup_sunrpc(void)
->  #ifdef RPC_DEBUG
->  	rpc_unregister_sysctl();
->  #endif
-> +#ifdef CONFIG_NFSD_RDMA
-> +	svc_rdma_cleanup();
-> +#endif
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_exit();
->  #endif
+>  	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
+>  		printk(KERN_WARNING "svc: only UDP and TCP "
+>  				"sockets supported\n");
 
-Hmm... You really want to reorder this patch. AFAICS you haven't defined
-either svc_rdma.h or svc_rdma_*().
-
-Please also convert the above to avoid inlined #ifdef/#endif by defining
-inlined dummy versions of svc_rdma_cleanup/svc_rdma_init inside
-svc_rdma.h:
-
-#ifdef CONFIG_NFSD_RDMA
-void svc_rdma_cleanup(void);
-#else
-static inline void svc_rdma_cleanup(void)
-{
-}
-#endif
-
+Ditto... Please avoid inlined #ifdefs....
 
 
 
