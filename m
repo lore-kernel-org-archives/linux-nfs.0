@@ -1,29 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC,PATCH 3/14] knfsd: prepare reply per transport
-Date: Fri, 18 May 2007 10:42:38 -0400
-Message-ID: <1179499358.6488.66.camel@heimdal.trondhjem.org>
-References: <20070517075342.GG27247@sgi.com>
-	<7619F3097FAB384287CF636FF92D0CA10976B38B@exsvl01.hq.netapp.com>
-	<20070518031630.GB5104@sgi.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [PATCH 1/2] NFS: Add the mount option "nosharecache"
+Date: Fri, 18 May 2007 22:57:26 +0800
+Message-ID: <1179500246.3726.7.camel@raven.themaw.net>
+References: <17994.32412.173039.15055@notabene.brown>
+	<20070517021318.32447.94991.stgit@heimdal.trondhjem.org>
+	<1179457946.3726.3.camel@raven.themaw.net>
+	<1179494402.6488.13.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	"Iyer,  Rahul" <Rahul.Iyer@netapp.com>,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
-	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Greg Banks <gnb@sgi.com>
+Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
+	nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp3fR-0005rr-SG
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 07:42:53 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/ZdKv5N6j9qYVqKwuDDB1BvnATKrqJG+M=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hp3fS-0005hB-2G
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 07:42:56 -0700
-In-Reply-To: <20070518031630.GB5104@sgi.com>
+	id 1Hp4Pu-0002pz-Oz
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 08:30:54 -0700
+Received: from out1.smtp.messagingengine.com ([66.111.4.25])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp4Pv-0000ll-E9
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 08:30:57 -0700
+In-Reply-To: <1179494402.6488.13.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,51 +33,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-05-18 at 13:16 +1000, Greg Banks wrote:
-> A very sensible thing to do, but hard to retrofit to the existing Linux
-> code without significant surgery.  As you've discovered, the server and
-> client code are two mostly-separate code bases (with mostly-separate
-> authors and maintainers) that happen to link into the same module.
-> Unifying these would be a major job.  I'd love to see it happen, for
-> example to unify the XDR buffering code, but it would be an uphill
-> battle technically and possibly politically also.  For some reason,
-> code (like lockd) that lives in both the server and client side tends
-> to be neglected by both camps.
+On Fri, 2007-05-18 at 09:20 -0400, Trond Myklebust wrote:
+> On Fri, 2007-05-18 at 11:12 +0800, Ian Kent wrote:
+> > How will the "read-only bind mounts" VFS changes affect this?
 > 
-> > Given this, a unified transport switch would really rock. 
-> > [...] Maybe I'm oversimplifying, but this seems doable.
+> They won't. Dave's patches move the MS_RDONLY flag out of the
+> super_block and into the vfsmount. That makes it possible to share the
+> same super_block (and hence the same inode/dentry caches) between a
+> read-only mount and a read-write mount.
 > 
-> Yes...eventually.
+> If you want to change any of the other flags, though, you will still
+> have to use nosharecache to do so: for instance if you want to set up a
+> 'noac' mount for one directory, but want all other directories to cache
+> attributes, then you will have to mount the "noac" directory using the
+> nosharecache flag.
+> 
+> > When the fscache patches are merged how will this it be affect by this?
+> 
+> I'd suggest simply returning an error if the user tries to set both
+> fscache and nosharecache. David's reasoning is still valid: if two
+> superblocks try to write to the same fscache inode, then caching havoc
+> will ensue.
 
-I'm not sure that politics is really the problem here. I think the
-biggest issue is that the client and server have very different
-workloads.
+Yep. David suggested that also.
 
-The job of the client is to pump as much data as fast as possible
-through a single socket, to place incoming data into the correct reply
-buffers as quickly and efficiently as possible, and to handle exceptions
-such as dropped connections, or socket buffer starvation by resending
-the request after reconnecting/waiting for the socket buffer to empty.
-It uses a single workqueue, and non-blocking I/O in order to achieve
-this goal.
+> 
+> Note, however, that the fscache patches already have a problem. I found
+> out recently that RHEL-5 uses NFS_MOUNT_FSCACHE==0x4000, which is taken
+> by NFS_MOUNT_NORDIRPLUS in mainline.
 
-The job of the server is to listen for new connections, to round-robin
-through several sockets, to read incoming data into pre-allocated
-anonymous buffers, to process the RPC call, then to pump out the result
-as quickly as possible. It handles exceptions like dropped connections
-by dropping the request and moving on. Resource starvation is handled by
-deferring handling the request and/or possibly dropping it altogether.
+Yep, we'll need to work on fixing that. I'll talk with David.
 
-Apart from the tasks of 'reading data' and 'writing data', it is hard to
-see much that could be shared. Even for the case of reading/writing, the
-code differs due to the client's need to identify the incoming request
-or the server's need to provision socket write resources.
-So if anyone is serious about wanting to share transport switches
-between client and server, then what is first needed is a detailed
-analysis of what actually _can_ be shared. After that we can discuss
-what it actually makes sense to share.
+Ian
 
-Trond
 
 
 -------------------------------------------------------------------------
