@@ -1,28 +1,28 @@
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [RFC,
-	PATCH 3/15] knfsd: initialize RDMA transport in	sunrpc
-Date: Fri, 18 May 2007 13:54:25 -0500
-Message-ID: <1179514465.23385.147.camel@trinity.ogc.int>
-References: <1179510296.23385.116.camel@trinity.ogc.int>
-	<1179512587.6488.119.camel@heimdal.trondhjem.org>
+ PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
+Date: Fri, 18 May 2007 14:52:41 -0400
+Message-ID: <464DF5F9.2090205@oracle.com>
+References: <1179510345.23385.122.camel@trinity.ogc.int>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------050402060506060404090103"
 Cc: Neil Brown <neilb@suse.de>,
 	Tom Talpey <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp7au-00005x-1I
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:54:28 -0700
-Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp7aw-0003oL-R0
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:54:31 -0700
-In-Reply-To: <1179512587.6488.119.camel@heimdal.trondhjem.org>
+	id 1Hp7b0-00006D-Tf
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:54:35 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hp7b2-0000rp-CT
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:54:37 -0700
+In-Reply-To: <1179510345.23385.122.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,80 +35,111 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-05-18 at 14:23 -0400, Trond Myklebust wrote:
-> On Fri, 2007-05-18 at 12:44 -0500, Tom Tucker wrote:
-> > Add calls to the svc_rdma initialization and cleanup routines to the
-> > sunrpc module init logic.
-> > 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> >  net/sunrpc/sunrpc_syms.c |   10 +++++++++-
-> >  1 files changed, 9 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> > index 43ecf62..16a50c9 100644
-> > --- a/net/sunrpc/sunrpc_syms.c
-> > +++ b/net/sunrpc/sunrpc_syms.c
-> > @@ -20,7 +20,9 @@ #include <linux/sunrpc/svcsock.h>
-> >  #include <linux/sunrpc/auth.h>
-> >  #include <linux/workqueue.h>
-> >  #include <linux/sunrpc/rpc_pipe_fs.h>
-> > -
-> > +#ifdef CONFIG_NFSD_RDMA
-> > +#include <linux/sunrpc/svc_rdma.h>
-> > +#endif
-> >  
-> >  /* RPC scheduler */
-> >  EXPORT_SYMBOL(rpc_execute);
-> > @@ -158,6 +160,9 @@ #endif
-> >  	cache_register(&ip_map_cache);
-> >  	cache_register(&unix_gid_cache);
-> >  	init_socket_xprt();
-> > +#ifdef CONFIG_NFSD_RDMA
-> > +	err = svc_rdma_init();
-> > +#endif
-> >  out:
-> >  	return err;
-> >  }
-> > @@ -175,6 +180,9 @@ cleanup_sunrpc(void)
-> >  #ifdef RPC_DEBUG
-> >  	rpc_unregister_sysctl();
-> >  #endif
-> > +#ifdef CONFIG_NFSD_RDMA
-> > +	svc_rdma_cleanup();
-> > +#endif
-> >  #ifdef CONFIG_PROC_FS
-> >  	rpc_proc_exit();
-> >  #endif
-> 
-> Hmm... You really want to reorder this patch. AFAICS you haven't defined
-> either svc_rdma.h or svc_rdma_*().
-> 
-> Please also convert the above to avoid inlined #ifdef/#endif by defining
-> inlined dummy versions of svc_rdma_cleanup/svc_rdma_init inside
-> svc_rdma.h:
-> 
-> #ifdef CONFIG_NFSD_RDMA
-> void svc_rdma_cleanup(void);
-> #else
-> static inline void svc_rdma_cleanup(void)
-> {
-> }
-> #endif
+This is a multi-part message in MIME format.
+--------------050402060506060404090103
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Ok, I'll add this to the svc_rdma.h file. Thanks,
+Hi Tom-
 
-> 
-> 
-> 
+On the client side, I added a generic debug flag for transports, not a 
+specific flag for sockets.  Would you consider doing the same here?
 
+Tom Tucker wrote:
+> Add a bit to the rpc_debug bit field for RDMA transport
+> debug messages and sysctl definitions for configuration
+> and statistics files in /proc/sys/sunrpc/svc_rdma.
+> 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> 
+>  include/linux/sunrpc/debug.h |   15 +++++++++++++++
+>  1 files changed, 15 insertions(+), 0 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+> index fc3a5dd..9bf7381 100644
+> --- a/include/linux/sunrpc/debug.h
+> +++ b/include/linux/sunrpc/debug.h
+> @@ -24,6 +24,7 @@ #define RPCDBG_SVCSOCK		0x0100
+>  #define RPCDBG_SVCDSP		0x0200
+>  #define RPCDBG_MISC		0x0400
+>  #define RPCDBG_CACHE		0x0800
+> +#define RPCDBG_RDMA		0x1000
+>  #define RPCDBG_ALL		0x7fff
+>  
+>  #ifdef __KERNEL__
+> @@ -93,6 +94,20 @@ enum {
+>  	CTL_RDMA_MAXINLINEWRITE,
+>  	CTL_RDMA_WRITEPADDING,
+>  	CTL_RDMA_MEMREG,
+> +	CTL_SVCRDMA,
+> +	CTL_RDMA_MAX_REQUESTS,
+> +	CTL_RDMA_MAX_REQ_SIZE,
+> +	CTL_RDMA_ORD,
+> +	CTL_RDMA_READ_THROTTLE,
+> +	CTL_RDMA_STAT_RECV,
+> +	CTL_RDMA_STAT_READ,
+> +	CTL_RDMA_STAT_WRITE,
+> +	CTL_RDMA_STAT_SQ_STARVE,
+> +	CTL_RDMA_STAT_RQ_STARVE,
+> +	CTL_RDMA_STAT_RQ_POLL,
+> +	CTL_RDMA_STAT_RQ_PROD,
+> +	CTL_RDMA_STAT_SQ_POLL,
+> +	CTL_RDMA_STAT_SQ_PROD
+>  };
+>  
+>  #endif /* _LINUX_SUNRPC_DEBUG_H_ */
+> 
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by DB2 Express
+> Download DB2 Express C - the FREE version of DB2 express and take
+> control of your XML. No limits. Just data. Click to get it now.
+> http://sourceforge.net/powerbar/db2/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+
+
+--------------050402060506060404090103
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel/
+version:2.1
+end:vcard
+
+
+--------------050402060506060404090103
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--------------050402060506060404090103
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050402060506060404090103--
