@@ -1,9 +1,10 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC, PATCH 4/15] knfsd: map null socket to SOCK_STREAM
-	in	svc_max_payload
-Date: Fri, 18 May 2007 14:28:50 -0400
-Message-ID: <20070518182850.GA4843@fieldses.org>
-References: <1179510307.23385.117.camel@trinity.ogc.int>
+Subject: Re: [RFC,
+	PATCH 6/15] knfsd: nfs3svc_decode_writeargs assumes data	follows
+	header
+Date: Fri, 18 May 2007 14:35:18 -0400
+Message-ID: <20070518183518.GB4843@fieldses.org>
+References: <1179510324.23385.119.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -12,16 +13,16 @@ Cc: Neil Brown <neilb@suse.de>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp7CG-0005xj-PW
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:29:01 -0700
+	id 1Hp7IR-0006dd-M6
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:35:23 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hp7CA-0002ui-CY
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:28:56 -0700
-In-Reply-To: <1179510307.23385.117.camel@trinity.ogc.int>
+	(Exim 4.44) id 1Hp7IP-000753-BX
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 11:35:21 -0700
+In-Reply-To: <1179510324.23385.119.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,34 +35,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, May 18, 2007 at 12:45:07PM -0500, Tom Tucker wrote:
+On Fri, May 18, 2007 at 12:45:24PM -0500, Tom Tucker wrote:
 > 
-> The svc_max_payload function looks into the sk_sock structure to determine
-> what the reported max payload should be. For RDMA, there is no socket. This 
-> change effectively maps a NULL sk_sock to SOCK_STREAM.
+> The nfs3svc_decode_writeargs routine assumes that the data for an 
+> NFS write comes inline with the header when it verifies the message. 
+> Since the data for the write does not appear immediately following the 
+> header when RDMA is the transport, this check had to be modified.
 > 
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 > 
->  net/sunrpc/svc.c |    2 +-
+>  fs/nfsd/nfs3xdr.c |    2 +-
 >  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 9fec17d..b343db8 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1024,7 +1024,7 @@ u32 svc_max_payload(const struct svc_rqs
->  {
->  	int max = RPCSVC_MAXPAYLOAD_TCP;
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 7e4bb0a..0f08c4b 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -400,7 +400,7 @@ nfs3svc_decode_writeargs(struct svc_rqst
+>  	rqstp->rq_vec[v].iov_len = len;
+>  	args->vlen = v+1;
 >  
-> -	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
-> +	if (rqstp->rq_sock->sk_sock && rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
->  		max = RPCSVC_MAXPAYLOAD_UDP;
->  	if (rqstp->rq_server->sv_max_payload < max)
->  		max = rqstp->rq_server->sv_max_payload;
+> -	return args->count == args->len && rqstp->rq_vec[0].iov_len > 0;
+> +	return args->count == args->len && rqstp->rq_arg.len > hdr;
+>  }
 
-Don't you want to use Greg's sko_max_payload() (or whatever it ends up
-being) for this?
+You'll want to rebase against at least v2.6.22-rc1; see f34b9568.
 
 --b.
 
