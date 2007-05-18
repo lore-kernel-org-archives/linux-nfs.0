@@ -1,26 +1,23 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: [PATCH 1/2] NFS: Add the mount option "nosharecache"
-Date: Fri, 18 May 2007 22:57:26 +0800
-Message-ID: <1179500246.3726.7.camel@raven.themaw.net>
-References: <17994.32412.173039.15055@notabene.brown>
-	<20070517021318.32447.94991.stgit@heimdal.trondhjem.org>
-	<1179457946.3726.3.camel@raven.themaw.net>
-	<1179494402.6488.13.camel@heimdal.trondhjem.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH 0/15] knfsd: a transport driver for RDMA
+Date: Fri, 18 May 2007 12:44:24 -0500
+Message-ID: <1179510264.23385.113.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
-	nfs@lists.sourceforge.net
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Neil Brown <neilb@suse.de>,
+	Tom Talpey <Thomas.Talpey@netapp.com>,
+	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
+To: Linux NFS Mailing List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp4Pu-0002pz-Oz
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 08:30:54 -0700
-Received: from out1.smtp.messagingengine.com ([66.111.4.25])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp4Pv-0000ll-E9
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 08:30:57 -0700
-In-Reply-To: <1179494402.6488.13.camel@heimdal.trondhjem.org>
+	id 1Hp6VB-0000jj-AZ
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:44:29 -0700
+Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6VD-0007qF-R7
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:44:32 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,39 +30,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-05-18 at 09:20 -0400, Trond Myklebust wrote:
-> On Fri, 2007-05-18 at 11:12 +0800, Ian Kent wrote:
-> > How will the "read-only bind mounts" VFS changes affect this?
-> 
-> They won't. Dave's patches move the MS_RDONLY flag out of the
-> super_block and into the vfsmount. That makes it possible to share the
-> same super_block (and hence the same inode/dentry caches) between a
-> read-only mount and a read-write mount.
-> 
-> If you want to change any of the other flags, though, you will still
-> have to use nosharecache to do so: for instance if you want to set up a
-> 'noac' mount for one directory, but want all other directories to cache
-> attributes, then you will have to mount the "noac" directory using the
-> nosharecache flag.
-> 
-> > When the fscache patches are merged how will this it be affect by this?
-> 
-> I'd suggest simply returning an error if the user tries to set both
-> fscache and nosharecache. David's reasoning is still valid: if two
-> superblocks try to write to the same fscache inode, then caching havoc
-> will ensue.
 
-Yep. David suggested that also.
+These 15 patches are an experimental RDMA transport driver 
+for knfsd. They have been tested quite extensively on 2.6.18, 
+but less so on this latest version (2.6.21). The transport 
+driver plugs into an earlier transport switch that Greg and Peter 
+have since tuned up and posted here. 
 
-> 
-> Note, however, that the fscache patches already have a problem. I found
-> out recently that RHEL-5 uses NFS_MOUNT_FSCACHE==0x4000, which is taken
-> by NFS_MOUNT_NORDIRPLUS in mainline.
+[RFC,PATCH 1/15] knfsd: add NFSD_RDMA as an option to kconfig
+[RFC,PATCH 2/15] knfsd: add RDMA transport module to sunrpc makefile
+[RFC,PATCH 3/15] knfsd: intitialize RDMA transport in sunrpc
+[RFC,PATCH 4/15] knfsd: map null socket to SOCK_STREAM in svc_max_payload
+[RFC,PATCH 5/15] knfsd: support RDMA transport in svc_create_socket
+[RFC,PATCH 6/15] knfsd: nfs3svc_decode_writeargs assumes data follows header
+[RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
+[RFC,PATCH 8/15] knfsd: map null socket to SOCK_STREAM in svcauth_unix
+[RFC,PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
+[RFC,PATCH 10/15] knfsd: RDMA transport module initialization
+[RFC,PATCH 11/15] knfsd: RDMA transport core
+[RFC,PATCH 12/15] knfsd: RDMA transport recvfrom 
+[RFC,PATCH 13/15] knfsd: RDMA transport sendto 
+[RFC,PATCH 14/15] knfsd: RDMA transport mashalling logic
+[RFC,PATCH 15/15] knfsd: RDMA transport debug macros
 
-Yep, we'll need to work on fixing that. I'll talk with David.
-
-Ian
-
+Tom
 
 
 -------------------------------------------------------------------------
