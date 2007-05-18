@@ -1,29 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 3/14] knfsd: prepare reply per transport
-Date: Fri, 18 May 2007 00:08:05 -0400
-Message-ID: <20070518040805.GE30144@fieldses.org>
-References: <20070517075342.GG27247@sgi.com>
-	<7619F3097FAB384287CF636FF92D0CA10976B38B@exsvl01.hq.netapp.com>
-	<20070518031630.GB5104@sgi.com>
-	<20070518040137.GD30144@fieldses.org>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,PATCH 5/14] knfsd: max_payload per transport
+Date: Fri, 18 May 2007 14:56:47 +1000
+Message-ID: <20070518045647.GD5104@sgi.com>
+References: <20070516192306.GK9626@sgi.com>
+	<17996.12194.801580.925774@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	"Iyer,  Rahul" <Rahul.Iyer@netapp.com>,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
+Cc: Thomas Talpey <Thomas.Talpey@netapp.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Greg Banks <gnb@sgi.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hotl9-0000Tb-L0
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:08:07 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HotlB-0003Or-UI
-	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:08:10 -0700
-In-Reply-To: <20070518040137.GD30144@fieldses.org>
+	id 1HouWK-0004zT-SU
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:56:52 -0700
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX1/3IrTtzKClsKomQVeBF3HqBvdx/ew5GE4=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HouWM-0005gi-La
+	for nfs@lists.sourceforge.net; Thu, 17 May 2007 21:56:55 -0700
+In-Reply-To: <17996.12194.801580.925774@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,40 +34,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, May 18, 2007 at 12:01:37AM -0400, bfields wrote:
-> On Fri, May 18, 2007 at 01:16:30PM +1000, Greg Banks wrote:
-> > On Thu, May 17, 2007 at 02:16:46AM -0700, Iyer, Rahul wrote:
-> > > I've written some code to do NFSv4.1 callbacks and wound up implementing
-> > > another "transport". Since in v4.1 it's actually possible for clients to
-> > > send requests (fore-channel) and receive callbacks (back channel) over
-> > > the same connection,
+On Thu, May 17, 2007 at 08:34:10PM +1000, Neil Brown wrote:
+> On Thursday May 17, gnb@sgi.com wrote:
 > > 
-> > A very sensible thing to do, but hard to retrofit to the existing Linux
-> > code without significant surgery.  As you've discovered, the server and
-> > client code are two mostly-separate code bases (with mostly-separate
-> > authors and maintainers) that happen to link into the same module.
-> > Unifying these would be a major job.  I'd love to see it happen, for
-> > example to unify the XDR buffering code, but it would be an uphill
-> > battle technically and possibly politically also.  For some reason,
-> > code (like lockd) that lives in both the server and client side tends
-> > to be neglected by both camps.
+> > Make svc_max_payload() delegate to a new method in svc_sock_ops
+> > instead of reaching into the socket (beause later the NFS/RDMA
+> > transport will not even have a socket).
 > > 
-> > > Given this, a unified transport switch would really rock. 
-> > > [...] Maybe I'm oversimplifying, but this seems doable.
-> > 
-> > Yes...eventually.
+> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+> > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+> ..
+> >  
+> > +static u32 svc_tcp_max_payload(struct svc_sock *svsk)
+> > +{
+> > +	return RPCSVC_MAXPAYLOAD_TCP;
+> > +}
+> > +
 > 
-> And the easiest approach may be to go ahead and introduce the completely
-> separate server-side transport switch and then later find ways increase
-> code sharing between the two in incremental steps....
+> Seeing these are implementation (or protocol) defined constants, do we
+> really need a function call?  How about a
+> 	int max_payload;
+> in struct svc_sock_ops?? 
 
-(But I don't think people who are interested in doing this should be
-scared off by "politics".  I'm sure careful patches would be welcomed by
-everyone.  Care is required, though--small differences between the
-assumptions made in the two code bases can tricky.  Anyway, that's my
-lame excuse for why I ended up with such messy rpcsec_gss privacy code.)
+These ones are indeed constants, as is RDMA's.
 
---b.
+> Or is it tacky to put an integer in a *_ops
+> structure? 
+
+No tackier than putting a string name like I did, or the things done
+in tcp_congestion_ops or sock_request_ops.  It comes down to whether
+you want to allow future protocols to have variable limits, and right
+now that seems unnecesssary.
+
+I'll change the field to an int.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
