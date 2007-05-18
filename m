@@ -1,7 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 3/15] knfsd: initialize RDMA transport in sunrpc
-Date: Fri, 18 May 2007 12:44:56 -0500
-Message-ID: <1179510296.23385.116.camel@trinity.ogc.int>
+Subject: [RFC, PATCH 4/15] knfsd: map null socket to SOCK_STREAM
+	in	svc_max_payload
+Date: Fri, 18 May 2007 12:45:07 -0500
+Message-ID: <1179510307.23385.117.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -12,12 +13,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp6Vk-0000m3-8n
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:09 -0700
+	id 1Hp6Vq-0000ra-GB
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:10 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6Vh-0007yX-VB
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:02 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp6Vt-00086g-6h
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 10:45:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,50 +31,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add calls to the svc_rdma initialization and cleanup routines to the
-sunrpc module init logic.
+
+The svc_max_payload function looks into the sk_sock structure to determine
+what the reported max payload should be. For RDMA, there is no socket. This 
+change effectively maps a NULL sk_sock to SOCK_STREAM.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/sunrpc_syms.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+ net/sunrpc/svc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 43ecf62..16a50c9 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -20,7 +20,9 @@ #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/auth.h>
- #include <linux/workqueue.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
--
-+#ifdef CONFIG_NFSD_RDMA
-+#include <linux/sunrpc/svc_rdma.h>
-+#endif
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 9fec17d..b343db8 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1024,7 +1024,7 @@ u32 svc_max_payload(const struct svc_rqs
+ {
+ 	int max = RPCSVC_MAXPAYLOAD_TCP;
  
- /* RPC scheduler */
- EXPORT_SYMBOL(rpc_execute);
-@@ -158,6 +160,9 @@ #endif
- 	cache_register(&ip_map_cache);
- 	cache_register(&unix_gid_cache);
- 	init_socket_xprt();
-+#ifdef CONFIG_NFSD_RDMA
-+	err = svc_rdma_init();
-+#endif
- out:
- 	return err;
- }
-@@ -175,6 +180,9 @@ cleanup_sunrpc(void)
- #ifdef RPC_DEBUG
- 	rpc_unregister_sysctl();
- #endif
-+#ifdef CONFIG_NFSD_RDMA
-+	svc_rdma_cleanup();
-+#endif
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_exit();
- #endif
+-	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
++	if (rqstp->rq_sock->sk_sock && rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+ 		max = RPCSVC_MAXPAYLOAD_UDP;
+ 	if (rqstp->rq_server->sv_max_payload < max)
+ 		max = rqstp->rq_server->sv_max_payload;
 
 
 -------------------------------------------------------------------------
