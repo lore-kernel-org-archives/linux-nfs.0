@@ -1,25 +1,30 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] NFS: Add the mount option "nosharecache"
-Date: Fri, 18 May 2007 09:20:02 -0400
-Message-ID: <1179494402.6488.13.camel@heimdal.trondhjem.org>
-References: <17994.32412.173039.15055@notabene.brown>
-	<20070517021318.32447.94991.stgit@heimdal.trondhjem.org>
-	<1179457946.3726.3.camel@raven.themaw.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
+Date: Fri, 18 May 2007 08:33:54 -0500
+Message-ID: <1179495234.23385.30.camel@trinity.ogc.int>
+References: <20070516192211.GJ9626@sgi.com>
+	<20070516211053.GE18927@fieldses.org> <20070517071202.GE27247@sgi.com>
+	<17996.11983.278205.708747@notabene.brown>
+	<20070518040509.GC5104@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Paul Krizak <paul.krizak@amd.com>,
-	nfs@lists.sourceforge.net
-To: Ian Kent <raven@themaw.net>
+Cc: Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Thomas Talpey <Thomas.Talpey@netapp.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Peter Leckie <pleckie@melbourne.sgi.com>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hp2NU-00062M-1i
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 06:20:16 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp2NV-0008QZ-Hf
-	for nfs@lists.sourceforge.net; Fri, 18 May 2007 06:20:18 -0700
-In-Reply-To: <1179457946.3726.3.camel@raven.themaw.net>
+	id 1Hp2aj-0007L2-Qb
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 06:33:57 -0700
+Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hp2am-00029V-C2
+	for nfs@lists.sourceforge.net; Fri, 18 May 2007 06:34:00 -0700
+In-Reply-To: <20070518040509.GC5104@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,32 +37,85 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-05-18 at 11:12 +0800, Ian Kent wrote:
-> How will the "read-only bind mounts" VFS changes affect this?
+On Fri, 2007-05-18 at 14:05 +1000, Greg Banks wrote:
+> On Thu, May 17, 2007 at 08:30:39PM +1000, Neil Brown wrote:
+> > On Thursday May 17, gnb@sgi.com wrote:
+> > > On Wed, May 16, 2007 at 05:10:53PM -0400, J. Bruce Fields wrote:
+> > > > On Thu, May 17, 2007 at 05:22:11AM +1000, Greg Banks wrote:
+> > > > > +	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> > > > > +	if (required*2 > wspace) {
+> > > > > +		/* Don't enqueue while not enough space for reply */
+> > > > > +		dprintk("svc: socket %p  no space, %d*2 > %d, not enqueued\n",
+> > > > > +			svsk->sk_sk, required, wspace);
+> > > > > +		return 0;
+> > > > > +	}
+> > > > > +	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> > > > > +	return 1;
+> > > > > +}
+> > > > 
+> > > > So, this is just my ignorance--why do the set and clear of SOCK_NOSPACE
+> > > > need to be ordered in the way they are?  (Why not just set once inside
+> > > > the if clause?)
+> > > 
+> > > I can't see a good reason for it, but I'm trying to minimise
+> > > perturbations to the logic.
+> > 
+> > Unfortunately, you actually perturbed the important bit... Or at
+> > least, the bit that I thought was important when I wrote it.
+> > 
+> > Previously, sk_stream_wspace(), or sock_wspace() would be called *after*
+> > SOCK_NOSPACE was set.  With your patch it is called *before*.
+> > 
+> > It is a fairly improbably race, but if the output queue flushed
+> > completely between calling XX_wspace and setting SOCK_NOSPACE, the
+> > sk_write_space callback might never get called.
+> 
+> Woops.  I'll fix that.
+> 
+> > And I gather by the fact that you test "->sko_has_wspace" that RDMA
+> > doesn't have such a function?
+> 
+> You gather correctly.
+> 
+> >  Do that mean that RDMA will never
+> > reject a write due to lack of space? 
+> 
+> No, it means that the current RDMA send code will block waiting
+> for space to become available.  That's right, nfsd threads block on
+> the network.  Steel yourself, there's worse to come.
+> 
 
-They won't. Dave's patches move the MS_RDONLY flag out of the
-super_block and into the vfsmount. That makes it possible to share the
-same super_block (and hence the same inode/dentry caches) between a
-read-only mount and a read-write mount.
+Uh... Not really. The queue depths are designed to match credits to
+worst case reply sizes. In the normal case, it should never have to
+wait. The wait is to catch the margins in the same way that a kmalloc
+will wait for memory to become available. 
 
-If you want to change any of the other flags, though, you will still
-have to use nosharecache to do so: for instance if you want to set up a
-'noac' mount for one directory, but want all other directories to cache
-attributes, then you will have to mount the "noac" directory using the
-nosharecache flag.
+There's actually a stat kept by the transport that counts the number of
+times it waits.
 
-> When the fscache patches are merged how will this it be affect by this?
+There is a place that a wait is done in the "normal" case and that's for
+the completion of an RDMA_READ in the process of gathering the data for
+and RPC on receive. That wait happens _every_ time.
 
-I'd suggest simply returning an error if the user tries to set both
-fscache and nosharecache. David's reasoning is still valid: if two
-superblocks try to write to the same fscache inode, then caching havoc
-will ensue.
+> > That seems unlikely.
+> > I would rather assume that every transport has a sko_has_wspace
+> > function... 
+> 
+> Ok, but for today the RDMA one will be
+> 
+> static int svc_rdma_has_wspace(struct svc_sock *svsk)
+> {
+> 	return 1;
+> }
+> 
+> We might be able to pull the condition in the blocking logic out
+> of svc_rdma_send() out to implement an sko_has_wspace, but there's
+> something of an impedance mismatch.  The RDMA queue limit is expressed
+> in Work Requests not bytes, and the mapping between the two is not
+> precisely visible at the point when has_wspace is called.  I guess
+> we'd have to use an upper bound.
+> Greg.
 
-Note, however, that the fscache patches already have a problem. I found
-out recently that RHEL-5 uses NFS_MOUNT_FSCACHE==0x4000, which is taken
-by NFS_MOUNT_NORDIRPLUS in mainline.
-
-Trond
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
