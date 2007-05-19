@@ -1,19 +1,19 @@
 From: "Kecia Reynolds" <tfellaii@holland.wanadoo.co.uk>
 Subject: Sorry to be late
-Date: Sat, 19 May 2007 12:40:01 +0100
-Message-ID: <000b01c79a02$0ddabe80$14b2a8c0@host-091-096-193-172.ewe-ip-backbone.de>
+Date: Sat, 19 May 2007 12:40:23 +0100
+Message-ID: <000b01c79a02$1acf3df0$14b2a8c0@host-091-096-193-172.ewe-ip-backbone.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0981666965=="
-To: "Shirlene Campbell" <nfs@lists.sf.net>
+Content-Type: multipart/mixed; boundary="===============2020854954=="
+To: "Shirlene Campbell" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HpMM5-00049r-Kn
-	for nfs@lists.sourceforge.net; Sat, 19 May 2007 03:40:09 -0700
+	id 1HpMMO-0004AB-Ny
+	for nfs@lists.sourceforge.net; Sat, 19 May 2007 03:40:29 -0700
 Received: from host-091-096-193-172.ewe-ip-backbone.de ([91.96.193.172])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HpMM4-0003xj-MU
-	for nfs@lists.sourceforge.net; Sat, 19 May 2007 03:40:12 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HpMMO-00043d-6d
+	for nfs@lists.sourceforge.net; Sat, 19 May 2007 03:40:31 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,17 +28,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============0981666965==
+--===============2020854954==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C79A02.0DDABE80"
+	boundary="----=_NextPart_000_0007_01C79A02.1ACF3DF0"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C79A02.0DDABE80
+------=_NextPart_000_0007_01C79A02.1ACF3DF0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C79A02.0DDABE80"
+	boundary="----=_NextPart_001_0008_01C79A02.1ACF3DF0"
 
-------=_NextPart_001_0008_01C79A02.0DDABE80
+------=_NextPart_001_0008_01C79A02.1ACF3DF0
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -87,7 +87,7 @@ tragic.  but he was better than his word; for, just before the post was =
 reached, in a young lover coming to woo, my lady smiled, reseated =
 herself, and calmly=A1=A1"a note from colonel daventry, my lady,"
 
-------=_NextPart_001_0008_01C79A02.0DDABE80
+------=_NextPart_001_0008_01C79A02.1ACF3DF0
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -156,9 +156,9 @@ smiled, reseated herself, and calmly=A1=A1"a note from colonel daventry, =
 my lady,"</FONT></DIV>
 </DIV></BODY></HTML>
 
-------=_NextPart_001_0008_01C79A02.0DDABE80--
+------=_NextPart_001_0008_01C79A02.1ACF3DF0--
 
-------=_NextPart_000_0007_01C79A02.0DDABE80
+------=_NextPart_000_0007_01C79A02.1ACF3DF0
 Content-Type: image/gif;
 	name="XOE7oshqS5.gif"
 Content-Transfer-Encoding: base64
@@ -444,11 +444,11 @@ C+TLDuObvsuAvuyLD3BAHeDzvvRrCGJZCfE7GvNbv8ETB7Bwv/wbwAIcwH1IDQz0CDtRHb7TPXKw
 RoU4wJiwwKqYipngvxB8wTlBwZhgwRjcwZlQFrRTi9QhEB4sCtZLCSAcPCI+3MFzUMKI0Ink24wu
 PMM0XMM2fMMPJIyKwHAXDI44nBMr3Al08EI+DAvBuwp1QB12cAjJkAlHvAvm+8MFFAgAOw==
 
-------=_NextPart_000_0007_01C79A02.0DDABE80--
+------=_NextPart_000_0007_01C79A02.1ACF3DF0--
 
 
 
---===============0981666965==
+--===============2020854954==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -459,7 +459,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0981666965==
+--===============2020854954==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -469,4 +469,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0981666965==--
+--===============2020854954==--
