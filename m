@@ -1,26 +1,28 @@
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Greg Banks <gnb@sgi.com>
 Subject: Re: [RFC,
- PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
-Date: Sun, 20 May 2007 22:31:15 -0500
-Message-ID: <C2767CB3.30B42%tom@opengridcomputing.com>
+	PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
+Date: Mon, 21 May 2007 14:16:18 +1000
+Message-ID: <20070521041617.GG7482@sgi.com>
 References: <20070521031940.GF7482@sgi.com>
+	<C2767CB3.30B42%tom@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: NeilBrown <neilb@suse.de>,
 	"Talpey, Thomas" <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Greg Banks <gnb@sgi.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HpyX7-0000L7-WA
-	for nfs@lists.sourceforge.net; Sun, 20 May 2007 20:26:06 -0700
-Received: from mail.es335.com ([67.65.19.105])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HpyXA-0000it-Jb
-	for nfs@lists.sourceforge.net; Sun, 20 May 2007 20:26:08 -0700
-In-Reply-To: <20070521031940.GF7482@sgi.com>
+	id 1HpzJn-00055F-2p
+	for nfs@lists.sourceforge.net; Sun, 20 May 2007 21:16:23 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1HpzJo-00040Q-Q6
+	for nfs@lists.sourceforge.net; Sun, 20 May 2007 21:16:26 -0700
+In-Reply-To: <C2767CB3.30B42%tom@opengridcomputing.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,72 +35,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-BTW, Chuck Lever also pointed out that we should probably have a generic
-RPCDBG_XPRT debug flag instead of RPCDBG_RDMA. I think he's right. I think
-this should be part of the transport patchset that you're working on. Do you
-agree?
-
-Tom
-
-On 5/20/07 10:19 PM, "Greg Banks" <gnb@sgi.com> wrote:
-
-> On Fri, May 18, 2007 at 12:45:45PM -0500, Tom Tucker wrote:
->> 
->> Add a bit to the rpc_debug bit field for RDMA transport
->> debug messages and sysctl definitions for configuration
->> and statistics files in /proc/sys/sunrpc/svc_rdma.
->> 
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> ---
->> 
->>  include/linux/sunrpc/debug.h |   15 +++++++++++++++
->>  1 files changed, 15 insertions(+), 0 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
->> index fc3a5dd..9bf7381 100644
->> --- a/include/linux/sunrpc/debug.h
->> +++ b/include/linux/sunrpc/debug.h
->> @@ -24,6 +24,7 @@ #define RPCDBG_SVCSOCK  0x0100
->>  #define RPCDBG_SVCDSP  0x0200
->>  #define RPCDBG_MISC  0x0400
->>  #define RPCDBG_CACHE  0x0800
->> +#define RPCDBG_RDMA  0x1000
->>  #define RPCDBG_ALL  0x7fff
+On Sun, May 20, 2007 at 10:31:15PM -0500, Tom Tucker wrote:
 > 
-> Fine.  Did you update the rpc_debug program in nfs-utils, which also
-> knows about these debug bits?
-> 
->>  #ifdef __KERNEL__
->> @@ -93,6 +94,20 @@ enum {
->> CTL_RDMA_MAXINLINEWRITE,
->> CTL_RDMA_WRITEPADDING,
->> CTL_RDMA_MEMREG,
->> + CTL_SVCRDMA,
->> + CTL_RDMA_MAX_REQUESTS,
->> + CTL_RDMA_MAX_REQ_SIZE,
->> + CTL_RDMA_ORD,
->> + CTL_RDMA_READ_THROTTLE,
->> + CTL_RDMA_STAT_RECV,
->> + CTL_RDMA_STAT_READ,
->> + CTL_RDMA_STAT_WRITE,
->> + CTL_RDMA_STAT_SQ_STARVE,
->> + CTL_RDMA_STAT_RQ_STARVE,
->> + CTL_RDMA_STAT_RQ_POLL,
->> + CTL_RDMA_STAT_RQ_PROD,
->> + CTL_RDMA_STAT_SQ_POLL,
->> + CTL_RDMA_STAT_SQ_PROD
->>  };
->>  
->>  #endif /* _LINUX_SUNRPC_DEBUG_H_ */
-> 
-> This is fine, but one tiny nit: you have the makings of two patches
-> here.  This hunk belongs with the patch that uses the new defines
-> and registers the sysctls.
-> 
-> Greg.
+> BTW, Chuck Lever also pointed out that we should probably have a generic
+> RPCDBG_XPRT debug flag instead of RPCDBG_RDMA.
 
+So he did.  Serves me right for not reading all my email before
+replying.
 
+> I think he's right. I think
+> this should be part of the transport patchset that you're working on. Do you
+> agree?
+
+I'm a little confused as to precisely what is suggested.
+
+Currently we have an existing RPCDBG_SVCSOCK which enables dprintks
+in both the generic transport code and in the sockets-specific code
+too; this is hard to separate because all the code is intermingled in
+the one file svcsock.c.
+
+If the suggestion is to have separate bits for the sockets-specific
+and the generic code, then the two painful alternatives seem to be
+
+a) splitting the sockets and generic code into separate .c files, or
+
+b) changing half the dprintk()s in svcsock.c to dfprintks().
+
+I wasn't planning to do either of those anytime soon; either would
+be a significant change.
+
+I think the ideal case would be a total of 3 debug bits: one for the
+generic transport code, one for the sockets transport-specific code and
+one for the RDMA transport-specific code.  Getting there isn't easy.
+
+However given that the new svc_rdma* code is large and in separate
+files, giving it it's own RPCDBG_RDMA bit, as you've already done,
+is easy and useful and a step in the right direction.
+
+In any case I'm happy to do whatever is necessary in the transport
+patchset,  but I'd appreciate Neil's guidance on which approach he'd
+prefer before I go in with the scalpel.  Neil?
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
