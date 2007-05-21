@@ -1,7 +1,7 @@
 From: Chris Wright <chrisw@sous-sol.org>
-Subject: [patch 17/69] knfsd: Avoid use of unitialised variables on error path when nfs exports.
-Date: Mon, 21 May 2007 12:16:29 -0700
-Message-ID: <20070521191714.047127000@sous-sol.org>
+Subject: [patch 18/69] knfsd: rpc: fix server-side wrapping of krb5i replies
+Date: Mon, 21 May 2007 12:16:30 -0700
+Message-ID: <20070521191714.531390000@sous-sol.org>
 References: <20070521191612.800400000@sous-sol.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -13,10 +13,12 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Michael Krufky <mkrufky@linuxtv.org>,
 	Chuck Ebbert <cebbert@redhat.com>,
 	torvalds@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net
+	NeilBrown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net
 To: linux-kernel@vger.kernel.org, stable@kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934058AbXEUTcP@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1765979AbXEUTg5@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
@@ -25,46 +27,36 @@ List-ID: <nfs.lists.sourceforge.net>
 
 From: NeilBrown <neilb@suse.de>
 
-We need to zero various parts of 'exp' before any 'goto out', otherwise
-when we go to free the contents... we die.
+It's not necessarily correct to assume that the xdr_buf used to hold the
+server's reply must have page data whenever it has tail data.
 
+And there's no need for us to deal with that case separately anyway.
+
+Acked-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 Signed-off-by: Chris Wright <chrisw@sous-sol.org>
 ---
 
- fs/nfsd/export.c |   14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ net/sunrpc/auth_gss/svcauth_gss.c |    8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
-diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
---- linux-2.6.21.1.orig/fs/nfsd/export.c
-+++ linux-2.6.21.1/fs/nfsd/export.c
-@@ -469,6 +469,13 @@ static int svc_export_parse(struct cache
- 	nd.dentry = NULL;
- 	exp.ex_path = NULL;
- 
-+	/* fs locations */
-+	exp.ex_fslocs.locations = NULL;
-+	exp.ex_fslocs.locations_count = 0;
-+	exp.ex_fslocs.migrated = 0;
-+
-+	exp.ex_uuid = NULL;
-+
- 	if (mesg[mlen-1] != '\n')
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
-@@ -509,13 +516,6 @@ static int svc_export_parse(struct cache
- 	if (exp.h.expiry_time == 0)
- 		goto out;
- 
--	/* fs locations */
--	exp.ex_fslocs.locations = NULL;
--	exp.ex_fslocs.locations_count = 0;
--	exp.ex_fslocs.migrated = 0;
--
--	exp.ex_uuid = NULL;
--
- 	/* flags */
- 	err = get_int(&mesg, &an_int);
- 	if (err == -ENOENT)
+diff .prev/net/sunrpc/auth_gss/svcauth_gss.c ./net/sunrpc/auth_gss/svcauth_gss.c
+--- linux-2.6.21.1.orig/net/sunrpc/auth_gss/svcauth_gss.c
++++ linux-2.6.21.1/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1196,13 +1196,7 @@ svcauth_gss_wrap_resp_integ(struct svc_r
+ 	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset,
+ 				integ_len))
+ 		BUG();
+-	if (resbuf->page_len == 0
+-			&& resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE
+-			< PAGE_SIZE) {
+-		BUG_ON(resbuf->tail[0].iov_len);
+-		/* Use head for everything */
+-		resv = &resbuf->head[0];
+-	} else if (resbuf->tail[0].iov_base == NULL) {
++	if (resbuf->tail[0].iov_base == NULL) {
+ 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+ 			goto out_err;
+ 		resbuf->tail[0].iov_base = resbuf->head[0].iov_base
 
 -- 
