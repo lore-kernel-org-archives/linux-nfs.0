@@ -1,26 +1,19 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
-Date: Mon, 21 May 2007 20:02:59 +1000
-Message-ID: <20070521100259.GN7482@sgi.com>
-References: <1179510352.23385.123.camel@trinity.ogc.int>
-	<18001.17958.145762.704892@notabene.brown>
+From: John Frisk <john_a_frisk@yahoo.com>
+Subject: NFS hang in 2.6.21.1
+Date: Mon, 21 May 2007 07:18:04 -0700 (PDT)
+Message-ID: <767985.78880.qm@web54407.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Neil Brown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hq4jM-0003Yd-Fa
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 03:03:08 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Hq4jO-0006FZ-5u
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 03:03:11 -0700
-In-Reply-To: <18001.17958.145762.704892@notabene.brown>
+	id 1Hq8i7-0003dV-TL
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 07:18:08 -0700
+Received: from web54407.mail.yahoo.com ([206.190.49.137])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hq8iA-0003oL-Hh
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 07:18:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,50 +26,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, May 21, 2007 at 05:11:34PM +1000, Neil Brown wrote:
-> On Friday May 18, tom@opengridcomputing.com wrote:
-> > 
-> > This file implements the core transport data management and I/O
-> > path. The I/O path for RDMA involves receiving callbacks on interrupt 
-> > context. Since all the svc transport locks are _bh locks we enqueue the 
-> > transport on a list, schedule a tasklet to dequeue data indications from 
-> > the RDMA completion queue. The tasklet in turn takes _bh locks to 
-> > enqueue receive data indications on a list for the transport. The 
-> > svc_rdma_recvfrom transport function dequeues data from this list in an 
-> > NFSD thread context.
-> 
-> Cannot we simply change the usage of ->sp_lock to always disable
-> interrupts?
+Team,
+I have been attempting to put together a linux HA NFS
+server for my home environment.  I am currently
+running two Debian etch 4.0 machines both running
+vanilla 2.6.21.1 kernels that I compiled (exception
+being the nvidia driver for video).  When I attempt to
+do some performance benchmarks, a test of bonnie++
+makes the NFS client stuck in a non-responsive
+non-killable state.  The NFS server at this point is
+not busy doing anything so I believe there may be some
+condition leading to a deadlock in the client. 
 
-We could, but the question then is what impact will locking out
-interrupts more often have on throughout or latency over Ethernet?
+jfrisk@evil:~$ df -k .
+Filesystem           1K-blocks      Used Available
+Use% Mounted on
+imezru-ha1:/hafs/nethome/jfrisk
+                      76791424    409856  75601408  
+1% /nethome/jfrisk
+jfrisk@evil:~$ mount
 
-> That would make this much simpler. 
+imezru-ha1:/hafs/nethome/jfrisk on /nethome/jfrisk
+type nfs (rw,hard,intr,bg,addr=192.168.69.7)
 
-Yes it would.
+jfrisk@evil:~$ /usr/sbin/bonnie++ -f -s 100 -n 1 -r 0
+Writing intelligently...done
+Rewriting...                   
 
-> How much would it cost?
+This is where the bonnie program hangs.
+  frisk@evil:~$ ps aux | grep bonnie
+jfrisk    6882  0.7  0.0   2708  1012 pts/3    D+  
+09:11   0:00 /usr/sbin/bonnie++ -f -s 100 -n 1 -r 0
 
-???
+Top shows the user load at 1.00 (before starting is
+0.10) but nothing else  of importance is running on
+the system. 
 
-> Alternatively, why can the network layer deliver these notification in
-> "bh" context, but the ib layer wants to deliver them in irq context?
-> Does doing it in irq context have lower latency or something?
+I can reproduce this bug pretty consistently. I have
+these machines for use by anyone on the team so I
+would appreciate being guided on what to do next to
+help debug this issue.  Thanks in advance!            
+     
 
-The problem is wider than it appears.  The kernel verbs interface
-reports a *lot* of stuff in irq context, not just incoming data.
-Many of those events would be best handled by disconnecting the
-svc_sock, which implies setting SK_CLOSE and causing svc_sock_enqueue()
-to be called.  The former happens; the latter doesn't.  For example,
-see qp_event_handler() in net/sunrpc/svc_rdma_transport.c.  This
-means that error conditions are not notified until some other event
-causes svc_sock_enqueue() to be called.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+ 
+____________________________________________________________________________________
+Now that's room service!  Choose from over 150,000 hotels
+in 45,000 destinations on Yahoo! Travel to find your fit.
+http://farechase.yahoo.com/promo-generic-14795097
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
