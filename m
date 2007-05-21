@@ -1,28 +1,25 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC,
-	PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
-Date: Mon, 21 May 2007 14:39:50 +1000
-Message-ID: <18001.8854.771127.95716@notabene.brown>
-References: <20070521031940.GF7482@sgi.com>
-	<C2767CB3.30B42%tom@opengridcomputing.com>
-	<20070521041617.GG7482@sgi.com>
+Subject: Re: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
+Date: Mon, 21 May 2007 17:04:40 +1000
+Message-ID: <18001.17544.798341.277657@notabene.brown>
+References: <1179510331.23385.120.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	"Talpey,  Thomas" <Thomas.Talpey@netapp.com>,
-	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Greg Banks <gnb@sgi.com>
+Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hpzgj-0007MJ-TW
-	for nfs@lists.sourceforge.net; Sun, 20 May 2007 21:40:06 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1Hq1x1-0003bG-Ap
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 00:05:03 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hpzgl-0004zI-II
-	for nfs@lists.sourceforge.net; Sun, 20 May 2007 21:40:08 -0700
-In-Reply-To: message from Greg Banks on Monday May 21
+	(Exim 4.44) id 1Hq1x3-0000wn-HS
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 00:05:06 -0700
+In-Reply-To: message from Tom Tucker on Friday May 18
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,28 +32,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday May 21, gnb@sgi.com wrote:
+On Friday May 18, tom@opengridcomputing.com wrote:
+> Adds a call to the svc_makesock routine to create the RDMA transport. 
+> I think this should somehow be linked to the transport switch and the 
+> port mapper. 
 > 
-> In any case I'm happy to do whatever is necessary in the transport
-> patchset,  but I'd appreciate Neil's guidance on which approach he'd
-> prefer before I go in with the scalpel.  Neil?
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> 
+>  fs/nfsd/nfssvc.c |   11 +++++++++++
+>  1 files changed, 11 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index d7759ce..4a7982e 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -254,6 +254,17 @@ #ifdef CONFIG_NFSD_TCP
+>  	if (error < 0)
+>  		return error;
+>  #endif
+> +#ifdef CONFIG_NFSD_RDMA
+> +	/* KLUDGE: The rpc.nfsd utility passes down the
+> +	 * port number when it opens the nfsd file. We are
+> +	 * going to ignore it here and force the RDMA port number
+> +	 * to 2050. This will allow the TCP transport to coexist
+> +	 * with the RDMA transport.
+> +	 */
+> +	error = svc_makesock(nfsd_serv, IPPROTO_MAX, 2050 /* port */, 0);
+> +	if (error < 0)
+> +		return error;
+> +#endif
+>  	return 0;
+>  }
+>  
 
-I cannot immediately see the value in having different debug bits for
-the socket transport code and the RDMA transport code.  The key
-question is "When would you want to see the debugging from one, but
-not from the other", and I cannot see when that would be.  Almost
-certainly if you are testing one transport, you will not be using the
-other, so it will not contribute any noise.
+As you say:  KLUDGE.
 
-So I suspect we should simply
-#define RPCDBG_FACILITY	RPCDBG_SVCSOCK
+What is really going on here?  Why don't we have a protocol number,
+and why can't we use port 2049?
 
-in any server-RDMA specific files, and see how we go.  If we find we
-need another bit later, then we will know exactly why and be able to
-make an informed decisions based on that knowledge.
+I don't know a lot about RDMA (feel free to educate me) but it seems
+that there is some connection to IP (is this IPoIB??) in that IP
+address seem to be available for the end points.
 
-Ofcouse if client and server share much code, that could be awkward.
-Do they?
+Can you distinguish an RDMA connection from any other IP connection
+simply based on the interface it gets routed through?
+
+Can you actually get any sort of socket representing an RDMA
+connection?  I appreciate that normal sendmsg/recvmsg calls on the
+socket aren't going to work, but I'm dreaming that maybe a
+socket-level 'accept' could establish the connection.  Then we look at
+the connection, discover it is on a RDMA-capable device, and start
+using the RDMA interface to move data around.
+Does that make any sense at all, or am I totally off-beam?
 
 NeilBrown
 
