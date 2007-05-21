@@ -1,9 +1,9 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
-Date: Mon, 21 May 2007 10:49:57 -0500
-Message-ID: <1179762597.23385.231.camel@trinity.ogc.int>
-References: <1179510331.23385.120.camel@trinity.ogc.int>
-	<18001.17544.798341.277657@notabene.brown>
+Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
+Date: Mon, 21 May 2007 10:58:36 -0500
+Message-ID: <1179763116.23385.240.camel@trinity.ogc.int>
+References: <1179510352.23385.123.camel@trinity.ogc.int>
+	<18001.17958.145762.704892@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
@@ -14,13 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqA93-0005xM-AP
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:50:01 -0700
+	id 1HqAHQ-0006tS-9Z
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:58:40 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqA96-00028T-0Q
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:50:04 -0700
-In-Reply-To: <18001.17544.798341.277657@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqAHT-0004Wj-3J
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:58:43 -0700
+In-Reply-To: <18001.17958.145762.704892@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,91 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-05-21 at 17:04 +1000, Neil Brown wrote:
+On Mon, 2007-05-21 at 17:11 +1000, Neil Brown wrote:
 > On Friday May 18, tom@opengridcomputing.com wrote:
-> > Adds a call to the svc_makesock routine to create the RDMA transport. 
-> > I think this should somehow be linked to the transport switch and the 
-> > port mapper. 
 > > 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> >  fs/nfsd/nfssvc.c |   11 +++++++++++
-> >  1 files changed, 11 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index d7759ce..4a7982e 100644
-> > --- a/fs/nfsd/nfssvc.c
-> > +++ b/fs/nfsd/nfssvc.c
-> > @@ -254,6 +254,17 @@ #ifdef CONFIG_NFSD_TCP
-> >  	if (error < 0)
-> >  		return error;
-> >  #endif
-> > +#ifdef CONFIG_NFSD_RDMA
-> > +	/* KLUDGE: The rpc.nfsd utility passes down the
-> > +	 * port number when it opens the nfsd file. We are
-> > +	 * going to ignore it here and force the RDMA port number
-> > +	 * to 2050. This will allow the TCP transport to coexist
-> > +	 * with the RDMA transport.
-> > +	 */
-> > +	error = svc_makesock(nfsd_serv, IPPROTO_MAX, 2050 /* port */, 0);
-> > +	if (error < 0)
-> > +		return error;
-> > +#endif
-> >  	return 0;
-> >  }
-> >  
+> > This file implements the core transport data management and I/O
+> > path. The I/O path for RDMA involves receiving callbacks on interrupt 
+> > context. Since all the svc transport locks are _bh locks we enqueue the 
+> > transport on a list, schedule a tasklet to dequeue data indications from 
+> > the RDMA completion queue. The tasklet in turn takes _bh locks to 
+> > enqueue receive data indications on a list for the transport. The 
+> > svc_rdma_recvfrom transport function dequeues data from this list in an 
+> > NFSD thread context.
 > 
-> As you say:  KLUDGE.
-> 
-> What is really going on here?  Why don't we have a protocol number,
-> and why can't we use port 2049?
-> 
-> I don't know a lot about RDMA (feel free to educate me) but it seems
-> that there is some connection to IP (is this IPoIB??) in that IP
-> address seem to be available for the end points.
+> Cannot we simply change the usage of ->sp_lock to always disable
+> interrupts?
+> That would make this much simpler.  How much would it cost?
 
-"RDMA" actually refers to two different transports: IB (not IPoIB), and
-iWARP (RDDP on TCP). In the first case, IP is not the transport (so no
-number), in the second case, TCP is actually the IP protocol, so there
-is no RDMA-unique protocol number. I just stole IPPROTO_MAX as an ...
-um ... workaround. 
-
-What I think we need here is a "transport number". Transports that
-register with the transport switch have a number that is passed in here
-to create a listening endpoint of the appropriate type. This
-infrastructure isn't there yet, but I believe Greg is noodling on a way
-to do this.
+I don't think they are particularly expensive to acquire, but they add
+incremental interrupt latency to the system. My impression is that the
+general guidance from Linus et al is to avoid them if not absolutely
+necessary. Trond's comments I think reflected this viewpoint as well,
+but perhaps I'm just solving a problem that doesn't exist.
 
 > 
-> Can you distinguish an RDMA connection from any other IP connection
-> simply based on the interface it gets routed through?
+> Alternatively, why can the network layer deliver these notification in
+> "bh" context, but the ib layer wants to deliver them in irq context?
+> Does doing it in irq context have lower latency or something?
 > 
 
-Unfortunately no for two reasons: iWARP interfaces support all of the
-protocol types with the same IP address, therefore, the port number 2050
-so we can distinguish between listening endpoints for TCP mounts vs.
-iWARP mounts. Port number 2050 is being proposed in the IANA for the
-NFS-RDMA service. 
+Yes, latency was certainly the design criteria in OFA. In practice, I
+think we're talking nanoseconds (i.e. interrupt handler vs. tasklet),
+however, when you're working with minimum latencies in the 2.8us range,
+nanoseconds become statistically significant.
 
-> Can you actually get any sort of socket representing an RDMA
-> connection?  I appreciate that normal sendmsg/recvmsg calls on the
-> socket aren't going to work, but I'm dreaming that maybe a
-> socket-level 'accept' could establish the connection.  Then we look at
-> the connection, discover it is on a RDMA-capable device, and start
-> using the RDMA interface to move data around.
-> Does that make any sense at all, or am I totally off-beam?
+For our purposes, I don't think the latency is an issue. 
 
-No, you're right in the middle of it. The OFA API has a sockets-like
-interface for connection management. The API has things like
-rdma_create_id (socket), rdma_listen (listen), rdma_connect (connect),
-etc... It is, however, not a socket. It is certainly possible to create
-a sockets abstraction and in-fact it has been done, but the compromises
-involved (no private data, no path record selection, etc...) were deemed
-to onerous and they created there own.
-
-Tom
-> 
 > NeilBrown
 
 
