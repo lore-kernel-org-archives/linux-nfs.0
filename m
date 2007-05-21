@@ -1,29 +1,24 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
-Date: Mon, 21 May 2007 11:02:05 -0500
-Message-ID: <1179763325.23385.244.camel@trinity.ogc.int>
-References: <1179510352.23385.123.camel@trinity.ogc.int>
-	<1179515255.6488.136.camel@heimdal.trondhjem.org>
-	<1179518863.23385.195.camel@trinity.ogc.int>
-	<18001.18232.387141.533217@notabene.brown>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS hang in 2.6.21.1
+Date: Mon, 21 May 2007 12:56:14 -0400
+Message-ID: <1179766574.6737.25.camel@heimdal.trondhjem.org>
+References: <767985.78880.qm@web54407.mail.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: John Frisk <john_a_frisk@yahoo.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqAKn-0007Xn-G1
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 09:02:09 -0700
-Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqAKq-00044M-20
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 09:02:12 -0700
-In-Reply-To: <18001.18232.387141.533217@notabene.brown>
+	id 1HqBBJ-0005YB-24
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 09:56:25 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+kvVbluNEfUKVZuqDPOYn7BhsauPbjggY=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HqBBL-0004NY-M9
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 09:56:28 -0700
+In-Reply-To: <767985.78880.qm@web54407.mail.yahoo.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,39 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-05-21 at 17:16 +1000, Neil Brown wrote:
-> On Friday May 18, tom@opengridcomputing.com wrote:
-> > On Fri, 2007-05-18 at 15:07 -0400, Trond Myklebust wrote:
-> > 
-> > > > +	while (xprt->sc_ctxt_cnt < target) {
-> > > > +		xprt->sc_ctxt_cnt ++;
-> > > > +		spin_unlock_irqrestore(&xprt->sc_ctxt_lock, flags);
-> > > > +
-> > > > +		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
-> > > > +
-> > > > +		spin_lock_irqsave(&xprt->sc_ctxt_lock, flags);
-> > > 
-> > > You've now dropped the spinlock. How can you know that the condition
-> > > xprt->sc_ctxt_cnt <= target is still valid?
-> > > 
-> > 
-> > I increment the sc_ctxt_cnt with the lock held. If I'm at the limit, the
-> > competing thread will find it equal -- correct? 
-> > 
-> 
-> I'm having trouble figuring out who the competing thread is.
-> As far as I can see (Well... "have seen"), this is always called from
-> the context of an nfsd thread which has sole access to the xprt.  So
-> there is no race.
-> ??
+On Mon, 2007-05-21 at 07:18 -0700, John Frisk wrote:
+> Team,
+> I have been attempting to put together a linux HA NFS
+> server for my home environment.  I am currently
+> running two Debian etch 4.0 machines both running
+> vanilla 2.6.21.1 kernels that I compiled (exception
+> being the nvidia driver for video).  When I attempt to
+> do some performance benchmarks, a test of bonnie++
+> makes the NFS client stuck in a non-responsive
+> non-killable state.  The NFS server at this point is
+> not busy doing anything so I believe there may be some
+> condition leading to a deadlock in the client. 
 
-The callback handler for SQ CQ (send queue completion queue) is called
-on interrupt context. This function returns contexts to this queue when
-cleaning up completed SQ WR (send queue work requests). See sq_cq_reap
-in svc_rdma_transport.c, line #329.  
+Could you please try the patches
 
-> 
-> NeilBrown
+http://client.linux-nfs.org/Linux-2.6.x/2.6.21/linux-2.6.21-002-no_congestion_wait_in_update_request.dif
+http://client.linux-nfs.org/Linux-2.6.x/2.6.21/linux-2.6.21-003-cleanup_coalesce.dif
+http://client.linux-nfs.org/Linux-2.6.x/2.6.21/linux-2.6.21-004-cleanup_coalesce2.dif
+http://client.linux-nfs.org/Linux-2.6.x/2.6.21/linux-2.6.21-005-cleanup_readpages.dif
+http://client.linux-nfs.org/Linux-2.6.x/2.6.21/linux-2.6.21-006-fix_dirtying_race.dif
+http://client.linux-nfs.org/Linux-2.6.x/2.6.21/linux-2.6.21-007-fix_page_overflow.dif
+
+and
+
+http://client.linux-nfs.org/Linux-2.6.x/2.6.22-rc2/linux-2.6.22-001-write_deadlock_avoidance.dif
+
+That fixes all the write deadlock issues for me.
+
+Trond
 
 
 -------------------------------------------------------------------------
