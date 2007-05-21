@@ -1,85 +1,66 @@
-From: John Frisk <john_a_frisk@yahoo.com>
-Subject: NFS hang in 2.6.21.1
-Date: Mon, 21 May 2007 07:18:04 -0700 (PDT)
-Message-ID: <767985.78880.qm@web54407.mail.yahoo.com>
+From: "cyril.lacabanne" <cyril.lacabanne@bull.net>
+Subject: RPC and TI-RPC Tests Suite
+Date: Mon, 21 May 2007 17:34:16 +0200
+Message-ID: <4651BBF8.4040008@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hq8i7-0003dV-TL
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 07:18:08 -0700
-Received: from web54407.mail.yahoo.com ([206.190.49.137])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hq8iA-0003oL-Hh
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 07:18:10 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+To: ltp-list@lists.sourceforge.net, nfs@lists.sourceforge.net,
+	libtirpc-devel@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <ltp-list-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ltp-list>,
+	<mailto:ltp-list-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=ltp-list>
+List-Post: <mailto:ltp-list@lists.sourceforge.net>
+List-Help: <mailto:ltp-list-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ltp-list>,
+	<mailto:ltp-list-request@lists.sourceforge.net?subject=subscribe>
+Sender: ltp-list-bounces@lists.sourceforge.net
+Errors-To: ltp-list-bounces@lists.sourceforge.net
+List-ID: <nfs.lists.sourceforge.net>
 
-Team,
-I have been attempting to put together a linux HA NFS
-server for my home environment.  I am currently
-running two Debian etch 4.0 machines both running
-vanilla 2.6.21.1 kernels that I compiled (exception
-being the nvidia driver for video).  When I attempt to
-do some performance benchmarks, a test of bonnie++
-makes the NFS client stuck in a non-responsive
-non-killable state.  The NFS server at this point is
-not busy doing anything so I believe there may be some
-condition leading to a deadlock in the client. 
+Hi,
 
-jfrisk@evil:~$ df -k .
-Filesystem           1K-blocks      Used Available
-Use% Mounted on
-imezru-ha1:/hafs/nethome/jfrisk
-                      76791424    409856  75601408  
-1% /nethome/jfrisk
-jfrisk@evil:~$ mount
+I'm a student working at Bull France labs. I'm writing a RPC and TI-RPC
+tests suite for Linux (but the code is probably independent of the
+Operating System). Here is the design of the test suite.
 
-imezru-ha1:/hafs/nethome/jfrisk on /nethome/jfrisk
-type nfs (rw,hard,intr,bg,addr=192.168.69.7)
+Since NFS does make use of RPC and TI-RPC (for IPv6 now), this test
+suite is aimed to guarantee that the underlying RPC/TI-RPC technology is
+robust and reliable. It should also help improving the quality of Linux.
 
-jfrisk@evil:~$ /usr/sbin/bonnie++ -f -s 100 -n 1 -r 0
-Writing intelligently...done
-Rewriting...                   
+Please visit our project web page for more information and find design 
+documents at http://nfsv4.bullopensource.org/doc/rpc_testsuite.php
 
-This is where the bonnie program hangs.
-  frisk@evil:~$ ps aux | grep bonnie
-jfrisk    6882  0.7  0.0   2708  1012 pts/3    D+  
-09:11   0:00 /usr/sbin/bonnie++ -f -s 100 -n 1 -r 0
-
-Top shows the user load at 1.00 (before starting is
-0.10) but nothing else  of importance is running on
-the system. 
-
-I can reproduce this bug pretty consistently. I have
-these machines for use by anyone on the team so I
-would appreciate being guided on what to do next to
-help debug this issue.  Thanks in advance!            
-     
-
-
+Design documents are :
+* title       : Test Plan
+  file name   : TestPlan_v12.pdf
+  explanation : Following IEEE 829-1998 rules, this documents gives full 
+explanation about:
+                   - how to use the tests suite
+                   - what is tested (such as functions, domains)
+                   - which environment is required/needed (software, 
+hardware)
+  comments    : version 1.2 (2007-05-15), 10 pages
  
-____________________________________________________________________________________
-Now that's room service!  Choose from over 150,000 hotels
-in 45,000 destinations on Yahoo! Travel to find your fit.
-http://farechase.yahoo.com/promo-generic-14795097
+* title       : Test Design
+  file name   : TestDesign_v13.pdf
+  explanation : This document defines:
+                   - test requirements,
+                   - test dependencies,
+                   - test case description,
+                   - expected results.
+  comments    : version 1.3 (2007-05-15), 138 pages
+
+I have already started writing the test suite code.
+Feel free to send your remarks and comments about the design of the test
+suite !
+
+Regards,
+
+Cyril Lacabanne
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
