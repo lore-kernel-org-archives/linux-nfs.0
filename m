@@ -1,14 +1,12 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,
- PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
-Date: Mon, 21 May 2007 10:29:46 -0400
-Message-ID: <4651ACDA.7050207@oracle.com>
-References: <20070521031940.GF7482@sgi.com>	<C2767CB3.30B42%tom@opengridcomputing.com>	<20070521041617.GG7482@sgi.com>
-	<18001.8854.771127.95716@notabene.brown>
-Reply-To: chuck.lever@oracle.com
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
+Date: Mon, 21 May 2007 10:49:57 -0500
+Message-ID: <1179762597.23385.231.camel@trinity.ogc.int>
+References: <1179510331.23385.120.camel@trinity.ogc.int>
+	<18001.17544.798341.277657@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090003020205060401020902"
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
 To: Neil Brown <neilb@suse.de>
@@ -16,17 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqA7D-0005ps-P4
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:48:07 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HqA7F-0001cu-Fx
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:48:10 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by externalmx-1.sourceforge.net with esmtp (TLSv1:AES256-SHA:256)
-	(Exim 4.41) id 1Hq8uF-0006L5-Gb
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 07:30:41 -0700
-In-Reply-To: <18001.8854.771127.95716@notabene.brown>
+	id 1HqA93-0005xM-AP
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:50:01 -0700
+Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqA96-00028T-0Q
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 08:50:04 -0700
+In-Reply-To: <18001.17544.798341.277657@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,74 +33,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090003020205060401020902
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Neil Brown wrote:
-> On Monday May 21, gnb@sgi.com wrote:
->> In any case I'm happy to do whatever is necessary in the transport
->> patchset,  but I'd appreciate Neil's guidance on which approach he'd
->> prefer before I go in with the scalpel.  Neil?
+On Mon, 2007-05-21 at 17:04 +1000, Neil Brown wrote:
+> On Friday May 18, tom@opengridcomputing.com wrote:
+> > Adds a call to the svc_makesock routine to create the RDMA transport. 
+> > I think this should somehow be linked to the transport switch and the 
+> > port mapper. 
+> > 
+> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> > ---
+> > 
+> >  fs/nfsd/nfssvc.c |   11 +++++++++++
+> >  1 files changed, 11 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index d7759ce..4a7982e 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -254,6 +254,17 @@ #ifdef CONFIG_NFSD_TCP
+> >  	if (error < 0)
+> >  		return error;
+> >  #endif
+> > +#ifdef CONFIG_NFSD_RDMA
+> > +	/* KLUDGE: The rpc.nfsd utility passes down the
+> > +	 * port number when it opens the nfsd file. We are
+> > +	 * going to ignore it here and force the RDMA port number
+> > +	 * to 2050. This will allow the TCP transport to coexist
+> > +	 * with the RDMA transport.
+> > +	 */
+> > +	error = svc_makesock(nfsd_serv, IPPROTO_MAX, 2050 /* port */, 0);
+> > +	if (error < 0)
+> > +		return error;
+> > +#endif
+> >  	return 0;
+> >  }
+> >  
 > 
-> I cannot immediately see the value in having different debug bits for
-> the socket transport code and the RDMA transport code.  The key
-> question is "When would you want to see the debugging from one, but
-> not from the other", and I cannot see when that would be.  Almost
-> certainly if you are testing one transport, you will not be using the
-> other, so it will not contribute any noise.
+> As you say:  KLUDGE.
+> 
+> What is really going on here?  Why don't we have a protocol number,
+> and why can't we use port 2049?
+> 
+> I don't know a lot about RDMA (feel free to educate me) but it seems
+> that there is some connection to IP (is this IPoIB??) in that IP
+> address seem to be available for the end points.
 
-That's how I did it in the client transport switch.  One bit enables 
-debug messages for all transports.
+"RDMA" actually refers to two different transports: IB (not IPoIB), and
+iWARP (RDDP on TCP). In the first case, IP is not the transport (so no
+number), in the second case, TCP is actually the IP protocol, so there
+is no RDMA-unique protocol number. I just stole IPPROTO_MAX as an ...
+um ... workaround. 
 
-> So I suspect we should simply
-> #define RPCDBG_FACILITY	RPCDBG_SVCSOCK
+What I think we need here is a "transport number". Transports that
+register with the transport switch have a number that is passed in here
+to create a listening endpoint of the appropriate type. This
+infrastructure isn't there yet, but I believe Greg is noodling on a way
+to do this.
 
-That's expedient, but I suggest you rename the flag to something less 
-specific to sockets.
+> 
+> Can you distinguish an RDMA connection from any other IP connection
+> simply based on the interface it gets routed through?
+> 
 
-> in any server-RDMA specific files, and see how we go.
+Unfortunately no for two reasons: iWARP interfaces support all of the
+protocol types with the same IP address, therefore, the port number 2050
+so we can distinguish between listening endpoints for TCP mounts vs.
+iWARP mounts. Port number 2050 is being proposed in the IANA for the
+NFS-RDMA service. 
 
---------------090003020205060401020902
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+> Can you actually get any sort of socket representing an RDMA
+> connection?  I appreciate that normal sendmsg/recvmsg calls on the
+> socket aren't going to work, but I'm dreaming that maybe a
+> socket-level 'accept' could establish the connection.  Then we look at
+> the connection, discover it is on a RDMA-capable device, and start
+> using the RDMA interface to move data around.
+> Does that make any sense at all, or am I totally off-beam?
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel/
-version:2.1
-end:vcard
+No, you're right in the middle of it. The OFA API has a sockets-like
+interface for connection management. The API has things like
+rdma_create_id (socket), rdma_listen (listen), rdma_connect (connect),
+etc... It is, however, not a socket. It is certainly possible to create
+a sockets abstraction and in-fact it has been done, but the compromises
+involved (no private data, no path record selection, etc...) were deemed
+to onerous and they created there own.
 
+Tom
+> 
+> NeilBrown
 
---------------090003020205060401020902
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------090003020205060401020902
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------090003020205060401020902--
