@@ -1,62 +1,138 @@
-From: Chris Wright <chrisw@sous-sol.org>
-Subject: [patch 18/69] knfsd: rpc: fix server-side wrapping of krb5i replies
-Date: Mon, 21 May 2007 12:16:30 -0700
-Message-ID: <20070521191714.531390000@sous-sol.org>
-References: <20070521191612.800400000@sous-sol.org>
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	torvalds@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	nfs@lists.sourceforge.net
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1765979AbXEUTg5@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
+Date: Tue, 22 May 2007 15:36:29 +1000
+Message-ID: <18002.33117.816973.42500@notabene.brown>
+References: <1179510352.23385.123.camel@trinity.ogc.int>
+	<1179515255.6488.136.camel@heimdal.trondhjem.org>
+	<1179518863.23385.195.camel@trinity.ogc.int>
+	<18001.18232.387141.533217@notabene.brown>
+	<1179763325.23385.244.camel@trinity.ogc.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HqN3E-0002sK-Vz
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 22:36:55 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HqN3H-0007eq-Dm
+	for nfs@lists.sourceforge.net; Mon, 21 May 2007 22:36:56 -0700
+In-Reply-To: message from Tom Tucker on Monday May 21
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
--stable review patch.  If anyone has any objections, please let us know.
----------------------
+On Monday May 21, tom@opengridcomputing.com wrote:
+> On Mon, 2007-05-21 at 17:16 +1000, Neil Brown wrote:
+> > On Friday May 18, tom@opengridcomputing.com wrote:
+> > > On Fri, 2007-05-18 at 15:07 -0400, Trond Myklebust wrote:
+> > > 
+> > > > > +	while (xprt->sc_ctxt_cnt < target) {
+> > > > > +		xprt->sc_ctxt_cnt ++;
+> > > > > +		spin_unlock_irqrestore(&xprt->sc_ctxt_lock, flags);
+> > > > > +
+> > > > > +		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
+> > > > > +
+> > > > > +		spin_lock_irqsave(&xprt->sc_ctxt_lock, flags);
+> > > > 
+> > > > You've now dropped the spinlock. How can you know that the condition
+> > > > xprt->sc_ctxt_cnt <= target is still valid?
+> > > > 
+> > > 
+> > > I increment the sc_ctxt_cnt with the lock held. If I'm at the limit, the
+> > > competing thread will find it equal -- correct? 
+> > > 
+> > 
+> > I'm having trouble figuring out who the competing thread is.
+> > As far as I can see (Well... "have seen"), this is always called from
+> > the context of an nfsd thread which has sole access to the xprt.  So
+> > there is no race.
+> > ??
+> 
+> The callback handler for SQ CQ (send queue completion queue) is called
+> on interrupt context. This function returns contexts to this queue when
+> cleaning up completed SQ WR (send queue work requests). See sq_cq_reap
+> in svc_rdma_transport.c, line #329.  
 
-From: NeilBrown <neilb@suse.de>
+OK....
+So presumably svc_rdma_put_context should be incrementing sc_ctxt_cnt
+when it puts the ctxt back on the list?
 
-It's not necessarily correct to assume that the xdr_buf used to hold the
-server's reply must have page data whenever it has tail data.
+In which case you still get a race where you can put more ctxt's on
+the list than you really want.  But that is hardly a big problem.
 
-And there's no need for us to deal with that case separately anyway.
+So the current locking around the "<, ++" seems a bit misleading.
+Should sc_ctxt_cnt be made and atomic_t, and then bump_context_cache
+can be:
 
-Acked-by: "J. Bruce Fields" <bfields@citi.umich.edu>
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Chris Wright <chrisw@sous-sol.org>
----
+  while (atomic_read(sc_ctxt_cnt) < target) {
+	ctxt = kmalloc();
+	if (ctxt) {
+		spin_lock_irqsave()
+		if (atomic_read() < target) {
+			// add to list; ctxt = NULL;
+			atomic_inc(sc_ctxt_cnt)
+		}
+		spin_unlock_irqrestore()
+		free(ctxt);
+	}
+  }
 
- net/sunrpc/auth_gss/svcauth_gss.c |    8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+??
+That makes it clearer (to me) what is being locked.
 
-diff .prev/net/sunrpc/auth_gss/svcauth_gss.c ./net/sunrpc/auth_gss/svcauth_gss.c
---- linux-2.6.21.1.orig/net/sunrpc/auth_gss/svcauth_gss.c
-+++ linux-2.6.21.1/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1196,13 +1196,7 @@ svcauth_gss_wrap_resp_integ(struct svc_r
- 	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset,
- 				integ_len))
- 		BUG();
--	if (resbuf->page_len == 0
--			&& resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE
--			< PAGE_SIZE) {
--		BUG_ON(resbuf->tail[0].iov_len);
--		/* Use head for everything */
--		resv = &resbuf->head[0];
--	} else if (resbuf->tail[0].iov_base == NULL) {
-+	if (resbuf->tail[0].iov_base == NULL) {
- 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
- 			goto out_err;
- 		resbuf->tail[0].iov_base = resbuf->head[0].iov_base
+I also think svc_rdma_get_context could be simplified a bit too.
 
--- 
+  while (1) {
+       lock;
+       ctxt = head-of-list;
+       unlock;
+       if (ctxt)
+		break;
+       if (!bump_cache)
+		msleep(500)
+  }
+  initialise ctxt
+
+
+But I'm still not sold on the idea of allocating these contexts on
+demand.  Can you provide a bit more data about that?
+e.g. maximum number of contexts that might be required for one
+request, vs typical number of contexts.  And how big is a context
+anyway?
+
+Also, what is the lifetime of these contexts?  Presumably they are
+allocated to handle a single request, and then get passing into the
+transport until the reply is fully sent?  That makes them a lot like
+the rq_pages allocated as needed at the start of svc_recv.  Could the
+contexts be handled in much the same way?
+
+Elsewhere nfsd goes to some effort to pre-allocate any needed memory.
+It would be nice if it were consistent.
+
+
+NeilBrown
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
