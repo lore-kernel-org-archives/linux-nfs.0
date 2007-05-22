@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/4] NFS: Fix handful of compiler warnings in direct.c
-Date: Tue, 22 May 2007 10:29:08 -0400
-Message-ID: <20070522142908.22559.91696.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 2/4] NFS: Clean ups in fs/nfs/direct.c
+Date: Tue, 22 May 2007 10:29:13 -0400
+Message-ID: <20070522142913.22559.83001.stgit@heimdal.trondhjem.org>
+References: <20070522142908.22559.91696.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,12 +10,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqVMO-00048h-Ef
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:29:13 -0700
+	id 1HqVMT-00048w-PQ
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:29:21 -0700
 Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
 	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqVMR-0006dZ-3F
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:29:15 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqVMV-0006eO-HB
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:29:20 -0700
+In-Reply-To: <20070522142908.22559.91696.stgit@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,78 +31,47 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-This patch fixes a couple of signage issues that were causing an Oops
-when running the LTP diotest4 test. get_user_pages() returns a signed
-error, hence we need to be careful when comparing with the unsigned
-number of pages from data->npages.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/direct.c |   26 ++++++++++++++++----------
- 1 files changed, 16 insertions(+), 10 deletions(-)
+ fs/nfs/direct.c |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 345aa5c..6c588ec 100644
+index 6c588ec..49e4823 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -122,9 +122,9 @@ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_
- 	return -EINVAL;
- }
+@@ -750,10 +750,8 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
+ 		(unsigned long) count, (long long) pos);
  
--static void nfs_direct_dirty_pages(struct page **pages, int npages)
-+static void nfs_direct_dirty_pages(struct page **pages, unsigned int npages)
+ 	if (nr_segs != 1)
+-		return -EINVAL;
+-
+-	if (count < 0)
+ 		goto out;
++
+ 	retval = -EFAULT;
+ 	if (!access_ok(VERIFY_WRITE, buf, count))
+ 		goto out;
+@@ -801,7 +799,7 @@ out:
+ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos)
  {
--	int i;
-+	unsigned int i;
- 	for (i = 0; i < npages; i++) {
- 		struct page *page = pages[i];
- 		if (!PageCompound(page))
-@@ -132,9 +132,9 @@ static void nfs_direct_dirty_pages(struct page **pages, int npages)
- 	}
- }
+-	ssize_t retval;
++	ssize_t retval = -EINVAL;
+ 	struct file *file = iocb->ki_filp;
+ 	struct address_space *mapping = file->f_mapping;
+ 	/* XXX: temporary */
+@@ -814,7 +812,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 		(unsigned long) count, (long long) pos);
  
--static void nfs_direct_release_pages(struct page **pages, int npages)
-+static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
- {
--	int i;
-+	unsigned int i;
- 	for (i = 0; i < npages; i++)
- 		page_cache_release(pages[i]);
- }
-@@ -279,9 +279,12 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq, unsigned lo
- 		result = get_user_pages(current, current->mm, user_addr,
- 					data->npages, 1, 0, data->pagevec, NULL);
- 		up_read(&current->mm->mmap_sem);
--		if (unlikely(result < data->npages)) {
--			if (result > 0)
--				nfs_direct_release_pages(data->pagevec, result);
-+		if (result < 0) {
-+			nfs_readdata_release(data);
-+			break;
-+		}
-+		if ((unsigned)result < data->npages) {
-+			nfs_direct_release_pages(data->pagevec, result);
- 			nfs_readdata_release(data);
- 			break;
- 		}
-@@ -610,9 +613,12 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq, unsigned l
- 		result = get_user_pages(current, current->mm, user_addr,
- 					data->npages, 0, 0, data->pagevec, NULL);
- 		up_read(&current->mm->mmap_sem);
--		if (unlikely(result < data->npages)) {
--			if (result > 0)
--				nfs_direct_release_pages(data->pagevec, result);
-+		if (result < 0) {
-+			nfs_writedata_release(data);
-+			break;
-+		}
-+		if ((unsigned)result < data->npages) {
-+			nfs_direct_release_pages(data->pagevec, result);
- 			nfs_writedata_release(data);
- 			break;
- 		}
+ 	if (nr_segs != 1)
+-		return -EINVAL;
++		goto out;
+ 
+ 	retval = generic_write_checks(file, &pos, &count, 0);
+ 	if (retval)
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
