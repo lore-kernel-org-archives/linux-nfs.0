@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: how to execute a script from NFS mount (which
-	disconnected)?
-Date: Tue, 22 May 2007 22:42:22 +1000
-Message-ID: <18002.58670.174770.248425@notabene.brown>
-References: <4652C7ED.9010309@wpkg.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/4] NFS: Fix handful of compiler warnings in direct.c
+Date: Tue, 22 May 2007 10:29:08 -0400
+Message-ID: <20070522142908.22559.91696.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Tomasz Chmielewski <mangoo@wpkg.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqThB-0001ge-JS
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 05:42:33 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HqThE-0007wX-8s
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 05:42:36 -0700
-In-Reply-To: message from Tomasz Chmielewski on Tuesday May 22
+	id 1HqVMO-00048h-Ef
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:29:13 -0700
+Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
+	helo=heimdal.trondhjem.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqVMR-0006dZ-3F
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:29:15 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,33 +27,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday May 22, mangoo@wpkg.org wrote:
-> This question may sound silly, but I didn't find a proper solution to it.
-> 
-> I have a script on a NFS share. The purpose of this script is to do some 
-> network reconfiguration for Xen.
-> 
-> Unfortunately, it fails to execute somewhere in the middle.
-> 
-> Basically, the script brings the network interface down, does a bit of 
-> reconfiguring, and then, the interface is brought up.
-...
-> 
-> 
-> Unfortunately, when I execute it locally, the script freezes somewhere 
-> about step 2 or 3. Which I could perfectly understand - as the system 
-> can't read it.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Not really.  bash reads the whole script before executing it - or at
-least it did in my limited tests.  strace would confirm.
+This patch fixes a couple of signage issues that were causing an Oops
+when running the LTP diotest4 test. get_user_pages() returns a signed
+error, hence we need to be careful when comparing with the unsigned
+number of pages from data->npages.
 
-My guess is that your $PATH includes a directory that is on the NFS
-mounted volume - so when bash looks for e.g. 'sleep', it looks on the
-NFS mounted volume and hangs.
-Try running the script with "strace -f".  It might be noisy, but it
-will show you what is blocking.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-NeilBrown
+ fs/nfs/direct.c |   26 ++++++++++++++++----------
+ 1 files changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 345aa5c..6c588ec 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -122,9 +122,9 @@ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_
+ 	return -EINVAL;
+ }
+ 
+-static void nfs_direct_dirty_pages(struct page **pages, int npages)
++static void nfs_direct_dirty_pages(struct page **pages, unsigned int npages)
+ {
+-	int i;
++	unsigned int i;
+ 	for (i = 0; i < npages; i++) {
+ 		struct page *page = pages[i];
+ 		if (!PageCompound(page))
+@@ -132,9 +132,9 @@ static void nfs_direct_dirty_pages(struct page **pages, int npages)
+ 	}
+ }
+ 
+-static void nfs_direct_release_pages(struct page **pages, int npages)
++static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+ {
+-	int i;
++	unsigned int i;
+ 	for (i = 0; i < npages; i++)
+ 		page_cache_release(pages[i]);
+ }
+@@ -279,9 +279,12 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq, unsigned lo
+ 		result = get_user_pages(current, current->mm, user_addr,
+ 					data->npages, 1, 0, data->pagevec, NULL);
+ 		up_read(&current->mm->mmap_sem);
+-		if (unlikely(result < data->npages)) {
+-			if (result > 0)
+-				nfs_direct_release_pages(data->pagevec, result);
++		if (result < 0) {
++			nfs_readdata_release(data);
++			break;
++		}
++		if ((unsigned)result < data->npages) {
++			nfs_direct_release_pages(data->pagevec, result);
+ 			nfs_readdata_release(data);
+ 			break;
+ 		}
+@@ -610,9 +613,12 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq, unsigned l
+ 		result = get_user_pages(current, current->mm, user_addr,
+ 					data->npages, 0, 0, data->pagevec, NULL);
+ 		up_read(&current->mm->mmap_sem);
+-		if (unlikely(result < data->npages)) {
+-			if (result > 0)
+-				nfs_direct_release_pages(data->pagevec, result);
++		if (result < 0) {
++			nfs_writedata_release(data);
++			break;
++		}
++		if ((unsigned)result < data->npages) {
++			nfs_direct_release_pages(data->pagevec, result);
+ 			nfs_writedata_release(data);
+ 			break;
+ 		}
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
