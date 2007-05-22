@@ -1,27 +1,28 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
-Date: Tue, 22 May 2007 16:21:49 +1000
-Message-ID: <18002.35837.867422.793900@notabene.brown>
-References: <1179510331.23385.120.camel@trinity.ogc.int>
-	<18001.17544.798341.277657@notabene.brown>
-	<1179762597.23385.231.camel@trinity.ogc.int>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,PATCH 5/14] knfsd: max_payload per transport
+Date: Tue, 22 May 2007 17:16:17 +1000
+Message-ID: <20070522071617.GE1202@sgi.com>
+References: <20070516192306.GK9626@sgi.com>
+	<17996.12194.801580.925774@notabene.brown>
+	<1179415386.23385.5.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
+Cc: Neil Brown <neilb@suse.de>,
+	Thomas Talpey <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqNkw-0006si-OA
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 23:22:02 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HqNky-0001W8-Ug
-	for nfs@lists.sourceforge.net; Mon, 21 May 2007 23:22:05 -0700
-In-Reply-To: message from Tom Tucker on Monday May 21
+	id 1HqObc-0003Wu-Uf
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 00:16:29 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1HqObd-0006Af-Mg
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 00:16:31 -0700
+In-Reply-To: <1179415386.23385.5.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,54 +35,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Thu, May 17, 2007 at 10:23:06AM -0500, Tom Tucker wrote:
+> On Thu, 2007-05-17 at 20:34 +1000, Neil Brown wrote:
+> > On Thursday May 17, gnb@sgi.com wrote:
+> > > 
+> > > Make svc_max_payload() delegate to a new method in svc_sock_ops
+> > > instead of reaching into the socket (beause later the NFS/RDMA
+> > > transport will not even have a socket).
+> > > 
+> > > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+> > > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+> > ..
+> > >  
+> > > +static u32 svc_tcp_max_payload(struct svc_sock *svsk)
+> > > +{
+> > > +	return RPCSVC_MAXPAYLOAD_TCP;
+> > > +}
+> > > +
+> > 
+> > Seeing these are implementation (or protocol) defined constants, do we
+> > really need a function call?  How about a
+> > 	int max_payload;
+> > in struct svc_sock_ops??  Or is it tacky to put an integer in a *_ops
+> > structure? 
+> 
+> I think if we called it a "svc_transport" structure instead of a
+> "svc_sock_ops" structure, it removes the tackiness. It's also more
+> accurate since "svc_sock_ops" implies these are socket ops which they
+> are not.
 
-I must sat that I am hitting acronym-overload hear.
-RDMA  IB iWARP OFA-API SQ-CQ  SQ-WR sge  max_qp_rd_atom ....
+I like this idea, so I renamed
 
-But to the topic of registering the RDMA listening point....
+svc_sock_ops -> svc_transport_type
+sko_foo -> st_foo
+sk_ops -> sk_type
 
-I now understand the point of port 2050 I think.  RDMA adds to the
-protocol.  As well as all the bytes of the RPC request, there is
-information about different ..uhm... regions (?) of the message.
-This is like a scatter-gather list?
-It lets you put the "write" data correctly aligned into a page,
-so that we could eventually use the 'splice' technology to achieve
-zero-copy write.
-
-But we still have this concept of a different transport to handle
-properly. 
-
-A bit of an aside: You mention that with "IB", IP is not used, so there
-is no number.  I assume you mean no IP address of the client?  In that
-situation, how do we identify the client for authorisation purposes?
-
-More on-topic, we need to consider how this interacts with 
-   /proc/fs/nfsd/portlist 
-
-This file can be written to and read from.
-When writing, you write a decimal number of a file descriptor.
-That fd should be a socket on which to expect incoming requests -
-either a UDP socket or a TCP socket that is listening.
-How can we extend that to RDMA?  What sort of handle does user-space
-use for talking over one of these DDP interfaces?
-We could arrange that writing e.g.
-    RDMA TCP 2050
-did what you want, but I would much rather avoid that sort of stuff.
-
-When reading from a file you get one line per active transport:
-ipv4 tcp 0.0.0.0 2049
-ipv4 udp 0.0.0.0 2049
-
-What would we read for RDMA?  You say that it uses TCP.  Can it use
-UDP instead?  Might it make sense to listen on only one interface?
-Is there an IPv6 version of RDMA??
-
-It seems like a real pity that it couldn't get shoe-horned into a
-socket interface.
-It would seem that the msg_control part of sendmsg/recvmsg would be
-ideal for managing the details of data placement.
-
-NeilBrown
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
