@@ -1,28 +1,32 @@
-From: Norman Weathers <norman.r.weathers@conocophillips.com>
-Subject: 2.6.20.3 kernel crash using NFS
-Date: Tue, 22 May 2007 10:19:33 -0500
-Message-ID: <1179847173.8508.7.camel@hoeplx2923>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
+Date: Tue, 22 May 2007 12:34:23 -0500
+Message-ID: <1179855263.9389.118.camel@trinity.ogc.int>
+References: <20070516192211.GJ9626@sgi.com>
+	<20070516211053.GE18927@fieldses.org> <20070517071202.GE27247@sgi.com>
+	<17996.11983.278205.708747@notabene.brown>
+	<20070518040509.GC5104@sgi.com>
+	<1179495234.23385.30.camel@trinity.ogc.int>
+	<20070522111653.GF1202@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs <nfs@lists.sourceforge.net>
+Cc: Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Thomas Talpey <Thomas.Talpey@netapp.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Peter Leckie <pleckie@melbourne.sgi.com>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqW9G-0001aW-HU
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 08:19:42 -0700
-Received: from mailman2.ppco.com ([138.32.33.140])
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1HqW9I-00054R-NR
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 08:19:45 -0700
-Received: from bvlextrd2.conoco.net (bvlextrd2.conoco.net [158.139.203.93])
-	by mailman2.ppco.com (Switch-3.1.8/Switch-3.1.7) with ESMTP id
-	l4MFJZhj026707
-	for <nfs@lists.sourceforge.net>; Tue, 22 May 2007 10:19:37 -0500
-Received: from bvlexbh4.conoco.net (bvlexbh4.conoco.net [158.139.203.25])
-	by mail1.ppco.com (Switch-3.1.8/Switch-3.1.7) with ESMTP id
-	l4MFJYug021611
-	for <nfs@lists.sourceforge.net>; Tue, 22 May 2007 10:19:34 -0500
+	id 1HqXWh-0002sr-JY
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 09:47:59 -0700
+Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqXWj-0006iW-VV
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 09:48:02 -0700
+In-Reply-To: <20070522111653.GF1202@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,129 +39,145 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello, all.
+On Tue, 2007-05-22 at 21:16 +1000, Greg Banks wrote:
+> On Fri, May 18, 2007 at 08:33:54AM -0500, Tom Tucker wrote:
+> > On Fri, 2007-05-18 at 14:05 +1000, Greg Banks wrote:
+> > > On Thu, May 17, 2007 at 08:30:39PM +1000, Neil Brown wrote:
+> > > >  Do that mean that RDMA will never
+> > > > reject a write due to lack of space? 
+> > > 
+> > > No, it means that the current RDMA send code will block waiting
+> > > for space to become available.  That's right, nfsd threads block on
+> > > the network.  Steel yourself, there's worse to come.
+> > > 
+> > 
+> > Uh... Not really. The queue depths are designed to match credits to
+> > worst case reply sizes. In the normal case, it should never have to
+> > wait. The wait is to catch the margins in the same way that a kmalloc
+> > will wait for memory to become available. 
+> 
+> This is news to me, but then I just read that code not write it ;-)
 
-I have had a recent outage from an NFS server that appears to have a
-memory leak somewhere.  Following is a "small" clip of the errors that
-happened (this went on for over 100000 lines of error messages over
-night).
+Uh oh, I'm about to get schooled aren't I...
 
-<May/23 00:05 am>Call Trace:
-<May/23 00:05 am> <IRQ>  [<ffffffff802101d9>] __alloc_pages+0x2e9/0x310
-<May/23 00:05 am> [<ffffffff802e34e0>] kmem_getpages+0x70/0x170
-<May/23 00:05 am> [<ffffffff802e394b>] fallback_alloc+0x13b/0x210
-<May/23 00:05 am> [<ffffffff802e378d>] kmem_cache_alloc_node+0xad/0xe0
-<May/23 00:05 am> [<ffffffff80231bf7>] __alloc_skb+0x77/0x170
-<May/23 00:05 am> [<ffffffff804601ab>] __netdev_alloc_skb+0x2b/0x50
-<May/23 00:05 am> [<ffffffff880d59f1>] :bnx2:bnx2_poll+0x6b1/0xca0
-<May/23 00:05 am> [<ffffffff802905c5>] load_elf32_binary+0x735/0x21f0
-<May/23 00:05 am> [<ffffffff8020cbea>] net_rx_action+0xba/0x1f0
-<May/23 00:05 am> [<ffffffff8026c139>] _spin_unlock_irq+0x9/0x10
-<May/23 00:05 am> [<ffffffff8021314f>] __do_softirq+0x5f/0xd0
-<May/23 00:05 am> [<ffffffff8026623c>] call_softirq+0x1c/0x28^M<May/23
-00:05 am>
-<May/23 00:05 am> [<ffffffff8027473c>] do_softirq+0x2c/0x90
-<May/23 00:05 am> [<ffffffff8027490a>] do_IRQ+0x16a/0x1a0
-<May/23 00:05 am> [<ffffffff80265631>] ret_from_intr+0x0/0xa
-<May/23 00:05 am> <EOI>  [<ffffffff80269213>] __read_lock_failed
-+0x3/0x20
-<May/23 00:05 am> [<ffffffff8020ce4e>] _raw_read_lock+0x2e/0x30
-<May/23 00:05 am> [<ffffffff882d2124>] :sunrpc:sunrpc_cache_lookup
-+0x34/0x170
-<May/23 00:05 am> [<ffffffff882cb080>] :sunrpc:svc_sock_enqueue
-+0x260/0x2f0
-<May/23 00:05 am> [<ffffffff882cdb89>] :sunrpc:ip_map_lookup+0xc9/0xe0
-<May/23 00:05 am> [<ffffffff882cdc3d>] :sunrpc:svcauth_unix_set_client
-+0x9d/0x190^M<May/23 00:05 am>
-<May/23 00:05 am> [<ffffffff882ca336>] :sunrpc:svc_process+0x276/0x760
-<May/23 00:05 am> [<ffffffff883117c0>] :nfsd:nfsd+0x0/0x2d0
-<May/23 00:05 am> [<ffffffff8831195d>] :nfsd:nfsd+0x19d/0x2d0
-<May/23 00:05 am> [<ffffffff80265ec8>] child_rip+0xa/0x12
-<May/23 00:05 am> [<ffffffff883117c0>] :nfsd:nfsd+0x0/0x2d0
-<May/23 00:05 am> [<ffffffff883117c0>] :nfsd:nfsd+0x0/0x2d0
-<May/23 00:05 am> [<ffffffff80265ebe>] child_rip+0x0/0x12
+> I just poked around in your GIT tree and AFAICT the software queue
+> depth limits are set by this logic:
+> 
+>     743 static int
+>     744 svc_rdma_accept(struct svc_rqst *rqstp)
+>     745 {
+>     ...
+>     775         ret = ib_query_device(newxprt->sc_cm_id->device, &devattr);
+>     ...
+>     788         newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
+>     789                                    (size_t)svcrdma_max_requests);
+>     790         newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+> 
+> 
+>      54 unsigned int svcrdma_max_requests = RPCRDMA_MAX_REQUESTS;
+>      
+>     143 #define RPCRDMA_SQ_DEPTH_MULT   8
+>     145 #define RPCRDMA_MAX_REQUESTS    16
+> 
+> A brief experiment shows that devattr.max_qp_wr = 16384 on recent
+> Mellanox cards, so the actual sc_sq_depth value will be ruled
+> by svcrdma_max_requests, and be 128.
+> 
+> The worst case is a 4K page machine writing a 1MB reply to a READ rpc,
+> which if I understand the code correctly uses a WR per page plus one
+> for the reply header, or 1024/4+1 = 257 WRs.  Now imagine all the nfsd
+> threads(*) trying to do that to the same QP.  SGI runs with 128 threads.
 
-<May/23 00:05 am>Mem-info:
-<May/23 00:05 am>Node 0 DMA per-cpu:
-<May/23 00:05 am>CPU    0: Hot: hi:    0, btch:   1 usd:   0   Cold: hi:
-0, btch:   1 usd:   0
-<May/23 00:05 am>CPU    1: Hot: hi:    0, btch:   1 usd:   0   Cold: hi:
-0, btch:   1 usd:   0
-<May/23 00:05 am>CPU    2: Hot: hi:    0, btch:   1 usd:   0   Cold: hi:
-0, btch:   1 usd:   0
-<May/23 00:05 am>CPU    3: Hot: hi:    0, btch:   1 usd:   0   Cold: hi:
-0, btch:   1 usd:   0
-<May/23 00:05 am>Node 0 DMA32 per-cpu:
-<May/23 00:05 am>CPU    0: Hot: hi:  186, btch:  31 usd:  30   Cold: hi:
-62, btch:  15 usd:   4^M<May/23 00:05 am>
-<May/23 00:05 am>CPU    1: Hot: hi:  186, btch:  31 usd: 165   Cold: hi:
-62, btch:  15 usd:  54
-<May/23 00:05 am>CPU    2: Hot: hi:  186, btch:  31 usd: 180   Cold: hi:
-62, btch:  15 usd:   9
-<May/23 00:05 am>CPU    3: Hot: hi:  186, btch:  31 usd:  23   Cold: hi:
-62, btch:  15 usd:  58
-<May/23 00:05 am>Node 0 Normal per-cpu:
-<May/23 00:05 am>CPU    0: Hot: hi:  186, btch:  31 usd:  31   Cold: hi:
-62, btch:  15 usd:  14
-<May/23 00:05 am>CPU    1: Hot: hi:  186, btch:  31 usd:  28   Cold: hi:
-62, btch:  15 usd:  49
-<May/23 00:05 am>CPU    2: Hot: hi:  186, btch:  31 usd:  10   Cold: hi:
-62, btch:  15 usd:  11
-<May/23 00:05 am>CPU    3: Hot: hi:  186, btch:  31 usd:  59   Cold: hi:
-62, btch:  15 usd:  49
-<May/23 00:05 am>Active:570821 inactive:1384706 dirty:218637
-writeback:2205 unstable:0 free:12340 slab:55305 mapped:2492
-pagetables:667
-<May/23 00:05 am>Node 0 DMA free:10512kB min:60kB low:72kB high:88kB
-active:0kB inactive:0kB present:9948kB pages_scanned:0
-all_unreclaimable? yes
-<May/23 00:05 am>lowmem_reserve[]: 0 2992 8032^M<May/23 00:05 am>
-<May/23 00:05 am>Node 0 DMA32 free:27104kB min:18600kB low:23248kB
-high:27900kB active:845596kB inactive:1904364kB present:3063852kB
-pages_scanned:
-0 all_unreclaimable? no
-<May/23 00:05 am>lowmem_reserve[]: 0 0 5040
-<May/23 00:05 am>Node 0 Normal free:11744kB min:31336kB low:39168kB
-high:47004kB active:1437688kB inactive:3634460kB present:5160960kB
-pages_scanne
-d:0 all_unreclaimable? no
-<May/23 00:05 am>lowmem_reserve[]: 0 0 0
-<May/23 00:05 am>Node 0 DMA: 6*4kB 5*8kB 1*16kB 4*32kB 5*64kB 4*128kB
-1*256kB 0*512kB 1*1024kB 0*2048kB 2*4096kB = 10512kB^M<May/23 00:05 am>
-<May/23 00:05 am>Node 0 DMA32: 0*4kB 0*8kB 0*16kB 1*32kB 1*64kB 1*128kB
-1*256kB 0*512kB 0*1024kB 1*2048kB 6*4096kB = 27104kB
-<May/23 00:05 am>Node 0 Normal: 0*4kB 0*8kB 0*16kB 1*32kB 1*64kB 1*128kB
-1*256kB 0*512kB 1*1024kB 1*2048kB 2*4096kB = 11744kB
-<May/23 00:05 am>Swap cache: add 26, delete 26, find 0/0, race 0+0
-<May/23 00:05 am>Free swap  = 4192852kB
-<May/23 00:05 am>Total swap = 4192956kB
-<May/23 00:05 am>Free swap:       4192852kB
-<May/23 00:05 am>2359296 pages of RAM
-<May/23 00:05 am>320234 reserved pages
-<May/23 00:05 am>830306 pages shared
-<May/23 00:05 am>0 pages swap cached
-<May/23 00:05 am>printk: 59 messages suppressed.^M<May/23 00:05 am>
-<May/23 00:05 am>nfsd: page allocation failure. order:0, mode:0x20
+Fair enough big data fills the SQ. 
 
-This is a 2.6.20.3 kernel running on a 64 bit box.  I am not for sure at
-this point if this particular kernel had any of the Trond 2.6.20 patches
-added on it or not (I don't believe so).
-Other particulars:
+> 
+> In this scenario, every call to svc_rdma_send() stands a good chance
+> of blocking.  The wait is not interruptible and has no timeout.  If
+> the client's HCA has a conniption under this load, the server will
+> have some large fraction of the nfsds unkillably blocked until the
+> server's HCA gives up and reports an error (I presume it does this?).
 
-Fedora Core 6
-Qlogic 2462 4Gb fibre controller
-Broadcom dual 1 Gb ethernet (bonded).
+I consider the client's hardware failing as outside the common
+optimization case. But I think your argument still holds for big data.
 
-Other things of note, to get this guy stable, I had to turn off irq
-balance due to a bug in the irq handler and the broadcom 1 GB ethernet
-device (bnx2).  If you leave on irqbalance,
-it will hang up on startup.  This particular card still has MSI
-interrupts enabled, but no irqbalance (I mention these because I notice
-that bnx2 is listed in the crash dump).
+> 
+> The wspace management code in knfsd is designed to avoid having
+> nfsds ever block in the network stack; I don't see how the NFS/RDMA
+> code achieves that.  Or is there something I've missed?
+> 
 
-Any information would be helpful.
+You're dead on. We should implement wspace properly. I'll look into
+fixing this. 
 
-Norman Weathers
+>  * I would expect there to be a client-side limit on the number of
+>    outstanding READs so this doesn't normally happen, but part of the
+>    reason for knfsd's wspace management is to avoid DoS attacks from
+>    malicious or broken clients.
+> 
+> > There's actually a stat kept by the transport that counts the number of
+> > times it waits.
+> 
+> Ah, that would be rdma_stat_sq_starve?  It's been added since the
+> November code drop so I hadn't noticed it.  BTW is there a reason
+> for emitting statistics to userspace as sysctls?
+
+The bulk of the stats were exported in order to evaluate different I/O
+models. For example, do we poll some number of times on an SQ stall? How
+about an RQ stall, etc... I think many of these stats should be removed.
+I'd appreciate feedback on which ones we should retain.
+
+> 
+> > There is a place that a wait is done in the "normal" case and that's for
+> > the completion of an RDMA_READ in the process of gathering the data for
+> > and RPC on receive. That wait happens _every_ time.
+> 
+> Yes indeed, and this is the "worse" I was referring to.  I have
+> a crash dump in which 122 of the 128 nfsd threads are doing this:
+>  0 schedule+0x249c [0xa00000010052799c]
+>  1 schedule_timeout+0x1ac [0xa00000010052958c]
+>  2 rdma_read_xdr+0xf2c [0xa0000002216bcd8c]
+>  3 svc_rdma_recvfrom+0x1e5c [0xa0000002216bed7c]
+>  4 svc_recv+0xc8c [0xa00000022169f0ac]
+>  5 nfsd+0x1ec [0xa000000221d7504c]
+>  6 __svc_create_thread_tramp+0x30c [0xa0000002216976ac]
+>  7 kernel_thread_helper+0xcc [0xa00000010001290c]
+>  8 start_kernel_thread+0x1c [0xa0000001000094bc]
+>                    
+>              
+>                                                                    
+> That doesn't leave a lot of threads to do real work, like waiting for
+> the filesystem.  
+
+Hmm. I'd quibble with your example, but point taken. Other threads could
+be doing work on another mount point for another client. 
+
+What's happening here is that you're pounding the server with NFS WRITE
+and recvfrom is dutifully queuing another thread to process the next RPC
+in the RQ, which happens to require another RDMA READ and another wait
+and so on. As you point out, this is not productive and quickly consumes
+all your threads -- Ugh. 
+
+A simple optimization to the current design for this case is that if the
+RPC contains a read-list don't call svc_sock_enqueue until _after_ the
+RDMA READ completes. The current thread will wait, but the remaining
+threads (127 in your case) will be free to do other work for other mount
+points. 
+
+This only falls over in the limit of 128 mounts all pounding the server
+with writes. Comments?
+
+> And every now and again something goes awry in
+> IB land and each thread ends up waiting for 6 seconds or more.
+
+Yes. Note that when this happens, the connection gets terminated.
+
+> 
+> Greg.
+> -- 
+> Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+> Apparently, I'm Bedevere.  Which MPHG character are you?
+> I don't speak for SGI.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
