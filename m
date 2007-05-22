@@ -1,28 +1,33 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 5/14] knfsd: max_payload per transport
-Date: Tue, 22 May 2007 17:16:17 +1000
-Message-ID: <20070522071617.GE1202@sgi.com>
-References: <20070516192306.GK9626@sgi.com>
-	<17996.12194.801580.925774@notabene.brown>
-	<1179415386.23385.5.camel@trinity.ogc.int>
+From: Tomasz Chmielewski <mangoo@wpkg.org>
+Subject: how to execute a script from NFS mount (which disconnected)?
+Date: Tue, 22 May 2007 12:37:33 +0200
+Message-ID: <4652C7ED.9010309@wpkg.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Thomas Talpey <Thomas.Talpey@netapp.com>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
-To: Tom Tucker <tom@opengridcomputing.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqObc-0003Wu-Uf
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 00:16:29 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HqObd-0006Af-Mg
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 00:16:31 -0700
-In-Reply-To: <1179415386.23385.5.camel@trinity.ogc.int>
+	id 1HqRkK-00060X-SQ
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 03:37:40 -0700
+Received: from mail.syneticon.net ([213.239.212.131] helo=mail2.syneticon.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqRkL-0008At-8g
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 03:37:43 -0700
+Received: from postfix1.syneticon.net (postfix1.syneticon.net [192.168.112.6])
+	by mail2.syneticon.net (Postfix) with ESMTP id 42A9F5D526
+	for <nfs@lists.sourceforge.net>; Tue, 22 May 2007 12:37:37 +0200 (CEST)
+Received: from localhost (filter1.syneticon.net [192.168.113.3])
+	by postfix1.syneticon.net (Postfix) with ESMTP id DA34295CE
+	for <nfs@lists.sourceforge.net>; Tue, 22 May 2007 12:37:36 +0200 (CEST)
+Received: from postfix1.syneticon.net ([192.168.113.4])
+	by localhost (mx03.syneticon.net [192.168.113.3]) (amavisd-new,
+	port 10025)
+	with ESMTP id sVe0rEVKC9rG for <nfs@lists.sourceforge.net>;
+	Tue, 22 May 2007 10:37:34 +0000 (UTC)
+Received: from [192.168.10.145] (unknown [87.79.98.133])
+	by postfix1.syneticon.net (Postfix) with ESMTP
+	for <nfs@lists.sourceforge.net>; Tue, 22 May 2007 12:37:34 +0200 (CEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,46 +40,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, May 17, 2007 at 10:23:06AM -0500, Tom Tucker wrote:
-> On Thu, 2007-05-17 at 20:34 +1000, Neil Brown wrote:
-> > On Thursday May 17, gnb@sgi.com wrote:
-> > > 
-> > > Make svc_max_payload() delegate to a new method in svc_sock_ops
-> > > instead of reaching into the socket (beause later the NFS/RDMA
-> > > transport will not even have a socket).
-> > > 
-> > > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> > > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
-> > ..
-> > >  
-> > > +static u32 svc_tcp_max_payload(struct svc_sock *svsk)
-> > > +{
-> > > +	return RPCSVC_MAXPAYLOAD_TCP;
-> > > +}
-> > > +
-> > 
-> > Seeing these are implementation (or protocol) defined constants, do we
-> > really need a function call?  How about a
-> > 	int max_payload;
-> > in struct svc_sock_ops??  Or is it tacky to put an integer in a *_ops
-> > structure? 
-> 
-> I think if we called it a "svc_transport" structure instead of a
-> "svc_sock_ops" structure, it removes the tackiness. It's also more
-> accurate since "svc_sock_ops" implies these are socket ops which they
-> are not.
+This question may sound silly, but I didn't find a proper solution to it.
 
-I like this idea, so I renamed
+I have a script on a NFS share. The purpose of this script is to do some 
+network reconfiguration for Xen.
 
-svc_sock_ops -> svc_transport_type
-sko_foo -> st_foo
-sk_ops -> sk_type
+Unfortunately, it fails to execute somewhere in the middle.
 
-Greg.
+Basically, the script brings the network interface down, does a bit of 
+reconfiguring, and then, the interface is brought up.
+
+
+In a short form, the script looks like that:
+
+#!/bin/bash
+
+echo Start
+
+ifdown bond0
+
+echo Step 1...
+sleep 4s
+
+echo Step 2...
+sleep 4s
+
+echo Step 3...
+sleep 4s
+
+echo Step 4...
+sleep 4s
+
+echo Step 5...
+sleep 4s
+
+ifup bond0
+
+echo End
+
+
+
+Unfortunately, when I execute it locally, the script freezes somewhere 
+about step 2 or 3. Which I could perfectly understand - as the system 
+can't read it.
+But I did a "cat script" just before running it - so the system should 
+have it cached, right?
+Sometimes only, the script executes fully.
+
+
+How can I execute a script from NSF mount - a script which reconfigures 
+a network interface, and there is a period of network disconnection?
+
+
 -- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+Tomasz Chmielewski
+http://wpkg.org
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
