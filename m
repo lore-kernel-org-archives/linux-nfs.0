@@ -1,31 +1,28 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
-Date: Tue, 22 May 2007 10:23:24 -0500
-Message-ID: <1179847404.9389.34.camel@trinity.ogc.int>
-References: <1179510352.23385.123.camel@trinity.ogc.int>
-	<1179515255.6488.136.camel@heimdal.trondhjem.org>
-	<1179518863.23385.195.camel@trinity.ogc.int>
-	<18001.18232.387141.533217@notabene.brown>
-	<1179763325.23385.244.camel@trinity.ogc.int>
-	<18002.33117.816973.42500@notabene.brown>
+Subject: Re: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
+Date: Tue, 22 May 2007 10:59:42 -0500
+Message-ID: <1179849582.9389.64.camel@trinity.ogc.int>
+References: <1179510331.23385.120.camel@trinity.ogc.int>
+	<18001.17544.798341.277657@notabene.brown>
+	<1179762597.23385.231.camel@trinity.ogc.int>
+	<18002.35837.867422.793900@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqVV2-0004zB-EA
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:38:13 -0700
+	id 1HqW32-0000bC-RS
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 08:13:17 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqVTy-00008t-AP
-	for nfs@lists.sourceforge.net; Tue, 22 May 2007 07:37:02 -0700
-In-Reply-To: <18002.33117.816973.42500@notabene.brown>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqW35-0002H7-EN
+	for nfs@lists.sourceforge.net; Tue, 22 May 2007 08:13:19 -0700
+In-Reply-To: <18002.35837.867422.793900@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,141 +35,115 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-05-22 at 15:36 +1000, Neil Brown wrote:
-> On Monday May 21, tom@opengridcomputing.com wrote:
-> > On Mon, 2007-05-21 at 17:16 +1000, Neil Brown wrote:
-> > > On Friday May 18, tom@opengridcomputing.com wrote:
-> > > > On Fri, 2007-05-18 at 15:07 -0400, Trond Myklebust wrote:
-> > > > 
-> > > > > > +	while (xprt->sc_ctxt_cnt < target) {
-> > > > > > +		xprt->sc_ctxt_cnt ++;
-> > > > > > +		spin_unlock_irqrestore(&xprt->sc_ctxt_lock, flags);
-> > > > > > +
-> > > > > > +		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
-> > > > > > +
-> > > > > > +		spin_lock_irqsave(&xprt->sc_ctxt_lock, flags);
-> > > > > 
-> > > > > You've now dropped the spinlock. How can you know that the condition
-> > > > > xprt->sc_ctxt_cnt <= target is still valid?
-> > > > > 
-> > > > 
-> > > > I increment the sc_ctxt_cnt with the lock held. If I'm at the limit, the
-> > > > competing thread will find it equal -- correct? 
-> > > > 
-> > > 
-> > > I'm having trouble figuring out who the competing thread is.
-> > > As far as I can see (Well... "have seen"), this is always called from
-> > > the context of an nfsd thread which has sole access to the xprt.  So
-> > > there is no race.
-> > > ??
-> > 
-> > The callback handler for SQ CQ (send queue completion queue) is called
-> > on interrupt context. This function returns contexts to this queue when
-> > cleaning up completed SQ WR (send queue work requests). See sq_cq_reap
-> > in svc_rdma_transport.c, line #329.  
-> 
-> OK....
-> So presumably svc_rdma_put_context should be incrementing sc_ctxt_cnt
-> when it puts the ctxt back on the list?
-
-The variable name is a little confusing. It's really the size of the
-whole pool, not how many are in the pool at any given time. This is the
-pool growing code and we're serializing with other threads trying to
-grow the pool concurrently, not an interrupt handler returning a newly
-freed context to the pool.
-
-> 
-> In which case you still get a race where you can put more ctxt's on
-> the list than you really want.  But that is hardly a big problem.
-> 
-> So the current locking around the "<, ++" seems a bit misleading.
-> Should sc_ctxt_cnt be made and atomic_t, and then bump_context_cache
-> can be:
-> 
->   while (atomic_read(sc_ctxt_cnt) < target) {
-> 	ctxt = kmalloc();
-> 	if (ctxt) {
-> 		spin_lock_irqsave()
-> 		if (atomic_read() < target) {
-> 			// add to list; ctxt = NULL;
-> 			atomic_inc(sc_ctxt_cnt)
-> 		}
-> 		spin_unlock_irqrestore()
-> 		free(ctxt);
-> 	}
->   }
-> 
-> ??
-> That makes it clearer (to me) what is being locked.
-> 
-> I also think svc_rdma_get_context could be simplified a bit too.
-> 
->   while (1) {
->        lock;
->        ctxt = head-of-list;
->        unlock;
->        if (ctxt)
-> 		break;
->        if (!bump_cache)
-> 		msleep(500)
->   }
->   initialise ctxt
-> 
-> 
-> But I'm still not sold on the idea of allocating these contexts on
-> demand.  Can you provide a bit more data about that?
-
-The context is the application data associated with an RDMA WR (work
-request) and contains the list of pages involved with the I/O an SGE
-that refers to the pages and the type of I/O operation that was
-requested. It tells the I/O completion handlers what to do, e.g. wake up
-a thread waiting on a read completion, enqueue data to the recvfrom
-dto_q, etc...
-
-> e.g. maximum number of contexts that might be required for one
-> request, vs typical number of contexts
-
-Two at a minimum: One for the RQ WR (the request), one for the SQ WR
-(the response). The limit is bounded by how deep your SQ is, but for
-example, if the client does a NFS READ of 1MB, and the scatter gather
-limit in the adapter is 4, then you'd get 1MB / (4 * 4k per page) + 1 =
-65!
-
-> .  And how big is a context
-> anyway?
-
-Roughly a page. The principle reason they're big is that it needs to
-keep an array of the pages used in the request and for big-data that's
-256 ptrs to pages.
-
-> Also, what is the lifetime of these contexts?  Presumably they are
-> allocated to handle a single request, and then get passing into the
-> transport until the reply is fully sent?  
-
-Yes. BTW, they're used on receive too.
-
-> That makes them a lot like
-> the rq_pages allocated as needed at the start of svc_recv.  Could the
-> contexts be handled in much the same way?
+On Tue, 2007-05-22 at 16:21 +1000, Neil Brown wrote:
+> I must sat that I am hitting acronym-overload hear.
+> RDMA  IB iWARP OFA-API SQ-CQ  SQ-WR sge  max_qp_rd_atom ....
 > 
 
-Kind of. The pages for an RDMA I/O are given to the adapter in advance
-(like an mbuf in the stack). This is part of what the context is keeping
-track of. What recvfrom actually does is swap the pages out of the rqstq
-rq_pages array for the ones in the completing context avoiding the copy.
-So after svc_recv has dutifully pre-allocated the pages, the RDMA
-transport promptly swaps them with the ones in the completing context.
+Yes, it's a bit daunting.
 
-> Elsewhere nfsd goes to some effort to pre-allocate any needed memory.
-> It would be nice if it were consistent.
+> But to the topic of registering the RDMA listening point....
+> 
+> I now understand the point of port 2050 I think.  RDMA adds to the
+> protocol.  As well as all the bytes of the RPC request, there is
+> information about different ..uhm... regions (?) of the message.
+
+Yes, they call them "chunks" and the RPCRDMA header contains a
+"chunk-list". The chunk-list (built by the client and used by the
+server) tells the transport where in the XDR to place data.
+
+> This is like a scatter-gather list?
+
+Yes, three in fact: one for reading data from the client's memory and
+placing it in the request (read-list), one for writing data into the
+client's memory as part of the REPLY (write-list), one for the REPLY
+header itself (reply-list).
+
+> It lets you put the "write" data correctly aligned into a page,
+> so that we could eventually use the 'splice' technology to achieve
+> zero-copy write.
+> 
+Yes.
+
+> But we still have this concept of a different transport to handle
+> properly. 
+> 
+> A bit of an aside: You mention that with "IB", IP is not used, so there
+> is no number.  I assume you mean no IP address of the client?  In that
+> situation, how do we identify the client for authorisation purposes?
+
+The RDMA CMA (connection management agent) has a "sockets-like" API for
+transport independent connection management. This API uses IP addresses
+and port numbers for both IB and iWARP. To implement this on IB, IPoIB
+and IP addresses are used for connection management, but not for data.
+So for the purposes of authorization, it all works the same for all
+transports. 
+
+For the purpose of transport selection, we just need a unique id. I was
+simply pointing out that IP protocol numbers don't uniquely identify
+transports for RDMA.
+
+> More on-topic, we need to consider how this interacts with 
+>    /proc/fs/nfsd/portlist 
+
+> This file can be written to and read from.
+> When writing, you write a decimal number of a file descriptor.
+> That fd should be a socket on which to expect incoming requests -
+> either a UDP socket or a TCP socket that is listening.
+> How can we extend that to RDMA?  What sort of handle does user-space
+> use for talking over one of these DDP interfaces?
+> We could arrange that writing e.g.
+>     RDMA TCP 2050
+> did what you want, but I would much rather avoid that sort of stuff.
+> 
+> When reading from a file you get one line per active transport:
+> ipv4 tcp 0.0.0.0 2049
+> ipv4 udp 0.0.0.0 2049
+> 
+> What would we read for RDMA?
+
+I think this makes sense:
+
+ipv4 rdma 0.0.0.0 2050
+ipv6 rdma 0.0.0.0 2050
+
+>   You say that it uses TCP.
+
+It currently uses TCP or IB, but could ultimately use SCTP, etc...
+
+>   Can it use
+> UDP instead? 
+
+No.
+
+>  Might it make sense to listen on only one interface?
+
+This has been discussed, but it runs against this "converged NIC" or
+"universal NIC" idea that there is one NIC, one interface and one IP
+address that solves ALL your problems. They even eat acronyms :-)
+
+> Is there an IPv6 version of RDMA??
+
+Eventually.
+
+> 
+> It seems like a real pity that it couldn't get shoe-horned into a
+> socket interface.
+
+I think it is a matter of the application of sufficient force ;-)  In
+fairness, the I/O model is very different and the buffer management is
+very-very different. This coupled with the extreme performance pressures
+put on these transports led to the creation of a new API. Just getting
+enough abstraction to combine iWARP and IB into a single API took a lot
+of convincing.
+
+> It would seem that the msg_control part of sendmsg/recvmsg would be
+> ideal for managing the details of data placement.
 > 
 
-I think we would need another transport specific function due to the
-fact that the buffers have to be around prior to the data ready
-indication. This would make the rdma transport slightly more efficient
-as it would avoid the allocation for the rq_arg pages.
+Er, probably not enough (or too much) there, but connection management
+-- absolutely.
 
-> 
 > NeilBrown
 
 
