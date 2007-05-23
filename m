@@ -1,33 +1,32 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC,PATCH 7/15] knfsd: create RDMA transport in nfssvc
-Date: Wed, 23 May 2007 11:00:39 -0400
-Message-ID: <EXNANE01WtIIZS2TRqf00000a5e@exnane01.hq.netapp.com>
-References: <1179510331.23385.120.camel@trinity.ogc.int>
-	<18001.17544.798341.277657@notabene.brown>
-	<1179762597.23385.231.camel@trinity.ogc.int>
-	<18002.35837.867422.793900@notabene.brown>
-	<1179849582.9389.64.camel@trinity.ogc.int>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
+Date: Wed, 23 May 2007 11:03:06 -0400
+Message-ID: <1179932586.6480.53.camel@heimdal.trondhjem.org>
+References: <1179510352.23385.123.camel@trinity.ogc.int>
+	<20070518192443.GD4843@fieldses.org>
+	<1179516988.23385.171.camel@trinity.ogc.int>
+	<20070523140901.GG14076@sgi.com>
+	<1179931410.9389.144.camel@trinity.ogc.int>
+	<20070523145557.GN14076@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>,
-	Peter Leckie <pleckie@melbourne.sgi.com>, Greg Banks <gnb@sgi.com>
-To: Neil Brown <neilb@suse.de>,
-	Tom Tucker <tom@opengridcomputing.com>
+Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
+	Neil Brown <neilb@suse.de>, Peter Leckie <pleckie@melbourne.sgi.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqsL5-0007qc-RA
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 08:01:26 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HqsL5-0001R9-8h
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 08:01:26 -0700
-In-Reply-To: <1179849582.9389.64.camel@trinity.ogc.int>
-References: <1179510331.23385.120.camel@trinity.ogc.int>
-	<18001.17544.798341.277657@notabene.brown>
-	<1179762597.23385.231.camel@trinity.ogc.int>
-	<18002.35837.867422.793900@notabene.brown>
-	<1179849582.9389.64.camel@trinity.ogc.int>
+	id 1HqsMz-00083A-FE
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 08:03:27 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18OPuOOma66e4GGGVGc8AgEThfxSmjC4NA=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HqsN2-00024B-1w
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 08:03:24 -0700
+In-Reply-To: <20070523145557.GN14076@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,91 +39,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Sorry, I've been travelling until this morning. Replies to port 2050 questions
-and other transport issues below.
+On Thu, 2007-05-24 at 00:55 +1000, Greg Banks wrote:
+> Currently neither svc_defer() nor svc_rdma_defer() support calls longer
+> than just the head, meaning that WRITE RPCs (only) are dropped and
+> retried instead of deferred.  This doesn't seem to be too much of a
+> problem; deferral happens so infrequently anyway.
 
-At 11:59 AM 5/22/2007, Tom Tucker wrote:
->On Tue, 2007-05-22 at 16:21 +1000, Neil Brown wrote:
->> I now understand the point of port 2050 I think.  RDMA adds to the
->> protocol.  As well as all the bytes of the RPC request, there is
+That still isn't a good tactic.
 
-I don't want to confuse things again, but I do want to add something about
-the "protocol" question. As I mentioned before, the notion of an RPC transport
-is actually two things, an API and a set of protocol semantics, e.g. sockets/TCP,
-which we somewhat conflate into a single designator.
+On NFSv4, dropping a request requires the server to also drop the
+connection. Unless you are completely out of resources, you are
+inevitably better off having the server return an NFS4ERR_DELAY or
+something like that.
 
-In the case of RDMA, the underlying protocol is actually not important. The
-RDMA semantics are well-defined for any transport (you can read about
-the RPC/RDMA protocol assumptions in the internet draft). Basically, the
-RDMA abstraction hides the protocol almost completely.
-
-[RDMA requirements are on page 3 ff]
-<http://www.ietf.org/internet-drafts/draft-ietf-nfsv4-rpcrdma-05.txt>
-
-The exception, which turns out to be not much of an exception at all,
-is the addressing. The reason it's not an issue is the Infiniband connection
-manager, which magically allows IP addresses (IPv4 currently) to be passed
-to connect. As a result, there's no need for an RDMA protocol selector,
-the IP connect routing handles hardware selection and hides any notion
-that IB or iWARP is handling the connection. This is a Good Thing, it makes
-RPC totally RDMA-implementation agnostic.
-
-As for why port 2050 exists, it's because the server needs to know whether
-to expect RPC/TCP framing or RPC/RDMA on an incoming connection over
-iWARP. Over Infiniband there's no ambiguity since connections are always
-in RDMA mode, but over iWARP there is an optional "step-up" negotiation.
-We need a new port to know whether the negotiation has been bypassed.
-There is discussion of this in the nfsdirect Internet Draft.
-
-[Port discussion on page 6 ff]
-<http://www.ietf.org/internet-drafts/draft-ietf-nfsv4-nfsdirect-05.txt>
-
->For the purpose of transport selection, we just need a unique id. I was
->simply pointing out that IP protocol numbers don't uniquely identify
->transports for RDMA.
-
-I'll pile on here. This is important, it goes to the heart of how we "name" RPC
-transports. Currently, the client switch uses a protocol id (UDP=17, TCP=6),
-and this number is the de facto name of the transport. The address family
-of the server's address also comes into play.
-
-For now, we've simply stolen either 255 or 256 to register the RDMA transport
-(we changed the numbers at one point IIRC). This may be okay, or maybe not.
-Personally, I'd prefer a string-based transport naming, but numbers are fine
-too, as long as everyone agrees.
-
->> When reading from a file you get one line per active transport:
->> ipv4 tcp 0.0.0.0 2049
->> ipv4 udp 0.0.0.0 2049
->> 
->> What would we read for RDMA?
->
->I think this makes sense:
->
->ipv4 rdma 0.0.0.0 2050
->ipv6 rdma 0.0.0.0 2050
-
-Like that - strings. The normal TCP transport would be "ipv4-tcp" for
-instance.
-
-For RDMA however, the "ipv4" is only significant to the RDMA connection
-manager. It serves only to describe the format of the following address.
-So while it makes sense, it sort of doesn't matter.
-
-By the way, "ipv6 rdma 0.0.0.0 2050" doesn't make sense, because "0.0.0.0"
-isn't an ipv6 address.
-
-
->>   You say that it uses TCP.
->
->It currently uses TCP or IB, but could ultimately use SCTP, etc...
-
-It makes absolutely no difference whether TCP is used as the RDMA transport,
-from the perspoective of the upper layer. The semantics would be identical
-if SCTP were used. So, I would not include "tcp" in the rdma transport selector
-at all.
-
-Tom.
+Trond
 
 
 -------------------------------------------------------------------------
