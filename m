@@ -1,30 +1,32 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,PATCH 4/14] knfsd: has_wspace per transport
-Date: Wed, 23 May 2007 16:11:38 -0400
-Message-ID: <46549FFA.3000409@oracle.com>
-References: <20070523023206.GA14076@sgi.com>
-	<C27939D4.30F92%tom@opengridcomputing.com>
-	<20070523064157.GE14076@sgi.com> <46544377.4090604@oracle.com>
-	<20070523143903.GM14076@sgi.com>
+Subject: Re: [RFC,
+ PATCH 9/15] knfsd: add RDMA debug class to rpc_debug bitfield
+Date: Wed, 23 May 2007 16:27:38 -0400
+Message-ID: <4654A3BA.3010301@oracle.com>
+References: <20070521031940.GF7482@sgi.com>
+	<C2767CB3.30B42%tom@opengridcomputing.com>
+	<20070521041617.GG7482@sgi.com>
+	<18001.8854.771127.95716@notabene.brown>
+	<4651ACDA.7050207@oracle.com> <20070523151412.GO14076@sgi.com>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030208040202050108020701"
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	NeilBrown <neilb@suse.de>, Peter Leckie <pleckie@melbourne.sgi.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------090802020500000402000407"
+Cc: Neil Brown <neilb@suse.de>,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
+	Peter Leckie <pleckie@melbourne.sgi.com>
 To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HqxCM-0006nr-HE
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 13:12:46 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1HqxS8-0008QZ-J3
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 13:29:02 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HqxCN-0008H4-45
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 13:12:45 -0700
-In-Reply-To: <20070523143903.GM14076@sgi.com>
+	(Exim 4.44) id 1HqxS9-0005zM-KW
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 13:29:03 -0700
+In-Reply-To: <20070523151412.GO14076@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,43 +40,78 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------030208040202050108020701
+--------------090802020500000402000407
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
+Yes, that's basically it.
+
 Greg Banks wrote:
-> On Wed, May 23, 2007 at 09:36:55AM -0400, Chuck Lever wrote:
->> Greg Banks wrote:
->>> On Wed, May 23, 2007 at 12:22:44AM -0500, Tom Tucker wrote:
->>>>
->>>> On 5/22/07 9:32 PM, "Greg Banks" <gnb@sgi.com> wrote:
->>>>
->>>>> On Tue, May 22, 2007 at 12:34:23PM -0500, Tom Tucker wrote:
->>>> I need to do a little clean up (e.g. atomic_inc()) and then I'll add them 
->>>> as
->>>> suggested. If there are dissenters, please speak now...
->>> You should be able to get away with just ++.  They're only stats,
->>> it's not like you have logic depending on them being exact.
->> The usual way to do this is to allocate separate stat arrays for each 
->> CPU.  All the per-CPU arrays are summed only when something wants to 
->> display stat totals.
+> On Mon, May 21, 2007 at 10:29:46AM -0400, Chuck Lever wrote:
+>> Neil Brown wrote:
+>>> On Monday May 21, gnb@sgi.com wrote:
+>>>> In any case I'm happy to do whatever is necessary in the transport
+>>>> patchset,  but I'd appreciate Neil's guidance on which approach he'd
+>>>> prefer before I go in with the scalpel.  Neil?
+>>> I cannot immediately see the value in having different debug bits for
+>>> the socket transport code and the RDMA transport code.  The key
+>>> question is "When would you want to see the debugging from one, but
+>>> not from the other", and I cannot see when that would be.  Almost
+>>> certainly if you are testing one transport, you will not be using the
+>>> other, so it will not contribute any noise.
+>> That's how I did it in the client transport switch.  One bit enables 
+>> debug messages for all transports.
 >>
->> That way you can use ++, be fairly sure you will get accurate 
->> statistics, and not have to be concerned about CPU cache effects or lock 
->> contention.
+>>> So I suspect we should simply
+>>> #define RPCDBG_FACILITY	RPCDBG_SVCSOCK
+>> That's expedient, but I suggest you rename the flag to something less 
+>> specific to sockets.
 > 
-> Here in SGI, home of the multiple-thousand CPU Linux boxes, making
-> data structures per-cpu tends to be done...thoughtfully.
+> Aah, I see now.  That's very easy.  How's this?
 > 
-> In any case, the remainder of svc_stat gets no such treatment today.
+> 
+> 
+> Rename RPCDBG_SVCSOCK to RPCDBG_SVCXPRT to reflect its
+> new more generic nature.
+> 
+> Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+> ---
+> 
+>  include/linux/sunrpc/debug.h |    2 +-
+>  net/sunrpc/svcsock.c         |    2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> Index: linux/include/linux/sunrpc/debug.h
+> ===================================================================
+> --- linux.orig/include/linux/sunrpc/debug.h	2007-04-26 13:08:32.000000000 +1000
+> +++ linux/include/linux/sunrpc/debug.h	2007-05-24 01:09:11.427405573 +1000
+> @@ -20,7 +20,7 @@
+>  #define RPCDBG_PMAP		0x0020
+>  #define RPCDBG_SCHED		0x0040
+>  #define RPCDBG_TRANS		0x0080
+> -#define RPCDBG_SVCSOCK		0x0100
+> +#define RPCDBG_SVCXPRT		0x0100
+>  #define RPCDBG_SVCDSP		0x0200
+>  #define RPCDBG_MISC		0x0400
+>  #define RPCDBG_CACHE		0x0800
+> Index: linux/net/sunrpc/svcsock.c
+> ===================================================================
+> --- linux.orig/net/sunrpc/svcsock.c	2007-05-23 22:39:53.000000000 +1000
+> +++ linux/net/sunrpc/svcsock.c	2007-05-24 01:09:15.574878967 +1000
+> @@ -73,7 +73,7 @@
+>   *
+>   */
+>  
+> -#define RPCDBG_FACILITY	RPCDBG_SVCSOCK
+> +#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+>  
+>  
+>  static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+> 
+> Greg.
 
-I based the new NFS client stats on what was done by the networking 
-layer, which uses the per-CPU pattern.  I was under the impression that 
-methodology was preferred for adding new stat keeping.  But I'm aware 
-that the existing NFS client and server stat keeping infrastructure uses 
-just a simple array for each RPC program/version.
 
---------------030208040202050108020701
+--------------090802020500000402000407
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -94,7 +131,7 @@ version:2.1
 end:vcard
 
 
---------------030208040202050108020701
+--------------090802020500000402000407
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -105,7 +142,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------030208040202050108020701
+--------------090802020500000402000407
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -115,4 +152,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------030208040202050108020701--
+--------------090802020500000402000407--
