@@ -1,29 +1,30 @@
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Greg Banks <gnb@sgi.com>
 Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
-Date: Wed, 23 May 2007 09:43:30 -0500
-Message-ID: <1179931410.9389.144.camel@trinity.ogc.int>
+Date: Thu, 24 May 2007 00:55:57 +1000
+Message-ID: <20070523145557.GN14076@sgi.com>
 References: <1179510352.23385.123.camel@trinity.ogc.int>
 	<20070518192443.GD4843@fieldses.org>
 	<1179516988.23385.171.camel@trinity.ogc.int>
 	<20070523140901.GG14076@sgi.com>
+	<1179931410.9389.144.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	Neil Brown <neilb@suse.de>, Tom Talpey <Thomas.Talpey@netapp.com>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>,
 	Peter Leckie <pleckie@melbourne.sgi.com>
-To: Greg Banks <gnb@sgi.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hqs3q-00061r-0o
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 07:43:34 -0700
-Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hqs3s-0005Be-Bu
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 07:43:37 -0700
-In-Reply-To: <20070523140901.GG14076@sgi.com>
+	id 1HqsFt-0007GR-EM
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 07:56:01 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1HqsFw-0008OE-77
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 07:56:04 -0700
+In-Reply-To: <1179931410.9389.144.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,95 +37,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-> Tom, just curious but in the November there was actually a difference
-> between the sockets and RDMA versions, the latter didn't have this
-> line:
+On Wed, May 23, 2007 at 09:43:30AM -0500, Tom Tucker wrote:
 > 
->         rqstp->rq_res.buflen = PAGE_SIZE;
-
-I changed the defer logic quite a bit. In fact, I don't think it worked
-last November when you got the code originally. The latest code is at
-linux-nfs.org/~tomtucker/linux-nfs-2.6.git
-
-> 
-> > > > +static struct cache_deferred_req *
-> > > > +svc_rdma_defer(struct cache_req *req)
-> > > > +{
-> > > > +	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
-> > > > +	struct svcxprt_rdma *xprt;
-> > > > +	struct svc_rdma_deferred_req *dr;
-> > > > +
-> > > > +	dprintk("svcrdma: deferring request on \n"
-> > > > +		"  rqstp=%p\n"
-> > > > +		"  rqstp->rq_arg.len=%d\n", 
-> > > > +		rqstp, 
-> > > > +		rqstp->rq_arg.len);
-> > > > +
-> > > > +	/* if more than a page, give up FIXME */
-> > > > +	if (rqstp->rq_arg.page_len)
-> > > > +		return NULL;
-> > > > +	BUG_ON(rqstp->rq_deferred);
-> > > > +	xprt = (struct svcxprt_rdma*)rqstp->rq_sock;
-> > > > + retry:
-> > > > +	dr = kmalloc(sizeof(struct svc_rdma_deferred_req), GFP_KERNEL);
-> > > > +	if (!dr) {
-> > > > +		printk(KERN_INFO "svcrdma: sleeping waiting for memory\n");
-> > > > +		schedule_timeout_uninterruptible(msecs_to_jiffies(1000));
-> > > > +		goto retry;
-> > > > +	}
-> > > 
-> > > Why not return NULL, as svc_defer() does?
-> > > 
+> > Tom, just curious but in the November there was actually a difference
+> > between the sockets and RDMA versions, the latter didn't have this
+> > line:
 > > 
-> > I think you're right. I'll fix this.
+> >         rqstp->rq_res.buflen = PAGE_SIZE;
 > 
-> Why have svc_rdma_defer() at all?  The generic code should be able
-> to do call deferral and revisiting.  After all, it just needs to
-> shuffle bits aside from the xdr_buf and put them back later; it's not
-> a performance path; and the logic is convoluted and a pain to test.
-> To illustrate how difficult this logic is, note that svc_rdma_revisit()
-> leaks a page when called with too_many=1.
+> I changed the defer logic quite a bit. In fact, I don't think it worked
+> last November when you got the code originally. The latest code is at
+> linux-nfs.org/~tomtucker/linux-nfs-2.6.git
+
+Thanks.  I have a checkout from there as of several days ago but
+I haven't ported all my patches to use it yet.
+
+> > So perhaps a better approach would be to slightly tweak the existing
+> > generic defer & revisit logic to allow a transport to specify how
+> > many bytes of transport header need to be preserved.  Then the
+> > transport-specific code needs very little code to support defer &
+> > revisit, and doesn't duplicate multiple complex and subtle functions
+> > which mess with svc_sock internals.
 > 
-> Like handling SK_CLOSE, it's logic that should be in the generic
-> code rather than replicated in three svc_foo_recvfrom() routines.
-> 
-> Looking at the code, it seems to me that the reason for doing your
-> own defer/revisit logic is to preserve the RDMA chunking header
-> which lives before the RPC call header.  This header is skipped
-> by svc_rdma_xdr_decode_req(), but a pointer to it is magically
-> reconstructed by svc_rdma_sendto() so it can traverse the write chunks
-> or reply chunks therein.  Am I correct?
-> 
+> The svcsock defer logic only supports a simple RPC without a page list.
+> The logic even has a comment that says "FIX ME". So I assumed that in
+> the fullness of time, any RPC could be deferred. If this is in fact the
+> case, then I believe it is better to have a separate method. If it is
+> not the case, then the defer logic can be made generic.  
 
-You are absolutely correct. 
+I'm not sure what you mean here.
 
-> So the thing that RDMA is doing differently from the other transports
-> is that it needs to go back and look at its transport-specific
-> on-the-wire header again after having earlier skipped over it, and that
-> this header needs to be preserved across a defer & revisit.  Right?
-> 
+Currently neither svc_defer() nor svc_rdma_defer() support calls longer
+than just the head, meaning that WRITE RPCs (only) are dropped and
+retried instead of deferred.  This doesn't seem to be too much of a
+problem; deferral happens so infrequently anyway.
 
-Yes again.
+If for some reason the svc_defer() was to have the "FIXME" actually
+implemented, WRITE RPCs would magically start to be deferred rather
+than dropped, for the sockets case and presumably also for the
+RDMA case.  Is this a problem?
 
-> So perhaps a better approach would be to slightly tweak the existing
-> generic defer & revisit logic to allow a transport to specify how
-> many bytes of transport header need to be preserved.  Then the
-> transport-specific code needs very little code to support defer &
-> revisit, and doesn't duplicate multiple complex and subtle functions
-> which mess with svc_sock internals.
-
-The svcsock defer logic only supports a simple RPC without a page list.
-The logic even has a comment that says "FIX ME". So I assumed that in
-the fullness of time, any RPC could be deferred. If this is in fact the
-case, then I believe it is better to have a separate method. If it is
-not the case, then the defer logic can be made generic.  
-
-> I have 4 untested patches which attempt to do this, I'll post them
-> in a moment.
-
-> Greg.
-
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
