@@ -1,7 +1,7 @@
 From: Greg Banks <gnb@sgi.com>
 Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
-Date: Thu, 24 May 2007 02:29:08 +1000
-Message-ID: <20070523162908.GP14076@sgi.com>
+Date: Thu, 24 May 2007 02:35:58 +1000
+Message-ID: <20070523163558.GQ14076@sgi.com>
 References: <1179510352.23385.123.camel@trinity.ogc.int>
 	<20070518192443.GD4843@fieldses.org>
 	<1179516988.23385.171.camel@trinity.ogc.int>
@@ -9,24 +9,29 @@ References: <1179510352.23385.123.camel@trinity.ogc.int>
 	<1179931410.9389.144.camel@trinity.ogc.int>
 	<20070523145557.GN14076@sgi.com>
 	<1179932586.6480.53.camel@heimdal.trondhjem.org>
+	<1179933123.9389.157.camel@trinity.ogc.int>
+	<1179934639.6480.58.camel@heimdal.trondhjem.org>
+	<1179936164.9389.165.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Tom Talpey <Thomas.Talpey@netapp.com>,
 	Neil Brown <neilb@suse.de>, Peter Leckie <pleckie@melbourne.sgi.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Linux NFS Mailing List <nfs@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hqti9-0000L0-VJ
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 09:29:18 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1HqtiC-0007BE-N7
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 09:29:21 -0700
-In-Reply-To: <1179932586.6480.53.camel@heimdal.trondhjem.org>
+	id 1Hqtoh-0000xN-5z
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 09:36:03 -0700
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX1+s/c+ZUDdBxq6cICCX21b+0MettMhJTiE=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hqtoj-0000hx-U5
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 09:36:06 -0700
+In-Reply-To: <1179936164.9389.165.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,41 +44,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, May 23, 2007 at 11:03:06AM -0400, Trond Myklebust wrote:
-> On Thu, 2007-05-24 at 00:55 +1000, Greg Banks wrote:
-> > Currently neither svc_defer() nor svc_rdma_defer() support calls longer
-> > than just the head, meaning that WRITE RPCs (only) are dropped and
-> > retried instead of deferred.  This doesn't seem to be too much of a
-> > problem; deferral happens so infrequently anyway.
+On Wed, May 23, 2007 at 11:02:44AM -0500, Tom Tucker wrote:
+> On Wed, 2007-05-23 at 11:37 -0400, Trond Myklebust wrote:
+> > On Wed, 2007-05-23 at 10:12 -0500, Tom Tucker wrote:
+> > > Ah, this is a very good point. So then I think we need a transport
+> > > specific deferral mechanism. 
+> > 
+> > No. I'm not sure that justifies a transport specific mechanism. It
+> > rather calls for a more clever algorithm for deferring. Both NFSv3 and
+> > NFSv4 have generic error messages that state 'I'm busy now, please try
+> > again later'. As I said earlier, returning those errors are inevitably
+> > more efficient than dropping.
+> > Even for NFSv3 over TCP, dropping a single WRITE request will typically
+> > cause a 60 second flat holdup instead of the more desirable retry +
+> > exponential backoff.
 > 
-> That still isn't a good tactic.
+> Understood. My concern is very simple. I don't want to copy the data and
+> to avoid this I need to have a way to save off the data for later
+> processing in a transport specific way. All of my data is sitting in
+> this rdma_context structure. 
 > 
-> On NFSv4, dropping a request requires the server to also drop the
-> connection.
+> The current svcsock approach just does a kmalloc and a memcpy. This is
+> not a good approach for a 1MB NFS WRITE. 
 
-<pokes around in RFC3530>
+Sure, but this is true regardless of the transport.
 
-Egads, you're right, there it is in section 3.1.1.  Oh I see, it's
-new since RFC 3010, the last nfs4 document I read.  I need to get up
-to date!
+> An approach that allows a transport to give a "data cookie" to the
+> deferral mechanism for later recovery would allow all the complexity to
+> be centralized, but still allow the transport to keep the data around in
+> it's own way.
 
-A quick look at the source seems to indicate that this is currently
-broken.  Neither nfsd4_proc_compound() nor nfsd_dispatch() do anything
-special for the (nfserr_dropit, vers=4) corner.  And I can see at least
-one path where nfserr_dropit can percolate back up to nfsd_dispatch().
-
-Does the client obey RFC3530 and not retry?  If so we should expect
-to see file corruption doing pure WRITE workloads on NFSv4 when any
-of the server caches expires.
-
-One more thing to fix.
-
-> Unless you are completely out of resources, you are
-> inevitably better off having the server return an NFS4ERR_DELAY or
-> something like that.
-
-So we could translate nfserr_dropit -> nfserr_jukebox ?
-I notice that nfs4_new_open() does that.
+I'm still confused.  Which data are you referring to?  Which
+rdma_context structure, I don't see anything symbol like that in
+the source?
 
 Greg.
 -- 
