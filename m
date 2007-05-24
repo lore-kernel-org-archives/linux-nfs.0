@@ -1,36 +1,41 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
-Date: Thu, 24 May 2007 18:35:08 +1000
-Message-ID: <20070524083508.GD31072@sgi.com>
-References: <20070523140901.GG14076@sgi.com>
-	<1179931410.9389.144.camel@trinity.ogc.int>
-	<20070523145557.GN14076@sgi.com>
-	<1179932586.6480.53.camel@heimdal.trondhjem.org>
-	<20070523162908.GP14076@sgi.com>
-	<EXNANE01KMnap2SAWQ800000a62@exnane01.hq.netapp.com>
-	<1179945437.6707.36.camel@heimdal.trondhjem.org>
-	<EXNANE01FRaqbC8wSA100000a63@exnane01.hq.netapp.com>
-	<1179950482.6707.51.camel@heimdal.trondhjem.org>
-	<EXNANE01XvpFVjCRGry00000a64@exnane01.hq.netapp.com>
+From: Shunichi Sagawa <s-sagawa@jp.fujitsu.com>
+Subject: Permission information on the directory is output with ?
+Date: Thu, 24 May 2007 17:59:34 +0900
+Message-ID: <20070524175934.17a59a57.s-sagawa@jp.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Peter Leckie <pleckie@melbourne.sgi.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <nfs@lists.sourceforge.net>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hr8n4-0002lN-JU
-	for nfs@lists.sourceforge.net; Thu, 24 May 2007 01:35:23 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Hr8n6-0004BB-2V
-	for nfs@lists.sourceforge.net; Thu, 24 May 2007 01:35:25 -0700
-In-Reply-To: <EXNANE01XvpFVjCRGry00000a64@exnane01.hq.netapp.com>
+	id 1Hr9Au-00058J-6L
+	for nfs@lists.sourceforge.net; Thu, 24 May 2007 02:00:00 -0700
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hr9Av-0001Vu-Ac
+	for nfs@lists.sourceforge.net; Thu, 24 May 2007 02:00:02 -0700
+Received: from m1.gw.fujitsu.co.jp ([10.0.50.71])
+	by fgwmail5.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id
+	l4O8xq68004243
+	for <nfs@lists.sourceforge.net> (envelope-from s-sagawa@jp.fujitsu.com);
+	Thu, 24 May 2007 17:59:52 +0900
+Received: from smail (m1 [127.0.0.1])
+	by outgoing.m1.gw.fujitsu.co.jp (Postfix) with ESMTP id 396BE240063
+	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 17:59:52 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
+	by m1.gw.fujitsu.co.jp (Postfix) with ESMTP id 0083A2DC054
+	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 17:59:52 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (s6 [127.0.0.1])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id CD609161C00A
+	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 17:59:51 +0900 (JST)
+Received: from fjm504.ms.jp.fujitsu.com (fjm504.ms.jp.fujitsu.com
+	[10.56.99.80])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 257E3161C027
+	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 17:59:49 +0900 (JST)
+Received: from fjmscan501.ms.jp.fujitsu.com (fjmscan501.ms.jp.fujitsu.com
+	[10.56.99.141])by fjm504.ms.jp.fujitsu.com with ESMTP id
+	l4O8xYQ3008346
+	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 17:59:34 +0900
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,85 +48,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, May 23, 2007 at 05:00:03PM -0400, Talpey, Thomas wrote:
-> At 04:01 PM 5/23/2007, Trond Myklebust wrote:
-> >On Wed, 2007-05-23 at 14:59 -0400, Talpey, Thomas wrote:
-> >> Personally, I'm not completely sure I see the problem here. If an RDMA
-> >> adapter is going out to lunch and hanging what should be a very fast
-> >> operation (the RDMA Read data pull), then that's an adapter problem
-> >> which we should address in the adapter layer, or via some sort of interface
-> >> hardening between it and RPC. Trying to push the issue back down the RPC
-> >> pipe to the sending peer seems to me a very unworkable solution.
-> >
-> >AFAIK, the most common reason for wanting to defer a request is if the
-> >server needs to make an upcall in order to talk to mountd,
+Hello, all 
 
-This is the original and AFAICT only reason svc_defer() is called.
+I face the problem that the directory's permission information on
+NFS server cannot be correctly acquired.
 
-> > or to resolve
-> >an NFSv4 name using idmapd.
+  # ls -l /po/spool/postfix
+  total 52
+  drwx------  18 postfix root     4096 May 22 00:45 active
+  drwx------   2 postfix root     4096 Feb 11  2005 bounce
+  drwx------   2 postfix root     4096 Feb 11  2005 corrupt
+  drwx------   5 postfix root     4096 May 22 02:21 defer
+  drwx------   5 postfix root     4096 May 22 02:21 deferred
+  drwx------   2 postfix root     4096 Feb 11  2005 flush
+  -rw-r--r--   1 root    root        0 May 24  2007 hogehoge
+  drwx------   2 postfix root     4096 Feb 11  2005 hold
+  ?---------   ? ?       ?           ?            ? incoming    <== here
+  drwx-wx---   2 postfix postdrop 4096 May 23  2007 maildrop
+  drwxr-xr-x   2 root    root     4096 May 21 14:35 pid
+  drwx------   2 postfix root     4096 May 21 14:35 private
+  drwx--x---   2 postfix postdrop 4096 May 21 14:35 public
+  drwx------   2 postfix root     4096 Feb 11  2005 saved
+  drwx------   2 postfix root     4096 Feb 11  2005 trace
+  #
 
-It seems the idmap code deliberately circumvents the asynchronous
-defer/revisit behaviour, and has code which blocks the calling thread
-for up to 1 second in the case of a cache miss and subsequent upcall
-to userspace.  After 1 second it gives up.
+[System configuration]
 
-So with NFSv4, if the LDAP server goes AWOL, some portion of NFS
-calls will experience multiple-second delays, 1 second for each user
-and group name in the call.  Wonderful.
+        nfs-server(RHEL4UP3)
+       +- x86 machine ----+
+       |                  |
+       +------------------+             nfs-client(RHEL4UP1)
+          |                            +-x86 machine -----------------------------------------------+
+          |                    nfs     |                                                            |
+       +----disk----------+  <-------> |         mount /po       (option noac)                      |
+       | /vol/vol0/jpmail |            |                 |-spool                                    |
+       |                  |            |                 |  |-postfix                               |
+       |                  |            |                 |  |  |-active                             |
+       |                  |            |                 |  |  :                                    |
+       |                  |            |                 |  |  |-incoming(ls -l /po/spool/postfix ?)|
+       |                  |            |                 |  |  |-maildrop(ls -l /po/spool/postfix ?)|
+       |                  |            |                 |  |  :                                    |
+       +------------------+            |                 |-vmbox                                    |
+                                       +------------------------------------------------------------+
 
-> > I don't think you really want to treat
-> >hardware failures by deferring requests...
 
-Agreed, the right way to handle hardware issues is disconnect.
+[Reproduction procedure]
+If the following operation is done, the output result becomes abnormal. 
 
-> Well, the most common occurrence would be a lost conenction, this
-> would prevent sending even nfserr_jukebox. I'm suggesting that if
-> we're concerned about using nfsd thread context to pull data, then
-> we should also be concerned about calling into filesystems, which might
-> hang on their storage adapters, or whatever just as easily.
+1. For giving high load, please execute tarloop.sh.
+   This script is accessed to a local disk.
 
-Two comments.
+  # cat tarloop.sh
+  #!/bin/sh
+  count=1
+  while :
+  do
+       time=`date`
+       echo "$time count=$count"
+       tar xfz ./dummydir.tgz
+       du -a dummydir
+       rm -rf dummydir
+       count=$(($count+1))
+  done
+  # ls -l dummydir.tgz
+  -rw-r--r--  1 root root 965148975 May 22 11:59 dummydir.tgz
+  #
 
-Firstly, some of us *are* concerned about those issues
+2. For NFS access, please execute postfix like this.
 
-http://marc.info/?l=linux-nfs&m=114683005119982&w=2
-http://oss.sgi.com/archives/xfs/2007-04/msg00114.html
+  # telnet localhost 25
+  Trying 127.0.0.1...
+  Connected to localhost.localdomain (127.0.0.1).
+  Escape character is '^]'.
+  220 hazard.soft.fujitsu.com ESMTP Postfix
+  helo soft.fujitsu.com  -------------------------> (1)
+  250 hazard.soft.fujitsu.com
+  mail from: s-sagawa@jp.fujitsu.com -------------> (2)
+  250 Ok
+  rcpt to: s-sagawa@jp.fujitsu.com ---------------> (3)
+  250 Ok
+  :
+  (1) - (3) repeat.
 
-Secondly, there's a fundamental difference between blocking
-for storage-side reasons and blocking for network-side reasons.
+  ###################################################################
+  - The incidence of this problem is about 10%.
+  - When the same procedure is executed after umount/mount is operated,
+    it is easy to be generated.
+  ###################################################################
 
-The former is effectively internal(*) to the NAS server and reflects
-it's inherent capability to provide service.  If the disks are broken,
-then mechanisms internal to the server host (RAID, failover, whatever)
-take care of this.  So blocking (for short periods) in the filesystem
-because the disks are fully loaded is fine, in fact this is the
-fundamental purpose of the nfsd threads.
+  [OK pattern]
+  helo soft.fujitsu.com  -------------------------> (1)
+  250 hazard.soft.fujitsu.com
+  mail from: s-sagawa@jp.fujitsu.com -------------> (2)
+  250 Ok
+  rcpt to: s-sagawa@jp.fujitsu.com ---------------> (3)
+  250 Ok
+  [NG pattern]
+  helo soft.fujitsu.com  -------------------------> (1)
+  250 hazard.soft.fujitsu.com
+  mail from: s-sagawa@jp.fujitsu.com -------------> (2)
+  250 Ok
+  rcpt to: s-sagawa@jp.fujitsu.com ---------------> (3)
 
-The latter is external to the server and is subject to the vagaries
-of client machines, which can have hardware faults, software flaws,
-or even be malicious and attempting to crash the server or lock it up.
-Here we have a service boundary which the knfsd code needs to enforce.
-We need firstly to protect the server from the effects of bad clients
-and secondly to protect other clients from the effects of bad clients.
 
-(*) Here I am ignoring the case of NFS exporting a clustered fs
+  When "250 OK" is not output, this problem has been reproduced.
 
-> Basically, I'm saying there shouldn't be any special handling for the
-> RDMA Reads used to pull write data. In the success case, they happen
-> quite rapidly (at wire speed), and in the failure case, there isn't any
-> peer to talk to anyway. So what are we protecting?
+  # df
+  Filesystem           1K-blocks      Used Available Use% Mounted on
+  /dev/sda8             19931708  13363664   5555552  71% /
+  none                    517336         0    517336   0% /dev/shm
+  /dev/sdb1             70557052  43613868  23359088  66% /work
+  rhas4up3-part2:/vol/vol0/jpmail
+                         8143616   4978528   2751392  65% /po
+  #
+  # ls -i /po/spool/postfix/
+  339662 active   339665 defer     339719 hogehoge  339670 maildrop  339693 public
+  339663 bounce   339666 deferred  339668 hold      339671 pid       339699 saved
+  339664 corrupt  339667 flush          0 incoming  339673 private   339700 trace
+  #
+  # cd /po/spool/postfix/incoming
+  -bash: cd: /po/spool/postfix/incoming: No such file or directory
+  #
 
-All the *other* clients who can't get any service, or get slower
-service, because many nfsd threads are blocked.  The problem here
-is fairness between multiple clients in the face of a few greedy,
-broken or malicious ones.
+What is wrong? And is there any patch?
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+
+Regards,
+Sagawa
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
