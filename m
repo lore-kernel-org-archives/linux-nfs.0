@@ -1,21 +1,36 @@
-From: =?ISO-2022-JP?B?GyRCIVo+ZSE5NmYzWkl0IVsbKEI=?= <hgjjw441@yahoo.co.jp>
-Subject: =?iso-2022-jp?b?GyRCIVg4NT5aN3QycTxSPFIwdyQsTEAkKyQ5GyhC?=
- =?iso-2022-jp?b?GyRCISojM0t8MV8kciMzJXY3bjRWJEcjMSMwIzBHXCRLJDkkaz0iGyhC?=
- =?iso-2022-jp?b?GyRCPzJEPkEwIzMjMEosRDY+LzNbRWo7cUshISohWRsoQg==?=
-Date: 24 May 2007 12:51:51 +0900
-Message-ID: <20070524035151.20350.qmail@r1172.ps.combzmail.jp>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
+Date: Thu, 24 May 2007 18:35:08 +1000
+Message-ID: <20070524083508.GD31072@sgi.com>
+References: <20070523140901.GG14076@sgi.com>
+	<1179931410.9389.144.camel@trinity.ogc.int>
+	<20070523145557.GN14076@sgi.com>
+	<1179932586.6480.53.camel@heimdal.trondhjem.org>
+	<20070523162908.GP14076@sgi.com>
+	<EXNANE01KMnap2SAWQ800000a62@exnane01.hq.netapp.com>
+	<1179945437.6707.36.camel@heimdal.trondhjem.org>
+	<EXNANE01FRaqbC8wSA100000a63@exnane01.hq.netapp.com>
+	<1179950482.6707.51.camel@heimdal.trondhjem.org>
+	<EXNANE01XvpFVjCRGry00000a64@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-2022-jp"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>,
+	Peter Leckie <pleckie@melbourne.sgi.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hr4Ml-0000Gw-SL
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 20:51:55 -0700
-Received: from g21.combzmail.jp ([211.133.130.192] helo=r1172.ps.combzmail.jp)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hr4Mo-0007d3-3Y
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 20:51:58 -0700
+	id 1Hr8n4-0002lN-JU
+	for nfs@lists.sourceforge.net; Thu, 24 May 2007 01:35:23 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Hr8n6-0004BB-2V
+	for nfs@lists.sourceforge.net; Thu, 24 May 2007 01:35:25 -0700
+In-Reply-To: <EXNANE01XvpFVjCRGry00000a64@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,379 +43,85 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-　◆上々倶楽部◆
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-メールマガジンへの読者登録が必須の利用条件となっている、懸賞、無料
-レポート配布、その他の無料サービスなどを利用した方に配信しています。
-
-もし、身に覚えが無い場合はこちらより解除をお願いします。
-https://regssl.combzmail.jp/web/?t=df20&m=5l2v
-
-
-
-【緊急案内】 
-
-あなたは、まだ情報商材に踊らされて無駄な投資を続けるつもりですか？
-
-
-ブログやホームページの作成　→　×
-
-アフィリエイトやメルマガ、オークション　→　×
-
-ギャンブルの攻略法　→　×
-
-
-これが最初で最後の商材になると確信しています。
-
-『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
-
-http://www.affilitool.com/file/8139.html
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-投資は、マネーゲームと言っても過言ではありません。
-
-　あるいは、大人のマネーゲームと言ってもいいかも知れません。
-
-　投資には、始めから、２０万円、３０万円もかける必要はありません。
-
-　
-
-　３万円程度で、投資を始めた方がずっと楽しく投資が出来ます。
-
-http://www.affilitool.com/file/8139.html
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-
-初めまして、 元大手証券会社に、勤めておりました
-
-　木下 誠司と申します。
-
-
-最近、私に投資系の情報商材の話で、知人よりよく相談がきます。
-
-　
-　・FXって、 「信用取引だから普通にリスク高いし、初心者は口座も開けないんだよね？」
-
-
-  ・株式投資で、 「ほったらかしで、月々利益が何十万円も確定する株銘柄なんてないよね？」
-
-　　 などの質問が多く、「なぜこのようなことが起きるのか」と、 疑問視していました。
-
-
-
-原則として、信用取引の口座開設には、「一定の投資経験」・「知識」・
-
-　「資金力」等が必要になる為、投資初心者が口座開設できるとは思いません。
-
-　
-株式投資に関しても、ほったらかしで月々利益が何十万円も確定する株銘柄
-
-　なんて、聞いたことがありません。　
-
-　
-
-なぜこのような無理難題な情報が高額な金額で売られているのでしょうか？
-
-　
-
-　実際、私が試しに購入した情報にも、特別利益を出す情報は、
-
-　書かれてはいませんでした。
-
-
-たまたま私が目にした情報が、特別な情報を記載していなかっただけなのか分かりませんが、
-
-　このままでは、投資人口は増加しても利益を出す人は、極僅かしか、いなくなってしまいます。
-
-　
-
-　では、どうすればいいのか？
-
-　
-
-　正直、皆様に判断していただくしかありませんが、
-
-　私は、楽しく投資を行える方法を知っています。
-
-　
-
-　ローリスク・ハイリターンを実現した方法です。
-
-　
-
-　要は、
-
-　「小額の資金」
-
-　「最少限のリスク」
-
-　「初心者にも安心して投資ができる」
-
-　「限りなく高い利益を算出する方法」
-
-　になります。
-
-　　
-
-　この方法は、
-
-　金融派生商品のワラントが投資対象となります。
-
-　
-
-　投資と聞くと、「リスクがある」・「資金がかかる」・「難しそう」とか、
-
-　様々な理由を耳にしますがそんなことはありません。
-
-
-
-　現在では、証券口座も無料で開設でき、方法さえ知ってしまえば
-
-　何よりも簡単に儲けることが可能です。
-
-　
-
-　また、金融派生商品のワラントは、
-
-　元々「投資初心者の方にも少額の資金で、気軽に投資を楽しんでもらう」をコンセプトに作られた
-
-　商品です。　
-
-　
-
-　この商品に、私が考案した投資法を組み合わせることで、ローリスク・ハイリターンを
-
-　実現することができます。
-
-
-
-
-　そして、投資としては非常に小額の３万円という金額を、
-
-　３ヶ月間で１００倍にすることが可能です。
-
-
-
-
-　もちろん、１万円からでも投資が可能です。
-
-　（ただし、それは取引上の話で、今回の投資法には３万円の資金を要します。）
-
-　 
-
-　事実、私の友人には、この投資法を活用し”わずか半年足らずで１，０００万円近く”の
-
-　利益を得た方もいます。
-
-
-
-投資は、マネーゲームと言っても過言ではありません。
-
-　あるいは、大人のマネーゲームと言ってもいいかも知れません。
-
-　投資には、始めから、２０万円、３０万円もかける必要はありません。
-
-　
-
-　３万円程度で、投資を始めた方がずっと楽しく投資が出来ます。
-
-
-
-これが最初で最後の商材です！
-『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
-
-http://www.affilitool.com/file/8139.html
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-もちろん最近話題の副業にも挑戦しました。
-
-
-
-　仕事をしながらできるアフィリエイトやメルマガ、オークションと
-
-　いくつかやりましたが、全然稼げませんでした。
-
-
-
-　アフィリエイトのマニュアル購入に使った金額　￥１００，０００− 以上
-
-　メルマガの会員獲得やノウハウに使った金額　￥１５０，０００− 以上
-
-　運よく稼げた金額 ￥７，８８６− のみ ・ ・ ・ 。
-
-
-
-　お金を稼ぐために始めたのに ・ ・ ・ 。
-
-
-
-私には、
-
-
-
-　○ブログやホームページの作成なんて難し過ぎます。 
-
-
-　記事を毎日更新することもできませんし、
-
-　そもそも何を記事にしたらいいのか、なかなか思いつきません。
-
-
-
-　○メルマガの配信って、読者はどうやって集めれば　・　・　・　。
-
-
-　仮に記事が書けたとして、どうやれば読者を増やすことが
-
-　できるのでしょうか　・　・　・　。
-
-　記事を書くのに時間がかかるし、
-
-　読者を増やすのにお金がかかりますし、
-
-　私の場合、お金をかけても読者からの反応がほとんどありませんでした。
-
- 
-　
-　○アフィリエイで報酬を得るって　・　・　・　。
-
-
-　アフィリエイトをするなんてことも夢のまた夢です。
-
-　（実際にできませんでした　・　・　・　。)
-
- 
-
-　○株に投資をする。
-
-
-　そもそも資金が豊富ではないので、何十万円も投資には使えません。
-
-　
- 
-　○ＦＸに投資する。
-
-
-　株と同じで、損失が出たとき、どうすればいいのでしょう。
-
-　
- 
-　○情報起業が儲かるって言うけれど　・　・　・　。
-
-
-　アイデアさえあれば、短期間で何百万園と儲かるそうです。
-
-　ですが、その肝心のアイデアが私にはありません。
-
-　噴水のようにアイデアが出れば私もやるのですが　・　・　・　。
-
-　
-
-　○運に任せてギャンブルで稼ぐ。
-
-　
-　何年か前に競馬にハマって研究していた友人がいましたが、
-
-　果たしてギャンブルに攻略法と言うのは現実に存在するのでしょうか　・　・　・　。
- 
-
-
-
-これが最初で最後の商材です！
-『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
-
-http://www.affilitool.com/file/8139.html
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-・ やり方が分からない。
-
-　　　
-　　　「やり方が分からない」方の為に、私が証券会社で得た知識を提供します。
-
-　
-
-　・ 方法を知っていても実際にやってみたらできなかった。
-
-　　　
-　　　そうですね、実際に私も５つ程情報を購入しましたが、
-
-　　　実践で使える情報は、１つもありませんでした。ですから、
-
-　　　私が本物の情報を提供します。
-
-　
-
-　・ 自分には難しかった。
-
-　　　
-　　　私が購入した情報の中にも内容が難しく
-
-　　　「実際の投資法については、はぐらかしてある」情報をいくつか読みました。
-
-　　　私が本物の投資法を提供しようと思ったのも、
-
-　　　このような情報が出回っているからです。
-
-　
-
-　
-　・ 初心者でも簡単にできると聞いたのに全く理解できない。
-
-　　　
-　　　今回、私のテーマでもある「初心者の方に投資を楽しんでもらう」為に
-
-　　　制作しましたので、分かりやすく画像をフルに活用して説明しています。
-
-　　　また、サポートサービスとして、メールでの質問も受け付けています。
-
-　　　安心して下さい。
-
-　　
-　　 
-　 知識、学歴、性別、経験は一切関係ありません。　また、努力・やる気などとも無縁です。
-
-
-　今回のコンセプトである
-　
-
-　「あなたが欲しいもの＝できるだけ小額の資金で
-
-　短期間に儲けが出る、尚且つ初心者でも楽々できる内容」
-
-　
-　を、マニュアルを見ただけで誰でも出来るように制作しました。
-
-
-　ですから、正直、絶大な自信を持って提供することができます。
-
-
-これが最初で最後の商材です！
-『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
-
-http://www.affilitool.com/file/8139.html
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-　◆上々倶楽部◆
-　
-　解除はコチラ　https://regssl.combzmail.jp/web/?t=df20&m=5l2v
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+On Wed, May 23, 2007 at 05:00:03PM -0400, Talpey, Thomas wrote:
+> At 04:01 PM 5/23/2007, Trond Myklebust wrote:
+> >On Wed, 2007-05-23 at 14:59 -0400, Talpey, Thomas wrote:
+> >> Personally, I'm not completely sure I see the problem here. If an RDMA
+> >> adapter is going out to lunch and hanging what should be a very fast
+> >> operation (the RDMA Read data pull), then that's an adapter problem
+> >> which we should address in the adapter layer, or via some sort of interface
+> >> hardening between it and RPC. Trying to push the issue back down the RPC
+> >> pipe to the sending peer seems to me a very unworkable solution.
+> >
+> >AFAIK, the most common reason for wanting to defer a request is if the
+> >server needs to make an upcall in order to talk to mountd,
+
+This is the original and AFAICT only reason svc_defer() is called.
+
+> > or to resolve
+> >an NFSv4 name using idmapd.
+
+It seems the idmap code deliberately circumvents the asynchronous
+defer/revisit behaviour, and has code which blocks the calling thread
+for up to 1 second in the case of a cache miss and subsequent upcall
+to userspace.  After 1 second it gives up.
+
+So with NFSv4, if the LDAP server goes AWOL, some portion of NFS
+calls will experience multiple-second delays, 1 second for each user
+and group name in the call.  Wonderful.
+
+> > I don't think you really want to treat
+> >hardware failures by deferring requests...
+
+Agreed, the right way to handle hardware issues is disconnect.
+
+> Well, the most common occurrence would be a lost conenction, this
+> would prevent sending even nfserr_jukebox. I'm suggesting that if
+> we're concerned about using nfsd thread context to pull data, then
+> we should also be concerned about calling into filesystems, which might
+> hang on their storage adapters, or whatever just as easily.
+
+Two comments.
+
+Firstly, some of us *are* concerned about those issues
+
+http://marc.info/?l=linux-nfs&m=114683005119982&w=2
+http://oss.sgi.com/archives/xfs/2007-04/msg00114.html
+
+Secondly, there's a fundamental difference between blocking
+for storage-side reasons and blocking for network-side reasons.
+
+The former is effectively internal(*) to the NAS server and reflects
+it's inherent capability to provide service.  If the disks are broken,
+then mechanisms internal to the server host (RAID, failover, whatever)
+take care of this.  So blocking (for short periods) in the filesystem
+because the disks are fully loaded is fine, in fact this is the
+fundamental purpose of the nfsd threads.
+
+The latter is external to the server and is subject to the vagaries
+of client machines, which can have hardware faults, software flaws,
+or even be malicious and attempting to crash the server or lock it up.
+Here we have a service boundary which the knfsd code needs to enforce.
+We need firstly to protect the server from the effects of bad clients
+and secondly to protect other clients from the effects of bad clients.
+
+(*) Here I am ignoring the case of NFS exporting a clustered fs
+
+> Basically, I'm saying there shouldn't be any special handling for the
+> RDMA Reads used to pull write data. In the success case, they happen
+> quite rapidly (at wire speed), and in the failure case, there isn't any
+> peer to talk to anyway. So what are we protecting?
+
+All the *other* clients who can't get any service, or get slower
+service, because many nfsd threads are blocked.  The problem here
+is fairness between multiple clients in the face of a few greedy,
+broken or malicious ones.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
