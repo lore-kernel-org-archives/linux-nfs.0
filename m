@@ -1,32 +1,47 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Implementing nfs in vfs
-Date: Thu, 24 May 2007 09:09:54 -0400
-Message-ID: <20070524090954.3b656080.jlayton@redhat.com>
-References: <359369180705240404s2887d881uf591119b6397683d@mail.gmail.com>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [RFC,PATCH 11/15] knfsd: RDMA transport core
+Date: Thu, 24 May 2007 09:45:52 -0400
+Message-ID: <EXNANE01WhMnU5JzUID00000a6e@exnane01.hq.netapp.com>
+References: <20070523140901.GG14076@sgi.com>
+	<1179931410.9389.144.camel@trinity.ogc.int>
+	<20070523145557.GN14076@sgi.com>
+	<1179932586.6480.53.camel@heimdal.trondhjem.org>
+	<20070523162908.GP14076@sgi.com>
+	<EXNANE01KMnap2SAWQ800000a62@exnane01.hq.netapp.com>
+	<1179945437.6707.36.camel@heimdal.trondhjem.org>
+	<EXNANE01FRaqbC8wSA100000a63@exnane01.hq.netapp.com>
+	<1179950482.6707.51.camel@heimdal.trondhjem.org>
+	<EXNANE01XvpFVjCRGry00000a64@exnane01.hq.netapp.com>
+	<20070524083508.GD31072@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@suse.de>,
+	Peter Leckie <pleckie@melbourne.sgi.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing List <nfs@lists.sourceforge.net>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HrD4p-0004dh-FC
-	for nfs@lists.sourceforge.net; Thu, 24 May 2007 06:09:59 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrD4r-0006Qc-Tr
-	for nfs@lists.sourceforge.net; Thu, 24 May 2007 06:10:02 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l4OD9tBF008272
-	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 09:09:55 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l4OD9tYM018213
-	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 09:09:55 -0400
-Received: from tleilax.poochiereds.net (vpn-14-153.rdu.redhat.com
-	[10.11.14.153])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l4OD9sLD013406
-	for <nfs@lists.sourceforge.net>; Thu, 24 May 2007 09:09:54 -0400
-In-Reply-To: <359369180705240404s2887d881uf591119b6397683d@mail.gmail.com>
+	id 1HrDeB-0000Ia-RY
+	for nfs@lists.sourceforge.net; Thu, 24 May 2007 06:46:32 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrDeD-0002op-J8
+	for nfs@lists.sourceforge.net; Thu, 24 May 2007 06:46:34 -0700
+In-Reply-To: <20070524083508.GD31072@sgi.com>
+References: <20070523140901.GG14076@sgi.com>
+	<1179931410.9389.144.camel@trinity.ogc.int>
+	<20070523145557.GN14076@sgi.com>
+	<1179932586.6480.53.camel@heimdal.trondhjem.org>
+	<20070523162908.GP14076@sgi.com>
+	<EXNANE01KMnap2SAWQ800000a62@exnane01.hq.netapp.com>
+	<1179945437.6707.36.camel@heimdal.trondhjem.org>
+	<EXNANE01FRaqbC8wSA100000a63@exnane01.hq.netapp.com>
+	<1179950482.6707.51.camel@heimdal.trondhjem.org>
+	<EXNANE01XvpFVjCRGry00000a64@exnane01.hq.netapp.com>
+	<20070524083508.GD31072@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,34 +54,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 24 May 2007 16:34:08 +0530
-"Suraj Jacob" <suraj.email@gmail.com> wrote:
+At 04:35 AM 5/24/2007, Greg Banks wrote:
+>So with NFSv4, if the LDAP server goes AWOL, some portion of NFS
+>calls will experience multiple-second delays, 1 second for each user
+>and group name in the call.  Wonderful.
+...
+>> we should also be concerned about calling into filesystems, which might
+>> hang on their storage adapters, or whatever just as easily.
+>
+>Two comments.
+>
+>Firstly, some of us *are* concerned about those issues
 
-> Hi,
-> Please forgive me if this is a naive question or if it does not belong to
-> this list.
-> 
-> All the nfs implementations that Ive seen are always on top of local
-> filesystems. Why is it that there is no implementation that could bypass the
-> local fs like ext2 and implement a vfs layer for nfs? or eliminate vfs too
-> and write a server operating on raw disks(like some databases do for
-> performance)?
-> 
-> 
-> Thanks in advance
-> 
+Great! I like the idea of a nonblocking FS API that nfsd can use, though
+a full asynchronous API (with a cancel capability) might be better. This
+is just an aside to the current discussion, of course.
 
-So you're wanting to make a backend filesystem that's somehow "better"
-for nfs than a traditional on-disk filesystem? I suppose that's
-possible, but it's not clear to me that it would be a huge performance
-win.
 
-Rather than reinventing the wheel, it would seem more reasonable to me
-to identify the performance bottlenecks you see when dealing with the
-backend filesystem and deal with those.
+>Secondly, there's a fundamental difference between blocking
+>for storage-side reasons and blocking for network-side reasons.
+>...
+>The latter is external to the server and is subject to the vagaries
+>of client machines, which can have hardware faults, software flaws,
+>or even be malicious and attempting to crash the server or lock it up.
+>Here we have a service boundary which the knfsd code needs to enforce.
+>We need firstly to protect the server from the effects of bad clients
+>and secondly to protect other clients from the effects of bad clients.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Oh, absolutely the knfsd needs to have some sort of hardening from this
+type of issue. I think a timer on any RDMA Read wire operation would be
+very well advised. And, if the timer fires, the entire WRITE operation would
+obviously be aborted, this in turn would naturally indicate the knfsd should
+disconnect (terminating all other client operations), because that is the only
+way to abort an in-progress RDMA.
+
+My concern is using nfserr_jukebox to somehow manage the queue of RDMA
+Read operations the server is processing, as was originally suggested.
+You can think of the adapter's RDMA Read engine as a very short work
+queue - it will generally be quite busy with work queued. The good news is,
+it is a very fast engine. So, I think it is reasonable to use a timeout of just
+a few seconds once an operation begins. But I don't think it's reasonable to
+somehow limit the amount of WRITEs the server should handle in order to
+simplify this.
+
+>All the *other* clients who can't get any service, or get slower
+>service, because many nfsd threads are blocked.  The problem here
+>is fairness between multiple clients in the face of a few greedy,
+>broken or malicious ones.
+
+So, the attack you're suggesting is a client would issue a large number
+of chunked WRITES, and then delay the resulting RDMA Reads that the
+server issued to fetch the data, in an attempt to tie up all the server
+threads? That would be a challenging attack to implement, but I guess
+I would say there are several things that will protect us here.
+
+- the client can only send as many WRITES as he has credits to send,
+this is a server-managed limit
+- the server is free to leave client operations in their receive buffers
+unprocessed until it cares to execute them, as is done for tcp etc.
+- the client can't block operations to other connections (clients), i.e
+the RDMA Read limits are per-connection only.
+- any failure such as an RDMA Read timer expiration will cause the
+connection to be lost, immediately freeing up all threads servicing
+that client.
+
+Bottom line, my feeling is that adding a timeout to the RDMA Read
+requests we make of the local adapter is all we need to implement
+the necessary protection. If we want to address the situation for
+N nfsd threads to fairly service a much larger number of arriving client
+requests, that's a much deeper issue (and a good one, but not an
+RDMA one).
+
+Tom.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
