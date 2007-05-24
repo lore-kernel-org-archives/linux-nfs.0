@@ -1,134 +1,85 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 4/4] NFS: Fix nfs_direct_dirty_pages()
-Date: Wed, 23 May 2007 18:53:18 -0400
-Message-ID: <1179960798.6707.60.camel@heimdal.trondhjem.org>
-References: <20070522142908.22559.91696.stgit@heimdal.trondhjem.org>
-	<20070522142923.22559.49677.stgit@heimdal.trondhjem.org>
-	<1179874805.6189.12.camel@heimdal.trondhjem.org>
-	<4654B873.10805@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hqzi1-0005YE-Qq
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 15:53:33 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hqzi4-0002VI-MF
-	for nfs@lists.sourceforge.net; Wed, 23 May 2007 15:53:36 -0700
-In-Reply-To: <4654B873.10805@oracle.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Erez Zadok <ezk@cs.sunysb.edu>
+Subject: possible bug/oops in nfs_pageio_add_request (2.6.22-rc2)?
+Date: Wed, 23 May 2007 21:16:55 -0400
+Message-ID: <200705240116.l4O1GtXr020084@agora.fsl.cs.sunysb.edu>
+References: <20060411174543.12579.94699.stgit@lade.trondhjem.org>
+Cc: mhalcrow@us.ibm.com
+To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: Your message of "Tue, 11 Apr 2006 13:45:43 EDT."
+             <20060411174543.12579.94699.stgit@lade.trondhjem.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, 2007-05-23 at 17:56 -0400, Chuck Lever wrote:
-> Trond Myklebust wrote:
-> > On Tue, 2007-05-22 at 10:29 -0400, Trond Myklebust wrote:
-> >> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >>
-> >> We only need to dirty the pages that were actually read in.
-> >>
-> >> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >> ---
-> >>
-> >>  fs/nfs/direct.c |   20 ++++++++++++++------
-> >>  1 files changed, 14 insertions(+), 6 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> >> index ef0ce2c..4060e6f 100644
-> >> --- a/fs/nfs/direct.c
-> >> +++ b/fs/nfs/direct.c
-> >> @@ -122,9 +122,15 @@ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_
-> >>  	return -EINVAL;
-> >>  }
-> >>  
-> >> -static void nfs_direct_dirty_pages(struct page **pages, unsigned int npages)
-> >> +static void nfs_direct_dirty_pages(struct page **pages, unsigned int pgbase, size_t count)
-> >>  {
-> >> +	unsigned int npages;
-> >>  	unsigned int i;
-> >> +
-> >> +	if (count == 0)
-> >> +		return;
-> >> +	pages += (pgbase >> PAGE_SHIFT);
-> >> +	npages = (count + (pgbase & ~PAGE_MASK) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> >>  	for (i = 0; i < npages; i++) {
-> >>  		struct page *page = pages[i];
-> >>  		if (!PageCompound(page))
-> >> @@ -224,18 +230,20 @@ static void nfs_direct_read_result(struct rpc_task *task, void *calldata)
-> >>  	if (nfs_readpage_result(task, data) != 0)
-> >>  		return;
-> >>  
-> >> -	nfs_direct_dirty_pages(data->pagevec, data->npages);
-> >> -	nfs_direct_release_pages(data->pagevec, data->npages);
-> >> -
-> >>  	spin_lock(&dreq->lock);
-> >>  
-> >> -	if (likely(task->tk_status >= 0))
-> >> +	if (likely(task->tk_status >= 0)) {
-> >>  		dreq->count += data->res.count;
-> >> -	else
-> >> +		nfs_direct_dirty_pages(data->pagevec,
-> >> +				data->args.pgbase,
-> >> +				data->res.count);
-> >> +	} else
-> >>  		dreq->error = task->tk_status;
-> >>  
-> >>  	spin_unlock(&dreq->lock);
-> >>  
-> >> +	nfs_direct_release_pages(data->pagevec, data->npages);
-> >> +
-> >>  	if (put_dreq(dreq))
-> >>  		nfs_direct_complete(dreq);
-> >>  }
-> > 
-> > Having looked at this one more closely I'd say we have a second bug here
-> > since nfs_direct_dirty_pages() is actually calling
-> > set_page_dirty_lock(). Firstly it is quite unacceptable for an
-> > asynchronous RPC callback to be calling lock_page(). Secondly, AFAICS
-> > you have no guarantees that the pages that were mapped using the call to
-> > get_user_pages() aren't already locked...
-> > 
-> > Chuck?
-> 
-> OK, well...
-> 
-> It looks like the generic dio code preemptively dirties pages in the 
-> "read buffer" while still in the issuing process's context.  When the 
-> read operation completes, it checks whether the pages are still dirty, 
-> and if not, it asks a worker thread to redirty them via set_page_dirty_lock.
-> 
-> There's still some question about whether this needs to be done for both 
-> the synchronous and asynchronous read case... I'd say for NFS, both are 
-> needed since all read results arrive via soft IRQ.
-> 
-> I think then that removing set_page_dirty_lock from the read_result path 
-> makes your question about get_user_pages moot.
-> 
-> What do you think?
+I've hit a NULL ptr deref on desc->pg_error below, triggered when mounting a
+stackable file system on top of nfsv3:
 
-I've simply replaced the call to set_page_dirty_lock() with a standard
-call to set_page_dirty().
+// from file: nfs/pagelist.c
+int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+			   struct nfs_page *req)
+{
+	while (!nfs_pageio_do_add_request(desc, req)) {
+		nfs_pageio_doio(desc);
+		if (desc->pg_error < 0)
 
-Cheers
-  Trond
+Scenario:
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+2.6.22-rc2 with Unionfs 2.0 (release u2 for 2.6.22-rc2, which includes mmap
+support).
+
+I mount unionfs on top of nfs (v3).  I have one file in the nfs branch.  I
+run a simple program through the union which mmap's the file, changes the
+first byte of the file, calls msync(), and then closes.  This causes
+unionfs_writepage to be invoked, which in turn calls the lower file system's
+->writepage, here nfs_writepage.
+
+The 'wbc' that's passed to unionfs_writepage from the VFS has this:
+
+    wbc->for_writepages = 1
+    wbc->fs_private = NULL
+
+If you follow the logic, then nfs_writepage calls nfs_writepage_locked,
+passing the same wbc.  nfs_writepage_locked does this:
+
+	if (wbc->for_writepages)
+		pgio = wbc->fs_private;
+	else {
+		nfs_pageio_init_write(&mypgio, inode, wb_priority(wbc));
+		pgio = &mypgio;
+	}
+
+which means that pgio is set to NULL from the caller's wbc.  Then
+nfs_writepage_locked calls nfs_page_async_flush, passing it this pgio
+(NULL).  nfs_page_async_flush invokes nfs_pageio_add_request, passing it
+this NULL pgio.  Inside nfs_pageio_add_request the NULL is being
+dereferenced as desc->pg_error and we get an oops.
+
+As a workaround, in unionfs_writepage I tried this before calling the lower
+file system's ->writepage (which was nfs_writepage):
+
+	struct writeback_control lower_wbc;
+	memcpy(&lower_wbc, wbc, sizeof(struct writeback_control));
+	if (lower_wbc.for_writepages && !lower_wbc.fs_private) {
+		printk("unionfs: setting wbc.for_writepages to 0\n");
+		lower_wbc.for_writepages = 0;
+	}
+
+Then I passed &lower_wbc to the lower file system's writepage method
+(nfs_writepage).  It works; no oops, and the file in question was sync'ed to
+the backing f/s too.  But I'm not sure if it's the correct workaround and
+whether it'd break things for other non-NFS file systems.
+
+It's possible that I'm doing something wrong in unionfs's mmap code, which
+indirectly results in a malformed wbc structure being passed to unionfs (by
+malformed I mean that wbc->fs_private is NULL and wbc->for_writepages is set
+to 1).  If such a wbc can be created by any other means and passed to NFS,
+then nfs probably will continue to oops even w/o unionfs.
+
+FWIW, I tried a similar scenario with eCryptfs (another stackable f/s in
+2.6.22-rc2) on top of NFSv3, and got the same oops (sorry, Mike :-)
+
+Any pointers would be appreciated.
+
+Thanks,
+Erez.
