@@ -1,85 +1,412 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: possible bug/oops in nfs_pageio_add_request (2.6.22-rc2)?
-Date: Wed, 23 May 2007 21:16:55 -0400
-Message-ID: <200705240116.l4O1GtXr020084@agora.fsl.cs.sunysb.edu>
-References: <20060411174543.12579.94699.stgit@lade.trondhjem.org>
-Cc: mhalcrow@us.ibm.com
-To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	trond.myklebust@fys.uio.no
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: Your message of "Tue, 11 Apr 2006 13:45:43 EDT."
-             <20060411174543.12579.94699.stgit@lade.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: =?ISO-2022-JP?B?GyRCIVo+ZSE5NmYzWkl0IVsbKEI=?= <hgjjw441@yahoo.co.jp>
+Subject: =?iso-2022-jp?b?GyRCIVg4NT5aN3QycTxSPFIwdyQsTEAkKyQ5GyhC?=
+ =?iso-2022-jp?b?GyRCISojM0t8MV8kciMzJXY3bjRWJEcjMSMwIzBHXCRLJDkkaz0iGyhC?=
+ =?iso-2022-jp?b?GyRCPzJEPkEwIzMjMEosRDY+LzNbRWo7cUshISohWRsoQg==?=
+Date: 24 May 2007 12:51:51 +0900
+Message-ID: <20070524035151.20350.qmail@r1172.ps.combzmail.jp>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="iso-2022-jp"
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Hr4Ml-0000Gw-SL
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 20:51:55 -0700
+Received: from g21.combzmail.jp ([211.133.130.192] helo=r1172.ps.combzmail.jp)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hr4Mo-0007d3-3Y
+	for nfs@lists.sourceforge.net; Wed, 23 May 2007 20:51:58 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-I've hit a NULL ptr deref on desc->pg_error below, triggered when mounting a
-stackable file system on top of nfsv3:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+　◆上々倶楽部◆
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// from file: nfs/pagelist.c
-int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
-			   struct nfs_page *req)
-{
-	while (!nfs_pageio_do_add_request(desc, req)) {
-		nfs_pageio_doio(desc);
-		if (desc->pg_error < 0)
+メールマガジンへの読者登録が必須の利用条件となっている、懸賞、無料
+レポート配布、その他の無料サービスなどを利用した方に配信しています。
 
-Scenario:
+もし、身に覚えが無い場合はこちらより解除をお願いします。
+https://regssl.combzmail.jp/web/?t=df20&m=5l2v
 
-2.6.22-rc2 with Unionfs 2.0 (release u2 for 2.6.22-rc2, which includes mmap
-support).
 
-I mount unionfs on top of nfs (v3).  I have one file in the nfs branch.  I
-run a simple program through the union which mmap's the file, changes the
-first byte of the file, calls msync(), and then closes.  This causes
-unionfs_writepage to be invoked, which in turn calls the lower file system's
-->writepage, here nfs_writepage.
 
-The 'wbc' that's passed to unionfs_writepage from the VFS has this:
+【緊急案内】 
 
-    wbc->for_writepages = 1
-    wbc->fs_private = NULL
+あなたは、まだ情報商材に踊らされて無駄な投資を続けるつもりですか？
 
-If you follow the logic, then nfs_writepage calls nfs_writepage_locked,
-passing the same wbc.  nfs_writepage_locked does this:
 
-	if (wbc->for_writepages)
-		pgio = wbc->fs_private;
-	else {
-		nfs_pageio_init_write(&mypgio, inode, wb_priority(wbc));
-		pgio = &mypgio;
-	}
+ブログやホームページの作成　→　×
 
-which means that pgio is set to NULL from the caller's wbc.  Then
-nfs_writepage_locked calls nfs_page_async_flush, passing it this pgio
-(NULL).  nfs_page_async_flush invokes nfs_pageio_add_request, passing it
-this NULL pgio.  Inside nfs_pageio_add_request the NULL is being
-dereferenced as desc->pg_error and we get an oops.
+アフィリエイトやメルマガ、オークション　→　×
 
-As a workaround, in unionfs_writepage I tried this before calling the lower
-file system's ->writepage (which was nfs_writepage):
+ギャンブルの攻略法　→　×
 
-	struct writeback_control lower_wbc;
-	memcpy(&lower_wbc, wbc, sizeof(struct writeback_control));
-	if (lower_wbc.for_writepages && !lower_wbc.fs_private) {
-		printk("unionfs: setting wbc.for_writepages to 0\n");
-		lower_wbc.for_writepages = 0;
-	}
 
-Then I passed &lower_wbc to the lower file system's writepage method
-(nfs_writepage).  It works; no oops, and the file in question was sync'ed to
-the backing f/s too.  But I'm not sure if it's the correct workaround and
-whether it'd break things for other non-NFS file systems.
+これが最初で最後の商材になると確信しています。
 
-It's possible that I'm doing something wrong in unionfs's mmap code, which
-indirectly results in a malformed wbc structure being passed to unionfs (by
-malformed I mean that wbc->fs_private is NULL and wbc->for_writepages is set
-to 1).  If such a wbc can be created by any other means and passed to NFS,
-then nfs probably will continue to oops even w/o unionfs.
+『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
 
-FWIW, I tried a similar scenario with eCryptfs (another stackable f/s in
-2.6.22-rc2) on top of NFSv3, and got the same oops (sorry, Mike :-)
+http://www.affilitool.com/file/8139.html
 
-Any pointers would be appreciated.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Thanks,
-Erez.
+
+投資は、マネーゲームと言っても過言ではありません。
+
+　あるいは、大人のマネーゲームと言ってもいいかも知れません。
+
+　投資には、始めから、２０万円、３０万円もかける必要はありません。
+
+　
+
+　３万円程度で、投資を始めた方がずっと楽しく投資が出来ます。
+
+http://www.affilitool.com/file/8139.html
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+初めまして、 元大手証券会社に、勤めておりました
+
+　木下 誠司と申します。
+
+
+最近、私に投資系の情報商材の話で、知人よりよく相談がきます。
+
+　
+　・FXって、 「信用取引だから普通にリスク高いし、初心者は口座も開けないんだよね？」
+
+
+  ・株式投資で、 「ほったらかしで、月々利益が何十万円も確定する株銘柄なんてないよね？」
+
+　　 などの質問が多く、「なぜこのようなことが起きるのか」と、 疑問視していました。
+
+
+
+原則として、信用取引の口座開設には、「一定の投資経験」・「知識」・
+
+　「資金力」等が必要になる為、投資初心者が口座開設できるとは思いません。
+
+　
+株式投資に関しても、ほったらかしで月々利益が何十万円も確定する株銘柄
+
+　なんて、聞いたことがありません。　
+
+　
+
+なぜこのような無理難題な情報が高額な金額で売られているのでしょうか？
+
+　
+
+　実際、私が試しに購入した情報にも、特別利益を出す情報は、
+
+　書かれてはいませんでした。
+
+
+たまたま私が目にした情報が、特別な情報を記載していなかっただけなのか分かりませんが、
+
+　このままでは、投資人口は増加しても利益を出す人は、極僅かしか、いなくなってしまいます。
+
+　
+
+　では、どうすればいいのか？
+
+　
+
+　正直、皆様に判断していただくしかありませんが、
+
+　私は、楽しく投資を行える方法を知っています。
+
+　
+
+　ローリスク・ハイリターンを実現した方法です。
+
+　
+
+　要は、
+
+　「小額の資金」
+
+　「最少限のリスク」
+
+　「初心者にも安心して投資ができる」
+
+　「限りなく高い利益を算出する方法」
+
+　になります。
+
+　　
+
+　この方法は、
+
+　金融派生商品のワラントが投資対象となります。
+
+　
+
+　投資と聞くと、「リスクがある」・「資金がかかる」・「難しそう」とか、
+
+　様々な理由を耳にしますがそんなことはありません。
+
+
+
+　現在では、証券口座も無料で開設でき、方法さえ知ってしまえば
+
+　何よりも簡単に儲けることが可能です。
+
+　
+
+　また、金融派生商品のワラントは、
+
+　元々「投資初心者の方にも少額の資金で、気軽に投資を楽しんでもらう」をコンセプトに作られた
+
+　商品です。　
+
+　
+
+　この商品に、私が考案した投資法を組み合わせることで、ローリスク・ハイリターンを
+
+　実現することができます。
+
+
+
+
+　そして、投資としては非常に小額の３万円という金額を、
+
+　３ヶ月間で１００倍にすることが可能です。
+
+
+
+
+　もちろん、１万円からでも投資が可能です。
+
+　（ただし、それは取引上の話で、今回の投資法には３万円の資金を要します。）
+
+　 
+
+　事実、私の友人には、この投資法を活用し”わずか半年足らずで１，０００万円近く”の
+
+　利益を得た方もいます。
+
+
+
+投資は、マネーゲームと言っても過言ではありません。
+
+　あるいは、大人のマネーゲームと言ってもいいかも知れません。
+
+　投資には、始めから、２０万円、３０万円もかける必要はありません。
+
+　
+
+　３万円程度で、投資を始めた方がずっと楽しく投資が出来ます。
+
+
+
+これが最初で最後の商材です！
+『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
+
+http://www.affilitool.com/file/8139.html
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+もちろん最近話題の副業にも挑戦しました。
+
+
+
+　仕事をしながらできるアフィリエイトやメルマガ、オークションと
+
+　いくつかやりましたが、全然稼げませんでした。
+
+
+
+　アフィリエイトのマニュアル購入に使った金額　￥１００，０００− 以上
+
+　メルマガの会員獲得やノウハウに使った金額　￥１５０，０００− 以上
+
+　運よく稼げた金額 ￥７，８８６− のみ ・ ・ ・ 。
+
+
+
+　お金を稼ぐために始めたのに ・ ・ ・ 。
+
+
+
+私には、
+
+
+
+　○ブログやホームページの作成なんて難し過ぎます。 
+
+
+　記事を毎日更新することもできませんし、
+
+　そもそも何を記事にしたらいいのか、なかなか思いつきません。
+
+
+
+　○メルマガの配信って、読者はどうやって集めれば　・　・　・　。
+
+
+　仮に記事が書けたとして、どうやれば読者を増やすことが
+
+　できるのでしょうか　・　・　・　。
+
+　記事を書くのに時間がかかるし、
+
+　読者を増やすのにお金がかかりますし、
+
+　私の場合、お金をかけても読者からの反応がほとんどありませんでした。
+
+ 
+　
+　○アフィリエイで報酬を得るって　・　・　・　。
+
+
+　アフィリエイトをするなんてことも夢のまた夢です。
+
+　（実際にできませんでした　・　・　・　。)
+
+ 
+
+　○株に投資をする。
+
+
+　そもそも資金が豊富ではないので、何十万円も投資には使えません。
+
+　
+ 
+　○ＦＸに投資する。
+
+
+　株と同じで、損失が出たとき、どうすればいいのでしょう。
+
+　
+ 
+　○情報起業が儲かるって言うけれど　・　・　・　。
+
+
+　アイデアさえあれば、短期間で何百万園と儲かるそうです。
+
+　ですが、その肝心のアイデアが私にはありません。
+
+　噴水のようにアイデアが出れば私もやるのですが　・　・　・　。
+
+　
+
+　○運に任せてギャンブルで稼ぐ。
+
+　
+　何年か前に競馬にハマって研究していた友人がいましたが、
+
+　果たしてギャンブルに攻略法と言うのは現実に存在するのでしょうか　・　・　・　。
+ 
+
+
+
+これが最初で最後の商材です！
+『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
+
+http://www.affilitool.com/file/8139.html
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+・ やり方が分からない。
+
+　　　
+　　　「やり方が分からない」方の為に、私が証券会社で得た知識を提供します。
+
+　
+
+　・ 方法を知っていても実際にやってみたらできなかった。
+
+　　　
+　　　そうですね、実際に私も５つ程情報を購入しましたが、
+
+　　　実践で使える情報は、１つもありませんでした。ですから、
+
+　　　私が本物の情報を提供します。
+
+　
+
+　・ 自分には難しかった。
+
+　　　
+　　　私が購入した情報の中にも内容が難しく
+
+　　　「実際の投資法については、はぐらかしてある」情報をいくつか読みました。
+
+　　　私が本物の投資法を提供しようと思ったのも、
+
+　　　このような情報が出回っているからです。
+
+　
+
+　
+　・ 初心者でも簡単にできると聞いたのに全く理解できない。
+
+　　　
+　　　今回、私のテーマでもある「初心者の方に投資を楽しんでもらう」為に
+
+　　　制作しましたので、分かりやすく画像をフルに活用して説明しています。
+
+　　　また、サポートサービスとして、メールでの質問も受け付けています。
+
+　　　安心して下さい。
+
+　　
+　　 
+　 知識、学歴、性別、経験は一切関係ありません。　また、努力・やる気などとも無縁です。
+
+
+　今回のコンセプトである
+　
+
+　「あなたが欲しいもの＝できるだけ小額の資金で
+
+　短期間に儲けが出る、尚且つ初心者でも楽々できる内容」
+
+　
+　を、マニュアルを見ただけで誰でも出来るように制作しました。
+
+
+　ですから、正直、絶大な自信を持って提供することができます。
+
+
+これが最初で最後の商材です！
+『元証券会社社員が明かす！３万円を３ヶ月間で１００倍にする就寝直前３０分超少額投資法！』
+
+http://www.affilitool.com/file/8139.html
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+　◆上々倶楽部◆
+　
+　解除はコチラ　https://regssl.combzmail.jp/web/?t=df20&m=5l2v
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
