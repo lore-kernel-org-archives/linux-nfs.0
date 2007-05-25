@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/10] SUNRPC: Fix a signage nit
-Date: Fri, 25 May 2007 17:41:41 -0400
-Message-ID: <20070525214141.28668.75351.stgit@schiele.1015granger.net>
+Subject: [PATCH 01/10] NFS: Clean up nfs_size_to_loff_t()
+Date: Fri, 25 May 2007 17:40:59 -0400
+Message-ID: <20070525214059.28668.44403.stgit@schiele.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HrhXe-0003zW-MT
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:46 -0700
+	id 1HrhXf-0003zb-Ag
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:47 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhXh-000431-K8
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:49 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhXh-0003wr-Vt
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:50 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,27 +27,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Avoids a compiler warning.
+Use the same file size limit that lockd uses, and replace a signed v.
+unsigned comparison.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ include/linux/nfs_fs.h |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d08a151..f44c04d 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -536,7 +536,8 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	struct rpc_xprt *xprt = req->rq_xprt;
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	struct xdr_buf *xdr = &req->rq_snd_buf;
--	int status, retry = 0;
-+	int status;
-+	unsigned int retry = 0;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 0543439..457a22b 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -505,12 +505,10 @@ extern int  nfsroot_mount(struct sockaddr_in *, char *, struct nfs_fh *,
+  * inline functions
+  */
  
- 	xs_encode_tcp_record_marker(&req->rq_snd_buf);
+-static inline loff_t
+-nfs_size_to_loff_t(__u64 size)
++static inline loff_t nfs_size_to_loff_t(__u64 size)
+ {
+-	loff_t maxsz = (((loff_t) ULONG_MAX) << PAGE_CACHE_SHIFT) + PAGE_CACHE_SIZE - 1;
+-	if (size > maxsz)
+-		return maxsz;
++	if (size > (__u64) OFFSET_MAX - 1)
++		return OFFSET_MAX - 1;
+ 	return (loff_t) size;
+ }
  
 
 
