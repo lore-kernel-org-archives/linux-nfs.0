@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/10] SUNRPC: Fix signage nit
-Date: Fri, 25 May 2007 17:41:46 -0400
-Message-ID: <20070525214146.28668.68840.stgit@schiele.1015granger.net>
+Subject: [PATCH 03/10] NFS: Use C99 structure declaration in client.c
+Date: Fri, 25 May 2007 17:41:10 -0400
+Message-ID: <20070525214110.28668.49762.stgit@schiele.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HrhXl-0003zq-K9
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:53 -0700
+	id 1HrhXn-0003zw-CK
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:55 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhXo-00043d-HF
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:56 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhXq-0003zF-9S
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,27 +27,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Minor signage comparison warning clean up.
+And clean up some white space and commas.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/client.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index f44c04d..8cb9ea0 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -856,7 +856,7 @@ static inline void xs_tcp_read_request(struct rpc_xprt *xprt, struct xdr_skb_rea
- 		transport->tcp_copied += r;
- 		transport->tcp_offset += r;
- 	}
--	if (r != len) {
-+	if (r != (ssize_t) len) {
- 		/* Error when copying to the receive buffer,
- 		 * usually because we weren't able to allocate
- 		 * additional buffer pages. All we can do now
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 881fa49..e2a8d4c 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -72,17 +72,20 @@ struct rpc_program nfs_program = {
+ };
+ 
+ struct rpc_stat nfs_rpcstat = {
+-	.program		= &nfs_program
++	.program		= &nfs_program,
+ };
+ 
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+-static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
+-static struct rpc_version *	nfsacl_version[] = {
++static struct rpc_stat nfsacl_rpcstat = {
++	.program		= &nfsacl_program,
++};
++
++static struct rpc_version *nfsacl_version[] = {
+ 	[3]			= &nfsacl_version3,
+ };
+ 
+-struct rpc_program		nfsacl_program = {
++struct rpc_program nfsacl_program = {
+ 	.name			= "nfsacl",
+ 	.number			= NFS_ACL_PROGRAM,
+ 	.nrvers			= ARRAY_SIZE(nfsacl_version),
 
 
 -------------------------------------------------------------------------
