@@ -1,27 +1,25 @@
-From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
-Subject: mount blocking port for mountd
-Date: Fri, 25 May 2007 13:54:49 +0200
-Message-ID: <4656CE89.2060007@bio.ifi.lmu.de>
+From: Robert Thomson <robert.p.thomson@googlemail.com>
+Subject: Proofreading your professional documents
+Date: Fri, 25 May 2007 17:17:23 +0100 (BST)
+Message-ID: <32576136.1180109843925.JavaMail.Postman_Professional@post.strato.de>
+Reply-To: Robert Thomson <robert.p.thomson@googlemail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="cp1252"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HrYk1-0003bP-UH
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 05:17:57 -0700
-Received: from acheron.ifi.lmu.de ([129.187.214.135])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrYk3-000808-9B
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 05:18:00 -0700
-Received: from internaldeliver.acheron.ifi.lmu.de (localhost [127.0.0.1])
-	by acheron.ifi.lmu.de (Postfix) with ESMTP id 57EB743667
-	for <nfs@lists.sourceforge.net>; Fri, 25 May 2007 13:54:49 +0200 (CEST)
-Received: from [141.84.1.30] (galois.bio.ifi.lmu.de [141.84.1.30])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by acheron.ifi.lmu.de (Postfix) with ESMTP id 4206A435F7
-	for <nfs@lists.sourceforge.net>; Fri, 25 May 2007 13:54:49 +0200 (CEST)
+	id 1HrcTm-00055a-IT
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 09:17:27 -0700
+Received: from mo-p07-ob.rzone.de ([81.169.146.190])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrcTo-0005z5-79
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 09:17:29 -0700
+Received: from 192.168.1.64
+	(host217-43-225-129.range217-43.btcentralplus.com [217.43.225.129])
+	by post.webmailer.de (fruni mo7) (RZmta 6.8)
+	with ESMTP id R04c4dj4PDtn4p for <nfs@lists.sourceforge.net>;
+	Fri, 25 May 2007 18:17:23 +0200 (MEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,50 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
-
-during boot we mount some fs via NFS on our local NFS-server. The remote 
-NFS-server is far away and the connection sometimes hangs. To avoid the 
-local NFS server hanging too long, waiting for the remote NFS, we mount
-in background with 
-
-mount -at nfs,nfs4 & sleep 8
-
-Now it happens that when the remote NFS server is a bit slow, our local
-NFS server can't start:
-May 25 12:25:48 backus rpc.mountd: Could not bind name to socket: Address already in use
-
-That's because we define MOUNTD_PORT=700 due to some firewall reasons.
-But port 700 is still blocked by some mount process:
-
-backus /root# netstat -a -n |grep 700
-tcp        0      0 <local nfs server ip:700          <remote nfs server ip>:735       TIME_WAIT   
-
-We mount about 30 directories from the remote server and the local server
-seems to use a bunch of ports initially.
-
-Can I avoid the "mount" process using port 700? Like telling it to use only
-port > 700 etc.?
-
-This is SLES 10 btw, kernel 2.6.16.
-
-cu,
-Frank
-
-
-
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+RGVhciBQcm9mZXNzb3IvTGVjdHVyZXIKClBsZWFzZSBleGN1c2UgdXMgZm9yIGNvbnRhY3Rpbmcg
+eW91IGRpcmVjdGx5LiBXZSBhcmUgb2ZmZXJpbmcgYW4gZWZmaWNpZW50IHNlcnZpY2UgdG8gaGVs
+cCB5b3UgZW5zdXJlIHlvdXIgYWNhZGVtaWMgYW5kIHByb2Zlc3Npb25hbCB3b3JrIGlzIHdyaXR0
+ZW4gaW4gcGVyZmVjdCBFbmdsaXNoLiBXZSB3aWxsIGNoZWNrIHRoZSBncmFtbWFyIGFuZCBzdHls
+ZSBvZiB5b3VyIHdvcmsgYW5kIHJldHVybiBpdCB0byB5b3UgdG8gbWVldCB5b3VyIHJlcXVpcmVt
+ZW50cyBhbmQgZGVhZGxpbmVzLgoKUHJvb2YtUmVhZGluZy1TZXJ2aWNlLmNvbSBjYW4gcHJvdmlk
+ZSB5b3Ugd2l0aCBhIHByb2Zlc3Npb25hbCBwcm9vZnJlYWRpbmcgc2VydmljZSBhdCBhIHZlcnkg
+cmVhc29uYWJsZSByYXRlLiBBbGwgb3VyIHByb29mcmVhZGVycyBhcmUgaGlnaGx5IHF1YWxpZmll
+ZCBuYXRpdmUgRW5nbGlzaCBzcGVha2Vycy4gTWFueSB3b3JrIGFzIGxlYWRpbmcgYWNhZGVtaWNz
+IGluIHRoZWlyIGZpZWxkcyBhbmQgYWxsIGhhdmUgZXh0ZW5zaXZlIGV4cGVyaWVuY2Ugb2YgcHJv
+b2ZyZWFkaW5nIHRvIHRoZSBoaWdoZXN0IHN0YW5kYXJkcy4KCklmIHlvdSBhcmUgaW50ZXJlc3Rl
+ZCBpbiBvdXIgc2VydmljZSwgcGxlYXNlIHRha2UgYSBsb29rIGF0IG91ciB3ZWJzaXRlOiB3d3cu
+cHJvb2YtcmVhZGluZy1zZXJ2aWNlLmNvbSBBbGwgeW91IGhhdmUgdG8gZG8gaXMgc2VuZCB1cyB5
+b3VyIGRvY3VtZW50IGFzIGEgd29yZCBhdHRhY2htZW50IHdpdGggdGhlIGRlYWRsaW5lIGFuZCB3
+ZSB3aWxsIGd1YXJhbnRlZSBkZWxpdmVyeSBvZiBhIHBlcmZlY3RseSB3cml0dGVuIGRvY3VtZW50
+IHRvIGdpdmUgeW91IGNvbXBsZXRlIGNvbmZpZGVuY2Ugd2hlbiB5b3Ugc3VibWl0IHlvdXIgd29y
+ay4gVGhlIGZlZSBpcyB3b3JrZWQgb3V0IG9uIGEgZmxhdCByYXRlICijNi45NSBwZXIgdGhvdXNh
+bmQgd29yZHMgb3IgMC42OTUgcGVuY2UgcGVyIHdvcmQpLCBzbyB5b3Uga25vdyBleGFjdGx5IGhv
+dyBtdWNoIHRoZSBwcm9vZnJlYWRpbmcgd2lsbCBjb3N0IGluIGFkdmFuY2UuCgpPbmNlIHdlIGhh
+dmUgcmVjZWl2ZWQgeW91ciBkb2N1bWVudChzKSB3ZSB3aWxsIGNvbmZpcm0gdGhlIHdvcmQgY291
+bnQsIHRoZSBwcmljZSBhbmQgdGhlIGRlYWRsaW5lLiBJZiB5b3UgaGF2ZSBub3QgaGVhcmQgZnJv
+bSB1cyB3aXRoaW4gMiBob3VycyBkdXJpbmcgbm9ybWFsIGJ1c2luZXNzIGhvdXJzIGFmdGVyIHlv
+dSBoYXZlIHNlbnQgeW91ciB3b3JrIHBsZWFzZSByZXNlbmQgaXQgZnJvbSBhIGRpZmZlcmVudCBl
+bWFpbCBhY2NvdW50IG9yIHNlbmQgdGhlIGZpbGUgdG8gcHJvb2ZyZWFkaW5nc0BnbWFpbC5jb20u
+CgpXZSBsb29rIGZvcndhcmQgdG8gaGVhcmluZyBmcm9tIHlvdSEKCllvdXJzIGZhaXRoZnVsbHkK
+ClByb29mLVJlYWRpbmctU2VydmljZS5jb20KCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQg
+ZW1haWwgaXMgc3BvbnNvcmVkIGJ5IERCMiBFeHByZXNzCkRvd25sb2FkIERCMiBFeHByZXNzIEMg
+LSB0aGUgRlJFRSB2ZXJzaW9uIG9mIERCMiBleHByZXNzIGFuZCB0YWtlCmNvbnRyb2wgb2YgeW91
+ciBYTUwuIE5vIGxpbWl0cy4gSnVzdCBkYXRhLiBDbGljayB0byBnZXQgaXQgbm93LgpodHRwOi8v
+c291cmNlZm9yZ2UubmV0L3Bvd2VyYmFyL2RiMi8KX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX18KTkZTIG1haWxsaXN0ICAtICBORlNAbGlzdHMuc291cmNlZm9y
+Z2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3RzL2xpc3RpbmZvL25mcwo=
