@@ -1,20 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/10] SUNRPC: Fix some compiler warnings in xprtsock.c
-Date: Fri, 25 May 2007 17:41:36 -0400
-Message-ID: <20070525214136.28668.89062.stgit@schiele.1015granger.net>
+Subject: [PATCH 09/10] SUNRPC: Fix a signage nit
+Date: Fri, 25 May 2007 17:41:41 -0400
+Message-ID: <20070525214141.28668.75351.stgit@schiele.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HrhXb-0003zR-Rq
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:43 -0700
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhXe-0002Wj-Md
+	id 1HrhXe-0003zW-MT
 	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:46 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhXh-000431-K8
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:49 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,64 +27,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Avoids a compiler warning.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |   20 +++++++++++++++-----
- 1 files changed, 15 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtsock.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index dd2a9db..d08a151 100644
+index d08a151..f44c04d 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -302,7 +302,9 @@ static void xs_free_peer_addresses(struct rpc_xprt *xprt)
+@@ -536,7 +536,8 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+-	int status, retry = 0;
++	int status;
++	unsigned int retry = 0;
  
- #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
+ 	xs_encode_tcp_record_marker(&req->rq_snd_buf);
  
--static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen, struct kvec *vec, unsigned int base, int more)
-+static int xs_send_kvec(struct socket *sock, struct sockaddr *addr,
-+			int addrlen, struct kvec *vec, unsigned int base,
-+			int more)
- {
- 	struct msghdr msg = {
- 		.msg_name	= addr,
-@@ -363,7 +365,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr,
-  * @base: starting position in the buffer
-  *
-  */
--static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base)
-+static int xs_sendpages(struct socket *sock, struct sockaddr *addr,
-+			int addrlen, struct xdr_buf *xdr, unsigned int base)
- {
- 	unsigned int remainder = xdr->len - base;
- 	int err, sent = 0;
-@@ -380,8 +383,12 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	if (base < xdr->head[0].iov_len || addr != NULL) {
- 		unsigned int len = xdr->head[0].iov_len - base;
- 		remainder -= len;
--		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0], base, remainder != 0);
--		if (remainder == 0 || err != len)
-+		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0],
-+				   base, remainder != 0);
-+		if (err < 0 || (unsigned int)err != len)
-+			goto out;
-+
-+		if (remainder == 0)
- 			goto out;
- 		sent += err;
- 		base = 0;
-@@ -392,7 +399,10 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 		unsigned int len = xdr->page_len - base;
- 		remainder -= len;
- 		err = xs_send_pagedata(sock, xdr, base, remainder != 0);
--		if (remainder == 0 || err != len)
-+		if (err < 0 || (unsigned int)err != len)
-+			goto out;
-+
-+		if (remainder == 0)
- 			goto out;
- 		sent += err;
- 		base = 0;
 
 
 -------------------------------------------------------------------------
