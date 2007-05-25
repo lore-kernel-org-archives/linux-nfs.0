@@ -1,25 +1,20 @@
-From: Robert Thomson <robert.p.thomson@googlemail.com>
-Subject: Proofreading your professional documents
-Date: Fri, 25 May 2007 17:17:23 +0100 (BST)
-Message-ID: <32576136.1180109843925.JavaMail.Postman_Professional@post.strato.de>
-Reply-To: Robert Thomson <robert.p.thomson@googlemail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/10] Minor bugs
+Date: Fri, 25 May 2007 17:40:53 -0400
+Message-ID: <20070525214021.28668.32774.stgit@schiele.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="cp1252"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HrcTm-00055a-IT
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 09:17:27 -0700
-Received: from mo-p07-ob.rzone.de ([81.169.146.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrcTo-0005z5-79
-	for nfs@lists.sourceforge.net; Fri, 25 May 2007 09:17:29 -0700
-Received: from 192.168.1.64
-	(host217-43-225-129.range217-43.btcentralplus.com [217.43.225.129])
-	by post.webmailer.de (fruni mo7) (RZmta 6.8)
-	with ESMTP id R04c4dj4PDtn4p for <nfs@lists.sourceforge.net>;
-	Fri, 25 May 2007 18:17:23 +0200 (MEST)
+	id 1HrhX2-0003yG-1c
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:08 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HrhX2-0002QQ-Ux
+	for nfs@lists.sourceforge.net; Fri, 25 May 2007 14:41:11 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +27,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-RGVhciBQcm9mZXNzb3IvTGVjdHVyZXIKClBsZWFzZSBleGN1c2UgdXMgZm9yIGNvbnRhY3Rpbmcg
-eW91IGRpcmVjdGx5LiBXZSBhcmUgb2ZmZXJpbmcgYW4gZWZmaWNpZW50IHNlcnZpY2UgdG8gaGVs
-cCB5b3UgZW5zdXJlIHlvdXIgYWNhZGVtaWMgYW5kIHByb2Zlc3Npb25hbCB3b3JrIGlzIHdyaXR0
-ZW4gaW4gcGVyZmVjdCBFbmdsaXNoLiBXZSB3aWxsIGNoZWNrIHRoZSBncmFtbWFyIGFuZCBzdHls
-ZSBvZiB5b3VyIHdvcmsgYW5kIHJldHVybiBpdCB0byB5b3UgdG8gbWVldCB5b3VyIHJlcXVpcmVt
-ZW50cyBhbmQgZGVhZGxpbmVzLgoKUHJvb2YtUmVhZGluZy1TZXJ2aWNlLmNvbSBjYW4gcHJvdmlk
-ZSB5b3Ugd2l0aCBhIHByb2Zlc3Npb25hbCBwcm9vZnJlYWRpbmcgc2VydmljZSBhdCBhIHZlcnkg
-cmVhc29uYWJsZSByYXRlLiBBbGwgb3VyIHByb29mcmVhZGVycyBhcmUgaGlnaGx5IHF1YWxpZmll
-ZCBuYXRpdmUgRW5nbGlzaCBzcGVha2Vycy4gTWFueSB3b3JrIGFzIGxlYWRpbmcgYWNhZGVtaWNz
-IGluIHRoZWlyIGZpZWxkcyBhbmQgYWxsIGhhdmUgZXh0ZW5zaXZlIGV4cGVyaWVuY2Ugb2YgcHJv
-b2ZyZWFkaW5nIHRvIHRoZSBoaWdoZXN0IHN0YW5kYXJkcy4KCklmIHlvdSBhcmUgaW50ZXJlc3Rl
-ZCBpbiBvdXIgc2VydmljZSwgcGxlYXNlIHRha2UgYSBsb29rIGF0IG91ciB3ZWJzaXRlOiB3d3cu
-cHJvb2YtcmVhZGluZy1zZXJ2aWNlLmNvbSBBbGwgeW91IGhhdmUgdG8gZG8gaXMgc2VuZCB1cyB5
-b3VyIGRvY3VtZW50IGFzIGEgd29yZCBhdHRhY2htZW50IHdpdGggdGhlIGRlYWRsaW5lIGFuZCB3
-ZSB3aWxsIGd1YXJhbnRlZSBkZWxpdmVyeSBvZiBhIHBlcmZlY3RseSB3cml0dGVuIGRvY3VtZW50
-IHRvIGdpdmUgeW91IGNvbXBsZXRlIGNvbmZpZGVuY2Ugd2hlbiB5b3Ugc3VibWl0IHlvdXIgd29y
-ay4gVGhlIGZlZSBpcyB3b3JrZWQgb3V0IG9uIGEgZmxhdCByYXRlICijNi45NSBwZXIgdGhvdXNh
-bmQgd29yZHMgb3IgMC42OTUgcGVuY2UgcGVyIHdvcmQpLCBzbyB5b3Uga25vdyBleGFjdGx5IGhv
-dyBtdWNoIHRoZSBwcm9vZnJlYWRpbmcgd2lsbCBjb3N0IGluIGFkdmFuY2UuCgpPbmNlIHdlIGhh
-dmUgcmVjZWl2ZWQgeW91ciBkb2N1bWVudChzKSB3ZSB3aWxsIGNvbmZpcm0gdGhlIHdvcmQgY291
-bnQsIHRoZSBwcmljZSBhbmQgdGhlIGRlYWRsaW5lLiBJZiB5b3UgaGF2ZSBub3QgaGVhcmQgZnJv
-bSB1cyB3aXRoaW4gMiBob3VycyBkdXJpbmcgbm9ybWFsIGJ1c2luZXNzIGhvdXJzIGFmdGVyIHlv
-dSBoYXZlIHNlbnQgeW91ciB3b3JrIHBsZWFzZSByZXNlbmQgaXQgZnJvbSBhIGRpZmZlcmVudCBl
-bWFpbCBhY2NvdW50IG9yIHNlbmQgdGhlIGZpbGUgdG8gcHJvb2ZyZWFkaW5nc0BnbWFpbC5jb20u
-CgpXZSBsb29rIGZvcndhcmQgdG8gaGVhcmluZyBmcm9tIHlvdSEKCllvdXJzIGZhaXRoZnVsbHkK
-ClByb29mLVJlYWRpbmctU2VydmljZS5jb20KCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQg
-ZW1haWwgaXMgc3BvbnNvcmVkIGJ5IERCMiBFeHByZXNzCkRvd25sb2FkIERCMiBFeHByZXNzIEMg
-LSB0aGUgRlJFRSB2ZXJzaW9uIG9mIERCMiBleHByZXNzIGFuZCB0YWtlCmNvbnRyb2wgb2YgeW91
-ciBYTUwuIE5vIGxpbWl0cy4gSnVzdCBkYXRhLiBDbGljayB0byBnZXQgaXQgbm93LgpodHRwOi8v
-c291cmNlZm9yZ2UubmV0L3Bvd2VyYmFyL2RiMi8KX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX18KTkZTIG1haWxsaXN0ICAtICBORlNAbGlzdHMuc291cmNlZm9y
-Z2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3RzL2xpc3RpbmZvL25mcwo=
+A handful of clean-ups found during my travels.
+
+-- 
+corporate:    <chuck dot lever at oracle dot com>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
