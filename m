@@ -1,25 +1,19 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: fix uninitialized variable
-Date: Tue, 29 May 2007 15:52:27 -0400
-Message-ID: <20070529195227.GG6815@fieldses.org>
-References: <20070527103442.GA10594@havoc.gtf.org>
-	<20070529030050.GB20631@fieldses.org> <465B9BB9.7060300@garzik.org>
+From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Subject: Stale NFS handles on LVM2
+Date: Wed, 30 May 2007 09:07:10 +0200
+Message-ID: <465D229E.5080809@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, Andrew Morton <akpm@linux-foundation.org>,
-	nfs@lists.sourceforge.net, LKML <linux-kernel@vger.kernel.org>
-To: Jeff Garzik <jeff@garzik.org>
+To: nfs@lists.sourceforge.net, linux-lvm@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ht7kA-0006CU-3A
-	for nfs@lists.sourceforge.net; Tue, 29 May 2007 12:52:34 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ht7kA-0006TV-Sz
-	for nfs@lists.sourceforge.net; Tue, 29 May 2007 12:52:37 -0700
-In-Reply-To: <465B9BB9.7060300@garzik.org>
+	id 1HtIHA-0007B7-Kl
+	for nfs@lists.sourceforge.net; Wed, 30 May 2007 00:07:20 -0700
+Received: from acheron.ifi.lmu.de ([129.187.214.135])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HtIHC-0003FR-Af
+	for nfs@lists.sourceforge.net; Wed, 30 May 2007 00:07:23 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,49 +26,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, May 28, 2007 at 11:19:21PM -0400, Jeff Garzik wrote:
-> J. Bruce Fields wrote:
-> >But I don't want anyone else wasting their time on this.  Should we cave
-> >in and add the initialization here just to shut up gcc?  Or would a
-> >comment here help?
-> 
-> Given what you said above, I don't see gcc, on its best day, will ever 
-> know enough to validate that that variable is indeed always initialized. 
+Hi,
 
-I recall there being arguments before about when to add initializations.
-Unfortunately I can't remember the content of those arguments.  But I
-thought that on the gcc-haters side the complaint was exactly that gcc
-was emitting warnings in cases where it could never hope to determine
-whether an initialization is required.  Am I misremembering?
+I'm not sure if this is a NFS or LVM issue, so I cross-post this.
+We get stale NFS handles on a LVM2 volume in the following scenario:
 
->  So I would vote for silencing it on those grounds.
+- The NFS server is running SLES10/kernel 2.6.16, but it happens
+  with 2.6.21, too
 
-That said, I'm OK with the extra initialization.  Might be worth a
-comment, though, just to avoid giving the wrong impression about the
-assumptions here; something like:
+- the server has /dev/sda, a built-in SCSI disk, with
+  /dev/sda7 a LVM2 volume, say "exportlvm"
 
---b.
+- due to module order in the initrd sda is always sda
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index cc3b7ba..4adb5ee 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -183,8 +183,13 @@ static void
- summarize_posix_acl(struct posix_acl *acl, struct posix_acl_summary *pas)
- {
- 	struct posix_acl_entry *pa, *pe;
--	pas->users = 0;
--	pas->groups = 0;
-+
-+	/*
-+	 * Only pas.users and pas.groups need initialization; previous
-+	 * posix_acl_valid() calls ensure that the other fields will be
-+	 * initialized in the following loop.  But, just to placate gcc:
-+	 */
-+	memset(pas, 0, sizeof(*pas));
- 	pas->mask = 07;
- 
- 	pe = acl->a_entries + acl->a_count;
+- exportlvm is exported to the NFS clients
+
+- the server has 4 fibre-channel raids connected, those have
+  several partitions and two of the raids have LVM2 filesystems.
+
+- the server doesn't mount or export any of the FC filesystems
+
+Now, when we shutdown the fc port of the server or remove the fc cable, so 
+that all the fc filesystems disappear, and then reboot the server,
+the NFS client gets stale NFS handles on the "exportlvm". When we reboot
+the client and then reconnect the FC cable or port and reboot the server
+again, the stale NFS handles show up again.
+
+When we change /dev/sda7 from a LVM2 to a normal fs, there are no stale 
+NFS handles when rebooting the server in this way. 
+
+Looks like rebooting the server after dis-/connecting the FC raids with
+their LVMs somehow changes sth. on the LVM2 on /dev/sda7, like the minor
+numbers etc. Is that possible? Is it a bug? Indeed the "exportlvm" is 
+the last in the list when calling "vgscan" with the FC raids connected.
+
+Is there a way I can ensure that things like minor numbers (or whatever
+could cause these stales) are persistent on the "exportlvm"?
+
+cu,
+Frank
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
