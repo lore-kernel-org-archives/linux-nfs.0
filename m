@@ -1,29 +1,37 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] locks: provide a file lease method
-	enabling	cluster-coherent leases
-Date: Thu, 31 May 2007 18:34:09 -0400
-Message-ID: <1180650849.7084.19.camel@heimdal.trondhjem.org>
-References: <1180647624483-git-send-email-bfields@fieldses.org>
-	<11806476252240-git-send-email-bfields@fieldses.org>
-	<11806476252913-git-send-email-bfields@fieldses.org>
+From: Baurzhan Ismagulov <ibr@radix50.net>
+Subject: Re: flock LOCK_EX hangs
+Date: Fri, 1 Jun 2007 01:15:01 +0200
+Message-ID: <20070531231501.GA12014@radix50.net>
+References: <20070516131253.GC19167@radix50.net>
+	<20070516173008.GD9895@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	David Teigland <teigland@redhat.com>,
-	Marc Eshel <eshel@almaden.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HttDu-0005ly-6n
-	for nfs@lists.sourceforge.net; Thu, 31 May 2007 15:34:26 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1HttrW-0001O8-CJ
+	for nfs@lists.sourceforge.net; Thu, 31 May 2007 16:15:22 -0700
+Received: from kz-easy.com ([85.214.25.173] helo=almaty.kz-easy.com)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HttDv-0006KW-Ms
-	for nfs@lists.sourceforge.net; Thu, 31 May 2007 15:34:29 -0700
-In-Reply-To: <11806476252913-git-send-email-bfields@fieldses.org>
+	(Exim 4.44) id 1HttrX-0007fD-UZ
+	for nfs@lists.sourceforge.net; Thu, 31 May 2007 16:15:25 -0700
+Received: from alatau.radix50.net (dslb-088-064-003-136.pools.arcor-ip.net
+	[88.64.3.136]) (authenticated bits=0)
+	by almaty.kz-easy.com (8.13.8/8.13.8/Debian-3) with ESMTP id
+	l4VNF8RA027902
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <nfs@lists.sourceforge.net>; Fri, 1 Jun 2007 01:15:10 +0200
+Received: from alatau.radix50.net (localhost [127.0.0.1])
+	by alatau.radix50.net (8.13.8/8.13.8/Debian-3) with ESMTP id
+	l4VNF2vi012536
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <nfs@lists.sourceforge.net>; Fri, 1 Jun 2007 01:15:02 +0200
+Received: (from ibr@localhost)
+	by alatau.radix50.net (8.13.8/8.13.8/Submit) id l4VNF1oD012515
+	for nfs@lists.sourceforge.net; Fri, 1 Jun 2007 01:15:01 +0200
+In-Reply-To: <20070516173008.GD9895@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,67 +44,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-05-31 at 17:40 -0400, J. Bruce Fields wrote:
-> From: J. Bruce Fields <bfields@fieldses.org>
-> 
-> Currently leases are only kept locally, so there's no way for a distributed
-> filesystem to enforce them against multiple clients.  We're particularly
-> interested in the case of nfsd exporting a cluster filesystem, in which
-> case nfsd needs cluster-coherent leases in order to implement delegations
-> correctly.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/locks.c         |    5 ++++-
->  include/linux/fs.h |    4 ++++
->  2 files changed, 8 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 3f366e1..40a7f39 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -1444,7 +1444,10 @@ int setlease(struct file *filp, long arg, struct file_lock **lease)
->  		return error;
->  
->  	lock_kernel();
-> -	error = __setlease(filp, arg, lease);
-> +	if (filp->f_op && filp->f_op->set_lease)
-> +		error = filp->f_op->set_lease(filp, arg, lease);
-> +        else
-> +		error = __setlease(filp, arg, lease);
->  	unlock_kernel();
->  
->  	return error;
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 7cf0c54..09aefb4 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1112,6 +1112,7 @@ struct file_operations {
->  	int (*flock) (struct file *, int, struct file_lock *);
->  	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
->  	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
-> +	int (*set_lease)(struct file *, long, struct file_lock **);
->  };
->  
->  struct inode_operations {
-> @@ -1137,6 +1138,7 @@ struct inode_operations {
->  	ssize_t (*listxattr) (struct dentry *, char *, size_t);
->  	int (*removexattr) (struct dentry *, const char *);
->  	void (*truncate_range)(struct inode *, loff_t, loff_t);
-> +	int (*break_lease)(struct inode *, unsigned int);
+Hello Bruce,
 
-Splitting the lease into a file_operation part and an inode_operation
-part looks really ugly. It also means that you're calling twice down
-into the filesystem for every call to may_open() (once for
-vfs_permission() and once for break_lease()) and 3 times in
-do_sys_truncate().
+On Wed, May 16, 2007 at 01:30:08PM -0400, J. Bruce Fields wrote:
+> > I'm experiencing problems with the kernel NFS server. The client hangs
+> > on the flock call.
+...
+> There's also been a lot fixed since 2.6.16, so it might be worth trying
+> something newer.
 
-Would it perhaps make sense to package up the call to vfs_permission()
-and break_lease() as a single 'may_open()' inode operation that could be
-called by may_open(), do_sys_truncate() and nfsd?
+I've tried 2.6.20, and it worked. It's amazing how long time it has been
+since I had kernel bugs, I haven't even thought in that direction.
+Thanks much!
 
-Trond
-
+With kind regards,
+-- 
+Baurzhan Ismagulov
+http://www.kz-easy.com/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
