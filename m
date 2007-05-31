@@ -1,29 +1,30 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 02/10] NFS: Use C99 struct initializers in
 	nfs4proc.c
-Date: Thu, 31 May 2007 12:18:55 -0400
-Message-ID: <1180628335.6431.27.camel@heimdal.trondhjem.org>
-References: <20070525214105.28668.75496.stgit@schiele.1015granger.net>
-	<1180202462.5517.8.camel@heimdal.trondhjem.org>
-	<465C3459.7010302@oracle.com>
-	<1180555947.6770.53.camel@heimdal.trondhjem.org>
+Date: Thu, 31 May 2007 13:11:34 -0400
+Message-ID: <465F01C6.2080102@oracle.com>
+References: <20070525214105.28668.75496.stgit@schiele.1015granger.net>	
+	<1180202462.5517.8.camel@heimdal.trondhjem.org>	
+	<465C3459.7010302@oracle.com>	
+	<1180555947.6770.53.camel@heimdal.trondhjem.org>	
 	<465EE66F.8080909@oracle.com>
+	<1180628335.6431.27.camel@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/mixed; boundary="------------090303010406050704050809"
 Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HtnMc-0001bd-1M
-	for nfs@lists.sourceforge.net; Thu, 31 May 2007 09:19:02 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+DkW6MQB7OO8HRIGthFvg2eAAj795SozI=])
+	id 1HtoCw-0007DB-Rq
+	for nfs@lists.sourceforge.net; Thu, 31 May 2007 10:13:06 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HtnMc-0001ls-C2
-	for nfs@lists.sourceforge.net; Thu, 31 May 2007 09:19:03 -0700
-In-Reply-To: <465EE66F.8080909@oracle.com>
+	(Exim 4.44) id 1HtoCy-0001WB-Ix
+	for nfs@lists.sourceforge.net; Thu, 31 May 2007 10:13:09 -0700
+In-Reply-To: <1180628335.6431.27.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,60 +37,131 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-T24gVGh1LCAyMDA3LTA1LTMxIGF0IDExOjE0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToKPiBT
-b3JyeSBmb3IgdGhlIGRlbGF5IGluIHJlc3BvbmRpbmcuICBTZWUgYmVsb3cuCj4gCj4gVHJvbmQg
-TXlrbGVidXN0IHdyb3RlOgo+ID4gT24gVHVlLCAyMDA3LTA1LTI5IGF0IDEwOjEwIC0wNDAwLCBD
-aHVjayBMZXZlciB3cm90ZToKPiA+PiBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6Cj4gPj4+IE9uIEZy
-aSwgMjAwNy0wNS0yNSBhdCAxNzo0MSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6Cj4gPj4+PiBG
-b2xsb3cga2VybmVsIGNvZGluZyBjb252ZW50aW9ucy4KPiA+Pj4+Cj4gPj4+PiBTaWduZWQtb2Zm
-LWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4KPiA+Pj4+IC0tLQo+ID4+
-Pj4KPiA+Pj4+ICBmcy9uZnMvbmZzNF9mcy5oICB8ICAgIDUgKysrKwo+ID4+Pj4gIGZzL25mcy9u
-ZnM0cHJvYy5jIHwgICA3MCArKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLQo+ID4+Pj4gIDIgZmlsZXMgY2hhbmdlZCwgNDIgaW5zZXJ0aW9ucygrKSwg
-MzMgZGVsZXRpb25zKC0pCj4gPj4+Pgo+ID4+Pj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2Zz
-LmggYi9mcy9uZnMvbmZzNF9mcy5oCj4gPj4+PiBpbmRleCBjZjNhMTdlLi4xYTUyNmM0IDEwMDY0
-NAo+ID4+Pj4gLS0tIGEvZnMvbmZzL25mczRfZnMuaAo+ID4+Pj4gKysrIGIvZnMvbmZzL25mczRf
-ZnMuaAo+ID4+Pj4gQEAgLTE0NSw2ICsxNDUsMTEgQEAgc3RydWN0IG5mczRfZXhjZXB0aW9uIHsK
-PiA+Pj4+ICAJaW50IHJldHJ5Owo+ID4+Pj4gIH07Cj4gPj4+PiAgCj4gPj4+PiArI2RlZmluZSBE
-RUNMQVJFX05GUzRfRVhDRVBUSU9OKG5hbWUpCQkJCVwKPiA+Pj4+ICsJc3RydWN0IG5mczRfZXhj
-ZXB0aW9uIG5hbWUgPSB7CQkJCVwKPiA+Pj4+ICsJCS50aW1lb3V0CT0gMCwJCQkJXAo+ID4+Pj4g
-Kwl9Cj4gPj4+IFdoeSB3b3VsZCB3ZSB3YW50IHRoaXM/IFRoZSBleGlzdGluZyBjb2RlIHVzZXMg
-Ym9nIHN0YW5kYXJkIEM5OQo+ID4+PiBpbml0aWFsaXNlcnMuIFRoZXJlIGlzIG5vIG5lZWQgdG8g
-ZXhwbGljaXRseSBzZXQgLnRpbWVvdXQgdG8gemVyby4KPiA+PiBVc2luZwo+ID4+Cj4gPj4gICAg
-c3RydWN0IG5mczRfZXhjZXB0aW9uIG5hbWUgPSB7IH07Cj4gPj4KPiA+PiBjYXVzZXMgY29tcGls
-ZXIgY29tcGxhaW50cy4gIE9uZSBjb3JyZWN0IHdheSB0byBmaXggdGhpcyBpcyB0byBzZXQgYXQg
-Cj4gPj4gbGVhc3Qgb25lIGZpZWxkIGluIHRoZSBzdHJ1Y3R1cmUsIGFuZCBzZXR0aW5nIHRoYXQg
-ZmllbGQgdG8gemVybyBjbGVhcnMgCj4gPj4gdGhlIG90aGVyIG9uZSBieSBkZWZhdWx0Lgo+ID4g
-Cj4gPiBJIGNhbid0IGZpbmQgYW55dGhpbmcgaW4gSGFyYmlzb24gJiBTdGVlbGUgc3RhdGluZyB0
-aGF0IG5hbWUgPSB7fSBpcwo+ID4gaWxsZWdhbC4gQWxsIHRoZXkgc2F5IGlzIHRoYXQgImlmIHRo
-ZXJlIGFyZSBmZXdlciBpbml0aWFsaXplcnMgdGhhbgo+ID4gdGhlcmUgYXJlIHN0cnVjdHVyZSBj
-b21wb25lbnRzLCB0aGUgcmVtYWluaW5nIGNvbXBvbmVudHMgYXJlIGluaXRpYWxpemVkCj4gPiB0
-byB0aGVpciBkZWZhdWx0IGluaXRpYWwgdmFsdWVzLiIuCj4gCj4gVGhlIGV4YWN0IGNvbXBpbGVy
-IHdhcm5pbmcgaXMgdGhpczoKPiAKPiAvaG9tZS9jZWwvc3JjL2xpbnV4L21haW4vZnMvbmZzL25m
-czRwcm9jLmM6IEluIGZ1bmN0aW9uIAo+IOKAmG5mczRfZG9fb3Blbl9yZWNsYWlt4oCZOgo+IC9o
-b21lL2NlbC9zcmMvbGludXgvbWFpbi9mcy9uZnMvbmZzNHByb2MuYzo0OTY6IHdhcm5pbmc6IG1p
-c3NpbmcgaW5pdGlhbGl6ZXIKPiAvaG9tZS9jZWwvc3JjL2xpbnV4L21haW4vZnMvbmZzL25mczRw
-cm9jLmM6NDk2OiB3YXJuaW5nOiAobmVhciAKPiBpbml0aWFsaXphdGlvbiBmb3Ig4oCYZXhjZXB0
-aW9uLnRpbWVvdXTigJkpCj4gCj4gPiBBbnlob3csIGlmIHlvdSByZWFsbHkgZG8gaGF2ZSB0byBz
-ZXQgb25lIGNvbXBvbmVudCwgdGhlbiBhIG11Y2ggbGVzcwo+ID4gdmVyYm9zZSBmb3JtIHdvdWxk
-IGJlIHRvIHdyaXRlICJuYW1lID0gezB9IiBUaGVyZSBpcyBubyBuZWVkIGZvciB0aGUKPiA+IG1h
-Y3JvLgo+IAo+IFllcywgdGhhdCBpcyBsZXNzIHZlcmJvc2UuICBCdXQgaXQgZG9lc24ndCBlbGlt
-aW5hdGUgdGhlIHdhcm5pbmcsIHdoaWNoIAo+IGJlY29tZXMgdGhpczoKPiAKPiAvaG9tZS9jZWwv
-c3JjL2xpbnV4L21haW4vZnMvbmZzL25mczRwcm9jLmM6IEluIGZ1bmN0aW9uIAo+IOKAmG5mczRf
-ZG9fb3Blbl9yZWNsYWlt4oCZOgo+IC9ob21lL2NlbC9zcmMvbGludXgvbWFpbi9mcy9uZnMvbmZz
-NHByb2MuYzo0OTY6IHdhcm5pbmc6IG1pc3NpbmcgaW5pdGlhbGl6ZXIKPiAvaG9tZS9jZWwvc3Jj
-L2xpbnV4L21haW4vZnMvbmZzL25mczRwcm9jLmM6NDk2OiB3YXJuaW5nOiAobmVhciAKPiBpbml0
-aWFsaXphdGlvbiBmb3Ig4oCYZXhjZXB0aW9uLnJldHJ54oCZKQo+IAo+IFNvIGEgY29tcGxldGUg
-c3RydWN0dXJlIGluaXRpYWxpemVyIGlzIG5lY2Vzc2FyeSB0byBlbGltaW5hdGUgYm90aCB3YXJu
-aW5ncy4KClNvcnJ5LCBidXQgdG8gbWUgdGhpcyBzb3VuZHMgbGlrZSBhIGNvbXBpbGVyIGJ1Zy4g
-U2VlIHRoZSBhYm92ZSBxdW90ZSwKcmVhZCB0aGUgc3RydWN0dXJlIGluaXRpYWxpc2F0aW9uIGV4
-YW1wbGVzIGluIEhhcmJpc29uICYgU3RlZWxlIChJIGtub3cKeW91IGhhdmUgYSBjb3B5KSwgYW5k
-IHRoZW4gdGVsbCBtZSBob3cgdGhpcyB3b3VsZCBiZSBhbnkgZGlmZmVyZW50LgoKVHJvbmQKCgot
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieSBEQjIgRXhw
-cmVzcwpEb3dubG9hZCBEQjIgRXhwcmVzcyBDIC0gdGhlIEZSRUUgdmVyc2lvbiBvZiBEQjIgZXhw
-cmVzcyBhbmQgdGFrZQpjb250cm9sIG9mIHlvdXIgWE1MLiBObyBsaW1pdHMuIEp1c3QgZGF0YS4g
-Q2xpY2sgdG8gZ2V0IGl0IG5vdy4KaHR0cDovL3NvdXJjZWZvcmdlLm5ldC9wb3dlcmJhci9kYjIv
-Cl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBtYWls
-bGlzdCAgLSAgTkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZv
-cmdlLm5ldC9saXN0cy9saXN0aW5mby9uZnMK
+This is a multi-part message in MIME format.
+--------------090303010406050704050809
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
+
+Trond Myklebust wrote:
+> On Thu, 2007-05-31 at 11:14 -0400, Chuck Lever wrote:
+>> Sorry for the delay in responding.  See below.
+>>
+>> Trond Myklebust wrote:
+>>> On Tue, 2007-05-29 at 10:10 -0400, Chuck Lever wrote:
+>>>> Trond Myklebust wrote:
+>>>>> On Fri, 2007-05-25 at 17:41 -0400, Chuck Lever wrote:
+>>>>>> Follow kernel coding conventions.
+>>>>>>
+>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>> ---
+>>>>>>
+>>>>>>  fs/nfs/nfs4_fs.h  |    5 ++++
+>>>>>>  fs/nfs/nfs4proc.c |   70 ++++++++++++++++++++++++++++------------=
+-------------
+>>>>>>  2 files changed, 42 insertions(+), 33 deletions(-)
+>>>>>>
+>>>>>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>>>>>> index cf3a17e..1a526c4 100644
+>>>>>> --- a/fs/nfs/nfs4_fs.h
+>>>>>> +++ b/fs/nfs/nfs4_fs.h
+>>>>>> @@ -145,6 +145,11 @@ struct nfs4_exception {
+>>>>>>  	int retry;
+>>>>>>  };
+>>>>>> =20
+>>>>>> +#define DECLARE_NFS4_EXCEPTION(name)				\
+>>>>>> +	struct nfs4_exception name =3D {				\
+>>>>>> +		.timeout	=3D 0,				\
+>>>>>> +	}
+>>>>> Why would we want this? The existing code uses bog standard C99
+>>>>> initialisers. There is no need to explicitly set .timeout to zero.
+>>>> Using
+>>>>
+>>>>    struct nfs4_exception name =3D { };
+>>>>
+>>>> causes compiler complaints.  One correct way to fix this is to set a=
+t=20
+>>>> least one field in the structure, and setting that field to zero cle=
+ars=20
+>>>> the other one by default.
+>>> I can't find anything in Harbison & Steele stating that name =3D {} i=
+s
+>>> illegal. All they say is that "if there are fewer initializers than
+>>> there are structure components, the remaining components are initiali=
+zed
+>>> to their default initial values.".
+>> The exact compiler warning is this:
+>>
+>> /home/cel/src/linux/main/fs/nfs/nfs4proc.c: In function=20
+>> =E2=80=98nfs4_do_open_reclaim=E2=80=99:
+>> /home/cel/src/linux/main/fs/nfs/nfs4proc.c:496: warning: missing initi=
+alizer
+>> /home/cel/src/linux/main/fs/nfs/nfs4proc.c:496: warning: (near=20
+>> initialization for =E2=80=98exception.timeout=E2=80=99)
+>>
+>>> Anyhow, if you really do have to set one component, then a much less
+>>> verbose form would be to write "name =3D {0}" There is no need for th=
+e
+>>> macro.
+>> Yes, that is less verbose.  But it doesn't eliminate the warning, whic=
+h=20
+>> becomes this:
+>>
+>> /home/cel/src/linux/main/fs/nfs/nfs4proc.c: In function=20
+>> =E2=80=98nfs4_do_open_reclaim=E2=80=99:
+>> /home/cel/src/linux/main/fs/nfs/nfs4proc.c:496: warning: missing initi=
+alizer
+>> /home/cel/src/linux/main/fs/nfs/nfs4proc.c:496: warning: (near=20
+>> initialization for =E2=80=98exception.retry=E2=80=99)
+>>
+>> So a complete structure initializer is necessary to eliminate both war=
+nings.
+>=20
+> Sorry, but to me this sounds like a compiler bug. See the above quote,
+> read the structure initialisation examples in Harbison & Steele (I know
+> you have a copy), and then tell me how this would be any different.
+
+Whether or not the extraneous warning is a compiler bug, I had thought=20
+it was bad form not to use ".field =3D foo," when initializing a=20
+structure.  Are there exceptions to that guideline?  Sadly=20
+Documentation/CodingStyle is silent on this issue.
+
+It seems to me that specifying "{ 0 };" today will encourage later=20
+changes that would replace it with "{ 0, foo };" instead of the=20
+preferred use of ".field =3D foo,".
+
+--------------090303010406050704050809
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
+IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmU6IExpbnV4IFByb2plY3RzIEdy
+b3VwDQphZHI6OzsxMDE1IEdyYW5nZXIgQXZlbnVlO0FubiBBcmJvcjtNSTs0ODEwNDtVU0EN
+CmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRvdCBj
+b20NCnRpdGxlOlByaW5jaXBhbCBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0OCA2
+MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNhcmQN
+Cg0K
+--------------090303010406050704050809
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+--------------090303010406050704050809
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------090303010406050704050809--
