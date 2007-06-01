@@ -1,37 +1,22 @@
-From: Baurzhan Ismagulov <ibr@radix50.net>
-Subject: Re: flock LOCK_EX hangs
-Date: Fri, 1 Jun 2007 01:15:01 +0200
-Message-ID: <20070531231501.GA12014@radix50.net>
-References: <20070516131253.GC19167@radix50.net>
-	<20070516173008.GD9895@fieldses.org>
+From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Subject: Re: Stale NFS handles on LVM2
+Date: Fri, 01 Jun 2007 11:35:23 +0200
+Message-ID: <465FE85B.2040500@bio.ifi.lmu.de>
+References: <465D229E.5080809@bio.ifi.lmu.de> <20070530082312.GA11045@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, linux-lvm@redhat.com
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HttrW-0001O8-CJ
-	for nfs@lists.sourceforge.net; Thu, 31 May 2007 16:15:22 -0700
-Received: from kz-easy.com ([85.214.25.173] helo=almaty.kz-easy.com)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HttrX-0007fD-UZ
-	for nfs@lists.sourceforge.net; Thu, 31 May 2007 16:15:25 -0700
-Received: from alatau.radix50.net (dslb-088-064-003-136.pools.arcor-ip.net
-	[88.64.3.136]) (authenticated bits=0)
-	by almaty.kz-easy.com (8.13.8/8.13.8/Debian-3) with ESMTP id
-	l4VNF8RA027902
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <nfs@lists.sourceforge.net>; Fri, 1 Jun 2007 01:15:10 +0200
-Received: from alatau.radix50.net (localhost [127.0.0.1])
-	by alatau.radix50.net (8.13.8/8.13.8/Debian-3) with ESMTP id
-	l4VNF2vi012536
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <nfs@lists.sourceforge.net>; Fri, 1 Jun 2007 01:15:02 +0200
-Received: (from ibr@localhost)
-	by alatau.radix50.net (8.13.8/8.13.8/Submit) id l4VNF1oD012515
-	for nfs@lists.sourceforge.net; Fri, 1 Jun 2007 01:15:01 +0200
-In-Reply-To: <20070516173008.GD9895@fieldses.org>
+	id 1Hu3Xb-00075T-Qj
+	for nfs@lists.sourceforge.net; Fri, 01 Jun 2007 02:35:27 -0700
+Received: from acheron.ifi.lmu.de ([129.187.214.135])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hu3Xd-0000bG-KC
+	for nfs@lists.sourceforge.net; Fri, 01 Jun 2007 02:35:31 -0700
+In-Reply-To: <20070530082312.GA11045@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,23 +29,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello Bruce,
+Frank van Maarseveen wrote
 
-On Wed, May 16, 2007 at 01:30:08PM -0400, J. Bruce Fields wrote:
-> > I'm experiencing problems with the kernel NFS server. The client hangs
-> > on the flock call.
-...
-> There's also been a lot fixed since 2.6.16, so it might be worth trying
-> something newer.
+> Use the fsid= option in /etc/exports to avoid this problem (clients need
+> to remount because this changes filehandles again).
 
-I've tried 2.6.20, and it worked. It's amazing how long time it has been
-since I had kernel bugs, I haven't even thought in that direction.
-Thanks much!
+That works fine :-))) Thanks a lot! I'm using this for all our NFS exports now.
 
-With kind regards,
+cu,
+Frank
+ 
+
+
 -- 
-Baurzhan Ismagulov
-http://www.kz-easy.com/
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
