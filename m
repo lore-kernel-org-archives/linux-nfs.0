@@ -1,63 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] [PATCH] locks: provide a file lease method enabling cluster-coherent leases
-Date: Fri, 1 Jun 2007 12:53:17 -0400
-Message-ID: <20070601165317.GE10492@fieldses.org>
-References: <1180647624483-git-send-email-bfields@fieldses.org> <11806476252240-git-send-email-bfields@fieldses.org> <11806476252913-git-send-email-bfields@fieldses.org> <1180650849.7084.19.camel@heimdal.trondhjem.org>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [NFS] [PATCH] locks: provide a file lease method enabling	cluster-coherent leases
+Date: Fri, 1 Jun 2007 11:41:23 -0600
+Message-ID: <20070601174123.GS23968@parisc-linux.org>
+References: <1180647624483-git-send-email-bfields@fieldses.org> <11806476252240-git-send-email-bfields@fieldses.org> <11806476252913-git-send-email-bfields@fieldses.org> <46601BCD.8050609@redhat.com> <20070601164416.GC10492@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
+Cc: Peter Staubach <staubach@redhat.com>,
+	linux-fsdevel@vger.kernel.org,
 	David Teigland <teigland@redhat.com>,
-	nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>,
+	David Richter <richterd@umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1180650849.7084.19.camel@heimdal.trondhjem.org>
+In-Reply-To: <20070601164416.GC10492@fieldses.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, May 31, 2007 at 06:34:09PM -0400, Trond Myklebust wrote:
-> On Thu, 2007-05-31 at 17:40 -0400, J. Bruce Fields wrote:
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index 7cf0c54..09aefb4 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -1112,6 +1112,7 @@ struct file_operations {
-> >  	int (*flock) (struct file *, int, struct file_lock *);
-> >  	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
-> >  	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
-> > +	int (*set_lease)(struct file *, long, struct file_lock **);
-> >  };
-> >  
-> >  struct inode_operations {
-> > @@ -1137,6 +1138,7 @@ struct inode_operations {
-> >  	ssize_t (*listxattr) (struct dentry *, char *, size_t);
-> >  	int (*removexattr) (struct dentry *, const char *);
-> >  	void (*truncate_range)(struct inode *, loff_t, loff_t);
-> > +	int (*break_lease)(struct inode *, unsigned int);
+On Fri, Jun 01, 2007 at 12:44:16PM -0400, J. Bruce Fields wrote:
+> The only problem I'm aware of is that leases aren't broken on rename,
+> link, and unlink.  This is kind of tricky to fix.  David Richter (cc'd)
+> and I sketched out a few different approaches, and I think he has some
+> patches implementing at least one of them.
 > 
-> Splitting the lease into a file_operation part and an inode_operation
-> part looks really ugly.
+> This may require defining some new type of lease, to avoid changing the
+> documented behavior of the fcntl lease operations (which only break on
+> open).  Although actually I believe Samba needs the same behavior we do,
+> and they're probably the most important user of leases....
 
-Well, we could stick them both in the file_operations, of course, but I
-think it really would be a bug for the behavior of the break_lease
-operation to ever vary based on the file passed in.  (And we eventually
-want to break leases in places like rename where we don't even have a
-file.)
+Samba internally prohibits renaming or deleting an open file, to match
+Windows semantics.  So it won't notice the difference.  At least, that's
+what I remember from a discussion with Tridge when we were implementing
+leases back in 2000.
 
-> It also means that you're calling twice down
-> into the filesystem for every call to may_open() (once for
-> vfs_permission() and once for break_lease()) and 3 times in
-> do_sys_truncate().
-> 
-> Would it perhaps make sense to package up the call to vfs_permission()
-> and break_lease() as a single 'may_open()' inode operation that could be
-> called by may_open(), do_sys_truncate() and nfsd?
-
-Could be, but this may no longer make sense when we try to do
-lease-breaking on rename and unlink.
-
-For the purposes of the current limited GFS2 implementation, we don't
-even need a break operation yet.  So maybe that should just be split out
-into a separate patch for now, and postpone dealing with this part until
-we figure out how to do a full GFS2 lease implementation.
-
---b.
+I think it's an acceptable change in Linux semantics to break leases on
+rename/delete/link.  Though I'm not quite sure why you need to -- nobody
+else is touching the contents of the file, so it's not like you need to
+write the data back to it, or discard your cached copy of it in the case
+of a read-only lease.
