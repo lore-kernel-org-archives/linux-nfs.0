@@ -1,46 +1,65 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] [PATCH] locks: provide a file lease method enabling	cluster-coherent leases
-Date: Fri, 1 Jun 2007 14:08:42 -0400
-Message-ID: <20070601180842.GG10492@fieldses.org>
-References: <1180647624483-git-send-email-bfields@fieldses.org> <11806476252240-git-send-email-bfields@fieldses.org> <11806476252913-git-send-email-bfields@fieldses.org> <46601BCD.8050609@redhat.com> <20070601164416.GC10492@fieldses.org> <20070601174123.GS23968@parisc-linux.org>
+From: "robin ros" <linux.robin@gmail.com>
+Subject: Received erroneous SM_UNMON request
+Date: Fri, 1 Jun 2007 14:34:47 -0600
+Message-ID: <fc0152210706011334x1af8e39ajbde87e63e1f11019@mail.gmail.com>
+References: <fc0152210705311118i28657a97v47dc9c3129849367@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Staubach <staubach@redhat.com>,
-	linux-fsdevel@vger.kernel.org,
-	David Teigland <teigland@redhat.com>,
-	nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>,
-	David Richter <richterd@umich.edu>
-To: Matthew Wilcox <matthew@wil.cx>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070601174123.GS23968@parisc-linux.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1HuDpf-0001AO-Ci
+	for nfs@lists.sourceforge.net; Fri, 01 Jun 2007 13:34:48 -0700
+Received: from ug-out-1314.google.com ([66.249.92.170])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HuDph-0004GW-3B
+	for nfs@lists.sourceforge.net; Fri, 01 Jun 2007 13:34:50 -0700
+Received: by ug-out-1314.google.com with SMTP id 78so310891ugn
+	for <nfs@lists.sourceforge.net>; Fri, 01 Jun 2007 13:34:48 -0700 (PDT)
+In-Reply-To: <fc0152210705311118i28657a97v47dc9c3129849367@mail.gmail.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jun 01, 2007 at 11:41:23AM -0600, Matthew Wilcox wrote:
-> Samba internally prohibits renaming or deleting an open file, to match
-> Windows semantics.  So it won't notice the difference.  At least, that's
-> what I remember from a discussion with Tridge when we were implementing
-> leases back in 2000.
+hi everyone,
 
-NFSv4 should be doing the same thing (err, for some reason I thought it
-already did--I remember writing patches to do it--but I must not have
-finished them).  But there's still the problem of renames done by local
-users, other file servers in the multiprotocol case, etc.
+i think this is a old post, but i cannot resolv this, in my syslog i
+found this messages in my debian sarge server, with nfs-common 1.0.6-3
+and nfs-kernel-server 1.0.6-3 and nis 3.13-2:
 
-> I think it's an acceptable change in Linux semantics to break leases on
-> rename/delete/link.  Though I'm not quite sure why you need to -- nobody
-> else is touching the contents of the file, so it's not like you need to
-> write the data back to it, or discard your cached copy of it in the case
-> of a read-only lease.
+May 31 11:55:40 servidor rpc.statd[3214]: Received erroneous SM_UNMON
+request from xxx.xxx.xxx.xxx for 192.168.1.16
+May 31 11:59:51 servidor rpc.statd[3214]: Received erroneous SM_UNMON
+request from xxx.xxx.xxx.xxx for 192.168.1.138
+May 31 12:00:51 servidor rpc.statd[3214]: Received erroneous SM_UNMON
+request from xxx.xxx.xxx.xxx for 192.168.1.16
+May 31 12:02:52 servidor rpc.statd[3214]: Received erroneous SM_UNMON
+request from xxx.xxx.xxx.xxx for 192.168.1.155
 
-NFSv4 delegations are defined to cover the file's metadata (including
-the name it was opened under) as well as its data.  Otherwise you
-wouldn't be able to perform opens locally, because you wouldn't know
-whether the open path still works, or whether the file permissions still
-allow the same access.
+in my fstab is like this for nfs mount.
 
-And other parts of the protocol make use of this assumption (e.g. OPEN
-with CLAIM_DELEGATE_CUR or CLAIM_DELEGATE_PREV, which expect to be able
-to re-open a file under its original name).
+xxx.xxx.xxx.xxx:/home /home nfs rw,exec,rsize=8192,wsize=8192,intr, 0 0
 
---b.
+what can i do to resolv this error??
+
+thanks for you help
+
+robin
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
