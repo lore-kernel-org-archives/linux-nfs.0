@@ -1,19 +1,19 @@
-From: =?GB2312?B?sK7T+7jfs7E=?= <jow.7cv@163.com>
-Subject: =?GB2312?B?1uy0vb/avbsg0/u78NbQydUg0NS40Luo0MQgvvi21LL8trY=?=
-Date: Mon, 4 Jun 2007 23:02:58 +0800
-Message-ID: <E1HvE5C-0001Yz-O5@mail.sourceforge.net>
-Reply-To: jow.7cv@163.com
-Content-Type: multipart/mixed; boundary="===============0250132285=="
-To: nfs@lists.sourceforge.net
+From: "Sales" <sales@alexanderbrent.com>
+Subject: Have any doubts, so why not to try?
+Date: Mon, 04 Jun 2007 22:21:29 +0000
+Message-ID: <49f101c7a6f6$1f746539$e92fc956@APoitiers-155-1-120-233.w86-201.abo.wanadoo.fr>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: "Neroduk Alexandr" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HvE5B-0002gZ-OW
-	for nfs@lists.sourceforge.net; Mon, 04 Jun 2007 08:02:58 -0700
-Received: from [61.163.150.246] (helo=163.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HvE5C-0001Yz-O5
-	for nfs@lists.sourceforge.net; Mon, 04 Jun 2007 08:03:00 -0700
+	id 1HvKvj-0004Ug-8r
+	for nfs@lists.sourceforge.net; Mon, 04 Jun 2007 15:21:39 -0700
+Received: from apoitiers-155-1-120-233.w86-201.abo.wanadoo.fr ([86.201.47.233])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HvKvk-0002z1-Vt
+	for nfs@lists.sourceforge.net; Mon, 04 Jun 2007 15:21:42 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,67 +26,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0250132285==
-Content-Type: text/html;charset="GB2312"
+When did you have sex last time? 
 
-您好，欢迎您光临七彩谷商城！
+Yesterday? No?! Last week? No?!
 
-http://jow.7cv.com/
+Can't have sex at all, because of the problem with an erection?
 
- * 情爱宝典的火辣前戏
- * 情爱欢场的爱欲高潮
- * 欲火中烧的丝袜美女
- * 性感小野猫的百变媚惑
+So what are you waiting for, order our breakthrough medicine especially created for such desperate boys as you
+on our website: http://www.alexanderbrent.com/ now and you'll get a reduction!
 
-http://jow.7cv.com/
+-- 
+uopfpopiogqtqppmpgpkuopqqlpupoquqnqnqfohnlnmrsnpnfoh
 
-·让人流口水的露乳开裆衣 　☆☆☆
-  网友 hui2002：穿上很激情，情不自禁… 
-·排珠棒棒女人爽到家了 　　☆☆☆☆
-  网友 lulu：很有力，还是液晶显示的，很方便 
-
-·男人宝贝变大的好玩意儿 　☆☆☆☆
-  网友 老汉：真能够看见充血后巨大的家伙 
-·超好用的女用催情粉　　　 　☆☆☆☆
-  网友 正在开会：太牛了，我都有点招架不住了
-
-http://jow.7cv.com/
-
-1 
-1. 贪吃蛇 ↑
-2. 衣柜娃娃-苏菲亚↑
-3. 美臀夹阴↑
-4. HP 女性高潮喷水刺激器↑
-5. 饥渴的长舌象↓
-6. 粉红妖姬SEX Powder↑
-7. 遥控彩蝶第二代↑
-8. 佛罗蒙(男用型)↑ 
-9. 爱之吻朱唇口交器↓
-10. INVERMA-西班牙D5水↓
-
-
-http://jow.7cv.com/
-
-
---===============0250132285==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0250132285==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0250132285==--
