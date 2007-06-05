@@ -1,100 +1,164 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] [PATCH 2/2] nfs4: on a O_EXCL OPEN make sure the SETATTR
-	sets the fields holding the verifier
-Date: Tue, 05 Jun 2007 16:11:40 -0400
-Message-ID: <1181074300.7033.34.camel@heimdal.trondhjem.org>
-References: <20070605135659.8f9c2715.jlayton@redhat.com>
-	<1181067182.7033.25.camel@heimdal.trondhjem.org>
-	<20070605153527.bdc6e4da.jlayton@redhat.com>
+From: "Robert Rappaport" <robert.rappaport@gmail.com>
+Subject: Re: [PATCH] locks: provide a file lease method enabling
+	cluster-coherent leases
+Date: Tue, 5 Jun 2007 18:04:57 -0400
+Message-ID: <f0a71180706051504j712f7415vc82682e0958a2239@mail.gmail.com>
+References: <OF3A5C7199.4DE8BA91-ON882572EE.006302AD-882572EE.0063A704@us.ibm.com>
+	<1180808482.6687.30.camel@heimdal.trondhjem.org>
+	<20070604135920.GA2233@fieldses.org>
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============0190555937=="
+Cc: linux-fsdevel@vger.kernel.org,
+	David Teigland <teigland@redhat.com>, nfs@lists.sourceforge.net,
+	Marc Eshel <eshel@almaden.ibm.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Hvh98-0007Xv-81
+	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 15:04:58 -0700
+Received: from mu-out-0910.google.com ([209.85.134.188])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hvh99-00050a-It
+	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 15:05:00 -0700
+Received: by mu-out-0910.google.com with SMTP id w9so1984915mue
+	for <nfs@lists.sourceforge.net>; Tue, 05 Jun 2007 15:04:57 -0700 (PDT)
+In-Reply-To: <20070604135920.GA2233@fieldses.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
+
+--===============0190555937==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_18899_15694204.1181081097336"
+
+------=_Part_18899_15694204.1181081097336
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+I have had some previous communications with Bruce on these topics, and I am
+generally pleased with the proposed modifications that are presented here.
+
+I am working on a clustered file system and there is one small additional
+modification that would be of great use to me.  That would be to export the
+__setlease symbol.
+
+In my implementation, my file system specific set_lease() function first
+determines whether the granting of the requested lease on the given inode is
+compatible with the cluster state of this inode, and then if it is, I simply
+invoke the __setlease() routine and have the kernel build the associated
+infrastructure.
+
+Having this symbol globally available greatly simplifies things.
+
+On 6/4/07, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Sat, Jun 02, 2007 at 02:21:22PM -0400, Trond Myklebust wrote:
+> > Currently, the lease handling is done all in the VFS, and is done prior
+> > to calling any filesystem operations. Bruce's break_lease() inode
+> > operation allows the VFS to notify the filesystem that some operation is
+> > going to be called that requires the lease to be broken.
+> >
+> > My point is that in doing so, you are not atomic with the operation that
+> > requires the lease to be broken. Some different node may re-establish a
+> > lease while we're calling back down into the filesystem to perform the
+> > operation.
+> > So I agree with you. The break_lease() inode operation isn't going to
+> > work. The filesystem is going to have to figure out for itself when it
+> > needs to notify other nodes that the lease needs breaking, and it needs
+> > to figure out its own methods for ensuring atomicity.
+>
+> OK, I agree with you both, thanks for the explanations.
+>
+> It looks to me like there's probably a race in the existing code that
+> will allow conflicting opens and leases to be granted simultaneously if
+> the lease request is handled just after may_open() is called.  These
+> checks at the beginning of __setlease() are an attempt to prevent that
+> race:
+>
+>         if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+>                 goto out;
+>         if ((arg == F_WRLCK)
+>             && ((atomic_read(&dentry->d_count) > 1)
+>                 || (atomic_read(&inode->i_count) > 1)))
+>                 goto out;
+>
+> But, for example, in the case of a simultaneous write open and RDLCK
+> lease request, I believe the call to setlease could come after the
+> may_open() but before the call to get_write_access() that bumps
+> i_writecount.
+>
+> --b.
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+------=_Part_18899_15694204.1181081097336
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+I have had some previous communications with Bruce on these topics, and
+I am generally pleased with the proposed modifications that are
+presented here.<br>
+<br>
+I am working on a clustered file system and there is one small
+additional modification that would be of great use to me.&nbsp; That
+would be to export the __setlease symbol.<br>
+<br>
+In my implementation, my file system specific set_lease() function
+first determines whether the granting of the requested lease on the
+given inode is compatible with the cluster state of this inode, and
+then if it is, I simply invoke the __setlease() routine and have the
+kernel build the associated infrastructure.<br>
+<br>
+Having this symbol globally available greatly simplifies things.<br><br><div><span class="gmail_quote">On 6/4/07, <b class="gmail_sendername">J. Bruce Fields</b> &lt;<a href="mailto:bfields@fieldses.org">bfields@fieldses.org
+</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">On Sat, Jun 02, 2007 at 02:21:22PM -0400, Trond Myklebust wrote:<br>&gt; Currently, the lease handling is done all in the VFS, and is done prior
+<br>&gt; to calling any filesystem operations. Bruce&#39;s break_lease() inode<br>&gt; operation allows the VFS to notify the filesystem that some operation is<br>&gt; going to be called that requires the lease to be broken.
+<br>&gt;<br>&gt; My point is that in doing so, you are not atomic with the operation that<br>&gt; requires the lease to be broken. Some different node may re-establish a<br>&gt; lease while we&#39;re calling back down into the filesystem to perform the
+<br>&gt; operation.<br>&gt; So I agree with you. The break_lease() inode operation isn&#39;t going to<br>&gt; work. The filesystem is going to have to figure out for itself when it<br>&gt; needs to notify other nodes that the lease needs breaking, and it needs
+<br>&gt; to figure out its own methods for ensuring atomicity.<br><br>OK, I agree with you both, thanks for the explanations.<br><br>It looks to me like there&#39;s probably a race in the existing code that<br>will allow conflicting opens and leases to be granted simultaneously if
+<br>the lease request is handled just after may_open() is called.&nbsp;&nbsp;These<br>checks at the beginning of __setlease() are an attempt to prevent that<br>race:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if ((arg == F_RDLCK) &amp;&amp; (atomic_read(&amp;inode-&gt;i_writecount) &gt; 0))
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;goto out;<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if ((arg == F_WRLCK)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&amp;&amp; ((atomic_read(&amp;dentry-&gt;d_count) &gt; 1)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;||
+(atomic_read(&amp;inode-&gt;i_count) &gt; 1)))<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;goto out;<br><br>But, for example, in the case of a simultaneous write open and RDLCK<br>lease request, I believe the call to setlease could come after the
+<br>may_open() but before the call to get_write_access() that bumps<br>i_writecount.<br><br>--b.<br>-<br>To unsubscribe from this list: send the line &quot;unsubscribe linux-fsdevel&quot; in<br>the body of a message to <a href="mailto:majordomo@vger.kernel.org">
+majordomo@vger.kernel.org</a><br>More majordomo info at&nbsp;&nbsp;<a href="http://vger.kernel.org/majordomo-info.html">http://vger.kernel.org/majordomo-info.html</a><br></blockquote></div><br>
+
+------=_Part_18899_15694204.1181081097336--
+
+
+--===============0190555937==
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070605153527.bdc6e4da.jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-On Tue, 2007-06-05 at 15:35 -0400, Jeff Layton wrote:
-> On Tue, 05 Jun 2007 14:13:02 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > On Tue, 2007-06-05 at 13:56 -0400, Jeff Layton wrote:
-> > > The Linux NFS4 client simply skips over the bitmask in an O_EXCL open
-> > > call and so it doesn't bother to reset any fields that may be holding
-> > > the verifier. This patch has us save the first two words of the bitmask
-> > > (which is all the current client has #defines for). The client then
-> > > later checks this bitmask and turns on the appropriate flags in the
-> > > sattr->ia_verify field for the following SETATTR call.
-> > > 
-> > > This patch only currently checks to see if the server used the atime
-> > > and mtime slots for the verifier (which is what the Linux server uses
-> > > for this). I'm not sure of what other fields the server could
-> > > reasonably use, but adding checks for others should be trivial.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > 
-> > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > > index 8e46e3e..34ddd66 100644
-> > > --- a/fs/nfs/nfs4proc.c
-> > > +++ b/fs/nfs/nfs4proc.c
-> > > @@ -955,6 +955,22 @@ static struct nfs4_state *nfs4_open_delegated(struct inode *inode, int flags, st
-> > >  }
-> > >  
-> > >  /*
-> > > + * on an EXCLUSIVE create, the server should send back a bitmask with FATTR4-*
-> > > + * fields corresponding to attributes that were used to store the verifier.
-> > > + * Make sure we clobber those fields in the later setattr call
-> > > + */
-> > > +static inline void nfs4_exclusive_attrset (struct nfs4_opendata *opendata, struct iattr *sattr)
-> > > +{
-> > > +	if ((opendata->o_res.attrset[1] & FATTR4_WORD1_TIME_ACCESS) &&
-> > > +	    !(sattr->ia_valid & ATTR_ATIME_SET))
-> > > +		sattr->ia_valid |= ATTR_ATIME;
-> > > +
-> > > +	if ((opendata->o_res.attrset[1] & FATTR4_WORD1_TIME_MODIFY) &&
-> > > +	    !(sattr->ia_valid & ATTR_MTIME_SET))
-> > > +		sattr->ia_valid |= ATTR_MTIME;
-> > > +}
-> > > +
-> > > +/*
-> > >   * Returns a referenced nfs4_state
-> > >   */
-> > >  static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, int flags, struct iattr *sattr, struct rpc_cred *cred, struct nfs4_state **res)
-> > > @@ -985,6 +1001,9 @@ static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, int flags, st
-> > >  	if (status != 0)
-> > >  		goto err_opendata_free;
-> > >  
-> > > +	if (opendata->o_arg.open_flags & O_EXCL)
-> > > +		nfs4_exclusive_attrset(opendata, sattr);
-> > > +
-> > >  	status = -ENOMEM;
-> > >  	state = nfs4_opendata_to_nfs4_state(opendata);
-> > >  	if (state == NULL)
-> > > @@ -1787,6 +1806,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
-> > >  		status = nfs4_do_setattr(state->inode, &fattr, sattr, state);
-> > >  		if (status == 0)
-> > >  			nfs_setattr_update_inode(state->inode, sattr);
-> > > +		nfs_refresh_inode(state->inode, &fattr);
-> >                   ^^^^ should be nfs_post_op_update_inode() to ensure
-> > that the attribute cache gets invalidated if the server fails to return
-> > the post-op attributes.
-> > 
-> 
-> It looks like nfs3_proc_create() uses nfs_refresh_inode in this spot (which was
-> why I initially used one here). Should it also be changed to use
-> nfs_post_op_update_inode(), or is it correct as-is?
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+--===============0190555937==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-nfs3_proc_create() also appears to be calling nfs_setattr_update_inode()
-twice. I'll fix both issues in a separate patch.
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
-Trond
+--===============0190555937==--
