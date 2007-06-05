@@ -1,23 +1,21 @@
-From: aaa777@galaxy-ins.com
-Subject: Free website analysis & free ranking report worth $399
-Date: Tue, 05 Jun 2007 09:33:47 -0500
-Message-ID: <7sdm0xhm1a0.3wh70bgy6v@mail.galaxy-ins.com>
-Content-Type: multipart/mixed; boundary="===============1109408140=="
-To: nfs@lists.sourceforge.net
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 0/2] intro: make NFSv4 exclusive open calls set and
+ use the bitmask in the reply
+Date: Tue, 5 Jun 2007 13:56:48 -0400
+Message-ID: <20070605135648.579e2557.jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HvZAI-0005RP-80
-	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 06:33:38 -0700
-Received: from externalmx-1.sourceforge.net ([12.152.184.25])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HvZAL-0007Q3-27
-	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 06:33:41 -0700
-Received: from mail.galaxy-ins.com ([209.160.33.164])
-	by externalmx-1.sourceforge.net with smtp (Exim 4.41)
-	id 1HvZAI-0002aA-RJ
-	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 06:33:40 -0700
+	id 1HvdH8-0008W3-FC
+	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 10:56:58 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HvdHA-0003Rt-1m
+	for nfs@lists.sourceforge.net; Tue, 05 Jun 2007 10:57:01 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,165 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1109408140==
-Content-Type: text/html;
-	 charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Around a year ago, Chris Lalancette posted a patch to make it so that
+when an EXCLUSIVE nfs4 create is done, that the mtime and atime get
+properly updated in the following setattr call. At the time Trond
+replied that that approach was incorrect and that we need to check the
+bitmask in the reply to know what attributes need to be updated.
 
-<html>
-<head>
+The original thread is here:
 
-<meta http-equiv="Content-Type" content="text/html;">
-<!--Fireworks MX 2004 Dreamweaver MX 2004 target.  Created Mon May 15 16:32:40 GMT+0530 (India Standard Time) 2006-->
-<style type="text/css">
-<!--
-txt {
-	font-family: Geneva, Arial, Helvetica, sans-serif;
-	font-size: 12px;
-	font-weight: bold;
-	color: #666666;
-	padding-left: 12px;
-	padding-right: 10px;
-}
-input1 {
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 10px;
-	color: #000000;
-	border: 1px solid #999999;
-}
--->
-</style>
+http://linux-nfs.org/pipermail/nfsv4/2006-June/004489.html
 
-<script language="JavaScript">
-<!--
+The following patchset is a first stab at making the Linux client and
+server adhere to the correct NFS4 exclusive open semantics.
 
-function SymError()
-{
-  return true;
-}
-
-window.onerror = SymError;
-
-var SymRealWinOpen = window.open;
-
-function SymWinOpen(url, name, attributes)
-{
-  return (new Object());
-}
-
-window.open = SymWinOpen;
-
-//-->
-</script>
-
-<script type="text/JavaScript">
-<!--
-function MM_findObj(n, d) { //v4.01
-  var p,i,x;  if(!d) d=document; if((p=n.indexOf("?"))>0&&parent.frames.length) {
-    d=parent.frames[n.substring(p+1)].document; n=n.substring(0,p);}
-  if(!(x=d[n])&&d.all) x=d.all[n]; for (i=0;!x&&i<d.forms.length;i++) x=d.forms[i][n];
-  for(i=0;!x&&d.layers&&i<d.layers.length;i++) x=MM_findObj(n,d.layers[i].document);
-  if(!x && d.getElementById) x=d.getElementById(n); return x;
-}
-
-function MM_validateForm() { //v4.0
-  var i,p,q,nm,test,num,min,max,errors='',args=MM_validateForm.arguments;
-  for (i=0; i<(args.length-2); i+=3) { test=args[i+2]; val=MM_findObj(args[i]);
-    if (val) { nm=val.name; if ((val=val.value)!="") {
-      if (test.indexOf('isEmail')!=-1) { p=val.indexOf('@');
-        if (p<1 || p==(val.length-1)) errors+='- '+nm+' must contain an e-mail address.\n';
-      } else if (test!='R') { num = parseFloat(val);
-        if (isNaN(val)) errors+='- '+nm+' must contain a number.\n';
-        if (test.indexOf('inRange') != -1) { p=test.indexOf(':');
-          min=test.substring(8,p); max=test.substring(p+1);
-          if (num<min || max<num) errors+='- '+nm+' must contain a number between '+min+' and '+max+'.\n';
-    } } } else if (test.charAt(0) == 'R') errors += '- '+nm+' is required.\n'; }
-  } if (errors) alert('The following error(s) occurred:\n'+errors);
-  document.MM_returnValue = (errors == '');
-}
-//-->
-</script>
-</head>
-<body bgcolor="#ffffff">
-<form action="http://www.galaxy-ins.com/l/sendemail.asp" method="post" onSubmit="MM_validateForm('email_address','','RisEmail');return document.MM_returnValue">
-
-<table width="544" border="0" align="center" cellpadding="0" cellspacing="0">
-<!-- fwtable fwsrc="Untitled" fwbase="index.jpg" fwstyle="Dreamweaver" fwdocid = "1039560686" fwnested="0" -->
-  <tr>
-   <td><img src="http://www.galaxy-ins.com/l/images/spacer.gif" width="525" height="1" border="0" alt=""></td>
-   </tr>
-
-  <tr>
-    <td height="630" background="http://www.galaxy-ins.com/l/images/website2.jpg">&nbsp;</td>
-   </tr>
-  <tr>
-   <td background="http://www.galaxy-ins.com/l/images/index_r3_c2.jpg"><table width="100%"  border="0" cellpadding="1" cellspacing="1" class="txt">
-     <tr>
-       <td width="45%"><div align="right">Name</div></td>
-       <td width="55%"><input name="Name" type="text" class="input1" size="30"></td>
-     </tr>
-     <tr>
-       <td><div align="right">Your Company Position </div></td>
-       <td><input name="company_position" type="text" class="input1" size="30"></td>
-     </tr>
-     <tr>
-       <td><div align="right">Website Address </div></td>
-       <td><input name="website_address" type="text" class="input1" size="30"></td>
-     </tr>
-     <tr>
-       <td><div align="right">Email Address </div></td>
-       <td><input name="email_address" type="text" class="input1" size="30"></td>
-     </tr>
-     <tr>
-       <td><div align="right">Phone</div></td>
-       <td><input name="phone" type="text" class="input1" size="30"></td>
-     </tr>
-     <tr>
-       <td>&nbsp;</td>
-       <td><input type="submit" name="Submit" value="Submit"></td>
-     </tr>
-   </table></td>
-  </tr>
-</table>
-</form>
-</body>
-</html>
-
-
-<p align="center"><font face="Arial" color="#000080" size="1">You are receiving 
-this message as an opt-in subscriber to Galaxy-Ins or one of our marketing 
-partners. <br>
-If you no longer wish to receive further offers, please send an email with 
-discontinue to: <a href="mailto:support@galaxy-ins.com?subject=Discontinue">
-support@galaxy-ins.com</a><br>
-Your email address will be removed within 24 hours.</font></p>
-<p align="center"><font face="Arial" color="#000080" size="1"><br>
-Galaxy-Ins<br>
-27 Russel Ave.<br>
-Edgewater, NJ <br>
-07020</font></p>
-
-
-
---===============1109408140==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+As always, comments are appreciated...
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1109408140==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1109408140==--
