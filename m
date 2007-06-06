@@ -1,24 +1,26 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 2.6.21.3: NFS: Buggy server - nlink == 0!
-Date: Wed, 06 Jun 2007 08:27:42 -0400
-Message-ID: <1181132862.6171.2.camel@heimdal.trondhjem.org>
+Date: Wed, 06 Jun 2007 08:33:17 -0400
+Message-ID: <1181133197.6171.7.camel@heimdal.trondhjem.org>
 References: <20070606081303.GB7168@localdomain>
+	<Pine.LNX.4.64.0706061221340.18979@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Ravikiran G Thirumalai <kiran@scalex86.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net,
+	Ravikiran G Thirumalai <kiran@scalex86.org>
+To: Peter =?ISO-8859-1?Q?=C5strand?= <astrand@cendio.se>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hvuc7-0004Nn-5P
-	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 05:27:47 -0700
+	id 1HvuhW-0005F8-Bw
+	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 05:33:22 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18lySm/l5wZKakWuyabYRa3NwV7SDNst2c=])
+	ident=[U2FsdGVkX1//84SZzYwBhw5IGYcniyMiQy5ZhoACE9I=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hvuc8-0000tU-FU
-	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 05:27:50 -0700
-In-Reply-To: <20070606081303.GB7168@localdomain>
+	(Exim 4.44) id 1HvuhY-00031q-QO
+	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 05:33:25 -0700
+In-Reply-To: <Pine.LNX.4.64.0706061221340.18979@maggie.lkpg.cendio.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,89 +33,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The server is returning a deleted file to the client as the result of a
-lookup() call. I'd call that a server bug.
-
-Trond
-
-
-On Wed, 2007-06-06 at 01:13 -0700, Ravikiran G Thirumalai wrote:
-> While running a dbench stress test on  a nfs mounted file system, I notice
-> the subject error message on the client machine.  The client machine is a 48
-> core box with NUMA characteristics and 1024 dbench processes running
-> continuously in a loop, while another memory hog application runs in parallel.
-> The client is on 2.6.21.3.  The server is booted up with 2.6.21.3 as well.
-> Attached is the server configuration.  Same test on a 2.6.16 client does not
-> spew out these messages.  Is this really the server issue, or is the NFS
-> client to be blamed here?
-> 
-> fstab on the client goes as:
-> vus2:/mnt/sda5          /nfstest                nfs  udp,wsize=32768,rsize=32768 0 0
-> 
-> /etc/exports on the server looks like:
-> /mnt/sda5 *(rw,no_root_squash,sync)
-> 
-> I will be happy to post full config/dmesg if required.
-> 
-> The client side NFS config goes as:
-> #
-> # Network File Systems
-> #
-> CONFIG_NFS_FS=y
-> CONFIG_NFS_V3=y
-> # CONFIG_NFS_V3_ACL is not set
-> # CONFIG_NFS_V4 is not set
-> CONFIG_NFS_DIRECTIO=y
-> CONFIG_NFSD=y
-> CONFIG_NFSD_V3=y
-> # CONFIG_NFSD_V3_ACL is not set
-> # CONFIG_NFSD_V4 is not set
-> CONFIG_NFSD_TCP=y
-> CONFIG_LOCKD=y
-> CONFIG_LOCKD_V4=y
-> CONFIG_EXPORTFS=y
-> CONFIG_NFS_COMMON=y
-> CONFIG_SUNRPC=y
-> # CONFIG_RPCSEC_GSS_KRB5 is not set
-> # CONFIG_RPCSEC_GSS_SPKM3 is not set
-> 
-> The server side NFS config goes as:
-> 
-> #
-> # Network File Systems
-> #
-> CONFIG_NFS_FS=m
-> CONFIG_NFS_V3=y
-> CONFIG_NFS_V3_ACL=y
-> # CONFIG_NFS_V4 is not set
-> CONFIG_NFS_DIRECTIO=y
-> CONFIG_NFSD=m
-> CONFIG_NFSD_V2_ACL=y
-> CONFIG_NFSD_V3=y
-> CONFIG_NFSD_V3_ACL=y
-> CONFIG_NFSD_V4=y
-> CONFIG_NFSD_TCP=y
-> CONFIG_LOCKD=m
-> CONFIG_LOCKD_V4=y
-> CONFIG_EXPORTFS=m
-> CONFIG_NFS_ACL_SUPPORT=m
-> CONFIG_NFS_COMMON=y
-> CONFIG_SUNRPC=m
-> 
-> Thanks,
-> Kiran
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+T24gV2VkLCAyMDA3LTA2LTA2IGF0IDEyOjI1ICswMjAwLCBQZXRlciDDhXN0cmFuZCB3cm90ZToK
+PiBPbiBXZWQsIDYgSnVuIDIwMDcsIFJhdmlraXJhbiBHIFRoaXJ1bWFsYWkgd3JvdGU6Cj4gCj4g
+PiBXaGlsZSBydW5uaW5nIGEgZGJlbmNoIHN0cmVzcyB0ZXN0IG9uICBhIG5mcyBtb3VudGVkIGZp
+bGUgc3lzdGVtLCBJIG5vdGljZQo+ID4gdGhlIHN1YmplY3QgZXJyb3IgbWVzc2FnZSBvbiB0aGUg
+Y2xpZW50IG1hY2hpbmUuICBUaGUgY2xpZW50IG1hY2hpbmUgaXMgYSA0OAo+ID4gY29yZSBib3gg
+d2l0aCBOVU1BIGNoYXJhY3RlcmlzdGljcyBhbmQgMTAyNCBkYmVuY2ggcHJvY2Vzc2VzIHJ1bm5p
+bmcKPiA+IGNvbnRpbnVvdXNseSBpbiBhIGxvb3AsIHdoaWxlIGFub3RoZXIgbWVtb3J5IGhvZyBh
+cHBsaWNhdGlvbiBydW5zIGluIHBhcmFsbGVsLgo+ID4gVGhlIGNsaWVudCBpcyBvbiAyLjYuMjEu
+My4gIFRoZSBzZXJ2ZXIgaXMgYm9vdGVkIHVwIHdpdGggMi42LjIxLjMgYXMgd2VsbC4KPiA+IEF0
+dGFjaGVkIGlzIHRoZSBzZXJ2ZXIgY29uZmlndXJhdGlvbi4gIFNhbWUgdGVzdCBvbiBhIDIuNi4x
+NiBjbGllbnQgZG9lcyBub3QKPiA+IHNwZXcgb3V0IHRoZXNlIG1lc3NhZ2VzLiAgSXMgdGhpcyBy
+ZWFsbHkgdGhlIHNlcnZlciBpc3N1ZSwgb3IgaXMgdGhlIE5GUwo+ID4gY2xpZW50IHRvIGJlIGJs
+YW1lZCBoZXJlPwo+IAo+IEkndmUgc2VlbiB0aGlzIG1lc3NhZ2Ugd2l0aCB0aGUgdW5mczMgc2Vy
+dmVyIGFzIHdlbGwsIGFuZCBpdCBjb250YWlucyBzb21lIAo+IGV4cGxpY2l0IGNoZWNrcyB0byBh
+dm9pZCBzZW5kaW5nIG5saW5rPTAuIFNvIHRoaXMgaXMgYW5vdGhlciBpbmRpY2F0aW9uIAo+IHRo
+YXQgdGhpcyBpcyBhY3R1YWxseSBhIGNsaWVudCBwcm9ibGVtLgoKRmVlbCBmcmVlIHRvIHNlbmQg
+YSB0Y3BkdW1wIHRvIHByb3ZlIGl0LiBTbyBmYXIgYWxsIGNhc2VzIEkndmUgZXZlciBzZWVuCm9m
+IHRoaXMgZXJyb3IgbWVzc2FnZSBoYXZlIGJlZW4gc2VydmVycyBzZW5kaW5nIGNyYXAgYmFjayBm
+b3IgTE9PS1VQCmNhbGxzLiBUaGUgY2xpZW50IGRvZXMgbm90IGV2ZXIgbW9kaWZ5IHRoZSBzdHJ1
+Y3QgbmZzX2ZhdHRyIGFmdGVyIGl0IGhhcwpkZWNvZGVkIHRoZSBzZXJ2ZXIgcmVwbHkuCgpUcm9u
+ZAoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5IERC
+MiBFeHByZXNzCkRvd25sb2FkIERCMiBFeHByZXNzIEMgLSB0aGUgRlJFRSB2ZXJzaW9uIG9mIERC
+MiBleHByZXNzIGFuZCB0YWtlCmNvbnRyb2wgb2YgeW91ciBYTUwuIE5vIGxpbWl0cy4gSnVzdCBk
+YXRhLiBDbGljayB0byBnZXQgaXQgbm93LgpodHRwOi8vc291cmNlZm9yZ2UubmV0L3Bvd2VyYmFy
+L2RiMi8KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTkZT
+IG1haWxsaXN0ICAtICBORlNAbGlzdHMuc291cmNlZm9yZ2UubmV0Cmh0dHBzOi8vbGlzdHMuc291
+cmNlZm9yZ2UubmV0L2xpc3RzL2xpc3RpbmZvL25mcwo=
