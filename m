@@ -1,22 +1,23 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 2.6.21.3: NFS: Buggy server - nlink == 0!
-Date: Wed, 6 Jun 2007 12:25:51 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0706061221340.18979@maggie.lkpg.cendio.se>
+Date: Wed, 06 Jun 2007 08:27:42 -0400
+Message-ID: <1181132862.6171.2.camel@heimdal.trondhjem.org>
 References: <20070606081303.GB7168@localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED;
-	BOUNDARY="789237761-1484332135-1181125551=:18979"
-Cc: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Ravikiran G Thirumalai <kiran@scalex86.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HvsiB-0007BB-RE
-	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 03:25:56 -0700
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HvsiD-0004Pz-LR
-	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 03:25:59 -0700
+	id 1Hvuc7-0004Nn-5P
+	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 05:27:47 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18lySm/l5wZKakWuyabYRa3NwV7SDNst2c=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Hvuc8-0000tU-FU
+	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 05:27:50 -0700
 In-Reply-To: <20070606081303.GB7168@localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -30,60 +31,89 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+The server is returning a deleted file to the client as the result of a
+lookup() call. I'd call that a server bug.
 
---789237761-1484332135-1181125551=:18979
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Trond
 
-On Wed, 6 Jun 2007, Ravikiran G Thirumalai wrote:
 
-> While running a dbench stress test on  a nfs mounted file system, I notic=
-e
-> the subject error message on the client machine.  The client machine is a=
- 48
+On Wed, 2007-06-06 at 01:13 -0700, Ravikiran G Thirumalai wrote:
+> While running a dbench stress test on  a nfs mounted file system, I notice
+> the subject error message on the client machine.  The client machine is a 48
 > core box with NUMA characteristics and 1024 dbench processes running
-> continuously in a loop, while another memory hog application runs in para=
-llel.
-> The client is on 2.6.21.3.  The server is booted up with 2.6.21.3 as well=
-=2E
-> Attached is the server configuration.  Same test on a 2.6.16 client does =
-not
+> continuously in a loop, while another memory hog application runs in parallel.
+> The client is on 2.6.21.3.  The server is booted up with 2.6.21.3 as well.
+> Attached is the server configuration.  Same test on a 2.6.16 client does not
 > spew out these messages.  Is this really the server issue, or is the NFS
 > client to be blamed here?
+> 
+> fstab on the client goes as:
+> vus2:/mnt/sda5          /nfstest                nfs  udp,wsize=32768,rsize=32768 0 0
+> 
+> /etc/exports on the server looks like:
+> /mnt/sda5 *(rw,no_root_squash,sync)
+> 
+> I will be happy to post full config/dmesg if required.
+> 
+> The client side NFS config goes as:
+> #
+> # Network File Systems
+> #
+> CONFIG_NFS_FS=y
+> CONFIG_NFS_V3=y
+> # CONFIG_NFS_V3_ACL is not set
+> # CONFIG_NFS_V4 is not set
+> CONFIG_NFS_DIRECTIO=y
+> CONFIG_NFSD=y
+> CONFIG_NFSD_V3=y
+> # CONFIG_NFSD_V3_ACL is not set
+> # CONFIG_NFSD_V4 is not set
+> CONFIG_NFSD_TCP=y
+> CONFIG_LOCKD=y
+> CONFIG_LOCKD_V4=y
+> CONFIG_EXPORTFS=y
+> CONFIG_NFS_COMMON=y
+> CONFIG_SUNRPC=y
+> # CONFIG_RPCSEC_GSS_KRB5 is not set
+> # CONFIG_RPCSEC_GSS_SPKM3 is not set
+> 
+> The server side NFS config goes as:
+> 
+> #
+> # Network File Systems
+> #
+> CONFIG_NFS_FS=m
+> CONFIG_NFS_V3=y
+> CONFIG_NFS_V3_ACL=y
+> # CONFIG_NFS_V4 is not set
+> CONFIG_NFS_DIRECTIO=y
+> CONFIG_NFSD=m
+> CONFIG_NFSD_V2_ACL=y
+> CONFIG_NFSD_V3=y
+> CONFIG_NFSD_V3_ACL=y
+> CONFIG_NFSD_V4=y
+> CONFIG_NFSD_TCP=y
+> CONFIG_LOCKD=m
+> CONFIG_LOCKD_V4=y
+> CONFIG_EXPORTFS=m
+> CONFIG_NFS_ACL_SUPPORT=m
+> CONFIG_NFS_COMMON=y
+> CONFIG_SUNRPC=m
+> 
+> Thanks,
+> Kiran
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
-I've seen this message with the unfs3 server as well, and it contains some=
-=20
-explicit checks to avoid sending nlink=3D0. So this is another indication=
-=20
-that this is actually a client problem.
-
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Wallenbergs gata 4
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-1484332135-1181125551=:18979
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---789237761-1484332135-1181125551=:18979
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---789237761-1484332135-1181125551=:18979--
