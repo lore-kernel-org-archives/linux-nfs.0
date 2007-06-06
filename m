@@ -1,28 +1,25 @@
-From: "Robert Rappaport" <robert.rappaport@gmail.com>
-Subject: Re: [PATCH] locks: provide a file lease method enabling
-	cluster-coherent leases
-Date: Wed, 6 Jun 2007 14:43:22 -0400
-Message-ID: <f0a71180706061143t1b4a4374qef319deac727815f@mail.gmail.com>
-References: <OFB9D089FA.C0E6BE5A-ON882572F1.007D3720-882572F1.007E299C@us.ibm.com>
-	<1181086828.6108.11.camel@heimdal.trondhjem.org>
+From: Eric Paris <eparis@redhat.com>
+Subject: Re: Passing sec info to security modules when mounting an FS
+Date: Wed, 06 Jun 2007 15:22:27 -0400
+Message-ID: <1181157747.3776.18.camel@dhcp231-215.rdu.redhat.com>
+References: <1180739989.3931.47.camel@localhost.localdomain>
+	<1180965288.14220.43.camel@moss-spartans.epoch.ncsc.mil>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1668745151=="
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-fsdevel@vger.kernel.org, David Teigland <teigland@redhat.com>,
-	nfs@lists.sourceforge.net, Marc Eshel <eshel@almaden.ibm.com>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: trond.myklebust@fys.uio.no, hch@infradead.org,
+	nfs@lists.sourceforge.net, viro@zeniv.linux.org.uk,
+	selinux@tycho.nsa.gov
+To: Stephen Smalley <sds@tycho.nsa.gov>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hw0TZ-0001bZ-Cc
-	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 11:43:21 -0700
-Received: from hu-out-0506.google.com ([72.14.214.233])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hw0Tc-0001Cx-14
-	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 11:43:24 -0700
-Received: by hu-out-0506.google.com with SMTP id 28so137164hub
-	for <nfs@lists.sourceforge.net>; Wed, 06 Jun 2007 11:43:22 -0700 (PDT)
-In-Reply-To: <1181086828.6108.11.camel@heimdal.trondhjem.org>
+	id 1Hw15c-0005Ym-Hg
+	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 12:23:17 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hw15e-0003dV-C4
+	for nfs@lists.sourceforge.net; Wed, 06 Jun 2007 12:22:43 -0700
+In-Reply-To: <1180965288.14220.43.camel@moss-spartans.epoch.ncsc.mil>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,96 +32,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1668745151==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_28479_22607026.1181155402125"
+On Mon, 2007-06-04 at 09:54 -0400, Stephen Smalley wrote:
+> On Fri, 2007-06-01 at 19:19 -0400, Eric Paris wrote:
 
-------=_Part_28479_22607026.1181155402125
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+> > ?the nfs code - can just store the full text string it got in userspace
+> > and pass it along.  Other binary mount data FS's could do the same
+> > thing.  (I think this is the best option)
+> 
+> I don't think that makes much sense from the filesystem point of view -
+> the filesystem owns the options and parses them, passing only a flag to
+> indicate the type of option (context, fscontext, defcontext) and the
+> option value, not the prefixes, to the security module.
+> 
+> I'd expect it to be a direct call from the nfs option parsing code to a
+> security function (which internally would call the security module's
+> operation); no need to call back into the vfs there.
 
-It appears that there is agreement that the functionality currently
-implemented in __setlease() should be exported, even though the exported
-name may not be __setlease().
+So it sounded good, tried to start coding the interface but couldn't
+think how to keep security module specific information out of the FS.
+SELinux in particular can grok 4 mount options, 
 
-That is just fine with me.
+fscontext=
+context=
+rootcontext=
+defcontext=
 
-The question that I have now is when do you think it likely that these
-changes get into the released code?  I hope that the plan is to get it there
-fairly soon.
+NFS at the moment can only grok 1 of those 4 (far and away the most
+common) context= but I want the interface to be generic right?  Lets say
+we were to create a new security function:
 
-- Robert Rappaport
+security_set_mount_option(struct *sb, char *option, int flag)
 
-On 6/5/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->
-> On Tue, 2007-06-05 at 15:56 -0700, Marc Eshel wrote:
-> > Hi Bruce,
-> > The file system does need to keep the local state up to date, like it
-> does
-> > with posix locks, so it might need to call __setlease(). The why we had
-> it
-> > before was that the call to the file system was done from outside of
-> > setlease() and the file system was able to call setlease() which is
-> > exported. Now that the call to the fs  moved into setlease() the file
-> > system can not call it anymore so one possible solution would be to
-> export
-> > __setlease().
-> > Marc.
->
-> Please just make a vfs_setlease() which has the ability to call down
-> into the filesystem and leave the exported setlease() as a generic
-> method that can continue to be called by the filesystems themselves (and
-> acts as a fallback for vfs_setlease()). That would be closer to the VFS
-> naming conventions.
->
-> Trond
->
->
+where the value of flag tells you what the information in *option is
+supposed to be setting. Immediately after the vfs_kern_mount call a FS
+which uses binary mount options could call into this new function thus
+avoiding the bad NFS specific code in the SELinux security module.
 
-------=_Part_28479_22607026.1181155402125
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+The problem is that the FS needs to now have security module specific
+knowledge in order to know how to pass the flag telling the security
+module what it is trying to set.  We just moved NFS specific knowledge
+outside of the security module and put security module specific
+knowledge into the FS.  What is SELinux isn't the security module?  The
+meaning of 'flags' for SELinux would be which of those 4 above options
+they want to set.  Now NFS has to know if selinux is being used or some
+other unknown security module which needs a different set of flag
+meanings.  Where does this get worked out?  In the text mount data the
+security code does all the parsing, so the FS doesn't need to know what
+the security module does or does not understand, although it seems like
+people don't think that's the right thing even for the text options
+case.
 
-It appears that there is agreement that the functionality currently
-implemented in __setlease() should be exported, even though the
-exported name may not be __setlease().<br>
-<br>
-That is just fine with me.<br>
-<br>
-The question that I have now is when do you think it likely that these
-changes get into the released code?&nbsp; I hope that the plan is to
-get it there fairly soon.<br>
-<br>- Robert Rappaport<br>
-<br><div><span class="gmail_quote">On 6/5/07, <b class="gmail_sendername">Trond Myklebust</b> &lt;<a href="mailto:trond.myklebust@fys.uio.no">trond.myklebust@fys.uio.no</a>&gt; wrote:</span><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-On Tue, 2007-06-05 at 15:56 -0700, Marc Eshel wrote:<br>&gt; Hi Bruce,<br>&gt; The file system does need to keep the local state up to date, like it does<br>&gt; with posix locks, so it might need to call __setlease(). The why we had it
-<br>&gt; before was that the call to the file system was done from outside of<br>&gt; setlease() and the file system was able to call setlease() which is<br>&gt; exported. Now that the call to the fs&nbsp;&nbsp;moved into setlease() the file
-<br>&gt; system can not call it anymore so one possible solution would be to export<br>&gt; __setlease().<br>&gt; Marc.<br><br>Please just make a vfs_setlease() which has the ability to call down<br>into the filesystem and leave the exported setlease() as a generic
-<br>method that can continue to be called by the filesystems themselves (and<br>acts as a fallback for vfs_setlease()). That would be closer to the VFS<br>naming conventions.<br><br>Trond<br><br></blockquote></div><br>
+I'd be perfectly happy coding this with a hard coded value for the flag
+in NFS code and have that set the context=.  Honestly right now it looks
+like nfs is going to be the only user and i certainly don't expect nfs
+to expand the binary data to support the other rarely used SELinux
+options.  But it seems like a problem to me when the FS needs to
+understand all of the options for all of the possible security module
+needs (even if right now SELinux is the only security module I know of
+using this sort of thing....)
 
-------=_Part_28479_22607026.1181155402125--
+Any comments?
 
+-Eric
 
---===============1668745151==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1668745151==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1668745151==--
