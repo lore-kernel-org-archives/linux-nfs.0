@@ -1,113 +1,66 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: page allocation in nfs_symlink
-Date: Thu, 7 Jun 2007 09:58:08 -0400
-Message-ID: <20070607095808.59a6e835.jlayton@redhat.com>
-References: <20070607091842.09c23fd8.jlayton@redhat.com>
-	<1181222903.6442.0.camel@heimdal.trondhjem.org>
-	<20070607094334.39bbe3e0.jlayton@redhat.com>
-	<1181223979.6442.2.camel@heimdal.trondhjem.org>
+From: "Robert Rappaport" <robert.rappaport@gmail.com>
+Subject: Re: [NFS] [PATCH] locks: provide a file lease method enabling cluster-coherent leases
+Date: Thu, 7 Jun 2007 10:43:51 -0400
+Message-ID: <f0a71180706070743h4f20f091nf6aa3a7edb95af0c@mail.gmail.com>
+References: <OFB9D089FA.C0E6BE5A-ON882572F1.007D3720-882572F1.007E299C@us.ibm.com>
+	 <1181086828.6108.11.camel@heimdal.trondhjem.org>
+	 <f0a71180706061143t1b4a4374qef319deac727815f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HwJ3z-0008MI-Li
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 07:34:13 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HwJ41-0002Ov-Hw
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 07:34:14 -0700
-In-Reply-To: <1181223979.6442.2.camel@heimdal.trondhjem.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "Marc Eshel" <eshel@almaden.ibm.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	"David Teigland" <teigland@redhat.com>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <f0a71180706061143t1b4a4374qef319deac727815f@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, 07 Jun 2007 09:46:19 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+My interpretation of the preceeding is  that there is agreement that
+the functionality currently implemented in __setlease() should be
+exported, even though the exported name may not be __setlease().  Is
+this correct?
 
-> On Thu, 2007-06-07 at 09:43 -0400, Jeff Layton wrote:
-> > On Thu, 07 Jun 2007 09:28:23 -0400
-> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > 
-> > > On Thu, 2007-06-07 at 09:18 -0400, Jeff Layton wrote:
-> > > > I was reviewing a patch the other day and noticed this in recent
-> > > > versions of nfs_symlink():
-> > > > 
-> > > >         page = alloc_page(GFP_KERNEL);
-> > > >         if (!page) {
-> > > >                 unlock_kernel();
-> > > >                 return -ENOMEM;
-> > > >         }
-> > > > 
-> > > >         kaddr = kmap_atomic(page, KM_USER0);
-> > > >         memcpy(kaddr, symname, pathlen);
-> > > >         if (pathlen < PAGE_SIZE)
-> > > >                 memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
-> > > >         kunmap_atomic(kaddr, KM_USER0);
-> > > > 
-> > > > I'm a bit confused and so am hoping someone can clarify. If we're
-> > > > allocating a GFP_KERNEL page, then it should be directly addressable by
-> > > > the kernel (via page_address()). So we really shouldn't need to use a
-> > > > kmap/unmap here, right?
-> > > > 
-> > > > Also, it looks like most pagecache pages are allocated using
-> > > > GFP_HIGHUSER. Is there something special about symlinks that means that
-> > > > we need to use normal zone pages here? While I haven't tested it, it
-> > > > seems like we ought to be able to do alloc_page(GFP_HIGHUSER) here
-> > > > instead.
-> > > > 
-> > > > Am I missing something?
-> > > 
-> > > No. I think you're right: it should be safe to use GFP_HIGHUSER.
-> > > 
-> > > Cheers
-> > >   Trond
-> > > 
-> > 
-> > Ok. For the sake of completeness, here's a patch. I've not tested it,
-> > however.
-> 
-> Could you throw in a little changelog entry too, please? :-)
-> 
-> Trond
-> 
-Is this enough, or do you want something more elaborate? :-)
+If so, that is just fine with me.
 
---------[snip]--------
+The question that I have now is when do you think it likely that these
+changes get into the released code?  I hope that the plan is to get it
+there fairly soon.
 
-It should be safe to use high memory for symlink pages.
-    
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+- Robert Rappaport
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c27258b..731f112 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1535,7 +1535,7 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
- 
- 	lock_kernel();
- 
--	page = alloc_page(GFP_KERNEL);
-+	page = alloc_page(GFP_HIGHUSER);
- 	if (!page) {
- 		unlock_kernel();
- 		return -ENOMEM;
+P.S. I previously intended to send to this thread a request to export
+the __setlease() routine and also the above query.  However I
+inadvertently forgot to send the messages in plain text and so it did
+not appear in the thread, however some of you may have received the
+messages.  Sorry, if this is redundant.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+>
+> On 6/5/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > On Tue, 2007-06-05 at 15:56 -0700, Marc Eshel wrote:
+> > > Hi Bruce,
+> > > The file system does need to keep the local state up to date, like it
+> does
+> > > with posix locks, so it might need to call __setlease(). The why we had
+> it
+> > > before was that the call to the file system was done from outside of
+> > > setlease() and the file system was able to call setlease() which is
+> > > exported. Now that the call to the fs  moved into setlease() the file
+> > > system can not call it anymore so one possible solution would be to
+> export
+> > > __setlease().
+> > > Marc.
+> >
+> > Please just make a vfs_setlease() which has the ability to call down
+> > into the filesystem and leave the exported setlease() as a generic
+> > method that can continue to be called by the filesystems themselves (and
+> > acts as a fallback for vfs_setlease()). That would be closer to the VFS
+> > naming conventions.
+> >
+> > Trond
+> >
+> >
+>
+>
