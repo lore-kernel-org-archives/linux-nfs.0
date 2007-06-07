@@ -1,26 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: page allocation in nfs_symlink
-Date: Thu, 07 Jun 2007 09:46:19 -0400
-Message-ID: <1181223979.6442.2.camel@heimdal.trondhjem.org>
+Date: Thu, 7 Jun 2007 09:58:08 -0400
+Message-ID: <20070607095808.59a6e835.jlayton@redhat.com>
 References: <20070607091842.09c23fd8.jlayton@redhat.com>
 	<1181222903.6442.0.camel@heimdal.trondhjem.org>
 	<20070607094334.39bbe3e0.jlayton@redhat.com>
+	<1181223979.6442.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HwIJo-0003HU-2E
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 06:46:28 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19QMUTC8bgsk32CvpUL5ZJAuB1xlGzIkGY=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HwIJp-0004ds-HK
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 06:46:31 -0700
-In-Reply-To: <20070607094334.39bbe3e0.jlayton@redhat.com>
+	id 1HwJ3z-0008MI-Li
+	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 07:34:13 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HwJ41-0002Ov-Hw
+	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 07:34:14 -0700
+In-Reply-To: <1181223979.6442.2.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,68 +32,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-06-07 at 09:43 -0400, Jeff Layton wrote:
-> On Thu, 07 Jun 2007 09:28:23 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > On Thu, 2007-06-07 at 09:18 -0400, Jeff Layton wrote:
-> > > I was reviewing a patch the other day and noticed this in recent
-> > > versions of nfs_symlink():
-> > > 
-> > >         page = alloc_page(GFP_KERNEL);
-> > >         if (!page) {
-> > >                 unlock_kernel();
-> > >                 return -ENOMEM;
-> > >         }
-> > > 
-> > >         kaddr = kmap_atomic(page, KM_USER0);
-> > >         memcpy(kaddr, symname, pathlen);
-> > >         if (pathlen < PAGE_SIZE)
-> > >                 memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
-> > >         kunmap_atomic(kaddr, KM_USER0);
-> > > 
-> > > I'm a bit confused and so am hoping someone can clarify. If we're
-> > > allocating a GFP_KERNEL page, then it should be directly addressable by
-> > > the kernel (via page_address()). So we really shouldn't need to use a
-> > > kmap/unmap here, right?
-> > > 
-> > > Also, it looks like most pagecache pages are allocated using
-> > > GFP_HIGHUSER. Is there something special about symlinks that means that
-> > > we need to use normal zone pages here? While I haven't tested it, it
-> > > seems like we ought to be able to do alloc_page(GFP_HIGHUSER) here
-> > > instead.
-> > > 
-> > > Am I missing something?
+On Thu, 07 Jun 2007 09:46:19 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+
+> On Thu, 2007-06-07 at 09:43 -0400, Jeff Layton wrote:
+> > On Thu, 07 Jun 2007 09:28:23 -0400
+> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 > > 
-> > No. I think you're right: it should be safe to use GFP_HIGHUSER.
+> > > On Thu, 2007-06-07 at 09:18 -0400, Jeff Layton wrote:
+> > > > I was reviewing a patch the other day and noticed this in recent
+> > > > versions of nfs_symlink():
+> > > > 
+> > > >         page = alloc_page(GFP_KERNEL);
+> > > >         if (!page) {
+> > > >                 unlock_kernel();
+> > > >                 return -ENOMEM;
+> > > >         }
+> > > > 
+> > > >         kaddr = kmap_atomic(page, KM_USER0);
+> > > >         memcpy(kaddr, symname, pathlen);
+> > > >         if (pathlen < PAGE_SIZE)
+> > > >                 memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
+> > > >         kunmap_atomic(kaddr, KM_USER0);
+> > > > 
+> > > > I'm a bit confused and so am hoping someone can clarify. If we're
+> > > > allocating a GFP_KERNEL page, then it should be directly addressable by
+> > > > the kernel (via page_address()). So we really shouldn't need to use a
+> > > > kmap/unmap here, right?
+> > > > 
+> > > > Also, it looks like most pagecache pages are allocated using
+> > > > GFP_HIGHUSER. Is there something special about symlinks that means that
+> > > > we need to use normal zone pages here? While I haven't tested it, it
+> > > > seems like we ought to be able to do alloc_page(GFP_HIGHUSER) here
+> > > > instead.
+> > > > 
+> > > > Am I missing something?
+> > > 
+> > > No. I think you're right: it should be safe to use GFP_HIGHUSER.
+> > > 
+> > > Cheers
+> > >   Trond
+> > > 
 > > 
-> > Cheers
-> >   Trond
-> > 
+> > Ok. For the sake of completeness, here's a patch. I've not tested it,
+> > however.
 > 
-> Ok. For the sake of completeness, here's a patch. I've not tested it,
-> however.
-
-Could you throw in a little changelog entry too, please? :-)
-
-Trond
-
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Could you throw in a little changelog entry too, please? :-)
 > 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index c27258b..731f112 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1535,7 +1535,7 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
->  
->  	lock_kernel();
->  
-> -	page = alloc_page(GFP_KERNEL);
-> +	page = alloc_page(GFP_HIGHUSER);
->  	if (!page) {
->  		unlock_kernel();
->  		return -ENOMEM;
+> Trond
+> 
+Is this enough, or do you want something more elaborate? :-)
 
+--------[snip]--------
+
+It should be safe to use high memory for symlink pages.
+    
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index c27258b..731f112 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1535,7 +1535,7 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
+ 
+ 	lock_kernel();
+ 
+-	page = alloc_page(GFP_KERNEL);
++	page = alloc_page(GFP_HIGHUSER);
+ 	if (!page) {
+ 		unlock_kernel();
+ 		return -ENOMEM;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
