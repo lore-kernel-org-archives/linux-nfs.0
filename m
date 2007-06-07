@@ -1,30 +1,18 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] locks: provide a file lease method enabling
-	cluster-coherent leases
-Date: Thu, 7 Jun 2007 13:05:57 -0400
-Message-ID: <20070607170557.GA14463@fieldses.org>
-References: <OFB9D089FA.C0E6BE5A-ON882572F1.007D3720-882572F1.007E299C@us.ibm.com>
-	<1181086828.6108.11.camel@heimdal.trondhjem.org>
-	<f0a71180706061143t1b4a4374qef319deac727815f@mail.gmail.com>
-	<f0a71180706070743h4f20f091nf6aa3a7edb95af0c@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org,
-	David Teigland <teigland@redhat.com>, nfs@lists.sourceforge.net,
-	Marc Eshel <eshel@almaden.ibm.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Robert Rappaport <robert.rappaport@gmail.com>
+From: international1@galaxy-ins.com
+Subject: Get More Orders For Anything You Sell in 24 Hours!
+Date: Thu, 07 Jun 2007 15:16:24 -0500
+Message-ID: <24s50.n8x68y3eykks@mail.galaxy-ins.com>
+Content-Type: multipart/mixed; boundary="===============0641656524=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HwLR2-0007Jz-QO
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 10:06:08 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HwLR4-0003at-JF
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 10:06:11 -0700
-In-Reply-To: <f0a71180706070743h4f20f091nf6aa3a7edb95af0c@mail.gmail.com>
+	id 1HwNSv-0003R0-A1
+	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 12:16:13 -0700
+Received: from [209.160.34.240] (helo=mail.galaxy-ins.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HwNSx-0001LD-3o
+	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 12:16:16 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,37 +25,144 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jun 07, 2007 at 10:43:51AM -0400, Robert Rappaport wrote:
-> My interpretation of the preceeding is  that there is agreement that
-> the functionality currently implemented in __setlease() should be
-> exported, even though the exported name may not be __setlease().  Is
-> this correct?
+--===============0641656524==
+Content-Type: text/html;
+	 charset=us-ascii
+Content-Transfer-Encoding: 7bit
 
-Yes.
+<html>
 
-> If so, that is just fine with me.
+<head>
 
-OK, good.  I'll revise and post a new series.  (Do people prefer another
-mailbomb or a git url?)
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 
-> The question that I have now is when do you think it likely that these
-> changes get into the released code?  I hope that the plan is to get it
-> there fairly soon.
+</head>
 
-It would seem reasonable to me to put off the question of how to do proper
-distributed lease-breaking for now, in which case the remaining patches
-seem straightforward enough to me that they could go in now.
+<body>
 
-My main question is whether the partial disabling of leases looks to the
-GFS2 people like reasonable behavior.
+<p align="left">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff; " face="Arial" color="#0000FF" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+<strong>GET MORE ORDERS FOR ANYTHING YOU SELL!</strong></font></p>
+<font id="role_document0" face="Arial" color="#0000FF">
+<p style="margin-bottom: 0in" align="left"><b>PROMOTE YOUR BUSINESS TODAY WITH<br>
+COST EFFECTIVE&nbsp; E-MAIL ADVERTISING</b></p>
+</font>
+<p style="margin-bottom: 0in" align="left">
+<font color="#000080">
+<b>
+<font lang="0" style="background-color: #ffffff; font-weight:700" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" id="role_document0">
+*&nbsp;Get Instant Traffic to Your Website</font><font lang="0" style="background-color: #ffffff; font-weight:700" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" id="role_document0"><br>
+*&nbsp;</font></b></font><b><font lang="0" style="background-color: #ffffff; font-weight:700" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0">Generates</font></b></font><b><font lang="0" style="background-color: #ffffff; font-weight:700" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0"> 
+Instant Sales or Leads for Any Business</font></b><font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><font id="role_document0" face="Arial" color="#0000FF" style="font-size: 16pt; font-weight: 700"></p>
+</font>
+</font>
 
---b.
+<p align="left">
+<b><font face="Arial" style="font-size: 11pt" color="#000080">We can send Your 
+Ad or Website out to MILLIONS Of Our Double OPT IN List of Email Subscribers<br>
+and get you great results by providing the most effective way to reach your<br>
+target market. Email advertising messages are sent to 100% Double Opt-In 
+customers.<br>
+These are people who have specifically requested to receive your email<br>
+advertising offer on your unique products and services.</font></b></p>
+
+<p align="left">
+<b><font color="#000080" face="Arial"><span style="font-size: 11pt">Our job is 
+to make your email campaigns a big success. <br>
+Includes free phone and email support, and a wealth of online<br>
+resources for every customer</span></font></b><font color="#000080"><span style="font-size: 11pt">.
+</span></font><br>
+&nbsp;</p>
+
+<p align="left">
+<font color="#000080"><b>
+<font style="font-size: 11pt; background-color:#ffffff" lang="0" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">Includes
+free phone and email support, a wealth of online resources for every<br>
+customer.  </font></b></font>
+<font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+</p>
+</font>
+<p align="left"><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<b><u>Services include:</u><br>
+E-Mail Broadcasting your ad to our list of double opt in emails<br>
+Graphic Ad Design<br>
+Assistance is setting up your ad for great results</font></b><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><br>
+&nbsp;</font></p>
+<p align="left"><span style="background-color: #FFFFFF"><b>
+<font face="Arial" style="font-size: 11pt" color="#000080">O</font></b></span><b><font color="#000080"><font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" size="3">pt in email advertising can convert your website visitors to customers and 
+boost your revenue.<br>
+<i>We can show you how.</i><br>
+</font>
+<font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" size="3">
+<br>
+</font>
+</font><span style="background-color: #FFFFFF">
+<font face="Arial" style="font-size: 11pt" color="#FF0000">For More Info, Please 
+call (213) 291-1177<br>
+</font><font face="Arial" color="#FF0000" size="2"><i>After hours, please leave 
+a message. One of our professional and courteous<br>
+representatives will get back to you by  the next business day.</i></font></span></b></p>
+<b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+
+<font lang="0" style="background-color: #ffffff" face="Comic Sans MS" color="#1003bd" size="2" BACK="#ffffff" PTSIZE="12" FAMILY="SCRIPT">
+<p align="left"><font color="#060296"><font color="#000080" size="2"><em>Driving Traffic to 
+All Types of Businesses&nbsp;Since 1997</em></font><font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF"><br>
+</font></font>
+</font>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<br>
+</font>
+
+</font>
+
+</b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+<br>
+_________________________________________________________________</font></p>
+<font face="Arial" size="2">
+<p align="left"><font face="Arial" color="#000080" size="1">You are receiving 
+this message as an opt-in subscriber to Galaxy-Ins or one of our marketing 
+partners. <br>
+If you no longer wish to receive further offers, please send an email with 
+discontinue to: <a href="mailto:support@galaxy-ins.com?subject=Discontinue">
+support@galaxy-ins.com</a><br>
+Your email address will be removed within 24 hours.</font></p>
+<p align="left"><font face="Arial" color="#000080" size="1"><br>
+Galaxy-Ins<br>
+27 Russel Ave.<br>
+Edgewater, NJ <br>
+07020</font></p>
+</font>
+</font>
+
+</body>
+
+</html>
+
+
+
+--===============0641656524==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0641656524==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0641656524==--
