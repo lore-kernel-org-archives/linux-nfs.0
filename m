@@ -1,18 +1,18 @@
-From: international1@galaxy-ins.com
+From: aroute1@galaxy-ins.com
 Subject: Get More Orders For Anything You Sell in 24 Hours!
-Date: Thu, 07 Jun 2007 15:16:24 -0500
-Message-ID: <24s50.n8x68y3eykks@mail.galaxy-ins.com>
-Content-Type: multipart/mixed; boundary="===============0641656524=="
+Date: Thu, 07 Jun 2007 17:39:08 -0500
+Message-ID: <0jvh7r7oq04kjhu42x6f.fkv37tfxb3iifpn2u@mail.galaxy-ins.com>
+Content-Type: multipart/mixed; boundary="===============0743039049=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HwNSv-0003R0-A1
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 12:16:13 -0700
+	id 1HwPh2-0007Qh-Ia
+	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 14:38:56 -0700
 Received: from [209.160.34.240] (helo=mail.galaxy-ins.com)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1HwNSx-0001LD-3o
-	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 12:16:16 -0700
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1HwPh4-0005OS-ET
+	for nfs@lists.sourceforge.net; Thu, 07 Jun 2007 14:38:59 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,10 +25,10 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0641656524==
+--===============0743039049==
 Content-Type: text/html;
 	 charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 7BIT
 
 <html>
 
@@ -144,7 +144,7 @@ Edgewater, NJ <br>
 
 
 
---===============0641656524==
+--===============0743039049==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -155,7 +155,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0641656524==
+--===============0743039049==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -165,4 +165,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0641656524==--
+--===============0743039049==--
