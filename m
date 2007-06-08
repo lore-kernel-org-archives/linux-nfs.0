@@ -1,12 +1,8 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 4/5] gfs2: stop giving out non-cluster-coherent leases
-Date: Fri,  8 Jun 2007 18:14:54 -0400
-Message-ID: <1434.42228804833$1181340908@news.gmane.org>
+Subject: (unknown)
+Date: Fri,  8 Jun 2007 18:14:50 -0400
+Message-ID: <6186.87889441407$1181340912@news.gmane.org>
 References: <20070607170557.GA14463@fieldses.org>
- <11813408953536-git-send-email->
- <11813408952518-git-send-email->
- <11813408951909-git-send-email->
- <11813408954053-git-send-email->
 Cc: nfs@lists.sourceforge.net,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	David Teigland <teigland@redhat.com>,
@@ -14,68 +10,42 @@ Cc: nfs@lists.sourceforge.net,
 	Robert Rappaport <robert.rappaport@gmail.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <11813408954053-git-send-email->
+Subject: 
+In-Reply-To: <20070607170557.GA14463@fieldses.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-From: Marc Eshel <eshel@almaden.ibm.com>
 
-Since gfs2 can't prevent conflicting opens or leases on other nodes, we
-probably shouldn't allow it to give out leases at all.
+J. Bruce Fields <bfields@fieldses.org> wrote:
+> OK, good.  I'll revise and post a new series.  (Do people prefer
+> another mailbomb or a git url?)
 
-Put the newly defined lease operation into use in gfs2 by turning off
-lease, unless we're using the "nolock' locking module (in which case all
-locking is local anyway).
+OK, I went for the former; if you'd rather get this out of git, you can
 
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
----
- fs/gfs2/ops_file.c |   26 ++++++++++++++++++++++++++
- 1 files changed, 26 insertions(+), 0 deletions(-)
+	git clone http://www.linux-nfs.org/~bfields/linux.git
+	git checkout server-cluster-lease-api
 
-diff --git a/fs/gfs2/ops_file.c b/fs/gfs2/ops_file.c
-index 064df88..654000b 100644
---- a/fs/gfs2/ops_file.c
-+++ b/fs/gfs2/ops_file.c
-@@ -489,6 +489,31 @@ static int gfs2_fsync(struct file *file, struct dentry *dentry, int datasync)
- }
- 
- /**
-+ * gfs2_setlease - acquire/release a file lease
-+ * @file: the file pointer
-+ * @arg: lease type
-+ * @fl: file lock
-+ *
-+ * Returns: errno
-+ */
-+
-+static int gfs2_setlease(struct file *file, long arg, struct file_lock **fl)
-+{
-+	struct gfs2_sbd *sdp = GFS2_SB(file->f_mapping->host);
-+	int ret = EAGAIN;
-+
-+	if (sdp->sd_args.ar_localflocks) {
-+		return setlease(file, arg, fl);
-+	}
-+
-+	/* For now fail the delegation request. Cluster file system can not
-+	   allow any node in the cluster to get a local lease until it can
-+	   be managed centrally by the cluster file system.
-+	*/
-+	return ret;
-+}
-+
-+/**
-  * gfs2_lock - acquire/release a posix lock on a file
-  * @file: the file pointer
-  * @cmd: either modify or retrieve lock state, possibly wait
-@@ -639,6 +664,7 @@ const struct file_operations gfs2_file_fops = {
- 	.flock		= gfs2_flock,
- 	.splice_read	= generic_file_splice_read,
- 	.splice_write	= generic_file_splice_write,
-+	.setlease	= gfs2_setlease,
- };
- 
- const struct file_operations gfs2_dir_fops = {
--- 
-1.5.2
+The changes from the last version seem pretty trivial, but I've
+compile-tested this only for now.
 
+I'm ignoring the problem of breaking leases on unlink and rename.  I
+think we should go ahead and do this part now--it's adequate for the
+current lease semantics, and even more so for our current application
+(just turning off leases selectively on some filesystems)--but I'd
+really like to solve that problem eventually.
+
+That's probably not going to happen until we get a cluster filesystem
+with real lease support into the kernel....
+
+Changes:
+	- do away with the break_lease method.
+	- rename __setlease to setlease, setlease to vfs_setlease, and
+	  make sure it's setlease (the one that doesn't call into the
+	  filesystem) that's exported.
+	- rename ->set_lease to ->setlease.  (I don't really care which
+	  we go with, it just seemed confusing when everything else was
+	  already named without the underscore.)
+	- Add a trivial patch that disables leases on nfs (as suggested
+	  by a patch elsewhere from Peter Staubach)
+
+--b.
