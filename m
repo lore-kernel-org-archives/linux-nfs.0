@@ -1,31 +1,30 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 5/5] nfs: disable leases over NFS
-Date: Fri,  8 Jun 2007 18:14:55 -0400
-Message-ID: <10135.220611892$1181340942@news.gmane.org>
+Subject: [PATCH 2/5] locks: provide a file lease method enabling
+	cluster-coherent leases
+Date: Fri,  8 Jun 2007 18:14:52 -0400
+Message-ID: <19364.9696805098$1181340948@news.gmane.org>
 References: <20070607170557.GA14463@fieldses.org>
 	<11813408953536-git-send-email-> <11813408952518-git-send-email->
-	<11813408951909-git-send-email-> <11813408954053-git-send-email->
-	<11813408951694-git-send-email->
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Peter Staubach <staubach@redhat.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
 	Marc Eshel <eshel@almaden.ibm.com>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
 	Robert Rappaport <robert.rappaport@gmail.com>,
 	David Teigland <teigland@redhat.com>, nfs@lists.sourceforge.net
 To: linux-fsdevel@vger.kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HwmjT-0007q1-8v
-	for nfs@lists.sourceforge.net; Fri, 08 Jun 2007 15:14:59 -0700
+	id 1HwmjV-0007qX-DP
+	for nfs@lists.sourceforge.net; Fri, 08 Jun 2007 15:15:01 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HwmjU-0002pc-Qj
-	for nfs@lists.sourceforge.net; Fri, 08 Jun 2007 15:15:02 -0700
-In-Reply-To: <11813408951694-git-send-email->
+	(Exim 4.44) id 1HwmjY-0000F8-7p
+	for nfs@lists.sourceforge.net; Fri, 08 Jun 2007 15:15:04 -0700
+In-Reply-To: <11813408952518-git-send-email->
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,61 +37,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: J. Bruce Fields <bfields@fieldses.org>
 
-As Peter Staubach says elsewhere
-(http://marc.info/?l=linux-kernel&m=118113649526444&w=2):
+Currently leases are only kept locally, so there's no way for a distributed
+filesystem to enforce them against multiple clients.  We're particularly
+interested in the case of nfsd exporting a cluster filesystem, in which
+case nfsd needs cluster-coherent leases in order to implement delegations
+correctly.
 
-> The problem is that some file system such as NFSv2 and NFSv3 do
-> not have sufficient support to be able to support leases correctly.
-> In particular for these two file systems, there is no over the wire
-> protocol support.
->
-> Currently, these two file systems fail the fcntl(F_SETLEASE) call
-> accidentally, due to a reference counting difference.  These file
-> systems should fail more consciously, with a proper error to
-> indicate that the call is invalid for them.
-
-Define an nfs setlease method that just returns -EINVAL.
-
-If someone can demonstrate a real need, perhaps we could reenable
-them in the presence of the "nolock" mount option.
-
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
-Cc: Peter Staubach <staubach@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfs/file.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ fs/locks.c         |    7 +++++--
+ include/linux/fs.h |    1 +
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 9eb8eb4..467671b 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -51,6 +51,7 @@ static int  nfs_fsync(struct file *, struct dentry *dentry, int datasync);
- static int nfs_check_flags(int flags);
- static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl);
- static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl);
-+static int nfs_setlease(struct file *file, long arg, struct file_lock **fl);
+diff --git a/fs/locks.c b/fs/locks.c
+index 6ad3c7b..8fa4420 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1442,7 +1442,10 @@ int setlease(struct file *filp, long arg, struct file_lock **lease)
+ 	int error;
  
- const struct file_operations nfs_file_operations = {
- 	.llseek		= nfs_file_llseek,
-@@ -67,6 +68,7 @@ const struct file_operations nfs_file_operations = {
- 	.flock		= nfs_flock,
- 	.sendfile	= nfs_file_sendfile,
- 	.check_flags	= nfs_check_flags,
-+	.setlease	= nfs_setlease,
+ 	lock_kernel();
+-	error = __setlease(filp, arg, lease);
++	if (filp->f_op && filp->f_op->setlease)
++		error = filp->f_op->setlease(filp, arg, lease);
++        else
++		error = __setlease(filp, arg, lease);
+ 	unlock_kernel();
+ 
+ 	return error;
+@@ -1474,7 +1477,7 @@ int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
+ 
+ 	lock_kernel();
+ 
+-	error = __setlease(filp, arg, &flp);
++	error = setlease(filp, arg, &flp);
+ 	if (error || arg == F_UNLCK)
+ 		goto out_unlock;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b3ae77c..6b07c61 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1113,6 +1113,7 @@ struct file_operations {
+ 	int (*flock) (struct file *, int, struct file_lock *);
+ 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
+ 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
++	int (*setlease)(struct file *, long, struct file_lock **);
  };
  
- const struct inode_operations nfs_file_inode_operations = {
-@@ -555,3 +557,8 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 		return do_unlk(filp, cmd, fl);
- 	return do_setlk(filp, cmd, fl);
- }
-+
-+static int nfs_setlease(struct file *file, long arg, struct file_lock **fl)
-+{
-+	return -EINVAL;
-+}
+ struct inode_operations {
 -- 
 1.5.2
 
