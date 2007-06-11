@@ -1,35 +1,37 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [PATCH 4/5] gfs2: stop giving out non-cluster-coherent leases
-Date: Mon, 11 Jun 2007 10:38:18 +0100
-Message-ID: <1181554698.25918.300.camel@quoit>
-References: <OF0E226FEB.28B3A3C4-ON882572F5.005A6853-882572F5.005B16B6@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3/5] locks: rename lease functions to reflect locks.c conventions
+Date: Mon, 11 Jun 2007 12:53:13 -0400
+Message-ID: <20070611165313.GB9135@fieldses.org>
+References: <OFACAF92E2.7AA61B28-ON882572F5.005CD6AC-882572F5.005CFA2E@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
 	Robert Rappaport <robert.rappaport@gmail.com>,
 	David Teigland <teigland@redhat.com>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>
 To: Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <OF0E226FEB.28B3A3C4-ON882572F5.005A6853-882572F5.005B16B6@us.ibm.com>
+In-Reply-To: <OFACAF92E2.7AA61B28-ON882572F5.005CD6AC-882572F5.005CFA2E@us.ibm.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
+On Sat, Jun 09, 2007 at 09:56:29AM -0700, Marc Eshel wrote:
+> We need to export vfs_lease so nfsd can call it.
 
-On Sat, 2007-06-09 at 09:35 -0700, Marc Eshel wrote:
-> This is the return code that setlease() currently returns when the lease 
-> can not be obtained. Although ENOTSUPP would be more accurately describing 
-> the error it will be a new return code from setlease() that is currently 
-> not expected by callers to setlease(), but either return code should work.
-> Marc. 
-> 
-I prefer EOPNOTSUPP as it more accurately describes whats going on here.
-EAGAIN seems to me to imply that its something thats blocking
-temporarily and that trying again at a later time might result in
-success,
+Oops, thanks for finding that--done.--b.
 
-Steve.
+--b.
 
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 82ac90b..c2fd0a5 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1453,6 +1453,8 @@ int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+ 	return error;
+ }
+ 
++EXPORT_SYMBOL_GPL(vfs_setlease);
++
+ /**
+  *	fcntl_setlease	-	sets a lease on an open file
+  *	@fd: open file descriptor
