@@ -1,38 +1,33 @@
 From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: Re: [PATCH] Make sure unlock is really an
-	unlock	when	cancelling a lock
-Date: Wed, 13 Jun 2007 13:48:58 -0700
-Message-ID: <1181767738.16851.18.camel@dyn9047022153>
-References: <1181581269.8988.42.camel@dyn9047022153>
-	<1181752511.6151.5.camel@heimdal.trondhjem.org>
-	<1181765857.16851.16.camel@dyn9047022153>
-	<1181767051.6151.86.camel@heimdal.trondhjem.org>
+Subject: [RESUBMIT][PATCH] Make sure unlock is really an unlock
+	when	cancelling a lock
+Date: Wed, 13 Jun 2007 14:26:38 -0700
+Message-ID: <1181769998.16851.22.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NFS List <nfs@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HyZer-00031v-8Y
-	for nfs@lists.sourceforge.net; Wed, 13 Jun 2007 13:41:37 -0700
-Received: from e1.ny.us.ibm.com ([32.97.182.141])
+	id 1HyaFN-0006hv-3Q
+	for nfs@lists.sourceforge.net; Wed, 13 Jun 2007 14:19:29 -0700
+Received: from e5.ny.us.ibm.com ([32.97.182.145])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1HyZet-0001He-5b
-	for nfs@lists.sourceforge.net; Wed, 13 Jun 2007 13:41:40 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5DKfWMY008128
-	for <nfs@lists.sourceforge.net>; Wed, 13 Jun 2007 16:41:32 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
-	l5DKfWSr455164
-	for <nfs@lists.sourceforge.net>; Wed, 13 Jun 2007 16:41:32 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l5DKfWqj013954
-	for <nfs@lists.sourceforge.net>; Wed, 13 Jun 2007 16:41:32 -0400
-In-Reply-To: <1181767051.6151.86.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1HyaFN-0003ij-Hs
+	for nfs@lists.sourceforge.net; Wed, 13 Jun 2007 14:19:24 -0700
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5DLJCEw017291
+	for <nfs@lists.sourceforge.net>; Wed, 13 Jun 2007 17:19:12 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id
+	l5DLJCAB512186
+	for <nfs@lists.sourceforge.net>; Wed, 13 Jun 2007 17:19:12 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	l5DLJBMI016012
+	for <nfs@lists.sourceforge.net>; Wed, 13 Jun 2007 17:19:11 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -45,59 +40,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-06-13 at 16:37 -0400, Trond Myklebust wrote:
-> On Wed, 2007-06-13 at 13:17 -0700, Frank Filz wrote:
-> > On Wed, 2007-06-13 at 12:35 -0400, Trond Myklebust wrote:
-> > > On Mon, 2007-06-11 at 10:01 -0700, Frank Filz wrote:
-> > > > I ran into a curious issue when a lock is being canceled. The
-> > > > cancellation results in a lock request to the vfs layer instead of an
-> > > > unlock request. This is particularly insidious when the process that
-> > > 
-> > > Any idea why the cancellation turns into a lock request? I really don't
-> > > want to apply a patch that just appears to paper over the problem.
-> > 
-> > Ok, the path is as follows:
-> > 
-> > first _nfs4_do_setlk():
-> > 
-> > static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *fl, int reclaim)
-> > ...
-> > 	ret = nfs4_wait_for_completion_rpc_task(task);
-> > 	if (ret == 0) {
-> > ...
-> > 	} else
-> > 		data->cancelled = 1;
-> > 
-> > then nfs4_lock_release():
-> > 
-> > static void nfs4_lock_release(void *calldata)
-> > ...
-> > 	if (data->cancelled != 0) {
-> > 		struct rpc_task *task;
-> > 		task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
-> > 				data->arg.lock_seqid);
-> > 
-> > The problem is the same file_lock that was passed in to _nfs4_do_setlk()
-> > gets passed to nfs4_do_unlck() from nfs4_lock_release(). So the type is
-> > still F_RDLCK or FWRLCK, not F_UNLCK. At some point, when cancelling the
-> > lock, the type needs to be changed to F_UNLCK. It seemed easiest to do
-> > that in nfs4_do_unlck(), but it could be done in nfs4_lock_release().
-> > The concern I had with doing it there was if something still needed the
-> > original file_lock, though it turns out the original file_lock still
-> > needs to be modified by nfs4_do_unlck() because nfs4_do_unlck() uses the
-> > original file_lock to pass to the vfs layer, and a copy of the original
-> > file_lock for the RPC request.
-> > 
-> > Frank
-> 
-> I see. It would be great if you could summarise the above (or just
-> including the above text in full would be fine too) in the changelog
-> entry for the patch. (Sorry sometimes the one-liner patches are the
-> hardest to justify :-))
+I ran into a curious issue when a lock is being canceled. The
+cancellation results in a lock request to the vfs layer instead of an
+unlock request. This is particularly insidious when the process that
+owns the lock is exiting. In that case, sometimes the erroneous lock is
+applied AFTER the process has entered zombie state, preventing the lock
+from ever being released. Eventually other processes block on the lock
+causing a slow degredation of the system. In the 2.6.16 kernel this was
+investigated on, the problem is compounded by the fact that the cl_sem
+is held while blocking on the vfs lock, which results in most processes
+accessing the nfs file system in question hanging.
 
-Sure thing. 
+In more detail, here is how the situation occurs:
 
-Frank
+first _nfs4_do_setlk():
+
+static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *fl, int reclaim)
+...
+        ret = nfs4_wait_for_completion_rpc_task(task);
+        if (ret == 0) {
+...
+        } else
+                data->cancelled = 1;
+
+then nfs4_lock_release():
+
+static void nfs4_lock_release(void *calldata)
+...
+        if (data->cancelled != 0) {
+                struct rpc_task *task;
+                task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
+                                data->arg.lock_seqid);
+
+The problem is the same file_lock that was passed in to _nfs4_do_setlk()
+gets passed to nfs4_do_unlck() from nfs4_lock_release(). So the type is
+still F_RDLCK or FWRLCK, not F_UNLCK. At some point, when cancelling the
+lock, the type needs to be changed to F_UNLCK. It seemed easiest to do
+that in nfs4_do_unlck(), but it could be done in nfs4_lock_release().
+The concern I had with doing it there was if something still needed the
+original file_lock, though it turns out the original file_lock still
+needs to be modified by nfs4_do_unlck() because nfs4_do_unlck() uses the
+original file_lock to pass to the vfs layer, and a copy of the original
+file_lock for the RPC request.
+
+It seems like the simplest solution is to force all situations where
+nfs4_do_unlck() is being used to result in an unlock, so with that in
+mind, I made the following change:
+
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 648e0ac..6751a8c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3152,6 +3152,11 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
+ {
+ 	struct nfs4_unlockdata *data;
+ 
++	/* Ensure this is an unlock - when canceling a lock, the
++	 * canceled lock is passed in, and it won't be an unlock.
++	 */
++	fl->fl_type = F_UNLCK;
++
+ 	data = nfs4_alloc_unlockdata(fl, ctx, lsp, seqid);
+ 	if (data == NULL) {
+ 		nfs_free_seqid(seqid);
 
 
 
