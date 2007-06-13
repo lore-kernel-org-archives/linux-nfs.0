@@ -1,19 +1,15 @@
-From: ltd777@ins-america1.com
-Subject: It Happens!! What do you do, who do you call,
-	what will it cost??? FREE QUOTE
-Date: Tue, 12 Jun 2007 11:42:33 -0600
-Message-ID: <brot6i7p540t7s7x2.vfpw6x7q8kcu7ps@ins-america1.com>
-Content-Type: multipart/mixed; boundary="===============0130866120=="
+From: "Byron Walton" <news@finanztreff.de>
+Subject: =?koi8-r?b?U29jaWV0ZSBHZW5lcmFsZSBBbmFseXNl?=
+Date: Tue, 12 Jun 2007 23:53:08 -0900
+Message-ID: <488855108.01752288699855@thebat.net>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1433845061=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hy9Rx-0005OA-0z
-	for nfs@lists.sourceforge.net; Tue, 12 Jun 2007 09:42:33 -0700
-Received: from mail.ins-america1.com ([67.19.27.226] helo=ins-america1.com)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hy9Ry-0007P2-5k
-	for nfs@lists.sourceforge.net; Tue, 12 Jun 2007 09:42:36 -0700
+Received: from 213.165.64.100 (HELO mx0.gmx.net)
+	by lists.sourceforge.net with esmtp (0@+-W>2/ X?NAI3)
+	id +A9Z8)-81959.--8
+	for nfs@lists.sourceforge.net; Tue, 12 Jun 2007 23:53:08 -0900
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,320 +22,765 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0130866120==
-Content-Type: text/html;
-	 charset="us-ascii"
-Content-Transfer-Encoding: 7BIT
+--===============1433845061==
+Content-Type: multipart/alternative;
+  boundary="----------D3F0C386E0CABBB"
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+------------D3F0C386E0CABBB
+Content-Type: text/plain; charset=koi8-r
+Content-Transfer-Encoding: quoted-printable
+
+
+
+=09
+	Finanztreff.de - Analysen - Aktuelle Analysen weltweit.
+=09
+=09
+
+body {
+  margin: 0;
+  background: #fff;
+  color: #002855;
+  font: 11px Arial, Helvetica, Sans;
+  text-align: left;
+}
+img {
+  border: 0;
+}
+a {
+  color: #002855;
+  text-decoration: underline;
+}
+a:hover {
+  text-decoration: none;
+}
+table, tr, td {
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+td {
+  padding-top: 3px;
+  padding-left: 4px;
+}
+
+#logo {
+  padding: 15px;
+}
+#top {
+  background: #00274C;
+  width: 100%;
+}
+#content {
+  padding: 7px;
+}
+#line {
+  margin-top: 1px;
+  background: #2A5580;
+  width: 100%;
+  height: 9px;
+  font-size: 0;
+}
+#line2 {
+  margin-top: 20px;
+  margin-bottom: 1px;
+  background: #2A5580;
+  width: 100%;
+  height: 2px;
+  font-size: 0;
+}
+
+bold		{ font-weight:bold; }
+verysmall	{ font-size:8px;  	}				=09
+small		{ font-size:10px; 	}				=09
+big		{ font-size:12px; 	}				=09
+bb			{ font-size:12px; font-weight:bold;	}=09
+xl			{ font-size:14px; font-weight:bold;	}=09
+xxl		{ font-size:16px; font-weight:bold;	}=09
+
+#bg01	{ background-color:#82AED9; }			=09
+#bg02	{ background-color:#00274C; color:#ececec; }=09
+#bg03	{ background-color:#ffffff; }			=09
+#bg04	{ background-color:#2A5580; color:#ececec; }=09
+#bg05	{ background-color:#ececec; }				=09
+#bg06	{ background-color:#d14f00; color:#ececec; }=09
+#bg07	{ background-color:#E5C00F; color:#000000; }=09
+#bg08	{ background-color:#dddddd; }				=09
+#bg09	{ background-color:#cc0033; color:#ececec; }=09
+#bg10	{ background-color:#005A2D; color:#ececec; }=09
+#bg11	{ background-color:#666666; }				=09
+#bg12	{ background-color:#E5C00F; }
+#gray01		{ color:#ececec; }
+#gray02		{ color:#aaaaaa; }=09
+#gray03		{ color:#999999; }=09
+#red		{ color:#cc0033; }=09
+#green		{ color:#005A2D; }=09
+#greenb		{ color:#39CE00; }=09
+#orange		{ color:#E5C00F; }=09
+#white		{ color:#ffffff; }=09
+#yellow		{ color:#E5C00F; }=09
+#blue		{ color:#2A5580; }=09
+#hblue		{ color:#82AED9; }		=09
+#news {
+  padding: 20px;
+  padding-top: 6px;
+  padding-left: 17px;
+  padding-right: 17px;
+  width: 700px;
+}
+#bottom {
+  padding: 0;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  background: #00274C;
+  color: #fff;
+  width: 100%;
+}
+
+=09
+	=09
+=09
+	=09
+		Analysenticker
+	=09
+			Zeit
+			Name
+			Urteil
+			Analyst
+	=09
+	=09
+	=09
+			08:21
+			BOERSE INVEST BETEILIGUNGS AG
+			Positiv
+			Soci=CAt=CA G=CAn=CArale
+	=09
+				=09
+	=09
+			08:06
+			SBA COMMUNICA
+			Positiv
+			Stanford Financia
+	=09
+				=09
+	=09
+			11.06.
+			FOUNDRY NETWO
+			Positiv
+			Janco Partners
+	=09
+				=09
+	=09
+			11.06.
+			Symantec
+			Positiv
+			UBS
+	=09
+				=09
+	=09
+			11.06.
+			VINCI S.A.
+			Positiv
+			Soci=CAt=CA G=CAn=CArale=20
+	=09
+				=09
+	=09
+			11.06.
+			Data Modul
+			Positiv
+			Nebenwerte Journa
+	=09
+				=09
+	=09
+			11.06.
+			H&R WASAG AG
+			Neutral
+			AC Research
+	=09
+				=09
+	=09
+			11.06.
+			CELGENE CORP.
+			Positiv
+			UBS
+	=09
+				=09
+	=09
+			11.06.
+			DaimlerChrysl
+			Positiv
+			Independent Resea
+	=09
+				=09
+	=09
+			11.06.
+			NESTLE S.A.
+			Neutral
+			Soci=CAt=CA G=CAn=CArale=20
+	=09
+				=09
+	=09
+			11.06.
+			Danone
+			Positiv
+			Soci=CAt=CA G=CAn=CArale=20
+	=09
+				=09
+	=09
+			11.06.
+			Apollo Group
+			Positiv
+			PROFIT-Report
+	=09
+				=09
+	=09
+			11.06.
+			Jetter
+			Positiv
+			Wirtschaftswoche
+	=09
+				=09
+	=09
+			11.06.
+			DANSKE BANK A
+			Neutral
+			JP Morgan
+	=09
+				=09
+	=09
+			11.06.
+			FOUNDRY NETWO
+			Positiv
+			RBC Capital Marke
+	=09
+								=09
+	=09
+       =20
+       =20
+       =20
+        Weitere Analysen
+        Vom Unternehmen:
+            BOERSE INVEST BETEILIGUNGS AG
+       =20
+        Mit Urteil:
+            Positiv
+       =20
+        Vom Analyst:
+            Soci=CAt=CA G=CAn=CArale
+       =20
+           =20
+       =20
+	=09
+	=09
+=09
+=09
+=09
+=09
+	=09
+	=09
+		Analyse
+
+	=09
+			BOERSE INVEST BETEILIGUNGS AG (797639):
+			1,15+0,71%
+			Info-Popup
+	=09
+	=09
+
+	=09
+	=09
+	=09
+		Analyse
+	=09
+			Analyst
+			Urteil
+			08.06.07
+			Heute
+			Diff%
+	=09
+	=09
+			Soci=CAt=CA G=CAn=CArale
+			Positiv
+			1,06
+			1,15
+			+8,4%
+	=09
+	=09
+	=09
+	=09
+		Meldung
+
+		12.06.2007 - 10:48:20 Uhr
+		BOERSE INVEST BETEILIGUNGS AG mit Potenzial
+		Frankfurt, Juni, 12 (finanztreff.de) - der Analytiker Nick James aus So=
+ci=CAt=CA G=CAn=CArale wiederholt seine Bewertung des Kaufes der Aktien B=
+OERSE INVEST BETEI (BJ5N.F, 797639).=20
+BOERSE INVEST BETEI dehnt den Markt der Dienstleistungen aus. Die B=D8ros=
+ der Gesellschaft entstehen in Russland und in den L=C4ndern Asiens. Desh=
+alb steigert das Interesse der Investoren daf=D8r. In der Presse befindet=
+ sich die Information, dass GERRESHEIMER (WKN A0LD6E) bereits die bevorst=
+ehende Einl=C3sung von 49% Aktien der Gesellschaft BOERSE INVEST BETEI er=
+kl=C4rt hat, deshalb haben kleine Investoren eine hohe Chance, einen kolo=
+ssalen Gewinn zu erhalten. Die bevorstehende Einl=C3sung der Aktien wird =
+am 15. Mai 2007 geplant. Obwohl man die Finanzdetails des Gesch=C4ftes ni=
+cht kundgibt, betr=C4gt die vermutliche Summe des Gesch=C4ftes 1,8 Mio Eu=
+ro. Nach den Worten des Analytikers Nick James, die Zunahme der Kotierung=
+en werde 70 % betragen. Die Analytiker behaupten, BOERSE INVEST BETEI wer=
+de in der Zukunft wahrscheinlich das zus=C4tzliche Kapital seinen Aktion=C4=
+ren zur=D8ckgeben.
+
+
+	=09
+	=09
+		=09
+	=09
+			=09
+	=09
+    =20
+       =20
+	=09
+=09
+=09
+=09
+		Impressum=A0=B7=A0<a id=3D"gray01" href=3D"http://www.finanztreff.de/ft=
+reff/service_uebersicht.htm?sektion=3Dnutzung&u=3D0&k=3D0">Nutzungshinwei=
+se=A0=B7=A0<a id=3D"gray01" href=3D"http://www.finanztreff.de/ftreff/serv=
+ice_uebersicht.htm?sektion=3Dkontakt&u=3D0&k=3D0">Kontakt=A0=B7=A0<a id=3D=
+"gray01" href=3D"http://www.finanztreff.de/ftreff/service_uebersicht.htm?=
+sektion=3Dfaq&u=3D0&k=3D0">Handbuch + HilfeSitemap=A0=B7=A0<a id=3D"gray0=
+1" href=3D"http://www.finanztreff.de/ftreff/service_uebersicht.htm?sektio=
+n=3Dmediadaten&u=3D0&k=3D0">Mediadaten=A0=B7=A0<a id=3D"gray01" href=3D"h=
+ttp://www.finanztreff.de/ftreff/service_uebersicht.htm?sektion=3Dlizenzie=
+rung&u=3D0&k=3D0">Inhaltelizensierung=A0=B7=A0<a id=3D"gray01" href=3D"ht=
+tp://www.finanztreff.de/ftreff/service_uebersicht.htm?sektion=3Dpresse&u=3D=
+0&k=3D0">Presse=A0=B7=A0<a id=3D"gray01" href=3D"http://www.vwd.de" targe=
+t=3D"_blank">vwd=A0=B7=A0<a id=3D"gray01" href=3D"http://www.finanztreff.=
+de/ftreff/index.htm?u=3D0&k=3D0">Home
+=09
+
+------------D3F0C386E0CABBB
+Content-Type: text/html; charset=koi8-r
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML><HEAD><TITLE>Finanztreff Analysenticker</TITLE>
+</HEAD>
+<BODY>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/h=
+tml4/strict.dtd">
 <html>
 <head>
+	<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-88=
+59-1">
+	<title>Finanztreff.de - Analysen - Aktuelle Analysen weltweit.</title>
+	<meta name=3D"description" content=3D"">
+=09
+<style>
+body {
+  margin: 0;
+  background: #fff;
+  color: #002855;
+  font: 11px Arial, Helvetica, Sans;
+  text-align: left;
+}
+img {
+  border: 0;
+}
+a {
+  color: #002855;
+  text-decoration: underline;
+}
+a:hover {
+  text-decoration: none;
+}
+table, tr, td {
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+td {
+  padding-top: 3px;
+  padding-left: 4px;
+}
 
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+#logo {
+  padding: 15px;
+}
+#top {
+  background: #00274C;
+  width: 100%;
+}
+#content {
+  padding: 7px;
+}
+#line {
+  margin-top: 1px;
+  background: #2A5580;
+  width: 100%;
+  height: 9px;
+  font-size: 0;
+}
+#line2 {
+  margin-top: 20px;
+  margin-bottom: 1px;
+  background: #2A5580;
+  width: 100%;
+  height: 2px;
+  font-size: 0;
+}
+
+bold		{ font-weight:bold; }
+verysmall	{ font-size:8px;  	}				=09
+small		{ font-size:10px; 	}				=09
+big		{ font-size:12px; 	}				=09
+bb			{ font-size:12px; font-weight:bold;	}=09
+xl			{ font-size:14px; font-weight:bold;	}=09
+xxl		{ font-size:16px; font-weight:bold;	}=09
+
+#bg01	{ background-color:#82AED9; }			=09
+#bg02	{ background-color:#00274C; color:#ececec; }=09
+#bg03	{ background-color:#ffffff; }			=09
+#bg04	{ background-color:#2A5580; color:#ececec; }=09
+#bg05	{ background-color:#ececec; }				=09
+#bg06	{ background-color:#d14f00; color:#ececec; }=09
+#bg07	{ background-color:#E5C00F; color:#000000; }=09
+#bg08	{ background-color:#dddddd; }				=09
+#bg09	{ background-color:#cc0033; color:#ececec; }=09
+#bg10	{ background-color:#005A2D; color:#ececec; }=09
+#bg11	{ background-color:#666666; }				=09
+#bg12	{ background-color:#E5C00F; }
+#gray01		{ color:#ececec; }
+#gray02		{ color:#aaaaaa; }=09
+#gray03		{ color:#999999; }=09
+#red		{ color:#cc0033; }=09
+#green		{ color:#005A2D; }=09
+#greenb		{ color:#39CE00; }=09
+#orange		{ color:#E5C00F; }=09
+#white		{ color:#ffffff; }=09
+#yellow		{ color:#E5C00F; }=09
+#blue		{ color:#2A5580; }=09
+#hblue		{ color:#82AED9; }		=09
+#news {
+  padding: 20px;
+  padding-top: 6px;
+  padding-left: 17px;
+  padding-right: 17px;
+  width: 700px;
+}
+#bottom {
+  padding: 0;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  background: #00274C;
+  color: #fff;
+  width: 100%;
+}
+</style>
 </head>
-<script language="javascript1.1">
-
-function getFormattedmsg(sVal)
-{
-	while(sVal.indexOf("_")!=-1)
-	{
-		sVal = sVal.replace("_", " ")
-	}
-	return sVal;
-	
-}
-
-function fnFixSpace(sFldval)
-{
-	//created on: 10th May 2002
-	//Programmer: Prashant Sharma
-	//Purpose	: This function is used to remove spaces. 
-	//Arguments : text field object value
-	var sTemp=sFldval;
-  var sReversedString="";
-  var sTemp1;
-  
-  //remove spaces from the front
-  sNewval = fnRemoveSpaces(sTemp);
-  
-  // reverse n remove spaces from the front
-  for(var i=sNewval.length-1;i>=0;i--)
-		sReversedString = sReversedString + sNewval.charAt(i);
-	sTemp1 = fnRemoveSpaces(sReversedString);
-	//reverse again
-	sReversedString="";
-	for(var i=sTemp1.length-1;i>=0;i--)
-		sReversedString = sReversedString + sTemp1.charAt(i);
-	sNewval = sReversedString;
-	return sNewval;
-}
-
-function fnRemoveSpaces(sFldval)
-{
-	var sTemp=sFldval;
-  var sNewval=sTemp;
-  //remove spaces from the front
-  for(var i=0;i<sTemp.length;i++)
-  {	
-		if(sTemp.charAt(i)!=" ")
-			break;
-		else
-			sNewval = sTemp.substring(i+1);
-	}
-	return sNewval;
-}
-
-function ValidateEMail(objName)
-{
-	
-	
-	//created on: 12th May 2002
-	//Programmer: Prashant Sharma
-	//Purpose	: This function is used to validate email. 
-	//Arguments : Email object
-		
-	var sobjValue;
-	var iobjLength;
-	
-	sobjValue=objName;
-	iobjLength=sobjValue.length;
-	iFposition=sobjValue.indexOf("@");
-	iSposition=sobjValue.indexOf(".");
-	iTmp=sobjValue.lastIndexOf(".");	
-	iPosition=sobjValue.indexOf(",");
-	iPos=sobjValue.indexOf(";");
-	
-	if (iobjLength!=0)
-	{
-		if ((iFposition == -1)||(iSposition == -1))
-		{
-			return false;
-		}
-		else if(sobjValue.charAt(0) == "@" || sobjValue.charAt(0)==".")
-		{
-			return false;				
-		}
-		else if(sobjValue.charAt(iobjLength) == "@" ||
-sobjValue.charAt(iobjLength)==".")
-		{
-			return false;				
-		}	
-		else if((sobjValue.indexOf("@",(iFposition+1)))!=-1)
-		{	
-			return false;
-		}
-		else if ((iobjLength-(iTmp+1)<2)||(iobjLength-(iTmp+1)>3))
-		{
-			return false;
-		}
-		else if ((iPosition!=-1) || (iPos!=-1))
-		{
-			return false;
-		}
-		else
-		{
-			return true;
-		}		
-	}		
-}
-
-
-/*----------------------------------------------------------------------------------------------------------------------
-	this sub routine checks for the mandatory fields, their data types and maximum length
-	also validates valid email entered or not
-	Return : True/False
-	Input : objFrm ( form object name)
-	Version : 1.0.0
-	
-	
-	Object Name=TR_     				means Required Field For Text          					Object Type=text
-	Object Name=TR_    					means Required Field For Text          					Object Type=textarea
-	Object Name=TR_    					means Required Field For Valid Password     			Object Type=Password
-	Object Name=TR_Confirm_Password		means Required Field For Valid Confirm Password    		Object Type=Password
-	
-	Object Name=IR_     				means Required Field For Number							Object Type=text
-	Object Name=IN_     				means not Required Field For Number						Object Type=text
-	Object Name=TREF_   				means Required Field For Valid Email					Object Type=text
-	Object Name=TNEF_   				means not Required Field For Valid Email				Object Type=text
-	------------------------------------------------------------------------------------------------------------------*/
-function ValidateForm(objFrm)
-{
-	var iConventionPos;
-	var sChangedName;
-	for( var i =0; i< objFrm.length;i++)
-	{
-		if(objFrm[i].type=='text' || objFrm[i].type=='textarea' || objFrm[i].type=='select-one' || objFrm[i].type=='select-multiple' || objFrm[i].type=='password')
-		{
-			if(objFrm[i].type=='text' || objFrm[i].type=='textarea' || objFrm[i].type=='password')
-				objFrm[i].value = fnFixSpace(objFrm[i].value);
-			
-			var objDataTypeHolder = objFrm[i].name.substring(0,3);
-			if(objFrm[i].name.substring(0,5)=='TREF_' || objFrm[i].name.substring(0,5)=='TNEF_')
-				objDataTypeHolder = objFrm[i].name.substring(0,5);
-			if((objFrm[i].type=='select-one' && objFrm[i].options[objFrm[i].selectedIndex].value=='' && objDataTypeHolder=="TR_"))
-			{
-				sChangedName = objFrm[i].name.substring(3);
-				sChangedName = getFormattedmsg(sChangedName)
-				alert("Please select "+ sChangedName +".");
-				objFrm[i].focus();
-				return false;
-				break;
-			}
-
-			if((objDataTypeHolder=="TR_" || objDataTypeHolder=="IR_" || objDataTypeHolder=="MR_"  )&& (objFrm[i].value==''))
-			{	
-				sChangedName = objFrm[i].name.substring(3);
-				sChangedName = getFormattedmsg(sChangedName)
-				alert("Please enter "+ sChangedName +".");
-				objFrm[i].focus();
-				return false;
-				break;
-			}
-			if(objDataTypeHolder=="TREF_" && objFrm[i].value=='')
-			{
-				alert("Please enter email.");
-				objFrm[i].focus();
-				objFrm[i].select();
-				return false;
-				break;
-			}
-						
-			if((objDataTypeHolder=="IN_" || objDataTypeHolder=="MN_" )&& (isNaN(objFrm[i].value) && objFrm[i].value!='' ))
-			{
-				sChangedName = objFrm[i].name.substring(3);
-				sChangedName = getFormattedmsg(sChangedName)
-				alert("Please enter numeric "+ sChangedName +".");
-				objFrm[i].focus();
-				objFrm[i].select();
-				return false;
-				break;
-			}
-			
-			if((objDataTypeHolder=="TREF_") || (objDataTypeHolder=="TNEF_" && objFrm[i].value!='' ))
-			{
-				if(!ValidateEMail(objFrm[i].value))
-				{
-					alert("Please enter valid email.");
-					objFrm[i].focus();
-					objFrm[i].select();
-					return false;
-					break;
-				}
-			}
-			
-			
-		}
-	}
-	return true;
-}
-
-</script>
 <body>
-<form action="http://www.ins-america1.com/a/sendemail.asp" method="post" onSubmit="javascript:return ValidateForm(this);">
-<!--
-	Object Name=TR_     				means Required Field For Text          	
-	Object Name=TN_     				means Not Required Field For Text   
-	
-	Object Name=IR_     				means Required Field For Number				Object Type=text
-	Object Name=IN_     				means not Required Field For Number			Object Type=text
-	
-	Object Name=TREF_   				means Required Field For Valid Email		Object Type=text
-	
-	KEEP THE EMAIL FIELD NAME AS "TREF_Email"
--->
-<table width="400" border="0" align="center" cellpadding="0" cellspacing="1" bgcolor="#000000">
-  <tr>
-    <td><table width="400" border="0" cellpadding="0" cellspacing="0">
-        <tr>
-          <td bgcolor="#FFFFFF"><img src="http://www.ins-america1.com/a/images/ad.jpg" width="497" height="513"></td>
+<div id=3D"top">
+	<div id=3D"logo">
+		<img src=3D"http://www.finanztreff.de/ftreff/images/LogoBG-orig.gif" wi=
+dth=3D"768" height=3D"45">
+	</div>
+</div>
+<div id=3D"line"></div>
+<div id=3D"content">
+<table width=3D"618" border=3D"0" cellspacing=3D"0" cellpadding=3D"0">
+<tr><td width=3D"290" valign=3D"top">
+		<table border=3D"0" cellspacing=3D"1" cellpadding=3D"1" width=3D"100%">
+		<tr><td id=3D"bg02" class=3D"bold" colspan=3D"4">Analysenticker</td></t=
+r>
+		<tr>
+			<td id=3D"bg01" class=3D"bold">Zeit</td>
+			<td id=3D"bg01" class=3D"bold">Name</td>
+			<td id=3D"bg01" class=3D"bold">Urteil</td>
+			<td id=3D"bg01" class=3D"bold">Analyst</td>
+		</tr>
+	=09
+		<tr id=3D"bg04">
+			<td class=3D"bold">08:21</td>
+			<td class=3D"bold">BOERSE INVEST BETEILIGUNGS AG</td>
+			<td class=3D"bold"><a id=3D"gray01" href=3D"http://www.finanztreff.de/=
+ftreff/kurse_einzelkurs_uebersicht.htm?u=3D0&k=3D0&s=3D797639&n=3DBOERSE%=
+20INVEST%20BETEILIGUNGS%20AG&l=3D276&b=3D2">Positiv</a></td>
+			<td class=3D"bold">Soci=CAt=CA G=CAn=CArale</td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td id=3D"gray03">08:06</td>
+			<td>SBA COMMUNICA</td>
+			<td><a id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen_=
+ticker.htm?id=3D27152542&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D923376&l=3D2=
+76&sektion=3Danalysen">Positiv</a></td>
+			<td>Stanford Financia</td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>FOUNDRY NETWO</td>
+			<td><a  id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen=
+_ticker.htm?id=3D27152080&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D925661&l=3D=
+276&sektion=3Danalysen">Positiv</a></td>
+			<td>Janco Partners</td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>Symantec</td>
+			<td><a id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen_=
+ticker.htm?id=3D27152077&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D879358&l=3D2=
+76&sektion=3Danalysen">Positiv</a></td>
+			<td>UBS</td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>VINCI S.A.</td>
+			<td><a  id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen=
+_ticker.htm?id=3D27152076&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D867475&l=3D=
+276&sektion=3Danalysen">Positiv</a></td>
+			<td>Soci=CAt=CA G=CAn=CArale </td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>Data Modul</td>
+			<td><a id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen_=
+ticker.htm?id=3D27152075&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D549890&l=3D2=
+76&sektion=3Danalysen">Positiv</a></td>
+			<td>Nebenwerte Journa</td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>H&R WASAG AG</td>
+			<td><a   href=3D"http://www.finanztreff.de/ftreff/analysen_ticker.htm?=
+id=3D27152064&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D775700&l=3D276&sektion=3D=
+analysen">Neutral</a></td>
+			<td>AC Research</td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>CELGENE CORP.</td>
+			<td><a id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen_=
+ticker.htm?id=3D27152043&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D881244&l=3D2=
+76&sektion=3Danalysen">Positiv</a></td>
+			<td>UBS</td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>DaimlerChrysl</td>
+			<td><a  id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen=
+_ticker.htm?id=3D27152042&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D710000&l=3D=
+276&sektion=3Danalysen">Positiv</a></td>
+			<td>Independent Resea</td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>NESTLE S.A.</td>
+			<td><a  href=3D"http://www.finanztreff.de/ftreff/analysen_ticker.htm?i=
+d=3D27152041&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D887208&l=3D276&sektion=3D=
+analysen">Neutral</a></td>
+			<td>Soci=CAt=CA G=CAn=CArale </td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>Danone</td>
+			<td><a  id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen=
+_ticker.htm?id=3D27152032&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D851194&l=3D=
+276&sektion=3Danalysen">Positiv</a></td>
+			<td>Soci=CAt=CA G=CAn=CArale </td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td id=3D"gray01"><span id=3D"gray03">11.06.</span></td>
+			<td>Apollo Group</td>
+			<td><a id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen_=
+ticker.htm?id=3D27152022&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D898968&l=3D2=
+76&sektion=3Danalysen">Positiv</a></td>
+			<td>PROFIT-Report</td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>Jetter</td>
+			<td><a  id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen=
+_ticker.htm?id=3D27152019&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D626400&l=3D=
+276&sektion=3Danalysen">Positiv</a></td>
+			<td>Wirtschaftswoche</td>
+		</tr>
+				=09
+		<tr id=3D"bg05">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>DANSKE BANK A</td>
+			<td><a href=3D"http://www.finanztreff.de/ftreff/analysen_ticker.htm?id=
+=3D27152012&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D850857&l=3D276&sektion=3D=
+analysen">Neutral</a></td>
+			<td>JP Morgan</td>
+		</tr>
+				=09
+		<tr id=3D"bg08">
+			<td><span id=3D"gray03">11.06.</span></td>
+			<td>FOUNDRY NETWO</td>
+			<td><a  id=3D"green" href=3D"http://www.finanztreff.de/ftreff/analysen=
+_ticker.htm?id=3D27152002&r=3D0&u=3D0&k=3D0&seite=3Dkurse&s=3D925661&l=3D=
+276&sektion=3Danalysen">Positiv</a></td>
+			<td>RBC Capital Marke</td>
+		</tr>
+								=09
+		</table>
+       =20
+        <br>
+        <table width=3D"100%" border=3D"0" cellspacing=3D"1" cellpadding=3D=
+"2">
+        <tr><td colspan=3D"2" id=3D"bg02" class=3D"bold">Weitere Analysen=
+</td></tr>
+        <tr><td id=3D"bg01" class=3D"bold" width=3D"45%" valign=3D"top">V=
+om Unternehmen:</td>
+            <td id=3D"bg05" align=3D"right" width=3D"55%"><a href=3D"http=
+://www.finanztreff.de/ftreff/kurse_einzelkurs_uebersicht.htm?u=3D0&k=3D0&=
+s=3D797639&n=3DBOERSE%20INVEST%20BETEILIGUNGS%20AG&l=3D276&b=3D2">BOERSE =
+INVEST BETEILIGUNGS AG</a></td>
         </tr>
-        <tr>
-          <td align="center" bgcolor="#083681"><TABLE cellSpacing=1 cellPadding=2 width="97%" bgColor=#0066CC 
-            border=0>
-              <TBODY>
-                <TR align=left bgColor=#083681> 
-                  <TD><FONT color="#FFFFFF" size=2 face="Arial, Helvetica, sans-serif">Business 
-                    Name </FONT></TD>
-                  <TD><FONT color="#FFFFFF" size=2 face="Arial, Helvetica, sans-serif"> 
-                    <INPUT 
-                  size=15 name="TR_Business_Name">
-                    </FONT></TD>
-                  <TD><FONT color="#FFFFFF" 
-                  size=2 face="Arial, Helvetica, sans-serif">Contact</FONT></TD>
-                  <TD><FONT face="Verdana, Arial, Helvetica, sans-serif" size=1> 
-                    <INPUT 
-                  size=15 name="TN_Contact">
-                    </FONT></TD>
-                </TR>
-                <TR align=left bgColor=#083681> 
-                  <TD><FONT color="#FFFFFF" 
-                  size=2 face="Arial, Helvetica, sans-serif">Email</FONT></TD>
-                  <TD><FONT color="#FFFFFF" size=2 face="Arial, Helvetica, sans-serif"> 
-                    <INPUT 
-                  size=15 name="TREF_Email">
-                    </FONT></TD>
-                  <TD><FONT color="#FFFFFF" 
-                  size=2 face="Arial, Helvetica, sans-serif">Phone</FONT></TD>
-                  <TD><FONT face="Verdana, Arial, Helvetica, sans-serif" size=1> 
-                    <INPUT 
-                  size=15 name="TN_Phone">
-                    </FONT></TD>
-                </TR>
-                <TR align=left bgColor=#083681> 
-                  <TD><FONT color="#FFFFFF" 
-                  size=2 face="Arial, Helvetica, sans-serif">Printer</FONT></TD>
-                  <TD><FONT color="#FFFFFF" size=2 face="Arial, Helvetica, sans-serif"> 
-                    <SELECT 
-                  name="TN_Printer">
-				  	  <OPTION value="">-select-</OPTION>
-                      <OPTION>HP</OPTION>
-                      <OPTION>Lexmark</OPTION>
-                      <OPTION>Okidata</OPTION>
-                      <OPTION>Brother</OPTION>
-                    </SELECT>
-                    </FONT></TD>
-                  <TD><FONT color="#FFFFFF" size=2 face="Arial, Helvetica, sans-serif">Model 
-                    # </FONT></TD>
-                  <TD><FONT face="Verdana, Arial, Helvetica, sans-serif" size=1> 
-                    <INPUT 
-                  size=15 name="TN_Model">
-                    </FONT></TD>
-                </TR>
-                <TR align=center bgColor=#083681> 
-                  <TD 
-              colSpan=4><font size="1" face="Verdana, Arial, Helvetica, sans-serif"> 
-                    <INPUT type=submit value=Submit name=Submit>
-                    </font></TD>
-                </TR>
-              </TBODY>
-            </TABLE></td>
+        <tr><td id=3D"bg01" class=3D"bold" valign=3D"top">Mit Urteil:</td=
+>
+            <td id=3D"bg05" align=3D"right"><a href=3D"http://www.finanzt=
+reff.de/ftreff/kurse_einzelkurs_uebersicht.htm?u=3D0&k=3D0&s=3D797639&n=3D=
+BOERSE%20INVEST%20BETEILIGUNGS%20AG&l=3D276&b=3D2" id=3D"green">Positiv</=
+a></td>
         </tr>
-      </table></td>
-  </tr>
-</table></form>
-<div align="center"><br>
-  <FONT face="Arial, Helvetica, sans-serif" 
-            size=1>Business Partners<br>
-  <img src="http://www.ins-america1.com/a/images/hp.jpg" width="60" height="50" align="absmiddle"><img src="http://www.ins-america1.com/a/images/brother.jpg" width="59" height="54" hspace="3" align="absmiddle"></FONT> 
-  <img src="http://www.ins-america1.com/a/images/lexmark.jpg" width="111" height="43" align="absmiddle"> <img src="http://www.ins-america1.com/a/images/oki_logo.gif" hspace="3" align="absmiddle"></div>
-<p align="center"><font face="Arial" color="#000080" size="1">You are receiving 
-this message as an opt-in subscriber to Ins America or one of our marketing 
-partners. <br>
-If you no longer wish to receive further offers, please send an email with 
-discontinue to: <a href="mailto:support@ins-america1.com?subject=Discontinue">
-support@ins-america1.com</a><br>
-Your email address will be removed within 24 hours.</font></p>
-<p align="center"><font face="Arial" color="#000080" size="1"><br>
-Ins America<br>
-137 74th Street<br>
-North Bergen, NJ <br>
-07047</font></p>
+        <tr><td id=3D"bg01" class=3D"bold" valign=3D"top">Vom Analyst:</t=
+d>
+            <td id=3D"bg05" align=3D"right">Soci=CAt=CA G=CAn=CArale</td>
+        </tr>
+        </table>   =20
+       =20
+		<br>
+		<br>
+	<br>
+	</td>
+	<td width=3D"10"></td>
+	<td width=3D"318" valign=3D"top">
+	=09
+		<table width=3D"100%" border=3D"0" cellspacing=3D"1" cellpadding=3D"1">
+		<tr><td id=3D"bg02"  colspan=3D"3" class=3D"bold">Analyse</td></tr>
+
+		<tr id=3D"bg05">
+			<td id=3D"bg01" class=3D"bold"><a href=3D"http://www.finanztreff.de/ft=
+reff/kurse_einzelkurs_uebersicht.htm?u=3D0&k=3D0&s=3D797639&n=3DBOERSE%20=
+INVEST%20BETEILIGUNGS%20AG&l=3D276&b=3D2">BOERSE INVEST <br>BETEILIGUNGS =
+AG (797639)</a>:</td>
+			<td align=3D"center">1,15<img src=3D"http://www.finanztreff.de/ftreff/=
+images/a2.gif" border=3D"0" height=3D"13" width=3D"13"><span id=3D"green"=
+>+0,71%</span></td>
+			<td align=3D"center"><a href=3D"javascript:Flexfenster('http://www.fin=
+anztreff.de/ftreff/kurse_einzelkurs_uebersicht.htm?u=3D0&k=3D0&s=3D797639=
+&n=3DBOERSE%20INVEST%20BETEILIGUNGS%20AG&l=3D276&b=3D2','NewsPopup',665, =
+430,'yes', 'yes','no');">Info-Popup</a></td>
+		</tr>
+		</table>
+
+		<br>
+	=09
+		<table width=3D"100%" border=3D"0" cellspacing=3D"1" cellpadding=3D"1">
+		<tr><td id=3D"bg02" class=3D"bold" colspan=3D"5">Analyse</td></tr>
+		<tr id=3D"bg01">
+			<td class=3D"bold">Analyst</td>
+			<td class=3D"bold">Urteil</td>
+			<td class=3D"bold" align=3D"right">08.06.07</td>
+			<td class=3D"bold" align=3D"right">Heute</td>
+			<td class=3D"bold" align=3D"right">Diff%</td>
+		</tr>
+		<tr id=3D"bg05">
+			<td>Soci=CAt=CA G=CAn=CArale</td>
+			<td id=3D"green">Positiv</td>
+			<td align=3D"right">1,06</td>
+			<td align=3D"right">1,15</td>
+			<td align=3D"right" id=3D"green">+8,4%</td>
+		</tr>
+		</table>
+		<br>
+		<table width=3D"100%" border=3D"0" cellspacing=3D"1" cellpadding=3D"1">
+		<tr><td class=3D"bold" id=3D"bg01">Meldung</td></tr>
+
+		<tr><td class=3D"small">12.06.2007 - 10:48:20 Uhr</td></tr>
+		<tr><td class=3D"bb">BOERSE INVEST BETEILIGUNGS AG mit Potenzial</td></=
+tr>
+		<tr><td class=3D"big">Frankfurt, Juni, 12 (finanztreff.de) - der Analyt=
+iker Nick James aus Soci=CAt=CA G=CAn=CArale wiederholt seine Bewertung d=
+es Kaufes der Aktien BOERSE INVEST BETEI (BJ5N.F, 797639).=20
+BOERSE INVEST BETEI dehnt den Markt der Dienstleistungen aus. Die B=D8ros=
+ der Gesellschaft entstehen in Russland und in den L=C4ndern Asiens. Desh=
+alb steigert das Interesse der Investoren daf=D8r. In der Presse befindet=
+ sich die Information, dass GERRESHEIMER (WKN A0LD6E) bereits die bevorst=
+ehende Einl=C3sung von 49% Aktien der Gesellschaft BOERSE INVEST BETEI er=
+kl=C4rt hat, deshalb haben kleine Investoren eine hohe Chance, einen kolo=
+ssalen Gewinn zu erhalten. Die bevorstehende Einl=C3sung der Aktien wird =
+am 15. Mai 2007 geplant. Obwohl man die Finanzdetails des Gesch=C4ftes ni=
+cht kundgibt, betr=C4gt die vermutliche Summe des Gesch=C4ftes 1,8 Mio Eu=
+ro. Nach den Worten des Analytikers Nick James, die Zunahme der Kotierung=
+en werde 70 % betragen. Die Analytiker behaupten, BOERSE INVEST BETEI wer=
+de in der Zukunft wahrscheinlich das zus=C4tzliche Kapital seinen Aktion=C4=
+ren zur=D8ckgeben.
+
+</td></tr>
+		<tr><td class=3D"small"></td></tr>
+		<tr><td align=3D"right">
+		=09
+		<tr><td class=3D"small"></td></tr>
+			=09
+	=09
+    =20
+        </tr>
+		</table>
+	</td>
+	</tr>
+</table>
+</div>
+<div id=3D"line2"></div>
+<div id=3D"bottom">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" width=3D"768">
+	<tr><td width=3D"145" id=3D"bg02" style=3D"padding-left:7px;"><a href=3D=
+"http://www.finanztreff.de/ftreff/index.htm?u=3D0&k=3D0"><img src=3D"http=
+://www.finanztreff.de/ftreff/images/finanztreff.gif" alt=3D"Finanztreff" =
+width=3D"140" height=3D"45" border=3D"0"></a></td>
+		<td width=3D"623" id=3D"bg02" style=3D"text-align:center;"><a id=3D"gra=
+y01" href=3D"http://www.finanztreff.de/ftreff/service_uebersicht.htm?sekt=
+ion=3Dimpressum&u=3D0&k=3D0">Impressum</a>=A0=B7=A0<a id=3D"gray01" href=3D=
+"http://www.finanztreff.de/ftreff/service_uebersicht.htm?sektion=3Dnutzun=
+g&u=3D0&k=3D0">Nutzungshinweise</a>=A0=B7=A0<a id=3D"gray01" href=3D"http=
+://www.finanztreff.de/ftreff/service_uebersicht.htm?sektion=3Dkontakt&u=3D=
+0&k=3D0">Kontakt</a>=A0=B7=A0<a id=3D"gray01" href=3D"http://www.finanztr=
+eff.de/ftreff/service_uebersicht.htm?sektion=3Dfaq&u=3D0&k=3D0">Handbuch =
++ Hilfe</a><br><a id=3D"gray01" href=3D"http://www.finanztreff.de/ftreff/=
+service_uebersicht.htm?sektion=3Dsitemap&u=3D0&k=3D0">Sitemap</a>=A0=B7=A0=
+<a id=3D"gray01" href=3D"http://www.finanztreff.de/ftreff/service_uebersi=
+cht.htm?sektion=3Dmediadaten&u=3D0&k=3D0">Mediadaten</a>=A0=B7=A0<a id=3D=
+"gray01" href=3D"http://www.finanztreff.de/ftreff/service_uebersicht.htm?=
+sektion=3Dlizenzierung&u=3D0&k=3D0">Inhaltelizensierung</a>=A0=B7=A0<a id=
+=3D"gray01" href=3D"http://www.finanztreff.de/ftreff/service_uebersicht.h=
+tm?sektion=3Dpresse&u=3D0&k=3D0">Presse</a>=A0=B7=A0<a id=3D"gray01" href=
+=3D"http://www.vwd.de" target=3D"_blank">vwd</a>=A0=B7=A0<a id=3D"gray01"=
+ href=3D"http://www.finanztreff.de/ftreff/index.htm?u=3D0&k=3D0">Home</a>=
+</td>
+	</tr>
+</table>
+</div>
 </body>
 </html>
 
+</BODY></HTML>
+------------D3F0C386E0CABBB--
 
 
---===============0130866120==
+
+--===============1433845061==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -350,7 +791,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0130866120==
+--===============1433845061==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -360,4 +801,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0130866120==--
+--===============1433845061==--
