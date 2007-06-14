@@ -1,7 +1,7 @@
 From: John McCorquodale <mcq@cacr.caltech.edu>
 Subject: 100% repeatable NFS v3 client hang
-Date: Thu, 14 Jun 2007 09:55:50 -0700
-Message-ID: <20070614165550.GB1454@danse.us>
+Date: Thu, 14 Jun 2007 10:04:37 -0700
+Message-ID: <20070614170437.GB1597@danse.us>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,12 +9,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hysbn-00024L-86
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 09:55:43 -0700
+	id 1HyskF-0002xp-I9
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 10:04:27 -0700
 Received: from danse-head.cacr.caltech.edu ([131.215.145.66]
 	helo=w0.cacr.caltech.edu)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hysbn-0000Y7-C1
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 09:55:46 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HyskH-0002uU-C8
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 10:04:30 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,25 +36,25 @@ problem is that issuing the command:
   $ dd if=/dev/zero of=biggy bs=1G count=50
 
 100% reliably results in a hung client and completely idle server after a
-few (different each time, usually betwene 5 and 10) GB have been written.
+few (different each time, usually between 5 and 10) GB have been written.
 No output via dmesg at all.  Sometimes, however, when not writing large files,
 I'll see an occasional dmesg "NFS: desynchronized value of nfs_i.ncommit."
 It proceeds at about 30MB/s until the client eats it, and then it never wakes
-up again.  The roof fs is mounted via nfs v3, so once it eats it I can't log
+up again.  The root fs is mounted via nfs v3, so once it eats it I can't log
 on or anything.  Serial console outputs no information during/after the eat-it
 condition, so it's not a panic.  Pings continue.  Feels deadlocky.
 
-I saw an old dicussion/patch about something that sounded like my problem
-(but the old kernel+patch didn't fix my problem) here:
+I saw an old dicussion/patch about something that sounded like my problem here:
   http://lkml.org/lkml/2007/4/21/112
+but this old kernel+patch did not fix my problem.
 
 This problem has been reliable and present for months for me, and I assumed
 that it was so obvious that anybody would see it immediately, and thus
 concluded that 'nobody was working on v3 anymore'.  Enough eyebrows were
-raised by that comment by my most on the v4 list this morning:
+raised by that comment by my post on the v4 list this morning:
   http://linux-nfs.org/pipermail/nfsv4/2007-June/006183.html
 that I am forced to re-evaluate that conclusion -- it appears likely that
-this may be something unique to my hardware.
+this may be something unique to my configuration or personal luck.
 
 The only thing at all weird about my platform is that the servers (not the
 clients) are nvidia forcedeth gigE, which has never inspired my confidence.
@@ -75,6 +75,9 @@ I figured I ought to get off my duff and report it.
 Cheers,
 
 -mcq
+
+P.S. If this comes thru twice, my apologies.  I wasn't subscribed the first
+     time I sent it and I assume it got blackholed.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
