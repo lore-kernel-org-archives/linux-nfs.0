@@ -1,10 +1,7 @@
-From: Brian Behlendorf <behlendorf1@llnl.gov>
-Subject: Re: [PATCH] Usermodehelper vs NFS Client Deadlock
-Date: Thu, 14 Jun 2007 16:08:26 -0700
-Message-ID: <200706141608.26279.behlendorf1@llnl.gov>
-References: <200706141348.42119.behlendorf1@llnl.gov>
-	<1181858742.15174.6.camel@heimdal.trondhjem.org>
-Reply-To: behlendorf1@llnl.gov
+From: mike <mike503@gmail.com>
+Subject: Trying to determine why my NFS connection goes away
+Date: Thu, 14 Jun 2007 16:25:31 -0700
+Message-ID: <bd9320b30706141625l6ceb9c73j22a46cf115ca78cd@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -12,12 +9,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HyyQX-0004cK-EI
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 16:08:29 -0700
-Received: from nspiron-3.llnl.gov ([128.115.41.83])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HyyQa-0007bN-Gh
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 16:08:32 -0700
-In-Reply-To: <1181858742.15174.6.camel@heimdal.trondhjem.org>
+	id 1Hyygz-0006GA-MT
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 16:25:29 -0700
+Received: from nz-out-0506.google.com ([64.233.162.234])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hyyh2-0003cm-KP
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 16:25:33 -0700
+Received: by nz-out-0506.google.com with SMTP id 18so2016779nzp
+	for <nfs@lists.sourceforge.net>; Thu, 14 Jun 2007 16:25:31 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,59 +28,135 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+THE ISSUE (easily repeatable by doing a bunch of file I/O on the client - using
+nhfsstone, eventually my "normal" web load hits it too)
 
-> On Thu, 2007-06-14 at 13:48 -0700, Brian Behlendorf wrote:
-> > Recently I've observed some interesting NFS client hangs here at LLNL.  I
-> > dug in to the issue and resolved it but I thought it was also a good idea
-> > to post the patch back upstream for further refinement and review.
-> >
-> > The root cause of the NFS hang we were observing appears to be a rare
-> > deadlock between the kernel provided usermodehelper API and the linux NFS
-> > client.  The deadlock can arise because both of these services use the
-> > generic linux work queues.  The usermodehelper API run the specified user
-> > application in the context of the work queue.  And NFS submits both
-> > cleanup and reconnect work to the generic work queue for handling. 
-> > Normally this is fine but a deadlock can result in the following
-> > situation.
-> >
-> >   - NFS client is in a disconnected state
-> >   - [events/0] runs a usermodehelper app with an NFS dependent operation,
-> >     this triggers an NFS reconnect.
-> >   - NFS reconnect happens to be submitted to [events/0] work queue.
-> >   - Deadlock, the [events/0] work queue will never process the reconnect
-> >     because it is blocked on the previous NFS dependent operation which
-> >     will not complete.
-> >
-> > The correct solution it seems to me is for NFS not to use the generic
-> > work queues.  A dedicated NFS work queue should be created because the
-> > NFS client will never have a guarantee that there are no NFS dependent
-> > operations in the generic work queues.
-> >
-> > The attached patch implements this by adding a per-protocol work queue
-> > for the NFS related work items.  One work queue for all NFS client work
-> > items would be better but that would have required a little more churn to
-> > the existing code base.  That said this patch is working well for us.
->
-> Why not just use rpciod? None of the tasks you are proposing to run are
-> blocking...
->
-> Cheers
->   Trond
+I will dump as much information as possible... I really want to make
+sure that I have the most optimal setup.
 
-I created a new work queue for a couple of reasons.  But the big reason was
-simply that I'm not that familiar with the NFS client code.  I was relunct to 
-introduce that sort of change when I did not understand all the implications.  
-I've been assuming they used the predefined work queue instead of the rpciod 
-for a good reason.  Creating a new work queue avoided all of those issues.  
-Plus the code was already setup to function with work queues so it made the 
-patch rather trivial.
+This is the output from dmesg that concerns me:
 
-I have nothing against the rpciod approach if the more NFS savy developers on 
-this list think its the right way to go.
+ nfs: server raid01 not responding, still trying
+ nfs: server raid01 not responding, still trying
+ nfs: server raid01 not responding, still trying
+ nfs: server raid01 OK
+ nfs: server raid01 OK
+ nfs: server raid01 OK
+ nfs: server raid01 not responding, still trying
+ nfs: server raid01 not responding, still trying
+ nfs: server raid01 not responding, still trying
+ nfs: server raid01 OK
+ nfs: server raid01 OK
 
--- 
-Thanks,
-Brian
+However from everything I am looking at, all the right programs are running.
+
+[root@web03 ~]# rpcinfo -u raid01 mount
+program 100005 version 1 ready and waiting
+program 100005 version 2 ready and waiting
+program 100005 version 3 ready and waiting
+
+[root@web03 ~]# rpcinfo -u raid01 portmap
+program 100000 version 2 ready and waiting
+
+[root@web03 ~]# rpcinfo -u raid01 status
+program 100024 version 1 ready and waiting
+
+[root@web03 ~]# rpcinfo -p raid01
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100021    1   udp  32771  nlockmgr
+    100021    3   udp  32771  nlockmgr
+    100021    4   udp  32771  nlockmgr
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100021    1   tcp  44102  nlockmgr
+    100021    3   tcp  44102  nlockmgr
+    100021    4   tcp  44102  nlockmgr
+    100005    1   udp  32767  mountd
+    100005    1   tcp  32767  mountd
+    100005    2   udp  32767  mountd
+    100005    2   tcp  32767  mountd
+    100005    3   udp  32767  mountd
+    100005    3   tcp  32767  mountd
+    100024    1   udp  32765  status
+    100024    1   tcp  32765  status
+
+I have even increased the number of nfsd's on the server.
+
+THE SPECS:
+
+Client mounts server:
+raid01:/home on /local/home type nfs
+(rw,noatime,nfsvers=3,rsize=16384,wsize=16384,hard,intr,timeo=10,addr=192.168.1.151)
+
+Server
+
+/etc/default/nfs-kernel-server:
+
+# Number of servers to start up
+RPCNFSDCOUNT=24
+
+# Runtime priority of server (see nice(1))
+RPCNFSDPRIORITY=-15
+
+# Options for rpc.mountd.
+# If you have a port-based firewall, you might want to set up
+# a fixed port here using the --port option. For more information,
+# see rpc.mountd(8) or http://wiki.debian.org/?SecuringNFS
+RPCMOUNTDOPTS="-p 32767"
+
+/etc/default/nfs-common:
+# Options for rpc.statd.
+#   Should rpc.statd listen on a specific port? This is especially useful
+#   when you have a port-based firewall. To use a fixed port, set this
+#   this variable to a statd argument like: "--port 4000 --outgoing-port 4001".
+#   For more information, see rpc.statd(8) or
+http://wiki.debian.org/?SecuringNFS
+STATDOPTS="--port 32765 --outgoing-port 32766"
+
+# Some kernels need a separate lockd daemon; most don't. Set this if you
+# want to force an explicit choice for some reason.
+NEED_LOCKD=
+
+# Do you want to start the idmapd daemon? It is only needed for NFSv4.
+NEED_IDMAPD="no"
+
+# Do you want to start the gssd daemon? It is required for Kerberos mounts.
+NEED_GSSD="no"
+
+Network info:
+Server: MTU 1500 (current NIC won't support jumbo)
+Client: MTU 6000
+The entire LAN is gigabit
+
+OS info:
+Ubuntu Edgy Eft (all up to date) amd64
+Linux kernel 2.6.21.5
+
+Usage info:
+Server serves 3 medium busy webservers, and a couple other less busy servers.
+
+Hardware:
+Client is Dual-core Opteron 2.2ghz, 2G RAM, runs only
+PHP+FastCGI/webserver. Broadcom Corporation NetXtreme BCM5704 Gigabit
+Ethernet.
+
+Server is Dual-core Xeon 3050 (2.2ghz), 2G RAM, Areca RAID5 w/ 4x750G
+SATA2, dedicated basically for NFS. Intel Corporation 82573E Gigabit
+Ethernet Controller.
+
+Is there any more information I could possibly supply? I am willing to
+try anything here. I have upgraded my kernels to the latest stable
+just in case there was a minor bug I might have been hitting... no
+such luck.
+
+Thanks in advance!
+- mike
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
