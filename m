@@ -1,19 +1,19 @@
 From: "Tammera Franklin" <dkowalskeufy@nycreatives.biz>
 Subject: No way. This is my turn
-Date: Thu, 14 Jun 2007 19:06:47 +0100
-Message-ID: <000b01c7aea6$64433a00$00000000@y.pppool.de>
+Date: Thu, 14 Jun 2007 19:06:50 +0100
+Message-ID: <000b01c7aea6$663a4f10$00000000@y.pppool.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1605770808=="
-To: "Andrew" <nfs@lists.sf.net>
+Content-Type: multipart/mixed; boundary="===============1588878660=="
+To: "Andrew" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hysma-00039j-UV
+	id 1Hysmc-00039k-Gl
 	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 10:08:28 -0700
 Received: from ybfdf.y.pppool.de ([89.60.191.223] helo=y.pppool.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hysmb-0005hs-8P
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 10:06:56 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hysmd-0003aw-Gl
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 10:06:57 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,17 +28,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============1605770808==
+--===============1588878660==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C7AEA6.64433A00"
+	boundary="----=_NextPart_000_0007_01C7AEA6.663A4F10"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C7AEA6.64433A00
+------=_NextPart_000_0007_01C7AEA6.663A4F10
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C7AEA6.64433A00"
+	boundary="----=_NextPart_001_0008_01C7AEA6.663A4F10"
 
-------=_NextPart_001_0008_01C7AEA6.64433A00
+------=_NextPart_001_0008_01C7AEA6.663A4F10
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -89,7 +89,7 @@ brindle and buttercup than being switched yourself," said mrs. moss, =
 shaking=A1=A1home that she was as mild as milk, so you won't have no =
 trouble with her,
 
-------=_NextPart_001_0008_01C7AEA6.64433A00
+------=_NextPart_001_0008_01C7AEA6.663A4F10
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -154,9 +154,9 @@ switched yourself," said mrs. moss, shaking=A1=A1home that she was as =
 mild as milk, so you won't have no trouble with her,</FONT></DIV>
 </DIV></BODY></HTML>
 
-------=_NextPart_001_0008_01C7AEA6.64433A00--
+------=_NextPart_001_0008_01C7AEA6.663A4F10--
 
-------=_NextPart_000_0007_01C7AEA6.64433A00
+------=_NextPart_000_0007_01C7AEA6.663A4F10
 Content-Type: image/gif;
 	name="iBWudDDHCv.gif"
 Content-Transfer-Encoding: base64
@@ -435,11 +435,11 @@ wF+FwA2HYLRIO7WUQiZUWwy3gxAaeLVTGwaTIn5c27WGwDpbcbJhOxAXUyYhNEuK0HxnGwxY8La6
 UKFdVIGeEH1yyxc0qQ+r6g52qwkRSFJ8eXuCYsAJHEs7dDu4irsVpLO4jks7VbAPYPu4lFu5epOw
 llsIY5C57xAEh9sIC8W5o8A9fIETpmC1e9EBnzsQsCoIqOs6J7C60oBbiWC6khAIADs=
 
-------=_NextPart_000_0007_01C7AEA6.64433A00--
+------=_NextPart_000_0007_01C7AEA6.663A4F10--
 
 
 
---===============1605770808==
+--===============1588878660==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -450,7 +450,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1605770808==
+--===============1588878660==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -460,4 +460,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1605770808==--
+--===============1588878660==--
