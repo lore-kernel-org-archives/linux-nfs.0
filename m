@@ -1,25 +1,26 @@
-From: Bodo Eggert <7eggert@gmx.de>
-Subject: Inconsistent ACL beahaviour with nfs vs. local
-Date: Fri, 15 Jun 2007 14:55:49 +0200 (CEST)
-Message-ID: <Pine.LNX.4.58.0706142103460.5998@be1.lrz>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Trying to determine why my NFS connection goes away
+Date: Fri, 15 Jun 2007 09:49:20 -0400
+Message-ID: <1181915360.6135.7.camel@heimdal.trondhjem.org>
+References: <bd9320b30706141625l6ceb9c73j22a46cf115ca78cd@mail.gmail.com>
+	<1181874951.15174.15.camel@heimdal.trondhjem.org>
+	<bd9320b30706142333h539215b4jd3c062c4ed666e8f@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: mike <mike503@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1HzBM5-0001HY-Jl
-	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 05:56:45 -0700
-Received: from moutng.kundenserver.de ([212.227.126.188])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1HzBM7-0004qK-Cn
-	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 05:56:49 -0700
-Received: from be1.lrz ([192.168.7.201])
-	by be10.7eggert.dyndns.org with esmtp (Exim 4.54) id 1HzBLC-0002G5-5R
-	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 14:55:50 +0200
-Received: from 7eggert (helo=localhost) by be1.lrz with local-esmtp (Exim 4.22)
-	id 1HzBLB-0000sN-Mg
-	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 14:55:49 +0200
+	id 1HzCB4-000706-27
+	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 06:49:26 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX19amZPJeyo2Qm0xYpUp2xZriXl0lkrsv+g=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1HzCB6-0005ZZ-Vv
+	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 06:49:29 -0700
+In-Reply-To: <bd9320b30706142333h539215b4jd3c062c4ed666e8f@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,92 +33,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Please CC me on reply.
+On Thu, 2007-06-14 at 23:33 -0700, mike wrote:
+> no - if you look at the mount parameters i am explicitly stating TCP.
+> i have compiled kernels with TCP as well. i haven't used UDP in
+> forever. also i do have NFSv4 available but have had odd issues in the
+> past, i don't know how stable it is for simple mounts now (i don't
+> need anything crazy, or thousands of client machines, etc)
 
-I'd like to set up a public directory tree to let one user (me) 
-administrate everything, and all users to r-x all files. I set
-up these ACL:
+Then why on earth are you using timeo=10? Use the default timeo=600 and
+it will all work.
 
-# file: .
-# owner: root
-# group: root
-user::rwx
-group::rwx
-other::r-x
-default:user::rwx
-default:user:7eggert:rwx
-default:group::rwx
-default:mask::rwx
-default:other::r-x
+Using overly short timeouts on TCP is completely unnecessary: TCP
+provides reliable delivery of data. Furthermore, a timeout forces the
+client to keep disconnecting and reconnecting, and that is why you are
+seeing those messages.
 
-If I'm working from the local machine, the fs behaves as intended, but if 
-I'm working from NFS, the umask group bits will clobber the mask bits:
+Trond
 
-root@server: mkdir from-local
-root@client: mkdir from-nfs (mounted no_squash, umask=022)
-
-# file: from-local
-# owner: root
-# group: root
-user::rwx
-user:7eggert:rwx
-group::rwx
-mask::rwx
-other::r-x
-default:user::rwx
-default:user:7eggert:rwx
-default:group::rwx
-default:mask::rwx
-default:other::r-x
-
-# file: from-nfs
-# owner: root
-# group: root
-user::rwx
-user:7eggert:rwx                #effective:r-x
-group::rwx                      #effective:r-x
-mask::r-x
-other::r-x
-default:user::rwx
-default:user:7eggert:rwx
-default:group::rwx
-default:mask::rwx
-default:other::r-x
-
-
-The same undesired behaviour has been acknowledged as a bug in Solaris:
-http://groups.google.com/group/comp.unix.solaris/browse_thread/thread/
-ced50ad4a93cc9f7/73b1c841180d4010?lnk=st&q=acl+default+mask&rnum=16&hl=en
-
-
-Used versions:
-Server kernel is 2.6.16 (cannot be upgraded due to external module)
-Client kernel is 2.6.21
-Filesystem is reiserfs3
-NFS version is now 4, I upgraded from v2 while trying to resolve this problem.
-util-linux-2.11z-125
-libevent-0.7.tar.gz
-libgssapi-0.11.tar.gz
-libnfsidmap-0.19.tar.gz
-librpcsecgss-0.14.tar.gz
-nfs-utils-1.1.0.tar.gz
-e2fsprogs-1.39.tar.gz
-acl-2.2.15-23 (this would not affect the kernel nfs daemon, would it?)
-libacl-2.2.15-23
-libacl-devel-2.2.15-23
-
-
-exportfs -v: (trimmed)
-/export/data    
-192.168.x.xxx(rw,async,wdelay,crossmnt,no_root_squash,no_subtree_check,mountpoint)
-/export         
-<world>(rw,wdelay,crossmnt,root_squash,all_squash,no_subtree_check,fsid=0)
-
-
-Please CC me on reply.
--- 
-Top 100 things you don't want the sysadmin to say:
-81. The drive ate the tape but that's OK, I brought my screwdriver.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
