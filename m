@@ -1,24 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Trying to determine why my NFS connection goes away
-Date: Thu, 14 Jun 2007 22:35:51 -0400
-Message-ID: <1181874951.15174.15.camel@heimdal.trondhjem.org>
-References: <bd9320b30706141625l6ceb9c73j22a46cf115ca78cd@mail.gmail.com>
+From: Bill Johnstone <beejstone3@yahoo.com>
+Subject: Re: Performance tuning on modern 2.6 series kernels
+Date: Thu, 14 Jun 2007 21:17:23 -0700 (PDT)
+Message-ID: <473059.4636.qm@web63901.mail.re1.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: mike <mike503@gmail.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hz1fI-0007eA-Ss
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 19:35:56 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19jFQIu/XydCKvJ5Q9Dy1aGs/9F+EAhloM=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Hz1fK-0005eN-Mo
-	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 19:36:00 -0700
-In-Reply-To: <bd9320b30706141625l6ceb9c73j22a46cf115ca78cd@mail.gmail.com>
+	id 1Hz3FX-00005V-IE
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 21:17:27 -0700
+Received: from web63901.mail.re1.yahoo.com ([69.147.97.116])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Hz3FZ-0005Wl-C0
+	for nfs@lists.sourceforge.net; Thu, 14 Jun 2007 21:17:30 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,33 +26,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-06-14 at 16:25 -0700, mike wrote:
-> THE ISSUE (easily repeatable by doing a bunch of file I/O on the client - using
-> nhfsstone, eventually my "normal" web load hits it too)
-> 
-> I will dump as much information as possible... I really want to make
-> sure that I have the most optimal setup.
-> 
-> This is the output from dmesg that concerns me:
-> 
->  nfs: server raid01 not responding, still trying
->  nfs: server raid01 not responding, still trying
->  nfs: server raid01 not responding, still trying
->  nfs: server raid01 OK
->  nfs: server raid01 OK
->  nfs: server raid01 OK
->  nfs: server raid01 not responding, still trying
->  nfs: server raid01 not responding, still trying
->  nfs: server raid01 not responding, still trying
->  nfs: server raid01 OK
->  nfs: server raid01 OK
+--- Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-It sounds as if you are using UDP mounts in a situation where you
-probably should be using TCP mounts.
+> On Wed, 2007-06-13 at 10:45 -0700, Bill Johnstone wrote:
 
-Cheers
-  Trond
+> > 4. tcp_window_scaling, tcp_timestamps, and tcp_sack .  There is an
+> > IBM
+> > Linux NFS performance tuning article at
+> > http://www.ibm.com/developerworks/eserver/library/es-033104.html
+> > which
+> > mentions turning off all three of these features, and presumaby the
+> > tcp_window_scaling causes them to see an effective MSS less than
+> > what
+> > they get without it.  Is there merit to turning these features off
+> > today, on modern 2.6 kernels?
+> 
+> Those were in a section on "Web applications", not NFS AFAICS.
+> Their
+> main reason for turning off window scaling is presumably to work
+> around
+> the "broken router" issue??? (see http://lwn.net/Articles/92727/)
+> Otherwise, given their choices of tcp_rmem/tcp_wmem/tcp_mem, the
+> decision to turn off window scaling seems very odd...
+ 
+Yes, I was mistaken about the overall intent of the article, it was
+on generic "performance optimization" but came up as a relevant hit in
+a
+Google search for NFS Linux performance tuning.
+ 
+They are not very clear about the specific reasons for turning each
+specific feature off, but they indicate that having them on reduced
+their MSS below the maximum (and expected) value for 1500 byte MTU
+ethernet.  Perhaps, as you say, this is an implementation artifact of
+the tcp window scaling "broken router" workaround.  Either way, it
+seems like in a modern implementation, we should leave these features
+on.
 
+
+
+
+ 
+____________________________________________________________________________________
+Don't get soaked.  Take a quick peak at the forecast
+with the Yahoo! Search weather shortcut.
+http://tools.search.yahoo.com/shortcuts/#loc_weather
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
