@@ -1,25 +1,27 @@
-From: "Laurenz, Dirk" <Dirk.Laurenz@fujitsu-siemens.com>
-Subject: Re: NFS and Samba Winbindd
-Date: Fri, 15 Jun 2007 11:58:04 +0200
-Message-ID: <FC3FA7C4E1CA2348B5579A68B24556E941186E2B2D@ABGEX72E.FSC.NET>
-References: <1181808534.2474.7.camel@merlin.linuxcoe.com>
-	<1181835958.6957.2.camel@heimdal.trondhjem.org>
-	<FC3FA7C4E1CA2348B5579A68B24556E941186E28B3@ABGEX72E.FSC.NET>
-	<20070615114409.1b3909b6@slopi>
+From: mike <mike503@gmail.com>
+Subject: Re: Trying to determine why my NFS connection goes away
+Date: Fri, 15 Jun 2007 03:00:12 -0700
+Message-ID: <bd9320b30706150300odb27fc6ma3f2e44fa1f2cc59@mail.gmail.com>
+References: <bd9320b30706141625l6ceb9c73j22a46cf115ca78cd@mail.gmail.com>
+	<1181874951.15174.15.camel@heimdal.trondhjem.org>
+	<bd9320b30706142333h539215b4jd3c062c4ed666e8f@mail.gmail.com>
+	<200706151141.44300.bs@q-leap.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Chris Osicki <osk@admin.swisscom-mobile.ch>,
-	"nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: "Bernd Schubert" <bs@q-leap.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Hz8Zw-0008C3-7u
-	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 02:58:52 -0700
-Received: from dgate1.fujitsu-siemens.com ([217.115.66.35])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hz8Zy-0007Qu-5U
-	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 02:58:55 -0700
-In-Reply-To: <20070615114409.1b3909b6@slopi>
+	id 1Hz8bD-0008OK-Mc
+	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 03:00:11 -0700
+Received: from nz-out-0506.google.com ([64.233.162.239])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Hz8bF-000717-Rp
+	for nfs@lists.sourceforge.net; Fri, 15 Jun 2007 03:00:15 -0700
+Received: by nz-out-0506.google.com with SMTP id 18so2287905nzp
+	for <nfs@lists.sourceforge.net>; Fri, 15 Jun 2007 03:00:12 -0700 (PDT)
+In-Reply-To: <200706151141.44300.bs@q-leap.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,103 +34,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On 6/15/07, Bernd Schubert <bs@q-leap.de> wrote:
+> Sure?
 
-sorry, i mistyped this in the email on the server it is correctly typed
+well, bad news.
 
-> -----Original Message-----
-> From: nfs-bounces@lists.sourceforge.net
-> [mailto:nfs-bounces@lists.sourceforge.net] On Behalf Of Chris Osicki
-> Sent: Friday, June 15, 2007 11:44 AM
-> To: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS and Samba Winbindd
->
->
->
-> Hi
->
-> Shouldn't it read winbind instead of winbindd in nsswitch.conf?
->
-> Regards,
-> Chris
->
-> On Fri, 15 Jun 2007 08:50:36 +0200
-> "Laurenz, Dirk" <Dirk.Laurenz@fujitsu-siemens.com> wrote:
->
-> > Hi,
-> >
-> > i have the following problem, which i'm not able to solve.
-> >
-> > The setup is as follows:
-> >
-> > Linux 2.6 Kernel (SLES9-32bit, Post SP3)
-> > nssswitch.conf
-> > [...]
-> > groups: files ldap windbindd
-> > [...]
-> >
-> > A user in a an global samba/ldap group. This group is in a
-> local winbindgroup TESTGROUP.
-> > (This is right concept used and works for samba shares and
-> interactive logons directly to the server)
-> >
-> > There is a directory /test with the only acl TESTGROUP:rwx
-> >
-> > This works:
-> >   su - $user
-> >   cd /work
-> >   mkdir test
-> >
-> > So all right's a resolved correctly
-> >
-> > This works not
-> > exportfs *:/work -o all_squash,anonuid=12345,anongid=12345
-> >
-> > uid of $user is 12345
-> >
-> > mount /work on some host on /mnt
-> > cd /mnt on the nfs client results in Permission denied
-> >
-> > setting an acl:
-> >   setfacl -m u:$User:rwx
-> >
-> > results in cd /mnt and ls is working.
-> >
-> > my question is now:
-> > is the nfsd unable to resolv winbindd local groups?
-> >
-> > Mit freundlichem Gruss,
-> >
-> > Dirk Laurenz
-> > Systems Engineer
-> > S DE SE PS N/O
-> > Fujitsu Siemens Computers
-> > Hildesheimer Strasse 25
-> > 30880 Laatzen
-> > Germany
-> >
-> > Telephone:              +49 511 84 89 18 08
-> > Telefax:                +49 511 84 89 25 18 08
-> > Mobile:         +49 170 22 10 781
-> > Email:          mailto: dirk.laurenz@fujitsu-siemens.com
-> > Internet:               http://www.fujitsu-siemens.com
-> > Firmenangaben:          http://www.fujitsu-siemens.de/imprint.html
-> >
-> >
-> >
-> >
-> >
->
-> --------------------------------------------------------------
-> -----------
-> This SF.net email is sponsored by DB2 Express
-> Download DB2 Express C - the FREE version of DB2 express and take
-> control of your XML. No limits. Just data. Click to get it now.
-> http://sourceforge.net/powerbar/db2/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
+just ran it. i cleared dmesg beforehand. only a minute or so of
+nhfsstone already triggered this many errors:
+
+[root@web03 /]# dmesg -c
+nfs: server raid01 not responding, still trying
+nfs: server raid01 not responding, still trying
+nfs: server raid01 not responding, still trying
+nfs: server raid01 not responding, still trying
+nfs: server raid01 not responding, still trying
+nfs: server raid01 not responding, still trying
+nfs: server raid01 not responding, still trying
+nfs: server raid01 OK
+nfs: server raid01 not responding, still trying
+nfs: server raid01 OK
+nfs: server raid01 OK
+nfs: server raid01 OK
+nfs: server raid01 OK
+nfs: server raid01 OK
+nfs: server raid01 OK
+nfs: server raid01 OK
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
