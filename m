@@ -1,22 +1,22 @@
-From: philippe musial <happylinuxuser@yahoo.fr>
-Subject: RE : Re:  unknow auth error with a nfs mounted root client
-Date: Tue, 19 Jun 2007 12:14:27 +0200 (CEST)
-Message-ID: <61151.15762.qm@web23008.mail.ird.yahoo.com>
-References: <1182189668.6455.12.camel@heimdal.trondhjem.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] Usermodehelper vs NFS Client Deadlock
+Date: Tue, 19 Jun 2007 07:51:20 -0400
+Message-ID: <20070619075120.393fdf83.jlayton@redhat.com>
+References: <200706141348.42119.behlendorf1@llnl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: behlendorf1@llnl.gov
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I0bfM-0006Vf-Gs
-	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 04:14:34 -0700
-Received: from web23008.mail.ird.yahoo.com ([217.146.189.33])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I0bfM-0002kk-W3
-	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 04:14:35 -0700
-In-Reply-To: <1182189668.6455.12.camel@heimdal.trondhjem.org>
+	id 1I0cF2-0001lP-TW
+	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 04:51:25 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I0cF5-0006y3-V2
+	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 04:51:28 -0700
+In-Reply-To: <200706141348.42119.behlendorf1@llnl.gov>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,65 +29,89 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Thu, 14 Jun 2007 13:48:41 -0700
+Brian Behlendorf <behlendorf1@llnl.gov> wrote:
 
---- Trond Myklebust <trond.myklebust@fys.uio.no> a
-=E9crit :
+> 
+> Recently I've observed some interesting NFS client hangs here at LLNL.  I
+> dug in to the issue and resolved it but I thought it was also a good idea
+> to post the patch back upstream for further refinement and review.
+> 
+> The root cause of the NFS hang we were observing appears to be a rare
+> deadlock between the kernel provided usermodehelper API and the linux NFS
+> client.  The deadlock can arise because both of these services use the generic 
+> linux work queues. 
 
-> On Mon, 2007-06-18 at 16:49 +0200, philippe musial
-> wrote:
-> > Hi everybody,
-> > =
+Are you sure this is correct? From my look at this, it looks like the
+usermodehelper stuff uses its own workqueue (khelper). It looks like earlier
+versions of the usermodehelper stuff might have used keventd, but it looks
+like it's had its own kthread for several years now.
 
-> > I try to duplicate a model built in a chrooted
-> > environment under Debian Etch with replicator. I
-> made
-> > a boot disk and when I use it on the target
-> computer
-> > (192.168.1.3) I get this message:
-> > call_verify: unknown auth error: 7
-> =
+> The usermodehelper API run the specified user application 
+> in the context of the work queue.  And NFS submits both cleanup and reconnect 
+> work to the generic work queue for handling.  Normally this is fine but a 
+> deadlock can result in the following situation.
+> 
+>   - NFS client is in a disconnected state
+>   - [events/0] runs a usermodehelper app with an NFS dependent operation,
+>     this triggers an NFS reconnect.
+>   - NFS reconnect happens to be submitted to [events/0] work queue.
+>   - Deadlock, the [events/0] work queue will never process the reconnect
+>     because it is blocked on the previous NFS dependent operation which 
+>     will not complete.
+> 
+> The correct solution it seems to me is for NFS not to use the generic
+> work queues.  A dedicated NFS work queue should be created because the NFS
+> client will never have a guarantee that there are no NFS dependent 
+> operations in the generic work queues.
+> 
+> The attached patch implements this by adding a per-protocol work queue
+> for the NFS related work items.  One work queue for all NFS client work
+> items would be better but that would have required a little more churn to
+> the existing code base.  That said this patch is working well for us.
+> 
+> Thanks,
+> Brian
+> 
+> 
+> --------- Stacks from deadlocked system ------------
+> 
+> PID: 12401  TASK: 10044576330       CPU: 2   COMMAND: "khelper"
+>  #0 [1009dd71548] schedule at ffffffff802f0cab
+>  #1 [1009dd71620] flush_cpu_workqueue at ffffffff80144329
+>  #2 [1009dd716c0] flush_workqueue at ffffffff801443c4
+>  #3 [1009dd716e0] __rpc_execute at ffffffffa0028ee7
+>  #4 [1009dd71770] rpc_call_sync at ffffffffa002479c
+>  #5 [1009dd717a0] nfs3_rpc_wrapper at ffffffffa0074c87
+>  #6 [1009dd717d0] nfs3_proc_getattr at ffffffffa0074edf
+>  #7 [1009dd71830] __nfs_revalidate_inode at ffffffffa006be91
+>  #8 [1009dd71940] nfs_lookup_revalidate at ffffffffa006764b
+>  #9 [1009dd71af0] do_lookup at ffffffff80184fd4
+> #10 [1009dd71b30] __link_path_walk at ffffffff8018556f
+> #11 [1009dd71bf0] link_path_walk at ffffffff80186270
+> #12 [1009dd71cd0] path_lookup at ffffffff801864c0
+> #13 [1009dd71d00] open_exec at ffffffff80181afa
+> #14 [1009dd71df0] do_execve at ffffffff80182e5f
+> #15 [1009dd71e30] sys_execve at ffffffff8010de46
+> #16 [1009dd71e60] execve at ffffffff8011004d
+> #17 [1009dd71f10] ____exec_usermodehelper at ffffffff80143994
+> #18 [1009dd71f40] ____call_usermodehelper at ffffffff801439d4
+> #19 [1009dd71f50] kernel_thread at ffffffff8010ffdf
+> 
+> PID: 12     TASK: 1012aa2a130       CPU: 2   COMMAND: "events/2"
+>  #0 [1012aa33b18] schedule at ffffffff802f0cab
+>  #1 [1012aa33bf0] wait_for_completion at ffffffff802f0eef
+>  #2 [1012aa33c70] call_usermodehelper at ffffffff80143b97
+>  #3 [1012aa33d50] libcfs_run_upcall at ffffffffa01d8726
+>  #4 [1012aa33d90] kpr_do_upcall at ffffffffa0206a5f
+>  #5 [1012aa33e70] worker_thread at ffffffff80144136
+>  #6 [1012aa33f20] kthread at ffffffff80147e5b
+>  #7 [1012aa33f50] kernel_thread at ffffffff8010ffdf
+> 
 
-> Are you perhaps trying to export
-> /export/install/miniroot using
-> kerberos/rpcsec_gss security? There is no way
-> nfsroot can mount that:
-> you have no rpc.gssd daemon running, and neither do
-> you have any
-> credentials.
 
-Hello Trond,
-I am not trying to export using kerberos/rpcsec_gss
-security:
-here is my /etc/exports:
-# Example for NFSv2 and NFSv3:
-# /srv/homes       hostname1(rw,sync)
-hostname2(ro,sync)
-#
-# Example for NFSv4:
-# /srv/nfs4        gss/krb5i(rw,sync,fsid=3D0,crossmnt)
-# /srv/nfs4/homes  gss/krb5i(rw,sync)
-#
-/export/install/miniroot
-garfield.le.chat(rw,no_root_squash)
-
-> =
-
-> Cheers
->   Trond
-> =
-
-> =
-
-Regards
-Philippe
-
-
-      _____________________________________________________________________=
-________ =
-
-Ne gardez plus qu'une seule adresse mail ! Copiez vos mails vers Yahoo! Mai=
-l =
-
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
