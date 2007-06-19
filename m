@@ -1,21 +1,23 @@
-From: "=?utf-8?b?16nXmdeo15kg157Xmdee15XXoNeZ?=" <siri_mimoni@walla.co.il>
-Subject: =?utf-8?b?157XqdeZ16jXmSDXlNeq157Xldeg15XXqiDXnteU15jXmdeV?=
-	=?utf-8?b?15wg15zXoteZ15XXoNea?=
-Date: Mon, 18 Jun 2007 21:34:17 +0300
-Message-ID: <E1I0M4G-0002cI-PA@mail.sourceforge.net>
+From: Shunichi Sagawa <s-sagawa@jp.fujitsu.com>
+Subject: Re: Permission information on the directory is output with ?
+Date: Tue, 19 Jun 2007 17:24:55 +0900
+Message-ID: <20070619172455.e8be4d49.s-sagawa@jp.fujitsu.com>
+References: <20070524175934.17a59a57.s-sagawa@jp.fujitsu.com>
+	<75A58A7C14469A45BA7A50CDC34EBCF806272180@tlaexc01.asiapacific.cpqcorp.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0382280964=="
-To: "nfs" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: "Phrukphicharn, Anuwat" <anuwat@hp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I0M4I-0001z3-HK
-	for nfs@lists.sourceforge.net; Mon, 18 Jun 2007 11:35:14 -0700
-Received: from 89-139-146-220.bb.netvision.net.il ([89.139.146.220]
-	helo=cache-hfa.netvision.net.il)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I0M4G-0002cI-PA
-	for nfs@lists.sourceforge.net; Mon, 18 Jun 2007 11:35:17 -0700
+	id 1I0Z1d-0006VU-It
+	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 01:25:21 -0700
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I0Z1e-0001Pb-DJ
+	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 01:25:24 -0700
+In-Reply-To: <75A58A7C14469A45BA7A50CDC34EBCF806272180@tlaexc01.asiapacific.cpqcorp.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,257 +30,124 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+Hello Phrukphicharn,
 
---===============0382280964==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0000_01C6527E.AE8904D0"
+On Wed, 13 Jun 2007 15:44:29 +0700
+"Phrukphicharn, Anuwat" <anuwat@hp.com> wrote:
 
-This is a multi-part message in MIME format.
+> Hello Shunichi,
+> 
+> I have run the test case for some time, but could not produce such the
+> symptom (may be I did something wrong). 
 
-------=_NextPart_000_0000_01C6527E.AE8904D0
-Content-Type: text/plain;
- charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+I'm sorry, my information was insufficient.
 
-=D7=9E=D7=91=D7=A6=D7=A2 =D7=9E=D7=93=D7=94=D7=99=D7=9D =D7=9C=D7=A9=D7=91=
-=D7=95=D7=A2 =D7=99=D7=9E=D7=99=D7=9D =D7=91=D7=9C=D7=91=D7=93!!!
-=20
-=D7=94=D7=A7=D7=9E=D7=AA =D7=90=D7=AA=D7=A8 =D7=90=D7=99=D7=A0=D7=98=D7=A8=
-=D7=A0=D7=98 =D7=93=D7=99=D7=A0=D7=90=D7=9E=D7=99 + =D7=9E=D7=A2=D7=A8=D7=
-=9B=D7=AA =D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=AA=D7=9B=D7=A0=D7=99=D7=9D ,=
-=D7=AA=D7=9E=D7=95=D7=A0=D7=95=D7=AA,=D7=9C=D7=9C=D7=90 =D7=94=D7=92=D7=91=
-=D7=9C=D7=AA =D7=93=D7=A4=D7=99=D7=9D =D7=91=D7=A2=D7=99=D7=A6=D7=95=D7=91=
- =D7=9C=D7=A7=D7=95=D7=97:
-=20
- - =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=9E=D7=
-=AA=D7=A7=D7=93=D7=9E=D7=AA =D7=9C=D7=A9=D7=9C=D7=99=D7=98=D7=94 =D7=9E=D7=
-=9C=D7=90=D7=94 =D7=94=D7=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=9B=D7=
-=94/=D7=A2=D7=93=D7=9B=D7=95=D7=9F
- - =D7=93=D7=A4=D7=99 =D7=AA=D7=95=D7=9B=D7=9F =D7=9C=D7=9C=D7=90 =D7=94=D7=
-=92=D7=91=D7=9C=D7=94/=D7=94=D7=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=
-=9B=D7=94/=D7=A2=D7=93=D7=9B=D7=95=D7=9F
- - =D7=9E=D7=90=D7=9E=D7=A8=D7=99=D7=9D/=D7=9B=D7=AA=D7=91=D7=95=D7=AA/=D7=
-=97=D7=93=D7=A9=D7=95=D7=AA =D7=9C=D7=9C=D7=90 =D7=94=D7=92=D7=91=D7=9C=D7=
-=AA =D7=93=D7=A4=D7=99=D7=9D
- - =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=A0=D7=
-=A8=D7=A9=D7=9E=D7=99=D7=9D =D7=91=D7=90=D7=AA=D7=A8 =D7=94=D7=95=D7=A1=D7=
-=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=9B=D7=94/=D7=A2=D7=93=D7=9B=D7=95=D7=9F
- - =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=93=D7=99=D7=95=D7=95=D7=A8 =D7=90=D7=
-=9C=D7=A7=D7=98=D7=A8=D7=95=D7=A0=D7=99 =D7=9C=D7=9C=D7=A7=D7=95=D7=97=D7=
-=95=D7=AA =D7=90=D7=A9=D7=A8 =D7=A0=D7=A8=D7=A9=D7=9E=D7=99=D7=9D =D7=91=D7=
-=90=D7=AA=D7=A8=20
- - =D7=A2=D7=99=D7=A6=D7=95=D7=91 =D7=90=D7=99=D7=A9=D7=99 =D7=91=D7=AA=D7=
-=99=D7=90=D7=95=D7=9D =D7=9E=D7=9C=D7=90 =D7=A2=D7=9D =D7=9E=D7=A2=D7=A6=D7=
-=91=D7=99=D7=9D/=D7=95=D7=AA =D7=94=D7=97=D7=91=D7=A8=D7=94
- - =D7=A4=D7=95=D7=A8=D7=95=D7=9D =D7=9E=D7=AA=D7=A7=D7=93=D7=9D =D7=AA=D7=
-=9E=D7=99=D7=9B=D7=94 =D7=9E=D7=9C=D7=90=D7=94 =D7=91=D7=A0=D7=99=D7=94=D7=
-=95=D7=9C =D7=9E=D7=A9=D7=AA=D7=9E=D7=A9=D7=99=D7=9D/=D7=94=D7=95=D7=A1=D7=
-=A4=D7=94=20
- - =D7=92=D7=9C=D7=A8=D7=99=D7=99=D7=AA =D7=AA=D7=9E=D7=95=D7=A0=D7=95=D7=
-=AA =D7=91=D7=A9=D7=9C=D7=99=D7=98=D7=94 =D7=9E=D7=9C=D7=90=D7=94 =D7=94=D7=
-=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=9B=D7=94/=D7=A2=D7=93=D7=9B=D7=
-=95=D7=9F
- - =D7=98=D7=99=D7=A7=D7=A8 =D7=97=D7=93=D7=A9=D7=95=D7=AA {=D7=A0=D7=92=D7=
-=9C=D7=9C}=D7=91=D7=93=D7=A3 =D7=94=D7=91=D7=99=D7=AA =D7=9C=D7=A2=D7=93=D7=
-=9B=D7=95=D7=9F =D7=A2=D7=A6=D7=9E=D7=99 =D7=A9=D7=9C =D7=9B=D7=AA=D7=91=D7=
-=95=D7=AA/=D7=9E=D7=90=D7=9E=D7=A8=D7=99=D7=9D
- - =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=94=D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=
-=91=D7=98=D7=9B=D7=A0=D7=95=D7=9C=D7=95=D7=92=D7=99=D7=94 =D7=9E=D7=AA=D7=
-=A7=D7=93=D7=9E=D7=AA =D7=95=D7=A7=D7=9C=D7=94 =D7=9C=D7=A9=D7=99=D7=9E=D7=
-=95=D7=A9 =D7=9E=D7=A0=D7=94=D7=9C =D7=94=D7=90=D7=AA=D7=A8
- - =D7=A0=D7=99=D7=AA=D7=9F =D7=9C=D7=94=D7=92=D7=93=D7=99=D7=A8 =D7=99=D7=
-=95=D7=AA=D7=A8 =D7=9E=D7=9E=D7=A0=D7=94=D7=9C =D7=90=D7=97=D7=93 =D7=9C=D7=
-=90=D7=AA=D7=A8 {=D7=91=D7=AA=D7=99=D7=90=D7=95=D7=9D =D7=9E=D7=A8=D7=90=D7=
-=A9 =D7=9C=D7=A4=D7=A0=D7=99 =D7=94=D7=A4=D7=A8=D7=95=D7=99=D7=A7=D7=98}
- - =D7=94=D7=96=D7=A0=D7=AA =D7=94=D7=9B=D7=AA=D7=91=D7=95=D7=AA/=D7=9E=D7=
-=90=D7=9E=D7=A8=D7=99=D7=9D/=D7=AA=D7=9E=D7=95=D7=A0=D7=95=D7=AA/=D7=A7=D7=
-=98=D7=9C=D7=95=D7=92 =D7=A2"=D7=99 =D7=9E=D7=A0=D7=94=D7=9C =D7=94=D7=90=
-=D7=AA=D7=A8 =D7=91=D7=A6=D7=95=D7=A8=D7=94 =D7=99=D7=93=D7=99=D7=93=D7=95=
-=D7=AA=D7=99=D7=AA =D7=95=D7=A7=D7=9C=D7=94=20
- - =D7=91=D7=A1=D7=99=D7=95=D7=9D =D7=94=D7=A4=D7=A8=D7=95=D7=99=D7=A7=D7=
-=98 =D7=94=D7=93=D7=A8=D7=9B=D7=94 =D7=A9=D7=9C =D7=A0=D7=A6=D7=99=D7=92/=
-=D7=AA =D7=94=D7=97=D7=91=D7=A8=D7=94 =D7=A2=D7=9C =D7=9E=D7=A2=D7=A8=D7=9B=
-=D7=AA =D7=94=D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=9C=D7=9C=D7=90 =D7=A2=D7=9C=
-=D7=95=D7=AA =D7=A0=D7=95=D7=A1=D7=A4=D7=AA!!!
-=20
-=D7=A8=D7=A7 6666 =D7=A9=D7=97 + =D7=9E=D7=A2"=D7=9E =20
-=20
-*=D7=94=D7=9E=D7=97=D7=99=D7=A8=D7=99=D7=9D =D7=AA=D7=A7=D7=A4=D7=99=D7=9D=
- =D7=A2=D7=93 =D7=9C=D7=AA=D7=90=D7=A8=D7=99=D7=9A 23/06/07 =D7=91=D7=9B=D7=
-=A4=D7=95=D7=A3 =D7=9C=D7=AA=D7=A7=D7=A0=D7=95=D7=9F =D7=94=D7=97=D7=91=D7=
-=A8=D7=94.
-*=D7=A0=D7=99=D7=AA=D7=9F =D7=9C=D7=A9=D7=93=D7=A8=D7=92 =D7=9C=D7=97=D7=A0=
-=D7=95=D7=AA =D7=95=D7=99=D7=A8=D7=98=D7=95=D7=90=D7=9C=D7=99=D7=AA =D7=91=
-=D7=AA=D7=95=D7=A1=D7=A4=D7=AA =D7=A9=D7=9C 2000 =E2=82=AA =D7=91=D7=9C=D7=
-=91=D7=93 =D7=9C=D7=9C=D7=90 =D7=94=D7=92=D7=91=D7=9C=D7=AA =D7=9E=D7=95=D7=
-=A6=D7=A8=D7=99=D7=9D!!!
-*=D7=A0=D7=99=D7=AA=D7=9F =D7=9C=D7=A7=D7=91=D7=9C =D7=94"=D7=9E =D7=9C=D7=
-=A7=D7=99=D7=93=D7=95=D7=9D =D7=90=D7=AA=D7=A8=D7=99=D7=9D =D7=A7=D7=99=D7=
-=99=D7=9E=D7=99=D7=9D=20
-*=D7=94=D7=9E=D7=97=D7=99=D7=A8=D7=99=D7=9D =D7=9C=D7=90 =D7=9B=D7=95=D7=9C=
-=D7=9C=D7=99=D7=9D =D7=9E=D7=A2"=D7=9E =D7=9B=D7=97=D7=95=D7=A7
-=20
-=20
-=20
-          =D7=9C=D7=A4=D7=A8=D7=98=D7=99=D7=9D =D7=A0=D7=95=D7=A1=D7=A4=D7=
-=99=D7=9D =D7=9C=D7=97=D7=A5 =D7=9B=D7=90=D7=9F
+- "/var/spool/postfix" directory exists on a NFS client disk.
+- The directory right under "/var/spool/postfix" directory has been linked
+  to the directory of the NFS server area.
 
-=20
-                                                                         =
-                                                  =D7=9C=D7=94=D7=A1=D7=A8=
-=D7=94 =D7=9E=D7=A8=D7=A9=D7=99=D7=9E=D7=AA =D7=AA=D7=A4=D7=95=D7=A6=D7=94
-------=_NextPart_000_0000_01C6527E.AE8904D0
-Content-Type: text/html;
- charset="utf-8"
+# df
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/sda8             19931708  13541004   5378212  72% /
+none                    516972         0    516972   0% /dev/shm
+/dev/sdb1             70557052  43613868  23359088  66% /work
+rhas4up3-part2:/vol/vol0/jpmail
+                       8143616   4978656   2751296  65% /po
+# ls -ld /var/spool/postfix/
+drwxr-xr-x  16 root root 4096 May 21 14:44 /var/spool/postfix/
+# ls -l /var/spool/postfix/ | grep incoming
+lrwxrwxrwx  1 postfix root       34 May 21 14:44 incoming -> ../../../po/spool/postfix/incoming
+#
 
-<HTML>
-<HEAD>
-<META NAME="GENERATOR" Content="Microsoft DHTML Editing Control">
-</HEAD>
-<BODY>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><U><SPAN lang=HE 
-style="FONT-SIZE: 22pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">מבצע מדהים 
-לשבוע ימים בלבד!!!</SPAN></U><U><SPAN dir=ltr 
-style="FONT-SIZE: 22pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><?xml:namespace 
-prefix = o ns = "urn:schemas-microsoft-com:office:office" 
-/><o:p></o:p></SPAN></U></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 22pt; COLOR: black"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: black">הקמת </SPAN><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">אתר 
-אינטרנט</SPAN><SPAN lang=HE style="FONT-SIZE: 20pt; COLOR: black"> דינאמי + 
-מערכת ניהול תכנים ,תמונות,</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">ללא הגבלת 
-דפים</SPAN><SPAN lang=HE style="FONT-SIZE: 20pt; COLOR: black"> בעיצוב 
-לקוח:<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- מערכת ניהול מתקדמת לשליטה מלאה 
-הוספה/עריכה/עדכון<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- דפי תוכן ללא 
-הגבלה/הוספה/עריכה/עדכון</SPAN><SPAN lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-מאמרים/כתבות/חדשות ללא הגבלת דפים<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- מערכת ניהול נרשמים באתר 
-הוספה/עריכה/עדכון<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- מערכת דיוור אלקטרוני ללקוחות אשר נרשמים 
-באתר </SPAN><SPAN lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-עיצוב אישי בתיאום מלא עם&nbsp;מעצבים/ות החברה</SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- פורום מתקדם תמיכה מלאה בניהול 
-משתמשים/הוספה <o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- גלריית תמונות בשליטה מלאה 
-הוספה/עריכה/עדכון<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- טיקר חדשות {נגלל}בדף הבית לעדכון עצמי 
-של כתבות/מאמרים</SPAN><SPAN lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-מערכת הניהול בטכנולוגיה מתקדמת וקלה לשימוש מנהל האתר</SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-ניתן להגדיר יותר ממנהל אחד לאתר {בתיאום מראש לפני הפרויקט}</SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-הזנת הכתבות/מאמרים/תמונות/קטלוג ע"י מנהל האתר בצורה ידידותית וקלה </SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-בסיום הפרויקט הדרכה של נציג/ת החברה על מערכת הניהול ללא עלות 
-נוספת!!!</SPAN><SPAN lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black">רק 6666 שח + מע"מ<SPAN 
-style="mso-spacerun: yes">&nbsp; </SPAN><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 10pt; COLOR: black">*המחירים תקפים עד לתאריך 23/06/07 בכפוף 
-לתקנון החברה.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 10pt; COLOR: black">*ניתן לשדרג לחנות וירטואלית בתוספת של 2000 
-₪ בלבד ללא הגבלת מוצרים!!!<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 10pt; COLOR: black">*ניתן לקבל ה"מ לקידום אתרים קיימים 
-</SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 10pt; COLOR: black">*המחירים לא כוללים מע"מ כחוק</SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal 
-style="MARGIN: 0cm 0cm 0pt; DIRECTION: ltr; unicode-bidi: embed; TEXT-ALIGN: left"><SPAN 
-lang=HE dir=rtl 
-style="FONT-SIZE: 10pt; COLOR: black"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 10pt; COLOR: black"></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 10pt; COLOR: black"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 26pt; COLOR: black"><SPAN 
-style="mso-spacerun: yes">&nbsp;&nbsp; </SPAN><SPAN 
-style="mso-spacerun: yes">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</SPAN><A 
-href="http://www.yourinquiry.com"><SPAN 
-style="mso-ansi-font-size: 12.0pt">לפרטים נוספים לחץ </SPAN></A></SPAN><SPAN 
-lang=HE style="FONT-SIZE: 26pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><A 
-href="http://www.yourinquiry.com"><SPAN 
-style="mso-ansi-font-size: 12.0pt">כאן</SPAN></A></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 26pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"></SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN>&nbsp;</P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 7.5pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-<A href="mailto:mailto8@gmail.com"><SPAN 
-style="mso-ansi-font-size: 12.0pt">להסרה מרשימת תפוצה</SPAN></A></SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P>&nbsp;</P>
-</BODY>
-</HTML>
-------=_NextPart_000_0000_01C6527E.AE8904D0--
+There are some other symbolic links, which are "active", "bounce",
+"corrupt", "defer", "deferred", "flush", "hold", "maildrop", "saved",
+"trace", like the link "incoming".
 
+And, this problem occurs in a few seconds by the following method.
+(A) postfix execute.
+  [root@hazard ~]# telnet localhost 25
+  Trying 127.0.0.1...
+  Connected to localhost.localdomain (127.0.0.1).
+  Escape character is '^]'.
+  220 hazard.soft.fujitsu.com ESMTP Postfix
+  helo soft.fujitsu.com
+  250 hazard.soft.fujitsu.com
+  mail from: s-sagawa@jp.fujitsu.com
+  250 Ok
+  rcpt to: s-sagawa@jp.fujitsu.com
+  250 Ok
+  quit
 
---===============0382280964==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+(B) nfs umount/mount.
+  [root@hazard ~]# df -TH
+  Filesystem    Type     Size   Used  Avail Use% Mounted on
+  /dev/sda8     ext3      21G    14G   5.8G  71% /
+  none         tmpfs     530M      0   530M   0% /dev/shm
+  /dev/sdb1     ext3      73G    45G    24G  66% /work
+  rhas4up3-part2:/vol/vol0/jpmail
+                 nfs     8.4G   5.1G   2.9G  65% /po
+  [root@hazard ~]# umount /po
+  [root@hazard ~]# df -TH | grep nfs
+  [root@hazard ~]# mount /po
+  [root@hazard ~]# df -TH | grep nfs
+                 nfs     8.4G   5.1G   2.9G  65% /po
+  [root@hazard ~]#
+
+(C) postfix execute.
+  [root@hazard ~]# telnet localhost 25
+  Trying 127.0.0.1...
+  Connected to localhost.localdomain (127.0.0.1).
+  Escape character is '^]'.
+  220 hazard.soft.fujitsu.com ESMTP Postfix
+  helo soft.fujitsu.com
+  250 hazard.soft.fujitsu.com
+  mail from: s-sagawa@jp.fujitsu.com
+  250 Ok
+  rcpt to: s-sagawa@jp.fujitsu.com
+
+When "250 OK" is not output, "ls -l /po/spool/postfix" is executed.
+
+And, this problem occurs on the following condition.
+(1) Access nfs directory through symbolic link, which links to the nfs directory.
+    For example, access "/var/spool/postfix/incoming". and
+(2) O_EXCL is specified for the argument of open(2).
+This problem did not occur when I changed(queue_directory of /etc/postfix/main.c)
+"/var/spool/postfix" to "/po/spool/postfix".
+
+> Btw, I have worked with this symptom on RHEL4, BZ 228801. 
+
+Oh, I see.
+
+> Which the issue is on the client side. You
+> may want to check otw attributes of the "incoming" in a GETATTR reply
+> (for example) if that is correct. I remember that if 'ls -l' think that
+> an attribute value is not valid it will print "?" or other case is it
+> cannot retrieve attribute of the file via 'stat("file") call. Which
+> latter is my case that the client keeps negative dentry and never
+> invalidate it (as a result, a stat() returns ENOENT as the nfs dentry
+> revalidation code thinks that it is still valid (so no inode allocated
+> for the dentry) while the file is already exist on the server).
+
+Thank you for your detailed information.
+The "BZ 228801" phenomena is same(no inode allocated for the dentry) with my problem.
+But, I think that the cause of my problem and BZ 228801 is different.
+
+I confirmed my problem and corrected it by the following patches. :-)
+  (1) RHEL4 UP1 base-kernel.
+  (2) Fix following patch(Fix RHEL4 UP2(nfs)).
+      linux-2.6.9-nfs-estale.patch
+  (3) http://linux-nfs.org/Linux-2.6.x/2.6.12-rc6/linux-2.6.12-02-fix_O_EXCL.dif
+
+Thank you.
+
+Regards,
+Sagawa
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0382280964==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0382280964==--
