@@ -1,22 +1,27 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] Usermodehelper vs NFS Client Deadlock
-Date: Tue, 19 Jun 2007 07:51:20 -0400
-Message-ID: <20070619075120.393fdf83.jlayton@redhat.com>
-References: <200706141348.42119.behlendorf1@llnl.gov>
+From: "Laurenz, Dirk" <Dirk.Laurenz@fujitsu-siemens.com>
+Subject: Re: NFS and Samba Winbindd
+Date: Wed, 20 Jun 2007 07:31:45 +0200
+Message-ID: <FC3FA7C4E1CA2348B5579A68B24556E94D044BB3E5@ABGEX72E.FSC.NET>
+References: <1181808534.2474.7.camel@merlin.linuxcoe.com>
+	<1181835958.6957.2.camel@heimdal.trondhjem.org>
+	<FC3FA7C4E1CA2348B5579A68B24556E941186E28B3@ABGEX72E.FSC.NET>
+	<20070615114409.1b3909b6@slopi>
+	<FC3FA7C4E1CA2348B5579A68B24556E941186E2B2D@ABGEX72E.FSC.NET>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: behlendorf1@llnl.gov
+To: "Laurenz, Dirk" <Dirk.Laurenz@fujitsu-siemens.com>,
+	Chris Osicki <osk@admin.swisscom-mobile.ch>,
+	"nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I0cF2-0001lP-TW
-	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 04:51:25 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I0cF5-0006y3-V2
-	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 04:51:28 -0700
-In-Reply-To: <200706141348.42119.behlendorf1@llnl.gov>
+	id 1I0snL-00085k-KY
+	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 22:31:56 -0700
+Received: from dgate1.fujitsu-siemens.com ([217.115.66.35])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I0snN-0004om-HY
+	for nfs@lists.sourceforge.net; Tue, 19 Jun 2007 22:31:59 -0700
+In-Reply-To: <FC3FA7C4E1CA2348B5579A68B24556E941186E2B2D@ABGEX72E.FSC.NET>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,89 +34,128 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 14 Jun 2007 13:48:41 -0700
-Brian Behlendorf <behlendorf1@llnl.gov> wrote:
+Hello List,
 
-> 
-> Recently I've observed some interesting NFS client hangs here at LLNL.  I
-> dug in to the issue and resolved it but I thought it was also a good idea
-> to post the patch back upstream for further refinement and review.
-> 
-> The root cause of the NFS hang we were observing appears to be a rare
-> deadlock between the kernel provided usermodehelper API and the linux NFS
-> client.  The deadlock can arise because both of these services use the generic 
-> linux work queues. 
+the problem still persists. Does anyone have an idea?
+Can i increase the debug level a little bit to see, what
+the nfsd is doing to resolv memberships?
 
-Are you sure this is correct? From my look at this, it looks like the
-usermodehelper stuff uses its own workqueue (khelper). It looks like earlier
-versions of the usermodehelper stuff might have used keventd, but it looks
-like it's had its own kthread for several years now.
-
-> The usermodehelper API run the specified user application 
-> in the context of the work queue.  And NFS submits both cleanup and reconnect 
-> work to the generic work queue for handling.  Normally this is fine but a 
-> deadlock can result in the following situation.
-> 
->   - NFS client is in a disconnected state
->   - [events/0] runs a usermodehelper app with an NFS dependent operation,
->     this triggers an NFS reconnect.
->   - NFS reconnect happens to be submitted to [events/0] work queue.
->   - Deadlock, the [events/0] work queue will never process the reconnect
->     because it is blocked on the previous NFS dependent operation which 
->     will not complete.
-> 
-> The correct solution it seems to me is for NFS not to use the generic
-> work queues.  A dedicated NFS work queue should be created because the NFS
-> client will never have a guarantee that there are no NFS dependent 
-> operations in the generic work queues.
-> 
-> The attached patch implements this by adding a per-protocol work queue
-> for the NFS related work items.  One work queue for all NFS client work
-> items would be better but that would have required a little more churn to
-> the existing code base.  That said this patch is working well for us.
-> 
-> Thanks,
-> Brian
-> 
-> 
-> --------- Stacks from deadlocked system ------------
-> 
-> PID: 12401  TASK: 10044576330       CPU: 2   COMMAND: "khelper"
->  #0 [1009dd71548] schedule at ffffffff802f0cab
->  #1 [1009dd71620] flush_cpu_workqueue at ffffffff80144329
->  #2 [1009dd716c0] flush_workqueue at ffffffff801443c4
->  #3 [1009dd716e0] __rpc_execute at ffffffffa0028ee7
->  #4 [1009dd71770] rpc_call_sync at ffffffffa002479c
->  #5 [1009dd717a0] nfs3_rpc_wrapper at ffffffffa0074c87
->  #6 [1009dd717d0] nfs3_proc_getattr at ffffffffa0074edf
->  #7 [1009dd71830] __nfs_revalidate_inode at ffffffffa006be91
->  #8 [1009dd71940] nfs_lookup_revalidate at ffffffffa006764b
->  #9 [1009dd71af0] do_lookup at ffffffff80184fd4
-> #10 [1009dd71b30] __link_path_walk at ffffffff8018556f
-> #11 [1009dd71bf0] link_path_walk at ffffffff80186270
-> #12 [1009dd71cd0] path_lookup at ffffffff801864c0
-> #13 [1009dd71d00] open_exec at ffffffff80181afa
-> #14 [1009dd71df0] do_execve at ffffffff80182e5f
-> #15 [1009dd71e30] sys_execve at ffffffff8010de46
-> #16 [1009dd71e60] execve at ffffffff8011004d
-> #17 [1009dd71f10] ____exec_usermodehelper at ffffffff80143994
-> #18 [1009dd71f40] ____call_usermodehelper at ffffffff801439d4
-> #19 [1009dd71f50] kernel_thread at ffffffff8010ffdf
-> 
-> PID: 12     TASK: 1012aa2a130       CPU: 2   COMMAND: "events/2"
->  #0 [1012aa33b18] schedule at ffffffff802f0cab
->  #1 [1012aa33bf0] wait_for_completion at ffffffff802f0eef
->  #2 [1012aa33c70] call_usermodehelper at ffffffff80143b97
->  #3 [1012aa33d50] libcfs_run_upcall at ffffffffa01d8726
->  #4 [1012aa33d90] kpr_do_upcall at ffffffffa0206a5f
->  #5 [1012aa33e70] worker_thread at ffffffff80144136
->  #6 [1012aa33f20] kthread at ffffffff80147e5b
->  #7 [1012aa33f50] kernel_thread at ffffffff8010ffdf
-> 
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> -----Original Message-----
+> From: nfs-bounces@lists.sourceforge.net
+> [mailto:nfs-bounces@lists.sourceforge.net] On Behalf Of Laurenz, Dirk
+> Sent: Friday, June 15, 2007 11:58 AM
+> To: Chris Osicki; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NFS and Samba Winbindd
+>
+> Hi,
+>
+> sorry, i mistyped this in the email on the server it is
+> correctly typed
+>
+> > -----Original Message-----
+> > From: nfs-bounces@lists.sourceforge.net
+> > [mailto:nfs-bounces@lists.sourceforge.net] On Behalf Of Chris Osicki
+> > Sent: Friday, June 15, 2007 11:44 AM
+> > To: nfs@lists.sourceforge.net
+> > Subject: Re: [NFS] NFS and Samba Winbindd
+> >
+> >
+> >
+> > Hi
+> >
+> > Shouldn't it read winbind instead of winbindd in nsswitch.conf?
+> >
+> > Regards,
+> > Chris
+> >
+> > On Fri, 15 Jun 2007 08:50:36 +0200
+> > "Laurenz, Dirk" <Dirk.Laurenz@fujitsu-siemens.com> wrote:
+> >
+> > > Hi,
+> > >
+> > > i have the following problem, which i'm not able to solve.
+> > >
+> > > The setup is as follows:
+> > >
+> > > Linux 2.6 Kernel (SLES9-32bit, Post SP3)
+> > > nssswitch.conf
+> > > [...]
+> > > groups: files ldap windbindd
+> > > [...]
+> > >
+> > > A user in a an global samba/ldap group. This group is in a
+> > local winbindgroup TESTGROUP.
+> > > (This is right concept used and works for samba shares and
+> > interactive logons directly to the server)
+> > >
+> > > There is a directory /test with the only acl TESTGROUP:rwx
+> > >
+> > > This works:
+> > >   su - $user
+> > >   cd /work
+> > >   mkdir test
+> > >
+> > > So all right's a resolved correctly
+> > >
+> > > This works not
+> > > exportfs *:/work -o all_squash,anonuid=12345,anongid=12345
+> > >
+> > > uid of $user is 12345
+> > >
+> > > mount /work on some host on /mnt
+> > > cd /mnt on the nfs client results in Permission denied
+> > >
+> > > setting an acl:
+> > >   setfacl -m u:$User:rwx
+> > >
+> > > results in cd /mnt and ls is working.
+> > >
+> > > my question is now:
+> > > is the nfsd unable to resolv winbindd local groups?
+> > >
+> > > Mit freundlichem Gruss,
+> > >
+> > > Dirk Laurenz
+> > > Systems Engineer
+> > > S DE SE PS N/O
+> > > Fujitsu Siemens Computers
+> > > Hildesheimer Strasse 25
+> > > 30880 Laatzen
+> > > Germany
+> > >
+> > > Telephone:              +49 511 84 89 18 08
+> > > Telefax:                +49 511 84 89 25 18 08
+> > > Mobile:         +49 170 22 10 781
+> > > Email:          mailto: dirk.laurenz@fujitsu-siemens.com
+> > > Internet:               http://www.fujitsu-siemens.com
+> > > Firmenangaben:          http://www.fujitsu-siemens.de/imprint.html
+> > >
+> > >
+> > >
+> > >
+> > >
+> >
+> > --------------------------------------------------------------
+> > -----------
+> > This SF.net email is sponsored by DB2 Express
+> > Download DB2 Express C - the FREE version of DB2 express and take
+> > control of your XML. No limits. Just data. Click to get it now.
+> > http://sourceforge.net/powerbar/db2/
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> >
+>
+> --------------------------------------------------------------
+> -----------
+> This SF.net email is sponsored by DB2 Express
+> Download DB2 Express C - the FREE version of DB2 express and take
+> control of your XML. No limits. Just data. Click to get it now.
+> http://sourceforge.net/powerbar/db2/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
