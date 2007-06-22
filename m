@@ -1,30 +1,30 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] nfs-utils: add mountproto= mount option to force
- mount protocol
-Date: Fri, 22 Jun 2007 10:27:33 -0400
-Message-ID: <20070622102733.2686b9ca.jlayton@redhat.com>
+Subject: [PATCH] nfs-utils: fix conflicting info in nfs(5) manpage for
+ proto= option
+Date: Fri, 22 Jun 2007 10:42:03 -0400
+Message-ID: <20070622104203.50130636.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I1k6r-0000lN-Ki
-	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 07:27:37 -0700
+	id 1I1kKv-0002Vx-OI
+	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 07:42:11 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I1k6u-0002Lp-Mw
-	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 07:27:41 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I1kKy-0007uS-Ta
+	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 07:42:13 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l5MERYSA013514
-	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:27:34 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l5MEg6Ba022933
+	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:42:06 -0400
 Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l5MERYXo020452
-	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:27:34 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l5MEg5kU029466
+	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:42:05 -0400
 Received: from tupile.connectathon.org (vpn-14-92.rdu.redhat.com [10.11.14.92])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l5MERY2W025181
-	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:27:34 -0400
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l5MEg3Ho030659
+	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:42:03 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,90 +37,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Recently some changes were made to mount.nfs to make mount.nfs use UDP
-by default to talk to mountd. If someone specifies tcp or proto=tcp as
-an option, then the communication with mountd is also done via TCP.
-Most people can just remove these options to work around this since TCP
-is the new default. If someone is using shared automount maps on a
-network that hosts a mix of clients with different protocol defaults,
-then they can't do this without making the old clients fall back to
-using UDP.
-
-This patch adds a new mount option "mountproto" that forces the client
-to use a specific network protocol when talking to mountd, and updates
-the nfs manpage to describe the new option. It should apply cleanly to
-current nfs-utils git tree.
+The nfs manpage has conflicting info about the defaults in the proto= and tcp options. The info in the proto= option is wrong. This should fix it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
 diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 673556c..bcc1a13 100644
+index 673556c..3026847 100644
 --- a/utils/mount/nfs.man
 +++ b/utils/mount/nfs.man
-@@ -170,6 +170,20 @@ for hosts that can run multiple NFS servers.
- The default value is 100005 which is the standard RPC
- mount daemon program number.
+@@ -386,8 +386,8 @@ its portmapper, the standard NFS port number 2049 is
+ used instead.
  .TP 1.5i
-+.I mountproto=n
-+Force the mount call to use a specific network protocol
-+independent of the NFS protocol used.
-+Valid protocol types are
-+.IR udp
-+and
-+.IR tcp .
-+The default is to use UDP and then fall back to TCP if the
-+server doesn't respond. If the
-+.IR proto=tcp
-+or
-+.IR tcp
-+options are specified, then the default is to just use TCP.
-+.TP 1.5i
- .I mountvers=n
- Use an alternate RPC version number to contact the
- mount daemon on the remote host.  This option is useful
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 815064a..ec54c99 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -547,6 +547,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 	struct sockaddr_in *mnt_saddr = &mnt_server->saddr;
- 	struct pmap *mnt_pmap = &mnt_server->pmap;
- 	struct pmap *nfs_pmap = &nfs_server->pmap;
-+	unsigned long mountproto = 0;
- 	int len;
- 	char *opt, *opteq, *p, *opt_b;
- 	char *mounthost = NULL;
-@@ -714,6 +715,18 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 				else
- 					strncpy(data->context, context,
- 							NFS_MAX_CONTEXT_LEN);
-+			} else if  (!strcmp(opt, "mountproto")) {
-+				if (!strcmp(opteq+1, "udp"))
-+					mountproto = IPPROTO_UDP;
-+#if NFS_MOUNT_VERSION >= 2
-+				else if (!strcmp(opteq+1, "tcp") &&
-+					   nfs_mount_version > 2)
-+					mountproto = IPPROTO_TCP;
-+#endif
-+				else if (sloppy)
-+					continue;
-+				else
-+					goto bad_parameter;
-  			} else if (sloppy)
- 				continue;
- 			else
-@@ -822,6 +835,11 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 		}
- 		strcat(new_opts, cbuf);
- 	}
-+
-+	/* override mount protocol if it was specified */
-+	if (mountproto)
-+		mnt_pmap->pm_prot = mountproto;
-+
- 	/* See if the nfs host = mount host. */
- 	if (mounthost) {
- 		if (!nfs_gethostbyname(mounthost, mnt_saddr))
+ .I proto=n
+-Mount the NFS filesystem using a specific network protocol
+-instead of the default UDP protocol.
++Mount the NFS filesystem using a specific network protocol.
++The default is to use TCP if it is supported by client and server.
+ Many NFS version 4 servers only support TCP.
+ Valid protocol types are
+ .IR udp
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
