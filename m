@@ -1,30 +1,24 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] nfs-utils: fix conflicting info in nfs(5) manpage for
- proto= option
-Date: Fri, 22 Jun 2007 10:42:03 -0400
-Message-ID: <20070622104203.50130636.jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS debugging helpers
+Date: Fri, 22 Jun 2007 12:39:57 -0400
+Message-ID: <467BFB5D.3040003@oracle.com>
+References: <467AE021.4000307@oracle.com> <20070621203748.GF4094@fieldses.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------000300090900090401000504"
+Cc: Linux NFS Mailing List <nfs@lists.sourceforge.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I1kKv-0002Vx-OI
-	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 07:42:11 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I1kKy-0007uS-Ta
-	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 07:42:13 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l5MEg6Ba022933
-	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:42:06 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l5MEg5kU029466
-	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:42:05 -0400
-Received: from tupile.connectathon.org (vpn-14-92.rdu.redhat.com [10.11.14.92])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l5MEg3Ho030659
-	for <nfs@lists.sourceforge.net>; Fri, 22 Jun 2007 10:42:03 -0400
+	id 1I1mBi-0007D6-Ew
+	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 09:40:46 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I1mBk-0006cY-JH
+	for nfs@lists.sourceforge.net; Fri, 22 Jun 2007 09:40:49 -0700
+In-Reply-To: <20070621203748.GF4094@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,31 +31,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The nfs manpage has conflicting info about the defaults in the proto= and tcp options. The info in the proto= option is wrong. This should fix it.
+This is a multi-part message in MIME format.
+--------------000300090900090401000504
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+J. Bruce Fields wrote:
+> On Thu, Jun 21, 2007 at 04:31:29PM -0400, Chuck Lever wrote:
+>> I thought I remembered that nfs-utils has simple programs to set NFS/RPC 
+>> debugging flags, but I couldn't find them.
+>>
+>> So I constructed a couple of Python scripts to remember the flag names 
+>> and values (see attached).  They are still a little raw.
+>>
+>> Is there anything like this already out there?
+> 
+> Try
+> 
+> 	man rpcdebug
+> 
+> It comes from nfs-utils/tools/rpcdebug/.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 673556c..3026847 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -386,8 +386,8 @@ its portmapper, the standard NFS port number 2049 is
- used instead.
- .TP 1.5i
- .I proto=n
--Mount the NFS filesystem using a specific network protocol
--instead of the default UDP protocol.
-+Mount the NFS filesystem using a specific network protocol.
-+The default is to use TCP if it is supported by client and server.
- Many NFS version 4 servers only support TCP.
- Valid protocol types are
- .IR udp
+Ja, that's what I remembered.
+
+Not necessarily to Bruce:  Is it actively maintained?  If a new 
+debugging flag is added, is this tool updated by someone?
+
+--------------000300090900090401000504
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel/
+version:2.1
+end:vcard
+
+
+--------------000300090900090401000504
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--------------000300090900090401000504
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------000300090900090401000504--
