@@ -1,23 +1,23 @@
 From: Stuart Anderson <anderson@ligo.caltech.edu>
 Subject: Re: Kernel NFS nfs_update_inode Oops in 2.6.20.11
-Date: Sat, 23 Jun 2007 09:52:06 -0700
-Message-ID: <20070623165206.GA23325@ligo.caltech.edu>
+Date: Sat, 23 Jun 2007 14:51:31 -0700
+Message-ID: <20070623215131.GC27551@ligo.caltech.edu>
 References: <20070623153345.GA22117@ligo.caltech.edu>
 	<1182615064.5859.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>, MalteSch@gmx.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I28qU-000736-B3
-	for nfs@lists.sourceforge.net; Sat, 23 Jun 2007 09:52:22 -0700
+	id 1I2DWG-0002C5-1u
+	for nfs@lists.sourceforge.net; Sat, 23 Jun 2007 14:51:48 -0700
 Received: from acrux.ligo.caltech.edu ([131.215.115.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I28qW-0000iv-FV
-	for nfs@lists.sourceforge.net; Sat, 23 Jun 2007 09:52:25 -0700
+	(Exim 4.44) id 1I2DWH-00042Q-Lp
+	for nfs@lists.sourceforge.net; Sat, 23 Jun 2007 14:51:51 -0700
 In-Reply-To: <1182615064.5859.2.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,17 +33,26 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 Trond,
 
-We will give that a try today and let you know our results.
+This applied cleanly to 2.6.20.14 and so far so good with 2.5hr uptime
+on each of two machines that both previously had this Oops on an interval
+of minutes up to 24hr. The statistics are not conclusive yet, but it does
+boot and I was able to successfully run "make -j 8 boostrap" on the gcc
+source code using 8 out of 16 CPU-cores on an NFSV4 mount without crashing.
 
-Do you know of any reasons why the same patch cannot be
-applied to 2.6.20.x (or 2.6.21.y)?
+However, the gcc build did generate 19 of the following on this client machine:
+NFS: v4 server returned a bad sequence-id error!
+Are these serious? How to go about tracking these down?
 
-Would this patch also explain why we have a nearly identical Oops
-after we removed the automounter, i.e., "Modules linked in:" is no
-longer listed in "autofs4", yet the stack trace still has the
-"nfs_expire_automounts" entries?
+The server is a Sun X4500 running ZFS on Solaris10 Update 3 and it did
+not log any error messages during the gcc build.
 
-Many thanks.
+Very many thanks for incredible turn around a kernel patch--less than 40
+minutes from Oops posting to patch posting!
+
+
+Malte,
+	I suggest you give this patch a try as well to see if it solves your
+similar/identical(?) Oops posted on lkml.
 
 
 On Sat, Jun 23, 2007 at 12:11:04PM -0400, Trond Myklebust wrote:
