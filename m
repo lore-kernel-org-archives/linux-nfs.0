@@ -1,19 +1,30 @@
-From: "fvvan.hk" <gal@mts.net>
-Subject: You've received a postcard from a family member!
-Date: Mon, 25 Jun 2007 12:44:54 +0200
-Message-ID: <000601c7b715$ddfe1140$18b69120@atn.oj>
+From: Rajat <sharma.rajat@hcl.in>
+Subject: =?utf-8?q?nfs=5Freadpage?=
+Date: Mon, 25 Jun 2007 15:58:20 +0000 (UTC)
+Message-ID: <loom.20070625T172031-300@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I2m40-0003NQ-JQ
-	for nfs@lists.sourceforge.net; Mon, 25 Jun 2007 03:44:56 -0700
-Received: from dsl-242-246-132.telkomadsl.co.za ([41.242.246.132])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I2m3z-0002OY-T2
-	for nfs@lists.sourceforge.net; Mon, 25 Jun 2007 03:45:00 -0700
+	id 1I2r3s-0005nd-1K
+	for nfs@lists.sourceforge.net; Mon, 25 Jun 2007 09:05:08 -0700
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I2r3s-0000OC-TB
+	for nfs@lists.sourceforge.net; Mon, 25 Jun 2007 09:05:11 -0700
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1I2r3m-0005h8-4X
+	for nfs@lists.sourceforge.net; Mon, 25 Jun 2007 18:05:02 +0200
+Received: from 192.8.220.9 ([192.8.220.9])
+	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Jun 2007 18:05:02 +0200
+Received: from sharma.rajat by 192.8.220.9 with local (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Mon, 25 Jun 2007 18:05:02 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,42 +37,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Good day.
+Hi,
 
-Your family member has sent you an ecard from fvvan.hk.
+I was vading through NFS read calls, and found a call to nfs_wb_page is made 
+to flush any pending writes, in nfs_readpage function. However all pending 
+writeback requests in nfs radix tree are set as PG_uptodate.
 
-Send free ecards from fvvan.hk with your choice of colors, words and music.
+Ideally readpage would never be called for any page which is PG_uptodate. In 
+do_generic_mapping_read, if page is found in cache (using find_or_get_page) 
+and is PG_uptodate, the actor method is called to copy it back to userspace 
+buffer.
 
-Your ecard will be available with us for the next 30 days. If you wish to keep 
-the ecard longer, you may save it on your computer or take a print.
+I tried creating programs (random reads, file mapped I/O) but could not 
+produce any such scenario where nfs_wb_page is being called against current 
+page. 
 
-To view your ecard, choose from any of the following options:
+Could someone please help me when a readpage is called and would there be any 
+case where there are pending writeback requests against such pages, which 
+needs to be flushed??
 
---------
-OPTION 1
---------
-
-Click on the following Internet address or
-copy & paste it into your browser's address box.
-
-http://fvvan.hk/?2b1c85da463c5c036b0339eb3a6075338ee7c
-
---------
-OPTION 2
---------
-
-Copy & paste the ecard number in the "View Your Card" box at 
-http://fvvan.hk/
-
-Your ecard number is
-2b1c85da463c5c036b0339eb3a6075338ee7c
-
-Best wishes,
-Postmaster,
-fvvan.hk
-
-*If you would like to send someone an ecard, you can do so at 
-http://fvvan.hk/
+Rajat
 
 
 -------------------------------------------------------------------------
