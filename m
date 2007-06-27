@@ -1,26 +1,20 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: Re: Question: When NFS client check dir's permission,
- it	does not check the cache data
-Date: Wed, 27 Jun 2007 13:22:03 +0800
-Message-ID: <4681F3FB.7040609@cn.fujitsu.com>
-References: <467F8247.9060607@cn.fujitsu.com>	
-	<1182802099.6163.33.camel@heimdal.trondhjem.org>	
-	<4681BC44.6000605@cn.fujitsu.com>
-	<1182913754.12836.61.camel@heimdal.trondhjem.org>
+From: Andre Noll <maan@systemlinux.org>
+Subject: 2.6.21.x kernel panic (tg3 and nfs related)
+Date: Wed, 27 Jun 2007 12:16:08 +0200
+Message-ID: <20070627101608.GQ22589@skl-net.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1356602490=="
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed; boundary="===============0600623770=="
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: mchan@broadcom.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3PzH-0005Zu-1P
-	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 22:22:43 -0700
-Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3PzI-0006Yw-RF
-	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 22:22:46 -0700
-In-Reply-To: <1182913754.12836.61.camel@heimdal.trondhjem.org>
+	id 1I3UhW-0005gE-He
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 03:24:42 -0700
+Received: from systemlinux.org ([83.151.29.59] helo=m18s25.vlinux.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3UhX-0007uN-LT
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 03:24:46 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,70 +27,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1356602490==
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
 
->
->> I think code "status = nfs_access_get_cached(inode, cred, &cache);" can do
->> this. And it works.
->> Other question: why only optimize all write operations, read operations
->> are not optimized? If read options is optimized, it can do the same things,
->> do not use access to check permissions, and server will check permissions
->> when we perform the read op.
->>     
->
-> Huh? What read operations are we failing to optimise and how?
->   
-
-I mean that read a dir, such as lookup a dir.
-If I reply a getattr as that dir has no lookup permission, and then do a
-"cat /nfsroot/dir/file" at client, client will not send lookup procedure to
-server, because client used the cache data of the dir. It like this:
-client server
-#ls /nfsroot
-readdirplus ------------------>
-<------------- readdirplus reply
-(attribute of dir has no lookup permission)
-# cat /nfsroot/dir/file
-(send nothing, used cache data)
--------no package is send-------
-
-If no cache data exists, it would like this:
-client server
-#ls /nfsroot
-readdirplus ------------------>
-<------------- readdirplus reply
-(attribute of dir has no lookup permission)
-# cat /nfsroot/dir/file
-access(dir) ------------------->
-<------------- access reply(dir)
-(has no lookup permission)
-
-And if has permission to lookup dir, it would like this:
-client server
-#ls /nfsroot
-readdirplus ------------------>
-<------------- readdirplus reply
-(attribute of dir has no lookup permission)
-# cat /nfsroot/dir/file
-access(dir) -------------------> (*1)
-<------------- access reply(dir)
-lookup(file) ------------------->
-<------------- lookup reply(file)
-read(file) ------------------->
-<------------- read reply(file)
-
-While you optimize all write operations to omit access procedure, can
-this access (*1) be omitted? Then lookup(file) will return NOPERM.
-
-Regards
-Wei Yongjun
+--===============0600623770==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="eBTWNsZZiigckDWV"
+Content-Disposition: inline
 
 
+--eBTWNsZZiigckDWV
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+Hi
+
+Our nfs server recently paniced under heavy nfs load. The backtrace
+indicates that this might be a problem with the tigon3 network driver
+which drives the onboard chips of the machine.
+
+The first crash under 2.6.21.1 happened after about 4 days of uptime,=20
+2.6.21.5 already crashed after 15 Minutes.
+
+Screenshots of the resulting kernel panics are available at
+
+	http://www.systemlinux.org/~maan/shots/huangho-crash-2.6.21.1.png
+and
+	http://www.systemlinux.org/~maan/shots/huangho-crash-2.6.21.5.png
+
+We're now running 2.6.18.6 again which happens to be rock solid for our
+workload. However, this kernel now spits out zillons of messages like
+
+	[55122.674290] RPC: bad TCP reclen 0x00010094 (large)
+
+I'm sure it didn't do that half a year ago when it was running for
+several months. The 2.6.21.x kernels did not print these messages
+either, but from what I understand this is due to a patch which went
+in somewhere between 2.6.18 and 2.6.21 and which just ratelimited
+the message.
+
+So something weird seems to be going on in our network and this might
+well be related to the 2.6.21.x crashes we are seeing.
+
+Thanks
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--eBTWNsZZiigckDWV
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFGgjjoWto1QDEAkw8RAvaKAJ9zSErbii7/q3BWzxVrKbXDXbP5WQCfRO3a
+pBdoip/KNTMfzhUiCGEHm+s=
+=Uu70
+-----END PGP SIGNATURE-----
+
+--eBTWNsZZiigckDWV--
 
 
---===============1356602490==
+--===============0600623770==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -107,7 +100,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1356602490==
+--===============0600623770==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -117,4 +110,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1356602490==--
+--===============0600623770==--
