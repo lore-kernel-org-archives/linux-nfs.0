@@ -1,25 +1,25 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] knfsd: set the response bitmask for
- NFS4_CREATE_EXCLUSIVE (repost)
-Date: Wed, 27 Jun 2007 17:39:57 -0400
-Message-ID: <20070627173957.75844134.jlayton@redhat.com>
-References: <20070627092903.82f468cd.jlayton@redhat.com>
-	<18050.54805.859007.848292@notabene.brown>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: How best to handle implicit clearing of
+	setuid/setgid	bits on NFS?
+Date: Wed, 27 Jun 2007 18:15:55 -0400
+Message-ID: <1182982555.5311.67.camel@heimdal.trondhjem.org>
+References: <20070529124705.a1e70735.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, nfsv4@linux-nfs.org,
-	nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3fF6-0006RI-AF
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:40:04 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3fF9-0003ny-Er
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:40:07 -0700
-In-Reply-To: <18050.54805.859007.848292@notabene.brown>
+	id 1I3fnt-0001eq-M0
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 15:16:01 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+Jc8d2UGhySsftLGWHY2GVozqSEtI5ZZA=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I3fnu-0006XU-67
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 15:16:05 -0700
+In-Reply-To: <20070529124705.a1e70735.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,78 +32,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 28 Jun 2007 07:26:45 +1000
-Neil Brown <neilb@suse.de> wrote:
-
-> On Wednesday June 27, jlayton@redhat.com wrote:
-> > Haven't seen any comments on this patch so far. Neil, any thoughts?
+On Tue, 2007-05-29 at 12:47 -0400, Jeff Layton wrote:
+> I've been looking at issue of clearing setuid/setgid bits when a file
+> is written to on NFS. Here's the problem in a nutshell:
 > 
-> I don't remember seeing it before, but that doesn't say much...
-> My thoughts:
->  1/ I would like it to come to me through Bruce.
-
-Ahh, I'll make a mental note to badger Bruce in the future ;-)
-
->  2/ The comment is good, but seems to be asking for a matching comment
->     in nfsd_create_v3.
+> We have 2 users. test1 and test2. Both are members of the group
+> "testgrp":
 > 
-
-Good point, let me add a comment there. I'll respin the patch and
-resend.
-
-> NeilBrown
+> test2@host$ ls -l f1
+> -rwxrwsr-x 1 test1 testgrp 2 2007-05-29 12:23 f1
+> test2@host$ echo foo > f1
+> -bash: f1: Permission denied
 > 
-> > 
-> > --------------[snip]--------------
-> > 
-> > RFC 3530 says:
-> > 
-> >  If the server uses an attribute to store the exclusive
-> >  create verifier, it will signify which attribute by setting the
-> >  appropriate bit in the attribute mask that is returned in the
-> >  results.
-> > 
-> > Linux uses the atime and mtime to store the verifier, but sends a zeroed out
-> > bitmask back to the client. This patch makes sure that we set the correct
-> > bits in the bitmask in this situation.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index 8522729..da20674 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -99,7 +99,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
-> >  		status = nfsd_create_v3(rqstp, current_fh, open->op_fname.data,
-> >  					open->op_fname.len, &open->op_iattr,
-> >  					&resfh, open->op_createmode,
-> > -					(u32 *)open->op_verf.data, &open->op_truncate, &created);
-> > +					(u32 *)open->op_verf.data,
-> > +					&open->op_truncate, &created);
-> > +
-> > +		/* If we ever decide to use different attrs to store the
-> > +		 * verifier in nfsd_create_v3, then we'll need to change this
-> > +		 */
-> > +		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
-> > +			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
-> > +						FATTR4_WORD1_TIME_MODIFY);
-> >  	} else {
-> >  		status = nfsd_lookup(rqstp, current_fh,
-> >  				     open->op_fname.data, open->op_fname.len, &resfh);
+> ...and f1 is unchanged. The problem is that the VFS calls remove_suid
+> to wipe the setgid bit. This ends up causing a SETATTR call, which
+> fails on NFS because we're attempting to remove these bits as user
+> "test2".
 > 
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by DB2 Express
-> Download DB2 Express C - the FREE version of DB2 express and take
-> control of your XML. No limits. Just data. Click to get it now.
-> http://sourceforge.net/powerbar/db2/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+> Until recently, the situation here was worse. The VFS would truncate
+> the file first and then try to clear the setgid bit. The truncate would
+> succeed, but the perm change would fail. You'd end up with a zero-length
+> file. This was fixed my making the size change and bit-clearing go via
+> the same setattr call, so the whole operation just errors out now.
 > 
+> My question is -- Is there anything we can do to make this work as it
+> does on a local filesystem? Ideally there would be some way to tell the
+> server "clear the setuid/gid bits", without actually modifying the
+> contents of the file. Is there a NFS call we can use that would do this?
+> 
+> The only thing I can think of is to read the first byte of the file and
+> then overwrite it with the same data, but that seems racy and may have
+> other problems (and what do you do with a zero-length, setuid file?).
+> 
+> Any suggestions appreciated...
 
+The answer should be simple: leave it to the server. All servers I know
+(except possibly Hummingbird) will clear the setuid/setgid bit whenever
+the file is modified. Anything else would be _extremely_ racy anyway:
+Consider the scenario where you are preparing to write to the file, when
+suddenly a user on another client makes the file setuid after you have
+open()ed the file, but before you actually issue the write().
 
--- 
-Jeff Layton <jlayton@redhat.com>
+IOW: calling remove_suid() on the client is completely redundant, and
+should be suppressed.
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
