@@ -1,26 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS PATCH] Fix the issue of writing data over
-	NFS	concurrently both on client and Server uncorrectly
-Date: Tue, 26 Jun 2007 23:39:52 -0400
-Message-ID: <1182915592.12836.74.camel@heimdal.trondhjem.org>
-References: <4681DA92.8020303@cn.fujitsu.com>
+From: "farhan ahmed" <farhhanahmed@hotmail.com>
+Subject: NFS issue
+Date: Wed, 27 Jun 2007 04:14:56 +0000
+Message-ID: <BAY107-F38728F96EA29AAED5327B6D00A0@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "nfsv4@linux-nfs.org" <nfsv4@linux-nfs.org>,
-	"nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: shichao <shichao@cn.fujitsu.com>
+Content-Type: multipart/mixed; boundary="===============1656925249=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3ONq-0002w2-7F
-	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 20:39:58 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX182ahK1UDItTUtB2WXVa25K665VqMYO+Vw=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I3ONq-00011S-QD
-	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 20:40:01 -0700
-In-Reply-To: <4681DA92.8020303@cn.fujitsu.com>
+	id 1I3Ovo-0006l7-Ag
+	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 21:15:04 -0700
+Received: from bay0-omc3-s22.bay0.hotmail.com ([65.54.246.222])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3Ovo-0002g8-HQ
+	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 21:15:07 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,43 +26,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-06-27 at 11:33 +0800, shichao wrote:
-> Hi everybody,
-> 
-> When I write data on file over NFS (mounted aync)  both on client and on Server, 
-> sometimes the client seems to miss the server's updated data and commit the stale cache data to the nfs server. This
-> leads to a file writed uncorrectly.
-> 
-> Example on a local dir /local/testdir/foo NFS-exported to the localhost on /nfs/foo:
->  The exportfs option in server is: /nfs/  *(rw,sync,root_no_squash)
-> 
-> [root@rhel5~]# mount server:/nfs  /local/testdir
-> 
->  My test program's main flow is as follows:
->   1) fd = open("/local/testdir/foo", oflags, CHMOD_RW )
->   2) wbuf="testmsg-1-"; write(fd, wbuf, strlen(wbuf))
->   3) On nfs Server: echo "testmsg-2-" >> /nfs/foo    (using rsh)
->   4) sleep(6); lseek(fd, 0L, SEEK_END)
->   5) wbuf="testmsg-3-"; write(fd, wbuf, strlen(wbuf))
->   6) lseek(fd, 0L, 0); read(fd, rbuf, MAX_DATA_SIZE)
-> 
->  It is expected that the file data should be "testmsg-1-testmsg-2-testmsg-3",
+--===============1656925249==
+Content-Type: text/html; format=flowed
 
-No. The expectation in this case is precisely what you saw. You should
-not be changing the file on the server unless you are using file locking
-or some other synchronisation mechanism.
+<html><div style='background-color:'><P>Hi All,</P>
+<P>We have weird NFS issue. we can't mount NFs share, when i enabled debug it gives </P>
+<P>following error</P>
+<P><FONT face=Arial color=navy size=2><SPAN style="FONT-SIZE: 10pt; COLOR: navy; FONT-FAMILY: Arial">Jun 27 12:04:30 backup03-syd kernel: nfs_get_root: getattr error = 13<?xml:namespace prefix = o ns = "urn:schemas-microsoft-com:office:office" /><o:p></o:p></SPAN></FONT></P>
+<P class=MsoNormal><FONT face=Arial color=navy size=2><SPAN style="FONT-SIZE: 10pt; COLOR: navy; FONT-FAMILY: Arial">Jun 27 12:04:30 backup03-syd kernel: nfs_sb_init: get root inode failed: errno 13<o:p></o:p></SPAN></FONT></P>
+<P class=MsoNormal>
+<P class=MsoNormal><FONT face=Arial color=navy size=2><SPAN style="FONT-SIZE: 10pt; COLOR: navy; FONT-FAMILY: Arial"><o:p></o:p></SPAN></FONT></P>We dont have any problem with other shares. I have used all ways to solve but it is still there.</P>
+<P>OS: Red Hat Enterprise Linux ES release 4 (Nahant Update 2)</P>
+<P>Kernel: 2.6.9-55.ELsmp #1 SMP</P>
+<P>/etc/exports: /mnt/p03&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *(rw,sync,no_root_squash)</P>
+<P>This box is attached with EMC SAN through HBA card and mounted partition on this box</P>
+<P>/dev/emcpoweru&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 18G&nbsp; 7.4G&nbsp; 9.6G&nbsp; 44% /mnt/p03</P>
+<P>and then shared it through NFS.</P>
+<P>Initially I thought there was problem with SAN partition but I can access this same partition on </P>
+<P>other system and then share through NFS.</P>
+<P>Please help me</P>
+<P>Thanks,</P>
+<P><SPAN style="mso-no-proof: yes"><FONT size=3><FONT face="Times New Roman">-- <o:p></o:p></FONT></FONT></SPAN></P>
+<DIV>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT size=3><FONT face="Times New Roman">Regards,<o:p></o:p></FONT></FONT></SPAN></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT size=3><FONT face="Times New Roman">Farhan Ahmed<o:p></o:p></FONT></FONT></SPAN></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT size=3><FONT face="Times New Roman">NMS Engineer<o:p></o:p></FONT></FONT></SPAN></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><FONT size=3><FONT face="Times New Roman"><SPAN style="mso-no-proof: yes">Soul </SPAN><?xml:namespace prefix = st1 ns = "urn:schemas-microsoft-com:office:smarttags" /><st1:country-region><st1:place><SPAN style="mso-no-proof: yes">Australia</SPAN></st1:place></st1:country-region><SPAN style="mso-no-proof: yes"><o:p></o:p></SPAN></FONT></FONT></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><FONT size=3><FONT face="Times New Roman"><SPAN style="mso-no-proof: yes">Level 14, 201 </SPAN><st1:country-region><st1:place><SPAN style="mso-no-proof: yes">Kent</SPAN></st1:place></st1:country-region><SPAN style="mso-no-proof: yes"> Streen<o:p></o:p></SPAN></FONT></FONT></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><FONT size=3><FONT face="Times New Roman"><st1:City><st1:place><SPAN style="mso-no-proof: yes">Sydney</SPAN></st1:place></st1:City><SPAN style="mso-no-proof: yes"><SPAN style="mso-spacerun: yes">&nbsp; </SPAN>NSW 2000<o:p></o:p></SPAN></FONT></FONT></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT size=3><FONT face="Times New Roman">Phone(Office): 61 2 8220 6022<o:p></o:p></FONT></FONT></SPAN></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT size=3><FONT face="Times New Roman">Fax(Office): 61 2 9252 6864<o:p></o:p></FONT></FONT></SPAN></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><FONT size=3><FONT face="Times New Roman"><st1:City><st1:place><SPAN style="mso-no-proof: yes">Mobile</SPAN></st1:place></st1:City><SPAN style="mso-no-proof: yes">: 61 432 156906<o:p></o:p></SPAN></FONT></FONT></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT face="Times New Roman" size=3>Email: </FONT><A href="mailto:fahmed@soulaustralia.com.au"><FONT face="Times New Roman" size=3>fahmed@soulaustralia.com.au</FONT></A><o:p></o:p></SPAN></P>
+<P class=MsoNormal style="MARGIN: 0cm 0cm 0pt"><SPAN style="mso-no-proof: yes"><FONT face="Times New Roman" size=3>URL: </FONT><A href="http://www.soulaustralia.com.au/"><FONT face="Times New Roman" size=3>www.soulaustralia.com.au</FONT></A></SPAN><o:p></o:p></P>
+<P>&nbsp;</P></DIV></div><br clear=all><hr>Search for local singles online @ Lavalife -  <a href="http://g.msn.com/8HMAENAU/2731??PS=47575" target="_top">Click here</a> </html>
 
-Please read the NFS FAQ on close-to-open cache consistency:
-	http://nfs.sourceforge.net/#faq_a8
 
-Trond
 
+--===============1656925249==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============1656925249==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1656925249==--
