@@ -1,20 +1,20 @@
 From: "Bebe Morrison" <jmilsteadifg@precisionprint.co.nz>
 Subject: Great to be back
-Date: Tue, 26 Jun 2007 19:08:21 -0500
-Message-ID: <000b01c7b846$e3a7e080$00000000@ca.inter.net>
+Date: Tue, 26 Jun 2007 19:08:23 -0500
+Message-ID: <000b01c7b846$e55e9130$00000000@ca.inter.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0470461604=="
-To: "Delicia" <nfs@lists.sf.net>
+Content-Type: multipart/mixed; boundary="===============2119976641=="
+To: "Delicia" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3K83-0000qb-N2
-	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 16:07:23 -0700
+	id 1I3K85-0000qg-9A
+	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 16:07:25 -0700
 Received: from ip-223.80.126.206.dsl-cust.ca.inter.net ([206.126.80.223]
 	helo=ca.inter.net) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1I3K86-0006Pb-7X
-	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 16:07:27 -0700
+	id 1I3K87-00054m-JD
+	for nfs@lists.sourceforge.net; Tue, 26 Jun 2007 16:07:28 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,17 +29,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============0470461604==
+--===============2119976641==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C7B846.E3A7E080"
+	boundary="----=_NextPart_000_0007_01C7B846.E55E9130"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C7B846.E3A7E080
+------=_NextPart_000_0007_01C7B846.E55E9130
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C7B846.E3A7E080"
+	boundary="----=_NextPart_001_0008_01C7B846.E55E9130"
 
-------=_NextPart_001_0008_01C7B846.E3A7E080
+------=_NextPart_001_0008_01C7B846.E55E9130
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -88,7 +88,7 @@ I happened to meet Aglaya Ivanovna this mor The good man gave immediate =
 orders for all his family to be briefly pump summoned regret round ripe =
 him. None of these were t
 
-------=_NextPart_001_0008_01C7B846.E3A7E080
+------=_NextPart_001_0008_01C7B846.E55E9130
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -151,9 +151,9 @@ mor The good man gave immediate orders for all his family to be briefly =
 pump summoned regret round ripe him. None of these were t
 </FONT></DIV></FONT></BODY></HTML>
 
-------=_NextPart_001_0008_01C7B846.E3A7E080--
+------=_NextPart_001_0008_01C7B846.E55E9130--
 
-------=_NextPart_000_0007_01C7B846.E3A7E080
+------=_NextPart_000_0007_01C7B846.E55E9130
 Content-Type: image/gif;
 	name="8n40zs0zRg.gif"
 Content-Transfer-Encoding: base64
@@ -530,11 +530,11 @@ o6wNcQTNZwkAAFV7YWQxMIGqv8hyVQfxYymfw8ZFrcaYdYmIFztZy07+aY5b8GVBGDXL6phykuNs
 oy8xhjZVrAyQYrOYFpS+drcCveITh9XbmCBAJUgnC3HbMsi3QPdayU1ji7p7oRkF94PfTW9tG/Te
 kpDAavSN70I4oDEFaMS/HRPwfhNCCAZPuMIVHggAOw==
 
-------=_NextPart_000_0007_01C7B846.E3A7E080--
+------=_NextPart_000_0007_01C7B846.E55E9130--
 
 
 
---===============0470461604==
+--===============2119976641==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -545,7 +545,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0470461604==
+--===============2119976641==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -555,4 +555,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0470461604==--
+--===============2119976641==--
