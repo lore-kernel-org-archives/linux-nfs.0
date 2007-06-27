@@ -1,32 +1,30 @@
-From: Stuart Anderson <anderson@ligo.caltech.edu>
-Subject: NFSv4 uninitialized mtime
-Date: Wed, 27 Jun 2007 16:31:14 -0700
-Message-ID: <20070627233114.GA14508@ligo.caltech.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Kernel NFS nfs_update_inode Oops in 2.6.20.11
+Date: Wed, 27 Jun 2007 19:34:03 -0400
+Message-ID: <1182987243.5311.75.camel@heimdal.trondhjem.org>
+References: <20070623153345.GA22117@ligo.caltech.edu>
+	<1182615064.5859.2.camel@heimdal.trondhjem.org>
+	<20070623215131.GC27551@ligo.caltech.edu>
+	<20070627230453.GA14474@ligo.caltech.edu>
+	<1182986558.5311.70.camel@heimdal.trondhjem.org>
+	<20070627232616.GG9806@ligo.caltech.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: "Dr. J. Bruce Fields" <bfields@fieldses.org>, MalteSch@gmx.de,
+	nfs@lists.sourceforge.net
+To: Stuart Anderson <anderson@ligo.caltech.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3gyj-0000ll-PN
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 16:31:17 -0700
-Received: from acrux.ligo.caltech.edu ([131.215.115.14])
+	id 1I3h1Y-00014E-5n
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 16:34:12 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/PRL5LhHePHWpmkYTJyj94LeAnANupJao=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I3gyn-0004tH-2Y
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 16:31:21 -0700
-Received: from alphard.ligo.caltech.edu (alphard [131.215.114.160])
-	by acrux.ligo.caltech.edu (8.12.11/8.12.11) with ESMTP id
-	l5RNVJrc020557
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <nfs@lists.sourceforge.net>; Wed, 27 Jun 2007 16:31:19 -0700 (PDT)
-Received: from alphard.ligo.caltech.edu (localhost.localdomain [127.0.0.1])
-	by alphard.ligo.caltech.edu (8.13.7/8.13.4) with ESMTP id
-	l5RNVEqc014972
-	for <nfs@lists.sourceforge.net>; Wed, 27 Jun 2007 16:31:14 -0700
-Received: (from anderson@localhost)
-	by alphard.ligo.caltech.edu (8.13.7/8.13.4/Submit) id l5RNVEu9014971
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 16:31:14 -0700
+	(Exim 4.44) id 1I3h1a-0005iO-45
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 16:34:15 -0700
+In-Reply-To: <20070627232616.GG9806@ligo.caltech.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,52 +37,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The following simple program creates files with un-initialized mtime values
-on a Linux NFSv4 client mounting from a Solaris NFSv4 server--at least the
-mtimes are wildly different each time the program is run. The problem is
-reproducible but does not happen under any of the following circumstances:
+On Wed, 2007-06-27 at 16:26 -0700, Stuart Anderson wrote:
+> On Wed, Jun 27, 2007 at 07:22:38PM -0400, Trond Myklebust wrote:
+> > On Wed, 2007-06-27 at 16:04 -0700, Stuart Anderson wrote:
+> > > This has patch has now been stable for 5 days on two different machines.
+> > > 
+> > > Any thoughts about the "bad sequence-id error"?
+> > 
+> > I seem to remember that a couple of sources of state corruption were
+> > found in the server in and around the 2.6.20 series. Do I remember
+> > correctly, Bruce?
+> 
+> In this case Solaris is the server and Linux 2.6.20.14 is the client.
 
-1) Drop O_EXCL from open() call.
-2) NFS mount using v3.
-3) Switch NFS v4 client from Linux to Solaris.
+Sigh... In that case we'll need a binary tcpdump of the problem (tcpdump
+-s 9000 -w /tmp/dump.out).
 
-This is on an FC4 machine with the 2.6.20.14 kernel plus Trond's recent
-revalidate-the-fsid-on-the-current-dir-not-the-root-dir patch
-and nfs-utils 1.0.9-16 backported from CentOS 5.
+I'd be surprised if we have many cases of sequence id errors left in the
+client. It has been ages since I saw one.
 
-Thanks.
+Trond
 
-
-> cat badmtime.c 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-
-main() {
-int fd;
-
-fd = open("badtime.out", O_CREAT|O_EXCL, 0664);
-close(fd);
-}
-> vi badmtime.c
-> gcc badmtime.c -o badmtime
-> ./badmtime 
-> ls -l badmtime.out 
--rw-r--r--  1 anderson anderson 0 Oct  9  1979 badmtime.out
-> stat badmtime.out 
-  File: `badmtime.out'
-  Size: 0               Blocks: 1          IO Block: 1048576 regular empty file
-Device: 20h/32d Inode: 107016      Links: 1
-Access: (0644/-rw-r--r--)  Uid: ( 5026/anderson)   Gid: ( 5026/anderson)
-Access: 2007-06-27 16:07:24.184162655 -0700
-Modify: 1979-10-09 12:54:39.549017000 -0700
-Change: 2007-06-27 16:07:24.192792428 -0700
-
-
--- 
-Stuart Anderson  anderson@ligo.caltech.edu
-http://www.ligo.caltech.edu/~anderson
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
