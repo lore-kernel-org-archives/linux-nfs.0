@@ -1,20 +1,19 @@
-From: "Sales" <sales@pdaarts.com>
-Subject: Aretha, Stevie and More Share a 'Dream'
-Date: Wed, 27 Jun 2007 20:50:49 +0000
-Message-ID: <2f4f01c7b8fc$1bb1376e$175b53c9@microsoft.virtua.com.br>
+From: "zheng xin" <zhx821223@hotmail.com>
+Subject: NFS problem when mounting dynamic file system
+Date: Wed, 27 Jun 2007 21:14:17 +0000
+Message-ID: <BAY129-F303A409AA4A2368690527CAD0A0@phx.gbl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: "Petraglia Giuseppe" <nfs@lists.sourceforge.net>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3eUk-0001cC-KR
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 13:52:11 -0700
-Received: from c9535b17.virtua.com.br ([201.83.91.23]
-	helo=microsoft.virtua.com.br)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I3eUm-0007uw-Od
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 13:52:14 -0700
+	id 1I3eqF-0003r8-SJ
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:14:24 -0700
+Received: from bay0-omc1-s26.bay0.hotmail.com ([65.54.246.98])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3eqH-000719-Vw
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:14:27 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,16 +26,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Have you ever had a dream of having sex with any girl you like?
+Hi NFS experts:
 
-We bet you have, and we are ready to bring your dream into life with
-our uncompromising, brand new and revolutionary pills which will
-strengthen your sex appeal making your dick REALLY BIG! 
+When I am using NFS, I get the following problem:
 
-Check for details our official website: http://www.pdaarts.com/
+I have two PCs, both in subnet 192.168.255.0(28), PC A: 192.168.255.3 PC 
+B:192.168.255.1
 
--- 
-jmgtgmfgiigngrfkfifqkmfogjfofugsgptlttuftjtgpqtnthur
+In PC A, automount is running to automatically mount a SD card.
+/etc/auto.master:
+#
+# $Id: auto.master,v 1.4 2005/01/04 14:36:54 raven Exp $
+#
+# Sample auto.master file
+# This is an automounter map and it has the following format
+# key [ -mount-options-separated-by-comma ] location
+# For details of the format look at autofs(5).
+#/misc  /etc/auto.misc --timeout=60
+#/smb   /etc/auto.smb
+/mnt    /etc/auto.misc --timeout=1 --ghost
+
+/etc/auto.misc:
+#
+# $Id: auto.misc,v 1.2 2003/09/29 08:22:35 raven Exp $
+#
+# This is an automounter map and it has the following format
+# key [ -mount-options-separated-by-comma ] location
+# Details may be found in the autofs(5) manpage
+#cd             -fstype=iso9660,ro,nosuid,nodev :/dev/cdrom
+
+# the following entries are samples to pique your imagination
+#linux          -ro,soft,intr           ftp.example.org:/pub/linux
+#boot           -fstype=ext2            :/dev/hda1
+#floppy         -fstype=auto            :/dev/fd0
+#floppy         -fstype=ext2            :/dev/fd0
+#e2floppy       -fstype=ext2            :/dev/fd0
+#jaz            -fstype=ext2            :/dev/sdc1
+#removable      -fstype=ext2            :/dev/hdd
+card            -fstype=vfat            :/dev/mmcblk0
+
+It will mount the SD card into /mnt/card when it is present. This works all 
+right.
+
+Now, I would like to access the SD card from PC B. So I do the following:
+
+In PC A:
+I edited /etc/exports:
+/mnt/card 192.168.255.0/28(rw,sync,no_root_squash,no_subtree_check)
+
+Now start NFS, I can see the following:
+>exportfs -v
+/mnt/card       
+192.168.255.0/28(rw,wdelay,no_root_squash,no_subtree_check,anonuid=65534,anongid=65534)
+
+Then in PC B:
+>mount -t nfs 192.168.255.3:/mnt/card /mnt/
+mount: 192.168.255.3:/mnt/card failed, reason given by server: Permission 
+denied
+mount: nfsmount failed: Bad file descriptor
+mount: Mounting 192.168.255.3:/mnt/card on /mnt/ failed: Bad file descriptor
+
+BTW: My NFS version: nfs-utils-1.0.10 with no addtional patches.
+
+Does anybody know what I did wrong or any fixes to NFS can get rid of my 
+problem.
+
+Thanks a lot.
+Shane
+
+_________________________________________________________________
+Express yourself instantly with MSN Messenger! Download today it's FREE! 
+http://messenger.msn.click-url.com/go/onm00200471ave/direct/01/
 
 
 -------------------------------------------------------------------------
