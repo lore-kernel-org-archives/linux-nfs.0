@@ -1,21 +1,29 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] knfsd: set the response bitmask for
- NFS4_CREATE_EXCLUSIVE (repost)
-Date: Wed, 27 Jun 2007 09:29:03 -0400
-Message-ID: <20070627092903.82f468cd.jlayton@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Question: When NFS client check dir's permission,
+	it	does not check the cache data
+Date: Wed, 27 Jun 2007 10:25:31 -0400
+Message-ID: <1182954331.5311.14.camel@heimdal.trondhjem.org>
+References: <467F8247.9060607@cn.fujitsu.com>
+	<1182802099.6163.33.camel@heimdal.trondhjem.org>
+	<4681BC44.6000605@cn.fujitsu.com>
+	<1182913754.12836.61.camel@heimdal.trondhjem.org>
+	<4681F3FB.7040609@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-To: neilb@suse.de
+Cc: nfs@lists.sourceforge.net
+To: Wei Yongjun <yjwei@cn.fujitsu.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3XZv-0002hm-O1
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 06:29:03 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3XZy-0006bo-Qx
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 06:29:07 -0700
+	id 1I3YSg-00014z-D9
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 07:25:41 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+mu8yj6yLnjF3T9RhkvuQBdAcnxm6lzPc=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I3YSi-00065L-A1
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 07:25:41 -0700
+In-Reply-To: <4681F3FB.7040609@cn.fujitsu.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,44 +36,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Haven't seen any comments on this patch so far. Neil, any thoughts?
+On Wed, 2007-06-27 at 13:22 +0800, Wei Yongjun wrote:
+> >
+> >> I think code "status = nfs_access_get_cached(inode, cred, &cache);" can do
+> >> this. And it works.
+> >> Other question: why only optimize all write operations, read operations
+> >> are not optimized? If read options is optimized, it can do the same things,
+> >> do not use access to check permissions, and server will check permissions
+> >> when we perform the read op.
+> >>     
+> >
+> > Huh? What read operations are we failing to optimise and how?
+> >   
+> 
+> I mean that read a dir, such as lookup a dir.
+> If I reply a getattr as that dir has no lookup permission, and then do a
+> "cat /nfsroot/dir/file" at client, client will not send lookup procedure to
+> server, because client used the cache data of the dir. It like this:
+> client server
+> #ls /nfsroot
+> readdirplus ------------------>
+> <------------- readdirplus reply
+> (attribute of dir has no lookup permission)
+> # cat /nfsroot/dir/file
+> (send nothing, used cache data)
+> -------no package is send-------
+> 
+> If no cache data exists, it would like this:
+> client server
+> #ls /nfsroot
+> readdirplus ------------------>
+> <------------- readdirplus reply
+> (attribute of dir has no lookup permission)
+> # cat /nfsroot/dir/file
+> access(dir) ------------------->
+> <------------- access reply(dir)
+> (has no lookup permission)
+> 
+> And if has permission to lookup dir, it would like this:
+> client server
+> #ls /nfsroot
+> readdirplus ------------------>
+> <------------- readdirplus reply
+> (attribute of dir has no lookup permission)
+> # cat /nfsroot/dir/file
+> access(dir) -------------------> (*1)
+> <------------- access reply(dir)
+> lookup(file) ------------------->
+> <------------- lookup reply(file)
+> read(file) ------------------->
+> <------------- read reply(file)
+> 
+> While you optimize all write operations to omit access procedure, can
+> this access (*1) be omitted? Then lookup(file) will return NOPERM.
 
---------------[snip]--------------
+So what if I change the permissions on the directory? What should the
+rules be for caching these attributes?
 
-RFC 3530 says:
+...and you still haven't replied to my question about what
+application/workload actually _cares_ about optimising for this
+particular case.
 
- If the server uses an attribute to store the exclusive
- create verifier, it will signify which attribute by setting the
- appropriate bit in the attribute mask that is returned in the
- results.
+Trond
 
-Linux uses the atime and mtime to store the verifier, but sends a zeroed out
-bitmask back to the client. This patch makes sure that we set the correct
-bits in the bitmask in this situation.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 8522729..da20674 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -99,7 +99,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
- 		status = nfsd_create_v3(rqstp, current_fh, open->op_fname.data,
- 					open->op_fname.len, &open->op_iattr,
- 					&resfh, open->op_createmode,
--					(u32 *)open->op_verf.data, &open->op_truncate, &created);
-+					(u32 *)open->op_verf.data,
-+					&open->op_truncate, &created);
-+
-+		/* If we ever decide to use different attrs to store the
-+		 * verifier in nfsd_create_v3, then we'll need to change this
-+		 */
-+		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
-+			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
-+						FATTR4_WORD1_TIME_MODIFY);
- 	} else {
- 		status = nfsd_lookup(rqstp, current_fh,
- 				     open->op_fname.data, open->op_fname.len, &resfh);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
