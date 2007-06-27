@@ -1,19 +1,25 @@
-From: "zheng xin" <zhx821223@hotmail.com>
-Subject: NFS problem when mounting dynamic file system
-Date: Wed, 27 Jun 2007 21:14:17 +0000
-Message-ID: <BAY129-F303A409AA4A2368690527CAD0A0@phx.gbl>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] knfsd: set the response bitmask for
+ NFS4_CREATE_EXCLUSIVE (repost)
+Date: Thu, 28 Jun 2007 07:26:45 +1000
+Message-ID: <18050.54805.859007.848292@notabene.brown>
+References: <20070627092903.82f468cd.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3eqF-0003r8-SJ
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:14:24 -0700
-Received: from bay0-omc1-s26.bay0.hotmail.com ([65.54.246.98])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3eqH-000719-Vw
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:14:27 -0700
+	id 1I3f2V-00057z-MC
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:27:04 -0700
+Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I3f2X-00082E-KK
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 14:27:07 -0700
+In-Reply-To: message from Jeff Layton on Wednesday June 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,78 +32,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi NFS experts:
+On Wednesday June 27, jlayton@redhat.com wrote:
+> Haven't seen any comments on this patch so far. Neil, any thoughts?
 
-When I am using NFS, I get the following problem:
+I don't remember seeing it before, but that doesn't say much...
+My thoughts:
+ 1/ I would like it to come to me through Bruce.
+ 2/ The comment is good, but seems to be asking for a matching comment
+    in nfsd_create_v3.
 
-I have two PCs, both in subnet 192.168.255.0(28), PC A: 192.168.255.3 PC 
-B:192.168.255.1
+NeilBrown
 
-In PC A, automount is running to automatically mount a SD card.
-/etc/auto.master:
-#
-# $Id: auto.master,v 1.4 2005/01/04 14:36:54 raven Exp $
-#
-# Sample auto.master file
-# This is an automounter map and it has the following format
-# key [ -mount-options-separated-by-comma ] location
-# For details of the format look at autofs(5).
-#/misc  /etc/auto.misc --timeout=60
-#/smb   /etc/auto.smb
-/mnt    /etc/auto.misc --timeout=1 --ghost
-
-/etc/auto.misc:
-#
-# $Id: auto.misc,v 1.2 2003/09/29 08:22:35 raven Exp $
-#
-# This is an automounter map and it has the following format
-# key [ -mount-options-separated-by-comma ] location
-# Details may be found in the autofs(5) manpage
-#cd             -fstype=iso9660,ro,nosuid,nodev :/dev/cdrom
-
-# the following entries are samples to pique your imagination
-#linux          -ro,soft,intr           ftp.example.org:/pub/linux
-#boot           -fstype=ext2            :/dev/hda1
-#floppy         -fstype=auto            :/dev/fd0
-#floppy         -fstype=ext2            :/dev/fd0
-#e2floppy       -fstype=ext2            :/dev/fd0
-#jaz            -fstype=ext2            :/dev/sdc1
-#removable      -fstype=ext2            :/dev/hdd
-card            -fstype=vfat            :/dev/mmcblk0
-
-It will mount the SD card into /mnt/card when it is present. This works all 
-right.
-
-Now, I would like to access the SD card from PC B. So I do the following:
-
-In PC A:
-I edited /etc/exports:
-/mnt/card 192.168.255.0/28(rw,sync,no_root_squash,no_subtree_check)
-
-Now start NFS, I can see the following:
->exportfs -v
-/mnt/card       
-192.168.255.0/28(rw,wdelay,no_root_squash,no_subtree_check,anonuid=65534,anongid=65534)
-
-Then in PC B:
->mount -t nfs 192.168.255.3:/mnt/card /mnt/
-mount: 192.168.255.3:/mnt/card failed, reason given by server: Permission 
-denied
-mount: nfsmount failed: Bad file descriptor
-mount: Mounting 192.168.255.3:/mnt/card on /mnt/ failed: Bad file descriptor
-
-BTW: My NFS version: nfs-utils-1.0.10 with no addtional patches.
-
-Does anybody know what I did wrong or any fixes to NFS can get rid of my 
-problem.
-
-Thanks a lot.
-Shane
-
-_________________________________________________________________
-Express yourself instantly with MSN Messenger! Download today it's FREE! 
-http://messenger.msn.click-url.com/go/onm00200471ave/direct/01/
-
+> 
+> --------------[snip]--------------
+> 
+> RFC 3530 says:
+> 
+>  If the server uses an attribute to store the exclusive
+>  create verifier, it will signify which attribute by setting the
+>  appropriate bit in the attribute mask that is returned in the
+>  results.
+> 
+> Linux uses the atime and mtime to store the verifier, but sends a zeroed out
+> bitmask back to the client. This patch makes sure that we set the correct
+> bits in the bitmask in this situation.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 8522729..da20674 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -99,7 +99,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+>  		status = nfsd_create_v3(rqstp, current_fh, open->op_fname.data,
+>  					open->op_fname.len, &open->op_iattr,
+>  					&resfh, open->op_createmode,
+> -					(u32 *)open->op_verf.data, &open->op_truncate, &created);
+> +					(u32 *)open->op_verf.data,
+> +					&open->op_truncate, &created);
+> +
+> +		/* If we ever decide to use different attrs to store the
+> +		 * verifier in nfsd_create_v3, then we'll need to change this
+> +		 */
+> +		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
+> +			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
+> +						FATTR4_WORD1_TIME_MODIFY);
+>  	} else {
+>  		status = nfsd_lookup(rqstp, current_fh,
+>  				     open->op_fname.data, open->op_fname.len, &resfh);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
