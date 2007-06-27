@@ -1,25 +1,21 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: page allocation in nfs_symlink (repost)
-Date: Wed, 27 Jun 2007 09:15:38 -0400
-Message-ID: <20070627091538.a136f9cd.jlayton@redhat.com>
-References: <20070607091842.09c23fd8.jlayton@redhat.com>
-	<1181222903.6442.0.camel@heimdal.trondhjem.org>
-	<20070607094334.39bbe3e0.jlayton@redhat.com>
-	<1181223979.6442.2.camel@heimdal.trondhjem.org>
+Subject: [PATCH] knfsd: set the response bitmask for
+ NFS4_CREATE_EXCLUSIVE (repost)
+Date: Wed, 27 Jun 2007 09:29:03 -0400
+Message-ID: <20070627092903.82f468cd.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3XN8-00014o-38
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 06:15:50 -0700
+	id 1I3XZv-0002hm-O1
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 06:29:03 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3XNA-0000vC-4z
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 06:15:53 -0700
-In-Reply-To: <1181223979.6442.2.camel@heimdal.trondhjem.org>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3XZy-0006bo-Qx
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 06:29:07 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,83 +28,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 07 Jun 2007 09:46:19 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+Haven't seen any comments on this patch so far. Neil, any thoughts?
 
-> On Thu, 2007-06-07 at 09:43 -0400, Jeff Layton wrote:
-> > On Thu, 07 Jun 2007 09:28:23 -0400
-> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > 
-> > > On Thu, 2007-06-07 at 09:18 -0400, Jeff Layton wrote:
-> > > > I was reviewing a patch the other day and noticed this in recent
-> > > > versions of nfs_symlink():
-> > > > 
-> > > >         page = alloc_page(GFP_KERNEL);
-> > > >         if (!page) {
-> > > >                 unlock_kernel();
-> > > >                 return -ENOMEM;
-> > > >         }
-> > > > 
-> > > >         kaddr = kmap_atomic(page, KM_USER0);
-> > > >         memcpy(kaddr, symname, pathlen);
-> > > >         if (pathlen < PAGE_SIZE)
-> > > >                 memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
-> > > >         kunmap_atomic(kaddr, KM_USER0);
-> > > > 
-> > > > I'm a bit confused and so am hoping someone can clarify. If we're
-> > > > allocating a GFP_KERNEL page, then it should be directly addressable by
-> > > > the kernel (via page_address()). So we really shouldn't need to use a
-> > > > kmap/unmap here, right?
-> > > > 
-> > > > Also, it looks like most pagecache pages are allocated using
-> > > > GFP_HIGHUSER. Is there something special about symlinks that means that
-> > > > we need to use normal zone pages here? While I haven't tested it, it
-> > > > seems like we ought to be able to do alloc_page(GFP_HIGHUSER) here
-> > > > instead.
-> > > > 
-> > > > Am I missing something?
-> > > 
-> > > No. I think you're right: it should be safe to use GFP_HIGHUSER.
-> > > 
-> > > Cheers
-> > >   Trond
-> > > 
-> > 
-> > Ok. For the sake of completeness, here's a patch. I've not tested it,
-> > however.
-> 
-> Could you throw in a little changelog entry too, please? :-)
-> 
-> Trond
-> 
+--------------[snip]--------------
 
-Hi Trond,
-  You never responded to my last post here and I noticed that this
-patch hadn't made it into your git tree. Does this look OK?
+RFC 3530 says:
 
-------------[snip]--------------
+ If the server uses an attribute to store the exclusive
+ create verifier, it will signify which attribute by setting the
+ appropriate bit in the attribute mask that is returned in the
+ results.
 
-NFS: Use GFP_HIGHUSER for page allocation in nfs_symlink()
-
-nfs_symlink() allocates a GFP_KERNEL page for the pagecache. Most
-pagecache pages are allocated using GFP_HIGHUSER, and there's no reason
-not to do that in nfs_symlink() as well.
+Linux uses the atime and mtime to store the verifier, but sends a zeroed out
+bitmask back to the client. This patch makes sure that we set the correct
+bits in the bitmask in this situation.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 69e9c0a..322141f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1534,7 +1534,7 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
- 
- 	lock_kernel();
- 
--	page = alloc_page(GFP_KERNEL);
-+	page = alloc_page(GFP_HIGHUSER);
- 	if (!page) {
- 		unlock_kernel();
- 		return -ENOMEM;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 8522729..da20674 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -99,7 +99,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+ 		status = nfsd_create_v3(rqstp, current_fh, open->op_fname.data,
+ 					open->op_fname.len, &open->op_iattr,
+ 					&resfh, open->op_createmode,
+-					(u32 *)open->op_verf.data, &open->op_truncate, &created);
++					(u32 *)open->op_verf.data,
++					&open->op_truncate, &created);
++
++		/* If we ever decide to use different attrs to store the
++		 * verifier in nfsd_create_v3, then we'll need to change this
++		 */
++		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
++			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
++						FATTR4_WORD1_TIME_MODIFY);
+ 	} else {
+ 		status = nfsd_lookup(rqstp, current_fh,
+ 				     open->op_fname.data, open->op_fname.len, &resfh);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
