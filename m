@@ -1,32 +1,28 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Exporting Nested Directories
-Date: Wed, 27 Jun 2007 14:57:23 -0400
-Message-ID: <20070627145723.9f739db9.jlayton@redhat.com>
-References: <19d180740706271141i7592b8bcu9b0c646ab62f550f@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: page allocation in nfs_symlink (repost)
+Date: Wed, 27 Jun 2007 16:31:58 -0400
+Message-ID: <1182976318.5311.48.camel@heimdal.trondhjem.org>
+References: <20070607091842.09c23fd8.jlayton@redhat.com>
+	<1181222903.6442.0.camel@heimdal.trondhjem.org>
+	<20070607094334.39bbe3e0.jlayton@redhat.com>
+	<1181223979.6442.2.camel@heimdal.trondhjem.org>
+	<20070627091538.a136f9cd.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3chj-0006RN-O4
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 11:57:54 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3chm-0008VO-V8
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 11:57:31 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l5RIvO7i009184
-	for <nfs@lists.sourceforge.net>; Wed, 27 Jun 2007 14:57:24 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l5RIvOnG018117
-	for <nfs@lists.sourceforge.net>; Wed, 27 Jun 2007 14:57:24 -0400
-Received: from tleilax.poochiereds.net (vpn-14-151.rdu.redhat.com
-	[10.11.14.151])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l5RIvNGv002187
-	for <nfs@lists.sourceforge.net>; Wed, 27 Jun 2007 14:57:23 -0400
-In-Reply-To: <19d180740706271141i7592b8bcu9b0c646ab62f550f@mail.gmail.com>
+	id 1I3eBI-0007qq-LU
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 13:32:04 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/BN8ocrdj9ALdUCy3uxXpX3UNkImEErbU=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I3eBJ-0001Bp-UZ
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 13:32:08 -0700
+In-Reply-To: <20070627091538.a136f9cd.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,46 +35,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 27 Jun 2007 14:41:49 -0400
-"Adam Thomas" <nfs@adamthomas.us> wrote:
-
-> I'm trying to export two directories on the same filesystem. The exports
-> file looks something like this:
+On Wed, 2007-06-27 at 09:15 -0400, Jeff Layton wrote:
+> On Thu, 07 Jun 2007 09:46:19 -0400
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 > 
-> /raid 192.168.1.0/23(rw,sync)
-> /raid/userdir 192.168.1.0/23(rw,sync)
+> > On Thu, 2007-06-07 at 09:43 -0400, Jeff Layton wrote:
+> > > On Thu, 07 Jun 2007 09:28:23 -0400
+> > > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > > 
+> > > > On Thu, 2007-06-07 at 09:18 -0400, Jeff Layton wrote:
+> > > > > I was reviewing a patch the other day and noticed this in recent
+> > > > > versions of nfs_symlink():
+> > > > > 
+> > > > >         page = alloc_page(GFP_KERNEL);
+> > > > >         if (!page) {
+> > > > >                 unlock_kernel();
+> > > > >                 return -ENOMEM;
+> > > > >         }
+> > > > > 
+> > > > >         kaddr = kmap_atomic(page, KM_USER0);
+> > > > >         memcpy(kaddr, symname, pathlen);
+> > > > >         if (pathlen < PAGE_SIZE)
+> > > > >                 memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
+> > > > >         kunmap_atomic(kaddr, KM_USER0);
+> > > > > 
+> > > > > I'm a bit confused and so am hoping someone can clarify. If we're
+> > > > > allocating a GFP_KERNEL page, then it should be directly addressable by
+> > > > > the kernel (via page_address()). So we really shouldn't need to use a
+> > > > > kmap/unmap here, right?
+> > > > > 
+> > > > > Also, it looks like most pagecache pages are allocated using
+> > > > > GFP_HIGHUSER. Is there something special about symlinks that means that
+> > > > > we need to use normal zone pages here? While I haven't tested it, it
+> > > > > seems like we ought to be able to do alloc_page(GFP_HIGHUSER) here
+> > > > > instead.
+> > > > > 
+> > > > > Am I missing something?
+> > > > 
+> > > > No. I think you're right: it should be safe to use GFP_HIGHUSER.
+> > > > 
+> > > > Cheers
+> > > >   Trond
+> > > > 
+> > > 
+> > > Ok. For the sake of completeness, here's a patch. I've not tested it,
+> > > however.
+> > 
+> > Could you throw in a little changelog entry too, please? :-)
+> > 
+> > Trond
+> > 
 > 
+> Hi Trond,
+>   You never responded to my last post here and I noticed that this
+> patch hadn't made it into your git tree. Does this look OK?
 
-That seems erm...a bit strange.
+Sorry. I got half-way through the process of extracting the patch, then
+apparently got distracted: I found it still in my home directory, but
+not in my stgit tree...
 
-Any host that has access to /raid will have access to /raid/userdir
-automatically. Why not just remove the second export here if they're
-truly on the same filesystem? The options are exactly the same.
+Anyhow. Applied now... I'm waiting for CITI to come back online (we had
+a storm) so that I can update the NFS git tree...
 
-> When I try to do this I get a lot of unusual behavior (some clients will
-> mount, but others won't even though they are within the same IP range).
-> 
+Trond
 
-My first thought is that you may be running into some weirdness with
-subtree checking here, though I'll confess that I've not looked closely
-at that code in a long time.
-
-> Are there any restriction with exporting a nested directory like this?
-> 
-
-There are some. Check out the subtree_check option in the exports
-manpage, though for RHEL3 that should already be the default.
-
-> The host is running RHELv3, kernel 2.4.21 with the stock nfs package. The
-> clients are all recent version of CentOS or Redhat Linux with the most
-> recent nfs-utils packages.
-> 
-> Thanks,
-> -Adam
-> 
-
--- 
-Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
