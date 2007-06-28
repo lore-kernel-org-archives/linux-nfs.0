@@ -1,111 +1,161 @@
-From: "Loretta Contreras" <reject@rschultz.net>
-Subject: Man Lebt nur einmal - probiers aus !
-Date: Thu, 28 Jun 2007 03:48:34 -0300
-Message-ID: <01c7b937$337405d0$6d01c352@reject>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC:PATCH] How best to handle implicit clearing of
+ setuid/setgid bits on NFS?
+Date: Wed, 27 Jun 2007 22:13:54 -0400
+Message-ID: <20070627221354.02233c58.jlayton@redhat.com>
+References: <20070529124705.a1e70735.jlayton@redhat.com>
+	<1182982555.5311.67.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0852517248=="
-To: <nfs@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-fsdevel@vger.kernel.org, aviro@redhat.com
+To: nfs@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1182982555.5311.67.camel@heimdal.trondhjem.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
+On Wed, 27 Jun 2007 18:15:55 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
---===============0852517248==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0006_01C7B958.BA85A5D0"
+> On Tue, 2007-05-29 at 12:47 -0400, Jeff Layton wrote:
+> > I've been looking at issue of clearing setuid/setgid bits when a file
+> > is written to on NFS. Here's the problem in a nutshell:
+> > 
+> > We have 2 users. test1 and test2. Both are members of the group
+> > "testgrp":
+> > 
+> > test2@host$ ls -l f1
+> > -rwxrwsr-x 1 test1 testgrp 2 2007-05-29 12:23 f1
+> > test2@host$ echo foo > f1
+> > -bash: f1: Permission denied
+> > 
+> > ...and f1 is unchanged. The problem is that the VFS calls remove_suid
+> > to wipe the setgid bit. This ends up causing a SETATTR call, which
+> > fails on NFS because we're attempting to remove these bits as user
+> > "test2".
+> > 
+> > Until recently, the situation here was worse. The VFS would truncate
+> > the file first and then try to clear the setgid bit. The truncate would
+> > succeed, but the perm change would fail. You'd end up with a zero-length
+> > file. This was fixed my making the size change and bit-clearing go via
+> > the same setattr call, so the whole operation just errors out now.
+> > 
+> > My question is -- Is there anything we can do to make this work as it
+> > does on a local filesystem? Ideally there would be some way to tell the
+> > server "clear the setuid/gid bits", without actually modifying the
+> > contents of the file. Is there a NFS call we can use that would do this?
+> > 
+> > The only thing I can think of is to read the first byte of the file and
+> > then overwrite it with the same data, but that seems racy and may have
+> > other problems (and what do you do with a zero-length, setuid file?).
+> > 
+> > Any suggestions appreciated...
+> 
+> The answer should be simple: leave it to the server. All servers I know
+> (except possibly Hummingbird) will clear the setuid/setgid bit whenever
+> the file is modified. Anything else would be _extremely_ racy anyway:
+> Consider the scenario where you are preparing to write to the file, when
+> suddenly a user on another client makes the file setuid after you have
+> open()ed the file, but before you actually issue the write().
+> 
+> IOW: calling remove_suid() on the client is completely redundant, and
+> should be suppressed.
+> 
+> Trond
+> 
 
-This is a multi-part message in MIME format.
+Ok. This is a bit more complex now since we remove suid bits on
+truncate, but don't set ATTR_FORCE.
 
-------=_NextPart_000_0006_01C7B958.BA85A5D0
-Content-Type: text/plain;
-	charset="iso-8859-2"
-Content-Transfer-Encoding: 7bit
+Here's a patch that should do this. I know there's a general
+aversion to adding new flags to vfs structures, but I couldn't think of
+a way to cleanly do this without adding one.
 
-Scheiss \/i.... Agra! Fruher war ich der King, heute kann es jeder!
+Note that I've not tested this patch at all so this is just a RFC.
 
-Lust uber zwei Stunden nicht zu kommen?
+CC'ing Al here since he's expressed interest in this problem as well.
 
-Preise die keine Konkurrenz kennen 
+Thoughts?
 
-- Visa verifizierter Onlineshop
-- Kein peinlicher Arztbesuch erforderlicht
-- Diskrete Verpackung und Zahlung
-- Kostenlose, arztliche Telefon-Beratung
-- Kein langes Warten – Auslieferung innerhalb von 2-3 Tagen
-- Bequem und diskret online bestellen.
-- keine versteckte Kosten
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-
-Klicken Sie HIER und Sie erhalten vier Dosen umsonst
-http://murweru.hk/
-
-
-------=_NextPart_000_0006_01C7B958.BA85A5D0
-Content-Type: text/html;
-	charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" xmlns:w=3D"urn:sc=
-hemas-microsoft-com:office:word" xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; charset=3Diso-8859-2">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-</head>
-<body>
-<head><meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso=
--8859-1">
-</head><body><DIV><p>Scheiss \/i.... Agra! Fruher war ich der King, heute k=
-ann es jeder!</p><p>Meinung von unserem Kunden:<br><strong>Ich finde \/i...=
- Agra einfach wunderbar. Egal, ob f&#252;r den Sex oder, um mich selbst zu=
- verw&#246;hnen: Es funktioniert. Mein Schwanz wird extrem hart und mein Or=
-gasmus ist sehr intensiv. Die Wirkung ist so stark, dass ich \/i.... Agra n=
-ur am Wochenende verwende oder wenn ich viel Zeit habe, es richtig zu genie=
-&#223;en.<br></strong><strong><br>Lust &uuml;ber zwei Stunden nicht zu komm=
-en?</strong></p>
-<p>Preise die keine Konkurrenz kennen <p>
-- Bequem und diskret online bestellen.<br>- Visa verifizierter Onlineshop<b=
-r>- keine versteckte Kosten<br>- Kein langes Warten =96 Auslieferung innerh=
-alb von 2-3 Tagen<br>- Kein peinlicher Arztbesuch erforderlicht<br>- Kosten=
-lose, arztliche Telefon-Beratung<br>- Diskrete Verpackung und Zahlung</p>  
-<p><br><strong><a href=3D"http://murweru.hk/" target=3D"_blank">Klicken Sie=
- HIER und Sie erhalten vier Dosen umsonst</a></strong></DIV></body>
-</body>
-</html>
-
-------=_NextPart_000_0006_01C7B958.BA85A5D0--
-
-
-
---===============0852517248==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
---===============0852517248==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0852517248==--
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ca20d3c..afdd82e 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -71,7 +71,7 @@ static struct file_system_type nfs_fs_type = {
+ 	.name		= "nfs",
+ 	.get_sb		= nfs_get_sb,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_DONT_REMOVE_SUID,
+ };
+ 
+ struct file_system_type nfs_xdev_fs_type = {
+@@ -79,7 +79,7 @@ struct file_system_type nfs_xdev_fs_type = {
+ 	.name		= "nfs",
+ 	.get_sb		= nfs_xdev_get_sb,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_DONT_REMOVE_SUID,
+ };
+ 
+ static const struct super_operations nfs_sops = {
+@@ -107,7 +107,7 @@ static struct file_system_type nfs4_fs_type = {
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_get_sb,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_DONT_REMOVE_SUID,
+ };
+ 
+ struct file_system_type nfs4_xdev_fs_type = {
+@@ -115,7 +115,7 @@ struct file_system_type nfs4_xdev_fs_type = {
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_xdev_get_sb,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_DONT_REMOVE_SUID,
+ };
+ 
+ struct file_system_type nfs4_referral_fs_type = {
+@@ -123,7 +123,7 @@ struct file_system_type nfs4_referral_fs_type = {
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_referral_get_sb,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_DONT_REMOVE_SUID,
+ };
+ 
+ static const struct super_operations nfs4_sops = {
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6a41f4c..e6e18dd 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -93,6 +93,7 @@ extern int dir_notify_enable;
+ #define FS_REQUIRES_DEV 1 
+ #define FS_BINARY_MOUNTDATA 2
+ #define FS_HAS_SUBTYPE 4
++#define FS_DONT_REMOVE_SUID 8	/* don't try to remove_suid */
+ #define FS_REVAL_DOT	16384	/* Check the paths ".", ".." for staleness */
+ #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move()
+ 					 * during rename() internally.
+diff --git a/mm/filemap.c b/mm/filemap.c
+index edb1b0b..27febc8 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1888,6 +1888,14 @@ int should_remove_suid(struct dentry *dentry)
+ 	mode_t mode = dentry->d_inode->i_mode;
+ 	int kill = 0;
+ 
++	/*
++	 * We want to supress this on some filesystems -- particularly NFS
++	 * as we expect the server to handle it, and we may not have
++	 * permission to remove these bits.
++	 */
++	if (dentry->d_sb->s_type->fs_flags & FS_DONT_REMOVE_SUID)
++		return 0;
++
+ 	/* suid always must be killed */
+ 	if (unlikely(mode & S_ISUID))
+ 		kill = ATTR_KILL_SUID;
