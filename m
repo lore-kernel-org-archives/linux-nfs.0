@@ -1,28 +1,30 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] knfsd: set the response bitmask for
-	NFS4_CREATE_EXCLUSIVE (repost)
-Date: Wed, 27 Jun 2007 23:14:16 -0400
-Message-ID: <20070628031416.GE20605@fieldses.org>
-References: <20070627092903.82f468cd.jlayton@redhat.com>
-	<18050.54805.859007.848292@notabene.brown>
-	<20070627212805.GA6267@fieldses.org>
-	<20070627213047.1ecf1c09.jlayton@redhat.com>
+From: Stuart Anderson <anderson@ligo.caltech.edu>
+Subject: Re: NFSv4 uninitialized mtime
+Date: Wed, 27 Jun 2007 20:23:56 -0700
+Message-ID: <20070628032356.GB18337@ligo.caltech.edu>
+References: <20070627233114.GA14508@ligo.caltech.edu>
+	<1182987805.5311.77.camel@heimdal.trondhjem.org>
+	<20070628004904.GK9806@ligo.caltech.edu>
+	<20070628005957.GA16461@ligo.caltech.edu>
+	<20070627211559.e9fc68dd.jlayton@redhat.com>
+	<20070628025327.GA18337@ligo.caltech.edu>
+	<7FEBE408-60C8-41F3-99A3-9ABF1A381D44@sun.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfsv4@linux-nfs.org,
-	nfs@lists.sourceforge.net
-To: Jeff Layton <jlayton@redhat.com>
+Cc: nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Spencer Shepler <Spencer.Shepler@Sun.COM>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3kSY-0005gC-9A
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:14:18 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1I3kc3-0006bw-P4
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:24:07 -0700
+Received: from acrux.ligo.caltech.edu ([131.215.115.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I3kSa-0001cV-EU
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:14:21 -0700
-In-Reply-To: <20070627213047.1ecf1c09.jlayton@redhat.com>
+	(Exim 4.44) id 1I3kc4-0007Ro-Vi
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:24:11 -0700
+In-Reply-To: <7FEBE408-60C8-41F3-99A3-9ABF1A381D44@sun.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,17 +37,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Jun 27, 2007 at 09:30:47PM -0400, Jeff Layton wrote:
-> Here's a respun patch that includes an updated comment in nfsd_create_v3.
-> Look ok?
+On Wed, Jun 27, 2007 at 10:09:23PM -0500, Spencer Shepler wrote:
+> >Somewhat related is the reason that we are tring NFSV4 on Linux  
+> >clients is
+> >that with NFSV3 ACL's do not work between Linux and Solaris if the  
+> >filesystem
+> >on the Solaris server is ZFS, e.g., cp -p will generate interesting  
+> >error
+> >messages. While I would rather stay with NFSV4 if possible, has anyone
+> >gotten this configuration to work with V3?
+> 
+> It will not.  ZFS does not support the "old" ACL definition; only  
+> NFSv4 support.
+> 
 
-Looks fine to me, thanks.  So this tells the client which attributes it
-should set in a subsequent setattr?
+Understood, so this is probably not a bug and just a feature, but why
+does a Linux client try and then generate application level errors?
+A Solaris client is willing to NFS mount vers=3 a ZFS filesystem and then
+run GNU cp -rp, for example, without complaint. Perhaps there is a simple
+method determine if ACL's are available/supported on a particular NFS
+mount?
 
-It's queued up in my tree, so if Neil doesn't take it then I'll pass it
-along to him for v2.6.23....
+Thanks.
 
---b.
+-- 
+Stuart Anderson  anderson@ligo.caltech.edu
+http://www.ligo.caltech.edu/~anderson
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
