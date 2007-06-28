@@ -1,22 +1,22 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: NFS Hangs on heavy I/O
-Date: Thu, 28 Jun 2007 11:48:50 -0400
-Message-ID: <4683D862.9060602@redhat.com>
-References: <loom.20070628T164810-117@post.gmane.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Exporting Nested Directories
+Date: Thu, 28 Jun 2007 12:12:35 -0400
+Message-ID: <4683DDF3.8060503@RedHat.com>
+References: <19d180740706271141i7592b8bcu9b0c646ab62f550f@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Rajat <sharma.rajat@hcl.in>
+To: Adam Thomas <nfs@adamthomas.us>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3wEw-0006c9-3q
-	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 08:49:02 -0700
+	id 1I3wi6-0001Z8-7a
+	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 09:19:10 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3wEw-0006mg-Rc
-	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 08:49:05 -0700
-In-Reply-To: <loom.20070628T164810-117@post.gmane.org>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3wi3-0005cM-8i
+	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 09:19:08 -0700
+In-Reply-To: <19d180740706271141i7592b8bcu9b0c646ab62f550f@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,61 +29,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Rajat wrote:
-> Hi list,
->
-> I am facing a NFS hang problem when I perform a very heavy I/O on a localhost 
-> mount.
-> The situation is:
-> $>mount -t nfs localhost:/home/RHL /mnt/nfs
->
-> where /home/RHL is a Ext3 Partition (/dev/sda5). Mount paramter was 'hard' by 
-> default
->
-> When I perform a heavy I/O on nfs mount
-> $> createfile /mnt/nfs/huge_file 512 1048576
->
-> Where createfile would try to write 512 blocks of 1048576 bytes each (each 
-> system call of 1048576, 512 times = 512MB file).
->
-> While the file is being created, I tried to ls in the /mnt/nfs directory - and 
-> it hanged (after creating about 75MB file). Logging from other terminals was 
-> not working as well.
-> In my dmesg I found message saying:
->
-> "nfs: server localhost not responding, still trying"
->
-> [no other NFS related message here.]
->
-> After rebooting, I tried the same thing but ls'd /home/RHL rather than nfs 
-> mount - it hanged again (this time it could create 332MB file). Same message 
-> was relayed in dmesg. This time I was able to login (though slow) and found 
-> that 4 nfsd thread were there in ps.
-> /proc/../status of all of them was "Sleeping" (for 2) or "Disk Sleep" (for 
-> other 2). All were averaging about 97% sleep (got from /proc/.../status)
->
-> I can reproduce this by the same procedure. 
->
-> I am running a Intel Machine (Intel(R) Pentium(R) 4 CPU 3.20GHz HT), with 1GB 
-> RAM, Linux-2.6.19 stock kernel, SATA driver (/dev/sda5) (default)
->
-> I tried the same thing multiple times getting the same result (machine did not 
-> stall always (just a couple of times)- nfs partition and the terminal on which 
-> I was doing work always stalled).
->
-> Can anyone help in giving pointer as to how can I find what is wrong. In case 
-> you need some specific info, I would be glad to give.
 
-This sounds like an old problem with mounting loopback.  The standard
-recommendation is "don't do that, it will hang".
 
-Peter Zijlstra has some changes for newer kernels which address this
-situation.
+Adam Thomas wrote:
+>  
+> I'm trying to export two directories on the same filesystem. The exports 
+> file looks something like this: 
+>  
+> /raid 192.168.1.0/23(rw,sync) <http://192.168.1.0/23(rw,sync)> 
+> /raid/userdir 192.168.1.0/23(rw,sync) <http://192.168.1.0/23(rw,sync)> 
+>  
+> When I try to do this I get a lot of unusual behavior (some clients will 
+> mount, but others won't even though they are within the same IP range). 
+>  
+> Are there any restriction with exporting a nested directory like this? 
+No...
 
-In the meantime, either separate the client and the server or use
-bind mounts.
+Try using the -v mount flag to see why the mount is failing...
+Also there could be something in /var/log/message that might
+explain the failure...
 
-       ps
+steved.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
