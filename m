@@ -1,40 +1,18 @@
-From: Spencer Shepler <Spencer.Shepler@Sun.COM>
-Subject: Re: NFSv4 uninitialized mtime
-Date: Wed, 27 Jun 2007 22:59:10 -0500
-Message-ID: <2DD93BC2-E5C2-45C5-A054-D0580004E3AC@Sun.COM>
-References: <20070627233114.GA14508@ligo.caltech.edu>
-	<1182987805.5311.77.camel@heimdal.trondhjem.org>
-	<20070628004904.GK9806@ligo.caltech.edu>
-	<20070628005957.GA16461@ligo.caltech.edu>
-	<20070627211559.e9fc68dd.jlayton@redhat.com>
-	<20070628025327.GA18337@ligo.caltech.edu>
-	<7FEBE408-60C8-41F3-99A3-9ABF1A381D44@sun.com>
-	<20070628032356.GB18337@ligo.caltech.edu>
-	<CACFA76B-43D8-454C-B06A-AAA4EF38A033@Sun.COM>
-	<20070628034455.GD18337@ligo.caltech.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Stuart Anderson <anderson@ligo.caltech.edu>
+From: jntserve@ins-america1.com
+Subject: Get More Orders For Anything You Sell Within 24 Hours!
+Date: Thu, 28 Jun 2007 00:10:56 -0600
+Message-ID: <a2gd1luet2.6vbg6d5556tu34wy3e2y@mail.ins-america1.com>
+Content-Type: multipart/mixed; boundary="===============0829009858=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3l9M-0001T9-QH
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:58:32 -0700
-Received: from brmea-mail-4.sun.com ([192.18.98.36])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3l9P-0001C1-M3
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:58:36 -0700
-Received: from fe-amer-03.sun.com ([192.18.108.177])
-	by brmea-mail-4.sun.com (8.13.6+Sun/8.12.9) with ESMTP id
-	l5S3wYXB021093
-	for <nfs@lists.sourceforge.net>; Thu, 28 Jun 2007 03:58:34 GMT
-Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
-	(Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
-	id <0JKB00J01UVNTM00@mail-amer.sun.com>
-	(original mail from Spencer.Shepler@Sun.COM) for
-	nfs@lists.sourceforge.net; Wed, 27 Jun 2007 21:58:34 -0600 (MDT)
-In-reply-to: <20070628034455.GD18337@ligo.caltech.edu>
+	id 1I3mHK-00006k-E1
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 22:10:50 -0700
+Received: from [67.19.27.227] (helo=mail.ins-america1.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1I3mHM-0007Im-EB
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 22:10:53 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -47,79 +25,146 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+--===============0829009858==
+Content-Type: text/html;
+	 charset=us-ascii
+Content-Transfer-Encoding: 7BIT
 
-On Jun 27, 2007, at 10:44 PM, Stuart Anderson wrote:
+<html>
 
-> On Wed, Jun 27, 2007 at 10:30:22PM -0500, Spencer Shepler wrote:
->>
->> On Jun 27, 2007, at 10:23 PM, Stuart Anderson wrote:
->>
->>> On Wed, Jun 27, 2007 at 10:09:23PM -0500, Spencer Shepler wrote:
->>>>> Somewhat related is the reason that we are tring NFSV4 on Linux
->>>>> clients is
->>>>> that with NFSV3 ACL's do not work between Linux and Solaris if the
->>>>> filesystem
->>>>> on the Solaris server is ZFS, e.g., cp -p will generate  
->>>>> interesting
->>>>> error
->>>>> messages. While I would rather stay with NFSV4 if possible, has
->>>>> anyone
->>>>> gotten this configuration to work with V3?
->>>>
->>>> It will not.  ZFS does not support the "old" ACL definition; only
->>>> NFSv4 support.
->>>>
->>>
->>> Understood, so this is probably not a bug and just a feature, but  
->>> why
->>> does a Linux client try and then generate application level errors?
->>> A Solaris client is willing to NFS mount vers=3 a ZFS filesystem
->>> and then
->>> run GNU cp -rp, for example, without complaint. Perhaps there is a
->>> simple
->>> method determine if ACL's are available/supported on a particular  
->>> NFS
->>> mount?
->>
->> Does it fail on the "get" or "set" of the ACL?
->
-> set
->
-> Here is an strace snippet from running cp -rp on a Linux NFSV3 client
-> of a Solaris 10 ZFS server:
->
-> getxattr("test1/oink", "system.posix_acl_access", "\x02\x00\x00\x00 
-> \x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff\x10 
-> \x00\x07\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 132) = 36
-> setxattr("test2/oink", "system.posix_acl_access", "\x02\x00\x00\x00 
-> \x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff\x10 
-> \x00\x07\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 36, 0)  
-> = -1 EINVAL (Invalid argument)
->
-> We used to have this same problem with Linux NFSV3 mounts from  
-> Solaris QFS servers
-> as well, but that was fixed in a recent update to QFS, so I am not  
-> really sure
-> who is "responsible" for bridging ACL's between the old/new schemes.
+<head>
 
-The Solaris NFSv3 server will, upon "get acl", map the underlying
-ZFS ACL format to the NFSv3/ACL format.  However, on setting of
-an acl, an error is returned (NOSUP).  The decision was made that
-because of the imperfect mapping on acl set in this path that
-an error would be returned.
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 
-I believe the Solaris client would map the ENOTSUP back to the
-application as is and that may help the application adapt
-its behavior (avoid erroring out if that isn't desired).
+</head>
 
-Spencer
+<body>
 
+<p align="left">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff; " face="Arial" color="#0000FF" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+<strong>GET MORE ORDERS FOR ANYTHING YOU SELL!</strong></font></p>
+<font id="role_document0" face="Arial" color="#0000FF">
+<p style="margin-bottom: 0in" align="left"><b>PROMOTE YOUR BUSINESS TODAY WITH<br>
+COST EFFECTIVE&nbsp; E-MAIL ADVERTISING</b></p>
+</font>
+<p style="margin-bottom: 0in" align="left">
+<font color="#000080">
+<b>
+<font lang="0" style="background-color: #ffffff; font-weight:700" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" id="role_document0">
+*&nbsp;Get Instant Traffic to Your Website</font><font lang="0" style="background-color: #ffffff; font-weight:700" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" id="role_document0"><br>
+*&nbsp;</font></b></font><b><font lang="0" style="background-color: #ffffff; font-weight:700" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0">Generates</font></b></font><b><font lang="0" style="background-color: #ffffff; font-weight:700" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0"> 
+Instant Sales or Leads for Any Business</font></b><font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><font id="role_document0" face="Arial" color="#0000FF" style="font-size: 16pt; font-weight: 700"></p>
+</font>
+</font>
+
+<p align="left">
+<b><font face="Arial" style="font-size: 11pt" color="#000080">We can send Your 
+Ad or Website out to MILLIONS Of Our Double OPT IN List of Email Subscribers<br>
+and get you great results by providing the most effective way to reach your<br>
+target market. Email advertising messages are sent to 100% Double Opt-In 
+customers.<br>
+These are people who have specifically requested to receive your email<br>
+advertising offer on your unique products and services.</font></b></p>
+
+<p align="left">
+<b><font color="#000080" face="Arial"><span style="font-size: 11pt">Our job is 
+to make your email campaigns a big success. <br>
+Includes free phone and email support, and a wealth of online<br>
+resources for every customer</span></font></b><font color="#000080"><span style="font-size: 11pt">.
+</span></font><br>
+&nbsp;</p>
+
+<p align="left">
+<font color="#000080"><b>
+<font style="font-size: 11pt; background-color:#ffffff" lang="0" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">Includes
+free phone and email support, a wealth of online resources for every<br>
+customer.  </font></b></font>
+<font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+</p>
+</font>
+<p align="left"><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<b><u>Services include:</u><br>
+E-Mail Broadcasting your ad to our list of double opt in emails<br>
+Graphic Ad Design<br>
+Assistance is setting up your ad for great results</font></b><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><br>
+&nbsp;</font></p>
+<p align="left"><span style="background-color: #FFFFFF"><b>
+<font face="Arial" style="font-size: 11pt" color="#000080">O</font></b></span><b><font color="#000080"><font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" size="3">pt in email advertising can convert your website visitors to customers and 
+boost your revenue.<br>
+<i>We can show you how.</i><br>
+</font>
+<font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" size="3">
+<br>
+</font>
+</font><span style="background-color: #FFFFFF">
+<font face="Arial" style="font-size: 11pt" color="#FF0000">For More Info, Please 
+call (213) 291-1177<br>
+</font><font face="Arial" color="#FF0000" size="2"><i>After hours, please leave 
+a message. One of our professional and courteous<br>
+representatives will get back to you by  the next business day.</i></font></span></b></p>
+<b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+
+<font lang="0" style="background-color: #ffffff" face="Comic Sans MS" color="#1003bd" size="2" BACK="#ffffff" PTSIZE="12" FAMILY="SCRIPT">
+<p align="left"><font color="#060296"><font color="#000080" size="2"><em>Driving Traffic to 
+All Types of Businesses&nbsp;Since 1997</em></font><font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF"><br>
+</font></font>
+</font>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<br>
+</font>
+
+</font>
+
+</b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+<br>
+_________________________________________________________________</font></p>
+<font face="Arial" color="#333399" size="2">
+<p align="left"><font face="Arial" color="#000080" size="2">You are receiving 
+this message as an opt-in subscriber of Ins America or one of our marketing 
+partners. <br>
+If you no longer wish to receive further offers, please send an email with 
+discontinue to: </font><font face="Arial" color="#ffffff" size="2">
+<a href="mailto:support@ins-america1.com?subject=Discontinue">
+support@ins-america1.com</a></font><font face="Arial" color="#000080" size="2"><br>
+Your email address will be removed within 24 hours.</font></p>
+<p align="left"><font face="Arial" color="#000080" size="2">Ins America<br>
+25 Ave at Port Imperial<br>
+West New York, NJ 07043</font></p>
+</font>
+<p style="margin-left: 0.5in"> </p>
+</font></p>
+</font>
+</font>
+
+</body>
+
+</html>
+
+
+
+--===============0829009858==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0829009858==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0829009858==--
