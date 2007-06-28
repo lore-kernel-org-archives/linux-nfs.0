@@ -1,28 +1,37 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: Re: Question: When NFS client check dir's permission,
- it does not check the cache data
-Date: Thu, 28 Jun 2007 11:06:14 +0800
-Message-ID: <468325A6.9060607@cn.fujitsu.com>
-References: <467F8247.9060607@cn.fujitsu.com>	
-	<1182802099.6163.33.camel@heimdal.trondhjem.org>	
-	<4681BC44.6000605@cn.fujitsu.com>	
-	<1182913754.12836.61.camel@heimdal.trondhjem.org>	
-	<4681F3FB.7040609@cn.fujitsu.com>
-	<1182954331.5311.14.camel@heimdal.trondhjem.org>
+From: Spencer Shepler <Spencer.Shepler@Sun.COM>
+Subject: Re: NFSv4 uninitialized mtime
+Date: Wed, 27 Jun 2007 22:09:23 -0500
+Message-ID: <7FEBE408-60C8-41F3-99A3-9ABF1A381D44@sun.com>
+References: <20070627233114.GA14508@ligo.caltech.edu>
+	<1182987805.5311.77.camel@heimdal.trondhjem.org>
+	<20070628004904.GK9806@ligo.caltech.edu>
+	<20070628005957.GA16461@ligo.caltech.edu>
+	<20070627211559.e9fc68dd.jlayton@redhat.com>
+	<20070628025327.GA18337@ligo.caltech.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1453391644=="
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Stuart Anderson <anderson@ligo.caltech.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3kLT-0004uW-8B
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:06:59 -0700
-Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3kLT-0007ir-Hq
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:07:02 -0700
-In-Reply-To: <1182954331.5311.14.camel@heimdal.trondhjem.org>
+	id 1I3kN9-00056o-RO
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:08:43 -0700
+Received: from brmea-mail-4.sun.com ([192.18.98.36])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3kNB-0008Ms-4p
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:08:47 -0700
+Received: from fe-amer-03.sun.com ([192.18.108.177])
+	by brmea-mail-4.sun.com (8.13.6+Sun/8.12.9) with ESMTP id
+	l5S38hfP011364
+	for <nfs@lists.sourceforge.net>; Thu, 28 Jun 2007 03:08:43 GMT
+Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
+	(Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
+	id <0JKB00901SDBAW00@mail-amer.sun.com>
+	(original mail from Spencer.Shepler@Sun.COM) for
+	nfs@lists.sourceforge.net; Wed, 27 Jun 2007 21:08:43 -0600 (MDT)
+In-reply-to: <20070628025327.GA18337@ligo.caltech.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,117 +44,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1453391644==
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
 
+On Jun 27, 2007, at 9:53 PM, Stuart Anderson wrote:
 
->> I mean that read a dir, such as lookup a dir.
->> If I reply a getattr as that dir has no lookup permission, and then do a
->> "cat /nfsroot/dir/file" at client, client will not send lookup procedure to
->> server, because client used the cache data of the dir. It like this:
->> client server
->> #ls /nfsroot
->> readdirplus ------------------>
->> <------------- readdirplus reply
->> (attribute of dir has no lookup permission)
->> # cat /nfsroot/dir/file
->> (send nothing, used cache data)
->> -------no package is send-------
+> On Wed, Jun 27, 2007 at 09:15:59PM -0400, Jeff Layton wrote:
+>> On Wed, 27 Jun 2007 17:59:57 -0700
+>> Stuart Anderson <anderson@ligo.caltech.edu> wrote:
 >>
->> If no cache data exists, it would like this:
->> client server
->> #ls /nfsroot
->> readdirplus ------------------>
->> <------------- readdirplus reply
->> (attribute of dir has no lookup permission)
->> # cat /nfsroot/dir/file
->> access(dir) ------------------->
->> <------------- access reply(dir)
->> (has no lookup permission)
+>>> More precisely, applying this patch to the 2.6.20.14 kernel plus the
+>>> revalidate-the-fsid patch did not result in any changes. Does the
+>>> O_EXCL patch require some other supporting patches relative to  
+>>> 2.6.20.14?
+>>>
+>>> or perhaps it is necessary to rebase to a newer kernel before  
+>>> applying it?
+>>> even tough it applies, builds and runs with 2.6.20.14?
+>>>
+>>> Thanks.
+>>>
 >>
->> And if has permission to lookup dir, it would like this:
->> client server
->> #ls /nfsroot
->> readdirplus ------------------>
->> <------------- readdirplus reply
->> (attribute of dir has no lookup permission)
->> # cat /nfsroot/dir/file
->> access(dir) -------------------> (*1)
->> <------------- access reply(dir)
->> lookup(file) ------------------->
->> <------------- lookup reply(file)
->> read(file) ------------------->
->> <------------- read reply(file)
->>
->> While you optimize all write operations to omit access procedure, can
->> this access (*1) be omitted? Then lookup(file) will return NOPERM.
->>     
+>> With Linux, both client and server side were broken in this respect.
+>> The server didn't set the bitmask in the reply and the client didn't
+>> look at it anyway. It's possible that Solaris server is broken in  
+>> this
+>> regard as well. It would be interesting to see a capture here,
+>> particularly one containing the reply from the CREATE.
 >
-> So what if I change the permissions on the directory? What should the
-> rules be for caching these attributes?
+> Possible, but when we switch the client from Linux to Solaris and  
+> share
+> the same filesytem from the same server there are no O_EXCL problems.
 >
-> ...and you still haven't replied to my question about what
-> application/workload actually _cares_ about optimising for this
-> particular case.
->   
-No application cares this ^_^, just for test.
-I test the read op of dir, it maybe has tiny bug in it. As you said, if
-I chmod of dir, client will be a little later to know this.
-Test step ad following:
+> I will see if we can capture the bits. Any recomendations on which  
+> tool
+> with what options would be most useful to capture the useful traffic?
+>
+>>
+>> Exactly what version of Solaris is the server running?
+>
+> # cat /etc/release
+>                         Solaris 10 11/06 s10x_u3wos_10 X86
+>            Copyright 2006 Sun Microsystems, Inc.  All Rights Reserved.
+>                         Use is subject to license terms.
+>                            Assembled 14 November 2006
+> # uname -v
+> Generic_118855-36
+>
+>
+> Somewhat related is the reason that we are tring NFSV4 on Linux  
+> clients is
+> that with NFSV3 ACL's do not work between Linux and Solaris if the  
+> filesystem
+> on the Solaris server is ZFS, e.g., cp -p will generate interesting  
+> error
+> messages. While I would rather stay with NFSV4 if possible, has anyone
+> gotten this configuration to work with V3?
 
-[root@REHL ~]# mount -t nfs 192.168.0.19:/nfsroot /mnt
-[root@REHL ~]# ll /mnt
-total 4
-dr-xr-xr-x 2 root root 4096 Jun 23  2007 dir
-[root@REHL ~]# ll /mnt/dir
-total 4
--rw-r--r-- 1 root root 5 Jun 24  2007 file
-[root@REHL ~]# su weiyj
-[weiyj@REHL root]$ ll /mnt
-total 4
-dr-xr-xr-x 2 root root 4096 Jun 23  2007 dir
-[weiyj@REHL root]$ ll /mnt/dir
-total 4
--rw-r--r-- 1 root root 5 Jun 24  2007 file
-[weiyj@REHL root]$ cat /mnt/dir/file
-test
-[weiyj@REHL root]$ ssh 192.168.0.19 -l root chmod a-x /nfsroot/dir
-[weiyj@REHL root]$ cat /mnt/dir/file
-test
-[weiyj@REHL root]$ cat /mnt/dir/file
-test
-[weiyj@REHL root]$ ll /mnt/dir
-total 0
-?--------- ? ? ? ?            ? /mnt/dir/file
-[weiyj@REHL root]$ ll /mnt
-total 4
-dr--r--r-- 2 root root 4096 Jun 23  2007 dir
-[weiyj@REHL root]$ cat /mnt/dir/file
-cat: /mnt/dir/file: Permission denied
+It will not.  ZFS does not support the "old" ACL definition; only  
+NFSv4 support.
 
-
-
-
---===============1453391644==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Spencer
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1453391644==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1453391644==--
