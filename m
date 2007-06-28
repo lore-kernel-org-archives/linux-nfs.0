@@ -1,7 +1,7 @@
-From: Spencer Shepler <Spencer.Shepler@Sun.COM>
+From: Stuart Anderson <anderson@ligo.caltech.edu>
 Subject: Re: NFSv4 uninitialized mtime
-Date: Wed, 27 Jun 2007 22:30:22 -0500
-Message-ID: <CACFA76B-43D8-454C-B06A-AAA4EF38A033@Sun.COM>
+Date: Wed, 27 Jun 2007 20:44:55 -0700
+Message-ID: <20070628034455.GD18337@ligo.caltech.edu>
 References: <20070627233114.GA14508@ligo.caltech.edu>
 	<1182987805.5311.77.camel@heimdal.trondhjem.org>
 	<20070628004904.GK9806@ligo.caltech.edu>
@@ -10,29 +10,22 @@ References: <20070627233114.GA14508@ligo.caltech.edu>
 	<20070628025327.GA18337@ligo.caltech.edu>
 	<7FEBE408-60C8-41F3-99A3-9ABF1A381D44@sun.com>
 	<20070628032356.GB18337@ligo.caltech.edu>
+	<CACFA76B-43D8-454C-B06A-AAA4EF38A033@Sun.COM>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Stuart Anderson <anderson@ligo.caltech.edu>
+To: Spencer Shepler <Spencer.Shepler@Sun.COM>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3khQ-00076r-0K
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:29:40 -0700
-Received: from brmea-mail-4.sun.com ([192.18.98.36])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3khT-0005gj-8k
-	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:29:43 -0700
-Received: from fe-amer-03.sun.com ([192.18.108.177])
-	by brmea-mail-4.sun.com (8.13.6+Sun/8.12.9) with ESMTP id
-	l5S3TgPW015386
-	for <nfs@lists.sourceforge.net>; Thu, 28 Jun 2007 03:29:42 GMT
-Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
-	(Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
-	id <0JKB00D01TFQ1V00@mail-amer.sun.com>
-	(original mail from Spencer.Shepler@Sun.COM) for
-	nfs@lists.sourceforge.net; Wed, 27 Jun 2007 21:29:42 -0600 (MDT)
-In-reply-to: <20070628032356.GB18337@ligo.caltech.edu>
+	id 1I3kwG-0008W3-1W
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:45:00 -0700
+Received: from acrux.ligo.caltech.edu ([131.215.115.14])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I3kwI-0005Tp-35
+	for nfs@lists.sourceforge.net; Wed, 27 Jun 2007 20:45:03 -0700
+In-Reply-To: <CACFA76B-43D8-454C-B06A-AAA4EF38A033@Sun.COM>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -45,37 +38,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Wed, Jun 27, 2007 at 10:30:22PM -0500, Spencer Shepler wrote:
+> 
+> On Jun 27, 2007, at 10:23 PM, Stuart Anderson wrote:
+> 
+> >On Wed, Jun 27, 2007 at 10:09:23PM -0500, Spencer Shepler wrote:
+> >>>Somewhat related is the reason that we are tring NFSV4 on Linux
+> >>>clients is
+> >>>that with NFSV3 ACL's do not work between Linux and Solaris if the
+> >>>filesystem
+> >>>on the Solaris server is ZFS, e.g., cp -p will generate interesting
+> >>>error
+> >>>messages. While I would rather stay with NFSV4 if possible, has  
+> >>>anyone
+> >>>gotten this configuration to work with V3?
+> >>
+> >>It will not.  ZFS does not support the "old" ACL definition; only
+> >>NFSv4 support.
+> >>
+> >
+> >Understood, so this is probably not a bug and just a feature, but why
+> >does a Linux client try and then generate application level errors?
+> >A Solaris client is willing to NFS mount vers=3 a ZFS filesystem  
+> >and then
+> >run GNU cp -rp, for example, without complaint. Perhaps there is a  
+> >simple
+> >method determine if ACL's are available/supported on a particular NFS
+> >mount?
+> 
+> Does it fail on the "get" or "set" of the ACL?
 
-On Jun 27, 2007, at 10:23 PM, Stuart Anderson wrote:
+set
 
-> On Wed, Jun 27, 2007 at 10:09:23PM -0500, Spencer Shepler wrote:
->>> Somewhat related is the reason that we are tring NFSV4 on Linux
->>> clients is
->>> that with NFSV3 ACL's do not work between Linux and Solaris if the
->>> filesystem
->>> on the Solaris server is ZFS, e.g., cp -p will generate interesting
->>> error
->>> messages. While I would rather stay with NFSV4 if possible, has  
->>> anyone
->>> gotten this configuration to work with V3?
->>
->> It will not.  ZFS does not support the "old" ACL definition; only
->> NFSv4 support.
->>
->
-> Understood, so this is probably not a bug and just a feature, but why
-> does a Linux client try and then generate application level errors?
-> A Solaris client is willing to NFS mount vers=3 a ZFS filesystem  
-> and then
-> run GNU cp -rp, for example, without complaint. Perhaps there is a  
-> simple
-> method determine if ACL's are available/supported on a particular NFS
-> mount?
+Here is an strace snippet from running cp -rp on a Linux NFSV3 client
+of a Solaris 10 ZFS server:
 
-Does it fail on the "get" or "set" of the ACL?
+getxattr("test1/oink", "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff\x10\x00\x07\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 132) = 36
+setxattr("test2/oink", "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff\x10\x00\x07\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 36, 0) = -1 EINVAL (Invalid argument)
 
-Spencer
+We used to have this same problem with Linux NFSV3 mounts from Solaris QFS servers
+as well, but that was fixed in a recent update to QFS, so I am not really sure
+who is "responsible" for bridging ACL's between the old/new schemes.
 
+Thanks.
+
+
+-- 
+Stuart Anderson  anderson@ligo.caltech.edu
+http://www.ligo.caltech.edu/~anderson
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
