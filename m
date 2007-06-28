@@ -1,23 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Peter Staubach <staubach@redhat.com>
 Subject: Re: NFS Hangs on heavy I/O
-Date: Thu, 28 Jun 2007 11:30:36 -0400
-Message-ID: <1183044636.6163.42.camel@heimdal.trondhjem.org>
+Date: Thu, 28 Jun 2007 11:48:50 -0400
+Message-ID: <4683D862.9060602@redhat.com>
 References: <loom.20070628T164810-117@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Rajat <sharma.rajat@hcl.in>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I3vxI-0004fA-4C
-	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 08:30:49 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+Q7sYEwliVB4mXexcpgsBNi8S1mqhO5bw=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I3vxJ-0003Xg-W2
-	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 08:30:51 -0700
+	id 1I3wEw-0006c9-3q
+	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 08:49:02 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I3wEw-0006mg-Rc
+	for nfs@lists.sourceforge.net; Thu, 28 Jun 2007 08:49:05 -0700
 In-Reply-To: <loom.20070628T164810-117@post.gmane.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,36 +29,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-06-28 at 15:01 +0000, Rajat wrote:
+Rajat wrote:
 > Hi list,
-> 
+>
 > I am facing a NFS hang problem when I perform a very heavy I/O on a localhost 
 > mount.
 > The situation is:
 > $>mount -t nfs localhost:/home/RHL /mnt/nfs
-> 
+>
 > where /home/RHL is a Ext3 Partition (/dev/sda5). Mount paramter was 'hard' by 
 > default
-> 
+>
 > When I perform a heavy I/O on nfs mount
 > $> createfile /mnt/nfs/huge_file 512 1048576
-> 
+>
 > Where createfile would try to write 512 blocks of 1048576 bytes each (each 
 > system call of 1048576, 512 times = 512MB file).
-> 
+>
 > While the file is being created, I tried to ls in the /mnt/nfs directory - and 
 > it hanged (after creating about 75MB file). Logging from other terminals was 
 > not working as well.
 > In my dmesg I found message saying:
-> 
+>
 > "nfs: server localhost not responding, still trying"
+>
+> [no other NFS related message here.]
+>
+> After rebooting, I tried the same thing but ls'd /home/RHL rather than nfs 
+> mount - it hanged again (this time it could create 332MB file). Same message 
+> was relayed in dmesg. This time I was able to login (though slow) and found 
+> that 4 nfsd thread were there in ps.
+> /proc/../status of all of them was "Sleeping" (for 2) or "Disk Sleep" (for 
+> other 2). All were averaging about 97% sleep (got from /proc/.../status)
+>
+> I can reproduce this by the same procedure. 
+>
+> I am running a Intel Machine (Intel(R) Pentium(R) 4 CPU 3.20GHz HT), with 1GB 
+> RAM, Linux-2.6.19 stock kernel, SATA driver (/dev/sda5) (default)
+>
+> I tried the same thing multiple times getting the same result (machine did not 
+> stall always (just a couple of times)- nfs partition and the terminal on which 
+> I was doing work always stalled).
+>
+> Can anyone help in giving pointer as to how can I find what is wrong. In case 
+> you need some specific info, I would be glad to give.
 
-Please use a TCP mount, with a ditto appropriate value for timeo
-(preferably just the default of timeo=600).
+This sounds like an old problem with mounting loopback.  The standard
+recommendation is "don't do that, it will hang".
 
-Cheers
-  Trond
+Peter Zijlstra has some changes for newer kernels which address this
+situation.
 
+In the meantime, either separate the client and the server or use
+bind mounts.
+
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
