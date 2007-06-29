@@ -1,20 +1,24 @@
-From: Gabriel Barazer <gabriel@oxeva.fr>
-Subject: patch: nfsstat signed counter bug
-Date: Fri, 29 Jun 2007 23:45:34 +0200
-Message-ID: <46857D7E.1080002@oxeva.fr>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Status of NFS over IPv6
+Date: Fri, 29 Jun 2007 18:01:55 -0400
+Message-ID: <46858153.8060109@oracle.com>
+References: <20070629123747.GA1034@uio.no>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040109080900020708060301"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------020100090904010200040507"
+Cc: nfs@lists.sourceforge.net
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I4OHi-0004Ml-5d
-	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 14:45:46 -0700
-Received: from mail.reagi.com ([195.60.188.80])
+	id 1I4OZG-000740-8S
+	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 15:03:54 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I4OHi-0003lG-Qo
-	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 14:45:49 -0700
+	(Exim 4.44) id 1I4OZI-0000Vk-Bx
+	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 15:03:57 -0700
+In-Reply-To: <20070629123747.GA1034@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,139 +32,73 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------040109080900020708060301
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+--------------020100090904010200040507
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Hello,
+Steinar H. Gunderson wrote:
+> What's the current status of NFS over IPv6 in Linux? There are HOWTOs out
+> there, but most patches seem to be against old kernel versions, and
+> completely unable to run both client and server from the same kernel tree.
+> Additionally, I see mentions of replacements for portmap, but no clear
+> upstream URL or updated versions anywhere. Also, there seems to be a separate
+> git tree maintained by Chuck Lever, but gitweb hides any special patches it
+> might have in tons of upstream patches.
+> 
+> I'd very much like to be able to sew all of this together at some point,
+> but it's very hard to get a decent overview of it all. Does anyone have a
+> "current status" or "plans for the near feature" summary?
 
-This is not a critical bug as it is about an informational only tool, 
-but I observed a counter bug in nfsstat :
-# nfsstat -s
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-1647216427   0          0          0          0
+I have some patches that add IPv6 support in the RPC client.  The server 
+is more complicated (how to deal with address-based export rules, and so 
+on).  There hasn't been much progress on the server side, but I think 
+Bull is still working on that.
 
-Server nfs v3:
-null         getattr      setattr      lookup       access       readlink
-3668      0% 1642587440 27% 1636642   0% 160803697  2% -219165970 68% 
-54477     0%
-read         write        create       mkdir        symlink      mknod
-39195344  0% 8113663   0% 3336779   0% 36784     0% 0         0% 
-0         0%
-remove       rmdir        rename       link         readdir      readdirplus
-3981274   0% 37602     0% 310174    0% 220157    0% 1180237   0% 
-1907416   0%
-fsstat       fsinfo       pathconf     commit
-43        0% 1841      0% 0         0% 644317    0%
+There are some patches for the NFS client, but we need to have both RPC 
+client and server support for NFSv4 callback and NLM to work over IPv6 
+(required for even a complete client implementation).
 
----------
-It is very clear that counters are looping and displaying negative 
-values after counting 2^31 calls even on x86_64 platform with 64-bit Linux.
-Looking at the code shows some printf's with incorrect format such as %-8d
+At this very moment I'm working on implementing mount option parsing in 
+the kernel so we can easily add IPv6 addressing support to the NFS mount 
+interface (among other improvements this will enable).
 
-Attached patch against nfs-utils 1.1.0 corrects this behavior to allow 
-numbers with a length of 11, and reformats the display (align numbers 
-and headers on the right, much easier to read). Now, up to 99 billions 
-can be counted on 64-bit systems (2^32 on 32-bit), which is a very 
-higher limit than ~2 billions on a moderate used NFS client/server.
+Steve Dickson has added Bull's rpcbind (replacement for portmap) to 
+Fedora 7, but there is some disagreement about whether to use a complete 
+replacement, like rpcbind, or whether to add the needed support to the 
+existing portmap code, in general.
 
-Gabriel
+Bull has announced a test plan for user-space RPC libraries, although I 
+haven't had a moment to look through it.  Bull should be providing 
+testing resources once we have all of this integrated.
 
---------------040109080900020708060301
-Content-Type: text/plain;
- name="nfs-utils-1.1.0-nfsstat-format.diff"
+While there is some interest in IPv6 among some of Linux's corporate 
+sponsors, there really isn't an overwhelming "killer" requirement for 
+IPv6, so there isn't much motivation to get all this completed.  I have 
+to admit I'm pretty burned out on all this because of how complicated it 
+has all become.  I'd be happy if someone stepped forward and volunteered 
+to help or take over the integration.
+
+--------------020100090904010200040507
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="nfs-utils-1.1.0-nfsstat-format.diff"
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
---- nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c	2007-05-11 05:40:57.000000000 +0200
-+++ nfs-utils-1.1.0/utils/nfsstat/nfsstat.c	2007-06-29 23:10:13.982044000 +0200
-@@ -335,7 +335,7 @@
- 		if (opt_prt & PRNT_NET) {
- 			print_numbers(
- 			"Server packet stats:\n"
--			"packets    udp        tcp        tcpconn\n",
-+			"    packets         udp         tcp     tcpconn\n",
- 			svcnetinfo, 4
- 			);
- 			printf("\n");
-@@ -343,7 +343,7 @@
- 		if (opt_prt & PRNT_RPC) {
- 			print_numbers(
- 			"Server rpc stats:\n"
--			"calls      badcalls   badauth    badclnt    xdrcall\n",
-+			"      calls    badcalls     badauth     badclnt     xdrcall\n",
- 			svcrpcinfo, 5
- 			);
- 			printf("\n");
-@@ -351,7 +351,7 @@
- 		if (opt_prt & PRNT_RC) {
- 			print_numbers(
- 			"Server reply cache:\n"
--			"hits       misses     nocache\n",
-+			"       hits      misses     nocache\n",
- 			svcrcinfo, 3
- 			);
- 			printf("\n");
-@@ -373,12 +373,12 @@
- 				
- 				print_numbers(
- 					"Server file handle cache:\n"
--					"lookup     anon       ncachedir  ncachedir  stale\n",
-+					"     lookup        anon   ncachedir   ncachedir       stale\n",
- 					svcfhinfo + 1, 5);
- 			} else					/* < 2.4 */
- 				print_numbers(
- 					"Server file handle cache:\n"
--					"lookup     anon       ncachedir  ncachedir  stale\n",
-+					"     lookup        anon   ncachedir   ncachedir       stale\n",
- 					svcrcinfo + 3, 5);
- 			printf("\n");
- 		}
-@@ -410,7 +410,7 @@
- 		if (opt_prt & PRNT_NET) {
- 			print_numbers(
- 			"Client packet stats:\n"
--			"packets    udp        tcp        tcpconn\n",
-+			"    packets         udp         tcp     tcpconn\n",
- 			cltnetinfo, 4
- 			);
- 			printf("\n");
-@@ -418,7 +418,7 @@
- 		if (opt_prt & PRNT_RPC) {
- 			print_numbers(
- 			"Client rpc stats:\n"
--			"calls      retrans    authrefrsh\n",
-+			"      calls     retrans  authrefrsh\n",
- 			cltrpcinfo, 3
- 			);
- 			printf("\n");
-@@ -465,7 +465,7 @@
- 
- 	fputs(hdr, stdout);
- 	for (i = 0; i < nr; i++)
--		printf("%s%-8d", i? "   " : "", info[i]);
-+		printf("%s%11u", i ? " " : "", info[i]);
- 	printf("\n");
- }
- 
-@@ -484,11 +484,11 @@
- 		total = 1;
- 	for (i = 0; i < nr; i += 6) {
- 		for (j = 0; j < 6 && i + j < nr; j++)
--			printf("%-13s", names[i+j]);
-+			printf("%s%11s", j ? "     " : "", names[i+j]);
- 		printf("\n");
- 		for (j = 0; j < 6 && i + j < nr; j++) {
- 			pct = ((unsigned long long) info[i+j]*100)/total;
--			printf("%-8d%3llu%% ", info[i+j], pct);
-+			printf("%s%11u%3llu%%", j ? " " : "", info[i+j], pct);
- 		}
- 		printf("\n");
- 	}
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel/
+version:2.1
+end:vcard
 
---------------040109080900020708060301
+
+--------------020100090904010200040507
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -171,7 +109,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------040109080900020708060301
+--------------020100090904010200040507
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -181,4 +119,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------040109080900020708060301--
+--------------020100090904010200040507--
