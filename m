@@ -1,19 +1,26 @@
-From: "Sales" <sales@mynratravel.com>
-Subject: It's McSteamy vs. McStamos in 'Wedding Wars'
-Date: Fri, 29 Jun 2007 23:32:41 +0000
-Message-ID: <68dc01c7baa5$094ac32b$6680d656@ARennes-356-1-9-102.w86-214.abo.wanadoo.fr>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: NFSv4 uninitialized mtime
+Date: Fri, 29 Jun 2007 22:35:28 -0400
+Message-ID: <20070629223528.fe7ac38d.jlayton@redhat.com>
+References: <nfs-valinux.20070628064127.a769bc53.jlayton@redhat.com>
+	<46857F06.102@ligo.caltech.edu>
+	<20070629181234.b70f6f7f.jlayton@redhat.com>
+	<46858831.2040504@ligo.caltech.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: "Carro Rodolphe" <nfs@lists.sourceforge.net>
+Cc: Stuart Anderson <anderson@ligo.caltech.edu>,
+	nfs@lists.sourceforge.net
+To: "Erik A. Espinoza" <espinoza@ligo.caltech.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I4Pza-000081-L6
-	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 16:35:10 -0700
-Received: from arennes-356-1-9-102.w86-214.abo.wanadoo.fr ([86.214.128.102])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I4Pzd-0008Hs-Ip
-	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 16:35:14 -0700
+	id 1I4SoD-0001XC-1g
+	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 19:35:39 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I4SoF-0001I6-AG
+	for nfs@lists.sourceforge.net; Fri, 29 Jun 2007 19:35:40 -0700
+In-Reply-To: <46858831.2040504@ligo.caltech.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,20 +33,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-If you feel that you girlfriend is about to run away from you to the
-bloke next door, ugly one, but with a huge weenie!
+On Fri, 29 Jun 2007 15:31:13 -0700
+"Erik A. Espinoza" <espinoza@ligo.caltech.edu> wrote:
 
-That's because you haven't ordered our state-of-the-art 
-penis enlargement pills! 
+> Jeff Layton wrote:
+> > The attribute mask seems to be zeroed out here as well. What sort of server is this?
+> > -- Jeff
+> > 
+> 
+> # cat /etc/release
+> Solaris 10 11/06 s10x_u3wos_10 X86
+> Copyright 2006 Sun Microsystems, Inc. All Rights Reserved.
+> Use is subject to license terms.
+> Assembled 14 November 2006
+> # uname -v
+> Generic_118855-36
+> 
 
-Only our remedy can bring your girlfriend back!
-For details go to: http://www.mynratravel.com/ 
+Ok, so looks like Solaris 10 has this bug too. You might want to open a
+case with Sun if you have a support contract with them. Let them know
+that they're not sending a correct attribute mask when they send an
+exclusive create reply.
 
-We make refunds if you are not satisfied with our products! 
+You might also try opening a bug about this at the opensolaris site.
 
 -- 
-otrmrrsntrrgrmsrrjrhorrfsqrfrjsjsssuskrosqsnofsgpkqk
-
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
