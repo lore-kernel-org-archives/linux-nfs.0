@@ -1,29 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: maintainership question about nfs-utils/util/mount
-Date: Fri, 06 Jul 2007 16:13:23 -0400
-Message-ID: <468EA263.5010909@oracle.com>
-Reply-To: chuck.lever@oracle.com
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060804040103040905070208"
-To: NFS List <nfs@lists.sourceforge.net>
+From: ntmail@ins-america1.com
+Subject: Get More Orders For Anything You Sell Within 24 Hours!
+Date: Sat, 30 Jun 2007 22:42:24 +0600
+Message-ID: <68v66w0add5g80.g4wa7@mail.ins-america1.com>
+Content-Type: multipart/mixed; boundary="===============0518776438=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I6uC8-0000hv-1s
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 13:14:24 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I6uCA-00059m-GG
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 13:14:27 -0700
-Received: from rgmgw1.us.oracle.com (rgmgw1.us.oracle.com [138.1.186.110])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l66KEEmT024747
-	for <nfs@lists.sourceforge.net>; Fri, 6 Jul 2007 15:14:14 -0500
-Received: from acsmt351.oracle.com (acsmt351.oracle.com [141.146.40.151])
-	by rgmgw1.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l669wcaq020250
-	for <nfs@lists.sourceforge.net>; Fri, 6 Jul 2007 14:14:12 -0600
+	id 1I4qKL-0001WH-PN
+	for nfs@lists.sourceforge.net; Sat, 30 Jun 2007 20:42:21 -0700
+Received: from e3.1b.1343.static.theplanet.com ([67.19.27.227]
+	helo=mail.ins-america1.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1I4qKO-0005aJ-7X
+	for nfs@lists.sourceforge.net; Sat, 30 Jun 2007 20:42:25 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,61 +26,125 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------060804040103040905070208
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+--===============0518776438==
+Content-Type: text/html;
+	 charset="us-ascii"
+Content-Transfer-Encoding: 7BIT
 
-I'm looking at nfs-utils/utils/mount in order to patch in support for 
-passing a string of mount options to the kernel instead of an 
-nfs_mount_data.
+<html>
 
-In mount.c, main() invokes nfsmount() in nfsmount.c.  nfsmount() defines 
-a structure on the stack called "data", then returns a pointer to "data" 
-which is then passed to the kernel by main().
+<head>
 
-I think the only way this continues to work is that there are three 1024 
-character buffers defined in nfsmount()'s stack frame before "data," 
-which places "data" far enough up the stack that subsequent function 
-calls in main() don't smash it.
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 
-Although this doesn't cause bad behavior today, it needs to be fixed to 
-prevent future changes from breaking things badly.
+</head>
 
-Also found an interesting error message in here:
+<body>
 
-   permission died - no match for fstab
+<p align="left">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff; " face="Arial" color="#0000FF" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+<strong>GET MORE ORDERS FOR ANYTHING YOU SELL!</strong></font></p>
+<font id="role_document0" face="Arial" color="#0000FF">
+<p style="margin-bottom: 0in" align="left"><b>PROMOTE YOUR BUSINESS TODAY WITH<br>
+COST EFFECTIVE&nbsp; E-MAIL ADVERTISING</b></p>
+</font>
+<p style="margin-bottom: 0in" align="left">
+<font color="#000080">
+<b>
+<font lang="0" style="background-color: #ffffff; font-weight:700" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" id="role_document0">
+*&nbsp;Get Instant Traffic to Your Website</font><font lang="0" style="background-color: #ffffff; font-weight:700" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" id="role_document0"><br>
+*&nbsp;</font></b></font><b><font lang="0" style="background-color: #ffffff; font-weight:700" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0">Generates</font></b></font><b><font lang="0" style="background-color: #ffffff; font-weight:700" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" size="3" id="role_document0"> 
+Instant Sales or Leads for Any Business</font></b><font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><font id="role_document0" face="Arial" color="#0000FF" style="font-size: 16pt; font-weight: 700"></p>
+</font>
+</font>
 
-Should probably be "permission denied".  I'm not really sure what "no 
-match for fstab" means, but looking at the context, this message appears 
-if a non-root user tries to mount something that isn't already listed in 
-/etc/fstab.
+<p align="left">
+<b><font face="Arial" style="font-size: 11pt" color="#000080">We can send Your 
+Ad or Website out to MILLIONS Of Our Double OPT IN List of Email Subscribers<br>
+and get you great results by providing the most effective way to reach your<br>
+target market. Email advertising messages are sent to 100% Double Opt-In 
+customers.<br>
+These are people who have specifically requested to receive your email<br>
+advertising offer on your unique products and services.</font></b></p>
 
-What's the current blessed procedure for sending patches and fixes for 
-this particular code?  Mail to agud@redhat.com (last touch rule, and 
-author of mount.c) is rejected.
+<p align="left">
+<b><font color="#000080" face="Arial"><span style="font-size: 11pt">Our job is 
+to make your email campaigns a big success. <br>
+Includes free phone and email support, and a wealth of online<br>
+resources for every customer</span></font></b><font color="#000080"><span style="font-size: 11pt">.
+</span></font><br>
+&nbsp;</p>
 
---------------060804040103040905070208
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+<p align="left">
+<font color="#000080"><b>
+<font style="font-size: 11pt; background-color:#ffffff" lang="0" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">Includes
+free phone and email support, a wealth of online resources for every<br>
+customer.  </font></b></font>
+<font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+</p>
+</font>
+<p align="left"><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<b><u>Services include:</u><br>
+E-Mail Broadcasting your ad to our list of double opt in emails<br>
+Graphic Ad Design<br>
+Assistance is setting up your ad for great results</font></b><font lang="0" style="background-color: #ffffff; font-size:11pt" face="Arial" color="#000080" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF"><br>
+&nbsp;</font></p>
+<p align="left"><span style="background-color: #FFFFFF"><b>
+<font face="Arial" style="font-size: 11pt" color="#000080">O</font></b></span><b><font color="#000080"><font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF" face="Arial" size="3">pt in email advertising can convert your website visitors to customers and 
+boost your revenue.<br>
+<i>We can show you how.</i><br>
+</font>
+<font lang="0" style="background-color: #ffffff; font-size:11pt" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF" face="Arial" size="3">
+<br>
+</font>
+</font><span style="background-color: #FFFFFF">
+<font face="Arial" style="font-size: 11pt" color="#FF0000">For More Info, Please 
+call (213) 291-1177<br>
+</font><font face="Arial" color="#FF0000" size="2"><i>After hours, please leave 
+a message. One of our professional and courteous<br>
+representatives will get back to you by  the next business day.</i></font></span></b></p>
+<b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+<font lang="0" style="background-color: #ffffff" face="Comic Sans MS" color="#1003bd" size="2" BACK="#ffffff" PTSIZE="12" FAMILY="SCRIPT">
+<p align="left"><font color="#060296"><font color="#000080" size="2"><em>Driving Traffic to 
+All Types of Businesses&nbsp;Since 1997</em></font><font lang="0" style="background-color: #ffffff" face="Arial" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF"><br>
+</font></font>
+</font>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<br>
+</font>
+
+</font>
+
+</b>
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" size="3" BACK="#ffffff" PTSIZE="12" FAMILY="SANSSERIF">
+<font lang="0" style="background-color: #ffffff" face="Arial" color="#2e3c98" BACK="#ffffff" PTSIZE="10" FAMILY="SANSSERIF">
+<br>
+_________________________________________________________________</font></p>
+<p align="left"><font face="Arial" color="#000080" size="1">You are receiving 
+this message as an opt-in subscriber to Ins America or one of our marketing 
+partners. <br>
+If you no longer wish to receive further offers, please send an email with 
+discontinue to: <a href="mailto:support@ins-america1.com?subject=Discontinue">
+support@ins-america1.com</a><br>
+Your email address will be removed within 24 hours.</font></p>
+<p align="left"><font face="Arial" color="#000080" size="1"><br>
+Ins America<br>
+25 Ave. at Port Imperial<br>
+West New York, NJ <br>
+07030</font></p></p>
+</font>
+</font>
+
+</body>
+
+</html>
 
 
---------------060804040103040905070208
+
+--===============0518776438==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -101,7 +155,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------060804040103040905070208
+--===============0518776438==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -111,4 +165,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------060804040103040905070208--
+--===============0518776438==--
