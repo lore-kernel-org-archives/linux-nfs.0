@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/21] NFS: Add a new NFS debugging flag just for
-	mount	processing
-Date: Sun, 01 Jul 2007 12:12:51 -0400
-Message-ID: <20070701161251.2786.17972.stgit@monet.1015granger.net>
+Subject: [PATCH 05/21] NFS: Clean up error handling in nfs_get_sb
+Date: Sun, 01 Jul 2007 12:12:35 -0400
+Message-ID: <20070701161235.2786.10878.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I5245-0004Y5-Os
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:21 -0700
+	id 1I524X-0004Z3-04
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:50 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I5249-00044L-3V
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:25 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I524Z-00041U-CJ
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:52 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,26 +27,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Note to self: fix up /usr/sbin/rpcdebug too
+The error return logic in nfs_get_sb now matches nfs4_get_sb, and is more maintainable.
+A subsequent patch will take advantage of this simplification.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/nfs_fs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/super.c |   14 ++++++++------
+ 1 files changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 3e8dd12..589ea69 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -553,6 +553,7 @@ extern void * nfs_root_data(void);
- #define NFSDBG_ROOT		0x0080
- #define NFSDBG_CALLBACK		0x0100
- #define NFSDBG_CLIENT		0x0200
-+#define NFSDBG_MOUNT		0x0400
- #define NFSDBG_ALL		0xFFFF
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 8ee6dae..e98f7ca 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -673,13 +673,13 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 	/* Validate the mount data */
+ 	error = nfs_validate_mount_data(data, &mntfh);
+ 	if (error < 0)
+-		return error;
++		goto out;
  
- #ifdef __KERNEL__
+ 	/* Get a volume representation */
+ 	server = nfs_create_server(data, &mntfh);
+ 	if (IS_ERR(server)) {
+ 		error = PTR_ERR(server);
+-		goto out_err_noserver;
++		goto out;
+ 	}
+ 
+ 	if (server->flags & NFS_MOUNT_UNSHARED)
+@@ -715,17 +715,19 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 	s->s_flags |= MS_ACTIVE;
+ 	mnt->mnt_sb = s;
+ 	mnt->mnt_root = mntroot;
+-	return 0;
++	error = 0;
++
++out:
++	return error;
+ 
+ out_err_nosb:
+ 	nfs_free_server(server);
+-out_err_noserver:
+-	return error;
++	goto out;
+ 
+ error_splat_super:
+ 	up_write(&s->s_umount);
+ 	deactivate_super(s);
+-	return error;
++	goto out;
+ }
+ 
+ /*
 
 
 -------------------------------------------------------------------------
