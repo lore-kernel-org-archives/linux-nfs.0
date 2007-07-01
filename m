@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/21] NFS: Clean up nfs_size_to_loff_t()
-Date: Sun, 01 Jul 2007 12:12:14 -0400
-Message-ID: <20070701161213.2786.44819.stgit@monet.1015granger.net>
+Subject: [PATCH 03/21] NFS: Clean-up: Define macros for maximum host
+	and	export path name lengths
+Date: Sun, 01 Jul 2007 12:12:24 -0400
+Message-ID: <20070701161224.2786.28187.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I523Y-0004RI-5M
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:48 -0700
+	id 1I523f-0004Rd-6O
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:56 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I523b-0004wg-I3
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:51 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I523h-0004y5-II
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,34 +28,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Use the same file size limit that lockd uses.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/nfs_fs.h |    8 +++-----
- 1 files changed, 3 insertions(+), 5 deletions(-)
+ fs/nfs/super.c            |    4 ++--
+ include/linux/nfs_mount.h |    2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index bf24151..3e8dd12 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -503,12 +503,10 @@ extern int  nfsroot_mount(struct sockaddr_in *, char *, struct nfs_fh *,
-  * inline functions
-  */
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a83cb07..1fedc30 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -918,12 +918,12 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 		}
+ 	}
  
--static inline loff_t
--nfs_size_to_loff_t(__u64 size)
-+static inline loff_t nfs_size_to_loff_t(__u64 size)
- {
--	loff_t maxsz = (((loff_t) ULONG_MAX) << PAGE_CACHE_SHIFT) + PAGE_CACHE_SIZE - 1;
--	if (size > maxsz)
--		return maxsz;
-+	if (size > (__u64) OFFSET_MAX - 1)
-+		return OFFSET_MAX - 1;
- 	return (loff_t) size;
- }
+-	p = nfs_copy_user_string(NULL, &data->hostname, 256);
++	p = nfs_copy_user_string(NULL, &data->hostname, NFS4_MAXNAMLEN);
+ 	if (IS_ERR(p))
+ 		goto out_err;
+ 	hostname = p;
  
+-	p = nfs_copy_user_string(NULL, &data->mnt_path, 1024);
++	p = nfs_copy_user_string(NULL, &data->mnt_path, NFS4_MAXPATHLEN);
+ 	if (IS_ERR(p))
+ 		goto out_err;
+ 	mntpath = p;
+diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
+index 3e3b521..a3ade89 100644
+--- a/include/linux/nfs_mount.h
++++ b/include/linux/nfs_mount.h
+@@ -37,7 +37,7 @@ struct nfs_mount_data {
+ 	int		acdirmin;		/* 1 */
+ 	int		acdirmax;		/* 1 */
+ 	struct sockaddr_in addr;		/* 1 */
+-	char		hostname[256];		/* 1 */
++	char		hostname[NFS_MAXNAMLEN + 1];		/* 1 */
+ 	int		namlen;			/* 2 */
+ 	unsigned int	bsize;			/* 3 */
+ 	struct nfs3_fh	root;			/* 4 */
 
 
 -------------------------------------------------------------------------
