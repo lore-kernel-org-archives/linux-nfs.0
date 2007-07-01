@@ -1,20 +1,19 @@
-From: JOHN ABOH <meetic@meetic.com>
-Subject: PAYMENT UPDATE
-Date: Sun,  1 Jul 2007 05:22:40 +0200 (CEST)
-Message-ID: <20070701032240.6E03857097E@h66181.serverkompetenz.net>
-Reply-To: joneabh@hotmail.com
+From: "Erin Hansen" <fyjjy@landplan-pa.com>
+Subject: adobe photoshop cs3 $89
+Date: Sun, 1 Jul 2007 11:39:18 -0800
+Message-ID: <01c7bbd4$75c5d9f0$77415fda@fyjjy>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============1598498100=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I4qo7-00047w-RS
-	for nfs@lists.sourceforge.net; Sat, 30 Jun 2007 21:13:07 -0700
-Received: from h66181.serverkompetenz.net ([81.169.129.232])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I4qo9-0002aY-UE
-	for nfs@lists.sourceforge.net; Sat, 30 Jun 2007 21:13:10 -0700
+	id 1I4xlx-0005VT-6x
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 04:39:21 -0700
+Received: from [218.95.65.119] (helo=[218.95.65.119])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I4xlx-0007F5-1j
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 04:39:24 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,181 +26,120 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-
-ATTN:
-
-
-
-The Presidency,Federal Government Officers
-
-on Finance,Senate committee on Financial Matters,
-
-Central Bank of Nigeria and Diplomatic Corps
-
-met recently on the present fiscal-reformations.
-
-It is known that, many Foreigners have lost money
-
-to Nigeria through: Fraud, Unpaid-Contract or
-
-others. The Bank First Bank of Nigeria PLC has
-
-been authorized to attend to all these foreign and
-
-international matters.
-
-
-
-The Bank is contacting you because, your email is
-
-among the beneficiaries, submitted to us by the
-
-Ministries concerned. Only your e-mail address is
-
-the only contact information we could retrieve for
-
-now from the past records of Stake-Holders who have
-
-not been cleared of one Transaction or the other.
-
-
-
-The outcome of the summit has prompted the
-
-Federal Government to empower only our Bank;First
-
-Bank of Nigeria PLC to Identify the owners of some
-
-funds yet un-claimed and pay them outright with no
-
-delay.The Files and all Documents relating to
-
-Foreign-Affairs has been handed over to our Bank.
-
-Please, reply this mail, so that we can proceed
-
-forwarding all relevant evidences of the Money
-
-to you.
-
-
-
-Be informed that the Federal Government have
-
-approved the release of payments which has been
-
-in this bank for many years unclaimed because my
-
-boss Mr. Jacobs Ajekigbe, collaboration with the
-
-Governor of Central Bank of Nigeria (CBN) have
-
-refused to tell you the truth on how to claim your
-
-fund this is because he has been using the interest
-
-accumulated from your fund every year to enrich
-
-himself without your knowledge.
-
-
-
-I,John Aboh has been appointed by the Bank,s
-
-Management Authority to supervise this exercise.We
-
-are now in operation finding the rightful owners
-
-of the funds that has accumulated in Nigeria for
-
-years.This exercise covers all transactions ever
-
-had with Nigerians before or at present.
-
-
-
-My boss; Mr. Jacobs M. Ajekigbe, the Managing
-
-Director/CEO of this bank is now on compulsory
-
-leave and all power have been vested on me to
-
-make all international payments.
-
-
-
-I want to help you pull out this fund to your
-
-bank account using the easiest and the quickest
-
-method,which have not been made known to you
-
-before.By this method,you will open a
-
-domiciliary account with this bank
-
-(First Bank of Nigeria),your fund would be
-
-lodged into this domiciliary account and your
-
-fund will be paid in directly to any bank of
-
-your choice.
-
-
-
-After the transfer, you will confirm the fund in
-
-your bank account within 5-hours same day. No
-
-Cost of Transfer (COT) and no stoppage from any
-
-Government departments as the transfer will be
-
-done within the bank alone and it is very safe.
-
-
-
-Confirm to me through this e-mail address:
-
-jhnbh@hotmail.com your:
-
-
-
-Personal Information;
-
-Phone and Fax Number;
-
-Banking Information,
-
-where the money will be Transfered into.
-
-
-
-Awaiting your quick response.
-
-
-
-Yours truly,
-
-JOHN O. ABOH
-
-FBN
-
-
-
-
-
-
-
-
+This is a multi-part message in MIME format.
+
+--===============1598498100==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0007_01C7BC17.83E919F0"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0007_01C7BC17.83E919F0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+Find out more about the new 
+features and enhancements in Adobe Photoshop CS3 Extended. Boost your 
+productivity with a streamlined interface, enhancements to raw-image proces=
+sing 
+and asset management workflows, and more; experience unrivaled editing powe=
+r 
+with nondestructive filters, more precise color-correction controls, and mo=
+re 
+powerful cloning and healing tools; easily create rich composites using new=
+ 
+tools for automatically aligning and blending layers and making quick 
+selections; 3D and motion support with the ability to edit 3D content and 
+incorporate it into 2D compositions, paint and clone over multiple video fr=
+ames, 
+and more; comprehensive image analysis with new image measurement and count=
+ing 
+tools, MATLAB integration, and DICOM file support.Adobe Photoshop CS3 
+ExtendedRetail Price $999.00Our Price $89.95You save $909.05http://viviyaeg=
+comPlease note, that 
+there will be more special offers available for our constant customers. Eve=
+ry 
+effort has been made to ensure the accuracy of all information contained he=
+rein. 
+DS Team makes no warranty expressed or implied with respect to accuracy of =
+the 
+information, including price, product editorials or product specifications.=
+ 
+Product and manufacturer names are used only for the purpose of identificat=
+ion. 
+We appreciate your cooperation with us and we'll be glad to see you as our 
+clients in the future. 
+------=_NextPart_000_0007_01C7BC17.83E919F0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.3790.1830" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY>
+<FONT face=3DArial size=3D2>Find out more about the new 
+features and enhancements in Adobe Photoshop CS3 Extended. Boost your 
+productivity with a streamlined interface, enhancements to raw-image proces=
+sing 
+and asset management workflows, and more; experience unrivaled editing powe=
+r 
+with nondestructive filters, more precise color-correction controls, and mo=
+re 
+powerful cloning and healing tools; easily create rich composites using new=
+ 
+tools for automatically aligning and blending layers and making quick 
+selections; 3D and motion support with the ability to edit 3D content and 
+incorporate it into 2D compositions, paint and clone over multiple video fr=
+ames, 
+and more; comprehensive image analysis with new image measurement and count=
+ing 
+tools, MATLAB integration, and DICOM file support.<BR>Adobe Photoshop CS3 
+Extended<BR>Retail Price $999.00<BR>Our Price $89.95<BR>You save $909.05<BR=
+><A 
+href=3D"http://viviyaeg.com">http://viviyaeg.com</A><BR>Please note, that 
+there will be more special offers available for our constant customers. Eve=
+ry 
+effort has been made to ensure the accuracy of all information contained he=
+rein. 
+DS Team makes no warranty expressed or implied with respect to accuracy of =
+the 
+information, including price, product editorials or product specifications.=
+ 
+Product and manufacturer names are used only for the purpose of identificat=
+ion. 
+We appreciate your cooperation with us and we'll be glad to see you as our 
+clients in the future.</FONT>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+</BODY></HTML>
+
+------=_NextPart_000_0007_01C7BC17.83E919F0--
+
+
+
+--===============1598498100==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============1598498100==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1598498100==--
