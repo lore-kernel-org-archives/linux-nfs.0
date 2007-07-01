@@ -1,19 +1,21 @@
-From: "Erin Hansen" <fyjjy@landplan-pa.com>
-Subject: adobe photoshop cs3 $89
-Date: Sun, 1 Jul 2007 11:39:18 -0800
-Message-ID: <01c7bbd4$75c5d9f0$77415fda@fyjjy>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: [PATCH] lockd: unlock when client rejects GRANTED_MSG
+Date: Sun, 1 Jul 2007 16:38:01 +0200
+Message-ID: <20070701143801.GA22967@janus>
+References: <20070629155226.GA25561@janus>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1598498100=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I4xlx-0005VT-6x
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 04:39:21 -0700
-Received: from [218.95.65.119] (helo=[218.95.65.119])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I4xlx-0007F5-1j
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 04:39:24 -0700
+	id 1I50Yr-0002cx-V0
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 07:38:02 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I50Yu-0004lR-TP
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 07:38:05 -0700
+In-Reply-To: <20070629155226.GA25561@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,120 +28,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
 
---===============1598498100==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0007_01C7BC17.83E919F0"
+When lockd grants a blocked lock request after a while then the client
+response on it should not be ignored: When the client rejects GRANTED_MSG
+with GRANTED_RES NLM_LCK_DENIED then lockd on the server must release
+the POSIX lock.
 
-This is a multi-part message in MIME format.
+Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
+---
 
-------=_NextPart_000_0007_01C7BC17.83E919F0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+On Fri, Jun 29, 2007 at 05:52:26PM +0200, Frank van Maarseveen wrote:
+> Both server and client run 2.6.21.5 and use NFSv3 over UDP.
+> 
+> The server has a second IP address on eth0. The client mounts from the
+> second address. Two instances of attached test program run on the client
+> specifying the same lockfile. Basically they repeatedly F_SETLKW for
+> an exclusive lock, sleep 0.2s with lock held, unlock, sleep 0.1s. The
+> F_SETLKW is aborted by alarm(10) which normally shouldn't happen.
+> 
+> This works for a minute and then both alarm clocks go off and the file is
+> still locked on the server but not on the client. Wireshark NLM traffic:
 
-Find out more about the new 
-features and enhancements in Adobe Photoshop CS3 Extended. Boost your 
-productivity with a streamlined interface, enhancements to raw-image proces=
-sing 
-and asset management workflows, and more; experience unrivaled editing powe=
-r 
-with nondestructive filters, more precise color-correction controls, and mo=
-re 
-powerful cloning and healing tools; easily create rich composites using new=
+[snip]
+
+This is basically what happens:
+
+1	Client tries to obtain a lock, server says NLM_BLOCKED and prepares
+	to call the client later when the conflicting lock is released.
+
+2	When the conflicting lock is released, the server calls
+	nlm_async_call() via which nlm_bind_host() creates a new transport
+	with no knowledge about any source IP address to pick.
+	A GRANTED_MSG goes out with a source IP address which differs from
+	the destination address in the original client request.
+
+3	Client checks IP address in nlmclnt_grant() and rejects it with
+	GRANTED_RES NLM_LCK_DENIED.
+
+4	Server ignores the error in nlmsvc_grant_reply(). It always removes
+	the block (struct nlm_block) which is correct but forgets to
+	remove the POSIX lock itself in case the client rejected the lock.
+
+IMHO #2 is incorrect and #3 is a questionable check (does it buy us
+anything?). #4 definately is a bug and is fixed below.
+
+--- a/fs/lockd/svclock.c	2007-05-12 21:28:09.000000000 +0200
++++ b/fs/lockd/svclock.c	2007-07-01 14:51:21.000000000 +0200
+@@ -646,20 +646,27 @@
+ nlmsvc_grant_reply(struct nlm_cookie *cookie, __be32 status)
+ {
+ 	struct nlm_block	*block;
++	struct nlm_lock		*lock;
++	int			error;
  
-tools for automatically aligning and blending layers and making quick 
-selections; 3D and motion support with the ability to edit 3D content and 
-incorporate it into 2D compositions, paint and clone over multiple video fr=
-ames, 
-and more; comprehensive image analysis with new image measurement and count=
-ing 
-tools, MATLAB integration, and DICOM file support.Adobe Photoshop CS3 
-ExtendedRetail Price $999.00Our Price $89.95You save $909.05http://viviyaeg=
-comPlease note, that 
-there will be more special offers available for our constant customers. Eve=
-ry 
-effort has been made to ensure the accuracy of all information contained he=
-rein. 
-DS Team makes no warranty expressed or implied with respect to accuracy of =
-the 
-information, including price, product editorials or product specifications.=
+ 	dprintk("grant_reply: looking for cookie %x, s=%d \n",
+ 		*(unsigned int *)(cookie->data), status);
+ 	if (!(block = nlmsvc_find_block(cookie)))
+ 		return;
  
-Product and manufacturer names are used only for the purpose of identificat=
-ion. 
-We appreciate your cooperation with us and we'll be glad to see you as our 
-clients in the future. 
-------=_NextPart_000_0007_01C7BC17.83E919F0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+-	if (block) {
+-		if (status == nlm_lck_denied_grace_period) {
+-			/* Try again in a couple of seconds */
+-			nlmsvc_insert_block(block, 10 * HZ);
+-		} else {
+-			/* Lock is now held by client, or has been rejected.
+-			 * In both cases, the block should be removed. */
+-			nlmsvc_unlink_block(block);
++	if (status == nlm_lck_denied_grace_period) {
++		/* Try again in a couple of seconds */
++		nlmsvc_insert_block(block, 10 * HZ);
++	} else {
++		/* Lock is now held by client, or has been rejected.
++		 * In both cases, the block should be removed. */
++		nlmsvc_unlink_block(block);
++
++		if (status == nlm_lck_denied) {
++			lock = &block->b_call->a_args.lock;
++			lock->fl.fl_type = F_UNLCK;
++			error = posix_lock_file(block->b_file->f_file, &lock->fl);
++			dprintk("nlmsvc_grant_reply: posix_lock_file returned %d\n", error);
+ 		}
+ 	}
+ 	nlmsvc_release_block(block);
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.3790.1830" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY>
-<FONT face=3DArial size=3D2>Find out more about the new 
-features and enhancements in Adobe Photoshop CS3 Extended. Boost your 
-productivity with a streamlined interface, enhancements to raw-image proces=
-sing 
-and asset management workflows, and more; experience unrivaled editing powe=
-r 
-with nondestructive filters, more precise color-correction controls, and mo=
-re 
-powerful cloning and healing tools; easily create rich composites using new=
- 
-tools for automatically aligning and blending layers and making quick 
-selections; 3D and motion support with the ability to edit 3D content and 
-incorporate it into 2D compositions, paint and clone over multiple video fr=
-ames, 
-and more; comprehensive image analysis with new image measurement and count=
-ing 
-tools, MATLAB integration, and DICOM file support.<BR>Adobe Photoshop CS3 
-Extended<BR>Retail Price $999.00<BR>Our Price $89.95<BR>You save $909.05<BR=
-><A 
-href=3D"http://viviyaeg.com">http://viviyaeg.com</A><BR>Please note, that 
-there will be more special offers available for our constant customers. Eve=
-ry 
-effort has been made to ensure the accuracy of all information contained he=
-rein. 
-DS Team makes no warranty expressed or implied with respect to accuracy of =
-the 
-information, including price, product editorials or product specifications.=
- 
-Product and manufacturer names are used only for the purpose of identificat=
-ion. 
-We appreciate your cooperation with us and we'll be glad to see you as our 
-clients in the future.</FONT>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-</BODY></HTML>
-
-------=_NextPart_000_0007_01C7BC17.83E919F0--
-
-
-
---===============1598498100==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- 
+Frank
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1598498100==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1598498100==--
