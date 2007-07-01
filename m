@@ -1,20 +1,21 @@
-From: kiss_mint_pup@cooltoad.com
-Subject: =?ISO-2022-JP?B?i02V+4LJg06DfoNSgrOC8YKpgueKrpFTRnJlZYLMkeWQbILMj7WR0o/zgsyCqJPNgq+CxYK3?=
-Date: Sun,  1 Jul 2007 09:25:26 -0700 (PDT)
-Message-ID: <2761.1426696696$1183307129@news.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 20/21] NFS: Add final pieces to support in-kernel
+	mount option	parsing
+Date: Sun, 01 Jul 2007 12:13:54 -0400
+Message-ID: <20070701161354.2786.60606.stgit@monet.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1396339754=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I52Ee-0005gY-RY
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:25:19 -0700
-Received: from ppp-124.120.97.64.revip2.asianet.co.th ([124.120.97.64]
-	helo=ppp-revipop003146.asianet.co.th)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I52Eh-0000au-UI
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:25:20 -0700
+	id 1I52iY-00007P-5s
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:56:10 -0700
+Received: from flpvm09.prodigy.net ([207.115.20.39])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I52ib-0007QI-1P
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:56:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,57 +28,168 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1396339754==
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
+Hook in final components required for supporting in-kernel mount option
+parsing for NFSv2 and NFSv3 mounts.
 
-こんにちは、完全無料の大人のソーシャルネットワーク運営事務局の小林です。
-クミコさんがあなたを大人のソーシャルネットワークへ招待しています。
-[メッセージ]
-クミコです♪遅くなってごめんなさいm(_ _)m
-返事待ってますね♪
-下記のURLよりクミコさんの登録画面をご覧いただけます。
-↓こちらから大人のソーシャルネットワークを見ることができます。
-http://www.frees.com.hytr.net/adults-sns/
-※この招待状の有効期限は30日間です。
-☆★☆　大人のソーシャルネットワークって何？　☆★☆
-大人のソーシャルネットワークは、
-大人が大人らしく何でも自由に同じ趣味、関心を持つ人と交流ができる
-大人の為の完全無料ソーシャル・ネットワーキング サービスです。
-◆完全無料の大人のソーシャルネットワークなら新しい様々な関係を活性化できます。
-大人だから許されるあなたの知らないアダルトな大人の世界を覗けます。
-◆完全無料の大人のソーシャルネットワークなら色々な方とコミュニケーションできる
-大人の秘話、体験談、趣味、アドバイスなど大人同士のアダルトな情報を発信、キャッチできます
-大人のソーシャルネットワークへ参加↓
-http://www.frees.com.hytr.net/adults-sns/
-あなたのご参加を心よりお待ちしております。
-■メッセージの相手に覚えがない方へ ..
-あなたがメッセージの相手に覚えがない場合、メールアドレスを間違えて
-送信されている可能性があります。このまま削除をお願い致します。
-完全無料の大人のソーシャルネットワーク運営事務局
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/nfs/super.c |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 95 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index c5ca68d..480dcfa 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1061,10 +1061,28 @@ out_err:
+ /*
+  * Validate the NFS2/NFS3 mount data
+  * - fills in the mount root filehandle
++ *
++ * For option strings, user space handles the following behaviors:
++ *
++ * + DNS: mapping server host name to IP address ("addr=" option)
++ *
++ * + failure mode: how to behave if a mount request can't be handled
++ *   immediately ("fg/bg" option)
++ *
++ * + retry: how often to retry a mount request ("retry=" option)
++ *
++ * + breaking back: trying proto=udp after proto=tcp, v2 after v3,
++ *   mountproto=tcp after mountproto=udp, and so on
++ *
++ * XXX: as far as I can tell, changing the NFS program number is not
++ *      supported in the NFS client.
+  */
+-static int nfs_validate_mount_data(struct nfs_mount_data *data,
+-				   struct nfs_fh *mntfh)
++static int nfs_validate_mount_data(struct nfs_mount_data **options,
++				   struct nfs_fh *mntfh,
++				   const char *dev_name)
+ {
++	struct nfs_mount_data *data = *options;
++
+ 	if (data == NULL)
+ 		goto out_no_data;
+ 
+@@ -1097,8 +1115,78 @@ static int nfs_validate_mount_data(struct nfs_mount_data *data,
+ 			memset(mntfh->data + mntfh->size, 0,
+ 			       sizeof(mntfh->data) - mntfh->size);
+ 		break;
+-	default:
+-		goto out_bad_version;
++	default: {
++		unsigned int len;
++		char *c;
++		int status;
++		struct nfs_parsed_mount_data args = {
++			.flags		= (NFS_MOUNT_VER3 | NFS_MOUNT_TCP),
++			.rsize		= NFS_MAX_FILE_IO_SIZE,
++			.wsize		= NFS_MAX_FILE_IO_SIZE,
++			.timeo		= 600,
++			.retrans	= 2,
++			.acregmin	= 3,
++			.acregmax	= 60,
++			.acdirmin	= 30,
++			.acdirmax	= 60,
++			.mount_server.protocol = IPPROTO_UDP,
++			.mount_server.program = NFS_MNT_PROGRAM,
++			.nfs_server.protocol = IPPROTO_TCP,
++			.nfs_server.program = NFS_PROGRAM,
++		};
++
++		if (nfs_parse_mount_options((char *) *options, &args) == 0)
++			return -EINVAL;
++
++		data = kzalloc(sizeof(*data), GFP_KERNEL);
++		if (data == NULL)
++			return -ENOMEM;
++
++		/*
++		 * NB: after this point, caller will free "data"
++		 * if we return an error
++		 */
++		*options = data;
++
++		c = strchr(dev_name, ':');
++		if (c == NULL)
++			return -EINVAL;
++		len = c - dev_name - 1;
++		if (len > sizeof(data->hostname))
++			return -EINVAL;
++		strncpy(data->hostname, dev_name, len);
++		args.nfs_server.hostname = data->hostname;
++
++		c++;
++		if (strlen(c) > NFS_MAXPATHLEN)
++			return -EINVAL;
++		args.nfs_server.export_path = c;
++
++		status = nfs_try_mount(&args, mntfh);
++		if (status)
++			return -EINVAL;
++
++		/*
++		 * Translate to nfs_mount_data, which nfs_fill_super
++		 * can deal with.
++		 */
++		data->version		= 6;
++		data->flags		= args.flags;
++		data->rsize		= args.rsize;
++		data->wsize		= args.wsize;
++		data->timeo		= args.timeo;
++		data->retrans		= args.retrans;
++		data->acregmin		= args.acregmin;
++		data->acregmax		= args.acregmax;
++		data->acdirmin		= args.acdirmin;
++		data->acdirmax		= args.acdirmax;
++		data->addr		= args.nfs_server.address;
++		data->namlen		= args.namlen;
++		data->bsize		= args.bsize;
++		data->pseudoflavor	= args.auth_flavors[0];
++
++		break;
++		}
+ 	}
+ 
+ 	if (!(data->flags & NFS_MOUNT_SECFLAVOUR))
+@@ -1127,11 +1215,6 @@ out_no_sec:
+ 	dfprintk(MOUNT, "NFS: nfs_mount_data version supports only AUTH_SYS\n");
+ 	return -EINVAL;
+ 
+-out_bad_version:
+-	dfprintk(MOUNT, "NFS: bad nfs_mount_data version %d\n",
+-		 data->version);
+-	return -EINVAL;
+-
+ #ifndef CONFIG_NFS_V3
+ out_v3_not_compiled:
+ 	dfprintk(MOUNT, "NFS: NFSv3 is not compiled into kernel\n");
+@@ -1291,7 +1374,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 	int error;
+ 
+ 	/* Validate the mount data */
+-	error = nfs_validate_mount_data(data, &mntfh);
++	error = nfs_validate_mount_data(&data, &mntfh, dev_name);
+ 	if (error < 0)
+ 		goto out;
+ 
+@@ -1338,6 +1421,8 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 	error = 0;
+ 
+ out:
++	if (data != raw_data)
++		kfree(data);
+ 	return error;
+ 
+ out_err_nosb:
 
---===============1396339754==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1396339754==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1396339754==--
