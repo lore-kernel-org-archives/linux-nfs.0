@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/21] NFS: Clean-up: use correct type when converting
-	NFS	blocks to local blocks
-Date: Sun, 01 Jul 2007 12:12:19 -0400
-Message-ID: <20070701161219.2786.47495.stgit@monet.1015granger.net>
+Subject: [PATCH 01/21] NFS: Clean up nfs_size_to_loff_t()
+Date: Sun, 01 Jul 2007 12:12:14 -0400
+Message-ID: <20070701161213.2786.44819.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I523Y-0004RN-KQ
+	id 1I523Y-0004RI-5M
 	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:48 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I523c-0004x1-0Y
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:52 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I523b-0004wg-I3
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:13:51 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,29 +27,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-inode->i_blocks is a blkcnt_t these days, which can be a u64 or unsigned
-long, depending on the setting of CONFIG_LSF.
+Use the same file size limit that lockd uses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ include/linux/nfs_fs.h |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ad2b40d..76cf55d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -183,9 +183,9 @@ unsigned long nfs_block_bits(unsigned long bsize, unsigned char *nrbitsp)
- /*
-  * Calculate the number of 512byte blocks used.
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index bf24151..3e8dd12 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -503,12 +503,10 @@ extern int  nfsroot_mount(struct sockaddr_in *, char *, struct nfs_fh *,
+  * inline functions
   */
--static inline unsigned long nfs_calc_block_size(u64 tsize)
-+static inline blkcnt_t nfs_calc_block_size(u64 tsize)
+ 
+-static inline loff_t
+-nfs_size_to_loff_t(__u64 size)
++static inline loff_t nfs_size_to_loff_t(__u64 size)
  {
--	loff_t used = (tsize + 511) >> 9;
-+	blkcnt_t used = (tsize + 511) >> 9;
- 	return (used > ULONG_MAX) ? ULONG_MAX : used;
+-	loff_t maxsz = (((loff_t) ULONG_MAX) << PAGE_CACHE_SHIFT) + PAGE_CACHE_SIZE - 1;
+-	if (size > maxsz)
+-		return maxsz;
++	if (size > (__u64) OFFSET_MAX - 1)
++		return OFFSET_MAX - 1;
+ 	return (loff_t) size;
  }
  
 
