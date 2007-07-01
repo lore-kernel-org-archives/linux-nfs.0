@@ -1,21 +1,23 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: [PATCH] lockd: unlock when client rejects GRANTED_MSG
-Date: Sun, 1 Jul 2007 16:38:01 +0200
-Message-ID: <20070701143801.GA22967@janus>
-References: <20070629155226.GA25561@janus>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] lockd: unlock when client rejects GRANTED_MSG
+Date: Sun, 1 Jul 2007 10:58:32 -0400
+Message-ID: <20070701145832.GA17334@fieldses.org>
+References: <20070629155226.GA25561@janus> <20070701143801.GA22967@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Linux NFS mailing list <nfs@lists.sourceforge.net>
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I50Yr-0002cx-V0
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 07:38:02 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I50Yu-0004lR-TP
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 07:38:05 -0700
-In-Reply-To: <20070629155226.GA25561@janus>
+	id 1I50tX-0004pR-6y
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 07:59:23 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I50sm-0001L1-NO
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 07:58:37 -0700
+In-Reply-To: <20070701143801.GA22967@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,91 +30,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-When lockd grants a blocked lock request after a while then the client
-response on it should not be ignored: When the client rejects GRANTED_MSG
-with GRANTED_RES NLM_LCK_DENIED then lockd on the server must release
-the POSIX lock.
-
-Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
----
-
-On Fri, Jun 29, 2007 at 05:52:26PM +0200, Frank van Maarseveen wrote:
-> Both server and client run 2.6.21.5 and use NFSv3 over UDP.
+On Sun, Jul 01, 2007 at 04:38:01PM +0200, Frank van Maarseveen wrote:
 > 
-> The server has a second IP address on eth0. The client mounts from the
-> second address. Two instances of attached test program run on the client
-> specifying the same lockfile. Basically they repeatedly F_SETLKW for
-> an exclusive lock, sleep 0.2s with lock held, unlock, sleep 0.1s. The
-> F_SETLKW is aborted by alarm(10) which normally shouldn't happen.
-> 
-> This works for a minute and then both alarm clocks go off and the file is
-> still locked on the server but not on the client. Wireshark NLM traffic:
+> When lockd grants a blocked lock request after a while then the client
+> response on it should not be ignored: When the client rejects GRANTED_MSG
+> with GRANTED_RES NLM_LCK_DENIED then lockd on the server must release
+> the POSIX lock.
 
-[snip]
+There's not really any way to "remove" a posix lock.  All you can do is
+issue an unlock, which isn't quite the same--for example, consider the
+case when the granted lock was a read lock downgrading a previously
+write-locked region.  Or perhaps it was locking a region only some of
+whose bytes where previously locked.
 
-This is basically what happens:
+I have some bit-rotting patches that define a new "provisional" lock
+type that is like a posix lock except that it isn't combined with other
+existing locks--such a lock has the advantage that it really can be
+completely undone.  You can then break up the lock-applying process into
+two steps:
 
-1	Client tries to obtain a lock, server says NLM_BLOCKED and prepares
-	to call the client later when the conflicting lock is released.
+	1. first apply a "provisional" lock (marked with an FL_BLOCK
+	   lock type in my code), then
+	2. when whoever originally requested the lock requests it,
+	   convert the provisional lock until a real posix lock,
+	   combining it with other locks as necessary.
 
-2	When the conflicting lock is released, the server calls
-	nlm_async_call() via which nlm_bind_host() creates a new transport
-	with no knowledge about any source IP address to pick.
-	A GRANTED_MSG goes out with a source IP address which differs from
-	the destination address in the original client request.
+So we could handle your case by delaying step number 2 until we get an
+affirmative response to the grant.  I don't think my previous attempt
+actually considered that case; I was mainly interested in NFSv4.  The
+code's at
 
-3	Client checks IP address in nlmclnt_grant() and rejects it with
-	GRANTED_RES NLM_LCK_DENIED.
+	git://linux-nfs.org/~bfields/linux.git	fair-queueing
 
-4	Server ignores the error in nlmsvc_grant_reply(). It always removes
-	the block (struct nlm_block) which is correct but forgets to
-	remove the POSIX lock itself in case the client rejected the lock.
+(see the next-to-latest patch on that branch).
 
-IMHO #2 is incorrect and #3 is a questionable check (does it buy us
-anything?). #4 definately is a bug and is fixed below.
+But I don't know how much trouble it's worth going to to get this right;
+the NLM protocol is inherently racy.  Is this something you saw in real
+life?  What was the client, and why did it refuse the grant?
 
---- a/fs/lockd/svclock.c	2007-05-12 21:28:09.000000000 +0200
-+++ b/fs/lockd/svclock.c	2007-07-01 14:51:21.000000000 +0200
-@@ -646,20 +646,27 @@
- nlmsvc_grant_reply(struct nlm_cookie *cookie, __be32 status)
- {
- 	struct nlm_block	*block;
-+	struct nlm_lock		*lock;
-+	int			error;
- 
- 	dprintk("grant_reply: looking for cookie %x, s=%d \n",
- 		*(unsigned int *)(cookie->data), status);
- 	if (!(block = nlmsvc_find_block(cookie)))
- 		return;
- 
--	if (block) {
--		if (status == nlm_lck_denied_grace_period) {
--			/* Try again in a couple of seconds */
--			nlmsvc_insert_block(block, 10 * HZ);
--		} else {
--			/* Lock is now held by client, or has been rejected.
--			 * In both cases, the block should be removed. */
--			nlmsvc_unlink_block(block);
-+	if (status == nlm_lck_denied_grace_period) {
-+		/* Try again in a couple of seconds */
-+		nlmsvc_insert_block(block, 10 * HZ);
-+	} else {
-+		/* Lock is now held by client, or has been rejected.
-+		 * In both cases, the block should be removed. */
-+		nlmsvc_unlink_block(block);
-+
-+		if (status == nlm_lck_denied) {
-+			lock = &block->b_call->a_args.lock;
-+			lock->fl.fl_type = F_UNLCK;
-+			error = posix_lock_file(block->b_file->f_file, &lock->fl);
-+			dprintk("nlmsvc_grant_reply: posix_lock_file returned %d\n", error);
- 		}
- 	}
- 	nlmsvc_release_block(block);
-
--- 
-Frank
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
