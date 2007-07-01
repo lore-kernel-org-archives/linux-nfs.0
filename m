@@ -1,21 +1,23 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/21] NFS: Remake nfsroot_mount as a permanent part
-	of NFS	client
-Date: Sun, 01 Jul 2007 12:13:27 -0400
-Message-ID: <20070701161327.2786.92192.stgit@monet.1015granger.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH 00/10] knfsd: RMDA Transport Driver v2
+Date: Sun, 01 Jul 2007 18:02:58 -0500
+Message-ID: <20070701230258.29354.89949.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I52is-00008I-5y
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:56:30 -0700
-Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I52iv-0007W6-Cj
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:56:33 -0700
+	id 1I58ae-000365-Uh
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 16:12:25 -0700
+Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I58ai-0007c9-9o
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 16:12:28 -0700
+Received: from dell3.ogc.int (localhost [127.0.0.1])
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id E4F477C758
+	for <nfs@lists.sourceforge.net>; Sun,  1 Jul 2007 18:12:23 -0500 (CDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,168 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-In preparation for supporting NFSv2 and NFSv3 mount option handling in the
-kernel NFS client, convert mount_clnt.c to be a permanent part of the NFS
-client, instead of built only when CONFIG_ROOT_NFS is enabled.
+This patchset implements the NFS-RDMA transport driver for RDMA. It is 
+a follow-up to the earlier patchset and reflects recommendations by 
+various reviewers.  Most notable improvements are as follows:
 
-In addition, we also replace the "struct sockaddr_in *" argument with
-something more generic, to help support IPv6 at some later point.
+- Moved all WR processing into a tasklet reducing the number of irqsave
+  locks to 1. 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+- Added support for RDMA_READ completion processing that avoids wait
+  in an NFSD thread. 
 
- fs/nfs/Makefile        |    4 ++-
- fs/nfs/mount_clnt.c    |   55 ++++++++++++++++++++++++------------------------
- fs/nfs/nfsroot.c       |    3 ++-
- include/linux/nfs_fs.h |    5 ++--
- 4 files changed, 34 insertions(+), 33 deletions(-)
+- Integration with the transport switch patchset changes from SGI
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index f4580b4..b55cb23 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -6,8 +6,8 @@ obj-$(CONFIG_NFS_FS) += nfs.o
- 
- nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
- 			   pagelist.o proc.o read.o symlink.o unlink.o \
--			   write.o namespace.o
--nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o mount_clnt.o      
-+			   write.o namespace.o mount_clnt.o
-+nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 2892ec8..ee4899d 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -18,7 +18,7 @@
- #include <linux/nfs_fs.h>
- 
- #ifdef RPC_DEBUG
--# define NFSDBG_FACILITY	NFSDBG_ROOT
-+# define NFSDBG_FACILITY	NFSDBG_MOUNT
- #endif
- 
- /*
-@@ -28,7 +28,6 @@
- #define MOUNT_UMNT		3
-  */
- 
--static struct rpc_clnt *	mnt_create(struct sockaddr_in *, int, int);
- static struct rpc_program	mnt_program;
- 
- struct mnt_fhstatus {
-@@ -36,14 +35,21 @@ struct mnt_fhstatus {
- 	struct nfs_fh *		fh;
- };
- 
--/*
-- * Obtain an NFS file handle for the given host and path
-+/**
-+ * nfs_mount - Obtain an NFS file handle for the given host and path
-+ * @addr: pointer to server's address
-+ * @len: size of server's address
-+ * @hostname: name of server host, or NULL
-+ * @path: pointer to string containing export path to mount
-+ * @version: mount version to use for this request
-+ * @protocol: transport protocol to use for thie request
-+ * @fh: pointer to location to place returned file handle
-+ *
-+ * Uses default timeout parameters specified by underlying transport.
-  */
--int
--nfsroot_mount(struct sockaddr_in *addr, char *path, struct nfs_fh *fh,
--		int version, int protocol)
-+int nfs_mount(struct sockaddr *addr, size_t len, char *hostname, char *path,
-+	      int version, int protocol, struct nfs_fh *fh)
- {
--	struct rpc_clnt		*mnt_clnt;
- 	struct mnt_fhstatus	result = {
- 		.fh		= fh
- 	};
-@@ -51,12 +57,23 @@ nfsroot_mount(struct sockaddr_in *addr, char *path, struct nfs_fh *fh,
- 		.rpc_argp	= path,
- 		.rpc_resp	= &result,
- 	};
-+	struct rpc_create_args args = {
-+		.protocol	= protocol,
-+		.address	= addr,
-+		.addrsize	= len,
-+		.servername	= hostname,
-+		.program	= &mnt_program,
-+		.version	= version,
-+		.authflavor	= RPC_AUTH_UNIX,
-+		.flags		= RPC_CLNT_CREATE_INTR,
-+	};
-+	struct rpc_clnt		*mnt_clnt;
- 	int			status;
- 
--	dprintk("NFS:      nfs_mount(%08x:%s)\n",
--			(unsigned)ntohl(addr->sin_addr.s_addr), path);
-+	dprintk("NFS: sending MNT request for %s:%s\n",
-+		(hostname ? hostname : "server"), path);
- 
--	mnt_clnt = mnt_create(addr, version, protocol);
-+	mnt_clnt = rpc_create(&args);
- 	if (IS_ERR(mnt_clnt))
- 		return PTR_ERR(mnt_clnt);
- 
-@@ -70,22 +87,6 @@ nfsroot_mount(struct sockaddr_in *addr, char *path, struct nfs_fh *fh,
- 	return status < 0? status : (result.status? -EACCES : 0);
- }
- 
--static struct rpc_clnt *mnt_create(struct sockaddr_in *srvaddr, int version,
--				   int protocol)
--{
--	struct rpc_create_args args = {
--		.protocol	= protocol,
--		.address	= (struct sockaddr *)srvaddr,
--		.addrsize	= sizeof(*srvaddr),
--		.program	= &mnt_program,
--		.version	= version,
--		.authflavor	= RPC_AUTH_UNIX,
--		.flags		= RPC_CLNT_CREATE_INTR,
--	};
--
--	return rpc_create(&args);
--}
--
- /*
-  * XDR encode/decode functions for MOUNT
-  */
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index f0db470..3490322 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -496,7 +496,8 @@ static int __init root_nfs_get_handle(void)
- 					NFS_MNT3_VERSION : NFS_MNT_VERSION;
- 
- 	set_sockaddr(&sin, servaddr, htons(mount_port));
--	status = nfsroot_mount(&sin, nfs_path, &fh, version, protocol);
-+	status = nfs_mount((struct sockaddr *) &sin, sizeof(sin), NULL,
-+			   nfs_path, version, protocol, &fh);
- 	if (status < 0)
- 		printk(KERN_ERR "Root-NFS: Server returned error %d "
- 				"while mounting %s\n", status, nfs_path);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 589ea69..6f10cb4 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -494,10 +494,9 @@ static inline void nfs3_forget_cached_acls(struct inode *inode)
- 
- /*
-  * linux/fs/mount_clnt.c
-- * (Used only by nfsroot module)
-  */
--extern int  nfsroot_mount(struct sockaddr_in *, char *, struct nfs_fh *,
--		int, int);
-+extern int  nfs_mount(struct sockaddr *, size_t, char *, char *,
-+		      int, int, struct nfs_fh *);
- 
- /*
-  * inline functions
+- Support for dynamically adding listeners via writes to the portlist file
 
+I looked at making the context allocation fixed. This would require 161 
+pages of contexts for 32k wsize/rsize and the default RQ and SQ depths. 
+Big data would drive this number up to 5152 pages. This seemed 
+untenable to me. Maybe a pool shared across all mounts?
+
+-- 
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
