@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/21] NFS: Clean up nfs_validate_mount_data
-Date: Sun, 01 Jul 2007 12:12:56 -0400
-Message-ID: <20070701161256.2786.99672.stgit@monet.1015granger.net>
+Subject: [PATCH 13/21] SUNRPC: Rename rpcb_getport to be consistent
+	with new	rpcb_getport_sync name
+Date: Sun, 01 Jul 2007 12:13:17 -0400
+Message-ID: <20070701161317.2786.70674.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I525l-0004lo-90
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:16:05 -0700
+	id 1I525y-0004nq-Ro
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:16:18 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I525l-0005ak-S3
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:16:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I5262-0005lr-4e
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:16:22 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,165 +28,154 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Move error handling code out of the main code path.  The switch statement
-was also improperly indented, according to Documentation/CodingStyle.  This
-prepares nfs_validate_mount_data for the addition of option string parsing.
+Clean up, for consistency.  Rename rpcb_getport as rpcb_getport_async, to
+match the naming scheme of rpcb_getport_sync.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |  125 ++++++++++++++++++++++++++++++--------------------------
- 1 files changed, 67 insertions(+), 58 deletions(-)
+ include/linux/sunrpc/clnt.h |    2 +-
+ net/sunrpc/rpcb_clnt.c      |   37 +++++++++++++++++++------------------
+ net/sunrpc/xprtsock.c       |    4 ++--
+ 3 files changed, 22 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f7fd2e7..bdfab72 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -471,77 +471,86 @@ static int nfs_verify_server_address(struct sockaddr *addr)
- static int nfs_validate_mount_data(struct nfs_mount_data *data,
- 				   struct nfs_fh *mntfh)
- {
--	if (data == NULL) {
--		dprintk("%s: missing data argument\n", __FUNCTION__);
--		return -EINVAL;
--	}
--
--	if (data->version <= 0 || data->version > NFS_MOUNT_VERSION) {
--		dprintk("%s: bad mount version\n", __FUNCTION__);
--		return -EINVAL;
--	}
-+	if (data == NULL)
-+		goto out_no_data;
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index b28d919..c1b3797 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -122,8 +122,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
  
- 	switch (data->version) {
--		case 1:
--			data->namlen = 0;
--		case 2:
--			data->bsize  = 0;
--		case 3:
--			if (data->flags & NFS_MOUNT_VER3) {
--				dprintk("%s: mount structure version %d does not support NFSv3\n",
--						__FUNCTION__,
--						data->version);
--				return -EINVAL;
--			}
--			data->root.size = NFS2_FHSIZE;
--			memcpy(data->root.data, data->old_root.data, NFS2_FHSIZE);
--		case 4:
--			if (data->flags & NFS_MOUNT_SECFLAVOUR) {
--				dprintk("%s: mount structure version %d does not support strong security\n",
--						__FUNCTION__,
--						data->version);
--				return -EINVAL;
--			}
--		case 5:
--			memset(data->context, 0, sizeof(data->context));
-+	case 1:
-+		data->namlen = 0;
-+	case 2:
-+		data->bsize = 0;
-+	case 3:
-+		if (data->flags & NFS_MOUNT_VER3)
-+			goto out_no_v3;
-+		data->root.size = NFS2_FHSIZE;
-+		memcpy(data->root.data, data->old_root.data, NFS2_FHSIZE);
-+	case 4:
-+		if (data->flags & NFS_MOUNT_SECFLAVOUR)
-+			goto out_no_sec;
-+	case 5:
-+		memset(data->context, 0, sizeof(data->context));
-+	case 6:
-+		if (data->flags & NFS_MOUNT_VER3)
-+			mntfh->size = data->root.size;
-+		else
-+			mntfh->size = NFS2_FHSIZE;
-+
-+		if (mntfh->size > sizeof(mntfh->data))
-+			goto out_invalid_fh;
-+
-+		memcpy(mntfh->data, data->root.data, mntfh->size);
-+		if (mntfh->size < sizeof(mntfh->data))
-+			memset(mntfh->data + mntfh->size, 0,
-+			       sizeof(mntfh->data) - mntfh->size);
-+		break;
-+	default:
-+		goto out_bad_version;
+ int		rpcb_register(u32, u32, int, unsigned short, int *);
+-void		rpcb_getport(struct rpc_task *);
+ int		rpcb_getport_sync(struct sockaddr_in *, __u32, __u32, int);
++void		rpcb_getport_async(struct rpc_task *);
+ 
+ void		rpc_call_setup(struct rpc_task *, struct rpc_message *, int);
+ 
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 23dc65a..1fd3b7e 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -300,13 +300,13 @@ int rpcb_getport_sync(struct sockaddr_in *sin, __u32 prog,
+ EXPORT_SYMBOL_GPL(rpcb_getport_sync);
+ 
+ /**
+- * rpcb_getport - obtain the port for a given RPC service on a given host
++ * rpcb_getport_async - obtain the port for a given RPC service on a given host
+  * @task: task that is waiting for portmapper request
+  *
+  * This one can be called for an ongoing RPC request, and can be used in
+  * an async (rpciod) context.
+  */
+-void rpcb_getport(struct rpc_task *task)
++void rpcb_getport_async(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	int bind_version;
+@@ -317,17 +317,17 @@ void rpcb_getport(struct rpc_task *task)
+ 	struct sockaddr addr;
+ 	int status;
+ 
+-	dprintk("RPC: %5u rpcb_getport(%s, %u, %u, %d)\n",
+-			task->tk_pid, clnt->cl_server,
+-			clnt->cl_prog, clnt->cl_vers, xprt->prot);
++	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
++		task->tk_pid, __FUNCTION__,
++		clnt->cl_server, clnt->cl_prog, clnt->cl_vers, xprt->prot);
+ 
+ 	/* Autobind on cloned rpc clients is discouraged */
+ 	BUG_ON(clnt->cl_parent != clnt);
+ 
+ 	if (xprt_test_and_set_binding(xprt)) {
+ 		status = -EACCES;		/* tell caller to check again */
+-		dprintk("RPC: %5u rpcb_getport waiting for another binder\n",
+-				task->tk_pid);
++		dprintk("RPC: %5u %s: waiting for another binder\n",
++			task->tk_pid, __FUNCTION__);
+ 		goto bailout_nowake;
  	}
  
--	/* Set the pseudoflavor */
- 	if (!(data->flags & NFS_MOUNT_SECFLAVOUR))
- 		data->pseudoflavor = RPC_AUTH_UNIX;
+@@ -338,27 +338,28 @@ void rpcb_getport(struct rpc_task *task)
+ 	/* Someone else may have bound if we slept */
+ 	if (xprt_bound(xprt)) {
+ 		status = 0;
+-		dprintk("RPC: %5u rpcb_getport already bound\n", task->tk_pid);
++		dprintk("RPC: %5u %s: already bound\n",
++			task->tk_pid, __FUNCTION__);
+ 		goto bailout_nofree;
+ 	}
  
- #ifndef CONFIG_NFS_V3
--	/* If NFSv3 is not compiled in, return -EPROTONOSUPPORT */
--	if (data->flags & NFS_MOUNT_VER3) {
--		dprintk("%s: NFSv3 not compiled into kernel\n", __FUNCTION__);
--		return -EPROTONOSUPPORT;
--	}
--#endif /* CONFIG_NFS_V3 */
-+	if (data->flags & NFS_MOUNT_VER3)
-+		goto out_v3_not_compiled;
-+#endif /* !CONFIG_NFS_V3 */
+ 	if (rpcb_next_version[xprt->bind_index].rpc_proc == NULL) {
+ 		xprt->bind_index = 0;
+ 		status = -EACCES;	/* tell caller to try again later */
+-		dprintk("RPC: %5u rpcb_getport no more getport versions "
+-				"available\n", task->tk_pid);
++		dprintk("RPC: %5u %s: no more getport versions available\n",
++			task->tk_pid, __FUNCTION__);
+ 		goto bailout_nofree;
+ 	}
+ 	bind_version = rpcb_next_version[xprt->bind_index].rpc_vers;
  
--	/* We now require that the mount process passes the remote address */
--	if (!nfs_verify_server_address((struct sockaddr *) &data->addr)) {
--		dprintk("%s: mount program didn't pass remote address!\n",
--			__FUNCTION__);
--		return -EINVAL;
--	}
-+	if (!nfs_verify_server_address((struct sockaddr *) &data->addr))
-+		goto out_no_address;
+-	dprintk("RPC: %5u rpcb_getport trying rpcbind version %u\n",
+-			task->tk_pid, bind_version);
++	dprintk("RPC: %5u %s: trying rpcbind version %u\n",
++		task->tk_pid, __FUNCTION__, bind_version);
  
--	/* Prepare the root filehandle */
--	if (data->flags & NFS_MOUNT_VER3)
--		mntfh->size = data->root.size;
--	else
--		mntfh->size = NFS2_FHSIZE;
-+	return 0;
+ 	map = kzalloc(sizeof(struct rpcbind_args), GFP_ATOMIC);
+ 	if (!map) {
+ 		status = -ENOMEM;
+-		dprintk("RPC: %5u rpcb_getport no memory available\n",
+-				task->tk_pid);
++		dprintk("RPC: %5u %s: no memory available\n",
++			task->tk_pid, __FUNCTION__);
+ 		goto bailout_nofree;
+ 	}
+ 	map->r_prog = clnt->cl_prog;
+@@ -376,8 +377,8 @@ void rpcb_getport(struct rpc_task *task)
+ 	rpcb_clnt = rpcb_create(clnt->cl_server, &addr, xprt->prot, bind_version, 0);
+ 	if (IS_ERR(rpcb_clnt)) {
+ 		status = PTR_ERR(rpcb_clnt);
+-		dprintk("RPC: %5u rpcb_getport rpcb_create failed, error %ld\n",
+-				task->tk_pid, PTR_ERR(rpcb_clnt));
++		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
++			task->tk_pid, __FUNCTION__, PTR_ERR(rpcb_clnt));
+ 		goto bailout;
+ 	}
  
--	if (mntfh->size > sizeof(mntfh->data)) {
--		dprintk("%s: invalid root filehandle\n", __FUNCTION__);
--		return -EINVAL;
--	}
-+out_no_data:
-+	dfprintk(MOUNT, "NFS: mount program didn't pass any mount data\n");
-+	return -EINVAL;
- 
--	memcpy(mntfh->data, data->root.data, mntfh->size);
--	if (mntfh->size < sizeof(mntfh->data))
--		memset(mntfh->data + mntfh->size, 0,
--		       sizeof(mntfh->data) - mntfh->size);
-+out_no_v3:
-+	dfprintk(MOUNT, "NFS: nfs_mount_data version %d does not support v3\n",
-+		 data->version);
-+	return -EINVAL;
- 
--	return 0;
-+out_no_sec:
-+	dfprintk(MOUNT, "NFS: nfs_mount_data version supports only AUTH_SYS\n");
-+	return -EINVAL;
-+
-+out_bad_version:
-+	dfprintk(MOUNT, "NFS: bad nfs_mount_data version %d\n",
-+		 data->version);
-+	return -EINVAL;
-+
-+#ifndef CONFIG_NFS_V3
-+out_v3_not_compiled:
-+	dfprintk(MOUNT, "NFS: NFSv3 is not compiled into kernel\n");
-+	return -EPROTONOSUPPORT;
-+#endif /* !CONFIG_NFS_V3 */
-+
-+out_no_address:
-+	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
-+	return -EINVAL;
-+
-+out_invalid_fh:
-+	dfprintk(MOUNT, "NFS: invalid root filehandle\n");
-+	return -EINVAL;
- }
- 
- /*
+@@ -385,8 +386,8 @@ void rpcb_getport(struct rpc_task *task)
+ 	rpc_release_client(rpcb_clnt);
+ 	if (IS_ERR(child)) {
+ 		status = -EIO;
+-		dprintk("RPC: %5u rpcb_getport rpc_run_task failed\n",
+-				task->tk_pid);
++		dprintk("RPC: %5u %s: rpc_run_task failed\n",
++			task->tk_pid, __FUNCTION__);
+ 		goto bailout_nofree;
+ 	}
+ 	rpc_put_task(child);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index ee6ad3b..a8f7c5f 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1473,7 +1473,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
+ 	.set_buffer_size	= xs_udp_set_buffer_size,
+ 	.reserve_xprt		= xprt_reserve_xprt_cong,
+ 	.release_xprt		= xprt_release_xprt_cong,
+-	.rpcbind		= rpcb_getport,
++	.rpcbind		= rpcb_getport_async,
+ 	.set_port		= xs_set_port,
+ 	.connect		= xs_connect,
+ 	.buf_alloc		= rpc_malloc,
+@@ -1490,7 +1490,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
+ static struct rpc_xprt_ops xs_tcp_ops = {
+ 	.reserve_xprt		= xprt_reserve_xprt,
+ 	.release_xprt		= xs_tcp_release_xprt,
+-	.rpcbind		= rpcb_getport,
++	.rpcbind		= rpcb_getport_async,
+ 	.set_port		= xs_set_port,
+ 	.connect		= xs_connect,
+ 	.buf_alloc		= rpc_malloc,
 
 
 -------------------------------------------------------------------------
