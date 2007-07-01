@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/21] NFS: Clean-up: Refactor IP address sanity
-	checks in NFS	client
-Date: Sun, 01 Jul 2007 12:12:46 -0400
-Message-ID: <20070701161245.2786.89488.stgit@monet.1015granger.net>
+Subject: [PATCH 08/21] NFS: Add a new NFS debugging flag just for
+	mount	processing
+Date: Sun, 01 Jul 2007 12:12:51 -0400
+Message-ID: <20070701161251.2786.17972.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I523y-0004Xv-QV
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:15 -0700
+	id 1I5245-0004Y5-Os
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:21 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I5242-00043F-5i
-	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:18 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I5249-00044L-3V
+	for nfs@lists.sourceforge.net; Sun, 01 Jul 2007 09:14:25 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,70 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-NFS and NFSv4 mounts can now share server address sanity checking.  And, it
-provides an easy mechanism for adding IPv6 address checking at some later
-point.
+Note to self: fix up /usr/sbin/rpcdebug too
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/nfs/super.c |   24 ++++++++++++++++++++----
- 1 files changed, 20 insertions(+), 4 deletions(-)
+ include/linux/nfs_fs.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2b8839c..f7fd2e7 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -448,6 +448,23 @@ static void nfs_umount_begin(struct vfsmount *vfsmnt, int flags)
- }
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 3e8dd12..589ea69 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -553,6 +553,7 @@ extern void * nfs_root_data(void);
+ #define NFSDBG_ROOT		0x0080
+ #define NFSDBG_CALLBACK		0x0100
+ #define NFSDBG_CLIENT		0x0200
++#define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_ALL		0xFFFF
  
- /*
-+ * Sanity-check a server address provided by the mount command
-+ */
-+static int nfs_verify_server_address(struct sockaddr *addr)
-+{
-+	switch (addr->sa_family) {
-+	case AF_INET: {
-+		struct sockaddr_in *sa = (struct sockaddr_in *) addr;
-+		if (sa->sin_addr.s_addr != INADDR_ANY)
-+			return 1;
-+		break;
-+	}
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-  * Validate the NFS2/NFS3 mount data
-  * - fills in the mount root filehandle
-  */
-@@ -502,7 +519,7 @@ static int nfs_validate_mount_data(struct nfs_mount_data *data,
- #endif /* CONFIG_NFS_V3 */
- 
- 	/* We now require that the mount process passes the remote address */
--	if (data->addr.sin_addr.s_addr == INADDR_ANY) {
-+	if (!nfs_verify_server_address((struct sockaddr *) &data->addr)) {
- 		dprintk("%s: mount program didn't pass remote address!\n",
- 			__FUNCTION__);
- 		return -EINVAL;
-@@ -870,13 +887,12 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 	if (copy_from_user(&addr, data->host_addr, sizeof(addr)))
- 		return -EFAULT;
- 
--	if (addr.sin_family != AF_INET ||
--	    addr.sin_addr.s_addr == INADDR_ANY
--	    ) {
-+	if (!nfs_verify_server_address((struct sockaddr *) &addr)) {
- 		dprintk("%s: mount program didn't pass remote IP address!\n",
- 				__FUNCTION__);
- 		return -EINVAL;
- 	}
-+
- 	/* RFC3530: The default port for NFS is 2049 */
- 	if (addr.sin_port == 0)
- 		addr.sin_port = htons(NFS_PORT);
+ #ifdef __KERNEL__
 
 
 -------------------------------------------------------------------------
