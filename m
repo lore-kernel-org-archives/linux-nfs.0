@@ -1,32 +1,21 @@
-From: Rajat <sharma.rajat@hcl.in>
-Subject: Re: Unlocked pages flushed
-Date: Mon, 2 Jul 2007 13:24:45 +0000 (UTC)
-Message-ID: <loom.20070702T150607-90@post.gmane.org>
-References: <loom.20070702T122224-68@post.gmane.org>
-	<1183379648.6479.7.camel@heimdal.trondhjem.org>
+From: "Weston Burris" <sboultonzuqz@boult99.freeserve.co.uk>
+Subject: Vi#gra at lowest prices on the web
+Date: Mon, 2 Jul 2007 22:49:55 +0200
+Message-ID: <21846682.78500390724299@boult99.freeserve.co.uk>
+Reply-To: Weston Burris <sboultonzuqz@boult99.freeserve.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0619662439=="
+To: "Nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I5Ltk-0006cu-JT
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 06:25:00 -0700
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I5Ltn-0004G9-CE
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 06:25:04 -0700
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1I5Lte-0001YZ-Nh
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 15:24:54 +0200
-Received: from 192.8.220.5 ([192.8.220.5])
-	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jul 2007 15:24:54 +0200
-Received: from sharma.rajat by 192.8.220.5 with local (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jul 2007 15:24:54 +0200
+	id 1I5NDh-0007v2-BQ
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 07:49:41 -0700
+Received: from 79-66-58-250.dynamic.dsl.as9105.com ([79.66.58.250]
+	helo=boult99.freeserve.co.uk)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1I5NDj-00014K-0A
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 07:49:44 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,59 +28,202 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond Myklebust <trond.myklebust <at> fys.uio.no> writes:
+--===============0619662439==
+Content-Type: Multipart/related; type="multipart/alternative";
+	boundary="------------8E1A477E.2B16F9AB"
 
-> 
-> On Mon, 2007-07-02 at 10:51 +0000, Rajat wrote:
-> > Hi List,
-> > 
-> > While flushing the data through nfs_file_flush, I observed that pages are 
-> > being flushed in unlocked state. nfs_file_flush call graph reaches to 
-> > nfs_flush_one where the comment above this definition states "The page 
-must 
-> > have been locked by the caller." However I have checked with PageLocked() 
-call 
-> > that the pages which enter into nfs_flush_one are not locked. 
-> > 
-> > What I could make out of it is: this is done porbably to avoid deadlock 
-with 
-> > other functions like prepare_write, commit_write, writepage, readpage 
-where 
-> > page is grabbed first then lock_kernel (HEAVILY used in NFS) is called. 
-> > Whereas nfs_file_flush calls lock_kernel, then enters into nfs_wb_all. So, 
-to 
-> > avoid deadlock, logical place for lock_page loop would have been in 
-> > nfs_file_flush before lock_kernel (still not sure about this, will it 
-help?). 
-> > 
-> > Here we are flushing pages without honouring page_lock OR am I going wrong 
-> > somewhere???
-> > 
-> > Rajat
-> 
-> When you hit contention on a mutex or page lock, that puts the process
-> to sleep: at that point the BKL is automatically released, and so no
-> deadlock occurs.
-> 
-> IOW: it is impossible to get the BKL to ABBA deadlock with any form of
-> "sleeping lock".
+--------------8E1A477E.2B16F9AB
+Content-Type: Multipart/Alternative; boundary="------------7FD299CF.559531AC"
 
-Yes I missed out on this. page lock is sleeping on bit. But then if ABBA 
-deadlock is not the case, why pages are being flushed unlocked? I mean is it 
-not required to lock these pages before flushing? In that case it should be 
-safe to place page_lock loop to wait on any pending work on these pages. 
-
-Also there is one more spinlock in the scene, nfs_inode->req_lock and spinning 
-for this lock should not release BKL. I am assuming that lock ordering of BKL 
-and req_lock is maintained. 
+--------------7FD299CF.559531AC
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
 
+--------------7FD299CF.559531AC
+Content-Type: Text/HTML;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+
+<html>
+<body>
+
+<br><img src=3D"cid:B642D258=2E4B7D6255">
+</body>
+</html>
+
+--------------7FD299CF.559531AC--
+
+--------------8E1A477E.2B16F9AB
+Content-Type: image/png;
+  name="[Unknown Tag *$$engword* Please Fix].png"
+Content-Transfer-Encoding: base64
+Content-ID: <B642D258.4B7D6255>
+
+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
+
+--------------8E1A477E.2B16F9AB--
+
+
+
+
+--===============0619662439==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============0619662439==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0619662439==--
