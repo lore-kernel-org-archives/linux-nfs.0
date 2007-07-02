@@ -1,78 +1,161 @@
-From: "Britney's bra: Not for sale" <lover254sinago@sina.com.cn>
-Subject: Britney's bra: Not for sale
-Date: Mon, 2 Jul 2007 19:09:06 +0800
-Message-ID: <E1I5JmG-0005oV-5Q@mail.sourceforge.net>
-Reply-To: googlelov365er@gmail.com.cn
-Content-Type: multipart/mixed; boundary="===============1772541958=="
-To: "nfs" <nfs@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I5JmF-0000sZ-AU
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 04:09:07 -0700
-Received: from [125.42.36.229] (helo=sina.com.cn)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I5JmG-0005oV-5Q
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 04:09:10 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Re: [NFS] Status of NFS over IPv6
+Date: Mon, 02 Jul 2007 13:33:42 +0200
+Message-ID: <4688E296.2040101@bull.net>
+References: <20070629123747.GA1034@uio.no> <46858153.8060109@oracle.com>
+	<4688C70C.2050801@ext.bull.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+To: NFSv4 ML <nfsv4@linux-nfs.org>, nfs@lists.sourceforge.net
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4688C70C.2050801@ext.bull.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
---===============1772541958==
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+Aur=E9lien Charbon a =E9crit :
 
-Britney's bra: Not for sale    http://www.sohocer.com/n406c67.aspx
+>Chuck Lever wrote:
+>
+>  =
 
-iPhone owners point fingers at lingerie models  http://www.sohocer.com/n4=
-09c67.aspx
+>
+>>>I'd very much like to be able to sew all of this together at some point,
+>>>but it's very hard to get a decent overview of it all. Does anyone =
+
+>>>have a
+>>>"current status" or "plans for the near feature" summary?
+>>>      =
+
+>>>
+>>I have some patches that add IPv6 support in the RPC client.  The =
+
+>>server is more complicated (how to deal with address-based export =
+
+>>rules, and so on).  There hasn't been much progress on the server =
+
+>>side, but I think Bull is still working on that.
+>>    =
+
+>>
+>
+>The latest server patches are on our web page. I have upgraded it.
+>http://nfsv4.bullopensource.org/patches/ipv6-server/IPv6_patchset.php
+>
+>It includes missing parts of code. I have started from a 2.6.21 kernel + =
+
+>Chuck patchset.
+>I have send them to Bruce few weeks ago. Bruce did you received the URL =
+
+>of new patches ?
+>
+>  =
+
+>
+>>Steve Dickson has added Bull's rpcbind (replacement for portmap) to =
+
+>>Fedora 7, but there is some disagreement about whether to use a =
+
+>>complete replacement, like rpcbind, or whether to add the needed =
+
+>>support to the existing portmap code, in general.
+>>
+>>Bull has announced a test plan for user-space RPC libraries, although =
+
+>>I haven't had a moment to look through it.  Bull should be providing =
+
+>>testing resources once we have all of this integrated.
+>>
+>>    =
+
+>>
+>A student is developing a RPC/TI-RPC test suite. TI-RPC and RPCbind =
+
+>adoption by the community has been discussed on the mailing list few =
+
+>weeks ago.
+>
+>  =
+
+>
+
+You can visit our project web page for more information and find design =
+
+documents at http://nfsv4.bullopensource.org/doc/rpc_testsuite.php
+
+>>While there is some interest in IPv6 among some of Linux's corporate =
+
+>>sponsors, there really isn't an overwhelming "killer" requirement for =
+
+>>IPv6, so there isn't much motivation to get all this completed.  I =
+
+>>have to admit I'm pretty burned out on all this because of how =
+
+>>complicated it has all become.  I'd be happy if someone stepped =
+
+>>forward and volunteered to help or take over the integration.
+>>    =
+
+>>
+Some basic tests have been also done on the submitted Aur=E9lien's patchs
+and we will be running the robustness tests we are regularly doing for ipv4.
+See also at http://nfsv4.bullopensource.org/doc/rpc_testsuite.php
+for this list of tests (cthon04, ffsb, fsx...)
+
+>
+>We hope the interest of community about IPv6 will grow.
+>Feel free to send comments on the code.
+>  =
+
+>
+ Some customers are already asking it but  were waiting of its availibity.
+There are also products based on NFSV4 features which are interested in.
+
+  Cheers
+
+>  =
+
+>
+>>-------------------------------------------------------------------------
+>>This SF.net email is sponsored by DB2 Express
+>>Download DB2 Express C - the FREE version of DB2 express and take
+>>control of your XML. No limits. Just data. Click to get it now.
+>>http://sourceforge.net/powerbar/db2/
+>>
+>>------------------------------------------------------------------------
+>>
+>>_______________________________________________
+>>NFS maillist  -  NFS@lists.sourceforge.net
+>>https://lists.sourceforge.net/lists/listinfo/nfs
+>> =
+
+>>
+>>    =
+
+>>
+>
+>
+>  =
+
+>
 
 
-Kate Moss stars in top-secret lingerie film    http://www.sohocer.com/n40=
-1c67.aspx
+-- =
 
-Justin Timberlake and Jessica Biel aboard the love boat   http://www.soho=
-cer.com/n343c56.aspx
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic =
 
-Kate Hudson has date with Cook in "Bachelor'    http://www.sohocer.com/n3=
-41c56.aspx
-
-
-Jessica Simpson decides to make her own sexy lingerie line   http://www.s=
-ohocer.com/n402c67.aspx
-
-
-Understanding Breast Cancer Risk  http://www.sohocer.com/n280c71.aspx
-
-
---===============1772541958==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
---===============1772541958==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1772541958==--
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- =
