@@ -1,30 +1,19 @@
-From: Rajat <sharma.rajat@hcl.in>
-Subject: Unlocked pages flushed
-Date: Mon, 2 Jul 2007 10:51:07 +0000 (UTC)
-Message-ID: <loom.20070702T122224-68@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+From: "Britney's bra: Not for sale" <lover254sinago@sina.com.cn>
+Subject: Britney's bra: Not for sale
+Date: Mon, 2 Jul 2007 19:09:06 +0800
+Message-ID: <E1I5JmG-0005oV-5Q@mail.sourceforge.net>
+Reply-To: googlelov365er@gmail.com.cn
+Content-Type: multipart/mixed; boundary="===============1772541958=="
+To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I5JV1-0007LR-AV
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 03:51:19 -0700
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I5JV4-0006Qd-Jr
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 03:51:22 -0700
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1I5JUw-0007qo-Kh
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 12:51:14 +0200
-Received: from 192.8.220.5 ([192.8.220.5])
-	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jul 2007 12:51:14 +0200
-Received: from sharma.rajat by 192.8.220.5 with local (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Mon, 02 Jul 2007 12:51:14 +0200
+	id 1I5JmF-0000sZ-AU
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 04:09:07 -0700
+Received: from [125.42.36.229] (helo=sina.com.cn)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I5JmG-0005oV-5Q
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 04:09:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,32 +26,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi List,
+--===============1772541958==
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: quoted-printable
 
-While flushing the data through nfs_file_flush, I observed that pages are 
-being flushed in unlocked state. nfs_file_flush call graph reaches to 
-nfs_flush_one where the comment above this definition states "The page must 
-have been locked by the caller." However I have checked with PageLocked() call 
-that the pages which enter into nfs_flush_one are not locked. 
+Britney's bra: Not for sale    http://www.sohocer.com/n406c67.aspx
 
-What I could make out of it is: this is done porbably to avoid deadlock with 
-other functions like prepare_write, commit_write, writepage, readpage where 
-page is grabbed first then lock_kernel (HEAVILY used in NFS) is called. 
-Whereas nfs_file_flush calls lock_kernel, then enters into nfs_wb_all. So, to 
-avoid deadlock, logical place for lock_page loop would have been in 
-nfs_file_flush before lock_kernel (still not sure about this, will it help?). 
+iPhone owners point fingers at lingerie models  http://www.sohocer.com/n4=
+09c67.aspx
 
-Here we are flushing pages without honouring page_lock OR am I going wrong 
-somewhere???
 
-Rajat
+Kate Moss stars in top-secret lingerie film    http://www.sohocer.com/n40=
+1c67.aspx
 
+Justin Timberlake and Jessica Biel aboard the love boat   http://www.soho=
+cer.com/n343c56.aspx
+
+Kate Hudson has date with Cook in "Bachelor'    http://www.sohocer.com/n3=
+41c56.aspx
+
+
+Jessica Simpson decides to make her own sexy lingerie line   http://www.s=
+ohocer.com/n402c67.aspx
+
+
+Understanding Breast Cancer Risk  http://www.sohocer.com/n280c71.aspx
+
+
+--===============1772541958==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============1772541958==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1772541958==--
