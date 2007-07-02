@@ -1,161 +1,72 @@
-From: Le Rouzic <aime.le-rouzic@bull.net>
-Subject: Re: [NFS] Status of NFS over IPv6
-Date: Mon, 02 Jul 2007 13:33:42 +0200
-Message-ID: <4688E296.2040101@bull.net>
-References: <20070629123747.GA1034@uio.no> <46858153.8060109@oracle.com>
-	<4688C70C.2050801@ext.bull.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Unlocked pages flushed
+Date: Mon, 02 Jul 2007 08:34:08 -0400
+Message-ID: <1183379648.6479.7.camel@heimdal.trondhjem.org>
+References: <loom.20070702T122224-68@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-To: NFSv4 ML <nfsv4@linux-nfs.org>, nfs@lists.sourceforge.net
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4688C70C.2050801@ext.bull.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Rajat <sharma.rajat@hcl.in>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1I5L6f-0001Py-GG
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 05:34:47 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18xi10K8aKgWJxlkEOG6vBb56JRw6B8mhI=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I5L6g-0004jy-Lc
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 05:34:21 -0700
+In-Reply-To: <loom.20070702T122224-68@post.gmane.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Aur=E9lien Charbon a =E9crit :
+On Mon, 2007-07-02 at 10:51 +0000, Rajat wrote:
+> Hi List,
+> 
+> While flushing the data through nfs_file_flush, I observed that pages are 
+> being flushed in unlocked state. nfs_file_flush call graph reaches to 
+> nfs_flush_one where the comment above this definition states "The page must 
+> have been locked by the caller." However I have checked with PageLocked() call 
+> that the pages which enter into nfs_flush_one are not locked. 
+> 
+> What I could make out of it is: this is done porbably to avoid deadlock with 
+> other functions like prepare_write, commit_write, writepage, readpage where 
+> page is grabbed first then lock_kernel (HEAVILY used in NFS) is called. 
+> Whereas nfs_file_flush calls lock_kernel, then enters into nfs_wb_all. So, to 
+> avoid deadlock, logical place for lock_page loop would have been in 
+> nfs_file_flush before lock_kernel (still not sure about this, will it help?). 
+> 
+> Here we are flushing pages without honouring page_lock OR am I going wrong 
+> somewhere???
+> 
+> Rajat
 
->Chuck Lever wrote:
->
->  =
+When you hit contention on a mutex or page lock, that puts the process
+to sleep: at that point the BKL is automatically released, and so no
+deadlock occurs.
 
->
->>>I'd very much like to be able to sew all of this together at some point,
->>>but it's very hard to get a decent overview of it all. Does anyone =
+IOW: it is impossible to get the BKL to ABBA deadlock with any form of
+"sleeping lock".
 
->>>have a
->>>"current status" or "plans for the near feature" summary?
->>>      =
-
->>>
->>I have some patches that add IPv6 support in the RPC client.  The =
-
->>server is more complicated (how to deal with address-based export =
-
->>rules, and so on).  There hasn't been much progress on the server =
-
->>side, but I think Bull is still working on that.
->>    =
-
->>
->
->The latest server patches are on our web page. I have upgraded it.
->http://nfsv4.bullopensource.org/patches/ipv6-server/IPv6_patchset.php
->
->It includes missing parts of code. I have started from a 2.6.21 kernel + =
-
->Chuck patchset.
->I have send them to Bruce few weeks ago. Bruce did you received the URL =
-
->of new patches ?
->
->  =
-
->
->>Steve Dickson has added Bull's rpcbind (replacement for portmap) to =
-
->>Fedora 7, but there is some disagreement about whether to use a =
-
->>complete replacement, like rpcbind, or whether to add the needed =
-
->>support to the existing portmap code, in general.
->>
->>Bull has announced a test plan for user-space RPC libraries, although =
-
->>I haven't had a moment to look through it.  Bull should be providing =
-
->>testing resources once we have all of this integrated.
->>
->>    =
-
->>
->A student is developing a RPC/TI-RPC test suite. TI-RPC and RPCbind =
-
->adoption by the community has been discussed on the mailing list few =
-
->weeks ago.
->
->  =
-
->
-
-You can visit our project web page for more information and find design =
-
-documents at http://nfsv4.bullopensource.org/doc/rpc_testsuite.php
-
->>While there is some interest in IPv6 among some of Linux's corporate =
-
->>sponsors, there really isn't an overwhelming "killer" requirement for =
-
->>IPv6, so there isn't much motivation to get all this completed.  I =
-
->>have to admit I'm pretty burned out on all this because of how =
-
->>complicated it has all become.  I'd be happy if someone stepped =
-
->>forward and volunteered to help or take over the integration.
->>    =
-
->>
-Some basic tests have been also done on the submitted Aur=E9lien's patchs
-and we will be running the robustness tests we are regularly doing for ipv4.
-See also at http://nfsv4.bullopensource.org/doc/rpc_testsuite.php
-for this list of tests (cthon04, ffsb, fsx...)
-
->
->We hope the interest of community about IPv6 will grow.
->Feel free to send comments on the code.
->  =
-
->
- Some customers are already asking it but  were waiting of its availibity.
-There are also products based on NFSV4 features which are interested in.
-
-  Cheers
-
->  =
-
->
->>-------------------------------------------------------------------------
->>This SF.net email is sponsored by DB2 Express
->>Download DB2 Express C - the FREE version of DB2 express and take
->>control of your XML. No limits. Just data. Click to get it now.
->>http://sourceforge.net/powerbar/db2/
->>
->>------------------------------------------------------------------------
->>
->>_______________________________________________
->>NFS maillist  -  NFS@lists.sourceforge.net
->>https://lists.sourceforge.net/lists/listinfo/nfs
->> =
-
->>
->>    =
-
->>
->
->
->  =
-
->
+Trond
 
 
--- =
-
------------------------------------------------------------------
-Company : Bull, Architect of an Open World TM (www.bull.com)
-Name    : Aime Le Rouzic =
-
-Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
-E-Mail  : aime.le-rouzic@bull.net
-Phone   : 33 (4) 76.29.75.51
-Fax     : 33 (4) 76.29.75.18
------------------------------------------------------------------ =
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
