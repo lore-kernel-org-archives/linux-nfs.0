@@ -1,12 +1,34 @@
-From: "Lizzie Singleton" <adamsad@motorsportsresorts.com>
-Subject: MegaDik will increase the capacity limit of the Corpora
-	Cavernosa
-Date: Tue, 3 Jul 2007 04:32:45 -0900
-Message-ID: <01c7bd2b$33a5b650$eae0057c@adamsad>
+From: Rajat <sharma.rajat@hcl.in>
+Subject: Re: Unlocked pages flushed
+Date: Tue, 3 Jul 2007 05:39:27 +0000 (UTC)
+Message-ID: <loom.20070703T073118-585@post.gmane.org>
+References: <loom.20070702T122224-68@post.gmane.org>
+	<1183379648.6479.7.camel@heimdal.trondhjem.org>
+	<loom.20070702T150607-90@post.gmane.org>
+	<1183424035.6479.27.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2071245360=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1I5b71-00025U-LK
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 22:39:43 -0700
+Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I5b73-0006q4-UD
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 22:39:47 -0700
+Received: from list by ciao.gmane.org with local (Exim 4.43)
+	id 1I5b6t-0003Cc-JX
+	for nfs@lists.sourceforge.net; Tue, 03 Jul 2007 07:39:35 +0200
+Received: from 192.8.220.5 ([192.8.220.5])
+	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Jul 2007 07:39:35 +0200
+Received: from sharma.rajat by 192.8.220.5 with local (Gmexim 0.1 (Debian))
+	id 1AlnuQ-0007hv-00
+	for <nfs@lists.sourceforge.net>; Tue, 03 Jul 2007 07:39:35 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,76 +41,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+> The only VM requirement is that the pages be locked when you set the
+> PG_writeback flag. This is already the case in recent kernels.
 
---===============2071245360==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0007_01C7BD76.A38D5E50"
+Oh! I didnt know that.   
 
-This is a multi-part message in MIME format.
+> Otherwise, NFS manages its own locking scheme on the nfs_page.
 
-------=_NextPart_000_0007_01C7BD76.A38D5E50
-Content-Type: text/plain;
-	charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
+Now that makes sense. Thanks a lot Trond.
 
-Did you know... MegaDik was featured in leading mens magazines such as FHM,=
- MAXIM, plus many others, and rated No.1 choice for penis enlargement... Al=
-so seen on TV Mucuna pruriens 75 mg, Asteracantha longifolia 75 mg, Puerari=
-a tuberosa 75 mg, Withania somnifera 50 mg, Tribulus terrestris 50 mg, Albi=
-zzia lebbeck 50 mghttp://brahimo.comFast Shipping WorldWide. Doctor Approve=
-d And Recommended. No Pumps! No Surgery! No Exercises! Very discrete shippi=
-ng and billing. 100% Money Back Guarantee. *3 FREE Bottles Of MegaDik !! Hi=
-ghly secure 128bit order processing. 
-------=_NextPart_000_0007_01C7BD76.A38D5E50
-Content-Type: text/html;
-	charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
+Rajat
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-2">
-<META content=3D"MSHTML 6.00.2900.2670" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY>
-<DIV><FONT face=3DArial size=3D2>Did you know... MegaDik was featured in le=
-ading mens magazines such as FHM, MAXIM, plus many others, and rated No.1 c=
-hoice for penis enlargement... Also seen on TV Mucuna pruriens 75 mg, Aster=
-acantha longifolia 75 mg, Pueraria tuberosa 75 mg, Withania somnifera 50 mg=
-, Tribulus terrestris 50 mg, Albizzia lebbeck 50 mg</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2><A 
-href=3D"http://brahimo.com">http://brahimo.com</A></FONT></DIV>
-<DIV><FONT face=3DArial size=3D2>Fast Shipping WorldWide. Doctor Approved A=
-nd Recommended. No Pumps! No Surgery! No Exercises! Very discrete shipping =
-and billing. 100% Money Back Guarantee. *3 FREE Bottles Of MegaDik !! Highl=
-y secure 128bit order processing.</FONT></DIV>
-<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
-</BODY></HTML>
-
-------=_NextPart_000_0007_01C7BD76.A38D5E50--
-
-
-
---===============2071245360==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============2071245360==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2071245360==--
