@@ -1,26 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Unlocked pages flushed
-Date: Mon, 02 Jul 2007 20:53:55 -0400
-Message-ID: <1183424035.6479.27.camel@heimdal.trondhjem.org>
-References: <loom.20070702T122224-68@post.gmane.org>
-	<1183379648.6479.7.camel@heimdal.trondhjem.org>
-	<loom.20070702T150607-90@post.gmane.org>
+Subject: Re: RFC: nlmclnt_grant() address check vs. callback
+	address	binding
+Date: Mon, 02 Jul 2007 21:04:30 -0400
+Message-ID: <1183424670.6479.38.camel@heimdal.trondhjem.org>
+References: <20070702154918.GA543@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Rajat <sharma.rajat@hcl.in>
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I5Web-0005D1-D6
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 17:54:05 -0700
+	id 1I5Wot-0006FV-T9
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 18:04:44 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/uMondhngp8t2ASGCiGcafK5zR1HGXf9I=])
+	ident=[U2FsdGVkX1+FiVbEPfcIaN1o/s53C/gu3FmsxdSX53Q=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I5Wec-00009A-72
-	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 17:54:06 -0700
-In-Reply-To: <loom.20070702T150607-90@post.gmane.org>
+	(Exim 4.44) id 1I5Wov-000334-Lo
+	for nfs@lists.sourceforge.net; Mon, 02 Jul 2007 18:04:47 -0700
+In-Reply-To: <20070702154918.GA543@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +32,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-07-02 at 13:24 +0000, Rajat wrote:
-> Yes I missed out on this. page lock is sleeping on bit. But then if ABBA 
-> deadlock is not the case, why pages are being flushed unlocked? I mean is it 
-> not required to lock these pages before flushing? In that case it should be 
-> safe to place page_lock loop to wait on any pending work on these pages. 
+On Mon, 2007-07-02 at 17:49 +0200, Frank van Maarseveen wrote:
 
-The only VM requirement is that the pages be locked when you set the
-PG_writeback flag. This is already the case in recent kernels.
+> At first I thought fixing the server is the right thing to do because
+> the server behavior is arguably incorrect. Not easy but certainly doable
+> (I'd do it if it has a chance of being accepted). It might also help
+> NATting NFS traffic in some cases. However:
+> 
+> -	I'm not sure if an address check such as in nlmclnt_grant()
+> 	is actually buying us anything.
 
-Otherwise, NFS manages its own locking scheme on the nfs_page.
+Exactly how else is the client going to figure out which lock this
+corresponds to?
 
-> Also there is one more spinlock in the scene, nfs_inode->req_lock and spinning 
-> for this lock should not release BKL. I am assuming that lock ordering of BKL 
-> and req_lock is maintained. 
+> -	clients requiring a correct callback src address might not
+> 	work with other NFS server implementations and/or (future?)
+> 	concepts for clustering/load balancing.
 
-Whenever necessary, the BKL is taken before we take the req_lock. There
-are AFAIK no cases where we take the BKL while we are holding the
-req_lock.
+NFSv3 development is dead. NLM locking development is doubly so...
+
+> -	Multiple IP addresses may be a workaround for reserved port
+> 	shortage.
+
+There is _NO_ way for the client to figure out what lock the granted
+request refers to if the server starts transmitting from random IP
+addresses.
+      * There is no universal namespace for filehandles that can be used
+        to identify which file the granted request is meant for
+      * The cookie is not guaranteed to be the same as that sent by the
+        client for the LOCK request
+      * There is nothing else in the nlm_lock that can be used to
+        identify which file we're talking about.
 
 Trond
 
