@@ -1,25 +1,22 @@
-From: "Shauna Lovett" <MN5KwrT@medicinenet.com>
-Subject: arachne brandish congeal :
-Date: Wed, 4 Jul 2007 08:08:52 +0500
-Message-ID: <E1I63gk-0001fp-Ow@mail.sourceforge.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 08/10] rdma: ONCRPC RDMA protocol marshalling
+Date: Wed, 04 Jul 2007 09:44:10 -0500
+Message-ID: <C2B11C6A.52BC%tom@opengridcomputing.com>
+References: <46892914.1050607@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: NFS List <nfs@lists.sourceforge.net>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I63gj-0003sU-Ir
-	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 05:10:29 -0700
-Received: from static-66-16-241-86.dsl.cavtel.net ([66.16.241.86]
-	helo=cavtel.net) by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1I63gk-0001fp-Ow
-	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 05:10:32 -0700
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by host23126373.medicinenet.com (8.13.1/8.13.1) with SMTP id
-	pR76ZEen30.512594.xak.Bgd.6214741978414
-	for <nfs@lists.sourceforge.net>; Wed, 4 Jul 2007 08:08:52 +0500
-MIME-Version: 1.0
+	id 1I664D-0004Hz-Mi
+	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 07:42:54 -0700
+Received: from mail.es335.com ([67.65.19.105])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I664D-0001nu-Np
+	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 07:42:57 -0700
+In-Reply-To: <46892914.1050607@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,31 +29,477 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Start improving your life!
 
-Bachelors, Masters, MBA and/or Doctorate (PhD)
-
-NO ONE is turned down.
-7 days a week.
-Give us a ring..
-
-1206888-2083
-
-You Need a Better Degree, and we can Help!
-Obtain degrees from prestigious non ac Universities based on you life experience.
-NO ONE is turned down.
-7 days a week, 24 hours a day.
-
-Do it now..
-
-1206888-2083
-
-Regards,
-Professor. Millie Stern
+These marshal/unmarshal routines are for the RDMA header, not the NFS RPC
+header. They are broken out here to try and keep all of the RPC RDMA wire
+protocol knowledge in one place.
 
 
+On 7/2/07 11:34 AM, "Chuck Lever" <chuck.lever@oracle.com> wrote:
 
-Sitting by the bedroom window and looking out at the ice-glittery morning world on that second full day alone, Paul could hear Misery the pig squealing in the barn and one of the cows bellowing. Now and then, the cheese wheel often satiates a polygon near some ocean.
+> I need to study this more, but can you explain why transport-specific
+> marshal/unmarshal routines are required?
+> 
+> Does this replace the page-handling XDR routines that are the defaults
+> for socket-based transports?  If these are really needed, should they
+> part of the server side transport switch?
+> 
+> Tom Tucker wrote:
+>> This file implements the ONCRPC RDMA protocol marshelling and
+>> unmarshalling logic.
+>> 
+>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> ---
+>> 
+>>  net/sunrpc/svc_rdma_marshal.c |  424
+>> +++++++++++++++++++++++++++++++++++++++++
+>>  1 files changed, 424 insertions(+), 0 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/svc_rdma_marshal.c b/net/sunrpc/svc_rdma_marshal.c
+>> new file mode 100644
+>> index 0000000..0a34efb
+>> --- /dev/null
+>> +++ b/net/sunrpc/svc_rdma_marshal.c
+>> @@ -0,0 +1,424 @@
+>> +/*
+>> + * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
+>> + *
+>> + * This software is available to you under a choice of one of two
+>> + * licenses.  You may choose to be licensed under the terms of the GNU
+>> + * General Public License (GPL) Version 2, available from the file
+>> + * COPYING in the main directory of this source tree, or the BSD-type
+>> + * license below:
+>> + *
+>> + * Redistribution and use in source and binary forms, with or without
+>> + * modification, are permitted provided that the following conditions
+>> + * are met:
+>> + *
+>> + *      Redistributions of source code must retain the above copyright
+>> + *      notice, this list of conditions and the following disclaimer.
+>> + *
+>> + *      Redistributions in binary form must reproduce the above
+>> + *      copyright notice, this list of conditions and the following
+>> + *      disclaimer in the documentation and/or other materials provided
+>> + *      with the distribution.
+>> + *
+>> + *      Neither the name of the Network Appliance, Inc. nor the names of
+>> + *      its contributors may be used to endorse or promote products
+>> + *      derived from this software without specific prior written
+>> + *      permission.
+>> + *
+>> + * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+>> + * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+>> + * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+>> + * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+>> + * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+>> + * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+>> + * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+>> + * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+>> + * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+>> + * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+>> + * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+>> + *
+>> + * Author: Tom Tucker <tom@opengridcomputing.com>
+>> + */
+>> +
+>> +#include <asm/semaphore.h>
+>> +#include <linux/device.h>
+>> +#include <linux/in.h>
+>> +#include <linux/err.h>
+>> +#include <linux/time.h>
+>> +
+>> +#include <rdma/rdma_cm.h>
+>> +
+>> +#include <linux/sunrpc/svcsock.h>
+>> +#include <linux/sunrpc/debug.h>
+>> +#include <linux/sunrpc/rpc_rdma.h>
+>> +#include <linux/spinlock.h>
+>> +#include <linux/net.h>
+>> +#include <net/sock.h>
+>> +#include <asm/io.h>
+>> +#include <asm/unaligned.h>
+>> +#include <rdma/rdma_cm.h>
+>> +#include <rdma/ib_verbs.h>
+>> +#include <linux/sunrpc/rpc_rdma.h>
+>> +#include <linux/sunrpc/svc_rdma.h>
+>> +
+>> +#define RPCDBG_FACILITY RPCDBG_SVCTRANS
+>> +
+>> +/*
+>> + * Decodes a read chunk list. The expected format is as follows:
+>> + *    descrim  : xdr_one
+>> + *    position : u32 offset into XDR stream
+>> + *    handle   : u32 RKEY
+>> + *    . . .
+>> + *  end-of-list: xdr_zero
+>> + */
+>> +static u32 *decode_read_list(u32 *va, u32 *vaend)
+>> +{
+>> + struct rpcrdma_read_chunk *ch = (struct rpcrdma_read_chunk*)va;
+>> +
+>> + while (ch->rc_discrim != xdr_zero) {
+>> +  u64 ch_offset;
+>> +
+>> +  if (((unsigned long)ch + sizeof(struct rpcrdma_read_chunk)) >
+>> +      (unsigned long)vaend) {
+>> +   dprintk("svcrdma: vaend=%p, ch=%p\n", vaend, ch);
+>> +   return NULL;
+>> +  }
+>> +
+>> +  ch->rc_discrim = ntohl(ch->rc_discrim);
+>> +  ch->rc_position = ntohl(ch->rc_position);
+>> +  ch->rc_target.rs_handle = ntohl(ch->rc_target.rs_handle);
+>> +  ch->rc_target.rs_length = ntohl(ch->rc_target.rs_length);
+>> +  va = (u32*)&ch->rc_target.rs_offset;
+>> +  xdr_decode_hyper(va, &ch_offset);
+>> +  put_unaligned(ch_offset, (u64*)va);
+>> +  ch++;
+>> + }
+>> + return (u32*)&ch->rc_position;
+>> +}
+>> +
+>> +/*
+>> + * Determine number of chunks and total bytes in chunk list. The chunk
+>> + * list has already been verified to fit within the RPCRDMA header.
+>> + */
+>> +void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
+>> +          int *ch_count, int *byte_count)
+>> +{
+>> + /* compute the number of bytes represented by read chunks */
+>> + *byte_count = 0;
+>> + *ch_count = 0;
+>> + for (; ch->rc_discrim != 0; ch++) {
+>> +  *byte_count = *byte_count + ch->rc_target.rs_length;
+>> +  *ch_count = *ch_count + 1;
+>> + }
+>> +}
+>> +
+>> +/*
+>> + * Decodes a write chunk list. The expected format is as follows:
+>> + *    descrim  : xdr_one
+>> + *    nchunks  : <count>
+>> + *       handle   : u32 RKEY              ---+
+>> + *       length   : u32 <len of segment>     |
+>> + *       offset   : remove va                + <count>
+>> + *       . . .                               |
+>> + *                                        ---+
+>> + */
+>> +static u32 *decode_write_list(u32 *va, u32 *vaend)
+>> +{
+>> + int ch_no;
+>> + struct rpcrdma_write_array *ary =
+>> +  (struct rpcrdma_write_array*)va;
+>> +
+>> + /* Check for not write-array */
+>> + if (ary->wc_discrim == xdr_zero)
+>> +  return (u32*)&ary->wc_nchunks;
+>> +
+>> + if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
+>> +     (unsigned long)vaend) {
+>> +  dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
+>> +  return NULL;
+>> + }
+>> + ary->wc_discrim = ntohl(ary->wc_discrim);
+>> + ary->wc_nchunks = ntohl(ary->wc_nchunks);
+>> + if (((unsigned long)&ary->wc_array[0] +
+>> +      (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
+>> +     (unsigned long)vaend) {
+>> +  dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
+>> +   ary, ary->wc_nchunks, vaend);
+>> +  return NULL;
+>> + }
+>> + for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
+>> +  u64 ch_offset;
+>> +
+>> +  ary->wc_array[ch_no].wc_target.rs_handle =
+>> +   ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
+>> +  ary->wc_array[ch_no].wc_target.rs_length =
+>> +   ntohl(ary->wc_array[ch_no].wc_target.rs_length);
+>> +  va = (u32*)&ary->wc_array[ch_no].wc_target.rs_offset;
+>> +  xdr_decode_hyper(va, &ch_offset);
+>> +  put_unaligned(ch_offset, (u64*)va);
+>> + }
+>> +
+>> + /*
+>> +  * rs_length is the 2nd 4B field in wc_target and taking its
+>> +  * address skips the list terminator
+>> +  */
+>> + return (u32*)&ary->wc_array[ch_no].wc_target.rs_length;
+>> +}
+>> +
+>> +static u32 *decode_reply_array(u32 *va, u32 *vaend)
+>> +{
+>> + int ch_no;
+>> + struct rpcrdma_write_array *ary =
+>> +  (struct rpcrdma_write_array*)va;
+>> +
+>> + /* Check for no reply-array */
+>> + if (ary->wc_discrim == xdr_zero)
+>> +  return (u32*)&ary->wc_nchunks;
+>> +
+>> + if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
+>> +     (unsigned long)vaend) {
+>> +  dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
+>> +  return NULL;
+>> + }
+>> + ary->wc_discrim = ntohl(ary->wc_discrim);
+>> + ary->wc_nchunks = ntohl(ary->wc_nchunks);
+>> + if (((unsigned long)&ary->wc_array[0] +
+>> +      (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
+>> +     (unsigned long)vaend) {
+>> +  dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
+>> +   ary, ary->wc_nchunks, vaend);
+>> +  return NULL;
+>> + }
+>> + for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
+>> +  u64 ch_offset;
+>> +
+>> +  ary->wc_array[ch_no].wc_target.rs_handle =
+>> +   ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
+>> +  ary->wc_array[ch_no].wc_target.rs_length =
+>> +   ntohl(ary->wc_array[ch_no].wc_target.rs_length);
+>> +  va = (u32*)&ary->wc_array[ch_no].wc_target.rs_offset;
+>> +  xdr_decode_hyper(va, &ch_offset);
+>> +  put_unaligned(ch_offset, (u64*)va);
+>> + }
+>> +
+>> + return (u32*)&ary->wc_array[ch_no];
+>> +}
+>> +
+>> +int svc_rdma_xdr_decode_req(struct rpcrdma_msg **rdma_req, struct svc_rqst
+>> *rqstp)
+>> +{
+>> + struct rpcrdma_msg *rmsgp = NULL;
+>> + u32 *va;
+>> + u32 *vaend;
+>> + u32 hdr_len;
+>> +
+>> + rmsgp = (struct rpcrdma_msg*)rqstp->rq_arg.head[0].iov_base;
+>> +
+>> + /* Verify that there's enough bytes for header + something */
+>> + if (rqstp->rq_arg.len <= RPCRDMA_HDRLEN_MIN) {
+>> +  dprintk("svcrdma: header too short = %d\n",
+>> +   rqstp->rq_arg.len);
+>> +  return -EINVAL;
+>> + }
+>> +
+>> + /* Decode the header */
+>> + rmsgp->rm_xid = ntohl(rmsgp->rm_xid);
+>> + rmsgp->rm_vers = ntohl(rmsgp->rm_vers);
+>> + rmsgp->rm_credit = ntohl(rmsgp->rm_credit);
+>> + rmsgp->rm_type = ntohl(rmsgp->rm_type);
+>> +
+>> + if (rmsgp->rm_vers != RPCRDMA_VERSION)
+>> +  return -ENOSYS;
+>> +
+>> + /* Pull in the extra for the padded case and bump our pointer */
+>> + if (rmsgp->rm_type == RDMA_MSGP) {
+>> +  int hdrlen;
+>> +  rmsgp->rm_body.rm_padded.rm_align =
+>> +   ntohl(rmsgp->rm_body.rm_padded.rm_align);
+>> +  rmsgp->rm_body.rm_padded.rm_thresh =
+>> +   ntohl(rmsgp->rm_body.rm_padded.rm_thresh);
+>> +
+>> +  va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
+>> +  rqstp->rq_arg.head[0].iov_base = va;
+>> +  hdrlen = (u32)((unsigned long)va - (unsigned long)rmsgp);
+>> +  rqstp->rq_arg.head[0].iov_len -= hdrlen;
+>> +  if (hdrlen > rqstp->rq_arg.len)
+>> +   return -EINVAL;
+>> +  return hdrlen;
+>> + }
+>> +
+>> + /* The chunk list may contain either a read chunk list or a write
+>> +  * chunk list and a reply chunk list.
+>> +  */
+>> + va = &rmsgp->rm_body.rm_chunks[0];
+>> + vaend = (u32*)((unsigned long)rmsgp + rqstp->rq_arg.len);
+>> + va = decode_read_list(va,vaend);
+>> + if (!va)
+>> +  return -EINVAL;
+>> + va = decode_write_list(va, vaend);
+>> + if (!va)
+>> +  return -EINVAL;
+>> + va = decode_reply_array(va,vaend);
+>> + if (!va)
+>> +  return -EINVAL;
+>> +
+>> + rqstp->rq_arg.head[0].iov_base = va;
+>> + hdr_len = (unsigned long)va - (unsigned long)rmsgp;
+>> + rqstp->rq_arg.head[0].iov_len -= hdr_len;
+>> +
+>> + *rdma_req = rmsgp;
+>> + return hdr_len;
+>> +}
+>> +
+>> +int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *rqstp)
+>> +{
+>> + struct rpcrdma_msg *rmsgp = NULL;
+>> + struct rpcrdma_read_chunk *ch;
+>> + struct rpcrdma_write_array *ary;
+>> + u32 *va;
+>> + u32 hdrlen;
+>> +
+>> + dprintk("svcrdma: processing deferred RDMA header on rqstp=%p\n",
+>> +  rqstp);
+>> + rmsgp = (struct rpcrdma_msg*)rqstp->rq_arg.head[0].iov_base;
+>> +
+>> + /* Pull in the extra for the padded case and bump our pointer */
+>> + if (rmsgp->rm_type == RDMA_MSGP) {
+>> +  va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
+>> +  rqstp->rq_arg.head[0].iov_base = va;
+>> +  hdrlen = (u32)((unsigned long)va - (unsigned long)rmsgp);
+>> +  rqstp->rq_arg.head[0].iov_len -= hdrlen;
+>> +  return hdrlen;
+>> + }
+>> +
+>> + /*
+>> +  * Skip all chunks to find RPC msg. These were previously processed
+>> +  */
+>> + va = &rmsgp->rm_body.rm_chunks[0];
+>> +
+>> + /* Skip read-list */
+>> + for (ch = (struct rpcrdma_read_chunk*)va;
+>> +      ch->rc_discrim != xdr_zero; ch++);
+>> + va = (u32*)&ch->rc_position;
+>> +
+>> + /* Skip write-list */
+>> + ary = (struct rpcrdma_write_array*)va;
+>> + if (ary->wc_discrim == xdr_zero)
+>> +  va = (u32*)&ary->wc_nchunks;
+>> + else
+>> +  /*
+>> +   * rs_length is the 2nd 4B field in wc_target and taking its
+>> +   * address skips the list terminator
+>> +   */
+>> +  va = (u32*)&ary->wc_array[ary->wc_nchunks].wc_target.rs_length;
+>> +
+>> + /* Skip reply-array */
+>> + ary = (struct rpcrdma_write_array*)va;
+>> + if (ary->wc_discrim == xdr_zero)
+>> +  va = (u32*)&ary->wc_nchunks;
+>> + else
+>> +  va = (u32*)&ary->wc_array[ary->wc_nchunks];
+>> +
+>> + rqstp->rq_arg.head[0].iov_base = va;
+>> + hdrlen = (unsigned long)va - (unsigned long)rmsgp;
+>> + rqstp->rq_arg.head[0].iov_len -= hdrlen;
+>> +
+>> + return hdrlen;
+>> +}
+>> +
+>> +int svc_rdma_xdr_encode_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg
+>> *rmsgp,
+>> +     enum rpcrdma_errcode err, u32 *va)
+>> +{
+>> + u32* startp = va;
+>> +
+>> + *va++ = htonl(rmsgp->rm_xid);
+>> + *va++ = htonl(rmsgp->rm_vers);
+>> + *va++ = htonl(xprt->sc_max_requests);
+>> + *va++ = htonl(RDMA_ERROR);
+>> + *va++ = htonl(err);
+>> + if (err == ERR_VERS) {
+>> +  *va++ = htonl(RPCRDMA_VERSION);
+>> +  *va++ = htonl(RPCRDMA_VERSION);
+>> + }
+>> +
+>> + return (int)((unsigned long)va - (unsigned long)startp);
+>> +}
+>> +
+>> +int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *rmsgp)
+>> +{
+>> + struct rpcrdma_write_array *wr_ary;
+>> +
+>> + /* There is no read-list in a reply */
+>> +
+>> + /* skip write list */
+>> + wr_ary = (struct rpcrdma_write_array *)
+>> +  &rmsgp->rm_body.rm_chunks[1];
+>> + if (wr_ary->wc_discrim)
+>> +  wr_ary = (struct rpcrdma_write_array *)
+>> +   &wr_ary->wc_array[ntohl(wr_ary->wc_nchunks)].
+>> +   wc_target.rs_length;
+>> + else
+>> +  wr_ary = (struct rpcrdma_write_array *)
+>> +   &wr_ary->wc_nchunks;
+>> +
+>> + /* skip reply array */
+>> + if (wr_ary->wc_discrim)
+>> +  wr_ary = (struct rpcrdma_write_array *)
+>> +   &wr_ary->wc_array[ntohl(wr_ary->wc_nchunks)];
+>> + else
+>> +  wr_ary = (struct rpcrdma_write_array *)
+>> +   &wr_ary->wc_nchunks;
+>> +
+>> + return (unsigned long) wr_ary - (unsigned long) rmsgp;
+>> +}
+>> +
+>> +void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
+>> +{
+>> + struct rpcrdma_write_array *ary;
+>> +
+>> + /* no read-list */
+>> + rmsgp->rm_body.rm_chunks[0] = xdr_zero;
+>> +
+>> + /* write-array discrim */
+>> + ary = (struct rpcrdma_write_array *)
+>> +  &rmsgp->rm_body.rm_chunks[1];
+>> + ary->wc_discrim = xdr_one;
+>> + ary->wc_nchunks = htonl(chunks);
+>> +
+>> + /* write-list terminator */
+>> + ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
+>> +
+>> + /* reply-array discriminator */
+>> + ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
+>> +}
+>> +
+>> +void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
+>> +     int chunks)
+>> +{
+>> + ary->wc_discrim = xdr_one;
+>> + ary->wc_nchunks = htonl(chunks);
+>> +}
+>> +
+>> +void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary, int
+>> chunk_no,
+>> +     u32 rs_handle, u64 rs_offset, u32 write_len)
+>> +{
+>> + struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
+>> + seg->rs_handle = htonl(rs_handle);
+>> + seg->rs_length = htonl(write_len);
+>> + xdr_encode_hyper((u32*) &seg->rs_offset, rs_offset);
+>> +}
+>> +
+>> +void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *xprt,
+>> +      struct rpcrdma_msg *rdma_argp,
+>> +      struct rpcrdma_msg *rdma_resp,
+>> +      enum rpcrdma_proc rdma_type)
+>> +{
+>> + rdma_resp->rm_xid = htonl(rdma_argp->rm_xid);
+>> + rdma_resp->rm_vers = htonl(rdma_argp->rm_vers);
+>> + rdma_resp->rm_credit = htonl(xprt->sc_max_requests);
+>> + rdma_resp->rm_type = htonl(rdma_type);
+>> +
+>> + /* Encode <nul> chunks lists */
+>> + rdma_resp->rm_body.rm_chunks[0] = xdr_zero;
+>> + rdma_resp->rm_body.rm_chunks[1] = xdr_zero;
+>> + rdma_resp->rm_body.rm_chunks[2] = xdr_zero;
+>> +}
+>> +
+>> 
+>> -------------------------------------------------------------------------
+>> This SF.net email is sponsored by DB2 Express
+>> Download DB2 Express C - the FREE version of DB2 express and take
+>> control of your XML. No limits. Just data. Click to get it now.
+>> http://sourceforge.net/powerbar/db2/
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
