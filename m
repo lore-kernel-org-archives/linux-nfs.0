@@ -1,24 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 10/21] NFS: Introduce nfs4_validate_mount_options
-Date: Thu, 05 Jul 2007 09:43:15 -0400
-Message-ID: <1183642995.6463.0.camel@heimdal.trondhjem.org>
-References: <20070701161301.2786.72631.stgit@monet.1015granger.net>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: [PATCH 0/3] NLM: fix source address in server callbacks
+Date: Thu, 5 Jul 2007 17:24:15 +0200
+Message-ID: <20070705152415.GA6603@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I6Rc9-0007v3-FI
-	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 06:43:21 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1906ShDPUO39HysRZADrs+1s4UHQUaqzBk=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I6RcB-00070I-EW
-	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 06:43:25 -0700
-In-Reply-To: <20070701161301.2786.72631.stgit@monet.1015granger.net>
+	id 1I6TBp-0002dQ-CF
+	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 08:24:17 -0700
+Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I6TBr-0004Oz-KD
+	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 08:24:20 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,201 +26,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sun, 2007-07-01 at 12:13 -0400, Chuck Lever wrote:
-> Refactor NFSv4 mount processing to break out mount data validation
-> in the same way it's broken out in the NFSv2/v3 mount path.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfs/super.c |  152 ++++++++++++++++++++++++++++++++------------------------
->  1 files changed, 88 insertions(+), 64 deletions(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index bdfab72..2b5e681 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -864,6 +864,88 @@ static void nfs4_fill_super(struct super_block *sb)
->  }
->  
->  /*
-> + * Validate NFSv4 mount options
-> + */
-> +static int nfs4_validate_mount_data(struct nfs4_mount_data **options,
-> +				    const char *dev_name,
-> +				    struct sockaddr_in *addr,
-> +				    rpc_authflavor_t *authflavour,
-> +				    char **hostname,
-> +				    char **mntpath,
-> +				    char **ip_addr)
-> +{
-> +	struct nfs4_mount_data *data = *options;
-> +	char *c;
-> +
-> +	if (data == NULL)
-> +		goto out_no_data;
-> +
-> +	switch (data->version) {
-> +	case 1:
-> +		if (data->host_addrlen != sizeof(*addr))
-> +			goto out_no_address;
-> +		if (copy_from_user(addr, data->host_addr, sizeof(*addr)))
-> +			return -EFAULT;
-> +		if (addr->sin_port == 0)
-> +			addr->sin_port = htons(NFS_PORT);
-> +		if (!nfs_verify_server_address((struct sockaddr *) addr))
-> +			goto out_no_address;
-> +
-> +		switch (data->auth_flavourlen) {
-> +		case 0:
-> +			*authflavour = RPC_AUTH_UNIX;
-> +			break;
-> +		case 1:
-> +			if (copy_from_user(authflavour, data->auth_flavours,
-> +					   sizeof(*authflavour)))
-> +				return -EFAULT;
+The patch touches three areas so it has been split likewise.
 
-			  break;
+The first patch changes the TCP server socket code to save the socket
+name right after an accept(). This local address of a connection
+(destination address of a request) is needed for connecting back when
+doing the callback later. For UDP the address was already saved for RPC
+replies because UDP is connectionless. This patch is IPv6 clean.
 
-> +		default:
-> +			goto out_inval_auth;
-> +		}
-> +
-> +		c = strndup_user(data->hostname.data, NFS4_MAXNAMLEN);
-> +		if (IS_ERR(c))
-> +			return PTR_ERR(c);
-> +		*hostname = c;
-> +
-> +		c = strndup_user(data->mnt_path.data, NFS4_MAXPATHLEN);
-> +		if (IS_ERR(c))
-> +			return PTR_ERR(c);
-> +		*mntpath = c;
-> +		dfprintk(MOUNT, "NFS: MNTPATH: '%s'\n", *mntpath);
-> +
-> +		c = strndup_user(data->client_addr.data, 16);
-> +		if (IS_ERR(c))
-> +			return PTR_ERR(c);
-> +		*ip_addr = c;
-> +
-> +		break;
-> +	default:
-> +		goto out_bad_version;
-> +	}
-> +
-> +	return 0;
-> +
-> +out_no_data:
-> +	dfprintk(MOUNT, "NFS4: mount program didn't pass any mount data\n");
-> +	return -EINVAL;
-> +
-> +out_inval_auth:
-> +	dfprintk(MOUNT, "NFS4: Invalid number of RPC auth flavours %d\n",
-> +		 data->auth_flavourlen);
-> +	return -EINVAL;
-> +
-> +out_no_address:
-> +	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
-> +	return -EINVAL;
-> +
-> +out_bad_version:
-> +	dfprintk(MOUNT, "NFS4: bad nfs_mount_data version %d\n",
-> +		 data->version);
-> +	return -EINVAL;
-> +}
-> +
-> +/*
->   * Get the superblock for an NFS4 mountpoint
->   */
->  static int nfs4_get_sb(struct file_system_type *fs_type,
-> @@ -876,69 +958,15 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
->  	rpc_authflavor_t authflavour;
->  	struct nfs_fh mntfh;
->  	struct dentry *mntroot;
-> - 	char *p, *mntpath = NULL, *hostname = NULL, *ip_addr = NULL;
-> + 	char *mntpath = NULL, *hostname = NULL, *ip_addr = NULL;
->  	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
->  	int error;
->  
-> -	if (data == NULL) {
-> -		dprintk("%s: missing data argument\n", __FUNCTION__);
-> -		return -EINVAL;
-> -	}
-> -	if (data->version <= 0 || data->version > NFS4_MOUNT_VERSION) {
-> -		dprintk("%s: bad mount version\n", __FUNCTION__);
-> -		return -EINVAL;
-> -	}
-> -
-> -	/* We now require that the mount process passes the remote address */
-> -	if (data->host_addrlen != sizeof(addr))
-> -		return -EINVAL;
-> -
-> -	if (copy_from_user(&addr, data->host_addr, sizeof(addr)))
-> -		return -EFAULT;
-> -
-> -	if (!nfs_verify_server_address((struct sockaddr *) &addr)) {
-> -		dprintk("%s: mount program didn't pass remote IP address!\n",
-> -				__FUNCTION__);
-> -		return -EINVAL;
-> -	}
-> -
-> -	/* RFC3530: The default port for NFS is 2049 */
-> -	if (addr.sin_port == 0)
-> -		addr.sin_port = htons(NFS_PORT);
-> -
-> -	/* Grab the authentication type */
-> -	authflavour = RPC_AUTH_UNIX;
-> -	if (data->auth_flavourlen != 0) {
-> -		if (data->auth_flavourlen != 1) {
-> -			dprintk("%s: Invalid number of RPC auth flavours %d.\n",
-> -					__FUNCTION__, data->auth_flavourlen);
-> -			error = -EINVAL;
-> -			goto out;
-> -		}
-> -
-> -		if (copy_from_user(&authflavour, data->auth_flavours,
-> -				   sizeof(authflavour))) {
-> -			error = -EFAULT;
-> -			goto out;
-> -		}
-> -	}
-> -
-> -	p = strndup_user(data->hostname.data, NFS4_MAXNAMLEN);
-> -	if (IS_ERR(p))
-> -		goto out_err;
-> -	hostname = p;
-> -
-> -	p = strndup_user(data->mnt_path.data, NFS4_MAXPATHLEN);
-> -	if (IS_ERR(p))
-> -		goto out_err;
-> -	mntpath = p;
-> -
-> -	dprintk("MNTPATH: %s\n", mntpath);
-> -
-> -	p = strndup_user(data->client_addr.data, 16);
-> -	if (IS_ERR(p))
-> -		goto out_err;
-> -	ip_addr = p;
-> + 	/* Validate the mount data */
-> + 	error = nfs4_validate_mount_data(&data, dev_name, &addr, &authflavour,
-> + 					 &hostname, &mntpath, &ip_addr);
-> + 	if (error < 0)
-> + 		goto out;
->  
->  	/* Get a volume representation */
->  	server = nfs4_create_server(data, hostname, &addr, mntpath, ip_addr,
-> @@ -989,10 +1017,6 @@ out:
->  	kfree(hostname);
->  	return error;
->  
-> -out_err:
-> -	error = PTR_ERR(p);
-> -	goto out;
-> -
->  out_free:
->  	nfs_free_server(server);
->  	goto out;
-> 
+The second patch changes the NFS client code to be able to bind not only
+to a privileged port but also to bind to a specific local address. The
+client code is used by the server for callbacks.
 
+The third patch is the actual NLM fix.
+
+-- 
+Frank
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
