@@ -1,22 +1,26 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 08/10] rdma: ONCRPC RDMA protocol marshalling
-Date: Wed, 04 Jul 2007 09:44:10 -0500
-Message-ID: <C2B11C6A.52BC%tom@opengridcomputing.com>
-References: <46892914.1050607@oracle.com>
+From: Stuart Anderson <anderson@ligo.caltech.edu>
+Subject: Re: soft lockup
+Date: Wed, 4 Jul 2007 17:36:43 -0700
+Message-ID: <20070705003643.GA511@ligo.caltech.edu>
+References: <20070628235249.GM32531@ligo.caltech.edu>
+	<1183088891.6163.119.camel@heimdal.trondhjem.org>
+	<20070629155831.GA14875@ligo.caltech.edu>
+	<20070701035833.GA20145@ligo.caltech.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NFS List <nfs@lists.sourceforge.net>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I664D-0004Hz-Mi
-	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 07:42:54 -0700
-Received: from mail.es335.com ([67.65.19.105])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I664D-0001nu-Np
-	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 07:42:57 -0700
-In-Reply-To: <46892914.1050607@oracle.com>
+	id 1I6FL6-0007NA-4m
+	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 17:36:56 -0700
+Received: from acrux.ligo.caltech.edu ([131.215.115.14])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I6FL8-00010M-9i
+	for nfs@lists.sourceforge.net; Wed, 04 Jul 2007 17:36:59 -0700
+In-Reply-To: <20070701035833.GA20145@ligo.caltech.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,477 +33,252 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Trond and co.,
 
-These marshal/unmarshal routines are for the RDMA header, not the NFS RPC
-header. They are broken out here to try and keep all of the RPC RDMA wire
-protocol knowledge in one place.
+In addition to the originally reported softlockups on one server that
+is NFSV4 mounting from a Sol10+ZFS server, we are now getting these
+on several cluster nodes to the point where they become unresponsive,
+unlike the server which kept on running.  Here are two example cluster
+node lockups:
 
 
-On 7/2/07 11:34 AM, "Chuck Lever" <chuck.lever@oracle.com> wrote:
+BUG: soft lockup detected on CPU#0!
 
-> I need to study this more, but can you explain why transport-specific
-> marshal/unmarshal routines are required?
+Call Trace:
+ <IRQ>  [<ffffffff8025a17c>] softlockup_tick+0xfc/0x140
+ [<ffffffff80233fa3>] __do_softirq+0x63/0xd0
+ [<ffffffff80237ed7>] update_process_times+0x57/0x90
+ [<ffffffff802160e4>] smp_local_timer_interrupt+0x34/0x60
+ [<ffffffff80216789>] smp_apic_timer_interrupt+0x59/0x80
+ [<ffffffff8020a7b6>] apic_timer_interrupt+0x66/0x70
+ <EOI>  [<ffffffff80219250>] flat_send_IPI_mask+0x0/0x60
+ [<ffffffff88157d4f>] :nfs:nfs4_reclaim_open_state+0x1f/0x1b0
+ [<ffffffff88158d62>] :nfs:reclaimer+0x1f2/0x2f0
+ [<ffffffff88158b70>] :nfs:reclaimer+0x0/0x2f0
+ [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+ [<ffffffff80243b79>] kthread+0xd9/0x120
+ [<ffffffff8020a998>] child_rip+0xa/0x12
+ [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+ [<ffffffff80243aa0>] kthread+0x0/0x120
+ [<ffffffff8020a98e>] child_rip+0x0/0x12
+
+or
+
+BUG: soft lockup detected on CPU#3!
+
+Call Trace:
+ <IRQ>  [<ffffffff8025a17c>] softlockup_tick+0xfc/0x140
+ [<ffffffff80237ed7>] update_process_times+0x57/0x90
+ [<ffffffff802160e4>] smp_local_timer_interrupt+0x34/0x60
+ [<ffffffff80216789>] smp_apic_timer_interrupt+0x59/0x80
+ [<ffffffff8020a7b6>] apic_timer_interrupt+0x66/0x70
+ <EOI>  [<ffffffff803272e3>] _raw_spin_lock+0xb3/0x150
+ [<ffffffff803272f2>] _raw_spin_lock+0xc2/0x150
+ [<ffffffff8043d74d>] lock_kernel+0x1d/0x30
+ [<ffffffff802ccd25>] proc_lookup+0x15/0xf0
+ [<ffffffff802c9150>] proc_root_lookup+0x20/0x60
+ [<ffffffff80290879>] do_lookup+0xd9/0x210
+ [<ffffffff802912fa>] __link_path_walk+0x94a/0xe20
+ [<ffffffff80290b30>] __link_path_walk+0x180/0xe20
+ [<ffffffff8029182b>] link_path_walk+0x5b/0xf0
+ [<ffffffff8028610f>] get_unused_fd+0xef/0x100
+ [<ffffffff80291db0>] do_path_lookup+0x1e0/0x270
+ [<ffffffff8029241a>] __path_lookup_intent_open+0x6a/0xd0
+ [<ffffffff802928ac>] open_namei+0x9c/0x6f0
+ [<ffffffff802868d0>] do_filp_open+0x20/0x50
+ [<ffffffff8028610f>] get_unused_fd+0xef/0x100
+ [<ffffffff80286958>] do_sys_open+0x58/0xf0
+ [<ffffffff80209d6c>] tracesys+0xdc/0xe1
+
+
+This may be more affect than cause, but this also resulted in some
+nodes getting stuck with:
+
+sd 0:0:0:0: rejecting I/O to offline device
+Read-error on swap-device (8:0:42165576)
+Read-error on swap-device (8:0:42165584)
+...
+
+
+and there where also messages like,
+
+Jul  4 10:28:46 node257 kernel: call_verify: server accept status: 5
+Jul  4 10:28:46 node257 last message repeated 2 times
+Jul  4 10:28:46 node257 kernel: RPC call_verify: retry failed, exit EIO
+Jul  4 10:28:46 node257 kernel: call_verify: server accept status: 5
+Jul  4 10:28:46 node257 kernel: NFS: v4 server returned a bad sequence-id error!
+
+
+For now, we have had to revert to NFSV3 and updated nfs-utils so
+we can mount with -noacl. We did not have any of these softlockups
+until we started mount NFSV4 from a Sol10+ZFS server. I would really
+like to get back to that combination if possible.
+
+At any rate, we will now see if the linux clients are as stable
+with NFSv3 mounts from Sol10+ZFS server as they have been with
+Sol10+UFS and Sol10+QFS servers.
+
+
+Thanks.
+
+
+
+On Sat, Jun 30, 2007 at 08:58:33PM -0700, Stuart Anderson wrote:
+> Here is another soft lockup after running dmesg -s 90000 that shows a deeper
+> call trace, but still has EOI. The 19 occurances after this one are back
+> to the shallower call trace. Do I have to recompile the kernel to get a
+> larger kernel ring buffer for dmesg to query?
 > 
-> Does this replace the page-handling XDR routines that are the defaults
-> for socket-based transports?  If these are really needed, should they
-> part of the server side transport switch?
+> Thanks.
 > 
-> Tom Tucker wrote:
->> This file implements the ONCRPC RDMA protocol marshelling and
->> unmarshalling logic.
->> 
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> ---
->> 
->>  net/sunrpc/svc_rdma_marshal.c |  424
->> +++++++++++++++++++++++++++++++++++++++++
->>  1 files changed, 424 insertions(+), 0 deletions(-)
->> 
->> diff --git a/net/sunrpc/svc_rdma_marshal.c b/net/sunrpc/svc_rdma_marshal.c
->> new file mode 100644
->> index 0000000..0a34efb
->> --- /dev/null
->> +++ b/net/sunrpc/svc_rdma_marshal.c
->> @@ -0,0 +1,424 @@
->> +/*
->> + * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
->> + *
->> + * This software is available to you under a choice of one of two
->> + * licenses.  You may choose to be licensed under the terms of the GNU
->> + * General Public License (GPL) Version 2, available from the file
->> + * COPYING in the main directory of this source tree, or the BSD-type
->> + * license below:
->> + *
->> + * Redistribution and use in source and binary forms, with or without
->> + * modification, are permitted provided that the following conditions
->> + * are met:
->> + *
->> + *      Redistributions of source code must retain the above copyright
->> + *      notice, this list of conditions and the following disclaimer.
->> + *
->> + *      Redistributions in binary form must reproduce the above
->> + *      copyright notice, this list of conditions and the following
->> + *      disclaimer in the documentation and/or other materials provided
->> + *      with the distribution.
->> + *
->> + *      Neither the name of the Network Appliance, Inc. nor the names of
->> + *      its contributors may be used to endorse or promote products
->> + *      derived from this software without specific prior written
->> + *      permission.
->> + *
->> + * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
->> + * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
->> + * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
->> + * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
->> + * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
->> + * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
->> + * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
->> + * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
->> + * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
->> + * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
->> + * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
->> + *
->> + * Author: Tom Tucker <tom@opengridcomputing.com>
->> + */
->> +
->> +#include <asm/semaphore.h>
->> +#include <linux/device.h>
->> +#include <linux/in.h>
->> +#include <linux/err.h>
->> +#include <linux/time.h>
->> +
->> +#include <rdma/rdma_cm.h>
->> +
->> +#include <linux/sunrpc/svcsock.h>
->> +#include <linux/sunrpc/debug.h>
->> +#include <linux/sunrpc/rpc_rdma.h>
->> +#include <linux/spinlock.h>
->> +#include <linux/net.h>
->> +#include <net/sock.h>
->> +#include <asm/io.h>
->> +#include <asm/unaligned.h>
->> +#include <rdma/rdma_cm.h>
->> +#include <rdma/ib_verbs.h>
->> +#include <linux/sunrpc/rpc_rdma.h>
->> +#include <linux/sunrpc/svc_rdma.h>
->> +
->> +#define RPCDBG_FACILITY RPCDBG_SVCTRANS
->> +
->> +/*
->> + * Decodes a read chunk list. The expected format is as follows:
->> + *    descrim  : xdr_one
->> + *    position : u32 offset into XDR stream
->> + *    handle   : u32 RKEY
->> + *    . . .
->> + *  end-of-list: xdr_zero
->> + */
->> +static u32 *decode_read_list(u32 *va, u32 *vaend)
->> +{
->> + struct rpcrdma_read_chunk *ch = (struct rpcrdma_read_chunk*)va;
->> +
->> + while (ch->rc_discrim != xdr_zero) {
->> +  u64 ch_offset;
->> +
->> +  if (((unsigned long)ch + sizeof(struct rpcrdma_read_chunk)) >
->> +      (unsigned long)vaend) {
->> +   dprintk("svcrdma: vaend=%p, ch=%p\n", vaend, ch);
->> +   return NULL;
->> +  }
->> +
->> +  ch->rc_discrim = ntohl(ch->rc_discrim);
->> +  ch->rc_position = ntohl(ch->rc_position);
->> +  ch->rc_target.rs_handle = ntohl(ch->rc_target.rs_handle);
->> +  ch->rc_target.rs_length = ntohl(ch->rc_target.rs_length);
->> +  va = (u32*)&ch->rc_target.rs_offset;
->> +  xdr_decode_hyper(va, &ch_offset);
->> +  put_unaligned(ch_offset, (u64*)va);
->> +  ch++;
->> + }
->> + return (u32*)&ch->rc_position;
->> +}
->> +
->> +/*
->> + * Determine number of chunks and total bytes in chunk list. The chunk
->> + * list has already been verified to fit within the RPCRDMA header.
->> + */
->> +void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
->> +          int *ch_count, int *byte_count)
->> +{
->> + /* compute the number of bytes represented by read chunks */
->> + *byte_count = 0;
->> + *ch_count = 0;
->> + for (; ch->rc_discrim != 0; ch++) {
->> +  *byte_count = *byte_count + ch->rc_target.rs_length;
->> +  *ch_count = *ch_count + 1;
->> + }
->> +}
->> +
->> +/*
->> + * Decodes a write chunk list. The expected format is as follows:
->> + *    descrim  : xdr_one
->> + *    nchunks  : <count>
->> + *       handle   : u32 RKEY              ---+
->> + *       length   : u32 <len of segment>     |
->> + *       offset   : remove va                + <count>
->> + *       . . .                               |
->> + *                                        ---+
->> + */
->> +static u32 *decode_write_list(u32 *va, u32 *vaend)
->> +{
->> + int ch_no;
->> + struct rpcrdma_write_array *ary =
->> +  (struct rpcrdma_write_array*)va;
->> +
->> + /* Check for not write-array */
->> + if (ary->wc_discrim == xdr_zero)
->> +  return (u32*)&ary->wc_nchunks;
->> +
->> + if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
->> +     (unsigned long)vaend) {
->> +  dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
->> +  return NULL;
->> + }
->> + ary->wc_discrim = ntohl(ary->wc_discrim);
->> + ary->wc_nchunks = ntohl(ary->wc_nchunks);
->> + if (((unsigned long)&ary->wc_array[0] +
->> +      (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
->> +     (unsigned long)vaend) {
->> +  dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
->> +   ary, ary->wc_nchunks, vaend);
->> +  return NULL;
->> + }
->> + for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
->> +  u64 ch_offset;
->> +
->> +  ary->wc_array[ch_no].wc_target.rs_handle =
->> +   ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
->> +  ary->wc_array[ch_no].wc_target.rs_length =
->> +   ntohl(ary->wc_array[ch_no].wc_target.rs_length);
->> +  va = (u32*)&ary->wc_array[ch_no].wc_target.rs_offset;
->> +  xdr_decode_hyper(va, &ch_offset);
->> +  put_unaligned(ch_offset, (u64*)va);
->> + }
->> +
->> + /*
->> +  * rs_length is the 2nd 4B field in wc_target and taking its
->> +  * address skips the list terminator
->> +  */
->> + return (u32*)&ary->wc_array[ch_no].wc_target.rs_length;
->> +}
->> +
->> +static u32 *decode_reply_array(u32 *va, u32 *vaend)
->> +{
->> + int ch_no;
->> + struct rpcrdma_write_array *ary =
->> +  (struct rpcrdma_write_array*)va;
->> +
->> + /* Check for no reply-array */
->> + if (ary->wc_discrim == xdr_zero)
->> +  return (u32*)&ary->wc_nchunks;
->> +
->> + if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
->> +     (unsigned long)vaend) {
->> +  dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
->> +  return NULL;
->> + }
->> + ary->wc_discrim = ntohl(ary->wc_discrim);
->> + ary->wc_nchunks = ntohl(ary->wc_nchunks);
->> + if (((unsigned long)&ary->wc_array[0] +
->> +      (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
->> +     (unsigned long)vaend) {
->> +  dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
->> +   ary, ary->wc_nchunks, vaend);
->> +  return NULL;
->> + }
->> + for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
->> +  u64 ch_offset;
->> +
->> +  ary->wc_array[ch_no].wc_target.rs_handle =
->> +   ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
->> +  ary->wc_array[ch_no].wc_target.rs_length =
->> +   ntohl(ary->wc_array[ch_no].wc_target.rs_length);
->> +  va = (u32*)&ary->wc_array[ch_no].wc_target.rs_offset;
->> +  xdr_decode_hyper(va, &ch_offset);
->> +  put_unaligned(ch_offset, (u64*)va);
->> + }
->> +
->> + return (u32*)&ary->wc_array[ch_no];
->> +}
->> +
->> +int svc_rdma_xdr_decode_req(struct rpcrdma_msg **rdma_req, struct svc_rqst
->> *rqstp)
->> +{
->> + struct rpcrdma_msg *rmsgp = NULL;
->> + u32 *va;
->> + u32 *vaend;
->> + u32 hdr_len;
->> +
->> + rmsgp = (struct rpcrdma_msg*)rqstp->rq_arg.head[0].iov_base;
->> +
->> + /* Verify that there's enough bytes for header + something */
->> + if (rqstp->rq_arg.len <= RPCRDMA_HDRLEN_MIN) {
->> +  dprintk("svcrdma: header too short = %d\n",
->> +   rqstp->rq_arg.len);
->> +  return -EINVAL;
->> + }
->> +
->> + /* Decode the header */
->> + rmsgp->rm_xid = ntohl(rmsgp->rm_xid);
->> + rmsgp->rm_vers = ntohl(rmsgp->rm_vers);
->> + rmsgp->rm_credit = ntohl(rmsgp->rm_credit);
->> + rmsgp->rm_type = ntohl(rmsgp->rm_type);
->> +
->> + if (rmsgp->rm_vers != RPCRDMA_VERSION)
->> +  return -ENOSYS;
->> +
->> + /* Pull in the extra for the padded case and bump our pointer */
->> + if (rmsgp->rm_type == RDMA_MSGP) {
->> +  int hdrlen;
->> +  rmsgp->rm_body.rm_padded.rm_align =
->> +   ntohl(rmsgp->rm_body.rm_padded.rm_align);
->> +  rmsgp->rm_body.rm_padded.rm_thresh =
->> +   ntohl(rmsgp->rm_body.rm_padded.rm_thresh);
->> +
->> +  va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
->> +  rqstp->rq_arg.head[0].iov_base = va;
->> +  hdrlen = (u32)((unsigned long)va - (unsigned long)rmsgp);
->> +  rqstp->rq_arg.head[0].iov_len -= hdrlen;
->> +  if (hdrlen > rqstp->rq_arg.len)
->> +   return -EINVAL;
->> +  return hdrlen;
->> + }
->> +
->> + /* The chunk list may contain either a read chunk list or a write
->> +  * chunk list and a reply chunk list.
->> +  */
->> + va = &rmsgp->rm_body.rm_chunks[0];
->> + vaend = (u32*)((unsigned long)rmsgp + rqstp->rq_arg.len);
->> + va = decode_read_list(va,vaend);
->> + if (!va)
->> +  return -EINVAL;
->> + va = decode_write_list(va, vaend);
->> + if (!va)
->> +  return -EINVAL;
->> + va = decode_reply_array(va,vaend);
->> + if (!va)
->> +  return -EINVAL;
->> +
->> + rqstp->rq_arg.head[0].iov_base = va;
->> + hdr_len = (unsigned long)va - (unsigned long)rmsgp;
->> + rqstp->rq_arg.head[0].iov_len -= hdr_len;
->> +
->> + *rdma_req = rmsgp;
->> + return hdr_len;
->> +}
->> +
->> +int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *rqstp)
->> +{
->> + struct rpcrdma_msg *rmsgp = NULL;
->> + struct rpcrdma_read_chunk *ch;
->> + struct rpcrdma_write_array *ary;
->> + u32 *va;
->> + u32 hdrlen;
->> +
->> + dprintk("svcrdma: processing deferred RDMA header on rqstp=%p\n",
->> +  rqstp);
->> + rmsgp = (struct rpcrdma_msg*)rqstp->rq_arg.head[0].iov_base;
->> +
->> + /* Pull in the extra for the padded case and bump our pointer */
->> + if (rmsgp->rm_type == RDMA_MSGP) {
->> +  va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
->> +  rqstp->rq_arg.head[0].iov_base = va;
->> +  hdrlen = (u32)((unsigned long)va - (unsigned long)rmsgp);
->> +  rqstp->rq_arg.head[0].iov_len -= hdrlen;
->> +  return hdrlen;
->> + }
->> +
->> + /*
->> +  * Skip all chunks to find RPC msg. These were previously processed
->> +  */
->> + va = &rmsgp->rm_body.rm_chunks[0];
->> +
->> + /* Skip read-list */
->> + for (ch = (struct rpcrdma_read_chunk*)va;
->> +      ch->rc_discrim != xdr_zero; ch++);
->> + va = (u32*)&ch->rc_position;
->> +
->> + /* Skip write-list */
->> + ary = (struct rpcrdma_write_array*)va;
->> + if (ary->wc_discrim == xdr_zero)
->> +  va = (u32*)&ary->wc_nchunks;
->> + else
->> +  /*
->> +   * rs_length is the 2nd 4B field in wc_target and taking its
->> +   * address skips the list terminator
->> +   */
->> +  va = (u32*)&ary->wc_array[ary->wc_nchunks].wc_target.rs_length;
->> +
->> + /* Skip reply-array */
->> + ary = (struct rpcrdma_write_array*)va;
->> + if (ary->wc_discrim == xdr_zero)
->> +  va = (u32*)&ary->wc_nchunks;
->> + else
->> +  va = (u32*)&ary->wc_array[ary->wc_nchunks];
->> +
->> + rqstp->rq_arg.head[0].iov_base = va;
->> + hdrlen = (unsigned long)va - (unsigned long)rmsgp;
->> + rqstp->rq_arg.head[0].iov_len -= hdrlen;
->> +
->> + return hdrlen;
->> +}
->> +
->> +int svc_rdma_xdr_encode_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg
->> *rmsgp,
->> +     enum rpcrdma_errcode err, u32 *va)
->> +{
->> + u32* startp = va;
->> +
->> + *va++ = htonl(rmsgp->rm_xid);
->> + *va++ = htonl(rmsgp->rm_vers);
->> + *va++ = htonl(xprt->sc_max_requests);
->> + *va++ = htonl(RDMA_ERROR);
->> + *va++ = htonl(err);
->> + if (err == ERR_VERS) {
->> +  *va++ = htonl(RPCRDMA_VERSION);
->> +  *va++ = htonl(RPCRDMA_VERSION);
->> + }
->> +
->> + return (int)((unsigned long)va - (unsigned long)startp);
->> +}
->> +
->> +int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *rmsgp)
->> +{
->> + struct rpcrdma_write_array *wr_ary;
->> +
->> + /* There is no read-list in a reply */
->> +
->> + /* skip write list */
->> + wr_ary = (struct rpcrdma_write_array *)
->> +  &rmsgp->rm_body.rm_chunks[1];
->> + if (wr_ary->wc_discrim)
->> +  wr_ary = (struct rpcrdma_write_array *)
->> +   &wr_ary->wc_array[ntohl(wr_ary->wc_nchunks)].
->> +   wc_target.rs_length;
->> + else
->> +  wr_ary = (struct rpcrdma_write_array *)
->> +   &wr_ary->wc_nchunks;
->> +
->> + /* skip reply array */
->> + if (wr_ary->wc_discrim)
->> +  wr_ary = (struct rpcrdma_write_array *)
->> +   &wr_ary->wc_array[ntohl(wr_ary->wc_nchunks)];
->> + else
->> +  wr_ary = (struct rpcrdma_write_array *)
->> +   &wr_ary->wc_nchunks;
->> +
->> + return (unsigned long) wr_ary - (unsigned long) rmsgp;
->> +}
->> +
->> +void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
->> +{
->> + struct rpcrdma_write_array *ary;
->> +
->> + /* no read-list */
->> + rmsgp->rm_body.rm_chunks[0] = xdr_zero;
->> +
->> + /* write-array discrim */
->> + ary = (struct rpcrdma_write_array *)
->> +  &rmsgp->rm_body.rm_chunks[1];
->> + ary->wc_discrim = xdr_one;
->> + ary->wc_nchunks = htonl(chunks);
->> +
->> + /* write-list terminator */
->> + ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
->> +
->> + /* reply-array discriminator */
->> + ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
->> +}
->> +
->> +void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
->> +     int chunks)
->> +{
->> + ary->wc_discrim = xdr_one;
->> + ary->wc_nchunks = htonl(chunks);
->> +}
->> +
->> +void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary, int
->> chunk_no,
->> +     u32 rs_handle, u64 rs_offset, u32 write_len)
->> +{
->> + struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
->> + seg->rs_handle = htonl(rs_handle);
->> + seg->rs_length = htonl(write_len);
->> + xdr_encode_hyper((u32*) &seg->rs_offset, rs_offset);
->> +}
->> +
->> +void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *xprt,
->> +      struct rpcrdma_msg *rdma_argp,
->> +      struct rpcrdma_msg *rdma_resp,
->> +      enum rpcrdma_proc rdma_type)
->> +{
->> + rdma_resp->rm_xid = htonl(rdma_argp->rm_xid);
->> + rdma_resp->rm_vers = htonl(rdma_argp->rm_vers);
->> + rdma_resp->rm_credit = htonl(xprt->sc_max_requests);
->> + rdma_resp->rm_type = htonl(rdma_type);
->> +
->> + /* Encode <nul> chunks lists */
->> + rdma_resp->rm_body.rm_chunks[0] = xdr_zero;
->> + rdma_resp->rm_body.rm_chunks[1] = xdr_zero;
->> + rdma_resp->rm_body.rm_chunks[2] = xdr_zero;
->> +}
->> +
->> 
->> -------------------------------------------------------------------------
->> This SF.net email is sponsored by DB2 Express
->> Download DB2 Express C - the FREE version of DB2 express and take
->> control of your XML. No limits. Just data. Click to get it now.
->> http://sourceforge.net/powerbar/db2/
->> _______________________________________________
->> NFS maillist  -  NFS@lists.sourceforge.net
->> https://lists.sourceforge.net/lists/listinfo/nfs
+> kernel: BUG: soft lockup detected on CPU#0!
+> kernel: 
+> kernel: Call Trace:
+> kernel:  <IRQ>  [<ffffffff8025a17c>] softlockup_tick+0xfc/0x140
+> kernel:  [<ffffffff80237ed7>] update_process_times+0x57/0x90
+> kernel:  [<ffffffff802160e4>] smp_local_timer_interrupt+0x34/0x60
+> kernel:  [<ffffffff80216789>] smp_apic_timer_interrupt+0x59/0x80
+> kernel:  [<ffffffff8020a7b6>] apic_timer_interrupt+0x66/0x70
+> kernel:  [<ffffffff80404670>] ip_finish_output+0x0/0x1b0
+> kernel:  [<ffffffff803e90a2>] dev_queue_xmit+0x102/0x2b0
+> kernel:  [<ffffffff80404db8>] ip_output+0x208/0x260
+> kernel:  [<ffffffff80404616>] ip_queue_xmit+0x446/0x4a0
+> kernel:  [<ffffffff880fbcd3>] :ip_conntrack:__ip_ct_refresh_acct+0x73/0xa0
+> kernel:  [<ffffffff880fea3f>] :ip_conntrack:tcp_packet+0xa3f/0xa90
+> kernel:  [<ffffffff80415390>] tcp_transmit_skb+0x6d0/0x710
+> kernel:  [<ffffffff803e08bf>] __alloc_skb+0x8f/0x160
+> kernel:  [<ffffffff80413f61>] tcp_rcv_established+0x631/0x9b0
+> kernel:  [<ffffffff8041b84f>] tcp_v4_do_rcv+0x3f/0x330
+> kernel:  [<ffffffff803f902c>] nf_iterate+0x5c/0xa0
+> kernel:  [<ffffffff8041ca8e>] tcp_v4_rcv+0x8ce/0x940
+> kernel:  [<ffffffff803ff0c1>] ip_local_deliver+0x131/0x1d0
+> kernel:  [<ffffffff803ff63e>] ip_rcv+0x4de/0x550
+> kernel:  [<ffffffff803e9516>] process_backlog+0xa6/0x150
+> kernel:  [<ffffffff803e6e14>] net_rx_action+0x84/0x180
+> kernel:  [<ffffffff80233fa3>] __do_softirq+0x63/0xd0
+> kernel:  [<ffffffff881254a0>] :sunrpc:rpc_async_schedule+0x0/0x10
+> kernel:  [<ffffffff8020ad0c>] call_softirq+0x1c/0x30
+> kernel:  [<ffffffff8020cb6c>] do_softirq+0x2c/0x90
+> kernel:  [<ffffffff8020cca9>] do_IRQ+0xd9/0x100
+> kernel:  [<ffffffff8020a101>] ret_from_intr+0x0/0xa
+> kernel:  <EOI>  [<ffffffff88126700>] :sunrpc:unx_validate+0x0/0x70
+> kernel:  [<ffffffff803272e1>] _raw_spin_lock+0xb1/0x150
+> kernel:  [<ffffffff8817a310>] :nfs:nfs3_xdr_readres+0x0/0x170
+> kernel:  [<ffffffff8043d74d>] lock_kernel+0x1d/0x30
+> kernel:  [<ffffffff8811ef7a>] :sunrpc:call_decode+0x5ba/0x660
+> kernel:  [<ffffffff881254a0>] :sunrpc:rpc_async_schedule+0x0/0x10
+> kernel:  [<ffffffff8812521e>] :sunrpc:__rpc_execute+0x8e/0x280
+> kernel:  [<ffffffff8023fd6e>] run_workqueue+0xae/0x160
+> kernel:  [<ffffffff8023fee0>] worker_thread+0x0/0x190
+> kernel:  [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+> kernel:  [<ffffffff80240031>] worker_thread+0x151/0x190
+> kernel:  [<ffffffff80229490>] default_wake_function+0x0/0x10
+> kernel:  [<ffffffff8023fee0>] worker_thread+0x0/0x190
+> kernel:  [<ffffffff80243b79>] kthread+0xd9/0x120
+> kernel:  [<ffffffff8020a998>] child_rip+0xa/0x12
+> kernel:  [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+> kernel:  [<ffffffff80243aa0>] kthread+0x0/0x120
+> kernel:  [<ffffffff8020a98e>] child_rip+0x0/0x12
+> kernel: 
 > 
+> 
+> On Fri, Jun 29, 2007 at 08:58:31AM -0700, Stuart Anderson wrote:
+> > On Thu, Jun 28, 2007 at 11:48:11PM -0400, Trond Myklebust wrote:
+> > > On Thu, 2007-06-28 at 16:52 -0700, Stuart Anderson wrote:
+> > > > I am currently getting a soft lockup every few minutes on a Sun X4600M2
+> > > > (8 x Opteron 8218) running 2.6.20.14 plus Tronds revalidate-the-fsid patch
+> > > > and Jeff's O_EXCL-OPEN patch. The machine is still usable but a bit slow and
+> > > > currently the rpciod/0 thread is being reported as using 100%CPU by top.
+> > > > 
+> > > > Any ideas?
+> > > > 
+> > > > Thanks.
+> > > > 
+> > > > kernel: BUG: soft lockup detected on CPU#0!
+> > > > kernel: 
+> > > > kernel: Call Trace:
+> > > > kernel:  <IRQ>  [<ffffffff8025a17c>] softlockup_tick+0xfc/0x140
+> > > > kernel:  [<ffffffff80237ed7>] update_process_times+0x57/0x90
+> > > > kernel:  [<ffffffff802160e4>] smp_local_timer_interrupt+0x34/0x60
+> > > > kernel:  [<ffffffff80216789>] smp_apic_timer_interrupt+0x59/0x80
+> > > > kernel:  [<ffffffff8020a7b6>] apic_timer_interrupt+0x66/0x70
+> > > > kernel:  <EOI>  [<ffffffff8817a310>] :nfs:nfs3_xdr_readres+0x0/0x170
+> > > > kernel:  [<ffffffff803272e1>] _raw_spin_lock+0xb1/0x150
+> > > > kernel:  [<ffffffff8817a310>] :nfs:nfs3_xdr_readres+0x0/0x170
+> > > > kernel:  [<ffffffff8043d74d>] lock_kernel+0x1d/0x30
+> > > > kernel:  [<ffffffff88123f3f>] :sunrpc:rpc_exit_task+0x1f/0x90
+> > > > kernel:  [<ffffffff8812521e>] :sunrpc:__rpc_execute+0x8e/0x280
+> > > > kernel:  [<ffffffff8023fd6e>] run_workqueue+0xae/0x160
+> > > > kernel:  [<ffffffff8023fee0>] worker_thread+0x0/0x190
+> > > > kernel:  [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+> > > > kernel:  [<ffffffff80240031>] worker_thread+0x151/0x190
+> > > > kernel:  [<ffffffff80229490>] default_wake_function+0x0/0x10
+> > > > kernel:  [<ffffffff8023fee0>] worker_thread+0x0/0x190
+> > > > kernel:  [<ffffffff80243b79>] kthread+0xd9/0x120
+> > > > kernel:  [<ffffffff8020a998>] child_rip+0xa/0x12
+> > > > kernel:  [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+> > > > kernel:  [<ffffffff80243aa0>] kthread+0x0/0x120
+> > > > kernel:  [<ffffffff8020a98e>] child_rip+0x0/0x12
+> > > > kernel: 
+> > > 
+> > > I don't see how anything could lock up in nfs3_xdr_readres(). There
+> > > should be no loops in that routine at all.
+> > > 
+> > > What is that "<EOI>" in the above dump? Is that syslog failing to record
+> > > something?
+> > 
+> > syslog is working as far as I can tell. What does EOI indicate (End Of Input?)
+> > 
+> > > If so, could you please try using 'dmesg -s 90000' in order to recover
+> > > the missing info?
+> > 
+> > I have increased the buffer for the next occurance. However, after getting
+> > 268 soft lockups yesterday they are no longer occuring today. The rpciod/0
+> > kernel thread is now using "just" ~70% of one cpu compared to 100% when we
+> > where getting the lockups yesterday.
+> > 
+> > Only about half of the soft lockups refer to nfs3_xdr_readres. They all
+> > have an <EOI> and all but one has "sunrpc:__rpc_execute"
+> > 
+> > Here is example that does not refer to nfs3_xdr_readres. Perhaps this
+> > is more general than NFS? though we did not see these until we started
+> > using NFSV4 client mounts. The other change we made when adding NFSV4
+> > mounts was updating nfs-utils to 1.0.9-16 (CentOS 5 patches) to avoid
+> > some of the known memory leaks/spin loops in rpc.idmapd and rpc.mountd.
+> > 
+> > kernel: BUG: soft lockup detected on CPU#0!
+> > kernel: 
+> > kernel: Call Trace:
+> > kernel:  <IRQ>  [<ffffffff8025a17c>] softlockup_tick+0xfc/0x140
+> > kernel:  [<ffffffff80237ed7>] update_process_times+0x57/0x90
+> > kernel:  [<ffffffff802160e4>] smp_local_timer_interrupt+0x34/0x60
+> > kernel:  [<ffffffff80216789>] smp_apic_timer_interrupt+0x59/0x80
+> > kernel:  [<ffffffff8020a7b6>] apic_timer_interrupt+0x66/0x70
+> > kernel:  <EOI>  [<ffffffff803272e1>] _raw_spin_lock+0xb1/0x150
+> > kernel:  [<ffffffff8043d74d>] lock_kernel+0x1d/0x30
+> > kernel:  [<ffffffff88123fd0>] :sunrpc:rpc_release_calldata+0x20/0x50
+> > kernel:  [<ffffffff881253ff>] :sunrpc:__rpc_execute+0x26f/0x280
+> > kernel:  [<ffffffff8023fd6e>] run_workqueue+0xae/0x160
+> > kernel:  [<ffffffff8023fee0>] worker_thread+0x0/0x190
+> > kernel:  [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+> > kernel:  [<ffffffff80240031>] worker_thread+0x151/0x190
+> > kernel:  [<ffffffff80229490>] default_wake_function+0x0/0x10
+> > kernel:  [<ffffffff8023fee0>] worker_thread+0x0/0x190
+> > kernel:  [<ffffffff80243b79>] kthread+0xd9/0x120
+> > kernel:  [<ffffffff8020a998>] child_rip+0xa/0x12
+> > kernel:  [<ffffffff80243930>] keventd_create_kthread+0x0/0x90
+> > kernel:  [<ffffffff80243aa0>] kthread+0x0/0x120
+> > kernel:  [<ffffffff8020a98e>] child_rip+0x0/0x12
+> > kernel: 
+> > 
+> 
+> -- 
+> Stuart Anderson  anderson@ligo.caltech.edu
+> http://www.ligo.caltech.edu/~anderson
 
-
+-- 
+Stuart Anderson  anderson@ligo.caltech.edu
+http://www.ligo.caltech.edu/~anderson
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
