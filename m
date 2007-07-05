@@ -1,21 +1,22 @@
-From: "Myles Uyema" <mlists@uyema.net>
-Subject: 'noacl' NFS parameter seems ineffective (Fedora Core 7)
-Date: Thu, 5 Jul 2007 14:01:28 -0700
-Message-ID: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: 'noacl' NFS parameter seems ineffective (Fedora Core 7)
+Date: Thu, 05 Jul 2007 17:19:32 -0400
+Message-ID: <468D6064.3080307@redhat.com>
+References: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1544609742=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Myles Uyema <mlists@uyema.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I6YSA-0006kv-5a
-	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 14:01:30 -0700
-Received: from ug-out-1314.google.com ([66.249.92.173])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I6YSB-0006NB-Kw
-	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 14:01:33 -0700
-Received: by ug-out-1314.google.com with SMTP id m2so594219uge
-	for <nfs@lists.sourceforge.net>; Thu, 05 Jul 2007 14:01:29 -0700 (PDT)
+	id 1I6Yjh-00008v-1x
+	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 14:19:37 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I6Yjk-0007HJ-CS
+	for nfs@lists.sourceforge.net; Thu, 05 Jul 2007 14:19:40 -0700
+In-Reply-To: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,66 +29,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1544609742==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_136635_8844159.1183669288319"
+Myles Uyema wrote:
+> If I understand the explanation of the 'noacl' parameter, it should 
+> prevent ACCESS calls right?  I'm not seeing this occurring on Fedora 
+> Core 7 (2.6.21-1.3228.fc7 #1 SMP Tue Jun 12 14:56:37 EDT 2007 x86_64 
+> x86_64 x86_64 GNU/Linux)
+>
+> I mounted using tcp,noacl,rsize=32768,wsize=32768.  The NFS server is 
+> a NetApp filer running 7.2.1.1 <http://7.2.1.1>, and is a unix-only 
+> filesystem.
+>
+> Then I ran a script to 'dd' 286 files on the NFS mountpoint.  The 
+> script ran as UID 48.
+> 340 reads
+> 286 getattr
+> 286 access
+>
+> The nfsstat showed my client still performing ACCESS calls.  I'd like 
+> to believe that the GETATTR has already verified the permission bits, 
+> and thus an ACCESS shouldn't be necessary. 
 
-------=_Part_136635_8844159.1183669288319
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Actually, all that the "noacl" mount option means is to not attempt
+to get or set or ACLs on the server.  It does not affect the security
+checking that the client does to verify access.
 
-If I understand the explanation of the 'noacl' parameter, it should prevent
-ACCESS calls right?  I'm not seeing this occurring on Fedora Core 7 (
-2.6.21-1.3228.fc7 #1 SMP Tue Jun 12 14:56:37 EDT 2007 x86_64 x86_64 x86_64
-GNU/Linux)
+The permission bits are not enough to determine access permissions.
+Root mapping on the server is an easy example of this.  Therefore,
+the client always goes over the wire to query the server for the
+permissions that it will allow.
 
-I mounted using tcp,noacl,rsize=32768,wsize=32768.  The NFS server is a
-NetApp filer running 7.2.1.1, and is a unix-only filesystem.
+    Thanx...
 
-Then I ran a script to 'dd' 286 files on the NFS mountpoint.  The script ran
-as UID 48.
-340 reads
-286 getattr
-286 access
-
-The nfsstat showed my client still performing ACCESS calls.  I'd like to
-believe that the GETATTR has already verified the permission bits, and thus
-an ACCESS shouldn't be necessary.
-
-------=_Part_136635_8844159.1183669288319
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-If I understand the explanation of the &#39;noacl&#39; parameter, it should prevent ACCESS calls right?&nbsp; I&#39;m not seeing this occurring on Fedora Core 7 (2.6.21-1.3228.fc7 #1 SMP Tue Jun 12 14:56:37 EDT 2007 x86_64 x86_64 x86_64 GNU/Linux)
-<br><br>I mounted using tcp,noacl,rsize=32768,wsize=32768.&nbsp; The NFS server is a NetApp filer running 
-<a href="http://7.2.1.1" target="_blank" onclick="return top.js.OpenExtLink(window,event,this)">7.2.1.1</a>, and is a unix-only filesystem.<br><br>Then I ran a script to &#39;dd&#39; 286 files on the NFS mountpoint.&nbsp; The script ran as UID 48.
-<br>340 reads<br>286 getattr<br>286 access<br><br>The nfsstat showed my client still performing ACCESS calls.&nbsp; I&#39;d like to believe that the GETATTR has already verified the permission bits, and thus an ACCESS shouldn&#39;t be necessary.
-<br>
-
-------=_Part_136635_8844159.1183669288319--
-
-
---===============1544609742==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1544609742==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1544609742==--
