@@ -1,25 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Peter Staubach <staubach@redhat.com>
 Subject: Re: 'noacl' NFS parameter seems ineffective (Fedora Core 7)
-Date: Fri, 06 Jul 2007 09:24:05 -0400
-Message-ID: <1183728245.6463.17.camel@heimdal.trondhjem.org>
-References: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>
+Date: Fri, 06 Jul 2007 09:40:41 -0400
+Message-ID: <468E4659.8090209@redhat.com>
+References: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>	
 	<468D6064.3080307@redhat.com>
+	<1183728245.6463.17.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Peter Staubach <staubach@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I6nnC-00049b-AQ
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 06:24:16 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18eEarJIKMQ723oRzl3edmCaBC8IGFVh+s=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I6nnE-0005q1-Hi
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 06:24:17 -0700
-In-Reply-To: <468D6064.3080307@redhat.com>
+	id 1I6o3G-00065l-BL
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 06:40:51 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I6o3I-0004Az-NE
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 06:40:54 -0700
+In-Reply-To: <1183728245.6463.17.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,25 +31,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-07-05 at 17:19 -0400, Peter Staubach wrote:
-> Actually, all that the "noacl" mount option means is to not attempt
-> to get or set or ACLs on the server.  It does not affect the security
-> checking that the client does to verify access.
-> 
-> The permission bits are not enough to determine access permissions.
-> Root mapping on the server is an easy example of this.  Therefore,
-> the client always goes over the wire to query the server for the
-> permissions that it will allow.
+Trond Myklebust wrote:
+> On Thu, 2007-07-05 at 17:19 -0400, Peter Staubach wrote:
+>   
+>> Actually, all that the "noacl" mount option means is to not attempt
+>> to get or set or ACLs on the server.  It does not affect the security
+>> checking that the client does to verify access.
+>>
+>> The permission bits are not enough to determine access permissions.
+>> Root mapping on the server is an easy example of this.  Therefore,
+>> the client always goes over the wire to query the server for the
+>> permissions that it will allow.
+>>     
+>
+> Right. The confusion here stems from the fact that SuSE attempted to
+> make "noacl" mean both "I will not get/set any posix acls" and "there
+> are no acls on the server" in their kernels.
+>
+> The common practice of root mapping blows that argument right out of the
+> water, and so I never applied the parts of their ACL patches that switch
+> off ACCESS calls.
 
-Right. The confusion here stems from the fact that SuSE attempted to
-make "noacl" mean both "I will not get/set any posix acls" and "there
-are no acls on the server" in their kernels.
+Yes, I think that RHEL-4 had that bug too, at least for a while.  (I hope
+only for a while... :-) )
 
-The common practice of root mapping blows that argument right out of the
-water, and so I never applied the parts of their ACL patches that switch
-off ACCESS calls.
+It was misguided on someone's part to think that no ACLs meant that
+checking the mode bits for permissions was sufficient.
 
-Trond
+    Thanx...
+
+       ps
 
 
 -------------------------------------------------------------------------
