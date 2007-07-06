@@ -1,24 +1,25 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 'noacl' NFS parameter seems ineffective (Fedora Core 7)
-Date: Fri, 06 Jul 2007 07:46:11 -0400
-Message-ID: <468E2B83.70908@redhat.com>
-References: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>	
+Date: Fri, 06 Jul 2007 09:24:05 -0400
+Message-ID: <1183728245.6463.17.camel@heimdal.trondhjem.org>
+References: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com>
 	<468D6064.3080307@redhat.com>
-	<a90f74cc0707051439t3f471394s1e750ec5c3e4befb@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Myles Uyema <mlists@uyema.net>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I6mGP-0000n6-KV
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 04:46:17 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I6mGT-0002Ut-1G
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 04:46:21 -0700
-In-Reply-To: <a90f74cc0707051439t3f471394s1e750ec5c3e4befb@mail.gmail.com>
+	id 1I6nnC-00049b-AQ
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 06:24:16 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18eEarJIKMQ723oRzl3edmCaBC8IGFVh+s=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I6nnE-0005q1-Hi
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 06:24:17 -0700
+In-Reply-To: <468D6064.3080307@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,15 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Myles Uyema wrote:
-> Thanks for the clarification.  I don't suppose there's an option to do 
-> what I've described?  Rather - assume that there is no acl, no uid 
-> mapping/translation on the server side?
+On Thu, 2007-07-05 at 17:19 -0400, Peter Staubach wrote:
+> Actually, all that the "noacl" mount option means is to not attempt
+> to get or set or ACLs on the server.  It does not affect the security
+> checking that the client does to verify access.
+> 
+> The permission bits are not enough to determine access permissions.
+> Root mapping on the server is an easy example of this.  Therefore,
+> the client always goes over the wire to query the server for the
+> permissions that it will allow.
 
-Yes, but there are other ramifications of it.  It is "nfsvers=2" and
-you'll be limited to 8K reads and writes...
+Right. The confusion here stems from the fact that SuSE attempted to
+make "noacl" mean both "I will not get/set any posix acls" and "there
+are no acls on the server" in their kernels.
 
-       ps
+The common practice of root mapping blows that argument right out of the
+water, and so I never applied the parts of their ACL patches that switch
+off ACCESS calls.
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
