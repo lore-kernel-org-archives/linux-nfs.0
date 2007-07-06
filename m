@@ -1,26 +1,29 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: [PATCH 2/3] SUNRPC client: add interface for binding to
-	a	local address
-Date: Fri, 6 Jul 2007 18:31:48 +0200
-Message-ID: <20070706163148.GA19489@janus>
-References: <20070705152634.GC6603@janus>
-	<1183729576.6463.29.camel@heimdal.trondhjem.org>
-	<468E6269.8080004@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: maintainership question about nfs-utils/util/mount
+Date: Fri, 06 Jul 2007 16:13:23 -0400
+Message-ID: <468EA263.5010909@oracle.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/mixed; boundary="------------060804040103040905070208"
+To: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I6qig-0000fl-Rl
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 09:31:49 -0700
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I6qik-0000Bz-1m
-	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 09:31:50 -0700
-In-Reply-To: <468E6269.8080004@oracle.com>
+	id 1I6uC8-0000hv-1s
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 13:14:24 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I6uCA-00059m-GG
+	for nfs@lists.sourceforge.net; Fri, 06 Jul 2007 13:14:27 -0700
+Received: from rgmgw1.us.oracle.com (rgmgw1.us.oracle.com [138.1.186.110])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l66KEEmT024747
+	for <nfs@lists.sourceforge.net>; Fri, 6 Jul 2007 15:14:14 -0500
+Received: from acsmt351.oracle.com (acsmt351.oracle.com [141.146.40.151])
+	by rgmgw1.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l669wcaq020250
+	for <nfs@lists.sourceforge.net>; Fri, 6 Jul 2007 14:14:12 -0600
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,62 +36,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jul 06, 2007 at 11:40:25AM -0400, Chuck Lever wrote:
-> Trond Myklebust wrote:
-> >On Thu, 2007-07-05 at 17:26 +0200, Frank van Maarseveen wrote:
-> >>@@ -1146,31 +1147,33 @@ static void xs_set_port(struct rpc_xprt 
-> >> 	sap->sin_port = htons(port);
-> >> }
-> >> 
-> >>-static int xs_bindresvport(struct sock_xprt *transport, struct socket 
-> >>*sock)
-> >>+static int xs_bind(struct sock_xprt *transport, struct socket *sock)
-> >> {
-> >> 	struct sockaddr_in myaddr = {
-> >> 		.sin_family = AF_INET,
-> >> 	};
-> >>+	struct sockaddr_in *sa;
-> >> 	int err;
-> >> 	unsigned short port = transport->port;
-> >
-> >Instead of forcing two tests of transport->xprt.resvport per loop, why
-> >not just set port to 0 in the case of !transport->xprt.resvport?
-> 
-> This logic seems unnecessarily complicated to me, too.  I'm not so 
-> concerned about the loop optimization, but it certainly isn't immediate 
-> from looking at these changes exactly what is going on here in the two 
-> important cases ("yes we want a reserved port" and "no, any old port 
-> will do, thanks").  Anything that clarifies this would be welcome, but 
-> I'd encourage code clarity over just adding a comment or two.
+This is a multi-part message in MIME format.
+--------------060804040103040905070208
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-ok, I'll rephrase it a bit.
+I'm looking at nfs-utils/utils/mount in order to patch in support for 
+passing a string of mount options to the kernel instead of an 
+nfs_mount_data.
 
-[snip]
-> >>-	dprintk("RPC:       can't bind to reserved port (%d).\n", -err);
-> >>+	dprintk("RPC:       xs_bind "NIPQUAD_FMT":%u: %d\n",
-> >>+		NIPQUAD(myaddr.sin_addr), port, err);
-> >
-> >Hmm... I thought you said this was IPv6 clean :-)
-> 
-> Well, IPv6 uses a separate xs_bindresvport routine, so IPv4-specific 
-> stuff can be added in here with aplomb.  We just have to remember to 
-> make Frank's changes to the xs_bindresvport6 when it is integrated.
-> 
-> Frank, can you make this debugging message a little more friendly?
+In mount.c, main() invokes nfsmount() in nfsmount.c.  nfsmount() defines 
+a structure on the stack called "data", then returns a pointer to "data" 
+which is then passed to the kernel by main().
 
-ok,
+I think the only way this continues to work is that there are three 1024 
+character buffers defined in nfsmount()'s stack frame before "data," 
+which places "data" far enough up the stack that subsequent function 
+calls in main() don't smash it.
 
-I'll first create a cleanup patch as Trond suggested.
+Although this doesn't cause bad behavior today, it needs to be fixed to 
+prevent future changes from breaking things badly.
+
+Also found an interesting error message in here:
+
+   permission died - no match for fstab
+
+Should probably be "permission denied".  I'm not really sure what "no 
+match for fstab" means, but looking at the context, this message appears 
+if a non-root user tries to mount something that isn't already listed in 
+/etc/fstab.
+
+What's the current blessed procedure for sending patches and fixes for 
+this particular code?  Mail to agud@redhat.com (last touch rule, and 
+author of mount.c) is rejected.
+
+--------------060804040103040905070208
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
 
--- 
-Frank
+--------------060804040103040905070208
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--------------060804040103040905070208
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060804040103040905070208--
