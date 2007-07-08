@@ -1,24 +1,21 @@
-From: David Liontooth <liontooth@cogweb.net>
-Subject: NFS using iptables PREROUTING?
-Date: Sun, 08 Jul 2007 09:18:24 -0700
-Message-ID: <46910E50.2020000@cogweb.net>
+From: "Steinar H. Gunderson" <sesse@debian.org>
+Subject: Status of mount.nfs
+Date: Sun, 8 Jul 2007 21:16:40 +0200
+Message-ID: <20070708191640.GA13962@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: lamont@debian.org
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I7ZSu-0004Ia-8e
-	for nfs@lists.sourceforge.net; Sun, 08 Jul 2007 09:18:28 -0700
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7ZSw-00055l-Mt
-	for nfs@lists.sourceforge.net; Sun, 08 Jul 2007 09:18:31 -0700
-Received: from TimTi-2.local (adsl-75-56-200-174.dsl.lsan03.sbcglobal.net
-	[75.56.200.174])
-	by flpi102.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l68GINFq004560
-	for <nfs@lists.sourceforge.net>; Sun, 8 Jul 2007 09:18:23 -0700
+	id 1I7cFP-0004vi-Fe
+	for nfs@lists.sourceforge.net; Sun, 08 Jul 2007 12:16:44 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I7cFR-0005Pd-0l
+	for nfs@lists.sourceforge.net; Sun, 08 Jul 2007 12:16:45 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,81 +28,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hi,
 
-Is it possible to access an NFS server on a private network from a 
-machine on a public network?
+util-linux 2.13 drops support for NFS mounts:
 
-I have a Debian box B on a private network visible only to a gateway G. 
-B has drive partitions I would like to mount on outside box A.
-To make B visible to A, I use this sort of thing for ssh:
+  Release highlights:
+  ------------------
+   mount(8) doesn't include NFS client code anymore. Don't forget to
+   install nfs-utils 1.1.0 or newer with /sbin/[u]mount.{nfs,nfs4}.
 
-  iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9000 -j 
-DNAT --to 192.168.0.1:22
+However, the last I can find in nfs-utils changelog about this is:
 
-This allows me to ssh directly from A to B, as if B were on a public 
-network. Can I do the same with NFS?
+  commit 99414bd3eecf93f23c378d3bb3d45bc98f364abc
+  Author: Neil Brown <neilb@suse.de>
+  Date:   Sat Jul 8 09:41:58 2006 +1000
+  
+      Disable building/installing mount.nfs by default.
+      
+      mount.nfs does not yet support 'user' option and some others.
+      To make it support this we need to make it setuid-root, and
+      some security isses need to be resolved before that can be done
+      safely.
 
-So far, I've figured out how to fix the port of mountd, statd, and 
-lockd, and I can preroute these ports, along with 2049 for nfs and 111 
-for portmap.
-For each of these, I can preroute tcp and udp packets on G:
+What's the current recommendation for distributions with regard to NFS
+mounting?
 
-# Forward tcp and udp on port 111 for portmap on A
-  iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9200 -j 
-DNAT --to 192.168.0.3:111
-  iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9200 -j 
-DNAT --to 192.168.0.3:111
-
-# Forward tcp and upd for port 2049 for nfs to A (tcp may not be needed)   
-  iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9201 -j 
-DNAT --to 192.168.0.3:2049
-  iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9201 -j 
-DNAT --to 192.168.0.3:2049
-
-# Forward tcp and udp for lockd (port assigned in A:/boot/grub/menu.lst)
-  iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9202 -j 
-DNAT --to 192.168.0.3:4000
-  iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9202 -j 
-DNAT --to 192.168.0.3:4000
-
-# Forward tcp and udp for mountd (port assigned in 
-A:/etc/default/nfs-common)
-  iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9203 -j 
-DNAT --to 192.168.0.3:4001
-  iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9203 -j 
-DNAT --to 192.168.0.3:4001
-
-# Forward tcp and udp for statd (port assigned in A:/etc/default/nfs-common)
-  iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9204 -j 
-DNAT --to 192.168.0.3:4002
-  iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9204 -j 
-DNAT --to 192.168.0.3:4002
-# Do you need a POSTROUTING line to take outgoing tcp/udp for statd on 
-port 4003?
-
-However, at this point I get a sinking feeling this is still not possible.
-
-Is there a way on the client A to specify where to look for the 
-different NFS resources on B (via G)?
-
-How do I tell NFS that for this particular mount B, and only for B, 
-portmap is on 9200, nfs is on 9201, lockd on 9202, mountd on 9203, and 
-statd on 9204?
-Can I specify all of this in /etc/fstab? For ssh, I can specify 
-host:port in /etc/ssh/ssh_config, but it uses only one service.
-
-On A, I also mount several other NFS drives, and they need the default 
-ports.
-G, the gateway, also exports its own drives to A via NFS, using the 
-default ports.
-
-I would prefer straight NFS with iptables to ssh tunneling, but can it 
-be done?
-
-Cheers,
-Dave
-
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
