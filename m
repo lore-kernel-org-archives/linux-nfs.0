@@ -1,20 +1,26 @@
-From: "Mailer-Deamon" <pybse@sparkasse-hof.de>
-Subject: Worm Alert!
-Date: Mon, 9 Jul 2007 16:35:03 -0500
-Message-ID: <a9ebeed435601e5ee713076a3db57338@sparkasse-hof.de>
-Reply-To: pybse@sparkasse-hof.de
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.22 [PATCH 0/3] NLM: fix source address in
+	server	callbacks
+Date: Mon, 09 Jul 2007 18:23:21 -0400
+Message-ID: <1184019801.6468.67.camel@heimdal.trondhjem.org>
+References: <20070709201913.GA3970@janus>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1593345377=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Frank van Maarseveen <frankvm@frankvm.com>,
+	Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I80uZ-0001jF-9V
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 14:36:51 -0700
-Received: from vpn.nwths.net ([69.149.174.2] helo=vpn.nwths.com)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I80ub-0001N6-2m
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 14:36:55 -0700
+	id 1I81di-0006JJ-9c
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 15:23:31 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18fzfWfqxr4KeKmTdqAOzrBmU6/bF5HB9s=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I81dl-0004Mg-Fz
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 15:23:33 -0700
+In-Reply-To: <20070709201913.GA3970@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,47 +33,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1593345377==
-Content-Transfer-Encoding: 7bit
-Content-Type: text/html; charset="iso-8859-1"
+On Mon, 2007-07-09 at 22:19 +0200, Frank van Maarseveen wrote:
+> Here's the patchset again but this time for 2.6.22 (verified) and based on
+> the earlier cleanup patch for creating a SUNRPC transport.  The xs_bind
+> (formerly xs_bindresvport) function slightly been recoded to make more
+> clear what it does.
+> 
+> The first patch changes the TCP server socket code to save the socket
+> name right after an accept(). This local address of a connection
+> (destination address of a request) is needed for connecting back when
+> doing the callback later. For UDP the address was already saved for RPC
+> replies because UDP is connectionless. This patch is IPv6 clean.
+> 
+> The second patch changes the NFS client code to be able to bind not only
+> to a privileged port but also to bind to a specific local address. The
+> client code is used by the server for callbacks.
+> 
+> The third patch is the actual NLM fix.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
-<body>
-Dear Customer,<br>
-<br>
-Our robot has detected an abnormal activity from your IP adress <br>
-on sending e-mails. Probably it is connected with the last epidemic <br>
-of a worm which does not have official patches at the moment.<br>
-<br>
-We recommend you to install <a href="http://70.242.82.90/?7a85955ab65e8517a32e6b9ea6878b15d7">this patch</a> to remove worm files <br>
-and stop email sending, otherwise your account will be blocked.<br>
-<br>
-Mailer-Deamon<br>
-</body>
-</html>
+I've appended them to the NFS_ALL and the git tree. Unless Neil objects,
+I propose that we just shove them in together with the existing NFS
+merge.
 
+Cheers
+  Trond
 
-
---===============1593345377==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1593345377==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1593345377==--
