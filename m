@@ -1,25 +1,23 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Status of mount.nfs
-Date: Mon, 09 Jul 2007 12:45:15 -0400
-Message-ID: <4692661B.7080701@oracle.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>
-	<20070709095511.GA17815@uio.no>
-Reply-To: chuck.lever@oracle.com
+From: David Liontooth <liontooth@cogweb.net>
+Subject: Re: NFS using iptables PREROUTING?
+Date: Mon, 09 Jul 2007 11:37:53 -0700
+Message-ID: <46928081.4040209@cogweb.net>
+References: <46910E50.2020000@cogweb.net>	<4691D4BC.2010007@cogweb.net>
+	<20070709063902.675c49e3.jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070100030604090900040407"
-Cc: lamont@debian.org, nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I7wNv-0005Gv-5p
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 09:46:57 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I7wNw-0006ug-3S
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 09:46:54 -0700
-In-Reply-To: <20070709095511.GA17815@uio.no>
+	id 1I7y7U-0008A6-3c
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 11:38:00 -0700
+Received: from flpvm09.prodigy.net ([207.115.20.39])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7y7X-0005IQ-JY
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 11:38:03 -0700
+In-Reply-To: <20070709063902.675c49e3.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,78 +30,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070100030604090900040407
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Steinar H. Gunderson wrote:
-> On Mon, Jul 09, 2007 at 01:17:19PM +1000, Neil Brown wrote:
->> I wonder why you didn't find:
->> commit b3b111b1bd5fbc678419bf1964b6093045081139
->> Author: Neil Brown <neilb@suse.de>
->> Date:   Tue Mar 20 14:18:41 2007 +1100
->>
->>     Build mount.nfs by default, and install setuid
+Jeff Layton wrote:
+> On Sun, 08 Jul 2007 23:25:00 -0700
+> David Liontooth <liontooth@cogweb.net> wrote:
+>
+>   
+>> David Liontooth wrote:
 >>     
->>     Also fix a few bugs that came up in initial testing.
-> 
-> There's a simple explanation for that -- I checked the file ChangeLog, which
-> doesn't seem to have been updated since September, now that I look at it. I
-> guess you stopped updating it at some point...
-> 
->> nfs-utils-1.1.0 builds and install mount.nfs by default, and should be
->> used with the new util-linux.
+>>> Is it possible to access an NFS server on a private network from a 
+>>> machine on a public network?
+>>>   
+>>>       
+>> It turns out to be a lot simpler than I thought -- no need to worry 
+>> about lockd, portmap, or statd.
+>>
+>> On the host A, set the mountd port in /etc/default/nfs-kernel-server:
+>>
+>>     RPCMOUNTDOPTS="--port 4000"
+>>
+>> In the gateway G's /etc/network/if-up.d/00-firewall, forward the NFS and 
+>> the mountd ports
+>>
+>>     # NFS: Forward udp on port 2049 to A on the private network
+>>     iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9101 
+>> -j DNAT --to 192.168.0.3:2049
+>>
+>>     # Forward tcp and udp for mountd on A (port assigned in 
+>> A:/etc/default/nfs-common)
+>>     iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9201 
+>> -j DNAT --to 192.168.0.3:4000
+>>     iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9201 
+>> -j DNAT --to 192.168.0.3:4000
+>>
+>> In the client B's /etc/hosts, define an alias for the NFS host behind 
+>> the firewall, using the IP address of the gateway:
+>>
+>>    128.65.183.178  a.fully.qualified.domain.name   A
+>>
+>> And in the client B's /etc/fstab, define the mount, adding the gateway's 
+>> ports that forward NFS and mountd to the host:
+>>
+>>    A:/db1 /mnt/a1 nfs 
+>> noauto,user,exec,rw,rsize=16k,wsize=16k,hard,intr,port=9101,mountport=9201 
+>> 0 0
+>>
+>> Works beautifully and transparently. Or does someone spot a potential 
+>> problem?
+>>
+>>     
+>
+> That should work fine, unless you have applications that do posix locking.
+> In that case, you'll likely have problems since lockd can't be reached. An
+> even easier method might be to consider moving to NFSv4, which just uses
+> port 2049 for everything.
+>
+>   
+Very useful, thank you.
 
-I just noticed this morning that "./configure --help" in the latest git 
-repo still says this:
 
-   --enable-mount          Create mount.nfs and don't use the util-linux
-                           mount(8) functionality. [default=no]
-                                                   ^^^^^^^^^^^^
-
-If building and installing mount.nfs is the default, perhaps this should 
-be updated.
-
---------------070100030604090900040407
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel/
-version:2.1
-end:vcard
-
-
---------------070100030604090900040407
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------070100030604090900040407
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070100030604090900040407--
