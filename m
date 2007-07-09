@@ -1,19 +1,20 @@
 From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: 2.6.22 [PATCH 0/3] NLM: fix source address in server callbacks
-Date: Mon, 9 Jul 2007 22:19:13 +0200
-Message-ID: <20070709201913.GA3970@janus>
+Subject: 2.6.22 [PATCH 1/3] SUNRPC server: record the destination
+	address of a request
+Date: Mon, 9 Jul 2007 22:21:39 +0200
+Message-ID: <20070709202139.GB3970@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I7zhQ-0002Es-S6
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:19:12 -0700
+	id 1I7zjm-0002Tf-Pu
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:21:38 -0700
 Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7zhS-0005bU-Td
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:19:16 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7zjq-0003e6-2C
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:21:42 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,22 +27,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Here's the patchset again but this time for 2.6.22 (verified) and based on
-the earlier cleanup patch for creating a SUNRPC transport.  The xs_bind
-(formerly xs_bindresvport) function slightly been recoded to make more
-clear what it does.
+Save the destination address of an incoming request over TCP like is
+done already for UDP. It is necessary later for callbacks by the server.
 
-The first patch changes the TCP server socket code to save the socket
-name right after an accept(). This local address of a connection
-(destination address of a request) is needed for connecting back when
-doing the callback later. For UDP the address was already saved for RPC
-replies because UDP is connectionless. This patch is IPv6 clean.
+Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
+---
 
-The second patch changes the NFS client code to be able to bind not only
-to a privileged port but also to bind to a specific local address. The
-client code is used by the server for callbacks.
-
-The third patch is the actual NLM fix.
+diff -urp a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+--- a/include/linux/sunrpc/svcsock.h	2007-07-09 19:43:50.000000000 +0200
++++ b/include/linux/sunrpc/svcsock.h	2007-07-09 19:51:54.000000000 +0200
+@@ -59,6 +59,7 @@ struct svc_sock {
+ 	/* cache of various info for TCP sockets */
+ 	void			*sk_info_authunix;
+ 
++	struct sockaddr_storage	sk_local;	/* local address */
+ 	struct sockaddr_storage	sk_remote;	/* remote peer's address */
+ 	int			sk_remotelen;	/* length of address */
+ };
+diff -urp a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+--- a/net/sunrpc/svcsock.c	2007-07-09 19:43:54.000000000 +0200
++++ b/net/sunrpc/svcsock.c	2007-07-09 19:51:54.000000000 +0200
+@@ -644,6 +644,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	struct msghdr msg = {
+ 		.msg_flags	= MSG_DONTWAIT,
+ 	};
++	struct sockaddr *sin;
+ 	int len;
+ 
+ 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+@@ -654,6 +655,19 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+ 	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
+ 	rqstp->rq_addrlen = svsk->sk_remotelen;
+ 
++	/* Destination address in request is needed for binding the
++	 * source address in RPC callbacks later.
++	 */
++	sin = (struct sockaddr *)&svsk->sk_local;
++	switch (sin->sa_family) {
++	case AF_INET:
++		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
++		break;
++	case AF_INET6:
++		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
++		break;
++	}
++
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+ 		svsk, iov[0].iov_base, iov[0].iov_len, len);
+ 
+@@ -1064,6 +1078,12 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 		goto failed;
+ 	memcpy(&newsvsk->sk_remote, sin, slen);
+ 	newsvsk->sk_remotelen = slen;
++	err = kernel_getsockname(newsock, sin, &slen);
++	if (unlikely(err < 0)) {
++		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
++		slen = offsetof(struct sockaddr, sa_data);
++	}
++	memcpy(&newsvsk->sk_local, sin, slen);
+ 
+ 	svc_sock_received(newsvsk);
+ 
 
 -- 
 Frank
