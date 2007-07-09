@@ -1,26 +1,24 @@
-From: David Liontooth <liontooth@cogweb.net>
-Subject: Re: NFS using iptables PREROUTING?
-Date: Sun, 08 Jul 2007 23:25:00 -0700
-Message-ID: <4691D4BC.2010007@cogweb.net>
-References: <46910E50.2020000@cogweb.net>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: Status of mount.nfs
+Date: Mon, 9 Jul 2007 11:55:41 +0200
+Message-ID: <20070709095511.GA17815@uio.no>
+References: <20070708191640.GA13962@uio.no>
+	<18065.43199.104020.412029@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: lamont@debian.org, nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I7mgB-0003TZ-34
-	for nfs@lists.sourceforge.net; Sun, 08 Jul 2007 23:25:03 -0700
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7mgE-00028i-Jd
-	for nfs@lists.sourceforge.net; Sun, 08 Jul 2007 23:25:06 -0700
-Received: from TimTi-2.local (adsl-75-56-200-174.dsl.lsan03.sbcglobal.net
-	[75.56.200.174])
-	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l696OtNp002820
-	for <nfs@lists.sourceforge.net>; Sun, 8 Jul 2007 23:24:55 -0700
-In-Reply-To: <46910E50.2020000@cogweb.net>
+	id 1I7py9-0001eC-9z
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 02:55:52 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I7pyB-00034m-B3
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 02:55:52 -0700
+In-Reply-To: <18065.43199.104020.412029@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,50 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-David Liontooth wrote:
-> Is it possible to access an NFS server on a private network from a 
-> machine on a public network?
->   
-It turns out to be a lot simpler than I thought -- no need to worry 
-about lockd, portmap, or statd.
+On Mon, Jul 09, 2007 at 01:17:19PM +1000, Neil Brown wrote:
+> I wonder why you didn't find:
+> commit b3b111b1bd5fbc678419bf1964b6093045081139
+> Author: Neil Brown <neilb@suse.de>
+> Date:   Tue Mar 20 14:18:41 2007 +1100
+> 
+>     Build mount.nfs by default, and install setuid
+>     
+>     Also fix a few bugs that came up in initial testing.
 
-On the host A, set the mountd port in /etc/default/nfs-kernel-server:
+There's a simple explanation for that -- I checked the file ChangeLog, which
+doesn't seem to have been updated since September, now that I look at it. I
+guess you stopped updating it at some point...
 
-    RPCMOUNTDOPTS="--port 4000"
+> nfs-utils-1.1.0 builds and install mount.nfs by default, and should be
+> used with the new util-linux.
 
-In the gateway G's /etc/network/if-up.d/00-firewall, forward the NFS and 
-the mountd ports
+Thanks for the clarification; we'll make the switch pretty shortly.
 
-    # NFS: Forward udp on port 2049 to A on the private network
-    iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9101 
--j DNAT --to 192.168.0.3:2049
-
-    # Forward tcp and udp for mountd on A (port assigned in 
-A:/etc/default/nfs-common)
-    iptables -t nat -A PREROUTING -p tcp -d 128.65.183.178 --dport 9201 
--j DNAT --to 192.168.0.3:4000
-    iptables -t nat -A PREROUTING -p udp -d 128.65.183.178 --dport 9201 
--j DNAT --to 192.168.0.3:4000
-
-In the client B's /etc/hosts, define an alias for the NFS host behind 
-the firewall, using the IP address of the gateway:
-
-   128.65.183.178  a.fully.qualified.domain.name   A
-
-And in the client B's /etc/fstab, define the mount, adding the gateway's 
-ports that forward NFS and mountd to the host:
-
-   A:/db1 /mnt/a1 nfs 
-noauto,user,exec,rw,rsize=16k,wsize=16k,hard,intr,port=9101,mountport=9201 
-0 0
-
-Works beautifully and transparently. Or does someone spot a potential 
-problem?
-
-Cheers,
-Dave
-
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
