@@ -1,8 +1,8 @@
 From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: 2.6.22 [PATCH 1/3] SUNRPC server: record the destination
-	address of a request
-Date: Mon, 9 Jul 2007 22:21:39 +0200
-Message-ID: <20070709202139.GB3970@janus>
+Subject: 2.6.22 [PATCH 2/3] SUNRPC client: add interface for binding
+	to a local address
+Date: Mon, 9 Jul 2007 22:23:35 +0200
+Message-ID: <20070709202335.GC3970@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: Linux NFS mailing list <nfs@lists.sourceforge.net>
@@ -10,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I7zjm-0002Tf-Pu
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:21:38 -0700
+	id 1I7zld-0002gH-7s
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:23:33 -0700
 Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7zjq-0003e6-2C
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:21:42 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7zlg-0004VR-9X
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 13:23:36 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,67 +27,127 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Save the destination address of an incoming request over TCP like is
-done already for UDP. It is necessary later for callbacks by the server.
+In addition to binding to a local privileged port the NFS client should
+allow binding to a specific local address. This is used by the server
+for callbacks. The patch adds the necessary interface.
 
 Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
 ---
 
-diff -urp a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
---- a/include/linux/sunrpc/svcsock.h	2007-07-09 19:43:50.000000000 +0200
-+++ b/include/linux/sunrpc/svcsock.h	2007-07-09 19:51:54.000000000 +0200
-@@ -59,6 +59,7 @@ struct svc_sock {
- 	/* cache of various info for TCP sockets */
- 	void			*sk_info_authunix;
+diff -urp a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+--- a/include/linux/sunrpc/clnt.h	2007-07-09 19:43:50.000000000 +0200
++++ b/include/linux/sunrpc/clnt.h	2007-07-09 19:53:10.000000000 +0200
+@@ -98,6 +98,7 @@ struct rpc_create_args {
+ 	int			protocol;
+ 	struct sockaddr		*address;
+ 	size_t			addrsize;
++	struct sockaddr		*saddress;
+ 	struct rpc_timeout	*timeout;
+ 	char			*servername;
+ 	struct rpc_program	*program;
+diff -urp a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+--- a/include/linux/sunrpc/xprt.h	2007-07-09 19:48:04.000000000 +0200
++++ b/include/linux/sunrpc/xprt.h	2007-07-09 19:53:10.000000000 +0200
+@@ -198,6 +198,7 @@ struct rpc_xprt {
  
-+	struct sockaddr_storage	sk_local;	/* local address */
- 	struct sockaddr_storage	sk_remote;	/* remote peer's address */
- 	int			sk_remotelen;	/* length of address */
- };
-diff -urp a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
---- a/net/sunrpc/svcsock.c	2007-07-09 19:43:54.000000000 +0200
-+++ b/net/sunrpc/svcsock.c	2007-07-09 19:51:54.000000000 +0200
-@@ -644,6 +644,7 @@ svc_recvfrom(struct svc_rqst *rqstp, str
- 	struct msghdr msg = {
- 		.msg_flags	= MSG_DONTWAIT,
+ struct rpc_xprtsock_create {
+ 	int			proto;		/* IPPROTO_UDP or IPPROTO_TCP */
++	struct sockaddr *	srcaddr;	/* optional local address */
+ 	struct sockaddr *	dstaddr;	/* remote peer address */
+ 	size_t			addrlen;
+ 	struct rpc_timeout *	timeout;	/* optional timeout parameters */
+diff -urp a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+--- a/net/sunrpc/clnt.c	2007-07-09 19:46:35.000000000 +0200
++++ b/net/sunrpc/clnt.c	2007-07-09 19:53:10.000000000 +0200
+@@ -207,6 +207,7 @@ struct rpc_clnt *rpc_create(struct rpc_c
+ 	struct rpc_clnt *clnt;
+ 	struct rpc_xprtsock_create xprtargs = {
+ 		.proto = args->protocol,
++		.srcaddr = args->saddress,
+ 		.dstaddr = args->address,
+ 		.addrlen = args->addrsize,
+ 		.timeout = args->timeout
+diff -urp a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+--- a/net/sunrpc/xprtsock.c	2007-07-09 19:46:35.000000000 +0200
++++ b/net/sunrpc/xprtsock.c	2007-07-09 19:53:10.000000000 +0200
+@@ -235,6 +235,7 @@ struct sock_xprt {
+ 	 * Connection of transports
+ 	 */
+ 	struct delayed_work	connect_worker;
++	struct sockaddr_storage	addr;
+ 	unsigned short		port;
+ 
+ 	/*
+@@ -1146,31 +1147,36 @@ static void xs_set_port(struct rpc_xprt 
+ 	sap->sin_port = htons(port);
+ }
+ 
+-static int xs_bindresvport(struct sock_xprt *transport, struct socket *sock)
++static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+ {
+ 	struct sockaddr_in myaddr = {
+ 		.sin_family = AF_INET,
  	};
-+	struct sockaddr *sin;
- 	int len;
++	struct sockaddr_in *sa;
+ 	int err;
+ 	unsigned short port = transport->port;
  
- 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
-@@ -654,6 +655,19 @@ svc_recvfrom(struct svc_rqst *rqstp, str
- 	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
- 	rqstp->rq_addrlen = svsk->sk_remotelen;
++	if (!transport->xprt.resvport)
++		port = 0;
++	sa = (struct sockaddr_in *)&transport->addr;
++	myaddr.sin_addr = sa->sin_addr;
+ 	do {
+ 		myaddr.sin_port = htons(port);
+ 		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
+ 						sizeof(myaddr));
++		if (!transport->xprt.resvport)
++			break;
+ 		if (err == 0) {
+ 			transport->port = port;
+-			dprintk("RPC:       xs_bindresvport bound to port %u\n",
+-					port);
+-			return 0;
++			break;
+ 		}
+ 		if (port <= xprt_min_resvport)
+ 			port = xprt_max_resvport;
+ 		else
+ 			port--;
+ 	} while (err == -EADDRINUSE && port != transport->port);
+-
+-	dprintk("RPC:       can't bind to reserved port (%d).\n", -err);
++	dprintk("RPC:       xs_bind "NIPQUAD_FMT":%u: %s (%d)\n",
++		NIPQUAD(myaddr.sin_addr), port, err ? "failed" : "ok", err);
+ 	return err;
+ }
  
-+	/* Destination address in request is needed for binding the
-+	 * source address in RPC callbacks later.
-+	 */
-+	sin = (struct sockaddr *)&svsk->sk_local;
-+	switch (sin->sa_family) {
-+	case AF_INET:
-+		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
-+		break;
-+	case AF_INET6:
-+		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
-+		break;
-+	}
-+
- 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
- 		svsk, iov[0].iov_base, iov[0].iov_len, len);
+@@ -1229,7 +1235,7 @@ static void xs_udp_connect_worker(struct
+ 	}
+ 	xs_reclassify_socket(sock);
  
-@@ -1064,6 +1078,12 @@ svc_tcp_accept(struct svc_sock *svsk)
- 		goto failed;
- 	memcpy(&newsvsk->sk_remote, sin, slen);
- 	newsvsk->sk_remotelen = slen;
-+	err = kernel_getsockname(newsock, sin, &slen);
-+	if (unlikely(err < 0)) {
-+		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
-+		slen = offsetof(struct sockaddr, sa_data);
-+	}
-+	memcpy(&newsvsk->sk_local, sin, slen);
+-	if (xprt->resvport && xs_bindresvport(transport, sock) < 0) {
++	if (xs_bind(transport, sock)) {
+ 		sock_release(sock);
+ 		goto out;
+ 	}
+@@ -1316,7 +1322,7 @@ static void xs_tcp_connect_worker(struct
+ 		}
+ 		xs_reclassify_socket(sock);
  
- 	svc_sock_received(newsvsk);
+-		if (xprt->resvport && xs_bindresvport(transport, sock) < 0) {
++		if (xs_bind(transport, sock)) {
+ 			sock_release(sock);
+ 			goto out;
+ 		}
+@@ -1534,6 +1540,8 @@ static struct rpc_xprt *xs_setup_xprt(st
  
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
++	if (args->srcaddr)
++		memcpy(&new->addr, args->srcaddr, args->addrlen);
+ 	new->port = xs_get_random_port();
+ 
+ 	return xprt;
 
 -- 
 Frank
