@@ -1,20 +1,25 @@
-From: "Susie Cobb" <fernandapauladecastro@yahoo.com.br>
-Subject: Work at Home!
-Date: Mon, 9 Jul 2007 11:41:01 -0300
-Message-ID: <028430151.68415169840858@yahoo.com.br>
-Reply-To: fernandapauladecastro@yahoo.com.br
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] SUNRPC: cleanup transport creation
+	argument	passing
+Date: Mon, 09 Jul 2007 08:45:57 -0400
+Message-ID: <1183985157.6468.2.camel@heimdal.trondhjem.org>
+References: <20070708110854.GA14883@janus>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1801953406=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I7rbz-0005K5-6Q
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 04:41:03 -0700
-Received: from pppoe238-113.si-chelny.ru ([89.248.113.238])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I7rc1-0005Dt-Lb
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 04:41:06 -0700
+	id 1I7sd0-00043z-S8
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 05:46:11 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX19F50vtDSbvrxjPPNkifWsiX5vsvV5knpo=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I7sd3-0002TU-LH
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 05:46:14 -0700
+In-Reply-To: <20070708110854.GA14883@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,181 +32,233 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1801953406==
-Content-Type: multipart/alternative;
-  boundary="----------67CB67CBD3A7CBDA"
+On Sun, 2007-07-08 at 13:08 +0200, Frank van Maarseveen wrote:
+> Cleanup argument passing to functions for creating an RPC transport.
+> 
+> Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
 
-------------67CB67CBD3A7CBDA
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
+That looks good. Thanks Frank!
 
+   Trond
 
-  
-  
-    
-      
-  
-    
-      
-      Career 
-      opportunities with Capital Securities.
-      
-    
-  
-    
-      Dear 
-      friends,
-      Capital Securities. Company is 
-      proud to announce additional recruitment for Financial Representative 
-      positions. 
-      Capital Securities Ltd has been servicing the financial markets for 3 years. 
-We have achieved a notable level of success by hiring only the most ethical, the hardest working, experienced 
-professionals.  We are one of a select number of firms with an unblemished regulatory record.  
-Protecting our clients' best interests is one of our highest priorities.  
-And our financial success, and the reward for our team members, has been equally significant. 
- 
-If you are looking to work with successful team, please contact us by sending an email, 
-with your resume attached, to capitsecurities@aol.com.  
-Any submitted information or other communications will be kept in the strictest of confidence.  
+> ---
+> 
+> diff -urp a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> --- a/include/linux/sunrpc/xprt.h	2007-02-27 20:29:06.000000000 +0100
+> +++ b/include/linux/sunrpc/xprt.h	2007-07-08 12:22:18.000000000 +0200
+> @@ -17,6 +17,8 @@
+>  #include <linux/sunrpc/xdr.h>
+>  #include <linux/sunrpc/msg_prot.h>
+>  
+> +#ifdef __KERNEL__
+> +
+>  extern unsigned int xprt_udp_slot_table_entries;
+>  extern unsigned int xprt_tcp_slot_table_entries;
+>  
+> @@ -191,7 +193,12 @@ struct rpc_xprt {
+>  	char *			address_strings[RPC_DISPLAY_MAX];
+>  };
+>  
+> -#ifdef __KERNEL__
+> +struct rpc_xprtsock_create {
+> +	int			proto;		/* IPPROTO_UDP or IPPROTO_TCP */
+> +	struct sockaddr *	dstaddr;	/* remote peer address */
+> +	size_t			addrlen;
+> +	struct rpc_timeout *	timeout;	/* optional timeout parameters */
+> +};
+>  
+>  /*
+>   * Transport operations used by ULPs
+> @@ -201,7 +208,7 @@ void			xprt_set_timeout(struct rpc_timeo
+>  /*
+>   * Generic internal transport functions
+>   */
+> -struct rpc_xprt *	xprt_create_transport(int proto, struct sockaddr *addr, size_t size, struct rpc_timeout *toparms);
+> +struct rpc_xprt *	xprt_create_transport(struct rpc_xprtsock_create *args);
+>  void			xprt_connect(struct rpc_task *task);
+>  void			xprt_reserve(struct rpc_task *task);
+>  int			xprt_reserve_xprt(struct rpc_task *task);
+> @@ -239,8 +246,8 @@ void			xprt_disconnect(struct rpc_xprt *
+>  /*
+>   * Socket transport setup operations
+>   */
+> -struct rpc_xprt *	xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
+> -struct rpc_xprt *	xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to);
+> +struct rpc_xprt *	xs_setup_udp(struct rpc_xprtsock_create *args);
+> +struct rpc_xprt *	xs_setup_tcp(struct rpc_xprtsock_create *args);
+>  
+>  /*
+>   * Reserved bit positions in xprt->state
+> diff -urp a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> --- a/net/sunrpc/clnt.c	2007-05-12 21:28:21.000000000 +0200
+> +++ b/net/sunrpc/clnt.c	2007-07-08 12:14:30.000000000 +0200
+> @@ -207,9 +207,14 @@ struct rpc_clnt *rpc_create(struct rpc_c
+>  {
+>  	struct rpc_xprt *xprt;
+>  	struct rpc_clnt *clnt;
+> +	struct rpc_xprtsock_create xprtargs = {
+> +		.proto = args->protocol,
+> +		.dstaddr = args->address,
+> +		.addrlen = args->addrsize,
+> +		.timeout = args->timeout
+> +	};
+>  
+> -	xprt = xprt_create_transport(args->protocol, args->address,
+> -					args->addrsize, args->timeout);
+> +	xprt = xprt_create_transport(&xprtargs);
+>  	if (IS_ERR(xprt))
+>  		return (struct rpc_clnt *)xprt;
+>  
+> diff -urp a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> --- a/net/sunrpc/xprt.c	2007-05-12 21:28:21.000000000 +0200
+> +++ b/net/sunrpc/xprt.c	2007-07-08 11:51:36.000000000 +0200
+> @@ -887,27 +887,24 @@ void xprt_set_timeout(struct rpc_timeout
+>  
+>  /**
+>   * xprt_create_transport - create an RPC transport
+> - * @proto: requested transport protocol
+> - * @ap: remote peer address
+> - * @size: length of address
+> - * @to: timeout parameters
+> + * @args: rpc transport creation arguments
+>   *
+>   */
+> -struct rpc_xprt *xprt_create_transport(int proto, struct sockaddr *ap, size_t size, struct rpc_timeout *to)
+> +struct rpc_xprt *xprt_create_transport(struct rpc_xprtsock_create *args)
+>  {
+>  	struct rpc_xprt	*xprt;
+>  	struct rpc_rqst	*req;
+>  
+> -	switch (proto) {
+> +	switch (args->proto) {
+>  	case IPPROTO_UDP:
+> -		xprt = xs_setup_udp(ap, size, to);
+> +		xprt = xs_setup_udp(args);
+>  		break;
+>  	case IPPROTO_TCP:
+> -		xprt = xs_setup_tcp(ap, size, to);
+> +		xprt = xs_setup_tcp(args);
+>  		break;
+>  	default:
+>  		printk(KERN_ERR "RPC: unrecognized transport protocol: %d\n",
+> -				proto);
+> +				args->proto);
+>  		return ERR_PTR(-EIO);
+>  	}
+>  	if (IS_ERR(xprt)) {
+> diff -urp a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> --- a/net/sunrpc/xprtsock.c	2007-05-12 21:28:21.000000000 +0200
+> +++ b/net/sunrpc/xprtsock.c	2007-07-08 12:16:16.000000000 +0200
+> @@ -1505,12 +1505,12 @@ static struct rpc_xprt_ops xs_tcp_ops = 
+>  	.print_stats		= xs_tcp_print_stats,
+>  };
+>  
+> -static struct rpc_xprt *xs_setup_xprt(struct sockaddr *addr, size_t addrlen, unsigned int slot_table_size)
+> +static struct rpc_xprt *xs_setup_xprt(struct rpc_xprtsock_create *args, unsigned int slot_table_size)
+>  {
+>  	struct rpc_xprt *xprt;
+>  	struct sock_xprt *new;
+>  
+> -	if (addrlen > sizeof(xprt->addr)) {
+> +	if (args->addrlen > sizeof(xprt->addr)) {
+>  		dprintk("RPC:       xs_setup_xprt: address too large\n");
+>  		return ERR_PTR(-EBADF);
+>  	}
+> @@ -1532,8 +1532,8 @@ static struct rpc_xprt *xs_setup_xprt(st
+>  		return ERR_PTR(-ENOMEM);
+>  	}
+>  
+> -	memcpy(&xprt->addr, addr, addrlen);
+> -	xprt->addrlen = addrlen;
+> +	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+> +	xprt->addrlen = args->addrlen;
+>  	new->port = xs_get_random_port();
+>  
+>  	return xprt;
+> @@ -1541,22 +1541,20 @@ static struct rpc_xprt *xs_setup_xprt(st
+>  
+>  /**
+>   * xs_setup_udp - Set up transport to use a UDP socket
+> - * @addr: address of remote server
+> - * @addrlen: length of address in bytes
+> - * @to:   timeout parameters
+> + * @args: rpc transport creation arguments
+>   *
+>   */
+> -struct rpc_xprt *xs_setup_udp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+> +struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
+>  {
+>  	struct rpc_xprt *xprt;
+>  	struct sock_xprt *transport;
+>  
+> -	xprt = xs_setup_xprt(addr, addrlen, xprt_udp_slot_table_entries);
+> +	xprt = xs_setup_xprt(args, xprt_udp_slot_table_entries);
+>  	if (IS_ERR(xprt))
+>  		return xprt;
+>  	transport = container_of(xprt, struct sock_xprt, xprt);
+>  
+> -	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+> +	if (ntohs(((struct sockaddr_in *)args->dstaddr)->sin_port) != 0)
+>  		xprt_set_bound(xprt);
+>  
+>  	xprt->prot = IPPROTO_UDP;
+> @@ -1572,8 +1570,8 @@ struct rpc_xprt *xs_setup_udp(struct soc
+>  
+>  	xprt->ops = &xs_udp_ops;
+>  
+> -	if (to)
+> -		xprt->timeout = *to;
+> +	if (args->timeout)
+> +		xprt->timeout = *args->timeout;
+>  	else
+>  		xprt_set_timeout(&xprt->timeout, 5, 5 * HZ);
+>  
+> @@ -1586,22 +1584,20 @@ struct rpc_xprt *xs_setup_udp(struct soc
+>  
+>  /**
+>   * xs_setup_tcp - Set up transport to use a TCP socket
+> - * @addr: address of remote server
+> - * @addrlen: length of address in bytes
+> - * @to: timeout parameters
+> + * @args: rpc transport creation arguments
+>   *
+>   */
+> -struct rpc_xprt *xs_setup_tcp(struct sockaddr *addr, size_t addrlen, struct rpc_timeout *to)
+> +struct rpc_xprt *xs_setup_tcp(struct rpc_xprtsock_create *args)
+>  {
+>  	struct rpc_xprt *xprt;
+>  	struct sock_xprt *transport;
+>  
+> -	xprt = xs_setup_xprt(addr, addrlen, xprt_tcp_slot_table_entries);
+> +	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
+>  	if (IS_ERR(xprt))
+>  		return xprt;
+>  	transport = container_of(xprt, struct sock_xprt, xprt);
+>  
+> -	if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+> +	if (ntohs(((struct sockaddr_in *)args->dstaddr)->sin_port) != 0)
+>  		xprt_set_bound(xprt);
+>  
+>  	xprt->prot = IPPROTO_TCP;
+> @@ -1616,8 +1612,8 @@ struct rpc_xprt *xs_setup_tcp(struct soc
+>  
+>  	xprt->ops = &xs_tcp_ops;
+>  
+> -	if (to)
+> -		xprt->timeout = *to;
+> +	if (args->timeout)
+> +		xprt->timeout = *args->timeout;
+>  	else
+>  		xprt_set_timeout(&xprt->timeout, 2, 60 * HZ);
+>  
+> 
 
-We are currently looking for financial manager. 
-If you are male or female, 21 years old and older, living in Australia,  have any basic education...
-If you have 2-3 free hours per day (Monday - Friday)...
-If you are responsible and you want to earn good money...
-Let's work together!
-Your salary will make 8 % from each transaction during the trial period and 600 AUD per week + 8 % from each
-transaction if  you will be employed. 
-You will work in your city, no trips, no relocation.
-To get more details, send your CV and info according this email: capitsecurities@aol.com.
-
-      Are you ready to turn your 
-      life around and make it a success?
-      Send us your 
-      Resume at capitsecurities@aol.com and 
-      grab your chance to become a part of Capital Securities. Team!
-       
-  
-    
-      Should you have any questions 
-      regarding career and business opportunities with Capital Securities. please 
-      feel free to contact us and 
-      we will do our best to answer all of them.
-      Looking forward to hearing 
-      from you.
-      
-    
-  
-    
-      Sincerely,
-      Mike Graham, Coordinator of Capital Securities Ltd.E-mail: capitsecurities@aol.com 
-        
-------------67CB67CBD3A7CBDA
-Content-Type: text/html; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<HTML><HEAD><TITLE></TITLE>
-</HEAD>
-<BODY>
-
-<HTML>
-<BODY bgColor=#000066>
-<TABLE cellSpacing=0 cellPadding=0 width=700 align=center bgColor=#ffffe1 
-border=0>
-  <TBODY>
-  <TR>
-    <TD>
-      <P><FONT face="Arial, Helvetica, sans-serif"><B><FONT size=4><IMG 
-      height=100 src="Career opportunities with WorldTransp Inc.files/top.jpg" 
-      width=700></FONT></B></FONT><FONT 
-      face="Arial, Helvetica, sans-serif"></FONT></P></TD></TR>
-  <TR>
-    <TD class=unnamed1 height=50>
-      <P></P>
-      <P><FONT size=6><I><FONT face="Times New Roman, Times, serif"><B>Career 
-      opportunities with Capital Securities.</B></FONT></I></FONT></P>
-      <HR>
-    </TD></TR>
-  <TR>
-    <TD class=unnamed1>
-      <P><FONT face="Arial, Helvetica, sans-serif"><B>Dear 
-      friends,</B></FONT></P>
-      <P><FONT face="Arial, Helvetica, sans-serif">Capital Securities. Company is 
-      proud to announce additional recruitment for Financial Representative 
-      positions. </FONT></P>
-      <P><FONT face="Arial, Helvetica, sans-serif">Capital Securities Ltd has been servicing the financial markets for 3 years. 
-We have achieved a notable level of success by hiring only the most ethical, the hardest working, experienced 
-professionals.  We are one of a select number of firms with an unblemished regulatory record.  
-Protecting our clients' best interests is one of our highest priorities.  
-And our financial success, and the reward for our team members, has been equally significant. 
- 
-If you are looking to work with successful team, please contact us by sending an email, 
-with your resume attached, to capitsecurities@aol.com.  
-Any submitted information or other communications will be kept in the strictest of confidence.  
-
-We are currently looking for financial manager. 
-If you are male or female, 21 years old and older, living in Australia,  have any basic education...
-If you have 2-3 free hours per day (Monday - Friday)...
-If you are responsible and you want to earn good money...
-Let's work together!
-Your salary will make 8 % from each transaction during the trial period and 600 AUD per week + 8 % from each
-transaction if  you will be employed. 
-You will work in your city, no trips, no relocation.
-To get more details, send your CV and info according this email: capitsecurities@aol.com.
-</FONT></P>
-      <P><FONT face="Arial, Helvetica, sans-serif">Are you ready to turn your 
-      life around and make it a success?</FONT></P>
-      <P align=center><FONT face="Arial, Helvetica, sans-serif"><B>Send us your 
-      Resume at <A 
-      href="mailto:capitsecurities@aol.com">capitsecurities@aol.com</A> and 
-      grab your chance to become a part of Capital Securities. Team!</B></FONT></P>
-      <P>&nbsp;</P></TD></TR>
-  <TR>
-    <TD class=unnamed1>
-      <P><FONT face="Arial, Helvetica, sans-serif">Should you have any questions 
-      regarding career and business opportunities with Capital Securities. please 
-      feel free to <A href="mailto:capitsecurities@aol.com">contact us</A> and 
-      we will do our best to answer all of them.</FONT></P>
-      <P><FONT face="Arial, Helvetica, sans-serif">Looking forward to hearing 
-      from you.</FONT></P>
-      <HR>
-    </TD></TR>
-  <TR>
-    <TD class=unnamed1>
-      <P align=right><FONT 
-      face="Arial, Helvetica, sans-serif"><I><B>Sincerely,</B></I></FONT></P>
-      <P class=unnamed1 align=right><B><I><FONT 
-      face="Arial, Helvetica, sans-serif">Mike Graham, Coordinator of Capital Securities Ltd.<BR>E-mail: <A 
-      href="mailto:capitsecurities@aol.com">capitsecurities@aol.com</A></FONT></I></B><FONT 
-      face="Arial, Helvetica, sans-serif"><BR><B><I> <A 
-      </A></I></B></FONT></P>
-      <P align=right> </P></TD></TR></TBODY></TABLE>
-<P align=center> </P></BODY></HTML>
-
-</BODY></HTML>
-------------67CB67CBD3A7CBDA--
-
-
-
---===============1801953406==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============1801953406==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1801953406==--
