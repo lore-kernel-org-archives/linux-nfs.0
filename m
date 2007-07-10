@@ -1,7 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 13/20] svc: Add svc_[un]register_transport
-Date: Tue, 10 Jul 2007 00:34:47 -0500
-Message-ID: <20070710053447.28979.27607.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 10/20] svc: Add generic refcount services
+Date: Tue, 10 Jul 2007 00:34:41 -0500
+Message-ID: <20070710053441.28979.11952.stgit@dell3.ogc.int>
 References: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,15 +10,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I88N8-00075N-Ml
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:50 -0700
+	id 1I88N1-00074l-PV
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:43 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88NB-0004vM-2I
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:54 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88N4-0004u8-No
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:47 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id A23FF7C79C
-	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:47 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id 53DD47C79C
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:41 -0500 (CDT)
 In-Reply-To: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,124 +33,141 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Add an exported function for transport modules to [un]register themselves
-with the sunrpc server side transport switch.
+Add inline svc_sock_get() so that service transport code will not
+need to manipulate sk_inuse directly.  Also, make svc_sock_put()
+available so that transport code outside svcsock.c can use it.
 
+Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    7 ++++++
- net/sunrpc/svcsock.c           |   50 ++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 57 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svcsock.h |   15 +++++++++++++++
+ net/sunrpc/svcsock.c           |   29 ++++++++++++++---------------
+ 2 files changed, 29 insertions(+), 15 deletions(-)
 
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 0e7307c..d132dd5 100644
+index a52c9fd..e455783 100644
 --- a/include/linux/sunrpc/svcsock.h
 +++ b/include/linux/sunrpc/svcsock.h
-@@ -13,6 +13,7 @@ #include <linux/sunrpc/svc.h>
+@@ -115,6 +115,7 @@ int		svc_addsock(struct svc_serv *serv,
+ 			    int *proto);
+ void		svc_sock_enqueue(struct svc_sock *svsk);
+ void		svc_sock_received(struct svc_sock *svsk);
++void	    	__svc_sock_put(struct svc_sock *svsk);
  
- struct svc_sock_ops {
- 	const char		*sko_name;
-+	struct module		*sko_owner;
- 	int			(*sko_recvfrom)(struct svc_rqst *rqstp);
- 	int			(*sko_sendto)(struct svc_rqst *rqstp);
- 	/*
-@@ -45,7 +46,11 @@ struct svc_sock_ops {
- 	 * Accept a pending connection, for connection-oriented transports
- 	 */
- 	int			(*sko_accept)(struct svc_sock *svsk);
+ /*
+  * svc_makesock socket characteristics
+@@ -123,4 +124,18 @@ #define SVC_SOCK_DEFAULTS	(0U)
+ #define SVC_SOCK_ANONYMOUS	(1U << 0)	/* don't register with pmap */
+ #define SVC_SOCK_TEMPORARY	(1U << 1)	/* flag socket as temporary */
+ 
++/*
++ * Take and drop a temporary reference count on the svc_sock.
++ */
++static inline void svc_sock_get(struct svc_sock *svsk)
++{
++	atomic_inc(&svsk->sk_inuse);
++}
 +
-+	/* Transport list link */
-+	struct list_head	sko_list;
- };
-+extern struct list_head svc_transport_list;
- 
- /*
-  * RPC server socket.
-@@ -102,6 +107,8 @@ #define	SK_LISTENER	11			/* listener (e.
- /*
-  * Function prototypes.
-  */
-+int 		svc_register_transport(struct svc_sock_ops *xprt);
-+int 		svc_unregister_transport(struct svc_sock_ops *xprt);
- int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
- void		svc_force_close_socket(struct svc_sock *);
- int		svc_recv(struct svc_rqst *, long);
++static inline void svc_sock_put(struct svc_sock *svsk)
++{
++	if (atomic_dec_and_test(&svsk->sk_inuse))
++	    __svc_sock_put(svsk);
++}
++
+ #endif /* SUNRPC_SVCSOCK_H */
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b88e3d2..ec0ad0e 100644
+index 59c6b35..0193f54 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -91,6 +91,54 @@ static struct svc_deferred_req *svc_defe
- static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
+@@ -273,7 +273,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 				"svc_sock_enqueue: server %p, rq_sock=%p!\n",
+ 				rqstp, rqstp->rq_sock);
+ 		rqstp->rq_sock = svsk;
+-		atomic_inc(&svsk->sk_inuse);
++		svc_sock_get(svsk);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
+ 		BUG_ON(svsk->sk_pool != pool);
+@@ -351,17 +351,16 @@ void svc_reserve(struct svc_rqst *rqstp,
+ /*
+  * Release a socket after use.
+  */
+-static inline void
+-svc_sock_put(struct svc_sock *svsk)
++void
++__svc_sock_put(struct svc_sock *svsk)
+ {
+-	if (atomic_dec_and_test(&svsk->sk_inuse)) {
+-		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
++	BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
  
-+/* List of registered transports */
-+static spinlock_t svc_transport_lock = SPIN_LOCK_UNLOCKED;
-+LIST_HEAD(svc_transport_list);
-+
-+int svc_register_transport(struct svc_sock_ops *xprt)
-+{
-+	struct svc_sock_ops *ops;
-+	int res;
-+
-+	dprintk("svc: Adding svc transport '%s'\n",
-+		xprt->sko_name);
-+	
-+	res = -EEXIST;
-+	INIT_LIST_HEAD(&xprt->sko_list);
-+	spin_lock(&svc_transport_lock);
-+	list_for_each_entry(ops, &svc_transport_list, sko_list) {
-+		if (xprt == ops)
-+			goto out;
-+	}
-+	list_add_tail(&xprt->sko_list, &svc_transport_list);
-+	res = 0;
-+out:
-+	spin_unlock(&svc_transport_lock);
-+	return res;
-+}
-+EXPORT_SYMBOL(svc_register_transport);
-+
-+int svc_unregister_transport(struct svc_sock_ops *xprt)
-+{
-+	struct svc_sock_ops *ops;
-+	int res = 0;
-+
-+	dprintk("svc: Removing svc transport '%s'\n", xprt->sko_name);
-+
-+	spin_lock(&svc_transport_lock);
-+	list_for_each_entry(ops, &svc_transport_list, sko_list) {
-+		if (xprt == ops) {
-+			list_del_init(&ops->sko_list);
-+			goto out;
-+		}
-+	}
-+	res = -ENOENT;
-+ out:
-+	spin_unlock(&svc_transport_lock);
-+	return res;
-+}
-+EXPORT_SYMBOL(svc_unregister_transport);
-+
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-  * 6 minutes
-@@ -887,6 +935,7 @@ svc_udp_has_wspace(struct svc_sock *svsk
+-		if (svsk->sk_info_authunix != NULL)
+-			svcauth_unix_info_release(svsk->sk_info_authunix);
+-    	    	svsk->sk_ops->sko_free(svsk);
+-	}
++	if (svsk->sk_info_authunix != NULL)
++		svcauth_unix_info_release(svsk->sk_info_authunix);
++    	svsk->sk_ops->sko_free(svsk);
+ }
++EXPORT_SYMBOL(__svc_sock_put);
  
- static const struct svc_sock_ops svc_udp_ops = {
- 	.sko_name = "udp",
-+	.sko_owner = THIS_MODULE,
- 	.sko_recvfrom = svc_udp_recvfrom,
- 	.sko_sendto = svc_udp_sendto,
- 	.sko_detach = svc_tcpip_detach,
-@@ -1346,6 +1395,7 @@ svc_tcp_has_wspace(struct svc_sock *svsk
+ static void
+ svc_sock_release(struct svc_rqst *rqstp)
+@@ -1109,7 +1108,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 					  struct svc_sock,
+ 					  sk_list);
+ 			set_bit(SK_CLOSE, &svsk->sk_flags);
+-			atomic_inc(&svsk->sk_inuse);
++			svc_sock_get(svsk);
+ 		}
+ 		spin_unlock_bh(&serv->sv_lock);
  
- static const struct svc_sock_ops svc_tcp_ops = {
- 	.sko_name = "tcp",
-+	.sko_owner = THIS_MODULE,
- 	.sko_recvfrom = svc_tcp_recvfrom,
- 	.sko_sendto = svc_tcp_sendto,
- 	.sko_detach = svc_tcpip_detach,
+@@ -1482,7 +1481,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	spin_lock_bh(&pool->sp_lock);
+ 	if ((svsk = svc_sock_dequeue(pool)) != NULL) {
+ 		rqstp->rq_sock = svsk;
+-		atomic_inc(&svsk->sk_inuse);
++		svc_sock_get(svsk);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
+ 	} else {
+@@ -1621,7 +1620,7 @@ svc_age_temp_sockets(unsigned long closu
+ 			continue;
+ 		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY, &svsk->sk_flags))
+ 			continue;
+-		atomic_inc(&svsk->sk_inuse);
++		svc_sock_get(svsk);
+ 		list_move(le, &to_be_aged);
+ 		set_bit(SK_CLOSE, &svsk->sk_flags);
+ 		set_bit(SK_DETACHED, &svsk->sk_flags);
+@@ -1869,7 +1868,7 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	 */
+ 	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags)) {
+ 		BUG_ON(atomic_read(&svsk->sk_inuse)<2);
+-		atomic_dec(&svsk->sk_inuse);
++		svc_sock_put(svsk);
+ 		if (test_bit(SK_TEMP, &svsk->sk_flags))
+ 			serv->sv_tmpcnt--;
+ 	}
+@@ -1884,7 +1883,7 @@ static void svc_close_socket(struct svc_
+ 		/* someone else will have to effect the close */
+ 		return;
+ 
+-	atomic_inc(&svsk->sk_inuse);
++	svc_sock_get(svsk);
+ 	svc_delete_socket(svsk);
+ 	clear_bit(SK_BUSY, &svsk->sk_flags);
+ 	svc_sock_put(svsk);
+@@ -1977,7 +1976,7 @@ svc_defer(struct cache_req *req)
+ 		dr->argslen = rqstp->rq_arg.len >> 2;
+ 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
+ 	}
+-	atomic_inc(&rqstp->rq_sock->sk_inuse);
++	svc_sock_get(rqstp->rq_sock);
+ 	dr->svsk = rqstp->rq_sock;
+ 
+ 	dr->handle.revisit = svc_revisit;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
