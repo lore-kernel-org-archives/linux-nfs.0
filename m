@@ -1,25 +1,25 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Status of mount.nfs
-Date: Tue, 10 Jul 2007 10:08:17 +1000
-Message-ID: <18066.52721.834619.269830@notabene.brown>
-References: <20070708191640.GA13962@uio.no>
-	<18065.43199.104020.412029@notabene.brown>
-	<20070709095511.GA17815@uio.no> <4692661B.7080701@oracle.com>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 002 of 20] knfsd: nfsd4: build rpcsec_gss whenever
+	nfsd4 is built
+Date: Tue, 10 Jul 2007 12:23:04 +1000
+Message-ID: <1070710022304.12950@suse.de>
+References: <20070710121949.12548.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: lamont@debian.org, nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Cc: Neil Brown <neilb@suse.de>,
+	"J . Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I83HB-00081T-7e
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 17:08:21 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1I85No-0004ls-Q7
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:23:21 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I83HD-0007XO-DJ
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 17:08:24 -0700
-In-Reply-To: message from Chuck Lever on Monday July 9
+	(Exim 4.44) id 1I85Nq-000391-U8
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:23:24 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,18 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday July 9, chuck.lever@oracle.com wrote:
-> 
-> I just noticed this morning that "./configure --help" in the latest git 
-> repo still says this:
-> 
->    --enable-mount          Create mount.nfs and don't use the util-linux
->                            mount(8) functionality. [default=no]
->                                                    ^^^^^^^^^^^^
 
-Thanks for noticing that.  It is now fixed in current git.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-NeilBrown
+Select rpcsec_gss support whenever asked for NFSv4 support.  The rfc
+actually requires gss, and gss is also the main reason to migrate to v4.
+We already do this on the client side.
+
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/Kconfig |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff .prev/fs/Kconfig ./fs/Kconfig
+--- .prev/fs/Kconfig	2007-07-10 11:19:59.000000000 +1000
++++ ./fs/Kconfig	2007-07-10 11:26:04.000000000 +1000
+@@ -1725,6 +1725,7 @@ config NFSD_V3_ACL
+ config NFSD_V4
+ 	bool "Provide NFSv4 server support (EXPERIMENTAL)"
+ 	depends on NFSD_V3 && EXPERIMENTAL
++	select RPCSEC_GSS_KRB5
+ 	help
+ 	  If you would like to include the NFSv4 server as well as the NFSv2
+ 	  and NFSv3 servers, say Y here.  This feature is experimental, and
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
