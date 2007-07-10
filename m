@@ -1,18 +1,20 @@
-From: hostmail@ins-access.com
-Subject: Summer Clearance:  FREE Business Cards
-Date: Tue, 10 Jul 2007 13:29:07 -0600
-Message-ID: <2a172wa3ci6.14jb2u1je12eil7s5@ins-access.com>
-Content-Type: multipart/mixed; boundary="===============0621479991=="
+From: Mcdowell Q.Joshua <nuf@sbcglobal.net>
+Subject: It is reasonable to supect that such an offer would be on a
+	salary reflecting the role as a cover player.
+Date: Tue, 10 Jul 2007 17:32:23 -0400
+Message-ID: <4693FAE7.6010506@sbcglobal.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8KSL-0001dD-LY
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 11:29:01 -0700
-Received: from mail.ins-access.com ([75.126.241.122] helo=ins-access.com)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I8KSN-0000cr-Ko
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 11:29:05 -0700
+	id 1I8NJv-0006U0-2i
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 14:32:31 -0700
+Received: from pool-72-75-241-217.bflony.east.verizon.net ([72.75.241.217])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1I8NJy-0000La-1V
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 14:32:34 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,129 +27,109 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0621479991==
-Content-Type: text/html;
-	 charset="us-ascii"
-Content-Transfer-Encoding: 7BIT
+Vision Airships Global Expansion!
 
-<html>
-<head>
+BANGKOK, THAILAND, Jul 09, 2007 (MARKET WIRE via COMTEX) -- Vision
+Airships Inc. (PINKSHEETS: VPSN) -- The company wishes to announce that
+it has finalized arrangements for funding for its global expansion.
 
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-</head>
-<body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">
-<!-- ImageReady Slices (FE_July_Clearance_Email.psd) -->
-<table width="550" height="577" border="0" align="center" cellpadding="0" cellspacing="0" background="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_gradient.gif" id="Table_01">
-	<tr>
-		<td colspan="3">
-			<img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_01.gif" width="550" height="130" alt="Summer Inventory Clearance Sale"></td>
-	</tr>
-	<tr>
-		<td colspan="3">
-			<img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_02.gif" width="550" height="92" alt="Hurry! This offer expires July 31, 2007."></td>
-	</tr>
-	<tr>
-		<td>
-			<a href="http://www.vistaprint.com/vp/gateway.aspx?S=4471955940" target="_blank"><img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_03.gif" alt="FREE Business Cards
-Plus Glossy Finish
-250 Cards FREE" width="183" height="147" border="0"></a></td>
-		<td>
-			<a href="http://www.vistaprint.com/vp/gateway.aspx?S=4471955940" target="_blank"><img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_04.gif" alt="Sticky Notes
-1 Pad FREE" width="183" height="147" border="0"></a></td>
-		<td>
-			<a href="http://www.vistaprint.com/vp/gateway.aspx?S=4471955940" target="_blank"><img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_05.gif" alt="FREE Rubber Stamp
-1 Stamp FREE" width="184" height="147" border="0"></a></td>
-	</tr>
-	<tr>
-		<td>
-			<a href="http://www.vistaprint.com/vp/gateway.aspx?S=4471955940" target="_blank"><img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_06.gif" alt="Business Card Magnets
-25 Reg. $12.99 Now FREE" width="183" height="166" border="0"></a></td>
-		<td>
-			<a href="http://www.vistaprint.com/vp/gateway.aspx?S=4471955940" target="_blank"><img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_07.gif" alt="Postcards
-100 Reg. $24.99 Now FREE" width="183" height="166" border="0"></a></td>
-		<td>
-			<a href="http://www.vistaprint.com/vp/gateway.aspx?S=4471955940" target="_blank"><img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_08.gif" alt="Return Address Labels
-140 Reg. $7.99 Now FREE" width="184" height="166" border="0"></a></td>
-	</tr>
-	<tr>
-		<td colspan="3">
-			<img src="http://marketing.vistaprint.com/us/imgs/emailads/FE_July07/FE_July_Clearance_Email_09.gif" width="550" height="42" alt="Huge values - Fast and easy to order - 9 million customers served"></td>
-	</tr>
-</table>
-<br>
-<table width="550" border="1" align="center" cellpadding="0" cellspacing="0" bordercolor="#999999" bgcolor="#FFFFFF">
-  <tr>
-    <td width="601" height="184"><TABLE width=550 border=0 align=center cellPadding=0 cellSpacing=0 bgcolor="#FFFFFF">
-      <TBODY>
-        <TR>
-          <TD width=303 height="67" align=left><div align="center"> <img height=51 hspace=5 src="http://marketing.vistaprint.com/ca/imgs/VistaPrint-Logo-horizontal.gif" width=243 vspace=8></div></TD>
-          <TD width="236" align=left ><font color="#666666" SIZE="1" face="arial">Offer expires July 31, 2007. Shipping and processing, product upgrades and photo/logo uploads not included unless otherwise specified. </font><font color="#666666" size="1" face="Arial, Helvetica, sans-serif">Free business cards product offer shown above currently does not expire.</font> <font color="#666666" SIZE="1" face="arial">Not valid on previous purchases. See web site for details.</font></TD>
-          <TD width="11" align=left >&nbsp;</TD>
-        </TR>
-        <tr>
-          <td height="19" colspan="3"  align="center"><hr align="center" width="550" size="1" noshade="noshade" /></td>
-        </tr>
-        <tr>
-          <td height="39" colspan="3"  align="center"><font color="#666666" size="1" face="arial">If you do not want to receive e-mails concerning VistaPrint products, please click <a 
-      href="http://www.vistaprint.com/vp/gateway.aspx?S=6039013242&PREURL=/vp/ns/customer_care/partneroptout.aspx">here.</a></font></td>
-        </tr>
-        <tr>
-          <td height="41" colspan="3"  align="center"><p><font color="#666666" size="1" face="arial">VistaPrint provides the highest quality, full-color graphic design and printing at the lowest prices! <br />
-            VistaPrint has served more than 9,000,000 customers worldwide.</font></p></td>
-        </tr>
-        <tr>
-          </div>
-            </td>
-        </tr>
-      </tbody><td  align="center" colspan="3"><p><font color="#666666" size="1" face="arial">The products and services described in this e-mail are provided by VistaPrint Limited, the international leader for<br />
-            webtop graphic design and printing. United States customers may contact us in care of our U.S. subsidiary:<br />
-            </font><font color="#666666" size="1" face="arial">VistaPrint USA Incorporated, 95 Hayden Avenue, Lexington, MA 02421<br />
-              ppp=268499</font></p>
-            <div align="center">
-              <font color="#000080" size="1" face="Arial">You</font><font face="Arial" color="#333399" size="1"> 
-              are receiving this message as an opt-in subscriber of Ins-Access.com or one 
-              of our marketing partners. <br>
-              If you no longer wish to receive further offers, please send an 
-              email with discontinue to: </font>
-              <font face="Arial" color="#333399" size="2">
-              <font color="#ffffff" size="1">
-              <a href="mailto:support@ins-access.com?subject=Discontinue">
-              support@ins-access.com</a></font><font color="#000080" size="1"><br>
-              Your email address will be removed within 24 hours.</font><font face="Arial" color="#333399" size="1">
-              </font>
-              <p><font color="#000080" size="1">Ins-Access.com<br>
-              1155 Warburton Ave.<br>
-              Yonkers, NY 10701</font></p>
-              </font>
-              <p>&nbsp;
-    </table></td>
-  </tr>
-</table>
-<p>&nbsp;</p>
-</body>
-</html>
+Vision Airships is set to become a worldwide operator of blimps used for
+advertising around the world. As the advertising market gets more
+crowded in conventional mediums -- the use of alternative forms of
+advertising is gaining more and more traction -- this is where Vision
+Airships comes in and supplies the end to end solution to major
+advertisers worldwide with its unique form of alternative displays. The
+size of the market worldwide will support 24 airships which would bring
+in approximately $400,000,000 annually.
 
+Check out the news and get on VPSN first thing Wednesday!
 
+Lines are courtesy of  Vegasinsider. "And then I got a phone call in the
+middle of the night. After much consideration, Morello left Whitey
+Bernard to go to New York City.
 
---===============0621479991==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Westbound streetcars reverse this routing to College and Lansdowne, then
+proceed southward along Lansdowne Avenue to Dundas.
+He was a loveable bouncy character, he had a heart of gold. There's
+nothing more important than family, friends and neighbours.
+com Terms of Use and Privacy Policy.
+
+He would play any job for which he was called. Speaking from his
+father's Southampton home, his son Jimmy Ball said: "I was talking to
+him last night just after the football and he was in great form. Free
+polls from Pollhost.
+
+Superior Court Judge Michael T. there remains a slight glimmer of hope
+for him, should Moyes decide that he needs another keeper for cover.
+Moyes has already began planning for next season by offering new deals
+to Lee Carsley and Alan Stubbs. God keep our land, glorious and free.
+He even had a spell during his time with us, when he was without doubt,
+one of the best keepers in the league. Our home and native land!
+
+Moyes has said that he doesn't expect to be doing transfer deals in the
+early part of the close season. Moyes has already began planning for
+next season by offering new deals to Lee Carsley and Alan Stubbs. He was
+an excellent teacher and gave Morello much encouragement.
+
+I am not an Everton Fan, I just visit this site out of general interest.
+
+He finishes the first part of his journey on the banks of the River
+Ganges in Varanasi, the holiest city in Hinduism.
+
+The TTC's official website is here while GO Transit's official site is
+here.
+
+Help us to find, O God, in thee,A lasting rich reward. "Mr Ball said he
+was "very proud" of his father's achievements and added: "I would like
+him to be known as a nice man with a passion for football.
+
+O Canada, we stand on guard for thee! It's an assembly line of humour,
+safety-tested and priced to move!
+
+Our own beloved native land,Our true North strong and free!
+
+Tune into Radio Merseyside to hear the breaking news confirmed tonight.
+
+Pay tribute to Alan Ball with our online book of condolence here.
+
+Check out this week's Piano Jazz Shorts: the Piano Jazz podcast. By then
+the trio included drummer Joe Morello and bassist Bill Crow, who are
+widely known for their work with Dave Brubeck and Gerry Mulligan,
+respectively. Kirkby is an area I know well, having worked on many
+projects within the Knowsley area. When I played here last season the
+fans were fantastic .
+Despite Gzowski's dishevelled appearance, this beloved radio host cast
+his folksy charm across the country. He won't be fit for England
+activities, but is expected to be fit for pre-season training.
+
+It's a simple philosophy really. Fortunately, there is a great deal
+riding on the result .
+All buses will drop off passengers at a stop on the east side of Melrose
+Avenue beside the stadium. Best wishes to them both.
+
+God keep our landGlorious and free!
+If you are the system administrator, please click here. As the Italians
+say, "revenge is a dish, best served cold.
+Toronto Arts Council is run by a volunteer board,  volunteer committees
+and a small  complement of professional staff under  the leadership of
+Executive Director, Claire  Hopkinson. In the words of the bloke from
+the Titanic's White Star Company:". Very rarely go to see them, I've got
+no real excuse either!
+
+Free polls from Pollhost. A couple of minutes later, Gerard fluffed a
+one-on-one with the Milan keeper, when strangely, he limply tapped the
+ball slightly to the left of the saving Dida.
+Kirkby is an area I know well, having worked on many projects within the
+Knowsley area. In an effort to give listeners the opportunity to know
+Marian better, Shari recently sat down with this sophisticated lady for
+a series of revealing interviews.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0621479991==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0621479991==--
