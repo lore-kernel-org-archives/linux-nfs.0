@@ -1,25 +1,24 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC, PATCH 06/20] svc: export svc_sock_enqueue,
-	svc_sock_received
-Date: Tue, 10 Jul 2007 00:34:32 -0500
-Message-ID: <20070710053432.28979.89368.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 09/20] svc: Add SK_LISTENER sock flag
+Date: Tue, 10 Jul 2007 00:34:39 -0500
+Message-ID: <20070710053439.28979.57832.stgit@dell3.ogc.int>
 References: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I88Mt-00074Z-89
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:35 -0700
+	id 1I88Mz-00074g-Jo
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:41 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88Mw-0004s4-8N
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:38 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88N2-0003U0-JP
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:45 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id DBF2B7C79E
-	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:32 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id 38E727C75F
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:39 -0500 (CDT)
 In-Reply-To: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,70 +33,51 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Export svc_sock_enqueue() and svc_sock_received() so they
-can be used by sunrpc server transport implementations
-(even future modular ones).
+Use a new svc_sock flag SK_LISTENER which is permanently set on
+listener sockets, use that to test for listeners in a way which
+is not TCP-specific and does not assume the presence of a socket.
 
 Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    2 ++
- net/sunrpc/svcsock.c           |    7 ++++---
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svcsock.h |    1 +
+ net/sunrpc/svcsock.c           |    4 +++-
+ 2 files changed, 4 insertions(+), 1 deletions(-)
 
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index ce93b10..9fa4321 100644
+index c4eb40c..a52c9fd 100644
 --- a/include/linux/sunrpc/svcsock.h
 +++ b/include/linux/sunrpc/svcsock.h
-@@ -108,6 +108,8 @@ int		svc_addsock(struct svc_serv *serv,
- 			    int fd,
- 			    char *name_return,
- 			    int *proto);
-+void		svc_sock_enqueue(struct svc_sock *svsk);
-+void		svc_sock_received(struct svc_sock *svsk);
+@@ -70,6 +70,7 @@ #define	SK_CHNGBUF	7			/* need to change
+ #define	SK_DEFERRED	8			/* request on sk_deferred */
+ #define	SK_OLD		9			/* used for temp socket aging mark+sweep */
+ #define	SK_DETACHED	10			/* detached from tempsocks list */
++#define	SK_LISTENER	11			/* listener (e.g. TCP) socket */
  
- /*
-  * svc_makesock socket characteristics
+ 	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
+ 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1a6a933..f09c4b4 100644
+index 2ef3013..59c6b35 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -209,7 +209,7 @@ svc_release_skb(struct svc_rqst *rqstp)
-  * processes, wake 'em up.
-  *
-  */
--static void
-+void
- svc_sock_enqueue(struct svc_sock *svsk)
- {
- 	struct svc_serv	*serv = svsk->sk_server;
-@@ -287,6 +287,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- out_unlock:
- 	spin_unlock_bh(&pool->sp_lock);
- }
-+EXPORT_SYMBOL(svc_sock_enqueue);
- 
- /*
-  * Dequeue the first socket.  Must be called with the pool->sp_lock held.
-@@ -315,14 +316,14 @@ svc_sock_dequeue(struct svc_pool *pool)
-  * Note: SK_DATA only gets cleared when a read-attempt finds
-  * no (or insufficient) data.
-  */
--static inline void
-+void
- svc_sock_received(struct svc_sock *svsk)
- {
- 	svsk->sk_pool = NULL;
- 	clear_bit(SK_BUSY, &svsk->sk_flags);
- 	svc_sock_enqueue(svsk);
- }
--
-+EXPORT_SYMBOL(svc_sock_received);
- 
- /**
-  * svc_reserve - change the space reserved for the reply to a request.
+@@ -1368,6 +1368,8 @@ svc_tcp_init(struct svc_sock *svsk)
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+ 		sk->sk_data_ready = svc_tcp_listen_data_ready;
++
++		set_bit(SK_LISTENER, &svsk->sk_flags);
+ 		set_bit(SK_CONN, &svsk->sk_flags);
+ 	} else {
+ 		dprintk("setting up TCP socket for reading\n");
+@@ -1515,7 +1517,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+ 		dprintk("svc_recv: found SK_CLOSE\n");
+ 		svc_delete_socket(svsk);
+-	} else if (svsk->sk_sk->sk_state == TCP_LISTEN) {
++	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
+ 		svsk->sk_ops->sko_accept(svsk);
+ 		svc_sock_received(svsk);
+ 	} else {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
