@@ -1,23 +1,26 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: Re: [RFC,PATCH 10/10] rdma: Kconfig
-Date: Tue, 10 Jul 2007 11:04:32 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0707101057390.13415@jlentini-linux.nane.netapp.com>
-References: <20070701230258.29354.89949.stgit@dell3.ogc.int>
-	<20070701231246.29354.4764.stgit@dell3.ogc.int>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 009 of 20] knfsd: nfsd: use ip-address-based
+	domain in	secinfo case
+Date: Tue, 10 Jul 2007 12:06:53 -0400
+Message-ID: <20070710160653.GF17368@fieldses.org>
+References: <20070710121949.12548.patches@notabene>
+	<1070710022517.13262@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8HOE-0003x5-JG
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 08:12:34 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8HOH-0003X0-RG
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 08:12:38 -0700
-In-Reply-To: <20070701231246.29354.4764.stgit@dell3.ogc.int>
+	id 1I8IEr-0001uh-WB
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 09:06:59 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I8IEu-0002wv-9y
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 09:07:01 -0700
+In-Reply-To: <1070710022517.13262@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,41 +33,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Could you fold the below into this patch?  Without this the server can
+oops on attempts to access a filesystem not exported to the request's
+source address!  Thanks to Olga Kornievskaia for the testing that found
+this.
 
+--b.
 
-On Sun, 1 Jul 2007, Tom Tucker wrote:
-
-> 
-> Add NFS_RDMA as an option to the Kconfig file.
-> 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
-> 
->  fs/Kconfig |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 0fa0c11..718006c 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -1652,6 +1652,13 @@ config NFSD
->  	  To compile the NFS server support as a module, choose M here: the
->  	  module will be called nfsd.  If unsure, say N.
->  
-> +config NFSD_RDMA
-> +	tristate "Provide NFS server over RDMA support (EXPERIMENTAL)"
-> +	depends on SUNRPC && INFINIBAND && EXPERIMENTAL
-> +	help
-> +	  If you want your NFS server to support RDMA connections, say Y here
-> +	  If unsure, say N.
-> +
-
-I suggest rewording this text now that the svcrdma code can be built 
-as a module (Y, N, and m are now valid choices).
-
->  config NFSD_V2_ACL
->  	bool
->  	depends on NFSD
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 333e5cf..582b494 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1261,7 +1261,7 @@ gss:
+ 						&rqstp->rq_chandle);
+ 	if (PTR_ERR(gssexp) == -ENOENT)
+ 		return exp;
+-	if (exp)
++	if (exp && !IS_ERR(exp))
+ 		exp_put(exp);
+ 	return gssexp;
+ }
+@@ -1291,7 +1291,7 @@ gss:
+ 						&rqstp->rq_chandle);
+ 	if (PTR_ERR(gssexp) == -ENOENT)
+ 		return exp;
+-	if (exp)
++	if (exp && !IS_ERR(exp))
+ 		exp_put(exp);
+ 	return gssexp;
+ }
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
