@@ -1,8 +1,8 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 014 of 20] knfsd: nfsd: display export secinfo
-	information
-Date: Tue, 10 Jul 2007 12:27:43 +1000
-Message-ID: <1070710022743.13524@suse.de>
+Subject: [PATCH 015 of 20] knfsd: nfsd4: make readonly access depend
+	on pseudoflavor
+Date: Tue, 10 Jul 2007 12:27:49 +1000
+Message-ID: <1070710022749.13539@suse.de>
 References: <20070710121949.12548.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -14,12 +14,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I85S7-000579-2w
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:47 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1I85SB-00057F-CV
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:51 -0700
+Received: from mx1.suse.de ([195.135.220.2])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I85S8-0001aB-5y
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:48 -0700
+	(Exim 4.44) id 1I85SE-0001bK-Ep
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:55 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,68 +35,28 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Add secinfo information to the display in proc/net/sunrpc/nfsd.export/content.
+Allow readonly access to vary depending on the pseudoflavor, using the
+flag passed with each pseudoflavor in the export downcall.
 
 Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/export.c |   29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+ ./include/linux/nfsd/export.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
---- .prev/fs/nfsd/export.c	2007-07-10 11:46:05.000000000 +1000
-+++ ./fs/nfsd/export.c	2007-07-10 11:48:23.000000000 +1000
-@@ -641,6 +641,7 @@ static int svc_export_parse(struct cache
+diff .prev/include/linux/nfsd/export.h ./include/linux/nfsd/export.h
+--- .prev/include/linux/nfsd/export.h	2007-07-10 11:40:31.000000000 +1000
++++ ./include/linux/nfsd/export.h	2007-07-10 11:50:43.000000000 +1000
+@@ -43,7 +43,7 @@
+ #define NFSEXP_ALLFLAGS		0xFE3F
  
- static void exp_flags(struct seq_file *m, int flag, int fsid,
- 		uid_t anonu, uid_t anong, struct nfsd4_fs_locations *fslocs);
-+static void show_secinfo(struct seq_file *m, struct svc_export *exp);
+ /* The flags that may vary depending on security flavor: */
+-#define NFSEXP_SECINFO_FLAGS	0
++#define NFSEXP_SECINFO_FLAGS	NFSEXP_READONLY
  
- static int svc_export_show(struct seq_file *m,
- 			   struct cache_detail *cd,
-@@ -670,6 +671,7 @@ static int svc_export_show(struct seq_fi
- 				seq_printf(m, "%02x", exp->ex_uuid[i]);
- 			}
- 		}
-+		show_secinfo(m, exp);
- 	}
- 	seq_puts(m, ")\n");
- 	return 0;
-@@ -1467,6 +1469,33 @@ static void show_expflags(struct seq_fil
- 	}
- }
+ #ifdef __KERNEL__
  
-+static void show_secinfo_flags(struct seq_file *m, int flags)
-+{
-+	seq_printf(m, ",");
-+	show_expflags(m, flags, NFSEXP_SECINFO_FLAGS);
-+}
-+
-+static void show_secinfo(struct seq_file *m, struct svc_export *exp)
-+{
-+	struct exp_flavor_info *f;
-+	struct exp_flavor_info *end = exp->ex_flavors + exp->ex_nflavors;
-+	int lastflags = 0, first = 0;
-+
-+	if (exp->ex_nflavors == 0)
-+		return;
-+	for (f = exp->ex_flavors; f < end; f++) {
-+		if (first || f->flags != lastflags) {
-+			if (!first)
-+				show_secinfo_flags(m, lastflags);
-+			seq_printf(m, ",sec=%d", f->pseudoflavor);
-+			lastflags = f->flags;
-+		} else {
-+			seq_printf(m, ":%d", f->pseudoflavor);
-+		}
-+	}
-+	show_secinfo_flags(m, lastflags);
-+}
-+
- static void exp_flags(struct seq_file *m, int flag, int fsid,
- 		uid_t anonu, uid_t anong, struct nfsd4_fs_locations *fsloc)
- {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
