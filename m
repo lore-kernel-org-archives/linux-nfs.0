@@ -1,24 +1,22 @@
-From: Nikolaus Rath <Nikolaus@rath.org>
-Subject: NFS FAQ, 6.4 Tunneling through SSH
-Date: Tue, 10 Jul 2007 14:48:17 +0200
-Message-ID: <87tzscjuge.fsf@nokile.rath.org>
+From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
+Subject: Re: NFS FAQ, 6.4 Tunneling through SSH
+Date: Tue, 10 Jul 2007 14:58:44 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0707101456270.25425@maggie.lkpg.cendio.se>
+References: <87tzscjuge.fsf@nokile.rath.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: nfs@lists.sourceforge.net
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-16809931-1184072324=:25425"
+Cc: nfs@lists.sourceforge.net
+To: Nikolaus Rath <Nikolaus@rath.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8F8S-00050a-UJ
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 05:48:09 -0700
-Received: from nelarikon.net ([85.214.16.64] helo=ebox.rath.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I8F8V-0008SW-10
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 05:48:12 -0700
-Received: from [130.183.93.76] (helo=nokile.rath.org)
-	by ebox.rath.org with esmtpsa (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63) (envelope-from <Nikolaus@rath.org>) id 1I8F84-00040Q-NY
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 14:47:48 +0200
+	id 1I8FIp-00069t-Fs
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 05:58:51 -0700
+Received: from mail.cendio.se ([193.12.253.69])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8FIr-000459-SQ
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 05:58:55 -0700
+In-Reply-To: <87tzscjuge.fsf@nokile.rath.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,33 +29,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SGVsbG8sCgpJIGhhdmUgYSBxdWVzdGlvbiB0byB0aGUgRkFRIGVudHJ5IDYuNC4gVGhlcmUgaXQg
-c2F5cyB0aGF0CihodHRwOi8vbmZzLnNvdXJjZWZvcmdlLm5ldC9uZnMtaG93dG8vYXIwMXMwNi5o
-dG1sI3R1bm5lbGluZ19uZnNfc3NoKQoKLC0tLS0KfCBIYXZpbmcgZG9uZSB0aGlzLCB3ZSBjYW4g
-c2VlIHdoeSB0aGUgYWJvdmUgd2lsbCBiZSBpbmNyZWRpYmx5IGluc2VjdXJlCnwgaWYgd2UgaGF2
-ZSBhbnkgb3JkaW5hcnkgdXNlcnMgd2hvIGFyZSBhYmxlIHRvIGxvZyBpbiB0byB0aGUgc2VydmVy
-CnwgbG9jYWxseS4gSWYgdGhleSBjYW4sIHRoZXJlIGlzIG5vdGhpbmcgcHJldmVudGluZyB0aGVt
-IGZyb20gZG9pbmcgd2hhdAp8IHdlIGRpZCBhbmQgdXNpbmcgc3NoIHRvIGZvcndhcmQgYSBwcml2
-aWxlZ2VkIHBvcnQgb24gdGhlaXIgb3duIGNsaWVudAp8IG1hY2hpbmUgKHdoZXJlIHRoZXkgYXJl
-IGxlZ2l0aW1hdGVseSByb290KSB0byBwb3J0cyAyMDQ5IGFuZCAzMjc2NyBvbgp8IHRoZSBzZXJ2
-ZXIuIFRodXMsIGFueSBvcmRpbmFyeSB1c2VyIG9uIHRoZSBzZXJ2ZXIgY2FuIG1vdW50IG91cgp8
-IGZpbGVzeXN0ZW1zIHdpdGggdGhlIHNhbWUgcmlnaHRzIGFzIHJvb3Qgb24gb3VyIGNsaWVudC4K
-YC0tLS0KCkkgZG8gbm90IHF1aXRlIHVuZGVyc3RhbmQgdGhpcyBwb2ludC4gSWYgSSBjcmVhdGUg
-YW4gU1NIIHR1bm5lbCBmcm9tIGEKcmVtb3RlIGhvc3QgdG8gbXkgTkZTIHNlcnZlciwgdGhlbiB0
-aGUgTkZTIHNlcnZlciB3aWxsIHJlY2VpdmUgYQpjb25uZWN0aW9uIGZyb20gbG9jYWxob3N0LCBi
-dXQgYWxzbyBmcm9tIGEgbm9uLXByaXZpbGVnZWQsIHNlbWlyYW5kb20KcG9ydC4gSWYgSSB1c2Ug
-dGhlICJzZWN1cmUiIG9wdGlvbiBpbiAvZXRjL2V4cG9ydHMgKHdoaWNoIHNlZW1zIHRvIGJlCnRo
-ZSBkZWZhdWx0KSwgdGhlbiB0aGVzZSByZXF1ZXN0cyB3aWxsIGJlIGlnbm9yZWQgYmVjYXVzZSB0
-aGV5IGRvbid0CmNvbWUgZnJvbSBhIHByaXZpbGVnZWQgcG9ydC4KCkNhbiBzb21lb25lIGV4cGxh
-aW4gbXkgd2h5IHRoaXMgaXMgc3RpbGwgaW5zZWN1cmU/CgoKQmVzdCwKICAgLU5pa29sYXVzCgot
-LSAKIE5pa29sYXVzQHJhdGgub3JnIHwgQ29sbGVnZSBSaW5nIDYsIDI4NzU5IEJyZW1lbiwgR2Vy
-bWFueQogQ2xhc3Mgb2YgMjAwOCAtIFBoeXNpY3MgfCBKYWNvYnMgVW5pdmVyc2l0eSBCcmVtZW4K
-CiDCu015IG9waW5pb25zIG1heSBoYXZlIGNoYW5nZWQsIGJ1dCBub3QgdGhlIGZhY3QgdGhhdCBJ
-IGFtIHJpZ2h0LsKrCgotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25z
-b3JlZCBieSBEQjIgRXhwcmVzcwpEb3dubG9hZCBEQjIgRXhwcmVzcyBDIC0gdGhlIEZSRUUgdmVy
-c2lvbiBvZiBEQjIgZXhwcmVzcyBhbmQgdGFrZQpjb250cm9sIG9mIHlvdXIgWE1MLiBObyBsaW1p
-dHMuIEp1c3QgZGF0YS4gQ2xpY2sgdG8gZ2V0IGl0IG5vdy4KaHR0cDovL3NvdXJjZWZvcmdlLm5l
-dC9wb3dlcmJhci9kYjIvCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczov
-L2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0cy9saXN0aW5mby9uZnMK
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--789237761-16809931-1184072324=:25425
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+
+On Tue, 10 Jul 2007, Nikolaus Rath wrote:
+
+>I have a question to the FAQ entry 6.4. There it says that
+>(http://nfs.sourceforge.net/nfs-howto/ar01s06.html#tunneling_nfs_ssh)
+
+I would say that this FAQ entry is misleading and even incorrect. I=20
+pointed this out 3 years ago (see=20
+http://marc.info/?l=3Dlinux-nfs&m=3D107944707320618&w=3D2), but it seems li=
+ke=20
+the problems are still there.=20
+
+Btw, unfs3 is usually a better choice for SSH tunnels.=20
+
+Regards,=20
+---
+Peter =C3=85strand=09=09ThinLinc Chief Developer
+Cendio AB=09=09http://www.cendio.se
+Wallenbergs gata 4
+583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
+--789237761-16809931-1184072324=:25425
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+--789237761-16809931-1184072324=:25425
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--789237761-16809931-1184072324=:25425--
