@@ -1,24 +1,24 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 11/20] svc: cleanup svc_sock initialization
-Date: Tue, 10 Jul 2007 00:34:43 -0500
-Message-ID: <20070710053443.28979.72342.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 16/20] svc: sko_create_svc
+Date: Tue, 10 Jul 2007 00:34:53 -0500
+Message-ID: <20070710053453.28979.74690.stgit@dell3.ogc.int>
 References: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I88N4-00074x-Kg
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:46 -0700
+	id 1I88NE-000769-RB
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:56 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88N6-0003UY-R9
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:34:50 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88NH-0004wk-BE
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:35:00 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id 720177C79E
-	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:43 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id E95717C7BF
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:53 -0500 (CDT)
 In-Reply-To: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,229 +33,169 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Reorganise the svc_sock initialisation code so that new service
-transport code can use it without duplicating lots of code
-that futzes with internal transport details (for example the
-SK_BUSY bit).  Transport code should now call svc_sock_init() to
-initialise the svc_sock structure, then one of svc_sock_add_listener
-sock_add_connection or svc_sock_add_connectionless, and finally
-svc_sock_received.
+Add an sko function that makes the creation of a listening endpoint 
+transport independent.
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svcsock.h |   10 +++
- net/sunrpc/svcsock.c           |  143 ++++++++++++++++++++++++++--------------
- 2 files changed, 102 insertions(+), 51 deletions(-)
+ include/linux/sunrpc/svcsock.h |    5 +++
+ net/sunrpc/svcsock.c           |   64 +++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 64 insertions(+), 5 deletions(-)
 
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index e455783..0e7307c 100644
+index d132dd5..383ac4f 100644
 --- a/include/linux/sunrpc/svcsock.h
 +++ b/include/linux/sunrpc/svcsock.h
-@@ -116,6 +116,16 @@ int		svc_addsock(struct svc_serv *serv,
- void		svc_sock_enqueue(struct svc_sock *svsk);
- void		svc_sock_received(struct svc_sock *svsk);
- void	    	__svc_sock_put(struct svc_sock *svsk);
-+/* Initialise a newly allocated svc_sock.   The transport code needs
-+ * to call svc_sock_received() when transport-specific initialisation
-+ * is complete and one of the svc_add_*() functions has been called.  */
-+void		svc_sock_init(struct svc_sock *, struct svc_serv *);
-+/* Add an initialised connection svc_sock to the server */
-+void		svc_sock_add_connection(struct svc_sock *);
-+/* Add an initialised listener svc_sock to the server */
-+void		svc_sock_add_listener(struct svc_sock *);
-+/* Add an initialised connectionless svc_sock to the server */
-+void		svc_sock_add_connectionless(struct svc_sock *);
- 
- /*
-  * svc_makesock socket characteristics
+@@ -14,6 +14,10 @@ #include <linux/sunrpc/svc.h>
+ struct svc_sock_ops {
+ 	const char		*sko_name;
+ 	struct module		*sko_owner;
++	/* Create an svc socket for this transport */
++	int			(*sko_create_svc)(struct svc_serv *,
++						  struct sockaddr *,
++						  int);
+ 	int			(*sko_recvfrom)(struct svc_rqst *rqstp);
+ 	int			(*sko_sendto)(struct svc_rqst *rqstp);
+ 	/*
+@@ -110,6 +114,7 @@ #define	SK_LISTENER	11			/* listener (e.
+ int 		svc_register_transport(struct svc_sock_ops *xprt);
+ int 		svc_unregister_transport(struct svc_sock_ops *xprt);
+ int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
++int		svc_create_svcsock(struct svc_serv *, char *, unsigned short, int);
+ void		svc_force_close_socket(struct svc_sock *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0193f54..57fefea 100644
+index 33aff99..b14dc46 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1357,45 +1357,48 @@ static const struct svc_sock_ops svc_tcp
- };
+@@ -87,6 +87,8 @@ static void		svc_close_socket(struct svc
+ static void		svc_tcpip_detach(struct svc_sock *);
+ static void		svc_tcpip_free(struct svc_sock *);
  
- static void
--svc_tcp_init(struct svc_sock *svsk)
-+svc_tcp_init_listener(struct svc_sock *svsk)
++static int
++svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+ static int svc_deferred_recv(struct svc_rqst *rqstp);
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
+@@ -434,6 +436,7 @@ __svc_sock_put(struct svc_sock *svsk)
+ 
+ 	if (svsk->sk_info_authunix != NULL)
+ 		svcauth_unix_info_release(svsk->sk_info_authunix);
++	module_put(svsk->sk_ops->sko_owner);
+     	svsk->sk_ops->sko_free(svsk);
+ }
+ EXPORT_SYMBOL(__svc_sock_put);
+@@ -961,9 +964,17 @@ svc_udp_has_wspace(struct svc_sock *svsk
+ 	return svc_sock_has_write_space(svsk, sock_wspace(svsk->sk_sk));
+ }
+ 
++static int
++svc_udp_create_svc(struct svc_serv *serv, struct sockaddr *sa, int flags)
++{
++	return svc_create_socket(serv, IPPROTO_UDP, sa,
++				 sizeof(struct sockaddr_in), flags);
++}
++
+ static struct svc_sock_ops svc_udp_ops = {
+ 	.sko_name = "udp",
+ 	.sko_owner = THIS_MODULE,
++	.sko_create_svc = svc_udp_create_svc,
+ 	.sko_recvfrom = svc_udp_recvfrom,
+ 	.sko_sendto = svc_udp_sendto,
+ 	.sko_detach = svc_tcpip_detach,
+@@ -1421,9 +1432,17 @@ svc_tcp_has_wspace(struct svc_sock *svsk
+ 	return svc_sock_has_write_space(svsk, sk_stream_wspace(svsk->sk_sk));
+ }
+ 
++static int
++svc_tcp_create_svc(struct svc_serv *serv, struct sockaddr *sa, int flags)
++{
++	return svc_create_socket(serv, IPPROTO_TCP, sa,
++				 sizeof(struct sockaddr_in), flags);
++}
++
+ static struct svc_sock_ops svc_tcp_ops = {
+ 	.sko_name = "tcp",
+ 	.sko_owner = THIS_MODULE,
++	.sko_create_svc = svc_tcp_create_svc,
+ 	.sko_recvfrom = svc_tcp_recvfrom,
+ 	.sko_sendto = svc_tcp_sendto,
+ 	.sko_detach = svc_tcpip_detach,
+@@ -1605,6 +1624,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 		svc_delete_socket(svsk);
+ 	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
+ 		svsk->sk_ops->sko_accept(svsk);
++		__module_get(svsk->sk_ops->sko_owner);
+ 		svc_sock_received(svsk);
+ 	} else {
+ 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+@@ -1884,7 +1904,7 @@ EXPORT_SYMBOL_GPL(svc_addsock);
+  * Create socket for RPC service.
+  */
+ static int svc_create_socket(struct svc_serv *serv, int protocol,
+-				struct sockaddr *sin, int len, int flags)
++			     struct sockaddr *sin, int len, int flags)
  {
- 	struct sock	*sk = svsk->sk_sk;
--	struct tcp_sock *tp = tcp_sk(sk);
- 
- 	svsk->sk_ops = &svc_tcp_ops;
- 
--	if (sk->sk_state == TCP_LISTEN) {
--		dprintk("setting up TCP socket for listening\n");
--		sk->sk_data_ready = svc_tcp_listen_data_ready;
-+	dprintk("setting up TCP socket for listening\n");
-+	sk->sk_data_ready = svc_tcp_listen_data_ready;
-+	set_bit(SK_LISTENER, &svsk->sk_flags);
-+	set_bit(SK_CONN, &svsk->sk_flags);
-+}
- 
--		set_bit(SK_LISTENER, &svsk->sk_flags);
--		set_bit(SK_CONN, &svsk->sk_flags);
--	} else {
--		dprintk("setting up TCP socket for reading\n");
--		sk->sk_state_change = svc_tcp_state_change;
--		sk->sk_data_ready = svc_tcp_data_ready;
--		sk->sk_write_space = svc_write_space;
-+static void
-+svc_tcp_init_connection(struct svc_sock *svsk)
-+{
-+	struct sock	*sk = svsk->sk_sk;
-+	struct tcp_sock *tp = tcp_sk(sk);
- 
--		svsk->sk_reclen = 0;
--		svsk->sk_tcplen = 0;
-+	svsk->sk_ops = &svc_tcp_ops;
- 
--		tp->nonagle = 1;        /* disable Nagle's algorithm */
-+	dprintk("setting up TCP socket for reading\n");
-+	sk->sk_state_change = svc_tcp_state_change;
-+	sk->sk_data_ready = svc_tcp_data_ready;
-+	sk->sk_write_space = svc_write_space;
- 
--		/* initialise setting must have enough space to
--		 * receive and respond to one request.
--		 * svc_tcp_recvfrom will re-adjust if necessary
--		 */
--		svc_sock_setbufsize(svsk->sk_sock,
--				    3 * svsk->sk_server->sv_max_mesg,
--				    3 * svsk->sk_server->sv_max_mesg);
-+	svsk->sk_reclen = 0;
-+	svsk->sk_tcplen = 0;
- 
--		set_bit(SK_CHNGBUF, &svsk->sk_flags);
--		set_bit(SK_DATA, &svsk->sk_flags);
--		if (sk->sk_state != TCP_ESTABLISHED) {
--			/* note: caller calls svc_sock_enqueue() */
--			set_bit(SK_CLOSE, &svsk->sk_flags);
--		}
--	}
-+	tp->nonagle = 1;        /* disable Nagle's algorithm */
-+
-+	/* initialise setting must have enough space to
-+	 * receive and respond to one request.
-+	 * svc_tcp_recvfrom will re-adjust if necessary
-+	 */
-+	svc_sock_setbufsize(svsk->sk_sock,
-+			    3 * svsk->sk_server->sv_max_mesg,
-+			    3 * svsk->sk_server->sv_max_mesg);
-+
-+	set_bit(SK_CHNGBUF, &svsk->sk_flags);
-+	set_bit(SK_DATA, &svsk->sk_flags);
-+	if (sk->sk_state != TCP_ESTABLISHED)
-+		set_bit(SK_CLOSE, &svsk->sk_flags);
- }
- 
- void
-@@ -1683,6 +1686,29 @@ static struct svc_sock *svc_setup_socket
- 	svsk->sk_ostate = inet->sk_state_change;
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
-+	svc_sock_init(svsk, serv);
-+
-+	/* Initialize the socket */
-+	if (sock->type == SOCK_DGRAM) {
-+		svc_udp_init(svsk);
-+		svc_sock_add_connectionless(svsk);
-+	} else if (inet->sk_state == TCP_LISTEN) {
-+		BUG_ON(is_temporary);
-+		svc_tcp_init_listener(svsk);
-+		svc_sock_add_listener(svsk);
-+	} else {
-+		BUG_ON(!is_temporary);
-+		svc_tcp_init_connection(svsk);
-+		svc_sock_add_connection(svsk);
+ 	struct svc_sock	*svsk;
+ 	struct socket	*sock;
+@@ -2036,17 +2056,51 @@ void svc_force_close_socket(struct svc_s
+  *
+  */
+ int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
+-			int flags)
++		 int flags)
+ {
++	dprintk("svc: creating socket proto = %d\n", protocol);
++	switch (protocol) {
++	case IPPROTO_TCP:
++		return svc_create_svcsock(serv, "tcp", port, flags);
++	case IPPROTO_UDP:
++		return svc_create_svcsock(serv, "udp", port, flags);
++	default:
++		return -EINVAL;
 +	}
-+
-+	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
-+				svsk, svsk->sk_sk);
-+	return svsk;
 +}
 +
-+void svc_sock_init(struct svc_sock *svsk, struct svc_serv *serv)
++int svc_create_svcsock(struct svc_serv *serv, char *transport, unsigned short port,
++		       int flags)
 +{
- 	svsk->sk_server = serv;
- 	atomic_set(&svsk->sk_inuse, 1);
- 	svsk->sk_lastrecv = get_seconds();
-@@ -1690,36 +1716,51 @@ static struct svc_sock *svc_setup_socket
- 	INIT_LIST_HEAD(&svsk->sk_deferred);
- 	INIT_LIST_HEAD(&svsk->sk_ready);
- 	mutex_init(&svsk->sk_mutex);
-+}
-+EXPORT_SYMBOL(svc_sock_init);
++	int ret = -ENOENT;
++	struct list_head *le;
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+ 		.sin_addr.s_addr	= INADDR_ANY,
+ 		.sin_port		= htons(port),
+ 	};
++	dprintk("svc: creating transport socket %s[%d]\n", transport, port);
++	spin_lock(&svc_transport_lock);
++	list_for_each(le, &svc_transport_list) {
++		struct svc_sock_ops *op = 
++			list_entry(le, struct svc_sock_ops, sko_list);
  
--	/* Initialize the socket */
--	if (sock->type == SOCK_DGRAM)
--		svc_udp_init(svsk);
--	else
--		svc_tcp_init(svsk);
-+void svc_sock_add_connection(struct svc_sock *svsk)
-+{
-+	struct svc_serv *serv = svsk->sk_server;
- 
- 	spin_lock_bh(&serv->sv_lock);
--	if (is_temporary) {
--		set_bit(SK_TEMP, &svsk->sk_flags);
--		list_add(&svsk->sk_list, &serv->sv_tempsocks);
--		serv->sv_tmpcnt++;
--		if (serv->sv_temptimer.function == NULL) {
--			/* setup timer to age temp sockets */
--			setup_timer(&serv->sv_temptimer, svc_age_temp_sockets,
--					(unsigned long)serv);
--			mod_timer(&serv->sv_temptimer,
--					jiffies + svc_conn_age_period * HZ);
--		}
--	} else {
--		clear_bit(SK_TEMP, &svsk->sk_flags);
--		list_add(&svsk->sk_list, &serv->sv_permsocks);
-+
-+	set_bit(SK_TEMP, &svsk->sk_flags);
-+	list_add(&svsk->sk_list, &serv->sv_tempsocks);
-+	serv->sv_tmpcnt++;
-+	if (serv->sv_temptimer.function == NULL) {
-+		/* setup timer to age temp sockets */
-+		setup_timer(&serv->sv_temptimer, svc_age_temp_sockets,
-+				(unsigned long)serv);
-+		mod_timer(&serv->sv_temptimer,
-+				jiffies + svc_conn_age_period * HZ);
- 	}
-+
- 	spin_unlock_bh(&serv->sv_lock);
-+}
-+EXPORT_SYMBOL(svc_sock_add_connection);
- 
--	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
--				svsk, svsk->sk_sk);
-+static void svc_sock_add_permanent(struct svc_sock *svsk)
-+{
-+	struct svc_serv *serv = svsk->sk_server;
- 
--	return svsk;
-+	BUG_ON(test_bit(SK_TEMP, &svsk->sk_flags));
-+	spin_lock_bh(&serv->sv_lock);
-+	list_add(&svsk->sk_list, &serv->sv_permsocks);
-+	spin_unlock_bh(&serv->sv_lock);
-+}
-+
-+void svc_sock_add_listener(struct svc_sock *svsk)
-+{
-+	svc_sock_add_permanent(svsk);
-+}
-+EXPORT_SYMBOL(svc_sock_add_listener);
-+
-+void svc_sock_add_connectionless(struct svc_sock *svsk)
-+{
-+	svc_sock_add_permanent(svsk);
+-	dprintk("svc: creating socket proto = %d\n", protocol);
+-	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
+-							sizeof(sin), flags);
++		if (strcmp(transport, op->sko_name)==0) {
++			spin_unlock(&svc_transport_lock);
++			if (try_module_get(op->sko_owner)) {
++				ret = op->sko_create_svc(serv, 
++							 (struct sockaddr*)&sin, 
++							 flags);
++				if (ret < 0)
++					module_put(op->sko_owner);
++				goto out;
++			}
++		}
++	}
++	spin_unlock(&svc_transport_lock);
++	dprintk("svc: transport %s not found\n", transport);
++ out:
++	return ret;
  }
-+EXPORT_SYMBOL(svc_sock_add_connectionless);
  
- int svc_addsock(struct svc_serv *serv,
- 		int fd,
+ /*
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
