@@ -1,7 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 20/20] knfsd: create listener via portlist write
-Date: Tue, 10 Jul 2007 00:35:02 -0500
-Message-ID: <20070710053502.28979.32613.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 18/20] svc: Add sko_defer routine
+Date: Tue, 10 Jul 2007 00:34:58 -0500
+Message-ID: <20070710053458.28979.81203.stgit@dell3.ogc.int>
 References: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,15 +10,15 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I88NM-00078q-E8
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:35:04 -0700
+	id 1I88NI-00076Y-U4
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:35:02 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88NP-00051V-Na
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:35:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I88NL-0004xg-Ij
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 22:35:04 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id 552027C79E
-	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:35:02 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id 28C247C75F
+	for <nfs@lists.sourceforge.net>; Tue, 10 Jul 2007 00:34:58 -0500 (CDT)
 In-Reply-To: <20070710052711.28979.70843.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,53 +33,92 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Update the write handler for the portlist file to allow creating new 
-listening endpoints on a transport. The general form of the string is:
-
-<transport_name><space><port number>
-
-For example:
-
-tcp 2049
-
-This is intended to support the creation of a listening endpoint for
-RDMA transports without adding #ifdef code to the nfssvc.c file.
-The "built-in" transports UDP/TCP were left in the nfssvc initialization
-code to avoid having to change rpc.nfsd, etc...
+The RDMA transport includes an ONCRDMA header that precedes the RPC 
+message. This header needs to be saved in addition to the RPC message 
+itself. The RPC transport uses page swapping to implement copy avoidance.
+These transport dependencies are hidden in the sko_defer routine allowing
+the bulk of the deferral processing to remain in transport independent 
+code.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/nfsd/nfsctl.c |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svcsock.h |    4 ++++
+ net/sunrpc/svcsock.c           |   11 +++++++----
+ 2 files changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 71c686d..b72514d 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -555,6 +555,22 @@ static ssize_t write_ports(struct file *
- 		kfree(toclose);
- 		return len;
- 	}
-+	/* This implements the ability to add a transport by writing
-+	 * it's transport name to the portlist file
-+	 */
-+	if (isalnum(buf[0])) {
-+		int err;
-+		char transport[16];
-+		int port;
-+		sscanf(buf, "%15s %4d", transport, &port);
-+		err = nfsd_create_serv();
-+		if (!err)
-+			err = svc_create_svcsock(nfsd_serv,
-+						 transport, port,
-+						 SVC_SOCK_ANONYMOUS);
-+		return err < 0 ? err : 0;
-+	}
-+	
- 	return -EINVAL;
- }
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 5c272db..b815f36 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -52,6 +52,9 @@ struct svc_sock_ops {
+ 	 */
+ 	int			(*sko_accept)(struct svc_sock *svsk);
  
++	/* RPC defer routine. */
++	struct cache_deferred_req *(*sko_defer)(struct cache_req *req);
++
+ 	/* Transport list link */
+ 	struct list_head	sko_list;
+ };
+@@ -139,6 +142,7 @@ void		svc_sock_add_connection(struct svc
+ void		svc_sock_add_listener(struct svc_sock *);
+ /* Add an initialised connectionless svc_sock to the server */
+ void		svc_sock_add_connectionless(struct svc_sock *);
++void 		svc_revisit(struct cache_deferred_req *dreq, int too_many);
+ 
+ /*
+  * svc_makesock socket characteristics
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 6bd6169..b0e1b61 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -986,7 +986,8 @@ static struct svc_sock_ops svc_udp_ops =
+ 	.sko_detach = svc_tcpip_detach,
+ 	.sko_free = svc_tcpip_free,
+ 	.sko_has_wspace = svc_udp_has_wspace,
+-	.sko_max_payload = RPCSVC_MAXPAYLOAD_UDP
++	.sko_max_payload = RPCSVC_MAXPAYLOAD_UDP,
++	.sko_defer = svc_defer
+ };
+ 
+ static void
+@@ -1457,7 +1458,8 @@ static struct svc_sock_ops svc_tcp_ops =
+ 	.sko_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+ 	.sko_has_wspace = svc_tcp_has_wspace,
+ 	.sko_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+-	.sko_accept = svc_tcp_accept
++	.sko_accept = svc_tcp_accept,
++	.sko_defer = svc_defer
+ };
+ 
+ void init_svc_xprt(void) 
+@@ -1650,7 +1652,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	clear_bit(SK_OLD, &svsk->sk_flags);
+ 
+ 	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
+-	rqstp->rq_chandle.defer = svc_defer;
++	rqstp->rq_chandle.defer = svsk->sk_ops->sko_defer;
+ 
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netcnt++;
+@@ -2114,7 +2116,7 @@ int svc_create_svcsock(struct svc_serv *
+  * Handle defer and revisit of requests
+  */
+ 
+-static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
++void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ {
+ 	struct svc_deferred_req *dr = container_of(dreq, struct svc_deferred_req, handle);
+ 	struct svc_sock *svsk;
+@@ -2134,6 +2136,7 @@ static void svc_revisit(struct cache_def
+ 	svc_sock_enqueue(svsk);
+ 	svc_sock_put(svsk);
+ }
++EXPORT_SYMBOL(svc_revisit);
+ 
+ static struct cache_deferred_req *
+ svc_defer(struct cache_req *req)
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
