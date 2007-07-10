@@ -1,26 +1,25 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: 2.6.22 [PATCH 0/3] NLM: fix source address
-	in	server	callbacks
-Date: Tue, 10 Jul 2007 08:48:13 +1000
-Message-ID: <18066.47917.169001.877808@notabene.brown>
-References: <20070709201913.GA3970@janus>
-	<1184019801.6468.67.camel@heimdal.trondhjem.org>
+Subject: Re: Status of mount.nfs
+Date: Tue, 10 Jul 2007 10:08:17 +1000
+Message-ID: <18066.52721.834619.269830@notabene.brown>
+References: <20070708191640.GA13962@uio.no>
+	<18065.43199.104020.412029@notabene.brown>
+	<20070709095511.GA17815@uio.no> <4692661B.7080701@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>,
-	Frank van Maarseveen <frankvm@frankvm.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: lamont@debian.org, nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I821p-0000Gx-IJ
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 15:48:26 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1I83HB-00081T-7e
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 17:08:21 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I821r-00044V-OS
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 15:48:29 -0700
-In-Reply-To: message from Trond Myklebust on Monday July 9
+	(Exim 4.44) id 1I83HD-0007XO-DJ
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 17:08:24 -0700
+In-Reply-To: message from Chuck Lever on Monday July 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,32 +32,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday July 9, trond.myklebust@fys.uio.no wrote:
-> On Mon, 2007-07-09 at 22:19 +0200, Frank van Maarseveen wrote:
-> > Here's the patchset again but this time for 2.6.22 (verified) and based on
-> > the earlier cleanup patch for creating a SUNRPC transport.  The xs_bind
-> > (formerly xs_bindresvport) function slightly been recoded to make more
-> > clear what it does.
-> > 
-> > The first patch changes the TCP server socket code to save the socket
-> > name right after an accept(). This local address of a connection
-> > (destination address of a request) is needed for connecting back when
-> > doing the callback later. For UDP the address was already saved for RPC
-> > replies because UDP is connectionless. This patch is IPv6 clean.
-> > 
-> > The second patch changes the NFS client code to be able to bind not only
-> > to a privileged port but also to bind to a specific local address. The
-> > client code is used by the server for callbacks.
-> > 
-> > The third patch is the actual NLM fix.
+On Monday July 9, chuck.lever@oracle.com wrote:
 > 
-> I've appended them to the NFS_ALL and the git tree. Unless Neil objects,
-> I propose that we just shove them in together with the existing NFS
-> merge.
+> I just noticed this morning that "./configure --help" in the latest git 
+> repo still says this:
+> 
+>    --enable-mount          Create mount.nfs and don't use the util-linux
+>                            mount(8) functionality. [default=no]
+>                                                    ^^^^^^^^^^^^
 
-No objection from me - I support your proposal!
+Thanks for noticing that.  It is now fixed in current git.
 
-Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
