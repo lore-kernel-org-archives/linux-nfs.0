@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC,PATCH 15/20] svc: transport file implementation
-Date: Tue, 10 Jul 2007 19:30:40 -0400
-Message-ID: <1184110240.6480.40.camel@heimdal.trondhjem.org>
+Subject: Re: [RFC,PATCH 19/20] knfsd: call svc_create_svcsock
+Date: Tue, 10 Jul 2007 19:32:45 -0400
+Message-ID: <1184110365.6480.41.camel@heimdal.trondhjem.org>
 References: <20070710052711.28979.70843.stgit@dell3.ogc.int>
-	<20070710053451.28979.70442.stgit@dell3.ogc.int>
+	<20070710053500.28979.94056.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8PAP-00019q-6X
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 16:30:49 -0700
+	id 1I8PCL-0001LL-Qm
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 16:32:49 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19sKobRmXUyzAo6ZRDw8I4WMWewxp496ls=])
+	ident=[U2FsdGVkX18ZJkg468shPrJeqGX/apNEEVAHXd3M74k=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I8PAR-00055G-6q
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 16:30:52 -0700
-In-Reply-To: <20070710053451.28979.70442.stgit@dell3.ogc.int>
+	(Exim 4.44) id 1I8PCN-0007YZ-O5
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 16:32:53 -0700
+In-Reply-To: <20070710053500.28979.94056.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,144 +32,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-07-10 at 00:34 -0500, Tom Tucker wrote:
-> Create a proc/sys/sunrpc/transport file that contains information 
-> about the currently registered transports.
+On Tue, 2007-07-10 at 00:35 -0500, Tom Tucker wrote:
+> Change the call to the socket specific svc_makesock to a call to the
+> transport independent svc_create_svcsock function. This avoids 
+> conditional #ifdef's for the rdma transport in the nfsd code. 
 > 
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 > 
->  include/linux/sunrpc/debug.h |    1 +
->  net/sunrpc/svcsock.c         |   28 ++++++++++++++++++++++++++++
->  net/sunrpc/sysctl.c          |   40 +++++++++++++++++++++++++++++++++++++++-
->  3 files changed, 68 insertions(+), 1 deletions(-)
+>  fs/nfsd/nfssvc.c     |    8 ++++----
+>  net/sunrpc/svcsock.c |    1 +
+>  2 files changed, 5 insertions(+), 4 deletions(-)
 > 
-> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-> index d5edad6..4c847d4 100644
-> --- a/include/linux/sunrpc/debug.h
-> +++ b/include/linux/sunrpc/debug.h
-> @@ -88,6 +88,7 @@ enum {
->  	CTL_SLOTTABLE_TCP,
->  	CTL_MIN_RESVPORT,
->  	CTL_MAX_RESVPORT,
-> +	CTL_TRANSPORTS,
->  };
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index ff55950..1499beb 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -235,8 +235,8 @@ static int nfsd_init_socks(int port)
 >  
->  #endif /* _LINUX_SUNRPC_DEBUG_H_ */
+>  	error = lockd_up(IPPROTO_UDP);
+>  	if (error >= 0) {
+> -		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
+> -					SVC_SOCK_DEFAULTS);
+> +		error = svc_create_svcsock(nfsd_serv, "udp", port,
+> +					   SVC_SOCK_DEFAULTS);
+>  		if (error < 0)
+>  			lockd_down();
+>  	}
+> @@ -246,8 +246,8 @@ static int nfsd_init_socks(int port)
+>  #ifdef CONFIG_NFSD_TCP
+>  	error = lockd_up(IPPROTO_TCP);
+>  	if (error >= 0) {
+> -		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
+> -					SVC_SOCK_DEFAULTS);
+> +		error = svc_create_svcsock(nfsd_serv, "tcp", port,
+> +					   SVC_SOCK_DEFAULTS);
+>  		if (error < 0)
+>  			lockd_down();
+>  	}
 > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 2583623..33aff99 100644
+> index b0e1b61..67a1d59 100644
 > --- a/net/sunrpc/svcsock.c
 > +++ b/net/sunrpc/svcsock.c
-> @@ -139,6 +139,34 @@ int svc_unregister_transport(struct svc_
+> @@ -2111,6 +2111,7 @@ int svc_create_svcsock(struct svc_serv *
+>   out:
+>  	return ret;
 >  }
->  EXPORT_SYMBOL(svc_unregister_transport);
->  
-> +/* 
-> + * Format the transport list for printing
-> + */
-> +int svc_print_transports(char *buf, int maxlen) 
-> +{
-> +	struct list_head *le;
-> +	char tmpstr[80];
-> +	int len = 0;
-> +	buf[0] = '\0';
-> +
-> +	spin_lock(&svc_transport_lock);
-> +	list_for_each(le, &svc_transport_list) {
-> +		int slen;
-> +		struct svc_sock_ops *op = 
-> +			list_entry(le, struct svc_sock_ops, sko_list);
-> +		
-> +		sprintf(tmpstr, "%s %d\n", op->sko_name, op->sko_max_payload);
-> +		slen = strlen(tmpstr);
-> +		if (len + slen > maxlen)
-> +			break;
-> +		len += slen;
-> +		strcat(buf, tmpstr);
-> +	}
-> +	spin_unlock(&svc_transport_lock);
-> +
-> +	return len;
-> +}
+> +EXPORT_SYMBOL(svc_create_svcsock);
 
-You're probably better off doing this using a seq_file.
+...again. Really wants to be an EXPORT_SYMBOL_GPL().
 
-> +
->  /* apparently the "standard" is that clients close
->   * idle connections after 5 minutes, servers after
->   * 6 minutes
-> diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-> index 738db32..683cf90 100644
-> --- a/net/sunrpc/sysctl.c
-> +++ b/net/sunrpc/sysctl.c
-> @@ -27,6 +27,9 @@ unsigned int	nfs_debug;
->  unsigned int	nfsd_debug;
->  unsigned int	nlm_debug;
->  
-> +/* Transport string */
-> +char 		xprt_buf[128];
-> +
->  #ifdef RPC_DEBUG
->  
->  static struct ctl_table_header *sunrpc_table_header;
-> @@ -48,6 +51,34 @@ rpc_unregister_sysctl(void)
->  	}
->  }
->  
-> +int svc_print_transports(char *buf, int maxlen);
-> +static int proc_do_xprt(ctl_table *table, int write, struct file *file,
-> +			void __user *buffer, size_t *lenp, loff_t *ppos)
-> +{
-> +	char tmpbuf[128];
-> +	int len;
-> +	if ((*ppos && !write) || !*lenp) {
-> +		*lenp = 0;
-> +		return 0;
-> +	}
-> +
-> +	if (write) 
-> +		return -EINVAL;
-> +	else {
-> +
-> +		len = svc_print_transports(tmpbuf, 128);
-> +		if (!access_ok(VERIFY_WRITE, buffer, len))
-> +			return -EFAULT;
-> +
-> +		if (__copy_to_user(buffer, tmpbuf, len))
-> +			return -EFAULT;
-> +	}
-> +
-> +	*lenp -= len;
-> +	*ppos += len;
-> +	return 0;
-> +}
-> +
->  static int
->  proc_dodebug(ctl_table *table, int write, struct file *file,
->  				void __user *buffer, size_t *lenp, loff_t *ppos)
-> @@ -111,7 +142,6 @@ done:
->  	return 0;
->  }
->  
-> -
->  static ctl_table debug_table[] = {
->  	{
->  		.ctl_name	= CTL_RPCDEBUG,
-> @@ -145,6 +175,14 @@ static ctl_table debug_table[] = {
->  		.mode		= 0644,
->  		.proc_handler	= &proc_dodebug
->  	},
-> +	{
-> +		.ctl_name	= CTL_TRANSPORTS,
-> +		.procname	= "transports",
-> +		.data		= xprt_buf,
-> +		.maxlen		= sizeof(xprt_buf),
-> +		.mode		= 0444,
-> +		.proc_handler	= &proc_do_xprt,
-> +	},
->  	{ .ctl_name = 0 }
->  };
->  
+>  /*
+>   * Handle defer and revisit of requests
 > 
 > -------------------------------------------------------------------------
 > This SF.net email is sponsored by DB2 Express
