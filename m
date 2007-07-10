@@ -1,25 +1,26 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 012 of 20] knfsd: nfsd4: make readonly access depend
-	on pseudoflavor
-Date: Tue, 10 Jul 2007 12:26:15 +1000
-Message-ID: <1070710022615.13375@suse.de>
+Subject: [PATCH 001 of 20] knfsd: nfsd: make all exp_finding functions
+	return -errno's on err
+Date: Tue, 10 Jul 2007 12:22:50 +1000
+Message-ID: <1070710022250.12922@suse.de>
 References: <20070710121949.12548.patches@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
-	"J . Bruce Fields" <bfields@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	"J . Bruce Fields" <bfields@puzzle.fieldses.org>,
 	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I85Rg-00055s-B8
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:20 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1I85Rt-00056W-6G
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:33 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I85Rh-0001T4-Up
-	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:22 -0700
+	(Exim 4.44) id 1I85Rv-0004at-Mj
+	for nfs@lists.sourceforge.net; Mon, 09 Jul 2007 19:27:36 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,150 +34,242 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: J. Bruce Fields <bfields@puzzle.fieldses.org>
 
-Allow readonly access to vary depending on the pseudoflavor, using the
-flag passed with each pseudoflavor in the export downcall.  The rest of
-the flags are ignored for now, though some day we might also allow id
-squashing to vary based on the flavor.
+Currently exp_find(), exp_get_by_name(), and friends, return an export on
+success, and on failure return:
+
+	errors -EAGAIN (drop this request pending an upcall) or
+		-ETIMEDOUT (an upcall has timed out), or
+	return NULL, which can mean either that there was a memory allocation
+		failure, or that an export was not found, or that a passed-in
+		export lacks an auth_domain.
+
+Many callers seem to assume that NULL means that an export was not found, which
+may lead to bugs in the case of a memory allocation failure.
+
+Modify these functions to distinguish between the two NULL cases by returning
+either  -ENOENT or -ENOMEM.  They now never return NULL.  We get to simplify
+some code in the process.
+
+We return -ENOENT in the case of a missing auth_domain.  This case should
+probably be removed (or converted to a bug) after confirming that it can never
+happen.
 
 Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 Signed-off-by: Neil Brown <neilb@suse.de>
 
 ### Diffstat output
- ./fs/nfsd/nfsfh.c             |    2 +-
- ./fs/nfsd/nfsproc.c           |    3 ++-
- ./fs/nfsd/vfs.c               |   13 +++++++------
- ./include/linux/nfsd/export.h |   13 ++++++++++++-
- ./include/linux/nfsd/nfsd.h   |    3 ++-
- 5 files changed, 24 insertions(+), 10 deletions(-)
+ ./fs/nfsd/export.c |   58 +++++++++++++++++++++--------------------------------
+ ./fs/nfsd/nfsfh.c  |   11 ++++------
+ ./fs/nfsd/vfs.c    |    9 +++-----
+ 3 files changed, 32 insertions(+), 46 deletions(-)
+
+diff .prev/fs/nfsd/export.c ./fs/nfsd/export.c
+--- .prev/fs/nfsd/export.c	2007-07-10 11:19:59.000000000 +1000
++++ ./fs/nfsd/export.c	2007-07-10 11:20:09.000000000 +1000
+@@ -739,16 +739,18 @@ exp_find_key(svc_client *clp, int fsid_t
+ 	int err;
+ 	
+ 	if (!clp)
+-		return NULL;
++		return ERR_PTR(-ENOENT);
+ 
+ 	key.ek_client = clp;
+ 	key.ek_fsidtype = fsid_type;
+ 	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
+ 
+ 	ek = svc_expkey_lookup(&key);
+-	if (ek != NULL)
+-		if ((err = cache_check(&svc_expkey_cache, &ek->h, reqp)))
+-			ek = ERR_PTR(err);
++	if (ek == NULL)
++		return ERR_PTR(-ENOMEM);
++	err = cache_check(&svc_expkey_cache, &ek->h, reqp);
++	if (err)
++		return ERR_PTR(err);
+ 	return ek;
+ }
+ 
+@@ -809,30 +811,21 @@ exp_get_by_name(svc_client *clp, struct 
+ 		struct cache_req *reqp)
+ {
+ 	struct svc_export *exp, key;
++	int err;
+ 	
+ 	if (!clp)
+-		return NULL;
++		return ERR_PTR(-ENOENT);
+ 
+ 	key.ex_client = clp;
+ 	key.ex_mnt = mnt;
+ 	key.ex_dentry = dentry;
+ 
+ 	exp = svc_export_lookup(&key);
+-	if (exp != NULL)  {
+-		int err;
+-
+-		err = cache_check(&svc_export_cache, &exp->h, reqp);
+-		switch (err) {
+-		case 0: break;
+-		case -EAGAIN:
+-		case -ETIMEDOUT:
+-			exp = ERR_PTR(err);
+-			break;
+-		default:
+-			exp = NULL;
+-		}
+-	}
+-
++	if (exp == NULL)
++		return ERR_PTR(-ENOMEM);
++	err = cache_check(&svc_export_cache, &exp->h, reqp);
++	if (err)
++		return ERR_PTR(err);
+ 	return exp;
+ }
+ 
+@@ -848,7 +841,7 @@ exp_parent(svc_client *clp, struct vfsmo
+ 	dget(dentry);
+ 	exp = exp_get_by_name(clp, mnt, dentry, reqp);
+ 
+-	while (exp == NULL && !IS_ROOT(dentry)) {
++	while (PTR_ERR(exp) == -ENOENT && !IS_ROOT(dentry)) {
+ 		struct dentry *parent;
+ 
+ 		parent = dget_parent(dentry);
+@@ -901,7 +894,7 @@ static void exp_fsid_unhash(struct svc_e
+ 		return;
+ 
+ 	ek = exp_get_fsid_key(exp->ex_client, exp->ex_fsid);
+-	if (ek && !IS_ERR(ek)) {
++	if (!IS_ERR(ek)) {
+ 		ek->h.expiry_time = get_seconds()-1;
+ 		cache_put(&ek->h, &svc_expkey_cache);
+ 	}
+@@ -939,7 +932,7 @@ static void exp_unhash(struct svc_export
+ 	struct inode *inode = exp->ex_dentry->d_inode;
+ 
+ 	ek = exp_get_key(exp->ex_client, inode->i_sb->s_dev, inode->i_ino);
+-	if (ek && !IS_ERR(ek)) {
++	if (!IS_ERR(ek)) {
+ 		ek->h.expiry_time = get_seconds()-1;
+ 		cache_put(&ek->h, &svc_expkey_cache);
+ 	}
+@@ -990,13 +983,12 @@ exp_export(struct nfsctl_export *nxp)
+ 
+ 	/* must make sure there won't be an ex_fsid clash */
+ 	if ((nxp->ex_flags & NFSEXP_FSID) &&
+-	    (fsid_key = exp_get_fsid_key(clp, nxp->ex_dev)) &&
+-	    !IS_ERR(fsid_key) &&
++	    (!IS_ERR(fsid_key = exp_get_fsid_key(clp, nxp->ex_dev))) &&
+ 	    fsid_key->ek_mnt &&
+ 	    (fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry) )
+ 		goto finish;
+ 
+-	if (exp) {
++	if (!IS_ERR(exp)) {
+ 		/* just a flags/id/fsid update */
+ 
+ 		exp_fsid_unhash(exp);
+@@ -1105,7 +1097,7 @@ exp_unexport(struct nfsctl_export *nxp)
+ 	err = -EINVAL;
+ 	exp = exp_get_by_name(dom, nd.mnt, nd.dentry, NULL);
+ 	path_release(&nd);
+-	if (!exp)
++	if (IS_ERR(exp))
+ 		goto out_domain;
+ 
+ 	exp_do_unexport(exp);
+@@ -1150,10 +1142,6 @@ exp_rootfh(svc_client *clp, char *path, 
+ 		err = PTR_ERR(exp);
+ 		goto out;
+ 	}
+-	if (!exp) {
+-		dprintk("nfsd: exp_rootfh export not found.\n");
+-		goto out;
+-	}
+ 
+ 	/*
+ 	 * fh must be initialized before calling fh_compose
+@@ -1177,13 +1165,13 @@ exp_find(struct auth_domain *clp, int fs
+ {
+ 	struct svc_export *exp;
+ 	struct svc_expkey *ek = exp_find_key(clp, fsid_type, fsidv, reqp);
+-	if (!ek || IS_ERR(ek))
++	if (IS_ERR(ek))
+ 		return ERR_PTR(PTR_ERR(ek));
+ 
+ 	exp = exp_get_by_name(clp, ek->ek_mnt, ek->ek_dentry, reqp);
+ 	cache_put(&ek->h, &svc_expkey_cache);
+ 
+-	if (!exp || IS_ERR(exp))
++	if (IS_ERR(exp))
+ 		return ERR_PTR(PTR_ERR(exp));
+ 	return exp;
+ }
+@@ -1205,10 +1193,10 @@ exp_pseudoroot(struct auth_domain *clp, 
+ 	mk_fsid(FSID_NUM, fsidv, 0, 0, 0, NULL);
+ 
+ 	exp = exp_find(clp, FSID_NUM, fsidv, creq);
++	if (PTR_ERR(exp) == -ENOENT)
++		return nfserr_perm;
+ 	if (IS_ERR(exp))
+ 		return nfserrno(PTR_ERR(exp));
+-	if (exp == NULL)
+-		return nfserr_perm;
+ 	rv = fh_compose(fhp, exp, exp->ex_dentry, NULL);
+ 	exp_put(exp);
+ 	return rv;
 
 diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
---- .prev/fs/nfsd/nfsfh.c	2007-07-10 11:39:34.000000000 +1000
-+++ ./fs/nfsd/nfsfh.c	2007-07-10 11:40:31.000000000 +1000
-@@ -255,7 +255,7 @@ fh_verify(struct svc_rqst *rqstp, struct
- 		goto out;
+--- .prev/fs/nfsd/nfsfh.c	2007-07-10 11:19:59.000000000 +1000
++++ ./fs/nfsd/nfsfh.c	2007-07-10 11:20:09.000000000 +1000
+@@ -160,15 +160,14 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 				       &rqstp->rq_chandle);
+ 		}
  
- 	/* Finally, check access permissions. */
--	error = nfsd_permission(exp, dentry, access);
-+	error = nfsd_permission(rqstp, exp, dentry, access);
+-		if (IS_ERR(exp) && (PTR_ERR(exp) == -EAGAIN
+-				|| PTR_ERR(exp) == -ETIMEDOUT)) {
+-			error = nfserrno(PTR_ERR(exp));
++		error = nfserr_stale;
++		if (PTR_ERR(exp) == -ENOENT)
+ 			goto out;
+-		}
  
- 	if (error) {
- 		dprintk("fh_verify: %s/%s permission failure, "
-
-diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
---- .prev/fs/nfsd/nfsproc.c	2007-07-10 11:19:55.000000000 +1000
-+++ ./fs/nfsd/nfsproc.c	2007-07-10 11:40:31.000000000 +1000
-@@ -278,7 +278,8 @@ nfsd_proc_create(struct svc_rqst *rqstp,
- 					 *   echo thing > device-special-file-or-pipe
- 					 * by doing a CREATE with type==0
- 					 */
--					nfserr = nfsd_permission(newfhp->fh_export,
-+					nfserr = nfsd_permission(rqstp,
-+								 newfhp->fh_export,
- 								 newfhp->fh_dentry,
- 								 MAY_WRITE|MAY_LOCAL_ACCESS);
- 					if (nfserr && nfserr != nfserr_rofs)
+-		error = nfserr_stale; 
+-		if (!exp || IS_ERR(exp))
++		if (IS_ERR(exp)) {
++			error = nfserrno(PTR_ERR(exp));
+ 			goto out;
++		}
+ 
+ 		/* Check if the request originated from a secure port. */
+ 		error = nfserr_perm;
 
 diff .prev/fs/nfsd/vfs.c ./fs/nfsd/vfs.c
---- .prev/fs/nfsd/vfs.c	2007-07-10 11:39:34.000000000 +1000
-+++ ./fs/nfsd/vfs.c	2007-07-10 11:40:31.000000000 +1000
-@@ -328,7 +328,7 @@ nfsd_setattr(struct svc_rqst *rqstp, str
- 	/* The size case is special. It changes the file as well as the attributes.  */
- 	if (iap->ia_valid & ATTR_SIZE) {
- 		if (iap->ia_size < inode->i_size) {
--			err = nfsd_permission(fhp->fh_export, dentry, MAY_TRUNC|MAY_OWNER_OVERRIDE);
-+			err = nfsd_permission(rqstp, fhp->fh_export, dentry, MAY_TRUNC|MAY_OWNER_OVERRIDE);
- 			if (err)
- 				goto out;
- 		}
-@@ -616,7 +616,7 @@ nfsd_access(struct svc_rqst *rqstp, stru
+--- .prev/fs/nfsd/vfs.c	2007-07-10 11:19:59.000000000 +1000
++++ ./fs/nfsd/vfs.c	2007-07-10 11:20:09.000000000 +1000
+@@ -192,15 +192,14 @@ nfsd_lookup(struct svc_rqst *rqstp, stru
  
- 			sresult |= map->access;
- 
--			err2 = nfsd_permission(export, dentry, map->how);
-+			err2 = nfsd_permission(rqstp, export, dentry, map->how);
- 			switch (err2) {
- 			case nfs_ok:
- 				result |= map->access;
-@@ -1027,7 +1027,7 @@ nfsd_read(struct svc_rqst *rqstp, struct
- 	__be32		err;
- 
- 	if (file) {
--		err = nfsd_permission(fhp->fh_export, fhp->fh_dentry,
-+		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
- 				MAY_READ|MAY_OWNER_OVERRIDE);
- 		if (err)
- 			goto out;
-@@ -1056,7 +1056,7 @@ nfsd_write(struct svc_rqst *rqstp, struc
- 	__be32			err = 0;
- 
- 	if (file) {
--		err = nfsd_permission(fhp->fh_export, fhp->fh_dentry,
-+		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
- 				MAY_WRITE|MAY_OWNER_OVERRIDE);
- 		if (err)
- 			goto out;
-@@ -1785,7 +1785,8 @@ nfsd_statfs(struct svc_rqst *rqstp, stru
-  * Check for a user's access permissions to this inode.
-  */
- __be32
--nfsd_permission(struct svc_export *exp, struct dentry *dentry, int acc)
-+nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
-+					struct dentry *dentry, int acc)
- {
- 	struct inode	*inode = dentry->d_inode;
- 	int		err;
-@@ -1816,7 +1817,7 @@ nfsd_permission(struct svc_export *exp, 
- 	 */
- 	if (!(acc & MAY_LOCAL_ACCESS))
- 		if (acc & (MAY_WRITE | MAY_SATTR | MAY_TRUNC)) {
--			if (EX_RDONLY(exp) || IS_RDONLY(inode))
-+			if (EX_RDONLY(exp, rqstp) || IS_RDONLY(inode))
- 				return nfserr_rofs;
- 			if (/* (acc & MAY_WRITE) && */ IS_IMMUTABLE(inode))
- 				return nfserr_perm;
-
-diff .prev/include/linux/nfsd/export.h ./include/linux/nfsd/export.h
---- .prev/include/linux/nfsd/export.h	2007-07-10 11:39:34.000000000 +1000
-+++ ./include/linux/nfsd/export.h	2007-07-10 11:40:31.000000000 +1000
-@@ -112,10 +112,21 @@ struct svc_expkey {
- 
- #define EX_SECURE(exp)		(!((exp)->ex_flags & NFSEXP_INSECURE_PORT))
- #define EX_ISSYNC(exp)		(!((exp)->ex_flags & NFSEXP_ASYNC))
--#define EX_RDONLY(exp)		((exp)->ex_flags & NFSEXP_READONLY)
- #define EX_NOHIDE(exp)		((exp)->ex_flags & NFSEXP_NOHIDE)
- #define EX_WGATHER(exp)		((exp)->ex_flags & NFSEXP_GATHERED_WRITES)
- 
-+static inline int EX_RDONLY(struct svc_export *exp, struct svc_rqst *rqstp)
-+{
-+	struct exp_flavor_info *f;
-+	struct exp_flavor_info *end = exp->ex_flavors + exp->ex_nflavors;
-+
-+	for (f = exp->ex_flavors; f < end; f++) {
-+		if (f->pseudoflavor == rqstp->rq_flavor)
-+			return f->flags & NFSEXP_READONLY;
-+	}
-+	return exp->ex_flags & NFSEXP_READONLY;
-+}
-+
- __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
- 
- /*
-
-diff .prev/include/linux/nfsd/nfsd.h ./include/linux/nfsd/nfsd.h
---- .prev/include/linux/nfsd/nfsd.h	2007-07-10 11:39:34.000000000 +1000
-+++ ./include/linux/nfsd/nfsd.h	2007-07-10 11:40:31.000000000 +1000
-@@ -119,7 +119,8 @@ __be32		nfsd_statfs(struct svc_rqst *, s
- 				struct kstatfs *);
- 
- int		nfsd_notify_change(struct inode *, struct iattr *);
--__be32		nfsd_permission(struct svc_export *, struct dentry *, int);
-+__be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
-+				struct dentry *, int);
- int		nfsd_sync_dir(struct dentry *dp);
- 
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ 			exp2 = exp_parent(exp->ex_client, mnt, dentry,
+ 					  &rqstp->rq_chandle);
+-			if (IS_ERR(exp2)) {
++			if (PTR_ERR(exp2) == -ENOENT) {
++				dput(dentry);
++				dentry = dget(dparent);
++			} else if (IS_ERR(exp2)) {
+ 				host_err = PTR_ERR(exp2);
+ 				dput(dentry);
+ 				mntput(mnt);
+ 				goto out_nfserr;
+-			}
+-			if (!exp2) {
+-				dput(dentry);
+-				dentry = dget(dparent);
+ 			} else {
+ 				exp_put(exp);
+ 				exp = exp2;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
