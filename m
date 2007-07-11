@@ -1,25 +1,24 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: [RFC Patch 04/09] NFS/RDMA client - transport switch protocol
- wildcarding
-Date: Wed, 11 Jul 2007 17:07:37 -0400
-Message-ID: <EXNANE01ATcFZ4RgPRC00000c63@exnane01.hq.netapp.com>
+Subject: [RFC Patch 05/09] NFS/RDMA client - allow NFSv4/RDMA mounts
+Date: Wed, 11 Jul 2007 17:07:41 -0400
+Message-ID: <EXNANE0169aZbLAX3cf00000c64@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8jRI-0002AV-OD
-	for nfs@lists.sourceforge.net; Wed, 11 Jul 2007 14:09:36 -0700
+	id 1I8jRZ-0002Au-PR
+	for nfs@lists.sourceforge.net; Wed, 11 Jul 2007 14:09:53 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8jRM-0007An-93
-	for nfs@lists.sourceforge.net; Wed, 11 Jul 2007 14:09:40 -0700
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com
-	[10.57.156.158])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8jRd-0004eP-Am
+	for nfs@lists.sourceforge.net; Wed, 11 Jul 2007 14:09:57 -0700
+Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
+	[10.57.156.154])
 	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l6BL9YMp022330
-	for <nfs@lists.sourceforge.net>; Wed, 11 Jul 2007 14:09:34 -0700 (PDT)
+	l6BL9pGq022405
+	for <nfs@lists.sourceforge.net>; Wed, 11 Jul 2007 14:09:51 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,32 +31,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SUNRPC: allow transport switch registrations to wildcard their protocol
+NFS: Temporary fix for NFSv4 mounts over RPC-RDMA
 
-Some RPC transports don't have any notion of "protocol", such as RDMA.
-This patch allows a zero protocol to be a wildcard when creating new
-transport endpoints.
+The NFSv4 mount insists on an IPv4 server address. This prevents RDMA
+mounts from succeeding, so allow the (temporary) RDMA nfsmount family.
 
 Signed-off-by: Tom Talpey <talpey@netapp.com>
 
 ---
 
- net/sunrpc/xprt.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ super.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-Index: linux-2.6.22/net/sunrpc/xprt.c
+Index: linux-2.6.22/fs/nfs/super.c
 ===================================================================
---- linux-2.6.22.orig/net/sunrpc/xprt.c
-+++ linux-2.6.22/net/sunrpc/xprt.c
-@@ -990,7 +990,7 @@ struct rpc_xprt *xprt_create_transport(i
-        spin_lock(&xprt_list_lock);
-        list_for_each_entry(t, &xprt_list, list) {
-                if ((t->family == ap->sa_family) &&
--                   (t->protocol == proto)) {
-+                   (t->protocol == 0 || t->protocol == proto)) {
-                        spin_unlock(&xprt_list_lock);
-                        goto found;
-                }
+--- linux-2.6.22.orig/fs/nfs/super.c
++++ linux-2.6.22/fs/nfs/super.c
+@@ -826,7 +826,7 @@ static int nfs4_get_sb(struct file_syste
+        if (copy_from_user(&addr, data->host_addr, sizeof(addr)))
+                return -EFAULT;
+ 
+-       if (addr.sin_family != AF_INET ||
++       if ( (addr.sin_family != AF_INET && addr.sin_family != 0xff) ||
+            addr.sin_addr.s_addr == INADDR_ANY
+            ) {
+                dprintk("%s: mount program didn't pass remote IP address!\n",
 
 
 -------------------------------------------------------------------------
