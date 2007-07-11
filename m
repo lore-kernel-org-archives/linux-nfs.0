@@ -1,24 +1,22 @@
-From: Tom Tucker <tom@smtp.opengridcomputing.com>
-Subject: Re: [RFC,PATCH 10/10] rdma: Kconfig
-Date: Tue, 10 Jul 2007 23:11:48 -0500
-Message-ID: <E08E8491-AE18-4E56-8F2E-7A92B7DA3C92@smtp.opengridcomputing.com>
-References: <20070701230258.29354.89949.stgit@dell3.ogc.int>
-	<20070701231246.29354.4764.stgit@dell3.ogc.int>
-	<Pine.LNX.4.64.0707101057390.13415@jlentini-linux.nane.netapp.com>
-Mime-Version: 1.0 (iPhone Mail 1A543a)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] locks: kill redundant local variable
+Date: Wed, 11 Jul 2007 09:14:05 -0400
+Message-ID: <20070711131405.14746.99176.stgit@heimdal.trondhjem.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: James Lentini <jlentini@netapp.com>
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8TYt-0002uR-VU
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 21:12:24 -0700
-Received: from mail.es335.com ([67.65.19.105])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8TYx-0001qq-C7
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 21:12:27 -0700
-In-Reply-To: <Pine.LNX.4.64.0707101057390.13415@jlentini-linux.nane.netapp.com>
+	id 1I8c1F-00074E-IW
+	for nfs@lists.sourceforge.net; Wed, 11 Jul 2007 06:14:13 -0700
+Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
+	helo=heimdal.trondhjem.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8c1J-0005nI-0d
+	for nfs@lists.sourceforge.net; Wed, 11 Jul 2007 06:14:17 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,49 +29,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Agreed, this help needs updating
+From: \"J. Bruce Fields\" <bfields@fieldses.org>
 
-Tom
+There's no need for another variable local to this loop; we can use the
+variable (of the same name!) already declared at the top of the function,
+and not used till later (at which point it's initialized, so this is safe).
 
-On Jul 10, 2007, at 10:04 AM, James Lentini <jlentini@netapp.com> wrote:
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
->
->
-> On Sun, 1 Jul 2007, Tom Tucker wrote:
->
->>
->> Add NFS_RDMA as an option to the Kconfig file.
->>
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> ---
->>
->> fs/Kconfig |    7 +++++++
->> 1 files changed, 7 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/Kconfig b/fs/Kconfig
->> index 0fa0c11..718006c 100644
->> --- a/fs/Kconfig
->> +++ b/fs/Kconfig
->> @@ -1652,6 +1652,13 @@ config NFSD
->>      To compile the NFS server support as a module, choose M here:  
->> the
->>      module will be called nfsd.  If unsure, say N.
->>
->> +config NFSD_RDMA
->> +    tristate "Provide NFS server over RDMA support (EXPERIMENTAL)"
->> +    depends on SUNRPC && INFINIBAND && EXPERIMENTAL
->> +    help
->> +      If you want your NFS server to support RDMA connections, say  
->> Y here
->> +      If unsure, say N.
->> +
->
-> I suggest rewording this text now that the svcrdma code can be built
-> as a module (Y, N, and m are now valid choices).
->
->> config NFSD_V2_ACL
->>    bool
->>    depends on NFSD
+ fs/locks.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index 431a8b8..2e8f21b 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -823,7 +823,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	lock_kernel();
+ 	if (request->fl_type != F_UNLCK) {
+ 		for_each_lock(inode, before) {
+-			struct file_lock *fl = *before;
++			fl = *before;
+ 			if (!IS_POSIX(fl))
+ 				continue;
+ 			if (!posix_locks_conflict(request, fl))
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
