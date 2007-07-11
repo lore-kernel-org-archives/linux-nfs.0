@@ -1,26 +1,25 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC, PATCH 06/20] svc: export svc_sock_enqueue,
-	svc_sock_received
-Date: Tue, 10 Jul 2007 19:45:03 -0500
-Message-ID: <1184114703.30033.89.camel@trinity.ogc.int>
+Subject: Re: [RFC,PATCH 19/20] knfsd: call svc_create_svcsock
+Date: Tue, 10 Jul 2007 19:48:58 -0500
+Message-ID: <1184114938.30033.91.camel@trinity.ogc.int>
 References: <20070710052711.28979.70843.stgit@dell3.ogc.int>
-	<20070710053432.28979.89368.stgit@dell3.ogc.int>
-	<1184108889.6480.35.camel@heimdal.trondhjem.org>
+	<20070710053500.28979.94056.stgit@dell3.ogc.int>
+	<1184110365.6480.41.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I8QLe-0008TJ-PM
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 17:46:30 -0700
+	id 1I8QPQ-0000Ov-SK
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 17:50:24 -0700
 Received: from rrcs-71-42-183-126.sw.biz.rr.com ([71.42.183.126]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8QLi-00054D-3z
-	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 17:46:34 -0700
-In-Reply-To: <1184108889.6480.35.camel@heimdal.trondhjem.org>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I8QPU-0004jz-BA
+	for nfs@lists.sourceforge.net; Tue, 10 Jul 2007 17:50:28 -0700
+In-Reply-To: <1184110365.6480.41.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,87 +32,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Changed to EXPORT_SYMBOL_GPL.
 
-See below....
-
-On Tue, 2007-07-10 at 19:08 -0400, Trond Myklebust wrote:
-> On Tue, 2007-07-10 at 00:34 -0500, Tom Tucker wrote:
-> > Export svc_sock_enqueue() and svc_sock_received() so they
-> > can be used by sunrpc server transport implementations
-> > (even future modular ones).
+On Tue, 2007-07-10 at 19:32 -0400, Trond Myklebust wrote:
+> On Tue, 2007-07-10 at 00:35 -0500, Tom Tucker wrote:
+> > Change the call to the socket specific svc_makesock to a call to the
+> > transport independent svc_create_svcsock function. This avoids 
+> > conditional #ifdef's for the rdma transport in the nfsd code. 
 > > 
-> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
 > > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > > ---
 > > 
-> >  include/linux/sunrpc/svcsock.h |    2 ++
-> >  net/sunrpc/svcsock.c           |    7 ++++---
-> >  2 files changed, 6 insertions(+), 3 deletions(-)
+> >  fs/nfsd/nfssvc.c     |    8 ++++----
+> >  net/sunrpc/svcsock.c |    1 +
+> >  2 files changed, 5 insertions(+), 4 deletions(-)
 > > 
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> > index ce93b10..9fa4321 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -108,6 +108,8 @@ int		svc_addsock(struct svc_serv *serv,
-> >  			    int fd,
-> >  			    char *name_return,
-> >  			    int *proto);
-> > +void		svc_sock_enqueue(struct svc_sock *svsk);
-> > +void		svc_sock_received(struct svc_sock *svsk);
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index ff55950..1499beb 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -235,8 +235,8 @@ static int nfsd_init_socks(int port)
 > >  
-> >  /*
-> >   * svc_makesock socket characteristics
+> >  	error = lockd_up(IPPROTO_UDP);
+> >  	if (error >= 0) {
+> > -		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
+> > -					SVC_SOCK_DEFAULTS);
+> > +		error = svc_create_svcsock(nfsd_serv, "udp", port,
+> > +					   SVC_SOCK_DEFAULTS);
+> >  		if (error < 0)
+> >  			lockd_down();
+> >  	}
+> > @@ -246,8 +246,8 @@ static int nfsd_init_socks(int port)
+> >  #ifdef CONFIG_NFSD_TCP
+> >  	error = lockd_up(IPPROTO_TCP);
+> >  	if (error >= 0) {
+> > -		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
+> > -					SVC_SOCK_DEFAULTS);
+> > +		error = svc_create_svcsock(nfsd_serv, "tcp", port,
+> > +					   SVC_SOCK_DEFAULTS);
+> >  		if (error < 0)
+> >  			lockd_down();
+> >  	}
 > > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 1a6a933..f09c4b4 100644
+> > index b0e1b61..67a1d59 100644
 > > --- a/net/sunrpc/svcsock.c
 > > +++ b/net/sunrpc/svcsock.c
-> > @@ -209,7 +209,7 @@ svc_release_skb(struct svc_rqst *rqstp)
-> >   * processes, wake 'em up.
-> >   *
-> >   */
-> > -static void
-> > +void
-> >  svc_sock_enqueue(struct svc_sock *svsk)
-> >  {
-> >  	struct svc_serv	*serv = svsk->sk_server;
-> > @@ -287,6 +287,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
-> >  out_unlock:
-> >  	spin_unlock_bh(&pool->sp_lock);
+> > @@ -2111,6 +2111,7 @@ int svc_create_svcsock(struct svc_serv *
+> >   out:
+> >  	return ret;
 > >  }
-> > +EXPORT_SYMBOL(svc_sock_enqueue);
+> > +EXPORT_SYMBOL(svc_create_svcsock);
 > 
-> EXPORT_SYMBOL_GPL(), please. This is definitely not something we want to
-> encourage out-of-tree modules to use.
-
-Ok, done. Note that svc_sock_names is currently EXPORT_SYMBOL.
-
+> ...again. Really wants to be an EXPORT_SYMBOL_GPL().
 > 
-> >  
 > >  /*
-> >   * Dequeue the first socket.  Must be called with the pool->sp_lock held.
-> > @@ -315,14 +316,14 @@ svc_sock_dequeue(struct svc_pool *pool)
-> >   * Note: SK_DATA only gets cleared when a read-attempt finds
-> >   * no (or insufficient) data.
-> >   */
-> > -static inline void
-> > +void
-> >  svc_sock_received(struct svc_sock *svsk)
-> >  {
-> >  	svsk->sk_pool = NULL;
-> >  	clear_bit(SK_BUSY, &svsk->sk_flags);
-> >  	svc_sock_enqueue(svsk);
-> >  }
-> > -
-> > +EXPORT_SYMBOL(svc_sock_received);
-> 
-> ditto...
-
-Done.
-
-> >  
-> >  /**
-> >   * svc_reserve - change the space reserved for the reply to a request.
+> >   * Handle defer and revisit of requests
 > > 
 > > -------------------------------------------------------------------------
 > > This SF.net email is sponsored by DB2 Express
