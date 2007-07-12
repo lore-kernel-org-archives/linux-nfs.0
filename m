@@ -1,19 +1,21 @@
-From: Mcclain T.Dora <pwxxf@vip.cybercity.dk>
-Subject: Publication.WEZPECYRRE.pdf attached
-Date: Thu, 12 Jul 2007 17:01:51 -0400
-Message-ID: <469696BF.2060703@vip.cybercity.dk>
+From: Eric Paris <eparis@redhat.com>
+Subject: RFC: LSM/SELinux handling of mount options
+Date: Thu, 12 Jul 2007 19:41:33 -0400
+Message-ID: <1184283693.3510.123.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070106050806080808010102"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: steved@redhat.com, hch@infradead.org, viro@zeniv.linux.org.uk,
+	trond.myklebust@fys.uio.no, sds@tycho.nsa.gov
+To: selinux@tycho.nsa.gov, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I95nQ-0004Ag-Ap
-	for nfs@lists.sourceforge.net; Thu, 12 Jul 2007 14:01:56 -0700
-Received: from c-76-97-229-38.hsd1.ga.comcast.net ([76.97.229.38])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1I95nT-0005Tb-9h
-	for nfs@lists.sourceforge.net; Thu, 12 Jul 2007 14:02:00 -0700
+	id 1I98IH-0003kP-EE
+	for nfs@lists.sourceforge.net; Thu, 12 Jul 2007 16:42:02 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I98IJ-00014L-RW
+	for nfs@lists.sourceforge.net; Thu, 12 Jul 2007 16:42:01 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,317 +28,989 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---------------070106050806080808010102
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
+Do not commit to any tree!  This patch is busted and is only being
+posted for comments on design!  I'll explain the problem below but I
+don't see it in the code right offhand and if the whole design is going
+to get crapped on I don't feel like digging into it.  If the design
+looks reasonable to people it won't take me long to figure out what I
+did wrong.
+
+So there are 2 overarching problems this patch set it attempting to
+solve or make later solutions easier.  
+
+1) NFS uses binary mount data (for both normal and nohide/referral
+mounts) which currently SELinux attempts to understand and use.  This
+was declared a layering issue, no security module should have FS
+specific data structure knowledge.  (Instead we have to put security
+module specific knowledge into the FS since the FS 'owns' the mount
+data, see below)
+
+2) File systems own all of their mount options.  SELinux currently scans
+through the text mount data of most filesystems and pulls out the key
+options it understands, in the case of SELinux those are context=,
+fscontext=, rootcontext=, defcontext=.  On these 2 lists it was stated
+that the FS owns the options and mount data.  I don't try to remove all
+handling of text mount data from SELinux but I am adding the
+infrastructure for FS code to pass that data explicitly.  Future work
+may eliminate the fact that security modules directly read and use text
+mount data for their own purposes.
+
+Someday this will be a 3 part patch.
+1) add get/set_sb_sec_ops so an FS can get or set their own security
+attributes.
+2) add set_sec_ops to struct file_system_type to call out to FS specific
+security module settings
+3) make nfs use the get/set_sb_sec_ops code when doing nohide/referral
+mounts.
+
+LONG explanation below.
+
+How does this patch work?  For submitting I'm going to break it up
+probably into 3 parts.  The first part will add new LSM hooks and new
+functionality where we can get or set the security information relevant
+to a superblock (see selinux_set_mnt_opts).
+
+static int selinux_set_mnt_opts(const struct super_block *sb,
+                                char **mount_options, int *flags,
+                                int num_opts)
+
+mount_options is an array of strings which contain the actual security
+data.  In the case of selinux this will be an array of selinux context
+strings.  Flags is an array which tells which string is trying to set
+which security relevant attribute.  These flags are global flags in
+security.h of the form
+
+#define SELINUX__FSCONTEXT_MNT_OPT      1
+
+My convention is the first part will specify the security module, and
+the second part will specify what it's for in that module.  Above I said
+that SELinux had 4 mount options it cared about so there are currently 4
+of these flags defined.  That example says this is for SELinux and we
+are setting the FSCONTEXT SELinux mount options.
+
+The last argument is num_opts which is simply how many security
+parameters are being passed to this function.  Assume num_opts = 1.  We
+look at flags[0] (say it equals 1) to find out what we are supposed to
+set (fscontext), and then set it to the string at mount_options[0] (=
+some context like system_u:object_r:type_t).  The get functions do the
+opposite.  They return all of these arrays based on the information in
+the given sb.  Now we have the infrastructure for a FS to set their own
+security settings assuming they know what the security module below them
+is.  (Big if and I'm not really solving that problem right now...
+ifdefs?)
+
+The second part of the patch will be the change to add
+
+struct file_system_type {
+	[....]
+        int (*set_sec_ops) (struct vfsmount *mnt, void *mnt_ops);
+
+Since now the FS owns the mount data the security layer needs a way to
+tell the FS, "hey FS, now is the time for you to set the security
+information on this vfsmount, and here is the mount data you sent our
+way but we don't understand."  The only user I see for this at the
+moment is NFS.  But others may use this if they don't continue to just
+let SELinux grep the security information from the text mount data.  NFS
+will set the NFS specific
+
+	.set_sec_ops = nfs_set_sec_ops;
+
+Inside vfs_kern_mount we can call back out and get NFS to set its
+security settings (using the new LSM hooks above).  Obviously this is
+the point where the FS now has to have security module specific
+information.  If NFS is going to own the mount options and the mount
+options are security module specific some level of security module
+knowledge must exist.  This is easy on NFS, it only understands context=
+and only has a ->context field in the nfs_mount_data so this can be hard
+coded.  Right now I think this function will bust without SELinux below
+it, but that's an easy fix to just handle the return from a call to
+security_sb_set_mnt_opts if it is a no-op.
+
+This set_sec_ops pointer would be null on all FS's which didn't need
+this call back and wouldn't do anything.
+
+At this point we should have the same functionality we have today, but
+should have gone a lot of the way towards solving problem 2.  Other FS's
+which want to own their mount data completely could switch to start
+using this infrastructure.
+
+part 3 and now the real reason I started to look at this, NFS referral
+and nohide mounts which use nfs_clone_mount instead of nfs_mount_data.
+The fix for this is to actually change nfs_do_clone_mount() to get the
+security relevant information on the parent superblock, mount the new
+'child,' and then set that security information onto the child.  All of
+this security getting/setting data is actually opaque to NFS and it
+doesn't matter what the underlying security module is (or if there even
+is one once i handle return codes better)
+
+I said there was a problem right?  The root inode is not getting the
+label specified in the mount options.  I'm not sure why but in the case
+of NFS I always get nfs_t on the root inode instead of the label I
+explicitly set for the rest of the mount point.  I thought that would be
+fixed by setting rootcontext in my set_mnt_opts() function but it isn't
+working and I don't see the issue offhand.  Obviously this will be fixed
+before I considered posting for people to look at again.  You can
+actually run and test with this code, just note that your root inode is
+going to be labeled wrong....
+
+Anyway, here is the single patch.  I'd like to hear comments on my
+design (and my code but don't get picky, its got a long way to go, see
+all those printk's and dump_stacks?  those are bad, don't tell me)
+
+-Eric
+
+ fs/nfs/client.c          |   18 +++
+ fs/nfs/namespace.c       |   27 +++-
+ fs/nfs/super.c           |   44 ++++++
+ fs/super.c               |    5 +
+ include/linux/fs.h       |    1 +
+ include/linux/security.h |   54 +++++++-
+ security/dummy.c         |   19 +++
+ security/selinux/hooks.c |  379 +++++++++++++++++++++++++++++++---------------
+ 8 files changed, 422 insertions(+), 125 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 881fa49..1d124ad 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -532,6 +532,13 @@ static int nfs_init_client(struct nfs_client *clp, const struct nfs_mount_data *
+ 	int proto = (data->flags & NFS_MOUNT_TCP) ? IPPROTO_TCP : IPPROTO_UDP;
+ 	int error;
+ 
++	printk(KERN_CRIT "%s: called.  mount data is: ", __FUNCTION__);
++	if (data && data->context)
++		printk("%s\n", data->context);
++	else
++		printk("NULL\n");
++	dump_stack();
++
+ 	if (clp->cl_cons_state == NFS_CS_READY) {
+ 		/* the client is already initialised */
+ 		dprintk("<-- nfs_init_client() = 0 [already %p]\n", clp);
+@@ -569,6 +576,11 @@ static int nfs_init_server(struct nfs_server *server, const struct nfs_mount_dat
+ 	struct nfs_client *clp;
+ 	int error, nfsvers = 2;
+ 
++        printk(KERN_CRIT "%s: called.  mount data is: ", __FUNCTION__);
++        if (data && data->context)
++                printk("%s\n", data->context);
++        else
++                printk("NULL\n");
+ 	dprintk("--> nfs_init_server()\n");
+ 
+ #ifdef CONFIG_NFS_V3
+@@ -803,6 +815,12 @@ struct nfs_server *nfs_create_server(const struct nfs_mount_data *data,
+ 	struct nfs_fattr fattr;
+ 	int error;
+ 
++        printk(KERN_CRIT "%s: called.  mount data is: ", __FUNCTION__);
++        if (data && data->context)
++                printk(KERN_CRIT "%s\n", data->context);
++        else
++                printk(KERN_CRIT "NULL\n");
++
+ 	server = nfs_alloc_server();
+ 	if (!server)
+ 		return ERR_PTR(-ENOMEM);
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 7f86e65..6436be0 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -11,6 +11,7 @@
+ #include <linux/mount.h>
+ #include <linux/namei.h>
+ #include <linux/nfs_fs.h>
++#include <linux/security.h>
+ #include <linux/string.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/vfs.h>
+@@ -188,8 +189,18 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+ 					   const char *devname,
+ 					   struct nfs_clone_mount *mountdata)
+ {
+-#ifdef CONFIG_NFS_V4
++	int rc = 0, num_sec_mnt_opts = 0, i;
++	char **sec_mnt_opts;
++	int *sec_mnt_flags;
+ 	struct vfsmount *mnt = NULL;
++
++	sec_mnt_opts = NULL;
++	sec_mnt_flags = NULL;
++	rc = security_sb_get_mnt_opts(mountdata->sb, &sec_mnt_opts,
++				      &sec_mnt_flags, &num_sec_mnt_opts);
++	if (rc)
++		return ERR_PTR(rc);
++#ifdef CONFIG_NFS_V4
+ 	switch (server->nfs_client->cl_nfsversion) {
+ 		case 2:
+ 		case 3:
+@@ -198,10 +209,20 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+ 		case 4:
+ 			mnt = vfs_kern_mount(&nfs4_xdev_fs_type, 0, devname, mountdata);
+ 	}
+-	return mnt;
+ #else
+-	return vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
++	mnt = vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
+ #endif
++	if (mnt) {
++		security_sb_set_mnt_opts(mnt->mnt_sb, sec_mnt_opts,
++					 sec_mnt_flags, num_sec_mnt_opts);
++	}
++	if (sec_mnt_opts) {
++		for (i = 0; i < num_sec_mnt_opts; i++)
++			kfree(sec_mnt_opts[i]);
++		kfree(sec_mnt_opts);
++		kfree(sec_mnt_flags);
++	}
++	return mnt;
+ }
+ 
+ /**
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ca20d3c..c7dcfba 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -37,6 +37,7 @@
+ #include <linux/nfs_mount.h>
+ #include <linux/nfs4_mount.h>
+ #include <linux/lockd/bind.h>
++#include <linux/security.h>
+ #include <linux/smp_lock.h>
+ #include <linux/seq_file.h>
+ #include <linux/mount.h>
+@@ -65,6 +66,7 @@ static int nfs_get_sb(struct file_system_type *, int, const char *, void *, stru
+ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
++static int nfs_set_sec_ops(struct vfsmount *mnt, void *mnt_ops);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -72,6 +74,7 @@ static struct file_system_type nfs_fs_type = {
+ 	.get_sb		= nfs_get_sb,
+ 	.kill_sb	= nfs_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.set_sec_ops	= nfs_set_sec_ops,
+ };
+ 
+ struct file_system_type nfs_xdev_fs_type = {
+@@ -440,6 +443,12 @@ static void nfs_umount_begin(struct vfsmount *vfsmnt, int flags)
+ static int nfs_validate_mount_data(struct nfs_mount_data *data,
+ 				   struct nfs_fh *mntfh)
+ {
++        printk(KERN_CRIT "%s: called.  mount data is: ", __FUNCTION__);
++        if (data && data->context)
++                printk(KERN_CRIT "%s\n", data->context);
++        else
++                printk(KERN_CRIT "NULL\n");
++
+ 	if (data == NULL) {
+ 		dprintk("%s: missing data argument\n", __FUNCTION__);
+ 		return -EINVAL;
+@@ -543,6 +552,11 @@ static void nfs_fill_super(struct super_block *sb, struct nfs_mount_data *data)
+ {
+ 	struct nfs_server *server = NFS_SB(sb);
+ 
++        if (data && data->context && data->context[0])
++        	printk(KERN_CRIT "%s: called.  mount data is: %s\n", __FUNCTION__, data->context);
++        else
++        	printk(KERN_CRIT "%s: called.  mount data is: NULL\n", __FUNCTION__);
++
+ 	sb->s_blocksize_bits = 0;
+ 	sb->s_blocksize = 0;
+ 	if (data->bsize)
+@@ -617,6 +631,12 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 	struct dentry *mntroot;
+ 	int error;
+ 
++	printk(KERN_CRIT "%s: called.  mount data is: ", __FUNCTION__);
++        if (data && data->context[0])
++                printk(KERN_CRIT "%s\n", data->context);
++        else
++                printk(KERN_CRIT "NULL\n");
++
+ 	/* Validate the mount data */
+ 	error = nfs_validate_mount_data(data, &mntfh);
+ 	if (error < 0)
+@@ -746,6 +766,30 @@ error_splat_super:
+ 	return error;
+ }
+ 
++/*
++ * since nfs only supports the context= security string a lot of this is hard
++ * coded to 1.  If others mount opts are added this will get a bit more complex.
++ */
++static int nfs_set_sec_ops(struct vfsmount *mnt, void *mnt_ops)
++{
++	struct nfs_mount_data *nfs_ops = (struct nfs_mount_data *)mnt_ops;
++	char *contexts[1];
++	int mnt_ops_flags[1];
++	int rc = 0;
++
++	if (nfs_ops->context)
++		printk(KERN_CRIT "%s: nfs_ops->context=%s\n", __FUNCTION__, nfs_ops->context);
++	/* no security data in the nfs_mount_data */
++	if ((nfs_ops->version < 6) || !nfs_ops->context[0])
++		return 0;
++
++	contexts[0] = nfs_ops->context;
++	mnt_ops_flags[0] = SELINUX__CONTEXT_MNT_OPT;
++
++	rc = security_sb_set_mnt_opts(mnt->mnt_sb, contexts, mnt_ops_flags, 1);
++	return rc;
++}
++
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+diff --git a/fs/super.c b/fs/super.c
+index 5260d62..b555d61 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -889,6 +889,11 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void
+  	if (error)
+  		goto out_sb;
+ 
++	if (type->set_sec_ops && data) {
++		error = type->set_sec_ops(mnt, data);
++		if (error)
++			goto out_sb;
++	}
+ 	mnt->mnt_mountpoint = mnt->mnt_root;
+ 	mnt->mnt_parent = mnt;
+ 	up_write(&mnt->mnt_sb->s_umount);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b3ae77c..ed6e0f2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1371,6 +1371,7 @@ struct file_system_type {
+ 	struct list_head fs_supers;
+ 	struct lock_class_key s_lock_key;
+ 	struct lock_class_key s_umount_key;
++	int (*set_sec_ops) (struct vfsmount *mnt, void *mnt_ops);
+ };
+ 
+ extern int get_sb_bdev(struct file_system_type *fs_type,
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 9eb9e0f..854b2b6 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -34,6 +34,11 @@
+ #include <linux/xfrm.h>
+ #include <net/flow.h>
+ 
++#define SELINUX__FSCONTEXT_MNT_OPT			1
++#define SELINUX__CONTEXT_MNT_OPT			2
++#define SELINUX__ROOTCONTEXT_MNT_OPT			3
++#define SELINUX__DEFCONTEXT_MNT_OPT			4
++
+ struct ctl_table;
+ 
+ /*
+@@ -247,6 +252,18 @@ struct request_sock;
+  *	Update module state after a successful pivot.
+  *	@old_nd contains the nameidata structure for the old root.
+  *      @new_nd contains the nameidata structure for the new root.
++ * @sb_get_mount_options:
++ *      Get the security relevant mount options used for a superblock
++ *      @sb the superblock to get security mount options from
++ *      @mount_options array for pointers to mount options
++ *      @mount_flags array of ints specifying what each mount options is
++ *      @num_opts number of options in the arrays
++ * @sb_set_mount_options:
++ *      Set the security relevant mount options used for a superblock
++ *      @sb the superblock to set security mount options for
++ *      @mount_options array for pointers to mount options
++ *      @mount_flags array of ints specifying what each mount options is
++ *      @num_opts number of options in the arrays
+  *
+  * Security hooks for inode operations.
+  *
+@@ -1199,7 +1216,11 @@ struct security_operations {
+ 			     struct nameidata * new_nd);
+ 	void (*sb_post_pivotroot) (struct nameidata * old_nd,
+ 				   struct nameidata * new_nd);
+-
++	int (*sb_get_mnt_opts) (const struct super_block *sb,
++				char ***mount_options, int **flags,
++				int *num_opts);
++	int (*sb_set_mnt_opts) (struct super_block *sb, char **mount_options,
++				int *flags, int num_opts);
+ 	int (*inode_alloc_security) (struct inode *inode);	
+ 	void (*inode_free_security) (struct inode *inode);
+ 	int (*inode_init_security) (struct inode *inode, struct inode *dir,
+@@ -1587,6 +1608,20 @@ static inline void security_sb_post_pivotroot (struct nameidata *old_nd,
+ 	security_ops->sb_post_pivotroot (old_nd, new_nd);
+ }
+ 
++static inline int security_sb_get_mnt_opts (const struct super_block *sb,
++					    char ***mount_options,
++					    int **flags, int *num_opts)
++{
++	return security_ops->sb_get_mnt_opts(sb, mount_options, flags, num_opts);
++}
++
++static inline int security_sb_set_mnt_opts (struct super_block *sb,
++					    char **mount_options,
++					    int *flags, int num_opts)
++{
++	return security_ops->sb_set_mnt_opts(sb, mount_options, flags, num_opts);
++}
++
+ static inline int security_inode_alloc (struct inode *inode)
+ {
+ 	inode->i_security = NULL;
+@@ -2319,6 +2354,23 @@ static inline void security_sb_post_pivotroot (struct nameidata *old_nd,
+ 					       struct nameidata *new_nd)
+ { }
+ 
++static inline int security_sb_get_mnt_opts (const struct super_block *sb,
++					    char ***mount_options,
++					    int **flags, int *num_opts)
++{
++	*mount_options = NULL;
++	*flags = NULL;
++	*num_opts = 0;
++	return 0;
++}
++
++static inline int security_sb_set_mnt_opts (struct super_block *sb,
++					    char **mount_options,
++					    int *flags, int num_opts)
++{
++	return 0;
++}
++
+ static inline int security_inode_alloc (struct inode *inode)
+ {
+ 	return 0;
+diff --git a/security/dummy.c b/security/dummy.c
+index 8ffd764..f4644ff 100644
+--- a/security/dummy.c
++++ b/security/dummy.c
+@@ -248,6 +248,23 @@ static void dummy_sb_post_pivotroot (struct nameidata *old_nd, struct nameidata
+ 	return;
+ }
+ 
++static int dummy_sb_get_mnt_opts(const struct super_block *sb, char ***mount_options,
++				 int **flags, int *num_opts)
++{
++	*mount_options = NULL;
++	*flags = NULL;
++	*num_opts = 0;
++	return 0;
++}
++
++static int dummy_sb_set_mnt_opts(struct super_block *sb, char **mount_options,
++				 int *flags, int num_opts)
++{
++	if (unlikely(num_opts))
++		return -EOPNOTSUPP;
++	return 0;
++}
++
+ static int dummy_inode_alloc_security (struct inode *inode)
+ {
+ 	return 0;
+@@ -992,6 +1009,8 @@ void security_fixup_ops (struct security_operations *ops)
+ 	set_to_dummy_if_null(ops, sb_post_addmount);
+ 	set_to_dummy_if_null(ops, sb_pivotroot);
+ 	set_to_dummy_if_null(ops, sb_post_pivotroot);
++	set_to_dummy_if_null(ops, sb_get_mnt_opts);
++	set_to_dummy_if_null(ops, sb_set_mnt_opts);
+ 	set_to_dummy_if_null(ops, inode_alloc_security);
+ 	set_to_dummy_if_null(ops, inode_free_security);
+ 	set_to_dummy_if_null(ops, inode_init_security);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index ad8dd4e..9591536 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -362,135 +362,122 @@ static int may_context_mount_inode_relabel(u32 sid,
+ 	return rc;
+ }
+ 
+-static int try_context_mount(struct super_block *sb, void *data)
++/*
++ * This function should allow an FS (like NFS) to ask what it's mount security
++ * options were so it can use those later for submounts and the like
++ */
++static int selinux_get_mnt_opts(const struct super_block *sb,
++				char ***mount_options, int **flags,
++				int *num_opts)
+ {
+-	char *context = NULL, *defcontext = NULL;
+-	char *fscontext = NULL, *rootcontext = NULL;
+-	const char *name;
+-	u32 sid;
+-	int alloc = 0, rc = 0, seen = 0;
+-	struct task_security_struct *tsec = current->security;
++	int rc = 0, i;
+ 	struct superblock_security_struct *sbsec = sb->s_security;
++	/* rootcontext is not applicable to submounts, the only known user... */
++	char *fscontext = NULL, *context = NULL;
++	char *defcontext = NULL;
++	u32 len;
+ 
+-	if (!data)
+-		goto out;
++	*num_opts = 0;
++	*mount_options = NULL;
++	*flags = NULL;
+ 
+-	name = sb->s_type->name;
+-
+-	if (sb->s_type->fs_flags & FS_BINARY_MOUNTDATA) {
++	if (sbsec->sid) {
++		rc = security_sid_to_context(sbsec->sid, &fscontext, &len);
++		if (rc)
++			goto out_free;
++		*num_opts += 1;
++	}
+ 
+-		/* NFS we understand. */
+-		if (!strcmp(name, "nfs")) {
+-			struct nfs_mount_data *d = data;
++	if (sbsec->mntpoint_sid) {
++		rc = security_sid_to_context(sbsec->mntpoint_sid, &context, &len);
++		if (rc)
++			goto out_free;
++		*num_opts += 1;
++	}
+ 
+-			if (d->version <  NFS_MOUNT_VERSION)
+-				goto out;
++	if (sbsec->def_sid) {
++		rc = security_sid_to_context(sbsec->def_sid, &defcontext, &len);
++		if (rc)
++			goto out_free;
++		*num_opts += 1;
++	}
+ 
+-			if (d->context[0]) {
+-				context = d->context;
+-				seen |= Opt_context;
+-			}
+-		} else
+-			goto out;
++	*mount_options = kcalloc(*num_opts, sizeof(char *), GFP_ATOMIC);
++	if (!*mount_options) {
++		rc = -ENOMEM;
++		goto out_free;
++	}
+ 
+-	} else {
+-		/* Standard string-based options. */
+-		char *p, *options = data;
++	*flags = kcalloc(*num_opts, sizeof(int), GFP_ATOMIC);
++	if (!*flags) {
++		rc = -ENOMEM;
++		goto out_free;
++	}
+ 
+-		while ((p = strsep(&options, "|")) != NULL) {
+-			int token;
+-			substring_t args[MAX_OPT_ARGS];
++	i = 0;
++	if(fscontext) {
++		(*mount_options)[i] = fscontext;
++		(*flags)[i++] = SELINUX__FSCONTEXT_MNT_OPT;
++	}
+ 
+-			if (!*p)
+-				continue;
++	if(context) {
++		(*mount_options)[i] = context;
++		(*flags)[i++] = SELINUX__CONTEXT_MNT_OPT;
++	}
+ 
+-			token = match_token(p, tokens, args);
++	if(defcontext) {
++		(*mount_options)[i] = defcontext;
++		(*flags)[i++] = SELINUX__DEFCONTEXT_MNT_OPT;
++	}
+ 
+-			switch (token) {
+-			case Opt_context:
+-				if (seen & (Opt_context|Opt_defcontext)) {
+-					rc = -EINVAL;
+-					printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
+-					goto out_free;
+-				}
+-				context = match_strdup(&args[0]);
+-				if (!context) {
+-					rc = -ENOMEM;
+-					goto out_free;
+-				}
+-				if (!alloc)
+-					alloc = 1;
+-				seen |= Opt_context;
+-				break;
++	BUG_ON(i != *num_opts);
+ 
+-			case Opt_fscontext:
+-				if (seen & Opt_fscontext) {
+-					rc = -EINVAL;
+-					printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
+-					goto out_free;
+-				}
+-				fscontext = match_strdup(&args[0]);
+-				if (!fscontext) {
+-					rc = -ENOMEM;
+-					goto out_free;
+-				}
+-				if (!alloc)
+-					alloc = 1;
+-				seen |= Opt_fscontext;
+-				break;
++	return 0;
+ 
+-			case Opt_rootcontext:
+-				if (seen & Opt_rootcontext) {
+-					rc = -EINVAL;
+-					printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
+-					goto out_free;
+-				}
+-				rootcontext = match_strdup(&args[0]);
+-				if (!rootcontext) {
+-					rc = -ENOMEM;
+-					goto out_free;
+-				}
+-				if (!alloc)
+-					alloc = 1;
+-				seen |= Opt_rootcontext;
+-				break;
++out_free:
++	kfree(*mount_options);
++	kfree(*flags);
++	kfree(fscontext);
++	kfree(context);
++	kfree(defcontext);
++	*num_opts = 0;
++	return rc;
++}
+ 
+-			case Opt_defcontext:
+-				if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
+-					rc = -EINVAL;
+-					printk(KERN_WARNING "SELinux:  "
+-					       "defcontext option is invalid "
+-					       "for this filesystem type\n");
+-					goto out_free;
+-				}
+-				if (seen & (Opt_context|Opt_defcontext)) {
+-					rc = -EINVAL;
+-					printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
+-					goto out_free;
+-				}
+-				defcontext = match_strdup(&args[0]);
+-				if (!defcontext) {
+-					rc = -ENOMEM;
+-					goto out_free;
+-				}
+-				if (!alloc)
+-					alloc = 1;
+-				seen |= Opt_defcontext;
+-				break;
++/*
++ * Allow filesystems with binary mount data to explicitly set mount point labeling.
++ */
++int selinux_set_mnt_opts(struct super_block *sb, char **mount_options,
++				 int *flags, int num_opts)
++{
++	int rc = 0, i;
++	u32 sid;
++	struct task_security_struct *tsec = current->security;
++	struct superblock_security_struct *sbsec = sb->s_security;
++	char *fscontext = NULL, *context = NULL, *rootcontext= NULL;
++	char *defcontext = NULL;
++	const char *name = sb->s_type->name;
+ 
+-			default:
+-				rc = -EINVAL;
+-				printk(KERN_WARNING "SELinux:  unknown mount "
+-				       "option\n");
+-				goto out_free;
++	printk(KERN_CRIT "%s: with num_opts = %d\n", __FUNCTION__, num_opts);
+ 
+-			}
++	for(i = 0; i < num_opts; i++) {
++		switch(flags[i]) {
++		case SELINUX__FSCONTEXT_MNT_OPT:
++			fscontext = mount_options[i];
++			break;
++		case SELINUX__CONTEXT_MNT_OPT:
++			context = mount_options[i];
++			break;
++		case SELINUX__ROOTCONTEXT_MNT_OPT:
++			rootcontext = mount_options[i];
++			break;
++		case SELINUX__DEFCONTEXT_MNT_OPT:
++			defcontext = mount_options[i];
++			break;
++		default:
++			return -EINVAL;
+ 		}
+ 	}
+-
+-	if (!seen)
+-		goto out;
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext) {
+ 		rc = security_context_to_sid(fscontext, strlen(fscontext), &sid);
+@@ -498,12 +485,12 @@ static int try_context_mount(struct super_block *sb, void *data)
+ 			printk(KERN_WARNING "SELinux: security_context_to_sid"
+ 			       "(%s) failed for (dev %s, type %s) errno=%d\n",
+ 			       fscontext, sb->s_id, name, rc);
+-			goto out_free;
++			return rc;
+ 		}
+ 
+ 		rc = may_context_mount_sb_relabel(sid, sbsec, tsec);
+ 		if (rc)
+-			goto out_free;
++			return rc;
+ 
+ 		sbsec->sid = sid;
+ 	}
+@@ -514,43 +501,54 @@ static int try_context_mount(struct super_block *sb, void *data)
+ 	 * the superblock context if not already set.
+ 	 */
+ 	if (context) {
++		printk(KERN_CRIT "%s: inside context= block with context=%s\n", __FUNCTION__, context);
+ 		rc = security_context_to_sid(context, strlen(context), &sid);
+ 		if (rc) {
+ 			printk(KERN_WARNING "SELinux: security_context_to_sid"
+ 			       "(%s) failed for (dev %s, type %s) errno=%d\n",
+ 			       context, sb->s_id, name, rc);
+-			goto out_free;
++			return rc;
+ 		}
+ 
+ 		if (!fscontext) {
+ 			rc = may_context_mount_sb_relabel(sid, sbsec, tsec);
+ 			if (rc)
+-				goto out_free;
++				return rc;
+ 			sbsec->sid = sid;
+ 		} else {
+ 			rc = may_context_mount_inode_relabel(sid, sbsec, tsec);
+ 			if (rc)
+-				goto out_free;
++				return rc;
+ 		}
+-		sbsec->mntpoint_sid = sid;
++		/* 
++		 * On a MNTPOINT labeled FS there is no harm in explicitly
++		 * setting the root inode label.  This is especially useful
++		 * if the root inode has already been created while the fs
++		 * may have still been genfs, as is the case with NFS, and 
++		 * other FS which calls directly into the set sec ops function
++		 */
++		if (!rootcontext)
++			rootcontext = context;
+ 
++		sbsec->mntpoint_sid = sid;
+ 		sbsec->behavior = SECURITY_FS_USE_MNTPOINT;
+ 	}
+ 
+ 	if (rootcontext) {
+ 		struct inode *inode = sb->s_root->d_inode;
+ 		struct inode_security_struct *isec = inode->i_security;
++		printk(KERN_CRIT "%s: inside rootcontext= block with rootcontext=%s\n", __FUNCTION__, rootcontext);
+ 		rc = security_context_to_sid(rootcontext, strlen(rootcontext), &sid);
+ 		if (rc) {
+ 			printk(KERN_WARNING "SELinux: security_context_to_sid"
+ 			       "(%s) failed for (dev %s, type %s) errno=%d\n",
+ 			       rootcontext, sb->s_id, name, rc);
+-			goto out_free;
++			return rc;
+ 		}
+ 
+ 		rc = may_context_mount_inode_relabel(sid, sbsec, tsec);
+ 		if (rc)
+-			goto out_free;
++			return rc;
+ 
+ 		isec->sid = sid;
+ 		isec->initialized = 1;
+@@ -562,18 +560,155 @@ static int try_context_mount(struct super_block *sb, void *data)
+ 			printk(KERN_WARNING "SELinux: security_context_to_sid"
+ 			       "(%s) failed for (dev %s, type %s) errno=%d\n",
+ 			       defcontext, sb->s_id, name, rc);
+-			goto out_free;
++			return rc;
+ 		}
+ 
+ 		if (sid == sbsec->def_sid)
+-			goto out_free;
++			return rc;
+ 
+ 		rc = may_context_mount_inode_relabel(sid, sbsec, tsec);
+ 		if (rc)
+-			goto out_free;
++			return rc;
+ 
+ 		sbsec->def_sid = sid;
+ 	}
++	return 0;
++}
++
++static int try_context_mount(struct super_block *sb, void *data)
++{
++	char *context = NULL, *defcontext = NULL;
++	char *fscontext = NULL, *rootcontext = NULL;
++	const char *name;
++	int alloc = 0, rc = 0, seen = 0;
++	struct superblock_security_struct *sbsec = sb->s_security;
++	char *p, *options = data;
++	char *mnt_opts[4];
++	int mnt_opts_flags[4], num_mnt_opts = 0;
++
++	if (!data)
++		goto out;
++
++	if (sb->s_type->fs_flags & FS_BINARY_MOUNTDATA) {
++		printk(KERN_CRIT "%s: with FS_BINARY_MOUNTDATA\n", __FUNCTION__);
++		dump_stack();
++		goto out;
++	}
++
++	/* Standard string-based options. */
++
++	name = sb->s_type->name;
++
++	while ((p = strsep(&options, "|")) != NULL) {
++		int token;
++		substring_t args[MAX_OPT_ARGS];
++
++		if (!*p)
++			continue;
++
++		token = match_token(p, tokens, args);
++
++		switch (token) {
++		case Opt_context:
++			if (seen & (Opt_context|Opt_defcontext)) {
++				rc = -EINVAL;
++				printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
++				goto out_free;
++			}
++			context = match_strdup(&args[0]);
++			if (!context) {
++				rc = -ENOMEM;
++				goto out_free;
++			}
++			if (!alloc)
++				alloc = 1;
++			seen |= Opt_context;
++			break;
++
++		case Opt_fscontext:
++			if (seen & Opt_fscontext) {
++				rc = -EINVAL;
++				printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
++				goto out_free;
++			}
++			fscontext = match_strdup(&args[0]);
++			if (!fscontext) {
++				rc = -ENOMEM;
++				goto out_free;
++			}
++			if (!alloc)
++				alloc = 1;
++			seen |= Opt_fscontext;
++			break;
++
++		case Opt_rootcontext:
++			if (seen & Opt_rootcontext) {
++				rc = -EINVAL;
++				printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
++				goto out_free;
++			}
++			rootcontext = match_strdup(&args[0]);
++			if (!rootcontext) {
++				rc = -ENOMEM;
++				goto out_free;
++			}
++			if (!alloc)
++				alloc = 1;
++			seen |= Opt_rootcontext;
++			break;
++
++		case Opt_defcontext:
++			if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++				rc = -EINVAL;
++				printk(KERN_WARNING "SELinux:  "
++				       "defcontext option is invalid "
++				       "for this filesystem type\n");
++				goto out_free;
++			}
++			if (seen & (Opt_context|Opt_defcontext)) {
++				rc = -EINVAL;
++				printk(KERN_WARNING SEL_MOUNT_FAIL_MSG);
++					goto out_free;
++			}
++			defcontext = match_strdup(&args[0]);
++			if (!defcontext) {
++				rc = -ENOMEM;
++				goto out_free;
++			}
++			if (!alloc)
++				alloc = 1;
++			seen |= Opt_defcontext;
++			break;
++
++		default:
++			rc = -EINVAL;
++			printk(KERN_WARNING "SELinux:  unknown mount option\n");
++			goto out_free;
++
++		}
++	}
++
++	if (!seen)
++		goto out;
++
++	if(fscontext){
++		mnt_opts[num_mnt_opts] = fscontext;
++		mnt_opts_flags[num_mnt_opts++] = SELINUX__FSCONTEXT_MNT_OPT;
++	}
++	if(context){
++		mnt_opts[num_mnt_opts] = context;
++		mnt_opts_flags[num_mnt_opts++] = SELINUX__CONTEXT_MNT_OPT;
++	}
++	if(rootcontext){
++		mnt_opts[num_mnt_opts] = rootcontext;
++		mnt_opts_flags[num_mnt_opts++] = SELINUX__ROOTCONTEXT_MNT_OPT;
++	}
++	if(defcontext){
++		mnt_opts[num_mnt_opts] = defcontext;
++		mnt_opts_flags[num_mnt_opts++] = SELINUX__DEFCONTEXT_MNT_OPT;
++	}
++
++	rc = selinux_set_mnt_opts(sb, mnt_opts, mnt_opts_flags, num_mnt_opts);
+ 
+ out_free:
+ 	if (alloc) {
+@@ -4741,6 +4876,8 @@ static struct security_operations selinux_ops = {
+ 	.sb_statfs =			selinux_sb_statfs,
+ 	.sb_mount =			selinux_mount,
+ 	.sb_umount =			selinux_umount,
++	.sb_get_mnt_opts =		selinux_get_mnt_opts,
++	.sb_set_mnt_opts =		selinux_set_mnt_opts,
+ 
+ 	.inode_alloc_security =		selinux_inode_alloc_security,
+ 	.inode_free_security =		selinux_inode_free_security,
 
 
-
---------------070106050806080808010102
-Content-Type: application/pdf;
- name="Publication.WEZPECYRRE.pdf"
-Content-Transfer-Encoding: base64
-Content-Disposition: inline;
- filename="Publication.WEZPECYRRE.pdf"
-
-JVBERi0xLjMgCjEgMCBvYmoKPDwKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cK
-L1BhZ2VzIDMgMCBSCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbIDQg
-MCBSIF0KL0NvdW50IDEKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAz
-IDAgUgovUmVzb3VyY2VzIDw8Ci9Gb250IDw8IC9GMCA4IDAgUiA+PgovWE9iamVjdCA8PCAvSW0w
-IDkgMCBSID4+Ci9Qcm9jU2V0IDcgMCBSID4+Ci9NZWRpYUJveCBbMCAwIDY2OSAyMDBdCi9Dcm9w
-Qm94IFswIDAgNjY5IDIwMF0KL0NvbnRlbnRzIDUgMCBSCi9UaHVtYiAxMiAwIFIKPj4KZW5kb2Jq
-CjUgMCBvYmoKPDwKL0xlbmd0aCA2IDAgUgo+PgpzdHJlYW0KcQo2NjkgMCAwIDIwMCAwIDAgY20K
-L0ltMCBEbwpRCmVuZHN0cmVhbQplbmRvYmoKNiAwIG9iagozMQplbmRvYmoKNyAwIG9iagpbIC9Q
-REYgL1RleHQgL0ltYWdlSSBdCmVuZG9iago4IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBl
-IC9UeXBlMQovTmFtZSAvRjAKL0Jhc2VGb250IC9IZWx2ZXRpY2EKL0VuY29kaW5nIC9NYWNSb21h
-bkVuY29kaW5nCj4+CmVuZG9iago5IDAgb2JqCjw8Ci9UeXBlIC9YT2JqZWN0Ci9TdWJ0eXBlIC9J
-bWFnZQovTmFtZSAvSW0wCi9GaWx0ZXIgWyAvTFpXRGVjb2RlIF0KL1dpZHRoIDY2OQovSGVpZ2h0
-IDIwMAovQ29sb3JTcGFjZSAxMSAwIFIKL0JpdHNQZXJDb21wb25lbnQgOAovTGVuZ3RoIDEwIDAg
-Ugo+PgpzdHJlYW0KgAAgUDgkFg0HhEJhULhkNh0PiERiUTikVi0XjEZjUbjkdj0fkEhkUjkklk0n
-lEplUrlktl0vmExmUzmk1m03nE5nU7nk9n0/oFBoVDolFo1HpFJpVLplNp1PqFRqVTqlVq1XrFZr
-Vbrldr1fsFhsVjslls1ntFptVrtltt1vuFxuVzul1u13vF5vV7vl9v1/wGBwWDwmFw2HxGJqZdT+
-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
-KNaqHKMI6Ye/NH6Y0ru1Saw84XKdOPmdSx2UdCKQMqw7tC7LwtKuo0VMhN5N7JWiOq06YYuhMkXJ
-VM23YUaAAhMVLBgAA/8Ik2mifJYYukO5u1+gAibKWI61FD4SINSGjOIM9KgXs9ele7s7KxxO7GRN
-9PZPbO0n0NsIlDBJmN7AC3YOG768iL4UyMtFS9wKE5s5uNa6fOw3VMabWEwd2Oa2MRg0Ibg5SIM5
-WKURyt9PbQtQuVW3nMqjNAJONFwUlPxOqwKrnQlFwQbOZBhMCagUTPfCWVnMxOa/g3lQk9xQrQxR
-vN7Pe8qvVOrRjM1FwLyOHDs8iF0uyMs8Y/QKE9GxjNQ/+auP4LlRaU26ZRgkW5ySoa3AUfzPXRxS
-7JvR0soINDBQ6C6AEE+ZkK1OiJAStENSFRFTLTOpEbUK1IK43PFIoV6pE9eIIj0MsSbSpR7SsXEZ
-8YQQUMRS5S9UTJNTBQ2ITE+jPTgs0KFFFC9TauTTfEkK3H/TrD9TvObA+u2IKHVSkIHT+ZNQZR6d
-YelUKNOlpB9UVVhI9UYJsmASsZu64ABSHOYJZTmmNVIIHVu9yWfKcUskW7VVWa3VvGPMPETVjWdJ
-I6MnOdmEZG0miY6N6p+6S8/VwhQ0MAAaQiM1AVhL3WfXLXMmQcUwvWtWqm28pXPXfXhJNXZXbDLX
-jXtXvXwk9IhXzX5X7X9X/YBYDYFYHYJYLYNYPYRYTYVYXYZYbYdYfYhYjYlYnYpYrYtYvYxYzY1Y
-3Y5Y7Y9Y/ZBZDZFZHZJZLZNZPZRZTZVZXZZZbZdZfZhZjZlZnZpZrZtZvZxZzZ1Z3Z5Z7Z9Z/aBa
-DaFaHaJaLaNaPaRaTaVaXaZabadY+ICACmVuZHN0cmVhbQplbmRvYmoKMTAgMCBvYmoKOTAxOApl
-bmRvYmoKMTEgMCBvYmoKWyAvSW5kZXhlZCAvRGV2aWNlUkdCIDI1NSAxNCAwIFIgXQplbmRvYmoK
-MTIgMCBvYmoKPDwKL0ZpbHRlciBbIC9MWldEZWNvZGUgXQovV2lkdGggMTA2Ci9IZWlnaHQgMzIK
-L0NvbG9yU3BhY2UgMTEgMCBSCi9CaXRzUGVyQ29tcG9uZW50IDgKL0xlbmd0aCAxMyAwIFIKPj4K
-c3RyZWFtCoA/4FA4JBYNB4RCYVC4ZDYdD4hEYlE4pFYtF4xGYE/o5HYZHZBHIfIX9CZJJZLG44+n
-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
-4gIKZW5kc3RyZWFtCmVuZG9iagoxMyAwIG9iago0NjEyCmVuZG9iagoxNCAwIG9iago8PAovTGVu
-Z3RoIDE1IDAgUgo+PgpzdHJlYW0K////0KvLVFNmSmzyisxG9pbmAMb0R1/35nFUyuGq/6HdSHKJ
-E8bceRBJbJsWspGtmZJzjdrShcBD2YolhIrHYtI56+b/yGAQEcyrJ3491BjQR6WqGitqXgX1hIl/
-S+tShNc4hJ+YlLBkQNfjfaz7TfSh+A7MY2zRWPFb2DxHKsAeY0S9+9luYBlGQ5fyP+Tm4Nz0rUBh
-fphS2nGPIZtQQP+U/vpubFqHsp4epN0Di77ggGsg4eq4NMQqxObGFCbFqSW/F5EankO5vOiWwHNV
-oPPAwNWqeQpvo85WaeN8Loyi7qMzCEF3wv5fWL7Trl7Gbh+cGZiniDt13qVYW9Pk/cKIMcvJqI3I
-COaH25TlogIEPxyd5qXZXIR+tOBSmd4UIg/g7LhttMBTO5vnIT7qJn0Gw2OrnMAvG3UPbQ7tgjH9
-Yh21z9F1Iw0RCy9Q9VXN/BgxqLXx2NBm5z511cCn0yPEiPOW/hajECHSYBcoLhNBYLv2UpPHuXsG
-L1HG1iTqm63dMazz1bwVqB0s0Ew/Eaz7CP+O0LgK1uhbnb6Ah1otZIvaWGCWbQm0mdoA2eut1PSs
-Y8VlbZtNyTgMScBmdyTyUX1T6OpcnIQ2nF4iSjIX9pbcWwN3qcywthZxHY2VD98TYsf+vmOC9QDg
-F0oTL0GpC52tg0Z5NP2PpRodOyn8TozETEsoz0AosFhzw4e1bZNSGhaZlEqWJO+wQSvaPnlmAsWx
-KpXxU0VKxgjRfHVkzpB7ZyTG/Ui1rorgiMha7ssgoPW1kUj63A8Drot5E1oJjsEuVL92Cm4B6/fJ
-ReWUZYaKGxjTFvTiGaJukrXInESKyphKQaO4Qo6vDNSVoTobK1Uz/mso4YXKUBiAGbTEo39d7sAB
-pgOPVg9k7LCeCNz0O9tgZLzlLgz9ryWyc8kx0bfx0l70YrUExqG0ZamRWuVsukkooHg1nShbT5wk
-gW3cckA7Z6Lwa2mSIM87sSkhHeNrRoPkeyEM13Go+/IV2GVWE8z5AzhilVgx0QpaCmVuZHN0cmVh
-bQplbmRvYmoKMTUgMCBvYmoKNzY4CmVuZG9iagp4cmVmCjAgMTYKMDAwMDAwMDAwMCA2NTUzNSBm
-IAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAxODUgMDAwMDAgbiAKMDAwMDAwMDIzNCAwMDAw
-MCBuIAowMDAwMDAwMjkzIDAwMDAwIG4gCjAwMDAwMDA0OTcgMDAwMDAgbiAKMDAwMDAwMDU4MCAw
-MDAwMCBuIAowMDAwMDAwNTk4IDAwMDAwIG4gCjAwMDAwMDA2MzYgMDAwMDAgbiAKMDAwMDAwMDc0
-NCAwMDAwMCBuIAowMDAwMDA5OTQzIDAwMDAwIG4gCjAwMDAwMDk5NjQgMDAwMDAgbiAKMDAwMDAx
-MDAxNSAwMDAwMCBuIAowMDAwMDE0NzY2IDAwMDAwIG4gCjAwMDAwMTQ3ODcgMDAwMDAgbiAKMDAw
-MDAxNTYxMCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDE2Ci9JbmZvIDEgMCBSCi9Sb290IDIg
-MCBSCj4+CnN0YXJ0eHJlZgoxNTYzMAolJUVPRgo=
---------------070106050806080808010102
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------070106050806080808010102
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070106050806080808010102--
