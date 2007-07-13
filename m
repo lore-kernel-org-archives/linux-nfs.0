@@ -1,101 +1,110 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] have NFSv4 nfs sockets bind to the callback address
-Date: Fri, 13 Jul 2007 11:06:44 -0400
-Message-ID: <20070713110644.4758124a.jlayton@redhat.com>
+From: Chuck Ebbert <cebbert@redhat.com>
+Subject: Re: nfsd oops in current -git
+Date: Fri, 13 Jul 2007 12:27:24 -0400
+Message-ID: <4697A7EC.6050006@redhat.com>
+References: <469780BB.3070206@trash.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net,
+	Linux Kernel Mailinglist <linux-kernel@vger.kernel.org>,
+	jens.axboe@oracle.com
+To: Patrick McHardy <kaber@trash.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1I9NzN-0000pN-Hc
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 09:27:29 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I9NzP-0001xD-Rp
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 09:27:33 -0700
+In-Reply-To: <469780BB.3070206@trash.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-It's been pointed out to me that some clients have complicated routing,
-or have HA requirements that require that they prefer particular source
-addresses for their NFS sockets. Here's one such scheme that was
-described to me:
+On 07/13/2007 09:40 AM, Patrick McHardy wrote:
+> I get this oops with current -git:
+> 
+> [ 3437.018862] PGD 9acab067 PUD 9acaa067 PMD 0
+> [ 3437.018870] CPU 1
+> [ 3437.018872] Modules linked in: nfsd exportfs ppdev lp nfs lockd
+> nfs_acl sunrpc deflate zlib_deflate zlib_inflate twofish twofish_common
+> camellia serpent blowfish des cbc ecb blkcipher aes xcbc sha256
+> crypto_null af_key rfcomm l2cap fuse nfnetlink_queue nfnetlink_log
+> nf_conntrack_netlink nf_nat nf_conntrack_ipv6 nf_conntrack_ipv4
+> nf_conntrack nfnetlink ip6_tables ip_tables x_tables hangcheck_timer
+> cpufreq_ondemand powernow_k8 freq_table video backlight thermal
+> processor fan ide_generic ide_disk ide_cd cdrom generic hci_usb
+> bluetooth usbhid hid snd_via82xx snd_seq_dummy snd_seq_oss
+> snd_via82xx_modem snd_ac97_codec ac97_bus snd_seq_midi
+> snd_seq_midi_event snd_pcm_oss snd_mixer_oss snd_mpu401 snd_pcm
+> snd_mpu401_uart snd_seq snd_timer snd_rawmidi snd_seq_device parport_pc
+> snd psmouse parport via82cxxx serio_raw i2c_viapro evdev ehci_hcd sky2
+> snd_page_alloc uhci_hcd ide_core soundcore pcspkr
+> [ 3437.018923] Pid: 4432, comm: nfsd Not tainted 2.6.22 #5
+> [ 3437.018926] RIP: 0010:[<ffffffff81054eff>]  [<ffffffff81054eff>]
+> put_page+0x4/0xb3
+> [ 3437.018932] RSP: 0018:ffff8101335f5c40  EFLAGS: 00010203
+> [ 3437.018935] RAX: 0000000000000000 RBX: ffff810133576000 RCX:
+> ffff8100a0fa5ab8
+> [ 3437.018938] RDX: ffff810003754428 RSI: ffff8100a0fa5868 RDI:
+> 0000000000000000
+> [ 3437.018942] RBP: ffff810003754428 R08: ffff8100a1b7c5d8 R09:
+> ffff8101335f5c10
+> [ 3437.018946] R10: ffff810003739a78 R11: ffff81009ec61d40 R12:
+> ffff810133576570
+> [ 3437.018950] R13: ffff8100a0fa5868 R14: 0000000000001000 R15:
+> ffff810133576168
+> [ 3437.018954] FS:  00002ad8e9fab6f0(0000) GS:ffff81013fc72e40(0000)
+> knlGS:00000000f7e426c0
+> [ 3437.018957] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [ 3437.018959] CR2: 0000000000000000 CR3: 000000009a91a000 CR4:
+> 00000000000006e0
+> [ 3437.018963] Process nfsd (pid: 4432, threadinfo ffff8101335f4000,
+> task ffff81013f969040)
+> [ 3437.018965] Stack:  ffff810133576000 ffff810003754428
+> ffff810133576570 ffffffff8830e001
+> [ 3437.018973]  ffff810003747500 ffff8100a0fa5868 ffff8100a0fa5800
+> ffff8101335f5d80
+> [ 3437.018978]  0000000000000000 0000000000000000 ffffffff8122c440
+> ffffffff810892ac
+> [ 3437.018982] Call Trace:
+> [ 3437.019002]  [<ffffffff8830e001>] :nfsd:nfsd_splice_actor+0x71/0xea
+> [ 3437.019010]  [<ffffffff810892ac>] __splice_from_pipe+0x58/0x1bf
+> [ 3437.019023]  [<ffffffff8830df90>] :nfsd:nfsd_splice_actor+0x0/0xea
+> [ 3437.019040]  [<ffffffff8830d326>]
+> :nfsd:nfsd_direct_splice_actor+0x10/0x12
+> [ 3437.019044]  [<ffffffff81088efc>] splice_direct_to_actor+0xfd/0x19d
+> [ 3437.019058]  [<ffffffff8830d316>] :nfsd:nfsd_direct_splice_actor+0x0/0x12
+> [ 3437.019076]  [<ffffffff8830d1f4>] :nfsd:nfsd_vfs_read+0x22b/0x34d
+> [ 3437.019098]  [<ffffffff8830d715>] :nfsd:nfsd_read+0xa7/0xc4
+> [ 3437.019117]  [<ffffffff88314539>] :nfsd:nfsd3_proc_read+0x117/0x15a
+> [ 3437.019133]  [<ffffffff8830924d>] :nfsd:nfsd_dispatch+0xdd/0x19e
+> [ 3437.019156]  [<ffffffff88280194>] :sunrpc:svc_process+0x3f3/0x703
+> [ 3437.019164]  [<ffffffff81212423>] __lock_text_start+0x23/0x7e
+> [ 3437.019180]  [<ffffffff88309817>] :nfsd:nfsd+0x193/0x2b0
+> [ 3437.019188]  [<ffffffff8100a9c8>] child_rip+0xa/0x12
+> [ 3437.019207]  [<ffffffff88309684>] :nfsd:nfsd+0x0/0x2b0
+> [ 3437.019212]  [<ffffffff8100a9be>] child_rip+0x0/0x12
 
--------[snip]--------
--  two interfaces, each on different subnets (say eth0 and eth1)
--  an lo:foo virtual interface with a /32 bit netmask (in a different
-   IP range than the above two).
--  multiple, equal cost, default routes out each of the two real
-   interfaces
--  advertise the /32 lo:foo IP simultaneously, VIA RIPv2, out bot eth0
-   and eth1 or
--  add equal cost static routes, on the router, to the lo:foo IP via
-   eth0 and eth1
--  you would need something to monitor the routers and remove the route
-   on the host if one of them goes down.
+Does Jens's patch fix it?
 
-without any patch, when you mount, the above configured NFS client will
-use one of the eth0/1 IPs, never the lo:foo IP as the src.  Then if the
-router out the int it chose to use goes down, it will never recover
-cause the NFS server only knows it via that addr.  but if you mounted
-the NFS volume using the src addr of lo:foo, it will "just work"
--------[snip]--------
+http://marc.info/?l=linux-netdev&m=118432481101579&q=raw
 
-After looking at some different ways to handle this, I think the best
-scheme would be to expand the scope of the NFSv4 "clientaddr=" option
-so that the nfs socket is also bound to the same local address.
-
-Now that Frank V.M. has done the heavy lifting to allow client side
-sockets to bind to a specified address, this patch is fairly simple to
-implement for NFSv4. If this is acceptable we might consider doing
-the same for v2/3, but I'd prefer to wait until Chuck's string-based
-options patch is fully in place rather than having to change the
-nfs_mount_options struct.
-
-Thoughts?
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index ccb4550..aa43c2e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -372,6 +372,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
- {
- 	struct rpc_timeout	timeparms;
- 	struct rpc_clnt		*clnt = NULL;
-+	struct sockaddr_in	sin_client;
- 	struct rpc_create_args args = {
- 		.protocol	= proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
-@@ -387,6 +388,14 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
- 	if (!IS_ERR(clp->cl_rpcclient))
- 		return 0;
- 
-+	/* if cl_ipaddr is set then set the src address to be the same */
-+	if (clp->cl_ipaddr[0] != '\0' && in4_pton(clp->cl_ipaddr, -1,
-+	    (u8 *) &sin_client.sin_addr.s_addr, 0, NULL)) {
-+		sin_client.sin_family = AF_INET;
-+		sin_client.sin_port = 0;
-+		args.saddress = (struct sockaddr *) &sin_client;
-+	}
-+
- 	nfs_init_timeout_values(&timeparms, proto, timeo, retrans);
- 	clp->retrans_timeo = timeparms.to_initval;
- 	clp->retrans_count = timeparms.to_retries;
-@@ -844,11 +853,12 @@ static int nfs4_init_client(struct nfs_client *clp,
- 	/* Check NFS protocol revision and initialize RPC op vector */
- 	clp->rpc_ops = &nfs_v4_clientops;
- 
-+	memcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
-+
- 	error = nfs_create_rpc_client(clp, proto, timeo, retrans, authflavour,
- 					RPC_CLNT_CREATE_DISCRTRY);
- 	if (error < 0)
- 		goto error;
--	memcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
- 
- 	error = nfs_idmap_new(clp);
- 	if (error < 0) {
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
