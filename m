@@ -1,26 +1,26 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC Patch 08/09] NFS/RDMA client - rpcrdma protocol
- handling
-Date: Fri, 13 Jul 2007 12:50:29 -0400
-Message-ID: <EXNANE01D8z9tTx7e4V00000c83@exnane01.hq.netapp.com>
-References: <EXNANE01jOuF1Qp4hZD00000c67@exnane01.hq.netapp.com>
-	<4697A9DE.50703@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: RFC: LSM/SELinux handling of mount options
+Date: Fri, 13 Jul 2007 13:00:33 -0400
+Message-ID: <4697AFB1.3090602@oracle.com>
+References: <1184283693.3510.123.camel@localhost.localdomain>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Content-Type: multipart/mixed; boundary="------------070206000902030602080402"
+Cc: steved@redhat.com, trond.myklebust@fys.uio.no, hch@infradead.org,
+	nfs@lists.sourceforge.net, viro@zeniv.linux.org.uk,
+	selinux@tycho.nsa.gov, sds@tycho.nsa.gov
+To: Eric Paris <eparis@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9OLl-0003Lg-NQ
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 09:50:37 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I9OLo-0000Fs-2v
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 09:50:41 -0700
-In-Reply-To: <4697A9DE.50703@oracle.com>
-References: <EXNANE01jOuF1Qp4hZD00000c67@exnane01.hq.netapp.com>
-	<4697A9DE.50703@oracle.com>
+	id 1I9OWK-0004aU-2m
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 10:01:32 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I9OWN-00047f-98
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 10:01:35 -0700
+In-Reply-To: <1184283693.3510.123.camel@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,56 +33,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 12:35 PM 7/13/2007, Chuck Lever wrote:
->Talpey, Thomas wrote:
->> RPCRDMA: rpc rdma protocol implementation
->> +#include <linux/nfs2.h>
->> +#include <linux/nfs3.h>
->> +#include <linux/nfs4.h>
->
->I haven't looked closely at this yet, but is there really a dependency 
->in here on NFS?  I don't see NFS dependencies in other parts of the RPC 
->client or server, save the legacy debugging interface 
->(/proc/sys/sunrpc/nfs_debug and friends).
->
+This is a multi-part message in MIME format.
+--------------070206000902030602080402
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-It's right here:
+Hi Eric -
 
->> +/*
->> + * Totally imperfect, temporary attempt to detect nfs reads...
->> + * e.g. establish a hint via xdr_inline_pages, etc.
->> + */
->> +static int
->> +is_nfs_read(struct rpc_rqst *rqst)
->> +{
+Eric Paris wrote:
+> So there are 2 overarching problems this patch set it attempting to
+> solve or make later solutions easier.  
+> 
+> 1) NFS uses binary mount data (for both normal and nohide/referral
+> mounts) which currently SELinux attempts to understand and use.  This
+> was declared a layering issue, no security module should have FS
+> specific data structure knowledge.  (Instead we have to put security
+> module specific knowledge into the FS since the FS 'owns' the mount
+> data, see below)
 
-In which the code peeks into the rpc request to divine its origin.
-NFS reads prefer a slightly different RDMA handling, because they
-(ideally) transfer directly into the buffer cache, or other pagelist
-buffers such as passed by directio. Ops such as readdir however
-prefer a contiguous transfer.
+Please take a look at the string-ified NFS mount patches that are going 
+into 2.6.23.  In the future we want to pass mount options for NFS mounts 
+via a C string instead of a binary blob.  If nothing else, it will 
+affect your changes to fs/nfs/super.c.
 
-It's actually fairly clean in the case of NFSv3 and NFSv2, the nfs
-#includes are simply there to define the procedure numbers. However
-for NFSv4, there is a bit of ... uncleanliness.
 
-The alternative is mentioned, and would involve marking pagelists
-built in xdr_inline_pages(), this of course would also require changes to
-the NFS-layer callers. I am prepared to do that, pending the outcome
-of these comments.
+--------------070206000902030602080402
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-The other integration concern is how to pass any RDMA parameters
-at mount time, which of course you're well aware of. :-) I see Trond
-has submitted some of your queued changes for 2.6.23, so I expect
-to make use of them for the next patch revision, post .23-rc1.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
-Tom.
+
+--------------070206000902030602080402
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--------------070206000902030602080402
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------070206000902030602080402--
