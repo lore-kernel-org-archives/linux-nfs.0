@@ -1,30 +1,25 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [RFC Patch 08/09] NFS/RDMA client - rpcrdma protocol
- handling
-Date: Fri, 13 Jul 2007 13:28:24 -0400
-Message-ID: <EXNANE01iFEW6sStwNe00000c84@exnane01.hq.netapp.com>
-References: <EXNANE01jOuF1Qp4hZD00000c67@exnane01.hq.netapp.com>
-	<4697A9DE.50703@oracle.com>
-	<EXNANE01D8z9tTx7e4V00000c83@exnane01.hq.netapp.com>
-	<4697B233.8040205@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfsd: fix possible read-ahead cache and export
+	table	corruption
+Date: Fri, 13 Jul 2007 13:46:25 -0400
+Message-ID: <20070713174625.GF12582@fieldses.org>
+References: <20070713024420.GA31364@fieldses.org>
+	<20070713041019.GB20430@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9Owo-0007bh-Md
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 10:28:54 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I9Owq-0007ig-4a
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 10:28:57 -0700
-In-Reply-To: <4697B233.8040205@oracle.com>
-References: <EXNANE01jOuF1Qp4hZD00000c67@exnane01.hq.netapp.com>
-	<4697A9DE.50703@oracle.com>
-	<EXNANE01D8z9tTx7e4V00000c83@exnane01.hq.netapp.com>
-	<4697B233.8040205@oracle.com>
+	id 1I9PDn-00013h-F1
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 10:46:27 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I9PDp-0004xW-RZ
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 10:46:31 -0700
+In-Reply-To: <20070713041019.GB20430@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,38 +32,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 01:11 PM 7/13/2007, Chuck Lever wrote:
->Well, the other "read-like" operations (like readdir or readlink) use a 
->single page cache page, as far as i recall.  In fact there is some 
->desire to support multi-page readdir and readdirplus operations at some 
->point.
+On Fri, Jul 13, 2007 at 02:10:19PM +1000, Greg Banks wrote:
+> My bad.  The code I added really only works properly if the number
+> of nfsd threads at startup is a multiple of 8, so that cache_size
+> is a multiple of 16 and the shift doesn't lose any nonzero bits.
+> As we use 128 threads in our product, I'd never noticed the bug :-(
 
-Doesn't help, as a hint, since read can also operate on just a page.
+It seems likely the distros all default to powers or 2, so that may make
+it a little less likely to explain other bug reports I've seen.  Oh
+well.  I'm not sure why I had this one test machine set to start 50
+threads.
 
->I would humbly prefer the clean alternative: I think several other 
->operations can use this.  Seems like the distinction is the operations 
->that read data (like readdir, readlink, read) and those that read 
->metadata (getattr).
+> There's a couple of other problems with that code, for which I'll send
+> patches shortly.  But I think the raparams cache needs a more thorough
+> renovation than that.  I have a mostly-working patch which rips it out
+> entirely and replaces it with a cache of open struct files, an idea
+> of Neil's.  This approach fixes a whole bunch of separate problems
+> at once, and will be really useful...
 
-Me too. But the distinction is finer than that. Basically the one that
-RPC/RDMA needs to know is whether the rpc result that is destined
-for the pagelist is bulk data, or encoded. Readdir, readdirplus, and
-readlink are all in the latter category.
+OK!  What are the other problems you were thinking of?
 
-The other wrinkle is NFSv4 COMPOUND, which can wrap any number
-of these. At the moment, the XDR interface doesn't support a COMPOUND
-that would pass down multiple pagelists (e.g. more than one OP_READ),
-so that's not an issue. This is the reason for the "simplification" comments
-you may see in the code (and it's a good thing IMO).
-
->The ULP should provide a hint on each of these.  Possibly you could hack 
->the nfs_procedures tables (which is an RPC client data structure) to 
->provide the hint.
-
-That would be simpler than extending the xdr_buf, but it might make
-things difficult for NFSv4, which only ever uses one procedure.
-
-Tom.
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
