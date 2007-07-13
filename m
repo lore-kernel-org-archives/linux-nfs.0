@@ -1,34 +1,25 @@
-From: walt <wa1ter@myrealbox.com>
+From: Patrick McHardy <kaber@trash.net>
 Subject: Re: nfsd oops in current -git
-Date: Fri, 13 Jul 2007 12:18:19 -0700
-Message-ID: <f78j5t$ttc$1@sea.gmane.org>
-References: <469780BB.3070206@trash.net>
-	<4697A7EC.6050006@redhat.com>	<20070713163337.GT5328@kernel.dk>
-	<20070713165001.GV5328@kernel.dk>
+Date: Fri, 13 Jul 2007 22:24:31 +0200
+Message-ID: <4697DF7F.3030400@trash.net>
+References: <469780BB.3070206@trash.net> <4697A7EC.6050006@redhat.com>
+	<20070713163337.GT5328@kernel.dk> <20070713165001.GV5328@kernel.dk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-kernel@vger.kernel.org
-To: nfs@lists.sourceforge.net
+Cc: neilb@suse.de, nfs@lists.sourceforge.net,
+	Linux Kernel Mailinglist <linux-kernel@vger.kernel.org>,
+	Chuck Ebbert <cebbert@redhat.com>
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9Qeq-0002FW-4m
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 12:18:28 -0700
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
+	id 1I9RhB-0000aP-2I
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 13:24:57 -0700
+Received: from stinky.trash.net ([213.144.137.162])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I9Qet-00079R-HB
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 12:18:31 -0700
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1I9Qep-0000qg-1z
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 21:18:27 +0200
-Received: from adsl-69-234-179-158.dsl.irvnca.pacbell.net ([69.234.179.158])
-	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jul 2007 21:18:27 +0200
-Received: from wa1ter by adsl-69-234-179-158.dsl.irvnca.pacbell.net with local
-	(Gmexim 0.1 (Debian)) id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jul 2007 21:18:27 +0200
+	(Exim 4.44) id 1I9RhD-0001eq-8v
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 13:25:00 -0700
 In-Reply-To: <20070713165001.GV5328@kernel.dk>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -43,31 +34,18 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 Jens Axboe wrote:
+>>>On 07/13/2007 09:40 AM, Patrick McHardy wrote:
+>>>
+>>>>I get this oops with current -git:
+>>>>
+>>>>[ 3437.018923] Pid: 4432, comm: nfsd Not tainted 2.6.22 #5
+>>>>[ 3437.018926] RIP: 0010:[<ffffffff81054eff>]  [<ffffffff81054eff>]
+>>>>put_page+0x4/0xb3
 
->>> On 07/13/2007 09:40 AM, Patrick McHardy wrote:
->>>> I get this oops with current -git:
-...
 > Patrick, does this work?
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 8604e35..945b1ce 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -879,6 +879,7 @@ nfsd_vfs_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
->  			.u.data		= rqstp,
->  		};
->  
-> +		rqstp->rq_resused = 1;
->  		host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
->  	} else {
->  		oldfs = get_fs();
-> 
 
-Hi Jens,
 
-I'm not Patrick, but this patch fixes the nfsd problem I posted about
-in the webservers-stopped-working thread earlier today.  Many thanks.
-
+Seems to work fine, thanks Jens.
 
 
 -------------------------------------------------------------------------
