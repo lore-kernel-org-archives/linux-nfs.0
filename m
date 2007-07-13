@@ -1,24 +1,26 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] nfsd: fix possible read-ahead cache and export
-	table corruption
-Date: Fri, 13 Jul 2007 14:10:19 +1000
-Message-ID: <20070713041019.GB20430@sgi.com>
-References: <20070713024420.GA31364@fieldses.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 015 of 20] knfsd: nfsd4: make readonly access
+ depend on pseudoflavor
+Date: Fri, 13 Jul 2007 00:12:15 -0700
+Message-ID: <20070713001215.b4b57a5b.akpm@linux-foundation.org>
+References: <20070710121949.12548.patches@notabene>
+	<1070710022749.13539@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9CTz-0005C5-QN
-	for nfs@lists.sourceforge.net; Thu, 12 Jul 2007 21:10:20 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1I9CU2-0007GR-9Y
-	for nfs@lists.sourceforge.net; Thu, 12 Jul 2007 21:10:23 -0700
-In-Reply-To: <20070713024420.GA31364@fieldses.org>
+	id 1I9FKF-000759-6L
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 00:12:29 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1I9FKH-0001zl-Mg
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 00:12:30 -0700
+In-Reply-To: <1070710022749.13539@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,46 +33,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jul 12, 2007 at 10:44:20PM -0400, J. Bruce Fields wrote:
+On Tue, 10 Jul 2007 12:27:49 +1000 NeilBrown <neilb@suse.de> wrote:
+
+> 
 > From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> The value of nperbucket calculated here is too small--we should be
-> [...]
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 7e50da0..dd3604e 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1885,7 +1885,7 @@ nfsd_racache_init(int cache_size)
->  		raparm_hash[i].pb_head = NULL;
->  		spin_lock_init(&raparm_hash[i].pb_lock);
->  	}
-> -	nperbucket = cache_size >> RAPARM_HASH_BITS;
-> +	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
->  	for (i = 0; i < cache_size - 1; i++) {
->  		if (i % nperbucket == 0)
->  			raparm_hash[j++].pb_head = raparml + i;
-> -- 
-> 1.5.3.rc0.63.gc956
+> Allow readonly access to vary depending on the pseudoflavor, using the
+> flag passed with each pseudoflavor in the export downcall.
+> 
+> Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./include/linux/nfsd/export.h |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff .prev/include/linux/nfsd/export.h ./include/linux/nfsd/export.h
+> --- .prev/include/linux/nfsd/export.h	2007-07-10 11:40:31.000000000 +1000
+> +++ ./include/linux/nfsd/export.h	2007-07-10 11:50:43.000000000 +1000
+> @@ -43,7 +43,7 @@
+>  #define NFSEXP_ALLFLAGS		0xFE3F
+>  
+>  /* The flags that may vary depending on security flavor: */
+> -#define NFSEXP_SECINFO_FLAGS	0
+> +#define NFSEXP_SECINFO_FLAGS	NFSEXP_READONLY
+>  
+>  #ifdef __KERNEL__
+>  
 
-My bad.  The code I added really only works properly if the number
-of nfsd threads at startup is a multiple of 8, so that cache_size
-is a multiple of 16 and the shift doesn't lose any nonzero bits.
-As we use 128 threads in our product, I'd never noticed the bug :-(
-Sorry for the trouble, Bruce.
-
-There's a couple of other problems with that code, for which I'll send
-patches shortly.  But I think the raparams cache needs a more thorough
-renovation than that.  I have a mostly-working patch which rips it out
-entirely and replaces it with a cache of open struct files, an idea
-of Neil's.  This approach fixes a whole bunch of separate problems
-at once, and will be really useful...if I can ever find enough time
-between super-urgent dramas to work on it ;-)
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+You have two patches called "knfsd: nfsd4: make readonly access depend on
+pseudoflavor".  This one appears to have the wrong title and changelog.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
