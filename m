@@ -1,28 +1,11 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 012 of 20] knfsd: nfsd4: make readonly access
-	depend on pseudoflavor
-Date: Fri, 13 Jul 2007 10:54:13 +0100
-Message-ID: <20070713095413.GC16304@infradead.org>
-References: <20070710121949.12548.patches@notabene>
-	<1070710022615.13375@suse.de>
-	<20070713002704.2287f5a3.akpm@linux-foundation.org>
+From: "Hector Lacey" <webboy@transamine-trading.com>
+Subject: My question was not answered here?
+Date: Fri, 13 Jul 2007 11:18:07 -0100
+Message-ID: <01c7c53f$7cf326f0$7cd3d956@webboy>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: multipart/mixed; boundary="===============1475565114=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9Hr0-00085l-7O
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 02:54:26 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I9Hr3-0002Pm-NX
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 02:54:30 -0700
-In-Reply-To: <20070713002704.2287f5a3.akpm@linux-foundation.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,34 +18,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jul 13, 2007 at 12:27:04AM -0700, Andrew Morton wrote:
-> On Tue, 10 Jul 2007 12:26:15 +1000 NeilBrown <neilb@suse.de> wrote:
-> 
-> > +static inline int EX_RDONLY(struct svc_export *exp, struct svc_rqst *rqstp)
-> > +{
-> > +	struct exp_flavor_info *f;
-> > +	struct exp_flavor_info *end = exp->ex_flavors + exp->ex_nflavors;
-> > +
-> > +	for (f = exp->ex_flavors; f < end; f++) {
-> > +		if (f->pseudoflavor == rqstp->rq_flavor)
-> > +			return f->flags & NFSEXP_READONLY;
-> > +	}
-> > +	return exp->ex_flags & NFSEXP_READONLY;
-> > +}
-> 
-> It is fortunate that this inlined monster has only one callsite.
-> 
-> otoh, given that it has only one callsite, perhaps it should be private
-> to fs/nfsd/vfs.c.
+This is a multi-part message in MIME format.
 
-Absolutely.  Pluse a sane lower-case name and removing the inline qualifier
-please.
+--===============1475565114==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0007_01C7C550.407BF6F0"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0007_01C7C550.407BF6F0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+Fifth/Sixth month you will notice an increase in penis size of up to 4 inch=
+es, plus a increase in Girth (Width) of 20%, plus all the benefits of the f=
+irst month. Women view men with a larger penis size as being more sexually =
+attractive and sexually capable. An overall larger penis size also means a =
+larger surface area, which stimulates more nerve endings, resulting in a mo=
+re pleasurable experience for both you and your partner. A larger and more =
+muscular penis is also more of a natural, visual turn on for women.http://o=
+dxpert.comThe body grows and develops GRADUALLY, not over night! This is wh=
+y MegaDik is the greatest breakthrough product in the history of male enhan=
+cement! Penis enlargement, as we know it, will never be the same. 
+------=_NextPart_000_0007_01C7C550.407BF6F0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.2670" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY>
+<DIV><FONT face=3DArial size=3D2>Fifth/Sixth month you will notice an incre=
+ase in penis size of up to 4 inches, plus a increase in Girth (Width) of 20=
+%, plus all the benefits of the first month. Women view men with a larger p=
+enis size as being more sexually attractive and sexually capable. An overal=
+l larger penis size also means a larger surface area, which stimulates more=
+ nerve endings, resulting in a more pleasurable experience for both you and=
+ your partner. A larger and more muscular penis is also more of a natural, =
+visual turn on for women.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2><A 
+href=3D"http://odxpert.com">http://odxpert.com</A></FONT></DIV>
+<DIV><FONT face=3DArial size=3D2>The body grows and develops GRADUALLY, not=
+ over night! This is why MegaDik is the greatest breakthrough product in th=
+e history of male enhancement! Penis enlargement, as we know it, will never=
+ be the same.</FONT></DIV>
+<DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV>
+</BODY></HTML>
+
+------=_NextPart_000_0007_01C7C550.407BF6F0--
+
+
+
+--===============1475565114==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
+--===============1475565114==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1475565114==--
