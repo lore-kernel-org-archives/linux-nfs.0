@@ -1,10 +1,10 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 012 of 20] knfsd: nfsd4: make readonly access
- depend on pseudoflavor
-Date: Fri, 13 Jul 2007 00:27:04 -0700
-Message-ID: <20070713002704.2287f5a3.akpm@linux-foundation.org>
+Subject: Re: [PATCH 013 of 20] knfsd: nfsd: factor out code from
+ show_expflags
+Date: Fri, 13 Jul 2007 00:29:33 -0700
+Message-ID: <20070713002933.f15724a7.akpm@linux-foundation.org>
 References: <20070710121949.12548.patches@notabene>
-	<1070710022615.13375@suse.de>
+	<1070710022737.13509@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
@@ -14,13 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9FYa-00007u-AU
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 00:27:16 -0700
+	id 1I9Faz-0000KP-SY
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 00:29:45 -0700
 Received: from smtp2.linux-foundation.org ([207.189.120.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I9FYc-0004iG-Qb
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 00:27:20 -0700
-In-Reply-To: <1070710022615.13375@suse.de>
+	(Exim 4.44) id 1I9Fb0-0005ju-O2
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 00:29:49 -0700
+In-Reply-To: <1070710022737.13509@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +33,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 10 Jul 2007 12:26:15 +1000 NeilBrown <neilb@suse.de> wrote:
+On Tue, 10 Jul 2007 12:27:37 +1000 NeilBrown <neilb@suse.de> wrote:
 
-> +static inline int EX_RDONLY(struct svc_export *exp, struct svc_rqst *rqstp)
+> +static void exp_flags(struct seq_file *m, int flag, int fsid,
+> +		uid_t anonu, uid_t anong, struct nfsd4_fs_locations *fsloc)
 > +{
-> +	struct exp_flavor_info *f;
-> +	struct exp_flavor_info *end = exp->ex_flavors + exp->ex_nflavors;
-> +
-> +	for (f = exp->ex_flavors; f < end; f++) {
-> +		if (f->pseudoflavor == rqstp->rq_flavor)
-> +			return f->flags & NFSEXP_READONLY;
-> +	}
-> +	return exp->ex_flags & NFSEXP_READONLY;
-> +}
+> +	show_expflags(m, flag, NFSEXP_ALLFLAGS);
+>  	if (flag & NFSEXP_FSID)
+> -		seq_printf(m, "%sfsid=%d", first++?",":"", fsid);
+> +		seq_printf(m, ",fsid=%d", fsid);
+>  	if (anonu != (uid_t)-2 && anonu != (0x10000-2))
+> -		seq_printf(m, "%sanonuid=%d", first++?",":"", anonu);
+> +		seq_printf(m, ",sanonuid=%d", anonu);
 
-It is fortunate that this inlined monster has only one callsite.
+It's a bit presumptuous to print a uid_t with "%d".  Fortunately it
+will work OK with all the present architectures.
 
-otoh, given that it has only one callsite, perhaps it should be private
-to fs/nfsd/vfs.c.
+But in general: be cautious when feeding opaque types to printk.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
