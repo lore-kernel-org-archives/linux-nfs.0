@@ -1,27 +1,27 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: nfsd oops in current -git
-Date: Fri, 13 Jul 2007 22:43:54 +0200
-Message-ID: <20070713204353.GB5328@kernel.dk>
-References: <469780BB.3070206@trash.net> <4697A7EC.6050006@redhat.com>
-	<20070713163337.GT5328@kernel.dk>
-	<20070713165001.GV5328@kernel.dk> <4697DF7F.3030400@trash.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH/RFC] Return ENOSPC and EDQUOT for
+	nfs	writes	earlier.
+Date: Fri, 13 Jul 2007 17:12:49 -0400
+Message-ID: <1184361169.30876.180.camel@heimdal.trondhjem.org>
+References: <18069.29184.792156.782358@notabene.brown>
+	<1184272296.30876.159.camel@heimdal.trondhjem.org>
+	<4697B372.4080003@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net,
-	Linux Kernel Mailinglist <linux-kernel@vger.kernel.org>,
-	Chuck Ebbert <cebbert@redhat.com>
-To: Patrick McHardy <kaber@trash.net>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9Rzs-0002dv-2G
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 13:44:16 -0700
-Received: from brick.kernel.dk ([80.160.20.94] helo=kernel.dk)
+	id 1I9SRf-0005W3-SL
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 14:13:00 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX19rkOoe9ylwjnR0LkozGg+TSl05D4w3OEk=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I9Rzv-00077F-EZ
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 13:44:19 -0700
-In-Reply-To: <4697DF7F.3030400@trash.net>
+	(Exim 4.44) id 1I9SRi-0007Yi-UO
+	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 14:13:03 -0700
+In-Reply-To: <4697B372.4080003@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,25 +34,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Jul 13 2007, Patrick McHardy wrote:
-> Jens Axboe wrote:
-> >>>On 07/13/2007 09:40 AM, Patrick McHardy wrote:
-> >>>
-> >>>>I get this oops with current -git:
-> >>>>
-> >>>>[ 3437.018923] Pid: 4432, comm: nfsd Not tainted 2.6.22 #5
-> >>>>[ 3437.018926] RIP: 0010:[<ffffffff81054eff>]  [<ffffffff81054eff>]
-> >>>>put_page+0x4/0xb3
+On Fri, 2007-07-13 at 13:16 -0400, Chuck Lever wrote:
+> OK, but...
 > 
-> > Patrick, does this work?
-> 
-> 
-> Seems to work fine, thanks Jens.
+> After it is triggered by a write error, how would the synchronous 
+> behavior be turned off?  Both EDQUOT and ENOSPC, for example, are really 
+> a temporary error; if applications are smart enough, they can retry an 
+> EDQUOT and might get a successful write.  In that case, performance 
+> would be hosed until.... the client decides it's OK to use unstable 
+> writes again.
 
-Wonderful, thanks for testing!
+Just as Neil said: you disable the forced synchronous behaviour upon the
+first successful write. Obviously, it would be quite simple for the
+application to hose this heuristic. You could do so trivially by writing
+one byte at a time in order to get the error cleared, and then try to
+build up a large asynchronous write backlog.
 
--- 
-Jens Axboe
+Trond
 
 
 -------------------------------------------------------------------------
