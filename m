@@ -1,114 +1,79 @@
-From: Patrick - South Valley Internet <patrickm@garlic.com>
-Subject: Creating a Load Balanced E-mail Server with NFS mounts with
- CentOS - how to optimize for performance?
-Date: Fri, 13 Jul 2007 16:51:38 -0700
-Message-ID: <4698100A.1070702@garlic.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9UvB-0004Ur-VB
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 16:51:40 -0700
-Received: from sequoia.garlic.com ([216.139.0.84])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I9UvE-0007pS-HH
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 16:51:41 -0700
-Received: from [216.139.11.36] (unknown [216.139.11.36])
-	by sequoia.garlic.com (Postfix) with ESMTP id 0184B3668
-	for <nfs@lists.sourceforge.net>; Fri, 13 Jul 2007 16:51:39 -0700 (PDT)
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] SUNRPC: Convert rpc_pipefs to use the generic filesystem notification hooks
+Date: Fri, 13 Jul 2007 21:00:30 -0400
+Message-ID: <20070714010030.27468.48291.stgit@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Cc: dwmw2@infradead.org, linux-kernel@vger.kernel.org,
+	nfs@lists.sourceforge.net
+To: torvalds@linux-foundation.org, akpm@linux-foundation.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1764062AbXGNBAl@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi all,
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-I'm finishing up our new load balanced e-mail server which consists of 
-two Dell dual cpu Opterons NFS mounting our 1.6TB RAID 5 server - all 3 
-machines run CentOS.  I have VMWare server installed on both Dell 
-Opterons which both machines run a CentOS LDAP server (uses 256mb RAM), 
-and a CentOS Postfix server.  I have noticed no performance loss running 
-VMWare, as far as I can tell.  The reason I mention this is because I've 
-had experience in the past with other applications, such as 
-Trixbox/Asterisk that require you to NOT run this on a VM due to issues 
-with real time processing and such.  Just want to make sure that this 
-isn't the case for this scenerio (which I don't think, since I'm only 
-experiencing issues on the NFS mounted directories)
+This will allow rpc.gssd to use inotify instead of dnotify in order to
+locate new rpc upcall pipes.
 
-Anyhow, I can successfully mount the NFS from both Postfix VM's without 
-a problem.  I created a /vol/vol0/home directory on the NFS, and mount 
-that to /home on both Postfix VM's.  Doing a 'ls -l' in /home takes 
-forever, sometimes longer than I wish (30+ seconds, sometimes longer).  
-I read the NFS performance documentation on testing the read and write 
-speeds and timing them, and I've come up with these:
+This also requires the exporting of __audit_inode_child(), which is used by
+fsnotify_create() and fsnotify_mkdir(). Ccing David Woodhouse.
 
-#####################
-[root@somebox mnt]# time dd if=/dev/zero of=/home/testfile bs=16k 
-count=16384
-16384+0 records in
-16384+0 records out
+Cc: David Woodhouse <dwmw2@infradead.org>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-real    0m43.282s
-user    0m0.010s
-sys     0m2.043s
+ kernel/auditsc.c      |    1 +
+ net/sunrpc/rpc_pipe.c |    7 ++++---
+ 2 files changed, 5 insertions(+), 3 deletions(-)
 
-
-
-[root@somebox mnt]# time dd if=/home/testfile of=/dev/null bs=16k
-16384+0 records in
-16384+0 records out
-
-real    0m22.943s
-user    0m0.016s
-sys     0m0.629s
-####################
-
-
-I've tried to set different rsize and wsize (4096, 8192, 16384, and 
-32768), and it doesn't seem to be doing any different.  I've checked the 
-switch settings to make sure there weren't any inconsistencies and are 
-set to 100xFD.
-
-
-
-My /etc/fstab looks like this:
-
-xxx.yyy.com:/vol/vol0/home          /home       nfs     
-rw,hard,intr,rsize=32768,wsize=32768        0 0
-xxx.yyy.com:/vol/vol0/spool-mail          /spool-mail       nfs     
-rw,hard,intr,rsize=32768,wsize=32768        0 0
-xxx.yyy.com:/vol/vol0/spool-xxx-mqueue          /spool-mqueue       
-nfs     rw,hard,intr,rsize=32768,wsize=32768        0 0
-
-
-I'm concerned because there will be a lot of activity on these servers, 
-and I need this to be as fast as possible.
-
-Do I have my mountpoints defined properly?
-
-If I need to provide hardware descriptions of my machines, let me know 
-and I will do a lspci.
-
-Thanks to everyone in advance.
-
-Patrick
-
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff --git a/kernel/auditsc.c b/kernel/auditsc.c
+index e36481e..64f229b 100644
+--- a/kernel/auditsc.c
++++ b/kernel/auditsc.c
+@@ -1500,6 +1500,7 @@ add_names:
+ 			context->names[idx].ino = (unsigned long)-1;
+ 	}
+ }
++EXPORT_SYMBOL_GPL(__audit_inode_child);
+ 
+ /**
+  * auditsc_get_stamp - get local copies of audit_context values
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index e787b6a..22e25b5 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -14,7 +14,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/mount.h>
+ #include <linux/namei.h>
+-#include <linux/dnotify.h>
++#include <linux/fsnotify.h>
+ #include <linux/kernel.h>
+ 
+ #include <asm/ioctls.h>
+@@ -588,6 +588,7 @@ rpc_populate(struct dentry *parent,
+ 		if (S_ISDIR(mode))
+ 			inc_nlink(dir);
+ 		d_add(dentry, inode);
++		fsnotify_create(dir, dentry);
+ 	}
+ 	mutex_unlock(&dir->i_mutex);
+ 	return 0;
+@@ -609,7 +610,7 @@ __rpc_mkdir(struct inode *dir, struct dentry *dentry)
+ 	inode->i_ino = iunique(dir->i_sb, 100);
+ 	d_instantiate(dentry, inode);
+ 	inc_nlink(dir);
+-	inode_dir_notify(dir, DN_CREATE);
++	fsnotify_mkdir(dir, dentry);
+ 	return 0;
+ out_err:
+ 	printk(KERN_WARNING "%s: %s failed to allocate inode for dentry %s\n",
+@@ -751,7 +752,7 @@ rpc_mkpipe(struct dentry *parent, const char *name, void *private, struct rpc_pi
+ 	rpci->flags = flags;
+ 	rpci->ops = ops;
+ 	rpci->nkern_readwriters = 1;
+-	inode_dir_notify(dir, DN_CREATE);
++	fsnotify_create(dir, dentry);
+ 	dget(dentry);
+ out:
+ 	mutex_unlock(&dir->i_mutex);
