@@ -1,25 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: BUG: unable to handle kernel paging request at
-	virtual	address 6b6b6b6f
-Date: Fri, 13 Jul 2007 23:07:25 -0400
-Message-ID: <20070714030725.GD16644@fieldses.org>
-References: <20070703071735.GA9481@janus> <20070703193937.GM14074@fieldses.org>
-	<20070703202216.GB16497@janus>
+From: "Steinar H. Gunderson" <sesse@debian.org>
+Subject: [PATCH] Fix umount.nfs exit status
+Date: Sat, 14 Jul 2007 11:18:48 +0200
+Message-ID: <20070714091848.GA23409@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9Xyf-0005zC-0a
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 20:07:25 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1I9dm7-0000Fh-Kd
+	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 02:18:51 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1I9Xyi-0004bI-DK
-	for nfs@lists.sourceforge.net; Fri, 13 Jul 2007 20:07:28 -0700
-In-Reply-To: <20070703202216.GB16497@janus>
+	(Exim 4.44) id 1I9dmA-0002bU-1B
+	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 02:18:55 -0700
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1I9dm4-00087y-U5
+	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 11:18:49 +0200
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1I9dm4-000662-00
+	for <nfs@lists.sourceforge.net>; Sat, 14 Jul 2007 11:18:48 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,66 +33,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Jul 03, 2007 at 10:22:16PM +0200, Frank van Maarseveen wrote:
-> On Tue, Jul 03, 2007 at 03:39:37PM -0400, J. Bruce Fields wrote:
-> > On Tue, Jul 03, 2007 at 09:17:35AM +0200, Frank van Maarseveen wrote:
-> > > I've reported this earlier but now I figured out how to reproduce it:
-> > > start nfsd with 50 instances and then try to stop it.
-> > 
-> > So, all it takes is this?:
-> > 
-> > 	rpc.nfsd 50
-> > 	rpc.nfsd 0
-> 
-> I guess so: On debian etch I adapted /etc/defaults/nfs-kernel-server
-> (IIRC) to start 50 daemons and after a reboot it sufficed to type
-> /etc/init.d/nfs-kernel-server stop to make it say BUG. Very reproducable
-> here (5 machines).
+Hi,
 
-Could you try this?
+As per a bug report from a user:
 
---b.
+mount.c seems to assume that nfsumount() uses standard C true/false
+return values, and inverts them for the exit status (where 0 is
+traditionally considered success). However, nfsumount() consistently
+seems to use 0 for success, and thus a success gets returned as exit
+status 1 and a failure as exit status 0. This confuses at least
+the GNOME drive manager applet, and probably others as well.
 
->From b941e6b14f6cf53c6dea17cfb80c5619304afe99 Mon Sep 17 00:00:00 2001
-From: J. Bruce Fields <bfields@citi.umich.edu>
-Date: Thu, 12 Jul 2007 22:17:34 -0400
-Subject: [PATCH] nfsd: fix possible read-ahead cache and export table corruption
+Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
 
-The value of nperbucket calculated here is too small--we should be
-rounding up instead of down--with the result that the index j in the
-following loop can overflow the raparm_hash array.  At least in my case,
-the next thing in memory turns out to be export_table, so the symptoms I
-see are crashes caused by the appearance of four zeroed-out export
-entries in the first bucket of the hash table of exports (which were
-actually entries in the readahead cache, a pointer to which had been
-written to the export table in this initialization code).
+Index: nfs-utils-1.1.0/utils/mount/mount.c
+===================================================================
+--- nfs-utils-1.1.0.orig/utils/mount/mount.c
++++ nfs-utils-1.1.0/utils/mount/mount.c
+@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
+                        umount_usage();
+                        exit(1);
+                }
+-               exit(nfsumount(argc, argv) ? 0 : 1);
++               exit(nfsumount(argc, argv));
+        }
 
-It looks like the bug was probably introduced with commit
-fce1456a19f5c08b688c29f00ef90fdfa074c79b ("knfsd: make the readahead
-params cache SMP-friendly").
+        if(argv[1] && argv[1][0] == '-') {
 
-Cc: Greg Banks <gnb@melbourne.sgi.com>
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
----
- fs/nfsd/vfs.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7e50da0..dd3604e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1885,7 +1885,7 @@ nfsd_racache_init(int cache_size)
- 		raparm_hash[i].pb_head = NULL;
- 		spin_lock_init(&raparm_hash[i].pb_lock);
- 	}
--	nperbucket = cache_size >> RAPARM_HASH_BITS;
-+	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
- 	for (i = 0; i < cache_size - 1; i++) {
- 		if (i % nperbucket == 0)
- 			raparm_hash[j++].pb_head = raparml + i;
+/* Steinar */
 -- 
-1.5.3.rc0.63.gc956
-
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
