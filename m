@@ -1,21 +1,22 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 0/3] Fix up NFS sillyrename code
-Date: Sat, 14 Jul 2007 20:06:39 -0400
-Message-ID: <1184457999.20296.13.camel@heimdal.trondhjem.org>
+Subject: [PATCH 1/3] NFS: Use dentry->d_time to store the parent
+	directory	verifier.
+Date: Sat, 14 Jul 2007 18:12:09 -0400
+Message-ID: <20070714221209.13914.10001.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "Mr. Charles Edward Lever" <Chuck.Lever@oracle.com>,
-	"Mr. Trond Myklebust" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <Chuck.Lever@oracle.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1I9s5g-0003EH-49
-	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 17:36:01 -0700
+	id 1I9sEO-0004FG-P2
+	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 17:45:04 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I9s5j-0008Py-I7
-	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 17:36:03 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1I9sES-0008Sx-7T
+	for nfs@lists.sourceforge.net; Sat, 14 Jul 2007 17:45:04 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,19 +29,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The following patchset cleans up the NFS asynchronous delete code by
-getting rid of the global lists, and attaching the delete data directly
-to the dentry that was sillyrenamed.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-The cleanup also fixes up a couple of bugs:
+This will free up the d_fsdata field for other use.
 
-      * Fix the race with shrink_dcache_for_umount_subtree(): instead of
-        storing pointers to dentries, we only store the inode of the
-        parent directory.
-      * Don't delete the file if the inode is stale.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-Cheers
-  Trond
+ fs/nfs/dir.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 322141f..0fa1dbc 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -654,7 +654,7 @@ static int nfs_check_verifier(struct inode *dir, struct dentry *dentry)
+ 
+ 	if (IS_ROOT(dentry))
+ 		return 1;
+-	verf = (unsigned long)dentry->d_fsdata;
++	verf = dentry->d_time;
+ 	if (nfs_caches_unstable(dir)
+ 			|| verf != NFS_I(dir)->cache_change_attribute)
+ 		return 0;
+@@ -663,7 +663,7 @@ static int nfs_check_verifier(struct inode *dir, struct dentry *dentry)
+ 
+ static inline void nfs_set_verifier(struct dentry * dentry, unsigned long verf)
+ {
+-	dentry->d_fsdata = (void *)verf;
++	dentry->d_time = verf;
+ }
+ 
+ static void nfs_refresh_verifier(struct dentry * dentry, unsigned long verf)
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
