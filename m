@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/17] RFC: proposed changes to the NFS mount command
-Date: Sun, 15 Jul 2007 23:14:48 -0400
-Message-ID: <20070716030150.11209.85724.stgit@manray.1015granger.net>
+Subject: [PATCH 01/17] rpcdebug: Update 'rpcdebug' tool with recently
+	added	debugging flags
+Date: Sun, 15 Jul 2007 23:14:53 -0400
+Message-ID: <20070716031453.11209.77933.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH2t-0001gl-JS
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:14:47 -0700
-Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH2w-0005nP-6o
+	id 1IAH2w-0001gs-WD
 	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:14:51 -0700
+Received: from flpvm09.prodigy.net ([207.115.20.39])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH30-0008PS-JY
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:14:54 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,26 +28,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+Add the CLIENT and MOUNT flags to rpcdebug.
+---
 
-I've got a series of patches to the NFS mount command that prepare it
-for using a C string to pass mount options to the kernel, rather than
-a binary nfs_mount_data structure.
+ support/include/nfs/debug.h |    4 +++-
+ tools/rpcdebug/rpcdebug.c   |    4 +++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
-The goal of these clean-ups is to allow the creation of a ./configure
-option that will disable building nfsmount.c and nfs4mount.c, and
-enable building a version of these files that will introduce support
-for passing mount options as a string (that work is yet to be done).
+diff --git a/support/include/nfs/debug.h b/support/include/nfs/debug.h
+index 57be843..d391e91 100644
+--- a/support/include/nfs/debug.h
++++ b/support/include/nfs/debug.h
+@@ -9,7 +9,7 @@
+ #define RPCDBG_DEBUG		0x0004
+ #define RPCDBG_NFS		0x0008
+ #define RPCDBG_AUTH		0x0010
+-#define RPCDBG_PMAP		0x0020
++#define RPCDBG_BIND		0x0020
+ #define RPCDBG_SCHED		0x0040
+ #define RPCDBG_TRANS		0x0080
+ #define RPCDBG_SVCSOCK		0x0100
+@@ -74,6 +74,8 @@ enum {
+ #define NFSDBG_FILE		0x0040
+ #define NFSDBG_ROOT		0x0080
+ #define NFSDBG_CALLBACK		0x0100
++#define NFSDBG_CLIENT		0x0200
++#define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_ALL		0xFFFF
+ 
+ #endif /* _NFS_DEBUG_H */
+diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
+index 0a12519..275a491 100644
+--- a/tools/rpcdebug/rpcdebug.c
++++ b/tools/rpcdebug/rpcdebug.c
+@@ -146,7 +146,7 @@ static struct flagmap {
+ 	FLAG(RPC,	DEBUG),
+ 	FLAG(RPC,	NFS),
+ 	FLAG(RPC,	AUTH),
+-	FLAG(RPC,	PMAP),
++	FLAG(RPC,	BIND),
+ 	FLAG(RPC,	SCHED),
+ 	FLAG(RPC,	TRANS),
+ 	FLAG(RPC,	SVCSOCK),
+@@ -165,6 +165,8 @@ static struct flagmap {
+ 	FLAG(NFS,       FILE),
+ 	FLAG(NFS,       ROOT),
+ 	FLAG(NFS,       CALLBACK),
++	FLAG(NFS,       CLIENT),
++	FLAG(NFS,       MOUNT),
+ 	FLAG(NFS,	ALL),
+ 
+ 	/* nfsd */
 
-They certainly need some testing yet, but can you take a look at these
-and tell me if they are generally acceptable or if I need to take a
-different direction?  Hopefully they are straightforward and won't take
-much of your time.
-
-Thanks in advance for your advice!
-
--- 
-corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
