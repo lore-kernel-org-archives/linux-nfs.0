@@ -1,20 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/17] mount.nfs: Error handling clean-up
-Date: Sun, 15 Jul 2007 23:16:05 -0400
-Message-ID: <20070716031605.11209.61265.stgit@manray.1015granger.net>
+Subject: [PATCH 17/17] mount.nfs: White space clean up
+Date: Sun, 15 Jul 2007 23:16:15 -0400
+Message-ID: <20070716031615.11209.78383.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH4D-0001ul-Bi
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:09 -0700
+	id 1IAH4L-0001vK-SS
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:18 -0700
 Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH4F-0006BP-Tg
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:13 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH4P-0000OF-Bn
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:21 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,121 +27,135 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-o  Use nfs_error( _() ) instead of fprintf(stderr,
-o  Use the mount return code macros instead of bare integers
-o  Free mount_point after it has been canonicalized
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c |   46 +++++++++++++++++++++++++++-------------------
- 1 files changed, 27 insertions(+), 19 deletions(-)
+ utils/mount/mount.c           |   55 +++++++++++++++++++++++++----------------
+ utils/mount/mount_constants.h |    1 -
+ 2 files changed, 33 insertions(+), 23 deletions(-)
 
 diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 53dc731..6f98eae 100644
+index 6f98eae..f1eab0a 100644
 --- a/utils/mount/mount.c
 +++ b/utils/mount/mount.c
-@@ -366,22 +366,22 @@ int main(int argc, char *argv[])
- 	if(!strncmp(progname, "umount", strlen("umount"))) {
- 		if(argc < 2) {
- 			umount_usage();
--			exit(1);
-+			exit(EX_USAGE);
- 		}
- 		exit(nfsumount(argc, argv) ? 0 : 1);
+@@ -64,12 +64,14 @@ static struct option longopts[] = {
+   { NULL, 0, 0, 0 }
+ };
+ 
+-/* Map from -o and fstab option strings to the flag argument to mount(2).  */
++/*
++ * Map from -o and fstab option strings to the flag argument to mount(2).
++ */
+ struct opt_map {
+-  const char *opt;              /* option name */
+-  int  skip;                    /* skip in mtab option string */
+-  int  inv;                     /* true if flag value should be inverted */
+-  int  mask;                    /* flag mask value */
++	const char *opt;	/* option name */
++	int skip;		/* skip in mtab option string */
++	int inv;		/* true if flag value should be inverted */
++	int mask;		/* flag mask value */
+ };
+ 
+ static const struct opt_map opt_map[] = {
+@@ -183,8 +185,11 @@ static void print_one(char *spec, char *node, char *type, char *opts)
  	}
- 
--	if(argv[1] && argv[1][0] == '-') {
-+	if (argv[1] && argv[1][0] == '-') {
- 		if(argv[1][1] == 'V')
- 			printf("%s ("PACKAGE_STRING")\n", progname);
- 		else
- 			mount_usage();
--		return 0;
-+		exit(0);
- 	}
- 
- 	if ((argc < 3)) {
- 		mount_usage();
--		exit(1);
-+		exit(EX_USAGE);
- 	}
- 
- 	spec = argv[1];
-@@ -427,7 +427,7 @@ int main(int argc, char *argv[])
- 	if (optind != argc-2) {
- 		/* Extra non-option words at the end... */
- 		mount_usage();
--		exit(1);
-+		exit(EX_USAGE);
- 	}
- 
- 	if (strcmp(progname, "mount.nfs4") == 0)
-@@ -444,9 +444,9 @@ int main(int argc, char *argv[])
- 		if ((mc = getfsfile(mount_point)) == NULL ||
- 		    !strcmp(mc->m.mnt_fsname, spec) ||
- 		    !strcmp(mc->m.mnt_type, fs_type)) {
--			fprintf(stderr, "%s: permission denied: no match for %s "
--				"found in /etc/fstab\n", progname, mount_point);
--			exit(1);
-+			nfs_error(_("%s: permission denied: no match for %s "
-+				"found in /etc/fstab"), progname, mount_point);
-+			exit(EX_USAGE);
- 		}
- 
- 		/*
-@@ -458,25 +458,31 @@ int main(int argc, char *argv[])
- 		mount_opts = strdup(mc->m.mnt_opts);
- 	}
- 
--	mount_point = canonicalize(mount_point);
--	if (mount_point == NULL ||
--	    mount_point[0] != '/') {
--		fprintf(stderr, "%s: unknown mount point %s\n",
--			progname, mount_point ? : "");
--		exit(1);
-+	if (!mount_point) {
-+		nfs_error(_("%s: no mount point provided"), progname);
-+		exit(EX_USAGE);
- 	}
--	
-+	if (mount_point[0] != '/') {
-+		nfs_error(_("%s: unrecognized mount point %s"),
-+			progname, mount_point);
-+		mnt_err = EX_USAGE;
-+		goto out;
-+	}
-+
- 	parse_opts(mount_opts, &flags, &extra_opts);
- 
- 	if (uid != 0) {
- 		if (!(flags & (MS_USERS|MS_USER))) {
--			fprintf(stderr, "%s: permission denied\n", progname);
--			exit(EX_USAGE);
-+			nfs_error(_("%s: permission denied"), progname);
-+			mnt_err = EX_USAGE;
-+			goto out;
- 		}
- 	}
- 
--	if (chk_mountpoint(mount_point))
--		exit(EX_FAIL);
-+	if (chk_mountpoint(mount_point)) {
-+		mnt_err = EX_USAGE
-+		goto out;
-+	}
- 
- 	if (!strcmp(fs_type, "nfs4"))
- 		mnt_err = nfs4mount(spec, mount_point, flags, &extra_opts, fake);
-@@ -493,6 +499,8 @@ int main(int argc, char *argv[])
- 		mnt_err = add_mtab(spec, mount_point, fs_type, flags, extra_opts,
- 				0, 0 /* these are always zero for NFS */ );
- 
-+out:
-+	free(mount_point);
- 	exit(mnt_err);
  }
  
+-/* Try to build a canonical options string.  */
+-static char * fix_opts_string (int flags, const char *extra_opts) {
++/*
++ * Build a canonical mount option string for /etc/mtab.
++ */
++static char *fix_opts_string(int flags, const char *extra_opts)
++{
+ 	const struct opt_map *om;
+ 	char *new_opts;
+ 
+@@ -277,8 +282,8 @@ void mount_usage()
+ 	printf("\tnfsoptions\tRefer to mount.nfs(8) or nfs(5)\n\n");
+ }
+ 
+-static inline void
+-parse_opt(const char *opt, int *mask, char *extra_opts, int len) {
++static void parse_opt(const char *opt, int *mask, char *extra_opts, int len)
++{
+ 	const struct opt_map *om;
+ 
+ 	for (om = opt_map; om->opt != NULL; om++) {
+@@ -300,30 +305,35 @@ parse_opt(const char *opt, int *mask, char *extra_opts, int len) {
+ 		strcat(extra_opts, opt);
+ }
+ 
+-/* Take -o options list and compute 4th and 5th args to mount(2).  flags
+-   gets the standard options (indicated by bits) and extra_opts all the rest */
+-static void parse_opts (const char *options, int *flags, char **extra_opts)
++/*
++ * Convert the provided mount command-line options into the 4th &
++ * 5th arguments to mount(2).  Output parameter "@flags" gets the
++ * standard options (indicated by MS_ bits), and output parameter
++ * "@extra_opts" gets all the filesystem-specific options.
++ */
++static void parse_opts(const char *options, int *flags, char **extra_opts)
+ {
+ 	if (options != NULL) {
+ 		char *opts = xstrdup(options);
+ 		char *opt, *p;
+-		int len = strlen(opts) + 1;		/* include room for a null */
++		int len = strlen(opts) + 1;	/* include room for a null */
+ 		int open_quote = 0;
+ 
+ 		*extra_opts = xmalloc(len);
+ 		**extra_opts = '\0';
+ 
+-		for (p=opts, opt=NULL; p && *p; p++) {
++		for (p = opts, opt = NULL; p && *p; p++) {
+ 			if (!opt)
+-				opt = p;		/* begin of the option item */
++				opt = p;	/* begin of the option item */
+ 			if (*p == '"')
+-				open_quote ^= 1;	/* reverse the status */
++				open_quote ^= 1; /* reverse the status */
+ 			if (open_quote)
+-				continue;		/* still in a quoted block */
++				continue;	/* still in a quoted block */
+ 			if (*p == ',')
+-				*p = '\0';		/* terminate the option item */
++				*p = '\0';	/* terminate the option item */
++
+ 			/* end of option item or last item */
+-			if (*p == '\0' || *(p+1) == '\0') {
++			if (*p == '\0' || *(p + 1) == '\0') {
+ 				parse_opt(opt, flags, *extra_opts, len);
+ 				opt = NULL;
+ 			}
+@@ -424,8 +434,10 @@ int main(int argc, char *argv[])
+ 			exit(EX_USAGE);
+ 		}
+ 	}
+-	if (optind != argc-2) {
+-		/* Extra non-option words at the end... */
++	/*
++	 * Extra non-option words at the end...
++	 */
++	if (optind != argc - 2) {
+ 		mount_usage();
+ 		exit(EX_USAGE);
+ 	}
+@@ -503,4 +515,3 @@ out:
+ 	free(mount_point);
+ 	exit(mnt_err);
+ }
+-
+diff --git a/utils/mount/mount_constants.h b/utils/mount/mount_constants.h
+index 3e40841..914deb7 100644
+--- a/utils/mount/mount_constants.h
++++ b/utils/mount/mount_constants.h
+@@ -56,4 +56,3 @@ if we have a stack or plain mount - mount atop of it, forming a stack. */
+ #endif
+ 
+ #endif /* _NFS_MOUNT_CONSTANTS_H */
+-
 
 
 -------------------------------------------------------------------------
