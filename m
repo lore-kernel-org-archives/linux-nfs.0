@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/17] Remove the running_bg parameter
-Date: Sun, 15 Jul 2007 23:15:55 -0400
-Message-ID: <20070716031554.11209.89772.stgit@manray.1015granger.net>
+Subject: [PATCH 14/17] mount.nfs: When -v is set and the mount
+	succeeds, print the mount info
+Date: Sun, 15 Jul 2007 23:16:00 -0400
+Message-ID: <20070716031600.11209.62192.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH41-0001pB-Hr
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:57 -0700
+	id 1IAH43-0001pH-1D
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:59 -0700
 Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH44-0000FU-OY
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:01 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH44-00066z-TE
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:02 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,93 +28,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: when nfsmount and nfs4mount are called, running_bg is always set
-to zero.  Remove the parameter from the call.
+Add a bit of logic that appears to be in other mount helpers.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c      |    4 ++--
- utils/mount/nfs4_mount.h |    2 +-
- utils/mount/nfs4mount.c  |    2 +-
- utils/mount/nfs_mount.h  |    2 +-
- utils/mount/nfsmount.c   |    4 ++--
- 5 files changed, 7 insertions(+), 7 deletions(-)
+ utils/mount/mount.c |   15 +++++++++++++++
+ 1 files changed, 15 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 3f869ee..fcb1f5e 100644
+index fcb1f5e..53dc731 100644
 --- a/utils/mount/mount.c
 +++ b/utils/mount/mount.c
-@@ -467,9 +467,9 @@ int main(int argc, char *argv[])
- 		exit(EX_FAIL);
- 
- 	if (!strcmp(fs_type, "nfs4"))
--		mnt_err = nfs4mount(spec, mount_point, flags, &extra_opts, 0, fake);
-+		mnt_err = nfs4mount(spec, mount_point, flags, &extra_opts, fake);
- 	else
--		mnt_err = nfsmount(spec, mount_point, flags, &extra_opts, 0, fake);
-+		mnt_err = nfsmount(spec, mount_point, flags, &extra_opts, fake);
- 
- 	if (mnt_err)
- 		exit(EX_FAIL);
-diff --git a/utils/mount/nfs4_mount.h b/utils/mount/nfs4_mount.h
-index b03792e..00581fd 100644
---- a/utils/mount/nfs4_mount.h
-+++ b/utils/mount/nfs4_mount.h
-@@ -68,6 +68,6 @@ struct nfs4_mount_data {
- #define NFS4_MOUNT_UNSHARED	0x8000	/* 5 */
- #define NFS4_MOUNT_FLAGMASK	0xFFFF
- 
--int nfs4mount(const char *, const char *, int, char **, int, int);
-+int nfs4mount(const char *, const char *, int, char **, int);
- 
- #endif
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index 2c85db9..64f85e0 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -168,7 +168,7 @@ static int get_my_ipv4addr(char *ip_addr, int len)
+@@ -171,6 +171,18 @@ static void discover_nfs_mount_data_version(void)
+ 		nfs_mount_data_version = NFS_MOUNT_VERSION;
  }
  
- int nfs4mount(const char *spec, const char *node, int flags,
--	      char **extra_opts, int running_bg, int fake)
-+	      char **extra_opts, int fake)
- {
- 	static struct nfs4_mount_data data;
- 	static char hostdir[1024];
-diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
-index 8c46ce2..279ff36 100644
---- a/utils/mount/nfs_mount.h
-+++ b/utils/mount/nfs_mount.h
-@@ -80,6 +80,6 @@ struct nfs_mount_data {
- #define AUTH_GSS_SPKMP		390011
- #endif
++static void print_one(char *spec, char *node, char *type, char *opts)
++{
++	if (verbose) {
++		printf("%s on %s type %s", spec, node, type);
++
++		if (opts != NULL)
++			printf(" (%s)", opts);
++
++		printf("\n");
++	}
++}
++
+ /* Try to build a canonical options string.  */
+ static char * fix_opts_string (int flags, const char *extra_opts) {
+ 	const struct opt_map *om;
+@@ -474,6 +486,9 @@ int main(int argc, char *argv[])
+ 	if (mnt_err)
+ 		exit(EX_FAIL);
  
--int nfsmount(const char *, const char *, int , char **, int, int);
-+int nfsmount(const char *, const char *, int , char **, int);
- 
- #endif /* _NFS_MOUNT_H */
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 74b5f93..4807c5b 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -487,14 +487,14 @@ out_bad:
- 
- int
- nfsmount(const char *spec, const char *node, int flags,
--	 char **extra_opts, int running_bg, int fake)
-+	 char **extra_opts, int fake)
- {
- 	static char *prev_bg_host;
- 	char hostdir[1024];
- 	char *hostname, *dirname, *old_opts, *mounthost = NULL;
- 	char new_opts[1024], cbuf[1024];
- 	static struct nfs_mount_data data;
--	int val;
-+	int val, running_bg = 0;
- 	static int doonce = 0;
- 
- 	clnt_addr_t mnt_server = { &mounthost, };
++	if (!fake)
++		print_one(spec, mount_point, fs_type, mount_opts);
++
+ 	if (!nomtab)
+ 		mnt_err = add_mtab(spec, mount_point, fs_type, flags, extra_opts,
+ 				0, 0 /* these are always zero for NFS */ );
 
 
 -------------------------------------------------------------------------
