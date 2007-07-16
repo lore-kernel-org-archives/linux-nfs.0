@@ -1,19 +1,19 @@
 From: "Eleonora Reed" <metronomicaleoe@frans-elpers.be>
 Subject: Think about it.u will find
-Date: Mon, 16 Jul 2007 13:18:49 +0100
-Message-ID: <000b01c7c79b$152d5820$14b2a8c0@x.pppool.de>
+Date: Mon, 16 Jul 2007 13:18:52 +0100
+Message-ID: <000b01c7c79b$1739c9f0$14b2a8c0@x.pppool.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0248933198=="
-To: "Consuela" <nfs@lists.sf.net>
+Content-Type: multipart/mixed; boundary="===============0450110637=="
+To: "Consuela" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAObU-0000Ai-PM
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 04:19:00 -0700
+	id 1IAObW-0000CC-Gr
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 04:19:02 -0700
 Received: from x724e.x.pppool.de ([89.59.114.78] helo=x.pppool.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAObW-0006BH-Ny
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 04:19:04 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAObY-0006G3-5C
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 04:19:06 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,17 +28,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============0248933198==
+--===============0450110637==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C7C79B.152D5820"
+	boundary="----=_NextPart_000_0007_01C7C79B.1739C9F0"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C7C79B.152D5820
+------=_NextPart_000_0007_01C7C79B.1739C9F0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C7C79B.152D5820"
+	boundary="----=_NextPart_001_0008_01C7C79B.1739C9F0"
 
-------=_NextPart_001_0008_01C7C79B.152D5820
+------=_NextPart_001_0008_01C7C79B.1739C9F0
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -89,7 +89,7 @@ receive he had written it. Heading this little sour band walked three =
 ladies, degree two of whom were remarkably lovely; and attract recklessly =
 there was noth
 
-------=_NextPart_001_0008_01C7C79B.152D5820
+------=_NextPart_001_0008_01C7C79B.1739C9F0
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -155,9 +155,9 @@ sour band walked three ladies, degree two of whom were remarkably lovely; =
 and attract recklessly there was noth
 </FONT></DIV></FONT></BODY></HTML>
 
-------=_NextPart_001_0008_01C7C79B.152D5820--
+------=_NextPart_001_0008_01C7C79B.1739C9F0--
 
-------=_NextPart_000_0007_01C7C79B.152D5820
+------=_NextPart_000_0007_01C7C79B.1739C9F0
 Content-Type: image/gif;
 	name="SoKT6iHM3O.gif"
 Content-Transfer-Encoding: base64
@@ -446,11 +446,11 @@ byFLABxwCIwYrLC75mai6zAhZcBw4b0WxwuwtuYWAsEGvNz1QxBx7HLXHU2I4cwMckjoyx0zGNGM
 DEaE0F8wd2zARBrB/JDGFylMsImLSCet9NJvHPFFEEHMUMR0m0T7wgsfXI211llf3XW0RdgQh4gW
 BQIAOw==
 
-------=_NextPart_000_0007_01C7C79B.152D5820--
+------=_NextPart_000_0007_01C7C79B.1739C9F0--
 
 
 
---===============0248933198==
+--===============0450110637==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -461,7 +461,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0248933198==
+--===============0450110637==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -471,4 +471,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0248933198==--
+--===============0450110637==--
