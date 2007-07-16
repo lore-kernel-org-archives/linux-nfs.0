@@ -1,26 +1,25 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 04/17] mount.nfs: /bin/mount already handles
- --bind & friends
-Date: Mon, 16 Jul 2007 14:30:32 +1000
-Message-ID: <18074.62568.248229.796083@notabene.brown>
-References: <20070716031509.11209.35069.stgit@manray.1015granger.net>
-	<18074.59805.866117.453406@notabene.brown>
-	<469AECC2.9000007@oracle.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 00/17] RFC: proposed changes to the NFS mount
+	command
+Date: Mon, 16 Jul 2007 09:07:23 +0100
+Message-ID: <20070716080723.GA19783@infradead.org>
+References: <20070716030150.11209.85724.stgit@manray.1015granger.net>
+	<18074.61070.150991.554588@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAIE8-0000mi-M3
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 21:30:28 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1IALcH-0005A8-Hu
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 01:07:37 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IAIEB-0003W2-V7
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 21:30:32 -0700
-In-Reply-To: message from Chuck Lever on Sunday July 15
+	(Exim 4.44) id 1IALcK-0005OQ-0J
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 01:07:41 -0700
+In-Reply-To: <18074.61070.150991.554588@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,36 +32,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sunday July 15, chuck.lever@oracle.com wrote:
-> > 
-> > Fair enough - I don't suppose the protocol for how /bin/mount talks to
-> > /sbin/mount.$fstype is documented anywhere???  I guess just in the
-> > code :-(
+On Mon, Jul 16, 2007 at 02:05:34PM +1000, Neil Brown wrote:
+> I've wondered why that was happening... Can't we just make a version
+> x+1 with a big string buffer so new options get put there is regular
+> string format and old options stay the way they are?
 > 
-> There are rumors that somehow the helpers will turn into plug-ins one 
-> day.  But yes, this is ambiguous and somewhat crappy.  I did ask the 
-> developers who constructed mount.ocfs2 about this.
+> But I guess that - long term - it is better to be just like other
+> filesystems.
 
-Plug-ins sound like a potentially good idea.  The one thing that I
-really hate about the current setup is that the helper has to be
-setuid root.  Which means that it has no way to know if 'mount' has
-sanity checked the options, so it has to do all the checking it self,
-and read fstab, which is really dumb.
+Having anything but a plain string means the filesystem is a complete
+oddball.  And with the planned removal of smbfs nfs would be the only
+oddball left.
 
-So, something to look forward to :-)
-
+> > option that will disable building nfsmount.c and nfs4mount.c, and
+> > enable building a version of these files that will introduce support
+> > for passing mount options as a string (that work is yet to be done).
 > 
-> Yes.  See the later patch that moves the mount system call to nfsmount.c 
-> and nfs4mount.c.
+> Does this mean that you cannot compile nfs-utils to support both old
+> and new kernels?  Is that really a good plan?
+> What is the over-all migration strategy?
 
-No, I didn't see that...
-Oh, there it is.  Patch 11.
-"Refactor mount processing slightly...."
+Making the different argument passing variants exclusive sounds like
+a bad idea indeed.
 
-I obviously didn't read that patch closely enough.  Makes sense
-though.  Thanks.
-
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
