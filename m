@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/17] mount.nfs: Create a common source module for
-	reporting	mount errors
-Date: Sun, 15 Jul 2007 23:15:19 -0400
-Message-ID: <20070716031519.11209.76599.stgit@manray.1015granger.net>
+Subject: [PATCH 07/17] mount.nfs: Always preset nfs_mount_version
+Date: Sun, 15 Jul 2007 23:15:24 -0400
+Message-ID: <20070716031524.11209.2844.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH3S-0001nQ-1a
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:22 -0700
-Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH3V-0005yP-8H
+	id 1IAH3V-0001na-7U
 	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:25 -0700
+Received: from flpvm09.prodigy.net ([207.115.20.39])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH3Y-0005zR-7Q
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:29 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,618 +27,318 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up, and pre-requisite for subsequent fixes.
+nfs_mount_version is a global integer that is set based on a guess
+about which nfs_mount_data version is appropriate for the kernel we're
+running on.
+
+Make it always available and have the correct value before calling mount
+and unmount so they don't have to worry about setting it themselves.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/Makefile.am    |    7 +
- utils/mount/mount.c        |   33 +-----
- utils/mount/nfs4mount.c    |    1 
- utils/mount/nfs_mount.h    |    1 
- utils/mount/nfsmount.c     |  128 ------------------------
- utils/mount/nfsmount_err.c |  235 ++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/nfsmount_err.h |   28 +++++
- utils/mount/nfsumount.c    |   27 -----
- 8 files changed, 277 insertions(+), 183 deletions(-)
+ utils/mount/mount.c     |   49 +++++++++++++++++++++++++++
+ utils/mount/nfsmount.c  |   84 ++++++++---------------------------------------
+ utils/mount/nfsumount.c |    3 --
+ 3 files changed, 64 insertions(+), 72 deletions(-)
 
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index 07e86e4..b7d6b82 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -9,8 +9,11 @@ man5_MANS	= nfs.man
- 
- sbin_PROGRAMS	= mount.nfs
- EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
--mount_nfs_SOURCES = mount.c nfsmount.c nfs4mount.c nfsumount.c \
--		  mount_constants.h nfs4_mount.h nfs_mount4.h
-+mount_nfs_SOURCES = mount.c nfsmount_err.c \
-+		    nfsmount.c nfs4mount.c \
-+		    nfsumount.c \
-+		    mount_constants.h nfsmount_err.h \
-+		    nfs4_mount.h nfs_mount4.h
- 
- mount_nfs_LDADD = ../../support/nfs/libnfs.a \
- 		  ../../support/export/libexport.a
 diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 3df57fc..28c4718 100644
+index 28c4718..14f70de 100644
 --- a/utils/mount/mount.c
 +++ b/utils/mount/mount.c
-@@ -40,6 +40,7 @@
- #include "nfs4_mount.h"
- #include "nfsumount.h"
- #include "mount.h"
-+#include "nfsmount_err.h"
+@@ -26,6 +26,7 @@
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <sys/mount.h>
++#include <sys/utsname.h>
+ #include <getopt.h>
+ #include <mntent.h>
+ #include <pwd.h>
+@@ -43,6 +44,7 @@
+ #include "nfsmount_err.h"
  
  char *progname;
++int nfs_mount_data_version;
  int nomtab;
-@@ -276,44 +277,20 @@ static void parse_opts (const char *options, int *flags, char **extra_opts)
- 	}
- }
+ int verbose;
+ int sloppy;
+@@ -123,6 +125,51 @@ static const struct opt_map opt_map[] = {
+   { NULL,	0, 0, 0		}
+ };
  
--static void mount_error(char *mntpnt, char *node)
--{
--	switch(errno) {
--		case ENOTDIR:
--			fprintf(stderr, "%s: mount point %s is not a directory\n", 
--				progname, mntpnt);
--			break;
--		case EBUSY:
--			fprintf(stderr, "%s: %s is already mounted or busy\n", 
--				progname, mntpnt);
--			break;
--		case ENOENT:
--			if (node) {
--				fprintf(stderr, "%s: %s failed, reason given by server: %s\n",
--					progname, node, strerror(errno));
--			} else
--				fprintf(stderr, "%s: mount point %s does not exist\n", 
--					progname, mntpnt);
--			break;
--		default:
--			fprintf(stderr, "%s: %s\n", progname, strerror(errno));
--	}
--}
- static int chk_mountpoint(char *mount_point)
- {
- 	struct stat sb;
++#define MAKE_VERSION(p,q,r)	(65536 * (p) + 256 * (q) + (r))
++
++int linux_version_code(void)
++{
++	struct utsname my_utsname;
++	int p, q, r;
++
++	if (uname(&my_utsname) == 0) {
++		p = atoi(strtok(my_utsname.release, "."));
++		q = atoi(strtok(NULL, "."));
++		r = atoi(strtok(NULL, "."));
++		return MAKE_VERSION(p,q,r);
++	}
++	return 0;
++}
++
++/*
++ * Choose the version of the nfs_mount_data structure that is appropriate
++ * for the kernel that is doing the mount.
++ *
++ * NFS_MOUNT_VERSION:		maximum version supported by these sources
++ * nfs_mount_data_version:	maximum version supported by the running kernel
++ */
++static void discover_nfs_mount_data_version(void)
++{
++	int kernel_version = linux_version_code();
++
++	if (kernel_version) {
++		if (kernel_version < MAKE_VERSION(2, 1, 32))
++			nfs_mount_data_version = 1;
++		else if (kernel_version < MAKE_VERSION(2, 2, 18))
++			nfs_mount_data_version = 3;
++		else if (kernel_version < MAKE_VERSION(2, 3, 0))
++			nfs_mount_data_version = 4;
++		else if (kernel_version < MAKE_VERSION(2, 3, 99))
++			nfs_mount_data_version = 3;
++		else if (kernel_version < MAKE_VERSION(2, 6, 3))
++			nfs_mount_data_version = 4;
++		else
++			nfs_mount_data_version = 6;
++	}
++	if (nfs_mount_data_version > NFS_MOUNT_VERSION)
++		nfs_mount_data_version = NFS_MOUNT_VERSION;
++}
++
+ /* Try to build a canonical options string.  */
+ static char * fix_opts_string (int flags, const char *extra_opts) {
+ 	const struct opt_map *om;
+@@ -356,6 +403,8 @@ int main(int argc, char *argv[])
  
- 	if (stat(mount_point, &sb) < 0){
--		mount_error(mount_point, NULL);
-+		mount_error(NULL, mount_point, errno);
- 		return 1;
- 	}
- 	if (S_ISDIR(sb.st_mode) == 0){
--		errno = ENOTDIR;
--		mount_error(mount_point, NULL);
-+		mount_error(NULL, mount_point, ENOTDIR);
- 		return 1;
- 	}
- 	if (access(mount_point, X_OK) < 0) {
--		mount_error(mount_point, NULL);
-+		mount_error(NULL, mount_point, errno);
- 		return 1;
- 	}
+ 	progname = basename(argv[0]);
  
-@@ -523,7 +500,7 @@ int main(int argc, char *argv[])
- 					   mount_opts);
- 
- 		if (mnt_err) {
--			mount_error(mount_point, spec);
-+			mount_error(spec, mount_point, errno);
- 			exit(EX_FAIL);
- 		}
- 	}
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index 4f6fc5f..ea2ac3a 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -43,6 +43,7 @@
- 
- #include "nfs4_mount.h"
- #include "nfs_mount.h"
-+#include "nfsmount_err.h"
- 
- #if defined(VAR_LOCK_DIR)
- #define DEFAULT_DIR VAR_LOCK_DIR
-diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
-index 50ce2a8..b38aa0f 100644
---- a/utils/mount/nfs_mount.h
-+++ b/utils/mount/nfs_mount.h
-@@ -82,6 +82,5 @@ struct nfs_mount_data {
- 
- int nfsmount(const char *, const char *, int *, char **, char **,
- 	     int, int *);
--void mount_errors(char *, int, int);
- 
- #endif /* _NFS_MOUNT_H */
++	discover_nfs_mount_data_version();
++
+ 	if(!strncmp(progname, "umount", strlen("umount"))) {
+ 		if(argc < 2) {
+ 			umount_usage();
 diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index f21aaff..7c52c1c 100644
+index 7c52c1c..24dc6e6 100644
 --- a/utils/mount/nfsmount.c
 +++ b/utils/mount/nfsmount.c
-@@ -64,13 +64,7 @@
- #include "nfs_mount.h"
- #include "mount_constants.h"
- #include "nls.h"
--
--#ifdef HAVE_RPCSVC_NFS_PROT_H
--#include <rpcsvc/nfs_prot.h>
--#else
--#include <linux/nfs.h>
--#define nfsstat nfs_stat
--#endif
-+#include "nfsmount_err.h"
- 
- #ifndef NFS_PORT
- #define NFS_PORT 2049
-@@ -79,8 +73,6 @@
+@@ -48,7 +48,6 @@
+ #include <rpc/pmap_clnt.h>
+ #include <sys/socket.h>
+ #include <sys/time.h>
+-#include <sys/utsname.h>
+ #include <sys/stat.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+@@ -73,10 +72,9 @@
  #define NFS_FHSIZE 32
  #endif
  
--static char *nfs_strerror(int stat);
--
- #define MAKE_VERSION(p,q,r)	(65536*(p) + 256*(q) + (r))
- #define MAX_NFSPROT ((nfs_mount_version >= 4) ? 3 : 2)
- #define MAX_MNTPROT ((nfs_mount_version >= 4) ? 3 : 2)
-@@ -101,68 +93,9 @@ typedef union {
+-#define MAKE_VERSION(p,q,r)	(65536*(p) + 256*(q) + (r))
+-#define MAX_NFSPROT ((nfs_mount_version >= 4) ? 3 : 2)
+-#define MAX_MNTPROT ((nfs_mount_version >= 4) ? 3 : 2)
+-#define HAVE_RELIABLE_TCP (nfs_mount_version >= 4)
++#define MAX_NFSPROT ((nfs_mount_data_version >= 4) ? 3 : 2)
++#define MAX_MNTPROT ((nfs_mount_data_version >= 4) ? 3 : 2)
++#define HAVE_RELIABLE_TCP (nfs_mount_data_version >= 4)
+ 
+ #ifndef HAVE_INET_ATON
+ #define inet_aton(a,b) (0)
+@@ -93,9 +91,12 @@ typedef union {
  	mnt3res_t nfsv3;
  } mntres_t;
  
--static char errbuf[BUFSIZ];
--static char *erreob = &errbuf[BUFSIZ];
++extern int nfs_mount_data_version;
  extern int verbose;
  extern int sloppy;
  
--/* Convert RPC errors into strings */
--int rpc_strerror(int);
--int rpc_strerror(int spos)
--{
--	int cf_stat = rpc_createerr.cf_stat; 
--	int pos=0, cf_errno = rpc_createerr.cf_error.re_errno;
--	char *ptr, *estr = clnt_sperrno(cf_stat);
--	char *tmp;
--
--	if (estr) {
--		if ((ptr = index(estr, ':')))
--			estr = ++ptr;
--
--		tmp = &errbuf[spos];
--		if (cf_stat == RPC_SYSTEMERROR)
--			pos = snprintf(tmp, (erreob - tmp), 
--				"System Error: %s", strerror(cf_errno));
--		else
--			pos = snprintf(tmp, (erreob - tmp), "RPC Error:%s", estr);
--	}
--	return (pos);
--}
--void mount_errors(char *, int, int);
--void mount_errors(char *server, int will_retry, int bg)
--{
--	int pos = 0;
--	char *tmp;
--	static int onlyonce = 0;
--
--	tmp = &errbuf[pos];
--	if (bg) 
--		pos = snprintf(tmp, (erreob - tmp), 
--			"mount to NFS server '%s' failed: ", server);
--	else
--		pos = snprintf(tmp, (erreob - tmp), 
--			"mount: mount to NFS server '%s' failed: ", server);
--
--	tmp = &errbuf[pos];
--	if (rpc_createerr.cf_stat == RPC_TIMEDOUT) {
--		pos = snprintf(tmp, (erreob - tmp), "timed out %s", 
--			will_retry ? "(retrying)" : "(giving up)");
--	} else {
--		pos += rpc_strerror(pos);
--		tmp = &errbuf[pos];
--		if (bg) {
--			pos = snprintf(tmp, (erreob - tmp), " %s",
--				will_retry ? "(retrying)" : "(giving up)");
--		}
--	}
--	if (bg) {
--		if (onlyonce++ < 1)
--			openlog("mount", LOG_CONS|LOG_PID, LOG_AUTH);
--		syslog(LOG_ERR, "%s.", errbuf);
--	} else
--		fprintf(stderr, "%s.\n", errbuf);
--}
--
++extern int linux_version_code();
++
  /* Define the order in which to probe for UDP/TCP services */
  enum plist {
  	use_tcp = 0,
-@@ -1238,62 +1171,3 @@ noauth_flavors:
- 		close(fsock);
- 	return retval;
+@@ -144,59 +145,6 @@ mnt_probelist(const int vers)
+ 	}
  }
+ 
+-static int
+-linux_version_code(void) {
+-	struct utsname my_utsname;
+-	int p, q, r;
+-
+-	if (uname(&my_utsname) == 0) {
+-		p = atoi(strtok(my_utsname.release, "."));
+-		q = atoi(strtok(NULL, "."));
+-		r = atoi(strtok(NULL, "."));
+-		return MAKE_VERSION(p,q,r);
+-	}
+-	return 0;
+-}
 -
 -/*
-- * We need to translate between nfs status return values and
-- * the local errno values which may not be the same.
+- * Unfortunately, the kernel prints annoying console messages
+- * in case of an unexpected nfs mount version (instead of
+- * just returning some error).  Therefore we'll have to try
+- * and figure out what version the kernel expects.
 - *
-- * Andreas Schwab <schwab@LS5.informatik.uni-dortmund.de>: change errno:
-- * "after #include <errno.h> the symbol errno is reserved for any use,
-- *  it cannot even be used as a struct tag or field name".
+- * Variables:
+- *	NFS_MOUNT_VERSION: these nfsmount sources at compile time
+- *	nfs_mount_version: version this source and running kernel can handle
 - */
+-int nfs_mount_version = NFS_MOUNT_VERSION;
 -
--#ifndef EDQUOT
--#define EDQUOT	ENOSPC
--#endif
+-int
+-find_kernel_nfs_mount_version(void) {
+-	static int kernel_version = -1;
+-	int mnt_version = NFS_MOUNT_VERSION;
 -
--static struct {
--	enum nfsstat stat;
--	int errnum;
--} nfs_errtbl[] = {
--	{ NFS_OK,		0		},
--	{ NFSERR_PERM,		EPERM		},
--	{ NFSERR_NOENT,		ENOENT		},
--	{ NFSERR_IO,		EIO		},
--	{ NFSERR_NXIO,		ENXIO		},
--	{ NFSERR_ACCES,		EACCES		},
--	{ NFSERR_EXIST,		EEXIST		},
--	{ NFSERR_NODEV,		ENODEV		},
--	{ NFSERR_NOTDIR,	ENOTDIR		},
--	{ NFSERR_ISDIR,		EISDIR		},
--#ifdef NFSERR_INVAL
--	{ NFSERR_INVAL,		EINVAL		},	/* that Sun forgot */
--#endif
--	{ NFSERR_FBIG,		EFBIG		},
--	{ NFSERR_NOSPC,		ENOSPC		},
--	{ NFSERR_ROFS,		EROFS		},
--	{ NFSERR_NAMETOOLONG,	ENAMETOOLONG	},
--	{ NFSERR_NOTEMPTY,	ENOTEMPTY	},
--	{ NFSERR_DQUOT,		EDQUOT		},
--	{ NFSERR_STALE,		ESTALE		},
--#ifdef EWFLUSH
--	{ NFSERR_WFLUSH,	EWFLUSH		},
--#endif
--	/* Throw in some NFSv3 values for even more fun (HP returns these) */
--	{ 71,			EREMOTE		},
+-	if (kernel_version == -1)
+-		kernel_version = linux_version_code();
 -
--	{ -1,			EIO		}
--};
--
--static char *nfs_strerror(int stat)
--{
--	int i;
--	static char buf[256];
--
--	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
--		if (nfs_errtbl[i].stat == stat)
--			return strerror(nfs_errtbl[i].errnum);
+-	if (kernel_version) {
+-	     if (kernel_version < MAKE_VERSION(2,1,32))
+-		  mnt_version = 1;
+-	     else if (kernel_version < MAKE_VERSION(2,2,18))
+-		  mnt_version = 3;
+-	     else if (kernel_version < MAKE_VERSION(2,3,0))
+-		  mnt_version = 4; /* since 2.2.18pre9 */
+-	     else if (kernel_version < MAKE_VERSION(2,3,99))
+-		  mnt_version = 3;
+-	     else if (kernel_version < MAKE_VERSION(2,6,3))
+-		  mnt_version = 4;
+-	     else
+-		  mnt_version = 6;
 -	}
--	sprintf(buf, _("unknown nfs status return value: %d"), stat);
--	return buf;
+-	if (mnt_version > NFS_MOUNT_VERSION)
+-	     mnt_version = NFS_MOUNT_VERSION;
+-	return mnt_version;
 -}
-diff --git a/utils/mount/nfsmount_err.c b/utils/mount/nfsmount_err.c
-new file mode 100644
-index 0000000..77b87fe
---- /dev/null
-+++ b/utils/mount/nfsmount_err.c
-@@ -0,0 +1,235 @@
-+/*
-+ * nfsmount_err.c -- Common error handling functions
-+ *
-+ * Copyright (C) 2007 Oracle.  All rights reserved.
-+ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2 of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ * To Do:
-+ *  + Proper support for internationalization
-+ */
-+
-+#include "config.h"
-+#include <unistd.h>
-+#include <sys/types.h>
-+#include <stdio.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <syslog.h>
-+#include <rpc/rpc.h>
-+#include <rpc/pmap_prot.h>
-+#include <rpc/pmap_clnt.h>
-+
-+#include "xcommon.h"
-+#include "nls.h"
-+#include "mount.h"
-+#include "nfsmount_err.h"
-+
-+#ifdef HAVE_RPCSVC_NFS_PROT_H
-+#include <rpcsvc/nfs_prot.h>
-+#else
-+#include <linux/nfs.h>
-+#define nfsstat nfs_stat
-+#endif
-+
-+extern char *progname;
-+
-+static char errbuf[BUFSIZ];
-+static char *erreob = &errbuf[BUFSIZ];
-+
-+/* Convert RPC errors into strings */
-+static int rpc_strerror(int spos)
-+{
-+	int cf_stat = rpc_createerr.cf_stat;
-+	int pos = 0, cf_errno = rpc_createerr.cf_error.re_errno;
-+	char *ptr, *estr = clnt_sperrno(cf_stat);
-+	char *tmp;
-+
-+	if (estr) {
-+		if ((ptr = index(estr, ':')))
-+			estr = ++ptr;
-+
-+		tmp = &errbuf[spos];
-+		if (cf_stat == RPC_SYSTEMERROR)
-+			pos = snprintf(tmp, (erreob - tmp),
-+				"System Error: %s", strerror(cf_errno));
-+		else
-+			pos = snprintf(tmp, (erreob - tmp), "RPC Error:%s", estr);
-+	}
-+	return pos;
-+}
-+
-+void mount_errors(char *server, int will_retry, int bg)
-+{
-+	int pos = 0;
-+	char *tmp;
-+	static int onlyonce = 0;
-+
-+	tmp = &errbuf[pos];
-+	if (bg)
-+		pos = snprintf(tmp, (erreob - tmp),
-+			"mount to NFS server '%s' failed: ", server);
-+	else
-+		pos = snprintf(tmp, (erreob - tmp),
-+			"mount: mount to NFS server '%s' failed: ", server);
-+
-+	tmp = &errbuf[pos];
-+	if (rpc_createerr.cf_stat == RPC_TIMEDOUT) {
-+		pos = snprintf(tmp, (erreob - tmp), "timed out %s",
-+			will_retry ? "(retrying)" : "(giving up)");
-+	} else {
-+		pos += rpc_strerror(pos);
-+		tmp = &errbuf[pos];
-+		if (bg) {
-+			pos = snprintf(tmp, (erreob - tmp), " %s",
-+				will_retry ? "(retrying)" : "(giving up)");
-+		}
-+	}
-+	if (bg) {
-+		if (onlyonce++ < 1)
-+			openlog("mount", LOG_CONS|LOG_PID, LOG_AUTH);
-+		syslog(LOG_ERR, "%s.", errbuf);
-+	} else
-+		fprintf(stderr, "%s.\n", errbuf);
-+}
-+
-+void mount_error(const char *spec, const char *mount_point, int error)
-+{
-+	switch(error) {
-+	case ENOTDIR:
-+		nfs_error(_("%s: mount point %s is not a directory"),
-+				progname, mount_point);
-+		break;
-+	case EBUSY:
-+		nfs_error(_("%s: %s is already mounted or busy"),
-+			progname, mount_point);
-+		break;
-+	case ENOENT:
-+		if (spec)
-+			nfs_error(_("%s: mounting %s failed, "
-+				"reason given by server:\n  %s"),
-+				progname, spec, strerror(error));
-+		else
-+			nfs_error(_("%s: mount point %s does not exist"),
-+				progname, mount_point);
-+		break;
-+	default:
-+		nfs_error(_("%s: %s"),
-+			progname, strerror(error));
-+	}
-+}
-+
-+/*
-+ * Report a failed umount
-+ */
-+void umount_error(int err, const char *dev)
-+{
-+	switch (err) {
-+	case ENXIO:
-+		nfs_error(_("%s: %s: invalid block device"),
-+			progname, dev);
-+		break;
-+	case EINVAL:
-+		nfs_error(_("%s: %s: not mounted"),
-+			progname, dev);
-+		break;
-+	case EIO:
-+		nfs_error(_("%s: %s: can't write superblock"),
-+			progname, dev);
-+		break;
-+	case EBUSY:
-+		nfs_error(_("%s: %s: device is busy"),
-+			progname, dev);
-+		break;
-+	case ENOENT:
-+		nfs_error(_("%s: %s: not found"),
-+			progname, dev);
-+		break;
-+	case EPERM:
-+		nfs_error(_("%s: %s: must be superuser to umount"),
-+			progname, dev);
-+		break;
-+	case EACCES:
-+		nfs_error(_("%s: %s: block devices not permitted on fs"),
-+			progname, dev);
-+		break;
-+	default:
-+		nfs_error(_("%s: %s: %s"),
-+			progname, dev, strerror(err));
-+		break;
-+	}
-+}
-+
-+/*
-+ * We need to translate between nfs status return values and
-+ * the local errno values which may not be the same.
-+ *
-+ * Andreas Schwab <schwab@LS5.informatik.uni-dortmund.de>: change errno:
-+ * "after #include <errno.h> the symbol errno is reserved for any use,
-+ *  it cannot even be used as a struct tag or field name".
-+ */
-+
-+#ifndef EDQUOT
-+#define EDQUOT	ENOSPC
-+#endif
-+
-+static struct {
-+	enum nfsstat stat;
-+	int errnum;
-+} nfs_errtbl[] = {
-+	{ NFS_OK,		0		},
-+	{ NFSERR_PERM,		EPERM		},
-+	{ NFSERR_NOENT,		ENOENT		},
-+	{ NFSERR_IO,		EIO		},
-+	{ NFSERR_NXIO,		ENXIO		},
-+	{ NFSERR_ACCES,		EACCES		},
-+	{ NFSERR_EXIST,		EEXIST		},
-+	{ NFSERR_NODEV,		ENODEV		},
-+	{ NFSERR_NOTDIR,	ENOTDIR		},
-+	{ NFSERR_ISDIR,		EISDIR		},
-+#ifdef NFSERR_INVAL
-+	{ NFSERR_INVAL,		EINVAL		},	/* that Sun forgot */
-+#endif
-+	{ NFSERR_FBIG,		EFBIG		},
-+	{ NFSERR_NOSPC,		ENOSPC		},
-+	{ NFSERR_ROFS,		EROFS		},
-+	{ NFSERR_NAMETOOLONG,	ENAMETOOLONG	},
-+	{ NFSERR_NOTEMPTY,	ENOTEMPTY	},
-+	{ NFSERR_DQUOT,		EDQUOT		},
-+	{ NFSERR_STALE,		ESTALE		},
-+#ifdef EWFLUSH
-+	{ NFSERR_WFLUSH,	EWFLUSH		},
-+#endif
-+	/* Throw in some NFSv3 values for even more fun (HP returns these) */
-+	{ 71,			EREMOTE		},
-+
-+	{ -1,			EIO		}
-+};
-+
-+char *nfs_strerror(int stat)
-+{
-+	int i;
-+	static char buf[256];
-+
-+	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
-+		if (nfs_errtbl[i].stat == stat)
-+			return strerror(nfs_errtbl[i].errnum);
-+	}
-+	sprintf(buf, _("unknown nfs status return value: %d"), stat);
-+	return buf;
-+}
-diff --git a/utils/mount/nfsmount_err.h b/utils/mount/nfsmount_err.h
-new file mode 100644
-index 0000000..06f85e8
---- /dev/null
-+++ b/utils/mount/nfsmount_err.h
-@@ -0,0 +1,28 @@
-+/*
-+ * nfsmount_err.h:  Common error handling functions
-+ *
-+ * Copyright (C) 2007 Oracle.  All rights reserved.
-+ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2 of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ */
-+
-+char *nfs_strerror(int);
-+
-+void mount_error(const char *, const char *, int);
-+void mount_errors(char *, int, int);
-+void umount_error(int, const char *);
+-
+ int nfs_gethostbyname(const char *, struct sockaddr_in *);
+ int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
+ {
+@@ -554,7 +502,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 				opt = "nfsvers";
+ #if NFS_MOUNT_VERSION >= 2
+ 			} else if (!strcmp(opt, "namlen")) {
+-				if (nfs_mount_version >= 2)
++				if (nfs_mount_data_version >= 2)
+ 					data->namlen = val;
+ 				else if (sloppy)
+ 					continue;
+@@ -578,7 +526,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ #if NFS_MOUNT_VERSION >= 2
+ 					data->flags &= ~NFS_MOUNT_TCP;
+ 				} else if (!strcmp(opteq+1, "tcp") &&
+-					   nfs_mount_version > 2) {
++					   nfs_mount_data_version > 2) {
+ 					nfs_pmap->pm_prot = IPPROTO_TCP;
+ 					mnt_pmap->pm_prot = IPPROTO_TCP;
+ 					data->flags |= NFS_MOUNT_TCP;
+@@ -591,7 +539,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 			} else if (!strcmp(opt, "sec")) {
+ 				char *secflavor = opteq+1;
+ 				/* see RFC 2623 */
+-				if (nfs_mount_version < 5) {
++				if (nfs_mount_data_version < 5) {
+ 					printf(_("Warning: ignoring sec=%s option\n"), secflavor);
+ 					continue;
+ 				} else if (!strcmp(secflavor, "none"))
+@@ -690,7 +638,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 			} else if (!strcmp(opt, "tcp")) {
+ 				data->flags &= ~NFS_MOUNT_TCP;
+ 				if (val) {
+-					if (nfs_mount_version < 2)
++					if (nfs_mount_data_version < 2)
+ 						goto bad_option;
+ 					nfs_pmap->pm_prot = IPPROTO_TCP;
+ 					mnt_pmap->pm_prot = IPPROTO_TCP;
+@@ -702,7 +650,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 			} else if (!strcmp(opt, "udp")) {
+ 				data->flags &= ~NFS_MOUNT_TCP;
+ 				if (!val) {
+-					if (nfs_mount_version < 2)
++					if (nfs_mount_data_version < 2)
+ 						goto bad_option;
+ 					nfs_pmap->pm_prot = IPPROTO_TCP;
+ 					mnt_pmap->pm_prot = IPPROTO_TCP;
+@@ -716,7 +664,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 			} else if (!strcmp(opt, "lock")) {
+ 				data->flags &= ~NFS_MOUNT_NONLM;
+ 				if (!val) {
+-					if (nfs_mount_version < 3)
++					if (nfs_mount_data_version < 3)
+ 						goto bad_option;
+ 					data->flags |= NFS_MOUNT_NONLM;
+ 				}
+@@ -725,7 +673,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 			} else if (!strcmp(opt, "broken_suid")) {
+ 				data->flags &= ~NFS_MOUNT_BROKEN_SUID;
+ 				if (val) {
+-					if (nfs_mount_version < 4)
++					if (nfs_mount_data_version < 4)
+ 						goto bad_option;
+ 					data->flags |= NFS_MOUNT_BROKEN_SUID;
+ 				}
+@@ -827,8 +775,6 @@ nfsmount(const char *spec, const char *node, int *flags,
+ 	time_t prevt;
+ 	time_t timeout;
+ 
+-	nfs_mount_version = find_kernel_nfs_mount_version();
+-
+ 	if (strlen(spec) >= sizeof(hostdir)) {
+ 		fprintf(stderr, _("mount: "
+ 				  "excessively long host:dir argument\n"));
+@@ -929,7 +875,7 @@ nfsmount(const char *spec, const char *node, int *flags,
+ 	printf("\n");
+ #endif
+ 
+-	data.version = nfs_mount_version;
++	data.version = nfs_mount_data_version;
+ 	*mount_opts = (char *) &data;
+ 
+ 	if (*flags & MS_REMOUNT)
+@@ -1105,7 +1051,7 @@ noauth_flavors:
+ #endif
+ 	}
+ 
+-	if (nfs_mount_version == 1) {
++	if (nfs_mount_data_version == 1) {
+ 		/* create nfs socket for kernel */
+ 		if (nfs_pmap->pm_prot == IPPROTO_TCP)
+ 			fsock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index b9737be..c275da8 100644
+index c275da8..4069a38 100644
 --- a/utils/mount/nfsumount.c
 +++ b/utils/mount/nfsumount.c
-@@ -34,6 +34,7 @@
- #include "mount_constants.h"
- #include "mount.h"
- #include "nfsumount.h"
-+#include "nfsmount_err.h"
+@@ -46,14 +46,12 @@
+ #endif
  
- #if !defined(MNT_FORCE)
- /* dare not try to include <linux/mount.h> -- lots of errors */
-@@ -93,30 +94,6 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
- 	return res;
- }
+ extern char *progname;
+-extern int nfs_mount_version;
+ extern int nomtab;
+ extern int verbose;
+ int force;
+ int lazy;
+ int remount;
  
--/* complain about a failed umount */
--static void complain(int err, const char *dev) {
--  switch (err) {
--    case ENXIO:
--      nfs_error (_("umount: %s: invalid block device"), dev); break;
--    case EINVAL:
--      nfs_error (_("umount: %s: not mounted"), dev); break;
--    case EIO:
--      nfs_error (_("umount: %s: can't write superblock"), dev); break;
--    case EBUSY:
--     /* Let us hope fstab has a line "proc /proc ..."
--        and not "none /proc ..."*/
--      nfs_error (_("umount: %s: device is busy"), dev); break;
--    case ENOENT:
--      nfs_error (_("umount: %s: not found"), dev); break;
--    case EPERM:
--      nfs_error (_("umount: %s: must be superuser to umount"), dev); break;
--    case EACCES:
--      nfs_error (_("umount: %s: block devices not permitted on fs"), dev); break;
--    default:
--      nfs_error (_("umount: %s: %s"), dev, strerror (err)); break;
--  }
--}
--
- int del_mtab(const char *spec, const char *node)
- {
- 	int umnt_err, res;
-@@ -183,7 +160,7 @@ int del_mtab(const char *spec, const char *node)
-                 return 0;
+-extern int find_kernel_nfs_mount_version(void);
+ extern int probe_mntport(clnt_addr_t *);
+ extern int nfs_gethostbyname(const char *, struct sockaddr_in *);
  
-         if (umnt_err)
--                complain(umnt_err, node);
-+                umount_error(umnt_err, node);
-         return 1;
- }
+@@ -176,7 +174,6 @@ int _nfsumount(const char *spec, char *opts)
+ 	struct pmap *pmap = &mnt_server.pmap;
+ 	char *p;
  
+-	nfs_mount_version = find_kernel_nfs_mount_version();
+ 	if (spec == NULL || (p = strchr(spec,':')) == NULL)
+ 		goto out_bad;
+ 	hostname = xstrndup(spec, p-spec);
 
 
 -------------------------------------------------------------------------
