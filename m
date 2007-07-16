@@ -1,27 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 00/17] RFC: proposed changes to the NFS mount
-	command
-Date: Mon, 16 Jul 2007 11:07:29 -0400
-Message-ID: <469B89B1.1070201@oracle.com>
-References: <20070716030150.11209.85724.stgit@manray.1015granger.net>
-	<18074.61070.150991.554588@notabene.brown>
-	<20070716080723.GA19783@infradead.org>
-Reply-To: chuck.lever@oracle.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: maintainership question about nfs-utils/util/mount
+Date: Mon, 16 Jul 2007 11:42:15 -0400
+Message-ID: <20070716114215.81e2ac37.jlayton@redhat.com>
+References: <468EA263.5010909@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090107040807040600020800"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS List <nfs@lists.sourceforge.net>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IASBL-0000mp-Ax
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 08:08:15 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IASBN-0006LT-Lo
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 08:08:19 -0700
-In-Reply-To: <20070716080723.GA19783@infradead.org>
+	id 1IASiB-0004cQ-Qg
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 08:42:12 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IASiF-0001uU-4D
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 08:42:15 -0700
+In-Reply-To: <468EA263.5010909@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,81 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090107040807040600020800
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri, 06 Jul 2007 16:13:23 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-
-
-Christoph Hellwig wrote:
-> On Mon, Jul 16, 2007 at 02:05:34PM +1000, Neil Brown wrote:
->> I've wondered why that was happening... Can't we just make a version
->> x+1 with a big string buffer so new options get put there is regular
->> string format and old options stay the way they are?
->>
->> But I guess that - long term - it is better to be just like other
->> filesystems.
+> I'm looking at nfs-utils/utils/mount in order to patch in support for 
+> passing a string of mount options to the kernel instead of an 
+> nfs_mount_data.
 > 
-> Having anything but a plain string means the filesystem is a complete
-> oddball.  And with the planned removal of smbfs nfs would be the only
-> oddball left.
+> In mount.c, main() invokes nfsmount() in nfsmount.c.  nfsmount() defines 
+> a structure on the stack called "data", then returns a pointer to "data" 
+> which is then passed to the kernel by main().
 > 
->>> option that will disable building nfsmount.c and nfs4mount.c, and
->>> enable building a version of these files that will introduce support
->>> for passing mount options as a string (that work is yet to be done).
->> Does this mean that you cannot compile nfs-utils to support both old
->> and new kernels?  Is that really a good plan?
->> What is the over-all migration strategy?
+> I think the only way this continues to work is that there are three 1024 
+> character buffers defined in nfsmount()'s stack frame before "data," 
+> which places "data" far enough up the stack that subsequent function 
+> calls in main() don't smash it.
 > 
-> Making the different argument passing variants exclusive sounds like
-> a bad idea indeed.
+> Although this doesn't cause bad behavior today, it needs to be fixed to 
+> prevent future changes from breaking things badly.
+> 
 
-Yeah, Neil has convinced me that mount.nfs must support binary and 
-string option processing simultaneously.
+In the git tree I'm looking at, "data" is declared static. Does that protect
+it from getting smashed?
 
-The 17 refactoring patches are still probably good clean ups overall.  I 
-will leave them stand on their own merits.
-
---------------090107040807040600020800
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+> Also found an interesting error message in here:
+> 
+>    permission died - no match for fstab
+> 
+> Should probably be "permission denied".  I'm not really sure what "no 
+> match for fstab" means, but looking at the context, this message appears 
+> if a non-root user tries to mount something that isn't already listed in 
+> /etc/fstab.
+> 
+> What's the current blessed procedure for sending patches and fixes for 
+> this particular code?  Mail to agud@redhat.com (last touch rule, and 
+> author of mount.c) is rejected.
+> 
 
 
---------------090107040807040600020800
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------090107040807040600020800
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------090107040807040600020800--
