@@ -1,11 +1,11 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH] fix broken compile due to missing pseudoflavors.h
-Date: Mon, 16 Jul 2007 13:18:56 -0400
-Message-ID: <469BA880.1010900@oracle.com>
+Date: Mon, 16 Jul 2007 13:26:48 -0400
+Message-ID: <469BAA58.20703@oracle.com>
 References: <469AB4D6.20902@oracle.com> <20070716170608.GD2817@fieldses.org>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060806070706060907020109"
+Content-Type: multipart/mixed; boundary="------------060804080504000400050202"
 Cc: Neil Brown <neilb@suse.de>,
 	Linux NFS mailing list <nfs@lists.sourceforge.net>
 To: "J. Bruce Fields" <bfields@fieldses.org>
@@ -13,12 +13,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAUEL-0006RX-7Q
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:19:32 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IAUM9-0007Wk-DC
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:27:34 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IAUEN-0008J1-KL
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:19:33 -0700
+	(Exim 4.44) id 1IAUMB-0002Zc-RL
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:27:37 -0700
 In-Reply-To: <20070716170608.GD2817@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,14 +33,14 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------060806070706060907020109
+--------------060804080504000400050202
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Yeah, this makes sense.  I tried just doing a "make" in utils/mount/ 
-last night and it did indeed spot the missing pseudoflavors.h header.
+FYI:
 
-I'll give this a shot.
+Yes, this fixes the build breakage with "./configure --disable-gss 
+--disable-nfsv4"
 
 J. Bruce Fields wrote:
 > From: J. Bruce Fields <bfields@citi.umich.edu>
@@ -96,7 +96,7 @@ J. Bruce Fields wrote:
 > +extern struct flav_info flav_map[];
 > +extern const int flav_map_size;
 
---------------060806070706060907020109
+--------------060804080504000400050202
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -116,7 +116,7 @@ version:2.1
 end:vcard
 
 
---------------060806070706060907020109
+--------------060804080504000400050202
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -127,7 +127,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------060806070706060907020109
+--------------060804080504000400050202
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -137,4 +137,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------060806070706060907020109--
+--------------060804080504000400050202--
