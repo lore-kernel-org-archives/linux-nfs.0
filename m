@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/17] mount.nfs: Eliminate some C macros that use
-	implicit	arguments
-Date: Sun, 15 Jul 2007 23:15:29 -0400
-Message-ID: <20070716031529.11209.17612.stgit@manray.1015granger.net>
+Subject: [PATCH 09/17] mount.nfs: Move network functions into a common
+	source	module
+Date: Sun, 15 Jul 2007 23:15:34 -0400
+Message-ID: <20070716031534.11209.52317.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH3b-0001nr-P7
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:31 -0700
+	id 1IAH3c-0001nw-Cu
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:32 -0700
 Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH3f-00060a-8U
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:35 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH3f-0000BQ-Hh
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:36 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,89 +28,422 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Get rid of nfs_probelist, mnt_probelist, and proto_probelist in order to
-remove the use of HAVE_RELIABLE_TCP, MAX_NFSPROT, and MAX_MNTPROT.
+At a later point, I'd like to switch between the legacy nfs_mount_data
+support and string-ified mount options by using a ./configure option to not
+build utils/mount/nfsmount.c.
+
+Thus it is necessary to remove some functions that are shared between
+mount.nfs and umount.nfs so that these functions will remain whether
+nfsmount.c is compiled or not.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/nfsmount.c |  159 ++++++++++++++++++++++++------------------------
- 1 files changed, 81 insertions(+), 78 deletions(-)
+ utils/mount/Makefile.am    |    2 
+ utils/mount/mount.c        |    7 -
+ utils/mount/nfsmount.c     |  264 -------------------------------------
+ utils/mount/nfsmount_net.c |  318 ++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/nfsmount_net.h |   31 ++++
+ utils/mount/nfsumount.c    |    4 -
+ 6 files changed, 353 insertions(+), 273 deletions(-)
 
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index b7d6b82..47bfa5b 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -9,7 +9,7 @@ man5_MANS	= nfs.man
+ 
+ sbin_PROGRAMS	= mount.nfs
+ EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
+-mount_nfs_SOURCES = mount.c nfsmount_err.c \
++mount_nfs_SOURCES = mount.c nfsmount_err.c nfsmount_net.c \
+ 		    nfsmount.c nfs4mount.c \
+ 		    nfsumount.c \
+ 		    mount_constants.h nfsmount_err.h \
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 14f70de..c7cb896 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -42,6 +42,7 @@
+ #include "nfsumount.h"
+ #include "mount.h"
+ #include "nfsmount_err.h"
++#include "nfsmount_net.h"
+ 
+ char *progname;
+ int nfs_mount_data_version;
+@@ -344,12 +345,6 @@ static int chk_mountpoint(char *mount_point)
+ 	return 0;
+ }
+ 
+-extern u_short getport(
+-	struct sockaddr_in *saddr,
+-	u_long prog,
+-	u_long vers,
+-	u_int prot);
+-
+ static int probe_statd()
+ {
+ 	struct sockaddr_in addr;
 diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 24dc6e6..8c261d9 100644
+index 8c261d9..368793c 100644
 --- a/utils/mount/nfsmount.c
 +++ b/utils/mount/nfsmount.c
-@@ -72,10 +72,6 @@
- #define NFS_FHSIZE 32
- #endif
+@@ -64,6 +64,7 @@
+ #include "mount_constants.h"
+ #include "nls.h"
+ #include "nfsmount_err.h"
++#include "nfsmount_net.h"
  
--#define MAX_NFSPROT ((nfs_mount_data_version >= 4) ? 3 : 2)
--#define MAX_MNTPROT ((nfs_mount_data_version >= 4) ? 3 : 2)
--#define HAVE_RELIABLE_TCP (nfs_mount_data_version >= 4)
--
- #ifndef HAVE_INET_ATON
- #define inet_aton(a,b) (0)
- #endif
-@@ -97,53 +93,46 @@ extern int sloppy;
+ #ifndef NFS_PORT
+ #define NFS_PORT 2049
+@@ -93,269 +94,6 @@ extern int sloppy;
  
  extern int linux_version_code();
  
--/* Define the order in which to probe for UDP/TCP services */
--enum plist {
--	use_tcp = 0,
--	udp_tcp,
--	udp_only,
+-static const unsigned int probe_udp_only[] = {
+-	IPPROTO_UDP,
+-	0,
+-};
+-
+-static const unsigned int probe_udp_first[] = {
+-	IPPROTO_UDP,
+-	IPPROTO_TCP,
+-	0,
+-};
+-
+-static const unsigned int probe_tcp_first[] = {
+-	IPPROTO_TCP,
+-	IPPROTO_UDP,
+-	0,
+-};
+-
+-static const unsigned long probe_nfs2_only[] = {
+-	2,
+-	0,
+-};
+-
+-static const unsigned long probe_nfs3_first[] = {
+-	3,
+-	2,
+-	0,
+-};
+-
+-static const unsigned long probe_mnt1_first[] = {
+-	1,
+-	2,
+-	0,
+-};
+-
+-static const unsigned long probe_mnt3_first[] = {
+-	3,
+-	1,
+-	2,
+-	0,
+-};
+-
+-int nfs_gethostbyname(const char *, struct sockaddr_in *);
+-int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
+-{
+-	struct hostent *hp;
+-
+-	saddr->sin_family = AF_INET;
+-	if (!inet_aton(hostname, &saddr->sin_addr)) {
+-		if ((hp = gethostbyname(hostname)) == NULL) {
+-			fprintf(stderr, _("mount: can't get address for %s\n"),
+-				hostname);
+-			return 0;
+-		} else {
+-			if (hp->h_length > sizeof(*saddr)) {
+-				fprintf(stderr,
+-					_("mount: got bad hp->h_length\n"));
+-				hp->h_length = sizeof(*saddr);
+-			}
+-			memcpy(&saddr->sin_addr, hp->h_addr, hp->h_length);
+-		}
+-	}
+-	return 1;
+-}
+-
+-/*
+- * getport() is very similar to pmap_getport() with
+- * the exception this version uses a non-reserve ports 
+- * instead of reserve ports since reserve ports
+- * are not needed for pmap requests.
+- */
+-u_short
+-getport(
+-	struct sockaddr_in *saddr, 
+-	u_long prog, 
+-	u_long vers, 
+-	u_int prot)
+-{
+-	u_short port = 0;
+-	int    socket;
+-	CLIENT *clnt = NULL;
+-	struct pmap parms;
+-	enum clnt_stat stat;
+-
+-	saddr->sin_port = htons (PMAPPORT);
+-	socket = get_socket(saddr, prot, FALSE, FALSE);
+-
+-	switch (prot) {
+-	case IPPROTO_UDP:
+-		clnt = clntudp_bufcreate(saddr,
+-					 PMAPPROG, PMAPVERS, TIMEOUT, &socket,
+-					 UDPMSGSIZE, UDPMSGSIZE);
+-		break;
+-	case IPPROTO_TCP:
+-		clnt = clnttcp_create(saddr,
+-			PMAPPROG, PMAPVERS, &socket, 50, 500);
+-		break;
+-	}
+-	if (clnt != NULL) {
+-		parms.pm_prog = prog;
+-		parms.pm_vers = vers;
+-		parms.pm_prot = prot;
+-		parms.pm_port = 0;    /* not needed or used */
+-
+-		stat = clnt_call(clnt, PMAPPROC_GETPORT, (xdrproc_t)xdr_pmap,
+-			(caddr_t)&parms, (xdrproc_t)xdr_u_short, (caddr_t)&port, TIMEOUT);
+-		if (stat) {
+-			clnt_geterr(clnt, &rpc_createerr.cf_error);
+-			rpc_createerr.cf_stat = stat;
+-		}
+-		clnt_destroy(clnt);
+-		if (stat != RPC_SUCCESS)
+-			port = 0;
+-		else if (port == 0)
+-			rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
+-	}
+-	if (socket != 1)
+-		close(socket);
+-
+-	return port;
+-}
+-
+-/*
+- * Use the portmapper to discover whether or not the service we want is
+- * available. The lists 'versions' and 'protos' define ordered sequences
+- * of service versions and udp/tcp protocols to probe for.
+- */
+-static int
+-probe_port(clnt_addr_t *server, 
+-	   const u_long *versions,
+-	   const u_int *protos)
+-{
+-	struct sockaddr_in *saddr = &server->saddr;
+-	struct pmap *pmap = &server->pmap;
+-	const u_long prog = pmap->pm_prog, *p_vers;
+-	const u_int prot = (u_int)pmap->pm_prot,
+-		*p_prot;
+-	const u_short port = (u_short) pmap->pm_port;
+-	u_long vers = pmap->pm_vers;
+-	u_short p_port;
+-	p_prot = prot ? &prot : protos;
+-	p_vers = vers ? &vers : versions;
+-	rpc_createerr.cf_stat = 0;
+-	for (;;) {
+-		saddr->sin_port = htons(PMAPPORT);
+-		p_port = getport(saddr, prog, *p_vers, *p_prot);
+-		if (p_port) {
+-			if (!port || port == p_port) {
+-				saddr->sin_port = htons(p_port);
+-				if (verbose) {
+-					fprintf(stderr, 
+-						"mount: trying %s prog %ld vers %ld prot %s port %d\n", 
+-						inet_ntoa(saddr->sin_addr), prog, *p_vers,
+-						*p_prot == IPPROTO_UDP ? "udp" : "tcp", p_port);
+-				}
+-				if (clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
+-					goto out_ok;
+-				if (rpc_createerr.cf_stat == RPC_TIMEDOUT)
+-					goto out_bad;
+-			}
+-		}
+-		if (rpc_createerr.cf_stat != RPC_PROGNOTREGISTERED) 
+-			goto out_bad;
+-
+-		if (!prot) {
+-			if (*++p_prot)
+-				continue;
+-			p_prot = protos;
+-		}
+-		if (vers == pmap->pm_vers) {
+-			p_vers = versions;
+-			vers = 0;
+-		}
+-		if (vers || !*++p_vers)
+-			break;
+-	}
+-out_bad:
+-	return 0;
+-
+- out_ok:
+-	if (!vers)
+-		pmap->pm_vers = *p_vers;
+-	if (!prot)
+-		pmap->pm_prot = *p_prot;
+-	if (!port)
+-		pmap->pm_port = p_port;
+-	rpc_createerr.cf_stat = 0;
+-	return 1;
+-}
+-
+-static int probe_nfsport(clnt_addr_t *nfs_server)
+-{
+-	struct pmap *pmap = &nfs_server->pmap;
+-
+-	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
+-		return 1;
+-
+-	if (nfs_mount_data_version >= 4)
+-		return probe_port(nfs_server, probe_nfs3_first, probe_tcp_first);
+-	else
+-		return probe_port(nfs_server, probe_nfs2_only, probe_udp_only);
+-}
+-
+-int probe_mntport(clnt_addr_t *mnt_server)
+-{
+-	struct pmap *pmap = &mnt_server->pmap;
+-
+-	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
+-		return 1;
+-
+-	if (nfs_mount_data_version >= 4)
+-		return probe_port(mnt_server, probe_mnt3_first, probe_udp_first);
+-	else
+-		return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
+-}
+-
+-static int
+-probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+-{
+-	struct pmap *nfs_pmap = &nfs_server->pmap;
+-	struct pmap *mnt_pmap = &mnt_server->pmap;
+-	struct pmap save_nfs, save_mnt;
+-	int res;
+-	unsigned long *probe_vers;
+-
+-	if (mnt_pmap->pm_vers && !nfs_pmap->pm_vers)
+-		nfs_pmap->pm_vers = mntvers_to_nfs(mnt_pmap->pm_vers);
+-	else if (nfs_pmap->pm_vers && !mnt_pmap->pm_vers)
+-		mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
+-	if (nfs_pmap->pm_vers)
+-		goto version_fixed;
+-
+-	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
+-	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
+-	probe_vers = (nfs_mount_data_version >= 4) ?
+-			probe_mnt3_first : probe_mnt1_first;
+-
+-	for (; *probe_vers; probe_vers++) {
+-		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+-		if ((res = probe_nfsport(nfs_server) != 0)) {
+-			mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
+-			if ((res = probe_mntport(mnt_server)) != 0)
+-				return 1;
+-			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
+-		}
+-		switch (rpc_createerr.cf_stat) {
+-		case RPC_PROGVERSMISMATCH:
+-		case RPC_PROGNOTREGISTERED:
+-			break;
+-		default:
+-			goto out_bad;
+-		}
+-		memcpy(nfs_pmap, &save_nfs, sizeof(*nfs_pmap));
+-	}
+-
+-out_bad:
+-	return 0;
+-
+-version_fixed:
+-	if (!probe_nfsport(nfs_server))
+-		goto out_bad;
+-	return probe_mntport(mnt_server);
+-}
+-
+ static inline enum clnt_stat
+ nfs3_mount(CLIENT *clnt, mnt3arg_t *mnt3arg, mnt3res_t *mnt3res)
+ {
+diff --git a/utils/mount/nfsmount_net.c b/utils/mount/nfsmount_net.c
+new file mode 100644
+index 0000000..71762d6
+--- /dev/null
++++ b/utils/mount/nfsmount_net.c
+@@ -0,0 +1,318 @@
++/*
++ * nfsmount_net.c -- Provide common network functions for NFS mount/umount
++ *
++ * Copyright (C) 2007 Oracle.  All rights reserved.
++ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++#include <ctype.h>
++#include <unistd.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
++#include <netdb.h>
++#include <time.h>
++#include <rpc/rpc.h>
++#include <rpc/pmap_prot.h>
++#include <rpc/pmap_clnt.h>
++#include <sys/socket.h>
++
++#include "conn.h"
++#include "xcommon.h"
++#include "mount.h"
++#include "nls.h"
++#include "nfsumount.h"
++#include "nfs_mount.h"
++#include "mount_constants.h"
++#include "nfsmount_net.h"
++
++#ifdef HAVE_RPCSVC_NFS_PROT_H
++#include <rpcsvc/nfs_prot.h>
++#else
++#include <linux/nfs.h>
++#define nfsstat nfs_stat
++#endif
++
++#ifndef NFS_PORT
++#define NFS_PORT 2049
++#endif
++
++extern int nfs_mount_data_version;
++extern char *progname;
++extern int verbose;
++
 +static const unsigned int probe_udp_only[] = {
 +	IPPROTO_UDP,
 +	0,
- };
--static const u_int *
--proto_probelist(enum plist list)
--{
--	static const u_int probe_udp_tcp[] = { IPPROTO_UDP, IPPROTO_TCP, 0 };
--	static const u_int probe_both[] = { IPPROTO_TCP, IPPROTO_UDP, 0 };
--	static const u_int probe_udponly[] = { IPPROTO_UDP, 0 };
--
--	if (list == use_tcp)
--		return probe_both;
--	if (list == udp_tcp)
--		return probe_udp_tcp;
--	return probe_udponly;
--}
- 
--/* Define the order in which NFS versions are probed on portmapper */
--static const u_long *
--nfs_probelist(const int vers)
--{
--	static const u_long nfs2_probe[] = { 2, 0};
--	static const u_long nfs3_probe[] = { 3, 2, 0};
--	switch (vers) {
--	case 3:
--		return nfs3_probe;
--	default:
--		return nfs2_probe;
--	}
--}
++};
++
 +static const unsigned int probe_udp_first[] = {
 +	IPPROTO_UDP,
 +	IPPROTO_TCP,
 +	0,
 +};
- 
--/* Define the order in which Mountd versions are probed on portmapper */
--static const u_long *
--mnt_probelist(const int vers)
--{
--	static const u_long mnt1_probe[] = { 1, 2, 0 };
--	static const u_long mnt3_probe[] = { 3, 1, 2, 0 };
--	switch (vers) {
--	case 3:
--		return mnt3_probe;
--	default:
--		return mnt1_probe;
--	}
--}
++
 +static const unsigned int probe_tcp_first[] = {
 +	IPPROTO_TCP,
 +	IPPROTO_UDP,
@@ -140,140 +473,283 @@ index 24dc6e6..8c261d9 100644
 +	2,
 +	0,
 +};
- 
- int nfs_gethostbyname(const char *, struct sockaddr_in *);
- int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
-@@ -293,31 +282,30 @@ out_bad:
- 	return 1;
- }
- 
--static int
--probe_nfsport(clnt_addr_t *nfs_server)
-+static int probe_nfsport(clnt_addr_t *nfs_server)
- {
--	const struct pmap *pmap = &nfs_server->pmap;
--	const u_long *probe_vers;
--	const u_int *probe_prot;
++
++int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
++{
++	struct hostent *hp;
++
++	saddr->sin_family = AF_INET;
++	if (!inet_aton(hostname, &saddr->sin_addr)) {
++		if ((hp = gethostbyname(hostname)) == NULL) {
++			nfs_error(_("mount: can't get address for %s\n"),
++				hostname);
++			return 0;
++		} else {
++			if (hp->h_length > sizeof(*saddr)) {
++				nfs_error(_("mount: got bad hp->h_length\n"));
++				hp->h_length = sizeof(*saddr);
++			}
++			memcpy(&saddr->sin_addr, hp->h_addr, hp->h_length);
++		}
++	}
++	return 1;
++}
++
++/*
++ * getport() is very similar to pmap_getport() with
++ * the exception this version uses a non-reserve ports
++ * instead of reserve ports since reserve ports
++ * are not needed for pmap requests.
++ */
++unsigned short getport(struct sockaddr_in *saddr, unsigned long prog,
++			unsigned long vers, unsigned int prot)
++{
++	unsigned short port = 0;
++	int socket;
++	CLIENT *clnt = NULL;
++	struct pmap parms;
++	enum clnt_stat stat;
++
++	saddr->sin_port = htons (PMAPPORT);
++	socket = get_socket(saddr, prot, FALSE, FALSE);
++
++	switch (prot) {
++	case IPPROTO_UDP:
++		clnt = clntudp_bufcreate(saddr,
++					 PMAPPROG, PMAPVERS, TIMEOUT, &socket,
++					 UDPMSGSIZE, UDPMSGSIZE);
++		break;
++	case IPPROTO_TCP:
++		clnt = clnttcp_create(saddr,
++			PMAPPROG, PMAPVERS, &socket, 50, 500);
++		break;
++	}
++	if (clnt != NULL) {
++		parms.pm_prog = prog;
++		parms.pm_vers = vers;
++		parms.pm_prot = prot;
++		parms.pm_port = 0;    /* not needed or used */
++
++		stat = clnt_call(clnt, PMAPPROC_GETPORT, (xdrproc_t)xdr_pmap,
++			(caddr_t)&parms, (xdrproc_t)xdr_u_short, (caddr_t)&port, TIMEOUT);
++		if (stat) {
++			clnt_geterr(clnt, &rpc_createerr.cf_error);
++			rpc_createerr.cf_stat = stat;
++		}
++		clnt_destroy(clnt);
++		if (stat != RPC_SUCCESS)
++			port = 0;
++		else if (port == 0)
++			rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
++	}
++	if (socket != 1)
++		close(socket);
++
++	return port;
++}
++
++/*
++ * Use the portmapper to discover whether or not the service we want is
++ * available. The lists 'versions' and 'protos' define ordered sequences
++ * of service versions and udp/tcp protocols to probe for.
++ */
++static int probe_port(clnt_addr_t *server, const unsigned long *versions,
++			const unsigned int *protos)
++{
++	struct sockaddr_in *saddr = &server->saddr;
++	struct pmap *pmap = &server->pmap;
++	const unsigned long prog = pmap->pm_prog, *p_vers;
++	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
++	const u_short port = (u_short) pmap->pm_port;
++	unsigned long vers = pmap->pm_vers;
++	unsigned short p_port;
++
++	p_prot = prot ? &prot : protos;
++	p_vers = vers ? &vers : versions;
++	rpc_createerr.cf_stat = 0;
++	for (;;) {
++		saddr->sin_port = htons(PMAPPORT);
++		p_port = getport(saddr, prog, *p_vers, *p_prot);
++		if (p_port) {
++			if (!port || port == p_port) {
++				saddr->sin_port = htons(p_port);
++				if (verbose) {
++					printf(_("%s: trying %s prog %ld vers "
++						"%ld prot %s port %d\n"),
++						progname,
++						inet_ntoa(saddr->sin_addr),
++						prog, *p_vers,
++						*p_prot == IPPROTO_UDP ?
++							"udp" : "tcp",
++						p_port);
++                                }
++				if (clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
++					goto out_ok;
++				if (rpc_createerr.cf_stat == RPC_TIMEDOUT)
++					goto out_bad;
++			}
++		}
++		if (rpc_createerr.cf_stat != RPC_PROGNOTREGISTERED)
++			goto out_bad;
++
++		if (!prot) {
++			if (*++p_prot)
++				continue;
++			p_prot = protos;
++		}
++		if (vers == pmap->pm_vers) {
++			p_vers = versions;
++			vers = 0;
++		}
++		if (vers || !*++p_vers)
++			break;
++	}
++
++out_bad:
++	return 0;
++
++out_ok:
++	if (!vers)
++		pmap->pm_vers = *p_vers;
++	if (!prot)
++		pmap->pm_prot = *p_prot;
++	if (!port)
++		pmap->pm_port = p_port;
++	rpc_createerr.cf_stat = 0;
++	return 1;
++}
++
++int probe_nfsport(clnt_addr_t *nfs_server)
++{
 +	struct pmap *pmap = &nfs_server->pmap;
- 
- 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
- 		return 1;
--	probe_vers = nfs_probelist(MAX_NFSPROT);
--	probe_prot = proto_probelist(HAVE_RELIABLE_TCP ? use_tcp : udp_only);
--	return probe_port(nfs_server, probe_vers, probe_prot);
++
++	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
++		return 1;
 +
 +	if (nfs_mount_data_version >= 4)
 +		return probe_port(nfs_server, probe_nfs3_first, probe_tcp_first);
 +	else
 +		return probe_port(nfs_server, probe_nfs2_only, probe_udp_only);
- }
- 
- int probe_mntport(clnt_addr_t *mnt_server)
- {
--	const struct pmap *pmap = &mnt_server->pmap;
--	const u_long *probe_vers;
--	const u_int *probe_prot;
++}
++
++int probe_mntport(clnt_addr_t *mnt_server)
++{
 +	struct pmap *pmap = &mnt_server->pmap;
- 
- 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
- 		return 1;
--	probe_vers = mnt_probelist(MAX_MNTPROT);
--	probe_prot = proto_probelist(HAVE_RELIABLE_TCP ? udp_tcp : udp_only);
--	return probe_port(mnt_server, probe_vers, probe_prot);
++
++	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
++		return 1;
 +
 +	if (nfs_mount_data_version >= 4)
 +		return probe_port(mnt_server, probe_mnt3_first, probe_udp_first);
 +	else
 +		return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
- }
- 
- static int
-@@ -327,7 +315,7 @@ probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
- 	struct pmap *mnt_pmap = &mnt_server->pmap;
- 	struct pmap save_nfs, save_mnt;
- 	int res;
--	const u_long *probe_vers;
-+	unsigned long *probe_vers;
- 
- 	if (mnt_pmap->pm_vers && !nfs_pmap->pm_vers)
- 		nfs_pmap->pm_vers = mntvers_to_nfs(mnt_pmap->pm_vers);
-@@ -335,9 +323,13 @@ probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
- 		mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
- 	if (nfs_pmap->pm_vers)
- 		goto version_fixed;
++}
 +
- 	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
- 	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
--	for (probe_vers = mnt_probelist(MAX_MNTPROT); *probe_vers; probe_vers++) {
++int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
++{
++	struct pmap *nfs_pmap = &nfs_server->pmap;
++	struct pmap *mnt_pmap = &mnt_server->pmap;
++	struct pmap save_nfs, save_mnt;
++	int res;
++	const unsigned long *probe_vers;
++
++	if (mnt_pmap->pm_vers && !nfs_pmap->pm_vers)
++		nfs_pmap->pm_vers = mntvers_to_nfs(mnt_pmap->pm_vers);
++	else if (nfs_pmap->pm_vers && !mnt_pmap->pm_vers)
++		mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
++	if (nfs_pmap->pm_vers)
++		goto version_fixed;
++
++	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
++	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
 +	probe_vers = (nfs_mount_data_version >= 4) ?
 +			probe_mnt3_first : probe_mnt1_first;
 +
 +	for (; *probe_vers; probe_vers++) {
- 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
- 		if ((res = probe_nfsport(nfs_server) != 0)) {
- 			mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
-@@ -354,9 +346,11 @@ probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
- 		}
- 		memcpy(nfs_pmap, &save_nfs, sizeof(*nfs_pmap));
- 	}
-- out_bad:
-+
-+out_bad:
- 	return 0;
-- version_fixed:
-+
-+version_fixed:
- 	if (!probe_nfsport(nfs_server))
- 		goto out_bad;
- 	return probe_mntport(mnt_server);
-@@ -720,26 +714,35 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 	return 0;
- }
- 
--static inline int
--nfsmnt_check_compat(const struct pmap *nfs_pmap, const struct pmap *mnt_pmap)
-+static int nfsmnt_check_compat(const struct pmap *nfs_pmap,
-+				const struct pmap *mnt_pmap)
- {
--	if (nfs_pmap->pm_vers && 
--		(nfs_pmap->pm_vers > MAX_NFSPROT || nfs_pmap->pm_vers < 2)) {
--		if (nfs_pmap->pm_vers == 4)
--			fprintf(stderr, _("'vers=4' is not supported.  "
--				"Use '-t nfs4' instead.\n"));
--		else
--			fprintf(stderr, _("NFS version %ld is not supported.\n"), 
--				nfs_pmap->pm_vers);
-+	unsigned int max_nfs_vers = (nfs_mount_data_version >= 4) ? 3 : 2;
-+	unsigned int max_mnt_vers = (nfs_mount_data_version >= 4) ? 3 : 2;
-+
-+	if (nfs_pmap->pm_vers == 4) {
-+		fprintf(stderr, _("Please use '-t nfs4' "
-+					"instead of '-o vers=4'.\n"));
- 		goto out_bad;
- 	}
--	if (mnt_pmap->pm_vers > MAX_MNTPROT) {
-+
-+	if (nfs_pmap->pm_vers) {
-+		if (nfs_pmap->pm_vers > max_nfs_vers || nfs_pmap->pm_vers < 2) {
-+			fprintf(stderr, _("NFS version %ld is not supported.\n"), 
-+					nfs_pmap->pm_vers);
++		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
++		if ((res = probe_nfsport(nfs_server) != 0)) {
++			mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
++			if ((res = probe_mntport(mnt_server)) != 0)
++				return 1;
++			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
++		}
++		switch (rpc_createerr.cf_stat) {
++		case RPC_PROGVERSMISMATCH:
++		case RPC_PROGNOTREGISTERED:
++			break;
++		default:
 +			goto out_bad;
 +		}
++		memcpy(nfs_pmap, &save_nfs, sizeof(*nfs_pmap));
 +	}
 +
-+	if (mnt_pmap->pm_vers > max_mnt_vers) {
- 		fprintf(stderr, _("NFS mount version %ld s not supported.\n"), 
- 			mnt_pmap->pm_vers);
- 		goto out_bad;
- 	}
-+
- 	return 1;
-- out_bad:
-+
 +out_bad:
- 	return 0;
- }
++	return 0;
++
++version_fixed:
++	if (!probe_nfsport(nfs_server))
++		goto out_bad;
++	return probe_mntport(mnt_server);
++}
+diff --git a/utils/mount/nfsmount_net.h b/utils/mount/nfsmount_net.h
+new file mode 100644
+index 0000000..931f721
+--- /dev/null
++++ b/utils/mount/nfsmount_net.h
+@@ -0,0 +1,31 @@
++/*
++ * nfsmount_net.h -- Provide common network functions for NFS mount/umount
++ *
++ * Copyright (C) 2007 Oracle.  All rights reserved.
++ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++#include "conn.h"
++
++int nfs_gethostbyname(const char *, struct sockaddr_in *);
++unsigned short getport(struct sockaddr_in *, unsigned long,
++			unsigned long, unsigned int);
++int probe_mntport(clnt_addr_t *);
++int probe_nfsport(clnt_addr_t *);
++int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index 4069a38..05d13dd 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -35,6 +35,7 @@
+ #include "mount.h"
+ #include "nfsumount.h"
+ #include "nfsmount_err.h"
++#include "nfsmount_net.h"
  
+ #if !defined(MNT_FORCE)
+ /* dare not try to include <linux/mount.h> -- lots of errors */
+@@ -52,9 +53,6 @@ int force;
+ int lazy;
+ int remount;
+ 
+-extern int probe_mntport(clnt_addr_t *);
+-extern int nfs_gethostbyname(const char *, struct sockaddr_in *);
+-
+ static inline enum clnt_stat
+ nfs_umount(dirpath *argp, CLIENT *clnt)
+ {
 
 
 -------------------------------------------------------------------------
