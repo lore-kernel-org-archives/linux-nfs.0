@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/17] rpcdebug: Update 'rpcdebug' tool with recently
-	added	debugging flags
-Date: Sun, 15 Jul 2007 23:14:53 -0400
-Message-ID: <20070716031453.11209.77933.stgit@manray.1015granger.net>
+Subject: [PATCH 02/17] mount.nfs: Simplify handling of progname
+Date: Sun, 15 Jul 2007 23:14:58 -0400
+Message-ID: <20070716031458.11209.98158.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH2w-0001gs-WD
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:14:51 -0700
+	id 1IAH38-0001hY-1D
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:02 -0700
 Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH30-0008PS-JY
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:14:54 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH3A-0005pi-Kp
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:05 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,57 +27,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add the CLIENT and MOUNT flags to rpcdebug.
+Clean up.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/include/nfs/debug.h |    4 +++-
- tools/rpcdebug/rpcdebug.c   |    4 +++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ utils/mount/mount.c |    9 ++-------
+ 1 files changed, 2 insertions(+), 7 deletions(-)
 
-diff --git a/support/include/nfs/debug.h b/support/include/nfs/debug.h
-index 57be843..d391e91 100644
---- a/support/include/nfs/debug.h
-+++ b/support/include/nfs/debug.h
-@@ -9,7 +9,7 @@
- #define RPCDBG_DEBUG		0x0004
- #define RPCDBG_NFS		0x0008
- #define RPCDBG_AUTH		0x0010
--#define RPCDBG_PMAP		0x0020
-+#define RPCDBG_BIND		0x0020
- #define RPCDBG_SCHED		0x0040
- #define RPCDBG_TRANS		0x0080
- #define RPCDBG_SVCSOCK		0x0100
-@@ -74,6 +74,8 @@ enum {
- #define NFSDBG_FILE		0x0040
- #define NFSDBG_ROOT		0x0080
- #define NFSDBG_CALLBACK		0x0100
-+#define NFSDBG_CLIENT		0x0200
-+#define NFSDBG_MOUNT		0x0400
- #define NFSDBG_ALL		0xFFFF
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index c163922..5a7bd1c 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -383,15 +383,10 @@ int main(int argc, char *argv[])
+ {
+ 	int c, flags = 0, nfs_mount_vers = 0, mnt_err = 1, fake = 0;
+ 	char *spec, *mount_point, *extra_opts = NULL;
+-	char *mount_opts = NULL, *p;
++	char *mount_opts = NULL;
+ 	uid_t uid = getuid();
  
- #endif /* _NFS_DEBUG_H */
-diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
-index 0a12519..275a491 100644
---- a/tools/rpcdebug/rpcdebug.c
-+++ b/tools/rpcdebug/rpcdebug.c
-@@ -146,7 +146,7 @@ static struct flagmap {
- 	FLAG(RPC,	DEBUG),
- 	FLAG(RPC,	NFS),
- 	FLAG(RPC,	AUTH),
--	FLAG(RPC,	PMAP),
-+	FLAG(RPC,	BIND),
- 	FLAG(RPC,	SCHED),
- 	FLAG(RPC,	TRANS),
- 	FLAG(RPC,	SVCSOCK),
-@@ -165,6 +165,8 @@ static struct flagmap {
- 	FLAG(NFS,       FILE),
- 	FLAG(NFS,       ROOT),
- 	FLAG(NFS,       CALLBACK),
-+	FLAG(NFS,       CLIENT),
-+	FLAG(NFS,       MOUNT),
- 	FLAG(NFS,	ALL),
+-	progname = argv[0];
+-	if (!progname)
+-		exit(2);
+-
+-	if ((p = strrchr(progname, '/')) != NULL)
+-		progname = p+1;
++	progname = basename(argv[0]);
  
- 	/* nfsd */
+ 	if(!strncmp(progname, "umount", strlen("umount"))) {
+ 		if(argc < 2) {
 
 
 -------------------------------------------------------------------------
