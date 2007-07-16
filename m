@@ -1,24 +1,25 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] Fix umount.nfs exit status
-Date: Mon, 16 Jul 2007 13:07:08 -0400
-Message-ID: <469BA5BC.2040100@oracle.com>
-References: <20070714091848.GA23409@uio.no>
+Subject: Re: [PATCH] fix broken compile due to missing pseudoflavors.h
+Date: Mon, 16 Jul 2007 13:18:56 -0400
+Message-ID: <469BA880.1010900@oracle.com>
+References: <469AB4D6.20902@oracle.com> <20070716170608.GD2817@fieldses.org>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070906030004000109060508"
-Cc: nfs@lists.sourceforge.net
-To: "Steinar H. Gunderson" <sesse@debian.org>
+Content-Type: multipart/mixed; boundary="------------060806070706060907020109"
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAU52-0005Kf-VP
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:09:53 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1IAUEL-0006RX-7Q
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:19:32 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IAU55-0004op-BU
-	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:09:56 -0700
-In-Reply-To: <20070714091848.GA23409@uio.no>
+	(Exim 4.44) id 1IAUEN-0008J1-KL
+	for nfs@lists.sourceforge.net; Mon, 16 Jul 2007 10:19:33 -0700
+In-Reply-To: <20070716170608.GD2817@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,66 +33,70 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------070906030004000109060508
+--------------060806070706060907020109
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Hi Steinar-
+Yeah, this makes sense.  I tried just doing a "make" in utils/mount/ 
+last night and it did indeed spot the missing pseudoflavors.h header.
 
-Steinar H. Gunderson wrote:
-> Hi,
+I'll give this a shot.
+
+J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> As per a bug report from a user:
+> Commit e9b0bed761bc77ba046f53be2ec324c4b61357ff should also have added
+> this file.
 > 
-> mount.c seems to assume that nfsumount() uses standard C true/false
-> return values, and inverts them for the exit status (where 0 is
-> traditionally considered success). However, nfsumount() consistently
-> seems to use 0 for success, and thus a success gets returned as exit
-> status 1 and a failure as exit status 0. This confuses at least
-> the GNOME drive manager applet, and probably others as well.
+> Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+> ---
+>  support/include/pseudoflavors.h |   17 +++++++++++++++++
+>  1 files changed, 17 insertions(+), 0 deletions(-)
+>  create mode 100644 support/include/pseudoflavors.h
 > 
-> Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
+> On Sun, Jul 15, 2007 at 07:59:18PM -0400, Chuck Lever wrote:
+>> Making all in nfs
+>> make[2]: Entering directory `/u/cel/nfs-utils/support/nfs'
+>> gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I../../support/include 
+>> -D_GNU_SOURCE -Wall  -pipe -g -O2 -MT exports.o -MD -MP -MF 
+>> .deps/exports.Tpo -c -o exports.o exports.c
+>> exports.c:33:27: error: pseudoflavors.h: No such file or directory
 > 
-> Index: nfs-utils-1.1.0/utils/mount/mount.c
-> ===================================================================
-> --- nfs-utils-1.1.0.orig/utils/mount/mount.c
-> +++ nfs-utils-1.1.0/utils/mount/mount.c
-> @@ -371,7 +371,7 @@ int main(int argc, char *argv[])
->                         umount_usage();
->                         exit(1);
->                 }
-> -               exit(nfsumount(argc, argv) ? 0 : 1);
-> +               exit(nfsumount(argc, argv));
->         }
+> Whoops, I should have actually looked at the compile output yesterday
+> before jumping to conclusions.  Looks like pseudoflavors.h didn't get
+> added to the git repo.  (Neil--just pipe a mailbox to "git am", and
+> it'll take care of adding new files.)
 > 
->         if(argv[1] && argv[1][0] == '-') {
+> (I haven't checked yet whether it's still OK with --disable-gss and
+> --disable-nfsv4....)
 > 
-> /* Steinar */
+> --b.
+> 
+> diff --git a/support/include/pseudoflavors.h b/support/include/pseudoflavors.h
+> new file mode 100644
+> index 0000000..c21087b
+> --- /dev/null
+> +++ b/support/include/pseudoflavors.h
+> @@ -0,0 +1,17 @@
+> +#define RPC_AUTH_GSS_KRB5       390003
+> +#define RPC_AUTH_GSS_KRB5I      390004
+> +#define RPC_AUTH_GSS_KRB5P      390005
+> +#define RPC_AUTH_GSS_LKEY       390006
+> +#define RPC_AUTH_GSS_LKEYI      390007
+> +#define RPC_AUTH_GSS_LKEYP      390008
+> +#define RPC_AUTH_GSS_SPKM       390009
+> +#define RPC_AUTH_GSS_SPKMI      390010
+> +#define RPC_AUTH_GSS_SPKMP      390011
+> +
+> +struct flav_info {
+> +	char    *flavour;
+> +	int     fnum;
+> +};
+> +
+> +extern struct flav_info flav_map[];
+> +extern const int flav_map_size;
 
-Reviewing the NFS umount return path, I see other problems:
-
-1.  nfsumount.c does not contain the string "EX_" which means it doesn't 
-use the normal mount error return codes (and it probably should?).  For 
-example, del_mtab() should return EX_FILEIO on error.  The use of 
-improper umount options should return EX_USAGE.  A failure or negative 
-result of the MNT RPC call should return EX_FAIL.
-
-2.  _nfsumount returns an integer result which is ignored by it's only 
-caller.  If the result truly doesn't matter (which I doubt), then 
-_nfsumount should return void; otherwise the caller should be fixed to 
-return _nfsumount's return code.
-
-3.  nfs_call_umount returns an integer, but appears to be confused about 
-whether one is success or zero is success.  In fact, it returns the 
-value of "res" which is an enum clnt_stat, not a valid mount return code.
-
-4.  There is one place where nfsumount.c needlessly uses exit(1) instead 
-of returning.
-
-I agree with removing the logic you eliminated, but more needs to be 
-done in nfsumount.c to make this a complete fix.
-
---------------070906030004000109060508
+--------------060806070706060907020109
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -111,7 +116,7 @@ version:2.1
 end:vcard
 
 
---------------070906030004000109060508
+--------------060806070706060907020109
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -122,7 +127,7 @@ This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---------------070906030004000109060508
+--------------060806070706060907020109
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -132,4 +137,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------070906030004000109060508--
+--------------060806070706060907020109--
