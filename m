@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/17] mount.nfs: When -v is set and the mount
-	succeeds, print the mount info
-Date: Sun, 15 Jul 2007 23:16:00 -0400
-Message-ID: <20070716031600.11209.62192.stgit@manray.1015granger.net>
+Subject: [PATCH 15/17] mount.nfs: Error handling clean-up
+Date: Sun, 15 Jul 2007 23:16:05 -0400
+Message-ID: <20070716031605.11209.61265.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IAH43-0001pH-1D
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:15:59 -0700
+	id 1IAH4D-0001ul-Bi
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:09 -0700
 Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH44-00066z-TE
-	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:02 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IAH4F-0006BP-Tg
+	for nfs@lists.sourceforge.net; Sun, 15 Jul 2007 20:16:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,47 +27,121 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add a bit of logic that appears to be in other mount helpers.
+o  Use nfs_error( _() ) instead of fprintf(stderr,
+o  Use the mount return code macros instead of bare integers
+o  Free mount_point after it has been canonicalized
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
+ utils/mount/mount.c |   46 +++++++++++++++++++++++++++-------------------
+ 1 files changed, 27 insertions(+), 19 deletions(-)
 
 diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index fcb1f5e..53dc731 100644
+index 53dc731..6f98eae 100644
 --- a/utils/mount/mount.c
 +++ b/utils/mount/mount.c
-@@ -171,6 +171,18 @@ static void discover_nfs_mount_data_version(void)
- 		nfs_mount_data_version = NFS_MOUNT_VERSION;
- }
+@@ -366,22 +366,22 @@ int main(int argc, char *argv[])
+ 	if(!strncmp(progname, "umount", strlen("umount"))) {
+ 		if(argc < 2) {
+ 			umount_usage();
+-			exit(1);
++			exit(EX_USAGE);
+ 		}
+ 		exit(nfsumount(argc, argv) ? 0 : 1);
+ 	}
  
-+static void print_one(char *spec, char *node, char *type, char *opts)
-+{
-+	if (verbose) {
-+		printf("%s on %s type %s", spec, node, type);
-+
-+		if (opts != NULL)
-+			printf(" (%s)", opts);
-+
-+		printf("\n");
+-	if(argv[1] && argv[1][0] == '-') {
++	if (argv[1] && argv[1][0] == '-') {
+ 		if(argv[1][1] == 'V')
+ 			printf("%s ("PACKAGE_STRING")\n", progname);
+ 		else
+ 			mount_usage();
+-		return 0;
++		exit(0);
+ 	}
+ 
+ 	if ((argc < 3)) {
+ 		mount_usage();
+-		exit(1);
++		exit(EX_USAGE);
+ 	}
+ 
+ 	spec = argv[1];
+@@ -427,7 +427,7 @@ int main(int argc, char *argv[])
+ 	if (optind != argc-2) {
+ 		/* Extra non-option words at the end... */
+ 		mount_usage();
+-		exit(1);
++		exit(EX_USAGE);
+ 	}
+ 
+ 	if (strcmp(progname, "mount.nfs4") == 0)
+@@ -444,9 +444,9 @@ int main(int argc, char *argv[])
+ 		if ((mc = getfsfile(mount_point)) == NULL ||
+ 		    !strcmp(mc->m.mnt_fsname, spec) ||
+ 		    !strcmp(mc->m.mnt_type, fs_type)) {
+-			fprintf(stderr, "%s: permission denied: no match for %s "
+-				"found in /etc/fstab\n", progname, mount_point);
+-			exit(1);
++			nfs_error(_("%s: permission denied: no match for %s "
++				"found in /etc/fstab"), progname, mount_point);
++			exit(EX_USAGE);
+ 		}
+ 
+ 		/*
+@@ -458,25 +458,31 @@ int main(int argc, char *argv[])
+ 		mount_opts = strdup(mc->m.mnt_opts);
+ 	}
+ 
+-	mount_point = canonicalize(mount_point);
+-	if (mount_point == NULL ||
+-	    mount_point[0] != '/') {
+-		fprintf(stderr, "%s: unknown mount point %s\n",
+-			progname, mount_point ? : "");
+-		exit(1);
++	if (!mount_point) {
++		nfs_error(_("%s: no mount point provided"), progname);
++		exit(EX_USAGE);
+ 	}
+-	
++	if (mount_point[0] != '/') {
++		nfs_error(_("%s: unrecognized mount point %s"),
++			progname, mount_point);
++		mnt_err = EX_USAGE;
++		goto out;
 +	}
-+}
 +
- /* Try to build a canonical options string.  */
- static char * fix_opts_string (int flags, const char *extra_opts) {
- 	const struct opt_map *om;
-@@ -474,6 +486,9 @@ int main(int argc, char *argv[])
- 	if (mnt_err)
- 		exit(EX_FAIL);
+ 	parse_opts(mount_opts, &flags, &extra_opts);
  
-+	if (!fake)
-+		print_one(spec, mount_point, fs_type, mount_opts);
-+
- 	if (!nomtab)
+ 	if (uid != 0) {
+ 		if (!(flags & (MS_USERS|MS_USER))) {
+-			fprintf(stderr, "%s: permission denied\n", progname);
+-			exit(EX_USAGE);
++			nfs_error(_("%s: permission denied"), progname);
++			mnt_err = EX_USAGE;
++			goto out;
+ 		}
+ 	}
+ 
+-	if (chk_mountpoint(mount_point))
+-		exit(EX_FAIL);
++	if (chk_mountpoint(mount_point)) {
++		mnt_err = EX_USAGE
++		goto out;
++	}
+ 
+ 	if (!strcmp(fs_type, "nfs4"))
+ 		mnt_err = nfs4mount(spec, mount_point, flags, &extra_opts, fake);
+@@ -493,6 +499,8 @@ int main(int argc, char *argv[])
  		mnt_err = add_mtab(spec, mount_point, fs_type, flags, extra_opts,
  				0, 0 /* these are always zero for NFS */ );
+ 
++out:
++	free(mount_point);
+ 	exit(mnt_err);
+ }
+ 
 
 
 -------------------------------------------------------------------------
