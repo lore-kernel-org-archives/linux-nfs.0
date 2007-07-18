@@ -1,53 +1,67 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 3/5] nfsd: remove unnecessary NULL checks from nfsd_cross_mnt
-Date: Wed, 18 Jul 2007 18:57:28 -0400
-Message-ID: <ca76105264283034a0f3d9d138bded79f5b2f87e.1184798679.git.bfields__14045.6005967737$1184799613$gmane$org@citi.umich.edu>
-References: <20070713114228.3c171a90.akpm@linux-foundation.org>
- <11847994502579-git-send-email-bfields@fieldses.org>
- <11847994502502-git-send-email-bfields@fieldses.org>
- <11847994503243-git-send-email-bfields@fieldses.org>
+Subject: Re: [PATCH 013 of 20] knfsd: nfsd: factor out code
+	from	show_expflags
+Date: Wed, 18 Jul 2007 19:05:55 -0400
+Message-ID: <20070718230555.GN7111@fieldses.org>
+References: <20070710121949.12548.patches@notabene>
+	<1070710022737.13509@suse.de>
+	<20070713002933.f15724a7.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, andros@citi.umich.edu,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
+	linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1764574AbXGRW7q@vger.kernel.org>
-In-Reply-To: <11847994503243-git-send-email-bfields@fieldses.org>
-Message-Id: <ca76105264283034a0f3d9d138bded79f5b2f87e.1184798679.git.bfields@citi.umich.edu>
-In-Reply-To: <2ac9f179334dc7894bb58b1c2fb62837a07fbbdf.1184798679.git.bfields@citi.umich.edu>
-References: <2ac9f179334dc7894bb58b1c2fb62837a07fbbdf.1184798679.git.bfields@citi.umich.edu>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IBIak-0003o0-TM
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 16:05:59 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IBIan-0001sc-5i
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 16:06:02 -0700
+In-Reply-To: <20070713002933.f15724a7.akpm@linux-foundation.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Fri, Jul 13, 2007 at 12:29:33AM -0700, Andrew Morton wrote:
+> On Tue, 10 Jul 2007 12:27:37 +1000 NeilBrown <neilb@suse.de> wrote:
+> 
+> > +static void exp_flags(struct seq_file *m, int flag, int fsid,
+> > +		uid_t anonu, uid_t anong, struct nfsd4_fs_locations *fsloc)
+> > +{
+> > +	show_expflags(m, flag, NFSEXP_ALLFLAGS);
+> >  	if (flag & NFSEXP_FSID)
+> > -		seq_printf(m, "%sfsid=%d", first++?",":"", fsid);
+> > +		seq_printf(m, ",fsid=%d", fsid);
+> >  	if (anonu != (uid_t)-2 && anonu != (0x10000-2))
+> > -		seq_printf(m, "%sanonuid=%d", first++?",":"", anonu);
+> > +		seq_printf(m, ",sanonuid=%d", anonu);
+> 
+> It's a bit presumptuous to print a uid_t with "%d".  Fortunately it
+> will work OK with all the present architectures.
+> 
+> But in general: be cautious when feeding opaque types to printk.
 
-We can now assume that rqst_exp_get_by_name() does not return NULL; so
-clean up some unnecessary checks.
+OK, here I'm still confused--what should we be doing instead?
 
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
----
- fs/nfsd/vfs.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+--b.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index b8da5dd..5c97d0e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -120,14 +120,14 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
- 		mntput(mnt);
- 		goto out;
- 	}
--	if (exp2 && ((exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2))) {
-+	if ((exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2)) {
- 		/* successfully crossed mount point */
- 		exp_put(exp);
- 		*expp = exp2;
- 		dput(dentry);
- 		*dpp = mounts;
- 	} else {
--		if (exp2) exp_put(exp2);
-+		exp_put(exp2);
- 		dput(mounts);
- 	}
- 	mntput(mnt);
--- 
-1.5.3.rc2
+-------------------------------------------------------------------------
+This SF.net email is sponsored by DB2 Express
+Download DB2 Express C - the FREE version of DB2 express and take
+control of your XML. No limits. Just data. Click to get it now.
+http://sourceforge.net/powerbar/db2/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
