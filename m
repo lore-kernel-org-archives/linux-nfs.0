@@ -1,18 +1,27 @@
-From: national1@ins-access.com
-Subject: Get 250 FREE Business Cards - On Us!
-Date: Wed, 18 Jul 2007 11:29:31 -0600
-Message-ID: <7m300t4vk7sqgjhd0.frd73c3yve6x@ins-access.com>
-Content-Type: multipart/mixed; boundary="===============0572465982=="
+From: "Steinar H. Gunderson" <sesse@debian.org>
+Subject: [PATCH] Properly ignore quota options
+Date: Wed, 18 Jul 2007 19:09:31 +0200
+Message-ID: <20070718170931.GA30174@uio.no>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IBCP5-0002J6-Cd
-	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 09:29:38 -0700
-Received: from [75.126.247.250] (helo=ins-access.com)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IBCP8-0007Fz-17
-	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 09:29:35 -0700
+	id 1IBD1r-0006SX-Er
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 10:09:37 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IBD1t-0001EV-SO
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 10:09:39 -0700
+Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
+	helo=trofast.sesse.net)
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1IBD1n-0001Qk-GR
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 19:09:31 +0200
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1IBD1n-0007r8-00
+	for <nfs@lists.sourceforge.net>; Wed, 18 Jul 2007 19:09:31 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,110 +34,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0572465982==
-Content-Type: text/html;
-	 charset="us-ascii"
-Content-Transfer-Encoding: 7BIT
+Hi,
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-"http://www.w3.org/TR/html4/loose.dtd">
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+Now that NFS mounting has been taken over by nfs-utils, it seems like I've
+gotten a few bugs on my hands. The included patch is based on a user
+suggestion from about a year ago. It would be great if someone could also
+check out these two bugs:
 
-</head>
-
-<body>
-<table width="650" border="0" align="center" cellpadding="0" cellspacing="0">
-  <tr>
-    <td height="106"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_01.gif" alt="FREE Business Cards!" width="336" height="106"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_02.gif" alt="FREE Business Cards!" width="314" height="106"></td>
-  </tr>
-  <tr>
-    <td height="95" valign="top"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_03.gif" alt="FREE Business Cards!" width="336" height="95"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_04.gif" alt="FREE Business Cards!" width="314" height="95"></td>
-  </tr>
-  <tr>
-    <td height="106" valign="top"><a href="http://www.vistaprint.com/vp/gateway.aspx?S=4344670737" target="_blank"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_05.gif" alt="FREE Business Cards!" width="336" height="184" border="0"></a><a href="http://www.vistaprint.com/vp/gateway.aspx?S=4344670737" target="_blank"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_06.gif" alt="FREE Business Cards!" width="314" height="184" border="0"></a></td>
-  </tr>
-  <tr>
-    <td height="106" valign="top"><a href="http://www.vistaprint.com/vp/gateway.aspx?S=4344670737" target="_blank"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_07.gif" alt="FREE Business Cards!" width="336" height="145" border="0"></a><a href="http://www.vistaprint.com/vp/gateway.aspx?S=4344670737" target="_blank"><img src="http://marketing.vistaprint.net/us/imgs/emailads/Snooze_FBC/Snooze_FBC_08.gif" alt="FREE Business Cards!" width="314" height="145" border="0"></a></td>
-  </tr>
-</table>
-<br>
-<table width="650" border="1" align="center" cellpadding="0" cellspacing="0" bordercolor="#999999" bgcolor="#FFFFFF">
-  <tr>
-    <td width="646"><TABLE width=575 border=0 align=center cellPadding=0 cellSpacing=0 bgcolor="#FFFFFF">
-        <TBODY>
-          <TR>
-            <TD width=303 height="67" align=left><div align="center"> <img height=51 hspace=5 src="http://marketing.vistaprint.com/us/imgs/VistaPrint-Logo-horizontal.gif" width=243 vspace=8></div></TD>
-            <TD width="246" align=left ><font color="#666666" SIZE="1" face="arial">Shipping and processing, product upgrades and photo/logo uploads not included unless otherwise specified. Not valid on previous purchases. See web site for details.</font></TD>
-            <TD width="26" align=left >&nbsp;</TD>
-          </TR>
-          <TR>
-            <TD height="19" colSpan=3  align=center><hr align="center" width="550" size="1" noshade></TD>
-          </TR>
-          <TR>
-            <TD height="39" colSpan=3  align=center><font color="#666666" SIZE="1" face="arial">If you do not want to receive e-mails concerning VistaPrint products, please <a href="http://www.vistaprint.com/vp/ns/customer_care/partneroptout.aspx?PREURL=%2Fvp%2Fns%2Fcustomer%5Fcare%2Fpartneroptout%2Easpx&GP=4%2F20%2F2006+9%3A02%3A14+AM" target="_blank">click here</a> <A 
-      href="http://www.vistaprint.com/vp/gateway.aspx?S=6039013242&amp;PREURL=/vp/ns/customer_care/partneroptout.aspx"><br>
-                            </A></font></TD>
-          </TR>
-          <TR>
-            <TD height="41" colSpan=3  align=center><p><font color="#666666" SIZE="1" face="arial">VistaPrint provides the highest quality, full-color graphic design and printing at the lowest prices! <br>
-                VistaPrint has served more than 9,000,000 customers worldwide.</font></p></TD>
-          </TR>
-          <TR>
-            <TD  align=center colSpan=3><p><font color="#666666" SIZE="1" face="arial">The products and services described in this e-mail are provided by VistaPrint Limited, the international leader for<br>
-                webtop graphic design and printing. United States customers may contact us in care of our U.S. subsidiary:<br>
-                </font><font color="#666666" SIZE="1" face="arial">VistaPrint USA Incorporated, 95 Hayden Avenue, Lexington, MA 02421<br>
-                ppp=373015 <br>
-                <br>
-            </font></p>
-            <div align="center">
-              <font face="Arial" color="#333399" size="1">You are receiving this 
-              message as an opt-in subscriber of Ins-Access.com or one of our 
-              marketing partners. <br>
-              If you no longer wish to receive further offers, please send an 
-              email with discontinue to: </font>
-              <font face="Arial" color="#333399" size="2">
-              <font color="#ffffff" size="1">
-              <a href="mailto:support@ins-access.com?subject=Discontinue">
-              support@ins-access.com</a></font><font color="#000080" size="1"><br>
-              Your email address will be removed within 24 hours.</font><font face="Arial" color="#333399" size="1">
-              </font>
-              <p><font color="#000080" size="1">Ins-Access.com<br>
-              1155 Warburton Ave.<br>
-              Yonkers, NY 10701</font></font></div>
-            </TD>
-          </TR>
-        </TBODY>
-    </TABLE></td>
-  </tr>
-</table>
-<p>&nbsp;</p>
-<blockquote>&nbsp;</blockquote>
-</body>
-</html>
+  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=301955
+  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=301953
 
 
+The mount(5) man page states that the noquota, quota, usrquota and
+grpquota options are ignored. (They are, however, used by the quota
+tools, so having them in fstab can be useful.) Make mount.nfs ignore
+them properly, matching the man page. There are a few aliases (like
+usrjquota) that are parsed by quota, but as these are not documented
+nor seem to be widely used, they are not included.
 
---===============0572465982==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
+
+Index: nfs-utils-1.1.0/utils/mount/mount.c
+===================================================================
+--- nfs-utils-1.1.0.orig/utils/mount/mount.c
++++ nfs-utils-1.1.0/utils/mount/mount.c
+@@ -132,6 +132,10 @@ static const struct opt_map opt_map[] = 
+   { "diratime", 0, 1, MS_NODIRATIME },  /* Update dir access times */
+   { "nodiratime", 0, 0, MS_NODIRATIME },/* Do not update dir access times */
+ #endif
++  { "noquota", 0, 0, MS_DUMMY },        /* Don't enforce quota */
++  { "quota", 0, 0, MS_DUMMY },          /* Enforce user quota */
++  { "usrquota", 0, 0, MS_DUMMY },       /* Enforce user quota */
++  { "grpquota", 0, 0, MS_DUMMY },       /* Enforce group quota */
+   { NULL,	0, 0, 0		}
+ };
+ 
+/* Steinar */ 
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
 Download DB2 Express C - the FREE version of DB2 express and take
 control of your XML. No limits. Just data. Click to get it now.
 http://sourceforge.net/powerbar/db2/
---===============0572465982==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0572465982==--
